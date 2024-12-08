@@ -40,6 +40,8 @@ class Settings {
 	};
 	#excludeFolders = [
 		"**/node_modules/**",
+		"**/vendor/**",
+		"**/venv/**",
 		"**/.git/**",
 		"**/.vscode/**",
 		"**/.idea/**",
