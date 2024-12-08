@@ -57,13 +57,19 @@ export default async function installPlugin(id, name, purchaseToken) {
 			const zip = new JSZip();
 			await zip.loadAsync(plugin);
 
-			if (!zip.files["plugin.json"] || !zip.files["main.js"]) {
+			if (!zip.files["plugin.json"]) {
 				throw new Error(strings["invalid plugin"]);
 			}
 
 			const pluginJson = JSON.parse(
 				await zip.files["plugin.json"].async("text"),
 			);
+
+			if (!zip.files[pluginJson.main] && zip.files["main.js"]) {
+				pluginJson.main = "main.js";
+			} else if (!zip.files[pluginJson.main] && !zip.files["main.js"]) {
+				throw new Error(strings["invalid plugin"]);
+			}
 
 			if (!pluginDir) {
 				pluginJson.source = pluginUrl;

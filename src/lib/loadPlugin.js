@@ -8,8 +8,12 @@ export default async function loadPlugin(pluginId, justInstalled = false) {
 	const baseUrl = await helpers.toInternalUri(Url.join(PLUGIN_DIR, pluginId));
 	const cacheFile = Url.join(CACHE_STORAGE, pluginId);
 
+	const pluginJson = await fsOperation(
+		Url.join(PLUGIN_DIR, pluginId, "plugin.json"),
+	).readFile("json");
+
 	return new Promise((resolve, reject) => {
-		const $script = <script src={Url.join(baseUrl, "main.js")}></script>;
+		const $script = <script src={Url.join(baseUrl, pluginJson.main)}></script>;
 
 		$script.onerror = (error) => {
 			reject(
