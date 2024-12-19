@@ -383,13 +383,13 @@
 	"newly_added": "最近上架",
 	"top_rated": "最多好評",
 	"rename not supported": "不支持修改 Termux 內的文件夾名",
-	"compress": "Compress",
-	"copy uri": "Copy Uri",
-	"delete entries": "Are you sure you want to delete {count} items?",
-	"deleting items": "Deleting {count} items...",
-	"import project zip": "Import Project(zip)",
-	"changelog": "Change Log",
-	"notifications": "Notifications",
-	"no_unread_notifications": "No unread notifications",
-	"should_use_current_file_for_preview": "Should use Current File For preview instead of default (index.html)"
+	"compress": "壓縮",
+	"copy uri": "複製 Uri",
+	"delete entries": "確定要刪除這 {count} 個項目？",
+	"deleting items": "正在刪除這 {count} 個項目...",
+	"import project zip": "導入項目(zip)",
+	"changelog": "更新日誌",
+	"notifications": "消息通知",
+	"no_unread_notifications": "沒有未讀消息",
+	"should_use_current_file_for_preview": "應使當前文件用於預覽頁面而非使用默認文件 (index.html)"
 }

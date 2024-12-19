@@ -1,5 +1,5 @@
 {
-	"lang": "中文简体",
+	"lang": "简体中文",
 	"about": "关于",
 	"active files": "打开的文件",
 	"alert": "提醒",
@@ -383,13 +383,13 @@
 	"newly_added": "最近上架",
 	"top_rated": "最多好评",
 	"rename not supported": "不支持修改 Termux 内的文件夹名",
-	"compress": "Compress",
-	"copy uri": "Copy Uri",
-	"delete entries": "Are you sure you want to delete {count} items?",
-	"deleting items": "Deleting {count} items...",
-	"import project zip": "Import Project(zip)",
-	"changelog": "Change Log",
-	"notifications": "Notifications",
-	"no_unread_notifications": "No unread notifications",
-	"should_use_current_file_for_preview": "Should use Current File For preview instead of default (index.html)"
+	"compress": "压缩",
+	"copy uri": "复制 Uri",
+	"delete entries": "确定要删除这 {count} 个项目？",
+	"deleting items": "正在删除这 {count} 个项目...",
+	"import project zip": "导入项目(zip)",
+	"changelog": "更新日志",
+	"notifications": "消息通知",
+	"no_unread_notifications": "没有未读消息",
+	"should_use_current_file_for_preview": "应使当前文件用于预览页面而非使用默认文件 (index.html)"
 }
