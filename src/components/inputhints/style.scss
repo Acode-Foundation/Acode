@@ -1,4 +1,4 @@
-@import '../../styles/mixins.scss';
+@import "../../styles/mixins.scss";
 
 #hints {
   position: fixed;
@@ -29,8 +29,8 @@
     border-radius: 4px;
   }
 
-  [data-action='hint'],
-  [action='hint'] {
+  [data-action="hint"],
+  [action="hint"] {
     font-size: 0.9rem;
     min-height: 30px;
     height: fit-content;
