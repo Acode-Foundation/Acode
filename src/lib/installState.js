@@ -82,6 +82,16 @@ export default class InstallState {
 			await fsOperation(url).delete();
 		}
 	}
+
+	async clear() {
+		try {
+			this.store = {};
+			this.updatedStore = {};
+			await fsOperation(this.storeUrl).writeFile("{}");
+		} catch (error) {
+			console.error("Failed to clear install state:", error);
+		}
+	}
 }
 
 /**

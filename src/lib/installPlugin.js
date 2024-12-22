@@ -17,6 +17,7 @@ export default async function installPlugin(id, name, purchaseToken) {
 	const loaderDialog = loader.create(title, strings.installing);
 	let pluginDir;
 	let pluginUrl;
+	let state;
 
 	try {
 		if (!(await fsOperation(PLUGIN_DIR).exists())) {
@@ -71,7 +72,7 @@ export default async function installPlugin(id, name, purchaseToken) {
 				pluginDir = Url.join(PLUGIN_DIR, id);
 			}
 
-			const state = await InstallState.new(id);
+			state = await InstallState.new(id);
 
 			if (!(await fsOperation(pluginDir).exists())) {
 				await fsOperation(PLUGIN_DIR).createDirectory(id);
@@ -115,9 +116,15 @@ export default async function installPlugin(id, name, purchaseToken) {
 		}
 	} catch (err) {
 		try {
-			await fsOperation(pluginDir).delete();
-		} catch (error) {
-			// ignore
+			// Clear the install state if installation fails
+			if (state) await state.clear();
+
+			// Delete the plugin directory if it was created
+			if (pluginDir && (await fsOperation(pluginDir).exists())) {
+				await fsOperation(pluginDir).delete();
+			}
+		} catch (cleanupError) {
+			console.error("Cleanup failed:", cleanupError);
 		}
 		throw err;
 	} finally {
