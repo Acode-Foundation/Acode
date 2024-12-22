@@ -270,8 +270,11 @@ export default function inputhints($input, hints, onSelect) {
 	}
 
 	function updatePage() {
+		const offset = (pages + 1) * LIMIT;
+		const hasMore = offset < currentHints.length;
+
 		// if the scroll is at the bottom
-		if ($ul.scrollTop + $ul.clientHeight >= $ul.scrollHeight) {
+		if ($ul.scrollTop + $ul.clientHeight >= $ul.scrollHeight && hasMore) {
 			pages++;
 			updateUlNow(currentHints, pages);
 		}
@@ -311,8 +314,11 @@ export default function inputhints($input, hints, onSelect) {
 
 		$ul.remove();
 
-		if (!list.length) {
+		if (!hints.length) {
 			$ul.content = [<Hint hint={{ value: "", text: "No matches found" }} />];
+		} else if (!list.length) {
+			// No more hints to load
+			return;
 		} else {
 			if (!page) {
 				scrollTop = 0;
