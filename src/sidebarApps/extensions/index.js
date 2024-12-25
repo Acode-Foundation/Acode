@@ -20,6 +20,11 @@ let container = null;
 /** @type {HTMLElement} */
 let $searchResult = null;
 
+const LIMIT = 50;
+let currentPage = 1;
+let hasMore = true;
+let isLoading = false;
+
 const $header = (
 	<div className="header">
 		<span className="title">
@@ -77,6 +82,7 @@ function initApp(el) {
 	if (!$explore) {
 		$explore = collapsableList(strings["explore"]);
 		$explore.ontoggle = loadExplore;
+		$explore.$ul.onscroll = handleScroll;
 		container.append($explore);
 	}
 
@@ -88,6 +94,44 @@ function initApp(el) {
 	}
 
 	Sidebar.on("show", onSelected);
+}
+
+async function handleScroll(e) {
+	if (isLoading || !hasMore) return;
+
+	const { scrollTop, scrollHeight, clientHeight } = e.target;
+
+	if (scrollTop + clientHeight >= scrollHeight - 50) {
+		await loadMorePlugins();
+	}
+}
+
+async function loadMorePlugins() {
+	try {
+		isLoading = true;
+		startLoading($explore);
+
+		const response = await fetch(
+			`${constants.API_BASE}/plugins?page=${currentPage}&limit=${LIMIT}`,
+		);
+		const newPlugins = await response.json();
+
+		if (newPlugins.length < LIMIT) {
+			hasMore = false;
+		}
+
+		installedPlugins = await listInstalledPlugins();
+		const pluginElements = newPlugins.map(ListItem);
+		$explore.$ul.append(...pluginElements);
+
+		currentPage++;
+		updateHeight($explore);
+	} catch (error) {
+		window.log("error", error);
+	} finally {
+		isLoading = false;
+		stopLoading($explore);
+	}
 }
 
 async function searchPlugin() {
@@ -195,12 +239,21 @@ async function loadExplore() {
 
 	try {
 		startLoading($explore);
-		const plugins = await fsOperation(
-			Url.join(constants.API_BASE, "plugins?explore=random"),
-		).readFile("json");
+		currentPage = 1;
+		hasMore = true;
+
+		const response = await fetch(
+			`${constants.API_BASE}/plugins?page=${currentPage}&limit=${LIMIT}`,
+		);
+		const plugins = await response.json();
+
+		if (plugins.length < LIMIT) {
+			hasMore = false;
+		}
 
 		installedPlugins = await listInstalledPlugins();
 		$explore.$ul.content = plugins.map(ListItem);
+		currentPage++;
 		updateHeight($explore);
 	} catch (error) {
 		$explore.$ul.content = <span className="error">{strings["error"]}</span>;

@@ -44,6 +44,10 @@ export default function PluginsInclude(updates) {
   let $currList = $list.installed;
   let currSection = "installed";
   let hideSearchBar = () => {};
+  let currentPage = 1;
+  let isLoading = false;
+  let hasMore = true;
+  const LIMIT = 50;
 
   Contextmenu({
     toggler: $add,
@@ -142,6 +146,18 @@ export default function PluginsInclude(updates) {
 
   $page.onclick = handleClick;
 
+  $list.all.addEventListener('scroll', (e) => {
+    if (isLoading || !hasMore) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = $currList;
+    if (scrollTop + clientHeight >= scrollHeight - 100) {
+      if (currSection === "all") {
+        currentPage++;
+        getAllPlugins();
+      }
+    }
+  })
+
   app.append($page);
   helpers.showAd();
 
@@ -199,7 +215,6 @@ export default function PluginsInclude(updates) {
       section = currSection;
     }
 
-    // Hide search bar when changing tabs
     if (document.getElementById("search-bar")) {
       hideSearchBar();
     }
@@ -210,6 +225,8 @@ export default function PluginsInclude(updates) {
     $section.scrollTop = $section._scroll || 0;
     $currList = $section;
     currSection = section;
+    currentPage = 1;
+    hasMore = true;
     $page.get(".options .active").classList.remove("active");
     $page.get(`#${section}_plugins`).classList.add("active");
   }
@@ -239,7 +256,7 @@ export default function PluginsInclude(updates) {
       $list.all.setAttribute("empty-msg", strings["error"]);
       window.log("error", "Failed to search remotely:");
       window.log("error", error);
-      return []; // Return an empty array on error
+      return [];
     }
   }
 
@@ -263,13 +280,26 @@ export default function PluginsInclude(updates) {
   }
 
   async function getAllPlugins() {
+    if (isLoading || !hasMore) return;
+
     try {
-      plugins.all = [];
+      isLoading = true;
+      if (currentPage === 1) {
+        plugins.all = [];
+        $list.all.replaceChildren();
+      }
+
       $list.all.setAttribute("empty-msg", strings["loading..."]);
+
       const installed = await fsOperation(PLUGIN_DIR).lsDir();
-      plugins.all = await fsOperation(constants.API_BASE, "plugins").readFile(
-        "json",
-      );
+      const response = await fetch(`${constants.API_BASE}/plugins?page=${currentPage}&limit=${LIMIT}`);
+      const newPlugins = await response.json();
+
+      if (newPlugins.length < LIMIT) {
+        hasMore = false;
+      }
+
+      plugins.all = [...plugins.all, ...newPlugins];
 
       installed.forEach(({ url }) => {
         const plugin = plugins.all.find(({ id }) => id === Url.basename(url));
@@ -286,6 +316,8 @@ export default function PluginsInclude(updates) {
       $list.all.setAttribute("empty-msg", strings["no plugins found"]);
     } catch (error) {
       window.log("error", error);
+    } finally {
+      isLoading = false;
     }
   }
 
