@@ -72,10 +72,33 @@
       display: flex;
       align-items: center;
       cursor: pointer;
+      justify-content: center;
       transition: background-color 0.3s ease;
+      margin-left: 10px;
 
       &:hover {
         background-color: var(--active-icon-color);
+      }
+    }
+
+    .install-btn {
+      background: none;
+      border: none;
+      margin-left: 10px;
+      border-radius: 50%;
+      cursor: pointer;
+      color: var(--primary-text-color);
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      &:hover {
+        background-color: var(--active-icon-color);
+      }
+
+      &:active {
+        transform: scale(0.95);
       }
     }
   }

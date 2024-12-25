@@ -358,41 +358,83 @@ function ListItem({ icon, name, id, version, downloads, installed }) {
 					data-action="more-plugin-action"
 				></span>
 			) : (
-				""
+				<button className="install-btn" data-action="install-plugin">
+					<span className="icon file_downloadget_app"></span>
+				</button>
 			)}
 		</div>
 	);
 
-	$el.onclick = (event) => {
+	$el.onclick = async (event) => {
 		const morePluginActionButton = event.target.closest(
 			'[data-action="more-plugin-action"]',
 		);
+		const installPluginBtn = event.target.closest(
+			'[data-action="install-plugin"]',
+		);
 		if (morePluginActionButton) {
 			more_plugin_action(id, name);
+			return;
+		} else if (installPluginBtn) {
+			try {
+				let purchaseToken = null;
+				const pluginUrl = Url.join(constants.API_BASE, `plugin/${id}`);
+				const remotePlugin = await fsOperation(pluginUrl)
+					.readFile("json")
+					.catch(() => {
+						throw new Error("Failed to fetch plugin details");
+					});
+
+				if (remotePlugin && Number.parseFloat(remotePlugin.price) > 0) {
+					try {
+						const [product] = await helpers.promisify(iap.getProducts, [
+							remotePlugin.sku,
+						]);
+						if (product) {
+							async function getPurchase(sku) {
+								const purchases = await helpers.promisify(iap.getPurchases);
+								const purchase = purchases.find((p) =>
+									p.productIds.includes(sku),
+								);
+								return purchase;
+							}
+							const purchase = await getPurchase(product.productId);
+							purchaseToken = purchase?.purchaseToken;
+						}
+					} catch (error) {
+						helpers.error(error);
+						throw new Error("Failed to validate purchase");
+					}
+				}
+
+				const { default: installPlugin } = await import("lib/installPlugin");
+				await installPlugin(id, remotePlugin.name, purchaseToken);
+				window.toast(strings["success"], 3000);
+				$explore.ontoggle();
+			} catch (err) {
+				console.error(err);
+				window.toast(helpers.errorMessage(err), 3000);
+			}
 			return;
 		}
 
 		plugin(
 			{ id, installed },
 			() => {
-				const $item = () => (
-					<ListItem
-						icon={icon}
-						name={name}
-						id={id}
-						version={version}
-						installed={true}
-					/>
-				);
-				if ($installed.contains($el))
-					$installed.$ul?.replaceChild($item(), $el);
-				else $installed.$ul?.append($item());
-				if ($explore.contains($el)) $explore.$ul?.replaceChild($item(), $el);
-				if ($searchResult.contains($el))
-					$searchResult?.replaceChild($item(), $el);
+				if (!$explore.collapsed) {
+					$explore.ontoggle();
+				}
+				if (!$installed.collapsed) {
+					$installed.ontoggle();
+				}
 			},
 			() => {
-				$el.remove();
+				if (!$explore.collapsed) {
+					$explore.ontoggle();
+				}
+				if (!$installed.collapsed) {
+					$installed.ontoggle();
+				}
 			},
 		);
 	};
@@ -449,8 +491,12 @@ async function more_plugin_action(id, pluginName) {
 			break;
 		case strings.uninstall:
 			await uninstall(id);
-			const $plugin = $installed.querySelector(`[data-plugin-id="${id}"]`);
-			$plugin.remove();
+			if (!$explore.collapsed) {
+				$explore.ontoggle();
+			}
+			if (!$installed.collapsed) {
+				$installed.ontoggle();
+			}
 			break;
 	}
 }
