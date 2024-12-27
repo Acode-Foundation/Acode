@@ -1,4 +1,6 @@
 import ajax from "@deadlyjack/ajax";
+import alert from "dialogs/alert";
+import confirm from "dialogs/confirm";
 import loader from "dialogs/loader";
 import fsOperation from "fileSystem";
 import purchaseListener from "handlers/purchase";
@@ -9,21 +11,29 @@ import constants from "./constants";
 import InstallState from "./installState";
 import loadPlugin from "./loadPlugin";
 
+/** @type {import("dialogs/loader").Loader} */
+let loaderDialog;
+/** @type {Array<() => Promise<void>>} */
+let depsLoaders;
+
 /**
  * Installs a plugin.
  * @param {string} id
  * @param {string} name
  * @param {string} purchaseToken
- * @param {(message: any) => void} setMessage
+ * @param {boolean} isDependency
  */
 export default async function installPlugin(
 	id,
 	name,
 	purchaseToken,
-	setMessage,
+	isDependency,
 ) {
-	const title = name || "Plugin";
-	const loaderDialog = loader.create(title, strings.installing);
+	if (!isDependency) {
+		loaderDialog = loader.create(name || "Plugin", strings.installing);
+		depsLoaders = [];
+	}
+
 	let pluginDir;
 	let pluginUrl;
 
@@ -51,7 +61,7 @@ export default async function installPlugin(
 	}
 
 	try {
-		if (!setMessage) loaderDialog.show();
+		if (!isDependency) loaderDialog.show();
 
 		const plugin = await fsOperation(pluginUrl).readFile(
 			undefined,
@@ -70,15 +80,36 @@ export default async function installPlugin(
 				throw new Error(strings["invalid plugin"]);
 			}
 
+			/** @type {{ dependencies: string[] }} */
 			const pluginJson = JSON.parse(
 				await zip.files["plugin.json"].async("text"),
 			);
 
-			if (pluginJson.dependencies) {
-				for (const dependency of pluginJson.dependencies) {
-					const _setMessage = setMessage ? setMessage : loaderDialog.setMessage;
-					const hasError = await resolveDependency(dependency, _setMessage);
-					if (hasError) throw new Error(strings.failed);
+			if (!isDependency && pluginJson.dependencies) {
+				const manifests = await resolveDepsManifest(pluginJson.dependencies);
+
+				let titleText;
+				if (manifests.length > 1) {
+					titleText = "Acode wants to install the following dependencies:";
+				} else {
+					titleText = "Acode wants to install the following dependency:";
+				}
+
+				const shouldInstall = await confirm(
+					"Installer Notice",
+					titleText +
+						"<br /><br />" +
+						manifests.map((value) => value.name).join(", "),
+					true,
+				);
+
+				if (shouldInstall) {
+					for (const manifest of manifests) {
+						const hasError = await resolveDep(manifest);
+						if (hasError) throw new Error(strings.failed);
+					}
+				} else {
+					return;
 				}
 			}
 
@@ -126,7 +157,18 @@ export default async function installPlugin(
 
 			// Wait for all files to be processed
 			await Promise.allSettled(promises);
-			await loadPlugin(id, true);
+
+			if (isDependency) {
+				depsLoaders.push(async () => {
+					await loadPlugin(id, true);
+				});
+			} else {
+				for (const loader of depsLoaders) {
+					await loader();
+				}
+				await loadPlugin(id, true);
+			}
+
 			await state.save();
 			deleteRedundantFiles(pluginDir, state);
 		}
@@ -138,7 +180,9 @@ export default async function installPlugin(
 		}
 		throw err;
 	} finally {
-		if (!setMessage) loaderDialog.destroy();
+		if (!isDependency) {
+			loaderDialog.destroy();
+		}
 	}
 }
 
@@ -171,27 +215,64 @@ async function createFileRecursive(parent, dir) {
 	}
 }
 
+/**
+ * Resolves Dependencies Manifest with given ids.
+ * @param {string[]} deps dependencies
+ */
+async function resolveDepsManifest(deps) {
+	const resolved = [];
+	for (const dependency of deps) {
+		const remoteDependency = await fsOperation(
+			constants.API_BASE,
+			`plugin/${dependency}`,
+		)
+			.readFile("json")
+			.catch(() => null);
+
+		if (!remoteDependency)
+			throw new Error(`Unknown plugin dependency: ${dependency}`);
+
+		const version = await getInstalledPluginVersion(remoteDependency.id);
+		if (remoteDependency?.version === version) continue;
+
+		if (remoteDependency.dependencies) {
+			const manifests = await resolveDepsManifest(
+				remoteDependency.dependencies,
+			);
+			resolved.push(manifests);
+		}
+
+		resolved.push(remoteDependency);
+	}
+
+	/**
+	 *
+	 * @param {string} id
+	 * @returns {Promise<string>} plugin version
+	 */
+	async function getInstalledPluginVersion(id) {
+		if (await fsOperation(PLUGIN_DIR, id).exists()) {
+			const plugin = await fsOperation(PLUGIN_DIR, id, "plugin.json").readFile(
+				"json",
+			);
+			return plugin.version;
+		}
+	}
+
+	return resolved;
+}
+
 /** Resolve dependency
- * @param {string} id
- * @param {(message: any) => void} setMessage
+ * @param {object} manifest
  * @returns {Promise<boolean>} has error
  */
-async function resolveDependency(id, setMessage) {
+async function resolveDep(manifest) {
 	let purchaseToken;
 	let product;
 	let isPaid = false;
 
-	const remoteDependency = await fsOperation(constants.API_BASE, `plugin/${id}`)
-		.readFile("json")
-		.catch(() => null);
-
-	if (!remoteDependency) throw new Error("Invalid plugin dependency");
-
-	const version = await getInstalledPluginVersion(id);
-	if (remoteDependency?.version === version) return false;
-
-	isPaid = remoteDependency.price > 0;
-	[product] = await helpers.promisify(iap.getProducts, [remoteDependency.sku]);
+	isPaid = manifest.price > 0;
+	[product] = await helpers.promisify(iap.getProducts, [manifest.sku]);
 	if (product) {
 		const purchase = await getPurchase(product.productId);
 		purchaseToken = purchase?.purchaseToken;
@@ -207,14 +288,14 @@ async function resolveDependency(id, setMessage) {
 		}
 
 		iap.setPurchaseUpdatedListener(...purchaseListener(onpurchase, onerror));
-		setMessage(strings["loading..."]);
+		loaderDialog.setMessage(strings["loading..."]);
 		await helpers.promisify(iap.purchase, product.json);
 
 		async function onpurchase(e) {
 			const purchase = await getPurchase(product.productId);
 			await ajax.post(Url.join(constants.API_BASE, "plugin/order"), {
 				data: {
-					id: id,
+					id: manifest.id,
 					token: purchase?.purchaseToken,
 					package: BuildInfo.packageName,
 				},
@@ -227,29 +308,15 @@ async function resolveDependency(id, setMessage) {
 		}
 	}
 
-	setMessage(
-		`${strings.installing.replace("...", "")} ${remoteDependency.name}...`,
+	loaderDialog.setMessage(
+		`${strings.installing.replace("...", "")} ${manifest.name}...`,
 	);
-	await installPlugin(id, undefined, purchaseToken, setMessage);
+	await installPlugin(manifest.id, undefined, purchaseToken, true);
 
 	async function getPurchase(sku) {
 		const purchases = await helpers.promisify(iap.getPurchases);
 		const purchase = purchases.find((p) => p.productIds.includes(sku));
 		return purchase;
-	}
-
-	/**
-	 *
-	 * @param {string} id
-	 * @returns {Promise<string>} plugin version
-	 */
-	async function getInstalledPluginVersion(id) {
-		if (await fsOperation(PLUGIN_DIR, id).exists()) {
-			const plugin = await fsOperation(PLUGIN_DIR, id, "plugin.json").readFile(
-				"json",
-			);
-			return plugin.version;
-		}
 	}
 }
 
@@ -274,7 +341,7 @@ async function listFileRecursive(dir, files) {
  * @param {Record<string, boolean>} files
  */
 async function deleteRedundantFiles(pluginDir, state) {
-	/** @type string[] */
+	/** @type {string[]} */
 	let files = [];
 	await listFileRecursive(pluginDir, files);
 
