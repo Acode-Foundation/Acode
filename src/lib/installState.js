@@ -29,6 +29,13 @@ export default class InstallState {
 				state.store = JSON.parse(
 					await fsOperation(state.storeUrl).readFile("utf-8"),
 				);
+
+				const patchedStore = {};
+				for (const [key, value] of Object.entries(state.store)) {
+					patchedStore[key.toLowerCase()] = value;
+				}
+
+				state.store = patchedStore;
 			} else {
 				state.store = {};
 				await fsOperation(INSTALL_STATE_STORAGE).createFile(state.id);
@@ -48,6 +55,7 @@ export default class InstallState {
 	 * @returns
 	 */
 	async isUpdated(url, content) {
+		url = url.toLowerCase();
 		const current = this.store[url];
 		const update =
 			typeof content === "string"
@@ -62,8 +70,13 @@ export default class InstallState {
 		}
 	}
 
+	/**
+	 *
+	 * @param {string} url
+	 * @returns
+	 */
 	exists(url) {
-		if (typeof this.store[url] !== "undefined") {
+		if (typeof this.store[url.toLowerCase()] !== "undefined") {
 			return true;
 		} else {
 			return false;
@@ -78,6 +91,7 @@ export default class InstallState {
 	}
 
 	async delete(url) {
+		url = url.toLowerCase();
 		if (await fsOperation(url).exists()) {
 			await fsOperation(url).delete();
 		}
