@@ -239,6 +239,23 @@ async function onDeviceReady() {
 			applySettings.afterRender();
 		}, 500);
 	}
+	setTimeout(() => {
+		checkPluginsUpdate()
+			.then((updates) => {
+				if (!updates.length) return;
+				acode.pushNotification(
+					"Plugin Updates",
+					`${updates.length} plugin${updates.length > 1 ? "s" : ""} ${updates.length > 1 ? "have" : "has"} new version${updates.length > 1 ? "s" : ""} available.`,
+					{
+						icon: "extension",
+						action: () => {
+							plugins(updates);
+						},
+					},
+				);
+			})
+			.catch(console.error);
+	}, 5000);
 }
 
 async function loadApp() {
@@ -407,22 +424,6 @@ async function loadApp() {
 	}
 
 	initFileList();
-
-	checkPluginsUpdate()
-		.then((updates) => {
-			if (!updates.length) return;
-			acode.pushNotification(
-				"Plugin Updates",
-				`${updates.length} plugin${updates.length > 1 ? "s" : ""} ${updates.length > 1 ? "have" : "has"} new version${updates.length > 1 ? "s" : ""} available.`,
-				{
-					icon: "extension",
-					action: () => {
-						plugins(updates);
-					},
-				},
-			);
-		})
-		.catch(console.error);
 
 	// Check for app updates
 	if (navigator.onLine) {
