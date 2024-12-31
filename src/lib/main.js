@@ -426,7 +426,7 @@ async function loadApp() {
 
 	// Check for app updates
 	if (navigator.onLine) {
-		fetch("https://api.github.com/repos/deadlyjack/Acode/releases/latest")
+		fetch("https://api.github.com/repos/Acode-Foundation/Acode/releases/latest")
 			.then((res) => res.json())
 			.then((release) => {
 				// assuming version is in format v1.2.3
