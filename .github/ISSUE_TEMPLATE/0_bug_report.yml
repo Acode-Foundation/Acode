@@ -25,7 +25,7 @@ body:
       required: true
   - type: textarea
     attributes:
-      label: If applicable, add mockups / screenshots regarding your vission
+      label: If applicable, add mockups / screenshots regarding your vision
       description: Drag issues into the text input below
     validations:
       required: false
