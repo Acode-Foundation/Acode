@@ -1,4 +1,4 @@
-@import '../../styles/mixins.scss';
+@import "../../styles/mixins.scss";
 
 #plugin {
   overflow: auto;
@@ -65,7 +65,7 @@
           text-align: center;
         }
 
-        >div {
+        > div {
           .icon {
             margin: 0;
           }
@@ -114,7 +114,6 @@
           margin-bottom: 5px;
         }
       }
-
     }
   }
 
@@ -141,7 +140,7 @@
         }
       }
 
-      &[data-type='uninstall'] {
+      &[data-type="uninstall"] {
         background-color: rgb(160, 51, 0) !important;
         background-color: var(--danger-color) !important;
         color: rgb(255, 255, 255) !important;
@@ -176,6 +175,9 @@
     h5,
     h6 {
       text-align: left;
+      &[align="center"] {
+        text-align: center;
+      }
     }
 
     // class="language-xxx"
@@ -242,7 +244,7 @@
     justify-content: center;
 
     &::after {
-      content: '';
+      content: "";
       width: 40px;
       height: 5px;
       border-radius: 2.5px;
