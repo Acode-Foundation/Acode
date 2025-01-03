@@ -77,7 +77,7 @@ export default async function installPlugin(
 			const zip = new JSZip();
 			await zip.loadAsync(plugin);
 
-			if (!zip.files["plugin.json"] || !zip.files["main.js"]) {
+			if (!zip.files["plugin.json"]) {
 				throw new Error(strings["invalid plugin"]);
 			}
 
@@ -85,6 +85,25 @@ export default async function installPlugin(
 			const pluginJson = JSON.parse(
 				await zip.files["plugin.json"].async("text"),
 			);
+
+			/** patch main in manifest */
+			if (!zip.files[pluginJson.main]) {
+				pluginJson.main = "main.js";
+			}
+
+			/** patch icon in manifest */
+			if (!zip.files[pluginJson.icon]) {
+				pluginJson.icon = "icon.png";
+			}
+
+			/** patch readme in manifest */
+			if (!zip.files[pluginJson.readme]) {
+				pluginJson.readme = "readme.md";
+			}
+
+			if (!zip.files[pluginJson.main]) {
+				throw new Error(strings["invalid plugin"]);
+			}
 
 			if (!isDependency && pluginJson.dependencies) {
 				const manifests = await resolveDepsManifest(pluginJson.dependencies);
