@@ -78,7 +78,7 @@ class SftpClient {
 					if (stat) options += "d";
 
 					sftp.exec(
-						`ls ${options} --full-time -L "${path}" | awk '{$2=\"\"; print $0}'`,
+						`/usr/bin/ls ${options} --full-time -L "${path}" | awk '{$2=\"\"; print $0}'`,
 						async (res) => {
 							if (res.code <= 0) {
 								if (stat) {
@@ -574,7 +574,7 @@ class SftpClient {
 
 			targetType = await new Promise((resolve, reject) => {
 				sftp.exec(
-					`ls -ld "${this.#safeName(linkTarget)}"`,
+					`/usr/bin/ls -ld "${this.#safeName(linkTarget)}"`,
 					(res) => {
 						if (res.code <= 0) {
 							const output = res.result.trim();
