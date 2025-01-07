@@ -8,10 +8,10 @@ import {
 	HEX,
 	HSL,
 	HSLA,
+	NAMED_COLORS,
 	RGB,
 	RGBA,
 	isValidColor,
-	NAMED_COLORS,
 } from "utils/color/regex";
 
 const COLORPICKER_TOKEN_CLASS = ".ace_color";
