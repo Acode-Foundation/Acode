@@ -1,10 +1,18 @@
 /**
- * This piece of code belongs to github.com/easylogic and is licensed under MIT
+ * Some part of this code belongs to github.com/easylogic and is licensed under MIT
  * @see https://github.com/easylogic/ace-colorpicker/blob/main/src/extension/ace/colorview.js
  */
 
 import Color from "utils/color";
-import { HEX, HSL, HSLA, RGB, RGBA, isValidColor } from "utils/color/regex";
+import {
+	HEX,
+	HSL,
+	HSLA,
+	RGB,
+	RGBA,
+	isValidColor,
+	NAMED_COLORS,
+} from "utils/color/regex";
 
 const COLORPICKER_TOKEN_CLASS = ".ace_color";
 const changedRules = [];
@@ -56,7 +64,7 @@ export function deactivateColorView() {
  */
 function sessionSupportsColor(session) {
 	const mode = session.getMode().$id.split("/").pop();
-	return /css|less|scss|sass|stylus|html|dart/.test(mode) ? mode : false;
+	return /css|less|scss|sass|stylus|html|svg|dart/.test(mode) ? mode : false;
 }
 
 function onChangeMode() {
@@ -75,6 +83,29 @@ function onChangeMode() {
 		rules = { ruleset: rules["ruleset"] };
 	} else if (mode === "html") {
 		rules = { "css-ruleset": rules["css-ruleset"] };
+	} else if (mode === "svg") {
+		const svgColorAttrs = [
+			"fill",
+			"stroke",
+			"stop-color",
+			"flood-color",
+			"lighting-color",
+		];
+		Object.keys(rules).forEach((key) => {
+			const rule = rules[key];
+			if (Array.isArray(rule)) {
+				rule.unshift({
+					token: "color",
+					regex: `(?<=\\b(?:${svgColorAttrs.join("|")})\\s*=\\s*["'])(${HEX}|${RGB}|${RGBA}|${HSL}|${HSLA}|\\w+)(?=["'])`,
+				});
+				rule.unshift({
+					token: "color",
+					regex: `(?<=style\\s*=\\s*["'][^"']*(?:${svgColorAttrs.join("|")})\\s*:\\s*)(${HEX}|${RGB}|${RGBA}|${HSL}|${HSLA}|\\w+)(?=\\s*[;'"])`,
+				});
+				changedRules.push(rule);
+				forceUpdate = true;
+			}
+		});
 	}
 
 	Object.keys(rules).forEach((key) => {
@@ -124,6 +155,10 @@ function afterRender() {
 
 			if (el.dataset.modified === "true") return;
 			el.dataset.modified = "true";
+
+			if (mode === "svg" && content in NAMED_COLORS) {
+				content = NAMED_COLORS[content];
+			}
 
 			if (!isValidColor(content)) {
 				if (isValidColor(multiLinePrev)) {
