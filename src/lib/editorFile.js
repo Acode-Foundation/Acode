@@ -39,6 +39,17 @@ const { Range } = ace.require("ace/range");
 
 export default class EditorFile {
 	/**
+	 * Type of content this file represents but use page in case of custom pages etc
+	 */
+	#type = "editor";
+	#tabIcon = "file file_type_default";
+	/**
+	 * Custom content element
+	 * @type {HTMLElement}
+	 */
+	#content = null;
+
+	/**
 	 * If editor was focused before resize
 	 */
 	focusedBefore = false;
@@ -180,6 +191,23 @@ export default class EditorFile {
 			this.#id = constants.DEFAULT_FILE_SESSION;
 		}
 
+		if (options?.type) {
+			this.#type = options.type;
+			if (this.#type !== "editor") {
+				const container = (
+					<div className="tab-page-container">
+						<div className="tab-page-content">{options.content}</div>
+					</div>
+				);
+				this.#content = container;
+			} else {
+				this.#content = options.content;
+			}
+			if (options.tabIcon) {
+				this.#tabIcon = options.tabIcon;
+			}
+		}
+
 		this.#uri = options?.uri;
 
 		if (this.#id) doesExists = getFile(this.#id, "id");
@@ -194,6 +222,11 @@ export default class EditorFile {
 
 		this.#tab = tile({
 			text: this.#name,
+			...(this.#type !== "editor" && {
+				lead: (
+					<span className={this.icon} style={{ paddingRight: "5px" }}></span>
+				),
+			}),
 			tail: tag("span", {
 				className: "icon cancel",
 				dataset: {
@@ -249,11 +282,26 @@ export default class EditorFile {
 
 		addFile(this);
 		editorManager.emit("new-file", this);
-		this.session = ace.createEditSession(options?.text || "");
-		this.setMode();
-		this.#setupSession();
+
+		if (this.#type === "editor") {
+			this.session = ace.createEditSession(options?.text || "");
+			this.setMode();
+			this.#setupSession();
+		}
 
 		if (options?.render ?? true) this.render();
+	}
+
+	get type() {
+		return this.#type;
+	}
+
+	get tabIcon() {
+		return this.#tabIcon;
+	}
+
+	get content() {
+		return this.#content;
 	}
 
 	/**
@@ -394,6 +442,7 @@ export default class EditorFile {
 	 * @param {'windows'|'unit'} value
 	 */
 	set eol(value) {
+		if (this.type !== "editor") return;
 		if (this.eol === value) return;
 		let text = this.session.getValue();
 
@@ -454,6 +503,9 @@ export default class EditorFile {
 	 * File icon
 	 */
 	get icon() {
+		if (this.#type !== "editor") {
+			return this.#tabIcon;
+		}
 		return helpers.getIconForFile(this.filename);
 	}
 
@@ -483,6 +535,7 @@ export default class EditorFile {
 	}
 
 	async isChanged() {
+		if (this.type !== "editor") return false;
 		// if file is not loaded or is loading then it is not changed.
 		if (!this.loaded || this.loading) {
 			return false;
@@ -617,6 +670,7 @@ export default class EditorFile {
 	 * @returns {Promise<boolean>} true if file is saved, false if not.
 	 */
 	save() {
+		if (this.type !== "editor") return Promise.resolve(false);
 		return this.#save(false);
 	}
 
@@ -625,6 +679,7 @@ export default class EditorFile {
 	 * @returns {Promise<boolean>} true if file is saved, false if not.
 	 */
 	saveAs() {
+		if (this.type !== "editor") return Promise.resolve(false);
 		return this.#save(true);
 	}
 
@@ -633,6 +688,7 @@ export default class EditorFile {
 	 * @param {string} [mode]
 	 */
 	setMode(mode) {
+		if (this.type !== "editor") return;
 		const modelist = ace.require("ace/ext/modelist");
 		const event = createFileEvent(this);
 		this.#emit("changemode", event);
@@ -667,19 +723,37 @@ export default class EditorFile {
 			if (activeFile.id === this.id) return;
 			activeFile.focusedBefore = activeFile.focused;
 			activeFile.removeActive();
+
+			// Hide previous content if it exists
+			if (activeFile.type !== "editor" && activeFile.content) {
+				activeFile.content.style.display = "none";
+			}
 		}
 
 		switchFile(this.id);
 
-		if (this.focused) {
-			editor.focus();
+		// Show/hide appropriate content
+		if (this.type === "editor") {
+			editorManager.container.style.display = "block";
+			if (this.focused) {
+				editor.focus();
+			} else {
+				editor.blur();
+			}
 		} else {
-			editor.blur();
+			editorManager.container.style.display = "none";
+			if (this.content) {
+				this.content.style.display = "block";
+				if (!this.content.parentElement) {
+					editorManager.container.parentElement.appendChild(this.content);
+				}
+			}
 		}
 
 		this.#tab.classList.add("active");
 		this.#tab.scrollIntoView();
-		if (!this.loaded && !this.loading) {
+
+		if (this.type === "editor" && !this.loaded && !this.loading) {
 			this.#loadText();
 		}
 
@@ -725,6 +799,18 @@ export default class EditorFile {
 				"id",
 			);
 			defaultFile?.remove();
+		}
+
+		// Show/hide editor based on content type
+		if (this.#type === "editor") {
+			editorManager.container.style.display = "block";
+			if (this.#content) this.#content.style.display = "none";
+		} else {
+			editorManager.container.style.display = "none";
+			if (this.#content) {
+				this.#content.style.display = "block";
+				editorManager.container.parentElement.appendChild(this.#content);
+			}
 		}
 	}
 
@@ -809,6 +895,7 @@ export default class EditorFile {
 	}
 
 	async #loadText() {
+		if (this.#type !== "editor") return;
 		let value = "";
 
 		const { cursorPos, scrollLeft, scrollTop, folds, editable } =
@@ -866,7 +953,7 @@ export default class EditorFile {
 
 				if (Array.isArray(folds)) {
 					const parsedFolds = EditorFile.#parseFolds(folds);
-					this.session.addFolds(parsedFolds);
+					this.session?.addFolds(parsedFolds);
 				}
 			}, 0);
 		} catch (error) {
@@ -897,24 +984,37 @@ export default class EditorFile {
 	 * @param {Array<Fold>} folds
 	 */
 	static #parseFolds(folds) {
-		if (!Array.isArray(folds)) return;
+		if (this.type !== "editor") return [];
+		if (!Array.isArray(folds)) return [];
+
 		const foldDataAr = [];
+
 		folds.forEach((fold) => {
+			if (!fold || !fold.range) return;
+
 			const { range } = fold;
 			const { start, end } = range;
-			const foldData = new Fold(
-				new Range(start.row, start.column, end.row, end.column),
-				fold.placeholder,
-			);
 
-			if (fold.ranges.length > 0) {
-				const subFolds = parseFolds(fold.ranges);
-				foldData.subFolds = subFolds;
-				foldData.ranges = subFolds;
+			if (!start || !end) return;
+
+			try {
+				const foldData = new Fold(
+					new Range(start.row, start.column, end.row, end.column),
+					fold.placeholder,
+				);
+
+				if (Array.isArray(fold.ranges) && fold.ranges.length > 0) {
+					const subFolds = EditorFile.#parseFolds(fold.ranges);
+					foldData.subFolds = subFolds;
+					foldData.ranges = subFolds;
+				}
+
+				foldDataAr.push(foldData);
+			} catch (error) {
+				console.warn("Error parsing fold:", error);
 			}
-
-			foldDataAr.push(foldData);
 		});
+
 		return foldDataAr;
 	}
 
@@ -945,6 +1045,7 @@ export default class EditorFile {
 	 * Setup Ace EditSession for the file
 	 */
 	#setupSession() {
+		if (this.type !== "editor") return;
 		const { value: settings } = appSettings;
 
 		this.session.setTabSize(settings.tabSize);
@@ -963,13 +1064,18 @@ export default class EditorFile {
 	#destroy() {
 		this.#emit("close", createFileEvent(this));
 		appSettings.off("update:openFileListPos", this.#onFilePosChange);
-		this.session.off("changeScrollTop", EditorFile.#onscrolltop);
-		this.session.off("changeScrollLeft", EditorFile.#onscrollleft);
-		this.session.off("changeFold", EditorFile.#onfold);
-		this.#removeCache();
-		this.session.destroy();
+		if (this.type === "editor") {
+			this.session?.off("changeScrollTop", EditorFile.#onscrolltop);
+			this.session?.off("changeScrollLeft", EditorFile.#onscrollleft);
+			this.session?.off("changeFold", EditorFile.#onfold);
+			this.#removeCache();
+			this.session?.destroy();
+			delete this.session;
+		} else if (this.content) {
+			this.content.remove();
+		}
+
 		this.#tab.remove();
-		delete this.session;
 		this.#tab = null;
 	}
 

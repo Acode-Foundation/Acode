@@ -11,6 +11,7 @@ export default () => {
 	const { value: settings } = appSettings;
 
 	files.forEach((file) => {
+		if (file.type !== "editor") return;
 		if (file.id === constants.DEFAULT_FILE_SESSION) return;
 
 		const fileJson = {
@@ -55,12 +56,18 @@ export default () => {
 };
 
 function parseFolds(folds) {
-	return folds.map((fold) => {
-		const { range, ranges, placeholder } = fold;
-		return {
-			range,
-			ranges: parseFolds(ranges),
-			placeholder,
-		};
-	});
+	if (!Array.isArray(folds)) return [];
+
+	return folds
+		.map((fold) => {
+			if (!fold || !fold.range) return null;
+
+			const { range, ranges, placeholder } = fold;
+			return {
+				range,
+				ranges: parseFolds(ranges || []),
+				placeholder,
+			};
+		})
+		.filter(Boolean);
 }

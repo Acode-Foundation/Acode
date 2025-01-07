@@ -573,7 +573,8 @@ async function EditorManager($header, $body) {
 	 */
 	function toggleProblemButton() {
 		const fileWithProblems = manager.files.find((file) => {
-			const annotations = file.session.getAnnotations();
+			if (file.type !== "editor") return false;
+			const annotations = file?.session?.getAnnotations();
 			return !!annotations.length;
 		});
 
@@ -631,20 +632,37 @@ async function EditorManager($header, $body) {
 		const file = manager.getFile(id);
 
 		manager.activeFile?.tab.classList.remove("active");
-		manager.activeFile = file;
-		editor.setSession(file.session);
-		$header.text = file.filename;
 
-		$hScrollbar.hideImmediately();
-		$vScrollbar.hideImmediately();
-
-		setVScrollValue();
-		if (!appSettings.value.textWrap) {
-			setHScrollValue();
+		// Hide previous content if it was non-editor
+		if (manager.activeFile?.type !== "editor" && manager.activeFile?.content) {
+			manager.activeFile.content.style.display = "none";
 		}
 
-		editor.setReadOnly(!file.editable || !!file.loading);
+		manager.activeFile = file;
 
+		if (file.type === "editor") {
+			editor.setSession(file.session);
+			editor.setReadOnly(!file.editable || !!file.loading);
+			$container.style.display = "block";
+
+			$hScrollbar.hideImmediately();
+			$vScrollbar.hideImmediately();
+
+			setVScrollValue();
+			if (!appSettings.value.textWrap) {
+				setHScrollValue();
+			}
+		} else {
+			$container.style.display = "none";
+			if (file.content) {
+				file.content.style.display = "block";
+				if (!file.content.parentElement) {
+					$container.parentElement.appendChild(file.content);
+				}
+			}
+		}
+
+		$header.text = file.filename;
 		manager.onupdate("switch-file");
 		events.emit("switch-file", file);
 	}

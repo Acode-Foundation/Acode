@@ -566,6 +566,10 @@ function createFileMenu({ top, bottom, toggler }) {
 		innerHTML: () => {
 			const file = window.editorManager.activeFile;
 
+			if (file.type === "page") {
+				return "";
+			}
+
 			if (file.loading) {
 				$menu.classList.add("disabled");
 			} else {
@@ -573,15 +577,18 @@ function createFileMenu({ top, bottom, toggler }) {
 			}
 
 			const { label: encoding } = getEncoding(file.encoding);
-
+			const isEditorFile = file.type === "editor";
 			return mustache.render($_fileMenu, {
 				...strings,
-				file_mode: (file.session.getMode().$id || "").split("/").pop(),
-				file_encoding: encoding,
+				file_mode: isEditorFile
+					? (file.session?.getMode()?.$id || "").split("/").pop()
+					: "",
+				file_encoding: isEditorFile ? encoding : "",
 				file_read_only: !file.editable,
 				file_on_disk: !!file.uri,
-				file_eol: file.eol,
+				file_eol: isEditorFile ? file.eol : "",
 				copy_text: !!window.editorManager.editor.getCopyText(),
+				is_editor: isEditorFile,
 			});
 		},
 	});

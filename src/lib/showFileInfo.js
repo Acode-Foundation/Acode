@@ -17,23 +17,29 @@ export default async function showFileInfo(url) {
 	try {
 		const fs = fsOperation(url);
 		const stats = await fs.stat();
-		const value = await fs.readFile(settings.value.defaultFileEncoding);
 
 		let { name, lastModified, length, type } = stats;
 		length = filesize(length);
 		lastModified = new Date(lastModified).toLocaleString();
 
 		const protocol = Url.getProtocol(url);
+		const fileType = type.toLowerCase();
 		const options = {
 			name,
 			lastModified,
 			length,
 			type,
-			lineCount: value.split(/\n+/).length,
-			wordCount: value.split(/\s+|\n+/).length,
 			lang: strings,
 			showUri: helpers.getVirtualPath(url),
+			isEditor:
+				fileType === "text/plain" || editorManager.activeFile.type === "editor",
 		};
+
+		if (editorManager.activeFile.type === "editor") {
+			const value = await fs.readFile(settings.value.defaultFileEncoding);
+			options.lineCount = value.split(/\n+/).length;
+			options.wordCount = value.split(/\s+|\n+/).length;
+		}
 
 		if (/s?ftp:/.test(protocol)) {
 			options.shareUri = Url.join(CACHE_STORAGE, name);

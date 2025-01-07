@@ -6,6 +6,7 @@
 <li action="rename">
   <span class="text">{{rename}}</span>
 </li>
+{{#is_editor}}
 <li action="syntax">
   <div class="text">
     <span>{{syntax highlighting}}</span>
@@ -24,6 +25,9 @@
     <span class="value">{{file_eol}}</span>
   </div>
 </li>
+{{/is_editor}}
+
+{{#is_editor}}
 <li action="read-only">
   <div class="text">
     <span>{{read only}}</span>
@@ -38,6 +42,7 @@
     <span>{{format}}</span>
   </div>
 </li>
+{{/is_editor}}
 <hr>
 {{#file_on_disk}}
 <li action="share">
@@ -53,6 +58,8 @@
   <span class="icon edit"></span>
 </li>
 {{/file_on_disk}}
+
+{{#is_editor}}
 <hr>
 <li action="find">
   <span class="text">{{search}}</span>
@@ -94,3 +101,4 @@
     <span>{{select all}}</span>
   </div>
 </li>
+{{/is_editor}}

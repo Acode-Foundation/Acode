@@ -1,5 +1,5 @@
+import AudioPlayer from "components/audioPlayer";
 import alert from "dialogs/alert";
-import box from "dialogs/box";
 import confirm from "dialogs/confirm";
 import loader from "dialogs/loader";
 import fsOperation from "fileSystem";
@@ -60,6 +60,7 @@ export default async function openFile(file, options = {}) {
 
 			if (
 				cursorPos &&
+				existingCursorPos &&
 				existingCursorPos.row !== cursorPos.row &&
 				existingCursorPos.column !== cursorPos.column
 			) {
@@ -101,34 +102,241 @@ export default async function openFile(file, options = {}) {
 			return;
 		}
 
-		const videoRegex = /\.(mp4|webm|ogg)$/i;
-		const imageRegex = /\.(jpe?g|png|gif|webp)$/i;
-		const audioRegex = /\.(mp3|wav|ogg)$/i;
+		const videoRegex = /\.(mp4|webm|ogg|mov|avi|wmv|flv|mkv|3gp)$/i;
+		const imageRegex = /\.(jpe?g|png|gif|webp|bmp|ico|avif|apng|tiff?)$/i;
+		const audioRegex = /\.(mp3|wav|ogg|m4a|aac|wma|flac|opus|3gp|mid|midi)$/i;
 
 		if (videoRegex.test(name)) {
 			const objectUrl = await fileToDataUrl(uri);
-			box(
-				name,
-				`<video src="${objectUrl}" controls autoplay loop style="max-width: 100%; max-height: 100%;"></video>`,
+			const videoContainer = (
+				<div
+					style={{
+						width: "100%",
+						height: "100%",
+						display: "flex",
+						alignItems: "center",
+						justifyContent: "center",
+					}}
+				></div>
 			);
+
+			const videoEl = (
+				<video
+					src={objectUrl}
+					controls
+					style={{
+						maxWidth: "100%",
+						maxHeight: "100%",
+					}}
+				></video>
+			);
+
+			videoContainer.append(videoEl);
+
+			new EditorFile(name, {
+				uri,
+				type: "video",
+				tabIcon: "file file_type_video",
+				content: videoContainer,
+				render: true,
+			});
 			return;
 		}
 
 		if (imageRegex.test(name)) {
 			const objectUrl = await fileToDataUrl(uri);
-			box(
-				name,
-				`<img src="${objectUrl}" style="max-width: 100%; max-height: 100%;" />`,
+			const imageContainer = (
+				<div
+					className="image-container"
+					style={{
+						width: "100%",
+						height: "100%",
+						display: "flex",
+						alignItems: "center",
+						justifyContent: "center",
+						overflow: "hidden",
+						position: "relative",
+					}}
+				></div>
 			);
+
+			const imgEl = (
+				<img
+					src={objectUrl}
+					style={{
+						maxWidth: "100%",
+						maxHeight: "100%",
+						transformOrigin: "center",
+						transform: "scale(1) translate(0px, 0px)",
+						transition: "none",
+						cursor: "move",
+					}}
+				/>
+			);
+
+			let scale = 1;
+			let startX = 0;
+			let startY = 0;
+			let translateX = 0;
+			let translateY = 0;
+			let lastX = 0;
+			let lastY = 0;
+
+			function getBoundaries() {
+				const containerRect = imageContainer.getBoundingClientRect();
+				const imgRect = imgEl.getBoundingClientRect();
+
+				const maxX =
+					(imgRect.width * scale - containerRect.width) / (2 * scale);
+				const maxY =
+					(imgRect.height * scale - containerRect.height) / (2 * scale);
+
+				return {
+					maxX: Math.max(0, maxX),
+					maxY: Math.max(0, maxY),
+					minX: -Math.max(0, maxX),
+					minY: -Math.max(0, maxY),
+				};
+			}
+
+			function constrainTranslation() {
+				const bounds = getBoundaries();
+				translateX = Math.min(Math.max(translateX, bounds.minX), bounds.maxX);
+				translateY = Math.min(Math.max(translateY, bounds.minY), bounds.maxY);
+			}
+
+			// Zoom with mouse wheel
+			imageContainer.addEventListener("wheel", (e) => {
+				e.preventDefault();
+				const delta = e.deltaY > 0 ? -0.1 : 0.1;
+				const oldScale = scale;
+				scale = Math.max(0.1, Math.min(5, scale + delta));
+
+				// Adjust translation to zoom toward mouse position
+				const rect = imgEl.getBoundingClientRect();
+				const mouseX = e.clientX - rect.left;
+				const mouseY = e.clientY - rect.top;
+
+				const scaleChange = scale / oldScale;
+				translateX = mouseX - (mouseX - translateX) * scaleChange;
+				translateY = mouseY - (mouseY - translateY) * scaleChange;
+
+				constrainTranslation();
+				imgEl.style.transform = `scale(${scale}) translate(${translateX}px, ${translateY}px)`;
+			});
+
+			// Pan image with mouse drag or touch
+			imageContainer.addEventListener("mousedown", startDrag);
+			imageContainer.addEventListener("touchstart", (e) => {
+				if (e.touches.length === 1) {
+					startDrag(e.touches[0]);
+				} else if (e.touches.length === 2) {
+					const touch1 = e.touches[0];
+					const touch2 = e.touches[1];
+					startX = Math.abs(touch1.clientX - touch2.clientX);
+					startY = Math.abs(touch1.clientY - touch2.clientY);
+				}
+			});
+
+			function startDrag(e) {
+				lastX = e.clientX;
+				lastY = e.clientY;
+				document.addEventListener("mousemove", onDrag);
+				document.addEventListener("mouseup", stopDrag);
+				document.addEventListener("touchmove", onTouchDrag);
+				document.addEventListener("touchend", stopDrag);
+			}
+
+			function onDrag(e) {
+				const deltaX = e.clientX - lastX;
+				const deltaY = e.clientY - lastY;
+				translateX += deltaX / scale;
+				translateY += deltaY / scale;
+				lastX = e.clientX;
+				lastY = e.clientY;
+				constrainTranslation();
+				imgEl.style.transform = `scale(${scale}) translate(${translateX}px, ${translateY}px)`;
+			}
+
+			function onTouchDrag(e) {
+				if (e.touches.length === 1) {
+					const touch = e.touches[0];
+					const deltaX = touch.clientX - lastX;
+					const deltaY = touch.clientY - lastY;
+					translateX += deltaX / scale;
+					translateY += deltaY / scale;
+					lastX = touch.clientX;
+					lastY = touch.clientY;
+					constrainTranslation();
+					imgEl.style.transform = `scale(${scale}) translate(${translateX}px, ${translateY}px)`;
+				} else if (e.touches.length === 2) {
+					e.preventDefault();
+					const touch1 = e.touches[0];
+					const touch2 = e.touches[1];
+					const currentX = Math.abs(touch1.clientX - touch2.clientX);
+					const currentY = Math.abs(touch1.clientY - touch2.clientY);
+
+					const startDist = Math.sqrt(startX * startX + startY * startY);
+					const currentDist = Math.sqrt(
+						currentX * currentX + currentY * currentY,
+					);
+
+					const delta = (currentDist - startDist) / 100;
+					scale = Math.max(0.1, Math.min(5, scale + delta));
+					constrainTranslation();
+					imgEl.style.transform = `scale(${scale}) translate(${translateX}px, ${translateY}px)`;
+
+					startX = currentX;
+					startY = currentY;
+				}
+			}
+
+			function stopDrag() {
+				document.removeEventListener("mousemove", onDrag);
+				document.removeEventListener("mouseup", stopDrag);
+				document.removeEventListener("touchmove", onTouchDrag);
+				document.removeEventListener("touchend", stopDrag);
+			}
+
+			imageContainer.append(imgEl);
+
+			new EditorFile(name, {
+				uri,
+				type: "image",
+				tabIcon: "file file_type_image",
+				content: imageContainer,
+				render: true,
+			});
 			return;
 		}
 
 		if (audioRegex.test(name)) {
 			const objectUrl = await fileToDataUrl(uri);
-			box(
-				name,
-				`<audio src="${objectUrl}" controls autoplay loop style="max-width: 100%; max-height: 100%;"></audio>`,
+			const audioContainer = (
+				<div
+					style={{
+						width: "100%",
+						height: "100%",
+						display: "flex",
+						alignItems: "center",
+						justifyContent: "center",
+					}}
+				></div>
 			);
+
+			const audioPlayer = new AudioPlayer(audioContainer);
+			audioPlayer.loadTrack(objectUrl);
+
+			const audioTab = new EditorFile(name, {
+				uri,
+				type: "audio",
+				tabIcon: "file file_type_audio",
+				content: audioPlayer.container,
+				render: true,
+			});
+			audioTab.onclose = () => {
+				audioPlayer.cleanup();
+			};
 			return;
 		}
 

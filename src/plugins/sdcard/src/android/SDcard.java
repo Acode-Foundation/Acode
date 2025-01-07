@@ -316,8 +316,12 @@ public class SDcard extends CordovaPlugin {
         if (uri == null) {
           activityResultCallback.error("No file selected");
         } else {
-          takePermission(uri);
-          activityResultCallback.success(uri.toString());
+            try {
+                takePermission(uri);
+                activityResultCallback.success(uri.toString());
+            } catch (Exception e) {
+                activityResultCallback.error("Error taking permission: " + e.getMessage());
+            }
         }
         activityResultCallback.success(uri.toString());
       }

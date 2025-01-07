@@ -10,14 +10,16 @@
     <span>{{lang.last modified}}</span>
     <span>{{lastModified}}</span>
   </div>
-  <div>
-    <span>{{lang.line count}}</span>
-    <span>{{lineCount}}</span>
-  </div>
-  <div>
-    <span>{{lang.word count}}</span>
-    <span>{{wordCount}}</span>
-  </div>
+{{#isEditor}}
+    <div>
+      <span>{{lang.line count}}</span>
+      <span>{{lineCount}}</span>
+    </div>
+    <div>
+      <span>{{lang.word count}}</span>
+      <span>{{wordCount}}</span>
+    </div>
+{{/isEditor}}
   <div>
     <span>{{lang.type}}</span>
     <span>{{type}}</span>
