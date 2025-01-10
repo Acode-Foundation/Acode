@@ -124,7 +124,7 @@ class SftpClient {
 					}
 
 					const file = this.#safeName(filename);
-					const cmd = `[[ -f "${file}" ]] && echo "Already exists" || touch "${filename}"`;
+					const cmd = `[ -f "${file}" ] && echo "Already exists" || touch "${filename}"`;
 					sftp.exec(
 						cmd,
 						async (res) => {
