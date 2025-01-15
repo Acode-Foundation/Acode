@@ -80,6 +80,17 @@
         background-color: var(--active-icon-color);
       }
     }
+    .replay {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      justify-content: center;
+      transition: background-color 0.3s ease;
+
+      &:hover {
+        background-color: var(--active-icon-color);
+      }
+    }
 
     .install-btn {
       background: none;

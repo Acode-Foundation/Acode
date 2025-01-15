@@ -89,7 +89,7 @@ function initApp(el) {
 	if (!$installed) {
 		$installed = collapsableList(strings["installed"]);
 		$installed.ontoggle = loadInstalled;
-		$installed.expand();
+		//$installed.expand();
 		container.append($installed);
 	}
 
@@ -339,7 +339,7 @@ function getLocalRes(id, name) {
 	return Url.join(PLUGIN_DIR, id, name);
 }
 
-function ListItem({ icon, name, id, version, downloads, installed }) {
+function ListItem({ icon, name, id, version, downloads, installed, source }) {
 	if (installed === undefined) {
 		installed = !!installedPlugins.find(({ id: _id }) => _id === id);
 	}
@@ -353,10 +353,15 @@ function ListItem({ icon, name, id, version, downloads, installed }) {
 				{name}
 			</span>
 			{installed ? (
-				<span
-					className="icon more_vert"
-					data-action="more-plugin-action"
-				></span>
+				<>
+					{source ? (
+						<span className="icon replay" data-action="rebuild-plugin"></span>
+					) : null}
+					<span
+						className="icon more_vert"
+						data-action="more-plugin-action"
+					></span>
+				</>
 			) : (
 				<button className="install-btn" data-action="install-plugin">
 					<span className="icon file_downloadget_app"></span>
@@ -371,6 +376,9 @@ function ListItem({ icon, name, id, version, downloads, installed }) {
 		);
 		const installPluginBtn = event.target.closest(
 			'[data-action="install-plugin"]',
+		);
+		const rebuildPluginBtn = event.target.closest(
+			'[data-action="rebuild-plugin"]',
 		);
 		if (morePluginActionButton) {
 			more_plugin_action(id, name);
@@ -411,6 +419,16 @@ function ListItem({ icon, name, id, version, downloads, installed }) {
 				await installPlugin(id, remotePlugin.name, purchaseToken);
 				window.toast(strings["success"], 3000);
 				$explore.ontoggle();
+			} catch (err) {
+				console.error(err);
+				window.toast(helpers.errorMessage(err), 3000);
+			}
+			return;
+		} else if (rebuildPluginBtn) {
+			try {
+				const { default: installPlugin } = await import("lib/installPlugin");
+				await installPlugin(source);
+				window.toast(strings["success"], 3000);
 			} catch (err) {
 				console.error(err);
 				window.toast(helpers.errorMessage(err), 3000);

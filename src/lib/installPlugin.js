@@ -64,14 +64,39 @@ export default async function installPlugin(
 	try {
 		if (!isDependency) loaderDialog.show();
 
-		const plugin = await fsOperation(pluginUrl).readFile(
-			undefined,
-			(loaded, total) => {
-				loaderDialog.setMessage(
-					`${strings.loading} ${((loaded / total) * 100).toFixed(2)}%`,
+		let plugin;
+		if (
+			/^(https?:\/\/)?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|localhost)/.test(
+				pluginUrl,
+			)
+		) {
+			// cordova http plugin for IP addresses and localhost
+			plugin = await new Promise((resolve, reject) => {
+				cordova.plugin.http.sendRequest(
+					pluginUrl,
+					{
+						method: "GET",
+						responseType: "arraybuffer",
+					},
+					(response) => {
+						resolve(response.data);
+						loaderDialog.setMessage(`${strings.loading} 100%`);
+					},
+					(error) => {
+						reject(error);
+					},
 				);
-			},
-		);
+			});
+		} else {
+			plugin = await fsOperation(pluginUrl).readFile(
+				undefined,
+				(loaded, total) => {
+					loaderDialog.setMessage(
+						`${strings.loading} ${((loaded / total) * 100).toFixed(2)}%`,
+					);
+				},
+			);
+		}
 
 		if (plugin) {
 			const zip = new JSZip();
