@@ -3,6 +3,7 @@
 #plugin {
   overflow: auto;
   max-width: 800px;
+  padding: 20px;
   margin: 0 auto;
 
   .plugin-header {
@@ -166,6 +167,10 @@
 
   #plugin-tab {
     .options {
+      display: flex;
+      gap: 0;
+      margin: 20px -20px;
+      padding: 0 20px;
       border-bottom: 1px solid var(--border-color);
 
       .tab {
