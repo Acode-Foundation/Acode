@@ -79,6 +79,11 @@ export default async function PluginInclude(
 			const description = await fsOperation(
 				Url.join(PLUGIN_DIR, id, "readme.md"),
 			).readFile("utf8");
+			const changelog = installedPlugin.changelog
+				? await fsOperation(
+						Url.join(PLUGIN_DIR, id, installedPlugin.changelog),
+					).readFile("utf8")
+				: "";
 			const iconUrl = await helpers.toInternalUri(
 				Url.join(PLUGIN_DIR, id, "icon.png"),
 			);
@@ -94,7 +99,11 @@ export default async function PluginInclude(
 				author: author.name,
 				author_github: author.github,
 				source: installedPlugin.source,
+				license: installedPlugin.license,
+				keywords: installedPlugin.keywords,
+				contributors: installedPlugin.contributors,
 				description,
+				changelog,
 			};
 
 			isPaid = installedPlugin.price > 0;
@@ -302,6 +311,19 @@ export default async function PluginInclude(
 				})
 				.use(markdownItTaskLists)
 				.render(plugin.description),
+			changelog: plugin.changelog
+				? markdownIt({ html: true, xhtmlOut: true })
+						.use(MarkdownItGitHubAlerts)
+						.use(anchor, {
+							slugify: (s) =>
+								s
+									.trim()
+									.toLowerCase()
+									.replace(/[^a-z0-9]+/g, "-"),
+						})
+						.use(markdownItTaskLists)
+						.render(plugin.changelog)
+				: null,
 			purchased,
 			installed,
 			update,

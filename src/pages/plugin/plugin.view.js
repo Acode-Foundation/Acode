@@ -5,7 +5,8 @@ import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
 import constants from "lib/constants";
 import Url from "utils/Url";
-
+import TabView from "components/tabView";
+import helpers from "utils/helpers";
 export default (props) => {
 	const {
 		id,
@@ -14,6 +15,10 @@ export default (props) => {
 		icon,
 		author,
 		downloads,
+		license,
+		keywords,
+		contributors,
+		changelog,
 		votes_up: votesUp,
 		votes_down: votesDown,
 		author_verified: authorVerified,
@@ -22,11 +27,6 @@ export default (props) => {
 	} = props;
 
 	let rating = "unrated";
-	let moreInfoStyle = {};
-
-	if (votesUp === undefined) {
-		moreInfoStyle.display = "none";
-	}
 
 	if (votesUp || votesDown) {
 		rating = `${Math.round((votesUp / (votesUp + votesDown)) * 100)}%`;
@@ -34,61 +34,177 @@ export default (props) => {
 
 	return (
 		<div className="main" id="plugin">
-			<div className="header">
-				<div className="info">
-					<span
-						className="logo"
-						style={{ backgroundImage: `url(${icon})` }}
-					></span>
-					<div className="desc">
-						<span className="name">{name}</span>
-						<div className="version">
+			<div className="plugin-header">
+				<div
+					className="plugin-icon"
+					style={{ backgroundImage: `url(${icon})` }}
+				></div>
+				<div className="plugin-info">
+					<h1 className="plugin-name">{name}</h1>
+					<div className="plugin-meta">
+						<span className="meta-item">
+							<i className="licons tag" style={{ fontSize: "12px" }}></i>
 							<Version {...props} />
-						</div>
-						<div className="author">
-							<a href={`https://github.com/${authorGithub}`}>{author}</a>
+						</span>
+						<span className="meta-item author-name">
+							<i className="icon person"></i>
+							<a href={`https://github.com/${authorGithub}`} className="">
+								{author}
+							</a>
 							{authorVerified ? (
-								<span
+								<i
 									on:click={() => {
 										toast(strings["verified publisher"]);
 									}}
-									className="icon verified"
-								></span>
+									className="licons verified verified-tick"
+								></i>
 							) : (
 								""
 							)}
-						</div>
+						</span>
+						<span className="meta-item">
+							<span
+								className="licons scale"
+								style={{ fontSize: "12px" }}
+							></span>
+							{license || "Unknown"}
+						</span>
 					</div>
+					{votesUp !== undefined ? (
+						<div className="metrics-row">
+							<div className="metric">
+								<span className="icon save_alt"></span>
+								<span className="metric-value">
+									{helpers.formatDownloadCount(
+										typeof downloads === "string"
+											? Number.parseInt(downloads)
+											: downloads,
+									)}
+								</span>
+								<span>downloads</span>
+							</div>
+							<div className="metric">
+								<i className="icon favorite"></i>
+								<span
+									className={`rating-value ${rating === "unrated" ? "" : rating.replace("%", "") >= 80 ? "rating-high" : rating.replace("%", "") >= 50 ? "rating-medium" : "rating-low"}`}
+								>
+									{rating}
+								</span>
+							</div>
+							<div
+								className="metric"
+								onclick={showReviews.bind(null, id, author)}
+							>
+								<i className="icon chat_bubble"></i>
+								<span className="metric-value">{commentCount}</span>
+								<span>reviews</span>
+							</div>
+						</div>
+					) : null}
+					{keywords?.length ? (
+						<div className="keywords">
+							{keywords.map((keyword) => (
+								<span className="keyword">{keyword}</span>
+							))}
+						</div>
+					) : null}
 				</div>
-				<div style={moreInfoStyle} className="more-info">
-					<div className="icon-info" data-label="downloads">
-						<div>
-							{downloads?.toLocaleString()}{" "}
-							<span className="icon file_downloadget_app"></span>
-						</div>
-					</div>
-					<div className="icon-info" data-label="ratings">
-						<span style={{ margin: "auto" }}>{rating}</span>
-					</div>
-					<div
-						onclick={showReviews.bind(null, id, author)}
-						className="icon-info"
-						data-label="reviews"
-					>
-						<div>
-							{commentCount}&nbsp;<span className="icon chat_bubble"></span>
-						</div>
-					</div>
-				</div>
-				<div className="button-container primary">
+				<div className="action-buttons">
 					<Buttons {...props} />
 				</div>
 				<MoreInfo {...props} />
 			</div>
-			<div className="body md" innerHTML={body}></div>
+			<TabView id="plugin-tab">
+				<div className="options" onclick={handleTabClick}>
+					<span className="tab active" data-tab="overview" tabindex="0">
+						Overview
+					</span>
+					<span className="tab" data-tab="contributors" tabindex="0">
+						Contributors
+					</span>
+					<span className="tab" data-tab="changelog" tabindex="0">
+						Changelog
+					</span>
+				</div>
+				<div className="tab-content">
+					<div
+						id="overview"
+						className="content-section active md"
+						innerHTML={body}
+					></div>
+					<div id="contributors" className="content-section">
+						{(() => {
+							let contributorsList = contributors?.length
+								? [
+										{ name: author, role: "Developer", github: authorGithub },
+										...contributors,
+									]
+								: [{ name: author, role: "Developer", github: authorGithub }];
+
+							return contributorsList.map(({ name, role, github }) => {
+								let dp = Url.join(constants.API_BASE, `../user.png`);
+								if (github) {
+									dp = `https://avatars.githubusercontent.com/${github}`;
+								}
+								return (
+									<a
+										className="contributor"
+										href={`https://github.com/${github}`}
+										style={{ textDecoration: "none" }}
+									>
+										<img src={dp} alt={name} />
+										<div className="contributor-info">
+											<div className="contributor-name">{name}</div>
+											<div className="contributor-role">{role}</div>
+										</div>
+									</a>
+								);
+							});
+						})()}
+					</div>
+
+					<div id="changelog" className="content-section">
+						{changelog || (
+							<div className="no-changelog">
+								<i className="icon historyrestore"></i>
+								<p
+									style={{
+										fontSize: "1.1rem",
+									}}
+								>
+									No changelog is available for this plugin yet.
+								</p>
+								<p
+									style={{
+										fontSize: "0.9rem",
+										fontStyle: "italic",
+									}}
+								>
+									Check back later for updates!
+								</p>
+							</div>
+						)}
+					</div>
+				</div>
+			</TabView>
 		</div>
 	);
 };
+
+function handleTabClick(e) {
+	const $target = e.target;
+	if (!$target.classList.contains("tab")) return;
+
+	const tabs = document.querySelectorAll(".tab");
+	const contents = document.querySelectorAll(".content-section");
+
+	tabs.forEach((tab) => tab.classList.remove("active"));
+	contents.forEach((content) => content.classList.remove("active"));
+
+	$target.classList.add("active");
+	const tabId = $target.dataset.tab;
+	document.getElementById(tabId).classList.add("active");
+}
 
 function Buttons({
 	name,
@@ -121,10 +237,16 @@ function Buttons({
 	if (installed && update) {
 		return (
 			<>
-				<button data-type="uninstall" onclick={uninstall}>
+				<button
+					data-type="uninstall"
+					onclick={uninstall}
+					className="btn btn-uninstall"
+				>
+					<i className="icon delete_outline"></i>
 					{strings.uninstall}
 				</button>
-				<button data-type="update" onclick={install}>
+				<button data-type="update" className="btn btn-update" onclick={install}>
+					<i className="icon update"></i>
 					{strings.update}
 				</button>
 			</>
@@ -133,7 +255,12 @@ function Buttons({
 
 	if (installed) {
 		return (
-			<button data-type="uninstall" onclick={uninstall}>
+			<button
+				data-type="uninstall"
+				className="btn btn-uninstall"
+				onclick={uninstall}
+			>
+				<i className="icon delete_outline"></i>
 				{strings.uninstall}
 			</button>
 		);
@@ -141,7 +268,8 @@ function Buttons({
 
 	if (isPaid && !purchased && price) {
 		return (
-			<button data-type="buy" onclick={buy}>
+			<button data-type="buy" className="btn btn-install" onclick={buy}>
+				<i className="licons cart"></i>
 				{price}
 			</button>
 		);
@@ -160,7 +288,8 @@ function Buttons({
 	}
 
 	return (
-		<button data-type="install" onclick={install}>
+		<button data-type="install" className="btn btn-install" onclick={install}>
+			<i className="icon save_alt"></i>
 			{strings.install}
 		</button>
 	);

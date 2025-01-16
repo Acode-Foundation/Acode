@@ -1,6 +1,14 @@
 @font-face {
-  font-family: 'code-editor-icon';
-  src: url('icons.ttf?r1lwvj') format('truetype');
+  font-family: "code-editor-icon";
+  src: url("icons.ttf?r1lwvj") format("truetype");
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "li-icon";
+  src: url("li-icons.ttf?59d3hz") format("truetype");
   font-weight: normal;
   font-style: normal;
   font-display: block;
@@ -8,7 +16,7 @@
 
 .icon {
   /* use !important to prevent issues with browser extensions that change fonts */
-  font-family: 'code-editor-icon' !important;
+  font-family: "code-editor-icon" !important;
   speak: none;
   font-style: normal;
   font-weight: normal;
@@ -19,6 +27,34 @@
   /* Better Font Rendering =========== */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.licons {
+  /* use !important to prevent issues with browser extensions that change fonts */
+  font-family: "li-icon" !important;
+  speak: none;
+  font-style: normal;
+  font-weight: normal;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1;
+
+  /* Better Font Rendering =========== */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.licons.verified:before {
+  content: "\e900";
+}
+.licons.tag:before {
+  content: "\e901";
+}
+.licons.scale:before {
+  content: "\e902";
+}
+.licons.cart:before {
+  content: "\e903";
 }
 
 .icon.acode:before {
