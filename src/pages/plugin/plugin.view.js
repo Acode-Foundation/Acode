@@ -1,3 +1,4 @@
+import TabView from "components/tabView";
 import toast from "components/toast";
 import alert from "dialogs/alert";
 import fsOperation from "fileSystem";
@@ -5,7 +6,6 @@ import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
 import constants from "lib/constants";
 import Url from "utils/Url";
-import TabView from "components/tabView";
 import helpers from "utils/helpers";
 export default (props) => {
 	const {
