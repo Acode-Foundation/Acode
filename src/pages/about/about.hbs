@@ -1,60 +1,75 @@
-<div id='about-page' class='main scroll'>
-  <span class='logo' style='background-image: url(./res/logo/logo.png);'></span>
-  <div class='list'>
-    <span class='list-item'>
-      <span class='icon no-icon'></span>
-      <div class='container'>
-        <h2 class='text'>Acode editor {{version}} ({{versionCode}})</h2>
-      </div>
-    </span>
-    {{#webview}}
-      <a
-        class='list-item no-transform'
-        href='https://play.google.com/store/apps/details?id={{packageName}}'
-      >
-        <span class='icon googlechrome'></span>
-        <div class='container'>
-          <span class='text'>Webview {{versionName}}</span>
-          <span class='value'>{{packageName}}</span>
-        </div>
-      </a>
-    {{/webview}}
-    <a class='list-item' href='https://acode.app'>
-      <span class='icon acode'></span>
-      <div class='container'>
-        <span class='text'>Official webpage</span>
-      </div>
-    </a>
-    <a class='list-item' href='https://foxdebug.com'>
-      <span class='icon foxdebug'></span>
-      <div class='container'>
-        <span class='text'>foxdebug.com</span>
-      </div>
-    </a>
-    <a class='list-item' href='mailto:apps@foxdebug.com'>
-      <span class='icon gmail'></span>
-      <div class='container'>
-        <span class='text'>Mail</span>
-      </div>
-    </a>
-    <a class='list-item' href='https://twitter.com/foxdebug'>
-      <span class='icon twitter'></span>
-      <div class='container'>
-        <span class='text'>Twitter</span>
-      </div>
-    </a>
-    <a class='list-item' href='https://www.instagram.com/foxdebug_com/'>
-      <span class='icon instagram'></span>
-      <div class='container'>
-        <span class='text'>Instagram</span>
-      </div>
-    </a>
-    <a class='list-item' href='https://github.com/deadlyjack/acode'>
-      <span class='icon github'></span>
-      <div class='container'>
-        <span class='text'>GitHub</span>
-      </div>
-    </a>
+<main id='about-page' class='main'>
+    <div class="logo">
+        <img src='./res/logo/logo.png'/>
+    </div>
 
-  <div style='height: 30vh; width: 10vw'></div>
-</div>
+    <div class="version-info">
+        <h1 class="version-title">Acode editor</h1>
+        <div class="version-number">Version {{version}} ({{versionCode}})</div>
+    </div>
+
+    <div class="info-section">
+        {{#webview}}
+        <a href="https://play.google.com/store/apps/details?id={{packageName}}" class="info-item">
+            <div class="info-item-icon">
+                <span class="icon googlechrome"></span>
+            </div>
+            <div class="info-item-text">
+                Webview {{versionName}}
+                <div class="info-item-subtext">{{packageName}}</div>
+            </div>
+        </a>
+        {{/webview}}
+        <a href="https://acode.app" class="info-item">
+            <div class="info-item-icon">
+                <span class="icon acode"></span>
+            </div>
+            <div class="info-item-text">Official webpage</div>
+        </a>
+        <a href="https://foxbiz.io" class="info-item">
+            <div class="info-item-icon">
+                <span class='icon public'></span>
+            </div>
+            <div class="info-item-text">foxbiz.io</div>
+        </a>
+    </div>
+
+    <div class="social-links">
+        <a href="mailto:apps@foxdebug.com" class="social-link">
+            <div class="social-icon">
+                <span class="icon gmail"></span>
+            </div>
+            Mail
+        </a>
+        <a href="https://twitter.com/foxdebug" class="social-link">
+            <div class="social-icon">
+                <span class="icon twitter"></span>
+            </div>
+            Twitter
+        </a>
+        <a href="https://www.instagram.com/foxdebug_com/" class="social-link">
+            <div class="social-icon">
+                <span class="icon instagram"></span>
+            </div>
+            Instagram
+        </a>
+        <a href="https://github.com/Acode-Foundation/Acode" class="social-link">
+            <div class="social-icon">
+                <span class="icon github"></span>
+            </div>
+            GitHub
+        </a>
+        <a href="https://t.me/foxdebug_acode" class="social-link">
+            <div class="social-icon">
+                <span class="icon telegram"></span>
+            </div>
+            Telegram
+        </a>
+        <a href="https://discord.gg/V9HZeK5N" class="social-link">
+            <div class="social-icon">
+                <span class="icon public"></span>
+            </div>
+            Discord
+        </a>
+    </div>
+</main>
