@@ -632,6 +632,12 @@ class BrowserWebViewClient extends WebViewClient {
         public void onReceiveValue(String value) {
           boolean show = !value.equals("null");
           browser.menu.setVisible("Console", show && !browser.emulator);
+
+          // If user had toggled "Console" on before, re-show it
+          if (browser.console && show) {
+            browser.setConsoleVisible(true);
+            browser.menu.setChecked("Console", true);
+          }
         }
       }
     );
