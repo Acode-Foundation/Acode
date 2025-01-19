@@ -117,11 +117,10 @@ public class Browser extends LinearLayout {
     );
 
     faviconFrame = new FrameLayout(context);
-    faviconFrameParams =
-      new LinearLayout.LayoutParams(
-        ViewGroup.LayoutParams.WRAP_CONTENT,
-        ViewGroup.LayoutParams.WRAP_CONTENT
-      );
+    faviconFrameParams = new LinearLayout.LayoutParams(
+      ViewGroup.LayoutParams.WRAP_CONTENT,
+      ViewGroup.LayoutParams.WRAP_CONTENT
+    );
     faviconFrameParams.gravity = Gravity.CENTER_VERTICAL;
     faviconFrame.setLayoutParams(faviconFrameParams);
     faviconFrame.addView(favicon);
@@ -568,21 +567,24 @@ class BrowserChromeClient extends WebChromeClient {
     if (browser.filePathCallback != null) {
       browser.filePathCallback.onReceiveValue(null);
     }
-
     browser.filePathCallback = filePathCallback;
+
+    String[] acceptTypes = fileChooserParams.getAcceptTypes();
+    String mimeType = "*/*"; // default if empty or null
+    if (acceptTypes != null && acceptTypes.length > 0) {
+      String firstType = acceptTypes[0];
+      if (firstType != null && !firstType.trim().isEmpty()) {
+        mimeType = firstType;
+      }
+    }
+
     Intent selectDocument = new Intent(Intent.ACTION_GET_CONTENT);
-    Boolean isMultiple =
-      (
-        fileChooserParams.getMode() ==
-        WebChromeClient.FileChooserParams.MODE_OPEN_MULTIPLE
-      );
-    String mimeType = fileChooserParams.getAcceptTypes()[0];
-
-    mimeType = mimeType == null ? "*/*" : mimeType;
-
     selectDocument.addCategory(Intent.CATEGORY_OPENABLE);
     selectDocument.setType(mimeType);
 
+    boolean isMultiple =
+      (fileChooserParams.getMode() ==
+        WebChromeClient.FileChooserParams.MODE_OPEN_MULTIPLE);
     if (isMultiple) {
       selectDocument.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
     }
