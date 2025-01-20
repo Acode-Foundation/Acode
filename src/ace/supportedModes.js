@@ -15,6 +15,7 @@ const modeList = {
 	Assembly_arm32: "s",
 	Astro: "astro",
 	AutoHotKey: "ahk",
+	Basic: "bas",
 	BatchFile: "bat|cmd",
 	BibTeX: "bib",
 	C_Cpp: "cpp|c|cc|cxx|h|hh|hpp|ino",
