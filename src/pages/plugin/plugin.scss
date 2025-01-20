@@ -49,6 +49,7 @@
 
       .metrics-row {
         display: flex;
+        flex-wrap: wrap;
         gap: 16px;
         color: color-mix(in srgb, var(--primary-text-color) 60%, transparent);
         font-size: 14px;
@@ -184,6 +185,23 @@
 
     .tab-content {
       padding: 0 0 24px;
+
+      #overview {
+        [class*="language-"] {
+          word-wrap: normal;
+          white-space: pre;
+          font-size: 0.8rem;
+          padding: 5px;
+          margin: 5px 0;
+          background: var(--primary-color);
+          color: var(--primary-text-color);
+          border-left: solid 5px var(--active-color);
+          overflow: auto;
+          width: calc(100% - 10px);
+          display: block;
+          user-select: text;
+        }
+      }
     }
 
     .content-section {
