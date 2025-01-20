@@ -6,7 +6,7 @@ import Ref from "html-tag-js/ref";
  * @param {string} param0.id
  * @returns
  */
-export default function TabView({ id }, children) {
+export default function TabView({ id, disableSwipe = false }, children) {
 	let moveX = 0;
 	let moveY = 0;
 	let lastX = 0;
@@ -17,7 +17,7 @@ export default function TabView({ id }, children) {
 		<div
 			ref={el}
 			onclick={changeTab}
-			ontouchstart={ontouchstart}
+			ontouchstart={!disableSwipe ? ontouchstart : null}
 			className="main"
 			id={id}
 		>

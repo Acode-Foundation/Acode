@@ -114,7 +114,7 @@ export default (props) => {
 				</div>
 				<MoreInfo {...props} />
 			</div>
-			<TabView id="plugin-tab">
+			<TabView id="plugin-tab" disableSwipe={true}>
 				<div className="options" onclick={handleTabClick}>
 					<span className="tab active" data-tab="overview" tabindex="0">
 						Overview
