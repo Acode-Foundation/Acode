@@ -27,12 +27,12 @@ let isLoading = false;
 
 const $header = (
 	<div className="header">
-		<span className="title">
-			{strings["plugins"]}
+		<div className="title">
+			<span>{strings["plugins"]}</span>
 			<button className="icon-button" onclick={filterPlugins}>
 				<span className="icon tune"></span>
 			</button>
-		</span>
+		</div>
 		<input
 			oninput={searchPlugin}
 			type="search"

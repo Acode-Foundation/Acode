@@ -6,10 +6,12 @@
     justify-content: space-between;
     align-items: center;
     .title {
-      font-size: 18px;
-      font-weight: bold;
+      font-size: 1.125rem;
+      font-weight: 600;
       display: flex;
+      justify-content: space-between;
       align-items: center;
+      width: 100%;
       .icon-button {
         background: none;
         border: none;
