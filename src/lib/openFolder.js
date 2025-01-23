@@ -533,97 +533,116 @@ function execOperation(type, action, url, $target, name) {
 		CASE += $target.collapsed ? 1 : 0;
 
 		startLoading();
-		const fs = fsOperation(clipBoard.url);
-		let newUrl;
-		if (clipBoard.action === "cut") newUrl = await fs.moveTo(url);
-		else newUrl = await fs.copyTo(url);
-		const { name: newName } = await fsOperation(newUrl).stat();
-		stopLoading();
-		/**
-		 * CASES:
-		 * CASE 111: src is file and parent is collapsed where target is also collapsed
-		 * CASE 110: src is file and parent is collapsed where target is unclasped
-		 * CASE 101: src is file and parent is unclasped where target is collapsed
-		 * CASE 100: src is file and parent is unclasped where target is also unclasped
-		 * CASE 011: src is directory and parent is collapsed where target is also collapsed
-		 * CASE 001: src is directory and parent is unclasped where target is also collapsed
-		 * CASE 010: src is directory and parent is collapsed where target is also unclasped
-		 * CASE 000: src is directory and parent is unclasped where target is also unclasped
-		 */
+		try {
+			const fs = fsOperation(clipBoard.url);
+			const itemName = Url.basename(clipBoard.url);
+			const possibleConflictUrl = Url.join(url, itemName);
+			const doesExist = await fsOperation(possibleConflictUrl).exists();
+			if (doesExist) {
+				alert(
+					strings.error,
+					strings["already exists"]
+						? strings["already exists"].replace("{name}", itemName)
+						: `"${itemName}" already exists in this location.`,
+				);
+				return;
+			}
+			let newUrl;
+			if (clipBoard.action === "cut") newUrl = await fs.moveTo(url);
+			else newUrl = await fs.copyTo(url);
+			const { name: newName } = await fsOperation(newUrl).stat();
+			stopLoading();
+			/**
+			 * CASES:
+			 * CASE 111: src is file and parent is collapsed where target is also collapsed
+			 * CASE 110: src is file and parent is collapsed where target is unclasped
+			 * CASE 101: src is file and parent is unclasped where target is collapsed
+			 * CASE 100: src is file and parent is unclasped where target is also unclasped
+			 * CASE 011: src is directory and parent is collapsed where target is also collapsed
+			 * CASE 001: src is directory and parent is unclasped where target is also collapsed
+			 * CASE 010: src is directory and parent is collapsed where target is also unclasped
+			 * CASE 000: src is directory and parent is unclasped where target is also unclasped
+			 */
 
-		if (clipBoard.action === "cut") {
-			//move
+			if (clipBoard.action === "cut") {
+				//move
 
-			if (IS_FILE) {
-				const file = editorManager.getFile(clipBoard.url, "uri");
-				if (file) file.uri = newUrl;
-			} else if (IS_DIR) {
-				helpers.updateUriOfAllActiveFiles(clipBoard.url, newUrl);
+				if (IS_FILE) {
+					const file = editorManager.getFile(clipBoard.url, "uri");
+					if (file) file.uri = newUrl;
+				} else if (IS_DIR) {
+					helpers.updateUriOfAllActiveFiles(clipBoard.url, newUrl);
+				}
+
+				switch (CASE) {
+					case "111":
+					case "011":
+						break;
+
+					case "110":
+						appendTile($target, createFileTile(newName, newUrl));
+						break;
+
+					case "101":
+						$src.remove();
+						break;
+
+					case "100":
+						appendTile($target, createFileTile(newName, newUrl));
+						$src.remove();
+						break;
+
+					case "001":
+						$src.parentElement.remove();
+						break;
+
+					case "010":
+						appendList($target, createFolderTile(newName, newUrl));
+						break;
+
+					case "000":
+						appendList($target, createFolderTile(newName, newUrl));
+						$src.parentElement.remove();
+						break;
+
+					default:
+						break;
+				}
+				FileList.remove(clipBoard.url);
+			} else {
+				//copy
+
+				switch (CASE) {
+					case "111":
+					case "101":
+					case "011":
+					case "001":
+						break;
+
+					case "110":
+					case "100":
+						appendTile($target, createFileTile(newName, newUrl));
+						break;
+
+					case "010":
+					case "000":
+						appendList($target, createFolderTile(newName, newUrl));
+						break;
+
+					default:
+						break;
+				}
 			}
 
-			switch (CASE) {
-				case "111":
-				case "011":
-					break;
-
-				case "110":
-					appendTile($target, createFileTile(newName, newUrl));
-					break;
-
-				case "101":
-					$src.remove();
-					break;
-
-				case "100":
-					appendTile($target, createFileTile(newName, newUrl));
-					$src.remove();
-					break;
-
-				case "001":
-					$src.parentElement.remove();
-					break;
-
-				case "010":
-					appendList($target, createFolderTile(newName, newUrl));
-					break;
-
-				case "000":
-					appendList($target, createFolderTile(newName, newUrl));
-					$src.parentElement.remove();
-					break;
-
-				default:
-					break;
-			}
-			FileList.remove(clipBoard.url);
-		} else {
-			//copy
-
-			switch (CASE) {
-				case "111":
-				case "101":
-				case "011":
-				case "001":
-					break;
-
-				case "110":
-				case "100":
-					appendTile($target, createFileTile(newName, newUrl));
-					break;
-
-				case "010":
-				case "000":
-					appendList($target, createFolderTile(newName, newUrl));
-					break;
-
-				default:
-					break;
-			}
+			FileList.append(url, newUrl);
+			toast(strings.success);
+			clearClipboard();
+		} catch (error) {
+			console.error(error);
+			helpers.error(error);
+		} finally {
+			stopLoading();
 		}
-
-		FileList.append(url, newUrl);
-		toast(strings.success);
-		clearClipboard();
 	}
 
 	async function insertFile() {
