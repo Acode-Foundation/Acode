@@ -12,6 +12,7 @@ import select from "dialogs/select";
 import fsOperation from "fileSystem";
 import externalFs from "fileSystem/externalFs";
 import JSZip from "jszip";
+import mimeTypes from "mime-types";
 import actionStack from "lib/actionStack";
 import checkFiles from "lib/checkFiles";
 import constants from "lib/constants";
@@ -766,6 +767,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 				if (helpers.isFile(type)) {
 					options.push(["info", strings.info, "info"]);
+					options.push(["open_with", strings["open with"], "open_in_browser"]);
 				}
 
 				if (currentDir.url !== "/" && url) {
@@ -818,6 +820,27 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					case "copyuri":
 						navigator.clipboard.writeText(url);
 						alert(strings.success, strings["copied to clipboard"]);
+						break;
+
+					case "open_with":
+						try {
+							let mimeType = mimeTypes.lookup(name || "text/plain");
+							const fs = fsOperation(url);
+							if (/^s?ftp:/.test(url)) return fs.localName;
+
+							system.fileAction(
+								(await fs.stat()).url,
+								name,
+								"VIEW",
+								mimeType,
+								() => {
+									toast(strings["no app found to handle this file"]);
+								},
+							);
+						} catch (error) {
+							console.error(error);
+							toast(strings.error);
+						}
 						break;
 				}
 			}
