@@ -4,10 +4,11 @@
   flex-direction: column;
   align-items: center;
   gap: 24px;
+  overflow-y: auto;
 
   .logo {
-    width: 120px;
-    height: 120px;
+    width: clamp(80px, 25vmin, 120px);
+    height: clamp(80px, 25vmin, 120px);
     border-radius: 24px;
     display: flex;
     align-items: center;
@@ -28,6 +29,7 @@
       background-repeat: no-repeat;
       background-position: center;
       background-size: contain;
+      object-fit: contain;
     }
   }
   .version-info {
@@ -46,14 +48,18 @@
   .info-section {
     width: 100%;
     max-width: 400px;
+    min-height: fit-content;
+    height: auto;
     background: color-mix(
       in srgb,
       var(--popup-background-color) 20%,
       transparent
     );
     border-radius: 12px;
-    overflow: hidden;
+    overflow: visible;
     margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
     .info-item {
       display: flex;
       align-items: center;

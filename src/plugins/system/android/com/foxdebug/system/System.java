@@ -571,17 +571,15 @@ public class System extends CordovaPlugin {
       Bitmap bitmap;
       IconCompat icon;
 
-      imgSrc =
-        ImageDecoder.createSource(
-          context.getContentResolver(),
-          Uri.parse(iconSrc)
-        );
+      imgSrc = ImageDecoder.createSource(
+        context.getContentResolver(),
+        Uri.parse(iconSrc)
+      );
       bitmap = ImageDecoder.decodeBitmap(imgSrc);
       icon = IconCompat.createWithBitmap(bitmap);
-      intent =
-        activity
-          .getPackageManager()
-          .getLaunchIntentForPackage(activity.getPackageName());
+      intent = activity
+        .getPackageManager()
+        .getLaunchIntentForPackage(activity.getPackageName());
       intent.putExtra("action", action);
       intent.putExtra("data", data);
 
@@ -605,12 +603,13 @@ public class System extends CordovaPlugin {
     );
 
     if (shortcutManager.isRequestPinShortcutSupported()) {
-      ShortcutInfo pinShortcutInfo = new ShortcutInfo.Builder(context, id)
-        .build();
+      ShortcutInfo pinShortcutInfo = new ShortcutInfo.Builder(
+        context,
+        id
+      ).build();
 
-      Intent pinnedShortcutCallbackIntent = shortcutManager.createShortcutResultIntent(
-        pinShortcutInfo
-      );
+      Intent pinnedShortcutCallbackIntent =
+        shortcutManager.createShortcutResultIntent(pinShortcutInfo);
 
       PendingIntent successCallback = PendingIntent.getBroadcast(
         context,
@@ -667,6 +666,8 @@ public class System extends CordovaPlugin {
         .getMethod("setStatusBarColor", int.class)
         .invoke(window, this.systemBarColor);
 
+      window.getDecorView().setBackgroundColor(this.systemBarColor);
+
       if (Build.VERSION.SDK_INT < 30) {
         setStatusBarStyle(window);
         setNavigationBarStyle(window);
@@ -719,7 +720,7 @@ public class System extends CordovaPlugin {
       decorView.setSystemUiVisibility(uiOptions | 0x80000000 | 0x00000010);
       return;
     }
-    decorView.setSystemUiVisibility(uiOptions | 0x80000000 & ~0x00000010);
+    decorView.setSystemUiVisibility(uiOptions | (0x80000000 & ~0x00000010));
   }
 
   private void getCordovaIntent(CallbackContext callback) {
