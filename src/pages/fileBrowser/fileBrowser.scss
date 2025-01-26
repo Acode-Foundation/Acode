@@ -4,7 +4,7 @@
   }
 
   .tile {
-    &[storageType='notification'] {
+    &[storageType="notification"] {
       background-color: rgb(153, 153, 255);
       background-color: var(--primary-color);
       color: rgb(255, 255, 255);
@@ -14,7 +14,7 @@
 
       .icon {
         display: none;
-        content: '';
+        content: "";
       }
     }
 
@@ -51,6 +51,17 @@
         color: rgb(79, 155, 79);
       }
     }
+    &.symlink {
+      .icon {
+        color: rgb(255, 165, 0);
+      }
+
+      .text::after {
+        content: " (symlink)";
+        font-size: 0.8em;
+        color: rgb(255, 165, 0);
+      }
+    }
   }
 
   .info {
@@ -75,7 +86,7 @@
 
       &[read-only] {
         .text::after {
-          content: 'Read only';
+          content: "Read only";
           font-size: 0.6em;
           color: rgb(255, 255, 255);
           background-color: rgb(62, 100, 138);
@@ -100,6 +111,5 @@
     .selection-count {
       font-size: 0.9em;
     }
-
   }
 }

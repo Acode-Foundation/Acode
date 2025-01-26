@@ -660,6 +660,7 @@ async function EditorManager($header, $body) {
 					$container.parentElement.appendChild(file.content);
 				}
 			}
+			editor?.selection.clearSelection();
 		}
 
 		$header.text = file.filename;

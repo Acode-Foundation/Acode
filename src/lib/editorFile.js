@@ -748,6 +748,7 @@ export default class EditorFile {
 					editorManager.container.parentElement.appendChild(this.content);
 				}
 			}
+			editor?.selection.clearSelection();
 		}
 
 		this.#tab.classList.add("active");

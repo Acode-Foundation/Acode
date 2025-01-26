@@ -74,26 +74,18 @@ class SftpClient {
 					}
 
 					const path = this.#safeName(filename);
-					let options = "-gaAG";
-					if (stat) options += "d";
 
-					sftp.exec(
-						`/usr/bin/ls ${options} --full-time -L "${path}" | awk '{$2=\"\"; print $0}'`,
-						async (res) => {
-							if (res.code <= 0) {
-								if (stat) {
-									const file = await this.#parseFile(
-										res.result,
-										Url.dirname(filename),
-									);
-									resolve(file);
-									return;
+					sftp.lsDir(
+						path,
+						(res) => {
+							res.forEach((file) => {
+								file.url = Url.join(this.#base, file.url);
+								file.type = mimeType.lookup(filename);
+								if (file.isLink) {
+									file.linkTarget = Url.join(this.#base, file.linkTarget);
 								}
-								const dirList = await this.#parseDir(filename, res.result);
-								resolve(dirList);
-								return;
-							}
-							reject(this.#errorCodes(res.code));
+							});
+							resolve(res);
 						},
 						(err) => {
 							reject(err);
@@ -122,26 +114,11 @@ class SftpClient {
 							return;
 						}
 					}
-
-					const file = this.#safeName(filename);
-					const cmd = `[[ -f "${file}" ]] && echo "Already exists" || touch "${filename}"`;
-					sftp.exec(
-						cmd,
-						async (res) => {
-							if (res.code <= 0) {
-								if (content) {
-									try {
-										await this.writeFile(content, filename);
-									} catch (error) {
-										return reject(error);
-									}
-								}
-
-								const stat = await this.lsDir(filename, true);
-								resolve(stat.url);
-								return;
-							}
-							reject(this.#errorCodes(res.code));
+					sftp.createFile(
+						filename,
+						content ? content : "",
+						async (_res) => {
+							resolve(filename);
 						},
 						(err) => {
 							reject(err);
@@ -170,16 +147,10 @@ class SftpClient {
 						}
 					}
 
-					sftp.exec(
-						`mkdir "${this.#safeName(dirname)}"`,
-						async (res) => {
-							if (res.code <= 0) {
-								const stat = await this.lsDir(dirname, true);
-								resolve(stat.url);
-								return;
-							}
-
-							reject(this.#errorCodes(res.code));
+					sftp.mkdir(
+						this.#safeName(dirname),
+						async (_res) => {
+							resolve(this.#safeName(dirname));
 						},
 						(err) => {
 							reject(err);
@@ -356,16 +327,12 @@ class SftpClient {
 						}
 					}
 					await this.#setStat();
-					const cmd = `rm ${this.#stat.isDirectory ? "-r" : ""} "${this.#safeName(filename)}"`;
-					sftp.exec(
-						cmd,
-						(res) => {
-							if (res.code <= 0) {
-								resolve(fullFilename);
-								return;
-							}
-
-							reject(this.#errorCodes(res.code));
+					sftp.rm(
+						this.#safeName(filename),
+						this.#stat.isDirectory ? true : false,
+						this.#stat.isDirectory ? true : false,
+						(_res) => {
+							resolve(fullFilename);
 						},
 						(err) => {
 							reject(err);
@@ -454,36 +421,48 @@ class SftpClient {
 	async stat() {
 		if (this.#stat) return this.#stat;
 
-		const filename = this.#safeName(this.#path);
-		const file = await this.lsDir(filename, true);
-		if (!file) return null;
+		return new Promise((resolve, reject) => {
+			sftp.isConnected(async (connectionID) => {
+				(async () => {
+					if (this.#notConnected(connectionID)) {
+						try {
+							await this.connect();
+						} catch (error) {
+							reject(error);
+							return;
+						}
+					}
 
-		const stat = {
-			name: file.name,
-			exists: true,
-			length: file.size,
-			isFile: file.isFile,
-			isDirectory: file.isDirectory,
-			isVirtual: file.isLink,
-			canWrite: file.canWrite,
-			canRead: file.canRead,
-			lastModified: file.modifiedDate,
-			type: mimeType.lookup(filename),
-			url: file.url,
-		};
+					const filename = this.#safeName(this.#path);
+					const path = this.#safeName(filename);
 
-		helpers.defineDeprecatedProperty(
-			stat,
-			"uri",
-			function () {
-				return this.url;
-			},
-			function (val) {
-				this.url = val;
-			},
-		);
-
-		return stat;
+					sftp.stat(
+						path,
+						(res) => {
+							res.url = Url.join(this.#base, res.url);
+							res.type = mimeType.lookup(filename);
+							if (res.isLink) {
+								res.linkTarget = Url.join(this.#base, res.linkTarget);
+							}
+							helpers.defineDeprecatedProperty(
+								res,
+								"uri",
+								function () {
+									return this.url;
+								},
+								function (val) {
+									this.url = val;
+								},
+							);
+							resolve(res);
+						},
+						(err) => {
+							reject(err);
+						},
+					);
+				})();
+			}, reject);
+		});
 	}
 
 	get localName() {

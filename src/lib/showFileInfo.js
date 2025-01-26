@@ -39,15 +39,15 @@ export default async function showFileInfo(url) {
 			const value = await fs.readFile(settings.value.defaultFileEncoding);
 			options.lineCount = value.split(/\n+/).length;
 			options.wordCount = value.split(/\s+|\n+/).length;
-		}
 
-		if (/s?ftp:/.test(protocol)) {
-			options.shareUri = Url.join(CACHE_STORAGE, name);
-			const fs = fsOperation(options.shareUri);
-			if (await fs.exists()) {
-				await fs.delete();
+			if (/s?ftp:/.test(protocol)) {
+				options.shareUri = Url.join(CACHE_STORAGE, name);
+				const fs = fsOperation(options.shareUri);
+				if (await fs.exists()) {
+					await fs.delete();
+				}
+				await fsOperation(CACHE_STORAGE).createFile(name, value);
 			}
-			await fsOperation(CACHE_STORAGE).createFile(name, value);
 		}
 
 		box("", mustache.render($_fileInfo, options), true).onclick((e) => {

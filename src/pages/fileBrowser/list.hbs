@@ -1,23 +1,23 @@
 <ul class="list" id="list" empty-msg="{{msg}}">{{#list}}
   {{#.}}
-  <li 
-    tabindex="1" 
-    class="tile" 
-    action="open" 
-    type="{{type}}" 
+  <li
+    tabindex="1"
+    class="tile {{#isLink}}symlink{{/isLink}}"
+    action="open"
+    type="{{type}}"
     name="{{name}}"
     {{#home}}home="{{.}}"{{/home}}
-    {{#open-doc}}open-doc="true"{{/open-doc}} 
+    {{#open-doc}}open-doc="true"{{/open-doc}}
     {{#ftp-account}}ftp-account{{/ftp-account}}
     {{#disabled}}disabled{{/disabled}}
-    {{#uuid}}uuid="{{uuid}}"{{/uuid}} 
+    {{#uuid}}uuid="{{uuid}}"{{/uuid}}
     {{#storageType}}storageType="{{.}}"{{/storageType}}
   >
-    <span 
-      class="icon {{icon}} {{#uuid}}user-added-storage{{/uuid}}" 
+    <span
+      class="icon {{icon}} {{#uuid}}user-added-storage{{/uuid}}"
       {{#storageType}}storageType="{{.}}"{{/storageType}}
     ></span>
-    
+
     <div class="text">
       <span>{{name}}</span>
     </div>
