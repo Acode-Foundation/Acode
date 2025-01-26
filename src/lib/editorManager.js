@@ -660,7 +660,9 @@ async function EditorManager($header, $body) {
 					$container.parentElement.appendChild(file.content);
 				}
 			}
-			editor?.selection.clearSelection();
+			if (manager.activeFile && manager.activeFile.type === "editor") {
+				manager.activeFile.session.selection.clearSelection();
+			}
 		}
 
 		$header.text = file.filename;

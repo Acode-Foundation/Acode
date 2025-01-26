@@ -599,51 +599,57 @@ public class Sftp extends CordovaPlugin {
               String source = args.optString(0);
               String destination = args.optString(1);
 
-              if (ssh == null || sftp == null) {
-                callback.error("Not connected");
-                return;
-              }
+              if (ssh != null && sftp != null) {
+                try {
+                  SftpFileAttributes sourceAttrs = sftp.stat(source);
 
-              try {
-                copyRecursively(source, destination);
-                callback.success();
-              } catch (Exception e) {
-                callback.error("Copy failed: " + errMessage(e));
-              }
-            } catch (Exception e) {
-              callback.error(errMessage(e));
-            }
-          }
+                  if (sourceAttrs.isFile()) {
+                    // file copy
+                    try (java.io.InputStream in = sftp.getInputStream(source)) {
+                      sftp.put(in, destination);
+                    }
+                  } else if (sourceAttrs.isDirectory()) {
+                    // directory copy
+                    sftp.mkdir(destination);
 
-          private void copyRecursively(String source, String destination)
-            throws SftpStatusException, SshException, IOException {
-            SftpFileAttributes attrs = sftp.stat(source);
+                    for (SftpFile file : sftp.ls(source)) {
+                      String filename = file.getFilename();
+                      if (!filename.equals(".") && !filename.equals("..")) {
+                        String sourcePath = source + "/" + filename;
+                        String destPath = destination + "/" + filename;
 
-            if (attrs.isDirectory()) {
-              try {
-                sftp.mkdir(destination);
-              } catch (SftpStatusException e) {
-                // Directory may already exist - ignore
-              }
+                        if (file.getAttributes().isDirectory()) {
+                          // Recursively copy subdirectories
+                          JSONArray subDirArgs = new JSONArray();
+                          subDirArgs.put(sourcePath);
+                          subDirArgs.put(destPath);
+                          copy(subDirArgs, callback);
+                        } else {
+                          // Copy files within directory
+                          try (
+                            java.io.InputStream in = sftp.getInputStream(
+                              sourcePath
+                            )
+                          ) {
+                            sftp.put(in, destPath);
+                          }
+                        }
+                      }
+                    }
+                  }
 
-              // Copy directory contents
-              for (SftpFile file : sftp.ls(source)) {
-                String filename = file.getFilename();
-                if (!filename.equals(".") && !filename.equals("..")) {
-                  String srcPath = source + "/" + filename;
-                  String destPath = destination + "/" + filename;
-                  copyRecursively(srcPath, destPath);
+                  callback.success();
+                  return;
+                } catch (SftpStatusException e) {
+                  callback.error("Source does not exist: " + errMessage(e));
+                  return;
                 }
               }
-            } else {
-              // Copy file using buffered streams
-              try (
-                java.io.InputStream in = sftp.getInputStream(source);
-                java.io.BufferedInputStream bis =
-                  new java.io.BufferedInputStream(in)
-              ) {
-                sftp.put(bis, destination);
-              } catch (TransferCancelledException e) {}
+              callback.error("Not connected");
+            } catch (
+              SshException | IOException | TransferCancelledException e
+            ) {
+              callback.error(errMessage(e));
             }
           }
         }
