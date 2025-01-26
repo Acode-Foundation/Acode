@@ -39,6 +39,15 @@ module.exports = {
   createFile: function (path, content, onSuccess, onFail) {
     cordova.exec(onSuccess, onFail, 'Sftp', 'createFile', [path, content]);
   },
+  rename: function (oldpath, newpath, onSuccess, onFail) {
+    cordova.exec(onSuccess, onFail, 'Sftp', 'rename', [oldpath, newpath]);
+  },
+  copy: function (sourcePath, destinationPath, onSuccess, onFail) {
+    cordova.exec(onSuccess, onFail, 'Sftp', 'copy', [sourcePath, destinationPath]);
+  },
+  pwd: function (onSuccess, onFail) {
+    cordova.exec(onSuccess, onFail, 'Sftp', 'pwd', []);
+  },
   close: function (onSuccess, onFail) {
     cordova.exec(onSuccess, onFail, 'Sftp', 'close', []);
   },

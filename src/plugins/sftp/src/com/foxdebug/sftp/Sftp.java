@@ -327,9 +327,13 @@ public class Sftp extends CordovaPlugin {
               if (ssh != null && sftp != null) {
                 JSONArray files = new JSONArray();
                 for (SftpFile file : sftp.ls(path)) {
+                  String filename = file.getFilename();
+                  if (filename.equals(".") || filename.equals("..")) {
+                    continue;
+                  }
                   SftpFileAttributes fileAttributes = file.getAttributes();
                   JSONObject fileInfo = new JSONObject();
-                  fileInfo.put("name", file.getFilename());
+                  fileInfo.put("name", filename);
                   fileInfo.put("exists", true);
                   fileInfo.put("canRead", file.canRead());
                   fileInfo.put("canWrite", file.canWrite());
@@ -396,68 +400,73 @@ public class Sftp extends CordovaPlugin {
               String path = sanitizePath(args.optString(0));
               if (ssh != null && sftp != null) {
                 URI uri = new URI(path);
-                SftpFileAttributes fileAttributes = sftp.stat(uri.getPath());
                 JSONObject fileStat = new JSONObject();
 
-                if (fileAttributes != null) {
-                  String permissions = fileAttributes.getPermissionsString();
-                  boolean canRead = permissions.charAt(1) == 'r';
-                  boolean canWrite = permissions.charAt(2) == 'w';
+                try {
+                  SftpFileAttributes fileAttributes = sftp.stat(uri.getPath());
+                  if (fileAttributes != null) {
+                    String permissions = fileAttributes.getPermissionsString();
+                    boolean canRead = permissions.charAt(1) == 'r';
+                    boolean canWrite = permissions.charAt(2) == 'w';
 
-                  fileStat.put("exists", true);
-                  fileStat.put("canRead", canRead);
-                  fileStat.put("canWrite", canWrite);
-                  fileStat.put("isLink", fileAttributes.isLink());
-                  fileStat.put("isDirectory", fileAttributes.isDirectory());
-                  fileStat.put("isFile", fileAttributes.isFile());
-                  fileStat.put("length", fileAttributes.getSize());
-                  fileStat.put(
-                    "permissions",
-                    fileAttributes.getPermissionsString()
-                  );
-                  fileStat.put(
-                    "lastModified",
-                    fileAttributes.getModifiedDateTime()
-                  );
-                  String[] pathSegments = uri.getPath().split("/");
-                  String filename = pathSegments[pathSegments.length - 1];
-
-                  fileStat.put("name", filename);
-                  fileStat.put("url", uri.getPath());
-                  if (permissions.charAt(0) == 'l') {
-                    fileStat.put("isLink", true);
-                    try {
-                      String linkTarget = sftp.getSymbolicLinkTarget(
-                        uri.getPath()
-                      );
-                      fileStat.put("linkTarget", linkTarget);
-                      SftpFileAttributes linkAttributes = sftp.stat(linkTarget);
-                      fileStat.put("isFile", linkAttributes.isFile());
-                      fileStat.put("isDirectory", linkAttributes.isDirectory());
-                    } catch (SftpStatusException | SshException e) {
-                      // Handle broken symlink
-                      fileStat.put("isFile", false);
-                      fileStat.put("isDirectory", false);
-                      fileStat.put("isLink", false);
-                      fileStat.put("exists", false);
-                    }
-                  } else {
-                    fileStat.put("isLink", false);
+                    fileStat.put("exists", true);
+                    fileStat.put("canRead", canRead);
+                    fileStat.put("canWrite", canWrite);
+                    fileStat.put("isLink", fileAttributes.isLink());
                     fileStat.put("isDirectory", fileAttributes.isDirectory());
                     fileStat.put("isFile", fileAttributes.isFile());
+                    fileStat.put("length", fileAttributes.getSize());
+                    fileStat.put(
+                      "permissions",
+                      fileAttributes.getPermissionsString()
+                    );
+                    fileStat.put(
+                      "lastModified",
+                      fileAttributes.getModifiedDateTime()
+                    );
+                    String[] pathSegments = uri.getPath().split("/");
+                    String filename = pathSegments[pathSegments.length - 1];
+
+                    fileStat.put("name", filename);
+                    fileStat.put("url", uri.getPath());
+                    if (permissions.charAt(0) == 'l') {
+                      fileStat.put("isLink", true);
+                      try {
+                        String linkTarget = sftp.getSymbolicLinkTarget(
+                          uri.getPath()
+                        );
+                        fileStat.put("linkTarget", linkTarget);
+                        SftpFileAttributes linkAttributes = sftp.stat(
+                          linkTarget
+                        );
+                        fileStat.put("isFile", linkAttributes.isFile());
+                        fileStat.put(
+                          "isDirectory",
+                          linkAttributes.isDirectory()
+                        );
+                      } catch (SftpStatusException | SshException e) {
+                        // Handle broken symlink
+                        fileStat.put("isFile", false);
+                        fileStat.put("isDirectory", false);
+                        fileStat.put("isLink", false);
+                        fileStat.put("exists", false);
+                      }
+                    } else {
+                      fileStat.put("isLink", false);
+                      fileStat.put("isDirectory", fileAttributes.isDirectory());
+                      fileStat.put("isFile", fileAttributes.isFile());
+                    }
                   }
+                } catch (SftpStatusException e) {
+                  fileStat.put("exists", false);
+                  fileStat.put("url", uri.getPath());
                 }
 
                 callback.success(fileStat);
                 return;
               }
               callback.error("Not connected");
-            } catch (
-              SftpStatusException
-              | URISyntaxException
-              | JSONException
-              | SshException e
-            ) {
+            } catch (URISyntaxException | JSONException | SshException e) {
               callback.error(errMessage(e));
             }
           }
@@ -549,6 +558,112 @@ public class Sftp extends CordovaPlugin {
             } catch (
               SftpStatusException | SshException | TransferCancelledException e
             ) {
+              callback.error(errMessage(e));
+            }
+          }
+        }
+      );
+  }
+
+  public void rename(JSONArray args, CallbackContext callback) {
+    cordova
+      .getThreadPool()
+      .execute(
+        new Runnable() {
+          public void run() {
+            try {
+              String oldpath = args.optString(0);
+              String newpath = args.optString(1);
+
+              if (ssh != null && sftp != null) {
+                sftp.rename(oldpath, newpath);
+                callback.success();
+                return;
+              }
+              callback.error("Not connected");
+            } catch (SftpStatusException | SshException e) {
+              callback.error(errMessage(e));
+            }
+          }
+        }
+      );
+  }
+
+  public void copy(JSONArray args, CallbackContext callback) {
+    cordova
+      .getThreadPool()
+      .execute(
+        new Runnable() {
+          public void run() {
+            try {
+              String source = args.optString(0);
+              String destination = args.optString(1);
+
+              if (ssh == null || sftp == null) {
+                callback.error("Not connected");
+                return;
+              }
+
+              try {
+                copyRecursively(source, destination);
+                callback.success();
+              } catch (Exception e) {
+                callback.error("Copy failed: " + errMessage(e));
+              }
+            } catch (Exception e) {
+              callback.error(errMessage(e));
+            }
+          }
+
+          private void copyRecursively(String source, String destination)
+            throws SftpStatusException, SshException, IOException {
+            SftpFileAttributes attrs = sftp.stat(source);
+
+            if (attrs.isDirectory()) {
+              try {
+                sftp.mkdir(destination);
+              } catch (SftpStatusException e) {
+                // Directory may already exist - ignore
+              }
+
+              // Copy directory contents
+              for (SftpFile file : sftp.ls(source)) {
+                String filename = file.getFilename();
+                if (!filename.equals(".") && !filename.equals("..")) {
+                  String srcPath = source + "/" + filename;
+                  String destPath = destination + "/" + filename;
+                  copyRecursively(srcPath, destPath);
+                }
+              }
+            } else {
+              // Copy file using buffered streams
+              try (
+                java.io.InputStream in = sftp.getInputStream(source);
+                java.io.BufferedInputStream bis =
+                  new java.io.BufferedInputStream(in)
+              ) {
+                sftp.put(bis, destination);
+              } catch (TransferCancelledException e) {}
+            }
+          }
+        }
+      );
+  }
+
+  public void pwd(JSONArray args, CallbackContext callback) {
+    cordova
+      .getThreadPool()
+      .execute(
+        new Runnable() {
+          public void run() {
+            try {
+              if (ssh != null && sftp != null) {
+                String pwd = sftp.pwd();
+                callback.success(pwd);
+                return;
+              }
+              callback.error("Not connected");
+            } catch (SftpStatusException | SshException e) {
               callback.error(errMessage(e));
             }
           }
