@@ -226,33 +226,75 @@ class SftpClient {
 		});
 	}
 
-	copyTo(dest) {
+	async copyTo(dest) {
 		const src = this.#path;
 		return new Promise((resolve, reject) => {
 			sftp.isConnected((connectionID) => {
 				(async () => {
-					if (this.#notConnected(connectionID)) {
-						try {
+					try {
+						if (this.#notConnected(connectionID)) {
 							await this.connect();
-						} catch (error) {
-							reject(error);
-							return;
 						}
+
+						const srcStat = await this.stat();
+
+						if (srcStat.isDirectory) {
+							await this.#copyDirectory(src, dest);
+						} else {
+							await this.#copyFile(src, dest);
+						}
+
+						const finalPath = Path.join(dest, Path.basename(src));
+						resolve(Url.join(this.#base, finalPath));
+					} catch (error) {
+						reject(error);
 					}
-					console.log(this.#safeName(src), this.#safeName(dest));
-					sftp.copy(
-						this.#safeName(src),
-						this.#safeName(dest),
-						async (_res) => {
-							resolve(Url.join(this.#base, dest));
-						},
-						(err) => {
-							reject(err);
-						},
-					);
 				})();
 			}, reject);
 		});
+	}
+
+	async #copyFile(src, dest) {
+		const destPath = Path.join(dest, Path.basename(src));
+		const tempFile = this.#getLocalname(src);
+
+		// Download source file
+		await new Promise((resolve, reject) => {
+			sftp.getFile(this.#safeName(src), tempFile, resolve, reject);
+		});
+
+		// Upload
+		await new Promise((resolve, reject) => {
+			sftp.putFile(this.#safeName(destPath), tempFile, resolve, reject);
+		});
+
+		// Clean up temp file
+		try {
+			await internalFs.delete(tempFile);
+		} catch (error) {
+			console.warn("Failed to cleanup temp file:", error);
+		}
+	}
+
+	async #copyDirectory(src, dest) {
+		// Create destination directory
+		const destDir = Path.join(dest, Path.basename(src));
+		await new Promise((resolve, reject) => {
+			sftp.mkdir(this.#safeName(destDir), resolve, reject);
+		});
+
+		// Get contents of source directory
+		const contents = await this.lsDir(src);
+
+		// Copy all items
+		for (const item of contents) {
+			const itemSrc = Path.join(src, item.name);
+			if (item.isDirectory) {
+				await this.#copyDirectory(itemSrc, destDir);
+			} else {
+				await this.#copyFile(itemSrc, destDir);
+			}
+		}
 	}
 
 	moveTo(dest) {
@@ -569,11 +611,9 @@ Sftp.test = (url) => /^sftp:/.test(url);
 function createFs(sftp) {
 	return {
 		lsDir() {
-			console.log("lsdir");
 			return sftp.lsDir();
 		},
 		async readFile(encoding) {
-			console.log("readfile");
 			const { data } = await sftp.readFile();
 
 			if (encoding) {
@@ -583,7 +623,6 @@ function createFs(sftp) {
 			return data;
 		},
 		async writeFile(content, encoding) {
-			console.log("writeFile");
 			if (typeof content === "string" && encoding) {
 				content = await encode(content, encoding);
 			}
@@ -591,37 +630,29 @@ function createFs(sftp) {
 			return sftp.writeFile(content, null);
 		},
 		createFile(name, data) {
-			console.log("createfile");
 			return sftp.createFile(name, data);
 		},
 		createDirectory(name) {
-			console.log("dir");
 			return sftp.createDir(name);
 		},
 		delete() {
-			console.log("delete");
 			return sftp.delete();
 		},
 		copyTo(dest) {
-			console.log("copy");
 			dest = Url.pathname(dest);
 			return sftp.copyTo(dest);
 		},
 		moveTo(dest) {
-			console.log("move");
 			dest = Url.pathname(dest);
 			return sftp.moveTo(dest);
 		},
 		renameTo(newname) {
-			console.log("rename");
 			return sftp.rename(newname);
 		},
 		exists() {
-			console.log("exists");
 			return sftp.exists();
 		},
 		stat() {
-			console.log("stat");
 			return sftp.stat();
 		},
 		get localName() {

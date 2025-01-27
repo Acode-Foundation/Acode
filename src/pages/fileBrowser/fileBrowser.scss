@@ -53,13 +53,25 @@
     }
     &.symlink {
       .icon {
-        color: rgb(255, 165, 0);
+        position: relative;
+        color: var(--link-text-color);
+        &::after {
+          content: "🔗";
+          position: absolute;
+          bottom: 13px;
+          right: 10px;
+          font-size: 0.4em;
+          color: inherit;
+        }
       }
 
-      .text::after {
-        content: " (symlink)";
-        font-size: 0.8em;
-        color: rgb(255, 165, 0);
+      .text {
+        color: var(--link-text-color);
+        &::after {
+          content: " (symlink)";
+          font-size: 0.8em;
+          color: color-mix(in srgb, var(--primary-text-color) 60%, transparent);
+        }
       }
     }
   }
