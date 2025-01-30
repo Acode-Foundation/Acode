@@ -1,63 +1,92 @@
 #file-info {
-  .name {
-    min-height: 40px;
-    display: flex;
-    flex-direction: row;
-    align-items: center;
+  overflow-x: hidden;
+  padding: 0.8rem;
 
-    .text {
-      font-size: 1.5rem;
-      font-weight: bold;
-      opacity: 1;
+  .file-header {
+    margin-bottom: 1.5rem;
+
+    .file-name {
+      font-size: 1.25rem;
+      font-weight: 500;
+      color: var(--secondary-text-color);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+
+      .name-part {
+        max-width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        position: relative;
+
+        &:hover {
+          overflow: visible;
+          white-space: normal;
+          word-break: break-all;
+          z-index: 1;
+          border-radius: 4px;
+          background: var(--popup-background-color);
+        }
+      }
+      .file-extension {
+        background: var(--popup-active-color);
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.875rem;
+        color: var(--link-text-color);
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        flex-shrink: 0;
+      }
     }
   }
 
-  .share-button {
-    border: none;
-    box-sizing: border-box;
-    background-color: rgb(51, 153, 255);
-    background-color: var(--button-background-color);
-    color: rgb(255, 255, 255);
-    color: var(--primary-text-color);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 30px;
-    min-width: fit-content;
-    margin: 5px auto;
-    padding: 0 10px;
-    border-radius: 20px;
-
-    * {
-      pointer-events: none;
-    }
-
-    .text {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      text-align: left;
-    }
-
-    .icon {
-      height: 30px;
-      margin-right: 10px;
-    }
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
   }
 
-  >div {
+  .info-item {
     display: flex;
     flex-direction: column;
-    margin-bottom: 10px;
+    gap: 0.5rem;
 
-    >span:first-child {
-      font-size: 0.95rem;
-      opacity: 0.5;
-      margin-right: 10px;
+    .info-label {
+      font-size: 0.875rem;
+      color: color-mix(in srgb, var(--secondary-text-color) 60%, transparent);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
 
-    >span:last-child {
-      max-width: 100%;
-      overflow: auto;
+    .info-value {
+      font-size: 1rem;
+      color: var(--secondary-text-color);
+      font-weight: 500;
+    }
+  }
+
+  .path-section {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--popup-border-color);
+
+    .path-value {
+      word-break: break-all;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .file-card {
+      padding: 1.5rem;
+    }
+
+    .info-grid {
+      grid-template-columns: 1fr;
+      gap: 1rem;
     }
   }
 }
