@@ -204,6 +204,11 @@ async function expandList($list) {
 			});
 	} catch (err) {
 		$list.collapse();
+		if (err?.includes("Invalid message length")) {
+			console.error(err);
+			toast("SFTP connection broken. Restart the app");
+			return;
+		}
 		helpers.error(err);
 	} finally {
 		stopLoading();

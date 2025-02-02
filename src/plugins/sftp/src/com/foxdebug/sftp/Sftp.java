@@ -658,7 +658,12 @@ public class Sftp extends CordovaPlugin {
       .execute(
         new Runnable() {
           public void run() {
-            if (ssh != null && ssh.isConnected()) {
+            if (
+              ssh != null &&
+              ssh.isConnected() &&
+              sftp != null &&
+              !sftp.isClosed()
+            ) {
               callback.success(connectionID);
               return;
             }
