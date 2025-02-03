@@ -8,7 +8,7 @@
     .file-name {
       font-size: 1.25rem;
       font-weight: 500;
-      color: var(--secondary-text-color);
+      color: var(--popup-text-color);
       display: flex;
       align-items: center;
       gap: 0.5rem;
@@ -31,11 +31,15 @@
         }
       }
       .file-extension {
-        background: var(--popup-active-color);
+        background: color-mix(
+          in srgb,
+          var(--button-background-color) 40%,
+          transparent
+        );
         padding: 0.25rem 0.5rem;
         border-radius: 4px;
         font-size: 0.875rem;
-        color: var(--link-text-color);
+        color: var(--active-color);
         font-weight: 600;
         letter-spacing: 0.5px;
         text-transform: uppercase;
@@ -57,14 +61,14 @@
 
     .info-label {
       font-size: 0.875rem;
-      color: color-mix(in srgb, var(--secondary-text-color) 60%, transparent);
+      color: color-mix(in srgb, var(--popup-text-color) 60%, transparent);
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
 
     .info-value {
       font-size: 1rem;
-      color: var(--secondary-text-color);
+      color: var(--popup-text-color);
       font-weight: 500;
     }
   }
@@ -72,7 +76,7 @@
   .path-section {
     margin-top: 1.5rem;
     padding-top: 1.5rem;
-    border-top: 1px solid var(--popup-border-color);
+    border-top: 1px solid var(--border-color);
 
     .path-value {
       word-break: break-all;
