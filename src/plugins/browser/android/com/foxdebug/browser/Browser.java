@@ -625,22 +625,45 @@ class BrowserWebViewClient extends WebViewClient {
     super.onPageFinished(view, url);
     browser.setProgressBarVisible(false);
 
-    browser.webView.evaluateJavascript(
-      "sessionStorage.getItem('__console_available')",
-      new ValueCallback<String>() {
-        @Override
-        public void onReceiveValue(String value) {
-          boolean show = !value.equals("null");
-          browser.menu.setVisible("Console", show && !browser.emulator);
+    // Inject console for external sites
+    // this is not a good solution but for now its good, later we'll improve this
+    if (!url.startsWith("http://localhost")) {
+      String script =
+        "" +
+        "if(!window.eruda){" +
+        "  var script = document.createElement('script');" +
+        "  script.src = 'https://cdn.jsdelivr.net/npm/eruda';" +
+        "  script.onload = function() {" +
+        "    eruda.init({" +
+        "      theme: 'dark'" +
+        "    });" +
+        "    eruda._shadowRoot.querySelector('.eruda-entry-btn').style.display = 'none';" +
+        "    sessionStorage.setItem('__console_available', true);" +
+        "    document.addEventListener('showconsole', function() { eruda.show(); });" +
+        "    document.addEventListener('hideconsole', function() { eruda.hide(); });" +
+        "  };" +
+        "  document.head.appendChild(script);" +
+        "}";
+      browser.webView.evaluateJavascript(script, null);
+      browser.menu.setChecked("Console", false);
+    } else {
+      browser.webView.evaluateJavascript(
+        "sessionStorage.getItem('__console_available')",
+        new ValueCallback<String>() {
+          @Override
+          public void onReceiveValue(String value) {
+            boolean show = !value.equals("null");
+            browser.menu.setVisible("Console", show && !browser.emulator);
 
-          // If user had toggled "Console" on before, re-show it
-          if (browser.console && show) {
-            browser.setConsoleVisible(true);
-            browser.menu.setChecked("Console", true);
+            // If user had toggled "Console" on before, re-show it
+            if (browser.console && show) {
+              browser.setConsoleVisible(true);
+              browser.menu.setChecked("Console", true);
+            }
           }
         }
-      }
-    );
+      );
+    }
   }
 
   @Override

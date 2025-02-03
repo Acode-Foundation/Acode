@@ -1,31 +1,40 @@
-<div id='file-info'>
-  <div class='name'>
-    <span class='text'>{{name}}</span>
-  </div>
-  <div>
-    <span>{{lang.size}}</span>
-    <span>{{length}}</span>
-  </div>
-  <div class='lm'>
-    <span>{{lang.last modified}}</span>
-    <span>{{lastModified}}</span>
-  </div>
-{{#isEditor}}
-    <div>
-      <span>{{lang.line count}}</span>
-      <span>{{lineCount}}</span>
+<div id="file-info">
+    <div class="file-header">
+        <div class="file-name">
+            <span class="name-part">{{name}}</span>
+            <span class="file-extension">{{extension}}</span>
+        </div>
     </div>
-    <div>
-      <span>{{lang.word count}}</span>
-      <span>{{wordCount}}</span>
+
+    <div class="info-grid">
+      <div class="info-item">
+        <span class="info-label">{{lang.size}}</span>
+        <span class="info-value">{{length}}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">{{lang.type}}</span>
+        <span class="info-value">{{type}}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">{{lang.last modified}}</span>
+        <span class="info-value">{{lastModified}}</span>
+      </div>
+      {{#isEditor}}
+      <div class="info-item">
+        <span class="info-label">{{lang.line count}}</span>
+        <span class="info-value">{{lineCount}}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">{{lang.word count}}</span>
+        <span class="info-value">{{wordCount}}</span>
+      </div>
+      {{/isEditor}}
     </div>
-{{/isEditor}}
-  <div>
-    <span>{{lang.type}}</span>
-    <span>{{type}}</span>
-  </div>
-  <div class='location'>
-    <span>{{lang.path}}</span>
-    <span class='scroll' action='copy'>{{showUri}}</span>
-  </div>
+
+    <div class="path-section">
+      <div class="info-item">
+        <span class="info-label">{{lang.path}}</span>
+        <span class="info-value path-value" action="copy">{{showUri}}</span>
+      </div>
+    </div>
 </div>

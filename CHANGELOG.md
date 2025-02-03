@@ -17,6 +17,13 @@
 * Redesigned Plugin page by @bajrangCoder in #1152
   * new meta data for plugin.json: `license`, `changelog`, `keywords`,`contributors`
 * chore(ace): updated to v1.37.5 by @bajrangCoder in #1158
+* improved paste operation with proper error handling #1162
+* feat: new option to open file in external app in file browser #1163
+* feat: minor sidebar ui tweaks and improved input element styling #1164
+* use theme color in extra cutout area in landscape mode instead of default color #1165
+* feat: improved file info dialog box design #1170
+* fix: infinite scroll on plugin page to remove duplicates #1171
+* feat: show eruda console for external site in Acode built-in browser #1172
 
 ## v1.10.7 (955)
 

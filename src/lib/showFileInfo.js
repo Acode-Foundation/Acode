@@ -25,7 +25,8 @@ export default async function showFileInfo(url) {
 		const protocol = Url.getProtocol(url);
 		const fileType = type.toLowerCase();
 		const options = {
-			name,
+			name: name.slice(0, name.length - Url.extname(name).length),
+			extension: Url.extname(name),
 			lastModified,
 			length,
 			type,
