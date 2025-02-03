@@ -6,9 +6,10 @@ import android.content.Context;
 import android.net.Uri;
 import android.util.Log;
 import androidx.documentfile.provider.DocumentFile;
-import com.sshtools.client.PublicKeyAuthenticator;
 import com.sshtools.client.SshClient;
+import com.sshtools.client.SshClient.SshClientBuilder;
 import com.sshtools.client.sftp.SftpClient;
+import com.sshtools.client.sftp.SftpClient.SftpClientBuilder;
 import com.sshtools.client.sftp.SftpFile;
 import com.sshtools.client.sftp.TransferCancelledException;
 import com.sshtools.common.permissions.PermissionDeniedException;
@@ -51,6 +52,7 @@ public class Sftp extends CordovaPlugin {
     super.initialize(cordova, webView);
     context = cordova.getContext();
     activity = cordova.getActivity();
+    System.setProperty("maverick.log.nothread", "true");
   }
 
   public boolean execute(
@@ -91,10 +93,18 @@ public class Sftp extends CordovaPlugin {
               int port = args.optInt(1);
               String username = args.optString(2);
               String password = args.optString(3);
-              ssh = new SshClient(host, port, username, password.toCharArray());
+              ssh = SshClientBuilder.create()
+                .withHostname(host)
+                .withPort(port)
+                .withUsername(username)
+                .withPassword(password)
+                .build();
+
               if (ssh.isConnected()) {
                 connectionID = username + "@" + host;
-                sftp = new SftpClient(ssh);
+
+                sftp = SftpClientBuilder.create().withClient(ssh).build();
+
                 try {
                   sftp.getSubsystemChannel().setCharsetEncoding("UTF-8");
                 } catch (UnsupportedEncodingException | SshException e) {
@@ -139,22 +149,18 @@ public class Sftp extends CordovaPlugin {
               Uri uri = file.getUri();
               ContentResolver contentResolver = context.getContentResolver();
               InputStream in = contentResolver.openInputStream(uri);
-              SshKeyPair pair = SshKeyUtils.getPrivateKey(in, passphrase);
 
-              try {
-                pair = SshKeyUtils.makeRSAWithSHA256Signature(pair);
-                pair = SshKeyUtils.makeRSAWithSHA512Signature(pair);
-              } catch (Exception e) {
-                // ignore
-              }
-
-              ssh = new SshClient(host, port, username);
-
-              ssh.authenticate(new PublicKeyAuthenticator(pair), 30000);
+              ssh = SshClientBuilder.create()
+                .withHostname(host)
+                .withPort(port)
+                .withUsername(username)
+                .withIdentities(SshKeyUtils.getPrivateKey(in, passphrase))
+                .build();
 
               if (ssh.isConnected()) {
                 connectionID = username + "@" + host;
-                sftp = new SftpClient(ssh);
+                sftp = SftpClientBuilder.create().withClient(ssh).build();
+
                 try {
                   sftp.getSubsystemChannel().setCharsetEncoding("UTF-8");
                 } catch (UnsupportedEncodingException | SshException e) {
@@ -190,7 +196,6 @@ public class Sftp extends CordovaPlugin {
             try {
               String command = args.optString(0);
               if (ssh != null) {
-                callback.success("hiiii");
                 JSONObject res = new JSONObject();
                 StringBuffer buffer = new StringBuffer();
                 int code = ssh.executeCommandWithResult(command, buffer);
@@ -331,21 +336,23 @@ public class Sftp extends CordovaPlugin {
                   if (filename.equals(".") || filename.equals("..")) {
                     continue;
                   }
-                  SftpFileAttributes fileAttributes = file.getAttributes();
+                  SftpFileAttributes fileAttributes = file.attributes();
                   JSONObject fileInfo = new JSONObject();
                   fileInfo.put("name", filename);
                   fileInfo.put("exists", true);
-                  fileInfo.put("canRead", file.canRead());
-                  fileInfo.put("canWrite", file.canWrite());
 
                   if (fileAttributes != null) {
-                    String permissions = fileAttributes.getPermissionsString();
+                    String permissions = fileAttributes.toPermissionsString();
+                    boolean canRead = permissions.charAt(1) == 'r';
+                    boolean canWrite = permissions.charAt(2) == 'w';
+                    fileInfo.put("canRead", canRead);
+                    fileInfo.put("canWrite", canWrite);
                     fileInfo.put("permissions", permissions);
-                    fileInfo.put("length", fileAttributes.getSize());
+                    fileInfo.put("length", fileAttributes.size());
                     fileInfo.put("url", file.getAbsolutePath());
                     fileInfo.put(
                       "lastModified",
-                      fileAttributes.getModifiedDateTime()
+                      fileAttributes.lastModifiedTime()
                     );
 
                     if (permissions.charAt(0) == 'l') {
@@ -405,7 +412,7 @@ public class Sftp extends CordovaPlugin {
                 try {
                   SftpFileAttributes fileAttributes = sftp.stat(uri.getPath());
                   if (fileAttributes != null) {
-                    String permissions = fileAttributes.getPermissionsString();
+                    String permissions = fileAttributes.toPermissionsString();
                     boolean canRead = permissions.charAt(1) == 'r';
                     boolean canWrite = permissions.charAt(2) == 'w';
 
@@ -415,14 +422,14 @@ public class Sftp extends CordovaPlugin {
                     fileStat.put("isLink", fileAttributes.isLink());
                     fileStat.put("isDirectory", fileAttributes.isDirectory());
                     fileStat.put("isFile", fileAttributes.isFile());
-                    fileStat.put("length", fileAttributes.getSize());
+                    fileStat.put("length", fileAttributes.size());
                     fileStat.put(
                       "permissions",
-                      fileAttributes.getPermissionsString()
+                      fileAttributes.toPermissionsString()
                     );
                     fileStat.put(
                       "lastModified",
-                      fileAttributes.getModifiedDateTime()
+                      fileAttributes.lastModifiedTime()
                     );
                     String[] pathSegments = uri.getPath().split("/");
                     String filename = pathSegments[pathSegments.length - 1];

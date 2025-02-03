@@ -31,6 +31,8 @@ import androidx.core.content.pm.ShortcutManagerCompat;
 import androidx.core.graphics.drawable.IconCompat;
 import com.foxdebug.system.Ui.Theme;
 import java.io.File;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
@@ -65,6 +67,31 @@ public class System extends CordovaPlugin {
     this.context = cordova.getContext();
     this.activity = cordova.getActivity();
     this.webView = webView;
+
+    // Set up global exception handler
+    Thread.setDefaultUncaughtExceptionHandler(
+      new Thread.UncaughtExceptionHandler() {
+        @Override
+        public void uncaughtException(Thread thread, Throwable ex) {
+          StringWriter sw = new StringWriter();
+          PrintWriter pw = new PrintWriter(sw);
+          ex.printStackTrace(pw);
+          String stackTrace = sw.toString();
+
+          String errorMsg = String.format(
+            "Uncaught Exception: %s\nStack trace: %s",
+            ex.getMessage(),
+            stackTrace
+          );
+
+          sendLogToJavaScript("error", errorMsg);
+
+          // rethrow to the default handler
+          Thread.getDefaultUncaughtExceptionHandler()
+            .uncaughtException(thread, ex);
+        }
+      }
+    );
   }
 
   public boolean execute(
@@ -208,6 +235,21 @@ public class System extends CordovaPlugin {
       );
 
     return true;
+  }
+
+  private void sendLogToJavaScript(String level, String message) {
+    final String js =
+      "window.log('" + level + "', " + JSONObject.quote(message) + ");";
+    cordova
+      .getActivity()
+      .runOnUiThread(
+        new Runnable() {
+          @Override
+          public void run() {
+            webView.loadUrl("javascript:" + js);
+          }
+        }
+      );
   }
 
   private void getConfiguration(CallbackContext callback) {
