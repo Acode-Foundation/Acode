@@ -5,6 +5,7 @@ import loader from "dialogs/loader";
 import fsOperation from "fileSystem";
 import { reopenWithNewEncoding } from "palettes/changeEncoding";
 import { decode } from "utils/encodings";
+import helpers from "utils/helpers";
 import EditorFile from "./editorFile";
 import recents from "./recents";
 import appSettings from "./settings";
@@ -352,16 +353,16 @@ export default async function openFile(file, options = {}) {
 			);
 		}
 
+		if (helpers.isBinary(uri)) {
+			const confirmation = await confirm(strings.info, strings["binary file"]);
+			if (!confirmation) return;
+		}
+
 		const binData = await fs.readFile();
 		const fileContent = await decode(
 			binData,
 			file.encoding || appSettings.value.defaultFileEncoding,
 		);
-
-		if (/[\x00-\x08\x0E-\x1F]/.test(fileContent)) {
-			const confirmation = await confirm(strings.info, strings["binary file"]);
-			if (!confirmation) return;
-		}
 
 		createEditor(false, fileContent);
 		if (mode !== "single") recents.addFile(uri);
