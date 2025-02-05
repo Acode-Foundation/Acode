@@ -22,13 +22,20 @@ class Logger {
 	#logFileName;
 	#flushInterval;
 	#autoFlushInterval;
+	#maxFileSize;
 
-	constructor(maxBufferSize = 1000, logLevel = "info", flushInterval = 30000) {
+	constructor(
+		maxBufferSize = 1000,
+		logLevel = "info",
+		flushInterval = 30000,
+		maxFileSize = 10 * 1024 * 1024,
+	) {
 		this.#logBuffer = new Map();
 		this.#maxBufferSize = maxBufferSize;
 		this.#logLevel = logLevel;
 		this.#logFileName = constants.LOG_FILE_NAME;
 		this.#flushInterval = flushInterval;
+		this.#maxFileSize = maxFileSize;
 		this.#startAutoFlush(); // Automatically flush logs at intervals
 		this.#setupAppLifecycleHandlers(); // Handle app lifecycle events for safe log saving
 	}
@@ -69,23 +76,28 @@ class Logger {
 
 	#writeLogToFile = async (logContent) => {
 		try {
-			if (
-				!(await fsOperation(
-					Url.join(DATA_STORAGE, constants.LOG_FILE_NAME),
-				).exists())
-			) {
+			const logFilePath = Url.join(DATA_STORAGE, constants.LOG_FILE_NAME);
+			if (!(await fsOperation(logFilePath).exists())) {
 				await fsOperation(window.DATA_STORAGE).createFile(
 					constants.LOG_FILE_NAME,
 					logContent,
 				);
 			} else {
-				let existingData = await fsOperation(
-					Url.join(DATA_STORAGE, constants.LOG_FILE_NAME),
-				).readFile("utf8");
+				let existingData = await fsOperation(logFilePath).readFile("utf8");
 				let newData = existingData + "\n" + logContent;
-				await fsOperation(
-					Url.join(DATA_STORAGE, constants.LOG_FILE_NAME),
-				).writeFile(newData);
+				// Check if the new data exceeds the maximum file size
+				if (new Blob([newData]).size > this.#maxFileSize) {
+					const lines = newData.split("\n");
+					while (
+						new Blob([lines.join("\n")]).size > this.#maxFileSize &&
+						lines.length > 0
+					) {
+						lines.shift();
+					}
+					newData = lines.join("\n");
+				}
+
+				await fsOperation(logFilePath).writeFile(newData);
 			}
 		} catch (error) {
 			console.error("Error in handling fs operation on log file. Error:", err);
