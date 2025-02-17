@@ -40,6 +40,7 @@
   * updated ssh lib to `v3.1.2`
   * removed deprecated apis
   * experimental saving of native logs in acode logger
+* tweaked donation page
 
 ## v1.10.7 (955)
 

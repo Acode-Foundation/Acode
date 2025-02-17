@@ -134,25 +134,25 @@ export default function DonateInclude() {
 
 		products = products.map((product) => {
 			product.image = `${BASE_URL}${product.productId === "bronze" ? "1.jpeg" : "2.jpeg"}`;
+			product.isCoffee = product.productId === "bronze" ? true : false;
 			product.donate = strings.donate.replace("{amount}", product.price);
+			if (product.description && product.description.includes("-")) {
+				[product.description, product.author] = product.description
+					.split("-")
+					.map((s) => s.trim());
+			}
 			return product;
 		});
 
 		const col1 = [];
-		const col2 = [];
 		products.forEach((product, i) => {
 			const html = mustache.render(productHBS, product);
-			if (i % 2 === 0) {
-				col1.push(html);
-				return;
-			}
-			col2.push(html);
+			col1.push(html);
 		});
 
 		$page.body = helpers.parseHTML(
 			mustache.render(bodyHBS, {
-				col1: col1.join(""),
-				col2: col2.join(""),
+				card: col1.join(""),
 			}),
 		);
 		helpers.showAd();
