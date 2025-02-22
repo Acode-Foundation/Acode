@@ -11,13 +11,18 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.lang.SecurityException;
 import java.lang.reflect.Method;
 import java.net.SocketException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URISyntaxException;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import org.apache.commons.net.ftp.*;
@@ -101,6 +106,9 @@ public class Ftp extends CordovaPlugin {
                 ftp = ftpProfiles.get(ftpId);
                 reply = ftp.getReplyCode();
                 if (ftp.isConnected() && FTPReply.isPositiveCompletion(reply)) {
+                  ftp.setControlEncoding("UTF-8");
+                  ftp.setAutodetectUTF8(true);
+                  System.setProperty("ftp.client.encoding", "UTF-8");
                   // test if connection is still valid
                   ftp.sendNoOp();
                   Log.d("FTP", "FTPClient (" + ftpId + ") is connected");
@@ -240,11 +248,38 @@ public class Ftp extends CordovaPlugin {
                 JSONObject jsonFile = new JSONObject();
                 jsonFile.put("name", filename);
                 jsonFile.put("size", file.getSize());
-                jsonFile.put("isDirectory", file.isDirectory());
-                jsonFile.put("isFile", file.isFile());
-                jsonFile.put("isSymbolicLink", file.isSymbolicLink());
-                jsonFile.put("link", file.getLink());
                 jsonFile.put("url", joinPath(path, filename));
+
+                if (file.isSymbolicLink()) {
+                  jsonFile.put("isLink", true);
+                  String linkTarget = file.getLink();
+                  jsonFile.put("link", linkTarget);
+                  String linkPath = linkTarget.startsWith("/")
+                    ? linkTarget
+                    : joinPath(path, linkTarget);
+                  try {
+                    FTPFile[] targetFiles = ftp.listFiles(linkPath);
+                    if (targetFiles.length > 0) {
+                      FTPFile targetFile = targetFiles[0];
+                      jsonFile.put("isFile", targetFile.isFile());
+                      jsonFile.put("isDirectory", targetFile.isDirectory());
+                      jsonFile.put("url", linkPath);
+                    } else {
+                      jsonFile.put("isFile", false);
+                      jsonFile.put("isDirectory", false);
+                    }
+                  } catch (Exception e) {
+                    // Handle broken symlink
+                    jsonFile.put("isFile", false);
+                    jsonFile.put("isDirectory", false);
+                  }
+                } else {
+                  jsonFile.put("isLink", false);
+                  jsonFile.put("isDirectory", file.isDirectory());
+                  jsonFile.put("isFile", file.isFile());
+                  jsonFile.put("link", null);
+                }
+
                 jsonFile.put(
                   "lastModified",
                   file.getTimestamp().getTimeInMillis()
@@ -558,6 +593,8 @@ public class Ftp extends CordovaPlugin {
                 return;
               }
 
+              ftp.setFileType(FTP.BINARY_FILE_TYPE);
+
               InputStream inputStream = ftp.retrieveFileStream(path);
               if (inputStream == null) {
                 Log.d(
@@ -634,6 +671,8 @@ public class Ftp extends CordovaPlugin {
                 callback.error("FTP client not found.");
                 return;
               }
+
+              ftp.setFileType(FTP.BINARY_FILE_TYPE);
 
               Log.d("FTPUpload", "Destination " + remoteFilePath);
               OutputStream outputStream = ftp.storeFileStream(remoteFilePath);
@@ -977,10 +1016,10 @@ public class Ftp extends CordovaPlugin {
               stat.put("isValid", file.isValid());
               stat.put("isUnknown", file.isUnknown());
               stat.put("isDirectory", file.isDirectory());
-              stat.put("isSymbolicLink", file.isSymbolicLink());
+              stat.put("isLink", file.isSymbolicLink());
               stat.put("linkCount", file.getHardLinkCount());
               stat.put("size", file.getSize());
-              stat.put("name", file.getName());
+              stat.put("name", getBaseName(file.getName()));
               stat.put("lastModified", file.getTimestamp().getTimeInMillis());
               stat.put("link", file.getLink());
               stat.put("group", file.getGroup());
