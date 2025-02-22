@@ -247,7 +247,7 @@ public class Ftp extends CordovaPlugin {
 
                 JSONObject jsonFile = new JSONObject();
                 jsonFile.put("name", filename);
-                jsonFile.put("size", file.getSize());
+                jsonFile.put("length", file.getSize());
                 jsonFile.put("url", joinPath(path, filename));
 
                 if (file.isSymbolicLink()) {
@@ -1018,7 +1018,7 @@ public class Ftp extends CordovaPlugin {
               stat.put("isDirectory", file.isDirectory());
               stat.put("isLink", file.isSymbolicLink());
               stat.put("linkCount", file.getHardLinkCount());
-              stat.put("size", file.getSize());
+              stat.put("length", file.getSize());
               stat.put("name", getBaseName(file.getName()));
               stat.put("lastModified", file.getTimestamp().getTimeInMillis());
               stat.put("link", file.getLink());
