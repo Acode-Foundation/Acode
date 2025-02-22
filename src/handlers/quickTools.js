@@ -58,8 +58,12 @@ quickTools.$input.addEventListener("keydown", (e) => {
 	e.preventDefault();
 
 	const event = KeyboardEvent("keydown", keyCombination);
-	input = input || editorManager.editor.textInput.getElement();
-	input.dispatchEvent(event);
+	if (input && input !== quickTools.$input) {
+		input.dispatchEvent(event);
+	} else {
+		// Otherwise fallback to editor input
+		editorManager.editor.textInput.getElement().dispatchEvent(event);
+	}
 });
 
 appSettings.on("update:quicktoolsItems:after", () => {
