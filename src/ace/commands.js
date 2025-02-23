@@ -325,6 +325,22 @@ const commands = [
 		},
 		readOnly: true,
 	},
+	{
+		name: "changeAppTheme",
+		description: "Change App Theme",
+		exec() {
+			acode.exec("change-app-theme");
+		},
+		readOnly: true,
+	},
+	{
+		name: "changeEditorTheme",
+		description: "Change Editor Theme",
+		exec() {
+			acode.exec("change-editor-theme");
+		},
+		readOnly: true,
+	},
 ];
 
 export function setCommands(editor) {

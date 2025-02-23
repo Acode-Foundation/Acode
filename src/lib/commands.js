@@ -11,6 +11,7 @@ import plugins from "pages/plugins";
 import Problems from "pages/problems/problems";
 import changeEncoding from "palettes/changeEncoding";
 import changeMode from "palettes/changeMode";
+import changeTheme from "palettes/changeTheme";
 import commandPalette from "palettes/commandPalette";
 import findFile from "palettes/findFile";
 import browser from "plugins/browser";
@@ -280,6 +281,12 @@ export default {
 	},
 	syntax() {
 		changeMode();
+	},
+	"change-app-theme"() {
+		changeTheme("app");
+	},
+	"change-editor-theme"() {
+		changeTheme("editor");
 	},
 	"toggle-fullscreen"() {
 		app.classList.toggle("fullscreen-mode");
