@@ -391,5 +391,6 @@
 	"changelog": "Változáslista",
 	"notifications": "Értesítések",
 	"no_unread_notifications": "Nincsenek olvasatlan értesítések",
-	"should_use_current_file_for_preview": "A jelenlegi fájl használata az előnézethez az alapértelmezett (index.html) helyett"
+	"should_use_current_file_for_preview": "A jelenlegi fájl használata az előnézethez az alapértelmezett (index.html) helyett",
+	"fade fold widgets": "Fade Fold Widgets"
 }

@@ -391,5 +391,6 @@
 	"changelog": "更新日志",
 	"notifications": "消息通知",
 	"no_unread_notifications": "没有未读消息",
-	"should_use_current_file_for_preview": "应使当前文件用于预览页面而非使用默认文件 (index.html)"
+	"should_use_current_file_for_preview": "应使当前文件用于预览页面而非使用默认文件 (index.html)",
+	"fade fold widgets": "Fade Fold Widgets"
 }

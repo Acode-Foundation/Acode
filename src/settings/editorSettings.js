@@ -149,6 +149,11 @@ export default function editorSettings() {
 			checkbox: values.useTextareaForIME,
 		},
 		{
+			key: "fadeFoldWidgets",
+			text: strings["fade fold widgets"],
+			checkbox: values.fadeFoldWidgets,
+		},
+		{
 			index: 0,
 			key: "scroll-settings",
 			text: strings["scroll settings"],

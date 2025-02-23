@@ -391,5 +391,6 @@
 	"changelog": "Dziennik zmian",
 	"notifications": "Powiadomienia",
 	"no_unread_notifications": "Brak nieodczytanych powiadomień",
-	"should_use_current_file_for_preview": "Należy użyć bieżącego pliku do podglądu zamiast domyślnego (index.html)"
+	"should_use_current_file_for_preview": "Należy użyć bieżącego pliku do podglądu zamiast domyślnego (index.html)",
+	"fade fold widgets": "Fade Fold Widgets"
 }

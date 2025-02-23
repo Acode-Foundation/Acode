@@ -129,6 +129,7 @@ class Settings {
 			retryRemoteFsAfterFail: true,
 			linenumbers: true,
 			formatOnSave: false,
+			fadeFoldWidgets: false,
 			autoCorrect: true,
 			openFileListPos: this.OPEN_FILE_LIST_POS_HEADER,
 			quickTools: this.#IS_TABLET ? 0 : 1,

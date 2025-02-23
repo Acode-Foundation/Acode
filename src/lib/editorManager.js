@@ -233,6 +233,10 @@ async function EditorManager($header, $body) {
 		updateMargin(true);
 	});
 
+	appSettings.on("update:fadeFoldWidgets", function (value) {
+		editor.setOption("fadeFoldWidgets", value);
+	});
+
 	return manager;
 
 	/**
@@ -387,6 +391,7 @@ async function EditorManager($header, $body) {
 		editor.setOption("enableBasicAutocompletion", true);
 		editor.setOption("enableLiveAutocompletion", settings.liveAutoCompletion);
 		editor.setOption("copyWithEmptySelection", true);
+		editor.setOption("fadeFoldWidgets", settings.fadeFoldWidgets);
 		// editor.setOption('enableInlineAutocompletion', settings.inlineAutoCompletion);
 
 		updateMargin(true);
