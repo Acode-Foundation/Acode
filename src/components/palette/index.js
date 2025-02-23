@@ -45,9 +45,18 @@ This shows that using keyboardHideStart event is faster than not using it.
  * @param {()=>string} onsSelectCb Callback to call when a hint is selected
  * @param {string} placeholder Placeholder for input
  * @param {function} onremove Callback to call when palette is removed
+ * @param {function} onHighlight Callback to call when hint is highlighted
  * @returns {void}
  */
-export default function palette(getList, onsSelectCb, placeholder, onremove) {
+export default function palette(
+	getList,
+	onsSelectCb,
+	placeholder,
+	onremove,
+	onHighlight,
+) {
+	let isRemoving = false;
+
 	/**@type {HTMLInputElement} */
 	const $input = (
 		<input
@@ -63,16 +72,16 @@ export default function palette(getList, onsSelectCb, placeholder, onremove) {
 	const $palette = <div id="palette">{$input}</div>;
 
 	// Create a palette with input and hints
-	inputhints($input, generateHints, onSelect);
+	inputhints($input, generateHints, onSelect, onHighlight);
 
 	// Removes the darkened color from status bar and navigation bar
 	restoreTheme(true);
 
 	// Remove palette when input is blurred
-	$input.addEventListener("blur", remove);
+	$input.addEventListener("blur", handleBlur);
 	// Don't wait for input to blur when keyboard hides, remove is
 	// as soon as keyboard starts to hide
-	keyboardHandler.on("keyboardHideStart", remove);
+	keyboardHandler.on("keyboardHideStart", handleKeyboardHide);
 
 	// Add to DOM
 	app.append($palette, $mask);
@@ -91,8 +100,23 @@ export default function palette(getList, onsSelectCb, placeholder, onremove) {
 	 * @param {string} value
 	 */
 	function onSelect(value) {
-		onsSelectCb(value);
+		isRemoving = true;
 		remove();
+		setTimeout(() => {
+			onsSelectCb(value);
+		}, 0);
+	}
+
+	function handleBlur() {
+		if (!isRemoving) {
+			remove();
+		}
+	}
+
+	function handleKeyboardHide() {
+		if (!isRemoving) {
+			remove();
+		}
 	}
 
 	/**
@@ -119,9 +143,12 @@ export default function palette(getList, onsSelectCb, placeholder, onremove) {
 	 * Removes the palette
 	 */
 	function remove() {
+		if (isRemoving) return;
+		isRemoving = true;
+
 		actionStack.remove("palette");
-		keyboardHandler.off("keyboardHideStart", remove);
-		$input.removeEventListener("blur", remove);
+		keyboardHandler.off("keyboardHideStart", handleKeyboardHide);
+		$input.removeEventListener("blur", handleBlur);
 
 		restoreTheme();
 		$palette.remove();
@@ -133,12 +160,8 @@ export default function palette(getList, onsSelectCb, placeholder, onremove) {
 		}
 
 		const { activeFile, editor } = editorManager;
-		if (activeFile.wasFocused) {
+		if (activeFile?.wasFocused) {
 			editor.focus();
 		}
-
-		remove = () => {
-			window.log("warn", "Palette already removed.");
-		};
 	}
 }
