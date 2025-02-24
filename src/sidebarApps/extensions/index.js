@@ -2,11 +2,13 @@ import "./style.scss";
 
 import collapsableList from "components/collapsableList";
 import Sidebar from "components/sidebar";
+import prompt from "dialogs/prompt";
 import select from "dialogs/select";
 import fsOperation from "fileSystem";
 import constants from "lib/constants";
 import InstallState from "lib/installState";
 import settings from "lib/settings";
+import FileBrowser from "pages/fileBrowser";
 import plugin from "pages/plugin";
 import Url from "utils/Url";
 import helpers from "utils/helpers";
@@ -31,6 +33,9 @@ const $header = (
 			<span>{strings["plugins"]}</span>
 			<button className="icon-button" onclick={filterPlugins}>
 				<span className="icon tune"></span>
+			</button>
+			<button className="icon-button" onclick={addSource}>
+				<span className="icon more_vert"></span>
 			</button>
 		</div>
 		<input
@@ -213,6 +218,39 @@ async function filterPlugins() {
 
 async function clearFilter() {
 	$searchResult.content = "";
+}
+
+async function addSource() {
+	const sourceOption = [
+		["remote", strings.remote],
+		["local", strings.local],
+	];
+	const sourceType = await select("Select Source", sourceOption);
+
+	if (!sourceType) return;
+	let source;
+	if (sourceType === "remote") {
+		source = await prompt("Enter plugin source", "https://", "url");
+	} else {
+		source = (await FileBrowser("file", "Select plugin source")).url;
+	}
+
+	if (!source) return;
+
+	try {
+		const { default: installPlugin } = await import("lib/installPlugin");
+		await installPlugin(source);
+		if (!$explore.collapsed) {
+			$explore.ontoggle();
+		}
+		if (!$installed.collapsed) {
+			$installed.ontoggle();
+		}
+	} catch (error) {
+		console.error(error);
+		window.toast(helpers.errorMessage(error));
+		addSource(sourceType, source);
+	}
 }
 
 async function loadInstalled() {

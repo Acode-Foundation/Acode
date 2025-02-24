@@ -2,65 +2,67 @@
 
 ## v1.11.0 (956)
 
-### Fixes  
-* Fixed a typo: "vission" → "vision" by @ByteJoseph in #1125  
-* Fixed heading and image alignment issues with `alignment="center"` on the plugin page by @bajrangCoder in #1132  
-* Fixed file listing in SFTP by @bajrangCoder in #1133  
-* Fixed fallback to `*/*` when the `accept` attribute is absent in `<input type="file">` in the in-app browser by @bajrangCoder in #1154  
-* Fixed console not reappearing after page reload in the in-app browser by @bajrangCoder in #1155  
-* Fixed infinite scroll on the plugin page to remove duplicates by @bajrangCoder in #1171  
-* Fixed logger to limit its size in #1167  
-* Fixed an issue where the info dialog wouldn't appear for non-editor tabs in #1167  
-* Fixed incorrect file attributes in FTP by @bajrangCoder in #1194  
-* Fixed the palette not opening when triggered from an existing palette by @bajrangCoder in #1197  
+### Fixes
+* Fixed a typo: "vission" → "vision" by @ByteJoseph in #1125
+* Fixed heading and image alignment issues with `alignment="center"` on the plugin page by @bajrangCoder in #1132
+* Fixed file listing in SFTP by @bajrangCoder in #1133
+* Fixed fallback to `*/*` when the `accept` attribute is absent in `<input type="file">` in the in-app browser by @bajrangCoder in #1154
+* Fixed console not reappearing after page reload in the in-app browser by @bajrangCoder in #1155
+* Fixed infinite scroll on the plugin page to remove duplicates by @bajrangCoder in #1171
+* Fixed logger to limit its size in #1167
+* Fixed an issue where the info dialog wouldn't appear for non-editor tabs in #1167
+* Fixed incorrect file attributes in FTP by @bajrangCoder in #1194
+* Fixed the palette not opening when triggered from an existing palette by @bajrangCoder in #1197
+* Fixed trigering of infinite scroll on plugin page while searching by @bajrangCoder in #1200
 
-### Features  
-* Improved tab view gesture handling to distinguish between scroll and swipe on the plugin page by @bajrangCoder in #1131  
-* Added color preview for SVG files by @bajrangCoder in #1135  
-* Implemented custom editor tab support by @bajrangCoder in #1136  
-  * Now supports image, video, and audio previews directly in the editor instead of pop-ups  
-  * Exposed API for plugin developers to add content in editor tabs via `EditorFile`  
-* Redesigned the About page by @bajrangCoder in #1153  
-* Added a plugin rebuild option for local plugins by @bajrangCoder in #1150  
-  * Plugins can use `cordova.plugin.http` instead of `fetch` to avoid CORS issues when making network requests  
-* Redesigned the Plugin page by @bajrangCoder in #1152  
-  * Added new metadata fields in `plugin.json`: `license`, `changelog`, `keywords`, and `contributors`  
-* Added a new option to open files in an external app from the file browser in #1163  
-* Added minor sidebar UI tweaks and improved input element styling in #1164  
-* Used theme colors in the extra cutout area in landscape mode instead of the default color in #1165  
-* Improved file info dialog design in #1170  
-* Added Eruda console support for external sites in Acode's built-in browser in #1172  
-* Added a new editor setting: **"Fade fold widgets"** by @bajrangCoder in #1195  
-* Added a command to change the editor and app theme via the command palette by @bajrangCoder in #1197  
+### Features
+* Improved tab view gesture handling to distinguish between scroll and swipe on the plugin page by @bajrangCoder in #1131
+* Added color preview for SVG files by @bajrangCoder in #1135
+* Implemented custom editor tab support by @bajrangCoder in #1136
+  * Now supports image, video, and audio previews directly in the editor instead of pop-ups
+  * Exposed API for plugin developers to add content in editor tabs via `EditorFile`
+* Redesigned the About page by @bajrangCoder in #1153
+* Added a plugin rebuild option for local plugins by @bajrangCoder in #1150
+  * Plugins can use `cordova.plugin.http` instead of `fetch` to avoid CORS issues when making network requests
+* Redesigned the Plugin page by @bajrangCoder in #1152
+  * Added new metadata fields in `plugin.json`: `license`, `changelog`, `keywords`, and `contributors`
+* Added a new option to open files in an external app from the file browser in #1163
+* Added minor sidebar UI tweaks and improved input element styling in #1164
+* Used theme colors in the extra cutout area in landscape mode instead of the default color in #1165
+* Improved file info dialog design in #1170
+* Added Eruda console support for external sites in Acode's built-in browser in #1172
+* Added a new editor setting: **"Fade fold widgets"** by @bajrangCoder in #1195
+* Added a command to change the editor and app theme via the command palette by @bajrangCoder in #1197
+* Added option to install plugins directly from sidebar extensions app by @bajrangCoder in #1200
 
-### Improvements  
-* Improved paste operation with proper error handling in #1162  
-* Rewritten SFTP implementation(#1167):  
-  * Better performance and stability  
-  * Improved symlink support with better visual distinction  
-  * Proper error handling  
-  * Enhanced file reading (downloading) and writing  
-  * Uses native APIs for file system operations  
-  * Better buffer handling—now even 30-40 minute videos load within seconds (faster than internal storage)  
-  * Emoji support added  
-* Improved the FTP client (#1193) by @bajrangCoder  
-  * Supports emoji-named files  
-  * Improved symlink handling  
-  * Better handling of videos and images as binary files  
-  * Displays file names instead of full paths  
-* Reworked the plugin page UI—now displays essential info such as author, license, price, etc., in the list view by @bajrangCoder in #1196  
-* Tweaked breadcrumbs in the file browser to follow the app theme in #1167  
-* Updated the SSH library to `v3.1.2` in #1167  
-* Removed deprecated APIs in #1167  
-* Added experimental support for saving native logs in Acode Logger in #1167  
+### Improvements
+* Improved paste operation with proper error handling in #1162
+* Rewritten SFTP implementation(#1167):
+  * Better performance and stability
+  * Improved symlink support with better visual distinction
+  * Proper error handling
+  * Enhanced file reading (downloading) and writing
+  * Uses native APIs for file system operations
+  * Better buffer handling—now even 30-40 minute videos load within seconds (faster than internal storage)
+  * Emoji support added
+* Improved the FTP client (#1193) by @bajrangCoder
+  * Supports emoji-named files
+  * Improved symlink handling
+  * Better handling of videos and images as binary files
+  * Displays file names instead of full paths
+* Reworked the plugin page UI—now displays essential info such as author, license, price, etc., in the list view by @bajrangCoder in #1196
+* Tweaked breadcrumbs in the file browser to follow the app theme in #1167
+* Updated the SSH library to `v3.1.2` in #1167
+* Removed deprecated APIs in #1167
+* Added experimental support for saving native logs in Acode Logger in #1167
 * Tweaked the donation page  #1188
 
-### Other Changes  
+### Other Changes
 * **Chore**: Updated Ace Editor to `v1.39.0`
   * Added CSV & TSV mode
   * Improved search support for multi-line patterns (`\n`, `\t`)
   * And more—see the Ace Changelog
-* Many translation updates for `hu-hu` by @summoner  
+* Many translation updates for `hu-hu` by @summoner
 
 ## v1.10.7 (955)
 
