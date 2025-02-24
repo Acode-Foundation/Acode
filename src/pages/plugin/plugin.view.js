@@ -7,6 +7,8 @@ import actionStack from "lib/actionStack";
 import constants from "lib/constants";
 import Url from "utils/Url";
 import helpers from "utils/helpers";
+import DOMPurify from "dompurify";
+
 export default (props) => {
 	const {
 		id,
@@ -18,7 +20,7 @@ export default (props) => {
 		license,
 		keywords,
 		contributors,
-		changelog,
+		changelogs,
 		votes_up: votesUp,
 		votes_down: votesDown,
 		author_verified: authorVerified,
@@ -101,7 +103,7 @@ export default (props) => {
 							</div>
 						</div>
 					) : null}
-					{keywords?.length ? (
+					{Array.isArray(keywords) && keywords.length ? (
 						<div className="keywords">
 							{keywords.map((keyword) => (
 								<span className="keyword">{keyword}</span>
@@ -163,28 +165,24 @@ export default (props) => {
 						})()}
 					</div>
 
-					<div id="changelog" className="content-section">
-						{changelog || (
-							<div className="no-changelog">
-								<i className="icon historyrestore"></i>
-								<p
-									style={{
-										fontSize: "1.1rem",
-									}}
-								>
+					<div
+						id="changelog"
+						className="content-section md"
+						innerHTML={
+							DOMPurify.sanitize(changelogs) ||
+							`
+							<div class="no-changelog">
+								<i class="icon historyrestore"></i>
+								<p style="font-size: 1.1rem;">
 									No changelog is available for this plugin yet.
 								</p>
-								<p
-									style={{
-										fontSize: "0.9rem",
-										fontStyle: "italic",
-									}}
-								>
+								<p style="font-size: 0.9rem; font-style: italic;">
 									Check back later for updates!
 								</p>
 							</div>
-						)}
-					</div>
+					`
+						}
+					></div>
 				</div>
 			</TabView>
 		</div>

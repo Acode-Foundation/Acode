@@ -79,11 +79,19 @@ export default async function PluginInclude(
 			const description = await fsOperation(
 				Url.join(PLUGIN_DIR, id, "readme.md"),
 			).readFile("utf8");
-			const changelog = installedPlugin.changelog
-				? await fsOperation(
-						Url.join(PLUGIN_DIR, id, installedPlugin.changelog),
-					).readFile("utf8")
-				: "";
+			let changelogs = "";
+			if (installedPlugin.changelogs) {
+				const changelogPath = Url.join(
+					PLUGIN_DIR,
+					id,
+					installedPlugin.changelogs,
+				);
+				const changelogExists = await fsOperation(changelogPath).exists();
+				if (changelogExists) {
+					changelogs = await fsOperation(changelogPath).readFile("utf8");
+				}
+			}
+
 			const iconUrl = await helpers.toInternalUri(
 				Url.join(PLUGIN_DIR, id, "icon.png"),
 			);
@@ -103,7 +111,7 @@ export default async function PluginInclude(
 				keywords: installedPlugin.keywords,
 				contributors: installedPlugin.contributors,
 				description,
-				changelog,
+				changelogs,
 			};
 
 			isPaid = installedPlugin.price > 0;
@@ -153,7 +161,7 @@ export default async function PluginInclude(
 					}
 				}
 			} catch (error) {
-				window.log("error", error);
+				console.log(error);
 			} finally {
 				loader.removeTitleLoader();
 			}
@@ -167,7 +175,7 @@ export default async function PluginInclude(
 			$button?.click();
 		}
 	} catch (err) {
-		window.log("error", err);
+		console.log(err);
 		helpers.error(err);
 	} finally {
 		loader.removeTitleLoader();
@@ -311,7 +319,7 @@ export default async function PluginInclude(
 				})
 				.use(markdownItTaskLists)
 				.render(plugin.description),
-			changelog: plugin.changelog
+			changelogs: plugin.changelogs
 				? markdownIt({ html: true, xhtmlOut: true })
 						.use(MarkdownItGitHubAlerts)
 						.use(anchor, {
@@ -322,7 +330,7 @@ export default async function PluginInclude(
 									.replace(/[^a-z0-9]+/g, "-"),
 						})
 						.use(markdownItTaskLists)
-						.render(plugin.changelog)
+						.render(plugin.changelogs)
 				: null,
 			purchased,
 			installed,
