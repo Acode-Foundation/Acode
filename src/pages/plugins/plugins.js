@@ -47,6 +47,7 @@ export default function PluginsInclude(updates) {
   let currentPage = 1;
   let isLoading = false;
   let hasMore = true;
+  let isSearching = false;
   const LIMIT = 50;
 
   Contextmenu({
@@ -147,7 +148,7 @@ export default function PluginsInclude(updates) {
   $page.onclick = handleClick;
 
   $list.all.addEventListener('scroll', async (e) => {
-    if (isLoading || !hasMore) return;
+    if (isLoading || !hasMore || isSearching) return;
 
     const { scrollTop, scrollHeight, clientHeight } = e.target;
     if (scrollTop + clientHeight >= scrollHeight - 100) {
@@ -187,15 +188,23 @@ export default function PluginsInclude(updates) {
     const { action } = $target.dataset;
     if (action === "search") {
       if (currSection === "all") {
+        isSearching = true;
         searchBar(
           $currList,
-          (hide) => (hideSearchBar = hide),
+          (hide) => {
+            hideSearchBar = hide;
+            isSearching = false;
+          },
           undefined,
           searchRemotely,
         );
         return;
       } else {
-        searchBar($currList, (hide) => (hideSearchBar = hide));
+        isSearching = true;
+        searchBar($currList, (hide) => {
+          hideSearchBar = hide;
+          isSearching = false;
+        });
         return;
       }
     }
@@ -398,6 +407,7 @@ export default function PluginsInclude(updates) {
       await installPlugin(source);
       await getInstalledPlugins();
     } catch (error) {
+      console.error(error);
       window.toast(helpers.errorMessage(error));
       addSource(sourceType, source);
     }
