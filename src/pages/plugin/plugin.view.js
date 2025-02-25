@@ -18,9 +18,9 @@ export default (props) => {
 		author,
 		downloads,
 		license,
-		keywords,
-		contributors,
 		changelogs,
+		keywords: keywordsRaw,
+		contributors: contributorsRaw,
 		votes_up: votesUp,
 		votes_down: votesDown,
 		author_verified: authorVerified,
@@ -29,6 +29,13 @@ export default (props) => {
 	} = props;
 
 	let rating = "unrated";
+
+	const keywords =
+		typeof keywordsRaw === "string" ? JSON.parse(keywordsRaw) : keywordsRaw;
+	const contributors =
+		typeof contributorsRaw === "string"
+			? JSON.parse(contributorsRaw)
+			: contributorsRaw;
 
 	if (votesUp || votesDown) {
 		rating = `${Math.round((votesUp / (votesUp + votesDown)) * 100)}%`;
