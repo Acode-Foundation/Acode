@@ -337,7 +337,7 @@ export default function PluginsInclude(updates) {
         if (!((updates && updates.includes(id)) || !updates)) return;
         const url = Url.join(item.url, "plugin.json");
         const plugin = await fsOperation(url).readFile("json");
-        const iconUrl = getLocalRes(id, "icon.png");
+        const iconUrl = getLocalRes(id, plugin.icon);
         plugin.icon = await helpers.toInternalUri(iconUrl);
         plugin.installed = true;
         plugins.installed.push(plugin);
