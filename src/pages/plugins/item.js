@@ -23,6 +23,16 @@ export default function Item({
   downloads,
   installed,
 }) {
+  const authorName = (() => {
+    const displayName =
+      typeof author === "object" ? author.name : author || "Unknown";
+    // Check if it's likely an email or too long
+    if (displayName.includes("@") || displayName.length > 20) {
+      return displayName.substring(0, 20) + "...";
+    }
+    return displayName;
+  })();
+
   return (
     <div
       data-id={id}
@@ -43,9 +53,14 @@ export default function Item({
               <span className="plugin-version">v{version}</span>
             </div>
             <div className="plugin-meta">
-              <div className="plugin-stats">
+              <div
+                className="plugin-stats plugin-author"
+                title={
+                  typeof author === "object" ? author.name : author || "Unknown"
+                }
+              >
                 <span className="icon person"></span>
-                {typeof author === "object" ? author.name : author || "Unknown"}
+                {authorName}
                 {author_verified ? (
                   <i
                     className="licons verified"

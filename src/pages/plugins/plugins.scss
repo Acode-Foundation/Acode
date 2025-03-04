@@ -36,6 +36,7 @@
     transition: background-color 0.15s ease;
     display: flex;
     align-items: center;
+    overflow-x: hidden;
     &:hover {
       background: color-mix(in srgb, var(--primary-color) 20%, transparent);
     }
@@ -88,6 +89,7 @@
               text-overflow: ellipsis;
               white-space: nowrap;
               min-width: 0;
+              max-width: calc(100% - 50px);
             }
             .plugin-version {
               color: color-mix(in srgb, var(--secondary-text-color) 80%, black);
@@ -103,6 +105,7 @@
             font-size: 0.81rem;
             color: color-mix(in srgb, var(--secondary-text-color) 80%, black);
             display: flex;
+            flex-wrap: wrap;
             gap: 0.375rem;
             align-items: center;
             .plugin-meta-dot {
@@ -114,12 +117,21 @@
                 black
               );
               border-radius: 50%;
+              display: inline-block;
             }
             .plugin-stats {
               display: flex;
               align-items: center;
               gap: 0.25rem;
               font-size: 0.81rem;
+
+              &.plugin-author {
+                max-width: 150px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+              }
+
               .icon {
                 display: inline-flex;
                 align-items: center;
@@ -128,6 +140,7 @@
                 height: 12px;
                 font-size: 12px;
                 line-height: 1;
+                flex-shrink: 0;
               }
             }
           }
@@ -148,13 +161,29 @@
       }
     }
 
-    @media (max-width: 480px) {
-      .plugin-title {
-        flex-wrap: wrap;
+    @media (max-width: 380px) {
+      .plugin-header {
+        .plugin-info {
+          flex-direction: column;
+          align-items: flex-start;
+
+          .plugin-price {
+            margin-top: 4px;
+            align-self: flex-start;
+          }
+        }
       }
 
-      .plugin-name {
-        max-width: calc(100% - 1rem);
+      .plugin-meta {
+        margin-top: 2px;
+
+        .plugin-meta-dot {
+          display: none;
+        }
+
+        .plugin-stats {
+          margin-right: 8px;
+        }
       }
     }
   }

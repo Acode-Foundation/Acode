@@ -30,7 +30,9 @@ export default async function installPlugin(
 	isDependency,
 ) {
 	if (!isDependency) {
-		loaderDialog = loader.create(name || "Plugin", strings.installing);
+		loaderDialog = loader.create(name || "Plugin", strings.installing, {
+			timeout: 6000,
+		});
 		depsLoaders = [];
 	}
 
