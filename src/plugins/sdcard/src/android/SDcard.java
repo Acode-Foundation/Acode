@@ -64,8 +64,9 @@ public class SDcard extends CordovaPlugin {
     this.REQUEST_CODE = this.ACCESS_INTENT;
     this.context = cordova.getContext();
     this.activity = cordova.getActivity();
-    this.storageManager =
-      (StorageManager) this.activity.getSystemService(Context.STORAGE_SERVICE);
+    this.storageManager = (StorageManager) this.activity.getSystemService(
+        Context.STORAGE_SERVICE
+      );
   }
 
   public boolean execute(
@@ -308,7 +309,17 @@ public class SDcard extends CordovaPlugin {
   public void onActivityResult(int requestCode, int resultCode, Intent data) {
     super.onActivityResult(requestCode, resultCode, data);
 
+    if (activityResultCallback == null) {
+      Log.e("SDcard", "activityResultCallback is null");
+      return;
+    }
+
     if (data == null) return;
+
+    if (resultCode == Activity.RESULT_CANCELED) {
+      activityResultCallback.error("Operation cancelled");
+      return;
+    }
 
     if (requestCode == PICK_FROM_GALLERY) {
       if (resultCode == Activity.RESULT_OK) {
@@ -316,14 +327,18 @@ public class SDcard extends CordovaPlugin {
         if (uri == null) {
           activityResultCallback.error("No file selected");
         } else {
-            try {
-                takePermission(uri);
-                activityResultCallback.success(uri.toString());
-            } catch (Exception e) {
-                activityResultCallback.error("Error taking permission: " + e.getMessage());
-            }
+          try {
+            takePermission(uri);
+            activityResultCallback.success(uri.toString());
+          } catch (Exception e) {
+            activityResultCallback.error(
+              "Error taking permission: " + e.getMessage()
+            );
+          }
         }
-        activityResultCallback.success(uri.toString());
+        //activityResultCallback.success(uri.toString());
+      } else {
+        activityResultCallback.error("Operation cancelled");
       }
       return;
     }
@@ -482,8 +497,8 @@ public class SDcard extends CordovaPlugin {
     String mimeType = URLConnection.guessContentTypeFromName(name);
     String ext = FilenameUtils.getExtension(name);
 
-    if (mimeType == null && ext != null) mimeType =
-      "text/" + ext; else mimeType = "text/plain";
+    if (mimeType == null && ext != null) mimeType = "text/" + ext;
+    else mimeType = "text/plain";
 
     create(parent, name, mimeType, callback);
   }
@@ -512,8 +527,10 @@ public class SDcard extends CordovaPlugin {
                 srcUri = parent;
                 parentUri = Uri.parse(srcUri);
                 docId = DocumentsContract.getTreeDocumentId(parentUri);
-                parentUri =
-                  DocumentsContract.buildDocumentUriUsingTree(parentUri, docId);
+                parentUri = DocumentsContract.buildDocumentUriUsingTree(
+                  parentUri,
+                  docId
+                );
               }
 
               ContentResolver contentResolver = context.getContentResolver();
@@ -636,9 +653,8 @@ public class SDcard extends CordovaPlugin {
           public void run() {
             try {
               Uri newUri = copy(rootUri, srcId, destId);
-              if (newUri == null) callback.error(
-                "Unable to copy " + src
-              ); else {
+              if (newUri == null) callback.error("Unable to copy " + src);
+              else {
                 DocumentsContract.deleteDocument(
                   contentResolver,
                   getUri(rootUri, srcId)
@@ -694,15 +710,15 @@ public class SDcard extends CordovaPlugin {
 
     if (src.isFile()) {
       Uri newUri = copyFile(src, dest);
-      if (newUri == null) return null; else return newUri;
+      if (newUri == null) return null;
+      else return newUri;
     } else {
-      destUri =
-        DocumentsContract.createDocument(
-          contentResolver,
-          destUri,
-          Document.MIME_TYPE_DIR,
-          src.getName()
-        );
+      destUri = DocumentsContract.createDocument(
+        contentResolver,
+        destUri,
+        Document.MIME_TYPE_DIR,
+        src.getName()
+      );
       destId = DocumentsContract.getDocumentId(destUri);
 
       Uri childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(
@@ -754,7 +770,8 @@ public class SDcard extends CordovaPlugin {
     is.close();
     os.close();
 
-    if (src.length() == newFile.length()) return newFile.getUri(); else {
+    if (src.length() == newFile.length()) return newFile.getUri();
+    else {
       DocumentsContract.deleteDocument(contentResolver, newFileUri);
       return null;
     }
@@ -783,18 +800,17 @@ public class SDcard extends CordovaPlugin {
             Cursor cursor = null;
 
             try {
-              cursor =
-                contentResolver.query(
-                  childrenUri,
-                  new String[] {
-                    Document.COLUMN_DOCUMENT_ID,
-                    Document.COLUMN_DISPLAY_NAME,
-                    Document.COLUMN_MIME_TYPE,
-                  },
-                  null,
-                  null,
-                  null
-                );
+              cursor = contentResolver.query(
+                childrenUri,
+                new String[] {
+                  Document.COLUMN_DOCUMENT_ID,
+                  Document.COLUMN_DISPLAY_NAME,
+                  Document.COLUMN_MIME_TYPE,
+                },
+                null,
+                null,
+                null
+              );
             } catch (
               NullPointerException
               | SecurityException
