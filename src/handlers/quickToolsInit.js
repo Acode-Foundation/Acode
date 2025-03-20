@@ -96,6 +96,7 @@ export default function init() {
 		isClickMode = true;
 		$footer.addEventListener("click", onclick);
 		$footer.addEventListener("contextmenu", oncontextmenu, true);
+		$footer.addEventListener("wheel", onwheel, { passive: false });
 	} else {
 		$footer.addEventListener("touchstart", touchstart);
 		$footer.addEventListener("keydown", touchstart);
@@ -107,13 +108,32 @@ export default function init() {
 			$footer.removeEventListener("keydown", touchstart);
 			$footer.addEventListener("contextmenu", onclick, true);
 			$footer.addEventListener("click", onclick);
+			$footer.addEventListener("wheel", onwheel, { passive: false });
 		} else {
 			$footer.removeEventListener("contextmenu", onclick, true);
 			$footer.removeEventListener("click", onclick);
+			$footer.removeEventListener("wheel", onwheel);
 			$footer.addEventListener("keydown", touchstart);
 			$footer.addEventListener("touchstart", touchstart);
 		}
 	});
+}
+
+function onwheel(e) {
+	e.preventDefault();
+	const $el = e.target;
+	const { $row1, $row2 } = quickTools;
+	let $row;
+
+	if ($row1?.contains($el)) {
+		$row = $row1;
+	} else if ($row2?.contains($el)) {
+		$row = $row2;
+	}
+
+	if ($row) {
+		$row.scrollLeft += e.deltaY;
+	}
 }
 
 function onclick(e) {
