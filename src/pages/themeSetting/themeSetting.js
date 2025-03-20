@@ -19,10 +19,20 @@ export default function () {
 	const editor = ace.edit($themePreview);
 
 	const session = ace.createEditSession("");
-	const currentSession = editorManager.activeFile.session;
+	const activeFile = editorManager.activeFile;
 
-	session.setMode(currentSession.getMode());
-	session.setValue(currentSession.getValue());
+	if (activeFile && activeFile.type === "editor") {
+		const currentSession = activeFile.session;
+		session.setMode(currentSession.getMode());
+		session.setValue(currentSession.getValue());
+	} else {
+		// Fallback content for preview
+		session.setMode("ace/mode/javascript");
+		session.setValue(`// Acode is awesome!
+const message = "Welcome to Acode";
+console.log(message);`);
+	}
+
 	editor.setReadOnly(true);
 	editor.setSession(session);
 	editor.renderer.setMargin(0, 0, -16, 0);
