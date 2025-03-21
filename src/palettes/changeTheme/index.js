@@ -8,8 +8,6 @@ export default function changeTheme(type = "editor") {
 		() => generateHints(type),
 		(value) => onselect(value),
 		strings[type === "editor" ? "editor theme" : "app theme"],
-		undefined,
-		(value) => onselect(value),
 	);
 }
 
