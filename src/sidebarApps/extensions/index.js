@@ -455,8 +455,20 @@ function ListItem({ icon, name, id, version, downloads, installed, source }) {
 
 				const { default: installPlugin } = await import("lib/installPlugin");
 				await installPlugin(id, remotePlugin.name, purchaseToken);
+				const searchInput = container.querySelector('input[name="search-ext"]');
+				if (searchInput) {
+					searchInput.value = "";
+					$searchResult.content = "";
+					updateHeight($searchResult);
+					$installed.expand();
+				}
 				window.toast(strings["success"], 3000);
-				$explore.ontoggle();
+				if (!$explore.collapsed) {
+					$explore.ontoggle();
+				}
+				if (!$installed.collapsed) {
+					$installed.ontoggle();
+				}
 			} catch (err) {
 				console.error(err);
 				window.toast(helpers.errorMessage(err), 3000);
@@ -520,6 +532,13 @@ async function uninstall(id) {
 			state.delete(state.storeUrl),
 		]);
 		acode.unmountPlugin(id);
+
+		const searchInput = container.querySelector('input[name="search-ext"]');
+		if (searchInput) {
+			searchInput.value = "";
+			$searchResult.content = "";
+			updateHeight($searchResult);
+		}
 
 		// Show Ad If Its Free Version, interstitial Ad(iad) is loaded.
 		if (IS_FREE_VERSION && (await window.iad?.isLoaded())) {
