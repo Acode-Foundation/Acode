@@ -1,6 +1,6 @@
-import tile from "components/tile";
-import actionStack from "lib/actionStack";
-import restoreTheme from "lib/restoreTheme";
+import tile from 'components/tile';
+import actionStack from 'lib/actionStack';
+import restoreTheme from 'lib/restoreTheme';
 
 /**
  * @typedef {object} SelectOptions
@@ -12,122 +12,136 @@ import restoreTheme from "lib/restoreTheme";
  */
 
 /**
+ * @typedef {object} SelectItem
+ * @property {string} [value]
+ * @property {string} [text]
+ * @property {string} [icon]
+ * @property {boolean} [disabled]
+ * @property {string} [letters]
+ */
+
+/**
  * Create a select dialog
  * @param {string} title Title of the select
- * @param {string[]} options [value, text, icon, disable?] or string
- * @param {SelectOptions | boolean} opts options or rejectOnCancel
+ * @param {string | string[] | SelectItem} items Object or [value, text, icon, disable?, letters?] or String
+ * @param {SelectOptions | boolean} options options or rejectOnCancel
  * @returns {Promise<string>}
  */
-function select(title, options, opts = {}) {
-	let rejectOnCancel = false;
-	if (typeof opts === "boolean") {
-		rejectOnCancel = opts;
-		opts = {};
-	}
-	return new Promise((resolve, reject) => {
-		const $titleSpan = title ? (
-			<strong className="title">{title}</strong>
-		) : null;
-		const $list = (
-			<ul
-				className={`scroll ${opts.textTransform === false ? " no-text-transform" : ""}`}
-			></ul>
-		);
-		const selectDiv = (
-			<div className="prompt select">
-				{$titleSpan ? [$titleSpan, $list] : $list}
-			</div>
-		);
-		const mask = <span className="mask" onclick={cancel}></span>;
-		let $defaultVal;
+function select(title, items, options = {}) {
+  let rejectOnCancel = false;
+  if (typeof options === 'boolean') {
+    rejectOnCancel = options;
+    options = {};
+  }
 
-		if (opts.hideOnSelect === undefined) opts.hideOnSelect = true;
+  return new Promise((res, rej) => {
+    const { textTransform = false, hideOnSelect = true } = options;
+    let $defaultVal;
 
-		options.map((option) => {
-			let value = null;
-			let text = null;
-			let lead = null;
-			let disabled = false;
-			if (Array.isArray(option)) {
-				value = option[0];
-				text = option[1];
+    // elements
+    const $mask = <span className="mask" onclick={cancel}></span>;
+    const $list = tag('ul', {
+      className: 'scroll' + !textTransform ? ' no-text-transform' : ''
+    });
+    const $select = (
+      <div className="prompt select">
+        {title ? <strong className="title">{title}</strong> : ''}
+        {$list}
+      </div>
+    );
 
-				if (option.length > 2 && typeof option[2] === "string") {
-					const icon = option[2];
-					if (icon === "letters") {
-						const letters = option[4];
-						lead = <i className="icon letters" data-letters={letters}></i>;
-					} else {
-						lead = <i className={`icon ${icon}`}></i>;
-					}
-				}
+    items.map(item => {
+      let lead,
+        itemOptions = {
+          value: null,
+          text: null,
+          icon: null,
+          disabled: true,
+          letters: ''
+        };
 
-				option.map((o, i) => {
-					if (typeof o === "boolean" && i > 1) disabled = !o;
-				});
-			} else {
-				value = text = option;
-			}
+      // init item options
+      if (typeof item === 'object') {
+        if (Array.isArray(item)) {
+          Object.keys(itemOptions).forEach(
+            (key, i) => (itemOptions[key] = item[i])
+          );
+        } else {
+          itemOptions = Object.assign({}, itemOptions, item);
+        }
+      } else {
+        itemOptions.value = item;
+        itemOptions.text = item;
+      }
 
-			const $item = tile({
-				lead,
-				text: <span className="text" innerHTML={text}></span>,
-			});
+      // handle icon
+      if (itemOptions.icon) {
+        if (itemOptions.icon === 'letters') {
+          lead = (
+            <i className="icon letters" data-letters={itemOptions.letters}></i>
+          );
+        } else {
+          lead = <i className={`icon ${itemOptions.icon}`}></i>;
+        }
+      }
 
-			if (opts.default === value) {
-				$item.classList.add("selected");
-				$defaultVal = $item;
-			}
+      const $item = tile({
+        lead,
+        text: <span className="text" innerHTML={itemOptions.text}></span>
+      });
 
-			$item.tabIndex = "0";
+      $item.tabIndex = '0';
+      if (disabled) $item.classList.add('disabled');
+      if (options.default === itemOptions.value) {
+        $item.classList.add('selected');
+        $defaultVal = $item;
+      }
 
-			$item.onclick = function () {
-				if (value === undefined) return;
-				if (opts.hideOnSelect) hide();
-				resolve(value);
-			};
+      // handle events
+      $item.onclick = function () {
+        if (!itemOptions.value) return;
+        if (hideOnSelect) hide();
+        res(itemOptions.value);
+      };
 
-			if (disabled) $item.classList.add("disabled");
+      $list.append($item);
+    });
 
-			$list.append($item);
-		});
+    actionStack.push({
+      id: 'select',
+      action: cancel
+    });
 
-		actionStack.push({
-			id: "select",
-			action: cancel,
-		});
+    app.append($select, $mask);
+    if ($defaultVal) $defaultVal.scrollIntoView();
 
-		app.append(selectDiv, mask);
-		if ($defaultVal) $defaultVal.scrollIntoView();
+    const $firstChild = $defaultVal || $list.firstChild;
+    if ($firstChild && $firstChild.focus) $firstChild.focus();
+    restoreTheme(true);
 
-		const $firstChild = $defaultVal || $list.firstChild;
-		if ($firstChild && $firstChild.focus) $firstChild.focus();
+    function cancel() {
+      hide();
+      if (typeof options.onCancel === 'function') options.onCancel();
+      if (rejectOnCancel) reject();
+    }
 
-		restoreTheme(true);
+    function hideSelect() {
+      $select.classList.add('hide');
+      restoreTheme();
+      setTimeout(() => {
+        $select.remove();
+        $mask.remove();
+      }, 300);
+    }
 
-		function cancel() {
-			hide();
-			if (typeof opts.onCancel === "function") opts.onCancel();
-			if (rejectOnCancel) reject();
-		}
-
-		function hideSelect() {
-			selectDiv.classList.add("hide");
-			restoreTheme();
-			setTimeout(() => {
-				selectDiv.remove();
-				mask.remove();
-			}, 300);
-		}
-
-		function hide() {
-			if (typeof opts.onHide === "function") opts.onHide();
-			actionStack.remove("select");
-			hideSelect();
-			let listItems = [...$list.children];
-			listItems.map((item) => (item.onclick = null));
-		}
-	});
+    function hide() {
+      if (typeof options.onHide === 'function') options.onHide();
+      actionStack.remove('select');
+      hideSelect();
+      let listItems = [...$list.children];
+      listItems.map(item => (item.onclick = null));
+    }
+  });
 }
 
 export default select;
