@@ -538,6 +538,9 @@ async function uninstall(id) {
 			searchInput.value = "";
 			$searchResult.content = "";
 			updateHeight($searchResult);
+			if ($installed.collapsed) {
+				$installed.expand();
+			}
 		}
 
 		// Show Ad If Its Free Version, interstitial Ad(iad) is loaded.

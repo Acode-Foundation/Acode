@@ -42,6 +42,7 @@ import org.json.JSONObject;
 
 public class Sftp extends CordovaPlugin {
 
+  private static final String TAG = "SFTP";
   private SshClient ssh;
   private SftpClient sftp;
   private Context context;
@@ -93,6 +94,10 @@ public class Sftp extends CordovaPlugin {
               int port = args.optInt(1);
               String username = args.optString(2);
               String password = args.optString(3);
+              Log.d(
+                TAG,
+                "Connecting to " + host + ":" + port + " as " + username
+              );
               ssh = SshClientBuilder.create()
                 .withHostname(host)
                 .withPort(port)
@@ -103,27 +108,48 @@ public class Sftp extends CordovaPlugin {
               if (ssh.isConnected()) {
                 connectionID = username + "@" + host;
 
-                sftp = SftpClientBuilder.create().withClient(ssh).build();
+                try {
+                  sftp = SftpClientBuilder.create().withClient(ssh).build();
+                } catch (IOException | SshException e) {
+                  ssh.close();
+                  callback.error(
+                    "Failed to initialize SFTP subsystem: " + errMessage(e)
+                  );
+                  Log.e(TAG, "Failed to initialize SFTP subsystem", e);
+                  return;
+                }
 
                 try {
                   sftp.getSubsystemChannel().setCharsetEncoding("UTF-8");
                 } catch (UnsupportedEncodingException | SshException e) {
                   // Fallback to default encoding if UTF-8 fails
+                  Log.w(
+                    TAG,
+                    "Failed to set UTF-8 encoding, falling back to default",
+                    e
+                  );
                 }
                 callback.success();
-                Log.d("connectUsingPassword", "Connected successfully");
+                Log.d(TAG, "Connected successfully to " + connectionID);
                 return;
               }
 
-              callback.error("Cannot connect");
-            } catch (
-              UnresolvedAddressException
-              | SshException
-              | IOException
-              | PermissionDeniedException e
-            ) {
-              callback.error(errMessage(e));
-              Log.e("connectUsingPassword", "Cannot connect", e);
+              callback.error("Failed to establish SSH connection");
+            } catch (UnresolvedAddressException e) {
+              callback.error("Cannot resolve host address");
+              Log.e(TAG, "Cannot resolve host address", e);
+            } catch (PermissionDeniedException e) {
+              callback.error("Authentication failed: " + e.getMessage());
+              Log.e(TAG, "Authentication failed", e);
+            } catch (SshException e) {
+              callback.error("SSH error: " + errMessage(e));
+              Log.e(TAG, "SSH error", e);
+            } catch (IOException e) {
+              callback.error("I/O error: " + errMessage(e));
+              Log.e(TAG, "I/O error", e);
+            } catch (Exception e) {
+              callback.error("Unexpected error: " + errMessage(e));
+              Log.e(TAG, "Unexpected error", e);
             }
           }
         }
@@ -150,37 +176,73 @@ public class Sftp extends CordovaPlugin {
               ContentResolver contentResolver = context.getContentResolver();
               InputStream in = contentResolver.openInputStream(uri);
 
+              SshKeyPair keyPair = null;
+              try {
+                keyPair = SshKeyUtils.getPrivateKey(in, passphrase);
+              } catch (InvalidPassphraseException e) {
+                callback.error("Invalid passphrase for key file");
+                Log.e(TAG, "Invalid passphrase for key file", e);
+                return;
+              } catch (IOException e) {
+                callback.error("Could not read key file: " + errMessage(e));
+                Log.e(TAG, "Could not read key file", e);
+                return;
+              }
+
               ssh = SshClientBuilder.create()
                 .withHostname(host)
                 .withPort(port)
                 .withUsername(username)
-                .withIdentities(SshKeyUtils.getPrivateKey(in, passphrase))
+                .withIdentities(keyPair)
                 .build();
 
               if (ssh.isConnected()) {
                 connectionID = username + "@" + host;
-                sftp = SftpClientBuilder.create().withClient(ssh).build();
+                try {
+                  sftp = SftpClientBuilder.create().withClient(ssh).build();
+                } catch (IOException | SshException e) {
+                  ssh.close();
+                  callback.error(
+                    "Failed to initialize SFTP subsystem: " + errMessage(e)
+                  );
+                  Log.e(TAG, "Failed to initialize SFTP subsystem", e);
+                  return;
+                }
 
                 try {
                   sftp.getSubsystemChannel().setCharsetEncoding("UTF-8");
                 } catch (UnsupportedEncodingException | SshException e) {
                   // Fallback to default encoding if UTF-8 fails
+                  Log.w(
+                    TAG,
+                    "Failed to set UTF-8 encoding, falling back to default",
+                    e
+                  );
                 }
                 callback.success();
+                Log.d(TAG, "Connected successfully to " + connectionID);
                 return;
               }
 
-              callback.error("Cannot connect");
-            } catch (
-              InvalidPassphraseException
-              | UnresolvedAddressException
-              | SshException
-              | IOException
-              | SecurityException
-              | PermissionDeniedException e
-            ) {
-              callback.error(errMessage(e));
-              Log.e("connectUsingKeyFile", "Cannot connect", e);
+              callback.error("Failed to establish SSH connection");
+            } catch (UnresolvedAddressException e) {
+              callback.error("Cannot resolve host address");
+              Log.e(TAG, "Cannot resolve host address", e);
+            } catch (PermissionDeniedException e) {
+              callback.error("Authentication failed: " + e.getMessage());
+              Log.e(TAG, "Authentication failed", e);
+            } catch (SshException e) {
+              callback.error("SSH error: " + errMessage(e));
+              Log.e(TAG, "SSH error", e);
+            } catch (IOException e) {
+              callback.error("I/O error: " + errMessage(e));
+              Log.e(TAG, "I/O error", e);
+            } catch (SecurityException e) {
+              callback.error("Security error: " + errMessage(e));
+              Log.e(TAG, "Security error", e);
+            } catch (Exception e) {
+              callback.error("Unexpected error: " + errMessage(e));
+              Log.e(TAG, "Unexpected error", e);
             }
           }
         }
