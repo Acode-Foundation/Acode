@@ -110,9 +110,7 @@ function select(title, items, options = {}) {
 
       // handle events
       $item.onclick = function () {
-        console.log('item clicked')
         if (!itemOptions.value) return;
-        console.log('item value exists')
         if (hideOnSelect) hide();
         res(itemOptions.value);
       };
