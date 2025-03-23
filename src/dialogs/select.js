@@ -1,4 +1,5 @@
 import tile from 'components/tile';
+import Checkbox from 'components/checkbox';
 import actionStack from 'lib/actionStack';
 import restoreTheme from 'lib/restoreTheme';
 
@@ -52,12 +53,14 @@ function select(title, items, options = {}) {
 
     items.map(item => {
       let lead,
+        tail,
         itemOptions = {
           value: null,
           text: null,
           icon: null,
-          disabled: true,
-          letters: ''
+          disabled: false,
+          letters: '',
+          checkbox: null
         };
 
       // init item options
@@ -85,13 +88,21 @@ function select(title, items, options = {}) {
         }
       }
 
+      // handle checkbox
+      if (itemOptions.checkbox != null) {
+        tail = Checkbox({
+          checked: itemOptions.checkbox
+        });
+      }
+
       const $item = tile({
         lead,
+        tail,
         text: <span className="text" innerHTML={itemOptions.text}></span>
       });
 
       $item.tabIndex = '0';
-      if (disabled) $item.classList.add('disabled');
+      if (itemOptions.disabled) $item.classList.add('disabled');
       if (options.default === itemOptions.value) {
         $item.classList.add('selected');
         $defaultVal = $item;
@@ -99,7 +110,9 @@ function select(title, items, options = {}) {
 
       // handle events
       $item.onclick = function () {
+        console.log('item clicked')
         if (!itemOptions.value) return;
+        console.log('item value exists')
         if (hideOnSelect) hide();
         res(itemOptions.value);
       };
