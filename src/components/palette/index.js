@@ -47,13 +47,7 @@ This shows that using keyboardHideStart event is faster than not using it.
  * @param {function} onremove Callback to call when palette is removed
  * @returns {void}
  */
-// Track active palette for chaining
-let activePalette = null;
-
 export default function palette(getList, onsSelectCb, placeholder, onremove) {
-	// Store previous palette if exists
-	const previousPalette = activePalette;
-	const isChained = !!previousPalette;
 	/**@type {HTMLInputElement} */
 	const $input = (
 		<input
@@ -71,11 +65,8 @@ export default function palette(getList, onsSelectCb, placeholder, onremove) {
 	// Create a palette with input and hints
 	inputhints($input, generateHints, onSelect);
 
-	// Only set the darkened theme when this is not a chained palette
-	if (!isChained) {
-		// Removes the darkened color from status bar and navigation bar
-		restoreTheme(true);
-	}
+	// Removes the darkened color from status bar and navigation bar
+	restoreTheme(true);
 
 	// Remove palette when input is blurred
 	$input.addEventListener("blur", remove);
@@ -86,41 +77,24 @@ export default function palette(getList, onsSelectCb, placeholder, onremove) {
 	// Add to DOM
 	app.append($palette, $mask);
 
-	// If we're in a chained palette, ensure we don't lose focus
-	if (isChained) {
-		// Don't let any blur events from previous palette affect this one
-		setTimeout(() => {
-			$input.focus();
-		}, 0);
-	}
-
 	// Focus input to show options
 	$input.focus();
-
-	// Trigger input event to show hints immediately
-	$input.dispatchEvent(new Event("input"));
 
 	// Add to action stack to remove on back button
 	actionStack.push({
 		id: "palette",
 		action: remove,
 	});
-	// Store this palette as the active one for chaining
-	activePalette = { remove };
 
 	/**
 	 * On select callback for inputhints
 	 * @param {string} value
 	 */
 	function onSelect(value) {
-		const currentPalette = { remove };
-		activePalette = currentPalette;
-
-		onsSelectCb(value);
-
-		if (activePalette === currentPalette) {
-			remove();
-		}
+		remove();
+		setTimeout(() => {
+			onsSelectCb(value);
+		}, 0);
 	}
 
 	/**
@@ -139,7 +113,7 @@ export default function palette(getList, onsSelectCb, placeholder, onremove) {
 	 */
 	async function generateHints(setHints, hintModification) {
 		const list = getList(hintModification);
-		const data = list instanceof Promise ? await list : list;
+		let data = list instanceof Promise ? await list : list;
 		setHints(data);
 	}
 
@@ -151,28 +125,18 @@ export default function palette(getList, onsSelectCb, placeholder, onremove) {
 		keyboardHandler.off("keyboardHideStart", remove);
 		$input.removeEventListener("blur", remove);
 
+		restoreTheme();
 		$palette.remove();
 		$mask.remove();
-
-		// Restore previous palette if chained
-		if (isChained && previousPalette) {
-			activePalette = previousPalette;
-		} else {
-			activePalette = null;
-			restoreTheme();
-		}
 
 		if (typeof onremove === "function") {
 			onremove();
 			return;
 		}
 
-		// If not chained or last in chain, focus the editor
-		if (!isChained) {
-			const { activeFile, editor } = editorManager;
-			if (activeFile.wasFocused) {
-				editor.focus();
-			}
+		const { activeFile, editor } = editorManager;
+		if (activeFile.wasFocused) {
+			editor.focus();
 		}
 
 		remove = () => {
