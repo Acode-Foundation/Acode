@@ -19,6 +19,7 @@ import com.sshtools.common.sftp.SftpFileAttributes;
 import com.sshtools.common.sftp.SftpStatusException;
 import com.sshtools.common.ssh.SshException;
 import com.sshtools.common.ssh.components.SshKeyPair;
+import com.sshtools.common.ssh.components.jce.JCEProvider;
 import com.sshtools.common.util.FileUtils;
 import java.io.File;
 import java.io.IOException;
@@ -94,6 +95,7 @@ public class Sftp extends CordovaPlugin {
               int port = args.optInt(1);
               String username = args.optString(2);
               String password = args.optString(3);
+              JCEProvider.enableBouncyCastle(true);
               Log.d(
                 TAG,
                 "Connecting to " + host + ":" + port + " as " + username
@@ -175,6 +177,8 @@ public class Sftp extends CordovaPlugin {
               Uri uri = file.getUri();
               ContentResolver contentResolver = context.getContentResolver();
               InputStream in = contentResolver.openInputStream(uri);
+
+              JCEProvider.enableBouncyCastle(true);
 
               SshKeyPair keyPair = null;
               try {
