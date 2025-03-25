@@ -58,7 +58,7 @@ export default async function PluginInclude(
 		action: $page.hide,
 	});
 
-	$page.onhide = function () {
+	$page.onhide = () => {
 		helpers.hideAd();
 		actionStack.remove("plugin");
 		loader.removeTitleLoader();

@@ -29,7 +29,7 @@ import appSettings from "./settings";
 
 export default async function openFile(file, options = {}) {
 	try {
-		let uri = typeof file === "string" ? file : file.uri;
+		const uri = typeof file === "string" ? file : file.uri;
 		if (!uri) return;
 
 		/**@type {EditorFile} */

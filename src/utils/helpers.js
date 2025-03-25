@@ -265,7 +265,7 @@ export default {
 		const files = editorManager.files;
 		const { url } = Url.parse(oldUrl);
 
-		for (let file of files) {
+		for (const file of files) {
 			if (!file.uri) continue;
 			const fileUrl = Url.parse(file.uri).url;
 			if (new RegExp("^" + escapeStringRegexp(url)).test(fileUrl)) {

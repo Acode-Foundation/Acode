@@ -83,7 +83,7 @@ export default {
 	 * @param  {...string} paths
 	 */
 	join(...paths) {
-		let res = paths.join("/");
+		const res = paths.join("/");
 		return this.normalize(res);
 	},
 
@@ -170,7 +170,7 @@ resolvePath('path/to/some/dir/', '../../dir') //returns 'path/to/dir'
 		const p2len = path2.length;
 
 		let flag = false;
-		let path = [];
+		const path = [];
 
 		path1.forEach((dir, i) => {
 			if (dir === path2[i] && !flag) return;

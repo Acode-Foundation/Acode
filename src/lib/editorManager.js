@@ -28,7 +28,7 @@ async function EditorManager($header, $body) {
 	 * @type {Collapsible & HTMLElement}
 	 */
 	let $openFileList;
-	let TIMEOUT_VALUE = 500;
+	const TIMEOUT_VALUE = 500;
 	let preventScrollbarV = false;
 	let preventScrollbarH = false;
 	let scrollBarVisibilityCount = 0;
@@ -119,7 +119,7 @@ async function EditorManager($header, $body) {
 		},
 		emit(event, ...args) {
 			let detailedEvent;
-			let detailedEventArgs = args.slice(1);
+			const detailedEventArgs = args.slice(1);
 			if (event === "update") {
 				const subEvent = args[0];
 				if (subEvent) {
@@ -144,79 +144,79 @@ async function EditorManager($header, $body) {
 	);
 	$hScrollbar.onhide = $vScrollbar.onhide = updateFloatingButton.bind({}, true);
 
-	appSettings.on("update:textWrap", function (value) {
+	appSettings.on("update:textWrap", (value) => {
 		updateMargin();
-		for (let file of manager.files) {
+		for (const file of manager.files) {
 			file.session.setUseWrapMode(value);
 			if (!value) file.session.on("changeScrollLeft", onscrollleft);
 			else file.session.off("changeScrollLeft", onscrollleft);
 		}
 	});
 
-	appSettings.on("update:tabSize", function (value) {
+	appSettings.on("update:tabSize", (value) => {
 		manager.files.forEach((file) => file.session.setTabSize(value));
 	});
 
-	appSettings.on("update:softTab", function (value) {
+	appSettings.on("update:softTab", (value) => {
 		manager.files.forEach((file) => file.session.setUseSoftTabs(value));
 	});
 
-	appSettings.on("update:showSpaces", function (value) {
+	appSettings.on("update:showSpaces", (value) => {
 		editor.setOption("showInvisibles", value);
 	});
 
-	appSettings.on("update:fontSize", function (value) {
+	appSettings.on("update:fontSize", (value) => {
 		editor.setFontSize(value);
 	});
 
-	appSettings.on("update:openFileListPos", function (value) {
+	appSettings.on("update:openFileListPos", (value) => {
 		initFileTabContainer();
 		$vScrollbar.resize();
 	});
 
-	appSettings.on("update:showPrintMargin", function (value) {
+	appSettings.on("update:showPrintMargin", (value) => {
 		editorManager.editor.setOption("showPrintMargin", value);
 	});
 
-	appSettings.on("update:scrollbarSize", function (value) {
+	appSettings.on("update:scrollbarSize", (value) => {
 		$vScrollbar.size = value;
 		$hScrollbar.size = value;
 	});
 
-	appSettings.on("update:liveAutoCompletion", function (value) {
+	appSettings.on("update:liveAutoCompletion", (value) => {
 		editor.setOption("enableLiveAutocompletion", value);
 	});
 
-	appSettings.on("update:linenumbers", function (value) {
+	appSettings.on("update:linenumbers", (value) => {
 		updateMargin(true);
 		editor.resize(true);
 	});
 
-	appSettings.on("update:lineHeight", function (value) {
+	appSettings.on("update:lineHeight", (value) => {
 		editor.container.style.lineHeight = value;
 	});
 
-	appSettings.on("update:relativeLineNumbers", function (value) {
+	appSettings.on("update:relativeLineNumbers", (value) => {
 		editor.setOption("relativeLineNumbers", value);
 	});
 
-	appSettings.on("update:elasticTabstops", function (value) {
+	appSettings.on("update:elasticTabstops", (value) => {
 		editor.setOption("useElasticTabstops", value);
 	});
 
-	appSettings.on("update:rtlText", function (value) {
+	appSettings.on("update:rtlText", (value) => {
 		editor.setOption("rtlText", value);
 	});
 
-	appSettings.on("update:hardWrap", function (value) {
+	appSettings.on("update:hardWrap", (value) => {
 		editor.setOption("hardWrap", value);
 	});
 
-	appSettings.on("update:printMargin", function (value) {
+	appSettings.on("update:printMargin", (value) => {
 		editor.setOption("printMarginColumn", value);
 	});
 
-	appSettings.on("update:colorPreview", function (value) {
+	appSettings.on("update:colorPreview", (value) => {
 		if (value) {
 			return initColorView(editor, true);
 		}
@@ -224,16 +224,16 @@ async function EditorManager($header, $body) {
 		deactivateColorView();
 	});
 
-	appSettings.on("update:showSideButtons", function () {
+	appSettings.on("update:showSideButtons", () => {
 		updateMargin();
 		updateSideButtonContainer();
 	});
 
-	appSettings.on("update:showAnnotations", function () {
+	appSettings.on("update:showAnnotations", () => {
 		updateMargin(true);
 	});
 
-	appSettings.on("update:fadeFoldWidgets", function (value) {
+	appSettings.on("update:fadeFoldWidgets", (value) => {
 		editor.setOption("fadeFoldWidgets", value);
 	});
 

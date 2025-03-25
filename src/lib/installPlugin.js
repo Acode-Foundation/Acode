@@ -376,7 +376,7 @@ async function listFileRecursive(dir, files) {
  */
 async function deleteRedundantFiles(pluginDir, state) {
 	/** @type {string[]} */
-	let files = [];
+	const files = [];
 	await listFileRecursive(pluginDir, files);
 
 	for (const file of files) {

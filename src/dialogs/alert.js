@@ -16,9 +16,7 @@ function alert(titleText, message, onhide) {
 
 	const regex = /(https?:\/\/[^\s]+)/g;
 	if (regex.test(message)) {
-		message = message.replace(regex, function (url) {
-			return `<a href='${url}'>${url}</a>`;
-		});
+		message = message.replace(regex, (url) => `<a href='${url}'>${url}</a>`);
 	}
 
 	const titleSpan = tag("strong", {

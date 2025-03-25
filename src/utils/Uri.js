@@ -84,7 +84,7 @@ export default {
 			const storageList = JSON.parse(localStorage.storageList || "[]");
 
 			const matches = [];
-			for (let storage of storageList) {
+			for (const storage of storageList) {
 				const regex = new RegExp(
 					"^" + escapeStringRegexp(storage.uri ?? storage.url),
 				);

@@ -345,7 +345,7 @@ function updateSearchState() {
 	const { editor } = editorManager;
 	const { $searchPos, $searchTotal } = quickTools;
 
-	let regex = editor.$search.$options.re;
+	const regex = editor.$search.$options.re;
 	let all = 0;
 	let before = 0;
 	if (regex) {

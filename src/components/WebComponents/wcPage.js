@@ -61,7 +61,7 @@ export default class WCPage extends HTMLElement {
 	}
 
 	appendBody(...$els) {
-		let $main = this.body;
+		const $main = this.body;
 		if (!$main) return;
 		for (const $el of $els) {
 			$main.append($el);
@@ -262,7 +262,7 @@ class PageHandler {
  */
 function handlePagesForSmoothExperience() {
 	const $pages = [...tag.getAll("wc-page")];
-	for (let $page of $pages.slice(0, -1)) {
+	for (const $page of $pages.slice(0, -1)) {
 		$page.handler.replaceEl();
 	}
 }

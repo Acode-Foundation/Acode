@@ -10,7 +10,7 @@ ace.define(
 		"ace/lib/oop",
 		"ace/mode/text_highlight_rules",
 	],
-	function (require, exports, module) {
+	(require, exports, module) => {
 		const oop = require("../lib/oop");
 		const { TextHighlightRules } = require("./text_highlight_rules");
 
@@ -120,7 +120,7 @@ define("ace/mode/folding/search_result_fold", [
 	"ace/lib/oop",
 	"ace/mode/folding/fold_mode",
 	"ace/range",
-], function (require, exports, module) {
+], (require, exports, module) => {
 	const oop = require("ace/lib/oop");
 	const { FoldMode: BaseFoldMode } = require("./fold_mode");
 	const { Range } = require("ace/range");
@@ -153,7 +153,7 @@ define("ace/mode/folding/search_result_fold", [
 				return new Range(startRow, startColumn, endRow, endColumn);
 			}
 		};
-		this.getFoldWidget = function (session, foldStyle, row) {
+		this.getFoldWidget = (session, foldStyle, row) => {
 			var line = session.getLine(row);
 			var indent = line.search(/\S/);
 			var next = session.getLine(row + 1);
@@ -206,7 +206,7 @@ ace.define(
 		"ace/mode/folding/search_result_fold",
 		"ace/search_result_highlight_rules",
 	],
-	function (require, exports, module) {
+	(require, exports, module) => {
 		const oop = require("ace/lib/oop");
 		const { Mode: TextMode } = require("./text");
 		const { SearchHighlightRules } = require("./search_result_highlight_rules");

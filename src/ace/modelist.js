@@ -5,11 +5,11 @@ export function initModes() {
 	ace.define(
 		"ace/ext/modelist",
 		["require", "exports", "module"],
-		function (require, exports, module) {
+		(require, exports, module) => {
 			module.exports = {
 				getModeForPath(path) {
 					let mode = modesByName.text;
-					let fileName = path.split(/[\/\\]/).pop();
+					const fileName = path.split(/[\/\\]/).pop();
 					for (const iMode of modes) {
 						if (iMode.supportsFile?.(fileName)) {
 							mode = iMode;
@@ -81,9 +81,8 @@ class Mode {
 
 		if (/\^/.test(extensions)) {
 			re =
-				extensions.replace(/\|(\^)?/g, function (a, b) {
-					return "$|" + (b ? "^" : "^.*\\.");
-				}) + "$";
+				extensions.replace(/\|(\^)?/g, (a, b) => "$|" + (b ? "^" : "^.*\\.")) +
+				"$";
 		} else {
 			re = "^.*\\.(" + extensions + ")$";
 		}

@@ -23,7 +23,7 @@ export default function DonateInclude() {
 		action: $page.hide,
 	});
 
-	$page.onhide = function () {
+	$page.onhide = () => {
 		actionStack.remove("donate page");
 		if (adShown) helpers.hideAd();
 	};
@@ -33,9 +33,9 @@ export default function DonateInclude() {
 	iap.setPurchaseUpdatedListener(
 		(purchases) => {
 			if (Array.isArray(purchases)) {
-				(async function () {
+				(async () => {
 					const promises = [];
-					for (let purchase of purchases) {
+					for (const purchase of purchases) {
 						promises.push(
 							new Promise((resolve, reject) => {
 								iap.consume(
@@ -85,7 +85,7 @@ export default function DonateInclude() {
 		},
 	);
 
-	app.onclick = function (e) {
+	app.onclick = (e) => {
 		const $target = e.target;
 		if (!($target instanceof HTMLElement)) return;
 		const action = $target.getAttribute("action");

@@ -37,7 +37,7 @@ const keys = {
 	46: "Delete",
 };
 
-const initKeyboardEventType = (function (event) {
+const initKeyboardEventType = ((event) => {
 	try {
 		event.initKeyboardEvent(
 			"keyup", // in DOMString typeArg
@@ -98,11 +98,11 @@ const own = Function.prototype.call.bind(Object.prototype.hasOwnProperty);
 
 const ObjectDefineProperty =
 	Object.defineProperty ||
-	function (obj, prop, val) {
+	((obj, prop, val) => {
 		if ("value" in val) {
 			obj[prop] = val["value"];
 		}
-	};
+	});
 
 /**
  * Creates a keyboard event
@@ -120,7 +120,7 @@ export default function KeyboardEvent(type, dict) {
 	}
 
 	let propName;
-	let localDict = {};
+	const localDict = {};
 
 	if (!dict.key && (dict.keyCode || dict.which)) {
 		let key = keys[dict.keyCode || dict.which];

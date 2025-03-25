@@ -57,7 +57,7 @@ export default function ScrollBar(options) {
 	const isVertical = placement === "right" || placement === "left";
 	const observer = new MutationObserver(observerCallback);
 	let scroll = 0;
-	let touchStartValue = {
+	const touchStartValue = {
 		x: 0,
 		y: 0,
 	};

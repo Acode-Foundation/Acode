@@ -15,7 +15,7 @@ export default {
 		}
 
 		//setup vibration
-		app.addEventListener("click", function (e) {
+		app.addEventListener("click", (e) => {
 			const $target = e.target;
 			if ($target.hasAttribute("vibrate") && appSettings.value.vibrateOnTap) {
 				navigator.vibrate(constants.VIBRATION_TIME);

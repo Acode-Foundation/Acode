@@ -31,7 +31,7 @@ export default async function Changelog() {
 		$content.innerHTML = '<div class="error">Failed to load changelog</div>';
 	}
 
-	$page.onhide = function () {
+	$page.onhide = () => {
 		actionStack.remove("changelog");
 	};
 

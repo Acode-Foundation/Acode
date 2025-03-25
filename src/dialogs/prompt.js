@@ -42,7 +42,7 @@ export default function prompt(
 			type: "submit",
 			textContent: strings.ok,
 			disabled: !defaultValue,
-			onclick: function () {
+			onclick: () => {
 				if (options.required && !input.value) {
 					errorMessage.textContent = strings.required;
 					return;
@@ -56,7 +56,7 @@ export default function prompt(
 		const cancelBtn = tag("button", {
 			textContent: strings.cancel,
 			type: "button",
-			onclick: function () {
+			onclick: () => {
 				hide();
 				resolve(null);
 			},
@@ -97,7 +97,7 @@ export default function prompt(
 			}
 		}
 
-		input.oninput = function () {
+		input.oninput = () => {
 			const { match, test } = options;
 			let isValid = true;
 

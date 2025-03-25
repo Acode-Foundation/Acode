@@ -35,7 +35,7 @@ const exec = promisify(require("node:child_process").exec);
 		let babelrcText = fs.readFileSync(babelrcpath, "utf-8");
 		let config = fs.readFileSync(configpath, "utf-8");
 		let html = fs.readFileSync(htmlpath, "utf-8");
-		let platforms = fs
+		const platforms = fs
 			.readdirSync(platformsDir)
 			.filter((file) => !file.startsWith("."));
 		let logo, id, currentId;
@@ -70,7 +70,7 @@ const exec = promisify(require("node:child_process").exec);
 			fs.writeFileSync(logopath, logo, "utf8");
 			fs.writeFileSync(configpath, config, "utf8");
 
-			for (let platform of platforms) {
+			for (const platform of platforms) {
 				if (!platform) continue;
 
 				promises.push(

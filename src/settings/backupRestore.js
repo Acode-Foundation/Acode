@@ -102,9 +102,9 @@ function backupRestore() {
 	}
 }
 
-backupRestore.restore = async function (url) {
+backupRestore.restore = async (url) => {
 	try {
-		let fs = fsOperation(url);
+		const fs = fsOperation(url);
 		let backup = await fs.readFile("utf8");
 
 		try {

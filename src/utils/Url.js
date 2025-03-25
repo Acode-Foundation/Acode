@@ -105,7 +105,7 @@ export default {
 	 * @returns {string}
 	 */
 	safe(url) {
-		let { url: uri, query } = this.parse(url);
+		const { url: uri, query } = this.parse(url);
 		url = uri;
 		const protocol = (this.PROTOCOL_PATTERN.exec(url) || [])[0] || "";
 		if (protocol) url = url.replace(new RegExp("^" + protocol), "");
@@ -116,9 +116,10 @@ export default {
 		return protocol + parts.join("/") + query;
 
 		function fixedEncodeURIComponent(str) {
-			return encodeURIComponent(str).replace(/[!'()*]/g, function (c) {
-				return "%" + c.charCodeAt(0).toString(16);
-			});
+			return encodeURIComponent(str).replace(
+				/[!'()*]/g,
+				(c) => "%" + c.charCodeAt(0).toString(16),
+			);
 		}
 	},
 	/**
@@ -232,7 +233,7 @@ export default {
 		if (query && typeof query === "object") {
 			string += "?";
 
-			for (let key in query) string += `${enc(key)}=${enc(query[key])}&`;
+			for (const key in query) string += `${enc(key)}=${enc(query[key])}&`;
 
 			string = string.slice(0, -1);
 		}
@@ -294,7 +295,7 @@ export default {
 			port = Number.parseInt(port);
 		}
 
-		let { keyFile, passPhrase } = query;
+		const { keyFile, passPhrase } = query;
 
 		if (keyFile) {
 			query.keyFile = decodeURIComponent(keyFile);

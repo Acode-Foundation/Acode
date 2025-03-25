@@ -200,9 +200,9 @@ const commands = [
 		name: "cut",
 		description: "Cut",
 		exec(editor) {
-			let cutLine =
+			const cutLine =
 				editor.$copyWithEmptySelection && editor.selection.isEmpty();
-			let range = cutLine
+			const range = cutLine
 				? editor.selection.getLineRange()
 				: editor.selection.getRange();
 			editor._emit("cut", range);
@@ -285,7 +285,7 @@ const commands = [
 		name: "increaseFontSize",
 		description: "Increase font size",
 		exec(editor) {
-			let size = Number.parseInt(editor.getFontSize(), 10) || 12;
+			const size = Number.parseInt(editor.getFontSize(), 10) || 12;
 			editor.setFontSize(size + 1);
 			settings.value.fontSize = size + 1 + "px";
 			settings.update(false);
@@ -295,7 +295,7 @@ const commands = [
 		name: "decreaseFontSize",
 		description: "Decrease font size",
 		exec(editor) {
-			let size = Number.parseInt(editor.getFontSize(), 10) || 12;
+			const size = Number.parseInt(editor.getFontSize(), 10) || 12;
 			editor.setFontSize(Math.max(size - 1 || 1));
 			settings.value.fontSize = Math.max(size - 1 || 1) + "px";
 			settings.update(false);

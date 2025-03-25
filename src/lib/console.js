@@ -4,7 +4,7 @@ import * as esprima from "esprima";
 import css from "styles/console.module.scss";
 import loadPolyFill from "utils/polyfill";
 
-(function () {
+(() => {
 	loadPolyFill.apply(window);
 
 	let consoleVisible = false;
@@ -37,7 +37,7 @@ import loadPolyFill from "utils/polyfill";
 				passive: false,
 			});
 
-			document.ontouchend = function (e) {
+			document.ontouchend = (e) => {
 				document.removeEventListener("touchmove", touchmove, {
 					passive: "false",
 				});
@@ -219,8 +219,8 @@ import loadPolyFill from "utils/polyfill";
 		isFocused = true;
 		if (key === "Enter") {
 			const regex = /[\[|{\(\)\}\]]/g;
-			let code = this.value.trim();
-			let isOdd = (code.length - code.replace(regex, "").length) % 2;
+			const code = this.value.trim();
+			const isOdd = (code.length - code.replace(regex, "").length) % 2;
 
 			if (!code || isOdd) return;
 			e.preventDefault();
@@ -242,7 +242,7 @@ import loadPolyFill from "utils/polyfill";
 		if (obj instanceof Promise && !("[[PromiseStatus]]" in obj))
 			obj = getPromiseStatus(obj);
 
-		let value = objValue(obj, ...keys);
+		const value = objValue(obj, ...keys);
 		const $group = tag("c-group");
 		const $toggler = tag("c-type", {
 			attr: {
@@ -263,7 +263,7 @@ import loadPolyFill from "utils/polyfill";
 
 				const possibleKeys = [];
 
-				for (let key in value) {
+				for (const key in value) {
 					possibleKeys.push(key);
 				}
 
@@ -345,7 +345,7 @@ import loadPolyFill from "utils/polyfill";
 		if (obj.info) return;
 		let status = "pending";
 		let value;
-		let result = obj.then(
+		const result = obj.then(
 			(val) => {
 				status = "resolved";
 				value = val;
@@ -401,7 +401,7 @@ import loadPolyFill from "utils/polyfill";
 				str = joinParams(expression.params);
 			}
 		} else {
-			let string = parsed.id.name + joinParams(parsed.params || []);
+			const string = parsed.id.name + joinParams(parsed.params || []);
 			str = string;
 		}
 
@@ -429,7 +429,7 @@ import loadPolyFill from "utils/polyfill";
 	 * @param  {...any} args
 	 */
 	function log(mode, options, ...args) {
-		let location = options.location || "console";
+		const location = options.location || "console";
 		const $messages = tag("c-message", {
 			attr: {
 				"log-level": mode,
@@ -533,7 +533,7 @@ import loadPolyFill from "utils/polyfill";
 						break;
 					case "%o":
 					case "%O":
-						let id = new Date().getMilliseconds() + "";
+						const id = new Date().getMilliseconds() + "";
 						window.__objs[id] = value;
 						value = `<c-object onclick='console.log(window.__objs[${id}])'>Object</c-object>`;
 						break;
@@ -595,7 +595,7 @@ import loadPolyFill from "utils/polyfill";
 		if (error === null) {
 			error = new Error();
 		}
-		let stack = error.stack.split("\n");
+		const stack = error.stack.split("\n");
 		if (!skip) stack.splice(1, 1);
 		let regExecRes = /<(.*)>:(\d+):(\d+)/.exec(stack[1]) || [];
 		if (!regExecRes.length) {

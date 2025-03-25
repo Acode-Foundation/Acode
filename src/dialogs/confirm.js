@@ -27,14 +27,14 @@ function confirm(titleText, message, isHTML) {
 		});
 		const okBtn = tag("button", {
 			textContent: strings.ok,
-			onclick: function () {
+			onclick: () => {
 				hide();
 				resolve(true);
 			},
 		});
 		const cancelBtn = tag("button", {
 			textContent: strings.cancel,
-			onclick: function () {
+			onclick: () => {
 				hide();
 				resolve(false);
 			},

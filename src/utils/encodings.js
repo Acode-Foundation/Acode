@@ -1,7 +1,7 @@
 import alert from "dialogs/alert";
 import settings from "lib/settings";
 
-let encodings = {};
+const encodings = {};
 
 /**
  * @typedef {Object} Encoding

@@ -688,7 +688,7 @@ function Textarea({ name, placeholder, ref }) {
 function toRegex(search, options) {
 	const { caseSensitive = false, wholeWord = false, regExp = false } = options;
 
-	let flags = caseSensitive ? "gm" : "gim";
+	const flags = caseSensitive ? "gm" : "gim";
 	let regexString = regExp ? search : escapeStringRegexp(search);
 
 	if (wholeWord) {

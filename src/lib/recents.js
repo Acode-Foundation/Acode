@@ -87,8 +87,8 @@ const recents = {
 		};
 
 		if (type === "dir" || type === "all") {
-			let dirs = this.folders;
-			for (let dir of dirs) {
+			const dirs = this.folders;
+			for (const dir of dirs) {
 				const { url } = dir;
 
 				all.push([
@@ -103,8 +103,8 @@ const recents = {
 		}
 
 		if (type === "file" || type === "all") {
-			let files = this.files;
-			for (let file of files) {
+			const files = this.files;
+			for (const file of files) {
 				if (!file) continue;
 				const name = shortName(Url.parse(file).url);
 				all.push([

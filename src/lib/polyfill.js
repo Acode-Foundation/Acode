@@ -1,7 +1,7 @@
 // polyfill for prepend
 
-(function (arr) {
-	arr.forEach(function (item) {
+((arr) => {
+	arr.forEach((item) => {
 		if (item.hasOwnProperty("prepend")) {
 			return;
 		}
@@ -13,7 +13,7 @@
 				var argArr = Array.prototype.slice.call(arguments),
 					docFrag = document.createDocumentFragment();
 
-				argArr.forEach(function (argItem) {
+				argArr.forEach((argItem) => {
 					var node =
 						argItem instanceof Node
 							? argItem
@@ -29,8 +29,8 @@
 
 // polyfill for closest
 
-(function (arr) {
-	arr.forEach(function (item) {
+((arr) => {
+	arr.forEach((item) => {
 		if (item.hasOwnProperty("closest")) {
 			return;
 		}
@@ -54,8 +54,8 @@
 
 // polyfill for replaceWith
 
-(function (arr) {
-	arr.forEach(function (item) {
+((arr) => {
+	arr.forEach((item) => {
 		if (item.hasOwnProperty("replaceWith")) {
 			return;
 		}
@@ -93,8 +93,8 @@
 
 // polyfill for toggleAttribute
 
-(function (arr) {
-	arr.forEach(function (item) {
+((arr) => {
+	arr.forEach((item) => {
 		if (item.hasOwnProperty("toggleAttribute")) {
 			return;
 		}
@@ -116,17 +116,17 @@
 
 // polyfill for performance.now
 
-(function () {
+(() => {
 	if ("performance" in window === false) {
 		window.performance = {};
 	}
 
 	Date.now =
 		Date.now ||
-		function () {
+		(() => {
 			// thanks IE8
 			return new Date().getTime();
-		};
+		});
 
 	if ("now" in window.performance === false) {
 		var nowOffset = Date.now();

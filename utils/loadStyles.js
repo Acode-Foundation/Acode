@@ -9,7 +9,7 @@ const cssFiles = fs.readdirSync(CSS).filter((file) => file.endsWith(".css"));
 const htmlFiles = fs.readdirSync(WWW).filter((file) => file.endsWith(".html"));
 
 try {
-	for (let htmlFile of htmlFiles) {
+	for (const htmlFile of htmlFiles) {
 		loadStyles(path.resolve(WWW, htmlFile));
 	}
 } catch (error) {
@@ -27,7 +27,7 @@ process.exit(0);
 function loadStyles(htmlFile) {
 	let styles = "<!--styles-->";
 
-	for (let cssFile of cssFiles) {
+	for (const cssFile of cssFiles) {
 		styles += `\n<link rel="stylesheet" href="${CSS_PATH}${cssFile}">`;
 	}
 

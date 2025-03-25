@@ -35,7 +35,7 @@ export default function purchaseListener(onpurchase, onerror) {
 				return;
 			}
 
-			let message =
+			const message =
 				error === iap.USER_CANCELED ? strings.failed : strings.canceled;
 
 			if (typeof onerror === "function") onerror(message);
