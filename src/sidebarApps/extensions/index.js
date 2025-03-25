@@ -1,10 +1,12 @@
 import "./style.scss";
 
+import ajax from "@deadlyjack/ajax";
 import collapsableList from "components/collapsableList";
 import Sidebar from "components/sidebar";
 import prompt from "dialogs/prompt";
 import select from "dialogs/select";
 import fsOperation from "fileSystem";
+import purchaseListener from "handlers/purchase";
 import constants from "lib/constants";
 import InstallState from "lib/installState";
 import settings from "lib/settings";
@@ -30,12 +32,12 @@ let isLoading = false;
 const $header = (
 	<div className="header">
 		<div className="title">
-			<span>{strings["plugins"]}</span>
-			<button className="icon-button" onclick={filterPlugins}>
-				<span className="icon tune"></span>
+			<span>{strings.plugins}</span>
+			<button type="button" className="icon-button" onclick={filterPlugins}>
+				<span className="icon tune" />
 			</button>
-			<button className="icon-button" onclick={addSource}>
-				<span className="icon more_vert"></span>
+			<button type="button" className="icon-button" onclick={addSource}>
+				<span className="icon more_vert" />
 			</button>
 		</div>
 		<input
@@ -53,7 +55,7 @@ let installedPlugins = [];
 export default [
 	"extension", // icon
 	"extensions", // id
-	strings["plugins"], // title
+	strings.plugins, // title
 	initApp, // init function
 	false, // prepend
 	onSelected, // onSelected function
@@ -65,9 +67,9 @@ export default [
  */
 function onSelected(el) {
 	const $scrollableLists = container.getAll(":scope .scroll[data-scroll-top]");
-	$scrollableLists.forEach(($el) => {
+	for (const $el of $scrollableLists) {
 		$el.scrollTop = $el.dataset.scrollTop;
-	});
+	}
 }
 
 /**
@@ -80,19 +82,19 @@ function initApp(el) {
 	container.content = $header;
 
 	if (!$searchResult) {
-		$searchResult = <ul className="list search-result scroll"></ul>;
+		$searchResult = <ul className="list search-result scroll" />;
 		container.append($searchResult);
 	}
 
 	if (!$explore) {
-		$explore = collapsableList(strings["explore"]);
+		$explore = collapsableList(strings.explore);
 		$explore.ontoggle = loadExplore;
 		$explore.$ul.onscroll = handleScroll;
 		container.append($explore);
 	}
 
 	if (!$installed) {
-		$installed = collapsableList(strings["installed"]);
+		$installed = collapsableList(strings.installed);
 		$installed.ontoggle = loadInstalled;
 		//$installed.expand();
 		container.append($installed);
@@ -146,7 +148,7 @@ async function searchPlugin() {
 		const status = helpers.checkAPIStatus();
 		if (!status) {
 			$searchResult.content = (
-				<span className="error">{strings["api_error"]}</span>
+				<span className="error">{strings.api_error}</span>
 			);
 			return;
 		}
@@ -165,7 +167,7 @@ async function searchPlugin() {
 			updateHeight($searchResult);
 		} catch (error) {
 			window.log("error", error);
-			$searchResult.content = <span className="error">{strings["error"]}</span>;
+			$searchResult.content = <span className="error">{strings.error}</span>;
 		} finally {
 			$searchResult.classList.remove("loading");
 		}
@@ -197,7 +199,7 @@ async function filterPlugins() {
 					className="icon clearclose close-button"
 					data-action="clear-filter"
 					onclick={() => clearFilter()}
-				></span>
+				/>
 			</div>
 		);
 		$searchResult.content = [filterMessage, ...plugins.map(ListItem)];
@@ -210,7 +212,7 @@ async function filterPlugins() {
 	} catch (error) {
 		window.log("error", "Error filtering plugins:");
 		window.log("error", error);
-		$searchResult.content = <span className="error">{strings["error"]}</span>;
+		$searchResult.content = <span className="error">{strings.error}</span>;
 	} finally {
 		$searchResult.classList.remove("loading");
 	}
@@ -269,9 +271,7 @@ async function loadExplore() {
 
 	const status = helpers.checkAPIStatus();
 	if (!status) {
-		$explore.$ul.content = (
-			<span className="error">{strings["api_error"]}</span>
-		);
+		$explore.$ul.content = <span className="error">{strings.api_error}</span>;
 		return;
 	}
 
@@ -294,7 +294,7 @@ async function loadExplore() {
 		currentPage++;
 		updateHeight($explore);
 	} catch (error) {
-		$explore.$ul.content = <span className="error">{strings["error"]}</span>;
+		$explore.$ul.content = <span className="error">{strings.error}</span>;
 	} finally {
 		stopLoading($explore);
 	}
@@ -383,26 +383,27 @@ function ListItem({ icon, name, id, version, downloads, installed, source }) {
 	}
 	const $el = (
 		<div className="tile" data-plugin-id={id}>
-			<span className="icon" style={{ backgroundImage: `url(${icon})` }}></span>
+			<span className="icon" style={{ backgroundImage: `url(${icon})` }} />
 			<span
 				className="text sub-text"
-				data-subtext={`v${version} • ${installed ? `${strings["installed"]}` : helpers.formatDownloadCount(downloads)}`}
+				data-subtext={`v${version} • ${installed ? `${strings.installed}` : helpers.formatDownloadCount(downloads)}`}
 			>
 				{name}
 			</span>
 			{installed ? (
 				<>
 					{source ? (
-						<span className="icon replay" data-action="rebuild-plugin"></span>
+						<span className="icon replay" data-action="rebuild-plugin" />
 					) : null}
-					<span
-						className="icon more_vert"
-						data-action="more-plugin-action"
-					></span>
+					<span className="icon more_vert" data-action="more-plugin-action" />
 				</>
 			) : (
-				<button className="install-btn" data-action="install-plugin">
-					<span className="icon file_downloadget_app"></span>
+				<button
+					type="button"
+					className="install-btn"
+					data-action="install-plugin"
+				>
+					<span className="icon file_downloadget_app" />
 				</button>
 			)}
 		</div>
@@ -421,9 +422,11 @@ function ListItem({ icon, name, id, version, downloads, installed, source }) {
 		if (morePluginActionButton) {
 			more_plugin_action(id, name);
 			return;
-		} else if (installPluginBtn) {
+		}
+		if (installPluginBtn) {
 			try {
-				let purchaseToken = null;
+				let purchaseToken;
+				let product;
 				const pluginUrl = Url.join(constants.API_BASE, `plugin/${id}`);
 				const remotePlugin = await fsOperation(pluginUrl)
 					.readFile("json")
@@ -431,30 +434,49 @@ function ListItem({ icon, name, id, version, downloads, installed, source }) {
 						throw new Error("Failed to fetch plugin details");
 					});
 
-				if (remotePlugin && Number.parseFloat(remotePlugin.price) > 0) {
-					try {
-						const [product] = await helpers.promisify(iap.getProducts, [
-							remotePlugin.sku,
-						]);
-						if (product) {
-							async function getPurchase(sku) {
-								const purchases = await helpers.promisify(iap.getPurchases);
-								const purchase = purchases.find((p) =>
-									p.productIds.includes(sku),
-								);
-								return purchase;
-							}
-							const purchase = await getPurchase(product.productId);
-							purchaseToken = purchase?.purchaseToken;
-						}
-					} catch (error) {
-						helpers.error(error);
-						throw new Error("Failed to validate purchase");
+				const isPaid = remotePlugin.price > 0;
+				[product] = await helpers.promisify(iap.getProducts, [
+					remotePlugin.sku,
+				]);
+				if (product) {
+					const purchase = await getPurchase(product.productId);
+					purchaseToken = purchase?.purchaseToken;
+				}
+
+				if (isPaid && !purchaseToken) {
+					if (!product) throw new Error("Product not found");
+					const apiStatus = await helpers.checkAPIStatus();
+
+					if (!apiStatus) {
+						alert(strings.error, strings.api_error);
+						return;
+					}
+
+					iap.setPurchaseUpdatedListener(
+						...purchaseListener(onpurchase, onerror),
+					);
+					await helpers.promisify(iap.purchase, product.json);
+
+					async function onpurchase(e) {
+						const purchase = await getPurchase(product.productId);
+						await ajax.post(Url.join(constants.API_BASE, "plugin/order"), {
+							data: {
+								id: remotePlugin.id,
+								token: purchase?.purchaseToken,
+								package: BuildInfo.packageName,
+							},
+						});
+						purchaseToken = purchase?.purchaseToken;
+					}
+
+					async function onerror(error) {
+						throw error;
 					}
 				}
 
 				const { default: installPlugin } = await import("lib/installPlugin");
 				await installPlugin(id, remotePlugin.name, purchaseToken);
+
 				const searchInput = container.querySelector('input[name="search-ext"]');
 				if (searchInput) {
 					searchInput.value = "";
@@ -462,23 +484,31 @@ function ListItem({ icon, name, id, version, downloads, installed, source }) {
 					updateHeight($searchResult);
 					$installed.expand();
 				}
-				window.toast(strings["success"], 3000);
+
+				window.toast(strings.success, 3000);
 				if (!$explore.collapsed) {
 					$explore.ontoggle();
 				}
 				if (!$installed.collapsed) {
 					$installed.ontoggle();
 				}
+
+				async function getPurchase(sku) {
+					const purchases = await helpers.promisify(iap.getPurchases);
+					const purchase = purchases.find((p) => p.productIds.includes(sku));
+					return purchase;
+				}
 			} catch (err) {
 				console.error(err);
 				window.toast(helpers.errorMessage(err), 3000);
 			}
 			return;
-		} else if (rebuildPluginBtn) {
+		}
+		if (rebuildPluginBtn) {
 			try {
 				const { default: installPlugin } = await import("lib/installPlugin");
 				await installPlugin(source);
-				window.toast(strings["success"], 3000);
+				window.toast(strings.success, 3000);
 			} catch (err) {
 				console.error(err);
 				window.toast(helpers.errorMessage(err), 3000);
@@ -554,13 +584,13 @@ async function uninstall(id) {
 
 async function more_plugin_action(id, pluginName) {
 	let actions;
-	let pluginSettings = settings.uiSettings[`plugin-${id}`];
+	const pluginSettings = settings.uiSettings[`plugin-${id}`];
 	if (pluginSettings) {
 		actions = [strings.settings, strings.uninstall];
 	} else {
 		actions = [strings.uninstall];
 	}
-	let action = await select("Action", actions);
+	const action = await select("Action", actions);
 	if (!action) return;
 	switch (action) {
 		case strings.settings:
