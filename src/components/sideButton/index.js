@@ -1,7 +1,7 @@
 import "./style.scss";
 
 /**@type {HTMLDivElement} */
-export const sideButtonContainer = <div className="side-buttons"></div>;
+export const sideButtonContainer = <div className="side-buttons" />;
 
 export default function SideButtons({
 	text,
@@ -12,11 +12,12 @@ export default function SideButtons({
 }) {
 	const $button = (
 		<button
+			type="button"
 			className="side-button"
 			onclick={onclick}
 			style={{ backgroundColor, color: textColor }}
 		>
-			<spam className={`icon ${icon}`}></spam>
+			<span className={`icon ${icon}`} />
 			<span>{text}</span>
 		</button>
 	);

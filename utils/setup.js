@@ -33,7 +33,7 @@ execSync("cordova plugin add cordova-plugin-device", { stdio: "inherit" });
 execSync("cordova plugin add cordova-plugin-file", { stdio: "inherit" });
 
 const plugins = fs.readdirSync(path.join(__dirname, "../src/plugins"));
-plugins.forEach((plugin) => {
-	if (PLATFORM_FILES.includes(plugin) || plugin.startsWith(".")) return;
+for (const plugin of plugins) {
+	if (PLATFORM_FILES.includes(plugin) || plugin.startsWith(".")) continue;
 	execSync(`cordova plugin add ./src/plugins/${plugin}`, { stdio: "inherit" });
-});
+}

@@ -73,7 +73,9 @@ export default class TaskManager {
 			this.#busy = false;
 		}
 
-		this.#listeners.forEach((l) => l(task, result, error));
+		for (const l of this.#listeners) {
+			l(task, result, error);
+		}
 		if (this.#mode === "linear") this.#execNext();
 	}
 }

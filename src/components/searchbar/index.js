@@ -22,7 +22,7 @@ function searchBar($list, setHide, onhideCb, searchFunction) {
 				placeholder={strings.search}
 				enterKeyHint="go"
 			/>
-			<span className="icon clearclose" onclick={hide}></span>
+			<span className="icon clearclose" onclick={hide} />
 		</div>
 	);
 

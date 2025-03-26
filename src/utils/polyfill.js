@@ -61,7 +61,7 @@ export default function loadPolyFill() {
 	if (!String.prototype.subtract) {
 		Object.defineProperty(String.prototype, "subtract", {
 			value: function (str) {
-				return this.replace(new RegExp("^" + str), "");
+				return this.replace(new RegExp(`^${str}`), "");
 			},
 		});
 	}
@@ -76,14 +76,13 @@ export default function loadPolyFill() {
 						this.slice(index + 1),
 					];
 					return strs[0] + (strs[1] ? strs[1].toUpperCase() : "") + strs[2];
-				} else {
-					let strs = this.split(" ");
-					strs = strs.map((str) => {
-						if (str.length > 0) return str[0].toUpperCase() + str.slice(1);
-						return "";
-					});
-					return strs.join(" ");
 				}
+				let strs = this.split(" ");
+				strs = strs.map((str) => {
+					if (str.length > 0) return str[0].toUpperCase() + str.slice(1);
+					return "";
+				});
+				return strs.join(" ");
 			},
 		});
 	}

@@ -67,9 +67,9 @@ export default function Contextmenu(content, options) {
 	});
 
 	if (Array.isArray(options.items)) {
-		options.items.forEach(([text, action]) => {
+		for (const [text, action] of options.items) {
 			$el.append(<li data-action={action}>{text}</li>);
-		});
+		}
 	}
 
 	if (!options.innerHTML) addTabindex();
@@ -90,17 +90,17 @@ export default function Contextmenu(content, options) {
 		if (options.toggler) {
 			const client = options.toggler.getBoundingClientRect();
 			if (!options.top && !options.bottom) {
-				$el.style.top = client.top + "px";
+				$el.style.top = `${client.top}px`;
 			}
 			if (!options.left && !options.right) {
-				$el.style.right = innerWidth - client.right + "px";
+				$el.style.right = `${innerWidth - client.right}px`;
 			}
 		}
 
 		app.append($el, $mask);
 
 		const $firstChild = $el.firstChild;
-		if ($firstChild && $firstChild.focus) $firstChild.focus();
+		if ($firstChild?.focus) $firstChild.focus();
 	}
 
 	function hide() {

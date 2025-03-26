@@ -87,10 +87,10 @@ export async function initEncodings() {
 	return new Promise((resolve, reject) => {
 		cordova.exec(
 			(map) => {
-				Object.keys(map).forEach((key) => {
+				for (const key of Object.keys(map)) {
 					const encoding = map[key];
 					encodings[key] = encoding;
-				});
+				}
 				resolve();
 			},
 			(error) => {

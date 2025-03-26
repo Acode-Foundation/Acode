@@ -287,7 +287,7 @@ const commands = [
 		exec(editor) {
 			const size = Number.parseInt(editor.getFontSize(), 10) || 12;
 			editor.setFontSize(size + 1);
-			settings.value.fontSize = size + 1 + "px";
+			settings.value.fontSize = `${size + 1}px`;
 			settings.update(false);
 		},
 	},
@@ -297,7 +297,7 @@ const commands = [
 		exec(editor) {
 			const size = Number.parseInt(editor.getFontSize(), 10) || 12;
 			editor.setFontSize(Math.max(size - 1 || 1));
-			settings.value.fontSize = Math.max(size - 1 || 1) + "px";
+			settings.value.fontSize = `${Math.max(size - 1 || 1)}px`;
 			settings.update(false);
 		},
 	},
@@ -344,9 +344,9 @@ const commands = [
 ];
 
 export function setCommands(editor) {
-	commands.forEach((command) => {
+	for (const command of commands) {
 		editor.commands.addCommand(command);
-	});
+	}
 }
 
 /**
@@ -368,7 +368,7 @@ export async function setKeyBindings({ commands }) {
 		await resetKeyBindings();
 	}
 
-	Object.keys(commands.byName).forEach((name) => {
+	for (const name of Object.keys(commands.byName)) {
 		const shortcut = keyboardShortcuts[name];
 		const command = commands.byName[name];
 
@@ -379,7 +379,7 @@ export async function setKeyBindings({ commands }) {
 		// not chekiang if shortcut is empty because it can be used to remove shortcut
 		command.bindKey = { win: shortcut?.key ?? null };
 		commands.addCommand(command);
-	});
+	}
 }
 
 /**

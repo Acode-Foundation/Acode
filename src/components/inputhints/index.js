@@ -140,12 +140,12 @@ export default function inputhints($input, hints, onSelect) {
 		const { value: toTest } = this;
 		const matched = [];
 		const regexp = new RegExp(toTest, "i");
-		hints.forEach((hint) => {
+		for (const hint of hints) {
 			const { value, text } = hint;
 			if (regexp.test(value) || regexp.test(text)) {
 				matched.push(hint);
 			}
-		});
+		}
 		updateUl(matched);
 	}
 
@@ -360,7 +360,7 @@ function Hint({ hint }) {
 		text = hint.text;
 	}
 
-	return <li attr-action="hint" attr-value={value} innerHTML={text}></li>;
+	return <li attr-action="hint" attr-value={value} innerHTML={text} />;
 }
 
 /**

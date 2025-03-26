@@ -34,7 +34,7 @@ export default class WCPage extends HTMLElement {
 				this.onwilldisconnect();
 			}
 
-			this.#on.willdisconnect.forEach((cb) => cb.call(this));
+			for (const cb of this.#on.willdisconnect) cb.call(this);
 		};
 
 		this.handler.onRestore = () => {
@@ -42,7 +42,7 @@ export default class WCPage extends HTMLElement {
 				this.onwillconnect();
 			}
 
-			this.#on.willconnect.forEach((cb) => cb.call(this));
+			for (const cb of this.#on.willconnect) cb.call(this);
 		};
 
 		this.#leadBtn = (
@@ -50,7 +50,7 @@ export default class WCPage extends HTMLElement {
 				className="icon arrow_back"
 				onclick={() => this.hide.call(this)}
 				attr-action="go-back"
-			></span>
+			/>
 		);
 
 		this.#header = tile({
@@ -81,12 +81,12 @@ export default class WCPage extends HTMLElement {
 	connectedCallback() {
 		this.classList.remove("hide");
 		if (typeof this.onconnect === "function") this.onconnect();
-		this.#on.show.forEach((cb) => cb.call(this));
+		for (const cb of this.#on.show) cb.call(this);
 	}
 
 	disconnectedCallback() {
 		if (typeof this.ondisconnect === "function") this.ondisconnect();
-		this.#on.hide.forEach((cb) => cb.call(this));
+		for (const cb of this.#on.hide) cb.call(this);
 	}
 
 	/**
@@ -187,7 +187,7 @@ export default class WCPage extends HTMLElement {
 	#addHeaderOrAssignHeader() {
 		if (!this.classList.contains("primary")) {
 			this.#append(this.#header);
-			this.#append(<div className="main"></div>);
+			this.#append(<div className="main" />);
 		} else {
 			this.#header = this.get("header");
 			if (this.#header) {
@@ -213,7 +213,7 @@ class PageHandler {
 		this.onhide = this.onhide.bind(this);
 		this.onshow = this.onshow.bind(this);
 
-		this.$replacement = <span className="page-replacement"></span>;
+		this.$replacement = <span className="page-replacement" />;
 		this.$replacement.handler = this;
 
 		this.$el.on("hide", this.onhide);

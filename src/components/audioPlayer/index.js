@@ -25,19 +25,17 @@ export default class AudioPlayer {
 		const audioPlayer = (
 			<div className="audio-player">
 				<button
+					type="button"
 					ref={this.elements.playBtn}
 					className="play-btn"
 					ariaLabel="Play/Pause"
 				>
-					<span ref={this.elements.playIcon} className="icon play_arrow"></span>
+					<span ref={this.elements.playIcon} className="icon play_arrow" />
 				</button>
 
 				<div ref={this.elements.timeline} className="timeline">
-					<div ref={this.elements.progress} className="progress"></div>
-					<div
-						ref={this.elements.progressHandle}
-						className="progress-handle"
-					></div>
+					<div ref={this.elements.progress} className="progress" />
+					<div ref={this.elements.progressHandle} className="progress-handle" />
 				</div>
 
 				<div ref={this.elements.timeDisplay} className="time">
@@ -46,10 +44,11 @@ export default class AudioPlayer {
 
 				<div className="volume-control">
 					<button
+						type="button"
 						ref={this.elements.volumeBtn}
 						className="volume-btn"
 						ariaLabel="Volume"
-					></button>
+					/>
 				</div>
 			</div>
 		);

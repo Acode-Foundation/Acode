@@ -56,7 +56,7 @@ export default {
 	extname(url) {
 		const name = this.basename(url);
 		if (name) return path.extname(name);
-		else return null;
+		return null;
 	},
 	/**
 	 * Join all arguments together and normalize the resulting path.
@@ -92,7 +92,7 @@ export default {
 				return null;
 			}
 		} else if (protocol) {
-			url = url.replace(new RegExp("^" + protocol), "");
+			url = url.replace(new RegExp(`^${protocol}`), "");
 			pathnames[0] = url;
 			return protocol + path.join(...pathnames) + query;
 		} else {
@@ -108,7 +108,7 @@ export default {
 		const { url: uri, query } = this.parse(url);
 		url = uri;
 		const protocol = (this.PROTOCOL_PATTERN.exec(url) || [])[0] || "";
-		if (protocol) url = url.replace(new RegExp("^" + protocol), "");
+		if (protocol) url = url.replace(new RegExp(`^${protocol}`), "");
 		const parts = url.split("/").map((part, i) => {
 			if (i === 0) return part;
 			return fixedEncodeURIComponent(part);
@@ -118,7 +118,7 @@ export default {
 		function fixedEncodeURIComponent(str) {
 			return encodeURIComponent(str).replace(
 				/[!'()*]/g,
-				(c) => "%" + c.charCodeAt(0).toString(16),
+				(c) => `%${c.charCodeAt(0).toString(16)}`,
 			);
 		}
 	},
@@ -137,17 +137,17 @@ export default {
 			try {
 				const { rootUri, docId, isFileUri } = Uri.parse(url);
 				if (isFileUri) return this.pathname(rootUri);
-				else return "/" + (docId.split(":")[1] || docId);
+				return `/${docId.split(":")[1] || docId}`;
 			} catch (error) {
 				return null;
 			}
 		} else {
-			if (protocol) url = url.replace(new RegExp("^" + protocol), "");
+			if (protocol) url = url.replace(new RegExp(`^${protocol}`), "");
 
 			if (protocol !== "file:///")
-				return "/" + url.split("/").slice(1).join("/");
+				return `/${url.split("/").slice(1).join("/")}`;
 
-			return "/" + url;
+			return `/${url}`;
 		}
 	},
 
@@ -168,11 +168,9 @@ export default {
 				let { rootUri, docId, isFileUri } = Uri.parse(url);
 
 				if (isFileUri) return this.dirname(rootUri);
-				else {
-					if (docId.endsWith("/")) docId = docId.slice(0, -1);
-					docId = [...docId.split("/").slice(0, -1), ""].join("/");
-					return Uri.format(rootUri, docId);
-				}
+				if (docId.endsWith("/")) docId = docId.slice(0, -1);
+				docId = [...docId.split("/").slice(0, -1), ""].join("/");
+				return Uri.format(rootUri, docId);
 			} catch (error) {
 				return null;
 			}
@@ -225,7 +223,7 @@ export default {
 		if (port) string += `:${port}`;
 
 		if (path) {
-			if (!path.startsWith("/")) path = "/" + path;
+			if (!path.startsWith("/")) path = `/${path}`;
 
 			string += path;
 		}
@@ -257,9 +255,8 @@ export default {
 		const { protocol, username, hostname, pathname } = URLParse(url);
 		if (protocol === "file:") {
 			return url;
-		} else {
-			return `${protocol}//${username}@${hostname}${pathname}`;
 		}
+		return `${protocol}//${username}@${hostname}${pathname}`;
 	},
 	/**
 	 * Decodes url and returns username, password, hostname, pathname, port and query
@@ -267,7 +264,7 @@ export default {
 	 * @returns {URLObject}
 	 */
 	decodeUrl(url) {
-		const uuid = "uuid" + Math.floor(Math.random() + Date.now() * 1000000);
+		const uuid = `uuid${Math.floor(Math.random() + Date.now() * 1000000)}`;
 
 		if (/#/.test(url)) {
 			url = url.replace(/#/g, uuid);

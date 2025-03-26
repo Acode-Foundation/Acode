@@ -65,14 +65,11 @@ export const SearchRow2 = ({ inputRef, posRef, totalRef }) => (
 );
 
 /**@type {HTMLElement} */
-export const $footer = <footer id="quick-tools" tabIndex={-1}></footer>;
+export const $footer = <footer id="quick-tools" tabIndex={-1} />;
 
 /**@type {HTMLElement} */
 export const $toggler = (
-	<span
-		className="floating icon keyboard_arrow_up"
-		id="quicktools-toggler"
-	></span>
+	<span className="floating icon keyboard_arrow_up" id="quicktools-toggler" />
 );
 
 /**@type {HTMLTextAreaElement} */
@@ -89,7 +86,7 @@ export const $input = (
 			top: 0,
 			left: 0,
 		}}
-	></textarea>
+	/>
 );
 
 /**
@@ -107,13 +104,14 @@ export const $input = (
 export function RowItem({ id, icon, letters, action, value, ref, repeat }) {
 	const $item = (
 		<button
+			type="button"
 			ref={ref}
 			className={`icon ${icon}`}
 			data-id={id}
 			data-letters={letters}
 			data-action={action}
 			data-repeat={repeat}
-		></button>
+		/>
 	);
 
 	if (typeof value === "function") {
@@ -132,16 +130,16 @@ export function RowItem({ id, icon, letters, action, value, ref, repeat }) {
  * @returns {Array<Element>}
  */
 function Extras({ extras }) {
-	const div = <div className="section"></div>;
+	const div = <div className="section" />;
 	if (Array.isArray(extras)) {
-		extras.forEach((i) => {
+		for (const i of extras) {
 			if (i instanceof HTMLElement) {
 				div.appendChild(i);
 				return;
 			}
 
 			div.append(<RowItem {...i} />);
-		});
+		}
 	}
 	return div;
 }

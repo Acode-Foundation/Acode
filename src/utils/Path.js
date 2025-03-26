@@ -13,7 +13,7 @@ export default {
 		const res = parts.join("/");
 
 		if (!res) return "/";
-		else return res;
+		return res;
 	},
 
 	/**
@@ -30,7 +30,7 @@ export default {
 		const last = ar.slice(-1)[0];
 		if (!last) return ar.slice(-2)[0];
 		let res = decodeURI(last.split("?")[0] || "");
-		if (this.extname(res) === ext) res = res.replace(new RegExp(ext + "$"), "");
+		if (this.extname(res) === ext) res = res.replace(new RegExp(`${ext}$`), "");
 		return res;
 	},
 
@@ -98,15 +98,15 @@ export default {
 		const resolved = [];
 		const pathAr = path.split("/");
 
-		pathAr.forEach((dir) => {
+		for (const dir of pathAr) {
 			if (dir === "..") {
 				if (resolved.length) resolved.pop();
 			} else if (dir === ".") {
-				return;
+				// Empty block since the continue was unnecessary
 			} else {
 				resolved.push(dir);
 			}
-		});
+		}
 
 		return resolved.join("/");
 	},
@@ -137,24 +137,24 @@ export default {
 ```js
 resolvePath('path/to/some/dir/', '../../dir') //returns 'path/to/dir'
 ```
- * @param {...string} paths 
+ * @param {...string} paths
  */
 	resolve(...paths) {
 		if (!paths.length) throw new Error("resolve(...path) : Arguments missing!");
 
 		let result = "";
 
-		paths.forEach((path) => {
+		for (const path of paths) {
 			if (path.startsWith("/")) {
 				result = path;
-				return;
+				continue;
 			}
 
 			result = this.normalize(this.join(result, path));
-		});
+		}
 
 		if (result.startsWith("/")) return result;
-		else return "/" + result;
+		return `/${result}`;
 	},
 
 	/**

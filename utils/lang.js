@@ -185,9 +185,8 @@ async function update() {
 					delete strings[key];
 					console.log(`Removed: ${key}`);
 					return strings;
-				} else {
-					console.error("String not exists");
 				}
+				console.error("String not exists");
 			});
 		} else if (command === "update-key") {
 			update((strings) => {
@@ -203,10 +202,10 @@ async function update() {
 					return strings;
 				});
 			} else {
-				getStr(`${langName}: `).then((res) => {
-					res = res || arg;
+				getStr(`${langName}: `).then((translatedString) => {
+					const updatedString = translatedString || arg;
 					update((strings) => {
-						strings[key] = res;
+						strings[key] = updatedString;
 						return strings;
 					});
 				});
@@ -243,19 +242,19 @@ async function update() {
 				if (i === list.length - 1) {
 					process.exit();
 				} else {
-					askTranslation(++i);
+					askTranslation(i + 1);
 				}
 			}
 		}
 
-		function addString(string) {
-			string = string || arg;
+		function addString(inputString) {
+			const stringToAdd = inputString || arg;
 			update((strings) => {
 				if (key in strings) {
 					console.error("String already exists");
 					process.exit(1);
 				} else {
-					strings[key] = string;
+					strings[key] = stringToAdd;
 					return strings;
 				}
 			});

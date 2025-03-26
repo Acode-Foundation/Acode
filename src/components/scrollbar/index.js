@@ -89,8 +89,8 @@ export default function ScrollBar(options) {
 	}
 
 	function setWidth(width) {
-		if (isVertical) $scrollbar.style.width = $cursor.style.width = width + "px";
-		else $scrollbar.style.height = $cursor.style.height = width + "px";
+		if (isVertical) $scrollbar.style.width = $cursor.style.width = `${width}px`;
+		else $scrollbar.style.height = $cursor.style.height = `${width}px`;
 	}
 
 	/**
@@ -132,7 +132,7 @@ export default function ScrollBar(options) {
 			else if (top > height) top = height;
 
 			if (currentTopValue !== top) {
-				$cursor.style.top = top + "px";
+				$cursor.style.top = `${top}px`;
 				scroll = top / height;
 				if (typeof $scrollbar.onScroll === "function")
 					$scrollbar.onScroll(scroll);
@@ -145,7 +145,7 @@ export default function ScrollBar(options) {
 			else if (left > width) left = width;
 
 			if (currentLeftValue !== left) {
-				$cursor.style.left = left + "px";
+				$cursor.style.left = `${left}px`;
 				scroll = left / width;
 				if (typeof $scrollbar.onScroll === "function")
 					$scrollbar.onScroll(scroll);
@@ -180,16 +180,15 @@ export default function ScrollBar(options) {
 		if (render && height && width) setValue(scroll);
 	}
 
-	function setValue(val) {
+	function setValue(value) {
 		if (!height || !width) resize(false);
 
 		//Make sure value is between 0 and 1
-		if (val < 0) val = 0;
-		else if (val > 1) val = 1;
+		const boundedValue = Math.max(0, Math.min(1, value));
 
-		scroll = val;
-		if (isVertical) $cursor.style.top = val * height + "px";
-		else $cursor.style.left = val * width + "px";
+		scroll = boundedValue;
+		if (isVertical) $cursor.style.top = `${boundedValue * height}px`;
+		else $cursor.style.left = `${boundedValue * width}px`;
 	}
 
 	function destroy() {

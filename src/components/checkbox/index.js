@@ -40,7 +40,7 @@ function Checkbox(text, checked, name, id, type, ref, size) {
 				name={name}
 				id={id}
 			/>
-			<span style={{ height: size, width: size }} className="box"></span>
+			<span style={{ height: size, width: size }} className="box" />
 			<span>{text}</span>
 		</label>
 	);

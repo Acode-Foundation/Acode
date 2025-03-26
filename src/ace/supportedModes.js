@@ -211,9 +211,9 @@ const languageNames = {
 	AutoHotKey: "AutoHotkey/AutoIt",
 };
 
-Object.keys(modeList).forEach((key) => {
+for (const key of Object.keys(modeList)) {
 	const extensions = modeList[key];
 	const caption = languageNames[key];
 
 	addMode(key, extensions, caption);
-});
+}

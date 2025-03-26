@@ -37,7 +37,7 @@ const keys = {
 	46: "Delete",
 };
 
-const initKeyboardEventType = ((event) => {
+let initKeyboardEventType = ((event) => {
 	try {
 		event.initKeyboardEvent(
 			"keyup", // in DOMString typeArg
@@ -54,9 +54,8 @@ const initKeyboardEventType = ((event) => {
 		);
 
 		return (
-			((((event["keyIdentifier"] || event["key"]) === "+" &&
-				event["location"]) ||
-				event["keyLocation"] === 3) &&
+			((((event.keyIdentifier || event.key) === "+" && event.location) ||
+				event.keyLocation === 3) &&
 				(event.ctrlKey
 					? event.altKey
 						? // webkit
@@ -100,7 +99,7 @@ const ObjectDefineProperty =
 	Object.defineProperty ||
 	((obj, prop, val) => {
 		if ("value" in val) {
-			obj[prop] = val["value"];
+			obj[prop] = val.value;
 		}
 	});
 
@@ -139,11 +138,11 @@ export default function KeyboardEvent(type, dict) {
 				keyboardEventPropertiesDictionary)[propName];
 		}
 
-	const ctrlKey = localDict["ctrlKey"];
-	const shiftKey = localDict["shiftKey"];
-	const altKey = localDict["altKey"];
-	const metaKey = localDict["metaKey"];
-	const altGraphKey = localDict["altGraphKey"];
+	const ctrlKey = localDict.ctrlKey;
+	const shiftKey = localDict.shiftKey;
+	const altKey = localDict.altKey;
+	const metaKey = localDict.metaKey;
+	const altGraphKey = localDict.altGraphKey;
 
 	const modifiersListArg =
 		initKeyboardEventType > 3
@@ -156,22 +155,28 @@ export default function KeyboardEvent(type, dict) {
 				).trim()
 			: null;
 
-	const key = localDict["key"] + "";
-	const char = localDict["char"] + "";
-	const location = localDict["location"];
-	const keyCode =
-		localDict["keyCode"] ||
-		(localDict["keyCode"] = (key && key.charCodeAt(0)) || 0);
-	const charCode =
-		localDict["charCode"] ||
-		(localDict["charCode"] = (char && char.charCodeAt(0)) || 0);
-	const bubbles = localDict["bubbles"];
-	const cancelable = localDict["cancelable"];
-	const repeat = localDict["repeat"];
-	const locale = localDict["locale"];
+	const key = `${localDict.key}`;
+	const char = `${localDict.char}`;
+	const location = localDict.location;
+	let keyCode = localDict.keyCode;
+	if (!keyCode) {
+		localDict.keyCode = key?.charCodeAt(0) || 0;
+		keyCode = localDict.keyCode;
+	}
+	let charCode = localDict.charCode;
+	if (!charCode) {
+		localDict.charCode = char?.charCodeAt(0) || 0;
+		charCode = localDict.charCode;
+	}
+	const bubbles = localDict.bubbles;
+	const cancelable = localDict.cancelable;
+	const repeat = localDict.repeat;
+	const locale = localDict.locale;
 	const view = window;
 
-	localDict["which"] || (localDict["which"] = localDict["keyCode"]);
+	if (!localDict.which) {
+		localDict.which = localDict.keyCode;
+	}
 
 	if ("initKeyEvent" in event) {
 		//FF

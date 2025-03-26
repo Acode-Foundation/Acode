@@ -37,6 +37,6 @@ function loadStyles(htmlFile) {
 		/<!--styles-->([^<]*(?:<(?!!--styles_end-->)[^<]*)*)<!--styles_end-->\n*/gim;
 	let html = fs.readFileSync(htmlFile, "utf8");
 	html = html.replace(rgx, "");
-	html = html.replace("</head>", styles + "</head>");
+	html = html.replace("</head>", `${styles}</head>`);
 	fs.writeFileSync(htmlFile, html);
 }
