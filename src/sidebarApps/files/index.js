@@ -8,7 +8,7 @@ let container;
 export default [
 	"documents", // icon
 	"files", // id
-	strings["files"], // title
+	strings.files, // title
 	initApp, // init function
 	false, // prepend
 	onSelected, // onSelected function
@@ -45,9 +45,9 @@ function initApp(el) {
  */
 function onSelected(el) {
 	const $scrollableLists = container.getAll(":scope .scroll[data-scroll-top]");
-	$scrollableLists.forEach(($el) => {
+	for (const $el of $scrollableLists) {
 		$el.scrollTop = $el.dataset.scrollTop;
-	});
+	}
 }
 
 /**
@@ -99,25 +99,24 @@ export function fixHeight(target) {
 		}
 	}
 
-	lists.forEach((list) => {
-		if (list === activeFileList) return;
+	for (const list of lists) {
+		if (list === activeFileList) continue;
 
 		if (target === activeFileList) {
-			if (list.collapsed) return;
+			if (list.collapsed) continue;
 			target = list;
 		}
 
 		if (list === target && target.unclasped) {
 			list.style.maxHeight = `calc(100% - ${height}px)`;
 			list.style.height = `calc(100% - ${height}px)`;
-			return;
+			continue;
 		}
 
-		if (list.collapsed) return;
+		if (list.collapsed) continue;
 
 		list.collapse();
 		list.style.removeProperty("max-height");
 		list.style.removeProperty("height");
-		return;
-	});
+	}
 }

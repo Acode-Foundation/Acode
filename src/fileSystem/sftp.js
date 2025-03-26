@@ -32,7 +32,7 @@ class SftpClient {
 		this.#hostname = hostname;
 		this.#port = port;
 		this.#username = username;
-		this.#authenticationType = !!authentication.keyFile ? "key" : "password";
+		this.#authenticationType = authentication.keyFile ? "key" : "password";
 		this.#keyFile = authentication.keyFile;
 		this.#passPhrase = authentication.passPhrase;
 		this.#password = authentication.password;
@@ -78,13 +78,13 @@ class SftpClient {
 					sftp.lsDir(
 						path,
 						(res) => {
-							res.forEach((file) => {
+							for (const file of res) {
 								file.url = Url.join(this.#base, file.url);
 								file.type = mimeType.lookup(filename);
 								if (file.isLink) {
 									file.linkTarget = Url.join(this.#base, file.linkTarget);
 								}
-							});
+							}
 							resolve(res);
 						},
 						(err) => {
@@ -357,8 +357,8 @@ class SftpClient {
 					await this.#setStat();
 					sftp.rm(
 						this.#safeName(filename),
-						this.#stat.isDirectory ? true : false,
-						this.#stat.isDirectory ? true : false,
+						this.#stat.isDirectory,
+						this.#stat.isDirectory,
 						(_res) => {
 							resolve(fullFilename);
 						},
@@ -565,7 +565,7 @@ class SftpClient {
 	#getLocalname(filename) {
 		return Url.join(
 			CACHE_STORAGE,
-			"sftp" + Url.join(this.#base, filename).hashCode(),
+			`sftp${Url.join(this.#base, filename).hashCode()}`,
 		);
 	}
 

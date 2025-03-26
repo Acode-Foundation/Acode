@@ -12,7 +12,7 @@ const externalFs = {
 	},
 
 	async writeFile(filename, data) {
-		return new Promise(async (resolve, reject) => {
+		return new Promise((resolve, reject) => {
 			sdcard.write(filename, data, resolve, reject);
 		});
 	},

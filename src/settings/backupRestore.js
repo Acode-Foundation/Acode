@@ -10,8 +10,7 @@ import Url from "utils/Url";
 import helpers from "utils/helpers";
 
 function backupRestore() {
-	const title =
-		strings.backup.capitalize() + "/" + strings.restore.capitalize();
+	const title = `${strings.backup.capitalize()}/${strings.restore.capitalize()}`;
 	const items = [
 		{
 			key: "backup",

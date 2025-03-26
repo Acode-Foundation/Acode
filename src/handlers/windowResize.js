@@ -70,5 +70,7 @@ function onResize() {
  */
 function emit(eventName) {
 	if (!event[eventName]) return;
-	event[eventName].forEach((cb) => cb());
+	for (const cb of event[eventName]) {
+		cb();
+	}
 }

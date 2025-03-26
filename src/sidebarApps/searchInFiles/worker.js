@@ -83,7 +83,8 @@ function searchInFile({ file, content, search }) {
 		text = `...${text.slice(-30)}`;
 	}
 
-	while ((match = search.exec(content))) {
+	match = search.exec(content);
+	while (match) {
 		const [word] = match;
 		const start = match.index;
 		const end = start + word.length;
@@ -94,6 +95,7 @@ function searchInFile({ file, content, search }) {
 		const [line, renderText] = getSurrounding(content, word, start, end);
 		text += `\n\t${line.trim()}`;
 		matches.push({ match: word, position, renderText });
+		match = search.exec(content);
 	}
 
 	self.postMessage({

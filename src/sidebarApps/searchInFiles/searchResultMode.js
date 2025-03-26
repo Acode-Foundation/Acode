@@ -34,10 +34,10 @@ ace.define(
 						regex: /[|>][-+\d]*(?:$|\s+(?:$|#))/,
 						onMatch: function (val, state, stack, line) {
 							line = line.replace(/ #.*/, "");
-							var indent = /^ *((:\s*)?-(\s*[^|>])?)?/
+							let indent = /^ *((:\s*)?-(\s*[^|>])?)?/
 								.exec(line)[0]
 								.replace(/\S\s*$/, "").length;
-							var indentationIndicator = Number.parseInt(
+							const indentationIndicator = Number.parseInt(
 								/\d+[\s+-]*$/.exec(line),
 							);
 
@@ -68,7 +68,7 @@ ace.define(
 						token: "indent",
 						regex: /^ */,
 						onMatch: function (val, state, stack) {
-							var curIndent = stack[1];
+							const curIndent = stack[1];
 
 							if (curIndent >= val.length) {
 								this.next = "start";
@@ -92,7 +92,7 @@ ace.define(
 						token: "indent",
 						regex: /^ */,
 						onMatch: function (val, state, stack) {
-							var curIndent = stack[1];
+							const curIndent = stack[1];
 
 							if (curIndent >= val.length) {
 								this.next = "start";
@@ -131,35 +131,35 @@ define("ace/mode/folding/search_result_fold", [
 
 	(function () {
 		this.getFoldWidgetRange = function (session, foldStyle, row) {
-			var range = this.indentationBlock(session, row);
+			const range = this.indentationBlock(session, row);
 			if (range) return range;
-			var re = /\S/;
-			var line = session.getLine(row);
-			var startLevel = line.search(re);
+			const re = /\S/;
+			let line = session.getLine(row);
+			const startLevel = line.search(re);
 			if (startLevel === -1 || line[startLevel] !== "#") return;
-			var startColumn = line.length;
-			var maxRow = session.getLength();
-			var startRow = row;
-			var endRow = row;
+			const startColumn = line.length;
+			const maxRow = session.getLength();
+			const startRow = row;
+			let endRow = row;
 			while (++row < maxRow) {
 				line = session.getLine(row);
-				var level = line.search(re);
+				const level = line.search(re);
 				if (level === -1) continue;
 				if (line[level] !== "#") break;
 				endRow = row;
 			}
 			if (endRow > startRow) {
-				var endColumn = session.getLine(endRow).length;
+				const endColumn = session.getLine(endRow).length;
 				return new Range(startRow, startColumn, endRow, endColumn);
 			}
 		};
 		this.getFoldWidget = (session, foldStyle, row) => {
-			var line = session.getLine(row);
-			var indent = line.search(/\S/);
-			var next = session.getLine(row + 1);
-			var prev = session.getLine(row - 1);
-			var prevIndent = prev.search(/\S/);
-			var nextIndent = next.search(/\S/);
+			const line = session.getLine(row);
+			const indent = line.search(/\S/);
+			const next = session.getLine(row + 1);
+			const prev = session.getLine(row - 1);
+			const prevIndent = prev.search(/\S/);
+			const nextIndent = next.search(/\S/);
 			if (indent === -1) {
 				session.foldWidgets[row - 1] =
 					prevIndent !== -1 && prevIndent < nextIndent ? "start" : "";
@@ -190,7 +190,7 @@ define("ace/mode/folding/search_result_fold", [
 				session.foldWidgets[row - 1] = "start";
 			else session.foldWidgets[row - 1] = "";
 			if (indent < nextIndent) return "start";
-			else return "";
+			return "";
 		};
 	}).call(FoldMode.prototype);
 });

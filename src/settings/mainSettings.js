@@ -62,7 +62,7 @@ export default function mainSettings() {
 		},
 		{
 			key: "backup-restore",
-			text: strings.backup.capitalize() + "/" + strings.restore.capitalize(),
+			text: `${strings.backup.capitalize()}/${strings.restore.capitalize()}`,
 			icon: "cached",
 		},
 		{
@@ -72,7 +72,7 @@ export default function mainSettings() {
 		},
 		{
 			key: "plugins",
-			text: strings["plugins"],
+			text: strings.plugins,
 			icon: "extension",
 		},
 		{
@@ -89,12 +89,12 @@ export default function mainSettings() {
 		},
 		{
 			key: "editSettings",
-			text: `${strings["edit"]} settings.json`,
+			text: `${strings.edit} settings.json`,
 			icon: "edit",
 		},
 		{
 			key: "changeLog",
-			text: `${strings["changelog"]}`,
+			text: `${strings.changelog}`,
 			icon: "update",
 		},
 	];
@@ -151,7 +151,7 @@ export default function mainSettings() {
 				break;
 			}
 
-			case "reset":
+			case "reset": {
 				const confirmation = await confirm(
 					strings.warning,
 					strings["restore default settings"],
@@ -161,6 +161,7 @@ export default function mainSettings() {
 					location.reload();
 				}
 				break;
+			}
 
 			case "removeads":
 				try {

@@ -65,7 +65,7 @@ export default function previewSettings() {
 		},
 		{
 			key: "useCurrentFileForPreview",
-			text: strings["should_use_current_file_for_preview"],
+			text: strings.should_use_current_file_for_preview,
 			checkbox: !!values.useCurrentFileForPreview,
 		},
 		{

@@ -28,7 +28,7 @@ export default async function findFile() {
 		hintsModification = hints;
 		const list = [];
 
-		editorManager.files.forEach((file) => {
+		for (const file of editorManager.files) {
 			const { uri, name } = file;
 			let { location = "" } = file;
 
@@ -37,7 +37,7 @@ export default async function findFile() {
 			}
 
 			list.push(hintItem(name, location, uri));
-		});
+		}
 
 		list.push(...files(hintItem));
 		return list;

@@ -315,7 +315,7 @@ class FtpClient {
 	get #cacheFile() {
 		return Url.join(
 			CACHE_STORAGE,
-			"ftp" + Url.join(this.#origin, this.#path).hashCode(),
+			`ftp${Url.join(this.#origin, this.#path).hashCode()}`,
 		);
 	}
 

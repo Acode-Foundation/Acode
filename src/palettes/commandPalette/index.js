@@ -15,7 +15,7 @@ export default async function commandPalette() {
 	function generateHints() {
 		const hints = [];
 
-		commands.forEach(({ name, description, bindKey }) => {
+		for (const { name, description, bindKey } of commands) {
 			/**
 			 * @param {boolean} recentlyUsed Is the command recently used
 			 * @returns {{value: string, text: string}}
@@ -26,10 +26,10 @@ export default async function commandPalette() {
 			});
 			if (recentCommands.commands.includes(name)) {
 				hints.unshift(item(true));
-				return;
+				continue;
 			}
 			hints.push(item());
-		});
+		}
 
 		return hints;
 	}

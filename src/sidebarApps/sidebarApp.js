@@ -31,7 +31,7 @@ export default class SidebarApp {
 	 */
 	constructor(icon, id, title, init, onselect) {
 		const emptyFunc = () => {};
-		this.#container = <div className="container"></div>;
+		this.#container = <div className="container" />;
 		this.#icon = <Icon icon={icon} id={id} title={title} />;
 		this.#id = id;
 		this.#title = title;
@@ -133,7 +133,7 @@ function Icon({ icon, id, title }) {
 			data-id={id}
 			title={title}
 			className={className}
-		></span>
+		/>
 	);
 }
 

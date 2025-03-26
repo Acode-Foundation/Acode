@@ -59,25 +59,25 @@ const store = {
 		return localStorage.getItem(WHOLE_WORD) === "true";
 	},
 	set wholeWord(value) {
-		return localStorage.setItem(WHOLE_WORD, value);
+		localStorage.setItem(WHOLE_WORD, value);
 	},
 	get regExp() {
 		return localStorage.getItem(REG_EXP) === "true";
 	},
 	set regExp(value) {
-		return localStorage.setItem(REG_EXP, value);
+		localStorage.setItem(REG_EXP, value);
 	},
 	get exclude() {
 		return localStorage.getItem(EXCLUDE);
 	},
 	set exclude(value) {
-		return localStorage.setItem(EXCLUDE, value);
+		localStorage.setItem(EXCLUDE, value);
 	},
 	get include() {
 		return localStorage.getItem(INCLUDE);
 	},
 	set include(value) {
-		return localStorage.setItem(INCLUDE, value);
+		localStorage.setItem(INCLUDE, value);
 	},
 };
 
@@ -159,19 +159,20 @@ export default [
 								ref={$search}
 								type="search"
 								name="search"
-								placeholder={strings["search"]}
+								placeholder={strings.search}
 							/>
 						</Summary>
 						<div>
 							<button
+								type="button"
 								ref={$btnReplaceAll}
 								className="icon replace_all"
-							></button>
+							/>
 							<Textarea
 								ref={$replace}
 								type="search"
 								name="replace"
-								placeholder={strings["replace"]}
+								placeholder={strings.replace}
 							/>
 						</div>
 					</Details>
@@ -203,14 +204,14 @@ export default [
 					</Details>
 				</div>
 				<div className="search-result">
-					<span ref={$resultOverview} innerHTML={searchResultText(0, 0)}></span>{" "}
-					({$progress}%)
+					<span ref={$resultOverview} innerHTML={searchResultText(0, 0)} /> (
+					{$progress}%)
 				</div>
 				<div className="error">{$error}</div>
 				<div
 					ref={$container}
 					className="search-in-file-editor editor-container"
-				></div>
+				/>
 			</>
 		);
 	},
@@ -423,12 +424,12 @@ async function searchAll() {
 	addEvents();
 
 	const allFiles = files();
-	editorManager.files.forEach((file) => {
+	for (const file of editorManager.files) {
 		const exists = allFiles.find((f) => f.url === file.uri);
-		if (exists) return;
+		if (exists) continue;
 
 		allFiles.push(new Tree(file.name, file.uri, false));
-	});
+	}
 
 	if (!allFiles.length) {
 		searchResult.removeGhostText();
@@ -508,7 +509,7 @@ function onErrorMessage(e) {
  * @param {boolean} [initializeNewWorkers=true] - Whether to initialize new workers after terminating the existing ones.
  */
 function terminateWorker(initializeNewWorkers = true) {
-	workers.forEach((worker) => worker.terminate());
+	for (const worker of workers) worker.terminate();
 	workers.length = 0;
 
 	if (!initializeNewWorkers) return;
@@ -629,7 +630,7 @@ function Details({ onexpand }, children) {
 function Summary({ marker = true, className }, children) {
 	return (
 		<div onclick={toggle} attr-is="summary" className={className}>
-			{marker ? <span className="marker"></span> : <></>}
+			{marker ? <span className="marker" /> : <></>}
 			{children}
 		</div>
 	);
@@ -670,9 +671,7 @@ function Summary({ marker = true, className }, children) {
  * @returns {HTMLTextAreaElement}
  */
 function Textarea({ name, placeholder, ref }) {
-	return autosize(
-		<textarea ref={ref} name={name} placeholder={placeholder}></textarea>,
-	);
+	return autosize(<textarea ref={ref} name={name} placeholder={placeholder} />);
 }
 
 /**

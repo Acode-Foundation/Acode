@@ -120,7 +120,7 @@ export default function actions(action, value) {
 		setInput();
 		value = !state[action];
 		state[action] = value;
-		events[action].forEach((cb) => cb(value));
+		for (const cb of events[action]) cb(value);
 		if (Object.values(state).includes(true)) {
 			$input.focus();
 		} else if (input) {
@@ -351,9 +351,11 @@ function updateSearchState() {
 	if (regex) {
 		const value = editor.getValue();
 		const offset = editor.session.doc.positionToIndex(editor.selection.anchor);
-		let last = (regex.lastIndex = 0);
+		regex.lastIndex = 0;
+		let last = 0;
 		let m;
-		while ((m = regex.exec(value))) {
+		m = regex.exec(value);
+		while (m) {
 			all++;
 			last = m.index;
 			if (last <= offset) before++;
@@ -362,6 +364,7 @@ function updateSearchState() {
 				regex.lastIndex = last += 1;
 				if (last >= value.length) break;
 			}
+			m = regex.exec(value);
 		}
 	}
 	$searchTotal.textContent = all > MAX_COUNT ? "999+" : all;
@@ -402,13 +405,13 @@ function focusEditor() {
 
 function resetKeys() {
 	state.shift = false;
-	events.shift.forEach((cb) => cb(false));
+	for (const cb of events.shift) cb(false);
 	state.alt = false;
-	events.alt.forEach((cb) => cb(false));
+	for (const cb of events.alt) cb(false);
 	state.ctrl = false;
-	events.ctrl.forEach((cb) => cb(false));
+	for (const cb of events.ctrl) cb(false);
 	state.meta = false;
-	events.meta.forEach((cb) => cb(false));
+	for (const cb of events.meta) cb(false);
 	input.focus();
 }
 

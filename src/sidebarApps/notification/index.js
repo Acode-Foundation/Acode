@@ -12,7 +12,7 @@ let notificationManager;
 export default [
 	"notifications", // icon
 	"notification", // id
-	strings["notifications"], // title
+	strings.notifications, // title
 	initApp, // init function
 	false, // prepend
 	onSelected, // onSelected function
@@ -21,11 +21,11 @@ export default [
 const $header = (
 	<div className="header">
 		<div className="title">
-			{strings["notifications"]}
+			{strings.notifications}
 			<span
 				className="clear-all icon delete_outline"
 				onclick={() => notificationManager.clearAll()}
-			></span>
+			/>
 		</div>
 	</div>
 );
@@ -38,9 +38,7 @@ function initApp(el) {
 	container = el;
 	container.classList.add("notifications");
 	container.content = $header;
-	$notificationContainer = (
-		<div className="notifications-container scroll"></div>
-	);
+	$notificationContainer = <div className="notifications-container scroll" />;
 	container.append($notificationContainer);
 
 	notificationManager = new NotificationManager();
@@ -54,7 +52,7 @@ function initApp(el) {
  */
 function onSelected(el) {
 	const $scrollableLists = container.getAll(":scope .scroll[data-scroll-top]");
-	$scrollableLists.forEach(($el) => {
+	for (const $el of $scrollableLists) {
 		$el.scrollTop = $el.dataset.scrollTop;
-	});
+	}
 }
