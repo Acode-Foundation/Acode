@@ -110,12 +110,12 @@ async function onDeviceReady() {
 	window.log = logger.log.bind(logger);
 
 	// Capture synchronous errors
-	window.addEventListener("error", function (event) {
+	window.addEventListener("error", (event) => {
 		const errorMsg = `Error: ${event.message}, Source: ${event.filename}, Line: ${event.lineno}, Column: ${event.colno}, Stack: ${event.error?.stack || "N/A"}`;
 		window.log("error", errorMsg);
 	});
 	// Capture unhandled promise rejections
-	window.addEventListener("unhandledrejection", function (event) {
+	window.addEventListener("unhandledrejection", (event) => {
 		window.log(
 			"error",
 			`Unhandled rejection: ${event.reason ? event.reason.message : "Unknown reason"}\nStack: ${event.reason ? event.reason.stack : "No stack available"}`,
@@ -161,10 +161,10 @@ async function onDeviceReady() {
 		const $testEl = (
 			<div
 				style={{
-					height: `var(--test-height)`,
-					width: `var(--test-height)`,
+					height: "var(--test-height)",
+					width: "var(--test-height)",
 				}}
-			></div>
+			/>
 		);
 		document.body.append($testEl);
 		const client = $testEl.getBoundingClientRect();
@@ -172,7 +172,7 @@ async function onDeviceReady() {
 		$testEl.remove();
 
 		if (client.height === 0) return false;
-		else return true;
+		return true;
 	})();
 	window.acode = new Acode();
 
@@ -239,23 +239,62 @@ async function onDeviceReady() {
 			applySettings.afterRender();
 		}, 500);
 	}
-	setTimeout(() => {
-		checkPluginsUpdate()
-			.then((updates) => {
-				if (!updates.length) return;
-				acode.pushNotification(
-					"Plugin Updates",
-					`${updates.length} plugin${updates.length > 1 ? "s" : ""} ${updates.length > 1 ? "have" : "has"} new version${updates.length > 1 ? "s" : ""} available.`,
-					{
-						icon: "extension",
-						action: () => {
-							plugins(updates);
-						},
-					},
+	// Check for app updates
+	if (navigator.onLine) {
+		cordova.plugin.http.sendRequest(
+			"https://api.github.com/repos/Acode-Foundation/Acode/releases/latest",
+			{
+				method: "GET",
+				responseType: "json",
+			},
+			(response) => {
+				const release = response.data;
+				// assuming version is in format v1.2.3
+				const latestVersion = release.tag_name
+					.replace("v", "")
+					.split(".")
+					.map(Number);
+				const currentVersion = BuildInfo.version.split(".").map(Number);
+
+				const hasUpdate = latestVersion.some(
+					(num, i) => num > currentVersion[i],
 				);
-			})
-			.catch(console.error);
-	}, 5000);
+
+				if (hasUpdate) {
+					acode.pushNotification(
+						"Update Available",
+						`Acode ${release.tag_name} is now available! Click here to checkout.`,
+						{
+							icon: "update",
+							type: "warning",
+							action: () => {
+								system.openInBrowser(release.html_url);
+							},
+						},
+					);
+				}
+			},
+			(err) => {
+				window.log("error", "Failed to check for updates");
+				window.log("error", err);
+			},
+		);
+	}
+	checkPluginsUpdate()
+		.then((updates) => {
+			if (!updates.length) return;
+			acode.pushNotification(
+				"Plugin Updates",
+				`${updates.length} plugin${updates.length > 1 ? "s" : ""} ${updates.length > 1 ? "have" : "has"} new version${updates.length > 1 ? "s" : ""} available.`,
+				{
+					icon: "extension",
+					action: () => {
+						plugins(updates);
+					},
+				},
+			);
+		})
+		.catch(console.error);
 }
 
 async function loadApp() {
@@ -269,10 +308,10 @@ async function loadApp() {
 		/>
 	);
 	const $navToggler = (
-		<span className="icon menu" attr-action="toggle-sidebar"></span>
+		<span className="icon menu" attr-action="toggle-sidebar" />
 	);
 	const $menuToggler = (
-		<span className="icon more_vert" attr-action="toggle-menu"></span>
+		<span className="icon more_vert" attr-action="toggle-menu" />
 	);
 	const $header = tile({
 		type: "header",
@@ -280,7 +319,7 @@ async function loadApp() {
 		lead: $navToggler,
 		tail: $menuToggler,
 	});
-	const $main = <main></main>;
+	const $main = <main />;
 	const $sidebar = <Sidebar container={$main} toggler={$navToggler} />;
 	const $runBtn = (
 		<span
@@ -289,20 +328,17 @@ async function loadApp() {
 			attr-action="run"
 			onclick={() => acode.exec("run")}
 			oncontextmenu={() => acode.exec("run-file")}
-		></span>
+		/>
 	);
 	const $floatingNavToggler = (
 		<span
 			id="sidebar-toggler"
 			className="floating icon menu"
 			onclick={() => acode.exec("toggle-sidebar")}
-		></span>
+		/>
 	);
 	const $headerToggler = (
-		<span
-			className="floating icon keyboard_arrow_left"
-			id="header-toggler"
-		></span>
+		<span className="floating icon keyboard_arrow_left" id="header-toggler" />
 	);
 	const folders = helpers.parseJSON(localStorage.folders);
 	const files = helpers.parseJSON(localStorage.files) || [];
@@ -377,7 +413,7 @@ async function loadApp() {
 		setFileMenu();
 	});
 
-	$sidebar.onshow = function () {
+	$sidebar.onshow = () => {
 		const activeFile = editorManager.activeFile;
 		if (activeFile) editorManager.editor.blur();
 	};
@@ -405,10 +441,10 @@ async function loadApp() {
 
 	acode.setLoadingMessage("Loading folders...");
 	if (Array.isArray(folders)) {
-		folders.forEach((folder) => {
+		for (const folder of folders) {
 			folder.opts.listFiles = !!folder.opts.listFiles;
 			openFolder(folder.url, folder.opts);
-		});
+		}
 	}
 
 	if (Array.isArray(files) && files.length) {
@@ -424,42 +460,6 @@ async function loadApp() {
 	}
 
 	initFileList();
-
-	// Check for app updates
-	if (navigator.onLine) {
-		fetch("https://api.github.com/repos/Acode-Foundation/Acode/releases/latest")
-			.then((res) => res.json())
-			.then((release) => {
-				// assuming version is in format v1.2.3
-				const latestVersion = release.tag_name
-					.replace("v", "")
-					.split(".")
-					.map(Number);
-				const currentVersion = BuildInfo.version.split(".").map(Number);
-
-				const hasUpdate = latestVersion.some(
-					(num, i) => num > currentVersion[i],
-				);
-
-				if (hasUpdate) {
-					acode.pushNotification(
-						"Update Available",
-						`Acode ${release.tag_name} is now available! Click here to checkout.`,
-						{
-							icon: "update",
-							type: "warning",
-							action: () => {
-								system.openInBrowser(release.html_url);
-							},
-						},
-					);
-				}
-			})
-			.catch((err) => {
-				window.log("error", "Failed to check for updates");
-				window.log("error", err);
-			});
-	}
 
 	/**
 	 *
@@ -528,7 +528,7 @@ function onClickApp(e) {
 	function checkIfInsideAnchor() {
 		const allAs = [...document.body.getAll("a")];
 
-		for (let a of allAs) {
+		for (const a of allAs) {
 			if (a.contains(el)) {
 				el = a;
 				return true;
