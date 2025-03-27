@@ -23,7 +23,7 @@ const THEME_IDENTIFIERS = new Set([
 	"bluloco",
 ]);
 
-export default async function loadPlugins(onlyTheme = false) {
+export default async function loadPlugins(loadOnlyTheme = false) {
 	const plugins = await fsOperation(PLUGIN_DIR).lsDir();
 	const results = [];
 	const failedPlugins = [];
@@ -36,7 +36,7 @@ export default async function loadPlugins(onlyTheme = false) {
 	let pluginsToLoad = [];
 	const currentTheme = settings.value.appTheme;
 
-	if (onlyTheme) {
+	if (loadOnlyTheme) {
 		// Only load theme plugins matching current theme
 		pluginsToLoad = plugins.filter((pluginDir) => {
 			const pluginId = Url.basename(pluginDir.url);
@@ -54,7 +54,7 @@ export default async function loadPlugins(onlyTheme = false) {
 	const loadPromises = pluginsToLoad.map(async (pluginDir) => {
 		const pluginId = Url.basename(pluginDir.url);
 
-		if (onlyTheme && currentTheme) {
+		if (loadOnlyTheme && currentTheme) {
 			const pluginIdLower = pluginId.toLowerCase();
 			const currentThemeLower = currentTheme.toLowerCase();
 			const matchFound = pluginIdLower.includes(currentThemeLower);
@@ -104,7 +104,7 @@ async function cleanupFailedPlugins(pluginIds) {
 				await fsOperation(pluginDir).delete();
 			}
 		} catch (error) {
-			window.log("error", `Failed to cleanup plugin ${pluginId}:`, error);
+			console.error(`Failed to cleanup plugin ${pluginId}:`, error);
 		}
 	}
 }
