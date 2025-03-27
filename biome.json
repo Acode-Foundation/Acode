@@ -4,8 +4,28 @@
 	"organizeImports": { "enabled": true },
 	"linter": {
 		"enabled": true,
-		"rules": { "recommended": false }
+		"rules": {
+			"recommended": false,
+			"complexity": {
+				"noForEach": "warn",
+				"noStaticOnlyClass": "error",
+				"noUselessSwitchCase": "error",
+				"useFlatMap": "error"
+			},
+			"style": {
+				"noNegationElse": "off",
+				"useForOf": "error",
+				"useNodejsImportProtocol": "error",
+				"useNumberNamespace": "error"
+			},
+			"suspicious": {
+				"noDoubleEquals": "error",
+				"noThenProperty": "error",
+				"useIsArray": "error"
+			}
+		}
 	},
+	"javascript": { "globals": ["Global1"] },
 	"files": {
 		"include": ["src/**/*", "utils/**/*.js", "www/**/*.js", "www/res/**/*.css"],
 		"ignore": [
