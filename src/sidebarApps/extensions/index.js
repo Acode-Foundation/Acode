@@ -306,7 +306,7 @@ async function listInstalledPlugins() {
 			const id = Url.basename(item.url);
 			const url = Url.join(item.url, "plugin.json");
 			const plugin = await fsOperation(url).readFile("json");
-			const iconUrl = getLocalRes(id, "icon.png");
+			const iconUrl = getLocalRes(id, plugin.icon);
 			plugin.icon = await helpers.toInternalUri(iconUrl);
 			plugin.installed = true;
 			return plugin;
