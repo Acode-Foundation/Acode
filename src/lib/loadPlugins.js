@@ -57,11 +57,10 @@ export default async function loadPlugins(onlyTheme = false) {
 		if (onlyTheme && currentTheme) {
 			const pluginIdLower = pluginId.toLowerCase();
 			const currentThemeLower = currentTheme.toLowerCase();
-			let matchFound = false;
-			if (pluginIdLower.includes(currentThemeLower)) {
-				matchFound = true;
-			}
-
+			const matchFound = pluginIdLower.includes(currentThemeLower);
+			// Skip if:
+			// 1. No match found with current theme AND
+			// 2. It's not a theme plugin at all
 			if (!matchFound && !isThemePlugin(pluginId)) {
 				return;
 			}

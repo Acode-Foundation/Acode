@@ -236,7 +236,6 @@ async function onDeviceReady() {
 		setTimeout(async () => {
 			document.body.removeAttribute("data-small-msg");
 			app.classList.remove("loading", "splash");
-			applySettings.afterRender();
 
 			// load plugins
 			try {
