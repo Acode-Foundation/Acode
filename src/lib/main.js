@@ -241,9 +241,9 @@ async function onDeviceReady() {
 			try {
 				await loadPlugins();
 			} catch (error) {
-				window.log("error", "Failed to load theme plugins!");
+				window.log("error", "Failed to load plugins!");
 				window.log("error", error);
-				toast("Failed to load theme plugins!");
+				toast("Failed to load plugins!");
 			}
 			applySettings.afterRender();
 		}, 500);
