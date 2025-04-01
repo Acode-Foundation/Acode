@@ -77,7 +77,7 @@ export default {
 		}
 
 		if (appSettings.value.confirmOnExit) {
-			let closeMessage =
+			const closeMessage =
 				acode.exitAppMessage || strings["close app"].capitalize(0);
 			confirmation = await confirm(strings.warning.toUpperCase(), closeMessage);
 		}
@@ -110,7 +110,7 @@ export default {
 	 */
 	remove(id) {
 		for (let i = 0; i < stack.length; ++i) {
-			let action = stack[i];
+			const action = stack[i];
 			if (action.id === id) {
 				stack.splice(i, 1);
 				return true;
@@ -125,7 +125,7 @@ export default {
 	 * @returns {Boolean}
 	 */
 	has(id) {
-		for (let act of stack) if (act.id === id) return true;
+		for (const act of stack) if (act.id === id) return true;
 		return false;
 	},
 	/**

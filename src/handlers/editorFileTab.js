@@ -271,8 +271,8 @@ function getClientPos(e) {
 function updateFileList($parent) {
 	const children = [...$parent.children];
 	const newFileList = [];
-	for (let el of children) {
-		for (let file of editorManager.files) {
+	for (const el of children) {
+		for (const file of editorManager.files) {
 			if (file.tab === el) {
 				newFileList.push(file);
 				break;

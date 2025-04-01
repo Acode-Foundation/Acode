@@ -396,7 +396,7 @@ function areEqual(obj1, obj2) {
 	if (obj1 == null || obj2 == null) return false;
 	if (obj1.constructor !== obj2.constructor) return false;
 
-	for (let key in obj1) {
+	for (const key in obj1) {
 		if (!obj2.hasOwnProperty(key)) return false;
 		if (obj1[key] === obj2[key]) continue;
 		if (typeof obj1[key] !== "object") return false;

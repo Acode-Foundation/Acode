@@ -23,7 +23,7 @@ function color(defaultColor, onhide) {
 		});
 		const okBtn = tag("button", {
 			textContent: strings.ok,
-			onclick: function () {
+			onclick: () => {
 				hide();
 				lastPicked = color;
 				localStorage.__picker_last_picked = color;

@@ -214,7 +214,7 @@ export default {
 				if (exists) {
 					await fs.writeFile(text);
 				} else {
-					let fs = fsOperation(DATA_STORAGE);
+					const fs = fsOperation(DATA_STORAGE);
 					await fs.createFile(filename, text);
 				}
 			}

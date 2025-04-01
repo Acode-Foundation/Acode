@@ -30,7 +30,7 @@ export default async function loadPlugin(pluginId, justInstalled = false) {
 				app.append($page);
 			};
 
-			$page.onhide = function () {
+			$page.onhide = () => {
 				actionStack.remove(pluginId);
 			};
 

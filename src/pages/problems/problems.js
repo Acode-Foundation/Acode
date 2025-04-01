@@ -63,7 +63,7 @@ export default function Problems() {
 	app.append($page);
 	helpers.showAd();
 
-	$page.onhide = function () {
+	$page.onhide = () => {
 		helpers.hideAd();
 		actionStack.remove("problems");
 	};

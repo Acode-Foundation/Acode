@@ -304,7 +304,7 @@ export default {
 	async "insert-color"() {
 		const { editor } = editorManager;
 		const range = getColorRange();
-		let defaultColor = range ? editor.session.getTextRange(range) : "";
+		const defaultColor = range ? editor.session.getTextRange(range) : "";
 
 		editor.blur();
 		const wasFocused = editorManager.activeFile.focused;
@@ -415,7 +415,7 @@ export default {
 
 		Promise.all([getWebviewInfo, getAppInfo])
 			.then(() => {
-				let info = `Device Information:
+				const info = `Device Information:
 WebView Info:
 		Package Name: ${webviewInfo?.packageName || "N/A"}
 		Version: ${webviewInfo?.versionName || "N/A"}

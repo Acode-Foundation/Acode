@@ -475,7 +475,7 @@ function execOperation(type, action, url, $target, name) {
 		if (helpers.isFile(type)) {
 			$target.querySelector(":scope>span").className =
 				helpers.getIconForFile(newName);
-			let file = editorManager.getFile(url, "uri");
+			const file = editorManager.getFile(url, "uri");
 			if (file) {
 				file.uri = newUrl;
 				file.filename = newName;

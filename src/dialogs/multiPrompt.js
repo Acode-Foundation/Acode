@@ -51,12 +51,12 @@ export default function multiPrompt(message, inputs, help) {
 		const okBtn = tag("button", {
 			type: "submit",
 			textContent: strings.ok,
-			onclick: function (e) {
+			onclick: (e) => {
 				e.preventDefault();
 				e.stopPropagation();
 				const inputAr = [...$body.getAll("input")];
 
-				for (let $input of inputAr) {
+				for (const $input of inputAr) {
 					if ($input.isRequired && !$input.value) {
 						$errorMessage.textContent = strings.required.capitalize();
 						const $sibling = $input.nextElementSibling;
@@ -73,7 +73,7 @@ export default function multiPrompt(message, inputs, help) {
 		const cancelBtn = tag("button", {
 			textContent: strings.cancel,
 			type: "button",
-			onclick: function () {
+			onclick: () => {
 				reject();
 				hide();
 			},
@@ -215,7 +215,7 @@ export default function multiPrompt(message, inputs, help) {
 			} = input;
 
 			const inputType = type === "textarea" ? "textarea" : "input";
-			let _type = type === "filename" ? "text" : type || "text";
+			const _type = type === "filename" ? "text" : type || "text";
 
 			let $input;
 

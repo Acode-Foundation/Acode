@@ -548,9 +548,9 @@ export default function addTouchListeners(editor, minimal, onclick) {
 	 * @param {number} y
 	 */
 	function scroll(x, y) {
-		let direction = reverseScrolling ? 1 : -1;
-		let scrollX = direction * x;
-		let scrollY = direction * y;
+		const direction = reverseScrolling ? 1 : -1;
+		const scrollX = direction * x;
+		const scrollY = direction * y;
 
 		renderer.scrollBy(scrollX, scrollY);
 	}

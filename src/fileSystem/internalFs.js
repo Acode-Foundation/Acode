@@ -334,7 +334,7 @@ const internalFs = {
 };
 
 function setMessage(reject) {
-	return function (err) {
+	return (err) => {
 		if (err.code) {
 			const message = getErrorMessage(err.code);
 			err.message = message;

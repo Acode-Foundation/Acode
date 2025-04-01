@@ -143,7 +143,7 @@ export default (props) => {
 					></div>
 					<div id="contributors" className="content-section">
 						{(() => {
-							let contributorsList = contributors?.length
+							const contributorsList = contributors?.length
 								? [
 										{ name: author, role: "Developer", github: authorGithub },
 										...contributors,
@@ -421,8 +421,8 @@ function Review({
 	author_reply: authorReply,
 }) {
 	let dp = Url.join(constants.API_BASE, `../user.png`);
-	let voteImage = new Ref();
-	let review = new Ref();
+	const voteImage = new Ref();
+	const review = new Ref();
 
 	if (github) {
 		dp = `https://avatars.githubusercontent.com/${github}`;

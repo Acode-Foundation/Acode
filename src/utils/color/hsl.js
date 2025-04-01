@@ -111,9 +111,9 @@ export default class Hsl {
 		}
 
 		// now convert hsl value to rgb
-		let c = (1 - Math.abs(2 * this.l - 1)) * this.s;
-		let x = c * (1 - Math.abs(((this.h * 6) % 2) - 1));
-		let m = this.l - c / 2;
+		const c = (1 - Math.abs(2 * this.l - 1)) * this.s;
+		const x = c * (1 - Math.abs(((this.h * 6) % 2) - 1));
+		const m = this.l - c / 2;
 		let r = 0;
 		let g = 0;
 		let b = 0;

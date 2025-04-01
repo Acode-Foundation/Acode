@@ -31,7 +31,8 @@ function box(titleText, html, hideButtonText, cancelButtonText) {
 	};
 
 	let cancelBtn;
-	let hideButton = typeof hideButtonText === "boolean" ? hideButtonText : false;
+	const hideButton =
+		typeof hideButtonText === "boolean" ? hideButtonText : false;
 
 	if (cancelButtonText) {
 		cancelBtn = tag("button", {
@@ -117,7 +118,7 @@ function box(titleText, html, hideButtonText, cancelButtonText) {
 		if (waitFor) return;
 		const imgs = box.getAll("img");
 		if (imgs) {
-			for (let img of imgs) {
+			for (const img of imgs) {
 				URL.revokeObjectURL(img.src);
 			}
 		}

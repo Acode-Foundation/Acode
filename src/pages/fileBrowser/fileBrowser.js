@@ -65,7 +65,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 	let storageList = JSON.parse(localStorage.storageList || "[]");
 
 	let isSelectionMode = false;
-	let selectedItems = new Set();
+	const selectedItems = new Set();
 
 	if (!info) {
 		if (mode !== "both") {
@@ -149,7 +149,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 		$selectionMenuToggler.style.display = "none";
 		const progress = {};
-		let cachedDir = {};
+		const cachedDir = {};
 		let currentDir = {
 			url: null,
 			name: null,
@@ -208,12 +208,12 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			action: close,
 		});
 
-		$selectionModeToggler.onclick = function () {
+		$selectionModeToggler.onclick = () => {
 			isSelectionMode = !isSelectionMode;
 			toggleSelectionMode(isSelectionMode);
 		};
 
-		$fbMenu.onclick = function (e) {
+		$fbMenu.onclick = (e) => {
 			$fbMenu.hide();
 			const action = e.target.getAttribute("action");
 			if (action === "settings") {
@@ -271,7 +271,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				}
 
 				case "import-project-zip": {
-					let zipFile = await new Promise((resolve, reject) => {
+					const zipFile = await new Promise((resolve, reject) => {
 						sdcard.openDocumentFile(
 							(res) => {
 								resolve(res.uri);
@@ -361,7 +361,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					}
 
 					const zip = new JSZip();
-					let loadingLoader = loader.create(
+					const loadingLoader = loader.create(
 						strings["loading"],
 						"Compressing files",
 						{
@@ -507,12 +507,12 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			}
 		};
 
-		$search.onclick = function () {
+		$search.onclick = () => {
 			const $list = $content.get("#list");
 			if ($list) searchBar($list, (hide) => (hideSearchBar = hide));
 		};
 
-		$page.onhide = function () {
+		$page.onhide = () => {
 			hideSearchBar();
 			helpers.hideAd();
 			actionStack.clearFromMark();
@@ -728,7 +728,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				const { url: parsedUrl, query } = Url.parse(url);
 				let path = "";
 
-				for (let dir of dirs) {
+				for (const dir of dirs) {
 					path = Url.join(path, dir);
 					navigationArray.push({
 						url: `${Url.join(parsedUrl, path, "")}${query}`,
@@ -824,7 +824,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 					case "open_with":
 						try {
-							let mimeType = mimeTypes.lookup(name || "text/plain");
+							const mimeType = mimeTypes.lookup(name || "text/plain");
 							const fs = fsOperation(url);
 							if (/^s?ftp:/.test(url)) return fs.localName;
 
@@ -1049,7 +1049,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			} catch (err) {}
 
 			storageList.forEach((storage) => {
-				let url = storage.url || /**@deprecated */ storage["uri"];
+				const url = storage.url || /**@deprecated */ storage["uri"];
 
 				util.pushFolder(allStorages, storage.name, url, {
 					storageType: storage.storageType,

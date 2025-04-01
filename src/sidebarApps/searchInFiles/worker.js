@@ -139,11 +139,11 @@ function getSurrounding(content, word, start, end) {
 		word = word.slice(-max);
 		result = [`...${word}`, word];
 	} else {
-		let left = Math.floor(remaining / 2);
-		let right = left;
+		const left = Math.floor(remaining / 2);
+		const right = left;
 
-		let leftText = content.substring(start - left, start);
-		let rightText = content.substring(end, end + right);
+		const leftText = content.substring(start - left, start);
+		const rightText = content.substring(end, end + right);
 
 		result = [`${leftText}${word}${rightText}`, word];
 	}

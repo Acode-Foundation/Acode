@@ -124,7 +124,7 @@ export default function files(dir) {
  * @param {FileListEvent} event - Event name
  * @param {(tree:Tree)=>void} callback - Callback function
  */
-files.on = function (event, callback) {
+files.on = (event, callback) => {
 	if (!events[event]) events[event] = [];
 	events[event].push(callback);
 };
@@ -134,7 +134,7 @@ files.on = function (event, callback) {
  * @param {FileListEvent} event - Event name
  * @param {(tree:Tree)=>void} callback - Callback function
  */
-files.off = function (event, callback) {
+files.off = (event, callback) => {
 	if (!events[event]) return;
 	events[event] = events[event].filter((cb) => cb !== callback);
 };
@@ -168,7 +168,7 @@ function getTree(treeList, dir) {
  */
 function getFile(path, tree) {
 	const { children } = tree;
-	let { url } = tree;
+	const { url } = tree;
 	if (url === path) return tree;
 	if (!children) return null;
 	const len = children.length;

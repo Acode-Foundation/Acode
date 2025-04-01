@@ -81,7 +81,7 @@ function select(title, options, opts = {}) {
 
 			$item.tabIndex = "0";
 
-			$item.onclick = function () {
+			$item.onclick = () => {
 				if (value === undefined) return;
 				if (opts.hideOnSelect) hide();
 				resolve(value);
@@ -124,7 +124,7 @@ function select(title, options, opts = {}) {
 			if (typeof opts.onHide === "function") opts.onHide();
 			actionStack.remove("select");
 			hideSelect();
-			let listItems = [...$list.children];
+			const listItems = [...$list.children];
 			listItems.map((item) => (item.onclick = null));
 		}
 	});

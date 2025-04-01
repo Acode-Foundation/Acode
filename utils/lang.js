@@ -68,7 +68,7 @@ async function update() {
 				if (file === "en-us.json") return;
 
 				let flagError = false;
-				let langFile = path.join(dir, file);
+				const langFile = path.join(dir, file);
 				const exit = (i, len) => {
 					if (i + 1 === len) {
 						if (!error) {
@@ -85,7 +85,7 @@ async function update() {
 						return;
 					}
 
-					let langError = () => {
+					const langError = () => {
 						if (!flagError) {
 							error = true;
 							flagError = true;
@@ -95,7 +95,7 @@ async function update() {
 					const langData = JSON.parse(data);
 					flagError = false;
 
-					for (let enKey in enLangData) {
+					for (const enKey in enLangData) {
 						const key = Object.keys(langData).find((k) => {
 							try {
 								if (new RegExp(`^${escapeRegExp(k)}$`, "i").test(enKey)) {

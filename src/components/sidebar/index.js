@@ -5,7 +5,7 @@ import constants from "lib/constants";
 
 let $sidebar;
 /**@type {Array<(el:HTMLElement)=>boolean>} */
-let preventSlideTests = [];
+const preventSlideTests = [];
 
 const events = {
 	show: [],
@@ -247,7 +247,7 @@ function create($container, $toggler) {
 		touch.totalX = touch.endX - touch.startX;
 		touch.totalY = touch.endY - touch.startY;
 
-		let width = $el.getWidth();
+		const width = $el.getWidth();
 
 		if (
 			!$el.activated &&
@@ -347,7 +347,7 @@ function create($container, $toggler) {
 	$el.hide = hide;
 	$el.toggle = toggle;
 	$el.onshow = () => {};
-	$el.getWidth = function () {
+	$el.getWidth = () => {
 		const width = innerWidth * 0.7;
 		return mode === "phone" ? (width >= 350 ? 350 : width) : MIN_WIDTH;
 	};

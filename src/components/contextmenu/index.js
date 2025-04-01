@@ -121,7 +121,7 @@ export default function Contextmenu(content, options) {
 	function addTabindex() {
 		/**@type {Array<HTMLLIElement>} */
 		const children = [...$el.children];
-		for (let $el of children) $el.tabIndex = "0";
+		for (const $el of children) $el.tabIndex = "0";
 	}
 
 	function destroy() {

@@ -83,7 +83,7 @@ class Logger {
 					logContent,
 				);
 			} else {
-				let existingData = await fsOperation(logFilePath).readFile("utf8");
+				const existingData = await fsOperation(logFilePath).readFile("utf8");
 				let newData = existingData + "\n" + logContent;
 				// Check if the new data exceeds the maximum file size
 				if (new Blob([newData]).size > this.#maxFileSize) {

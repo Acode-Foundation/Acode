@@ -9,7 +9,7 @@ import WCPage from "./WebComponents/wcPage";
  * @returns {WCPage}
  */
 function Page(title, options = {}) {
-	let page = <wc-page />;
+	const page = <wc-page />;
 	page.append = page.appendBody;
 	page.initializeIfNotAlreadyInitialized();
 	page.settitle(title);

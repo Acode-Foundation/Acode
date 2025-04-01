@@ -18,7 +18,7 @@ export default function AboutInclude() {
 		action: $page.hide,
 	});
 
-	$page.onhide = function () {
+	$page.onhide = () => {
 		actionStack.remove("about");
 		helpers.hideAd();
 	};
