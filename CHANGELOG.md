@@ -1,5 +1,36 @@
 # Change Log
 
+## v1.11.1 (957)
+
+### Features  
+- **Syntax Highlighting**: Added syntax highlighting for code blocks on the plugin page using Ace Editor.  
+- **Theme Settings Fallback**: Implemented a fallback mechanism on the theme settings page when a custom tab is opened.  
+- **QuickTools Scroll Wheel Support**: Added support for scroll wheel events in QuickTools when in click mode.  
+- **SFTP Improvements**:  
+  - Enhanced logging for better debugging.  
+  - Enabled Bouncy Castle for SFTP, resolving connection issues with certain key types.  
+- **App Update Mechanism**:  
+  - Now checks for updates after app startup.  
+  - Uses a native approach instead of traditional fetch.  
+
+### Fixes & Improvements  
+- **SD Card Plugin**: Handled a few edge cases to prevent crashes.  
+- **GitHub Plugin Palette Fix**: Resolved an issue where the color palette was breaking the GitHub plugin.  
+- **Plugin Installation Fixes**:  
+  - Updated the install button in the sidebar to prevent multiple installations.  
+  - Fixed the installation mechanism in both the sidebar and the `installPlugin` API.  
+- **Quality of Life Enhancements**:  
+  - Various small improvements when installing/uninstalling plugins from the sidebar.  
+
+#### ⚠️ Experimental Changes ⚠️  
+- **Improved Plugin Loading**:  
+  - Only **theme plugins** load on Acode startup for faster performance.  
+  - All other plugins load **after** Acode startup.  
+- **Important for Theme Developers**:  
+  - Ensure your **plugin ID includes the word "theme"** to be correctly recognized as a theme plugin.  
+  - No changes are needed for existing theme plugins.  
+- **Potential Issues**: Since this is an experimental change, some features may break. Please report any issues encountered.
+
 ## v1.11.0 (956)
 
 ### Fixes
