@@ -77,7 +77,7 @@ export default async function PluginInclude(
 			).readFile("json");
 			const { author } = installedPlugin;
 			const description = await fsOperation(
-				Url.join(PLUGIN_DIR, id, "readme.md"),
+				Url.join(PLUGIN_DIR, id, installedPlugin.readme),
 			).readFile("utf8");
 			let changelogs = "";
 			if (installedPlugin.changelogs) {
@@ -93,7 +93,7 @@ export default async function PluginInclude(
 			}
 
 			const iconUrl = await helpers.toInternalUri(
-				Url.join(PLUGIN_DIR, id, "icon.png"),
+				Url.join(PLUGIN_DIR, id, installedPlugin.icon),
 			);
 			const iconData = await fsOperation(iconUrl).readFile();
 			const icon = URL.createObjectURL(
