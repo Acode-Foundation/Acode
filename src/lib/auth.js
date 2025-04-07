@@ -120,16 +120,17 @@ class AuthService {
 							"x-auth-token": token,
 						},
 					},
-					async (response) => {
-						if (response.status === 401) {
-							await deleteToken();
-							resolve(false);
-						}
+					(response) => {
 						resolve(true);
 					},
-					(error) => {
-						console.error("Failed to check login status.", error);
-						resolve(false);
+					async (error) => {
+						if (error.status === 401) {
+							await deleteToken();
+							resolve(false);
+						} else {
+							console.error("Failed to check login status.", error);
+							resolve(false);
+						}
 					},
 				);
 			});
@@ -156,15 +157,17 @@ class AuthService {
 					async (response) => {
 						if (response.status === 200) {
 							resolve(JSON.parse(response.data));
-						} else if (response.status === 401) {
-							await deleteToken();
-							resolve(null);
 						}
 						resolve(null);
 					},
-					(error) => {
-						console.error("Failed to fetch user data.", error);
-						resolve(null);
+					async (error) => {
+						if (error.status === 401) {
+							await deleteToken();
+							resolve(null);
+						} else {
+							console.error("Failed to fetch user data.", error);
+							resolve(null);
+						}
 					},
 				);
 			});
