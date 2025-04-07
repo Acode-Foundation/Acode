@@ -67,12 +67,18 @@ export default async function installPlugin(
 		if (!isDependency) loaderDialog.show();
 
 		let plugin;
-		if (
-			/^(https?:\/\/)?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|localhost)/.test(
-				pluginUrl,
-			)
-		) {
-			// cordova http plugin for IP addresses and localhost
+		if (pluginUrl.includes(constants.API_BASE)) {
+			// Use fsOperation for Acode registry URL
+			plugin = await fsOperation(pluginUrl).readFile(
+				undefined,
+				(loaded, total) => {
+					loaderDialog.setMessage(
+						`${strings.loading} ${((loaded / total) * 100).toFixed(2)}%`,
+					);
+				},
+			);
+		} else {
+			// cordova http plugin for others
 			plugin = await new Promise((resolve, reject) => {
 				cordova.plugin.http.sendRequest(
 					pluginUrl,
@@ -89,15 +95,6 @@ export default async function installPlugin(
 					},
 				);
 			});
-		} else {
-			plugin = await fsOperation(pluginUrl).readFile(
-				undefined,
-				(loaded, total) => {
-					loaderDialog.setMessage(
-						`${strings.loading} ${((loaded / total) * 100).toFixed(2)}%`,
-					);
-				},
-			);
 		}
 
 		if (plugin) {
