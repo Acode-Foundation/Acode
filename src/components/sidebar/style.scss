@@ -59,9 +59,47 @@ body.no-animation {
     min-width: 45px;
     height: 100%;
     background-color: rgba(0, 0, 0, 0.2);
-    overflow: auto;
     padding: 10px 0;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    .app-icons-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px 0;
+    }
+    .user-icon-container {
+      position: sticky;
+      bottom: 0;
+      width: 100%;
+      padding: 10px 0;
+      display: flex;
+      justify-content: center;
+      border-top: 1px solid var(--border-color);
+      .avatar {
+        display: block;
+        height: 35px;
+        width: 35px;
+        border-radius: 50%;
+        object-fit: cover;
+        object-position: center;
+      }
+      .icon {
+        height: 40px;
+        width: 40px;
+        color: currentColor;
+        font-size: 1.6em;
+        border-radius: 12px;
+        opacity: 0.5;
+        transition: all 0.2s ease;
+        margin: 0 auto;
+        cursor: pointer;
 
+        &.active {
+          opacity: 1;
+        }
+      }
+    }
     .icon {
       height: 35px;
       width: 35px;
@@ -208,5 +246,68 @@ body.no-animation {
       justify-content: center;
       font-weight: 600;
     }
+  }
+}
+
+.user-menu {
+  position: absolute;
+  bottom: 55px;
+  left: 30px;
+  width: 200px;
+  background-color: var(--popup-background-color);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  display: none;
+  z-index: 1000;
+  overflow: hidden;
+  &.active {
+    display: block;
+  }
+  .user-menu-header {
+    padding: 12px;
+    border-bottom: 1px solid var(--border-color);
+
+    .user-menu-name {
+      font-weight: 500;
+      margin-bottom: 4px;
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        background-color: color-mix(
+          in srgb,
+          var(--error-text-color) 20%,
+          transparent
+        );
+        color: var(--error-text-color);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 500;
+        margin-left: 8px;
+      }
+    }
+
+    .user-menu-email {
+      font-size: 12px;
+      color: color-mix(in srgb, var(--popup-text-color) 70%, transparent);
+    }
+  }
+
+  .user-menu-item {
+    padding: 10px 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    &:hover {
+      background-color: var(--active-icon-color);
+    }
+  }
+  .user-menu-separator {
+    height: 1px;
+    background-color: var(--border-color);
+    margin: 4px 0;
   }
 }

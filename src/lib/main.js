@@ -53,6 +53,7 @@ import { initFileList } from "lib/fileList";
 import NotificationManager from "lib/notificationManager";
 import { addedFolder } from "lib/openFolder";
 import { getEncoding, initEncodings } from "utils/encodings";
+import auth, { loginEvents } from "./auth";
 import constants from "./constants";
 
 const previousVersionCode = Number.parseInt(localStorage.versionCode, 10);
@@ -246,6 +247,17 @@ async function onDeviceReady() {
 				toast("Failed to load plugins!");
 			}
 			applySettings.afterRender();
+
+			// Check login status before emitting events
+			try {
+				const isLoggedIn = await auth.isLoggedIn();
+				if (isLoggedIn) {
+					loginEvents.emit();
+				}
+			} catch (error) {
+				console.error("Error checking login status:", error);
+				toast("Error checking login status");
+			}
 		}, 500);
 	}
 

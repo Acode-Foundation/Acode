@@ -1,6 +1,8 @@
+import toast from "components/toast";
 import "./style.scss";
 import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
+import auth, { loginEvents } from "lib/auth";
 import constants from "lib/constants";
 
 let $sidebar;
@@ -33,6 +35,8 @@ function create($container, $toggler) {
 	const MIN_WIDTH = 200; //Min width of the side bar
 	const MAX_WIDTH = () => innerWidth * 0.7; //Max width of the side bar
 	const resizeBar = new Ref();
+	const userAvatar = new Ref();
+	const userContextMenu = new Ref();
 
 	$container = $container || app;
 	let mode = innerWidth > 600 ? "tab" : "phone";
@@ -41,13 +45,34 @@ function create($container, $toggler) {
 	const eventOptions = { passive: false };
 	const $el = (
 		<div id="sidebar" className={mode}>
-			<div className="apps"></div>
+			<div className="apps">
+				<div className="app-icons-container"></div>
+				<div
+					ref={userAvatar}
+					className="user-icon-container"
+					onclick={handleUserIconClick}
+				>
+					<span className="icon account_circle"></span>
+				</div>
+			</div>
 			<div className="container"></div>
 			<div
 				className="resize-bar w-resize"
 				onmousedown={onresize}
 				ontouchstart={onresize}
 			></div>
+
+			<div ref={userContextMenu} className="user-menu">
+				<div className="user-menu-header">
+					<div className="user-menu-name"></div>
+					<div className="user-menu-email"></div>
+				</div>
+				{/* <div className="user-menu-separator"></div> */}
+				<div className="user-menu-item" onclick={handleLogout}>
+					<span className="icon logout"></span>
+					{strings.logout}
+				</div>
+			</div>
 		</div>
 	);
 	const mask = <span className="mask" onclick={hide}></span>;
@@ -70,6 +95,113 @@ function create($container, $toggler) {
 
 	if (mode === "tab" && localStorage.sidebarShown === "1") {
 		show();
+	}
+
+	loginEvents.on(() => {
+		updateSidebarAvatar();
+	});
+
+	async function handleUserIconClick(e) {
+		try {
+			const isLoggedIn = await auth.isLoggedIn();
+
+			if (!isLoggedIn) {
+				auth.openLoginUrl();
+			} else {
+				toggleUserMenu();
+			}
+		} catch (error) {
+			console.error("Error checking login status:", error);
+			toast("Error checking login status", 3000);
+		}
+	}
+
+	function toggleUserMenu() {
+		const menu = userContextMenu.el;
+		const isActive = menu.classList.toggle("active");
+
+		if (isActive) {
+			// Populate user info
+			updateUserMenuInfo();
+
+			// Add click outside listener
+			setTimeout(() => {
+				document.addEventListener("click", handleClickOutside);
+			}, 10);
+		} else {
+			document.removeEventListener("click", handleClickOutside);
+		}
+	}
+
+	function handleClickOutside(e) {
+		if (
+			!userContextMenu.el.contains(e.target) &&
+			e.target !== userAvatar.el &&
+			!userAvatar.el.contains(e.target)
+		) {
+			userContextMenu.el.classList.remove("active");
+			document.removeEventListener("click", handleClickOutside);
+		}
+	}
+
+	async function updateUserMenuInfo() {
+		try {
+			const userInfo = await auth.getUserInfo();
+			if (userInfo) {
+				const menuName = userContextMenu.el.querySelector(".user-menu-name");
+				const menuEmail = userContextMenu.el.querySelector(".user-menu-email");
+				menuName.textContent = userInfo.name || "Anonymous";
+				if (userInfo.isAdmin) {
+					menuName.innerHTML += ' <span class="badge">Admin</span>';
+				}
+				menuEmail.textContent = userInfo.email || "";
+			}
+		} catch (error) {
+			console.error("Error fetching user info:", error);
+		}
+	}
+
+	async function handleLogout() {
+		try {
+			const success = await auth.logout();
+			if (success) {
+				userContextMenu.el.classList.remove("active");
+				document.removeEventListener("click", handleClickOutside);
+				toast("Logged out successfully");
+				updateSidebarAvatar();
+			} else {
+				toast("Failed to logout");
+			}
+		} catch (error) {
+			console.error("Error during logout:", error);
+		}
+	}
+
+	async function updateSidebarAvatar() {
+		const avatarUrl = await auth.getAvatar();
+		// Remove existing icon or avatar
+		const existingIcon = userAvatar.el.querySelector(".icon");
+		const existingAvatar = userAvatar.el.querySelector(".avatar");
+
+		if (existingIcon) {
+			existingIcon.remove();
+		}
+		if (existingAvatar) {
+			existingAvatar.remove();
+		}
+
+		if (avatarUrl?.startsWith("data:") || avatarUrl?.startsWith("http")) {
+			// Create and add avatar image
+			const avatarImg = document.createElement("img");
+			avatarImg.className = "avatar";
+			avatarImg.src = avatarUrl;
+			userAvatar.append(avatarImg);
+		} else {
+			// Fallback to default icon
+			const defaultIcon = document.createElement("span");
+			defaultIcon.className = "icon account_circle";
+			userAvatar.append(defaultIcon);
+		}
 	}
 
 	function onWindowResize() {
@@ -148,9 +280,20 @@ function create($container, $toggler) {
 		openedFolders = [];
 	}
 
-	function onshow() {
+	async function onshow() {
 		if ($el.onshow) $el.onshow.call($el);
 		events.show.forEach((fn) => fn());
+
+		// try {
+		// 	if (await auth.isLoggedIn()) {
+		// 		const avatar = await auth.getAvatar();
+		// 		if (avatar) {
+		// 			auth.updateSidebarAvatar(avatar);
+		// 		}
+		// 	}
+		// } catch (error) {
+		// 	console.error("Error updating avatar:", error);
+		// }
 	}
 
 	function onhide() {

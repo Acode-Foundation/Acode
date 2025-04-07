@@ -61,7 +61,7 @@ function remove(id) {
  */
 function init($el) {
 	$sidebar = $el;
-	$apps = $sidebar.get(".apps");
+	$apps = $sidebar.get(".app-icons-container");
 	$apps.addEventListener("click", onclick);
 	SidebarApp.init($el, $apps);
 }
