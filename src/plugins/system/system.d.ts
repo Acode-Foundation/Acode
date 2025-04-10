@@ -197,8 +197,8 @@ interface System {
    */
   launchApp(
     app: string,
-    action: string,
-    value: string,
+    className: string,
+    data: string,
     onSuccess: OnSuccessBool,
     onFail: OnFail,
   ): void;

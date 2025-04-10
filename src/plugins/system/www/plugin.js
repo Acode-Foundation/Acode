@@ -65,8 +65,8 @@ module.exports = {
   openInBrowser: function (src) {
     cordova.exec(null, null, 'System', 'open-in-browser', [src]);
   },
-  launchApp: function (app, action, value, onSuccess, onFail) {
-    cordova.exec(onSuccess, onFail, 'System', 'launch-app', [app, action, value]);
+  launchApp: function (app, className, data, onSuccess, onFail) {
+    cordova.exec(onSuccess, onFail, 'System', 'launch-app', [app, className, data]);
   },
   inAppBrowser: function (url, title, showButtons, disableCache) {
     var myInAppBrowser = {

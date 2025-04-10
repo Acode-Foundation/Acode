@@ -5,12 +5,10 @@ import android.app.PendingIntent;
 import android.content.ClipData;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.ApplicationInfo;
-import android.content.pm.PackageInfo;
-import android.content.pm.PackageManager;
-import android.content.pm.ShortcutInfo;
-import android.content.pm.ShortcutManager;
 import android.content.res.Configuration;
+import android.content.*;
+import android.content.pm.*;
+import java.util.*;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.ImageDecoder;
@@ -582,21 +580,42 @@ public class System extends CordovaPlugin {
 
   private void launchApp(
     String appId,
-    String action,
-    String value,
+    String className,
+    String data,
     CallbackContext callback
-  ) {
-    Intent intent = context
-      .getPackageManager()
-      .getLaunchIntentForPackage(appId);
-    if (intent == null) {
-      callback.error("App not found");
+) {
+    if (appId == null || appId.equals("")) {
+      callback.error("No package name provided.");
       return;
     }
-    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-    context.startActivity(intent);
-    callback.success("Launched " + appId);
-  }
+
+    if (className == null || className.equals("")) {
+      callback.error("No activity class name provided.");
+      return;
+    }
+
+    try{
+        Intent intent = new Intent(Intent.ACTION_MAIN);
+        intent.addCategory(Intent.CATEGORY_LAUNCHER);
+        intent.setPackage(appId);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+        if (data != null && !data.equals("")) {
+          intent.putExtra("acode_data", data);
+        }
+       
+        intent.setClassName(appId, className);
+        activity.startActivity(intent);
+        callback.success("Launched " + appId);
+    }catch(Exception e){
+      callback.error(e.toString());
+      return;
+    }
+
+
+    
+}
+
 
   private void addShortcut(
     String id,
