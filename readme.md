@@ -101,7 +101,7 @@ Also, ensure that your code is well-documented and includes comments where neces
 
 For comprehensive documentation on creating plugins for Acode Editor, visit the [repository](https://github.com/Acode-Foundation/acode-plugin).
 
-For plugin development information, refer to: [Acode Plugin Documentation](https://acode.app/plugin-docs)
+For plugin development information, refer to: [Acode Plugin Documentation](https://docs.acode.app/)
 
 ## Star History
 
