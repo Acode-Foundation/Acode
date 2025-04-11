@@ -12,7 +12,8 @@
     "setup": "node ./utils/setup.js",
     "lint": "biome lint --write",
     "format": "biome format --write",
-    "check": "biome check --write"
+    "check": "biome check --write",
+    "updateAce": "node ./utils/updateAce.js"
   },
   "keywords": [
     "ecosystem:cordova"
