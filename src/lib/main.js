@@ -241,6 +241,15 @@ async function onDeviceReady() {
 			// load plugins
 			try {
 				await loadPlugins();
+
+				// Re-emit events for active file after plugins are loaded
+				const { activeFile } = editorManager;
+				if (activeFile?.uri) {
+					// Re-emit file-loaded event
+					editorManager.emit("file-loaded", activeFile);
+					// Re-emit switch-file event
+					editorManager.emit("switch-file", activeFile);
+				}
 			} catch (error) {
 				window.log("error", "Failed to load plugins!");
 				window.log("error", error);
