@@ -1,21 +1,28 @@
 #changelog {
-    max-width: 800px;
-    margin: auto;
-    overflow: auto;
+  max-width: 800px;
+  margin: auto;
+  overflow: auto;
+  padding: 0 1rem;
 }
 
 .loading {
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	height: 100%;
-	color: var(--primary-text-color);
-	font-size: 1.2em;
-	animation: pulse 1.5s ease-in-out infinite;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  color: var(--primary-text-color);
+  font-size: 1.2em;
+  animation: pulse 1.5s ease-in-out infinite;
 }
 
 @keyframes pulse {
-	0% { opacity: 0.6; }
-	50% { opacity: 1; }
-	100% { opacity: 0.6; }
+  0% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.6;
+  }
 }
