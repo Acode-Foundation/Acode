@@ -398,9 +398,9 @@ export default {
 			)
 		) {
 			if (isFile) {
-				await fsOperation(uri).createFile(pathString);
+				uri = await fsOperation(uri).createFile(pathString);
 			} else {
-				await fsOperation(uri).createDirectory(pathString);
+				uri = await fsOperation(uri).createDirectory(pathString);
 			}
 			return { uri: uri, type: isFile ? "file" : "folder" };
 		}
