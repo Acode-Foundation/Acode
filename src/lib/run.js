@@ -14,7 +14,7 @@ import $_console from "views/console.hbs";
 import $_markdown from "views/markdown.hbs";
 import constants from "./constants";
 import EditorFile from "./editorFile";
-import openFolder from "./openFolder";
+import openFolder, { addedFolder } from "./openFolder";
 import appSettings from "./settings";
 
 /**@type {Server} */
@@ -172,13 +172,22 @@ async function run(
 	 * @param {string} req.requestId
 	 * @param {string} req.path
 	 */
-	function handleRequest(req) {
+	async function handleRequest(req) {
 		const reqId = req.requestId;
 		let reqPath = req.path.substring(1);
 
-		if (!reqPath || reqPath.endsWith("/")) {
-			reqPath += "index.html";
+		//if (!reqPath || reqPath.endsWith("/")) {}
+
+		if (!reqPath) {
+			console.error("Request path is empty");
+			webServer?.send(reqId, {
+			status: 404,
+			body: "Please provide full path of the file",
+		});
+			return;
 		}
+
+		
 
 		const ext = Url.extname(reqPath);
 		let url = null;
@@ -250,7 +259,7 @@ async function run(
 			let file = activeFile.SAFMode === "single" ? activeFile : null;
 
 			if (pathName) {
-				url = Url.join(pathName, reqPath);
+				url = Url.join(addedFolder[0].url, reqPath);
 				file = editorManager.getFile(url, "uri");
 			} else if (!activeFile.uri) {
 				file = activeFile;
@@ -480,12 +489,18 @@ async function run(
 		});
 	}
 
+	function removePrefix(str, prefix) {
+  		return str.startsWith(prefix) ? str.slice(prefix.length) : str;
+	}
+
 	/**
 	 * Opens the preview in browser
 	 */
 	function openBrowser() {
-		console.count("openBrowser");
-		const src = `http://localhost:${port}/${filename}`;
+		/** @type {string} */
+		const filePath = pathName + filename;
+		let path = removePrefix(removePrefix(filePath, addedFolder[0].url),"/");
+		const src = `http://localhost:${port}/${path}`;
 		if (target === "browser") {
 			system.openInBrowser(src);
 			return;
