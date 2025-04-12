@@ -181,13 +181,11 @@ async function run(
 		if (!reqPath) {
 			console.error("Request path is empty");
 			webServer?.send(reqId, {
-			status: 404,
-			body: "Please provide full path of the file",
-		});
+				status: 404,
+				body: "Please provide full path of the file",
+			});
 			return;
 		}
-
-		
 
 		const ext = Url.extname(reqPath);
 		let url = null;
@@ -490,7 +488,7 @@ async function run(
 	}
 
 	function removePrefix(str, prefix) {
-  		return str.startsWith(prefix) ? str.slice(prefix.length) : str;
+		return str.startsWith(prefix) ? str.slice(prefix.length) : str;
 	}
 
 	/**
@@ -499,7 +497,7 @@ async function run(
 	function openBrowser() {
 		/** @type {string} */
 		const filePath = pathName + filename;
-		let path = removePrefix(removePrefix(filePath, addedFolder[0].url),"/");
+		let path = removePrefix(removePrefix(filePath, addedFolder[0].url), "/");
 		const src = `http://localhost:${port}/${path}`;
 		if (target === "browser") {
 			system.openInBrowser(src);
