@@ -177,14 +177,9 @@ async function run(
 		const reqId = req.requestId;
 		let reqPath = req.path.substring(1);
 
-		console.log(req)
-
 		//if (!reqPath || reqPath.endsWith("/")) {}
 
-		if (!reqPath) {
-			reqPath = "/"+filename
-		}
-
+		//todo : redirect to current file if path is empty
 		if (!reqPath) {
 			console.error("Request path is empty");
 			webServer?.send(reqId, {
@@ -261,12 +256,31 @@ async function run(
 			}
 
 			let url = activeFile.uri;
+
+			console.log("activeFile.uri", activeFile.uri);
+
 			let file = activeFile.SAFMode === "single" ? activeFile : null;
 
 			if (pathName) {
-				url = Url.join(addedFolder[0].url, reqPath);
+				let rootFolder = addedFolder[0].url;
+				const query = url.split("?")[1];
+
+				//remove the query string if present this is needs to be removed because the url is not valid 
+				if (rootFolder.startsWith("ftp:") || rootFolder.startsWith("sftp:")) {
+					if (rootFolder.includes("?")) {
+						rootFolder =  rootFolder.split("?")[0];
+					}
+				}
+		
+				url = Url.join(rootFolder, reqPath);
+
+				if (query) {
+					url = `${url}?${query}`;
+				}
+
+				console.log("url", url);
+
 				file = editorManager.getFile(url, "uri");
-			
 			} else if (!activeFile.uri) {
 				file = activeFile;
 			}
@@ -496,12 +510,7 @@ async function run(
 	}
 
 	function removePrefix(str, prefix) {
-		console.log("-----------------")
-		console.log("removing " + prefix + " from " + str)
-		const result = str.startsWith(prefix) ? str.slice(prefix.length) : str;
-		console.log("result : "+result)
-		console.log("-----------------")
-		return result
+		return str.startsWith(prefix) ? str.slice(prefix.length) : str;
 	}
 
 	/**
@@ -511,17 +520,33 @@ async function run(
 		//get the project url
 		let rootFolder = addedFolder[0].url
 
-		//append path data
+		//parent of the file
+		let filePath = pathName
+
+		//make the uri absolute if necessary
 		if (rootFolder === "content://com.termux.documents/tree/%2Fdata%2Fdata%2Fcom.termux%2Ffiles%2Fhome") {
 			rootFolder = "content://com.termux.documents/tree/%2Fdata%2Fdata%2Fcom.termux%2Ffiles%2Fhome::/data/data/com.termux/files/home/"
 		}
 
-		const path = removePrefix(Url.join(editorManager.activeFile.location,filename),rootFolder)
+		//remove the query string if present this is needs to be removed because the url is not valid 
+		if (rootFolder.startsWith("ftp:") || rootFolder.startsWith("sftp:")) {
+			if (rootFolder.includes("?")) {
+				rootFolder = rootFolder.split("?")[0];
+			}
+		}
+		
+		//remove the query string if present this is needs to be removed because the url is not valid 
+		if (filePath.startsWith("ftp:") || rootFolder.startsWith("sftp:")) {
+			if (filePath.includes("?")) {
+				filePath = filePath.split("?")[0];
+			}
+		}
+
+		//subtract the root folder from the file path to get relative path
+		const path = removePrefix(Url.join(filePath,filename),rootFolder)
 
 		const src = `http://localhost:${port}/${path}`;
 
-		
-		console.log("Src", src);
 		if (target === "browser") {
 			system.openInBrowser(src);
 			return;
