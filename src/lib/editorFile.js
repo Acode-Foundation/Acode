@@ -3,6 +3,7 @@ import tile from "components/tile";
 import confirm from "dialogs/confirm";
 import fsOperation from "fileSystem";
 import startDrag from "handlers/editorFileTab";
+import tag from "html-tag-js";
 import mimeTypes from "mime-types";
 import Path from "utils/Path";
 import Url from "utils/Url";
@@ -194,12 +195,46 @@ export default class EditorFile {
 		if (options?.type) {
 			this.#type = options.type;
 			if (this.#type !== "editor") {
-				const container = (
-					<div className="tab-page-container">
-						<div className="tab-page-content">{options.content}</div>
-					</div>
-				);
+				const container = tag("div", {
+					className: "tab-page-container",
+				});
+
+				// shadow dom
+				const shadow = container.attachShadow({ mode: "open" });
+
+				// main app styles
+				const mainStyle = tag("link", {
+					rel: "stylesheet",
+					href: "./css/build/main.css",
+				});
+				// icon styles
+				const iconStyle = tag("link", {
+					rel: "stylesheet",
+					href: "./res/icons/style.css",
+				});
+				// file icon styles
+				const fileIconStyle = tag("link", {
+					rel: "stylesheet",
+					href: "./res/file-icons/style.css",
+				});
+
+				const content = tag("div", {
+					className: "tab-page-content",
+				});
+				content.appendChild(options.content);
+
+				// Add stylesheet and content to shadow DOM
+				shadow.appendChild(mainStyle);
+				shadow.appendChild(iconStyle);
+				shadow.appendChild(fileIconStyle);
+				shadow.appendChild(content);
+
 				this.#content = container;
+
+				// Handle custom stylesheets if provided
+				if (options.stylesheets) {
+					this.#addCustomStyles(options.stylesheets, shadow);
+				}
 			} else {
 				this.#content = options.content;
 			}
@@ -836,6 +871,45 @@ export default class EditorFile {
 		if (!events) return;
 		const index = events.indexOf(callback);
 		if (index > -1) events.splice(index, 1);
+	}
+
+	/**
+	 * Add custom stylesheets to shadow DOM
+	 * @param {string|string[]} styles URLs or CSS strings
+	 * @param {ShadowRoot} shadow Shadow DOM root
+	 */
+	#addCustomStyles(styles, shadow) {
+		if (typeof styles === "string") {
+			styles = [styles];
+		}
+
+		styles.forEach((style) => {
+			if (style.startsWith("http") || style.startsWith("/")) {
+				// External stylesheet
+				const link = tag("link", {
+					rel: "stylesheet",
+					href: style,
+				});
+				shadow.appendChild(link);
+			} else {
+				// Inline CSS
+				const styleElement = tag("style", {
+					textContent: style,
+				});
+				shadow.appendChild(styleElement);
+			}
+		});
+	}
+
+	/**
+	 * Add stylesheet to tab's shadow DOM
+	 * @param {string} style URL or CSS string
+	 */
+	addStyle(style) {
+		if (this.#type === "editor" || !this.#content) return;
+
+		const shadow = this.#content.shadowRoot;
+		this.#addCustomStyles(style, shadow);
 	}
 
 	/**
