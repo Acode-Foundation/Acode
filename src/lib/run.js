@@ -177,16 +177,8 @@ async function run(
 		const reqId = req.requestId;
 		let reqPath = req.path.substring(1);
 
-		//if (!reqPath || reqPath.endsWith("/")) {}
-
-		//todo : redirect to current file if path is empty
-		if (!reqPath) {
-			console.error("Request path is empty");
-			webServer?.send(reqId, {
-				status: 404,
-				body: "Please provide full path of the file",
-			});
-			return;
+		if (!reqPath || reqPath.endsWith("/")) {
+			reqPath = getRelativePath();
 		}
 
 		const ext = Url.extname(reqPath);
@@ -272,11 +264,10 @@ async function run(
 
 				url = Url.join(rootFolder, reqPath);
 
+				//atach the ftp query string to the url
 				if (query) {
 					url = `${url}?${query}`;
 				}
-
-				console.log("url", url);
 
 				file = editorManager.getFile(url, "uri");
 			} else if (!activeFile.uri) {
@@ -511,10 +502,7 @@ async function run(
 		return str.startsWith(prefix) ? str.slice(prefix.length) : str;
 	}
 
-	/**
-	 * Opens the preview in browser
-	 */
-	function openBrowser() {
+	function getRelativePath() {
 		//get the project url
 		let rootFolder = addedFolder[0].url;
 
@@ -546,6 +534,15 @@ async function run(
 
 		//subtract the root folder from the file path to get relative path
 		const path = removePrefix(Url.join(filePath, filename), rootFolder);
+
+		return path;
+	}
+
+	/**
+	 * Opens the preview in browser
+	 */
+	function openBrowser() {
+		const path = getRelativePath();
 
 		const src = `http://localhost:${port}/${path}`;
 
