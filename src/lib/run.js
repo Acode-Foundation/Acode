@@ -498,67 +498,25 @@ async function run(
 	function removePrefix(str, prefix) {
 		console.log("-----------------")
 		console.log("removing " + prefix + " from " + str)
+		const result = str.startsWith(prefix) ? str.slice(prefix.length) : str;
+		console.log("result : "+result)
 		console.log("-----------------")
-		return str.startsWith(prefix) ? str.slice(prefix.length) : str;
+		return result
 	}
 
 	/**
 	 * Opens the preview in browser
 	 */
 	function openBrowser() {
-		console.log("Path name", pathName);
-		console.log("File parent",pathName)
-
 		//get the project url
 		let rootFolder = addedFolder[0].url
-
-		if (rootFolder.startsWith("ftp:") || rootFolder.startsWith("sftp:")) {
-			if (rootFolder.includes("?")) {
-				rootFolder = rootFolder.split("?")[0];
-			}
-		}
-
-		if (pathName.startsWith("ftp:") || pathName.startsWith("sftp:")) {
-			if (pathName.includes("?")) {
-				pathName = pathName.split("?")[0];
-			}
-		}
 
 		//append path data
 		if (rootFolder === "content://com.termux.documents/tree/%2Fdata%2Fdata%2Fcom.termux%2Ffiles%2Fhome") {
 			rootFolder = "content://com.termux.documents/tree/%2Fdata%2Fdata%2Fcom.termux%2Ffiles%2Fhome::/data/data/com.termux/files/home/"
 		}
 
-		console.log("Root", rootFolder)
-
-		//remove the project prefix from the file parent path name
-		//this will give us the path relative to the project folder
-		/** @type {string} */
-		let filePath = removePrefix(pathName, rootFolder) 
-		
-		let oldFilePath = filePath
-		filePath = pathName.split("::")[1];
-		if (!filePath) {
-			filePath = oldFilePath
-		}
-
-		console.log("File path", filePath);
-
-
-
-		//add the filename to the path
-		//this will give us the full path to the file relative to the project folder
-		if (filePath.endsWith("/")) {
-			filePath += filename;
-		} else {
-			filePath = filePath + "/" + filename;
-		}
-		
-		
-		let path = removePrefix(removePrefix(removePrefix(filePath, rootFolder),"primary:"+addedFolder[0].title),"/")
-		
-		console.log("Path", path);
-		
+		const path = removePrefix(Url.join(editorManager.activeFile.location,filename),rootFolder)
 
 		const src = `http://localhost:${port}/${path}`;
 
