@@ -51,6 +51,12 @@ export default class EditorFile {
 	#content = null;
 
 	/**
+	 * Custom stylesheets for tab
+	 * @type {string|string[]}
+	 */
+	stylesheets;
+
+	/**
 	 * If editor was focused before resize
 	 */
 	focusedBefore = false;
