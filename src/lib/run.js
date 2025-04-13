@@ -177,7 +177,13 @@ async function run(
 		const reqId = req.requestId;
 		let reqPath = req.path.substring(1);
 
+		console.log(req)
+
 		//if (!reqPath || reqPath.endsWith("/")) {}
+
+		if (!reqPath) {
+			reqPath = "/"+filename
+		}
 
 		if (!reqPath) {
 			console.error("Request path is empty");
@@ -490,6 +496,9 @@ async function run(
 	}
 
 	function removePrefix(str, prefix) {
+		console.log("-----------------")
+		console.log("removing " + prefix + " from " + str)
+		console.log("-----------------")
 		return str.startsWith(prefix) ? str.slice(prefix.length) : str;
 	}
 
@@ -498,27 +507,44 @@ async function run(
 	 */
 	function openBrowser() {
 		console.log("Path name", pathName);
-		console.log("Filename", filename);
-		
+		console.log("File parent",pathName)
+
 		//get the project url
 		let rootFolder = addedFolder[0].url
 
+		if (rootFolder.startsWith("ftp:") || rootFolder.startsWith("sftp:")) {
+			if (rootFolder.includes("?")) {
+				rootFolder = rootFolder.split("?")[0];
+			}
+		}
+
+		if (pathName.startsWith("ftp:") || pathName.startsWith("sftp:")) {
+			if (pathName.includes("?")) {
+				pathName = pathName.split("?")[0];
+			}
+		}
+
+		//append path data
 		if (rootFolder === "content://com.termux.documents/tree/%2Fdata%2Fdata%2Fcom.termux%2Ffiles%2Fhome") {
 			rootFolder = "content://com.termux.documents/tree/%2Fdata%2Fdata%2Fcom.termux%2Ffiles%2Fhome::/data/data/com.termux/files/home/"
 		}
 
+		console.log("Root", rootFolder)
+
 		//remove the project prefix from the file parent path name
 		//this will give us the path relative to the project folder
 		/** @type {string} */
-		let filePath = removePrefix(pathName, rootFolder)
+		let filePath = removePrefix(pathName, rootFolder) 
 		
-		if (!rootFolder.includes("::")) {
-			filePath = pathName.split("::")[1];
+		let oldFilePath = filePath
+		filePath = pathName.split("::")[1];
+		if (!filePath) {
+			filePath = oldFilePath
 		}
 
+		console.log("File path", filePath);
 
-		console.log("Root", rootFolder)
-		console.log("File parent",pathName)
+
 
 		//add the filename to the path
 		//this will give us the full path to the file relative to the project folder
@@ -528,21 +554,15 @@ async function run(
 			filePath = filePath + "/" + filename;
 		}
 		
-		console.log(addedFolder[0])
-
-		console.log("File path", filePath);
-
-		let path = removePrefix(removePrefix(removePrefix(filePath, rootFolder),"primary:"+addedFolder[0].title),"/")
-
-		//path = pathName.split("::")[0]+path
 		
-	
+		let path = removePrefix(removePrefix(removePrefix(filePath, rootFolder),"primary:"+addedFolder[0].title),"/")
 		
 		console.log("Path", path);
 		
 
 		const src = `http://localhost:${port}/${path}`;
 
+		
 		console.log("Src", src);
 		if (target === "browser") {
 			system.openInBrowser(src);
