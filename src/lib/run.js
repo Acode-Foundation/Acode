@@ -7,6 +7,7 @@ import anchor from "markdown-it-anchor";
 import MarkdownItGitHubAlerts from "markdown-it-github-alerts";
 import mimeType from "mime-types";
 import mustache from "mustache";
+import path from "path-browserify";
 import browser from "plugins/browser";
 import Url from "utils/Url";
 import helpers from "utils/helpers";
@@ -16,7 +17,6 @@ import constants from "./constants";
 import EditorFile from "./editorFile";
 import openFolder, { addedFolder } from "./openFolder";
 import appSettings from "./settings";
-import path from "path-browserify";
 
 /**@type {Server} */
 let webServer;
@@ -257,21 +257,19 @@ async function run(
 
 			let url = activeFile.uri;
 
-			console.log("activeFile.uri", activeFile.uri);
-
 			let file = activeFile.SAFMode === "single" ? activeFile : null;
 
 			if (pathName) {
 				let rootFolder = addedFolder[0].url;
 				const query = url.split("?")[1];
 
-				//remove the query string if present this is needs to be removed because the url is not valid 
+				//remove the query string if present this is needs to be removed because the url is not valid
 				if (rootFolder.startsWith("ftp:") || rootFolder.startsWith("sftp:")) {
 					if (rootFolder.includes("?")) {
-						rootFolder =  rootFolder.split("?")[0];
+						rootFolder = rootFolder.split("?")[0];
 					}
 				}
-		
+
 				url = Url.join(rootFolder, reqPath);
 
 				if (query) {
@@ -518,24 +516,28 @@ async function run(
 	 */
 	function openBrowser() {
 		//get the project url
-		let rootFolder = addedFolder[0].url
+		let rootFolder = addedFolder[0].url;
 
 		//parent of the file
-		let filePath = pathName
+		let filePath = pathName;
 
 		//make the uri absolute if necessary
-		if (rootFolder === "content://com.termux.documents/tree/%2Fdata%2Fdata%2Fcom.termux%2Ffiles%2Fhome") {
-			rootFolder = "content://com.termux.documents/tree/%2Fdata%2Fdata%2Fcom.termux%2Ffiles%2Fhome::/data/data/com.termux/files/home/"
+		if (
+			rootFolder ===
+			"content://com.termux.documents/tree/%2Fdata%2Fdata%2Fcom.termux%2Ffiles%2Fhome"
+		) {
+			rootFolder =
+				"content://com.termux.documents/tree/%2Fdata%2Fdata%2Fcom.termux%2Ffiles%2Fhome::/data/data/com.termux/files/home/";
 		}
 
-		//remove the query string if present this is needs to be removed because the url is not valid 
+		//remove the query string if present this is needs to be removed because the url is not valid
 		if (rootFolder.startsWith("ftp:") || rootFolder.startsWith("sftp:")) {
 			if (rootFolder.includes("?")) {
 				rootFolder = rootFolder.split("?")[0];
 			}
 		}
-		
-		//remove the query string if present this is needs to be removed because the url is not valid 
+
+		//remove the query string if present this is needs to be removed because the url is not valid
 		if (filePath.startsWith("ftp:") || rootFolder.startsWith("sftp:")) {
 			if (filePath.includes("?")) {
 				filePath = filePath.split("?")[0];
@@ -543,7 +545,7 @@ async function run(
 		}
 
 		//subtract the root folder from the file path to get relative path
-		const path = removePrefix(Url.join(filePath,filename),rootFolder)
+		const path = removePrefix(Url.join(filePath, filename), rootFolder);
 
 		const src = `http://localhost:${port}/${path}`;
 
