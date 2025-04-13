@@ -16,6 +16,7 @@ import constants from "./constants";
 import EditorFile from "./editorFile";
 import openFolder, { addedFolder } from "./openFolder";
 import appSettings from "./settings";
+import path from "path-browserify";
 
 /**@type {Server} */
 let webServer;
@@ -259,6 +260,7 @@ async function run(
 			if (pathName) {
 				url = Url.join(addedFolder[0].url, reqPath);
 				file = editorManager.getFile(url, "uri");
+			
 			} else if (!activeFile.uri) {
 				file = activeFile;
 			}
@@ -495,10 +497,53 @@ async function run(
 	 * Opens the preview in browser
 	 */
 	function openBrowser() {
+		console.log("Path name", pathName);
+		console.log("Filename", filename);
+		
+		//get the project url
+		let rootFolder = addedFolder[0].url
+
+		if (rootFolder === "content://com.termux.documents/tree/%2Fdata%2Fdata%2Fcom.termux%2Ffiles%2Fhome") {
+			rootFolder = "content://com.termux.documents/tree/%2Fdata%2Fdata%2Fcom.termux%2Ffiles%2Fhome::/data/data/com.termux/files/home/"
+		}
+
+		//remove the project prefix from the file parent path name
+		//this will give us the path relative to the project folder
 		/** @type {string} */
-		const filePath = pathName + filename;
-		let path = removePrefix(removePrefix(filePath, addedFolder[0].url), "/");
+		let filePath = removePrefix(pathName, rootFolder)
+		
+		if (!rootFolder.includes("::")) {
+			filePath = pathName.split("::")[1];
+		}
+
+
+		console.log("Root", rootFolder)
+		console.log("File parent",pathName)
+
+		//add the filename to the path
+		//this will give us the full path to the file relative to the project folder
+		if (filePath.endsWith("/")) {
+			filePath += filename;
+		} else {
+			filePath = filePath + "/" + filename;
+		}
+		
+		console.log(addedFolder[0])
+
+		console.log("File path", filePath);
+
+		let path = removePrefix(removePrefix(removePrefix(filePath, rootFolder),"primary:"+addedFolder[0].title),"/")
+
+		//path = pathName.split("::")[0]+path
+		
+	
+		
+		console.log("Path", path);
+		
+
 		const src = `http://localhost:${port}/${path}`;
+
+		console.log("Src", src);
 		if (target === "browser") {
 			system.openInBrowser(src);
 			return;
