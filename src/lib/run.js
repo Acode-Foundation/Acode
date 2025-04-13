@@ -264,7 +264,7 @@ async function run(
 
 				url = Url.join(rootFolder, reqPath);
 
-				//atach the ftp query string to the url
+				//attach the ftp query string to the url
 				if (query) {
 					url = `${url}?${query}`;
 				}
