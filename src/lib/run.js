@@ -177,7 +177,8 @@ async function run(
 		const reqId = req.requestId;
 		let reqPath = req.path.substring(1);
 
-		if (!reqPath || reqPath.endsWith("/")) {
+		console.log(req);
+		if (!reqPath || (reqPath.endsWith("/") && reqPath.length === 1)) {
 			reqPath = getRelativePath();
 		}
 
