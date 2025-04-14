@@ -253,7 +253,13 @@ async function run(
 			let file = activeFile.SAFMode === "single" ? activeFile : null;
 
 			if (pathName) {
-				let rootFolder = addedFolder[0].url;
+				const projectFolder = addedFolder[0]
+
+				//set the root folder to the file parent if no project folder is set
+				let rootFolder = pathName;
+				if (projectFolder !== undefined) {
+					rootFolder = projectFolder.url
+				}
 				const query = url.split("?")[1];
 
 				//remove the query string if present this is needs to be removed because the url is not valid
@@ -530,8 +536,15 @@ async function run(
 
 	function getRelativePath() {
 		//get the project url
-		let rootFolder = addedFolder[0].url;
+		const projectFolder = addedFolder[0]
 
+		//set the root folder to the file parent if no project folder is set
+		let rootFolder = pathName;
+		if (projectFolder !== undefined) {
+			rootFolder = projectFolder.url
+		}
+
+		
 		//parent of the file
 		let filePath = pathName;
 
@@ -544,6 +557,7 @@ async function run(
 				"content://com.termux.documents/tree/%2Fdata%2Fdata%2Fcom.termux%2Ffiles%2Fhome::/data/data/com.termux/files/home/";
 		}
 
+		
 		//remove the query string if present this is needs to be removed because the url is not valid
 		if (rootFolder.startsWith("ftp:") || rootFolder.startsWith("sftp:")) {
 			if (rootFolder.includes("?")) {
@@ -574,6 +588,14 @@ async function run(
 		} catch (e) {
 			console.error(e);
 		}
+
+		console.log("rootFolder", rootFolder);
+		console.log("filePath", temp);
+
+		if (rootFolder.startsWith("content://com.android.externalstorage.documents")) { 
+			temp = filePath+"/"+filename;
+		}
+
 
 		//subtract the root folder from the file path to get relative path
 		const path = removePrefix(removePrefix(temp, rootFolder), "/");
