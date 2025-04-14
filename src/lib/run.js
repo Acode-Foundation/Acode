@@ -275,7 +275,7 @@ async function run(
 					url = `${url}?${query}`;
 				}
 
-				console.log("url",url)
+				console.log("url", url);
 
 				file = editorManager.getFile(url, "uri");
 			} else if (!activeFile.uri) {
@@ -506,35 +506,6 @@ async function run(
 		});
 	}
 
-	function removePrefix(str, prefix) {
-		return str.startsWith(prefix) ? str.slice(prefix.length) : str;
-	}
-
-	function extractCommonTreePath(url) {
-		const treeMatch = url.match(/\/tree\/([^:]+)::([^/][^?]*)/);
-		if (!treeMatch) return null;
-
-		const encodedLeft = treeMatch[1]; // before ::
-		const rightPath = treeMatch[2]; // after ::
-
-		const decodedLeft = decodeURIComponent(encodedLeft);
-
-		const leftParts = decodedLeft.split("/");
-		const rightParts = rightPath.split("/");
-
-		let commonParts = [];
-		for (let i = 0; i < Math.min(leftParts.length, rightParts.length); i++) {
-			if (leftParts[i] === rightParts[i]) {
-				commonParts.push(rightParts[i]);
-			} else {
-				break;
-			}
-		}
-
-		const matchedPath = `/tree/${encodedLeft}::${commonParts.join("/")}`;
-		return matchedPath;
-	}
-
 	function getRelativePath() {
 		// Get the project url
 		const projectFolder = addedFolder[0];
@@ -554,13 +525,9 @@ async function run(
 				"content://com.termux.documents/tree/%2Fdata%2Fdata%2Fcom.termux%2Ffiles%2Fhome::/data/data/com.termux/files/home/";
 		}
 
-
-		
-
 		// Parent of the file
 		let filePath = pathName;
 
-	
 		if (rootFolder.startsWith("ftp:") || rootFolder.startsWith("sftp:")) {
 			if (rootFolder.includes("?")) {
 				rootFolder = rootFolder.split("?")[0];
@@ -576,7 +543,6 @@ async function run(
 
 		// Create full file path
 		let temp = Url.join(filePath, filename);
-		
 
 		// Special handling for Termux URIs
 		if (temp.includes("com.termux.documents") && temp.includes("::")) {
