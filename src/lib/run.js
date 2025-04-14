@@ -534,19 +534,19 @@ async function run(
 	}
 
 	function getRelativePath() {
-		//get the project url
+		// Get the project url
 		const projectFolder = addedFolder[0];
 
-		//set the root folder to the file parent if no project folder is set
+		// Set the root folder to the file parent if no project folder is set
 		let rootFolder = pathName;
 		if (projectFolder !== undefined) {
 			rootFolder = projectFolder.url;
 		}
 
-		//parent of the file
+		// Parent of the file
 		let filePath = pathName;
 
-		//make the uri absolute if necessary
+		// Make the uri absolute if necessary
 		if (
 			rootFolder ===
 			"content://com.termux.documents/tree/%2Fdata%2Fdata%2Fcom.termux%2Ffiles%2Fhome"
@@ -555,47 +555,113 @@ async function run(
 				"content://com.termux.documents/tree/%2Fdata%2Fdata%2Fcom.termux%2Ffiles%2Fhome::/data/data/com.termux/files/home/";
 		}
 
-		//remove the query string if present this is needs to be removed because the url is not valid
+		// Remove the query string if present
 		if (rootFolder.startsWith("ftp:") || rootFolder.startsWith("sftp:")) {
 			if (rootFolder.includes("?")) {
 				rootFolder = rootFolder.split("?")[0];
 			}
 		}
-
-		//remove the query string if present this is needs to be removed because the url is not valid
-		if (filePath.startsWith("ftp:") || rootFolder.startsWith("sftp:")) {
+		if (filePath.startsWith("ftp:") || filePath.startsWith("sftp:")) {
 			if (filePath.includes("?")) {
 				filePath = filePath.split("?")[0];
 			}
 		}
 
+		// Create full file path
 		let temp = Url.join(filePath, filename);
+		console.log("temp", temp);
 
+		// Handle content:// URIs
+		if (temp.includes("content://") && temp.includes("::")) {
+			try {
+				// Get the part after :: which contains the actual file path
+				const afterDoubleColon = temp.split("::")[1];
+
+				if (afterDoubleColon) {
+					// Extract the rootFolder's content path if it has ::
+					let rootFolderPath = rootFolder;
+					if (rootFolder.includes("::")) {
+						rootFolderPath = rootFolder.split("::")[1];
+					}
+
+					// If rootFolder doesn't have ::, try to extract the last part of the path
+					if (!rootFolderPath.includes("::")) {
+						const rootParts = rootFolder.split("/");
+						const lastPart = rootParts[rootParts.length - 1];
+
+						// Check if the lastPart is encoded
+						if (lastPart.includes("%3A")) {
+							// Try to decode it
+							try {
+								const decoded = decodeURIComponent(lastPart);
+								rootFolderPath = decoded;
+							} catch (e) {
+								console.error("Error decoding URI component:", e);
+								rootFolderPath = lastPart;
+							}
+						} else {
+							rootFolderPath = lastPart;
+						}
+					}
+
+					// Now find this rootFolderPath in the afterDoubleColon string
+					if (afterDoubleColon.includes(rootFolderPath)) {
+						// Find where to start the relative path
+						const parts = afterDoubleColon.split("/");
+
+						// Find the index of the part that matches or contains rootFolderPath
+						let startIndex = -1;
+						for (let i = 0; i < parts.length; i++) {
+							if (
+								parts[i].includes(rootFolderPath) ||
+								rootFolderPath.includes(parts[i])
+							) {
+								startIndex = i;
+								break;
+							}
+						}
+
+						// If we found a matching part, get everything after it
+						if (startIndex >= 0 && startIndex < parts.length - 1) {
+							return parts.slice(startIndex + 1).join("/");
+						}
+					}
+				}
+			} catch (e) {
+				console.error("Error parsing content URI:", e);
+			}
+		}
+
+		// For regular paths or if content:// URI parsing failed
+		// Try to find a common prefix between rootFolder and temp
+		// and remove it from temp
 		try {
-			let match = extractCommonTreePath(temp);
+			const rootParts = rootFolder.split("/");
+			const tempParts = temp.split("/");
 
-			if (match) {
-				let temp1 = match.split("::")[1];
-
-				if (temp1) {
-					temp = temp.replace(temp1, "");
-					temp = temp.replace("::", "");
+			let commonIndex = 0;
+			for (let i = 0; i < Math.min(rootParts.length, tempParts.length); i++) {
+				if (rootParts[i] === tempParts[i]) {
+					commonIndex = i + 1;
+				} else {
+					break;
 				}
 			}
+
+			if (commonIndex > 0) {
+				return tempParts.slice(commonIndex).join("/");
+			}
 		} catch (e) {
-			console.error(e);
+			console.error("Error finding common path:", e);
 		}
 
-		if (
-			rootFolder.startsWith("content://com.android.externalstorage.documents")
-		) {
-			temp = filePath + filename;
+		// If all else fails, just return the filename
+		if (filename) {
+			return filename;
 		}
 
-		//subtract the root folder from the file path to get relative path
-		const path = removePrefix(removePrefix(temp, rootFolder), "/");
-
-		return path;
+		console.log("Unable to determine relative path, returning full path");
+		return temp;
 	}
 
 	/**
