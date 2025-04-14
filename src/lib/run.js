@@ -275,6 +275,8 @@ async function run(
 					url = `${url}?${query}`;
 				}
 
+				console.log("url",url)
+
 				file = editorManager.getFile(url, "uri");
 			} else if (!activeFile.uri) {
 				file = activeFile;
@@ -543,10 +545,7 @@ async function run(
 			rootFolder = projectFolder.url;
 		}
 
-		// Parent of the file
-		let filePath = pathName;
-
-		// Make the uri absolute if necessary
+		//make the uri absolute if necessary
 		if (
 			rootFolder ===
 			"content://com.termux.documents/tree/%2Fdata%2Fdata%2Fcom.termux%2Ffiles%2Fhome"
@@ -555,13 +554,21 @@ async function run(
 				"content://com.termux.documents/tree/%2Fdata%2Fdata%2Fcom.termux%2Ffiles%2Fhome::/data/data/com.termux/files/home/";
 		}
 
-		// Remove the query string if present
+
+		
+
+		// Parent of the file
+		let filePath = pathName;
+
+	
 		if (rootFolder.startsWith("ftp:") || rootFolder.startsWith("sftp:")) {
 			if (rootFolder.includes("?")) {
 				rootFolder = rootFolder.split("?")[0];
 			}
 		}
-		if (filePath.startsWith("ftp:") || filePath.startsWith("sftp:")) {
+
+		//remove the query string if present this is needs to be removed because the url is not valid
+		if (filePath.startsWith("ftp:") || rootFolder.startsWith("sftp:")) {
 			if (filePath.includes("?")) {
 				filePath = filePath.split("?")[0];
 			}
@@ -569,9 +576,44 @@ async function run(
 
 		// Create full file path
 		let temp = Url.join(filePath, filename);
-		console.log("temp", temp);
+		
 
-		// Handle content:// URIs
+		// Special handling for Termux URIs
+		if (temp.includes("com.termux.documents") && temp.includes("::")) {
+			try {
+				const [, realPath] = temp.split("::");
+
+				// Determine root folder inside :: path
+				let rootPath = rootFolder;
+				if (rootFolder.includes("::")) {
+					rootPath = rootFolder.split("::")[1];
+				}
+
+				// Normalize both paths to arrays
+				const realParts = realPath.split("/").filter(Boolean);
+				const rootParts = rootPath.split("/").filter(Boolean);
+
+				// Find where the paths start to differ
+				let diffIndex = 0;
+				while (
+					diffIndex < realParts.length &&
+					diffIndex < rootParts.length &&
+					realParts[diffIndex] === rootParts[diffIndex]
+				) {
+					diffIndex++;
+				}
+
+				// Return everything after the common root
+				const relativeParts = realParts.slice(diffIndex);
+				if (relativeParts.length > 0) {
+					return relativeParts.join("/");
+				}
+			} catch (e) {
+				console.error("Error handling Termux URI:", e);
+			}
+		}
+
+		// Handle other content:// URIs
 		if (temp.includes("content://") && temp.includes("::")) {
 			try {
 				// Get the part after :: which contains the actual file path
