@@ -589,7 +589,7 @@ async function run(
 		if (
 			rootFolder.startsWith("content://com.android.externalstorage.documents")
 		) {
-			temp = filePath + "/" + filename;
+			temp = filePath + filename;
 		}
 
 		//subtract the root folder from the file path to get relative path
