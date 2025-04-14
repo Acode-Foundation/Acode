@@ -125,17 +125,17 @@ async function run(
 	}
 
 	function startConsole() {
-		runConsole();
-		start();
-	}
-
-	function runConsole() {
 		if (!isConsole) EXECUTING_SCRIPT = activeFile.filename;
 		isConsole = true;
 		target = "inapp";
 		filename = "console.html";
+
+		//this extra www is incorrect because asset_directory itself has www
+		//but keeping it in case something depends on it
 		pathName = `${ASSETS_DIRECTORY}www/`;
 		port = constants.CONSOLE_PORT;
+
+		start();
 	}
 
 	function start() {
@@ -177,7 +177,6 @@ async function run(
 		const reqId = req.requestId;
 		let reqPath = req.path.substring(1);
 
-		console.log(req);
 		if (!reqPath || (reqPath.endsWith("/") && reqPath.length === 1)) {
 			reqPath = getRelativePath();
 		}
@@ -253,12 +252,12 @@ async function run(
 			let file = activeFile.SAFMode === "single" ? activeFile : null;
 
 			if (pathName) {
-				const projectFolder = addedFolder[0]
+				const projectFolder = addedFolder[0];
 
 				//set the root folder to the file parent if no project folder is set
 				let rootFolder = pathName;
 				if (projectFolder !== undefined) {
-					rootFolder = projectFolder.url
+					rootFolder = projectFolder.url;
 				}
 				const query = url.split("?")[1];
 
@@ -536,15 +535,14 @@ async function run(
 
 	function getRelativePath() {
 		//get the project url
-		const projectFolder = addedFolder[0]
+		const projectFolder = addedFolder[0];
 
 		//set the root folder to the file parent if no project folder is set
 		let rootFolder = pathName;
 		if (projectFolder !== undefined) {
-			rootFolder = projectFolder.url
+			rootFolder = projectFolder.url;
 		}
 
-		
 		//parent of the file
 		let filePath = pathName;
 
@@ -557,7 +555,6 @@ async function run(
 				"content://com.termux.documents/tree/%2Fdata%2Fdata%2Fcom.termux%2Ffiles%2Fhome::/data/data/com.termux/files/home/";
 		}
 
-		
 		//remove the query string if present this is needs to be removed because the url is not valid
 		if (rootFolder.startsWith("ftp:") || rootFolder.startsWith("sftp:")) {
 			if (rootFolder.includes("?")) {
@@ -589,13 +586,11 @@ async function run(
 			console.error(e);
 		}
 
-		console.log("rootFolder", rootFolder);
-		console.log("filePath", temp);
-
-		if (rootFolder.startsWith("content://com.android.externalstorage.documents")) { 
-			temp = filePath+"/"+filename;
+		if (
+			rootFolder.startsWith("content://com.android.externalstorage.documents")
+		) {
+			temp = filePath + "/" + filename;
 		}
-
 
 		//subtract the root folder from the file path to get relative path
 		const path = removePrefix(removePrefix(temp, rootFolder), "/");
@@ -607,16 +602,21 @@ async function run(
 	 * Opens the preview in browser
 	 */
 	function openBrowser() {
-		const path = getRelativePath();
+		let url = `http://localhost:${port}/`;
+		if (pathName.startsWith(ASSETS_DIRECTORY)) {
+			url += filename;
+		} else {
+			url += getRelativePath();
+		}
 
-		const src = `http://localhost:${port}/${path}`;
+		console.log(url);
 
 		if (target === "browser") {
-			system.openInBrowser(src);
+			system.openInBrowser(url);
 			return;
 		}
 
-		browser.open(src, isConsole);
+		browser.open(url, isConsole);
 	}
 }
 
