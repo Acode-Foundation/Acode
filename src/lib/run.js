@@ -17,6 +17,7 @@ import constants from "./constants";
 import EditorFile from "./editorFile";
 import openFolder, { addedFolder } from "./openFolder";
 import appSettings from "./settings";
+import EditorManager from "./editorManager";
 
 /**@type {Server} */
 let webServer;
@@ -176,6 +177,7 @@ async function run(
 	async function handleRequest(req) {
 		const reqId = req.requestId;
 		let reqPath = req.path.substring(1);
+
 
 		if (!reqPath || (reqPath.endsWith("/") && reqPath.length === 1)) {
 			reqPath = getRelativePath();
@@ -525,6 +527,10 @@ async function run(
 				"content://com.termux.documents/tree/%2Fdata%2Fdata%2Fcom.termux%2Ffiles%2Fhome::/data/data/com.termux/files/home/";
 		}
 
+		console.log("rootFolder", rootFolder);
+		console.log("pathName", pathName);
+		console.log("filename", filename);
+
 		// Parent of the file
 		let filePath = pathName;
 
@@ -676,15 +682,13 @@ async function run(
 	 * Opens the preview in browser
 	 */
 	function openBrowser() {
-		let url = `http://localhost:${port}/`;
-		if (pathName.startsWith(ASSETS_DIRECTORY)) {
-			url += filename;
-		} else {
-			url += getRelativePath();
+		let url = ""
+		if(pathName === null && !activeFile.location){
+			url = `http://localhost:${port}/__unsaved_file__`;
+		}else{
+			url = `http://localhost:${port}/${getRelativePath()}`;
 		}
-
-		console.log(url);
-
+	
 		if (target === "browser") {
 			system.openInBrowser(url);
 			return;
