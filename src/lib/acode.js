@@ -23,6 +23,7 @@ import actionStack from "lib/actionStack";
 import commands from "lib/commands";
 import EditorFile from "lib/editorFile";
 import files from "lib/fileList";
+import fileTypeHandler from "lib/fileTypeHandler";
 import fonts from "lib/fonts";
 import NotificationManager from "lib/notificationManager";
 import openFolder from "lib/openFolder";
@@ -494,5 +495,24 @@ export default class Acode {
 			action,
 			type,
 		});
+	}
+
+	/**
+	 * Register a custom file type handler
+	 * @param {string} id Unique identifier for the handler
+	 * @param {Object} options Handler configuration
+	 * @param {string[]} options.extensions File extensions to handle (without dots)
+	 * @param {function} options.handleFile Function that handles the file opening
+	 */
+	registerFileHandler(id, options) {
+		fileTypeHandler.registerFileHandler(id, options);
+	}
+
+	/**
+	 * Unregister a file type handler
+	 * @param {string} id The handler id to remove
+	 */
+	unregisterFileHandler(id) {
+		fileTypeHandler.unregisterFileHandler(id);
 	}
 }

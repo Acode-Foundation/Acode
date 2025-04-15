@@ -7,6 +7,7 @@ import { reopenWithNewEncoding } from "palettes/changeEncoding";
 import { decode } from "utils/encodings";
 import helpers from "utils/helpers";
 import EditorFile from "./editorFile";
+import fileTypeHandler from "./fileTypeHandler";
 import recents from "./recents";
 import appSettings from "./settings";
 
@@ -96,6 +97,31 @@ export default async function openFile(file, options = {}) {
 				SAFMode: mode,
 			});
 		};
+
+		// Check for registered file handlers
+		const customHandler = fileTypeHandler.getFileHandler(name);
+		if (customHandler) {
+			try {
+				await customHandler.handleFile({
+					name,
+					uri,
+					stats: fileInfo,
+					readOnly,
+					options: {
+						cursorPos,
+						render,
+						onsave,
+						encoding,
+						mode,
+						createEditor,
+					},
+				});
+				return;
+			} catch (error) {
+				console.error(`File handler '${customHandler.id}' failed:`, error);
+				// Continue with default handling if custom handler fails
+			}
+		}
 
 		if (text) {
 			// If file is not opened and has unsaved text
