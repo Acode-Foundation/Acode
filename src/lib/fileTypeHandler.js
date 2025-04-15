@@ -9,7 +9,6 @@
  * @typedef {Object} FileInfo
  * @property {string} name - File name
  * @property {string} uri - File URI
- * @property {Object} fs - File system operations object
  * @property {Object} stats - File stats
  * @property {boolean} readOnly - Whether the file is read-only
  * @property {Object} options - Additional options passed during file open
