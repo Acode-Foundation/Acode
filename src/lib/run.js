@@ -15,9 +15,9 @@ import $_console from "views/console.hbs";
 import $_markdown from "views/markdown.hbs";
 import constants from "./constants";
 import EditorFile from "./editorFile";
+import EditorManager from "./editorManager";
 import openFolder, { addedFolder } from "./openFolder";
 import appSettings from "./settings";
-import EditorManager from "./editorManager";
 
 /**@type {Server} */
 let webServer;
@@ -177,7 +177,6 @@ async function run(
 	async function handleRequest(req) {
 		const reqId = req.requestId;
 		let reqPath = req.path.substring(1);
-
 
 		if (!reqPath || (reqPath.endsWith("/") && reqPath.length === 1)) {
 			reqPath = getRelativePath();
@@ -682,13 +681,13 @@ async function run(
 	 * Opens the preview in browser
 	 */
 	function openBrowser() {
-		let url = ""
-		if(pathName === null && !activeFile.location){
+		let url = "";
+		if (pathName === null && !activeFile.location) {
 			url = `http://localhost:${port}/__unsaved_file__`;
-		}else{
+		} else {
 			url = `http://localhost:${port}/${getRelativePath()}`;
 		}
-	
+
 		if (target === "browser") {
 			system.openInBrowser(url);
 			return;
