@@ -224,23 +224,25 @@ export default class EditorFile {
 					href: "./res/file-icons/style.css",
 				});
 
-				const content = tag("div", {
-					className: "tab-page-content",
-				});
-				content.appendChild(options.content);
-
-				// Add stylesheet and content to shadow DOM
+				// Add base styles to shadow DOM first
 				shadow.appendChild(mainStyle);
 				shadow.appendChild(iconStyle);
 				shadow.appendChild(fileIconStyle);
-				shadow.appendChild(content);
-
-				this.#content = container;
 
 				// Handle custom stylesheets if provided
 				if (options.stylesheets) {
 					this.#addCustomStyles(options.stylesheets, shadow);
 				}
+
+				const content = tag("div", {
+					className: "tab-page-content",
+				});
+				content.appendChild(options.content);
+
+				// Append content container to shadow DOM
+				shadow.appendChild(content);
+
+				this.#content = container;
 			} else {
 				this.#content = options.content;
 			}
