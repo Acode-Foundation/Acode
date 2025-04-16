@@ -987,7 +987,6 @@ export default class EditorFile {
 	 * @param {Array<Fold>} folds
 	 */
 	static #parseFolds(folds) {
-		if (this.type !== "editor") return [];
 		if (!Array.isArray(folds)) return [];
 
 		const foldDataAr = [];
