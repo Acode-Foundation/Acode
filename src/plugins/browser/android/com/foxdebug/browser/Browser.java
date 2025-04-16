@@ -38,6 +38,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import android.app.AlertDialog;
 import android.app.DownloadManager;
 import android.content.Context;
 import android.net.Uri;
@@ -46,6 +47,8 @@ import android.webkit.DownloadListener;
 import android.webkit.URLUtil;
 import android.webkit.WebView;
 import android.widget.Toast;
+
+
 
 public class Browser extends LinearLayout {
 
@@ -153,31 +156,37 @@ public class Browser extends LinearLayout {
     webView.setBackgroundColor(0xFFFFFFFF);
 
 
-    // Enable download support
-        webView.setDownloadListener(new DownloadListener() {
-            @Override
-            public void onDownloadStart(String url, String userAgent,
-                                        String contentDisposition, String mimeType,
-                                        long contentLength) {
+    webView.setDownloadListener(new DownloadListener() {
+        @Override
+        public void onDownloadStart(String url, String userAgent,
+                                    String contentDisposition, String mimeType,
+                                    long contentLength) {
 
-                DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
-                request.setMimeType(mimeType);
-                request.addRequestHeader("User-Agent", userAgent);
-                request.setDescription("Downloading file...");
-                String fileName = URLUtil.guessFileName(url, contentDisposition, mimeType);
-                request.setTitle(fileName);
-                request.allowScanningByMediaScanner();
-                request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-                request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
+            String fileName = URLUtil.guessFileName(url, contentDisposition, mimeType);
 
-                DownloadManager dm = (DownloadManager) getContext().getSystemService(Context.DOWNLOAD_SERVICE);
+            new AlertDialog.Builder(getContext())
+                .setTitle("Download file")
+                .setMessage("Do you want to download \"" + fileName + "\"?")
+                .setPositiveButton("Yes", (dialog, which) -> {
+                    DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
+                    request.setMimeType(mimeType);
+                    request.addRequestHeader("User-Agent", userAgent);
+                    request.setDescription("Downloading file...");
+                    request.setTitle(fileName);
+                    request.allowScanningByMediaScanner();
+                    request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                    request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
 
-                dm.enqueue(request);
-                
-                Toast.makeText(getContext(), "Download started...", Toast.LENGTH_SHORT).show();
- 
-            }
-        });
+                    DownloadManager dm = (DownloadManager) getContext().getSystemService(Context.DOWNLOAD_SERVICE);
+                    dm.enqueue(request);
+
+                    Toast.makeText(getContext(), "Download started...", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+        }
+    });
+
 
     fitWebViewTo(0, 0, 1);
 
