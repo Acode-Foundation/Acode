@@ -163,6 +163,11 @@ export default function editorSettings() {
 			text: strings["color preview"],
 			checkbox: values.colorPreview,
 		},
+		{
+			key: "rainbowBrackets",
+			text: strings["rainbowbrackets"],
+			checkbox: values.rainbowBrackets,
+		},
 	];
 
 	return settingsPage(title, items, callback);

@@ -392,5 +392,6 @@
 	"notifications": "Értesítések",
 	"no_unread_notifications": "Nincsenek olvasatlan értesítések",
 	"should_use_current_file_for_preview": "A jelenlegi fájl használata az előnézethez az alapértelmezett (index.html) helyett",
-	"fade fold widgets": "Elhalványulás a modulok bezárásakor"
+	"fade fold widgets": "Elhalványulás a modulok bezárásakor",
+	"rainbowbrackets": "Rainbow Brackets Colorizer"
 }

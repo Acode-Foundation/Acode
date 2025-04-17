@@ -392,5 +392,6 @@
 	"notifications": "Benachrichtigungen",
 	"no_unread_notifications": "Keine ungelesenen Benachrichtigungen",
 	"should_use_current_file_for_preview": "Sollte die aktuelle Datei für die Vorschau verwenden, anstatt dem Standard (index.html)",
-	"fade fold widgets": "Fade Fold Widgets"
+	"fade fold widgets": "Fade Fold Widgets",
+	"rainbowbrackets": "Rainbow Brackets Colorizer"
 }

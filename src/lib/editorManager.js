@@ -1,6 +1,7 @@
 import initColorView from "ace/colorView";
 import { deactivateColorView } from "ace/colorView";
 import { setCommands, setKeyBindings } from "ace/commands";
+import AceRainbowBrackets from "ace/rainbowBrackets";
 import touchListeners from "ace/touchHandler";
 import { scrollAnimationFrame } from "ace/touchHandler";
 import list from "components/collapsableList";
@@ -132,6 +133,8 @@ async function EditorManager($header, $body) {
 			}
 		},
 	};
+	let rainbowBracketsDisposer = null;
+	const rainbowBracketsInstance = new AceRainbowBrackets();
 
 	// set mode text
 	editor.setSession(ace.createEditSession("", "ace/mode/text"));
@@ -175,7 +178,7 @@ async function EditorManager($header, $body) {
 	});
 
 	appSettings.on("update:showPrintMargin", function (value) {
-		editorManager.editor.setOption("showPrintMargin", value);
+		editor.setOption("showPrintMargin", value);
 	});
 
 	appSettings.on("update:scrollbarSize", function (value) {
@@ -224,6 +227,17 @@ async function EditorManager($header, $body) {
 		deactivateColorView();
 	});
 
+	appSettings.on("update:rainbowBrackets", function (value) {
+		if (rainbowBracketsDisposer) {
+			rainbowBracketsDisposer.dispose();
+			rainbowBracketsDisposer = null;
+		}
+
+		if (value) {
+			rainbowBracketsDisposer = rainbowBracketsInstance.init(editor);
+		}
+	});
+
 	appSettings.on("update:showSideButtons", function () {
 		updateMargin();
 		updateSideButtonContainer();
@@ -258,8 +272,14 @@ async function EditorManager($header, $body) {
 		const Emmet = ace.require("ace/ext/emmet");
 		const textInput = editor.textInput.getElement();
 		const settings = appSettings.value;
-		const { leftMargin, textWrap, colorPreview, fontSize, lineHeight } =
-			appSettings.value;
+		const {
+			leftMargin,
+			textWrap,
+			colorPreview,
+			fontSize,
+			lineHeight,
+			rainbowBrackets,
+		} = appSettings.value;
 		const scrollMarginTop = 0;
 		const scrollMarginLeft = 0;
 		const scrollMarginRight = textWrap ? 0 : leftMargin;
@@ -357,6 +377,10 @@ async function EditorManager($header, $body) {
 
 		if (colorPreview) {
 			initColorView(editor);
+		}
+
+		if (rainbowBrackets) {
+			rainbowBracketsDisposer = rainbowBracketsInstance.init(editor);
 		}
 
 		touchListeners(editor);

@@ -169,6 +169,7 @@ class Settings {
 			defaultFileEncoding: "UTF-8",
 			inlineAutoCompletion: true,
 			colorPreview: true,
+			rainbowBrackets: true,
 			maxRetryCount: 3,
 			showRetryToast: false,
 			showSideButtons: true,

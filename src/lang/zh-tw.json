@@ -392,5 +392,6 @@
 	"notifications": "通知",
 	"no_unread_notifications": "沒有未讀的通知",
 	"should_use_current_file_for_preview": "應使用目前的檔案作為預覽頁面，而不是預設檔案 (index.html)",
-	"fade fold widgets": "Fade Fold Widgets"
+	"fade fold widgets": "Fade Fold Widgets",
+	"rainbowbrackets": "Rainbow Brackets Colorizer"
 }
