@@ -56,6 +56,8 @@ import { getEncoding, initEncodings } from "utils/encodings";
 import auth, { loginEvents } from "./auth";
 import constants from "./constants";
 
+import { App as CapacitorApp } from "@capacitor/app";
+
 const previousVersionCode = Number.parseInt(localStorage.versionCode, 10);
 
 window.onload = Main;
@@ -431,7 +433,7 @@ async function loadApp() {
 	editorManager.on("rename-file", onFileUpdate);
 	editorManager.on("switch-file", onFileUpdate);
 	editorManager.on("file-loaded", onFileUpdate);
-	navigator.app.overrideButton("menubutton", true);
+	//navigator.app.overrideButton("menubutton", true);
 	system.setIntentHandler(intentHandler, intentHandler.onError);
 	system.getCordovaIntent(intentHandler, intentHandler.onError);
 	setTimeout(showTutorials, 1000);
@@ -651,12 +653,21 @@ function showTutorials() {
 	}
 }
 
-function backButtonHandler() {
+function backButtonHandler(event) {
+	event.preventDefault();
+
 	if (keydownState.esc) {
 		keydownState.esc = false;
 		return;
 	}
-	actionStack.pop();
+
+	const top = actionStack.pop();
+
+	if (top && typeof top.action === "function") {
+		top.action();
+	} else {
+		//CapacitorApp.exitApp();
+	}
 }
 
 function menuButtonHandler() {

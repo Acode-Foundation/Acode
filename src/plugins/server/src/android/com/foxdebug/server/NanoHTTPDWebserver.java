@@ -298,14 +298,15 @@ public class NanoHTTPDWebserver extends NanoHTTPD {
             responseObject.getString("body")
           );
 
-        Iterator<?> keys = responseObject.getJSONObject("headers").keys();
-        while (keys.hasNext()) {
-          String key = (String) keys.next();
-          response.addHeader(
-            key,
-            responseObject.getJSONObject("headers").getString(key)
-          );
+        if (responseObject.has("headers")) {
+          JSONObject headers = responseObject.getJSONObject("headers");
+          Iterator<?> keys = headers.keys();
+          while (keys.hasNext()) {
+            String key = (String) keys.next();
+            response.addHeader(key, headers.getString(key));
+          }
         }
+
       } catch (JSONException e) {
         e.printStackTrace();
       }

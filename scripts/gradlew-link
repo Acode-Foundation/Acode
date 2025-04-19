@@ -1,0 +1,5 @@
+CURRENT_PWD=$PWD
+ANDROID_ROOT=$(npm prefix)/android
+cd $ANDROID_ROOT
+./gradlew $@
+cd $CURRENT_PWD
