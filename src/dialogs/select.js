@@ -80,10 +80,8 @@ function select(title, items, options = {}) {
 
       // handle icon
       if (itemOptions.icon) {
-        if (itemOptions.icon === 'letters') {
-          lead = (
-            <i className="icon letters" data-letters={itemOptions.letters}></i>
-          );
+        if (itemOptions.icon === 'letters' && !!itemOptions.letters) {
+          lead = <i className="icon letters" data-letters={itemOptions.letters}></i>
         } else {
           lead = <i className={`icon ${itemOptions.icon}`}></i>;
         }
