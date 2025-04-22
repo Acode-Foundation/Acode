@@ -19,12 +19,13 @@ import restoreTheme from 'lib/restoreTheme';
  * @property {string} [icon]
  * @property {boolean} [disabled]
  * @property {string} [letters]
+ * @property {boolean} [checkbox]
  */
 
 /**
  * Create a select dialog
  * @param {string} title Title of the select
- * @param {string | string[] | SelectItem} items Object or [value, text, icon, disable?, letters?] or String
+ * @param {string | string[] | SelectItem} items Object or [value, text, icon, disable?, letters?, checkbox?] or String
  * @param {SelectOptions | boolean} options options or rejectOnCancel
  * @returns {Promise<string>}
  */
