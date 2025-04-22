@@ -81,6 +81,11 @@ export default async function Changelog() {
 		try {
 			const releases = await fsOperation(GITHUB_API_URL).readFile("json");
 			const betaRelease = releases.find((r) => r.prerelease);
+			if (!betaRelease) {
+				$content.innerHTML =
+					'<div class="error">No beta release found</div>';
+				return;
+			}
 			selectedVersion = betaRelease.tag_name.replace("v", "");
 			selectedStatus = "prerelease";
 			updateVersionSelector();
