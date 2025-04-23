@@ -1,5 +1,5 @@
-import tile from "components/tile";
 import Checkbox from "components/checkbox";
+import tile from "components/tile";
 import actionStack from "lib/actionStack";
 import restoreTheme from "lib/restoreTheme";
 
