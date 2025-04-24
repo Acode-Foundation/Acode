@@ -5,6 +5,40 @@
   padding: 0 1rem;
 }
 
+.changelog-version-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--popup-background-color);
+  border: none;
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-right: 6px;
+
+  &:hover {
+    background-color: var(--secondary-color);
+  }
+}
+
+.status-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.status-latest {
+  background-color: #10b981;
+}
+.status-prerelease {
+  background-color: var(--danger-color);
+}
+.status-current {
+  background-color: var(--active-icon-color);
+}
+
 .loading {
   display: flex;
   justify-content: center;
