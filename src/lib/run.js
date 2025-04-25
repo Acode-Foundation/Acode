@@ -507,13 +507,6 @@ async function run(
 		});
 	}
 
-	function removePrefix(str, prefix) {
-		if (str.startsWith(prefix)) {
-			return str.slice(prefix.length);
-		}
-		return str;
-	}
-
 	function makeUriAbsoluteIfNeeded(uri) {
 		const termuxRootEncoded =
 			"content://com.termux.documents/tree/%2Fdata%2Fdata%2Fcom.termux%2Ffiles%2Fhome";
