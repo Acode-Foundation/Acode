@@ -507,6 +507,29 @@ async function run(
 		});
 	}
 
+	function removePrefix(str, prefix) {
+		if (str.startsWith(prefix)) {
+			return str.slice(prefix.length);
+		}
+		return str;
+	}
+
+	function makeUriAbsoluteIfNeeded(uri) {
+		const termuxRootEncoded =
+			"content://com.termux.documents/tree/%2Fdata%2Fdata%2Fcom.termux%2Ffiles%2Fhome";
+		const termuxRootDecoded = "/data/data/com.termux/files/home";
+
+		if (uri.startsWith(termuxRootEncoded)) {
+			// Extract subpath after `::` if already absolute
+			if (uri.includes("::")) return uri;
+
+			const decodedPath = decodeURIComponent(uri.split("tree/")[1] || "");
+			return `${termuxRootEncoded}::${decodedPath}/`;
+		}
+
+		return uri;
+	}
+
 	function getRelativePath() {
 		// Get the project url
 		const projectFolder = addedFolder[0];
@@ -518,13 +541,7 @@ async function run(
 		}
 
 		//make the uri absolute if necessary
-		if (
-			rootFolder ===
-			"content://com.termux.documents/tree/%2Fdata%2Fdata%2Fcom.termux%2Ffiles%2Fhome"
-		) {
-			rootFolder =
-				"content://com.termux.documents/tree/%2Fdata%2Fdata%2Fcom.termux%2Ffiles%2Fhome::/data/data/com.termux/files/home/";
-		}
+		rootFolder = makeUriAbsoluteIfNeeded(rootFolder);
 
 		console.log("rootFolder", rootFolder);
 		console.log("pathName", pathName);
