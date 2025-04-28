@@ -392,5 +392,5 @@
 	"notifications": "消息通知",
 	"no_unread_notifications": "沒有未讀消息",
 	"should_use_current_file_for_preview": "應使當前文件用於預覽頁面而非使用默認文件 (index.html)",
-	"fade fold widgets": "Fade Fold Widgets"
+	"fade fold widgets": "淡入淡出代碼折疊按鈕"
 }
