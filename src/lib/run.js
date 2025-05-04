@@ -316,11 +316,15 @@ async function run(
 
 				default:
 					if (file && file.loaded && file.isUnsaved) {
-						sendText(
-							file.session.getValue(),
-							reqId,
-							mimeType.lookup(file.filename),
-						);
+						if (filename.endsWith(".html")) {
+							sendHTML(file.session.getValue(), reqId);
+						} else {
+							sendText(
+								file.session.getValue(),
+								reqId,
+								mimeType.lookup(file.filename),
+							);
+						}
 					} else if (url) {
 						if (reqPath === "favicon.ico") {
 							sendIco(ASSETS_DIRECTORY, reqId);
