@@ -9,6 +9,7 @@ import ScrollBar from "components/scrollbar";
 import SideButton, { sideButtonContainer } from "components/sideButton";
 import keyboardHandler from "handlers/keyboard";
 import { keydownState } from "handlers/keyboard";
+import actions from "handlers/quickTools";
 import sidebarApps from "sidebarApps";
 import EditorFile from "./editorFile";
 import appSettings from "./settings";
@@ -644,6 +645,14 @@ async function EditorManager($header, $body) {
 		}
 
 		manager.activeFile = file;
+
+		if (file.hideQuickTools) {
+			root.classList.add("hide-floating-button");
+			actions("set-height", { height: 0, save: false });
+		} else {
+			root.classList.remove("hide-floating-button");
+			actions("set-height", appSettings.value.quickTools);
+		}
 
 		if (file.type === "editor") {
 			editor.setSession(file.session);

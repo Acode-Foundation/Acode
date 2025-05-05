@@ -161,7 +161,11 @@ export default function actions(action, value) {
 			return true;
 
 		case "set-height":
-			setHeight(value);
+			if (typeof value === "object") {
+				setHeight(value.height, value.save);
+			} else {
+				setHeight(value);
+			}
 			return true;
 
 		case "search-prev":
@@ -275,12 +279,14 @@ function toggle() {
 	focusEditor();
 }
 
-function setHeight(height = 1) {
+function setHeight(height = 1, save = true) {
 	const { $footer, $row1, $row2 } = quickTools;
 	const { editor } = editorManager;
 
 	setFooterHeight(height);
-	appSettings.update({ quickTools: height }, false);
+	if (save) {
+		appSettings.update({ quickTools: height }, false);
+	}
 	editor.resize(true);
 
 	if (!height) {

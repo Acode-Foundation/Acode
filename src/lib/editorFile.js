@@ -49,6 +49,11 @@ export default class EditorFile {
 	 * @type {HTMLElement}
 	 */
 	#content = null;
+	/**
+	 * Whether to hide quicktools for this tab
+	 * @type {boolean}
+	 */
+	hideQuickTools = false;
 
 	/**
 	 * Custom stylesheets for tab
@@ -185,6 +190,8 @@ export default class EditorFile {
 	constructor(filename, options) {
 		const { addFile, getFile } = editorManager;
 		let doesExists = null;
+
+		this.hideQuickTools = options?.hideQuickTools || false;
 
 		// if options are passed
 		if (options) {
