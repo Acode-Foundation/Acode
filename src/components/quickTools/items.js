@@ -34,6 +34,17 @@ export default [
 	item("command-palette", "keyboard_control", "command", "openCommandPalette"),
 	item("alt-key", "letters", "alt", undefined, "alt", false),
 	item("meta-key", "letters", "meta", undefined, "meta", false),
+	item("home-key", "letters", "key", 36, "home", true),
+	item("end-key", "letters", "key", 35, "end", true),
+	item("pageup-key", "letters", "key", 33, "pgup", true),
+	item("pagedown-key", "letters", "key", 34, "pgdn", true),
+	item("delete-key", "letters", "key", 46, "del", true),
+	item("tilde", "letters", "insert", "~", "~"),
+	item("backtick", "letters", "insert", "`", "`"),
+	item("hash", "letters", "insert", "#", "#"),
+	item("dollar", "letters", "insert", "$", "$"),
+	item("modulo", "letters", "insert", "%", "%"),
+	item("caret", "letters", "insert", "^", "^"),
 ];
 
 /**

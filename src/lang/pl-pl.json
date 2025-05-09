@@ -392,5 +392,16 @@
 	"notifications": "Powiadomienia",
 	"no_unread_notifications": "Brak nieodczytanych powiadomień",
 	"should_use_current_file_for_preview": "Należy użyć bieżącego pliku do podglądu zamiast domyślnego (index.html)",
-	"fade fold widgets": "Fade Fold Widgets"
+	"fade fold widgets": "Fade Fold Widgets",
+	"quicktools:home-key": "Home Key",
+	"quicktools:end-key": "End Key",
+	"quicktools:pageup-key": "PageUp Key",
+	"quicktools:pagedown-key": "PageDown Key",
+	"quicktools:delete-key": "Delete Key",
+	"quicktools:tilde": "Insert tilde symbol",
+	"quicktools:backtick": "Insert backtick",
+	"quicktools:hash": "Insert Hash symbol",
+	"quicktools:dollar": "Insert dollar symbol",
+	"quicktools:modulo": "Insert modulo/percent symbol",
+	"quicktools:caret": "Insert caret symbol"
 }
