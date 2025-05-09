@@ -86,7 +86,6 @@ const recents = {
 			return name;
 		};
 
-
 		if (type === "dir" || type === "all") {
 			let dirs = this.folders;
 			for (let dir of dirs) {
@@ -112,7 +111,7 @@ const recents = {
 					ontailclick: (e) => {
 						const $item = e.currentTarget.closest(".tile");
 						if ($item) $item.remove();
-						self.removeFolder(dir.url);
+						this.removeFolder(dir.url);
 					},
 				});
 			}
@@ -143,7 +142,7 @@ const recents = {
 					ontailclick: (e) => {
 						const $item = e.currentTarget.closest(".tile");
 						if ($item) $item.remove();
-						self.removeFile(file);
+						this.removeFile(file);
 					},
 				});
 			}
