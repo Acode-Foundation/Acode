@@ -86,7 +86,6 @@ const recents = {
 			return name;
 		};
 
-		const self = this;
 
 		if (type === "dir" || type === "all") {
 			let dirs = this.folders;
