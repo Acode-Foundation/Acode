@@ -399,7 +399,7 @@
 	"quicktools:pagedown-key": "PageDown gomb",
 	"quicktools:delete-key": "Delete gomb",
 	"quicktools:tilde": "Hullámvonal beszúrása",
-	"quicktools:backtick": "Fordított törtvonal beszúrása",
+	"quicktools:backtick": "Fordított félidézőjel beszúrása",
 	"quicktools:hash": "Számjel beszúrása",
 	"quicktools:dollar": "Dollárjel beszúrása",
 	"quicktools:modulo": "Százalékjel beszúrása",
