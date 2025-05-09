@@ -93,7 +93,7 @@ function select(title, items, options = {}) {
 				itemOptions.text = item;
 			}
 
-			// handle icon (kead)
+			// handle icon (lead)
 			if (itemOptions.icon) {
 				if (itemOptions.icon === "letters" && !!itemOptions.letters) {
 					lead = (
