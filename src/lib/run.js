@@ -60,7 +60,7 @@ async function run(
 	const uuid = helpers.uuid();
 
 	let isLoading = false;
-	let isFallback = false
+	let isFallback = false;
 	let filename, pathName, extension;
 	let port = appSettings.value.serverPort;
 	let EXECUTING_SCRIPT = uuid + "_script.js";
@@ -478,17 +478,17 @@ async function run(
 		let fs = fsOperation(url);
 
 		if (!(await fs.exists())) {
-			const xfs = fsOperation(Url.join(pathName,filename))
+			const xfs = fsOperation(Url.join(pathName, filename));
 
-			if(await xfs.exists()){
-				fs = xfs
-				isFallback = true
-				console.log(`fallback ${Url.join(pathName,filename)}`)
-			}else{
-				console.log(`${url} doesnt exists`)
-			error(id);
+			if (await xfs.exists()) {
+				fs = xfs;
+				isFallback = true;
+				console.log(`fallback ${Url.join(pathName, filename)}`);
+			} else {
+				console.log(`${url} doesnt exists`);
+				error(id);
 			}
-			
+
 			return;
 		}
 
