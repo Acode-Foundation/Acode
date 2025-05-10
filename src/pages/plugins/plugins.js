@@ -305,7 +305,7 @@ export default function PluginsInclude(updates) {
         hasMore = false;
       }
 
-      const installed = await fsOperation(PLUGIN_DIR).lsDir();
+      const installed = await internalFs.listDir(PLUGIN_DIR)
       installed.forEach(({ url }) => {
         const plugin = newPlugins.find(({ id }) => id === Url.basename(url));
         if (plugin) {
@@ -330,7 +330,7 @@ export default function PluginsInclude(updates) {
   async function getInstalledPlugins(updates) {
     $list.installed.setAttribute("empty-msg", strings["loading..."]);
     plugins.installed = [];
-    const installed = await fsOperation(PLUGIN_DIR).lsDir();
+    const installed = await internalFs.listDir(PLUGIN_DIR)
     await Promise.all(
       installed.map(async (item) => {
         const id = Url.basename(item.url);

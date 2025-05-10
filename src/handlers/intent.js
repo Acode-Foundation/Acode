@@ -1,4 +1,5 @@
 import fsOperation from "fileSystem";
+import internalFs from "fileSystem/internalFs";
 import openFile from "lib/openFile";
 import helpers from "utils/helpers";
 
@@ -32,7 +33,7 @@ export default async function HandleIntent(intent = {}) {
 
 			if (module === "plugin") {
 				const { default: Plugin } = await import("pages/plugin");
-				const installed = await fsOperation(PLUGIN_DIR, value).exists();
+				const installed = await internalFs.exists(PLUGIN_DIR);
 				Plugin({ id: value, installed, install: action === "install" });
 			}
 

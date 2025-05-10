@@ -1,3 +1,4 @@
+import internalFs from "fileSystem/internalFs";
 import fsOperation from "../fileSystem";
 import Url from "../utils/Url";
 import loadPlugin from "./loadPlugin";
@@ -25,7 +26,7 @@ const THEME_IDENTIFIERS = new Set([
 ]);
 
 export default async function loadPlugins(loadOnlyTheme = false) {
-	const plugins = await fsOperation(PLUGIN_DIR).lsDir();
+	const plugins = await internalFs.listDir(PLUGIN_DIR);
 	const results = [];
 	const failedPlugins = [];
 	const loadedPlugins = new Set();
@@ -53,6 +54,7 @@ export default async function loadPlugins(loadOnlyTheme = false) {
 
 	// Load plugins concurrently
 	const loadPromises = pluginsToLoad.map(async (pluginDir) => {
+		console.log("loading");
 		const pluginId = Url.basename(pluginDir.url);
 
 		if (loadOnlyTheme && currentTheme) {

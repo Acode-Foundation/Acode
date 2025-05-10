@@ -3,7 +3,7 @@ import fsOperation from "../fileSystem";
 import Url from "../utils/Url";
 
 export default async function checkPluginsUpdate() {
-	const plugins = await fsOperation(PLUGIN_DIR).lsDir();
+	const plugins = await internalFs.listDir(PLUGIN_DIR);
 	const promises = [];
 	const updates = [];
 

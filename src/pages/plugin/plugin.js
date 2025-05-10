@@ -75,10 +75,19 @@ export default async function PluginInclude(
 			const installedPlugin = await fsOperation(
 				Url.join(PLUGIN_DIR, id, "plugin.json"),
 			).readFile("json");
+
+			console.log(installPlugin);
+
 			const { author } = installedPlugin;
+
+			console.log(author);
+
 			const description = await fsOperation(
 				Url.join(PLUGIN_DIR, id, installedPlugin.readme),
 			).readFile("utf8");
+
+			console.log(description);
+
 			let changelogs = "";
 			if (installedPlugin.changelogs) {
 				const changelogPath = Url.join(

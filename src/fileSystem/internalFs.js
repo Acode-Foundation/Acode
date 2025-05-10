@@ -1,24 +1,47 @@
+import { Directory, Encoding, Filesystem } from "@capacitor/filesystem";
 import ajax from "@deadlyjack/ajax";
+import { data } from "autoprefixer";
 import fsOperation from "fileSystem";
+import path from "path-browserify";
 import Url from "utils/Url";
 import { decode, encode } from "utils/encodings";
 import helpers from "utils/helpers";
 
 const internalFs = {
 	/**
-	 *
+	 * List files from a Directory (not recursive)
 	 * @param {string} url
 	 * @returns {Promise}
 	 */
 	listDir(url) {
 		return new Promise((resolve, reject) => {
 			reject = setMessage(reject);
-			window.resolveLocalFileSystemURL(url, success, reject);
 
-			function success(fs) {
-				const reader = fs.createReader();
-				reader.readEntries(resolve, reject);
-			}
+			Filesystem.readdir({ path: url })
+				.then((result) => {
+					console.log(
+						`Listed files/directories successfully for url: ${url}, Result: `,
+						result,
+					);
+					resolve(
+						result.files.map((file) => ({
+							name: file.name,
+							url: file.uri,
+							size: file.size,
+							ctime: file.ctime,
+							mtime: file.mtime,
+							isFile: file.type === "file",
+							isDirectory: file.type === "directory",
+							isLink: false,
+						})),
+					);
+				})
+				.catch((error) => {
+					console.log(
+						`Error while listing Directory for url: ${url}, error:`,
+						error,
+					);
+				});
 		});
 	},
 
@@ -32,33 +55,54 @@ const internalFs = {
 	 * @param {boolean} exclusive If true, and the create option is also true,
 	 * the file must not exist prior to issuing the call.
 	 * Instead, it must be possible for it to be created newly at call time. The default is true.
-	 * @returns {Promise}
+	 * @returns {Promise<string>} URL where the file was written into.
 	 */
-	writeFile(filename, data, create = false, exclusive = true) {
+	writeFile(filename, udata, create = false, exclusive = true) {
 		exclusive = create ? exclusive : false;
 		const name = filename.split("/").pop();
-		const dirname = Url.dirname(filename);
 
 		return new Promise((resolve, reject) => {
+			if (udata === undefined || udata == null) {
+				reject("udata is null");
+			}
+
+			let options = {
+				path: filename,
+				recursive: create,
+			};
+
 			reject = setMessage(reject);
-			window.resolveLocalFileSystemURL(
-				dirname,
-				(entry) => {
-					entry.getFile(
-						name,
-						{ create, exclusive },
-						(fileEntry) => {
-							fileEntry.createWriter((file) => {
-								file.onwriteend = (res) => resolve(filename);
-								file.onerror = (err) => reject(err.target.error);
-								file.write(data);
-							});
-						},
-						reject,
+
+			if (
+				udata instanceof ArrayBuffer ||
+				Object.prototype.toString.call(udata) === "[object ArrayBuffer]"
+			) {
+				// Binary data — store as base64
+				options.data = btoa(String.fromCharCode(...new Uint8Array(udata)));
+				options.encoding = Encoding.BASE64;
+			} else if (typeof udata === "string") {
+				// Text data — store as UTF-8
+				options.data = udata;
+				options.encoding = Encoding.UTF8;
+			} else {
+				reject("Unsupported udata type");
+				return;
+			}
+
+			Filesystem.writeFile(options)
+				.then((file) => {
+					console.log(
+						`Successfully written into (name: ${name}) ${filename} file`,
 					);
-				},
-				reject,
-			);
+					resolve(file.uri);
+				})
+				.catch((error) => {
+					console.error(
+						`Failed to write into (name: ${name}) ${filename} file, error: `,
+						error,
+					);
+					reject(error);
+				});
 		});
 	},
 
@@ -67,20 +111,27 @@ const internalFs = {
 	 * @param {string} filename
 	 * @returns {Promise}
 	 */
+
 	delete(filename) {
 		return new Promise((resolve, reject) => {
-			reject = setMessage(reject);
-			window.resolveLocalFileSystemURL(
-				filename,
-				(entry) => {
-					if (entry.isFile) {
-						entry.remove(resolve, reject);
+			console.log("Deleting " + filename);
+
+			Filesystem.stat({ path: filename })
+				.then((stats) => {
+					if (stats.type === "directory") {
+						return Filesystem.rmdir({ path: filename, recursive: true });
 					} else {
-						entry.removeRecursively(resolve, reject);
+						return Filesystem.deleteFile({ path: filename });
 					}
-				},
-				reject,
-			);
+				})
+				.then(() => {
+					console.log("Deleted successfully!");
+					resolve();
+				})
+				.catch((error) => {
+					console.error("Error while deleting:", error);
+					reject(error);
+				});
 		});
 	},
 
@@ -93,32 +144,37 @@ const internalFs = {
 	readFile(filename) {
 		return new Promise((resolve, reject) => {
 			reject = setMessage(reject);
-			window.resolveLocalFileSystemURL(
-				filename,
-				(fileEntry) => {
-					(async () => {
-						const url = fileEntry.toInternalURL();
-						try {
-							const data = await ajax({
-								url: url,
-								responseType: "arraybuffer",
-							});
+			Filesystem.readFile({ path: filename, encoding: Encoding.UTF8 })
+				.then((readFileResult) => {
+					const encoder = new TextEncoder();
+					const buffer = encoder.encode(readFileResult.data).buffer;
 
-							resolve({ data });
-						} catch (error) {
-							fileEntry.file((file) => {
-								const fileReader = new FileReader();
-								fileReader.onerror = reject;
-								fileReader.readAsArrayBuffer(file);
-								fileReader.onloadend = () => {
-									resolve({ data: fileReader.result });
-								};
-							}, reject);
-						}
-					})();
-				},
-				reject,
-			);
+					resolve({ data: buffer });
+				})
+				.catch((error) => {
+					console.error(
+						`Failed to Read File contents of "${filename}", error: `,
+						error,
+					);
+					reject(error);
+				});
+		});
+	},
+
+	readStringFile(filename) {
+		return new Promise((resolve, reject) => {
+			reject = setMessage(reject);
+			Filesystem.readFile({ path: filename, encoding: Encoding.UTF8 })
+				.then((readFileResult) => {
+					resolve({ data: readFileResult.data });
+				})
+				.catch((error) => {
+					console.error(
+						`Failed to Read File contents of "${filename}", error: `,
+						error,
+					);
+					reject(error);
+				});
 		});
 	},
 
@@ -160,21 +216,24 @@ const internalFs = {
 	createDir(path, dirname) {
 		return new Promise((resolve, reject) => {
 			reject = setMessage(reject);
-			window.resolveLocalFileSystemURL(
-				path,
-				(fs) => {
-					fs.getDirectory(
-						dirname,
-						{ create: true },
-						async () => {
-							const stats = await this.stats(Url.join(path, dirname));
-							resolve(stats.url);
-						},
-						reject,
+			// TODO!: ask about `recursive` option
+			Filesystem.mkdir({
+				path: `${path}/${dirname}`,
+				recursive: true,
+			})
+				.then(() => {
+					console.log(`Created  ${path}/${dirname}`);
+					Filesystem.stat({ path: `${path}/${dirname}` })
+						.then((stats) => resolve(stats.url))
+						.catch(reject);
+				})
+				.catch((error) => {
+					console.error(
+						`Failed to create ${dirname} directory in path: ${path}, error:`,
+						error,
 					);
-				},
-				reject,
-			);
+					reject(error);
+				});
 		});
 	},
 
@@ -210,14 +269,33 @@ const internalFs = {
 			reject = setMessage(reject);
 			this.verify(src, dest)
 				.then((res) => {
-					const { src, dest } = res;
-
-					src[action](
-						dest,
-						undefined,
-						(entry) => resolve(decodeURIComponent(entry.nativeURL)),
-						reject,
-					);
+					if (action === "copyTO") {
+						Filesystem.copy({
+							from: src,
+							to: dest,
+						})
+							.then((copyResult) => {
+								console.log(`Successfully copied from "${src}" to "${dest}"`);
+								resolve(copyResult.uri);
+							})
+							.catch((error) => {
+								console.error(`Failed to copy from "${src}" to "${dest}"`);
+								reject(error);
+							});
+					} else if (action === "moveTO") {
+						Filesystem.rename({
+							from: src,
+							to: dest,
+						})
+							.then((moveResult) => {
+								console.log(`Successfully moved from "${src}" to "${dest}"`);
+								resolve(dest);
+							})
+							.catch((error) => {
+								console.error(`Failed to move from "${src}" to "${dest}"`);
+								reject(error);
+							});
+					}
 				})
 				.catch(reject);
 		});
@@ -231,11 +309,14 @@ const internalFs = {
 	stats(filename) {
 		return new Promise((resolve, reject) => {
 			reject = setMessage(reject);
-			window.resolveLocalFileSystemURL(
-				filename,
-				(entry) => {
+			Filesystem.stat({ path: filename })
+				.then((entry) => {
+					console.log(
+						`Successfully returned stats for "${filename}", Result: `,
+						entry,
+					);
 					sdcard.stats(
-						entry.nativeURL,
+						entry.uri,
 						(stats) => {
 							helpers.defineDeprecatedProperty(
 								stats,
@@ -252,13 +333,19 @@ const internalFs = {
 						},
 						reject,
 					);
-				},
-				reject,
-			);
+				})
+				.catch((error) => {
+					console.error(
+						`Failed to show stats for "${filename}", error:`,
+						error,
+					);
+					reject(error);
+				});
 		});
 	},
 
 	/**
+	 * TODO: check this function with Rohit.
 	 * Verify if a file or directory exists
 	 * @param {string} src
 	 * @param {string} dest
@@ -267,36 +354,48 @@ const internalFs = {
 	verify(src, dest) {
 		return new Promise((resolve, reject) => {
 			reject = setMessage(reject);
-			window.resolveLocalFileSystemURL(
-				src,
-				(srcEntry) => {
-					window.resolveLocalFileSystemURL(
-						dest,
-						(destEntry) => {
-							window.resolveLocalFileSystemURL(
-								Url.join(destEntry.nativeURL, srcEntry.name),
-								(res) => {
-									reject({
-										code: 12,
-									});
-								},
-								(err) => {
-									if (err.code === 1) {
-										resolve({
-											src: srcEntry,
-											dest: destEntry,
-										});
-									} else {
-										reject(err);
-									}
-								},
-							);
-						},
-						reject,
+
+			// check if source exists
+			Filesystem.stat({
+				path: src,
+			})
+				.then((srcStat) => {
+					console.log(
+						`"${src}" source dir/file verified successful, checking if source dir/file already exists in "${dest}" destination file/dir`,
 					);
-				},
-				reject,
-			);
+					// Check if file/folder already exists at the destination
+					Filesystem.stat({
+						path: `${dest}/${srcStat.name}`,
+					})
+						.then(() => {
+							// File already exists error.
+							reject({
+								code: 12,
+							});
+						})
+						.catch((fileExistsErr) => {
+							console.error(
+								"Failed to verify source in destination, error: ",
+								error,
+							);
+							// if we get a "not found" error (code 1), that's good - we can copy
+							if (fileExistsErr.code === 1) {
+								resolve({
+									src: { path: src },
+									dest: { path: dest },
+								});
+							} else {
+								reject(fileExistsErr);
+							}
+						});
+				})
+				.catch((error) => {
+					console.error(
+						`Failed to verify "${src}" source dir/file, error: `,
+						error,
+					);
+					reject(error);
+				});
 		});
 	},
 
@@ -307,16 +406,21 @@ const internalFs = {
 	exists(url) {
 		return new Promise((resolve, reject) => {
 			reject = setMessage(reject);
-			window.resolveLocalFileSystemURL(
-				url,
-				(entry) => {
+			Filesystem.stat({
+				path: url,
+			})
+				.then((stats) => {
+					if (!stats.uri) return resolve(false);
+					console.log(
+						`Successfully found (name: ${stats.name || "name not found"}) "${url}" existing`,
+					);
 					resolve(true);
-				},
-				(err) => {
-					if (err.code === 1) resolve(false);
-					reject(err);
-				},
-			);
+				})
+				.catch((err) => {
+					// on-error defaulting to false,
+					// as capacitor doesn't emit error codes, for error types(file not found, etc)
+					resolve(false);
+				});
 		});
 	},
 
@@ -405,6 +509,7 @@ function createFs(url) {
 			return files;
 		},
 		async readFile(encoding) {
+			console.log("fs read " + url);
 			let { data } = await internalFs.readFile(url, encoding);
 
 			if (encoding) {
