@@ -60,6 +60,7 @@ async function run(
 	const uuid = helpers.uuid();
 
 	let isLoading = false;
+	let isFallback = false;
 	let filename, pathName, extension;
 	let port = appSettings.value.serverPort;
 	let EXECUTING_SCRIPT = uuid + "_script.js";
@@ -252,7 +253,7 @@ async function run(
 
 			let file = activeFile.SAFMode === "single" ? activeFile : null;
 
-			if (pathName) {
+			if (pathName && isFallback) {
 				const projectFolder = addedFolder[0];
 
 				//set the root folder to the file parent if no project folder is set
@@ -478,10 +479,20 @@ async function run(
 	 * @returns
 	 */
 	async function sendFileContent(url, id, mime, processText) {
-		const fs = fsOperation(url);
+		let fs = fsOperation(url);
 
 		if (!(await fs.exists())) {
-			error(id);
+			const xfs = fsOperation(Url.join(pathName, filename));
+
+			if (await xfs.exists()) {
+				fs = xfs;
+				isFallback = true;
+				console.log(`fallback ${Url.join(pathName, filename)}`);
+			} else {
+				console.log(`${url} doesnt exists`);
+				error(id);
+			}
+
 			return;
 		}
 
