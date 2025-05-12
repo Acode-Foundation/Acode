@@ -46,17 +46,7 @@
                 <action android:name="android.intent.action.EDIT" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.LAUNCHER" />
-                <data android:mimeType="text/*"/>
-                <data android:mimeType="xml/*" />
-                <data android:mimeType="application/text" />
-                <data android:mimeType="application/xml" />
-                <data android:mimeType="application/json" />
-                <data android:mimeType="application/javascript" />
-                <data android:mimeType="application/x-sh" />
-                <data android:mimeType="application/octet-stream"/>
-                <data pathPattern=".*\.txt"/>
-                <data pathPattern=".*\.xml"/>
-                <data pathPattern=".*\.json"/>
+                <data android:mimeType="*/*"/>
             </intent-filter>
             <!-- Allow app to open using url from browser -->
             <intent-filter android:autoVerify="true">
