@@ -180,7 +180,7 @@ const langMap = {
 		},
 	},
 	"he-IL": {
-		name: "Italiano",
+		name: "Hebrew",
 		async strings() {
 			return await import("../lang/he-IL.json");
 		},
