@@ -6,7 +6,6 @@ import fsOperation from "fileSystem";
 import actions from "handlers/quickTools";
 import actionStack from "lib/actionStack";
 import constants from "lib/constants";
-import EditorFile from "lib/editorFile";
 import lang from "lib/lang";
 import openFile from "lib/openFile";
 import appSettings from "lib/settings";
@@ -158,7 +157,7 @@ export default function otherSettings() {
 		{
 			key: "excludeFolders",
 			text: strings["exclude files"],
-			/*value: values.excludeFolders.join("\n"),
+			value: values.excludeFolders.join("\n"),
 			prompt: strings["exclude files"],
 			promptType: "textarea",
 			promptOptions: {
@@ -167,7 +166,7 @@ export default function otherSettings() {
 						return item.trim().length > 0;
 					});
 				},
-			},*/
+			},
 		},
 		{
 			key: "defaultFileEncoding",
@@ -262,24 +261,11 @@ export default function otherSettings() {
 				break;
 
 			case "excludeFolders":
-				actionStack.pop(actionStack.length);
-				const editor = new EditorFile(strings["exclude files"], {
-					text: values.excludeFolders.join("\n"),
-				});
-				editor.onsave = function (event) {
-					event.preventDefault();
-					const data = editor.session.getValue();
-
-					appSettings.update({
-						[key]: data
-							.split("\n")
-							.map((item) => item.trim())
-							.filter((item) => item.length > 0),
-					});
-
-					editor.isUnsaved = false;
-				};
-				return;
+				value = value
+					.split("\n")
+					.map((item) => item.trim())
+					.filter((item) => item.length > 0);
+				break;
 
 			default:
 				break;
