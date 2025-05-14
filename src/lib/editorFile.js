@@ -244,7 +244,12 @@ export default class EditorFile {
 				const content = tag("div", {
 					className: "tab-page-content",
 				});
-				content.appendChild(options.content);
+
+				if (typeof options.content === "string") {
+					content.innerHTML = options.content;
+				} else {
+					content.appendChild(options.content);
+				}
 
 				// Append content container to shadow DOM
 				shadow.appendChild(content);
