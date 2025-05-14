@@ -1,6 +1,7 @@
 import Sidebar from "components/sidebar";
 import tile from "components/tile";
 import confirm from "dialogs/confirm";
+import DOMPurify from "dompurify";
 import fsOperation from "fileSystem";
 import startDrag from "handlers/editorFileTab";
 import tag from "html-tag-js";
@@ -246,7 +247,7 @@ export default class EditorFile {
 				});
 
 				if (typeof options.content === "string") {
-					content.innerHTML = options.content;
+					content.innerHTML = DOMPurify.sanitize(options.content);
 				} else {
 					content.appendChild(options.content);
 				}
