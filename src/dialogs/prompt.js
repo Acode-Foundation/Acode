@@ -19,12 +19,18 @@ import appSettings from "lib/settings";
  * @param {PromptOptions} options
  * @returns {Promise<string|number|null>} Returns null if cancelled
  */
+
 export default function prompt(
 	message,
 	defaultValue,
 	type = "text",
 	options = {},
 ) {
+	const commands = editorManager.editor.commands;
+	const originalExec = commands.exec;
+
+	commands.exec = () => {}; // Disable all shortcuts
+
 	return new Promise((resolve) => {
 		const inputType = type === "textarea" ? "textarea" : "input";
 		type = type === "filename" ? "text" : type;
@@ -50,6 +56,7 @@ export default function prompt(
 				hide();
 				let { value } = input;
 				if (type === "number") value = +value;
+
 				resolve(value);
 			},
 		});
@@ -151,6 +158,7 @@ export default function prompt(
 		}
 
 		function hide() {
+			commands.exec = originalExec;
 			actionStack.remove("prompt");
 			system.setInputType(appSettings.value.keyboardMode);
 			hidePrompt();

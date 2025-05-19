@@ -72,7 +72,6 @@ function openFolder(_path, opts = {}) {
 	}
 
 	const $root = collapsableList(title, "folder", {
-		tail: <Tail target={() => $root.$title} />,
 		allCaps: true,
 		ontoggle: () => expandList($root),
 	});
@@ -747,7 +746,6 @@ function appendList($target, $list) {
  */
 function createFolderTile(name, url) {
 	const $list = collapsableList(name, "folder", {
-		tail: <Tail target={() => $list.$title} />,
 		ontoggle: () => expandList($list),
 	});
 	const { $title } = $list;
@@ -768,7 +766,6 @@ function createFileTile(name, url) {
 	const $tile = tile({
 		lead: <span className={helpers.getIconForFile(name)}></span>,
 		text: name,
-		tail: <Tail target={() => $tile} />,
 	});
 	$tile.dataset.url = url;
 	$tile.dataset.name = name;
@@ -783,22 +780,22 @@ function createFileTile(name, url) {
  * @param {HTMLElement} param0.target
  * @returns {HTMLElement}
  */
-function Tail({ target }) {
-	return (
-		<span
-			className="icon more_vert"
-			attr-action="close"
-			onclick={(e) => {
-				e.stopPropagation();
-				e.preventDefault();
-				handleItems({
-					target: target(),
-					type: "contextmenu",
-				});
-			}}
-		></span>
-	);
-}
+// function Tail({ target }) {
+// 	return (
+// 		<span
+// 			className="icon more_vert"
+// 			attr-action="close"
+// 			onclick={(e) => {
+// 				e.stopPropagation();
+// 				e.preventDefault();
+// 				handleItems({
+// 					target: target(),
+// 					type: "contextmenu",
+// 				});
+// 			}}
+// 		></span>
+// 	);
+// }
 
 /**
  * Add file or folder to the list if expanded

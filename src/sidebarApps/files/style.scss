@@ -12,17 +12,88 @@
     }
   }
 
-  .list .icon.more_vert {
-    position: sticky;
-    right: 0;
+  /* Make the container horizontally scrollable */
+  overflow-x: auto !important;
+  max-width: 100%;
+
+  &::-webkit-scrollbar {
+    height: 5px;
+    width: 5px;
   }
 
-  .tile:not(.light) .icon.more_vert::before {
-    background-color: rgb(153, 153, 255);
-    background-color: var(--primary-color);
-    color: rgb(255, 255, 255);
-    color: var(--primary-text-color);
-    box-shadow: 0 0 5px 0 rgb(153, 153, 255);
-    box-shadow: 0 0 5px 0 var(--primary-color);
+  &::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.3);
+    border-radius: 3px;
+  }
+
+  &::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
+
+  .list {
+    min-width: 100%;
+    width: max-content;
+    max-width: none;
+  }
+
+  ul {
+    min-width: 100%;
+    width: max-content;
+    overflow-x: visible !important;
+    max-width: none;
+    margin-left: 0;
+    &::-webkit-scrollbar-corner {
+      background: transparent;
+    }
+  }
+
+  li {
+    min-width: 100%;
+    width: max-content;
+  }
+
+  .tile {
+    > .text {
+      white-space: nowrap !important;
+      overflow: visible !important;
+      width: max-content !important;
+      text-overflow: clip !important;
+    }
+  }
+
+  /* Add indent guides for folders (excluding first level) */
+  .list.collapsible > ul > .collapsible > ul {
+    position: relative;
+    padding-left: 24px;
+
+    &::before {
+      content: "";
+      position: absolute;
+      left: 14px;
+      top: 0;
+      height: 100%;
+      width: 1px;
+      background: var(--border-color);
+      z-index: 0;
+    }
+
+    /* Add guides for deeper nesting */
+    .collapsible > ul {
+      padding-left: 24px;
+
+      &::before {
+        content: "";
+        position: absolute;
+        left: 14px;
+        top: 0;
+        height: 100%;
+        width: 1px;
+        background: var(--border-color);
+        z-index: 0;
+      }
+    }
   }
 }

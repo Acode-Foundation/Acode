@@ -179,6 +179,12 @@ const langMap = {
 			return await import("../lang/it-it.json");
 		},
 	},
+	"he-il": {
+		name: "Hebrew",
+		async strings() {
+			return await import("../lang/he-il.json");
+		},
+	},
 };
 
 export default {

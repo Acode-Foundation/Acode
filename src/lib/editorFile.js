@@ -1,6 +1,7 @@
 import Sidebar from "components/sidebar";
 import tile from "components/tile";
 import confirm from "dialogs/confirm";
+import DOMPurify from "dompurify";
 import fsOperation from "fileSystem";
 import startDrag from "handlers/editorFileTab";
 import tag from "html-tag-js";
@@ -244,7 +245,12 @@ export default class EditorFile {
 				const content = tag("div", {
 					className: "tab-page-content",
 				});
-				content.appendChild(options.content);
+
+				if (typeof options.content === "string") {
+					content.innerHTML = DOMPurify.sanitize(options.content);
+				} else {
+					content.appendChild(options.content);
+				}
 
 				// Append content container to shadow DOM
 				shadow.appendChild(content);

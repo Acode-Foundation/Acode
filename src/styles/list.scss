@@ -1,4 +1,4 @@
-@import './mixins.scss';
+@import "./mixins.scss";
 
 .list {
   width: 100%;
@@ -13,18 +13,18 @@
         display: none;
       }
 
-      >.tile {
-        >.folder::before {
-          content: '\e92c' !important;
+      > .tile {
+        > .folder::before {
+          content: "\e92c" !important;
         }
 
-        >.indicator::before {
-          content: '\e9bd' !important;
+        > .indicator::before {
+          content: "\e9bd" !important;
         }
       }
     }
 
-    >.tile {
+    > .tile {
       position: relative;
       height: 30px;
       font-size: 1em;
@@ -35,12 +35,12 @@
         @include linear-loader(30%, 2px);
       }
 
-      >.folder::before {
-        content: '\e92d';
+      > .folder::before {
+        content: "\e92d";
       }
 
-      >.indicator::before {
-        content: '\e9a6';
+      > .indicator::before {
+        content: "\e9a6";
       }
 
       .icon {
@@ -54,7 +54,7 @@
       padding-left: 10px;
       box-sizing: border-box;
 
-      >.tile {
+      > .tile {
         height: 30px;
 
         .icon {
@@ -65,7 +65,7 @@
       }
 
       .collapsible {
-        >.tile {
+        > .tile {
           background-color: transparent;
         }
       }
@@ -73,7 +73,7 @@
 
     .icon.lang {
       padding-right: 5px;
-      font-family: 'Roboto', sans-serif;
+      font-family: "Roboto", sans-serif;
       font-weight: bolder;
       color: rgb(37, 37, 37);
       color: var(--secondary-text-color);
@@ -82,7 +82,7 @@
     }
   }
 
-  >.list-item {
+  > .list-item {
     display: flex;
     min-height: 60px;
     text-decoration: none;
@@ -143,10 +143,12 @@
           box-sizing: border-box;
         }
 
-        span {
-          width: 100%;
-          overflow: hidden;
-          text-overflow: ellipsis;
+        .text {
+          span {
+            width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
         }
       }
 
@@ -250,7 +252,6 @@ ul {
 }
 
 .list {
-
   &:empty,
   &.empty {
     display: flex;

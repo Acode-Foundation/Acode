@@ -6,11 +6,44 @@ export function initModes() {
 		"ace/ext/modelist",
 		["require", "exports", "module"],
 		function (require, exports, module) {
+			/**
+			 * Calculates a specificity score for a mode.
+			 * Higher score means more specific.
+			 * - Anchored patterns (e.g., "^Dockerfile") get a base score of 1000.
+			 * - Non-anchored patterns (extensions) are scored by length.
+			 */
+			function getModeSpecificityScore(modeInstance) {
+				const extensionsStr = modeInstance.extensions;
+				if (!extensionsStr) return 0;
+
+				const patterns = extensionsStr.split("|");
+				let maxScore = 0;
+
+				for (const pattern of patterns) {
+					let currentScore = 0;
+					if (pattern.startsWith("^")) {
+						// Exact filename match or anchored pattern
+						currentScore = 1000 + (pattern.length - 1); // Subtract 1 for '^'
+					} else {
+						// Extension match
+						currentScore = pattern.length;
+					}
+					if (currentScore > maxScore) {
+						maxScore = currentScore;
+					}
+				}
+				return maxScore;
+			}
 			module.exports = {
 				getModeForPath(path) {
 					let mode = modesByName.text;
 					let fileName = path.split(/[\/\\]/).pop();
-					for (const iMode of modes) {
+					// Sort modes by specificity (descending) to check most specific first
+					const sortedModes = [...modes].sort((a, b) => {
+						return getModeSpecificityScore(b) - getModeSpecificityScore(a);
+					});
+
+					for (const iMode of sortedModes) {
 						if (iMode.supportsFile?.(fileName)) {
 							mode = iMode;
 							break;
