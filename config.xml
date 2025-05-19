@@ -34,7 +34,6 @@
         <preference name="androidxEnabled" value="true" />
 
         
-
         <edit-config file="app/src/main/AndroidManifest.xml" mode="merge" target="/manifest/application">
             <application android:networkSecurityConfig="@xml/network_security_config" />
             <application android:hardwareAccelerated="true" />

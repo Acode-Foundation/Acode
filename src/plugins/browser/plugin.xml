@@ -15,7 +15,7 @@
 
 
     <config-file parent="./application" target="AndroidManifest.xml">
-      <activity android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode" android:name="com.foxdebug.browser.BrowserActivity" android:theme="@style/Theme.AppCompat.NoActionBar" android:windowSoftInputMode="adjustResize">
+      <activity android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode" android:name="com.foxdebug.browser.BrowserActivity" android:theme="@style/Theme.AppCompat.NoActionBar" android:windowSoftInputMode="adjustResize" android:resizeableActivity="true">
       </activity>
     </config-file>
 
