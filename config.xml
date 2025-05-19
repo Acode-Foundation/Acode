@@ -33,11 +33,17 @@
         <preference name="prerendered-icon" value="false" />
         <preference name="androidxEnabled" value="true" />
 
+        
+
         <edit-config file="app/src/main/AndroidManifest.xml" mode="merge" target="/manifest/application">
             <application android:networkSecurityConfig="@xml/network_security_config" />
             <application android:hardwareAccelerated="true" />
             <application android:requestLegacyExternalStorage="true" />
             <application android:largeHeap="true" />
+        </edit-config>
+
+        <edit-config file="app/src/main/AndroidManifest.xml" mode="merge" target="/manifest/application/activity[@android:name='MainActivity']">
+            <activity android:resizeableActivity="true" />
         </edit-config>
 
         <config-file parent="./application/activity" target="AndroidManifest.xml">
