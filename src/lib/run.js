@@ -180,9 +180,14 @@ async function run(
 		const reqId = req.requestId;
 		let reqPath = req.path.substring(1);
 
+		console.log(`XREQPATH ${reqPath}`)
+		console.log(req)
+
 		if (!reqPath || (reqPath.endsWith("/") && reqPath.length === 1)) {
 			reqPath = getRelativePath();
 		}
+
+		console.log(`XREQPATH1 ${reqPath}`)
 
 		const ext = Url.extname(reqPath);
 		let url = null;
@@ -256,37 +261,40 @@ async function run(
 
 			if (pathName) {
 				const projectFolder = addedFolder[0];
-
-				let rootFolder = "";
-				if (projectFolder !== undefined && pathName.includes(projectFolder)) {
-					rootFolder = projectFolder.url;
-				} else {
-					rootFolder = pathName;
-				}
-
 				const query = url.split("?")[1];
-
-				//remove the query string if present this is needs to be removed because the url is not valid
-				if (rootFolder.startsWith("ftp:") || rootFolder.startsWith("sftp:")) {
-					if (rootFolder.includes("?")) {
-						rootFolder = rootFolder.split("?")[0];
-					}
+				let rootFolder = "";
+			  
+				if (projectFolder !== undefined && pathName.includes(projectFolder.url)) {
+				  rootFolder = projectFolder.url;
+				} else {
+				  rootFolder = pathName;
 				}
-
-				url = Url.join(rootFolder, reqPath);
-
-				//attach the ftp query string to the url
-				if (query) {
-					url = `${url}?${query}`;
+			  
+				if ((rootFolder.startsWith("ftp:") || rootFolder.startsWith("sftp:")) && rootFolder.includes("?")) {
+				  rootFolder = rootFolder.split("?")[0];
 				}
-
-				console.log("url", url);
-
+			  
+				
+				rootFolder = rootFolder.replace(/\/+$/, ""); // remove trailing slash
+				reqPath = reqPath.replace(/^\/+/, "");       // remove leading slash
+			  
+				const rootParts = rootFolder.split("/");
+				const pathParts = reqPath.split("/");
+			  
+				if (pathParts[0] === rootParts[rootParts.length - 1]) {
+				  pathParts.shift();
+				}
+			  
+				const fullPath = Url.join(rootFolder, pathParts.join("/"));
+			  
+				// Add back the query if present
+				url = query ? `${fullPath}?${query}` : fullPath;
+			  
 				file = editorManager.getFile(url, "uri");
-			} else if (!activeFile.uri) {
+			  } else if (!activeFile.uri) {
 				file = activeFile;
-			}
-
+			  }
+			  
 			switch (ext) {
 				case ".htm":
 				case ".html":
@@ -547,16 +555,14 @@ async function run(
 
 		// Set the root folder to the file parent if no project folder is set
 		let rootFolder = pathName;
-		if (projectFolder !== undefined) {
+		if (projectFolder !== undefined && pathName.includes(projectFolder)) {
 			rootFolder = projectFolder.url;
+		}else{
+			rootFolder = pathName
 		}
 
 		//make the uri absolute if necessary
 		rootFolder = makeUriAbsoluteIfNeeded(rootFolder);
-
-		console.log("rootFolder", rootFolder);
-		console.log("pathName", pathName);
-		console.log("filename", filename);
 
 		// Parent of the file
 		let filePath = pathName;
