@@ -155,6 +155,7 @@ async function run(
 	}
 
 	function startServer() {
+		//isFallback = true;
 		webServer?.stop();
 		webServer = CreateServer(port, openBrowser, onError);
 		webServer.setOnRequestHandler(handleRequest);
@@ -253,14 +254,16 @@ async function run(
 
 			let file = activeFile.SAFMode === "single" ? activeFile : null;
 
-			if (pathName && isFallback) {
+			if (pathName) {
 				const projectFolder = addedFolder[0];
 
-				//set the root folder to the file parent if no project folder is set
-				let rootFolder = pathName;
-				if (projectFolder !== undefined) {
+				let rootFolder = "";
+				if (projectFolder !== undefined && pathName.includes(projectFolder)) {
 					rootFolder = projectFolder.url;
+				} else {
+					rootFolder = pathName;
 				}
+
 				const query = url.split("?")[1];
 
 				//remove the query string if present this is needs to be removed because the url is not valid
