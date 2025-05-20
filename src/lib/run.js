@@ -180,14 +180,14 @@ async function run(
 		const reqId = req.requestId;
 		let reqPath = req.path.substring(1);
 
-		console.log(`XREQPATH ${reqPath}`)
-		console.log(req)
+		console.log(`XREQPATH ${reqPath}`);
+		console.log(req);
 
 		if (!reqPath || (reqPath.endsWith("/") && reqPath.length === 1)) {
 			reqPath = getRelativePath();
 		}
 
-		console.log(`XREQPATH1 ${reqPath}`)
+		console.log(`XREQPATH1 ${reqPath}`);
 
 		const ext = Url.extname(reqPath);
 		let url = null;
@@ -263,38 +263,43 @@ async function run(
 				const projectFolder = addedFolder[0];
 				const query = url.split("?")[1];
 				let rootFolder = "";
-			  
-				if (projectFolder !== undefined && pathName.includes(projectFolder.url)) {
-				  rootFolder = projectFolder.url;
+
+				if (
+					projectFolder !== undefined &&
+					pathName.includes(projectFolder.url)
+				) {
+					rootFolder = projectFolder.url;
 				} else {
-				  rootFolder = pathName;
+					rootFolder = pathName;
 				}
-			  
-				if ((rootFolder.startsWith("ftp:") || rootFolder.startsWith("sftp:")) && rootFolder.includes("?")) {
-				  rootFolder = rootFolder.split("?")[0];
+
+				if (
+					(rootFolder.startsWith("ftp:") || rootFolder.startsWith("sftp:")) &&
+					rootFolder.includes("?")
+				) {
+					rootFolder = rootFolder.split("?")[0];
 				}
-			  
-				
+
 				rootFolder = rootFolder.replace(/\/+$/, ""); // remove trailing slash
-				reqPath = reqPath.replace(/^\/+/, "");       // remove leading slash
-			  
+				reqPath = reqPath.replace(/^\/+/, ""); // remove leading slash
+
 				const rootParts = rootFolder.split("/");
 				const pathParts = reqPath.split("/");
-			  
+
 				if (pathParts[0] === rootParts[rootParts.length - 1]) {
-				  pathParts.shift();
+					pathParts.shift();
 				}
-			  
+
 				const fullPath = Url.join(rootFolder, pathParts.join("/"));
-			  
+
 				// Add back the query if present
 				url = query ? `${fullPath}?${query}` : fullPath;
-			  
+
 				file = editorManager.getFile(url, "uri");
-			  } else if (!activeFile.uri) {
+			} else if (!activeFile.uri) {
 				file = activeFile;
-			  }
-			  
+			}
+
 			switch (ext) {
 				case ".htm":
 				case ".html":
@@ -557,8 +562,8 @@ async function run(
 		let rootFolder = pathName;
 		if (projectFolder !== undefined && pathName.includes(projectFolder)) {
 			rootFolder = projectFolder.url;
-		}else{
-			rootFolder = pathName
+		} else {
+			rootFolder = pathName;
 		}
 
 		//make the uri absolute if necessary
