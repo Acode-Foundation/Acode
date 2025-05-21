@@ -290,7 +290,48 @@ async function run(
 					pathParts.shift();
 				}
 
-				const fullPath = Url.join(rootFolder, pathParts.join("/"));
+				function removePrefix(str, prefix) {
+					if (str.startsWith(prefix)) {
+						return str.slice(prefix.length);
+					}
+					return str;
+				}
+
+				function findOverlap(a, b) {
+					// Start with the smallest possible overlap (1 character) and increase
+					let maxOverlap = "";
+
+					// Check all possible overlapping lengths
+					for (let i = 1; i <= Math.min(a.length, b.length); i++) {
+						// Get the ending substring of a with length i
+						const endOfA = a.slice(-i);
+						// Get the starting substring of b with length i
+						const startOfB = b.slice(0, i);
+
+						// If they match, we have a potential overlap
+						if (endOfA === startOfB) {
+							maxOverlap = endOfA;
+						}
+					}
+
+					return maxOverlap;
+				}
+
+				console.log(`RootFolder ${rootFolder}`);
+				console.log(`PARTS ${pathParts.join("/")}`);
+				const overlap = findOverlap(rootFolder, pathParts.join("/"));
+
+				let fullPath;
+				if (overlap !== "") {
+					fullPath = Url.join(
+						rootFolder,
+						removePrefix(pathParts.join("/"), overlap),
+					);
+				} else {
+					fullPath = Url.join(rootFolder, pathParts.join("/"));
+				}
+
+				console.log(`Full PATH ${fullPath}`);
 
 				// Add back the query if present
 				url = query ? `${fullPath}?${query}` : fullPath;
