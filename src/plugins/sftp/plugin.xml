@@ -13,18 +13,21 @@
         <clobbers target="window.sftp" />
     </js-module>
 
+
+
     <!-- android -->
     <platform name="android">
+        <framework src="commons-io:commons-io:2.11.0" />
+        <framework src="com.sshtools:maverick-synergy-client:3.1.2" />
+        <framework src="com.sshtools:maverick-bc:3.1.2" />
         <config-file target="res/xml/config.xml" parent="/*">
             <feature name="Sftp">
                 <param name="android-package" value="com.foxdebug.sftp.Sftp" />
             </feature>
         </config-file>
 
-        <source-file src="src/com/foxdebug/sftp/Sftp.java" target-dir="src/com/foxdebug/sftp" />
+       <source-file src="src/com/foxdebug/sftp/Sftp.java" target-dir="src/com/foxdebug/sftp" /> 
     </platform>
 
-    <framework src="commons-io:commons-io:2.11.0" />
-    <framework src="com.sshtools:maverick-synergy-client:3.1.2" />
-    <framework src="com.sshtools:maverick-bc:3.1.2" />
+
 </plugin>
