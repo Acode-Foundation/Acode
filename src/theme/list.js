@@ -74,7 +74,7 @@ async function apply(id, init) {
 	}
 
 	themeApplied = true;
-	const loaderFile = Url.join(ASSETS_DIRECTORY, "res/tail-spin.svg");
+	const loaderFile = "https://localhost/res/tail-spin.svg";
 	const svgName = "__tail-spin__.svg";
 	const img = Url.join(DATA_STORAGE, svgName);
 	const theme = get(id);
