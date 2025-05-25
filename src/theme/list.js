@@ -68,7 +68,7 @@ function add(theme) {
  * @param {string} id The name of the theme to apply
  * @param {boolean} init Whether or not this is the first time the theme is being applied
  */
-async function apply(id, init) {
+export async function apply(id, init) {
 	if (!DOES_SUPPORT_THEME) {
 		id = "default";
 	}

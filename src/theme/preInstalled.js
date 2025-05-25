@@ -1,4 +1,7 @@
+import appSettings from "lib/settings";
 import { createBuiltInTheme } from "./builder";
+import { apply } from "./list";
+import { isDeviceDarkTheme } from "lib/systemConfiguration";
 
 const WHITE = "rgb(255, 255, 255)";
 const BLACK = "rgb(0, 0, 0)";
@@ -164,11 +167,52 @@ light.linkTextColor = "rgb(104, 103, 149)";
 light.borderColor = "rgb(153, 153, 153)";
 light.popupIconColor = "rgb(51, 62, 89)";
 
+const system = createBuiltInTheme("System");
+
+export function updateSystemTheme(darkTheme) {
+	if (darkTheme) {
+		system.primaryColor = "rgb(49, 49, 49)";
+		system.primaryTextColor = WHITE;
+		system.darkenedPrimaryColor = "rgb(29, 29, 29)";
+		system.secondaryColor = "rgb(37, 37, 37)";
+		system.secondaryTextColor = WHITE;
+		system.activeColor = "rgb(51, 153, 255)";
+		system.linkTextColor = "rgb(181, 180, 233)";
+		system.borderColor = "rgba(230, 230, 230, 0.2)";
+		system.popupIconColor = WHITE;
+
+		system.preferredEditorTheme = "ace/theme/clouds_midnight";
+
+		system.popupBackgroundColor = "rgb(49, 49, 49)";
+		system.popupTextColor = WHITE;
+		system.popupActiveColor = "rgb(255, 215, 0)";
+	} else {
+		system.darkenedPrimaryColor = "rgb(153, 153, 153)";
+		system.primaryColor = WHITE;
+		system.primaryTextColor = "rgb(51, 62, 89)";
+		system.secondaryColor = WHITE;
+		system.secondaryTextColor = "rgb(51, 62, 89)";
+		system.activeColor = "rgb(51, 153, 255)";
+		system.linkTextColor = "rgb(104, 103, 149)";
+		system.borderColor = "rgb(153, 153, 153)";
+		system.popupIconColor = "rgb(51, 62, 89)";
+
+		system.preferredEditorTheme = "ace/theme/crimson_editor";
+	}
+
+	if (appSettings.value.appTheme.toLowerCase() === "system") {
+		apply(system.id, true);
+	}
+}
+
+updateSystemTheme(await isDeviceDarkTheme());
+
 const custom = createBuiltInTheme("Custom");
 custom.autoDarkened = true;
 
 export default [
 	createBuiltInTheme("default", "dark", "free"),
+	system,
 	dark,
 	oled,
 	ocean,
