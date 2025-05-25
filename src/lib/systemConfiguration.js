@@ -55,21 +55,21 @@ export function getSystemConfiguration() {
 
 export function isDeviceDarkTheme() {
 	return new Promise((resolve, reject) => {
-		if (window.cordova && typeof cordova.exec !== "function") {
-			resolve(true);
-			return;
+		try {
+			cordova.exec(
+				(result) => {
+					resolve(result.isDark);
+				},
+				(error) => {
+					console.warn(error);
+					resolve(false);
+				},
+				"System",
+				"getTheme",
+				[],
+			);
+		} catch (e) {
+			resolve(false);
 		}
-		cordova.exec(
-			(result) => {
-				resolve(result.isDark);
-			},
-			(error) => {
-				console.warn(error);
-				resolve(true);
-			},
-			"System",
-			"getTheme",
-			[],
-		);
 	});
 }

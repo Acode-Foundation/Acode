@@ -1,7 +1,8 @@
 import appSettings from "lib/settings";
 import { isDeviceDarkTheme } from "lib/systemConfiguration";
 import { createBuiltInTheme } from "./builder";
-import { apply } from "./list";
+import { apply,update } from "./list";
+import restoreTheme from "lib/restoreTheme";
 
 const WHITE = "rgb(255, 255, 255)";
 const BLACK = "rgb(0, 0, 0)";
@@ -193,11 +194,15 @@ export function updateSystemTheme(darkTheme) {
 		system.secondaryColor = WHITE;
 		system.secondaryTextColor = "rgb(51, 62, 89)";
 		system.activeColor = "rgb(51, 153, 255)";
-		system.linkTextColor = "rgb(104, 103, 149)";
+		system.linkTextColor = BLACK;
 		system.borderColor = "rgb(153, 153, 153)";
 		system.popupIconColor = "rgb(51, 62, 89)";
 
 		system.preferredEditorTheme = "ace/theme/crimson_editor";
+
+		system.popupBackgroundColor = WHITE;
+		system.popupTextColor = BLACK;
+		system.popupActiveColor = "rgb(255, 215, 0)";
 	}
 
 	if (appSettings.value.appTheme.toLowerCase() === "system") {

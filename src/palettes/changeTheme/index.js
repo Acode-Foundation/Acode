@@ -59,7 +59,7 @@ function generateHints(type) {
 }
 
 let previousDark = await isDeviceDarkTheme();
-const updateTimeMs = 3000;
+const updateTimeMs = 2000;
 
 let intervalId = setInterval(async () => {
 	if (appSettings.value.appTheme.toLowerCase() === "system") {

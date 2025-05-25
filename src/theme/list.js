@@ -4,7 +4,7 @@ import color from "utils/color";
 import fonts from "../lib/fonts";
 import settings from "../lib/settings";
 import ThemeBuilder from "./builder";
-import themes from "./preInstalled";
+import themes, { updateSystemTheme } from "./preInstalled";
 
 /** @type {Map<string, ThemeBuilder>} */
 const appThemes = new Map();
@@ -12,6 +12,9 @@ let themeApplied = false;
 
 function init() {
 	themes.forEach((theme) => add(theme));
+	(async () => {
+		updateSystemTheme(await isDeviceDarkTheme());
+	})();
 }
 
 /**
@@ -129,7 +132,7 @@ export async function apply(id, init) {
  * Update a theme
  * @param {ThemeBuilder} theme
  */
-function update(theme) {
+export function update(theme) {
 	if (!(theme instanceof ThemeBuilder)) return;
 	const oldTheme = get(theme.id);
 	if (!oldTheme) {
