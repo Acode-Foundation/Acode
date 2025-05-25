@@ -1,9 +1,9 @@
 import "./style.scss";
 import palette from "components/palette";
 import appSettings from "lib/settings";
+import { isDeviceDarkTheme } from "lib/systemConfiguration";
 import themes from "theme/list";
 import { updateSystemTheme } from "theme/preInstalled";
-import { isDeviceDarkTheme } from "lib/systemConfiguration";
 
 export default function changeTheme(type = "editor") {
 	palette(
@@ -58,10 +58,6 @@ function generateHints(type) {
 	});
 }
 
-
-
-
-
 let previousDark = await isDeviceDarkTheme();
 const updateTimeMs = 3000;
 
@@ -69,7 +65,7 @@ let intervalId = setInterval(async () => {
 	if (appSettings.value.appTheme.toLowerCase() === "system") {
 		const isDark = await isDeviceDarkTheme();
 		if (isDark !== previousDark) {
-			previousDark = isDark
+			previousDark = isDark;
 			updateSystemTheme(isDark);
 		}
 	}
@@ -87,7 +83,7 @@ function onselect(value) {
 				if (appSettings.value.appTheme.toLowerCase() === "system") {
 					const isDark = await isDeviceDarkTheme();
 					if (isDark !== previousDark) {
-						previousDark = isDark
+						previousDark = isDark;
 						updateSystemTheme(isDark);
 					}
 				}

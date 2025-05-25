@@ -1,7 +1,7 @@
 import appSettings from "lib/settings";
+import { isDeviceDarkTheme } from "lib/systemConfiguration";
 import { createBuiltInTheme } from "./builder";
 import { apply } from "./list";
-import { isDeviceDarkTheme } from "lib/systemConfiguration";
 
 const WHITE = "rgb(255, 255, 255)";
 const BLACK = "rgb(0, 0, 0)";

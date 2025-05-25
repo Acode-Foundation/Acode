@@ -53,12 +53,11 @@ export function getSystemConfiguration() {
 	});
 }
 
-
 export function isDeviceDarkTheme() {
 	return new Promise((resolve, reject) => {
-		if(window.cordova && typeof cordova.exec !== 'function'){
-			resolve(true)
-			return
+		if (window.cordova && typeof cordova.exec !== "function") {
+			resolve(true);
+			return;
 		}
 		cordova.exec(
 			(result) => {
@@ -68,9 +67,9 @@ export function isDeviceDarkTheme() {
 				console.warn(error);
 				resolve(true);
 			},
-			'System',
-			'getTheme',
-			[]
+			"System",
+			"getTheme",
+			[],
 		);
 	});
 }
