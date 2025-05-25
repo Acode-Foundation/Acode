@@ -1,34 +1,80 @@
 # Change Log
 
+## v1.11.2 (958)
+
+* fix: cors related issues when installing plugins from remote by @bajrangCoder
+* fix: Acode ignoring main, readme and icon fields in plugin manifest by @alMukaafih
+* feat: inapp acode account login by @bajrangCoder
+* fix: launchApp function by @RohitKushvaha01
+* Update plugin documentation url by @RohitKushvaha01
+* Backup restore fixes by @bajrangCoder
+* file: re-emit switch and load file events after plugin load by @bajrangCoder
+* fix: File copy-paste retains paste option after file is copied. by @RohitKushvaha01
+* Fix sftp sidebar UI issue by @bajrangCoder
+* fix: http relative path by @RohitKushvaha01
+* Download support by @RohitKushvaha01
+* Add Custom File Type Handler API by @bajrangCoder
+* fix: applying folds on reopening the app by @bajrangCoder
+* feat(tabs): Implement Shadow DOM isolation for non-editor tabs by @bajrangCoder
+* remove invalid font by @bajrangCoder
+* Improve Indonesian Translation by @hyperz111
+* feat: improve changelogs page by @bajrangCoder
+* Refactor, feat: Select dialog by @overskul
+* Fix: Translate "Donation Message" and some words by @hyperz111
+* Fix: "File Not Found" error when previewing HTML files from a Termux directory by @RohitKushvaha01
+* Update zh-cn.json and zh-hant.json by @LaunchLee
+* fix: console not showing on unsaved html file by @RohitKushvaha01
+* File Menu & QuickTools Visibility for editor tabs by @bajrangCoder
+* fix: handle edge case for `hideQuickTools` property by @bajrangCoder
+* feat: add more new keys(<kbd>Home</kbd>,<kbd>End</kbd>, <kbd>PageUp</kbd>, <kbd>PageDown</kbd>, <kbd>Delete</kbd>) and symbols(`~` `Backtick`,`#` ,`$` ,`%` ,`^`) for quicktools by @bajrangCoder
+* Fixed select box issue and improved it by @bajrangCoder
+	* Added `x` to delete recent files/folder from dialog
+* Update Hungarian translation by @summoner001
+* chore(i18n): update vi-vn.json by @Nekitori17
+* fix: file not found error by @RohitKushvaha01
+* feat: revamped file tree by @bajrangCoder
+* fix: pagedown key issue in editor by @bajrangCoder
+* feat: open files with arbitrary extension names by @RohitKushvaha01
+* add Hebrew language by @elid34
+* feat: add support for compound file paths like `.blade.php` by @bajrangCoder
+* support string content in tabs by @overskul
+* update Tagalog/Filipino language by @ychwah
+* fix: keyboard shortcuts leaks into ace editor by @RohitKushvaha01
+* Resizeable activity by @RohitKushvaha01
+* update ace v1.41.0 by @bajrangCoder
+* Fix html content access by @RohitKushvaha01
+* fix: path overlap issue in html viewer by @RohitKushvaha01
+* fix: only initiate iap stuff in case of paid plugin on sidebar by @bajrangCoder
+
 ## v1.11.1 (957)
 
-### Features  
-- **Syntax Highlighting**: Added syntax highlighting for code blocks on the plugin page using Ace Editor.  
-- **Theme Settings Fallback**: Implemented a fallback mechanism on the theme settings page when a custom tab is opened.  
-- **QuickTools Scroll Wheel Support**: Added support for scroll wheel events in QuickTools when in click mode.  
-- **SFTP Improvements**:  
-  - Enhanced logging for better debugging.  
-  - Enabled Bouncy Castle for SFTP, resolving connection issues with certain key types.  
-- **App Update Mechanism**:  
-  - Now checks for updates after app startup.  
-  - Uses a native approach instead of traditional fetch.  
+### Features
+- **Syntax Highlighting**: Added syntax highlighting for code blocks on the plugin page using Ace Editor.
+- **Theme Settings Fallback**: Implemented a fallback mechanism on the theme settings page when a custom tab is opened.
+- **QuickTools Scroll Wheel Support**: Added support for scroll wheel events in QuickTools when in click mode.
+- **SFTP Improvements**:
+  - Enhanced logging for better debugging.
+  - Enabled Bouncy Castle for SFTP, resolving connection issues with certain key types.
+- **App Update Mechanism**:
+  - Now checks for updates after app startup.
+  - Uses a native approach instead of traditional fetch.
 
-### Fixes & Improvements  
-- **SD Card Plugin**: Handled a few edge cases to prevent crashes.  
-- **GitHub Plugin Palette Fix**: Resolved an issue where the color palette was breaking the GitHub plugin.  
-- **Plugin Installation Fixes**:  
-  - Updated the install button in the sidebar to prevent multiple installations.  
-  - Fixed the installation mechanism in both the sidebar and the `installPlugin` API.  
-- **Quality of Life Enhancements**:  
-  - Various small improvements when installing/uninstalling plugins from the sidebar.  
+### Fixes & Improvements
+- **SD Card Plugin**: Handled a few edge cases to prevent crashes.
+- **GitHub Plugin Palette Fix**: Resolved an issue where the color palette was breaking the GitHub plugin.
+- **Plugin Installation Fixes**:
+  - Updated the install button in the sidebar to prevent multiple installations.
+  - Fixed the installation mechanism in both the sidebar and the `installPlugin` API.
+- **Quality of Life Enhancements**:
+  - Various small improvements when installing/uninstalling plugins from the sidebar.
 
-#### ⚠️ Experimental Changes ⚠️  
-- **Improved Plugin Loading**:  
-  - Only **theme plugins** load on Acode startup for faster performance.  
-  - All other plugins load **after** Acode startup.  
-- **Important for Theme Developers**:  
-  - Ensure your **plugin ID includes the word "theme"** to be correctly recognized as a theme plugin.  
-  - No changes are needed for existing theme plugins.  
+#### ⚠️ Experimental Changes ⚠️
+- **Improved Plugin Loading**:
+  - Only **theme plugins** load on Acode startup for faster performance.
+  - All other plugins load **after** Acode startup.
+- **Important for Theme Developers**:
+  - Ensure your **plugin ID includes the word "theme"** to be correctly recognized as a theme plugin.
+  - No changes are needed for existing theme plugins.
 - **Potential Issues**: Since this is an experimental change, some features may break. Please report any issues encountered.
 
 ## v1.11.0 (956)
