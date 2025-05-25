@@ -1,4 +1,5 @@
 import fsOperation from "fileSystem";
+import { isDeviceDarkTheme } from "lib/systemConfiguration";
 import Url from "utils/Url";
 import color from "utils/color";
 import fonts from "../lib/fonts";
