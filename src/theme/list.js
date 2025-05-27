@@ -97,8 +97,7 @@ export async function apply(id, init) {
 		update.editorTheme = theme.preferredEditorTheme;
 		if (editorManager != null && editorManager.editor != null) {
 			editorManager.editor.setTheme(theme.preferredEditorTheme);
-		}		  
-		
+		}
 	}
 
 	if (init && theme.preferredFont) {
