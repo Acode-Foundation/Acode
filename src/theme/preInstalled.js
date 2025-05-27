@@ -3,6 +3,7 @@ import appSettings from "lib/settings";
 import { isDeviceDarkTheme } from "lib/systemConfiguration";
 import { createBuiltInTheme } from "./builder";
 import { apply, update } from "./list";
+import color from "utils/color";
 
 const WHITE = "rgb(255, 255, 255)";
 const BLACK = "rgb(0, 0, 0)";
@@ -187,7 +188,9 @@ export function updateSystemTheme(darkTheme) {
 		system.popupBackgroundColor = "rgb(49, 49, 49)";
 		system.popupTextColor = WHITE;
 		system.popupActiveColor = "rgb(255, 215, 0)";
+		system.type = "dark"
 	} else {
+		system.type = "light"
 		system.darkenedPrimaryColor = "rgb(153, 153, 153)";
 		system.primaryColor = WHITE;
 		system.primaryTextColor = "rgb(51, 62, 89)";
@@ -206,7 +209,7 @@ export function updateSystemTheme(darkTheme) {
 	}
 
 	if (appSettings.value.appTheme.toLowerCase() === "system") {
-		apply(system.id, true);
+		apply(system.id, true);	
 	}
 }
 
