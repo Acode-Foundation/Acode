@@ -171,11 +171,11 @@ light.popupIconColor = "rgb(51, 62, 89)";
 
 const system = createBuiltInTheme("System");
 
-export function getSystemEditorTheme(darkTheme){
-	if(darkTheme){
-		return "ace/theme/clouds_midnight"
-	}else{
-		return "ace/theme/crimson_editor"
+export function getSystemEditorTheme(darkTheme) {
+	if (darkTheme) {
+		return "ace/theme/clouds_midnight";
+	} else {
+		return "ace/theme/crimson_editor";
 	}
 }
 
@@ -212,12 +212,16 @@ export function updateSystemTheme(darkTheme) {
 		system.popupActiveColor = "rgb(255, 215, 0)";
 	}
 
-	system.preferredEditorTheme = getSystemEditorTheme(darkTheme)
+	system.preferredEditorTheme = getSystemEditorTheme(darkTheme);
 
-	if (appSettings !== undefined && appSettings.value !== undefined && appSettings.value.appTheme !== undefined && appSettings.value.appTheme.toLowerCase() === "system") {
+	if (
+		appSettings !== undefined &&
+		appSettings.value !== undefined &&
+		appSettings.value.appTheme !== undefined &&
+		appSettings.value.appTheme.toLowerCase() === "system"
+	) {
 		apply(system.id, true);
 	}
-	
 }
 
 updateSystemTheme(isDeviceDarkTheme());

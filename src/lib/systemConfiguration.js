@@ -54,5 +54,5 @@ export function getSystemConfiguration() {
 }
 
 export function isDeviceDarkTheme() {
-	return window.matchMedia("(prefers-color-scheme: dark)").matches
+	return window.matchMedia("(prefers-color-scheme: dark)").matches;
 }

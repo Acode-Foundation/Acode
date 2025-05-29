@@ -1,11 +1,11 @@
 import fsOperation from "fileSystem";
 import ThemeBuilder from "theme/builder";
 import themes from "theme/list";
+import { getSystemEditorTheme } from "theme/preInstalled";
 import Url from "utils/Url";
 import helpers from "utils/helpers";
 import constants from "./constants";
 import lang from "./lang";
-import { getSystemEditorTheme } from "theme/preInstalled";
 import { isDeviceDarkTheme } from "./systemConfiguration";
 
 /**
@@ -185,7 +185,9 @@ class Settings {
 
 		if (!IS_FREE_VERSION) {
 			this.#defaultSettings.appTheme = "system";
-			this.#defaultSettings.editorTheme = getSystemEditorTheme(isDeviceDarkTheme());
+			this.#defaultSettings.editorTheme = getSystemEditorTheme(
+				isDeviceDarkTheme(),
+			);
 		}
 
 		this.#initialized = true;
