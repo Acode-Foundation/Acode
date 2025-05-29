@@ -56,18 +56,8 @@ export function getSystemConfiguration() {
 export function isDeviceDarkTheme() {
 	return new Promise((resolve, reject) => {
 		try {
-			cordova.exec(
-				(result) => {
-					resolve(result.isDark);
-				},
-				(error) => {
-					console.warn(error);
-					resolve(false);
-				},
-				"System",
-				"getTheme",
-				[],
-			);
+			var isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+			resolve(isDark);
 		} catch (e) {
 			resolve(false);
 		}

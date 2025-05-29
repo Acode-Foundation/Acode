@@ -104,24 +104,6 @@ public class System extends CordovaPlugin {
     final String arg5 = args.optString(4);
     final String arg6 = args.optString(5);
 
-    if (action.equals("getTheme")) {
-      JSONObject theme = new JSONObject();
-
-      boolean isDark = (cordova.getActivity().getResources().getConfiguration().uiMode
-          & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
-
-      try {
-        theme.put("isDark", isDark);
-      } catch (Exception e) {
-        callbackContext.error("Error setting 'isDark' JSON entry.");
-        return true;
-      }
-
-      callbackContext.success(theme);
-
-      return true;
-    }
-
     switch (action) {
       case "get-webkit-info":
       case "file-action":
