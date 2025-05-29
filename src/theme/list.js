@@ -14,7 +14,7 @@ let themeApplied = false;
 function init() {
 	themes.forEach((theme) => add(theme));
 	(async () => {
-		updateSystemTheme(await isDeviceDarkTheme());
+		updateSystemTheme(isDeviceDarkTheme());
 	})();
 }
 

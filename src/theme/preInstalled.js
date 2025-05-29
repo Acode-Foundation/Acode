@@ -171,6 +171,14 @@ light.popupIconColor = "rgb(51, 62, 89)";
 
 const system = createBuiltInTheme("System");
 
+export function getSystemEditorTheme(darkTheme){
+	if(darkTheme){
+		return "ace/theme/clouds_midnight"
+	}else{
+		return "ace/theme/crimson_editor"
+	}
+}
+
 export function updateSystemTheme(darkTheme) {
 	if (darkTheme) {
 		system.primaryColor = "rgb(49, 49, 49)";
@@ -182,8 +190,6 @@ export function updateSystemTheme(darkTheme) {
 		system.linkTextColor = "rgb(181, 180, 233)";
 		system.borderColor = "rgba(230, 230, 230, 0.2)";
 		system.popupIconColor = WHITE;
-
-		system.preferredEditorTheme = "ace/theme/clouds_midnight";
 
 		system.popupBackgroundColor = "rgb(49, 49, 49)";
 		system.popupTextColor = WHITE;
@@ -201,26 +207,27 @@ export function updateSystemTheme(darkTheme) {
 		system.borderColor = "rgb(153, 153, 153)";
 		system.popupIconColor = "rgb(51, 62, 89)";
 
-		system.preferredEditorTheme = "ace/theme/crimson_editor";
-
 		system.popupBackgroundColor = WHITE;
 		system.popupTextColor = BLACK;
 		system.popupActiveColor = "rgb(255, 215, 0)";
 	}
 
-	if (appSettings.value.appTheme.toLowerCase() === "system") {
+	system.preferredEditorTheme = getSystemEditorTheme(darkTheme)
+
+	if (appSettings !== undefined && appSettings.value !== undefined && appSettings.value.appTheme !== undefined && appSettings.value.appTheme.toLowerCase() === "system") {
 		apply(system.id, true);
 	}
+	
 }
 
-updateSystemTheme(await isDeviceDarkTheme());
+updateSystemTheme(isDeviceDarkTheme());
 
 const custom = createBuiltInTheme("Custom");
 custom.autoDarkened = true;
 
 export default [
-	createBuiltInTheme("default", "dark", "free"),
 	system,
+	createBuiltInTheme("default", "dark", "free"),
 	dark,
 	oled,
 	ocean,

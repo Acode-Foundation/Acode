@@ -5,6 +5,8 @@ import Url from "utils/Url";
 import helpers from "utils/helpers";
 import constants from "./constants";
 import lang from "./lang";
+import { getSystemEditorTheme } from "theme/preInstalled";
+import { isDeviceDarkTheme } from "./systemConfiguration";
 
 /**
  * @typedef {object} fileBrowserSettings
@@ -182,8 +184,8 @@ class Settings {
 		this.settingsFile = Url.join(DATA_STORAGE, "settings.json");
 
 		if (!IS_FREE_VERSION) {
-			this.#defaultSettings.appTheme = "ocean";
-			this.#defaultSettings.editorTheme = "ace/theme/dracula";
+			this.#defaultSettings.appTheme = "system";
+			this.#defaultSettings.editorTheme = getSystemEditorTheme(isDeviceDarkTheme());
 		}
 
 		this.#initialized = true;

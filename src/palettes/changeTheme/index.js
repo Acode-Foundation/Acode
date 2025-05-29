@@ -58,12 +58,12 @@ function generateHints(type) {
 	});
 }
 
-let previousDark = await isDeviceDarkTheme();
+let previousDark = isDeviceDarkTheme();
 const updateTimeMs = 2000;
 
 let intervalId = setInterval(async () => {
 	if (appSettings.value.appTheme.toLowerCase() === "system") {
-		const isDark = await isDeviceDarkTheme();
+		const isDark = isDeviceDarkTheme();
 		if (isDark !== previousDark) {
 			previousDark = isDark;
 			updateSystemTheme(isDark);
@@ -81,7 +81,7 @@ function onselect(value) {
 		if (!intervalId) {
 			intervalId = setInterval(async () => {
 				if (appSettings.value.appTheme.toLowerCase() === "system") {
-					const isDark = await isDeviceDarkTheme();
+					const isDark = isDeviceDarkTheme();
 					if (isDark !== previousDark) {
 						previousDark = isDark;
 						updateSystemTheme(isDark);
