@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <title>নেত্রর ওয়েবসাইট</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #fefae0;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background-color: #d62828;
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+    section {
+      padding: 20px;
+      text-align: center;
+    }
+    .button {
+      background-color: #003049;
+      color: white;
+      padding: 10px 20px;
+      text-decoration: none;
+      border-radius: 5px;
+    }
+    footer {
+      background-color: #d62828;
+      color: white;
+      text-align: center;
+      padding: 10px;
+      margin-top: 20px;
+    }
+    input, textarea {
+      padding: 10px;
+      margin: 10px;
+      width: 80%;
+      max-width: 400px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>নেত্রর প্রথম ওয়েবসাইট</h1>
+</header>
+
+<section>
+  <h2>আমার সম্পর্কে</h2>
+  <p>আমি নেত্র। স্বপ্ন দেখি একদিন নিজের হাসপাতাল বানানোর। আর তোমাদের জন্য এমন আরও ওয়েব ডিজাইন বানাবো।</p>
+  <a class="button" href="#contact">যোগাযোগ করুন</a>
+</section>
+
+<section id="contact">
+  <h2>যোগাযোগ ফর্ম</h2>
+  <form>
+    <input type="text" placeholder="তোমার নাম"><br>
+    <input type="email" placeholder="ইমেইল"><br>
+    <textarea placeholder="তোমার মেসেজ লিখো"></textarea><br>
+    <button type="submit" class="button">পাঠাও</button>
+  </form>
+</section>
+
+<footer>
+  <p>&copy; ২০২৫ নেত্র। সর্বস্বত্ব সংরক্ষিত।</p>
+</footer>
+
+</body>
+</html>
