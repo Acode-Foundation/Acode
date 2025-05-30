@@ -75,10 +75,19 @@ export default async function PluginInclude(
 			const installedPlugin = await fsOperation(
 				Url.join(PLUGIN_DIR, id, "plugin.json"),
 			).readFile("json");
+
+			console.log(installPlugin);
+
 			const { author } = installedPlugin;
+
+			console.log(author);
+
 			const description = await fsOperation(
 				Url.join(PLUGIN_DIR, id, installedPlugin.readme),
 			).readFile("utf8");
+
+			console.log(description);
+
 			let changelogs = "";
 			if (installedPlugin.changelogs) {
 				const changelogPath = Url.join(
@@ -92,16 +101,12 @@ export default async function PluginInclude(
 				}
 			}
 
-			const iconUrl = await helpers.toInternalUri(
+			const iconUrl = Capacitor.convertFileSrc(
 				Url.join(PLUGIN_DIR, id, installedPlugin.icon),
-			);
-			const iconData = await fsOperation(iconUrl).readFile();
-			const icon = URL.createObjectURL(
-				new Blob([iconData], { type: "image/png" }),
 			);
 			plugin = {
 				id,
-				icon,
+				iconUrl,
 				name: installedPlugin.name,
 				version: installedPlugin.version,
 				author: author.name,
