@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin id="cordova-plugin-websocket" version="0.0.1" xmlns="http://apache.org/cordova/ns/plugins/1.0">
+    <name>cordova-plugin-websocket</name>
+    <description>Cordova Websocket</description>
+    <license>MIT</license>
+    <keywords>cordova,ws,WebSocket</keywords>
+    <js-module src="www/websocket.js" name="WebSocket">
+        <clobbers target="cordova.websocket" />
+    </js-module>
+
+    <platform name="android">
+        <config-file target="res/xml/config.xml" parent="/*">
+            <feature name="WebSocketPlugin">
+                <param name="android-package" value="com.foxdebug.websocket.WebSocketPlugin" />
+            </feature>
+        </config-file>
+        <source-file src="src/android/WebSocketPlugin.java" target-dir="src/com/foxdebug/websocket" />
+        <source-file src="src/android/WebSocketInstance.java" target-dir="src/com/foxdebug/websocket" />
+        <framework src="com.squareup.okhttp3:okhttp:4.12.0" />
+    </platform>
+</plugin>

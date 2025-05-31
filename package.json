@@ -35,7 +35,8 @@
       "cordova-plugin-system": {},
       "cordova-plugin-advanced-http": {
         "ANDROIDBLACKLISTSECURESOCKETPROTOCOLS": "SSLv3,TLSv1"
-      }
+      },
+      "cordova-plugin-websocket": {}
     },
     "platforms": [
       "android"
@@ -74,6 +75,7 @@
     "cordova-plugin-server": "file:src/plugins/server",
     "cordova-plugin-sftp": "file:src/plugins/sftp",
     "cordova-plugin-system": "file:src/plugins/system",
+    "cordova-plugin-websocket": "file:src/plugins/websocket",
     "css-loader": "^7.1.2",
     "mini-css-extract-plugin": "^2.9.0",
     "path-browserify": "^1.0.1",
