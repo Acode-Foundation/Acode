@@ -1,0 +1,17 @@
+{
+  "name": "com.foxdebug.acode.exec",
+  "version": "1.0.0",
+  "description": "Execute linux commands",
+  "cordova": {
+    "id": "com.foxdebug.acode.exec",
+    "platforms": [
+      "android"
+    ]
+  },
+  "keywords": [
+    "ecosystem:cordova",
+    "cordova-android"
+  ],
+  "author": "",
+  "license": "ISC"
+}
