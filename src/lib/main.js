@@ -52,6 +52,7 @@ import { keydownState } from "handlers/keyboard";
 import { initFileList } from "lib/fileList";
 import NotificationManager from "lib/notificationManager";
 import { addedFolder } from "lib/openFolder";
+import Executor from "plugins/Executor";
 import { getEncoding, initEncodings } from "utils/encodings";
 import auth, { loginEvents } from "./auth";
 import constants from "./constants";
@@ -88,6 +89,7 @@ async function Main() {
 async function onDeviceReady() {
 	await initEncodings(); // important to load encodings before anything else
 
+	
 	const isFreePackage = /(free)$/.test(BuildInfo.packageName);
 	const oldResolveURL = window.resolveLocalFileSystemURL;
 	const {
