@@ -85,6 +85,12 @@ module.exports = (env, options) => {
         filename: '../../css/build/[name].css',
       }),
     ],
+    optimization: {
+      minimize: mode === 'production',
+      // Only set a custom minimizer in production; otherwise, omit it.
+      ...(mode === 'production' ? {} : { minimizer: [] }),
+    },
+    
   };
 
   return [main];

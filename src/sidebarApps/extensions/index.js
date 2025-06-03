@@ -6,10 +6,12 @@ import Sidebar from "components/sidebar";
 import prompt from "dialogs/prompt";
 import select from "dialogs/select";
 import fsOperation from "fileSystem";
+import internalFs from "fileSystem/internalFs";
 import purchaseListener from "handlers/purchase";
 import constants from "lib/constants";
 import InstallState from "lib/installState";
 import settings from "lib/settings";
+import mimeType from "mime-types";
 import FileBrowser from "pages/fileBrowser";
 import plugin from "pages/plugin";
 import Url from "utils/Url";
@@ -301,18 +303,49 @@ async function loadExplore() {
 }
 
 async function listInstalledPlugins() {
+	let dirItems;
+
+	try {
+		dirItems = await internalFs.listDir(PLUGIN_DIR);
+	} catch (err) {
+		return [];
+	}
+
 	const plugins = await Promise.all(
-		(await fsOperation(PLUGIN_DIR).lsDir()).map(async (item) => {
-			const id = Url.basename(item.url);
-			const url = Url.join(item.url, "plugin.json");
-			const plugin = await fsOperation(url).readFile("json");
-			const iconUrl = getLocalRes(id, plugin.icon);
-			plugin.icon = await helpers.toInternalUri(iconUrl);
+		dirItems.map(async (item, index) => {
+			let id, url;
+			try {
+				id = Url.basename(item.url);
+				url = Url.join(item.url, "plugin.json");
+			} catch (err) {
+				return null;
+			}
+
+			let plugin;
+			try {
+				plugin = await fsOperation(url).readFile("json");
+			} catch (err) {
+				console.error(err);
+				return null;
+			}
+
+			try {
+				const iconUrl = Capacitor.convertFileSrc(getLocalRes(id, plugin.icon));
+				plugin.icon = iconUrl;
+			} catch (err) {
+				plugin.icon = null;
+			}
+
 			plugin.installed = true;
+			plugin.id = id;
+			plugin.path = item.uri;
+
 			return plugin;
 		}),
 	);
-	return plugins;
+
+	const filteredPlugins = plugins.filter(Boolean);
+	return filteredPlugins;
 }
 
 async function getFilteredPlugins(filterName) {

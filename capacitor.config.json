@@ -1,0 +1,10 @@
+{
+  "appId": "com.foxdebug.acode",
+  "appName": "Acode",
+  "webDir": "www",
+  "cordova": {
+    "preferences": {
+      "AndroidBlacklistSecureSocketProtocols": "SSLv3,TLSv1"
+    }
+  }
+}

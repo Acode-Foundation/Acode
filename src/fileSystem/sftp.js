@@ -177,7 +177,7 @@ class SftpClient {
 							await this.connect();
 						}
 
-						await internalFs.writeFile(localFilename, content, true, false);
+						await internalFs.writeToFile(localFilename, content, true, false);
 						const remoteFile = this.#safeName(filename);
 						sftp.putFile(remoteFile, localFilename, resolve, reject);
 					} catch (err) {

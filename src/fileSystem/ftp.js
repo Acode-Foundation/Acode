@@ -142,7 +142,7 @@ class FtpClient {
 	async writeFile(content = "") {
 		await this.#connectIfNotConnected();
 		const localFile = this.#cacheFile;
-		await internalFs.writeFile(localFile, content, true, false);
+		await internalFs.writeToFile(localFile, content, true, false);
 
 		return new Promise((resolve, reject) => {
 			ftp.uploadFile(
@@ -160,7 +160,7 @@ class FtpClient {
 	async createFile(name, content = "") {
 		await this.#connectIfNotConnected();
 		const localFile = this.#cacheFile;
-		await internalFs.writeFile(localFile, content, true, false);
+		await internalFs.writeToFile(localFile, content, true, false);
 
 		return new Promise((resolve, reject) => {
 			ftp.uploadFile(

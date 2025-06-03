@@ -4,6 +4,7 @@ import themes from 'theme/list';
 const SERVICE = 'Browser';
 
 function open(url, isConsole = false) {
+  console.log("opening "+url)
   const ACTION = 'open';
   const success = () => { };
   const error = () => { };

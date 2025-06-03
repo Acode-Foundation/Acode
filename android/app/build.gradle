@@ -1,0 +1,82 @@
+apply plugin: 'com.android.application'
+apply from: 'capacitor.build.gradle'
+apply plugin: 'org.jetbrains.kotlin.android'
+
+android {
+    kotlinOptions {
+        jvmTarget = '21'
+    }
+
+    namespace "com.foxdebug.acode"
+    compileSdk rootProject.ext.compileSdkVersion
+    android.buildFeatures.buildConfig true
+    defaultConfig {
+        applicationId "com.foxdebug.acode"
+
+
+        //sdk versions and other stuff should be changed from variables.build.gradle
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+
+        //fdroid expect this as literals so no fancy logic
+        versionCode 957
+        versionName "1.11.1"
+
+        flavorDimensions += "default"
+        productFlavors{
+            free{
+                applicationId = "com.foxdebug.acodefree"
+                dimension = "default"
+                buildConfigField("boolean", "PAID", "false")
+            }
+
+            paid{
+                applicationId = "com.foxdebug.acode"
+                dimension = "default"
+                buildConfigField("boolean", "PAID", "true")
+            }
+        }
+
+
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation project(':capacitor-android')
+    implementation project(':capacitor-cordova-android-plugins')
+
+    //sftp
+    implementation "com.sshtools:maverick-synergy-client:3.1.2"
+}
+
+
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}

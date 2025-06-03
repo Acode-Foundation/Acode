@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Acode</string>
+    <string name="title_activity_main">Acode</string>
+    <string name="package_name">com.foxdebug.acode</string>
+    <string name="custom_url_scheme">com.foxdebug.acode</string>
+</resources>

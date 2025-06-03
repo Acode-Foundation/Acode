@@ -179,7 +179,7 @@ export default class Acode {
 						return;
 					}
 
-					fsOperation(Url.join(PLUGIN_DIR, pluginId))
+					fsOperation(`${PLUGIN_DIR}/${pluginId}`)
 						.exists()
 						.then((isPluginExists) => {
 							if (isPluginExists) {
@@ -189,12 +189,9 @@ export default class Acode {
 
 							let purchaseToken;
 							let product;
-							const pluginUrl = Url.join(
-								constants.API_BASE,
-								`plugin/${pluginId}`,
-							);
-							fsOperation(pluginUrl)
-								.readFile("json")
+							const pluginUrl = `${PLUGIN_DIR}/${pluginId}`;
+							fsOperation(`${pluginUrl}/plugin.json`)
+								.readFile()
 								.catch(() => {
 									reject(new Error("Failed to fetch plugin details"));
 									return null;
