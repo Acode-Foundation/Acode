@@ -353,7 +353,17 @@ export default {
 		if (uri) {
 			const fs = fsOperation(uri);
 			try {
-				const newUri = await fs.renameTo(newname);
+				let newUri;
+				if (uri.startsWith("content://com.termux.documents/tree/")) {
+					// Special handling for Termux content files
+					const newFilePath = Url.join(Url.dirname(url), newname);
+					const content = await fs.readFile();
+					await fsOperation(Url.dirname(url)).createFile(newname, content);
+					await fs.delete();
+					newUrl = newFilePath;
+				} else {
+					newUri = await fs.renameTo(newname);
+				}
 				const stat = await fsOperation(newUri).stat();
 
 				newname = stat.name;
