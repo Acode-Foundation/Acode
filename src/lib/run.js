@@ -598,90 +598,97 @@ async function run(
 	function getRelativePath() {
 		// Get the project url
 		const projectFolder = addedFolder[0];
-
-		// Set the root folder to the file parent if no project folder is set
+	
+		// FIXED: Better root folder determination for Termux URIs
 		let rootFolder = pathName;
-		if (projectFolder !== undefined && pathName.includes(projectFolder)) {
+		
+		// Special handling for Termux URIs - extract the actual root from the URI structure
+		if (activeFile && activeFile.uri && activeFile.uri.includes("com.termux.documents") && activeFile.uri.includes("tree/")) {
+			// Extract the tree part and decode it to get the actual root path
+			const treeMatch = activeFile.uri.match(/tree\/([^:]+)/);
+			if (treeMatch) {
+				try {
+					const decodedRoot = decodeURIComponent(treeMatch[1]);
+					rootFolder = decodedRoot;
+					console.log(`DEBUG - Termux root folder set to: ${rootFolder}`);
+				} catch (e) {
+					console.error("Error decoding Termux root:", e);
+				}
+			}
+		} else if (projectFolder !== undefined && pathName && pathName.includes(projectFolder.url)) {
 			rootFolder = projectFolder.url;
-		} else {
-			rootFolder = pathName;
 		}
-
+	
 		//make the uri absolute if necessary
 		rootFolder = makeUriAbsoluteIfNeeded(rootFolder);
-
+	
 		// Parent of the file
 		let filePath = pathName;
-
+	
 		if (rootFolder.startsWith("ftp:") || rootFolder.startsWith("sftp:")) {
 			if (rootFolder.includes("?")) {
 				rootFolder = rootFolder.split("?")[0];
 			}
 		}
-
+	
 		//remove the query string if present this is needs to be removed because the url is not valid
 		if (filePath.startsWith("ftp:") || rootFolder.startsWith("sftp:")) {
 			if (filePath.includes("?")) {
 				filePath = filePath.split("?")[0];
 			}
 		}
-
+	
 		// Create full file path
 		let temp = Url.join(filePath, filename);
-
+	
 		// Special handling for Termux URIs
 		if (temp.includes("com.termux.documents") && temp.includes("::")) {
 			try {
 				const [, realPath] = temp.split("::");
-
-				// Determine root folder inside :: path
-				let rootPath = rootFolder;
-				if (rootFolder.includes("::")) {
-					rootPath = rootFolder.split("::")[1];
-				}
-
-				// Normalize both paths to arrays
-				const realParts = realPath.split("/").filter(Boolean);
-				const rootParts = rootPath.split("/").filter(Boolean);
-
-				// Find where the paths start to differ
-				let diffIndex = 0;
-				while (
-					diffIndex < realParts.length &&
-					diffIndex < rootParts.length &&
-					realParts[diffIndex] === rootParts[diffIndex]
-				) {
-					diffIndex++;
-				}
-
-				// Return everything after the common root
-				const relativeParts = realParts.slice(diffIndex);
-				if (relativeParts.length > 0) {
-					return relativeParts.join("/");
+	
+				console.log(`DEBUG - realPath: ${realPath}`);
+				console.log(`DEBUG - rootFolder: ${rootFolder}`);
+	
+				// Ensure rootFolder doesn't have trailing slash for comparison
+				const normalizedRoot = rootFolder.replace(/\/+$/, "");
+				
+				// Check if realPath starts with rootFolder
+				if (realPath.startsWith(normalizedRoot)) {
+					// Remove the rootFolder from the beginning of realPath
+					let relativePath = realPath.substring(normalizedRoot.length);
+					
+					// Remove leading slash if present
+					relativePath = relativePath.replace(/^\/+/, "");
+					
+					console.log(`DEBUG - relativePath: ${relativePath}`);
+					
+					if (relativePath) {
+						return relativePath;
+					}
 				}
 			} catch (e) {
 				console.error("Error handling Termux URI:", e);
 			}
 		}
-
+	
 		// Handle other content:// URIs
 		if (temp.includes("content://") && temp.includes("::")) {
 			try {
 				// Get the part after :: which contains the actual file path
 				const afterDoubleColon = temp.split("::")[1];
-
+	
 				if (afterDoubleColon) {
 					// Extract the rootFolder's content path if it has ::
 					let rootFolderPath = rootFolder;
 					if (rootFolder.includes("::")) {
 						rootFolderPath = rootFolder.split("::")[1];
 					}
-
+	
 					// If rootFolder doesn't have ::, try to extract the last part of the path
 					if (!rootFolderPath.includes("::")) {
 						const rootParts = rootFolder.split("/");
 						const lastPart = rootParts[rootParts.length - 1];
-
+	
 						// Check if the lastPart is encoded
 						if (lastPart.includes("%3A")) {
 							// Try to decode it
@@ -696,27 +703,16 @@ async function run(
 							rootFolderPath = lastPart;
 						}
 					}
-
-					// Now find this rootFolderPath in the afterDoubleColon string
-					if (afterDoubleColon.includes(rootFolderPath)) {
-						// Find where to start the relative path
-						const parts = afterDoubleColon.split("/");
-
-						// Find the index of the part that matches or contains rootFolderPath
-						let startIndex = -1;
-						for (let i = 0; i < parts.length; i++) {
-							if (
-								parts[i].includes(rootFolderPath) ||
-								rootFolderPath.includes(parts[i])
-							) {
-								startIndex = i;
-								break;
-							}
-						}
-
-						// If we found a matching part, get everything after it
-						if (startIndex >= 0 && startIndex < parts.length - 1) {
-							return parts.slice(startIndex + 1).join("/");
+	
+					// Use direct string replacement instead of path component comparison
+					const normalizedRoot = rootFolderPath.replace(/\/+$/, "");
+					if (afterDoubleColon.startsWith(normalizedRoot)) {
+						let relativePath = afterDoubleColon.substring(normalizedRoot.length);
+						// Remove leading slash if present
+						relativePath = relativePath.replace(/^\/+/, "");
+						
+						if (relativePath) {
+							return relativePath;
 						}
 					}
 				}
@@ -724,14 +720,14 @@ async function run(
 				console.error("Error parsing content URI:", e);
 			}
 		}
-
+	
 		// For regular paths or if content:// URI parsing failed
 		// Try to find a common prefix between rootFolder and temp
 		// and remove it from temp
 		try {
 			const rootParts = rootFolder.split("/");
 			const tempParts = temp.split("/");
-
+	
 			let commonIndex = 0;
 			for (let i = 0; i < Math.min(rootParts.length, tempParts.length); i++) {
 				if (rootParts[i] === tempParts[i]) {
@@ -740,19 +736,19 @@ async function run(
 					break;
 				}
 			}
-
+	
 			if (commonIndex > 0) {
 				return tempParts.slice(commonIndex).join("/");
 			}
 		} catch (e) {
 			console.error("Error finding common path:", e);
 		}
-
+	
 		// If all else fails, just return the filename
 		if (filename) {
 			return filename;
 		}
-
+	
 		console.log("Unable to determine relative path, returning full path");
 		return temp;
 	}
@@ -761,6 +757,7 @@ async function run(
 	 * Opens the preview in browser
 	 */
 	function openBrowser() {
+		console.log(`Running ${Url.join(pathName,filename)}`)
 		let url = "";
 		if (pathName === null && !activeFile.location) {
 			url = `http://localhost:${port}/__unsaved_file__`;
