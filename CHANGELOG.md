@@ -1,5 +1,16 @@
 # Change Log
 
+## v1.11.3 (959)
+
+* feat: added system theme by @RohitKushvaha01
+* add: close-inactive-issues.yml by @UnschooledGamer
+* Added Executor by @RohitKushvaha01
+* fix: Executor Plugin's js module/interface path by @UnschooledGamer
+* fix: teardrop goes out of viewport when there is no gutter by @bajrangCoder
+* fix: infinite loading screen due to executor by @RohitKushvaha01
+* fix: infinite loading when previewing html files by @RohitKushvaha01
+* fix: apk related issues
+
 ## v1.11.2 (958)
 
 * fix: cors related issues when installing plugins from remote by @bajrangCoder
