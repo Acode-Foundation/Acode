@@ -23,6 +23,7 @@ export default function Item({
   downloads,
   installed,
 }) {
+  console.log(`ICON ${icon}`)
   const authorName = (() => {
     const displayName =
       typeof author === "object" ? author.name : author || "Unknown";

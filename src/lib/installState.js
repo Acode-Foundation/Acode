@@ -25,7 +25,11 @@ export default class InstallState {
 			}
 
 			state.storeUrl = Url.join(INSTALL_STATE_STORAGE, state.id);
-			if (await fsOperation(state.storeUrl).exists()) {
+
+			console.log("store url");
+			console.log(state.storeUrl);
+
+			if ((await fsOperation(state.storeUrl).exists()) && false) {
 				state.store = JSON.parse(
 					await fsOperation(state.storeUrl).readFile("utf-8"),
 				);
@@ -40,6 +44,10 @@ export default class InstallState {
 				state.store = {};
 				await fsOperation(INSTALL_STATE_STORAGE).createFile(state.id);
 			}
+
+			await fsOperation(state.storeUrl).delete();
+			console.log("returned state");
+			console.log(state);
 
 			return state;
 		} catch (e) {
