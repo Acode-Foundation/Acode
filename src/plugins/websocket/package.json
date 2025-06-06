@@ -1,0 +1,22 @@
+{
+  "name": "cordova-plugin-websocket",
+  "version": "0.0.1",
+  "description": "This cordova plugin is created to use WebSocket (client) in web/js.",
+  "cordova": {
+    "id": "cordova-plugin-websocket",
+    "platforms": [
+      "android"
+    ]
+  },
+  "keywords": [
+    "cordova",
+    "websocket",
+    "cordova-android",
+    "ws"
+  ],
+  "author": "Acode-Foundation (created by UnschooledGamer)",
+  "license": "Apache-2.0",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
