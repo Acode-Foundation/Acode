@@ -374,7 +374,7 @@ async function run(
 
 				default:
 					if (file && file.loaded && file.isUnsaved) {
-						if (filename.endsWith(".html")) {
+						if (file.filename.endsWith(".html")) {
 							sendHTML(file.session.getValue(), reqId);
 						} else {
 							sendText(
