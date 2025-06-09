@@ -356,9 +356,9 @@ export default {
 				let newUri;
 				if (uri.startsWith("content://com.termux.documents/tree/")) {
 					// Special handling for Termux content files
-					const newFilePath = Url.join(Url.dirname(url), newname);
+					const newFilePath = Url.join(Url.dirname(uri), newname);
 					const content = await fs.readFile();
-					await fsOperation(Url.dirname(url)).createFile(newname, content);
+					await fsOperation(Url.dirname(uri)).createFile(newname, content);
 					await fs.delete();
 					newUrl = newFilePath;
 				} else {
