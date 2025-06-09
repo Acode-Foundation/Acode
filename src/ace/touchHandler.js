@@ -919,9 +919,9 @@ export default function addTouchListeners(editor, minimal, onclick) {
 
 			let { row, column } = renderer.screenToTextCoordinates(x, y);
 
-			if (column === start.column) {
-				++column;
-			}
+			// if (column === start.column) {
+			// 	++column;
+			// }
 
 			editor.selection.moveCursorToPosition({ row, column });
 			positionStart();
