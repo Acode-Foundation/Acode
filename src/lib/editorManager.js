@@ -676,7 +676,10 @@ async function EditorManager($header, $body) {
 			actions("set-height", { height: 0, save: false });
 		} else {
 			root.classList.remove("hide-floating-button");
-			const quickToolsHeight = appSettings.value.quickTools || 1;
+			const quickToolsHeight =
+				appSettings.value.quickTools !== undefined
+					? appSettings.value.quickTools
+					: 1;
 			actions("set-height", { height: quickToolsHeight, save: true });
 		}
 
