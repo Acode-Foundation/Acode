@@ -47,6 +47,9 @@ import org.apache.cordova.PluginResult;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import android.webkit.WebView;
+import capacitor.cordova.android.plugins.BuildConfig;
+
 
 public class System extends CordovaPlugin {
 
@@ -65,6 +68,11 @@ public class System extends CordovaPlugin {
     this.context = cordova.getContext();
     this.activity = cordova.getActivity();
     this.webView = webView;
+
+    //enable webview debugging when in debug mode
+    if (BuildConfig.DEBUG){
+      ((WebView)webView.getView()).setWebContentsDebuggingEnabled(true);
+    }
 
     // Set up global exception handler
     Thread.setDefaultUncaughtExceptionHandler(
@@ -912,6 +920,7 @@ public class System extends CordovaPlugin {
     } else if (type.equals("NO_SUGGESTIONS_AGGRESSIVE")) {
       mode = 1;
     }
-    webView.setInputType(mode);
+    //no such method
+    //webView.setInputType(mode);
   }
 }
