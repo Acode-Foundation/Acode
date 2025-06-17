@@ -21,6 +21,7 @@ const THEME_IDENTIFIERS = new Set([
 	"sweet",
 	"moonlight",
 	"bluloco",
+	"acode.plugin.extra_syntax_highlights",
 ]);
 
 export default async function loadPlugins(loadOnlyTheme = false) {

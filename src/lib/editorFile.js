@@ -1,6 +1,7 @@
 import Sidebar from "components/sidebar";
 import tile from "components/tile";
 import confirm from "dialogs/confirm";
+import DOMPurify from "dompurify";
 import fsOperation from "fileSystem";
 import startDrag from "handlers/editorFileTab";
 import tag from "html-tag-js";
@@ -49,6 +50,11 @@ export default class EditorFile {
 	 * @type {HTMLElement}
 	 */
 	#content = null;
+	/**
+	 * Whether to hide quicktools for this tab
+	 * @type {boolean}
+	 */
+	hideQuickTools = false;
 
 	/**
 	 * Custom stylesheets for tab
@@ -186,6 +192,8 @@ export default class EditorFile {
 		const { addFile, getFile } = editorManager;
 		let doesExists = null;
 
+		this.hideQuickTools = options?.hideQuickTools || false;
+
 		// if options are passed
 		if (options) {
 			// if options doesn't contains id, and provide a new id
@@ -237,7 +245,12 @@ export default class EditorFile {
 				const content = tag("div", {
 					className: "tab-page-content",
 				});
-				content.appendChild(options.content);
+
+				if (typeof options.content === "string") {
+					content.innerHTML = DOMPurify.sanitize(options.content);
+				} else {
+					content.appendChild(options.content);
+				}
 
 				// Append content container to shadow DOM
 				shadow.appendChild(content);

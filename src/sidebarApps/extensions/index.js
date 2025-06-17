@@ -435,12 +435,14 @@ function ListItem({ icon, name, id, version, downloads, installed, source }) {
 					});
 
 				const isPaid = remotePlugin.price > 0;
-				[product] = await helpers.promisify(iap.getProducts, [
-					remotePlugin.sku,
-				]);
-				if (product) {
-					const purchase = await getPurchase(product.productId);
-					purchaseToken = purchase?.purchaseToken;
+				if (isPaid) {
+					[product] = await helpers.promisify(iap.getProducts, [
+						remotePlugin.sku,
+					]);
+					if (product) {
+						const purchase = await getPurchase(product.productId);
+						purchaseToken = purchase?.purchaseToken;
+					}
 				}
 
 				if (isPaid && !purchaseToken) {
@@ -475,7 +477,11 @@ function ListItem({ icon, name, id, version, downloads, installed, source }) {
 				}
 
 				const { default: installPlugin } = await import("lib/installPlugin");
-				await installPlugin(id, remotePlugin.name, purchaseToken);
+				await installPlugin(
+					id,
+					remotePlugin.name,
+					purchaseToken ? purchaseToken : undefined,
+				);
 
 				const searchInput = container.querySelector('input[name="search-ext"]');
 				if (searchInput) {

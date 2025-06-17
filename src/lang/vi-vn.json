@@ -390,8 +390,19 @@
 	"deleting items": "Đang xoá {count} mục...",
 	"import project zip": "Nhập Dự Án(zip)",
 	"changelog": "Nhật Ký Thay Đổi",
-	"notifications": "Notifications",
-	"no_unread_notifications": "No unread notifications",
-	"should_use_current_file_for_preview": "Should use Current File For preview instead of default (index.html)",
-	"fade fold widgets": "Fade Fold Widgets"
+	"notifications": "Thông báo",
+	"no_unread_notifications": "Thông báo chưa đọc",
+	"should_use_current_file_for_preview": "Nên sử dụng Tệp hiện tại để xem trước thay vì mặc định (index.html)",
+	"fade fold widgets": "Các tiện ích gập và mờ dần",
+	"quicktools:home-key": "Phím Home",
+	"quicktools:end-key": "Phím End",
+	"quicktools:pageup-key": "Phím PageUp",
+	"quicktools:pagedown-key": "Phím PageDown",
+	"quicktools:delete-key": "Phím Delete",
+	"quicktools:tilde": "Chèn dấu ngã",
+	"quicktools:backtick": "Chèn dấu nháy ngược",
+	"quicktools:hash": "Chèn ký tự thăng",
+	"quicktools:dollar": "Chèn ký tự đô la",
+	"quicktools:modulo": "Chèn ký tự chia lấy dư/phần trăm",
+	"quicktools:caret": "Chèn ký tự gạch dọc"
 }

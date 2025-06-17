@@ -1,5 +1,6 @@
 import Checkbox from "components/checkbox";
 import tile from "components/tile";
+import DOMPurify from "dompurify";
 import actionStack from "lib/actionStack";
 import restoreTheme from "lib/restoreTheme";
 
@@ -20,6 +21,8 @@ import restoreTheme from "lib/restoreTheme";
  * @property {boolean} [disabled]
  * @property {string} [letters]
  * @property {boolean} [checkbox]
+ * @property {HTMLElement} [tailElement]
+ * @property {function(Event):void} [ontailclick]
  */
 
 /**
@@ -43,18 +46,23 @@ function select(title, items, options = {}) {
 		// elements
 		const $mask = <span className="mask" onclick={cancel}></span>;
 		const $list = tag("ul", {
-			className: "scroll" + !textTransform ? " no-text-transform" : "",
+			className: `scroll${!textTransform ? " no-text-transform" : ""}`,
 		});
+		const $titleSpan = title ? (
+			<strong className="title">{title}</strong>
+		) : null;
 		const $select = (
 			<div className="prompt select">
-				{title ? <strong className="title">{title}</strong> : ""}
-				{$list}
+				{$titleSpan ? [$titleSpan, $list] : $list}
 			</div>
 		);
 
+		// Track tail click handlers for cleanup
+		const tailClickHandlers = new Map();
+
 		items.map((item) => {
 			let lead,
-				tail,
+				tail = null,
 				itemOptions = {
 					value: null,
 					text: null,
@@ -62,14 +70,21 @@ function select(title, items, options = {}) {
 					disabled: false,
 					letters: "",
 					checkbox: null,
+					tailElement: null,
+					ontailclick: null,
 				};
 
 			// init item options
 			if (typeof item === "object") {
 				if (Array.isArray(item)) {
+					// This format does NOT support custom tail or handlers so pass object :)
 					Object.keys(itemOptions).forEach(
 						(key, i) => (itemOptions[key] = item[i]),
 					);
+
+					item.map((o, i) => {
+						if (typeof o === "boolean" && i > 1) itemOptions.disabled = !o;
+					});
 				} else {
 					itemOptions = Object.assign({}, itemOptions, item);
 				}
@@ -78,7 +93,7 @@ function select(title, items, options = {}) {
 				itemOptions.text = item;
 			}
 
-			// handle icon
+			// handle icon (lead)
 			if (itemOptions.icon) {
 				if (itemOptions.icon === "letters" && !!itemOptions.letters) {
 					lead = (
@@ -89,8 +104,10 @@ function select(title, items, options = {}) {
 				}
 			}
 
-			// handle checkbox
-			if (itemOptions.checkbox != null) {
+			// handle tail (checkbox or custom element)
+			if (itemOptions.tailElement) {
+				tail = itemOptions.tailElement;
+			} else if (itemOptions.checkbox != null) {
 				tail = Checkbox({
 					checked: itemOptions.checkbox,
 				});
@@ -99,7 +116,12 @@ function select(title, items, options = {}) {
 			const $item = tile({
 				lead,
 				tail,
-				text: <span className="text" innerHTML={itemOptions.text}></span>,
+				text: (
+					<span
+						className="text"
+						innerHTML={DOMPurify.sanitize(itemOptions.text)}
+					></span>
+				),
 			});
 
 			$item.tabIndex = "0";
@@ -109,12 +131,38 @@ function select(title, items, options = {}) {
 				$defaultVal = $item;
 			}
 
-			// handle events
-			$item.onclick = function () {
+			$item.onclick = function (e) {
+				// Check if clicked element or any parent up to the item has data-action
+				let target = e.target;
+				while (target && target !== $item) {
+					if (target.hasAttribute("data-action")) {
+						// Stop propagation and prevent default
+						e.stopPropagation();
+						e.preventDefault();
+						return false;
+					}
+					target = target.parentElement;
+				}
+
 				if (!itemOptions.value) return;
 				if (hideOnSelect) hide();
 				res(itemOptions.value);
 			};
+
+			// Handle tail click event if a custom tail and handler are provided
+			if (itemOptions.tailElement && itemOptions.ontailclick && tail) {
+				// Apply the pointer-events: all directly to the tail element
+				tail.style.pointerEvents = "all";
+
+				const tailClickHandler = function (e) {
+					e.stopPropagation();
+					e.preventDefault();
+					itemOptions.ontailclick.call($item, e);
+				};
+
+				tail.addEventListener("click", tailClickHandler);
+				tailClickHandlers.set(tail, tailClickHandler);
+			}
 
 			$list.append($item);
 		});
@@ -134,7 +182,7 @@ function select(title, items, options = {}) {
 		function cancel() {
 			hide();
 			if (typeof options.onCancel === "function") options.onCancel();
-			if (rejectOnCancel) reject();
+			if (rejectOnCancel) rej();
 		}
 
 		function hideSelect() {
@@ -152,6 +200,11 @@ function select(title, items, options = {}) {
 			hideSelect();
 			let listItems = [...$list.children];
 			listItems.map((item) => (item.onclick = null));
+			// Clean up tail click handlers
+			tailClickHandlers.forEach((handler, element) => {
+				element.removeEventListener("click", handler);
+			});
+			tailClickHandlers.clear();
 		}
 	});
 }

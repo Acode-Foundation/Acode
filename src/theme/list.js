@@ -1,10 +1,11 @@
 import fsOperation from "fileSystem";
+import { isDeviceDarkTheme } from "lib/systemConfiguration";
 import Url from "utils/Url";
 import color from "utils/color";
 import fonts from "../lib/fonts";
 import settings from "../lib/settings";
 import ThemeBuilder from "./builder";
-import themes from "./preInstalled";
+import themes, { updateSystemTheme } from "./preInstalled";
 
 /** @type {Map<string, ThemeBuilder>} */
 const appThemes = new Map();
@@ -12,6 +13,9 @@ let themeApplied = false;
 
 function init() {
 	themes.forEach((theme) => add(theme));
+	(async () => {
+		updateSystemTheme(isDeviceDarkTheme());
+	})();
 }
 
 /**
@@ -68,7 +72,7 @@ function add(theme) {
  * @param {string} id The name of the theme to apply
  * @param {boolean} init Whether or not this is the first time the theme is being applied
  */
-async function apply(id, init) {
+export async function apply(id, init) {
 	if (!DOES_SUPPORT_THEME) {
 		id = "default";
 	}
@@ -91,7 +95,9 @@ async function apply(id, init) {
 
 	if (init && theme.preferredEditorTheme) {
 		update.editorTheme = theme.preferredEditorTheme;
-		editorManager.editor.setTheme(theme.preferredEditorTheme);
+		if (editorManager != null && editorManager.editor != null) {
+			editorManager.editor.setTheme(theme.preferredEditorTheme);
+		}
 	}
 
 	if (init && theme.preferredFont) {
@@ -129,7 +135,7 @@ async function apply(id, init) {
  * Update a theme
  * @param {ThemeBuilder} theme
  */
-function update(theme) {
+export function update(theme) {
 	if (!(theme instanceof ThemeBuilder)) return;
 	const oldTheme = get(theme.id);
 	if (!oldTheme) {

@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='utf-8' ?>
-<widget id="com.foxdebug.acode" android-versionCode="957" version="1.11.1"
+<widget id="com.foxdebug.acode" android-versionCode="959" version="1.11.3"
     xmlns="http://www.w3.org/ns/widgets"
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:cdv="http://cordova.apache.org/ns/1.0">
@@ -33,11 +33,16 @@
         <preference name="prerendered-icon" value="false" />
         <preference name="androidxEnabled" value="true" />
 
+        
         <edit-config file="app/src/main/AndroidManifest.xml" mode="merge" target="/manifest/application">
             <application android:networkSecurityConfig="@xml/network_security_config" />
             <application android:hardwareAccelerated="true" />
             <application android:requestLegacyExternalStorage="true" />
             <application android:largeHeap="true" />
+        </edit-config>
+
+        <edit-config file="app/src/main/AndroidManifest.xml" mode="merge" target="/manifest/application/activity[@android:name='MainActivity']">
+            <activity android:resizeableActivity="true" />
         </edit-config>
 
         <config-file parent="./application/activity" target="AndroidManifest.xml">
@@ -46,17 +51,7 @@
                 <action android:name="android.intent.action.EDIT" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.LAUNCHER" />
-                <data android:mimeType="text/*"/>
-                <data android:mimeType="xml/*" />
-                <data android:mimeType="application/text" />
-                <data android:mimeType="application/xml" />
-                <data android:mimeType="application/json" />
-                <data android:mimeType="application/javascript" />
-                <data android:mimeType="application/x-sh" />
-                <data android:mimeType="application/octet-stream"/>
-                <data pathPattern=".*\.txt"/>
-                <data pathPattern=".*\.xml"/>
-                <data pathPattern=".*\.json"/>
+                <data android:mimeType="*/*"/>
             </intent-filter>
             <!-- Allow app to open using url from browser -->
             <intent-filter android:autoVerify="true">

@@ -124,6 +124,10 @@ body.no-animation {
     width: 100%;
     height: 100%;
 
+    &.files {
+      overflow-x: auto;
+    }
+
     > .list {
       width: 100%;
       max-width: 100%;

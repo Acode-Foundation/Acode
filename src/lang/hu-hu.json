@@ -392,5 +392,16 @@
 	"notifications": "Értesítések",
 	"no_unread_notifications": "Nincsenek olvasatlan értesítések",
 	"should_use_current_file_for_preview": "A jelenlegi fájl használata az előnézethez az alapértelmezett (index.html) helyett",
-	"fade fold widgets": "Elhalványulás a modulok bezárásakor"
+	"fade fold widgets": "Elhalványulás a modulok bezárásakor",
+	"quicktools:home-key": "Ugrás az elejére billentyű",
+	"quicktools:end-key": "Ugrás a végére billentyű",
+	"quicktools:pageup-key": "Lapozás felfelé billentyű",
+	"quicktools:pagedown-key": "Lapozás lefelé billentyű",
+	"quicktools:delete-key": "Törlés billentyű",
+	"quicktools:tilde": "Hullámvonal beszúrása",
+	"quicktools:backtick": "Fordított félidézőjel beszúrása",
+	"quicktools:hash": "Számjel beszúrása",
+	"quicktools:dollar": "Dollárjel beszúrása",
+	"quicktools:modulo": "Százalékjel beszúrása",
+	"quicktools:caret": "Hatványjel beszúrása"
 }

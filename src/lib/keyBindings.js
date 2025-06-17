@@ -325,12 +325,12 @@ export default {
 	},
 	pagedown: {
 		description: "Page down",
-		key: "PageUp",
+		key: null,
 		readOnly: true,
 	},
 	gotopagedown: {
 		description: "Go to page down",
-		key: null,
+		key: "PageDown",
 		readOnly: false,
 	},
 	selectpageup: {

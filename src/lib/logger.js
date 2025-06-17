@@ -100,7 +100,10 @@ class Logger {
 				await fsOperation(logFilePath).writeFile(newData);
 			}
 		} catch (error) {
-			console.error("Error in handling fs operation on log file. Error:", err);
+			console.error(
+				"Error in handling fs operation on log file. Error:",
+				error,
+			);
 		}
 	};
 

@@ -4,7 +4,9 @@ import box from "dialogs/box";
 import fsOperation from "fileSystem";
 import markdownIt from "markdown-it";
 import anchor from "markdown-it-anchor";
+import markdownItFootnote from "markdown-it-footnote";
 import MarkdownItGitHubAlerts from "markdown-it-github-alerts";
+import markdownItTaskLists from "markdown-it-task-lists";
 import mimeType from "mime-types";
 import mustache from "mustache";
 import path from "path-browserify";
@@ -60,6 +62,7 @@ async function run(
 	const uuid = helpers.uuid();
 
 	let isLoading = false;
+	let isFallback = false;
 	let filename, pathName, extension;
 	let port = appSettings.value.serverPort;
 	let EXECUTING_SCRIPT = uuid + "_script.js";
@@ -154,6 +157,7 @@ async function run(
 	}
 
 	function startServer() {
+		//isFallback = true;
 		webServer?.stop();
 		webServer = CreateServer(port, openBrowser, onError);
 		webServer.setOnRequestHandler(handleRequest);
@@ -178,9 +182,14 @@ async function run(
 		const reqId = req.requestId;
 		let reqPath = req.path.substring(1);
 
+		console.log(`XREQPATH ${reqPath}`);
+		console.log(req);
+
 		if (!reqPath || (reqPath.endsWith("/") && reqPath.length === 1)) {
 			reqPath = getRelativePath();
 		}
+
+		console.log(`XREQPATH1 ${reqPath}`);
 
 		const ext = Url.extname(reqPath);
 		let url = null;
@@ -254,29 +263,80 @@ async function run(
 
 			if (pathName) {
 				const projectFolder = addedFolder[0];
-
-				//set the root folder to the file parent if no project folder is set
-				let rootFolder = pathName;
-				if (projectFolder !== undefined) {
-					rootFolder = projectFolder.url;
-				}
 				const query = url.split("?")[1];
+				let rootFolder = "";
 
-				//remove the query string if present this is needs to be removed because the url is not valid
-				if (rootFolder.startsWith("ftp:") || rootFolder.startsWith("sftp:")) {
-					if (rootFolder.includes("?")) {
-						rootFolder = rootFolder.split("?")[0];
+				if (
+					projectFolder !== undefined &&
+					pathName.includes(projectFolder.url)
+				) {
+					rootFolder = projectFolder.url;
+				} else {
+					rootFolder = pathName;
+				}
+
+				if (
+					(rootFolder.startsWith("ftp:") || rootFolder.startsWith("sftp:")) &&
+					rootFolder.includes("?")
+				) {
+					rootFolder = rootFolder.split("?")[0];
+				}
+
+				rootFolder = rootFolder.replace(/\/+$/, ""); // remove trailing slash
+				reqPath = reqPath.replace(/^\/+/, ""); // remove leading slash
+
+				const rootParts = rootFolder.split("/");
+				const pathParts = reqPath.split("/");
+
+				if (pathParts[0] === rootParts[rootParts.length - 1]) {
+					pathParts.shift();
+				}
+
+				function removePrefix(str, prefix) {
+					if (str.startsWith(prefix)) {
+						return str.slice(prefix.length);
 					}
+					return str;
 				}
 
-				url = Url.join(rootFolder, reqPath);
+				function findOverlap(a, b) {
+					// Start with the smallest possible overlap (1 character) and increase
+					let maxOverlap = "";
 
-				//attach the ftp query string to the url
-				if (query) {
-					url = `${url}?${query}`;
+					// Check all possible overlapping lengths
+					for (let i = 1; i <= Math.min(a.length, b.length); i++) {
+						// Get the ending substring of a with length i
+						const endOfA = a.slice(-i);
+						// Get the starting substring of b with length i
+						const startOfB = b.slice(0, i);
+
+						// If they match, we have a potential overlap
+						if (endOfA === startOfB) {
+							maxOverlap = endOfA;
+						}
+					}
+
+					return maxOverlap;
 				}
 
-				console.log("url", url);
+				console.log(`RootFolder ${rootFolder}`);
+				console.log(`PARTS ${pathParts.join("/")}`);
+				const overlap = findOverlap(rootFolder, pathParts.join("/"));
+
+				let fullPath;
+				if (overlap !== "") {
+					fullPath = Url.join(
+						rootFolder,
+						removePrefix(pathParts.join("/"), overlap),
+					);
+				} else {
+					fullPath = Url.join(rootFolder, pathParts.join("/"));
+				}
+
+				console.log(`Full PATH ${fullPath}`);
+
+				// Add back the query if present
+				url = query ? `${fullPath}?${query}` : fullPath;
 
 				file = editorManager.getFile(url, "uri");
 			} else if (!activeFile.uri) {
@@ -304,6 +364,8 @@ async function run(
 										.toLowerCase()
 										.replace(/[^a-z0-9]+/g, "-"),
 							})
+							.use(markdownItTaskLists)
+							.use(markdownItFootnote)
 							.render(file.session.getValue());
 						const doc = mustache.render($_markdown, {
 							html,
@@ -316,11 +378,15 @@ async function run(
 
 				default:
 					if (file && file.loaded && file.isUnsaved) {
-						sendText(
-							file.session.getValue(),
-							reqId,
-							mimeType.lookup(file.filename),
-						);
+						if (file.filename.endsWith(".html")) {
+							sendHTML(file.session.getValue(), reqId);
+						} else {
+							sendText(
+								file.session.getValue(),
+								reqId,
+								mimeType.lookup(file.filename),
+							);
+						}
 					} else if (url) {
 						if (reqPath === "favicon.ico") {
 							sendIco(ASSETS_DIRECTORY, reqId);
@@ -474,10 +540,20 @@ async function run(
 	 * @returns
 	 */
 	async function sendFileContent(url, id, mime, processText) {
-		const fs = fsOperation(url);
+		let fs = fsOperation(url);
 
 		if (!(await fs.exists())) {
-			error(id);
+			const xfs = fsOperation(Url.join(pathName, filename));
+
+			if (await xfs.exists()) {
+				fs = xfs;
+				isFallback = true;
+				console.log(`fallback ${Url.join(pathName, filename)}`);
+			} else {
+				console.log(`${url} doesnt exists`);
+				error(id);
+			}
+
 			return;
 		}
 
@@ -507,28 +583,57 @@ async function run(
 		});
 	}
 
+	function makeUriAbsoluteIfNeeded(uri) {
+		const termuxRootEncoded =
+			"content://com.termux.documents/tree/%2Fdata%2Fdata%2Fcom.termux%2Ffiles%2Fhome";
+		const termuxRootDecoded = "/data/data/com.termux/files/home";
+
+		if (uri.startsWith(termuxRootEncoded)) {
+			// Extract subpath after `::` if already absolute
+			if (uri.includes("::")) return uri;
+
+			const decodedPath = decodeURIComponent(uri.split("tree/")[1] || "");
+			return `${termuxRootEncoded}::${decodedPath}/`;
+		}
+
+		return uri;
+	}
+
 	function getRelativePath() {
 		// Get the project url
 		const projectFolder = addedFolder[0];
 
-		// Set the root folder to the file parent if no project folder is set
+		// FIXED: Better root folder determination for Termux URIs
 		let rootFolder = pathName;
-		if (projectFolder !== undefined) {
+
+		// Special handling for Termux URIs - extract the actual root from the URI structure
+		if (
+			activeFile &&
+			activeFile.uri &&
+			activeFile.uri.includes("com.termux.documents") &&
+			activeFile.uri.includes("tree/")
+		) {
+			// Extract the tree part and decode it to get the actual root path
+			const treeMatch = activeFile.uri.match(/tree\/([^:]+)/);
+			if (treeMatch) {
+				try {
+					const decodedRoot = decodeURIComponent(treeMatch[1]);
+					rootFolder = decodedRoot;
+					console.log(`DEBUG - Termux root folder set to: ${rootFolder}`);
+				} catch (e) {
+					console.error("Error decoding Termux root:", e);
+				}
+			}
+		} else if (
+			projectFolder !== undefined &&
+			pathName &&
+			pathName.includes(projectFolder.url)
+		) {
 			rootFolder = projectFolder.url;
 		}
 
 		//make the uri absolute if necessary
-		if (
-			rootFolder ===
-			"content://com.termux.documents/tree/%2Fdata%2Fdata%2Fcom.termux%2Ffiles%2Fhome"
-		) {
-			rootFolder =
-				"content://com.termux.documents/tree/%2Fdata%2Fdata%2Fcom.termux%2Ffiles%2Fhome::/data/data/com.termux/files/home/";
-		}
-
-		console.log("rootFolder", rootFolder);
-		console.log("pathName", pathName);
-		console.log("filename", filename);
+		rootFolder = makeUriAbsoluteIfNeeded(rootFolder);
 
 		// Parent of the file
 		let filePath = pathName;
@@ -554,30 +659,25 @@ async function run(
 			try {
 				const [, realPath] = temp.split("::");
 
-				// Determine root folder inside :: path
-				let rootPath = rootFolder;
-				if (rootFolder.includes("::")) {
-					rootPath = rootFolder.split("::")[1];
-				}
+				console.log(`DEBUG - realPath: ${realPath}`);
+				console.log(`DEBUG - rootFolder: ${rootFolder}`);
 
-				// Normalize both paths to arrays
-				const realParts = realPath.split("/").filter(Boolean);
-				const rootParts = rootPath.split("/").filter(Boolean);
+				// Ensure rootFolder doesn't have trailing slash for comparison
+				const normalizedRoot = rootFolder.replace(/\/+$/, "");
 
-				// Find where the paths start to differ
-				let diffIndex = 0;
-				while (
-					diffIndex < realParts.length &&
-					diffIndex < rootParts.length &&
-					realParts[diffIndex] === rootParts[diffIndex]
-				) {
-					diffIndex++;
-				}
+				// Check if realPath starts with rootFolder
+				if (realPath.startsWith(normalizedRoot)) {
+					// Remove the rootFolder from the beginning of realPath
+					let relativePath = realPath.substring(normalizedRoot.length);
 
-				// Return everything after the common root
-				const relativeParts = realParts.slice(diffIndex);
-				if (relativeParts.length > 0) {
-					return relativeParts.join("/");
+					// Remove leading slash if present
+					relativePath = relativePath.replace(/^\/+/, "");
+
+					console.log(`DEBUG - relativePath: ${relativePath}`);
+
+					if (relativePath) {
+						return relativePath;
+					}
 				}
 			} catch (e) {
 				console.error("Error handling Termux URI:", e);
@@ -617,26 +717,17 @@ async function run(
 						}
 					}
 
-					// Now find this rootFolderPath in the afterDoubleColon string
-					if (afterDoubleColon.includes(rootFolderPath)) {
-						// Find where to start the relative path
-						const parts = afterDoubleColon.split("/");
+					// Use direct string replacement instead of path component comparison
+					const normalizedRoot = rootFolderPath.replace(/\/+$/, "");
+					if (afterDoubleColon.startsWith(normalizedRoot)) {
+						let relativePath = afterDoubleColon.substring(
+							normalizedRoot.length,
+						);
+						// Remove leading slash if present
+						relativePath = relativePath.replace(/^\/+/, "");
 
-						// Find the index of the part that matches or contains rootFolderPath
-						let startIndex = -1;
-						for (let i = 0; i < parts.length; i++) {
-							if (
-								parts[i].includes(rootFolderPath) ||
-								rootFolderPath.includes(parts[i])
-							) {
-								startIndex = i;
-								break;
-							}
-						}
-
-						// If we found a matching part, get everything after it
-						if (startIndex >= 0 && startIndex < parts.length - 1) {
-							return parts.slice(startIndex + 1).join("/");
+						if (relativePath) {
+							return relativePath;
 						}
 					}
 				}
@@ -681,6 +772,7 @@ async function run(
 	 * Opens the preview in browser
 	 */
 	function openBrowser() {
+		console.log(`Running ${Url.join(pathName, filename)}`);
 		let url = "";
 		if (pathName === null && !activeFile.location) {
 			url = `http://localhost:${port}/__unsaved_file__`;

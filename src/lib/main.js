@@ -510,8 +510,15 @@ async function loadApp() {
 	function onEditorUpdate(mode, saveState = true) {
 		const { activeFile } = editorManager;
 
-		if (!$editMenuToggler.isConnected) {
-			$header.insertBefore($editMenuToggler, $header.lastChild);
+		// if (!$editMenuToggler.isConnected) {
+		// 	$header.insertBefore($editMenuToggler, $header.lastChild);
+		// }
+		if (activeFile?.type === "page") {
+			$editMenuToggler.remove();
+		} else {
+			if (!$editMenuToggler.isConnected) {
+				$header.insertBefore($editMenuToggler, $header.lastChild);
+			}
 		}
 
 		if (mode === "switch-file") {

@@ -22,6 +22,7 @@ function initApp(el) {
 	container = el;
 	container.classList.add("files");
 	container.setAttribute("data-msg", strings["open folder"]);
+	container.style.overflowX = "auto";
 	container.addEventListener("click", clickHandler);
 	editorManager.on(
 		["new-file", "int-open-file-list", "remove-file"],
