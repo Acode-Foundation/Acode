@@ -360,7 +360,7 @@ export default {
 					const content = await fs.readFile();
 					await fsOperation(Url.dirname(uri)).createFile(newname, content);
 					await fs.delete();
-					newUrl = newFilePath;
+					newUri = newFilePath;
 				} else {
 					newUri = await fs.renameTo(newname);
 				}
