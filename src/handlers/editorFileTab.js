@@ -62,6 +62,10 @@ let parentRight = 0;
  * @type {number}
  */
 let animationFrame = null;
+/**
+ * @type {number}
+ */
+let prevScrollLeft = 0;
 
 const MAX_SCROLL_SPEED = 4;
 
@@ -126,6 +130,9 @@ export default function startDrag(e) {
 	document.addEventListener("touchend", releaseDrag, opts);
 	document.addEventListener("touchcancel", releaseDrag, opts);
 	document.addEventListener("mouseleave", releaseDrag, opts);
+
+	prevScrollLeft = $parent.scrollLeft;
+	$parent.addEventListener("scroll", preventDefaultScroll, opts);
 }
 
 /**
@@ -225,6 +232,12 @@ function releaseDrag(e) {
 	document.removeEventListener("touchend", releaseDrag, opts);
 	document.removeEventListener("touchcancel", releaseDrag, opts);
 	document.removeEventListener("mouseleave", releaseDrag, opts);
+
+	$parent.removeEventListener("scroll", preventDefaultScroll);
+}
+
+function preventDefaultScroll() {
+	this.scrollLeft = prevScrollLeft;
 }
 
 /**
@@ -236,7 +249,7 @@ function scrollContainer() {
 	function animate() {
 		const scroll = getScroll();
 		if (!scroll) return;
-		$parent.scrollLeft += scroll;
+		prevScrollLeft = $parent.scrollLeft += scroll;
 		animationFrame = requestAnimationFrame(animate);
 	}
 }
