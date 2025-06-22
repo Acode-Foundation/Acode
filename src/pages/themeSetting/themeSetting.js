@@ -193,7 +193,10 @@ console.log(message);`);
 	 * @param {string} param0.theme
 	 */
 	function setEditorTheme({ caption, theme }) {
-		editorManager.editor.setTheme(theme); // main editor
+		if (appSettings.value.appTheme.toLowerCase() === "system") {
+			alert("App theme is set to 'System'. Changing the editor theme will not affect the editor appearance.");
+		}
+		editorManager.editor.setTheme(theme);
 		editor.setTheme(theme); // preview
 		appSettings.update(
 			{
