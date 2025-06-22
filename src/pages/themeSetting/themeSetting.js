@@ -194,7 +194,9 @@ console.log(message);`);
 	 */
 	function setEditorTheme({ caption, theme }) {
 		if (appSettings.value.appTheme.toLowerCase() === "system") {
-			alert("App theme is set to 'System'. Changing the editor theme will not affect the editor appearance.");
+			alert(
+				"App theme is set to 'System'. Changing the editor theme will not affect the editor appearance.",
+			);
 		}
 		editorManager.editor.setTheme(theme);
 		editor.setTheme(theme); // preview
