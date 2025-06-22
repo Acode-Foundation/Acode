@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Test de Compost</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background-color: #f2f2f2;
+    }
+    .question {
+      margin-bottom: 20px;
+      background: #fff;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    .question h3 {
+      margin-bottom: 10px;
+    }
+    button {
+      padding: 10px 20px;
+      background: #4CAF50;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 20px;
+      border-radius: 10px;
+      background: #fff;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <h1>Test de Evaluación de Compost</h1>
+  <form id="compostForm">
+    <div class="question">
+      <h3>1. ¿A qué huele tu compost?</h3>
+      <label><input type="radio" name="q1" value="2"> A tierra húmeda</label><br />
+      <label><input type="radio" name="q1" value="-2"> A amoníaco</label><br />
+      <label><input type="radio" name="q1" value="-2"> A podrido</label><br />
+      <label><input type="radio" name="q1" value="1"> A dulce o fermento</label><br />
+      <label><input type="radio" name="q1" value="0"> A nada :(</label>
+    </div>
+
+    <div class="question">
+      <h3>2. ¿De qué color es tu compost?</h3>
+      <label><input type="radio" name="q2" value="2"> Marrón oscuro o negro</label><br />
+      <label><input type="radio" name="q2" value="-1"> Verde</label><br />
+      <label><input type="radio" name="q2" value="1"> Marrón claro o amarillento</label><br />
+      <label><input type="radio" name="q2" value="-1"> Blanco</label>
+    </div>
+
+    <div class="question">
+      <h3>3. ¿Qué textura tiene tu compost?</h3>
+      <label><input type="radio" name="q3" value="2"> Suelta y granulosa</label><br />
+      <label><input type="radio" name="q3" value="-1"> Húmeda y goteante</label><br />
+      <label><input type="radio" name="q3" value="-1"> Seca y frágil</label><br />
+      <label><input type="radio" name="q3" value="1"> Aún siento restos de los productos originales</label>
+    </div>
+
+    <div class="question">
+      <h3>4. ¿Cuál es el pH de tu compost?</h3>
+      <label><input type="radio" name="q4" value="-1"> Entre 1 y 6</label><br />
+      <label><input type="radio" name="q4" value="2"> Entre 6 y 8</label><br />
+      <label><input type="radio" name="q4" value="-1"> Entre 8 y 14</label><br />
+      <label><input type="radio" name="q4" value="0"> No lo sé</label>
+    </div>
+
+    <div class="question">
+      <h3>5. ¿Qué le agregás generalmente a tu compost?</h3>
+      <label><input type="radio" name="q5" value="2"> Todas</label><br />
+      <label><input type="radio" name="q5" value="1"> Varias pero no todas</label>
+    </div>
+
+    <div class="question">
+      <h3>6. ¿Cuáles de estas alternativas añadís a tu compost?</h3>
+      <label><input type="radio" name="q6" value="-2"> Todas</label><br />
+      <label><input type="radio" name="q6" value="-2"> Algunas</label><br />
+      <label><input type="radio" name="q6" value="2"> Ninguna de las anteriores</label>
+    </div>
+
+    <button type="button" onclick="calculateResult()">Ver resultado</button>
+    <button type="button" onclick="generateRandomAnswers()">Generar respuestas aleatorias</button>
+  </form>
+
+  <div id="result" class="result" style="display:none;"></div>
+
+<script>
+  const questions = {
+    q1: ["A tierra húmeda", "A amoníaco", "A podrido", "A dulce o fermento", "A nada :("],
+    q2: ["Marrón oscuro o negro", "Verde", "Marrón claro o amarillento", "Blanco"],
+    q3: ["Suelta y granulosa", "Húmeda y goteante", "Seca y frágil", "Aún siento restos de los productos originales"],
+    q4: ["Entre 1 y 6", "Entre 6 y 8", "Entre 8 y 14", "No lo sé"],
+    q5: ["Todas", "Varias pero no todas"],
+    q6: ["Todas", "Algunas", "Ninguna de las anteriores"]
+  };
+
+  function calculateResult() {
+    let total = 0;
+    for(let i=1; i<=6; i++) {
+      const selected = document.querySelector(`input[name=q${i}]:checked`);
+      if(!selected) {
+        alert(`Por favor, responde la pregunta ${i}`);
+        return;
+      }
+      total += parseInt(selected.value);
+    }
+
+    const resultBox = document.getElementById("result");
+    let message = "";
+
+    if(total >= 10) {
+      message = "🟢 Compost maduro y listo para usar. ¡Felicitaciones!";
+    } else if(total >= 6) {
+      message = "🟡 Compost en proceso: buen trabajo, seguí cuidándolo.";
+    } else {
+      message = "🔴 Compost con problemas: revisá humedad, residuos y aireación.";
+    }
+
+    resultBox.innerHTML = message;
+    resultBox.style.display = "block";
+  }
+
+  function generateRandomAnswers() {
+    for(let i=1; i<=6; i++) {
+      const options = document.getElementsByName(`q${i}`);
+      const randomIndex = Math.floor(Math.random() * options.length);
+      options[randomIndex].checked = true;
+    }
+    document.getElementById("result").style.display = "none";
+  }
+</script>
+</body>
+</html>}
