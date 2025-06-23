@@ -3,6 +3,11 @@ import openFile from "lib/openFile";
 import helpers from "utils/helpers";
 
 const handlers = [];
+/**
+ * Queue to store intents that arrive before files are restored
+ * @type {Array<{url: string, options: object}>}
+ */
+const pendingIntents = [];
 
 /**
  *
@@ -39,10 +44,21 @@ export default async function HandleIntent(intent = {}) {
 			return;
 		}
 
-		await openFile(url, {
-			mode: "single",
-			render: true,
-		});
+		if (sessionStorage.getItem("isfilesRestored") === "true") {
+			await openFile(url, {
+				mode: "single",
+				render: true,
+			});
+		} else {
+			// Store the intent for later processing when files are restored
+			pendingIntents.push({
+				url,
+				options: {
+					mode: "single",
+					render: true,
+				},
+			});
+		}
 	}
 }
 
@@ -57,6 +73,25 @@ export function addIntentHandler(handler) {
 export function removeIntentHandler(handler) {
 	const index = handlers.indexOf(handler);
 	if (index > -1) handlers.splice(index, 1);
+}
+
+/**
+ * Process all pending intents that were queued before files were restored.
+ * This function is called after isfilesRestored is set to true in main.js.
+ * @returns {Promise<void>}
+ */
+export async function processPendingIntents() {
+	if (sessionStorage.getItem("isfilesRestored") !== "true") return;
+
+	// Process all pending intents
+	while (pendingIntents.length > 0) {
+		const pendingIntent = pendingIntents.shift();
+		try {
+			await openFile(pendingIntent.url, pendingIntent.options);
+		} catch (error) {
+			helpers.error(error);
+		}
+	}
 }
 
 class IntentEvent {
