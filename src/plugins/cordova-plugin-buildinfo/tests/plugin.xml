@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
+	id="cordova-plugin-buildinfo-test"
+	version="1.0.0">
+	<name>Cordova BuildInof Plugin Tests</name>
+	<license>MIT</license>
+
+	<js-module src="tests.js" name="tests">
+	</js-module>
+</plugin>

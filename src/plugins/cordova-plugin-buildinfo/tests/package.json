@@ -1,0 +1,21 @@
+{
+  "name": "cordova-plugin-buildinfo",
+  "version": "2.0.0",
+  "description": "Cordova/Phonegap Build Information Plugin. Get PackageName, Version, Debug and more... TEST!",
+  "cordova": {
+    "id": "cordova-plugin-buildinfo-test",
+    "platforms": [
+      "android",
+      "ios",
+      "windows"
+    ]
+  },
+  "engines": [
+    {
+      "name": "cordova",
+      "version": ">=4.0.0"
+    }
+  ],
+  "author": "Mikihiro Hayashi",
+  "license": "MIT"
+}
