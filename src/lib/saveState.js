@@ -13,6 +13,7 @@ export default () => {
 	files.forEach((file) => {
 		if (file.type !== "editor") return;
 		if (file.id === constants.DEFAULT_FILE_SESSION) return;
+		if (file.SAFMode === "single") return;
 
 		const fileJson = {
 			id: file.id,
