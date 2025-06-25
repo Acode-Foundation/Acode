@@ -23,7 +23,6 @@
   "cordova": {
     "plugins": {
       "cordova-clipboard": {},
-      "cordova-plugin-buildinfo": {},
       "cordova-plugin-device": {},
       "cordova-plugin-file": {},
       "cordova-plugin-sftp": {},
@@ -37,7 +36,8 @@
         "ANDROIDBLACKLISTSECURESOCKETPROTOCOLS": "SSLv3,TLSv1"
       },
       "cordova-plugin-websocket": {},
-      "com.foxdebug.acode.exec": {}
+      "com.foxdebug.acode.exec": {},
+      "cordova-plugin-buildinfo": {}
     },
     "platforms": [
       "android"

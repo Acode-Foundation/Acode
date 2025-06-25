@@ -5,12 +5,7 @@
   "cordova": {
     "id": "cordova-plugin-buildinfo",
     "platforms": [
-      "android",
-      "ios",
-      "osx",
-      "windows",
-      "browser",
-      "electron"
+      "android"
     ]
   },
   "keywords": [
@@ -20,12 +15,7 @@
     "phonegap",
     "cordova",
     "ecosystem:cordova",
-    "cordova-android",
-    "cordova-ios",
-    "cordova-windows",
-    "cordova-osx",
-    "cordova-browser",
-    "cordova-electron"
+    "cordova-android"
   ],
   "scripts": {
     "test": "npm run jshint",
@@ -38,26 +28,15 @@
       },
       "2.0.0": {
         "cordova": ">=5.4.0",
-        "cordova-ios": ">=4.0.0",
-        "cordova-android": ">=5.0.0",
-        "cordova-windows": ">=4.0.0"
+        "cordova-android": ">=5.0.0"
       },
       "3.0.0": {
         "cordova": ">=5.4.0",
-        "cordova-ios": ">=4.0.0",
-        "cordova-android": ">=5.0.0",
-        "cordova-windows": ">=4.0.0",
-        "cordova-browser": ">=6.0.0",
-        "cordova-electron": ">=1.1.0"
+        "cordova-android": ">=5.0.0"
       },
       "4.0.0": {
         "cordova": ">=5.4.0",
-        "cordova-ios": ">=4.0.0",
-        "cordova-android": ">=5.0.0",
-        "cordova-windows": ">=4.0.0",
-        "cordova-osx": ">=4.0.0",
-        "cordova-browser": ">=6.0.0",
-        "cordova-electron": ">=1.1.0"
+        "cordova-android": ">=5.0.0"
       },
       "5.0.0": {
         "cordova": ">100"
