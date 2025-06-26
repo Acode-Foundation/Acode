@@ -1082,7 +1082,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		 */
 		async function getDir(url, name) {
 			const { fileBrowser } = appSettings.value;
-			let list = null;
+			let list = [];
 			let error = false;
 
 			if (url in cachedDir) {
@@ -1107,7 +1107,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 					const fs = fsOperation(url);
 					try {
-						list = await fs.lsDir();
+						list = (await fs.lsDir()) ?? [];
 					} catch (err) {
 						if (progress[id]) {
 							helpers.error(err, url);
