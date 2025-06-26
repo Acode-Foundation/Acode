@@ -772,7 +772,6 @@ async function run(
 	 * Opens the preview in browser
 	 */
 	function openBrowser() {
-		console.log(`Running ${Url.join(pathName, filename)}`);
 		let url = "";
 		if (pathName === null && !activeFile.location) {
 			url = `http://localhost:${port}/__unsaved_file__`;
