@@ -403,5 +403,6 @@
 	"quicktools:hash": "Számjel beszúrása",
 	"quicktools:dollar": "Dollárjel beszúrása",
 	"quicktools:modulo": "Százalékjel beszúrása",
-	"quicktools:caret": "Hatványjel beszúrása"
+	"quicktools:caret": "Hatványjel beszúrása",
+	"open_source": "Open Source"
 }

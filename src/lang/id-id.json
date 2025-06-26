@@ -404,5 +404,6 @@
 	"quicktools:hash": "Masukkan tanda pagar",
 	"quicktools:dollar": "Masukkan simbol dolar",
 	"quicktools:modulo": "Masukkan simbol modulus/persen",
-	"quicktools:caret": "Masukkan tanda sisipan"
+	"quicktools:caret": "Masukkan tanda sisipan",
+	"open_source": "Open Source"
 }

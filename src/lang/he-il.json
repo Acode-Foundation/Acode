@@ -404,5 +404,6 @@
 	"quicktools:hash": "הוסף סמל גיבוב",
 	"quicktools:dollar": "הוסף סימן דולר",
 	"quicktools:modulo": "Insert modulo/percent symbol",
-	"quicktools:caret": "Insert caret symbol"
+	"quicktools:caret": "Insert caret symbol",
+	"open_source": "Open Source"
 }

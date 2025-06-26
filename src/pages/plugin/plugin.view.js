@@ -55,7 +55,7 @@ export default (props) => {
 						{repository ? (
 							<a href={repository} className="source-indicator">
 								<i className="icon github"></i>
-								<span>Open Source</span>
+								<span>{strings.open_source}</span>
 							</a>
 						) : null}
 					</div>
