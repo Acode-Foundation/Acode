@@ -188,7 +188,7 @@ export default async function PluginInclude(
 				loadAd(this),
 				installPlugin(plugin.source || id, plugin.name, purchaseToken),
 			]);
-			if (onInstall) onInstall(plugin.id);
+			if (onInstall) onInstall(plugin);
 			installed = true;
 			update = false;
 			if (!plugin.price && IS_FREE_VERSION && (await window.iad?.isLoaded())) {

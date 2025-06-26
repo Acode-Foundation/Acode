@@ -363,30 +363,53 @@ export default function PluginsInclude(updates) {
     $list.owned.setAttribute("empty-msg", strings["no plugins found"]);
   }
 
-  function onInstall(pluginId) {
+  function onInstall(plugin) {
     if (updates) return;
-    const plugin = plugins.all.find((plugin) => plugin.id === pluginId);
-    if (plugin) {
-      plugin.installed = true;
+
+    if (!plugin || !plugin.id) {
+      console.error("Invalid plugin object passed to onInstall");
+      return;
+    }
+    plugin.installed = true;
+
+    const existingIndex = plugins.installed.findIndex(p => p.id === plugin.id);
+    if (existingIndex === -1) {
       plugins.installed.push(plugin);
+    } else {
+      // Update existing plugin
+      plugins.installed[existingIndex] = plugin;
     }
 
-    $list.installed.append(<Item {...plugin} />);
+    const allPluginIndex = plugins.all.findIndex(p => p.id === plugin.id);
+    if (allPluginIndex !== -1) {
+      plugins.all[allPluginIndex] = plugin;
+    }
+
+    const existingItem = $list.installed.get(`[data-id="${plugin.id}"]`);
+    if (!existingItem) {
+      $list.installed.append(<Item {...plugin} />);
+    }
+
   }
 
   function onUninstall(pluginId) {
     if (!updates) {
-      const plugin = plugins.all.find((plugin) => plugin.id === pluginId);
       plugins.installed = plugins.installed.filter(
         (plugin) => plugin.id !== pluginId,
       );
+
+      const plugin = plugins.all.find((plugin) => plugin.id === pluginId);
       if (plugin) {
         plugin.installed = false;
         plugin.localPlugin = null;
       }
     }
 
-    $list.installed.get(`[data-id="${pluginId}"]`).remove();
+    // Remove from DOM
+    const existingItem = $list.installed.get(`[data-id="${pluginId}"]`);
+    if (existingItem) {
+      existingItem.remove();
+    }
   }
 
   function getLocalRes(id, name) {
