@@ -33,7 +33,12 @@ export default function formatterSettings(languageName) {
 	page.show(languageName);
 
 	function callback(key, value) {
-		values.formatter[key] = value;
+		if (value === null) {
+			// Delete the key when "none" is selected
+			delete values.formatter[key];
+		} else {
+			values.formatter[key] = value;
+		}
 		appSettings.update();
 	}
 }

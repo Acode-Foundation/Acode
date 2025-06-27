@@ -144,7 +144,7 @@ function select(title, items, options = {}) {
 					target = target.parentElement;
 				}
 
-				if (!itemOptions.value) return;
+				if (itemOptions.value === undefined) return;
 				if (hideOnSelect) hide();
 				res(itemOptions.value);
 			};
