@@ -54,7 +54,6 @@ import NotificationManager from "lib/notificationManager";
 import { addedFolder } from "lib/openFolder";
 import { getEncoding, initEncodings } from "utils/encodings";
 import auth, { loginEvents } from "./auth";
-import constants from "./constants";
 
 const previousVersionCode = Number.parseInt(localStorage.versionCode, 10);
 

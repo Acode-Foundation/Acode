@@ -1,4 +1,27 @@
 module.exports = {
+  fileExists: function (path, success, error) {
+      cordova.exec(success, error, 'System', 'fileExists', [path]);
+    },
+  
+    createSymlink: function (target, linkPath, success, error) {
+      cordova.exec(success, error, 'System', 'createSymlink', [target, linkPath]);
+    },
+  
+    getNativeLibraryPath: function (success, error) {
+      cordova.exec(success, error, 'System', 'getNativeLibraryPath', []);
+    },
+  
+    getFilesDir: function (success, error) {
+      cordova.exec(success, error, 'System', 'getFilesDir', []);
+    },
+  
+    getParentPath: function (path, success, error) {
+      cordova.exec(success, error, 'System', 'getParentPath', [path]);
+    },
+  
+    listChildren: function (path, success, error) {
+      cordova.exec(success, error, 'System', 'listChildren', [path]);
+    },
   clearCache: function (success, fail) {
     return cordova.exec(success, fail, "System", "clearCache", []);
   },

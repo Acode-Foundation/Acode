@@ -28,7 +28,7 @@ const Executor = {
    *   Executor.stop(pid);
    * });
    */
-  start(command, onData) {
+  start(command, onData,alpine = false) {
     return new Promise((resolve, reject) => {
       exec(
         (message) => {
@@ -81,7 +81,7 @@ const Executor = {
    * Executes a shell command and waits for it to finish.
    * Unlike `start()`, this is a one-time execution and does not stream real-time output.
    *
-   * @param {string} cmd - The command to execute.
+   * @param {string} command - The command to execute.
    * @returns {Promise<string>} Resolves with stdout if the command succeeds, rejects with stderr or error message if it fails.
    *
    * @example
@@ -91,9 +91,9 @@ const Executor = {
    *   console.error(error);
    * });
    */
-  execute(cmd) {
+  execute(command,alpine = false) {
     return new Promise((resolve, reject) => {
-      exec(resolve, reject, "Executor", "exec", [cmd]);
+      exec(resolve, reject, "Executor", "exec", [command]);
     });
   }
 };

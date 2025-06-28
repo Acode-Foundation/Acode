@@ -156,6 +156,30 @@ public class System extends CordovaPlugin {
             }
           );
         return true;
+      case "fileExists":
+                callbackContext.success(fileExists(args.getString(0)) ? 1 : 0);
+                return true;
+
+            case "createSymlink":
+                boolean success = createSymlink(args.getString(0), args.getString(1));
+                callbackContext.success(success ? 1 : 0);
+                return true;
+
+            case "getNativeLibraryPath":
+                callbackContext.success(getNativeLibraryPath());
+                return true;
+
+            case "getFilesDir":
+                callbackContext.success(getFilesDir());
+                return true;
+
+            case "getParentPath":
+                callbackContext.success(getParentPath(args.getString(0)));
+                return true;
+
+            case "listChildren":
+                callbackContext.success(listChildren(args.getString(0)));
+                return true;
       default:
         return false;
     }
@@ -398,6 +422,48 @@ public class System extends CordovaPlugin {
     }
     callback.error("No permission passed to check.");
   }
+
+  public boolean fileExists(String path) {
+        return new File(path).exists();
+    }
+
+   public boolean createSymlink(String target, String linkPath) {
+        try {
+            Process process = Runtime.getRuntime().exec(new String[]{"ln", "-s", target, linkPath});
+            return process.waitFor() == 0;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+   public String getNativeLibraryPath() {
+        ApplicationInfo appInfo = context.getApplicationInfo();
+        return appInfo.nativeLibraryDir;
+    }
+
+    public String getFilesDir() {
+        return context.getFilesDir().getAbsolutePath();
+    }
+
+   public String getParentPath(String path) {
+        File file = new File(path);
+        File parent = file.getParentFile();
+        return parent != null ? parent.getAbsolutePath() : null;
+    }
+
+    public JSONArray listChildren(String path) throws JSONException {
+        File dir = new File(path);
+        JSONArray result = new JSONArray();
+        if (dir.exists() && dir.isDirectory()) {
+            File[] files = dir.listFiles();
+            if (files != null) {
+                for (File file : files) {
+                    result.put(file.getAbsolutePath());
+                }
+            }
+        }
+        return result;
+    }
 
   public void onRequestPermissionResult(
     int code,

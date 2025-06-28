@@ -31,13 +31,13 @@
       "cordova-plugin-sdcard": {},
       "cordova-plugin-browser": {},
       "cordova-plugin-iap": {},
-      "cordova-plugin-system": {},
       "cordova-plugin-advanced-http": {
         "ANDROIDBLACKLISTSECURESOCKETPROTOCOLS": "SSLv3,TLSv1"
       },
       "cordova-plugin-websocket": {},
       "com.foxdebug.acode.rk.exec.terminal": {},
-      "cordova-plugin-buildinfo": {}
+      "cordova-plugin-buildinfo": {},
+      "cordova-plugin-system": {}
     },
     "platforms": [
       "android"
@@ -64,7 +64,7 @@
     "autoprefixer": "^10.4.19",
     "babel-loader": "^9.1.3",
     "com.foxdebug.acode.rk.exec.terminal": "file:src/plugins/terminal",
-    "cordova-android": "^13.0.0",
+    "cordova-android": "^14.0.1",
     "cordova-clipboard": "^1.3.0",
     "cordova-plugin-advanced-http": "^3.3.1",
     "cordova-plugin-browser": "file:src/plugins/browser",
