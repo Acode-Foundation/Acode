@@ -175,6 +175,7 @@ class Settings {
 			showRetryToast: false,
 			showSideButtons: true,
 			showAnnotations: false,
+			pluginsDisabled: {}, // pluginId: true/false
 		};
 		this.value = structuredClone(this.#defaultSettings);
 	}
@@ -222,6 +223,9 @@ class Settings {
 			} catch (error) {
 				themes.update(new ThemeBuilder("Custom").toJSON());
 			}
+
+			// Ensure pluginsDisabled exists
+			if (!this.value.pluginsDisabled) this.value.pluginsDisabled = {};
 
 			return;
 		}

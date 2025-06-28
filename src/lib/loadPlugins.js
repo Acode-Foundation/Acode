@@ -36,6 +36,7 @@ export default async function loadPlugins(loadOnlyTheme = false) {
 
 	let pluginsToLoad = [];
 	const currentTheme = settings.value.appTheme;
+	const enabledMap = settings.value.pluginsDisabled || {};
 
 	if (loadOnlyTheme) {
 		// Only load theme plugins matching current theme
@@ -44,10 +45,14 @@ export default async function loadPlugins(loadOnlyTheme = false) {
 			return isThemePlugin(pluginId) && !loadedPlugins.has(pluginId);
 		});
 	} else {
-		// Load non-theme plugins that aren't loaded yet
+		// Load non-theme plugins that aren't loaded yet and are enabled
 		pluginsToLoad = plugins.filter((pluginDir) => {
 			const pluginId = Url.basename(pluginDir.url);
-			return !isThemePlugin(pluginId) && !loadedPlugins.has(pluginId);
+			return (
+				!isThemePlugin(pluginId) &&
+				!loadedPlugins.has(pluginId) &&
+				enabledMap[pluginId] !== true
+			);
 		});
 	}
 

@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin
+        xmlns="http://apache.org/cordova/ns/plugins/1.0"
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        id="cordova-plugin-buildinfo"
+        version="4.0.0">
+    <name>BuildInfo</name>
+    <description>Cordova/Phonegap Build Information Plugin. Get PackageName, Version, Debug and more...</description>
+    <license>MIT</license>
+    <keywords>debug,buildconfig,buildinfo,phonegap,cordova</keywords>
+    <author>Mikihiro Hayashi</author>
+    <hook type="after_plugin_install" src="scripts/after_install.js" />
+    <hook type="before_plugin_uninstall" src="scripts/before_uninstall.js" />
+
+    <js-module src="www/buildinfo.js" name="BuildInfo">
+        <clobbers target="BuildInfo"/>
+    </js-module>
+
+    <platform name="android">
+        <config-file target="res/xml/config.xml" parent="/*">
+            <feature name="BuildInfo">
+                <param name="android-package" value="org.apache.cordova.buildinfo.BuildInfo"/>
+            </feature>
+        </config-file>
+        <source-file src="src/android/BuildInfo.java" target-dir="src/org/apache/cordova/buildinfo"/>
+        <framework src="src/android/BuildInfo.gradle" custom="true" type="gradleReference"/>
+    </platform>
+
+    <platform name="ios">
+        <config-file target="config.xml" parent="/*">
+            <feature name="BuildInfo">
+                <param name="ios-package" value="CDVBuildInfo"/>
+            </feature>
+        </config-file>
+        <header-file src="src/ios/CDVBuildInfo.h"/>
+        <source-file src="src/ios/CDVBuildInfo.m"/>
+    </platform>
+
+    <platform name="windows">
+        <js-module src="src/windows/BuildInfoProxy.js" name="BuildInfoProxy">
+            <merges target=""/>
+        </js-module>
+        <resource-file src="src/windows/buildinfo.resjson" target="strings/buildinfo.resjson" />
+    </platform>
+
+    <platform name="osx">
+        <config-file target="config.xml" parent="/*">
+            <feature name="BuildInfo">
+                <param name="osx-package" value="CDVBuildInfo"/>
+            </feature>
+        </config-file>
+        <header-file src="src/osx/CDVBuildInfo.h"/>
+        <source-file src="src/osx/CDVBuildInfo.m"/>
+    </platform>
+
+    <platform name="browser">
+        <js-module src="src/browser/BuildInfoProxy.js" name="BuildInfoProxy">
+            <merges target=""/>
+        </js-module>
+        <hook type="after_prepare" src="scripts/browser_after_prepare.js" />
+    </platform>
+    
+    <platform name="electron">
+        <js-module src="src/browser/BuildInfoProxy.js" name="BuildInfoProxy">
+            <merges target=""/>
+        </js-module>
+        <hook type="after_prepare" src="scripts/browser_after_prepare.js" />
+    </platform>
+</plugin>

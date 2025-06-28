@@ -5,6 +5,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+
     .title {
       font-size: 1.125rem;
       font-weight: 600;
@@ -12,6 +13,7 @@
       justify-content: space-between;
       align-items: center;
       width: 100%;
+
       .icon-button {
         background: none;
         border: none;
@@ -21,6 +23,7 @@
         margin-left: 15px;
         border-radius: 50%;
         transition: background-color 0.3s ease;
+
         &:hover {
           background-color: var(--active-icon-color);
         }
@@ -34,6 +37,7 @@
     &.loading {
       @include loader(20px);
     }
+
     .filter-message {
       display: flex;
       justify-content: space-between;
@@ -41,14 +45,17 @@
       background-color: var(--primary-color);
       padding: 5px;
       border-bottom: 1px solid var(--border-color);
+
       strong {
         color: var(--link-text-color);
       }
+
       .close-button {
         background: none;
         border: none;
         cursor: pointer;
         transition: color 0.3s;
+
         &:hover {
           background-color: var(--error-text-color);
         }
@@ -70,6 +77,7 @@
         }
       }
     }
+
     .more_vert {
       display: flex;
       align-items: center;
@@ -82,6 +90,7 @@
         background-color: var(--active-icon-color);
       }
     }
+
     .replay {
       display: flex;
       align-items: center;

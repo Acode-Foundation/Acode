@@ -111,6 +111,7 @@ export default async function PluginInclude(
 				license: installedPlugin.license,
 				keywords: installedPlugin.keywords,
 				contributors: installedPlugin.contributors,
+				repository: installedPlugin.repository,
 				description,
 				changelogs,
 			};
@@ -188,7 +189,7 @@ export default async function PluginInclude(
 				loadAd(this),
 				installPlugin(plugin.source || id, plugin.name, purchaseToken),
 			]);
-			if (onInstall) onInstall(plugin.id);
+			if (onInstall) onInstall(plugin);
 			installed = true;
 			update = false;
 			if (!plugin.price && IS_FREE_VERSION && (await window.iad?.isLoaded())) {

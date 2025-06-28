@@ -1,0 +1,5 @@
+.npmignore
+.travis.yml
+.DS_Store
+ignore/
+node_modules

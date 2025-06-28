@@ -404,5 +404,10 @@
 	"quicktools:hash": "Chèn ký tự thăng",
 	"quicktools:dollar": "Chèn ký tự đô la",
 	"quicktools:modulo": "Chèn ký tự chia lấy dư/phần trăm",
-	"quicktools:caret": "Chèn ký tự gạch dọc"
+	"quicktools:caret": "Chèn ký tự gạch dọc",
+	"plugin_enabled": "Plugin enabled",
+	"plugin_disabled": "Plugin disabled",
+	"enable_plugin": "Enable this Plugin",
+	"disable_plugin": "Disable this Plugin",
+	"open_source": "Open Source"
 }

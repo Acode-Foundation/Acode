@@ -12,19 +12,23 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+
     strong {
       color: var(--link-text-color);
       margin-left: 5px;
     }
+
     span {
       margin-left: auto;
       padding: 5px;
+
       &:hover {
         cursor: pointer;
         background-color: var(--error-text-color);
       }
     }
   }
+
   .list:empty::after {
     content: attr(empty-msg);
   }
@@ -37,9 +41,11 @@
     display: flex;
     align-items: center;
     overflow-x: hidden;
+
     &:hover {
       background: color-mix(in srgb, var(--primary-color) 20%, transparent);
     }
+
     .plugin-header {
       display: flex;
       align-items: center;
@@ -48,6 +54,7 @@
       max-width: 100%;
       height: fit-content;
       min-height: 32px;
+
       .plugin-icon {
         width: 32px;
         height: 32px;
@@ -65,6 +72,7 @@
           object-position: center;
         }
       }
+
       .plugin-info {
         flex: 1;
         min-width: 0;
@@ -74,14 +82,17 @@
         gap: 0.75rem;
         margin: 0;
         height: fit-content;
+
         .plugin-main {
           min-width: 0;
           flex: 1;
+
           .plugin-title {
             display: flex;
             align-items: center;
             gap: 0.5rem;
             min-width: 0;
+
             .plugin-name {
               font-weight: 500;
               font-size: 0.94rem;
@@ -91,6 +102,7 @@
               min-width: 0;
               max-width: calc(100% - 50px);
             }
+
             .plugin-version {
               color: color-mix(in srgb, var(--secondary-text-color) 80%, black);
               font-size: 0.75rem;
@@ -101,6 +113,7 @@
               flex-shrink: 0;
             }
           }
+
           .plugin-meta {
             font-size: 0.81rem;
             color: color-mix(in srgb, var(--secondary-text-color) 80%, black);
@@ -108,6 +121,7 @@
             flex-wrap: wrap;
             gap: 0.375rem;
             align-items: center;
+
             .plugin-meta-dot {
               width: 3px;
               height: 3px;
@@ -119,6 +133,7 @@
               border-radius: 50%;
               display: inline-block;
             }
+
             .plugin-stats {
               display: flex;
               align-items: center;
@@ -145,6 +160,7 @@
             }
           }
         }
+
         .plugin-price {
           background: var(--primary-color);
           color: var(--link-text-color);
@@ -159,6 +175,52 @@
           height: fit-content;
         }
       }
+    }
+
+    .plugin-toggle-switch {
+      display: flex !important;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      z-index: 100;
+      min-width: 100px;
+      pointer-events: auto !important;
+      position: relative;
+      margin-left: auto;
+      justify-content: flex-end;
+    }
+
+    .plugin-toggle-track {
+      width: 36px;
+      height: 20px;
+      border-radius: 12px;
+      background: #d1d5db;
+      position: relative;
+      transition: background 0.2s;
+      display: inline-block;
+      margin-right: 8px;
+    }
+
+    .plugin-toggle-switch[data-enabled="true"] .plugin-toggle-track,
+    .plugin-toggle-track[data-enabled="true"] {
+      background: var(--active-color);
+    }
+
+    .plugin-toggle-thumb {
+      position: absolute;
+      left: 2px;
+      top: 2px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      transition: left 0.2s;
+    }
+
+    .plugin-toggle-switch[data-enabled="true"] .plugin-toggle-thumb,
+    .plugin-toggle-track[data-enabled="true"] .plugin-toggle-thumb {
+      left: 18px;
     }
 
     @media (max-width: 380px) {
