@@ -18,8 +18,14 @@
         <source-file src="src/android/Executor.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
 
         <!-- Use flavors if F-Droid complains about native libs -->
-        <source-file src="libs/proot-aarch64.so" target-dir="libs/arm64-v8a" />
-        <source-file src="libs/proot-arm.so" target-dir="libs/armeabi-v7a" />
+        <source-file src="libs/libproot-aarch64.so" target-dir="libs/arm64-v8a" />
+        <source-file src="libs/libproot32-aarch64.so" target-dir="libs/arm64-v8a" />
+        <source-file src="libs/libproot-arm.so" target-dir="libs/armeabi-v7a" />
 
+        <source-file src="libs/libproot-xed-aarch64.so" target-dir="libs/arm64-v8a" />
+        <source-file src="libs/libproot-xed-arm.so" target-dir="libs/armeabi-v7a" />
+
+        <source-file src="libs/libtalloc64.so" target-dir="libs/arm64-v8a" />
+        <source-file src="libs/libtalloc32.so" target-dir="libs/armeabi-v7a" />
     </platform>
 </plugin>
