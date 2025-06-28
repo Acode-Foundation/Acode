@@ -1,6 +1,7 @@
 /* eslint-disable no-console */
 const path = require('path');
 const fs = require('fs');
+const { execSync } = require('child_process');
 
 const buildFilePath = path.resolve(__dirname, '../build.json');
 const copyToPath = path.resolve(__dirname, '../platforms/android/build.json');
@@ -28,6 +29,35 @@ deleteDirRecursively(resPath, [
   'xml',
 ]);
 copyDirRecursively(localResPath, resPath);
+enableLegacyJni()
+
+
+function enableLegacyJni() {
+  const prefix = execSync('npm prefix').toString().trim();
+  const gradleFile = path.join(prefix, 'platforms/android/app/build.gradle');
+
+  if (!fs.existsSync(gradleFile)) return;
+
+  let content = fs.readFileSync(gradleFile, 'utf-8');
+  // Check for correct block to avoid duplicate insertion
+  if (content.includes('useLegacyPackaging = true')) return;
+
+  // Inject under android block with correct Groovy syntax
+  content = content.replace(/android\s*{/, match => {
+    return (
+      match +
+      `
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }`
+    );
+  });
+
+  fs.writeFileSync(gradleFile, content, 'utf-8');
+  console.log('[Cordova Hook] ✅ Enabled legacy JNI packaging');
+}
 
 /**
  * Copy directory recursively
