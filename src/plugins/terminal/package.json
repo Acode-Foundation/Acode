@@ -1,0 +1,17 @@
+{
+  "name": "com.foxdebug.acode.rk.exec.terminal",
+  "version": "1.0.0",
+  "description": "Terminal stuff",
+  "cordova": {
+    "id": "com.foxdebug.acode.rk.exec.terminal",
+    "platforms": [
+      "android"
+    ]
+  },
+  "keywords": [
+    "ecosystem:cordova",
+    "cordova-android"
+  ],
+  "author": "@RohitKushvaha01",
+  "license": "MIT"
+}

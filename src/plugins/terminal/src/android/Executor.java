@@ -1,4 +1,4 @@
-package com.foxdebug.acode.exec;
+package com.foxdebug.acode.rk.exec.terminal;
 
 import org.apache.cordova.*;
 import org.json.*;

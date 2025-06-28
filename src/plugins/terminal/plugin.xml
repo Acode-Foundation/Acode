@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0" xmlns:android="http://schemas.android.com/apk/res/android" id="com.foxdebug.acode.rk.exec.terminal" version="1.0.0">
+    <name>Terminal</name>
+
+    <!-- executor api -->
+    <js-module name="Executor" src="www/Executor.js">
+        <clobbers target="cordova.plugins.Executor" />
+    </js-module>
+
+
+    <platform name="android">
+        <config-file parent="/*" target="res/xml/config.xml">
+            <feature name="Terminal">
+                <param name="android-package" value="com.foxdebug.acode.rk.exec.terminal" />
+            </feature>
+        </config-file>
+        <config-file parent="/*" target="AndroidManifest.xml" />
+        <source-file src="src/android/Executor.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
+
+        <!-- Use flavors if F-Droid complains about native libs -->
+        <source-file src="libs/proot-aarch64.so" target-dir="libs/arm64-v8a" />
+        <source-file src="libs/proot-arm.so" target-dir="libs/armeabi-v7a" />
+
+    </platform>
+</plugin>

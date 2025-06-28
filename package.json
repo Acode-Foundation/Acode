@@ -37,7 +37,7 @@
         "ANDROIDBLACKLISTSECURESOCKETPROTOCOLS": "SSLv3,TLSv1"
       },
       "cordova-plugin-websocket": {},
-      "com.foxdebug.acode.exec": {}
+      "com.foxdebug.acode.rk.exec.terminal": {}
     },
     "platforms": [
       "android"
@@ -63,7 +63,7 @@
     "@types/url-parse": "^1.4.11",
     "autoprefixer": "^10.4.19",
     "babel-loader": "^9.1.3",
-    "com.foxdebug.acode.exec": "file:src/plugins/Executor",
+    "com.foxdebug.acode.rk.exec.terminal": "file:src/plugins/terminal",
     "cordova-android": "^13.0.0",
     "cordova-clipboard": "^1.3.0",
     "cordova-plugin-advanced-http": "^3.3.1",
