@@ -47,7 +47,8 @@ export default async function checkFiles() {
 	 * @returns {Promise<void>}
 	 */
 	async function checkFile(file) {
-		if (file === undefined || file.isUnsaved || !file.loaded || file.loading) return;
+		if (file === undefined || file.isUnsaved || !file.loaded || file.loading)
+			return;
 
 		if (file.uri) {
 			const fs = fsOperation(file.uri);
