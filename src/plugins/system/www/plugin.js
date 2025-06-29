@@ -1,6 +1,6 @@
 module.exports = {
-  fileExists: function (path, success, error) {
-      cordova.exec(success, error, 'System', 'fileExists', [path]);
+  fileExists: function (path,countSymlinks, success, error) {
+      cordova.exec(success, error, 'System', 'fileExists', [path,String(countSymlinks)]);
     },
   
     createSymlink: function (target, linkPath, success, error) {
@@ -22,6 +22,13 @@ module.exports = {
     listChildren: function (path, success, error) {
       cordova.exec(success, error, 'System', 'listChildren', [path]);
     },
+    mkdirs: function (path, success, error) {
+      cordova.exec(success, error, 'System', 'mkdirs', [path]);
+    },
+    getArch: function (success, error) {
+      cordova.exec(success, error, 'System', 'getArch', []);
+    },
+
   clearCache: function (success, fail) {
     return cordova.exec(success, fail, "System", "clearCache", []);
   },

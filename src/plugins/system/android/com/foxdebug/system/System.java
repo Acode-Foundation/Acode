@@ -47,6 +47,10 @@ import org.apache.cordova.PluginResult;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
+
 
 public class System extends CordovaPlugin {
 
@@ -157,7 +161,7 @@ public class System extends CordovaPlugin {
           );
         return true;
       case "fileExists":
-                callbackContext.success(fileExists(args.getString(0)) ? 1 : 0);
+                callbackContext.success(fileExists(args.getString(0),args.getString(1)) ? 1 : 0);
                 return true;
 
             case "createSymlink":
@@ -179,6 +183,25 @@ public class System extends CordovaPlugin {
 
             case "listChildren":
                 callbackContext.success(listChildren(args.getString(0)));
+                return true;
+            case "getArch":
+                String arch;
+
+            if (android.os.Build.VERSION.SDK_INT >= 21) {
+                arch = android.os.Build.SUPPORTED_ABIS[0];
+            } else {
+                arch = android.os.Build.CPU_ABI;
+            }
+
+            callbackContext.success(arch);
+            return true;
+             case "mkdirs":
+                File file = new File(args.getString(0));
+                if(file.mkdirs()){
+                  callbackContext.success();
+                }else{
+                  callbackContext.error("mkdirs failed");
+                }
                 return true;
       default:
         return false;
@@ -423,9 +446,20 @@ public class System extends CordovaPlugin {
     callback.error("No permission passed to check.");
   }
 
-  public boolean fileExists(String path) {
-        return new File(path).exists();
+  public boolean fileExists(String path, String countSymlinks) {
+    Path p = new File(path).toPath();
+    try {
+        if (Boolean.parseBoolean(countSymlinks)) {
+            // This will return true even for broken symlinks
+            return Files.exists(p, LinkOption.NOFOLLOW_LINKS);
+        } else {
+            // Check target file, not symlink itself
+            return Files.exists(p) && !Files.isSymbolicLink(p);
+        }
+    } catch (Exception e) {
+        return false;
     }
+}
 
    public boolean createSymlink(String target, String linkPath) {
         try {

@@ -28,7 +28,7 @@ const Executor = {
    *   Executor.stop(pid);
    * });
    */
-  start(command, onData,alpine = false) {
+  start(command, onData) {
     return new Promise((resolve, reject) => {
       exec(
         (message) => {
@@ -76,6 +76,19 @@ const Executor = {
       exec(resolve, reject, "Executor", "stop", [pid]);
     });
   },
+  isRunning(pid) {
+    return new Promise((resolve, reject) => {
+      exec((result)=>{
+        if(result === "running"){
+          resolve(true)
+        }else if(result === "exited"){
+          resolve(false)
+        }else{
+          resolve(false)
+        }
+      }, reject, "Executor", "isRunning", [pid]);
+    });
+  },
 
   /**
    * Executes a shell command and waits for it to finish.
@@ -91,7 +104,7 @@ const Executor = {
    *   console.error(error);
    * });
    */
-  execute(command,alpine = false) {
+  execute(command) {
     return new Promise((resolve, reject) => {
       exec(resolve, reject, "Executor", "exec", [command]);
     });

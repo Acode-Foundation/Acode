@@ -34,6 +34,10 @@ public class Executor extends CordovaPlugin {
                 String cmdExec = args.getString(0);
                 exec(cmdExec, callbackContext);
                 return true;
+            case "isRunning":
+                String pid = args.getString(0);
+                isProcessRunning(pid, callbackContext);
+                return true;
             default:
                 callbackContext.error("Unknown action: " + action);
                 return false;
@@ -132,6 +136,22 @@ public class Executor extends CordovaPlugin {
             callbackContext.error("No such process");
         }
     }
+
+    private void isProcessRunning(String pid, CallbackContext callbackContext) {
+        Process process = processes.get(pid);
+
+        if (process != null) {
+            if (process.isAlive()) {
+                callbackContext.success("running");
+            } else {
+                cleanup(pid);
+                callbackContext.success("exited");
+            }
+        } else {
+            callbackContext.success("not_found");
+        }
+    }
+
 
     private void streamOutput(InputStream inputStream, String pid, String streamType) {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
