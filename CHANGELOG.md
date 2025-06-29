@@ -1,5 +1,28 @@
 # Change Log
 
+## v1.11.4 (960)
+
+* Fix renaming current Termux URI file whilst viewing/editing it by @peasneovoyager2banana2
+* fix: html preview on unsaved files by @RohitKushvaha01
+* Add markdown-it-footnote and task lists support by @UnschooledGamer
+* Fix quickTools height fallback by @bajrangCoder
+* Comment out column adjustment in touchHandler.js for weird selection by @bajrangCoder
+* Update Indonesian Translation by @hyperz111
+* feat: :sparkles: Native Websocket Plugin (uses okhttp) by @UnschooledGamer
+* fix: unintentional scrolling of tab container while dragging a tab by @peasneovoyager2banana2
+* feat. alert user when changing editor theme by @RohitKushvaha01
+* feat: Improve handling of intents before files are restored on startup by @bajrangCoder
+* fix: don't save state of SAFMode="single" files by @bajrangCoder
+* fix: plugin passing undefined to plugin item on plugin page by @bajrangCoder
+* Integrated cordova-plugin-buildinfo as a local plugin by @RohitKushvaha01
+* fix: crash when running unsaved file by @RohitKushvaha01
+* feat: show open source plugin url on plugin page by @bajrangCoder
+* fix: Make "None" option clickable in select dialog on formatter settings by @bajrangCoder
+* fix: show confirm when copy/cut in sidebar instead of alert so user can proceed if they want by @bajrangCoder
+* feat: plugin enable/disable functionality and update translations by @UnschooledGamer
+* Update hu-hu.json by @summoner001
+* Advanced execution interface by @RohitKushvaha01
+
 ## v1.11.3 (959)
 
 * feat: added system theme by @RohitKushvaha01
