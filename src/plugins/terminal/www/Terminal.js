@@ -33,7 +33,7 @@ const Terminal = {
             if (type === 'stderr') console.error(data);
             if (type === 'exit') console.log('EXIT:', data);
           }).then(pid => {
-            
+            Executor.execute(`echo \"${pid}\" > ${filesDir}/pid`)
             Executor.write(pid, `export LD_LIBRARY_PATH=${filesDir}`);
             Executor.write(pid, `export PROOT_TMP_DIR=${filesDir}/tmp`);
             Executor.write(pid, `export PROOT_LOADER=${nativeLibs}/libproot.so`);
@@ -42,9 +42,9 @@ const Terminal = {
 
             Executor.write(pid, `${nativeLibs}/libproot-xed.so -b ${filesDir}:${filesDir} -b /data:/data -b /system:/system -b /vendor:/vendor -S ${filesDir}/alpine`);
             Executor.write(pid, `command -v bash >/dev/null 2>&1 || apk update && apk add bash`);
+
             Executor.write(pid, `${filesDir}/axs`);
            
-            Executor.execute(`echo \"${pid}\" > ${filesDir}/pid`)
           }).catch(console.error);
           
     },
