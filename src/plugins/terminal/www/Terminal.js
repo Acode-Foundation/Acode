@@ -4,7 +4,7 @@ const Executor = require("./Executor");
 const AXS_VERSION_TAG="v0.2.5"
 
 const Terminal = {
-    async startAxs(logger = console.log,err_logger = console.error){ 
+    async startAxs(installing = false,logger = console.log,err_logger = console.error){ 
         const filesDir = await new Promise((resolve, reject) => {
             system.getFilesDir(resolve, reject);
         });
@@ -21,16 +21,13 @@ const Terminal = {
             logger(data);
           }).then(async (pid) => {
             system.writeText(`${filesDir}/pid`,pid,logger,err_logger)
-            await Executor.write(pid,`source ${filesDir}/init-sandbox.sh; exit`);
+            await Executor.write(pid, `source ${filesDir}/init-sandbox.sh ${installing ? "--installing" : ""}; exit`);
           });
         })
   
     },
     
     async stopAxs(){
-      if (await this.isInstalled()) return;
-      if (!(await this.isSupported())) return;
-
       const pidExists = await new Promise((resolve, reject) => {
         system.fileExists(`${filesDir}/pid`, false, (result) => {
           resolve(result == 1);
@@ -45,9 +42,6 @@ const Terminal = {
     },
     
     async isAxsRunning(){
-      if (await this.isInstalled()) return false;
-      if (!(await this.isSupported())) return false;
-
       const pidExists = await new Promise((resolve, reject) => {
         system.fileExists(`${filesDir}/pid`, false, (result) => {
           resolve(result == 1);
@@ -78,13 +72,13 @@ const Terminal = {
           let alpineUrl;
           let axsUrl;
           if (arch === "arm64-v8a") {
-            axsUrl = `https://github.com/bajrangCoder/acodex_server/releases/download/${AXS_VERSION_TAG}/axs-aarch64-unknown-linux-musl`
+            axsUrl = `https://github.com/bajrangCoder/acodex_server/releases/download/${AXS_VERSION_TAG}/axs-musl-android-arm64`
             alpineUrl = "https://dl-cdn.alpinelinux.org/alpine/v3.21/releases/aarch64/alpine-minirootfs-3.21.0-aarch64.tar.gz";
           } else if (arch === "armeabi-v7a") {
-            axsUrl = `https://github.com/bajrangCoder/acodex_server/releases/download/${AXS_VERSION_TAG}/axs-android-armv7`
+            axsUrl = `https://github.com/bajrangCoder/acodex_server/releases/download/${AXS_VERSION_TAG}/axs-musl-android-armv7`
             alpineUrl = "https://dl-cdn.alpinelinux.org/alpine/v3.21/releases/armhf/alpine-minirootfs-3.21.0-armhf.tar.gz";
           } else if (arch === "x86_64") {
-            axsUrl = `https://github.com/bajrangCoder/acodex_server/releases/download/${AXS_VERSION_TAG}/axs-android-x86_64`
+            axsUrl = `https://github.com/bajrangCoder/acodex_server/releases/download/${AXS_VERSION_TAG}/axs-musl-android-x86_64`
             alpineUrl = "https://dl-cdn.alpinelinux.org/alpine/v3.21/releases/x86_64/alpine-minirootfs-3.21.0-x86_64.tar.gz";
           } else {
             throw new Error(`Unsupported architecture: ${arch}`);
@@ -135,6 +129,9 @@ const Terminal = {
           await new Promise((resolve, reject) => {
             system.mkdirs(`${filesDir}/.extracted`, resolve, reject);
           });
+
+          //update system and install required packages
+          this.startAxs(true,logger,err_logger)
     
         } catch (e) {
           err_logger("Installation failed:", e);
@@ -196,8 +193,8 @@ function readAsset(assetPath, callback) {
 
       reader.onloadend = () => callback(reader.result);
       reader.readAsText(file);
-    }, err_logger);
-  }, err_logger);
+    },console.error);
+  }, console.error);
 }
 
 

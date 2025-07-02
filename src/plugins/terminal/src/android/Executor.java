@@ -8,6 +8,8 @@ import java.util.*;
 import java.util.concurrent.*;
 import android.content.Context;
 import android.app.Activity;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 
 public class Executor extends CordovaPlugin {
 
@@ -68,6 +70,16 @@ public class Executor extends CordovaPlugin {
                 env.put("PREFIX", context.getFilesDir().getAbsolutePath());
                 env.put("NATIVE_DIR", context.getApplicationInfo().nativeLibraryDir);
 
+                try {
+    int target = context.getPackageManager()
+                        .getPackageInfo(context.getPackageName(), 0)
+                        .applicationInfo.targetSdkVersion;
+    env.put("FDROID", String.valueOf(target <= 28));
+} catch (PackageManager.NameNotFoundException e) {
+    e.printStackTrace();
+}
+
+
                 Process process = builder.start();
 
                 // Capture stdout
@@ -115,6 +127,16 @@ public class Executor extends CordovaPlugin {
                 Map<String, String> env = builder.environment();
                 env.put("PREFIX", context.getFilesDir().getAbsolutePath());
                 env.put("NATIVE_DIR", context.getApplicationInfo().nativeLibraryDir);
+
+                try {
+    int target = context.getPackageManager()
+                        .getPackageInfo(context.getPackageName(), 0)
+                        .applicationInfo.targetSdkVersion;
+    env.put("FDROID", String.valueOf(target <= 28));
+} catch (PackageManager.NameNotFoundException e) {
+    e.printStackTrace();
+}
+
 
                 Process process = builder.start();
 

@@ -30,7 +30,14 @@ fi
 [ ! -L /bin/login ] && mv /bin/login /bin/real_login
 ln -sf /bin/bash /bin/login
 
+if [ "$1" = "--installing" ]; then
+  echo "Installation completed."
+  exit 0
+fi
+
+
 if [ "$#" -eq 0 ]; then
+    chmod +x $PREFIX/axs
     $PREFIX/axs
 else
     exec "$@"

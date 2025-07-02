@@ -12,4 +12,4 @@ fi
 ln -s "$NATIVE_DIR/libtalloc.so" "$PREFIX/libtalloc.so.2"
 
 
-$NATIVE_DIR/libproot-xed.so -b $PREFIX:$PREFIX -b /data:/data -b /system:/system -b /vendor:/vendor -R $PREFIX/alpine sh $PREFIX/init-alpine.sh "$@"
+$NATIVE_DIR/libproot-xed.so -b $PREFIX:$PREFIX -b /data:/data -b /system:/system -b /vendor:/vendor -S $PREFIX/alpine /bin/sh $PREFIX/init-alpine.sh "$@"
