@@ -325,8 +325,6 @@ async function onDeviceReady() {
 			);
 		})
 		.catch(console.error);
-
-	Terminal.initSandbox();
 }
 
 async function loadApp() {

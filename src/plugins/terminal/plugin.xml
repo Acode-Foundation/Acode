@@ -19,6 +19,10 @@
         </config-file>
         <config-file parent="/*" target="AndroidManifest.xml" />
         <source-file src="src/android/Executor.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
+
+
+        <source-file src="scripts/init-sandbox.sh" target-dir="assets"/>
+        <source-file src="scripts/init-alpine.sh" target-dir="assets"/>
         
         <!-- Use flavors if F-Droid complains about native libs -->
 

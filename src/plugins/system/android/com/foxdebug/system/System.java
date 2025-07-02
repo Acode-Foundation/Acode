@@ -1,5 +1,10 @@
 package com.foxdebug.system;
 
+
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.io.IOException;
 import android.app.Activity;
 import android.app.PendingIntent;
 import android.content.ClipData;
@@ -184,6 +189,23 @@ public class System extends CordovaPlugin {
             case "listChildren":
                 callbackContext.success(listChildren(args.getString(0)));
                 return true;
+            case "writeText": {
+    try {
+        String filePath = args.getString(0);
+        String content = args.getString(1);
+
+        Files.write(Paths.get(filePath),
+                    Collections.singleton(content),
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.TRUNCATE_EXISTING);
+
+        callbackContext.success("File written successfully");
+    } catch (Exception e) {
+        callbackContext.error("Failed to write file: " + e.getMessage());
+    }
+    return true;
+}
+
             case "getArch":
                 String arch;
 

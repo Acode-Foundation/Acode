@@ -6,12 +6,27 @@ import org.json.*;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
+import android.content.Context;
+import android.app.Activity;
 
 public class Executor extends CordovaPlugin {
 
     private final Map<String, Process> processes = new ConcurrentHashMap<>();
     private final Map<String, OutputStream> processInputs = new ConcurrentHashMap<>();
     private final Map<String, CallbackContext> processCallbacks = new ConcurrentHashMap<>();
+
+    private Context context;
+
+
+  @Override
+  public void initialize(CordovaInterface cordova, CordovaWebView webView) {
+    super.initialize(cordova, webView);
+    this.context = cordova.getContext();
+   
+  }
+
+  
+
 
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
@@ -35,8 +50,7 @@ public class Executor extends CordovaPlugin {
                 exec(cmdExec, callbackContext);
                 return true;
             case "isRunning":
-                String pid = args.getString(0);
-                isProcessRunning(pid, callbackContext);
+                isProcessRunning(args.getString(0), callbackContext);
                 return true;
             default:
                 callbackContext.error("Unknown action: " + action);
@@ -47,7 +61,14 @@ public class Executor extends CordovaPlugin {
     private void exec(String cmd, CallbackContext callbackContext) {
         try {
             if (cmd != null && !cmd.isEmpty()) {
-                Process process = Runtime.getRuntime().exec(cmd);
+                ProcessBuilder builder = new ProcessBuilder("sh", "-c", cmd);
+
+                // Set environment variables
+                Map<String, String> env = builder.environment();
+                env.put("PREFIX", context.getFilesDir().getAbsolutePath());
+                env.put("NATIVE_DIR", context.getApplicationInfo().nativeLibraryDir);
+
+                Process process = builder.start();
 
                 // Capture stdout
                 BufferedReader stdOutReader = new BufferedReader(
@@ -88,7 +109,15 @@ public class Executor extends CordovaPlugin {
     private void startProcess(String pid, String cmd, CallbackContext callbackContext) {
         cordova.getThreadPool().execute(() -> {
             try {
-                Process process = Runtime.getRuntime().exec(cmd);
+                ProcessBuilder builder = new ProcessBuilder("sh", "-c", cmd);
+
+                // Set environment variables
+                Map<String, String> env = builder.environment();
+                env.put("PREFIX", context.getFilesDir().getAbsolutePath());
+                env.put("NATIVE_DIR", context.getApplicationInfo().nativeLibraryDir);
+
+                Process process = builder.start();
+
                 processes.put(pid, process);
                 processInputs.put(pid, process.getOutputStream());
                 processCallbacks.put(pid, callbackContext);

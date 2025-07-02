@@ -6,6 +6,9 @@ module.exports = {
     createSymlink: function (target, linkPath, success, error) {
       cordova.exec(success, error, 'System', 'createSymlink', [target, linkPath]);
     },
+    writeText: function (path, content, success, error) {
+      cordova.exec(success, error, 'System', 'writeText', [path, content]);
+    },
   
     getNativeLibraryPath: function (success, error) {
       cordova.exec(success, error, 'System', 'getNativeLibraryPath', []);

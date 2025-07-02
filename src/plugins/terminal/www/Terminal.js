@@ -4,62 +4,65 @@ const Executor = require("./Executor");
 const AXS_VERSION_TAG="v0.2.5"
 
 const Terminal = {
-    async initSandbox(){
-        system.getFilesDir((filesDir) => {
-            const tmpDir = filesDir + "/tmp";            
-            system.mkdirs(tmpDir,()=>{},()=>{})
-            system.getNativeLibraryPath(async (path)=>{
-                system.fileExists(`${filesDir}/libtalloc.so.2`,true,async (result)=>{
-                    if(result == 1){
-                        await Executor.execute(`rm ${filesDir}/libtalloc.so.2`)
-                    }
-                    await Executor.execute(`ln -s ${path}/libtalloc.so ${filesDir}/libtalloc.so.2`)
-                },(err)=>{console.error(err)})
-            })
-        },(err)=>{console.error(err)})
-    },
-
-    async startAxs(){
-        const nativeLibs = await new Promise((resolve, reject) => {
-            system.getNativeLibraryPath(resolve, reject);
-        });
-
+    async startAxs(logger = console.log,err_logger = console.error){ 
         const filesDir = await new Promise((resolve, reject) => {
             system.getFilesDir(resolve, reject);
         });
 
-        Executor.start('sh', (type, data) => {
-            if (type === 'stdout') console.log(data);
-            if (type === 'stderr') console.error(data);
-            if (type === 'exit') console.log('EXIT:', data);
-          }).then(pid => {
-            Executor.execute(`echo \"${pid}\" > ${filesDir}/pid`)
-            Executor.write(pid, `export LD_LIBRARY_PATH=${filesDir}`);
-            Executor.write(pid, `export PROOT_TMP_DIR=${filesDir}/tmp`);
-            Executor.write(pid, `export PROOT_LOADER=${nativeLibs}/libproot.so`);
-            Executor.write(pid, `export PROOT_LOADER32=${nativeLibs}/libproot32.so`);
-            Executor.write(pid, `chmod +x ${filesDir}/axs`);
+        readAsset("init-alpine.sh",async (content)=>{
+          system.writeText(`${filesDir}/init-alpine.sh`,content,logger,err_logger)
+        })
 
-            Executor.write(pid, `${nativeLibs}/libproot-xed.so -b ${filesDir}:${filesDir} -b /data:/data -b /system:/system -b /vendor:/vendor -S ${filesDir}/alpine`);
-            Executor.write(pid, `command -v bash >/dev/null 2>&1 || apk update && apk add bash`);
+        readAsset("init-sandbox.sh",(content)=>{
 
-            Executor.write(pid, `${filesDir}/axs`);
-           
-          }).catch(console.error);
-          
+          system.writeText(`${filesDir}/init-sandbox.sh`,content,logger,err_logger)
+
+          Executor.start("sh", (type, data) => {
+            logger(data);
+          }).then(async (pid) => {
+            system.writeText(`${filesDir}/pid`,pid,logger,err_logger)
+            await Executor.write(pid,`source ${filesDir}/init-sandbox.sh; exit`);
+          });
+        })
+  
     },
     
     async stopAxs(){
+      if (await this.isInstalled()) return;
+      if (!(await this.isSupported())) return;
+
+      const pidExists = await new Promise((resolve, reject) => {
+        system.fileExists(`${filesDir}/pid`, false, (result) => {
+          resolve(result == 1);
+        }, reject);
+    });
+
+    if(pidExists){
       const pid = await Executor.execute(`cat ${filesDir}/pid`)
       Executor.stop(pid)
+    }
+
     },
     
     async isAxsRunning(){
+      if (await this.isInstalled()) return false;
+      if (!(await this.isSupported())) return false;
+
+      const pidExists = await new Promise((resolve, reject) => {
+        system.fileExists(`${filesDir}/pid`, false, (result) => {
+          resolve(result == 1);
+        }, reject);
+    });
+
+    if(!pidExists){
+      return false
+    }
+
       const pid = await Executor.execute(`cat ${filesDir}/pid`)
       return await Executor.isRunning(pid)
     },
     
-    async install() {
+    async install(logger = console.log,err_logger = console.error) {
         if (await this.isInstalled()) return;
         if (!(await this.isSupported())) return;
       
@@ -87,7 +90,7 @@ const Terminal = {
             throw new Error(`Unsupported architecture: ${arch}`);
           }
       
-          console.log("Downloading files...");
+          logger("Downloading files...");
           await new Promise((resolve, reject) => {
             cordova.plugin.http.downloadFile(
               alpineUrl,
@@ -109,28 +112,32 @@ const Terminal = {
               reject
             );
           });
-          console.log("✅ Download complete");
+          logger("✅ Download complete");
       
           await new Promise((resolve, reject) => {
             system.mkdirs(`${filesDir}/.downloaded`, resolve, reject);
           });
-      
+
           const alpineDir = `${filesDir}/alpine`;
-      
+
           await new Promise((resolve, reject) => {
             system.mkdirs(alpineDir, resolve, reject);
           });
-      
-          console.log("Extracting...")
-          await Executor.execute(`tar -xvf ${filesDir}/alpine.tar.gz -C ${alpineDir}`);
-          console.log("✅ Extraction complete");
-      
+
+          logger("Extracting...")
+          await Executor.execute(`tar -xf ${filesDir}/alpine.tar.gz -C ${alpineDir}`);
+
+          system.writeText(`${alpineDir}/etc/resolv.conf`,`nameserver 8.8.4.4 \nnameserver 8.8.8.8`)
+
+
+          logger("✅ Extraction complete");
+
           await new Promise((resolve, reject) => {
             system.mkdirs(`${filesDir}/.extracted`, resolve, reject);
           });
-      
+    
         } catch (e) {
-          console.error("installation failed:", e);
+          err_logger("Installation failed:", e);
         }
     },      
     
@@ -178,5 +185,20 @@ const Terminal = {
     }
     
 }
+
+
+function readAsset(assetPath, callback) {
+  const assetUrl = "file:///android_asset/" + assetPath;
+
+  window.resolveLocalFileSystemURL(assetUrl, fileEntry => {
+    fileEntry.file(file => {
+      const reader = new FileReader();
+
+      reader.onloadend = () => callback(reader.result);
+      reader.readAsText(file);
+    }, err_logger);
+  }, err_logger);
+}
+
 
 module.exports = Terminal
