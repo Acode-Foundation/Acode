@@ -18,9 +18,8 @@ const Terminal = {
           system.writeText(`${filesDir}/init-sandbox.sh`,content,logger,err_logger)
 
           Executor.start("sh", (type, data) => {
-            logger(data);
+            logger(`${type} ${data}`);
           }).then(async (pid) => {
-            system.writeText(`${filesDir}/pid`,pid,logger,err_logger)
             await Executor.write(pid, `source ${filesDir}/init-sandbox.sh ${installing ? "--installing" : ""}; exit`);
           });
         })
@@ -30,21 +29,10 @@ const Terminal = {
     async stopAxs(){
       const filesDir = await new Promise((resolve, reject) => {
         system.getFilesDir(resolve, reject);
-    });
-      const pidExists = await new Promise((resolve, reject) => {
-        system.fileExists(`${filesDir}/pid`, false, (result) => {
-          resolve(result == 1);
-        }, reject);
-    });
+      });
 
-    if(pidExists){
-      const filesDir = await new Promise((resolve, reject) => {
-        system.getFilesDir(resolve, reject);
-    });
-      const pid = await Executor.execute(`cat ${filesDir}/pid`)
-      Executor.stop(pid)
-    }
-
+      // Initiate total annihilation, burn it all, childrens included
+      await Executor.execute(`kill -TERM -- -$(cat ${filesDir}/pid)`)
     },
     
     async isAxsRunning(){
