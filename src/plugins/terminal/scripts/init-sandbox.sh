@@ -1,5 +1,3 @@
-echo "$$" > $PREFIX/pid
-
 export LD_LIBRARY_PATH=$PREFIX
 export PROOT_TMP_DIR=$PREFIX/tmp
 
@@ -27,4 +25,4 @@ else
 fi
 
 
-$PROOT -b $PREFIX:$PREFIX -b /data:/data -b /system:/system -b /vendor:/vendor -b /sdcard:/sdcard -b /storage:/storage -S $PREFIX/alpine /bin/sh $PREFIX/init-alpine.sh "$@"
+$PROOT --kill-on-exit -b $PREFIX:$PREFIX -b /data:/data -b /system:/system -b /vendor:/vendor -b /sdcard:/sdcard -b /storage:/storage -S $PREFIX/alpine /bin/sh $PREFIX/init-alpine.sh "$@"

@@ -27,12 +27,8 @@ const Terminal = {
     },
     
     async stopAxs(){
-      const filesDir = await new Promise((resolve, reject) => {
-        system.getFilesDir(resolve, reject);
-      });
-
-      // Initiate total annihilation, burn it all, childrens included
-      await Executor.execute(`kill -TERM -- -$(cat ${filesDir}/pid)`)
+      // Initiate total annihilation (childrens included)
+      await Executor.execute(`kill -KILL $(cat $PREFIX/pid)`)
     },
     
     async isAxsRunning(){
@@ -48,9 +44,8 @@ const Terminal = {
     if(!pidExists){
       return false
     }
-
-      const pid = await Executor.execute(`cat ${filesDir}/pid`)
-      return await Executor.isRunning(pid)
+      const result = await Executor.execute(`kill -0 $(cat $PREFIX/pid) 2>/dev/null && echo "true" || echo "false"`)
+      return result
     },
     
     async install(logger = console.log,err_logger = console.error) {
