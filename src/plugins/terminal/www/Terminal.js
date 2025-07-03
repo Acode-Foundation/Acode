@@ -80,15 +80,25 @@ const Terminal = {
         try {
           let alpineUrl;
           let axsUrl;
+
+          //only for fdroid
+          let prootUrl;
+          let libTalloc;
           if (arch === "arm64-v8a") {
             axsUrl = `https://github.com/bajrangCoder/acodex_server/releases/download/${AXS_VERSION_TAG}/axs-musl-android-arm64`
             alpineUrl = "https://dl-cdn.alpinelinux.org/alpine/v3.21/releases/aarch64/alpine-minirootfs-3.21.0-aarch64.tar.gz";
+            prootUrl = ""
+            libTalloc = ""
           } else if (arch === "armeabi-v7a") {
             axsUrl = `https://github.com/bajrangCoder/acodex_server/releases/download/${AXS_VERSION_TAG}/axs-musl-android-armv7`
             alpineUrl = "https://dl-cdn.alpinelinux.org/alpine/v3.21/releases/armhf/alpine-minirootfs-3.21.0-armhf.tar.gz";
+            prootUrl = ""
+            libTalloc = ""
           } else if (arch === "x86_64") {
             axsUrl = `https://github.com/bajrangCoder/acodex_server/releases/download/${AXS_VERSION_TAG}/axs-musl-android-x86_64`
             alpineUrl = "https://dl-cdn.alpinelinux.org/alpine/v3.21/releases/x86_64/alpine-minirootfs-3.21.0-x86_64.tar.gz";
+            prootUrl = ""
+            libTalloc = ""
           } else {
             throw new Error(`Unsupported architecture: ${arch}`);
           }
@@ -115,6 +125,34 @@ const Terminal = {
               reject
             );
           });
+
+          const isFdroid = await Executor.execute("echo $FDROID")
+          if(isFdroid === "true"){
+            logger("Fdroid flavor detected, downloading extra files...")
+            await new Promise((resolve, reject) => {
+              cordova.plugin.http.downloadFile(
+                prootUrl,
+                {},
+                {},
+                cordova.file.dataDirectory + "libproot-xed.so",
+                resolve,
+                reject
+              );
+            });
+
+            await new Promise((resolve, reject) => {
+              cordova.plugin.http.downloadFile(
+                libTalloc,
+                {},
+                {},
+                cordova.file.dataDirectory + "libtalloc.so.2",
+                resolve,
+                reject
+              );
+            });
+
+          }
+
           logger("✅ Download complete");
       
           await new Promise((resolve, reject) => {
