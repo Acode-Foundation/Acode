@@ -28,6 +28,9 @@ const Terminal = {
     },
     
     async stopAxs(){
+      const filesDir = await new Promise((resolve, reject) => {
+        system.getFilesDir(resolve, reject);
+    });
       const pidExists = await new Promise((resolve, reject) => {
         system.fileExists(`${filesDir}/pid`, false, (result) => {
           resolve(result == 1);
@@ -35,6 +38,9 @@ const Terminal = {
     });
 
     if(pidExists){
+      const filesDir = await new Promise((resolve, reject) => {
+        system.getFilesDir(resolve, reject);
+    });
       const pid = await Executor.execute(`cat ${filesDir}/pid`)
       Executor.stop(pid)
     }
@@ -42,6 +48,9 @@ const Terminal = {
     },
     
     async isAxsRunning(){
+      const filesDir = await new Promise((resolve, reject) => {
+        system.getFilesDir(resolve, reject);
+    });
       const pidExists = await new Promise((resolve, reject) => {
         system.fileExists(`${filesDir}/pid`, false, (result) => {
           resolve(result == 1);
