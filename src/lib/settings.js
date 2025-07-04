@@ -1,10 +1,12 @@
 import fsOperation from "fileSystem";
 import ThemeBuilder from "theme/builder";
 import themes from "theme/list";
+import { getSystemEditorTheme } from "theme/preInstalled";
 import Url from "utils/Url";
 import helpers from "utils/helpers";
 import constants from "./constants";
 import lang from "./lang";
+import { isDeviceDarkTheme } from "./systemConfiguration";
 
 /**
  * @typedef {object} fileBrowserSettings
@@ -173,6 +175,7 @@ class Settings {
 			showRetryToast: false,
 			showSideButtons: true,
 			showAnnotations: false,
+			pluginsDisabled: {}, // pluginId: true/false
 		};
 		this.value = structuredClone(this.#defaultSettings);
 	}
@@ -182,8 +185,10 @@ class Settings {
 		this.settingsFile = Url.join(DATA_STORAGE, "settings.json");
 
 		if (!IS_FREE_VERSION) {
-			this.#defaultSettings.appTheme = "ocean";
-			this.#defaultSettings.editorTheme = "ace/theme/dracula";
+			this.#defaultSettings.appTheme = "system";
+			this.#defaultSettings.editorTheme = getSystemEditorTheme(
+				isDeviceDarkTheme(),
+			);
 		}
 
 		this.#initialized = true;
@@ -218,6 +223,9 @@ class Settings {
 			} catch (error) {
 				themes.update(new ThemeBuilder("Custom").toJSON());
 			}
+
+			// Ensure pluginsDisabled exists
+			if (!this.value.pluginsDisabled) this.value.pluginsDisabled = {};
 
 			return;
 		}

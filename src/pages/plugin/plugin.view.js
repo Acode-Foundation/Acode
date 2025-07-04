@@ -19,6 +19,7 @@ export default (props) => {
 		downloads,
 		license,
 		changelogs,
+		repository,
 		keywords: keywordsRaw,
 		contributors: contributorsRaw,
 		votes_up: votesUp,
@@ -49,7 +50,15 @@ export default (props) => {
 					style={{ backgroundImage: `url(${icon})` }}
 				></div>
 				<div className="plugin-info">
-					<h1 className="plugin-name">{name}</h1>
+					<div className="title-wrapper">
+						<h1 className="plugin-name">{name}</h1>
+						{repository ? (
+							<a href={repository} className="source-indicator">
+								<i className="icon github"></i>
+								<span>{strings.open_source}</span>
+							</a>
+						) : null}
+					</div>
 					<div className="plugin-meta">
 						<span className="meta-item">
 							<i className="licons tag" style={{ fontSize: "12px" }}></i>

@@ -14,7 +14,11 @@ import installPlugin from "lib/installPlugin";
 import prompt from "dialogs/prompt";
 import actionStack from "lib/actionStack";
 import Contextmenu from "components/contextmenu";
+
 import internalFs from "fileSystem/internalFs";
+import settings from "lib/settings";
+import loadPlugin from "lib/loadPlugin";
+
 
 /**
  *
@@ -332,6 +336,7 @@ export default function PluginsInclude(updates) {
     $list.installed.setAttribute("empty-msg", strings["loading..."]);
     plugins.installed = [];
     const installed = await internalFs.listDir(PLUGIN_DIR)
+    const disabledMap = settings.value.pluginsDisabled || {};
     await Promise.all(
       installed.map(async (item) => {
         const id = Url.basename(item.url);
@@ -340,8 +345,10 @@ export default function PluginsInclude(updates) {
         const plugin = await fsOperation(url).readFile("json");
         plugin.icon = Capacitor.convertFileSrc(getLocalRes(id, plugin.icon))
         plugin.installed = true;
+        plugin.enabled = disabledMap[id] !== true; // default to true
+        plugin.onToggleEnabled = onToggleEnabled;
         plugins.installed.push(plugin);
-        if ($list.installed.get(`[data-id="${id}"]`)) return;
+        if ($list.installed.get(`[data-id=\"${id}\"]`)) return;
         $list.installed.append(<Item {...plugin} />);
       }),
     );
@@ -363,30 +370,53 @@ export default function PluginsInclude(updates) {
     $list.owned.setAttribute("empty-msg", strings["no plugins found"]);
   }
 
-  function onInstall(pluginId) {
+  function onInstall(plugin) {
     if (updates) return;
-    const plugin = plugins.all.find((plugin) => plugin.id === pluginId);
-    if (plugin) {
-      plugin.installed = true;
+
+    if (!plugin || !plugin.id) {
+      console.error("Invalid plugin object passed to onInstall");
+      return;
+    }
+    plugin.installed = true;
+
+    const existingIndex = plugins.installed.findIndex(p => p.id === plugin.id);
+    if (existingIndex === -1) {
       plugins.installed.push(plugin);
+    } else {
+      // Update existing plugin
+      plugins.installed[existingIndex] = plugin;
     }
 
-    $list.installed.append(<Item {...plugin} />);
+    const allPluginIndex = plugins.all.findIndex(p => p.id === plugin.id);
+    if (allPluginIndex !== -1) {
+      plugins.all[allPluginIndex] = plugin;
+    }
+
+    const existingItem = $list.installed.get(`[data-id="${plugin.id}"]`);
+    if (!existingItem) {
+      $list.installed.append(<Item {...plugin} />);
+    }
+
   }
 
   function onUninstall(pluginId) {
     if (!updates) {
-      const plugin = plugins.all.find((plugin) => plugin.id === pluginId);
       plugins.installed = plugins.installed.filter(
         (plugin) => plugin.id !== pluginId,
       );
+
+      const plugin = plugins.all.find((plugin) => plugin.id === pluginId);
       if (plugin) {
         plugin.installed = false;
         plugin.localPlugin = null;
       }
     }
 
-    $list.installed.get(`[data-id="${pluginId}"]`).remove();
+    // Remove from DOM
+    const existingItem = $list.installed.get(`[data-id="${pluginId}"]`);
+    if (existingItem) {
+      existingItem.remove();
+    }
   }
 
   function getLocalRes(id, name) {
@@ -411,5 +441,34 @@ export default function PluginsInclude(updates) {
       window.toast(helpers.errorMessage(error));
       addSource(sourceType, source);
     }
+  }
+
+  async function onToggleEnabled(id, enabled) {
+    const disabledMap = settings.value.pluginsDisabled || {};
+
+    if (enabled) {
+      disabledMap[id] = true;
+      settings.update({ pluginsDisabled: disabledMap }, false);
+      window.acode.unmountPlugin(id);
+      window.toast(strings["plugin_disabled"] || "Plugin Disabled");
+    } else {
+      delete disabledMap[id];
+      settings.update({ pluginsDisabled: disabledMap }, false);
+      await loadPlugin(id);
+      window.toast(strings["plugin_enabled"] || "Plugin enabled");
+    }
+
+    // Update the plugin object's state
+     const plugin = plugins.installed.find(p => p.id === id);
+     if (plugin) {
+       plugin.enabled = !enabled;
+
+       // Re-render the specific item
+       const $existingItem = $list.installed.get(`[data-id="${id}"]`);
+       if ($existingItem) {
+         const $newItem = <Item {...plugin} />;
+         $existingItem.replaceWith($newItem);
+       }
+     }
   }
 }

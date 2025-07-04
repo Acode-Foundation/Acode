@@ -684,9 +684,17 @@ export default function addTouchListeners(editor, minimal, onclick) {
 		const range = editor.getSelectionRange();
 		const { pageX, pageY } = renderer.textToScreenCoordinates(range.start);
 		const { lineHeight } = renderer;
-		const [x, y] = relativePosition(pageX - teardropSize, pageY + lineHeight);
 
-		$start.style.left = `${x}px`;
+		// Calculate desired position but ensure it stays within viewport
+		let targetX = pageX - teardropSize;
+		const [relativeX, y] = relativePosition(targetX, pageY + lineHeight);
+
+		// Ensure the teardrop doesn't go outside the left edge
+		// Leave some padding (e.g., 4px) so it's not flush against the edge
+		const minX = 4;
+		const constrainedX = Math.max(relativeX, minX);
+
+		$start.style.left = `${constrainedX}px`;
 		$start.style.top = `${y}px`;
 
 		if (!$start.isConnected) $el.append($start);
@@ -911,9 +919,9 @@ export default function addTouchListeners(editor, minimal, onclick) {
 
 			let { row, column } = renderer.screenToTextCoordinates(x, y);
 
-			if (column === start.column) {
-				++column;
-			}
+			// if (column === start.column) {
+			// 	++column;
+			// }
 
 			editor.selection.moveCursorToPosition({ row, column });
 			positionStart();

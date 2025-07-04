@@ -34,7 +34,13 @@
 		"globals": ["Global1"]
 	},
 	"files": {
-		"include": ["src/**/*", "utils/**/*.js", "www/**/*.js", "www/res/**/*.css"],
+		"include": [
+			"src/**/*",
+			"utils/**/*.js",
+			"www/**/*.js",
+			"www/res/**/*.css",
+			"src/plugins/terminal"
+		],
 		"ignore": [
 			"ace-builds",
 			"www/js/**/*.js",

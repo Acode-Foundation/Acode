@@ -403,5 +403,10 @@
 	"quicktools:hash": "Insert Hash symbol",
 	"quicktools:dollar": "Insert dollar symbol",
 	"quicktools:modulo": "Insert modulo/percent symbol",
-	"quicktools:caret": "Insert caret symbol"
+	"quicktools:caret": "Insert caret symbol",
+	"plugin_enabled": "Plugin enabled",
+	"plugin_disabled": "Plugin disabled",
+	"enable_plugin": "Enable this Plugin",
+	"disable_plugin": "Disable this Plugin",
+	"open_source": "Open Source"
 }

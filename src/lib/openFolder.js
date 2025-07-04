@@ -550,13 +550,13 @@ function execOperation(type, action, url, $target, name) {
 			const possibleConflictUrl = Url.join(url, itemName);
 			const doesExist = await fsOperation(possibleConflictUrl).exists();
 			if (doesExist) {
-				alert(
-					strings.error,
+				let confirmation = await confirm(
+					strings.warning,
 					strings["already exists"]
 						? strings["already exists"].replace("{name}", itemName)
 						: `"${itemName}" already exists in this location.`,
 				);
-				return;
+				if (!confirmation) return;
 			}
 			let newUrl;
 			if (clipBoard.action === "cut") newUrl = await fs.moveTo(url);

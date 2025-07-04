@@ -404,5 +404,10 @@
 	"quicktools:hash": "הוסף סמל גיבוב",
 	"quicktools:dollar": "הוסף סימן דולר",
 	"quicktools:modulo": "Insert modulo/percent symbol",
-	"quicktools:caret": "Insert caret symbol"
+	"quicktools:caret": "Insert caret symbol",
+	"plugin_enabled": "הפלאגין הופעל",
+	"plugin_disabled": "הפלאגין הושבת",
+	"enable_plugin": "הפעל תוסף זה",
+	"disable_plugin": "השבת תוסף זה",
+	"open_source": "Open Source"
 }

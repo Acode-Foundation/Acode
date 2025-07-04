@@ -1033,6 +1033,33 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				);
 			}
 
+			// Check for Terminal Home Directory storage
+			try {
+				const isTerminalInstalled = await Terminal.isInstalled();
+				if (typeof Terminal !== "undefined" && isTerminalInstalled) {
+					const isTerminalSupported = await Terminal.isSupported();
+
+					if (isTerminalSupported && isTerminalInstalled) {
+						const terminalHomeUrl = cordova.file.dataDirectory + "alpine/home";
+
+						// Check if this storage is not already in the list
+						const terminalStorageExists = allStorages.find(
+							(storage) =>
+								storage.uuid === "terminal-home" ||
+								storage.url === terminalHomeUrl,
+						);
+
+						if (!terminalStorageExists) {
+							util.pushFolder(allStorages, "Terminal Home", terminalHomeUrl, {
+								uuid: "terminal-home",
+							});
+						}
+					}
+				}
+			} catch (error) {
+				console.error("Error checking Terminal installation:", error);
+			}
+
 			try {
 				const res = await externalFs.listStorages();
 				res.forEach((storage) => {
@@ -1082,7 +1109,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		 */
 		async function getDir(url, name) {
 			const { fileBrowser } = appSettings.value;
-			let list = null;
+			let list = [];
 			let error = false;
 
 			if (url in cachedDir) {
@@ -1107,7 +1134,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 					const fs = fsOperation(url);
 					try {
-						list = await fs.lsDir();
+						list = (await fs.lsDir()) ?? [];
 					} catch (err) {
 						if (progress[id]) {
 							helpers.error(err, url);

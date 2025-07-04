@@ -17,7 +17,7 @@ import tile from "components/tile";
 import toast from "components/toast";
 import tutorial from "components/tutorial";
 import fsOperation from "fileSystem";
-import intentHandler from "handlers/intent";
+import intentHandler, { processPendingIntents } from "handlers/intent";
 import keyboardHandler from "handlers/keyboard";
 import quickToolsInit from "handlers/quickToolsInit";
 import windowResize from "handlers/windowResize";
@@ -54,7 +54,6 @@ import NotificationManager from "lib/notificationManager";
 import { addedFolder } from "lib/openFolder";
 import { getEncoding, initEncodings } from "utils/encodings";
 import auth, { loginEvents } from "./auth";
-import constants from "./constants";
 
 import { App as CapacitorApp } from "@capacitor/app";
 
@@ -483,12 +482,19 @@ async function loadApp() {
 	if (Array.isArray(files) && files.length) {
 		try {
 			await restoreFiles(files);
+			// save state to handle file loading gracefully
+			sessionStorage.setItem("isfilesRestored", true);
+			// Process any pending intents that were queued before files were restored
+			await processPendingIntents();
 		} catch (error) {
 			window.log("error", "File loading failed!");
 			window.log("error", error);
 			toast("File loading failed!");
 		}
 	} else {
+		// Even when no files need to be restored, mark as restored and process pending intents
+		sessionStorage.setItem("isfilesRestored", true);
+		await processPendingIntents();
 		onEditorUpdate(undefined, false);
 	}
 

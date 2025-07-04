@@ -5,7 +5,9 @@ import box from "dialogs/box";
 import fsOperation from "fileSystem";
 import markdownIt from "markdown-it";
 import anchor from "markdown-it-anchor";
+import markdownItFootnote from "markdown-it-footnote";
 import MarkdownItGitHubAlerts from "markdown-it-github-alerts";
+import markdownItTaskLists from "markdown-it-task-lists";
 import mimeType from "mime-types";
 import mustache from "mustache";
 import path from "path-browserify";
@@ -363,6 +365,8 @@ async function run(
 										.toLowerCase()
 										.replace(/[^a-z0-9]+/g, "-"),
 							})
+							.use(markdownItTaskLists)
+							.use(markdownItFootnote)
 							.render(file.session.getValue());
 						const doc = mustache.render($_markdown, {
 							html,
@@ -375,7 +379,7 @@ async function run(
 
 				default:
 					if (file && file.loaded && file.isUnsaved) {
-						if (filename.endsWith(".html")) {
+						if (file.filename.endsWith(".html")) {
 							sendHTML(file.session.getValue(), reqId);
 						} else {
 							sendText(
@@ -598,12 +602,33 @@ async function run(
 		// Get the project url
 		const projectFolder = addedFolder[0];
 
-		// Set the root folder to the file parent if no project folder is set
+		// FIXED: Better root folder determination for Termux URIs
 		let rootFolder = pathName;
-		if (projectFolder !== undefined && pathName.includes(projectFolder)) {
+
+		// Special handling for Termux URIs - extract the actual root from the URI structure
+		if (
+			activeFile &&
+			activeFile.uri &&
+			activeFile.uri.includes("com.termux.documents") &&
+			activeFile.uri.includes("tree/")
+		) {
+			// Extract the tree part and decode it to get the actual root path
+			const treeMatch = activeFile.uri.match(/tree\/([^:]+)/);
+			if (treeMatch) {
+				try {
+					const decodedRoot = decodeURIComponent(treeMatch[1]);
+					rootFolder = decodedRoot;
+					console.log(`DEBUG - Termux root folder set to: ${rootFolder}`);
+				} catch (e) {
+					console.error("Error decoding Termux root:", e);
+				}
+			}
+		} else if (
+			projectFolder !== undefined &&
+			pathName &&
+			pathName.includes(projectFolder.url)
+		) {
 			rootFolder = projectFolder.url;
-		} else {
-			rootFolder = pathName;
 		}
 
 		//make the uri absolute if necessary
@@ -633,30 +658,25 @@ async function run(
 			try {
 				const [, realPath] = temp.split("::");
 
-				// Determine root folder inside :: path
-				let rootPath = rootFolder;
-				if (rootFolder.includes("::")) {
-					rootPath = rootFolder.split("::")[1];
-				}
+				console.log(`DEBUG - realPath: ${realPath}`);
+				console.log(`DEBUG - rootFolder: ${rootFolder}`);
 
-				// Normalize both paths to arrays
-				const realParts = realPath.split("/").filter(Boolean);
-				const rootParts = rootPath.split("/").filter(Boolean);
+				// Ensure rootFolder doesn't have trailing slash for comparison
+				const normalizedRoot = rootFolder.replace(/\/+$/, "");
 
-				// Find where the paths start to differ
-				let diffIndex = 0;
-				while (
-					diffIndex < realParts.length &&
-					diffIndex < rootParts.length &&
-					realParts[diffIndex] === rootParts[diffIndex]
-				) {
-					diffIndex++;
-				}
+				// Check if realPath starts with rootFolder
+				if (realPath.startsWith(normalizedRoot)) {
+					// Remove the rootFolder from the beginning of realPath
+					let relativePath = realPath.substring(normalizedRoot.length);
 
-				// Return everything after the common root
-				const relativeParts = realParts.slice(diffIndex);
-				if (relativeParts.length > 0) {
-					return relativeParts.join("/");
+					// Remove leading slash if present
+					relativePath = relativePath.replace(/^\/+/, "");
+
+					console.log(`DEBUG - relativePath: ${relativePath}`);
+
+					if (relativePath) {
+						return relativePath;
+					}
 				}
 			} catch (e) {
 				console.error("Error handling Termux URI:", e);
@@ -696,26 +716,17 @@ async function run(
 						}
 					}
 
-					// Now find this rootFolderPath in the afterDoubleColon string
-					if (afterDoubleColon.includes(rootFolderPath)) {
-						// Find where to start the relative path
-						const parts = afterDoubleColon.split("/");
+					// Use direct string replacement instead of path component comparison
+					const normalizedRoot = rootFolderPath.replace(/\/+$/, "");
+					if (afterDoubleColon.startsWith(normalizedRoot)) {
+						let relativePath = afterDoubleColon.substring(
+							normalizedRoot.length,
+						);
+						// Remove leading slash if present
+						relativePath = relativePath.replace(/^\/+/, "");
 
-						// Find the index of the part that matches or contains rootFolderPath
-						let startIndex = -1;
-						for (let i = 0; i < parts.length; i++) {
-							if (
-								parts[i].includes(rootFolderPath) ||
-								rootFolderPath.includes(parts[i])
-							) {
-								startIndex = i;
-								break;
-							}
-						}
-
-						// If we found a matching part, get everything after it
-						if (startIndex >= 0 && startIndex < parts.length - 1) {
-							return parts.slice(startIndex + 1).join("/");
+						if (relativePath) {
+							return relativePath;
 						}
 					}
 				}

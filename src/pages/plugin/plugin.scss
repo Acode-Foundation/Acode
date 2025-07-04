@@ -21,9 +21,39 @@
       background-size: contain;
     }
     .plugin-info {
-      .plugin-name {
-        font-size: 24px;
+      .title-wrapper {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
         margin-bottom: 8px;
+        .plugin-name {
+          font-size: 24px;
+          margin-bottom: 0;
+        }
+        .source-indicator {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: rgba(0, 0, 0, 0.3);
+          backdrop-filter: blur(10px);
+          border-radius: 20px;
+          padding: 6px 10px;
+          font-size: 11px;
+          color: var(--primary-text-color);
+          cursor: pointer;
+          transition: all 0.3s ease;
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          text-decoration: none;
+          &:hover {
+            background-color: rgba(0, 0, 0, 0.5);
+            transform: translateY(-1px);
+          }
+          .icon {
+            color: var(--primary-text-color);
+            font-size: 14px;
+          }
+        }
       }
       .plugin-meta {
         display: flex;
@@ -274,6 +304,12 @@
       text-align: center;
     }
 
+    .source-indicator {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+    }
+    .title-wrapper,
     .plugin-meta,
     .metrics-row,
     .keywords {

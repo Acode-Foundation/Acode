@@ -5,6 +5,7 @@ import Page from "components/page";
 import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
 import markdownIt from "markdown-it";
+import markdownItFootnote from "markdown-it-footnote";
 import markdownItTaskLists from "markdown-it-task-lists";
 import helpers from "utils/helpers";
 
@@ -148,6 +149,7 @@ export default async function Changelog() {
 			.replace(/@(\w+)/g, "[@$1](https://github.com/$1)");
 
 		md.use(markdownItTaskLists);
+		md.use(markdownItFootnote);
 		const htmlContent = md.render(processedText);
 		$content.innerHTML = htmlContent;
 	}

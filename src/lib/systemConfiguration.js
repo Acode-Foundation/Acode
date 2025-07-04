@@ -52,3 +52,7 @@ export function getSystemConfiguration() {
 		cordova.exec(resolve, reject, "System", "get-configuration", []);
 	});
 }
+
+export function isDeviceDarkTheme() {
+	return window.matchMedia("(prefers-color-scheme: dark)").matches;
+}

@@ -4,6 +4,6 @@
         <item name="windowSplashScreenBackground">@color/ic_splash_background</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
         <item name="windowSplashScreenAnimationDuration">200</item>
-        <item name="postSplashScreenTheme">@style/Theme.AppCompat.NoActionBar</item>
+        <item name="postSplashScreenTheme">@style/Theme.AppCompat.DayNight.NoActionBar</item>
     </style>
 </resources>

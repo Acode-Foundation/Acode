@@ -1,5 +1,10 @@
 package com.foxdebug.system;
 
+
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.io.IOException;
 import android.app.Activity;
 import android.app.PendingIntent;
 import android.content.ClipData;
@@ -47,8 +52,14 @@ import org.apache.cordova.PluginResult;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+
 import android.webkit.WebView;
 import capacitor.cordova.android.plugins.BuildConfig;
+
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
+
 
 
 public class System extends CordovaPlugin {
@@ -164,6 +175,66 @@ public class System extends CordovaPlugin {
             }
           );
         return true;
+      case "fileExists":
+                callbackContext.success(fileExists(args.getString(0),args.getString(1)) ? 1 : 0);
+                return true;
+
+            case "createSymlink":
+                boolean success = createSymlink(args.getString(0), args.getString(1));
+                callbackContext.success(success ? 1 : 0);
+                return true;
+
+            case "getNativeLibraryPath":
+                callbackContext.success(getNativeLibraryPath());
+                return true;
+
+            case "getFilesDir":
+                callbackContext.success(getFilesDir());
+                return true;
+
+            case "getParentPath":
+                callbackContext.success(getParentPath(args.getString(0)));
+                return true;
+
+            case "listChildren":
+                callbackContext.success(listChildren(args.getString(0)));
+                return true;
+            case "writeText": {
+    try {
+        String filePath = args.getString(0);
+        String content = args.getString(1);
+
+        Files.write(Paths.get(filePath),
+                    Collections.singleton(content),
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.TRUNCATE_EXISTING);
+
+        callbackContext.success("File written successfully");
+    } catch (Exception e) {
+        callbackContext.error("Failed to write file: " + e.getMessage());
+    }
+    return true;
+}
+
+            case "getArch":
+                String arch;
+
+            if (android.os.Build.VERSION.SDK_INT >= 21) {
+                arch = android.os.Build.SUPPORTED_ABIS[0];
+            } else {
+                arch = android.os.Build.CPU_ABI;
+            }
+
+            callbackContext.success(arch);
+            return true;
+             case "mkdirs":
+                File file = new File(args.getString(0));
+                if(file.mkdirs()){
+                  callbackContext.success();
+                }else{
+                  callbackContext.error("mkdirs failed");
+                }
+                return true;
       default:
         return false;
     }
@@ -406,6 +477,59 @@ public class System extends CordovaPlugin {
     }
     callback.error("No permission passed to check.");
   }
+
+  public boolean fileExists(String path, String countSymlinks) {
+    Path p = new File(path).toPath();
+    try {
+        if (Boolean.parseBoolean(countSymlinks)) {
+            // This will return true even for broken symlinks
+            return Files.exists(p, LinkOption.NOFOLLOW_LINKS);
+        } else {
+            // Check target file, not symlink itself
+            return Files.exists(p) && !Files.isSymbolicLink(p);
+        }
+    } catch (Exception e) {
+        return false;
+    }
+}
+
+   public boolean createSymlink(String target, String linkPath) {
+        try {
+            Process process = Runtime.getRuntime().exec(new String[]{"ln", "-s", target, linkPath});
+            return process.waitFor() == 0;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+   public String getNativeLibraryPath() {
+        ApplicationInfo appInfo = context.getApplicationInfo();
+        return appInfo.nativeLibraryDir;
+    }
+
+    public String getFilesDir() {
+        return context.getFilesDir().getAbsolutePath();
+    }
+
+   public String getParentPath(String path) {
+        File file = new File(path);
+        File parent = file.getParentFile();
+        return parent != null ? parent.getAbsolutePath() : null;
+    }
+
+    public JSONArray listChildren(String path) throws JSONException {
+        File dir = new File(path);
+        JSONArray result = new JSONArray();
+        if (dir.exists() && dir.isDirectory()) {
+            File[] files = dir.listFiles();
+            if (files != null) {
+                for (File file : files) {
+                    result.put(file.getAbsolutePath());
+                }
+            }
+        }
+        return result;
+    }
 
   public void onRequestPermissionResult(
     int code,

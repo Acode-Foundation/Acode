@@ -12,6 +12,7 @@ import InstallState from "lib/installState";
 import settings from "lib/settings";
 import markdownIt from "markdown-it";
 import anchor from "markdown-it-anchor";
+import markdownItFootnote from "markdown-it-footnote";
 import MarkdownItGitHubAlerts from "markdown-it-github-alerts";
 import markdownItTaskLists from "markdown-it-task-lists";
 import Url from "utils/Url";
@@ -115,6 +116,7 @@ export default async function PluginInclude(
 				license: installedPlugin.license,
 				keywords: installedPlugin.keywords,
 				contributors: installedPlugin.contributors,
+				repository: installedPlugin.repository,
 				description,
 				changelogs,
 			};
@@ -192,7 +194,7 @@ export default async function PluginInclude(
 				loadAd(this),
 				installPlugin(plugin.source || id, plugin.name, purchaseToken),
 			]);
-			if (onInstall) onInstall(plugin.id);
+			if (onInstall) onInstall(plugin);
 			installed = true;
 			update = false;
 			if (!plugin.price && IS_FREE_VERSION && (await window.iad?.isLoaded())) {
@@ -326,6 +328,7 @@ export default async function PluginInclude(
 							.replace(/[^a-z0-9]+/g, "-"),
 				})
 				.use(markdownItTaskLists)
+				.use(markdownItFootnote)
 				.render(plugin.description),
 			changelogs: plugin.changelogs
 				? markdownIt({ html: true, xhtmlOut: true })
@@ -338,6 +341,7 @@ export default async function PluginInclude(
 									.replace(/[^a-z0-9]+/g, "-"),
 						})
 						.use(markdownItTaskLists)
+						.use(markdownItFootnote)
 						.render(plugin.changelogs)
 				: null,
 			purchased,

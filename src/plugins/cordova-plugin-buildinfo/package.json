@@ -1,0 +1,51 @@
+{
+  "name": "cordova-plugin-buildinfo",
+  "version": "4.0.0",
+  "description": "Cordova/PhoneGap Build Information Plugin. Get PackageName, Version, Debug and more...",
+  "cordova": {
+    "id": "cordova-plugin-buildinfo",
+    "platforms": [
+      "android"
+    ]
+  },
+  "keywords": [
+    "debug",
+    "buildconfig",
+    "buildinfo",
+    "phonegap",
+    "cordova",
+    "ecosystem:cordova",
+    "cordova-android"
+  ],
+  "scripts": {
+    "test": "npm run jshint",
+    "jshint": "node node_modules/jshint/bin/jshint www && node node_modules/jshint/bin/jshint src && node node_modules/jshint/bin/jshint tests"
+  },
+  "engines": {
+    "cordovaDependencies": {
+      "0.0.0": {
+        "cordova": ">=4.0.0"
+      },
+      "2.0.0": {
+        "cordova": ">=5.4.0",
+        "cordova-android": ">=5.0.0"
+      },
+      "3.0.0": {
+        "cordova": ">=5.4.0",
+        "cordova-android": ">=5.0.0"
+      },
+      "4.0.0": {
+        "cordova": ">=5.4.0",
+        "cordova-android": ">=5.0.0"
+      },
+      "5.0.0": {
+        "cordova": ">100"
+      }
+    }
+  },
+  "author": "Mikihiro Hayashi",
+  "license": "MIT",
+  "devDependencies": {
+    "jshint": "^2.6.0"
+  }
+}
