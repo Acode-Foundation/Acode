@@ -36,7 +36,7 @@ public class Executor extends CordovaPlugin {
             case "start":
                 String cmdStart = args.getString(0);
                 String pid = UUID.randomUUID().toString();
-                startProcess(pid, cmdStart, callbackContext);
+                startProcess(pid, cmdStart,args.getString(1), callbackContext);
                 return true;
             case "write":
                 String pidWrite = args.getString(0);
@@ -48,8 +48,7 @@ public class Executor extends CordovaPlugin {
                 stopProcess(pidStop, callbackContext);
                 return true;
             case "exec":
-                String cmdExec = args.getString(0);
-                exec(cmdExec, callbackContext);
+                exec(args.getString(0),args.getString(1), callbackContext);
                 return true;
             case "isRunning":
                 isProcessRunning(args.getString(0), callbackContext);
@@ -60,10 +59,15 @@ public class Executor extends CordovaPlugin {
         }
     }
 
-    private void exec(String cmd, CallbackContext callbackContext) {
+    private void exec(String cmd,String alpine, CallbackContext callbackContext) {
         try {
             if (cmd != null && !cmd.isEmpty()) {
-                ProcessBuilder builder = new ProcessBuilder("sh", "-c", cmd);
+                String xcmd = cmd;
+                if(alpine.equals("true")){
+                    xcmd = "source $PREFIX/init-sandbox.sh "+cmd;
+                }
+                
+                ProcessBuilder builder = new ProcessBuilder("sh", "-c", xcmd);
 
                 // Set environment variables
                 Map<String, String> env = builder.environment();
@@ -71,13 +75,11 @@ public class Executor extends CordovaPlugin {
                 env.put("NATIVE_DIR", context.getApplicationInfo().nativeLibraryDir);
 
                 try {
-    int target = context.getPackageManager()
-                        .getPackageInfo(context.getPackageName(), 0)
-                        .applicationInfo.targetSdkVersion;
-    env.put("FDROID", String.valueOf(target <= 28));
-} catch (PackageManager.NameNotFoundException e) {
-    e.printStackTrace();
-}
+                    int target = context.getPackageManager().getPackageInfo(context.getPackageName(), 0).applicationInfo.targetSdkVersion;
+                    env.put("FDROID", String.valueOf(target <= 28));
+                } catch (PackageManager.NameNotFoundException e) {
+                    e.printStackTrace();
+                }
 
 
                 Process process = builder.start();
@@ -118,10 +120,14 @@ public class Executor extends CordovaPlugin {
         }
     }
 
-    private void startProcess(String pid, String cmd, CallbackContext callbackContext) {
+    private void startProcess(String pid, String cmd,String alpine, CallbackContext callbackContext) {
         cordova.getThreadPool().execute(() -> {
             try {
-                ProcessBuilder builder = new ProcessBuilder("sh", "-c", cmd);
+                String xcmd = cmd;
+                if(alpine.equals("true")){
+                    xcmd = "source $PREFIX/init-sandbox.sh "+cmd;
+                }
+                ProcessBuilder builder = new ProcessBuilder("sh", "-c", xcmd);
 
                 // Set environment variables
                 Map<String, String> env = builder.environment();
@@ -129,13 +135,12 @@ public class Executor extends CordovaPlugin {
                 env.put("NATIVE_DIR", context.getApplicationInfo().nativeLibraryDir);
 
                 try {
-    int target = context.getPackageManager()
-                        .getPackageInfo(context.getPackageName(), 0)
-                        .applicationInfo.targetSdkVersion;
-    env.put("FDROID", String.valueOf(target <= 28));
-} catch (PackageManager.NameNotFoundException e) {
-    e.printStackTrace();
-}
+                    int target = context.getPackageManager().getPackageInfo(context.getPackageName(), 0).applicationInfo.targetSdkVersion;
+                    env.put("FDROID", String.valueOf(target <= 28));
+                } catch (PackageManager.NameNotFoundException e) {
+                    e.printStackTrace();
+                }
+
 
 
                 Process process = builder.start();

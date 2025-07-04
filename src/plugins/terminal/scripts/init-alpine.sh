@@ -1,4 +1,3 @@
-echo "$$" > $PREFIX/pid
 set -e  # Exit immediately on Failure
 
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/share/bin:/usr/share/sbin:/usr/local/bin:/usr/local/sbin:/system/bin:/system/xbin:$PREFIX/local/bin
@@ -41,6 +40,7 @@ fi
 
 
 if [ "$#" -eq 0 ]; then
+    echo "$$" > $PREFIX/pid
     chmod +x $PREFIX/axs
     $PREFIX/axs
 else
