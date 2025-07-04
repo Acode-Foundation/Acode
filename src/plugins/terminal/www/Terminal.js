@@ -19,8 +19,8 @@ const Terminal = {
 
           Executor.start("sh", (type, data) => {
             logger(`${type} ${data}`);
-          }).then(async (pid) => {
-            await Executor.write(pid, `source ${filesDir}/init-sandbox.sh ${installing ? "--installing" : ""}; exit`);
+          }).then(async (uuid) => {
+            await Executor.write(uuid, `source ${filesDir}/init-sandbox.sh ${installing ? "--installing" : ""}; exit`);
           });
         })
   
@@ -28,7 +28,7 @@ const Terminal = {
     
     async stopAxs(){
       // Initiate total annihilation (childrens included)
-      await Executor.execute(`kill -KILL $(cat $PREFIX/pid)`)
+      await Executor.execute(`kill -KILL $(cat $PREFIX/uuid)`)
     },
     
     async isAxsRunning(){
@@ -36,7 +36,7 @@ const Terminal = {
         system.getFilesDir(resolve, reject);
     });
       const pidExists = await new Promise((resolve, reject) => {
-        system.fileExists(`${filesDir}/pid`, false, (result) => {
+        system.fileExists(`${filesDir}/uuid`, false, (result) => {
           resolve(result == 1);
         }, reject);
     });
@@ -44,7 +44,7 @@ const Terminal = {
     if(!pidExists){
       return false
     }
-      const result = await Executor.execute(`kill -0 $(cat $PREFIX/pid) 2>/dev/null && echo "true" || echo "false"`)
+      const result = await Executor.execute(`kill -0 $(cat $PREFIX/uuid) 2>/dev/null && echo "true" || echo "false"`)
       return result
     },
     

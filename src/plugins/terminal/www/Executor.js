@@ -23,9 +23,9 @@ const Executor = {
    * @example
    * Executor.start('sh', (type, data) => {
    *   console.log(`[${type}] ${data}`);
-   * }).then(pid => {
-   *   Executor.write(pid, 'echo Hello World');
-   *   Executor.stop(pid);
+   * }).then(uuid => {
+   *   Executor.write(uuid, 'echo Hello World');
+   *   Executor.stop(uuid);
    * });
    */
   start(command, onData) {
@@ -49,34 +49,34 @@ const Executor = {
   /**
    * Sends input to the stdin of a running process.
    *
-   * @param {string} pid - The process ID returned by {@link Executor.start}.
+   * @param {string} uuid - The process ID returned by {@link Executor.start}.
    * @param {string} input - The input string to send to the process.
    * @returns {Promise<string>} Resolves when the input is successfully written.
    *
    * @example
-   * Executor.write(pid, 'ls /data');
+   * Executor.write(uuid, 'ls /data');
    */
-  write(pid, input) {
+  write(uuid, input) {
     return new Promise((resolve, reject) => {
-      exec(resolve, reject, "Executor", "write", [pid, input]);
+      exec(resolve, reject, "Executor", "write", [uuid, input]);
     });
   },
 
   /**
    * Stops a running process.
    *
-   * @param {string} pid - The process ID returned by {@link Executor.start}.
+   * @param {string} uuid - The process ID returned by {@link Executor.start}.
    * @returns {Promise<string>} Resolves when the process is terminated.
    *
    * @example
-   * Executor.stop(pid);
+   * Executor.stop(uuid);
    */
-  stop(pid) {
+  stop(uuid) {
     return new Promise((resolve, reject) => {
-      exec(resolve, reject, "Executor", "stop", [pid]);
+      exec(resolve, reject, "Executor", "stop", [uuid]);
     });
   },
-  isRunning(pid) {
+  isRunning(uuid) {
     return new Promise((resolve, reject) => {
       exec((result)=>{
         if(result === "running"){
@@ -86,7 +86,7 @@ const Executor = {
         }else{
           resolve(false)
         }
-      }, reject, "Executor", "isRunning", [pid]);
+      }, reject, "Executor", "isRunning", [uuid]);
     });
   },
 

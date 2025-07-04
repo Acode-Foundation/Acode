@@ -1035,9 +1035,10 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 			// Check for Terminal Home Directory storage
 			try {
-				if (typeof Terminal !== "undefined" && Terminal.isInstalled) {
+				const isTerminalInstalled = await Terminal.isInstalled();
+				if (typeof Terminal !== "undefined" && isTerminalInstalled) {
 					const isTerminalSupported = await Terminal.isSupported();
-					const isTerminalInstalled = await Terminal.isInstalled();
+					
 					if (isTerminalSupported && isTerminalInstalled) {
 						const terminalHomeUrl = cordova.file.dataDirectory + "alpine/home";
 
