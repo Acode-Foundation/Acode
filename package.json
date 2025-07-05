@@ -34,6 +34,7 @@
       "cordova-plugin-advanced-http": {
         "ANDROIDBLACKLISTSECURESOCKETPROTOCOLS": "SSLv3,TLSv1"
       },
+      "cordova-sqlite-storage": {},
       "cordova-plugin-websocket": {},
       "cordova-plugin-buildinfo": {},
       "cordova-plugin-system": {},
@@ -78,6 +79,7 @@
     "cordova-plugin-sftp": "file:src/plugins/sftp",
     "cordova-plugin-system": "file:src/plugins/system",
     "cordova-plugin-websocket": "file:src/plugins/websocket",
+    "cordova-sqlite-storage": "^7.0.0",
     "css-loader": "^7.1.2",
     "mini-css-extract-plugin": "^2.9.0",
     "path-browserify": "^1.0.1",
@@ -94,6 +96,11 @@
   },
   "dependencies": {
     "@deadlyjack/ajax": "^1.2.6",
+    "@langchain/core": "^0.3.57",
+    "@langchain/google-genai": "^0.2.10",
+    "@langchain/langgraph": "^0.2.74",
+    "@langchain/langgraph-checkpoint": "^0.0.18",
+    "@langchain/langgraph-swarm": "^0.0.3",
     "@ungap/custom-elements": "^1.3.0",
     "autosize": "^6.0.1",
     "cordova": "12.0.0",
@@ -103,9 +110,11 @@
     "escape-string-regexp": "^5.0.0",
     "esprima": "^4.0.1",
     "filesize": "^10.1.2",
+    "he": "^1.2.0",
     "html-tag-js": "^1.5.1",
     "js-base64": "^3.7.7",
     "jszip": "^3.10.1",
+    "langchain": "^0.3.27",
     "markdown-it": "^14.1.0",
     "markdown-it-anchor": "^9.2.0",
     "markdown-it-footnote": "^4.0.0",
@@ -114,9 +123,11 @@
     "mime-types": "^2.1.35",
     "minimatch": "^9.0.4",
     "mustache": "^4.2.0",
+    "turndown": "^7.2.0",
     "url-parse": "^1.5.10",
     "vanilla-picker": "^2.12.3",
-    "yargs": "^17.7.2"
+    "yargs": "^17.7.2",
+    "zod": "^3.25.47"
   },
   "browserslist": "cover 100%,not android < 5"
 }
