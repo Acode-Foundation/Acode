@@ -310,15 +310,7 @@ export default {
 		}
 	},
 	async toInternalUri(uri) {
-		return new Promise((resolve, reject) => {
-			window.resolveLocalFileSystemURL(
-				uri,
-				(entry) => {
-					resolve(entry.toInternalURL());
-				},
-				reject,
-			);
-		});
+		return Capacitor.convertFileSrc(uri);
 	},
 	promisify(func, ...args) {
 		return new Promise((resolve, reject) => {

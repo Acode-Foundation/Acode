@@ -50,7 +50,8 @@
 			"hooks/**/*",
 			"fastlane/**/*",
 			"res/**/*",
-			"platforms/**/*"
+			"platforms/**/*",
+			"android/**"
 		]
 	}
 }
