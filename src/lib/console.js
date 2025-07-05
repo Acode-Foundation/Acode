@@ -549,9 +549,10 @@ import loadPolyFill from "utils/polyfill";
 				}
 			}
 			// Only escape HTML for the %o/%O case where we're injecting actual HTML
-        const escapedValue = specifier === "%o" || specifier === "%O" ? value : escapeHTML(value);
-        msg = msg.substring(0, pos) + escapedValue + msg.substring(pos + 2);
-        matched = matchRegex(msg);
+			const escapedValue =
+				specifier === "%o" || specifier === "%O" ? value : escapeHTML(value);
+			msg = msg.substring(0, pos) + escapedValue + msg.substring(pos + 2);
+			matched = matchRegex(msg);
 		}
 
 		if (styles.length) {
