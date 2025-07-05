@@ -53,6 +53,14 @@ public class Executor extends CordovaPlugin {
             case "isRunning":
                 isProcessRunning(args.getString(0), callbackContext);
                 return true;
+            case "loadLibrary":
+                try {
+                    System.loadLibrary(args.getString(0));
+                    callbackContext.success("Library loaded successfully.");
+                } catch (Exception e) {
+                    callbackContext.error("Failed to load library: " + e.getMessage());
+                }
+                return true;
             default:
                 callbackContext.error("Unknown action: " + action);
                 return false;
