@@ -1,3 +1,4 @@
+import ajax from "@deadlyjack/ajax";
 import tutorial from "components/tutorial";
 import alert from "dialogs/alert";
 import box from "dialogs/box";
@@ -136,7 +137,7 @@ async function run(
 
 		//this extra www is incorrect because asset_directory itself has www
 		//but keeping it in case something depends on it
-		pathName = `${ASSETS_DIRECTORY}www/`;
+		pathName = "/";
 		port = constants.CONSOLE_PORT;
 
 		start();
@@ -200,9 +201,9 @@ async function run(
 					isConsole ||
 					appSettings.value.console === appSettings.CONSOLE_LEGACY
 				) {
-					url = `${ASSETS_DIRECTORY}/js/build/console.build.js`;
+					url = constants.CONSOLE_BUILD_PATH;
 				} else {
-					url = `${DATA_STORAGE}/eruda.js`;
+					url = `${DATA_STORAGE}eruda.js`;
 				}
 				sendFileContent(url, reqId, "application/javascript");
 				break;
@@ -540,24 +541,22 @@ async function run(
 	 * @returns
 	 */
 	async function sendFileContent(url, id, mime, processText) {
-		let fs = fsOperation(url);
+		let text;
+		if (url.includes(constants.CONSOLE_BUILD_PATH)) {
+			text = await ajax.get(url, {
+				responseType: "text",
+			});
+		} else {
+			const fs = fsOperation(url);
 
-		if (!(await fs.exists())) {
-			const xfs = fsOperation(Url.join(pathName, filename));
-
-			if (await xfs.exists()) {
-				fs = xfs;
-				isFallback = true;
-				console.log(`fallback ${Url.join(pathName, filename)}`);
-			} else {
-				console.log(`${url} doesnt exists`);
+			if (!(await fs.exists())) {
 				error(id);
+				return;
 			}
 
-			return;
+			text = await fs.readFile(appSettings.value.defaultFileEncoding);
 		}
 
-		let text = await fs.readFile(appSettings.value.defaultFileEncoding);
 		text = processText ? processText(text) : text;
 		if (mime === MIMETYPE_HTML) {
 			sendHTML(text, id);

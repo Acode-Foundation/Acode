@@ -27,6 +27,7 @@ export default function Item({
   enabled,
   onToggleEnabled,
 }) {
+  console.log(`ICON ${icon}`)
   const authorName = (() => {
     const displayName =
       typeof author === "object" ? author.name : author || "Unknown";
