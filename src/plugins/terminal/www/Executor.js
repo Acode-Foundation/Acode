@@ -113,6 +113,12 @@ const Executor = {
     return new Promise((resolve, reject) => {
       exec(resolve, reject, "Executor", "exec", [command, String(alpine)]);
     });
+  },
+
+  loadLibrary(path){
+    return new Promise((resolve, reject) => {
+      exec(resolve, reject, "Executor", "loadLibrary", [path]);
+    });
   }
 };
 
