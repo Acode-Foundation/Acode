@@ -30,6 +30,39 @@ deleteDirRecursively(resPath, [
 ]);
 copyDirRecursively(localResPath, resPath);
 enableLegacyJni()
+enableStaticContext()
+patchTargetSdkVersion()
+
+
+function patchTargetSdkVersion() {
+  const prefix = execSync('npm prefix').toString().trim();
+  const gradleFile = path.join(prefix, 'platforms/android/app/build.gradle');
+
+  if (!fs.existsSync(gradleFile)) {
+    console.warn('[Cordova Hook] ⚠️ build.gradle not found');
+    return;
+  }
+
+  let content = fs.readFileSync(gradleFile, 'utf-8');
+
+  const sdkRegex = /targetSdkVersion\s+(cordovaConfig\.SDK_VERSION|\d+)/;
+
+  if (sdkRegex.test(content)) {
+    const fdroid = fs.readFileSync(path.join(prefix,'fdroid.bool'), 'utf-8');
+    var api = "34"
+    if(fdroid === "true"){
+      api = "28"
+    }else{
+      
+    }
+
+    content = content.replace(sdkRegex, 'targetSdkVersion '+api);
+    fs.writeFileSync(gradleFile, content, 'utf-8');
+    console.log('[Cordova Hook] ✅ Patched targetSdkVersion to '+api);
+  } else {
+    console.warn('[Cordova Hook] ⚠️ targetSdkVersion not found');
+  }
+}
 
 
 function enableLegacyJni() {
@@ -58,6 +91,63 @@ function enableLegacyJni() {
   fs.writeFileSync(gradleFile, content, 'utf-8');
   console.log('[Cordova Hook] ✅ Enabled legacy JNI packaging');
 }
+
+function enableStaticContext() {
+  try {
+    const prefix = execSync('npm prefix').toString().trim();
+    const mainActivityPath = path.join(
+      prefix,
+      'platforms/android/app/src/main/java/com/foxdebug/acode/MainActivity.java'
+    );
+
+    if (!fs.existsSync(mainActivityPath)) {
+      return;
+    }
+
+    let content = fs.readFileSync(mainActivityPath, 'utf-8');
+
+    // Skip if fully patched
+    if (
+      content.includes('WeakReference<Context>') &&
+      content.includes('public static Context getContext()') &&
+      content.includes('weakContext = new WeakReference<>(this);')
+    ) {
+      return;
+    }
+
+    // Add missing imports
+    if (!content.includes('import java.lang.ref.WeakReference;')) {
+      content = content.replace(
+        /import org\.apache\.cordova\.\*;/,
+        match =>
+          match +
+          '\nimport android.content.Context;\nimport java.lang.ref.WeakReference;'
+      );
+    }
+
+    // Inject static field and method into class body
+    content = content.replace(
+      /public class MainActivity extends CordovaActivity\s*\{/,
+      match =>
+        match +
+        `\n\n    private static WeakReference<Context> weakContext;\n\n` +
+        `    public static Context getContext() {\n` +
+        `        return weakContext != null ? weakContext.get() : null;\n` +
+        `    }\n`
+    );
+
+    // Insert weakContext assignment inside onCreate
+    content = content.replace(
+      /super\.onCreate\(savedInstanceState\);/,
+      `super.onCreate(savedInstanceState);\n        weakContext = new WeakReference<>(this);`
+    );
+
+    fs.writeFileSync(mainActivityPath, content, 'utf-8');
+  } catch (err) {
+    console.error('[Cordova Hook] ❌ Failed to patch MainActivity:', err.message);
+  }
+}
+
 
 /**
  * Copy directory recursively
