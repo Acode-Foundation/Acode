@@ -408,5 +408,17 @@
 	"plugin_disabled": "Bővítmény letiltva",
 	"enable_plugin": "Bővítmény engedélyezése",
 	"disable_plugin": "Bővítmény letiltása",
-	"open_source": "Nyílt forráskódú"
+	"open_source": "Nyílt forráskódú",
+	"terminal settings": "Terminal Settings",
+	"font ligatures": "Font Ligatures",
+	"letter spacing": "Letter Spacing",
+	"terminal:tab stop width": "Tab Stop Width",
+	"terminal:scrollback": "Scrollback Lines",
+	"terminal:cursor blink": "Cursor Blink",
+	"terminal:font weight": "Font Weight",
+	"terminal:cursor inactive style": "Cursor Inactive Style",
+	"terminal:cursor style": "Cursor Style",
+	"terminal:font family": "Font Family",
+	"terminal:convert eol": "Convert EOL",
+	"terminal": "Terminal"
 }

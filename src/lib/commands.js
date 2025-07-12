@@ -1,4 +1,5 @@
 import Sidebar from "components/sidebar";
+import { TerminalManager } from "components/terminal";
 import color from "dialogs/color";
 import confirm from "dialogs/confirm";
 import prompt from "dialogs/prompt";
@@ -463,5 +464,13 @@ Additional Info:
 				console.error("Error getting device info:", error);
 				toast("Failed to get device info");
 			});
+	},
+	async "new-terminal"() {
+		try {
+			await TerminalManager.createServerTerminal();
+		} catch (error) {
+			console.error("Failed to create terminal:", error);
+			window.toast("Failed to create terminal");
+		}
 	},
 };

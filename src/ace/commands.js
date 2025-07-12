@@ -341,6 +341,14 @@ const commands = [
 		},
 		readOnly: true,
 	},
+	{
+		name: "openTerminal",
+		description: "Open Terminal",
+		exec() {
+			acode.exec("new-terminal");
+		},
+		readOnly: true,
+	},
 ];
 
 export function setCommands(editor) {

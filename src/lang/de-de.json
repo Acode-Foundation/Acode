@@ -408,5 +408,17 @@
 	"plugin_disabled": "Plugin deaktiviert",
 	"enable_plugin": "Plugin aktivieren",
 	"disable_plugin": "Plugin deaktivieren",
-	"open_source": "Open Source"
+	"open_source": "Open Source",
+	"terminal settings": "Terminal Settings",
+	"font ligatures": "Font Ligatures",
+	"letter spacing": "Letter Spacing",
+	"terminal:tab stop width": "Tab Stop Width",
+	"terminal:scrollback": "Scrollback Lines",
+	"terminal:cursor blink": "Cursor Blink",
+	"terminal:font weight": "Font Weight",
+	"terminal:cursor inactive style": "Cursor Inactive Style",
+	"terminal:cursor style": "Cursor Style",
+	"terminal:font family": "Font Family",
+	"terminal:convert eol": "Convert EOL",
+	"terminal": "Terminal"
 }

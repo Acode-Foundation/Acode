@@ -29,6 +29,16 @@ add(
 );
 
 add(
+	"MesloLGS NF Regular",
+	`@font-face {
+  font-family: 'MesloLGS NF Regular';
+  font-style: normal;
+  font-weight: normal;
+  src: url(../res/fonts/MesloLGSNFRegular.ttf) format('truetype');
+}`,
+);
+
+add(
 	"Source Code",
 	`@font-face {
   font-family: 'Source Code';
@@ -172,9 +182,39 @@ async function downloadFont(name, link) {
 	return FONT_FILE;
 }
 
+async function loadFont(name) {
+	const $style = tag.get("style#font-style") ?? <style id="font-style"></style>;
+	let css = get(name);
+
+	if (!css) {
+		throw new Error(`Font ${name} not found`);
+	}
+
+	// Get all URL font references
+	const urls = [...css.matchAll(/url\((.*?)\)/g)].map((match) => match[1]);
+
+	// Download and replace URLs
+	for (const url of urls) {
+		if (!/^https?/.test(url)) continue;
+		if (/^https?:\/\/localhost/.test(url)) continue;
+		const fontFile = await downloadFont(name, url);
+		const internalUrl = await helpers.toInternalUri(fontFile);
+		css = css.replace(url, internalUrl);
+	}
+
+	// Add font face to document if not already present
+	if (!$style.textContent.includes(`font-family: '${name}'`)) {
+		$style.textContent = `${$style.textContent}\n${css}`;
+		document.head.append($style);
+	}
+
+	return css;
+}
+
 export default {
 	add,
 	get,
 	getNames,
 	setFont,
+	loadFont,
 };

@@ -209,53 +209,68 @@ export default class EditorFile {
 		if (options?.type) {
 			this.#type = options.type;
 			if (this.#type !== "editor") {
-				const container = tag("div", {
-					className: "tab-page-container",
-				});
+				let container;
+				let shadow;
 
-				// shadow dom
-				const shadow = container.attachShadow({ mode: "open" });
-
-				// main app styles
-				const mainStyle = tag("link", {
-					rel: "stylesheet",
-					href: "./css/build/main.css",
-				});
-				// icon styles
-				const iconStyle = tag("link", {
-					rel: "stylesheet",
-					href: "./res/icons/style.css",
-				});
-				// file icon styles
-				const fileIconStyle = tag("link", {
-					rel: "stylesheet",
-					href: "./res/file-icons/style.css",
-				});
-
-				// Add base styles to shadow DOM first
-				shadow.appendChild(mainStyle);
-				shadow.appendChild(iconStyle);
-				shadow.appendChild(fileIconStyle);
-
-				// Handle custom stylesheets if provided
-				if (options.stylesheets) {
-					this.#addCustomStyles(options.stylesheets, shadow);
-				}
-
-				const content = tag("div", {
-					className: "tab-page-content",
-				});
-
-				if (typeof options.content === "string") {
-					content.innerHTML = DOMPurify.sanitize(options.content);
+				if (this.#type === "terminal") {
+					container = tag("div", {
+						className: "tab-page-container",
+					});
+					const content = tag("div", {
+						className: "tab-page-content",
+					});
+					content.appendChild(options?.content);
+					container.appendChild(content);
+					this.#content = container;
 				} else {
-					content.appendChild(options.content);
+					container = tag("div", {
+						className: "tab-page-container",
+					});
+
+					// shadow dom
+					shadow = container.attachShadow({ mode: "open" });
+
+					// main app styles
+					const mainStyle = tag("link", {
+						rel: "stylesheet",
+						href: "./css/build/main.css",
+					});
+					// icon styles
+					const iconStyle = tag("link", {
+						rel: "stylesheet",
+						href: "./res/icons/style.css",
+					});
+					// file icon styles
+					const fileIconStyle = tag("link", {
+						rel: "stylesheet",
+						href: "./res/file-icons/style.css",
+					});
+
+					// Add base styles to shadow DOM first
+					shadow.appendChild(mainStyle);
+					shadow.appendChild(iconStyle);
+					shadow.appendChild(fileIconStyle);
+
+					// Handle custom stylesheets if provided
+					if (options.stylesheets) {
+						this.#addCustomStyles(options.stylesheets, shadow);
+					}
+
+					const content = tag("div", {
+						className: "tab-page-content",
+					});
+
+					if (typeof options.content === "string") {
+						content.innerHTML = DOMPurify.sanitize(options.content);
+					} else {
+						content.appendChild(options.content);
+					}
+
+					// Append content container to shadow DOM
+					shadow.appendChild(content);
+
+					this.#content = container;
 				}
-
-				// Append content container to shadow DOM
-				shadow.appendChild(content);
-
-				this.#content = container;
 			} else {
 				this.#content = options.content;
 			}
