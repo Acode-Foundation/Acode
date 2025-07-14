@@ -68,6 +68,7 @@ public class Executor extends CordovaPlugin {
     }
 
     private void exec(String cmd,String alpine, CallbackContext callbackContext) {
+        cordova.getThreadPool().execute(() -> {
         try {
             if (cmd != null && !cmd.isEmpty()) {
                 String xcmd = cmd;
@@ -126,6 +127,7 @@ public class Executor extends CordovaPlugin {
             e.printStackTrace();
             callbackContext.error("Exception: " + e.getMessage());
         }
+        });
     }
 
     private void startProcess(String pid, String cmd,String alpine, CallbackContext callbackContext) {

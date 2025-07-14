@@ -20,6 +20,7 @@ import formatterSettings from "./formatterSettings";
 import previewSettings from "./previewSettings";
 import scrollSettings from "./scrollSettings";
 import searchSettings from "./searchSettings";
+import terminalSettings from "./terminalSettings";
 
 export default function mainSettings() {
 	const title = strings.settings.capitalize();
@@ -79,13 +80,19 @@ export default function mainSettings() {
 			key: "reset",
 			text: strings["restore default settings"],
 			icon: "historyrestore",
-			index: 5,
+			index: 6,
 		},
 		{
 			key: "preview-settings",
 			text: strings["preview settings"],
 			icon: "play_arrow",
 			index: 4,
+		},
+		{
+			key: "terminal-settings",
+			text: `${strings["terminal settings"]}`,
+			icon: "licons terminal",
+			index: 5,
 		},
 		{
 			key: "editSettings",
@@ -118,6 +125,7 @@ export default function mainSettings() {
 			case "backup-restore":
 			case "editor-settings":
 			case "preview-settings":
+			case "terminal-settings":
 				appSettings.uiSettings[key].show();
 				break;
 
@@ -191,4 +199,5 @@ export default function mainSettings() {
 	appSettings.uiSettings["scroll-settings"] = scrollSettings();
 	appSettings.uiSettings["search-settings"] = searchSettings();
 	appSettings.uiSettings["preview-settings"] = previewSettings();
+	appSettings.uiSettings["terminal-settings"] = terminalSettings();
 }

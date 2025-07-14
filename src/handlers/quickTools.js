@@ -327,6 +327,18 @@ function removeSearch() {
 	$footer.removeAttribute("data-searching");
 	$searchRow1.remove();
 	$searchRow2.remove();
+	const { activeFile } = editorManager;
+
+	// Check if current tab is a terminal
+	if (
+		activeFile &&
+		activeFile.type === "terminal" &&
+		activeFile.terminalComponent
+	) {
+		activeFile.terminalComponent.searchAddon?.clearDecorations();
+		activeFile.terminalComponent.searchAddon?.clearActiveDecoration();
+		return;
+	}
 	focusEditor();
 }
 
@@ -337,20 +349,44 @@ function removeSearch() {
  */
 function find(skip, backward) {
 	const { $searchInput } = quickTools;
-	editorManager.editor.find($searchInput.value, {
-		skipCurrent: skip,
-		...appSettings.value.search,
-		backwards: backward,
-	});
+	const { activeFile } = editorManager;
+
+	// Check if current tab is a terminal
+	if (
+		activeFile &&
+		activeFile.type === "terminal" &&
+		activeFile.terminalComponent
+	) {
+		activeFile.terminalComponent.search($searchInput.value, skip, backward);
+	} else {
+		// Use ACE editor search for regular files
+		editorManager.editor.find($searchInput.value, {
+			skipCurrent: skip,
+			...appSettings.value.search,
+			backwards: backward,
+		});
+	}
 
 	updateSearchState();
 }
 
 function updateSearchState() {
 	const MAX_COUNT = 999;
-	const { editor } = editorManager;
+	const { activeFile } = editorManager;
 	const { $searchPos, $searchTotal } = quickTools;
 
+	// Check if current tab is a terminal
+	if (activeFile && activeFile.type === "terminal") {
+		// For terminal, we can't easily count all matches like in ACE editor
+		// xterm search addon doesn't provide this information
+		// So we just show a generic indicator
+		$searchTotal.textContent = "?";
+		$searchPos.textContent = "?";
+		return;
+	}
+
+	// Use ACE editor search state for regular files
+	const { editor } = editorManager;
 	let regex = editor.$search.$options.re;
 	let all = 0;
 	let before = 0;

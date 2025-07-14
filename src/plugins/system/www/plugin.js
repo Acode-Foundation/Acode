@@ -1,4 +1,7 @@
 module.exports = {
+  copyToUri: function (srcUri,destUri,fileName, success, error) {
+    cordova.exec(success, error, 'System', 'copyToUri', [srcUri,destUri,fileName]);
+  },
   fileExists: function (path,countSymlinks, success, error) {
       cordova.exec(success, error, 'System', 'fileExists', [path,String(countSymlinks)]);
     },

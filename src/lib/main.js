@@ -519,7 +519,7 @@ async function loadApp() {
 		// if (!$editMenuToggler.isConnected) {
 		// 	$header.insertBefore($editMenuToggler, $header.lastChild);
 		// }
-		if (activeFile?.type === "page") {
+		if (activeFile?.type === "page" || activeFile?.type === "terminal") {
 			$editMenuToggler.remove();
 		} else {
 			if (!$editMenuToggler.isConnected) {

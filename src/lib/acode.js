@@ -5,6 +5,7 @@ import Page from "components/page";
 import palette from "components/palette";
 import settingsPage from "components/settingsPage";
 import SideButton from "components/sideButton";
+import { TerminalManager, TerminalThemeManager } from "components/terminal";
 import toast from "components/toast";
 import tutorial from "components/tutorial";
 import alert from "dialogs/alert";
@@ -99,6 +100,28 @@ export default class Acode {
 			removeHandler: removeIntentHandler,
 		};
 
+		const terminalModule = {
+			create: (options) => TerminalManager.createTerminal(options),
+			createLocal: (options) => TerminalManager.createLocalTerminal(options),
+			createServer: (options) => TerminalManager.createServerTerminal(options),
+			get: (id) => TerminalManager.getTerminal(id),
+			getAll: () => TerminalManager.getAllTerminals(),
+			write: (id, data) => TerminalManager.writeToTerminal(id, data),
+			clear: (id) => TerminalManager.clearTerminal(id),
+			close: (id) => TerminalManager.closeTerminal(id),
+			themes: {
+				register: (name, theme, pluginId) =>
+					TerminalThemeManager.registerTheme(name, theme, pluginId),
+				unregister: (name, pluginId) =>
+					TerminalThemeManager.unregisterTheme(name, pluginId),
+				get: (name) => TerminalThemeManager.getTheme(name),
+				getAll: () => TerminalThemeManager.getAllThemes(),
+				getNames: () => TerminalThemeManager.getThemeNames(),
+				createVariant: (baseName, overrides) =>
+					TerminalThemeManager.createVariant(baseName, overrides),
+			},
+		};
+
 		this.define("Url", Url);
 		this.define("page", Page);
 		this.define("Color", Color);
@@ -137,6 +160,7 @@ export default class Acode {
 		this.define("themeBuilder", ThemeBuilder);
 		this.define("selectionMenu", selectionMenu);
 		this.define("sidebarApps", sidebarAppsModule);
+		this.define("terminal", terminalModule);
 		this.define("createKeyboardEvent", KeyboardEvent);
 		this.define("toInternalUrl", helpers.toInternalUri);
 	}

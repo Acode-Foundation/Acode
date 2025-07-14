@@ -28,7 +28,13 @@ const Executor = {
    *   Executor.stop(uuid);
    * });
    */
-  start(command, onData, alpine = false) {
+
+
+  start(command,onData){
+    this.start(command,onData,false)
+  },
+
+  start(command, onData, alpine) {
     return new Promise((resolve, reject) => {
       exec(
         (message) => {
@@ -109,7 +115,11 @@ const Executor = {
    *   .then(console.log)
    *   .catch(console.error);
    */
-  execute(command, alpine = false) {
+  execute(command){
+    this.execute(command,false)
+  }
+  ,
+  execute(command, alpine) {
     return new Promise((resolve, reject) => {
       exec(resolve, reject, "Executor", "exec", [command, String(alpine)]);
     });
