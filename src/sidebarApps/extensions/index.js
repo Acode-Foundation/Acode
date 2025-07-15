@@ -162,16 +162,16 @@ async function loadFilteredPlugins(filterName, isInitial = false) {
 
 	try {
 		isFilterLoading = true;
-		
+
 		const plugins = await getFilteredPlugins(filterName, filterCurrentPage);
-		
+
 		if (plugins.length < LIMIT) {
 			filterHasMore = false;
 		}
 
 		installedPlugins = await listInstalledPlugins();
 		const pluginElements = plugins.map(ListItem);
-		
+
 		if (isInitial) {
 			$searchResult.append(...pluginElements);
 		} else {
@@ -197,7 +197,7 @@ async function searchPlugin() {
 		filterHasMore = true;
 		isFilterLoading = false;
 		$searchResult.onscroll = null;
-		
+
 		$searchResult.content = "";
 		const status = helpers.checkAPIStatus();
 		if (!status) {
@@ -388,7 +388,9 @@ async function getFilteredPlugins(filterName, page = 1) {
 	try {
 		let response;
 		if (filterName === "top_rated") {
-			response = await fetch(`${constants.API_BASE}/plugins?explore=random&page=${page}&limit=${LIMIT}`);
+			response = await fetch(
+				`${constants.API_BASE}/plugins?explore=random&page=${page}&limit=${LIMIT}`,
+			);
 		} else {
 			response = await fetch(
 				`${constants.API_BASE}/plugin?orderBy=${filterName}&page=${page}&limit=${LIMIT}`,
