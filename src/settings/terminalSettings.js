@@ -185,18 +185,18 @@ export default function terminalSettings() {
 	function callback(key, value) {
 		switch (key) {
 			case "all_file_access":
-				if(ANDROID_SDK_INT >= 30){
+				if (ANDROID_SDK_INT >= 30) {
 					system.isManageExternalStorageDeclared((boolStr) => {
-						if(boolStr === "true"){
-							system.requestStorageManager(console.log,console.error)
-						}else{
-							alert("This feature is not available.")
+						if (boolStr === "true") {
+							system.requestStorageManager(console.log, console.error);
+						} else {
+							alert("This feature is not available.");
 						}
-					},alert)
-				}else{
-					alert("This feature is not available.")
+					}, alert);
+				} else {
+					alert("This feature is not available.");
 				}
-				
+
 				return;
 			case "backup":
 				terminalBackup();
