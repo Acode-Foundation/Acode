@@ -3,8 +3,8 @@
 .container.extensions {
   .header {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
+    border-bottom: 1px solid var(--border-color);
 
     .title {
       font-size: 1.125rem;
@@ -13,20 +13,50 @@
       justify-content: space-between;
       align-items: center;
       width: 100%;
+      color: var(--primary-text-color);
 
       .icon-button {
         background: none;
         border: none;
         cursor: pointer;
         color: var(--primary-text-color);
-        padding: 5px;
-        margin-left: 15px;
-        border-radius: 50%;
-        transition: background-color 0.3s ease;
+        padding: 0.5rem;
+        margin-left: 0.5rem;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
 
         &:hover {
-          background-color: var(--active-icon-color);
+          background-color: var(--primary-color);
+          transform: scale(1.05);
         }
+
+        &:active {
+          transform: scale(0.95);
+        }
+      }
+    }
+
+    input[type="search"] {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background: var(--secondary-color);
+      color: var(--primary-text-color);
+      font-size: 0.875rem;
+      transition: all 0.2s ease;
+
+      &:focus {
+        outline: none;
+        border-color: var(--active-color);
+        box-shadow: 0 0 0 2px rgba(51, 153, 255, 0.1);
+      }
+
+      &::placeholder {
+        color: var(--secondary-text-color);
       }
     }
   }
@@ -42,22 +72,29 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background-color: var(--primary-color);
-      padding: 5px;
+      background: var(--primary-color);
+      padding: 0.5rem 0.75rem;
       border-bottom: 1px solid var(--border-color);
+      font-size: 0.875rem;
+      color: var(--primary-text-color);
 
       strong {
-        color: var(--link-text-color);
+        color: var(--active-color);
+        margin-left: 0.25rem;
       }
 
       .close-button {
         background: none;
         border: none;
         cursor: pointer;
-        transition: color 0.3s;
+        padding: 0.25rem;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+        color: var(--secondary-text-color);
 
         &:hover {
           background-color: var(--error-text-color);
+          color: white;
         }
       }
     }
@@ -114,6 +151,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      box-shadow: 0 1px 3px var(--box-shadow-color);
 
       &:hover {
         background-color: var(--active-icon-color);
