@@ -30,11 +30,6 @@
 
         &:hover {
           background-color: var(--primary-color);
-          transform: scale(1.05);
-        }
-
-        &:active {
-          transform: scale(0.95);
         }
       }
     }
