@@ -77,6 +77,19 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.IOException;
 
+import android.os.Build;
+import android.os.Environment;
+import android.Manifest;
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.provider.Settings;
+
+import androidx.core.content.ContextCompat;
+
+
 
 public class System extends CordovaPlugin {
 
@@ -240,6 +253,65 @@ public class System extends CordovaPlugin {
 
                 callbackContext.success(arch);
                 return true;
+
+            case "requestStorageManager":
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    try {
+                        Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+                        intent.setData(Uri.parse("package:" + context.getPackageName()));
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        context.startActivity(intent);
+                        callbackContext.success("true");
+                    } catch (Exception e) {
+                        // Fallback to general settings if specific one fails
+                        Intent intent = new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        context.startActivity(intent);
+                        callbackContext.success("true");
+                    }
+                } else {
+                    callbackContext.success("false"); // Not needed on Android < 11
+                }
+                return true;
+
+
+            case "hasGrantedStorageManager":
+                boolean granted;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    granted = Environment.isExternalStorageManager();
+                } else {
+                    // Fallback for Android 10 and below
+                    granted = ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.READ_EXTERNAL_STORAGE
+                    ) == PackageManager.PERMISSION_GRANTED;
+                }
+                callbackContext.success(String.valueOf(granted));
+                return true;
+
+            case "isManageExternalStorageDeclared":
+                PackageManager pm = context.getPackageManager();
+                try {
+                    PackageInfo info = pm.getPackageInfo(context.getPackageName(), PackageManager.GET_PERMISSIONS);
+                    String[] permissions = info.requestedPermissions;
+                    String isDeclared = "false";
+
+                    if (permissions != null) {
+                        for (String perm: permissions) {
+                            if (perm.equals("android.permission.MANAGE_EXTERNAL_STORAGE")) {
+                                isDeclared = "true";
+                                break;
+                            }
+                        }
+                    }
+                    callbackContext.success(isDeclared);
+
+                } catch (PackageManager.NameNotFoundException e) {
+                    e.printStackTrace();
+                    callbackContext.error(e.toString());
+                }
+
+                return true;
             case "mkdirs":
                 File file = new File(args.getString(0));
                 if (file.mkdirs()) {
@@ -260,106 +332,104 @@ public class System extends CordovaPlugin {
                     public void run() {
                         switch (action) {
                             case "copyToUri":
-    try {
-        //srcUri is a file
-        Uri srcUri = Uri.parse(args.getString(0));
+                                try {
+                                    //srcUri is a file
+                                    Uri srcUri = Uri.parse(args.getString(0));
 
-        //destUri is a directory
-        Uri destUri = Uri.parse(args.getString(1));
+                                    //destUri is a directory
+                                    Uri destUri = Uri.parse(args.getString(1));
 
-        //create a file named this into the dest Directory and copy the srcUri into it
-        String fileName = args.getString(2);
+                                    //create a file named this into the dest Directory and copy the srcUri into it
+                                    String fileName = args.getString(2);
 
-        InputStream in = null;
-        OutputStream out = null;
-        try {
-            // Open input stream from the source URI
-            if ("file".equalsIgnoreCase(srcUri.getScheme())) {
-                File file = new File(srcUri.getPath());
-                in = new FileInputStream(file);
-            } else {
-                in = context.getContentResolver().openInputStream(srcUri);
-            }
+                                    InputStream in = null;
+                                    OutputStream out = null;
+                                    try {
+                                        // Open input stream from the source URI
+                                        if ("file".equalsIgnoreCase(srcUri.getScheme())) {
+                                            File file = new File(srcUri.getPath()); in = new FileInputStream(file);
+                                        } else { in = context.getContentResolver().openInputStream(srcUri);
+                                        }
 
-            // Create the destination file using DocumentFile for better URI handling
-            DocumentFile destFile = null;
-            
-            if ("file".equalsIgnoreCase(destUri.getScheme())) {
-                // Handle file:// scheme using DocumentFile
-                File destDir = new File(destUri.getPath());
-                if (!destDir.exists()) {
-                    destDir.mkdirs(); // Create directory if it doesn't exist
-                }
-                DocumentFile destDocDir = DocumentFile.fromFile(destDir);
-                
-                // Check if file already exists and delete it
-                DocumentFile existingFile = destDocDir.findFile(fileName);
-                if (existingFile != null && existingFile.exists()) {
-                    existingFile.delete();
-                }
-                
-                // Create new file
-                String mimeType = getMimeTypeFromExtension(fileName);
-                destFile = destDocDir.createFile(mimeType, fileName);
-            } else {
-                // Handle content:// scheme using DocumentFile
-                DocumentFile destDocDir = DocumentFile.fromTreeUri(context, destUri);
-                
-                if (destDocDir == null || !destDocDir.exists() || !destDocDir.isDirectory()) {
-                    callbackContext.error("Destination directory does not exist or is not accessible");
-                    return;
-                }
-                
-                // Check if file already exists and delete it
-                DocumentFile existingFile = destDocDir.findFile(fileName);
-                if (existingFile != null && existingFile.exists()) {
-                    existingFile.delete();
-                }
-                
-                // Create new file
-                String mimeType = getMimeTypeFromExtension(fileName);
-                destFile = destDocDir.createFile(mimeType, fileName);
-            }
+                                        // Create the destination file using DocumentFile for better URI handling
+                                        DocumentFile destFile = null;
 
-            if (destFile == null || !destFile.exists()) {
-                callbackContext.error("Failed to create destination file");
-                return;
-            }
+                                        if ("file".equalsIgnoreCase(destUri.getScheme())) {
+                                            // Handle file:// scheme using DocumentFile
+                                            File destDir = new File(destUri.getPath());
+                                            if (!destDir.exists()) {
+                                                destDir.mkdirs(); // Create directory if it doesn't exist
+                                            }
+                                            DocumentFile destDocDir = DocumentFile.fromFile(destDir);
 
-            // Open output stream to the created file
-            out = context.getContentResolver().openOutputStream(destFile.getUri());
+                                            // Check if file already exists and delete it
+                                            DocumentFile existingFile = destDocDir.findFile(fileName);
+                                            if (existingFile != null && existingFile.exists()) {
+                                                existingFile.delete();
+                                            }
 
-            if (in == null || out == null) {
-                callbackContext.error("uri streams are null");
-                return;
-            }
+                                            // Create new file
+                                            String mimeType = getMimeTypeFromExtension(fileName);
+                                            destFile = destDocDir.createFile(mimeType, fileName);
+                                        } else {
+                                            // Handle content:// scheme using DocumentFile
+                                            DocumentFile destDocDir = DocumentFile.fromTreeUri(context, destUri);
 
-            // Copy stream
-            byte[] buffer = new byte[8192];
-            int len;
-            while ((len = in.read(buffer)) > 0) {
-                out.write(buffer, 0, len);
-            }
+                                            if (destDocDir == null || !destDocDir.exists() || !destDocDir.isDirectory()) {
+                                                callbackContext.error("Destination directory does not exist or is not accessible");
+                                                return;
+                                            }
 
-            out.flush();
-            callbackContext.success();
-        } catch (IOException e) {
-            e.printStackTrace();
-            callbackContext.error(e.toString());
-        } finally {
-            try {
-                if (in != null) in.close();
-                if (out != null) out.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-                callbackContext.error(e.toString());
-            }
-        }
-    } catch (Exception e) {
-        e.printStackTrace();
-        callbackContext.error(e.toString());
-    }
-    break;
+                                            // Check if file already exists and delete it
+                                            DocumentFile existingFile = destDocDir.findFile(fileName);
+                                            if (existingFile != null && existingFile.exists()) {
+                                                existingFile.delete();
+                                            }
+
+                                            // Create new file
+                                            String mimeType = getMimeTypeFromExtension(fileName);
+                                            destFile = destDocDir.createFile(mimeType, fileName);
+                                        }
+
+                                        if (destFile == null || !destFile.exists()) {
+                                            callbackContext.error("Failed to create destination file");
+                                            return;
+                                        }
+
+                                        // Open output stream to the created file
+                                        out = context.getContentResolver().openOutputStream(destFile.getUri());
+
+                                        if ( in == null || out == null) {
+                                            callbackContext.error("uri streams are null");
+                                            return;
+                                        }
+
+                                        // Copy stream
+                                        byte[] buffer = new byte[8192];
+                                        int len;
+                                        while ((len = in .read(buffer)) > 0) {
+                                            out.write(buffer, 0, len);
+                                        }
+
+                                        out.flush();
+                                        callbackContext.success();
+                                    } catch (IOException e) {
+                                        e.printStackTrace();
+                                        callbackContext.error(e.toString());
+                                    } finally {
+                                        try {
+                                            if ( in != null) in .close();
+                                            if (out != null) out.close();
+                                        } catch (IOException e) {
+                                            e.printStackTrace();
+                                            callbackContext.error(e.toString());
+                                        }
+                                    }
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                    callbackContext.error(e.toString());
+                                }
+                                break;
                             case "get-webkit-info":
                                 getWebkitInfo(callbackContext);
                                 break;
@@ -445,16 +515,16 @@ public class System extends CordovaPlugin {
     }
 
     // Helper method to determine MIME type using Android's built-in MimeTypeMap
-private String getMimeTypeFromExtension(String fileName) {
-    String extension = "";
-    int lastDotIndex = fileName.lastIndexOf('.');
-    if (lastDotIndex > 0 && lastDotIndex < fileName.length() - 1) {
-        extension = fileName.substring(lastDotIndex + 1).toLowerCase();
+    private String getMimeTypeFromExtension(String fileName) {
+        String extension = "";
+        int lastDotIndex = fileName.lastIndexOf('.');
+        if (lastDotIndex > 0 && lastDotIndex < fileName.length() - 1) {
+            extension = fileName.substring(lastDotIndex + 1).toLowerCase();
+        }
+
+        String mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);
+        return mimeType != null ? mimeType : "application/octet-stream";
     }
-    
-    String mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension);
-    return mimeType != null ? mimeType : "application/octet-stream";
-}
 
     private void getConfiguration(CallbackContext callback) {
         try {

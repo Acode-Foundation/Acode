@@ -28,6 +28,11 @@ export default function terminalSettings() {
 
 	const items = [
 		{
+			key: "all_file_access",
+			text: strings.allFileAccess.capitalize(),
+			info: "Enable access of /sdcard and /storage in terminal",
+		},
+		{
 			key: "fontSize",
 			text: strings["font size"],
 			value: terminalValues.fontSize,
@@ -179,6 +184,20 @@ export default function terminalSettings() {
 	 */
 	function callback(key, value) {
 		switch (key) {
+			case "all_file_access":
+				if(ANDROID_SDK_INT >= 30){
+					system.isManageExternalStorageDeclared((boolStr) => {
+						if(boolStr === "true"){
+							system.requestStorageManager(console.log,console.error)
+						}else{
+							alert("This feature is not available.")
+						}
+					},alert)
+				}else{
+					alert("This feature is not available.")
+				}
+				
+				return;
 			case "backup":
 				terminalBackup();
 				return;
