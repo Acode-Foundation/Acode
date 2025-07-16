@@ -37,8 +37,8 @@
       "cordova-plugin-websocket": {},
       "cordova-plugin-buildinfo": {},
       "com.foxdebug.acode.rk.exec.proot": {},
-      "com.foxdebug.acode.rk.exec.terminal": {},
-      "cordova-plugin-system": {}
+      "cordova-plugin-system": {},
+      "com.foxdebug.acode.rk.exec.terminal": {}
     },
     "platforms": [
       "android"
