@@ -68,14 +68,6 @@
             <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
             <uses-permission android:name="android.permission.WRITE_MEDIA_STORAGE" />
             <uses-permission android:name="android.permission.VIBRATE" />
-
-            <!-- <uses-permission android:name="com.termux.permission.RUN_COMMAND" /> -->
-
-            <!-- Full file access (no prompts) -->
-            <!-- When granted, this permission allows Acode to access all files in internal and external storage without asking the user each time. -->
-            <!-- It also resolves "permission denied" errors in the terminal when accessing /sdcard, /storage/*, or other external storage paths. -->
-            <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
-
         </config-file>
 
         <hook type="before_prepare" src="hooks/modify-java-files.js" />
