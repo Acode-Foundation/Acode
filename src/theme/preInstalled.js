@@ -290,6 +290,29 @@ neon.errorTextColor = "rgb(255, 20, 147)";
 neon.dangerColor = "rgb(255, 20, 147)";
 neon.scrollbarColor = "rgba(10, 255, 200, 0.3)";
 
+const glassDark = createBuiltInTheme("Glass Dark", "dark");
+glassDark.darkenedPrimaryColor = "rgb(15, 15, 20)";
+glassDark.primaryColor = "rgb(24, 24, 32)";
+glassDark.primaryTextColor = "rgb(229, 231, 235)";
+glassDark.secondaryColor = "rgba(31, 31, 42, 0.8)";
+glassDark.secondaryTextColor = "rgb(156, 163, 175)";
+glassDark.activeColor = "rgb(99, 102, 241)";
+glassDark.linkTextColor = "rgb(129, 140, 248)";
+glassDark.borderColor = "rgba(99, 102, 241, 0.3)";
+glassDark.popupIconColor = "rgb(229, 231, 235)";
+glassDark.popupBackgroundColor = "rgba(31, 31, 42, 0.95)";
+glassDark.popupTextColor = "rgb(229, 231, 235)";
+glassDark.popupActiveColor = "rgb(99, 102, 241)";
+glassDark.buttonBackgroundColor = "rgb(99, 102, 241)";
+glassDark.buttonTextColor = "rgb(255, 255, 255)";
+glassDark.buttonActiveColor = "rgb(79, 70, 229)";
+glassDark.boxShadowColor = "rgba(0, 0, 0, 0.4)";
+glassDark.activeTextColor = "rgb(255, 255, 255)";
+glassDark.errorTextColor = "rgb(248, 113, 113)";
+glassDark.dangerColor = "rgb(239, 68, 68)";
+glassDark.scrollbarColor = "rgba(255, 255, 255, 0.2)";
+glassDark.preferredEditorTheme = "ace/theme/one_dark";
+
 const sunset = createBuiltInTheme("Sunset");
 sunset.darkenedPrimaryColor = "rgb(251, 243, 235)";
 sunset.primaryColor = "rgb(255, 251, 247)";
@@ -320,6 +343,7 @@ export default [
 	dark,
 	light,
 	glass,
+	glassDark,
 	neon,
 	sunset,
 	oled,
