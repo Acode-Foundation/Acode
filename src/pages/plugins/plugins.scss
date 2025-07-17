@@ -266,7 +266,172 @@
       left: 22px;
     }
 
-    // Responsive design
+    // Responsive design for larger screens
+    @media (min-width: 769px) {
+      margin: 0 1rem 0.75rem 1rem;
+      padding: 1.25rem;
+      border-radius: 16px;
+
+      .plugin-header {
+        gap: 1.25rem;
+        min-height: 56px;
+
+        .plugin-icon {
+          width: 56px;
+          height: 56px;
+          border-radius: 14px;
+        }
+
+        .plugin-info {
+          gap: 1.25rem;
+
+          .plugin-main {
+            .plugin-title {
+              gap: 1rem;
+              margin-bottom: 0.5rem;
+
+              .plugin-name {
+                font-size: 1.1rem;
+                font-weight: 700;
+              }
+
+              .plugin-version {
+                font-size: 0.8rem;
+                padding: 0.3rem 0.6rem;
+              }
+            }
+
+            .plugin-meta {
+              font-size: 0.95rem;
+              gap: 0.75rem;
+
+              .plugin-stats {
+                font-size: 0.95rem;
+                gap: 0.5rem;
+
+                .icon {
+                  width: 16px;
+                  height: 16px;
+                  font-size: 16px;
+                }
+              }
+            }
+          }
+
+          .plugin-price {
+            padding: 0.5rem 1rem;
+            font-size: 0.95rem;
+            border-radius: 10px;
+          }
+        }
+      }
+
+      .plugin-toggle-switch {
+        min-width: 140px;
+        padding: 0.75rem;
+
+        .plugin-toggle-track {
+          width: 52px;
+          height: 28px;
+          border-radius: 14px;
+        }
+
+        .plugin-toggle-thumb {
+          width: 24px;
+          height: 24px;
+          left: 2px;
+          top: 2px;
+        }
+
+        &[data-enabled="true"] .plugin-toggle-thumb {
+          left: 26px;
+        }
+      }
+    }
+
+    @media (min-width: 1024px) {
+      margin: 0 1.25rem 1rem 1.25rem;
+      padding: 1.5rem;
+      border-radius: 20px;
+
+      .plugin-header {
+        gap: 1.5rem;
+        min-height: 64px;
+
+        .plugin-icon {
+          width: 64px;
+          height: 64px;
+          border-radius: 16px;
+        }
+
+        .plugin-info {
+          gap: 1.5rem;
+
+          .plugin-main {
+            .plugin-title {
+              gap: 1.2rem;
+              margin-bottom: 0.625rem;
+
+              .plugin-name {
+                font-size: 1.2rem;
+                font-weight: 700;
+              }
+
+              .plugin-version {
+                font-size: 0.85rem;
+                padding: 0.35rem 0.7rem;
+              }
+            }
+
+            .plugin-meta {
+              font-size: 1rem;
+              gap: 0.875rem;
+
+              .plugin-stats {
+                font-size: 1rem;
+                gap: 0.625rem;
+
+                .icon {
+                  width: 18px;
+                  height: 18px;
+                  font-size: 18px;
+                }
+              }
+            }
+          }
+
+          .plugin-price {
+            padding: 0.625rem 1.25rem;
+            font-size: 1rem;
+            border-radius: 12px;
+          }
+        }
+      }
+
+      .plugin-toggle-switch {
+        min-width: 160px;
+        padding: 1rem;
+
+        .plugin-toggle-track {
+          width: 60px;
+          height: 32px;
+          border-radius: 16px;
+        }
+
+        .plugin-toggle-thumb {
+          width: 28px;
+          height: 28px;
+          left: 2px;
+          top: 2px;
+        }
+
+        &[data-enabled="true"] .plugin-toggle-thumb {
+          left: 30px;
+        }
+      }
+    }
+
+    // Responsive design for smaller screens
     @media (max-width: 768px) {
       margin: 0 0.5rem 0.5rem 0.5rem;
       padding: 0.875rem;

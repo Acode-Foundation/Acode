@@ -274,6 +274,30 @@ wc-page {
           background-color: var(--active-color);
         }
       }
+
+      @media (min-width: 769px) {
+        height: 50px;
+        min-height: 50px;
+        font-size: 1.1em;
+
+        > * {
+          &.active::after {
+            height: 3px;
+          }
+        }
+      }
+
+      @media (min-width: 1024px) {
+        height: 60px;
+        min-height: 60px;
+        font-size: 1.2em;
+
+        > * {
+          &.active::after {
+            height: 4px;
+          }
+        }
+      }
     }
   }
 
@@ -503,6 +527,50 @@ wc-page {
           font-family: "code-editor-icon";
           content: "\E99E";
           margin: auto 1.5px;
+        }
+      }
+
+      @media (min-width: 769px) {
+        height: 35px;
+
+        .nav {
+          height: 30px;
+          font-size: 1em;
+          margin: auto 2px;
+
+          &::after {
+            padding: 3px;
+          }
+
+          &:first-of-type {
+            margin-left: 15px;
+          }
+
+          &:not(:first-of-type)::before {
+            margin: auto 2px;
+          }
+        }
+      }
+
+      @media (min-width: 1024px) {
+        height: 40px;
+
+        .nav {
+          height: 35px;
+          font-size: 1.1em;
+          margin: auto 3px;
+
+          &::after {
+            padding: 4px;
+          }
+
+          &:first-of-type {
+            margin-left: 20px;
+          }
+
+          &:not(:first-of-type)::before {
+            margin: auto 3px;
+          }
         }
       }
     }
