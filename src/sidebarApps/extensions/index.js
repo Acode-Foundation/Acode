@@ -30,6 +30,10 @@ const LIMIT = 50;
 let currentPage = 1;
 let hasMore = true;
 let isLoading = false;
+let currentFilter = null;
+let filterCurrentPage = 1;
+let filterHasMore = true;
+let isFilterLoading = false;
 
 const $header = (
 	<div className="header">
@@ -115,6 +119,16 @@ async function handleScroll(e) {
 	}
 }
 
+async function handleFilterScroll(e) {
+	if (isFilterLoading || !filterHasMore || !currentFilter) return;
+
+	const { scrollTop, scrollHeight, clientHeight } = e.target;
+
+	if (scrollTop + clientHeight >= scrollHeight - 50) {
+		await loadFilteredPlugins(currentFilter, false);
+	}
+}
+
 async function loadMorePlugins() {
 	try {
 		isLoading = true;
@@ -143,9 +157,47 @@ async function loadMorePlugins() {
 	}
 }
 
+async function loadFilteredPlugins(filterName, isInitial = false) {
+	if (isFilterLoading || !filterHasMore) return;
+
+	try {
+		isFilterLoading = true;
+
+		const plugins = await getFilteredPlugins(filterName, filterCurrentPage);
+
+		if (plugins.length < LIMIT) {
+			filterHasMore = false;
+		}
+
+		installedPlugins = await listInstalledPlugins();
+		const pluginElements = plugins.map(ListItem);
+
+		if (isInitial) {
+			$searchResult.append(...pluginElements);
+		} else {
+			$searchResult.append(...pluginElements);
+		}
+
+		filterCurrentPage++;
+		updateHeight($searchResult);
+	} catch (error) {
+		window.log("error", "Error loading filtered plugins:");
+		window.log("error", error);
+	} finally {
+		isFilterLoading = false;
+	}
+}
+
 async function searchPlugin() {
 	clearTimeout(searchTimeout);
 	searchTimeout = setTimeout(async () => {
+		// Clear filter when searching
+		currentFilter = null;
+		filterCurrentPage = 1;
+		filterHasMore = true;
+		isFilterLoading = false;
+		$searchResult.onscroll = null;
+
 		$searchResult.content = "";
 		const status = helpers.checkAPIStatus();
 		if (!status) {
@@ -188,14 +240,17 @@ async function filterPlugins() {
 
 	$searchResult.content = "";
 	const filterParam = filterOptions[filterName];
+	currentFilter = filterParam;
+	filterCurrentPage = 1;
+	filterHasMore = true;
+	isFilterLoading = false;
 
 	try {
 		$searchResult.classList.add("loading");
-		const plugins = await getFilteredPlugins(filterParam);
 		const filterMessage = (
 			<div className="filter-message">
 				<span>
-					Filter for <strong>{filterName}</strong>
+					Filtered by <strong>{filterName}</strong>
 				</span>
 				<span
 					className="icon clearclose close-button"
@@ -204,11 +259,18 @@ async function filterPlugins() {
 				/>
 			</div>
 		);
-		$searchResult.content = [filterMessage, ...plugins.map(ListItem)];
+		$searchResult.content = [filterMessage];
+		$searchResult.onscroll = handleFilterScroll;
+		await loadFilteredPlugins(filterParam, true);
 		updateHeight($searchResult);
 
 		function clearFilter() {
+			currentFilter = null;
+			filterCurrentPage = 1;
+			filterHasMore = true;
+			isFilterLoading = false;
 			$searchResult.content = "";
+			$searchResult.onscroll = null;
 			updateHeight($searchResult);
 		}
 	} catch (error) {
@@ -221,7 +283,12 @@ async function filterPlugins() {
 }
 
 async function clearFilter() {
+	currentFilter = null;
+	filterCurrentPage = 1;
+	filterHasMore = true;
+	isFilterLoading = false;
 	$searchResult.content = "";
+	$searchResult.onscroll = null;
 }
 
 async function addSource() {
@@ -317,19 +384,22 @@ async function listInstalledPlugins() {
 	return plugins;
 }
 
-async function getFilteredPlugins(filterName) {
+async function getFilteredPlugins(filterName, page = 1) {
 	try {
 		let response;
 		if (filterName === "top_rated") {
-			response = await fetch(`${constants.API_BASE}/plugins?explore=random`);
+			response = await fetch(
+				`${constants.API_BASE}/plugins?explore=random&page=${page}&limit=${LIMIT}`,
+			);
 		} else {
 			response = await fetch(
-				`${constants.API_BASE}/plugin?orderBy=${filterName}`,
+				`${constants.API_BASE}/plugin?orderBy=${filterName}&page=${page}&limit=${LIMIT}`,
 			);
 		}
 		return await response.json();
 	} catch (error) {
 		window.log("error", error);
+		return [];
 	}
 }
 

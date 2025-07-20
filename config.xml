@@ -68,7 +68,6 @@
             <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
             <uses-permission android:name="android.permission.WRITE_MEDIA_STORAGE" />
             <uses-permission android:name="android.permission.VIBRATE" />
-            <!-- <uses-permission android:name="com.termux.permission.RUN_COMMAND" /> -->
         </config-file>
 
         <hook type="before_prepare" src="hooks/modify-java-files.js" />

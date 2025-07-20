@@ -126,6 +126,7 @@
 	"animation": "Animation",
 	"backup": "Backup",
 	"restore": "Restore",
+	"allFileAccess": "All file access",
 	"backup successful": "Backup successful",
 	"invalid backup file": "Invalid backup file",
 	"add path": "Add path",
