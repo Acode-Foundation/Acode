@@ -367,7 +367,7 @@
 	"remove": "Eltávolítás",
 	"quicktools:command-palette": "Parancspaletta",
 	"default file encoding": "Alapértelmezett fájlkódolás",
-	"remove entry": "Biztosan el akarja távolítani a „{name}” szót a mentett elérési utakból? Vegye figyelembe, hogy az eltávolítása nem törli magát az elérési utat.",
+	"remove entry": "Biztosan el akarja távolítani a(z) „{name}” szót a mentett elérési utakból? Vegye figyelembe, hogy az eltávolítása nem törli magát az elérési utat.",
 	"delete entry": "A(z) „{name}” törlésének megerősítése. Ez a művelet nem vonható vissza! Folytatja?",
 	"change encoding": "A(z) „{file}” újranyitása „{encoding}” kódolással? Ez a művelet a fájlban végrehajtott, el nem mentett módosítások elvesztését eredményezi. Biztosan folytatja az újranyitást?",
 	"reopen file": "Biztosan újranyitja a(z) „{file}” fájlt? Minden el nem mentett módosítás elvész.",
