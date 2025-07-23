@@ -59,7 +59,7 @@
     "@babel/preset-env": "^7.24.6",
     "@babel/runtime": "^7.24.6",
     "@babel/runtime-corejs3": "^7.24.6",
-    "@biomejs/biome": "1.8.3",
+    "@biomejs/biome": "2.1.1",
     "@types/ace": "^0.0.52",
     "@types/url-parse": "^1.4.11",
     "autoprefixer": "^10.4.19",
