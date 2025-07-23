@@ -223,6 +223,11 @@ class TerminalManager {
 						terminalId,
 					);
 
+					// Set up custom title for installation terminal
+					terminalFile.setCustomTitle(
+						() => "Installing Terminal Environment...",
+					);
+
 					const instance = {
 						id: terminalId,
 						name: terminalName,
@@ -343,6 +348,15 @@ class TerminalManager {
 				// Format terminal title as "Terminal ! - title"
 				const formattedTitle = `Terminal ${this.terminalCounter} - ${title}`;
 				terminalFile.filename = formattedTitle;
+
+				// Refresh the header subtitle if this terminal is active
+				if (
+					editorManager.activeFile &&
+					editorManager.activeFile.id === terminalFile.id
+				) {
+					// Force refresh of the header subtitle
+					terminalFile.setCustomTitle(getTerminalTitle);
+				}
 			}
 		};
 
@@ -366,6 +380,17 @@ class TerminalManager {
 		terminalFile._terminalId = terminalId;
 		terminalFile.terminalComponent = terminalComponent;
 		terminalFile._resizeObserver = resizeObserver;
+
+		// Set up custom title function for terminal
+		const getTerminalTitle = () => {
+			if (terminalComponent.pid) {
+				return `PID: ${terminalComponent.pid}`;
+			}
+			// fallback to terminal name
+			return `${terminalId}`;
+		};
+
+		terminalFile.setCustomTitle(getTerminalTitle);
 	}
 
 	/**

@@ -63,6 +63,12 @@ export default class EditorFile {
 	stylesheets;
 
 	/**
+	 * Custom title function for special tab types
+	 * @type {function}
+	 */
+	#customTitleFn = null;
+
+	/**
 	 * If editor was focused before resize
 	 */
 	focusedBefore = false;
@@ -949,6 +955,18 @@ export default class EditorFile {
 	}
 
 	/**
+	 * Set custom title function for special tab types
+	 * @param {function} titleFn Function that returns the title string
+	 */
+	setCustomTitle(titleFn) {
+		this.#customTitleFn = titleFn;
+		// Update header if this file is currently active
+		if (editorManager.activeFile && editorManager.activeFile.id === this.id) {
+			editorManager.header.subText = this.#getTitle();
+		}
+	}
+
+	/**
 	 *
 	 * @param {FileAction} action
 	 */
@@ -1196,6 +1214,11 @@ export default class EditorFile {
 	}
 
 	#getTitle() {
+		// Use custom title function if provided
+		if (this.#customTitleFn) {
+			return this.#customTitleFn();
+		}
+
 		let text = this.location || this.uri;
 
 		if (text && !this.readOnly) {
