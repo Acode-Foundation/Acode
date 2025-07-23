@@ -1,11 +1,10 @@
 import "./styles.scss";
+import fsOperation from "fileSystem";
 import addTouchListeners from "ace/touchHandler";
 import autosize from "autosize";
 import Checkbox from "components/checkbox";
-import Sidebar from "components/sidebar";
-import { preventSlide } from "components/sidebar";
+import Sidebar, { preventSlide } from "components/sidebar";
 import escapeStringRegexp from "escape-string-regexp";
-import fsOperation from "fileSystem";
 import Ref from "html-tag-js/ref";
 import files, { Tree } from "lib/fileList";
 import openFile from "lib/openFile";

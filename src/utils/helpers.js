@@ -1,8 +1,7 @@
-import ajax from "@deadlyjack/ajax";
-import escapeStringRegexp from "escape-string-regexp";
 import fsOperation from "fileSystem";
-
+import ajax from "@deadlyjack/ajax";
 import alert from "dialogs/alert";
+import escapeStringRegexp from "escape-string-regexp";
 import constants from "lib/constants";
 import path from "./Path";
 import Uri from "./Uri";

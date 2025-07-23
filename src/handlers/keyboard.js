@@ -1,6 +1,6 @@
 import {
-	HARDKEYBOARDHIDDEN_NO,
 	getSystemConfiguration,
+	HARDKEYBOARDHIDDEN_NO,
 } from "lib/systemConfiguration";
 import KeyboardEvent from "utils/keyboardEvent";
 import windowResize from "./windowResize";

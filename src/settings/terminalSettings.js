@@ -1,3 +1,4 @@
+import fsOperation from "fileSystem";
 import settingsPage from "components/settingsPage";
 import {
 	DEFAULT_TERMINAL_SETTINGS,
@@ -6,7 +7,6 @@ import {
 import toast from "components/toast";
 import alert from "dialogs/alert";
 import loader from "dialogs/loader";
-import fsOperation from "fileSystem";
 import fonts from "lib/fonts";
 import appSettings from "lib/settings";
 import FileBrowser from "pages/fileBrowser";

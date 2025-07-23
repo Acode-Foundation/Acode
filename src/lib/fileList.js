@@ -1,5 +1,5 @@
-import toast from "components/toast";
 import fsOperation from "fileSystem";
+import toast from "components/toast";
 import { minimatch } from "minimatch";
 import Url from "utils/Url";
 import { addedFolder } from "./openFolder";

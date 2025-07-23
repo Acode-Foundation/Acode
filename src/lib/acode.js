@@ -1,4 +1,7 @@
+import fsOperation from "fileSystem";
+import sidebarApps from "sidebarApps";
 import ajax from "@deadlyjack/ajax";
+import { addMode, removeMode } from "ace/modelist";
 import Contextmenu from "components/contextmenu";
 import inputhints from "components/inputhints";
 import Page from "components/page";
@@ -16,7 +19,7 @@ import loader from "dialogs/loader";
 import multiPrompt from "dialogs/multiPrompt";
 import prompt from "dialogs/prompt";
 import select from "dialogs/select";
-import fsOperation from "fileSystem";
+import { addIntentHandler, removeIntentHandler } from "handlers/intent";
 import keyboardHandler from "handlers/keyboard";
 import purchaseListener from "handlers/purchase";
 import windowResize from "handlers/windowResize";
@@ -27,26 +30,20 @@ import files from "lib/fileList";
 import fileTypeHandler from "lib/fileTypeHandler";
 import fonts from "lib/fonts";
 import NotificationManager from "lib/notificationManager";
-import openFolder from "lib/openFolder";
+import openFolder, { addedFolder } from "lib/openFolder";
 import projects from "lib/projects";
 import selectionMenu from "lib/selectionMenu";
 import appSettings from "lib/settings";
 import FileBrowser from "pages/fileBrowser";
 import formatterSettings from "settings/formatterSettings";
-import sidebarApps from "sidebarApps";
 import ThemeBuilder from "theme/builder";
 import themes from "theme/list";
-import Url from "utils/Url";
 import Color from "utils/color";
-import encodings from "utils/encodings";
+import encodings, { decode, encode } from "utils/encodings";
 import helpers from "utils/helpers";
 import KeyboardEvent from "utils/keyboardEvent";
+import Url from "utils/Url";
 import constants from "./constants";
-
-import { addMode, removeMode } from "ace/modelist";
-import { addIntentHandler, removeIntentHandler } from "handlers/intent";
-import { addedFolder } from "lib/openFolder";
-import { decode, encode } from "utils/encodings";
 
 export default class Acode {
 	#modules = {};

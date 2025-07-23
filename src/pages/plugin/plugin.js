@@ -1,9 +1,9 @@
 import "./plugin.scss";
+import fsOperation from "fileSystem";
 import ajax from "@deadlyjack/ajax";
 import Page from "components/page";
 import alert from "dialogs/alert";
 import loader from "dialogs/loader";
-import fsOperation from "fileSystem";
 import purchaseListener from "handlers/purchase";
 import actionStack from "lib/actionStack";
 import constants from "lib/constants";
@@ -15,8 +15,8 @@ import anchor from "markdown-it-anchor";
 import markdownItFootnote from "markdown-it-footnote";
 import MarkdownItGitHubAlerts from "markdown-it-github-alerts";
 import markdownItTaskLists from "markdown-it-task-lists";
-import Url from "utils/Url";
 import helpers from "utils/helpers";
+import Url from "utils/Url";
 import view from "./plugin.view.js";
 
 let $lastPluginPage;
