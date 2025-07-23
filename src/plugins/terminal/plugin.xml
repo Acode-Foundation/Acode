@@ -18,15 +18,28 @@
             </feature>
         </config-file>
         <config-file parent="/*" target="AndroidManifest.xml" />
-        <source-file src="src/android/Executor.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
 
+        <source-file src="src/android/Executor.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
+        <source-file src="src/android/AlpineDocumentProvider.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
 
         <source-file src="scripts/init-sandbox.sh" target-dir="assets"/>
         <source-file src="scripts/init-alpine.sh" target-dir="assets"/>
 
-        <config-file target="AndroidManifest.xml" parent="/manifest">
+        <config-file target="AndroidManifest.xml" parent="/manifest"></config-file>
 
-    </config-file>
+        <config-file target="AndroidManifest.xml" parent="./application">
+            <provider
+            android:name="com.foxdebug.acode.rk.exec.terminal.AlpineDocumentProvider"
+            android:authorities="${applicationId}.documents"
+            android:exported="true"
+            android:grantUriPermissions="true"
+            android:icon="@mipmap/ic_launcher"
+            android:permission="android.permission.MANAGE_DOCUMENTS">
+            <intent-filter>
+                <action android:name="android.content.action.DOCUMENTS_PROVIDER" />
+            </intent-filter>
+            </provider>
+        </config-file>
 
            
     </platform>
