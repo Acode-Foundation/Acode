@@ -192,8 +192,9 @@ const Terminal = {
             return installResult;
 
         } catch (e) {
-            err_logger("Installation failed:", e);
-            return false;
+          err_logger("Installation failed:", e);
+          console.error("Installation failed:", e);
+          return false;
         }
     },
 
