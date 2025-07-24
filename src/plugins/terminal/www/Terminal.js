@@ -128,7 +128,7 @@ const Terminal = {
             }
 
             
-            logger("⬇️ Downloading root filesystem...");
+            logger("⬇️  Downloading sandbox filesystem...");
             await new Promise((resolve, reject) => {
                 cordova.plugin.http.downloadFile(
                     alpineUrl, {}, {},
@@ -137,7 +137,7 @@ const Terminal = {
                 );
             });
 
-            logger("⬇️ Downloading axs...");
+            logger("⬇️  Downloading axs...");
             await new Promise((resolve, reject) => {
                 cordova.plugin.http.downloadFile(
                     axsUrl, {}, {},
@@ -148,8 +148,8 @@ const Terminal = {
 
             const isFdroid = await Executor.execute("echo $FDROID");
             if (isFdroid === "true") {
-                logger("🐧 F-Droid flavor detected, downloading additional files...");
-                logger("⬇️ Downloading compatibility layer...");
+                logger("🐧  F-Droid flavor detected, downloading additional files...");
+                logger("⬇️  Downloading compatibility layer...");
                 await new Promise((resolve, reject) => {
                     cordova.plugin.http.downloadFile(
                         prootUrl, {}, {},
@@ -158,7 +158,7 @@ const Terminal = {
                     );
                 });
 
-                logger("⬇️ Downloading supporting library...");
+                logger("⬇️  Downloading supporting library...");
                 await new Promise((resolve, reject) => {
                     cordova.plugin.http.downloadFile(
                         libTalloc, {}, {},
@@ -168,9 +168,9 @@ const Terminal = {
                 });
             }
 
-            logger("✅ All downloads completed");
+            logger("✅  All downloads completed");
 
-            logger("📁 Setting up directories...");
+            logger("📁  Setting up directories...");
 
             await new Promise((resolve, reject) => {
                 system.mkdirs(`${filesDir}/.downloaded`, resolve, reject);
@@ -182,18 +182,18 @@ const Terminal = {
                 system.mkdirs(alpineDir, resolve, reject);
             });
 
-            logger("📦 Extracting root filesystem...");
+            logger("📦  Extracting root filesystem...");
             await Executor.execute(`tar --no-same-owner -xf ${filesDir}/alpine.tar.gz -C ${alpineDir}`);
 
-            logger("⚙️ Applying basic configuration...");
+            logger("⚙️  Applying basic configuration...");
             system.writeText(`${alpineDir}/etc/resolv.conf`, `nameserver 8.8.4.4 \nnameserver 8.8.8.8`);
 
-            logger("✅ Extraction complete");
+            logger("✅  Extraction complete");
             await new Promise((resolve, reject) => {
                 system.mkdirs(`${filesDir}/.extracted`, resolve, reject);
             });
 
-            logger("⚙️ Updating sanbox enviroment...");
+            logger("⚙️  Updating sandbox enviroment...");
             const installResult = await this.startAxs(true, logger, err_logger);
             return installResult;
 
