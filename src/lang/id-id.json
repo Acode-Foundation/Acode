@@ -126,6 +126,7 @@
 	"animation": "Animasi",
 	"backup": "Cadangkan",
 	"restore": "Mengembalikan",
+	"allFileAccess": "Semua akses berkas",
 	"backup successful": "Berhasil membuat cadangan",
 	"invalid backup file": "Berkas cadangan tidak valid",
 	"add path": "Tambah jalur",
