@@ -1,7 +1,7 @@
-import loader from "dialogs/loader";
 import fsOperation from "fileSystem";
-import Url from "utils/Url";
+import loader from "dialogs/loader";
 import helpers from "utils/helpers";
+import Url from "utils/Url";
 
 const fonts = new Map();
 

@@ -1,12 +1,10 @@
 {
-	"$schema": "https://biomejs.dev/schemas/1.8.3/schema.json",
+	"$schema": "https://biomejs.dev/schemas/2.1.1/schema.json",
 	"formatter": {
 		"enabled": true,
 		"indentStyle": "tab"
 	},
-	"organizeImports": {
-		"enabled": true
-	},
+	"assist": { "actions": { "source": { "organizeImports": "on" } } },
 	"linter": {
 		"enabled": true,
 		"rules": {
@@ -34,23 +32,21 @@
 		"globals": ["Global1"]
 	},
 	"files": {
-		"include": [
-			"src/**/*",
-			"utils/**/*.js",
-			"www/**/*.js",
-			"www/res/**/*.css",
-			"src/plugins/terminal"
-		],
-		"ignore": [
-			"ace-builds",
-			"www/js/**/*.js",
-			"www/css/**/*.css",
-			"src/plugins/**/*",
-			"plugins/**/*",
-			"hooks/**/*",
-			"fastlane/**/*",
-			"res/**/*",
-			"platforms/**/*"
+		"includes": [
+			"**/src/**/*",
+			"**/utils/**/*.js",
+			"**/www/**/*.js",
+			"**/www/res/**/*.css",
+			"**/src/plugins/terminal/**",
+			"!**/ace-builds",
+			"!**/www/js/**/*.js",
+			"!**/www/css/**/*.css",
+			"!**/src/plugins/**/*",
+			"!**/plugins/**/*",
+			"!**/hooks/**/*",
+			"!**/fastlane/**/*",
+			"!**/res/**/*",
+			"!**/platforms/**/*"
 		]
 	}
 }

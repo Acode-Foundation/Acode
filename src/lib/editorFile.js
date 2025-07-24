@@ -1,14 +1,14 @@
+import fsOperation from "fileSystem";
 import Sidebar from "components/sidebar";
 import tile from "components/tile";
 import confirm from "dialogs/confirm";
 import DOMPurify from "dompurify";
-import fsOperation from "fileSystem";
 import startDrag from "handlers/editorFileTab";
 import tag from "html-tag-js";
 import mimeTypes from "mime-types";
+import helpers from "utils/helpers";
 import Path from "utils/Path";
 import Url from "utils/Url";
-import helpers from "utils/helpers";
 import constants from "./constants";
 import openFolder from "./openFolder";
 import run from "./run";
@@ -61,6 +61,12 @@ export default class EditorFile {
 	 * @type {string|string[]}
 	 */
 	stylesheets;
+
+	/**
+	 * Custom title function for special tab types
+	 * @type {function}
+	 */
+	#customTitleFn = null;
 
 	/**
 	 * If editor was focused before resize
@@ -949,6 +955,18 @@ export default class EditorFile {
 	}
 
 	/**
+	 * Set custom title function for special tab types
+	 * @param {function} titleFn Function that returns the title string
+	 */
+	setCustomTitle(titleFn) {
+		this.#customTitleFn = titleFn;
+		// Update header if this file is currently active
+		if (editorManager.activeFile && editorManager.activeFile.id === this.id) {
+			editorManager.header.subText = this.#getTitle();
+		}
+	}
+
+	/**
 	 *
 	 * @param {FileAction} action
 	 */
@@ -1196,6 +1214,11 @@ export default class EditorFile {
 	}
 
 	#getTitle() {
+		// Use custom title function if provided
+		if (this.#customTitleFn) {
+			return this.#customTitleFn();
+		}
+
 		let text = this.location || this.uri;
 
 		if (text && !this.readOnly) {

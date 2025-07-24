@@ -1,5 +1,5 @@
-import prompt from "dialogs/prompt";
 import fsOperation from "fileSystem";
+import prompt from "dialogs/prompt";
 import actions from "handlers/quickTools";
 import keyBindings from "lib/keyBindings";
 import settings from "lib/settings";

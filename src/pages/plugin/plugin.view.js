@@ -1,13 +1,13 @@
+import fsOperation from "fileSystem";
 import TabView from "components/tabView";
 import toast from "components/toast";
 import alert from "dialogs/alert";
 import DOMPurify from "dompurify";
-import fsOperation from "fileSystem";
 import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
 import constants from "lib/constants";
-import Url from "utils/Url";
 import helpers from "utils/helpers";
+import Url from "utils/Url";
 
 export default (props) => {
 	const {
@@ -52,12 +52,12 @@ export default (props) => {
 				<div className="plugin-info">
 					<div className="title-wrapper">
 						<h1 className="plugin-name">{name}</h1>
-						{repository ? (
-							<a href={repository} className="source-indicator">
-								<i className="icon github"></i>
-								<span>{strings.open_source}</span>
-							</a>
-						) : null}
+						{repository
+							? <a href={repository} className="source-indicator">
+									<i className="icon github"></i>
+									<span>{strings.open_source}</span>
+								</a>
+							: null}
 					</div>
 					<div className="plugin-meta">
 						<span className="meta-item">
@@ -69,16 +69,14 @@ export default (props) => {
 							<a href={`https://github.com/${authorGithub}`} className="">
 								{author}
 							</a>
-							{authorVerified ? (
-								<i
-									on:click={() => {
-										toast(strings["verified publisher"]);
-									}}
-									className="licons verified verified-tick"
-								></i>
-							) : (
-								""
-							)}
+							{authorVerified
+								? <i
+										on:click={() => {
+											toast(strings["verified publisher"]);
+										}}
+										className="licons verified verified-tick"
+									></i>
+								: ""}
 						</span>
 						<span className="meta-item">
 							<span
@@ -88,44 +86,44 @@ export default (props) => {
 							{license || "Unknown"}
 						</span>
 					</div>
-					{votesUp !== undefined ? (
-						<div className="metrics-row">
-							<div className="metric">
-								<span className="icon save_alt"></span>
-								<span className="metric-value">
-									{helpers.formatDownloadCount(
-										typeof downloads === "string"
-											? Number.parseInt(downloads)
-											: downloads,
-									)}
-								</span>
-								<span>downloads</span>
-							</div>
-							<div className="metric">
-								<i className="icon favorite"></i>
-								<span
-									className={`rating-value ${rating === "unrated" ? "" : rating.replace("%", "") >= 80 ? "rating-high" : rating.replace("%", "") >= 50 ? "rating-medium" : "rating-low"}`}
+					{votesUp !== undefined
+						? <div className="metrics-row">
+								<div className="metric">
+									<span className="icon save_alt"></span>
+									<span className="metric-value">
+										{helpers.formatDownloadCount(
+											typeof downloads === "string"
+												? Number.parseInt(downloads)
+												: downloads,
+										)}
+									</span>
+									<span>downloads</span>
+								</div>
+								<div className="metric">
+									<i className="icon favorite"></i>
+									<span
+										className={`rating-value ${rating === "unrated" ? "" : rating.replace("%", "") >= 80 ? "rating-high" : rating.replace("%", "") >= 50 ? "rating-medium" : "rating-low"}`}
+									>
+										{rating}
+									</span>
+								</div>
+								<div
+									className="metric"
+									onclick={showReviews.bind(null, id, author)}
 								>
-									{rating}
-								</span>
+									<i className="icon chat_bubble"></i>
+									<span className="metric-value">{commentCount}</span>
+									<span>reviews</span>
+								</div>
 							</div>
-							<div
-								className="metric"
-								onclick={showReviews.bind(null, id, author)}
-							>
-								<i className="icon chat_bubble"></i>
-								<span className="metric-value">{commentCount}</span>
-								<span>reviews</span>
+						: null}
+					{Array.isArray(keywords) && keywords.length
+						? <div className="keywords">
+								{keywords.map((keyword) => (
+									<span className="keyword">{keyword}</span>
+								))}
 							</div>
-						</div>
-					) : null}
-					{Array.isArray(keywords) && keywords.length ? (
-						<div className="keywords">
-							{keywords.map((keyword) => (
-								<span className="keyword">{keyword}</span>
-							))}
-						</div>
-					) : null}
+						: null}
 				</div>
 				<div className="action-buttons">
 					<Buttons {...props} />

@@ -1,12 +1,12 @@
 import "./style.scss";
 
+import fsOperation from "fileSystem";
 import ajax from "@deadlyjack/ajax";
 import collapsableList from "components/collapsableList";
 import Sidebar from "components/sidebar";
 import alert from "dialogs/alert";
 import prompt from "dialogs/prompt";
 import select from "dialogs/select";
-import fsOperation from "fileSystem";
 import purchaseListener from "handlers/purchase";
 import constants from "lib/constants";
 import InstallState from "lib/installState";
@@ -14,8 +14,8 @@ import loadPlugin from "lib/loadPlugin";
 import settings from "lib/settings";
 import FileBrowser from "pages/fileBrowser";
 import plugin from "pages/plugin";
-import Url from "utils/Url";
 import helpers from "utils/helpers";
+import Url from "utils/Url";
 
 /** @type {HTMLElement} */
 let $installed = null;
@@ -469,22 +469,20 @@ function ListItem({ icon, name, id, version, downloads, installed, source }) {
 			>
 				{name}
 			</span>
-			{installed ? (
-				<>
-					{source ? (
-						<span className="icon replay" data-action="rebuild-plugin" />
-					) : null}
-					<span className="icon more_vert" data-action="more-plugin-action" />
-				</>
-			) : (
-				<button
-					type="button"
-					className="install-btn"
-					data-action="install-plugin"
-				>
-					<span className="icon file_downloadget_app" />
-				</button>
-			)}
+			{installed
+				? <>
+						{source
+							? <span className="icon replay" data-action="rebuild-plugin" />
+							: null}
+						<span className="icon more_vert" data-action="more-plugin-action" />
+					</>
+				: <button
+						type="button"
+						className="install-btn"
+						data-action="install-plugin"
+					>
+						<span className="icon file_downloadget_app" />
+					</button>}
 		</div>
 	);
 

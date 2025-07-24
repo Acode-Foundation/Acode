@@ -1,3 +1,4 @@
+import fsOperation from "fileSystem";
 import settingsPage from "components/settingsPage";
 import {
 	DEFAULT_TERMINAL_SETTINGS,
@@ -6,10 +7,10 @@ import {
 import toast from "components/toast";
 import alert from "dialogs/alert";
 import loader from "dialogs/loader";
-import fsOperation from "fileSystem";
 import fonts from "lib/fonts";
 import appSettings from "lib/settings";
 import FileBrowser from "pages/fileBrowser";
+import helpers from "utils/helpers";
 
 export default function terminalSettings() {
 	const title = strings["terminal settings"];
@@ -173,6 +174,11 @@ export default function terminalSettings() {
 			text: strings.restore.capitalize(),
 			info: "Restores a backup of the terminal installation",
 		},
+		{
+			key: "uninstall",
+			text: strings.uninstall.capitalize(),
+			info: "Uninstalls the terminal installation",
+		},
 	];
 
 	return settingsPage(title, items, callback);
@@ -204,6 +210,23 @@ export default function terminalSettings() {
 
 			case "restore":
 				terminalRestore();
+				return;
+
+			case "uninstall":
+				loader.showTitleLoader();
+				Terminal.uninstall()
+					.then(() => {
+						loader.removeTitleLoader();
+						alert(
+							strings.success.toUpperCase(),
+							"Terminal uninstalled successfully.",
+						);
+					})
+					.catch((error) => {
+						loader.removeTitleLoader();
+						console.error("Terminal uninstall failed:", error);
+						helpers.error(error);
+					});
 				return;
 
 			default:

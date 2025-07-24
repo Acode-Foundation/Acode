@@ -1,8 +1,8 @@
 import alert from "dialogs/alert";
 import openFile from "lib/openFile";
 import openFolder, { addedFolder } from "lib/openFolder";
-import Url from "utils/Url";
 import helpers from "utils/helpers";
+import Url from "utils/Url";
 
 /**
  * @typedef {"file"|"folder"|"both"} BrowseMode

@@ -1,8 +1,8 @@
+import fsOperation from "fileSystem";
 import ajax from "@deadlyjack/ajax";
 import { resetKeyBindings } from "ace/commands";
 import settingsPage from "components/settingsPage";
 import loader from "dialogs/loader";
-import fsOperation from "fileSystem";
 import actions from "handlers/quickTools";
 import actionStack from "lib/actionStack";
 import constants from "lib/constants";
@@ -10,9 +10,9 @@ import lang from "lib/lang";
 import openFile from "lib/openFile";
 import appSettings from "lib/settings";
 import QuickToolsSettings from "pages/quickTools";
-import Url from "utils/Url";
 import encodings, { getEncoding } from "utils/encodings";
 import helpers from "utils/helpers";
+import Url from "utils/Url";
 
 export default function otherSettings() {
 	const values = appSettings.value;

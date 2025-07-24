@@ -1,8 +1,8 @@
+import fsOperation from "fileSystem";
 import AudioPlayer from "components/audioPlayer";
 import alert from "dialogs/alert";
 import confirm from "dialogs/confirm";
 import loader from "dialogs/loader";
-import fsOperation from "fileSystem";
 import { reopenWithNewEncoding } from "palettes/changeEncoding";
 import { decode } from "utils/encodings";
 import helpers from "utils/helpers";
