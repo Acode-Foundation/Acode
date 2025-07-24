@@ -182,7 +182,7 @@ const Terminal = {
                 system.mkdirs(alpineDir, resolve, reject);
             });
 
-            logger("📦  Extracting root filesystem...");
+            logger("📦  Extracting sandbox filesystem...");
             await Executor.execute(`tar --no-same-owner -xf ${filesDir}/alpine.tar.gz -C ${alpineDir}`);
 
             logger("⚙️  Applying basic configuration...");
