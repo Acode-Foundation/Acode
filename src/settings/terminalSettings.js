@@ -374,7 +374,7 @@ async function updateActiveTerminals(key, value) {
 						TerminalThemeManager.getTheme(value);
 					// Update container background to match new theme
 					if (tab.terminalComponent.container) {
-						tab.terminalComponent.container.style.background = 
+						tab.terminalComponent.container.style.background =
 							tab.terminalComponent.terminal.options.theme.background;
 					}
 					break;
