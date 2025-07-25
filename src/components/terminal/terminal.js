@@ -437,7 +437,6 @@ export default class TerminalComponent {
       height: 100%;
       position: relative;
       background: ${this.options.theme.background};
-      border-radius: 4px;
       overflow: hidden;
     `;
 
