@@ -277,9 +277,11 @@ export default class TerminalTouchSelection {
 		const horizontalDelta = touch.clientX - this.touchStartPos.x;
 
 		// Check if this looks like a back gesture (started near edge and moving horizontally inward)
-		if (this.isEdgeGesture(this.initialTouchPos) && 
-			Math.abs(horizontalDelta) > deltaY && 
-			deltaX > this.options.moveThreshold) {
+		if (
+			this.isEdgeGesture(this.initialTouchPos) &&
+			Math.abs(horizontalDelta) > deltaY &&
+			deltaX > this.options.moveThreshold
+		) {
 			// This looks like a back gesture, cancel selection
 			if (this.tapHoldTimeout) {
 				clearTimeout(this.tapHoldTimeout);
@@ -1165,17 +1167,17 @@ export default class TerminalTouchSelection {
 	isEdgeGesture(touch) {
 		const edgeThreshold = 30; // pixels from screen edge
 		const screenWidth = window.innerWidth;
-		
+
 		// Check if touch starts near left edge (most common for back gesture)
 		if (touch.clientX <= edgeThreshold) {
 			return true;
 		}
-		
+
 		// Check if touch starts near right edge (for RTL languages or right-handed back gesture)
 		if (touch.clientX >= screenWidth - edgeThreshold) {
 			return true;
 		}
-		
+
 		return false;
 	}
 

@@ -172,19 +172,28 @@ export default class TerminalComponent {
 
 					// Handle keyboard resize cursor positioning
 					const heightRatio = size.rows / originalRows;
-					if (heightRatio < 0.75 && this.terminal.buffer && this.terminal.buffer.active) {
+					if (
+						heightRatio < 0.75 &&
+						this.terminal.buffer &&
+						this.terminal.buffer.active
+					) {
 						// Keyboard resize detected - ensure cursor is visible
 						const buffer = this.terminal.buffer.active;
 						const cursorY = buffer.cursorY;
 						const cursorViewportPos = buffer.baseY + cursorY;
 						const viewportTop = buffer.viewportY;
 						const viewportBottom = viewportTop + this.terminal.rows - 1;
-						
-						if (cursorViewportPos <= viewportTop + 1 || cursorViewportPos >= viewportBottom - 1) {
-							const targetScroll = Math.max(0,
-								Math.min(buffer.length - this.terminal.rows,
-									cursorViewportPos - Math.floor(this.terminal.rows * 0.25)
-								)
+
+						if (
+							cursorViewportPos <= viewportTop + 1 ||
+							cursorViewportPos >= viewportBottom - 1
+						) {
+							const targetScroll = Math.max(
+								0,
+								Math.min(
+									buffer.length - this.terminal.rows,
+									cursorViewportPos - Math.floor(this.terminal.rows * 0.25),
+								),
 							);
 							this.terminal.scrollToLine(targetScroll);
 						}
@@ -474,6 +483,9 @@ export default class TerminalComponent {
 
 		this.container = container;
 
+		// Apply terminal background color to container to match theme
+		this.container.style.background = this.options.theme.background;
+
 		try {
 			try {
 				this.terminal.loadAddon(this.webglAddon);
@@ -701,16 +713,20 @@ export default class TerminalComponent {
 			const cursorViewportPos = buffer.baseY + cursorY;
 			const viewportTop = buffer.viewportY;
 			const viewportBottom = viewportTop + this.terminal.rows - 1;
-			
+
 			// Check if cursor is fully visible (with margin to prevent half-visibility)
-			const isCursorFullyVisible = cursorViewportPos >= viewportTop + 1 && cursorViewportPos <= viewportBottom - 2;
+			const isCursorFullyVisible =
+				cursorViewportPos >= viewportTop + 1 &&
+				cursorViewportPos <= viewportBottom - 2;
 
 			// If cursor is not fully visible, scroll to make it properly visible
 			if (!isCursorFullyVisible && buffer.length > this.terminal.rows) {
-				const targetScroll = Math.max(0, 
-					Math.min(buffer.length - this.terminal.rows,
-						cursorViewportPos - Math.floor(this.terminal.rows * 0.25)
-					)
+				const targetScroll = Math.max(
+					0,
+					Math.min(
+						buffer.length - this.terminal.rows,
+						cursorViewportPos - Math.floor(this.terminal.rows * 0.25),
+					),
 				);
 				this.terminal.scrollToLine(targetScroll);
 			}
