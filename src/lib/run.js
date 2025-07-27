@@ -335,6 +335,10 @@ async function run(
 
 				console.log(`Full PATH ${fullPath}`);
 
+				if(fullPath.endsWith("/")){
+					fullPath += "index.html"
+				}
+
 				// Add back the query if present
 				url = query ? `${fullPath}?${query}` : fullPath;
 
