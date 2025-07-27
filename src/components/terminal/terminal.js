@@ -31,6 +31,7 @@ export default class TerminalComponent {
 			scrollOnUserInput: true,
 			rows: options.rows || 24,
 			cols: options.cols || 80,
+			port: options.port || 8767,
 			fontSize: terminalSettings.fontSize,
 			fontFamily: terminalSettings.fontFamily,
 			fontWeight: terminalSettings.fontWeight,
@@ -566,7 +567,7 @@ export default class TerminalComponent {
 				rows: this.terminal.rows,
 			};
 
-			const response = await fetch("http://localhost:8767/terminals", {
+			const response = await fetch(`http://localhost:${this.options.port}/terminals`, {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
@@ -604,7 +605,7 @@ export default class TerminalComponent {
 
 		this.pid = pid;
 
-		const wsUrl = `ws://localhost:8767/terminals/${pid}`;
+		const wsUrl = `ws://localhost:${this.options.port}/terminals/${pid}`;
 
 		this.websocket = new WebSocket(wsUrl);
 
@@ -658,7 +659,7 @@ export default class TerminalComponent {
 		if (!this.pid || !this.serverMode) return;
 
 		try {
-			await fetch(`http://localhost:8767/terminals/${this.pid}/resize`, {
+			await fetch(`http://localhost:${this.options.port}/terminals/${this.pid}/resize`, {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
@@ -953,7 +954,7 @@ export default class TerminalComponent {
 
 		if (this.pid && this.serverMode) {
 			try {
-				await fetch(`http://localhost:8767/terminals/${this.pid}/terminate`, {
+				await fetch(`http://localhost:${this.options.port}/terminals/${this.pid}/terminate`, {
 					method: "POST",
 				});
 			} catch (error) {
