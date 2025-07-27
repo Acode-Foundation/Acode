@@ -567,13 +567,16 @@ export default class TerminalComponent {
 				rows: this.terminal.rows,
 			};
 
-			const response = await fetch(`http://localhost:${this.options.port}/terminals`, {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
+			const response = await fetch(
+				`http://localhost:${this.options.port}/terminals`,
+				{
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify(requestBody),
 				},
-				body: JSON.stringify(requestBody),
-			});
+			);
 
 			if (!response.ok) {
 				throw new Error(`HTTP error! status: ${response.status}`);
@@ -659,13 +662,16 @@ export default class TerminalComponent {
 		if (!this.pid || !this.serverMode) return;
 
 		try {
-			await fetch(`http://localhost:${this.options.port}/terminals/${this.pid}/resize`, {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
+			await fetch(
+				`http://localhost:${this.options.port}/terminals/${this.pid}/resize`,
+				{
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({ cols, rows }),
 				},
-				body: JSON.stringify({ cols, rows }),
-			});
+			);
 		} catch (error) {
 			console.error("Failed to resize terminal:", error);
 		}
@@ -954,9 +960,12 @@ export default class TerminalComponent {
 
 		if (this.pid && this.serverMode) {
 			try {
-				await fetch(`http://localhost:${this.options.port}/terminals/${this.pid}/terminate`, {
-					method: "POST",
-				});
+				await fetch(
+					`http://localhost:${this.options.port}/terminals/${this.pid}/terminate`,
+					{
+						method: "POST",
+					},
+				);
 			} catch (error) {
 				console.error("Failed to terminate terminal:", error);
 			}
