@@ -468,6 +468,8 @@ export default class TerminalComponent {
       position: relative;
       background: ${this.options.theme.background};
       overflow: hidden;
+      padding: 0.25rem;
+      box-sizing: border-box;
     `;
 
 		return this.container;
@@ -691,7 +693,18 @@ export default class TerminalComponent {
 	 * @param {string} data - Data to write
 	 */
 	write(data) {
-		this.terminal.write(data);
+		if (
+			this.serverMode &&
+			this.isConnected &&
+			this.websocket &&
+			this.websocket.readyState === WebSocket.OPEN
+		) {
+			// Send data through WebSocket instead of direct write
+			this.websocket.send(data);
+		} else {
+			// For local mode or disconnected terminals, write directly
+			this.terminal.write(data);
+		}
 	}
 
 	/**
