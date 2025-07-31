@@ -1,4 +1,4 @@
-class LSPClient {
+export default class lspClient {
     constructor({ serverUrl, editor, documentUri, language }) {
         this.editor = editor;
         this.documentUri = documentUri;

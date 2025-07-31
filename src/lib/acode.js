@@ -44,6 +44,7 @@ import helpers from "utils/helpers";
 import KeyboardEvent from "utils/keyboardEvent";
 import Url from "utils/Url";
 import constants from "./constants";
+import lspClient from "./lspClient";
 
 export default class Acode {
 	#modules = {};
@@ -78,7 +79,7 @@ export default class Acode {
 			list: themes.list,
 			update: themes.update,
 			// Deprecated, not supported anymore
-			apply: () => {},
+			apply: () => { },
 		};
 
 		const sidebarAppsModule = {
@@ -119,6 +120,7 @@ export default class Acode {
 			},
 		};
 
+		this.define("lspClient", lspClient);
 		this.define("Url", Url);
 		this.define("page", Page);
 		this.define("Color", Color);
