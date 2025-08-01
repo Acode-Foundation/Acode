@@ -31,6 +31,7 @@ export default class TerminalComponent {
 			scrollOnUserInput: true,
 			rows: options.rows || 24,
 			cols: options.cols || 80,
+			port: options.port || 8767,
 			fontSize: terminalSettings.fontSize,
 			fontFamily: terminalSettings.fontFamily,
 			fontWeight: terminalSettings.fontWeight,
@@ -128,7 +129,7 @@ export default class TerminalComponent {
 		let lastKnownScrollPosition = 0;
 		let isResizing = false;
 		let resizeCount = 0;
-		const RESIZE_DEBOUNCE = 150;
+		const RESIZE_DEBOUNCE = 100;
 		const MAX_RAPID_RESIZES = 3;
 
 		// Store original dimensions for comparison
@@ -170,8 +171,37 @@ export default class TerminalComponent {
 						await this.resizeTerminal(size.cols, size.rows);
 					}
 
-					// Preserve scroll position for content-heavy terminals
-					this.preserveViewportPosition(lastKnownScrollPosition);
+					// Handle keyboard resize cursor positioning
+					const heightRatio = size.rows / originalRows;
+					if (
+						heightRatio < 0.75 &&
+						this.terminal.buffer &&
+						this.terminal.buffer.active
+					) {
+						// Keyboard resize detected - ensure cursor is visible
+						const buffer = this.terminal.buffer.active;
+						const cursorY = buffer.cursorY;
+						const cursorViewportPos = buffer.baseY + cursorY;
+						const viewportTop = buffer.viewportY;
+						const viewportBottom = viewportTop + this.terminal.rows - 1;
+
+						if (
+							cursorViewportPos <= viewportTop + 1 ||
+							cursorViewportPos >= viewportBottom - 1
+						) {
+							const targetScroll = Math.max(
+								0,
+								Math.min(
+									buffer.length - this.terminal.rows,
+									cursorViewportPos - Math.floor(this.terminal.rows * 0.25),
+								),
+							);
+							this.terminal.scrollToLine(targetScroll);
+						}
+					} else {
+						// Regular resize - preserve scroll position
+						this.preserveViewportPosition(lastKnownScrollPosition);
+					}
 
 					// Update stored dimensions
 					originalRows = size.rows;
@@ -437,8 +467,9 @@ export default class TerminalComponent {
       height: 100%;
       position: relative;
       background: ${this.options.theme.background};
-      border-radius: 4px;
       overflow: hidden;
+      padding: 0.25rem;
+      box-sizing: border-box;
     `;
 
 		return this.container;
@@ -454,6 +485,9 @@ export default class TerminalComponent {
 		}
 
 		this.container = container;
+
+		// Apply terminal background color to container to match theme
+		this.container.style.background = this.options.theme.background;
 
 		try {
 			try {
@@ -535,13 +569,16 @@ export default class TerminalComponent {
 				rows: this.terminal.rows,
 			};
 
-			const response = await fetch("http://localhost:8767/terminals", {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
+			const response = await fetch(
+				`http://localhost:${this.options.port}/terminals`,
+				{
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify(requestBody),
 				},
-				body: JSON.stringify(requestBody),
-			});
+			);
 
 			if (!response.ok) {
 				throw new Error(`HTTP error! status: ${response.status}`);
@@ -573,7 +610,7 @@ export default class TerminalComponent {
 
 		this.pid = pid;
 
-		const wsUrl = `ws://localhost:8767/terminals/${pid}`;
+		const wsUrl = `ws://localhost:${this.options.port}/terminals/${pid}`;
 
 		this.websocket = new WebSocket(wsUrl);
 
@@ -627,13 +664,16 @@ export default class TerminalComponent {
 		if (!this.pid || !this.serverMode) return;
 
 		try {
-			await fetch(`http://localhost:8767/terminals/${this.pid}/resize`, {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
+			await fetch(
+				`http://localhost:${this.options.port}/terminals/${this.pid}/resize`,
+				{
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({ cols, rows }),
 				},
-				body: JSON.stringify({ cols, rows }),
-			});
+			);
 		} catch (error) {
 			console.error("Failed to resize terminal:", error);
 		}
@@ -653,7 +693,18 @@ export default class TerminalComponent {
 	 * @param {string} data - Data to write
 	 */
 	write(data) {
-		this.terminal.write(data);
+		if (
+			this.serverMode &&
+			this.isConnected &&
+			this.websocket &&
+			this.websocket.readyState === WebSocket.OPEN
+		) {
+			// Send data through WebSocket instead of direct write
+			this.websocket.send(data);
+		} else {
+			// For local mode or disconnected terminals, write directly
+			this.terminal.write(data);
+		}
 	}
 
 	/**
@@ -675,6 +726,32 @@ export default class TerminalComponent {
 	 * Focus terminal
 	 */
 	focus() {
+		// Ensure cursor is visible before focusing to prevent half-visibility
+		if (this.terminal.buffer && this.terminal.buffer.active) {
+			const buffer = this.terminal.buffer.active;
+			const cursorY = buffer.cursorY;
+			const cursorViewportPos = buffer.baseY + cursorY;
+			const viewportTop = buffer.viewportY;
+			const viewportBottom = viewportTop + this.terminal.rows - 1;
+
+			// Check if cursor is fully visible (with margin to prevent half-visibility)
+			const isCursorFullyVisible =
+				cursorViewportPos >= viewportTop + 1 &&
+				cursorViewportPos <= viewportBottom - 2;
+
+			// If cursor is not fully visible, scroll to make it properly visible
+			if (!isCursorFullyVisible && buffer.length > this.terminal.rows) {
+				const targetScroll = Math.max(
+					0,
+					Math.min(
+						buffer.length - this.terminal.rows,
+						cursorViewportPos - Math.floor(this.terminal.rows * 0.25),
+					),
+				);
+				this.terminal.scrollToLine(targetScroll);
+			}
+		}
+
 		this.terminal.focus();
 	}
 
@@ -896,9 +973,12 @@ export default class TerminalComponent {
 
 		if (this.pid && this.serverMode) {
 			try {
-				await fetch(`http://localhost:8767/terminals/${this.pid}/terminate`, {
-					method: "POST",
-				});
+				await fetch(
+					`http://localhost:${this.options.port}/terminals/${this.pid}/terminate`,
+					{
+						method: "POST",
+					},
+				);
 			} catch (error) {
 				console.error("Failed to terminate terminal:", error);
 			}

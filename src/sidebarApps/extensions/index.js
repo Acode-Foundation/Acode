@@ -564,6 +564,12 @@ function ListItem({ icon, name, id, version, downloads, installed, source }) {
 				if (searchInput) {
 					searchInput.value = "";
 					$searchResult.content = "";
+					// Reset filter state when clearing search results
+					currentFilter = null;
+					filterCurrentPage = 1;
+					filterHasMore = true;
+					isFilterLoading = false;
+					$searchResult.onscroll = null;
 					updateHeight($searchResult);
 					$installed.expand();
 				}
@@ -650,6 +656,12 @@ async function uninstall(id) {
 		if (searchInput) {
 			searchInput.value = "";
 			$searchResult.content = "";
+			// Reset filter state when clearing search results
+			currentFilter = null;
+			filterCurrentPage = 1;
+			filterHasMore = true;
+			isFilterLoading = false;
+			$searchResult.onscroll = null;
 			updateHeight($searchResult);
 			if ($installed.collapsed) {
 				$installed.expand();

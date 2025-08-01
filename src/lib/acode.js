@@ -104,7 +104,7 @@ export default class Acode {
 			createServer: (options) => TerminalManager.createServerTerminal(options),
 			get: (id) => TerminalManager.getTerminal(id),
 			getAll: () => TerminalManager.getAllTerminals(),
-			write: (id, data) => TerminalManager.writeToTerminal(id, data),
+			write: (id, data) => this.#secureTerminalWrite(id, data),
 			clear: (id) => TerminalManager.clearTerminal(id),
 			close: (id) => TerminalManager.closeTerminal(id),
 			themes: {
@@ -162,6 +162,101 @@ export default class Acode {
 		this.define("terminal", terminalModule);
 		this.define("createKeyboardEvent", KeyboardEvent);
 		this.define("toInternalUrl", helpers.toInternalUri);
+	}
+
+	/**
+	 * Secure terminal write with command validation
+	 * Prevents execution of malicious or dangerous commands through plugin API
+	 * @param {string} id - Terminal ID
+	 * @param {string} data - Data to write
+	 */
+	#secureTerminalWrite(id, data) {
+		if (typeof data !== "string") {
+			console.warn("Terminal write data must be a string");
+			return;
+		}
+
+		// List of potentially dangerous commands/patterns to block
+		const dangerousPatterns = [
+			// System commands that can cause damage
+			/^\s*rm\s+-rf?\s+\/[^\r\n]*[\r\n]?$/m,
+			/^\s*rm\s+-rf?\s+\*[^\r\n]*[\r\n]?$/m,
+			/^\s*rm\s+-rf?\s+~[^\r\n]*[\r\n]?$/m,
+			/^\s*mkfs\.[^\r\n]*[\r\n]?$/m,
+			/^\s*dd\s+if=\/[^\r\n]*[\r\n]?$/m,
+			/^\s*:(){ :|:& };:[^\r\n]*[\r\n]?$/m, // Fork bomb
+			/^\s*sudo\s+dd\s+if=\/[^\r\n]*[\r\n]?$/m,
+			/^\s*sudo\s+rm\s+-rf?\s+\/[^\r\n]*[\r\n]?$/m,
+			/^\s*curl\s+[^\r\n]*\|\s*sh[^\r\n]*[\r\n]?$/m,
+			/^\s*wget\s+[^\r\n]*\|\s*sh[^\r\n]*[\r\n]?$/m,
+			/^\s*bash\s+<\s*\([^\r\n]*[\r\n]?$/m,
+			/^\s*sh\s+<\s*\([^\r\n]*[\r\n]?$/m,
+
+			// Network-based attacks
+			/^\s*nc\s+-l\s+-p\s+\d+[^\r\n]*[\r\n]?$/m,
+			/^\s*ncat\s+-l\s+-p\s+\d+[^\r\n]*[\r\n]?$/m,
+			/^\s*python\s+.*SimpleHTTPServer[^\r\n]*[\r\n]?$/m,
+			/^\s*python\s+.*http\.server[^\r\n]*[\r\n]?$/m,
+
+			// Process manipulation
+			/^\s*kill\s+-9\s+1\s*[\r\n]?$/m,
+			/^\s*killall\s+-9\s+\*[^\r\n]*[\r\n]?$/m,
+
+			// File system manipulation
+			/^\s*chmod\s+777\s+\/[^\r\n]*[\r\n]?$/m,
+			/^\s*chown\s+[^\s]+\s+\/[^\r\n]*[\r\n]?$/m,
+
+			// Sensitive file access attempts
+			/^\s*cat\s+\/etc\/passwd[^\r\n]*[\r\n]?$/m,
+			/^\s*cat\s+\/etc\/shadow[^\r\n]*[\r\n]?$/m,
+			/^\s*cat\s+\/root\/[^\r\n]*[\r\n]?$/m,
+
+			// Only block null bytes
+			/\x00/g,
+		];
+
+		// Check for dangerous patterns
+		for (const pattern of dangerousPatterns) {
+			if (pattern.test(data)) {
+				console.warn(
+					`Blocked potentially dangerous terminal command: ${data.substring(0, 50)}...`,
+				);
+				toast("Potentially dangerous command blocked for security", 3000);
+				return;
+			}
+		}
+
+		// Additional checks for suspicious character sequences
+		if (data.includes("$(") && data.includes(")")) {
+			const commandSubstitution = /\$\([^)]*\)/g;
+			const matches = data.match(commandSubstitution);
+			if (matches) {
+				for (const match of matches) {
+					// Check if command substitution contains dangerous commands
+					for (const pattern of dangerousPatterns) {
+						if (pattern.test(match)) {
+							console.warn(
+								`Blocked command substitution with dangerous content: ${match}`,
+							);
+							toast("Command substitution blocked for security", 3000);
+							return;
+						}
+					}
+				}
+			}
+		}
+
+		// Sanitize data length to prevent memory exhaustion
+		const maxLength = 64 * 1024; // 64KB max per write
+		if (data.length > maxLength) {
+			console.warn(
+				`Terminal write data truncated - exceeded ${maxLength} characters`,
+			);
+			data = data.substring(0, maxLength) + "\n[Data truncated for security]\n";
+		}
+
+		// If all security checks pass, proceed with writing
+		return TerminalManager.writeToTerminal(id, data);
 	}
 
 	/**

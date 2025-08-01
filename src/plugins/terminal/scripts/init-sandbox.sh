@@ -25,4 +25,4 @@ else
 fi
 
 
-$PROOT --link2symlink -L --sysvipc --kill-on-exit -b $PREFIX:$PREFIX -b /data:/data -b /system:/system -b /vendor:/vendor -b /sdcard:/sdcard -b /storage:/storage -S $PREFIX/alpine /bin/sh $PREFIX/init-alpine.sh "$@"
+$PROOT --link2symlink -L --sysvipc --kill-on-exit -b $PREFIX:$PREFIX -b /data:/data -b /system:/system -b /vendor:/vendor -b /sdcard:/sdcard -b /storage:/storage -b $PREFIX/public:/public -S $PREFIX/alpine /bin/sh $PREFIX/init-alpine.sh "$@"

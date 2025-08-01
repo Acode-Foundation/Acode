@@ -5,8 +5,12 @@
 
 .ace_editor {
   &[data-font="Fira Code"] {
-    font-feature-settings: 'liga' on, 'calt' on;
-    -webkit-font-feature-settings: 'liga' on, 'calt' on;
+    font-feature-settings:
+      "liga" on,
+      "calt" on;
+    -webkit-font-feature-settings:
+      "liga" on,
+      "calt" on;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
     unicode-bidi: isolate;
@@ -35,7 +39,7 @@ main .ace_editor {
 }
 
 .ace_dark.ace_editor.ace_autocomplete .ace_marker-layer .ace_active-line {
-  background-color: var(--active-color);
+  background-color: rgba(from var(--active-color) r g b / 0.3);
 }
 
 .ace_dark.ace_editor.ace_autocomplete .ace_completion-highlight {
