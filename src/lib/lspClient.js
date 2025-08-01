@@ -1,15 +1,13 @@
 export default class lspClient {
-    constructor({ serverUrl, editor, documentUri, language }) {
-        this.editor = editor;
-        this.documentUri = documentUri;
+    constructor({ serverUrl }) {
         this.serverUrl = serverUrl;
         this.ws = null;
         this.messageId = 0;
         this.pendingRequests = new Map();
-        this.documentVersion = 1;
-        this.currentLanguage = language;
-    }
 
+        // Map of editorId -> { editor, documentUri, language, version, changeHandler }
+        this.editors = new Map();
+    }
 
     // Establish WebSocket connection and initialize LSP
     connect() {
@@ -20,29 +18,14 @@ export default class lspClient {
         this.ws.onmessage = (event) => this.handleMessage(event);
         this.ws.onerror = (error) => console.error('WebSocket error:', error);
         this.ws.onclose = () => console.log('WebSocket closed');
-
-        // Listen to editor changes
-        this.editor.getSession().on('change', (delta) => {
-            this.sendDidChange();
-        });
-
-        // Add LSP completer for autocompletion
-        this.editor.completers = this.editor.completers || [];
-        this.editor.completers.push({
-            getCompletions: (editor, session, pos, prefix, callback) => {
-                this.requestCompletions(pos, prefix, callback);
-            }
-        });
     }
 
-    // Disconnect from the LSP server
     disconnect() {
         if (this.ws) {
             this.ws.close();
         }
     }
 
-    // Send initialize request to LSP server
     initializeLSP() {
         const initParams = {
             processId: null,
@@ -54,59 +37,135 @@ export default class lspClient {
                 }
             }
         };
-        this.sendRequest('initialize', initParams).then((result) => {
-            this.sendNotification('initialized', {});
-            this.sendDidOpen();
-        }).catch((error) => console.error('Initialization failed:', error));
+        this.sendRequest('initialize', initParams)
+            .then(() => {
+                this.sendNotification('initialized', {});
+                // Open all already-registered editors
+                for (const [id, meta] of this.editors) {
+                    this.sendDidOpen(id);
+                }
+            })
+            .catch((error) => console.error('Initialization failed:', error));
     }
 
-    // Send textDocument/didOpen notification
-    sendDidOpen() {
+    // Add an editor/tab to share this single connection
+    addEditor(id, editor, documentUri, language) {
+        if (this.editors.has(id)) {
+            console.warn(`Editor with id ${id} already registered; replacing.`);
+            this.removeEditor(id);
+        }
+
+        const meta = {
+            editor,
+            documentUri,
+            language,
+            version: 1,
+            changeHandler: null,
+        };
+
+        // change listener
+        const changeHandler = () => {
+            this.sendDidChange(id);
+        };
+        meta.changeHandler = changeHandler;
+        editor.getSession().on('change', changeHandler);
+
+        // completer for this editor
+        editor.completers = editor.completers || [];
+        editor.completers.push({
+            getCompletions: (ed, session, pos, prefix, callback) => {
+                this.requestCompletions(id, pos, prefix, callback);
+            },
+        });
+
+        this.editors.set(id, meta);
+
+        // If already initialized, immediately send didOpen
+        this.sendDidOpen(id);
+    }
+
+    // Remove an editor/tab
+    removeEditor(id) {
+        const meta = this.editors.get(id);
+        if (!meta) return;
+        const { editor, changeHandler, documentUri } = meta;
+
+        // Optionally notify the server that the document is closed
+        this.sendNotification('textDocument/didClose', {
+            textDocument: { uri: documentUri },
+        });
+
+        // Tear down listener
+        if (changeHandler) {
+            editor.getSession().removeListener('change', changeHandler);
+        }
+
+        // Note: removing completer is left to caller if needed
+        this.editors.delete(id);
+    }
+
+    sendDidOpen(id) {
+        const meta = this.editors.get(id);
+        if (!meta) return;
+        const { editor, documentUri, language, version } = meta;
         const params = {
             textDocument: {
-                uri: this.documentUri,
-                languageId: this.currentLanguage,
-                version: this.documentVersion,
-                text: this.editor.getValue()
-            }
+                uri: documentUri,
+                languageId: language,
+                version,
+                text: editor.getValue(),
+            },
         };
         this.sendNotification('textDocument/didOpen', params);
     }
 
-    // Send textDocument/didChange notification
-    sendDidChange() {
+    sendDidChange(id) {
+        const meta = this.editors.get(id);
+        if (!meta) return;
+        const { editor, documentUri } = meta;
+        meta.version += 1;
         const params = {
             textDocument: {
-                uri: this.documentUri,
-                version: ++this.documentVersion
+                uri: documentUri,
+                version: meta.version,
             },
-            contentChanges: [{ text: this.editor.getValue() }]
+            contentChanges: [{ text: editor.getValue() }],
         };
         this.sendNotification('textDocument/didChange', params);
     }
 
-    // Request completions from LSP server
-    requestCompletions(position, prefix, callback) {
-        const params = {
-            textDocument: { uri: this.documentUri },
-            position: { line: position.row, character: position.column }
-        };
-        this.sendRequest('textDocument/completion', params).then((result) => {
-            const completions = (result?.items || []).map(item => ({
-                caption: item.label,
-                value: item.insertText || item.label,
-                meta: item.detail || 'completion'
-            }));
-            callback(null, completions);
-        }).catch((error) => {
-            console.error('Completion failed:', error);
+    requestCompletions(id, position, prefix, callback) {
+        const meta = this.editors.get(id);
+        if (!meta) {
             callback(null, []);
-        });
+            return;
+        }
+        const { documentUri } = meta;
+        const params = {
+            textDocument: { uri: documentUri },
+            position: { line: position.row, character: position.column },
+        };
+        this.sendRequest('textDocument/completion', params)
+            .then((result) => {
+                const completions = (result?.items || []).map((item) => ({
+                    caption: item.label,
+                    value: item.insertText || item.label,
+                    meta: item.detail || 'completion',
+                }));
+                callback(null, completions);
+            })
+            .catch((error) => {
+                console.error('Completion failed:', error);
+                callback(null, []);
+            });
     }
 
-    // Send a request and return a promise for the response
     sendRequest(method, params) {
         return new Promise((resolve, reject) => {
+            if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+                reject(new Error('WebSocket not open'));
+                return;
+            }
             const id = ++this.messageId;
             const message = { jsonrpc: '2.0', id, method, params };
             this.pendingRequests.set(id, { resolve, reject });
@@ -114,15 +173,21 @@ export default class lspClient {
         });
     }
 
-    // Send a notification (no response expected)
     sendNotification(method, params) {
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
         const message = { jsonrpc: '2.0', method, params };
         this.ws.send(JSON.stringify(message));
     }
 
-    // Handle incoming WebSocket messages
     handleMessage(event) {
-        const message = JSON.parse(event.data);
+        let message;
+        try {
+            message = JSON.parse(event.data);
+        } catch (e) {
+            console.warn('Failed to parse LSP message', e);
+            return;
+        }
+
         if (message.id && this.pendingRequests.has(message.id)) {
             const { resolve, reject } = this.pendingRequests.get(message.id);
             if (message.error) {
@@ -136,23 +201,22 @@ export default class lspClient {
         }
     }
 
-    // Handle diagnostics from LSP server and display in editor
     handleDiagnostics(params) {
         const diagnostics = params.diagnostics || [];
-        const annotations = diagnostics.map(d => ({
-            row: d.range.start.line,
-            column: d.range.start.character,
-            text: d.message,
-            type: d.severity === 1 ? 'error' : 'warning'
-        }));
-        this.editor.getSession().setAnnotations(annotations);
+        const uri = params.uri || (params.textDocument && params.textDocument.uri);
+        if (!uri) return;
 
-        // Optional: Update diagnostics list in HTML (assumes element exists)
-        const diagnosticsList = document.getElementById('diagnosticsList');
-        if (diagnosticsList) {
-            diagnosticsList.innerHTML = diagnostics.map(d =>
-                `<li>${d.message} at line ${d.range.start.line + 1}</li>`
-            ).join('');
+        // Find all editors with that document URI
+        for (const [, meta] of this.editors) {
+            if (meta.documentUri === uri) {
+                const annotations = diagnostics.map((d) => ({
+                    row: d.range.start.line,
+                    column: d.range.start.character,
+                    text: d.message,
+                    type: d.severity === 1 ? 'error' : 'warning',
+                }));
+                meta.editor.getSession().setAnnotations(annotations);
+            }
         }
     }
 }
