@@ -1,5 +1,5 @@
 export default class lspClient {
-    constructor({ serverUrl }) {
+    constructor(serverUrl) {
         this.serverUrl = serverUrl;
         this.ws = null;
         this.messageId = 0;
