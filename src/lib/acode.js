@@ -79,7 +79,7 @@ export default class Acode {
 			list: themes.list,
 			update: themes.update,
 			// Deprecated, not supported anymore
-			apply: () => { },
+			apply: () => {},
 		};
 
 		const sidebarAppsModule = {
