@@ -1,9 +1,9 @@
 import settings from "lib/settings";
 import mimeType from "mime-types";
-import Path from "utils/Path";
-import Url from "utils/Url";
 import { decode, encode } from "utils/encodings";
 import helpers from "utils/helpers";
+import Path from "utils/Path";
+import Url from "utils/Url";
 import internalFs from "./internalFs";
 
 class FtpClient {

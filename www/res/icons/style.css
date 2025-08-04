@@ -8,7 +8,7 @@
 
 @font-face {
   font-family: "li-icon";
-  src: url("li-icons.ttf?59d3hz") format("truetype");
+  src: url("li-icons.ttf?6wte0b") format("truetype");
   font-weight: normal;
   font-style: normal;
   font-display: block;
@@ -44,17 +44,20 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-.licons.verified:before {
+.licons.terminal:before {
   content: "\e900";
 }
-.licons.tag:before {
+.licons.cart:before {
   content: "\e901";
 }
 .licons.scale:before {
   content: "\e902";
 }
-.licons.cart:before {
+.licons.tag:before {
   content: "\e903";
+}
+.licons.verified:before {
+  content: "\e904";
 }
 
 .icon.acode:before {

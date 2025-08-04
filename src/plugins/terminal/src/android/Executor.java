@@ -6,6 +6,10 @@ import org.json.*;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
+import android.content.Context;
+import android.app.Activity;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 
 public class Executor extends CordovaPlugin {
 
@@ -13,13 +17,26 @@ public class Executor extends CordovaPlugin {
     private final Map<String, OutputStream> processInputs = new ConcurrentHashMap<>();
     private final Map<String, CallbackContext> processCallbacks = new ConcurrentHashMap<>();
 
+    private Context context;
+
+
+  @Override
+  public void initialize(CordovaInterface cordova, CordovaWebView webView) {
+    super.initialize(cordova, webView);
+    this.context = cordova.getContext();
+   
+  }
+
+  
+
+
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
         switch (action) {
             case "start":
                 String cmdStart = args.getString(0);
                 String pid = UUID.randomUUID().toString();
-                startProcess(pid, cmdStart, callbackContext);
+                startProcess(pid, cmdStart,args.getString(1), callbackContext);
                 return true;
             case "write":
                 String pidWrite = args.getString(0);
@@ -31,8 +48,18 @@ public class Executor extends CordovaPlugin {
                 stopProcess(pidStop, callbackContext);
                 return true;
             case "exec":
-                String cmdExec = args.getString(0);
-                exec(cmdExec, callbackContext);
+                exec(args.getString(0),args.getString(1), callbackContext);
+                return true;
+            case "isRunning":
+                isProcessRunning(args.getString(0), callbackContext);
+                return true;
+            case "loadLibrary":
+                try {
+                    System.load(args.getString(0));
+                    callbackContext.success("Library loaded successfully.");
+                } catch (Exception e) {
+                    callbackContext.error("Failed to load library: " + e.getMessage());
+                }
                 return true;
             default:
                 callbackContext.error("Unknown action: " + action);
@@ -40,10 +67,31 @@ public class Executor extends CordovaPlugin {
         }
     }
 
-    private void exec(String cmd, CallbackContext callbackContext) {
+    private void exec(String cmd,String alpine, CallbackContext callbackContext) {
+        cordova.getThreadPool().execute(() -> {
         try {
             if (cmd != null && !cmd.isEmpty()) {
-                Process process = Runtime.getRuntime().exec(cmd);
+                String xcmd = cmd;
+                if(alpine.equals("true")){
+                    xcmd = "source $PREFIX/init-sandbox.sh "+cmd;
+                }
+                
+                ProcessBuilder builder = new ProcessBuilder("sh", "-c", xcmd);
+
+                // Set environment variables
+                Map<String, String> env = builder.environment();
+                env.put("PREFIX", context.getFilesDir().getAbsolutePath());
+                env.put("NATIVE_DIR", context.getApplicationInfo().nativeLibraryDir);
+
+                try {
+                    int target = context.getPackageManager().getPackageInfo(context.getPackageName(), 0).applicationInfo.targetSdkVersion;
+                    env.put("FDROID", String.valueOf(target <= 28));
+                } catch (PackageManager.NameNotFoundException e) {
+                    e.printStackTrace();
+                }
+
+
+                Process process = builder.start();
 
                 // Capture stdout
                 BufferedReader stdOutReader = new BufferedReader(
@@ -79,12 +127,34 @@ public class Executor extends CordovaPlugin {
             e.printStackTrace();
             callbackContext.error("Exception: " + e.getMessage());
         }
+        });
     }
 
-    private void startProcess(String pid, String cmd, CallbackContext callbackContext) {
+    private void startProcess(String pid, String cmd,String alpine, CallbackContext callbackContext) {
         cordova.getThreadPool().execute(() -> {
             try {
-                Process process = Runtime.getRuntime().exec(cmd);
+                String xcmd = cmd;
+                if(alpine.equals("true")){
+                    xcmd = "source $PREFIX/init-sandbox.sh "+cmd;
+                }
+                ProcessBuilder builder = new ProcessBuilder("sh", "-c", xcmd);
+
+                // Set environment variables
+                Map<String, String> env = builder.environment();
+                env.put("PREFIX", context.getFilesDir().getAbsolutePath());
+                env.put("NATIVE_DIR", context.getApplicationInfo().nativeLibraryDir);
+
+                try {
+                    int target = context.getPackageManager().getPackageInfo(context.getPackageName(), 0).applicationInfo.targetSdkVersion;
+                    env.put("FDROID", String.valueOf(target <= 28));
+                } catch (PackageManager.NameNotFoundException e) {
+                    e.printStackTrace();
+                }
+
+
+
+                Process process = builder.start();
+
                 processes.put(pid, process);
                 processInputs.put(pid, process.getOutputStream());
                 processCallbacks.put(pid, callbackContext);
@@ -132,6 +202,22 @@ public class Executor extends CordovaPlugin {
             callbackContext.error("No such process");
         }
     }
+
+    private void isProcessRunning(String pid, CallbackContext callbackContext) {
+        Process process = processes.get(pid);
+
+        if (process != null) {
+            if (process.isAlive()) {
+                callbackContext.success("running");
+            } else {
+                cleanup(pid);
+                callbackContext.success("exited");
+            }
+        } else {
+            callbackContext.success("not_found");
+        }
+    }
+
 
     private void streamOutput(InputStream inputStream, String pid, String streamType) {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {

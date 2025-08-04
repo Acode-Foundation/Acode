@@ -1,11 +1,11 @@
-import loader from "dialogs/loader";
-import multiPrompt from "dialogs/multiPrompt";
 import fsOperation from "fileSystem";
 import Ftp from "fileSystem/ftp";
 import Sftp from "fileSystem/sftp";
+import loader from "dialogs/loader";
+import multiPrompt from "dialogs/multiPrompt";
 import URLParse from "url-parse";
-import Url from "utils/Url";
 import helpers from "utils/helpers";
+import Url from "utils/Url";
 
 export default {
 	/**

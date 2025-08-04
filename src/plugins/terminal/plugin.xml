@@ -1,25 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <plugin xmlns="http://apache.org/cordova/ns/plugins/1.0" xmlns:android="http://schemas.android.com/apk/res/android" id="com.foxdebug.acode.rk.exec.terminal" version="1.0.0">
     <name>Terminal</name>
+   
+    <js-module name="Terminal" src="www/Terminal.js">
+        <clobbers target="window.Terminal" />
+    </js-module>
 
     <!-- executor api -->
     <js-module name="Executor" src="www/Executor.js">
-        <clobbers target="cordova.plugins.Executor" />
+        <clobbers target="window.Executor" />
     </js-module>
-
 
     <platform name="android">
         <config-file parent="/*" target="res/xml/config.xml">
-            <feature name="Terminal">
-                <param name="android-package" value="com.foxdebug.acode.rk.exec.terminal" />
+            <feature name="Executor">
+                <param name="android-package" value="com.foxdebug.acode.rk.exec.terminal.Executor" />
             </feature>
         </config-file>
         <config-file parent="/*" target="AndroidManifest.xml" />
+
         <source-file src="src/android/Executor.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
+        <source-file src="src/android/AlpineDocumentProvider.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
 
-        <!-- Use flavors if F-Droid complains about native libs -->
-        <source-file src="libs/proot-aarch64.so" target-dir="libs/arm64-v8a" />
-        <source-file src="libs/proot-arm.so" target-dir="libs/armeabi-v7a" />
+        <source-file src="scripts/init-sandbox.sh" target-dir="assets"/>
+        <source-file src="scripts/init-alpine.sh" target-dir="assets"/>
 
+        <config-file target="AndroidManifest.xml" parent="/manifest"></config-file>
+
+        <config-file target="AndroidManifest.xml" parent="./application">
+            <provider
+            android:name="com.foxdebug.acode.rk.exec.terminal.AlpineDocumentProvider"
+            android:authorities="${applicationId}.documents"
+            android:exported="true"
+            android:grantUriPermissions="true"
+            android:icon="@mipmap/ic_launcher"
+            android:permission="android.permission.MANAGE_DOCUMENTS">
+            <intent-filter>
+                <action android:name="android.content.action.DOCUMENTS_PROVIDER" />
+            </intent-filter>
+            </provider>
+        </config-file>
+
+           
     </platform>
 </plugin>

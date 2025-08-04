@@ -40,5 +40,6 @@
 
     <framework src="androidx.core:core:1.6.0" />
     <framework src="androidx.core:core-google-shortcuts:1.0.0" />
+    <framework src="androidx.documentfile:documentfile:1.0.1" />
   </platform>
 </plugin>

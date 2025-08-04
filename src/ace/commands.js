@@ -1,5 +1,5 @@
-import prompt from "dialogs/prompt";
 import fsOperation from "fileSystem";
+import prompt from "dialogs/prompt";
 import actions from "handlers/quickTools";
 import keyBindings from "lib/keyBindings";
 import settings from "lib/settings";
@@ -338,6 +338,14 @@ const commands = [
 		description: "Change Editor Theme",
 		exec() {
 			acode.exec("change-editor-theme");
+		},
+		readOnly: true,
+	},
+	{
+		name: "openTerminal",
+		description: "Open Terminal",
+		exec() {
+			acode.exec("new-terminal");
 		},
 		readOnly: true,
 	},

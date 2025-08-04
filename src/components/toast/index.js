@@ -17,14 +17,12 @@ export default function toast(message, duration = 0, bgColor, color) {
 			style={{ backgroundColor: bgColor, color }}
 		>
 			<span className="message">{message}</span>
-			{duration === false ? (
-				<button
-					className="icon clearclose"
-					onclick={() => $toast.hide()}
-				></button>
-			) : (
-				""
-			)}
+			{duration === false
+				? <button
+						className="icon clearclose"
+						onclick={() => $toast.hide()}
+					></button>
+				: ""}
 		</div>
 	);
 

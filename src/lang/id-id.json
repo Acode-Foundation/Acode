@@ -126,6 +126,7 @@
 	"animation": "Animasi",
 	"backup": "Cadangkan",
 	"restore": "Mengembalikan",
+	"allFileAccess": "Semua akses berkas",
 	"backup successful": "Berhasil membuat cadangan",
 	"invalid backup file": "Berkas cadangan tidak valid",
 	"add path": "Tambah jalur",
@@ -409,5 +410,17 @@
 	"plugin_disabled": "Plugin dinonaktifkan",
 	"enable_plugin": "Aktifkan Plugin ini",
 	"disable_plugin": "Nonaktifkan Plugin ini",
-	"open_source": "Open Source"
+	"open_source": "Sumber Terbuka",
+	"terminal settings": "Pengaturan Terminal",
+	"font ligatures": "Ligatur Huruf",
+	"letter spacing": "Jarak Antar Huruf",
+	"terminal:tab stop width": "Lebar Hentian Tab",
+	"terminal:scrollback": "Garis Gulir Balik",
+	"terminal:cursor blink": "Kursor Berkedip",
+	"terminal:font weight": "Berat Huruf",
+	"terminal:cursor inactive style": "Gaya Kursor Tidak Aktif",
+	"terminal:cursor style": "Gaya Kursor",
+	"terminal:font family": "Keluarga Huruf",
+	"terminal:convert eol": "Konversi Akhir Baris",
+	"terminal": "Terminal"
 }

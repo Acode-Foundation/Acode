@@ -47,6 +47,26 @@
         height: 30px;
         min-width: 30px;
       }
+
+      @media (min-width: 769px) {
+        height: 35px;
+        font-size: 1.1em;
+
+        .icon {
+          height: 35px;
+          min-width: 35px;
+        }
+      }
+
+      @media (min-width: 1024px) {
+        height: 40px;
+        font-size: 1.2em;
+
+        .icon {
+          height: 40px;
+          min-width: 40px;
+        }
+      }
     }
 
     ul {
@@ -61,6 +81,26 @@
           height: 28px;
           min-width: 28px;
           font-size: 1em;
+        }
+
+        @media (min-width: 769px) {
+          height: 35px;
+
+          .icon {
+            height: 33px;
+            min-width: 33px;
+            font-size: 1.1em;
+          }
+        }
+
+        @media (min-width: 1024px) {
+          height: 40px;
+
+          .icon {
+            height: 38px;
+            min-width: 38px;
+            font-size: 1.2em;
+          }
         }
       }
 
@@ -109,6 +149,16 @@
       .container .value {
         text-transform: none;
       }
+    }
+
+    @media (min-width: 769px) {
+      min-height: 70px;
+      font-size: 1.1em;
+    }
+
+    @media (min-width: 1024px) {
+      min-height: 80px;
+      font-size: 1.2em;
     }
 
     .container {
@@ -170,6 +220,26 @@
 
       &.no-icon {
         width: 20px;
+      }
+
+      @media (min-width: 769px) {
+        height: 70px;
+        width: 70px;
+        font-size: 1.6em;
+
+        &.no-icon {
+          width: 25px;
+        }
+      }
+
+      @media (min-width: 1024px) {
+        height: 80px;
+        width: 80px;
+        font-size: 1.8em;
+
+        &.no-icon {
+          width: 30px;
+        }
       }
     }
 

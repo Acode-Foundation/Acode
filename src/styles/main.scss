@@ -25,6 +25,14 @@ body {
   width: 100%;
   height: 100%;
   font-size: 14px;
+
+  @media (min-width: 769px) {
+    font-size: 16px;
+  }
+
+  @media (min-width: 1024px) {
+    font-size: 18px;
+  }
 }
 
 body {
@@ -328,6 +336,14 @@ footer {
   user-select: none;
   width: 100%;
 
+  @media (min-width: 769px) {
+    min-height: 50px;
+  }
+
+  @media (min-width: 1024px) {
+    min-height: 60px;
+  }
+
   &.primary {
     button {
       color: white !important;
@@ -404,6 +420,14 @@ footer {
   .icon {
     color: inherit;
     font-size: 1.3em;
+
+    @media (min-width: 769px) {
+      font-size: 1.6em;
+    }
+
+    @media (min-width: 1024px) {
+      font-size: 1.8em;
+    }
   }
 
   .search,
@@ -429,6 +453,18 @@ input {
   &:focus {
     border-bottom-color: #a90000 !important;
     border-bottom-color: var(--active-color) !important;
+  }
+
+  @media (min-width: 769px) {
+    height: 48px;
+    font-size: 1.1em;
+    text-indent: 12px;
+  }
+
+  @media (min-width: 1024px) {
+    height: 54px;
+    font-size: 1.2em;
+    text-indent: 14px;
   }
 }
 
@@ -591,6 +627,22 @@ textarea {
 
   &.hide {
     opacity: 0 !important;
+  }
+
+  @media (min-width: 769px) {
+    height: 65px;
+    width: 65px;
+    font-size: 2rem;
+    top: 15px;
+    right: 15px;
+  }
+
+  @media (min-width: 1024px) {
+    height: 75px;
+    width: 75px;
+    font-size: 2.4rem;
+    top: 20px;
+    right: 20px;
   }
 }
 

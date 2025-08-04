@@ -1,7 +1,7 @@
 {
   "name": "com.foxdebug.acode",
   "displayName": "Acode",
-  "version": "1.11.4",
+  "version": "1.11.5",
   "description": "Acode is a code editor for android",
   "scripts": {
     "lang": "node ./utils/lang.js",
@@ -31,13 +31,14 @@
       "cordova-plugin-sdcard": {},
       "cordova-plugin-browser": {},
       "cordova-plugin-iap": {},
-      "cordova-plugin-system": {},
       "cordova-plugin-advanced-http": {
         "ANDROIDBLACKLISTSECURESOCKETPROTOCOLS": "SSLv3,TLSv1"
       },
       "cordova-plugin-websocket": {},
-      "com.foxdebug.acode.rk.exec.terminal": {},
-      "cordova-plugin-buildinfo": {}
+      "cordova-plugin-buildinfo": {},
+      "com.foxdebug.acode.rk.exec.proot": {},
+      "cordova-plugin-system": {},
+      "com.foxdebug.acode.rk.exec.terminal": {}
     },
     "platforms": [
       "android"
@@ -58,11 +59,12 @@
     "@babel/preset-env": "^7.24.6",
     "@babel/runtime": "^7.24.6",
     "@babel/runtime-corejs3": "^7.24.6",
-    "@biomejs/biome": "1.8.3",
+    "@biomejs/biome": "2.1.1",
     "@types/ace": "^0.0.52",
     "@types/url-parse": "^1.4.11",
     "autoprefixer": "^10.4.19",
     "babel-loader": "^9.1.3",
+    "com.foxdebug.acode.rk.exec.proot": "file:src/plugins/proot",
     "com.foxdebug.acode.rk.exec.terminal": "file:src/plugins/terminal",
     "cordova-android": "^13.0.0",
     "cordova-clipboard": "^1.3.0",
@@ -88,12 +90,21 @@
     "sass": "^1.77.2",
     "sass-loader": "^14.2.1",
     "style-loader": "^4.0.0",
+    "terminal": "^0.1.4",
     "webpack": "^5.94.0",
     "webpack-cli": "^5.1.4"
   },
   "dependencies": {
     "@deadlyjack/ajax": "^1.2.6",
     "@ungap/custom-elements": "^1.3.0",
+    "@xterm/addon-attach": "^0.11.0",
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/addon-image": "^0.8.0",
+    "@xterm/addon-search": "^0.15.0",
+    "@xterm/addon-unicode11": "^0.8.0",
+    "@xterm/addon-web-links": "^0.11.0",
+    "@xterm/addon-webgl": "^0.18.0",
+    "@xterm/xterm": "^5.5.0",
     "autosize": "^6.0.1",
     "cordova": "12.0.0",
     "core-js": "^3.37.1",

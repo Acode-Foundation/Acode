@@ -1,7 +1,7 @@
-import Page from "components/page";
 import fsOperation from "fileSystem";
-import Url from "utils/Url";
+import Page from "components/page";
 import helpers from "utils/helpers";
+import Url from "utils/Url";
 import actionStack from "./actionStack";
 
 export default async function loadPlugin(pluginId, justInstalled = false) {

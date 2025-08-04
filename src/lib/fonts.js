@@ -1,7 +1,7 @@
-import loader from "dialogs/loader";
 import fsOperation from "fileSystem";
-import Url from "utils/Url";
+import loader from "dialogs/loader";
 import helpers from "utils/helpers";
+import Url from "utils/Url";
 
 const fonts = new Map();
 
@@ -25,6 +25,16 @@ add(
   src: url(../res/fonts/RobotoMono.ttf) format('truetype');
   unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F,
     U+FE2E-FE2F;
+}`,
+);
+
+add(
+	"MesloLGS NF Regular",
+	`@font-face {
+  font-family: 'MesloLGS NF Regular';
+  font-style: normal;
+  font-weight: normal;
+  src: url(../res/fonts/MesloLGSNFRegular.ttf) format('truetype');
 }`,
 );
 
@@ -172,9 +182,39 @@ async function downloadFont(name, link) {
 	return FONT_FILE;
 }
 
+async function loadFont(name) {
+	const $style = tag.get("style#font-style") ?? <style id="font-style"></style>;
+	let css = get(name);
+
+	if (!css) {
+		throw new Error(`Font ${name} not found`);
+	}
+
+	// Get all URL font references
+	const urls = [...css.matchAll(/url\((.*?)\)/g)].map((match) => match[1]);
+
+	// Download and replace URLs
+	for (const url of urls) {
+		if (!/^https?/.test(url)) continue;
+		if (/^https?:\/\/localhost/.test(url)) continue;
+		const fontFile = await downloadFont(name, url);
+		const internalUrl = await helpers.toInternalUri(fontFile);
+		css = css.replace(url, internalUrl);
+	}
+
+	// Add font face to document if not already present
+	if (!$style.textContent.includes(`font-family: '${name}'`)) {
+		$style.textContent = `${$style.textContent}\n${css}`;
+		document.head.append($style);
+	}
+
+	return css;
+}
+
 export default {
 	add,
 	get,
 	getNames,
 	setFont,
+	loadFont,
 };

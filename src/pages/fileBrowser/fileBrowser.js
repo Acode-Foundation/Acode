@@ -1,5 +1,7 @@
 import "./fileBrowser.scss";
 
+import fsOperation from "fileSystem";
+import externalFs from "fileSystem/externalFs";
 import Checkbox from "components/checkbox";
 import Contextmenu from "components/contextmenu";
 import Page from "components/page";
@@ -9,8 +11,6 @@ import confirm from "dialogs/confirm";
 import loader from "dialogs/loader";
 import prompt from "dialogs/prompt";
 import select from "dialogs/select";
-import fsOperation from "fileSystem";
-import externalFs from "fileSystem/externalFs";
 import JSZip from "jszip";
 import actionStack from "lib/actionStack";
 import checkFiles from "lib/checkFiles";
@@ -24,10 +24,10 @@ import mimeTypes from "mime-types";
 import mustache from "mustache";
 import filesSettings from "settings/filesSettings";
 import URLParse from "url-parse";
-import Url from "utils/Url";
 import helpers from "utils/helpers";
-import _addMenuHome from "./add-menu-home.hbs";
+import Url from "utils/Url";
 import _addMenu from "./add-menu.hbs";
+import _addMenuHome from "./add-menu-home.hbs";
 import _template from "./fileBrowser.hbs";
 import _list from "./list.hbs";
 import util from "./util";
@@ -1031,6 +1031,33 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 						uuid: "internal-storage",
 					},
 				);
+			}
+
+			// Check for Terminal Home Directory storage
+			try {
+				const isTerminalInstalled = await Terminal.isInstalled();
+				if (typeof Terminal !== "undefined" && isTerminalInstalled) {
+					const isTerminalSupported = await Terminal.isSupported();
+
+					if (isTerminalSupported && isTerminalInstalled) {
+						const terminalHomeUrl = cordova.file.dataDirectory + "alpine/home";
+
+						// Check if this storage is not already in the list
+						const terminalStorageExists = allStorages.find(
+							(storage) =>
+								storage.uuid === "terminal-home" ||
+								storage.url === terminalHomeUrl,
+						);
+
+						if (!terminalStorageExists) {
+							util.pushFolder(allStorages, "Terminal Home", terminalHomeUrl, {
+								uuid: "terminal-home",
+							});
+						}
+					}
+				}
+			} catch (error) {
+				console.error("Error checking Terminal installation:", error);
 			}
 
 			try {

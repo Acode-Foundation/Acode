@@ -1,14 +1,14 @@
+import fsOperation from "fileSystem";
 import Sidebar from "components/sidebar";
 import tile from "components/tile";
 import confirm from "dialogs/confirm";
 import DOMPurify from "dompurify";
-import fsOperation from "fileSystem";
 import startDrag from "handlers/editorFileTab";
 import tag from "html-tag-js";
 import mimeTypes from "mime-types";
+import helpers from "utils/helpers";
 import Path from "utils/Path";
 import Url from "utils/Url";
-import helpers from "utils/helpers";
 import constants from "./constants";
 import openFolder from "./openFolder";
 import run from "./run";
@@ -61,6 +61,12 @@ export default class EditorFile {
 	 * @type {string|string[]}
 	 */
 	stylesheets;
+
+	/**
+	 * Custom title function for special tab types
+	 * @type {function}
+	 */
+	#customTitleFn = null;
 
 	/**
 	 * If editor was focused before resize
@@ -209,53 +215,68 @@ export default class EditorFile {
 		if (options?.type) {
 			this.#type = options.type;
 			if (this.#type !== "editor") {
-				const container = tag("div", {
-					className: "tab-page-container",
-				});
+				let container;
+				let shadow;
 
-				// shadow dom
-				const shadow = container.attachShadow({ mode: "open" });
-
-				// main app styles
-				const mainStyle = tag("link", {
-					rel: "stylesheet",
-					href: "./css/build/main.css",
-				});
-				// icon styles
-				const iconStyle = tag("link", {
-					rel: "stylesheet",
-					href: "./res/icons/style.css",
-				});
-				// file icon styles
-				const fileIconStyle = tag("link", {
-					rel: "stylesheet",
-					href: "./res/file-icons/style.css",
-				});
-
-				// Add base styles to shadow DOM first
-				shadow.appendChild(mainStyle);
-				shadow.appendChild(iconStyle);
-				shadow.appendChild(fileIconStyle);
-
-				// Handle custom stylesheets if provided
-				if (options.stylesheets) {
-					this.#addCustomStyles(options.stylesheets, shadow);
-				}
-
-				const content = tag("div", {
-					className: "tab-page-content",
-				});
-
-				if (typeof options.content === "string") {
-					content.innerHTML = DOMPurify.sanitize(options.content);
+				if (this.#type === "terminal") {
+					container = tag("div", {
+						className: "tab-page-container",
+					});
+					const content = tag("div", {
+						className: "tab-page-content",
+					});
+					content.appendChild(options?.content);
+					container.appendChild(content);
+					this.#content = container;
 				} else {
-					content.appendChild(options.content);
+					container = tag("div", {
+						className: "tab-page-container",
+					});
+
+					// shadow dom
+					shadow = container.attachShadow({ mode: "open" });
+
+					// main app styles
+					const mainStyle = tag("link", {
+						rel: "stylesheet",
+						href: "./css/build/main.css",
+					});
+					// icon styles
+					const iconStyle = tag("link", {
+						rel: "stylesheet",
+						href: "./res/icons/style.css",
+					});
+					// file icon styles
+					const fileIconStyle = tag("link", {
+						rel: "stylesheet",
+						href: "./res/file-icons/style.css",
+					});
+
+					// Add base styles to shadow DOM first
+					shadow.appendChild(mainStyle);
+					shadow.appendChild(iconStyle);
+					shadow.appendChild(fileIconStyle);
+
+					// Handle custom stylesheets if provided
+					if (options.stylesheets) {
+						this.#addCustomStyles(options.stylesheets, shadow);
+					}
+
+					const content = tag("div", {
+						className: "tab-page-content",
+					});
+
+					if (typeof options.content === "string") {
+						content.innerHTML = DOMPurify.sanitize(options.content);
+					} else {
+						content.appendChild(options.content);
+					}
+
+					// Append content container to shadow DOM
+					shadow.appendChild(content);
+
+					this.#content = container;
 				}
-
-				// Append content container to shadow DOM
-				shadow.appendChild(content);
-
-				this.#content = container;
 			} else {
 				this.#content = options.content;
 			}
@@ -934,6 +955,18 @@ export default class EditorFile {
 	}
 
 	/**
+	 * Set custom title function for special tab types
+	 * @param {function} titleFn Function that returns the title string
+	 */
+	setCustomTitle(titleFn) {
+		this.#customTitleFn = titleFn;
+		// Update header if this file is currently active
+		if (editorManager.activeFile && editorManager.activeFile.id === this.id) {
+			editorManager.header.subText = this.#getTitle();
+		}
+	}
+
+	/**
 	 *
 	 * @param {FileAction} action
 	 */
@@ -1181,6 +1214,11 @@ export default class EditorFile {
 	}
 
 	#getTitle() {
+		// Use custom title function if provided
+		if (this.#customTitleFn) {
+			return this.#customTitleFn();
+		}
+
 		let text = this.location || this.uri;
 
 		if (text && !this.readOnly) {

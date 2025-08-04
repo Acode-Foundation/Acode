@@ -1,21 +1,18 @@
-import initColorView from "ace/colorView";
-import { deactivateColorView } from "ace/colorView";
+import sidebarApps from "sidebarApps";
+import initColorView, { deactivateColorView } from "ace/colorView";
 import { setCommands, setKeyBindings } from "ace/commands";
-import touchListeners from "ace/touchHandler";
-import { scrollAnimationFrame } from "ace/touchHandler";
+import touchListeners, { scrollAnimationFrame } from "ace/touchHandler";
 import list from "components/collapsableList";
 import quickTools from "components/quickTools";
 import ScrollBar from "components/scrollbar";
 import SideButton, { sideButtonContainer } from "components/sideButton";
-import keyboardHandler from "handlers/keyboard";
-import { keydownState } from "handlers/keyboard";
+import keyboardHandler, { keydownState } from "handlers/keyboard";
 import actions from "handlers/quickTools";
-import sidebarApps from "sidebarApps";
 import EditorFile from "./editorFile";
 import appSettings from "./settings";
 import {
-	HARDKEYBOARDHIDDEN_NO,
 	getSystemConfiguration,
+	HARDKEYBOARDHIDDEN_NO,
 } from "./systemConfiguration";
 
 /**
