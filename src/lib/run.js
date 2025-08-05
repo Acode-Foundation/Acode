@@ -1,5 +1,5 @@
-import ajax from "@deadlyjack/ajax";
 import fsOperation from "fileSystem";
+import ajax from "@deadlyjack/ajax";
 import tutorial from "components/tutorial";
 import alert from "dialogs/alert";
 import box from "dialogs/box";

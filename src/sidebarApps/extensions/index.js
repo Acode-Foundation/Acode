@@ -1,14 +1,14 @@
 import "./style.scss";
 
 import fsOperation from "fileSystem";
+import fsOperation from "fileSystem";
+import internalFs from "fileSystem/internalFs";
 import ajax from "@deadlyjack/ajax";
 import collapsableList from "components/collapsableList";
 import Sidebar from "components/sidebar";
 import alert from "dialogs/alert";
 import prompt from "dialogs/prompt";
 import select from "dialogs/select";
-import fsOperation from "fileSystem";
-import internalFs from "fileSystem/internalFs";
 import purchaseListener from "handlers/purchase";
 import constants from "lib/constants";
 import InstallState from "lib/installState";

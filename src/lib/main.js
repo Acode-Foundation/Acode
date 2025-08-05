@@ -12,6 +12,7 @@ import "components/WebComponents";
 
 import fsOperation from "fileSystem";
 import sidebarApps from "sidebarApps";
+import { App as CapacitorApp } from "@capacitor/app";
 import ajax from "@deadlyjack/ajax";
 import { setKeyBindings } from "ace/commands";
 import { initModes } from "ace/modelist";
@@ -51,8 +52,6 @@ import Url from "utils/Url";
 import $_fileMenu from "views/file-menu.hbs";
 import $_menu from "views/menu.hbs";
 import auth, { loginEvents } from "./auth";
-
-import { App as CapacitorApp } from "@capacitor/app";
 
 const previousVersionCode = Number.parseInt(localStorage.versionCode, 10);
 

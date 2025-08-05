@@ -1,5 +1,5 @@
-import ajax from "@deadlyjack/ajax";
 import internalFs from "fileSystem/internalFs";
+import ajax from "@deadlyjack/ajax";
 import fsOperation from "../fileSystem";
 import Url from "../utils/Url";
 

@@ -1,11 +1,11 @@
+import fsOperation from "fileSystem";
 import { Directory, Encoding, Filesystem } from "@capacitor/filesystem";
 import ajax from "@deadlyjack/ajax";
 import { data } from "autoprefixer";
-import fsOperation from "fileSystem";
 import path from "path-browserify";
-import Url from "utils/Url";
 import { decode, encode } from "utils/encodings";
 import helpers from "utils/helpers";
+import Url from "utils/Url";
 import Url from "utils/Url";
 
 const internalFs = {

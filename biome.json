@@ -4,7 +4,13 @@
 		"enabled": true,
 		"indentStyle": "tab"
 	},
-	"assist": { "actions": { "source": { "organizeImports": "on" } } },
+	"assist": {
+		"actions": {
+			"source": {
+				"organizeImports": "on"
+			}
+		}
+	},
 	"linter": {
 		"enabled": true,
 		"rules": {
@@ -46,19 +52,8 @@
 			"!**/hooks/**/*",
 			"!**/fastlane/**/*",
 			"!**/res/**/*",
-			"!**/platforms/**/*"
-		],
-		"ignore": [
-			"ace-builds",
-			"www/js/**/*.js",
-			"www/css/**/*.css",
-			"src/plugins/**/*",
-			"plugins/**/*",
-			"hooks/**/*",
-			"fastlane/**/*",
-			"res/**/*",
-			"platforms/**/*",
-			"android/**"
+			"!**/platforms/**/*",
+			"!android/**"
 		]
 	}
 }
