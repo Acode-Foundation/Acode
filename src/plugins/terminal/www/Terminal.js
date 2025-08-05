@@ -91,8 +91,14 @@ const Terminal = {
      * @returns {Promise<boolean>} - Returns true if installation completes with exit code 0
      */
     async install(logger = console.log, err_logger = console.error) {
-        if (await this.isInstalled()) return true;
         if (!(await this.isSupported())) return false;
+
+        try {
+            //cleanup before insatll
+            await this.uninstall();
+        } catch (e) {
+            //supress error
+        }
 
         const filesDir = await new Promise((resolve, reject) => {
             system.getFilesDir(resolve, reject);
