@@ -1,6 +1,6 @@
+import fsOperation from "fileSystem";
 import alert from "dialogs/alert";
 import confirm from "dialogs/confirm";
-import fsOperation from "fileSystem";
 
 let checkFileEnabled = true;
 

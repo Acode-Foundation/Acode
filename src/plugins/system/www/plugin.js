@@ -1,4 +1,16 @@
 module.exports = {
+  isManageExternalStorageDeclared: function (success, error) {
+    cordova.exec(success, error, 'System', 'isManageExternalStorageDeclared', []);
+  },
+  hasGrantedStorageManager: function (success, error) {
+    cordova.exec(success, error, 'System', 'hasGrantedStorageManager', []);
+  },
+  requestStorageManager: function (success, error) {
+    cordova.exec(success, error, 'System', 'requestStorageManager', []);
+  },
+  copyToUri: function (srcUri,destUri,fileName, success, error) {
+    cordova.exec(success, error, 'System', 'copyToUri', [srcUri,destUri,fileName]);
+  },
   fileExists: function (path,countSymlinks, success, error) {
       cordova.exec(success, error, 'System', 'fileExists', [path,String(countSymlinks)]);
     },

@@ -6,6 +6,7 @@ import path from "path-browserify";
 import Url from "utils/Url";
 import { decode, encode } from "utils/encodings";
 import helpers from "utils/helpers";
+import Url from "utils/Url";
 
 const internalFs = {
 	/**

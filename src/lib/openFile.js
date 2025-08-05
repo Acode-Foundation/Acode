@@ -1,10 +1,10 @@
+import fsOperation from "fileSystem";
 import AudioPlayer from "components/audioPlayer";
 import alert from "dialogs/alert";
 import confirm from "dialogs/confirm";
 import loader from "dialogs/loader";
-import fsOperation from "fileSystem";
 import { reopenWithNewEncoding } from "palettes/changeEncoding";
-import { decode } from "utils/encodings";
+import { decode, detectEncoding } from "utils/encodings";
 import helpers from "utils/helpers";
 import EditorFile from "./editorFile";
 import fileTypeHandler from "./fileTypeHandler";
@@ -84,7 +84,7 @@ export default async function openFile(file, options = {}) {
 		const fileInfo = await fs.stat();
 		const name = fileInfo.name || file.filename || uri;
 		const readOnly = fileInfo.canWrite ? false : true;
-		const createEditor = (isUnsaved, text) => {
+		const createEditor = (isUnsaved, text, detectedEncoding) => {
 			new EditorFile(name, {
 				uri,
 				text,
@@ -93,7 +93,7 @@ export default async function openFile(file, options = {}) {
 				render,
 				onsave,
 				readOnly,
-				encoding,
+				encoding: detectedEncoding || encoding,
 				SAFMode: mode,
 			});
 		};
@@ -385,12 +385,21 @@ export default async function openFile(file, options = {}) {
 		}
 
 		const binData = await fs.readFile();
-		const fileContent = await decode(
-			binData,
-			file.encoding || appSettings.value.defaultFileEncoding,
-		);
 
-		createEditor(false, fileContent);
+		// Detect encoding if not explicitly provided
+		let detectedEncoding = file.encoding || encoding;
+		if (!detectedEncoding) {
+			try {
+				detectedEncoding = await detectEncoding(binData);
+			} catch (error) {
+				console.warn("Encoding detection failed, using default:", error);
+				detectedEncoding = appSettings.value.defaultFileEncoding;
+			}
+		}
+
+		const fileContent = await decode(binData, detectedEncoding);
+
+		createEditor(false, fileContent, detectedEncoding);
 		if (mode !== "single") recents.addFile(uri);
 		return;
 	} catch (error) {

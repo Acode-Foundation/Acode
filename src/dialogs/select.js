@@ -48,9 +48,9 @@ function select(title, items, options = {}) {
 		const $list = tag("ul", {
 			className: `scroll${!textTransform ? " no-text-transform" : ""}`,
 		});
-		const $titleSpan = title ? (
-			<strong className="title">{title}</strong>
-		) : null;
+		const $titleSpan = title
+			? <strong className="title">{title}</strong>
+			: null;
 		const $select = (
 			<div className="prompt select">
 				{$titleSpan ? [$titleSpan, $list] : $list}

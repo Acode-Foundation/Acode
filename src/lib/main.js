@@ -10,15 +10,18 @@ import "lib/polyfill";
 import "ace/supportedModes";
 import "components/WebComponents";
 
+import fsOperation from "fileSystem";
+import sidebarApps from "sidebarApps";
 import ajax from "@deadlyjack/ajax";
+import { setKeyBindings } from "ace/commands";
+import { initModes } from "ace/modelist";
 import Contextmenu from "components/contextmenu";
 import Sidebar from "components/sidebar";
 import tile from "components/tile";
 import toast from "components/toast";
 import tutorial from "components/tutorial";
-import fsOperation from "fileSystem";
 import intentHandler, { processPendingIntents } from "handlers/intent";
-import keyboardHandler from "handlers/keyboard";
+import keyboardHandler, { keydownState } from "handlers/keyboard";
 import quickToolsInit from "handlers/quickToolsInit";
 import windowResize from "handlers/windowResize";
 import Acode from "lib/acode";
@@ -28,31 +31,25 @@ import checkFiles from "lib/checkFiles";
 import checkPluginsUpdate from "lib/checkPluginsUpdate";
 import EditorFile from "lib/editorFile";
 import EditorManager from "lib/editorManager";
+import { initFileList } from "lib/fileList";
 import lang from "lib/lang";
 import loadPlugins from "lib/loadPlugins";
 import Logger from "lib/logger";
-import openFolder from "lib/openFolder";
+import NotificationManager from "lib/notificationManager";
+import openFolder, { addedFolder } from "lib/openFolder";
 import restoreFiles from "lib/restoreFiles";
 import settings from "lib/settings";
 import startAd from "lib/startAd";
 import mustache from "mustache";
 import plugins from "pages/plugins";
 import otherSettings from "settings/appSettings";
-import sidebarApps from "sidebarApps";
 import themes from "theme/list";
-import Url from "utils/Url";
+import { getEncoding, initEncodings } from "utils/encodings";
 import helpers from "utils/helpers";
 import loadPolyFill from "utils/polyfill";
+import Url from "utils/Url";
 import $_fileMenu from "views/file-menu.hbs";
 import $_menu from "views/menu.hbs";
-
-import { setKeyBindings } from "ace/commands";
-import { initModes } from "ace/modelist";
-import { keydownState } from "handlers/keyboard";
-import { initFileList } from "lib/fileList";
-import NotificationManager from "lib/notificationManager";
-import { addedFolder } from "lib/openFolder";
-import { getEncoding, initEncodings } from "utils/encodings";
 import auth, { loginEvents } from "./auth";
 
 import { App as CapacitorApp } from "@capacitor/app";
@@ -521,7 +518,7 @@ async function loadApp() {
 		// if (!$editMenuToggler.isConnected) {
 		// 	$header.insertBefore($editMenuToggler, $header.lastChild);
 		// }
-		if (activeFile?.type === "page") {
+		if (activeFile?.type === "page" || activeFile?.type === "terminal") {
 			$editMenuToggler.remove();
 		} else {
 			if (!$editMenuToggler.isConnected) {

@@ -63,6 +63,18 @@ body.no-animation {
     display: flex;
     flex-direction: column;
     position: relative;
+
+    @media (min-width: 769px) {
+      width: 50px;
+      min-width: 50px;
+      padding: 12px 0;
+    }
+
+    @media (min-width: 1024px) {
+      width: 55px;
+      min-width: 55px;
+      padding: 15px 0;
+    }
     .app-icons-container {
       flex: 1;
       overflow-y: auto;
@@ -98,6 +110,18 @@ body.no-animation {
         &.active {
           opacity: 1;
         }
+
+        @media (min-width: 769px) {
+          height: 45px;
+          width: 45px;
+          font-size: 1.8em;
+        }
+
+        @media (min-width: 1024px) {
+          height: 50px;
+          width: 50px;
+          font-size: 2em;
+        }
       }
     }
     .icon {
@@ -112,6 +136,18 @@ body.no-animation {
 
       &.active {
         opacity: 1;
+      }
+
+      @media (min-width: 769px) {
+        height: 40px;
+        width: 40px;
+        font-size: 1.1em;
+      }
+
+      @media (min-width: 1024px) {
+        height: 45px;
+        width: 45px;
+        font-size: 1.2em;
       }
     }
   }
@@ -154,6 +190,16 @@ body.no-animation {
             font-size: 1em;
           }
         }
+
+        @media (min-width: 769px) {
+          min-height: 38px;
+          font-size: 1.05em;
+        }
+
+        @media (min-width: 1024px) {
+          min-height: 42px;
+          font-size: 1.1em;
+        }
       }
 
       .icon {
@@ -161,6 +207,18 @@ body.no-animation {
         width: 30px;
         color: currentColor;
         font-size: 1em;
+
+        @media (min-width: 769px) {
+          height: 32px;
+          width: 32px;
+          font-size: 1.1em;
+        }
+
+        @media (min-width: 1024px) {
+          height: 35px;
+          width: 35px;
+          font-size: 1.2em;
+        }
       }
 
       > ul {
@@ -249,6 +307,16 @@ body.no-animation {
       align-items: center;
       justify-content: center;
       font-weight: 600;
+
+      @media (min-width: 769px) {
+        height: 40px;
+        font-size: 1.1em;
+      }
+
+      @media (min-width: 1024px) {
+        height: 50px;
+        font-size: 1.2em;
+      }
     }
   }
 }

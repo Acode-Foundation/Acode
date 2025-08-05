@@ -1,3 +1,4 @@
+import fsOperation from "fileSystem";
 import ajax from "@deadlyjack/ajax";
 import alert from "dialogs/alert";
 import confirm from "dialogs/confirm";
@@ -6,8 +7,8 @@ import fsOperation from "fileSystem";
 import internalFs from "fileSystem/internalFs";
 import purchaseListener from "handlers/purchase";
 import JSZip from "jszip";
-import Url from "utils/Url";
 import helpers from "utils/helpers";
+import Url from "utils/Url";
 import constants from "./constants";
 import InstallState from "./installState";
 import loadPlugin from "./loadPlugin";

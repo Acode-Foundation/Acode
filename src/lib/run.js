@@ -1,8 +1,8 @@
 import ajax from "@deadlyjack/ajax";
+import fsOperation from "fileSystem";
 import tutorial from "components/tutorial";
 import alert from "dialogs/alert";
 import box from "dialogs/box";
-import fsOperation from "fileSystem";
 import markdownIt from "markdown-it";
 import anchor from "markdown-it-anchor";
 import markdownItFootnote from "markdown-it-footnote";
@@ -12,8 +12,8 @@ import mimeType from "mime-types";
 import mustache from "mustache";
 import path from "path-browserify";
 import browser from "plugins/browser";
-import Url from "utils/Url";
 import helpers from "utils/helpers";
+import Url from "utils/Url";
 import $_console from "views/console.hbs";
 import $_markdown from "views/markdown.hbs";
 import constants from "./constants";
@@ -335,6 +335,23 @@ async function run(
 				}
 
 				console.log(`Full PATH ${fullPath}`);
+
+				const urlFile = fsOperation(fullPath);
+
+				const stats = await urlFile.stat();
+
+				if (!stats.exists) {
+					error(reqId);
+					return;
+				}
+
+				if (!stats.isFile) {
+					if (fullPath.endsWith("/")) {
+						fullPath += "index.html";
+					} else {
+						fullPath += "/index.html";
+					}
+				}
 
 				// Add back the query if present
 				url = query ? `${fullPath}?${query}` : fullPath;

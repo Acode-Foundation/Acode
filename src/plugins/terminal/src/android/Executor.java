@@ -53,6 +53,14 @@ public class Executor extends CordovaPlugin {
             case "isRunning":
                 isProcessRunning(args.getString(0), callbackContext);
                 return true;
+            case "loadLibrary":
+                try {
+                    System.load(args.getString(0));
+                    callbackContext.success("Library loaded successfully.");
+                } catch (Exception e) {
+                    callbackContext.error("Failed to load library: " + e.getMessage());
+                }
+                return true;
             default:
                 callbackContext.error("Unknown action: " + action);
                 return false;
@@ -60,6 +68,7 @@ public class Executor extends CordovaPlugin {
     }
 
     private void exec(String cmd,String alpine, CallbackContext callbackContext) {
+        cordova.getThreadPool().execute(() -> {
         try {
             if (cmd != null && !cmd.isEmpty()) {
                 String xcmd = cmd;
@@ -118,6 +127,7 @@ public class Executor extends CordovaPlugin {
             e.printStackTrace();
             callbackContext.error("Exception: " + e.getMessage());
         }
+        });
     }
 
     private void startProcess(String pid, String cmd,String alpine, CallbackContext callbackContext) {

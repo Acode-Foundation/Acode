@@ -9,35 +9,47 @@ const WHITE = "rgb(255, 255, 255)";
 const BLACK = "rgb(0, 0, 0)";
 
 const dark = createBuiltInTheme("Dark", "dark", "free");
-dark.primaryColor = "rgb(49, 49, 49)";
-dark.primaryTextColor = WHITE;
-dark.darkenedPrimaryColor = "rgb(29, 29, 29)";
-dark.secondaryColor = "rgb(37, 37, 37)";
-dark.secondaryTextColor = WHITE;
-dark.activeColor = "rgb(51, 153, 255)";
-dark.linkTextColor = "rgb(181, 180, 233)";
-dark.borderColor = "rgba(230, 230, 230, 0.2)";
-dark.popupIconColor = WHITE;
-dark.popupBackgroundColor = "rgb(49, 49, 49)";
-dark.popupTextColor = WHITE;
-dark.popupActiveColor = "rgb(255, 215, 0)";
+dark.primaryColor = "rgb(35, 39, 42)";
+dark.primaryTextColor = "rgb(245, 245, 245)";
+dark.darkenedPrimaryColor = "rgb(24, 27, 30)";
+dark.secondaryColor = "rgb(45, 49, 52)";
+dark.secondaryTextColor = "rgb(228, 228, 228)";
+dark.activeColor = "rgb(66, 133, 244)";
+dark.linkTextColor = "rgb(138, 180, 248)";
+dark.borderColor = "rgba(188, 188, 188, 0.15)";
+dark.popupIconColor = "rgb(245, 245, 245)";
+dark.popupBackgroundColor = "rgb(35, 39, 42)";
+dark.popupTextColor = "rgb(245, 245, 245)";
+dark.popupActiveColor = "rgb(66, 133, 244)";
+dark.activeTextColor = "rgb(255, 255, 255)";
+dark.errorTextColor = "rgb(255, 185, 92)";
+dark.dangerColor = "rgb(220, 38, 38)";
+dark.scrollbarColor = "rgba(255, 255, 255, 0.2)";
 
 const oled = createBuiltInTheme("OLED");
 oled.primaryColor = "rgb(0, 0, 0)";
-oled.primaryTextColor = WHITE;
+oled.primaryTextColor = "rgb(255, 255, 255)";
 oled.darkenedPrimaryColor = "rgb(0, 0, 0)";
-oled.secondaryColor = "rgb(0, 0, 0)";
-oled.secondaryTextColor = WHITE;
-oled.activeColor = "rgb(56, 56, 56)";
-oled.activeIconColor = "rgba(255, 255, 255, 0.2)";
-oled.linkTextColor = "rgb(181, 180, 233)";
-oled.borderColor = "rgb(124, 124, 124)";
-oled.popupIconColor = WHITE;
+oled.secondaryColor = "rgb(8, 8, 8)";
+oled.secondaryTextColor = "rgb(240, 240, 240)";
+oled.activeColor = "rgb(0, 122, 255)";
+oled.activeIconColor = "rgba(0, 122, 255, 0.8)";
+oled.linkTextColor = "rgb(10, 132, 255)";
+oled.borderColor = "rgba(255, 255, 255, 0.08)";
+oled.popupIconColor = "rgb(255, 255, 255)";
 oled.popupBackgroundColor = "rgb(0, 0, 0)";
-oled.popupTextColor = WHITE;
-oled.popupActiveColor = "rgb(121, 103, 0)";
-oled.popupBorderColor = "rgba(255, 255, 255, 0.4)";
-oled.boxShadowColor = BLACK;
+oled.popupTextColor = "rgb(255, 255, 255)";
+oled.popupActiveColor = "rgb(0, 122, 255)";
+oled.popupBorderColor = "rgba(255, 255, 255, 0.1)";
+oled.boxShadowColor = "rgba(0, 0, 0, 0.8)";
+oled.buttonBackgroundColor = "rgb(0, 122, 255)";
+oled.buttonTextColor = "rgb(255, 255, 255)";
+oled.buttonActiveColor = "rgb(10, 132, 255)";
+oled.preferredEditorTheme = "ace/theme/monokai";
+oled.activeTextColor = "rgb(255, 255, 255)";
+oled.errorTextColor = "rgb(255, 69, 58)";
+oled.dangerColor = "rgb(255, 69, 58)";
+oled.scrollbarColor = "rgba(255, 255, 255, 0.1)";
 
 const ocean = createBuiltInTheme("Ocean");
 ocean.darkenedPrimaryColor = "rgb(19, 19, 26)";
@@ -159,17 +171,24 @@ menes.buttonTextColor = "rgb(144, 184, 248)";
 menes.buttonActiveColor = "rgb(0, 145, 153)";
 
 const light = createBuiltInTheme("Light", "light");
-light.darkenedPrimaryColor = "rgb(153, 153, 153)";
-light.primaryColor = WHITE;
-light.primaryTextColor = "rgb(51, 62, 89)";
-light.secondaryColor = WHITE;
-light.secondaryTextColor = "rgb(51, 62, 89)";
-light.activeColor = "rgb(51, 153, 255)";
-light.linkTextColor = "rgb(104, 103, 149)";
-light.borderColor = "rgb(153, 153, 153)";
-light.popupIconColor = "rgb(51, 62, 89)";
+light.darkenedPrimaryColor = "rgb(247, 250, 252)";
+light.primaryColor = "rgb(255, 255, 255)";
+light.primaryTextColor = "rgb(15, 23, 42)";
+light.secondaryColor = "rgb(248, 250, 252)";
+light.secondaryTextColor = "rgb(51, 65, 85)";
+light.activeColor = "rgb(59, 130, 246)";
+light.linkTextColor = "rgb(37, 99, 235)";
+light.borderColor = "rgb(226, 232, 240)";
+light.popupIconColor = "rgb(15, 23, 42)";
+light.popupBackgroundColor = "rgb(255, 255, 255)";
+light.popupTextColor = "rgb(15, 23, 42)";
+light.popupActiveColor = "rgb(59, 130, 246)";
+light.activeTextColor = "rgb(255, 255, 255)";
+light.errorTextColor = "rgb(185, 28, 28)";
+light.dangerColor = "rgb(220, 38, 38)";
+light.scrollbarColor = "rgba(0, 0, 0, 0.2)";
 
-const system = createBuiltInTheme("System");
+const system = createBuiltInTheme("System", "dark", "free");
 
 export function getSystemEditorTheme(darkTheme) {
 	if (darkTheme) {
@@ -181,35 +200,35 @@ export function getSystemEditorTheme(darkTheme) {
 
 export function updateSystemTheme(darkTheme) {
 	if (darkTheme) {
-		system.primaryColor = "rgb(49, 49, 49)";
-		system.primaryTextColor = WHITE;
-		system.darkenedPrimaryColor = "rgb(29, 29, 29)";
-		system.secondaryColor = "rgb(37, 37, 37)";
-		system.secondaryTextColor = WHITE;
-		system.activeColor = "rgb(51, 153, 255)";
-		system.linkTextColor = "rgb(181, 180, 233)";
-		system.borderColor = "rgba(230, 230, 230, 0.2)";
-		system.popupIconColor = WHITE;
+		system.primaryColor = "rgb(35, 39, 42)";
+		system.primaryTextColor = "rgb(245, 245, 245)";
+		system.darkenedPrimaryColor = "rgb(24, 27, 30)";
+		system.secondaryColor = "rgb(45, 49, 52)";
+		system.secondaryTextColor = "rgb(228, 228, 228)";
+		system.activeColor = "rgb(66, 133, 244)";
+		system.linkTextColor = "rgb(138, 180, 248)";
+		system.borderColor = "rgba(188, 188, 188, 0.15)";
+		system.popupIconColor = "rgb(245, 245, 245)";
 
-		system.popupBackgroundColor = "rgb(49, 49, 49)";
-		system.popupTextColor = WHITE;
-		system.popupActiveColor = "rgb(255, 215, 0)";
+		system.popupBackgroundColor = "rgb(35, 39, 42)";
+		system.popupTextColor = "rgb(245, 245, 245)";
+		system.popupActiveColor = "rgb(66, 133, 244)";
 		system.type = "dark";
 	} else {
 		system.type = "light";
-		system.darkenedPrimaryColor = "rgb(153, 153, 153)";
-		system.primaryColor = WHITE;
-		system.primaryTextColor = "rgb(51, 62, 89)";
-		system.secondaryColor = WHITE;
-		system.secondaryTextColor = "rgb(51, 62, 89)";
-		system.activeColor = "rgb(51, 153, 255)";
-		system.linkTextColor = BLACK;
-		system.borderColor = "rgb(153, 153, 153)";
-		system.popupIconColor = "rgb(51, 62, 89)";
+		system.darkenedPrimaryColor = "rgb(247, 250, 252)";
+		system.primaryColor = "rgb(255, 255, 255)";
+		system.primaryTextColor = "rgb(15, 23, 42)";
+		system.secondaryColor = "rgb(248, 250, 252)";
+		system.secondaryTextColor = "rgb(51, 65, 85)";
+		system.activeColor = "rgb(59, 130, 246)";
+		system.linkTextColor = "rgb(37, 99, 235)";
+		system.borderColor = "rgb(226, 232, 240)";
+		system.popupIconColor = "rgb(15, 23, 42)";
 
-		system.popupBackgroundColor = WHITE;
-		system.popupTextColor = BLACK;
-		system.popupActiveColor = "rgb(255, 215, 0)";
+		system.popupBackgroundColor = "rgb(255, 255, 255)";
+		system.popupTextColor = "rgb(15, 23, 42)";
+		system.popupActiveColor = "rgb(59, 130, 246)";
 	}
 
 	system.preferredEditorTheme = getSystemEditorTheme(darkTheme);
@@ -226,13 +245,107 @@ export function updateSystemTheme(darkTheme) {
 
 updateSystemTheme(isDeviceDarkTheme());
 
+const glass = createBuiltInTheme("Glass");
+glass.darkenedPrimaryColor = "rgb(250, 250, 255)";
+glass.primaryColor = "rgb(255, 255, 255)";
+glass.primaryTextColor = "rgb(17, 24, 39)";
+glass.secondaryColor = "rgba(255, 255, 255, 0.8)";
+glass.secondaryTextColor = "rgb(55, 65, 81)";
+glass.activeColor = "rgb(99, 102, 241)";
+glass.linkTextColor = "rgb(79, 70, 229)";
+glass.borderColor = "rgba(99, 102, 241, 0.2)";
+glass.popupIconColor = "rgb(17, 24, 39)";
+glass.popupBackgroundColor = "rgba(255, 255, 255, 0.95)";
+glass.popupTextColor = "rgb(17, 24, 39)";
+glass.popupActiveColor = "rgb(99, 102, 241)";
+glass.buttonBackgroundColor = "rgb(99, 102, 241)";
+glass.buttonTextColor = "rgb(255, 255, 255)";
+glass.buttonActiveColor = "rgb(79, 70, 229)";
+glass.boxShadowColor = "rgba(0, 0, 0, 0.1)";
+glass.activeTextColor = "rgb(255, 255, 255)";
+glass.errorTextColor = "rgb(185, 28, 28)";
+glass.dangerColor = "rgb(220, 38, 38)";
+glass.scrollbarColor = "rgba(0, 0, 0, 0.15)";
+
+const neon = createBuiltInTheme("Neon");
+neon.darkenedPrimaryColor = "rgb(9, 9, 11)";
+neon.primaryColor = "rgb(15, 15, 17)";
+neon.primaryTextColor = "rgb(10, 255, 200)";
+neon.secondaryColor = "rgb(24, 24, 27)";
+neon.secondaryTextColor = "rgb(255, 255, 255)";
+neon.activeColor = "rgb(255, 20, 147)";
+neon.linkTextColor = "rgb(0, 255, 255)";
+neon.borderColor = "rgba(10, 255, 200, 0.3)";
+neon.popupIconColor = "rgb(10, 255, 200)";
+neon.popupBackgroundColor = "rgb(15, 15, 17)";
+neon.popupTextColor = "rgb(10, 255, 200)";
+neon.popupActiveColor = "rgb(255, 20, 147)";
+neon.buttonBackgroundColor = "rgb(255, 20, 147)";
+neon.buttonTextColor = "rgb(0, 0, 0)";
+neon.buttonActiveColor = "rgb(0, 255, 255)";
+neon.boxShadowColor = "rgba(10, 255, 200, 0.2)";
+neon.preferredEditorTheme = "ace/theme/monokai";
+neon.activeTextColor = "rgb(0, 0, 0)";
+neon.errorTextColor = "rgb(255, 20, 147)";
+neon.dangerColor = "rgb(255, 20, 147)";
+neon.scrollbarColor = "rgba(10, 255, 200, 0.3)";
+
+const glassDark = createBuiltInTheme("Glass Dark", "dark");
+glassDark.darkenedPrimaryColor = "rgb(15, 15, 20)";
+glassDark.primaryColor = "rgb(24, 24, 32)";
+glassDark.primaryTextColor = "rgb(229, 231, 235)";
+glassDark.secondaryColor = "rgba(31, 31, 42, 0.8)";
+glassDark.secondaryTextColor = "rgb(156, 163, 175)";
+glassDark.activeColor = "rgb(99, 102, 241)";
+glassDark.linkTextColor = "rgb(129, 140, 248)";
+glassDark.borderColor = "rgba(99, 102, 241, 0.3)";
+glassDark.popupIconColor = "rgb(229, 231, 235)";
+glassDark.popupBackgroundColor = "rgba(31, 31, 42, 0.95)";
+glassDark.popupTextColor = "rgb(229, 231, 235)";
+glassDark.popupActiveColor = "rgb(99, 102, 241)";
+glassDark.buttonBackgroundColor = "rgb(99, 102, 241)";
+glassDark.buttonTextColor = "rgb(255, 255, 255)";
+glassDark.buttonActiveColor = "rgb(79, 70, 229)";
+glassDark.boxShadowColor = "rgba(0, 0, 0, 0.4)";
+glassDark.activeTextColor = "rgb(255, 255, 255)";
+glassDark.errorTextColor = "rgb(248, 113, 113)";
+glassDark.dangerColor = "rgb(239, 68, 68)";
+glassDark.scrollbarColor = "rgba(255, 255, 255, 0.2)";
+glassDark.preferredEditorTheme = "ace/theme/one_dark";
+
+const sunset = createBuiltInTheme("Sunset");
+sunset.darkenedPrimaryColor = "rgb(251, 243, 235)";
+sunset.primaryColor = "rgb(255, 251, 247)";
+sunset.primaryTextColor = "rgb(124, 45, 18)";
+sunset.secondaryColor = "rgb(254, 235, 217)";
+sunset.secondaryTextColor = "rgb(154, 52, 18)";
+sunset.activeColor = "rgb(251, 146, 60)";
+sunset.linkTextColor = "rgb(234, 88, 12)";
+sunset.borderColor = "rgb(253, 186, 116)";
+sunset.popupIconColor = "rgb(124, 45, 18)";
+sunset.popupBackgroundColor = "rgb(255, 251, 247)";
+sunset.popupTextColor = "rgb(124, 45, 18)";
+sunset.popupActiveColor = "rgb(251, 146, 60)";
+sunset.buttonBackgroundColor = "rgb(251, 146, 60)";
+sunset.buttonTextColor = "rgb(255, 255, 255)";
+sunset.buttonActiveColor = "rgb(234, 88, 12)";
+sunset.activeTextColor = "rgb(255, 255, 255)";
+sunset.errorTextColor = "rgb(185, 28, 28)";
+sunset.dangerColor = "rgb(220, 38, 38)";
+sunset.scrollbarColor = "rgba(124, 45, 18, 0.2)";
+
 const custom = createBuiltInTheme("Custom");
 custom.autoDarkened = true;
 
 export default [
 	system,
-	createBuiltInTheme("default", "dark", "free"),
+	createBuiltInTheme("Legacy", "dark", "free"),
 	dark,
+	light,
+	glass,
+	glassDark,
+	neon,
+	sunset,
 	oled,
 	ocean,
 	bump,
@@ -241,6 +354,5 @@ export default [
 	atticus,
 	tomyris,
 	menes,
-	light,
 	custom,
 ];

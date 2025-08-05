@@ -1,10 +1,14 @@
+import fsOperation from "fileSystem";
+import sidebarApps from "sidebarApps";
 import ajax from "@deadlyjack/ajax";
+import { addMode, removeMode } from "ace/modelist";
 import Contextmenu from "components/contextmenu";
 import inputhints from "components/inputhints";
 import Page from "components/page";
 import palette from "components/palette";
 import settingsPage from "components/settingsPage";
 import SideButton from "components/sideButton";
+import { TerminalManager, TerminalThemeManager } from "components/terminal";
 import toast from "components/toast";
 import tutorial from "components/tutorial";
 import alert from "dialogs/alert";
@@ -15,7 +19,7 @@ import loader from "dialogs/loader";
 import multiPrompt from "dialogs/multiPrompt";
 import prompt from "dialogs/prompt";
 import select from "dialogs/select";
-import fsOperation from "fileSystem";
+import { addIntentHandler, removeIntentHandler } from "handlers/intent";
 import keyboardHandler from "handlers/keyboard";
 import purchaseListener from "handlers/purchase";
 import windowResize from "handlers/windowResize";
@@ -26,26 +30,20 @@ import files from "lib/fileList";
 import fileTypeHandler from "lib/fileTypeHandler";
 import fonts from "lib/fonts";
 import NotificationManager from "lib/notificationManager";
-import openFolder from "lib/openFolder";
+import openFolder, { addedFolder } from "lib/openFolder";
 import projects from "lib/projects";
 import selectionMenu from "lib/selectionMenu";
 import appSettings from "lib/settings";
 import FileBrowser from "pages/fileBrowser";
 import formatterSettings from "settings/formatterSettings";
-import sidebarApps from "sidebarApps";
 import ThemeBuilder from "theme/builder";
 import themes from "theme/list";
-import Url from "utils/Url";
 import Color from "utils/color";
-import encodings from "utils/encodings";
+import encodings, { decode, encode } from "utils/encodings";
 import helpers from "utils/helpers";
 import KeyboardEvent from "utils/keyboardEvent";
+import Url from "utils/Url";
 import constants from "./constants";
-
-import { addMode, removeMode } from "ace/modelist";
-import { addIntentHandler, removeIntentHandler } from "handlers/intent";
-import { addedFolder } from "lib/openFolder";
-import { decode, encode } from "utils/encodings";
 
 export default class Acode {
 	#modules = {};
@@ -99,6 +97,28 @@ export default class Acode {
 			removeHandler: removeIntentHandler,
 		};
 
+		const terminalModule = {
+			create: (options) => TerminalManager.createTerminal(options),
+			createLocal: (options) => TerminalManager.createLocalTerminal(options),
+			createServer: (options) => TerminalManager.createServerTerminal(options),
+			get: (id) => TerminalManager.getTerminal(id),
+			getAll: () => TerminalManager.getAllTerminals(),
+			write: (id, data) => this.#secureTerminalWrite(id, data),
+			clear: (id) => TerminalManager.clearTerminal(id),
+			close: (id) => TerminalManager.closeTerminal(id),
+			themes: {
+				register: (name, theme, pluginId) =>
+					TerminalThemeManager.registerTheme(name, theme, pluginId),
+				unregister: (name, pluginId) =>
+					TerminalThemeManager.unregisterTheme(name, pluginId),
+				get: (name) => TerminalThemeManager.getTheme(name),
+				getAll: () => TerminalThemeManager.getAllThemes(),
+				getNames: () => TerminalThemeManager.getThemeNames(),
+				createVariant: (baseName, overrides) =>
+					TerminalThemeManager.createVariant(baseName, overrides),
+			},
+		};
+
 		this.define("Url", Url);
 		this.define("page", Page);
 		this.define("Color", Color);
@@ -137,8 +157,104 @@ export default class Acode {
 		this.define("themeBuilder", ThemeBuilder);
 		this.define("selectionMenu", selectionMenu);
 		this.define("sidebarApps", sidebarAppsModule);
+		this.define("terminal", terminalModule);
 		this.define("createKeyboardEvent", KeyboardEvent);
 		this.define("toInternalUrl", helpers.toInternalUri);
+	}
+
+	/**
+	 * Secure terminal write with command validation
+	 * Prevents execution of malicious or dangerous commands through plugin API
+	 * @param {string} id - Terminal ID
+	 * @param {string} data - Data to write
+	 */
+	#secureTerminalWrite(id, data) {
+		if (typeof data !== "string") {
+			console.warn("Terminal write data must be a string");
+			return;
+		}
+
+		// List of potentially dangerous commands/patterns to block
+		const dangerousPatterns = [
+			// System commands that can cause damage
+			/^\s*rm\s+-rf?\s+\/[^\r\n]*[\r\n]?$/m,
+			/^\s*rm\s+-rf?\s+\*[^\r\n]*[\r\n]?$/m,
+			/^\s*rm\s+-rf?\s+~[^\r\n]*[\r\n]?$/m,
+			/^\s*mkfs\.[^\r\n]*[\r\n]?$/m,
+			/^\s*dd\s+if=\/[^\r\n]*[\r\n]?$/m,
+			/^\s*:(){ :|:& };:[^\r\n]*[\r\n]?$/m, // Fork bomb
+			/^\s*sudo\s+dd\s+if=\/[^\r\n]*[\r\n]?$/m,
+			/^\s*sudo\s+rm\s+-rf?\s+\/[^\r\n]*[\r\n]?$/m,
+			/^\s*curl\s+[^\r\n]*\|\s*sh[^\r\n]*[\r\n]?$/m,
+			/^\s*wget\s+[^\r\n]*\|\s*sh[^\r\n]*[\r\n]?$/m,
+			/^\s*bash\s+<\s*\([^\r\n]*[\r\n]?$/m,
+			/^\s*sh\s+<\s*\([^\r\n]*[\r\n]?$/m,
+
+			// Network-based attacks
+			/^\s*nc\s+-l\s+-p\s+\d+[^\r\n]*[\r\n]?$/m,
+			/^\s*ncat\s+-l\s+-p\s+\d+[^\r\n]*[\r\n]?$/m,
+			/^\s*python\s+.*SimpleHTTPServer[^\r\n]*[\r\n]?$/m,
+			/^\s*python\s+.*http\.server[^\r\n]*[\r\n]?$/m,
+
+			// Process manipulation
+			/^\s*kill\s+-9\s+1\s*[\r\n]?$/m,
+			/^\s*killall\s+-9\s+\*[^\r\n]*[\r\n]?$/m,
+
+			// File system manipulation
+			/^\s*chmod\s+777\s+\/[^\r\n]*[\r\n]?$/m,
+			/^\s*chown\s+[^\s]+\s+\/[^\r\n]*[\r\n]?$/m,
+
+			// Sensitive file access attempts
+			/^\s*cat\s+\/etc\/passwd[^\r\n]*[\r\n]?$/m,
+			/^\s*cat\s+\/etc\/shadow[^\r\n]*[\r\n]?$/m,
+			/^\s*cat\s+\/root\/[^\r\n]*[\r\n]?$/m,
+
+			// Only block null bytes
+			/\x00/g,
+		];
+
+		// Check for dangerous patterns
+		for (const pattern of dangerousPatterns) {
+			if (pattern.test(data)) {
+				console.warn(
+					`Blocked potentially dangerous terminal command: ${data.substring(0, 50)}...`,
+				);
+				toast("Potentially dangerous command blocked for security", 3000);
+				return;
+			}
+		}
+
+		// Additional checks for suspicious character sequences
+		if (data.includes("$(") && data.includes(")")) {
+			const commandSubstitution = /\$\([^)]*\)/g;
+			const matches = data.match(commandSubstitution);
+			if (matches) {
+				for (const match of matches) {
+					// Check if command substitution contains dangerous commands
+					for (const pattern of dangerousPatterns) {
+						if (pattern.test(match)) {
+							console.warn(
+								`Blocked command substitution with dangerous content: ${match}`,
+							);
+							toast("Command substitution blocked for security", 3000);
+							return;
+						}
+					}
+				}
+			}
+		}
+
+		// Sanitize data length to prevent memory exhaustion
+		const maxLength = 64 * 1024; // 64KB max per write
+		if (data.length > maxLength) {
+			console.warn(
+				`Terminal write data truncated - exceeded ${maxLength} characters`,
+			);
+			data = data.substring(0, maxLength) + "\n[Data truncated for security]\n";
+		}
+
+		// If all security checks pass, proceed with writing
+		return TerminalManager.writeToTerminal(id, data);
 	}
 
 	/**

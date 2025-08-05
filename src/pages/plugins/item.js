@@ -26,6 +26,7 @@ export default function Item({
   installed,
   enabled,
   onToggleEnabled,
+  updates,
 }) {
   console.log(`ICON ${icon}`)
   const authorName = (() => {
@@ -99,12 +100,10 @@ export default function Item({
           {price !== null && price !== undefined && price !== 0 ? (
             <span className="plugin-price">₹{price}</span>
           ) : null}
-          {/* Enable/Disable Toggle */}
-          {installed && (
+          {installed && !updates ? (
             <span
               className="plugin-toggle-switch"
               data-enabled={enabled}
-              // style={{ marginLeft: 12, display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer',  zIndex: 100 }}
               onclick={e => {
                 e.stopPropagation();
                 onToggleEnabled?.(id, enabled);
@@ -113,33 +112,11 @@ export default function Item({
               <span
                 className="plugin-toggle-track"
                 data-enabled={enabled}
-                // style={{
-                //   width: 36,
-                //   height: 20,
-                //   borderRadius: 12,
-                //   background: enabled ? '#4ade80' : '#d1d5db',
-                //   position: 'relative',
-                //   transition: 'background 0.2s',
-                //   display: 'inline-block',
-                // }}
               >
-                <span
-                  className="plugin-toggle-thumb"
-                  // style={{
-                  //   position: 'absolute',
-                  //   left: enabled ? 18 : 2,
-                  //   top: 2,
-                  //   width: 16,
-                  //   height: 16,
-                  //   borderRadius: '50%',
-                  //   background: '#fff',
-                  //   boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                  //   transition: 'left 0.2s',
-                  // }}
-                />
+                <span className="plugin-toggle-thumb" />
               </span>
             </span>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

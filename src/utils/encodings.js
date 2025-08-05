@@ -40,6 +40,78 @@ export function getEncoding(charset) {
 	return encodings["UTF-8"];
 }
 
+function detectBOM(bytes) {
+	if (
+		bytes.length >= 3 &&
+		bytes[0] === 0xef &&
+		bytes[1] === 0xbb &&
+		bytes[2] === 0xbf
+	)
+		return "UTF-8";
+	if (bytes.length >= 2 && bytes[0] === 0xff && bytes[1] === 0xfe)
+		return "UTF-16LE";
+	if (bytes.length >= 2 && bytes[0] === 0xfe && bytes[1] === 0xff)
+		return "UTF-16BE";
+	return null;
+}
+
+export async function detectEncoding(buffer) {
+	if (!buffer || buffer.byteLength === 0) {
+		return settings.value.defaultFileEncoding || "UTF-8";
+	}
+
+	const bytes = new Uint8Array(buffer);
+
+	const bomEncoding = detectBOM(bytes);
+	if (bomEncoding) return bomEncoding;
+
+	const sample = bytes.subarray(0, Math.min(2048, bytes.length));
+	let nulls = 0,
+		ascii = 0;
+
+	for (const byte of sample) {
+		if (byte === 0) nulls++;
+		else if (byte < 0x80) ascii++;
+	}
+
+	if (ascii / sample.length > 0.95) return "UTF-8";
+	if (nulls > sample.length * 0.3) return "UTF-16LE";
+
+	const encodings = [
+		...new Set([
+			"UTF-8",
+			settings.value.defaultFileEncoding || "UTF-8",
+			"windows-1252",
+			"ISO-8859-1",
+		]),
+	];
+
+	const testSample = sample.subarray(0, 512);
+	const testBuffer = testSample.buffer.slice(
+		testSample.byteOffset,
+		testSample.byteOffset + testSample.byteLength,
+	);
+
+	for (const encoding of encodings) {
+		try {
+			const encodingObj = getEncoding(encoding);
+			if (!encodingObj) continue;
+
+			const text = await execDecode(testBuffer, encodingObj.name);
+			if (
+				!text.includes("\uFFFD") &&
+				!/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/.test(text)
+			) {
+				return encoding;
+			}
+		} catch (error) {
+			continue;
+		}
+	}
+
+	return settings.value.defaultFileEncoding || "UTF-8";
+}
+
 /**
  * Decodes arrayBuffer to String according given encoding type
  * @param {ArrayBuffer} buffer

@@ -61,8 +61,15 @@ npm run sync
 2. Build the project:
 
 ```shell
+#todo remove incorrect command
 npm run build-release <free|paid> <p|prod|d|dev>
+
+yarn build <free|paid> <p|prod|d|dev> [fdroid]
+
 ```
+
+**Note**: Add the fdroid flag only if you want to build the F-Droid-compatible version of Acode.
+Omit this flag to build the regular APK (Play Store or normal version).
 
 ## • Contributing
 
