@@ -4,7 +4,7 @@ export default class lspClient {
 	constructor(wsUrl, modes) {
 		this.wsUrl = wsUrl;
 		// Convert modes array to string if needed, or keep as string
-		this.modes = Array.isArray(modes) ? modes.join(',') : modes;
+		this.modes = Array.isArray(modes) ? modes.join(",") : modes;
 		this.socket = null;
 		this.languageProvider = null;
 		this.registeredEditors = new Set();
@@ -17,7 +17,7 @@ export default class lspClient {
 	 */
 	async connect() {
 		if (this.isConnected) {
-			console.warn('LSP client is already connected');
+			console.warn("LSP client is already connected");
 			return;
 		}
 
@@ -27,26 +27,26 @@ export default class lspClient {
 
 			// Set up WebSocket event handlers
 			this.socket.onopen = () => {
-				console.log('LSP WebSocket connected');
+				console.log("LSP WebSocket connected");
 				this.isConnected = true;
 				this.reconnectAttempts = 0;
 				this._initializeLanguageProvider();
 			};
 
 			this.socket.onclose = (event) => {
-				console.log('LSP WebSocket disconnected', event);
+				console.log("LSP WebSocket disconnected", event);
 				this.isConnected = false;
 			};
 
 			this.socket.onerror = (error) => {
-				console.error('LSP WebSocket error:', error);
+				console.error("LSP WebSocket error:", error);
 				this.isConnected = false;
 			};
 
 			// Wait for connection to be established
 			await this._waitForConnection();
 		} catch (error) {
-			console.error('Failed to connect to LSP server:', error);
+			console.error("Failed to connect to LSP server:", error);
 			throw error;
 		}
 	}
@@ -56,13 +56,13 @@ export default class lspClient {
 	 */
 	disconnect() {
 		if (!this.isConnected) {
-			console.warn('LSP client is not connected');
+			console.warn("LSP client is not connected");
 			return;
 		}
 
 		try {
 			// Remove all registered editors
-			this.registeredEditors.forEach(editor => {
+			this.registeredEditors.forEach((editor) => {
 				this.removeEditor(editor);
 			});
 
@@ -79,9 +79,9 @@ export default class lspClient {
 			}
 
 			this.isConnected = false;
-			console.log('LSP client disconnected');
+			console.log("LSP client disconnected");
 		} catch (error) {
-			console.error('Error during disconnect:', error);
+			console.error("Error during disconnect:", error);
 		}
 	}
 
@@ -92,33 +92,32 @@ export default class lspClient {
 	 */
 	addEditor(editor) {
 		if (!editor) {
-			console.error('Editor is required');
+			console.error("Editor is required");
 			return false;
 		}
 
 		if (this.registeredEditors.has(editor)) {
-			console.warn('Editor is already registered');
+			console.warn("Editor is already registered");
 			return true;
 		}
 
 		if (!this.isConnected || !this.languageProvider) {
-			console.error('LSP client is not connected. Call connect() first.');
+			console.error("LSP client is not connected. Call connect() first.");
 			return false;
 		}
 
 		try {
-
 			this.languageProvider.registerEditor(editor);
 			this.registeredEditors.add(editor);
 
 			const session = editor.getSession();
-			session.on('changeAnnotation', () => {
+			session.on("changeAnnotation", () => {
 				editor.renderer.updateBackMarkers();
 			});
-			console.log('Editor registered with LSP client');
+			console.log("Editor registered with LSP client");
 			return true;
 		} catch (error) {
-			console.error('Failed to register editor:', error);
+			console.error("Failed to register editor:", error);
 			return false;
 		}
 	}
@@ -130,12 +129,12 @@ export default class lspClient {
 	 */
 	removeEditor(editor) {
 		if (!editor) {
-			console.error('Editor is required');
+			console.error("Editor is required");
 			return false;
 		}
 
 		if (!this.registeredEditors.has(editor)) {
-			console.warn('Editor is not registered');
+			console.warn("Editor is not registered");
 			return true;
 		}
 
@@ -146,10 +145,10 @@ export default class lspClient {
 			}
 
 			this.registeredEditors.delete(editor);
-			console.log('Editor unregistered from LSP client');
+			console.log("Editor unregistered from LSP client");
 			return true;
 		} catch (error) {
-			console.error('Failed to unregister editor:', error);
+			console.error("Failed to unregister editor:", error);
 			return false;
 		}
 	}
@@ -159,7 +158,11 @@ export default class lspClient {
 	 * @returns {boolean}
 	 */
 	isConnectedToServer() {
-		return this.isConnected && this.socket && this.socket.readyState === WebSocket.OPEN;
+		return (
+			this.isConnected &&
+			this.socket &&
+			this.socket.readyState === WebSocket.OPEN
+		);
 	}
 
 	/**
@@ -186,9 +189,9 @@ export default class lspClient {
 
 		try {
 			this.languageProvider = AceLanguageClient.for(serverData);
-			console.log('Language provider initialized');
+			console.log("Language provider initialized");
 		} catch (error) {
-			console.error('Failed to initialize language provider:', error);
+			console.error("Failed to initialize language provider:", error);
 			throw error;
 		}
 	}
@@ -201,19 +204,19 @@ export default class lspClient {
 	_waitForConnection() {
 		return new Promise((resolve, reject) => {
 			const timeout = setTimeout(() => {
-				reject(new Error('Connection timeout'));
+				reject(new Error("Connection timeout"));
 			}, 10000); // 10 second timeout
 
 			if (this.socket.readyState === WebSocket.OPEN) {
 				clearTimeout(timeout);
 				resolve();
 			} else {
-				this.socket.addEventListener('open', () => {
+				this.socket.addEventListener("open", () => {
 					clearTimeout(timeout);
 					resolve();
 				});
 
-				this.socket.addEventListener('error', (error) => {
+				this.socket.addEventListener("error", (error) => {
 					clearTimeout(timeout);
 					reject(error);
 				});
