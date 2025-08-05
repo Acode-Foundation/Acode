@@ -472,6 +472,7 @@ class TerminalManager {
 				background: #1e1e1e;
 				overflow: hidden;
 				position: relative;
+				padding: 0.25rem;
 			}
 		`;
 	}
