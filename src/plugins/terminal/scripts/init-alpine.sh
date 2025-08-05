@@ -33,6 +33,7 @@ fi
 ln -sf /bin/bash /bin/login
 
 if [ "$1" = "--installing" ]; then
+  mkdir -p $PREFIX/.configured
   echo "Installation completed."
   exit 0
 fi
