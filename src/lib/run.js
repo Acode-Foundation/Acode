@@ -335,6 +335,23 @@ async function run(
 
 				console.log(`Full PATH ${fullPath}`);
 
+				const urlFile = fsOperation(fullPath);
+
+				const stats = await urlFile.stat();
+
+				if (!stats.exists) {
+					error(reqId);
+					return;
+				}
+
+				if (!stats.isFile) {
+					if (fullPath.endsWith("/")) {
+						fullPath += "index.html";
+					} else {
+						fullPath += "/index.html";
+					}
+				}
+
 				// Add back the query if present
 				url = query ? `${fullPath}?${query}` : fullPath;
 

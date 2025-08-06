@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='utf-8' ?>
-<widget id="com.foxdebug.acode" android-versionCode="962" version="1.11.4"
+<widget id="com.foxdebug.acode" android-versionCode="963" version="1.11.5"
     xmlns="http://www.w3.org/ns/widgets"
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:cdv="http://cordova.apache.org/ns/1.0">
@@ -37,7 +37,6 @@
         <edit-config file="app/src/main/AndroidManifest.xml" mode="merge" target="/manifest/application">
             <application android:networkSecurityConfig="@xml/network_security_config" />
             <application android:hardwareAccelerated="true" />
-            <application android:requestLegacyExternalStorage="true" />
             <application android:largeHeap="true" />
             <application android:requestLegacyExternalStorage="true"/>
         </edit-config>

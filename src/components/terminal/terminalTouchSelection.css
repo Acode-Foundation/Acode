@@ -71,7 +71,7 @@
 	padding: 12px 16px;
 	border: none;
 	background: transparent;
-	color: #fff;
+	color: var(--primary-text-color);
 	font-size: 14px;
 	font-weight: 500;
 	text-align: center;
@@ -85,12 +85,12 @@
 
 .terminal-context-menu button:hover,
 .terminal-context-menu button:focus {
-	background: #616161;
+	background: var(--popup-border-color);
 	outline: none;
 }
 
 .terminal-context-menu button:active {
-	background: #757575;
+	background: rgba(var(--secondary-color), 0.5);
 }
 
 @media (min-width: 768px) {

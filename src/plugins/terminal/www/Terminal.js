@@ -91,8 +91,14 @@ const Terminal = {
      * @returns {Promise<boolean>} - Returns true if installation completes with exit code 0
      */
     async install(logger = console.log, err_logger = console.error) {
-        if (await this.isInstalled()) return true;
         if (!(await this.isSupported())) return false;
+
+        try {
+            //cleanup before insatll
+            await this.uninstall();
+        } catch (e) {
+            //supress error
+        }
 
         const filesDir = await new Promise((resolve, reject) => {
             system.getFilesDir(resolve, reject);
@@ -107,18 +113,25 @@ const Terminal = {
             let axsUrl;
             let prootUrl;
             let libTalloc;
+            let libproot = null;
+            let libproot32 = null;
 
             if (arch === "arm64-v8a") {
+                libproot = "https://raw.githubusercontent.com/Acode-Foundation/Acode/main/src/plugins/proot/libs/arm64/libproot.so";
+                libproot32 = "https://raw.githubusercontent.com/Acode-Foundation/Acode/main/src/plugins/proot/libs/arm64/libproot32.so";
                 libTalloc = "https://raw.githubusercontent.com/Acode-Foundation/Acode/main/src/plugins/proot/libs/arm64/libtalloc.so";
                 prootUrl = "https://raw.githubusercontent.com/Acode-Foundation/Acode/main/src/plugins/proot/libs/arm64/libproot-xed.so";
                 axsUrl = `https://github.com/bajrangCoder/acodex_server/releases/latest/download/axs-musl-android-arm64`;
                 alpineUrl = "https://dl-cdn.alpinelinux.org/alpine/v3.21/releases/aarch64/alpine-minirootfs-3.21.0-aarch64.tar.gz";
             } else if (arch === "armeabi-v7a") {
+                libproot = "https://raw.githubusercontent.com/Acode-Foundation/Acode/main/src/plugins/proot/libs/arm32/libproot.so";
                 libTalloc = "https://raw.githubusercontent.com/Acode-Foundation/Acode/main/src/plugins/proot/libs/arm32/libtalloc.so";
                 prootUrl = "https://raw.githubusercontent.com/Acode-Foundation/Acode/main/src/plugins/proot/libs/arm32/libproot-xed.so";
                 axsUrl = `https://github.com/bajrangCoder/acodex_server/releases/latest/download/axs-musl-android-armv7`;
                 alpineUrl = "https://dl-cdn.alpinelinux.org/alpine/v3.21/releases/armhf/alpine-minirootfs-3.21.0-armhf.tar.gz";
             } else if (arch === "x86_64") {
+                libproot = "https://raw.githubusercontent.com/Acode-Foundation/Acode/main/src/plugins/proot/libs/x64/libproot.so";
+                libproot32 = "https://raw.githubusercontent.com/Acode-Foundation/Acode/main/src/plugins/proot/libs/x64/libproot32.so";
                 libTalloc = "https://raw.githubusercontent.com/Acode-Foundation/Acode/main/src/plugins/proot/libs/x64/libtalloc.so";
                 prootUrl = "https://raw.githubusercontent.com/Acode-Foundation/Acode/main/src/plugins/proot/libs/x64/libproot-xed.so";
                 axsUrl = `https://github.com/bajrangCoder/acodex_server/releases/latest/download/axs-musl-android-x86_64`;
@@ -127,7 +140,7 @@ const Terminal = {
                 throw new Error(`Unsupported architecture: ${arch}`);
             }
 
-            
+
             logger("⬇️  Downloading sandbox filesystem...");
             await new Promise((resolve, reject) => {
                 cordova.plugin.http.downloadFile(
@@ -166,6 +179,27 @@ const Terminal = {
                         resolve, reject
                     );
                 });
+
+                if (libproot != null) {
+                    await new Promise((resolve, reject) => {
+                        cordova.plugin.http.downloadFile(
+                            libproot, {}, {},
+                            cordova.file.dataDirectory + "libproot.so",
+                            resolve, reject
+                        );
+                    });
+                }
+
+                if (libproot32 != null) {
+                    await new Promise((resolve, reject) => {
+                        cordova.plugin.http.downloadFile(
+                            libproot32, {}, {},
+                            cordova.file.dataDirectory + "libproot32.so",
+                            resolve, reject
+                        );
+                    });
+                }
+
             }
 
             logger("✅  All downloads completed");
@@ -198,9 +232,9 @@ const Terminal = {
             return installResult;
 
         } catch (e) {
-          err_logger("Installation failed:", e);
-          console.error("Installation failed:", e);
-          return false;
+            err_logger("Installation failed:", e);
+            console.error("Installation failed:", e);
+            return false;
         }
     },
 
@@ -232,7 +266,13 @@ const Terminal = {
                 }, reject);
             });
 
-            resolve(alpineExists && downloaded && extracted);
+            const configured = alpineExists && await new Promise((resolve, reject) => {
+                system.fileExists(`${filesDir}/.configured`, false, (result) => {
+                    resolve(result == 1);
+                }, reject);
+            });
+
+            resolve(alpineExists && downloaded && extracted && configured);
         });
     },
 
@@ -278,7 +318,7 @@ const Terminal = {
                 INCLUDE_FILES="$INCLUDE_FILES libtalloc.so.2 libproot-xed.so"
             fi
 
-            EXCLUDE="--exclude=alpine/data --exclude=alpine/system --exclude=alpine/vendor --exclude=alpine/sdcard --exclude=alpine/storage"
+            EXCLUDE="--exclude=alpine/data --exclude=alpine/system --exclude=alpine/vendor --exclude=alpine/sdcard --exclude=alpine/storage --exclude=alpine/public"
 
             tar -cf "$PREFIX/aterm_backup.tar" -C "$PREFIX" $EXCLUDE $INCLUDE_FILES
             echo "ok"
@@ -358,10 +398,10 @@ const Terminal = {
      *   console.error(`Uninstall failed: ${error}`);
      * }
      */
-    uninstall(){
+    uninstall() {
         return new Promise(async (resolve, reject) => {
-            if(await this.isAxsRunning()){
-                await this.stopAxs()
+            if (await this.isAxsRunning()) {
+                await this.stopAxs();
             }
 
             const cmd = `
@@ -378,13 +418,13 @@ const Terminal = {
             done
 
             echo "ok"
-            `
-           const result = await Executor.execute(cmd)
-           if(result === "ok"){
-            resolve(result)
-           }else{
-            reject(result)
-           }
+            `;
+            const result = await Executor.execute(cmd);
+            if (result === "ok") {
+                resolve(result);
+            } else {
+                reject(result);
+            }
         });
     }
 };
