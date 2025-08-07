@@ -49,7 +49,7 @@ function patchTargetSdkVersion() {
 
   if (sdkRegex.test(content)) {
     const fdroid = fs.readFileSync(path.join(prefix,'fdroid.bool'), 'utf-8').trim();
-    var api = "34"
+    var api = "35"
     if(fdroid == "true"){
       api = "28"
     }

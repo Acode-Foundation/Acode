@@ -126,7 +126,6 @@
 	"animation": "Animasi",
 	"backup": "Cadangkan",
 	"restore": "Mengembalikan",
-	"allFileAccess": "Semua akses berkas",
 	"backup successful": "Berhasil membuat cadangan",
 	"invalid backup file": "Berkas cadangan tidak valid",
 	"add path": "Tambah jalur",
@@ -422,5 +421,6 @@
 	"terminal:cursor style": "Gaya Kursor",
 	"terminal:font family": "Keluarga Huruf",
 	"terminal:convert eol": "Konversi Akhir Baris",
-	"terminal": "Terminal"
+	"terminal": "Terminal",
+	"allFileAccess": "Semua akses berkas"
 }
