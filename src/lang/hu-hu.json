@@ -420,5 +420,6 @@
 	"terminal:cursor style": "Kurzor stílusa",
 	"terminal:font family": "Betűtípuscsalád",
 	"terminal:convert eol": "Sorvégződések konvertálása",
-	"terminal": "Terminál"
+	"terminal": "Terminál",
+	"allfileaccess": "All file access"
 }
