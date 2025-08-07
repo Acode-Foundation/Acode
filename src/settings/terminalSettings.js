@@ -30,7 +30,7 @@ export default function terminalSettings() {
 	const items = [
 		{
 			key: "all_file_access",
-			text: strings.allFileAccess.capitalize(),
+			text: strings.allFileAccess?.capitalize(),
 			info: "Enable access of /sdcard and /storage in terminal",
 		},
 		{

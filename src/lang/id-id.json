@@ -422,5 +422,5 @@
 	"terminal:font family": "Keluarga Huruf",
 	"terminal:convert eol": "Konversi Akhir Baris",
 	"terminal": "Terminal",
-	"allfileaccess": "Semua akses berkas"
+	"allFileAccess": "Semua akses berkas"
 }

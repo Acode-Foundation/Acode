@@ -422,5 +422,5 @@
 	"terminal:font family": "Font Family",
 	"terminal:convert eol": "Convert EOL",
 	"terminal": "Terminal",
-	"allfileaccess": "All file access"
+	"allFileAccess": "All file access"
 }
