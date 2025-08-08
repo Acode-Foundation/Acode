@@ -1,4 +1,6 @@
 import fsOperation from "fileSystem";
+import fsOperation from "fileSystem";
+import internalFs from "fileSystem/internalFs";
 import ajax from "@deadlyjack/ajax";
 import alert from "dialogs/alert";
 import confirm from "dialogs/confirm";
@@ -29,6 +31,7 @@ export default async function installPlugin(
 	purchaseToken,
 	isDependency,
 ) {
+	console.log(`Installing ${name}`);
 	if (!isDependency) {
 		loaderDialog = loader.create(name || "Plugin", strings.installing, {
 			timeout: 6000,
@@ -41,13 +44,14 @@ export default async function installPlugin(
 	let state;
 
 	try {
-		if (!(await fsOperation(PLUGIN_DIR).exists())) {
-			await fsOperation(DATA_STORAGE).createDirectory("plugins");
+		if (!(await internalFs.exists(PLUGIN_DIR))) {
+			await internalFs.createDir(DATA_STORAGE, "plugins");
 		}
 	} catch (error) {
 		window.log("error", error);
 	}
 
+	console.log("installing -------------------------");
 	if (!/^(https?|file|content):/.test(id)) {
 		pluginUrl = Url.join(
 			constants.API_BASE,
@@ -65,6 +69,8 @@ export default async function installPlugin(
 
 	try {
 		if (!isDependency) loaderDialog.show();
+
+		console.log("installing ...");
 
 		let plugin;
 		if (
@@ -93,9 +99,11 @@ export default async function installPlugin(
 					(response) => {
 						resolve(response.data);
 						loaderDialog.setMessage(`${strings.loading} 100%`);
+						console.log("Download complete");
 					},
 					(error) => {
 						reject(error);
+						console.log("Download failed");
 					},
 				);
 			});
@@ -104,15 +112,19 @@ export default async function installPlugin(
 		if (plugin) {
 			const zip = new JSZip();
 			await zip.loadAsync(plugin);
+			console.log("Plugin zip loaded into memory");
 
 			if (!zip.files["plugin.json"]) {
 				throw new Error(strings["invalid plugin"]);
 			}
 
+			console.log("Plugin Json start");
+			const jsonStr = await zip.files["plugin.json"].async("text");
+			console.log(jsonStr);
+			console.log("Plugin json end");
+
 			/** @type {{ dependencies: string[] }} */
-			const pluginJson = JSON.parse(
-				await zip.files["plugin.json"].async("text"),
-			);
+			const pluginJson = JSON.parse(jsonStr);
 
 			/** patch main in manifest */
 			if (!zip.files[pluginJson.main]) {
@@ -167,20 +179,25 @@ export default async function installPlugin(
 				pluginDir = Url.join(PLUGIN_DIR, id);
 			}
 
+			console.log("Begin Install state");
 			state = await InstallState.new(id);
+			console.log("Install state end");
 
-			if (!(await fsOperation(pluginDir).exists())) {
-				await fsOperation(PLUGIN_DIR).createDirectory(id);
+			if (!(await internalFs.exists(pluginDir))) {
+				await internalFs.createDir(PLUGIN_DIR, id);
 			}
 
 			const promises = Object.keys(zip.files).map(async (file) => {
 				try {
 					let correctFile = file;
+
 					if (/\\/.test(correctFile)) {
 						correctFile = correctFile.replace(/\\/g, "/");
 					}
 
+					console.log(`Correct file ${correctFile}`);
 					const fileUrl = Url.join(pluginDir, correctFile);
+					console.log("file Url " + fileUrl);
 
 					if (!state.exists(correctFile)) {
 						await createFileRecursive(pluginDir, correctFile);
@@ -196,7 +213,9 @@ export default async function installPlugin(
 					}
 
 					if (!(await state.isUpdated(correctFile, data))) return;
+					console.log("writing file");
 					await fsOperation(fileUrl).writeFile(data);
+					console.log("file written");
 					return;
 				} catch (error) {
 					console.error(`Error processing file ${file}:`, error);
@@ -206,16 +225,26 @@ export default async function installPlugin(
 			// Wait for all files to be processed
 			await Promise.allSettled(promises);
 
+			console.log("done");
+
 			if (isDependency) {
 				depsLoaders.push(async () => {
 					await loadPlugin(id, true);
 				});
 			} else {
+				console.log("loaders");
 				for (const loader of depsLoaders) {
+					console.log("loading loader");
+					console.log(loader);
 					await loader();
 				}
+				console.log("loader loading done");
+				console.log("loading plugin");
 				await loadPlugin(id, true);
+				console.log("loading plugin done");
 			}
+
+			console.log("successfully loaded");
 
 			await state.save();
 			deleteRedundantFiles(pluginDir, state);

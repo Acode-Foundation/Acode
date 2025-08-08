@@ -52,6 +52,10 @@ import org.apache.cordova.PluginResult;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import android.webkit.WebView;
+import capacitor.cordova.android.plugins.BuildConfig;
+
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
@@ -91,46 +95,119 @@ import androidx.core.content.ContextCompat;
 
 
 
+
 public class System extends CordovaPlugin {
 
-    private CallbackContext requestPermissionCallback;
-    private Activity activity;
-    private Context context;
-    private int REQ_PERMISSIONS = 1;
-    private int REQ_PERMISSION = 2;
-    private int systemBarColor = 0xFF000000;
-    private Theme theme;
-    private CallbackContext intentHandler;
-    private CordovaWebView webView;
+  private CallbackContext requestPermissionCallback;
+  private Activity activity;
+  private Context context;
+  private int REQ_PERMISSIONS = 1;
+  private int REQ_PERMISSION = 2;
+  private int systemBarColor = 0xFF000000;
+  private Theme theme;
+  private CallbackContext intentHandler;
+  private CordovaWebView webView;
 
-    public void initialize(CordovaInterface cordova, CordovaWebView webView) {
-        super.initialize(cordova, webView);
-        this.context = cordova.getContext();
-        this.activity = cordova.getActivity();
-        this.webView = webView;
+  public void initialize(CordovaInterface cordova, CordovaWebView webView) {
+    super.initialize(cordova, webView);
+    this.context = cordova.getContext();
+    this.activity = cordova.getActivity();
+    this.webView = webView;
 
-        // Set up global exception handler
-        Thread.setDefaultUncaughtExceptionHandler(
-            new Thread.UncaughtExceptionHandler() {
-                @Override
-                public void uncaughtException(Thread thread, Throwable ex) {
-                    StringWriter sw = new StringWriter();
-                    PrintWriter pw = new PrintWriter(sw);
-                    ex.printStackTrace(pw);
-                    String stackTrace = sw.toString();
+    //enable webview debugging when in debug mode
+    if (BuildConfig.DEBUG){
+      ((WebView)webView.getView()).setWebContentsDebuggingEnabled(true);
+    }
 
-                    String errorMsg = String.format(
-                        "Uncaught Exception: %s\nStack trace: %s",
-                        ex.getMessage(),
-                        stackTrace
-                    );
+    // Set up global exception handler
+    Thread.setDefaultUncaughtExceptionHandler(
+      new Thread.UncaughtExceptionHandler() {
+        @Override
+        public void uncaughtException(Thread thread, Throwable ex) {
+          StringWriter sw = new StringWriter();
+          PrintWriter pw = new PrintWriter(sw);
+          ex.printStackTrace(pw);
+          String stackTrace = sw.toString();
 
-                    sendLogToJavaScript("error", errorMsg);
+          String errorMsg = String.format(
+            "Uncaught Exception: %s\nStack trace: %s",
+            ex.getMessage(),
+            stackTrace
+          );
 
-                    // rethrow to the default handler
-                    Thread.getDefaultUncaughtExceptionHandler()
-                        .uncaughtException(thread, ex);
-                }
+          sendLogToJavaScript("error", errorMsg);
+
+          // rethrow to the default handler
+          Thread.getDefaultUncaughtExceptionHandler()
+            .uncaughtException(thread, ex);
+        }
+      }
+    );
+  }
+
+  public boolean execute(
+    String action,
+    final JSONArray args,
+    final CallbackContext callbackContext
+  ) throws JSONException {
+    final String arg1 = args.optString(0);
+    final String arg2 = args.optString(1);
+    final String arg3 = args.optString(2);
+    final String arg4 = args.optString(3);
+    final String arg5 = args.optString(4);
+    final String arg6 = args.optString(5);
+
+    switch (action) {
+      case "get-webkit-info":
+      case "file-action":
+      case "is-powersave-mode":
+      case "get-app-info":
+      case "add-shortcut":
+      case "remove-shortcut":
+      case "pin-shortcut":
+      case "get-android-version":
+      case "request-permissions":
+      case "request-permission":
+      case "has-permission":
+      case "open-in-browser":
+      case "launch-app":
+      case "get-global-setting":
+      case "get-available-encodings":
+      case "decode":
+      case "encode":
+        break;
+      case "get-configuration":
+        getConfiguration(callbackContext);
+        return true;
+      case "set-input-type":
+        setInputType(arg1);
+        callbackContext.success();
+        return true;
+      case "get-cordova-intent":
+        getCordovaIntent(callbackContext);
+        return true;
+      case "set-intent-handler":
+        setIntentHandler(callbackContext);
+        return true;
+      case "set-ui-theme":
+        this.cordova.getActivity()
+          .runOnUiThread(
+            new Runnable() {
+              public void run() {
+                setUiTheme(arg1, args.optJSONObject(1), callbackContext);
+              }
+            }
+          );
+        return true;
+      case "clear-cache":
+        this.cordova.getActivity()
+          .runOnUiThread(
+            new Runnable() {
+              public void run() {
+                clearCache(callbackContext);
+              }
+
+  
             }
         );
     }
@@ -1247,4 +1324,6 @@ public class System extends CordovaPlugin {
         }
         webView.setInputType(mode);
     }
-}
+    //no such method
+    //webView.setInputType(mode);
+  }
