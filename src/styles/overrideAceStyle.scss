@@ -18,12 +18,24 @@
 }
 
 .ace_tooltip {
-  background-color: rgb(255, 255, 255);
-  background-color: var(--secondary-color);
-  color: rgb(37, 37, 37);
-  color: var(--secondary-text-color);
-  max-width: 68%;
+  background-color: var(--popup-background-color) !important;
+  color: var(--popup-text-color) !important;
+  border: 1px solid var(--popup-border-color) !important;
+  border-radius: var(--popup-border-radius) !important;
+  box-shadow: 0 4px 12px var(--box-shadow-color) !important;
+  padding: 8px 12px;
+  font-size: 13px;
+  line-height: 1.4;
+  max-width: 400px;
+  min-width: 120px;
   white-space: pre-wrap;
+  word-wrap: break-word;
+  transition: opacity 0.2s ease-in-out;
+
+  &.ace_doc-tooltip {
+    background-color: var(--popup-background-color) !important;
+    border-color: var(--border-color) !important;
+  }
 }
 
 main .ace_editor {
