@@ -1,0 +1,63 @@
+.main.list .list-item.current-font {
+  background: var(--active-color-5, rgba(51, 153, 255, 0.1)) !important;
+  border-left: 3px solid var(--active-color) !important;
+
+  .text {
+    font-weight: 600 !important;
+  }
+
+  .icon:first-child {
+    color: var(--active-color) !important;
+  }
+}
+
+.font-manager {
+  .list-item {
+    .container {
+      flex: 1;
+    }
+
+    .icon {
+
+      &.visibility,
+      &.delete {
+        opacity: 0.6;
+        transition: opacity 0.2s ease;
+        cursor: pointer;
+
+        &:hover {
+          opacity: 1;
+        }
+      }
+
+      &.delete {
+        &:hover:not(.disabled) {
+          color: var(--error-text-color);
+        }
+
+        &.disabled {
+          opacity: 0.3;
+          cursor: not-allowed;
+
+          &:hover {
+            opacity: 0.3;
+          }
+        }
+      }
+    }
+  }
+}
+
+.prompt.box {
+  .font-css-editor {
+    &.input {
+      border-bottom: 1px solid var(--border-color);
+      min-height: 120px;
+      margin-top: 5px;
+
+      &:focus {
+        border-bottom-color: var(--active-color);
+      }
+    }
+  }
+}

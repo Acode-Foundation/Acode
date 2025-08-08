@@ -421,5 +421,6 @@
 	"terminal:font family": "Betűtípuscsalád",
 	"terminal:convert eol": "Sorvégződések konvertálása",
 	"terminal": "Terminál",
-	"allFileAccess": "Hozzáférés az összes fájlhoz"
+	"allFileAccess": "Hozzáférés az összes fájlhoz",
+	"fonts": "Fonts"
 }

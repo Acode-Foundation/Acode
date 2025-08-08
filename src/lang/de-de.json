@@ -421,5 +421,6 @@
 	"terminal:font family": "Schriftfamilie",
 	"terminal:convert eol": "EOL (Zeilenende) konvertieren",
 	"terminal": "Terminal",
-	"allFileAccess": "Zugriff auf alle Dateien"
+	"allFileAccess": "Zugriff auf alle Dateien",
+	"fonts": "Fonts"
 }
