@@ -31,11 +31,6 @@
   white-space: pre-wrap;
   word-wrap: break-word;
   transition: opacity 0.2s ease-in-out;
-
-  &.ace_doc-tooltip {
-    background-color: var(--popup-background-color) !important;
-    border-color: var(--border-color) !important;
-  }
 }
 
 main .ace_editor {
