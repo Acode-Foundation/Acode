@@ -532,6 +532,27 @@ function execOperation(type, action, url, $target, name) {
 			return;
 		}
 
+		// Prevent pasting a folder into itself or its subdirectories
+		if (helpers.isDir(clipBoard.$el.dataset.type)) {
+			const sourceUrl = Url.parse(clipBoard.url).url;
+			const targetUrl = Url.parse(url).url;
+
+			// Check if trying to paste folder into itself
+			if (sourceUrl === targetUrl) {
+				alert(strings.warning, "Cannot paste a folder into itself");
+				return;
+			}
+
+			// Check if trying to paste folder into one of its subdirectories
+			if (
+				targetUrl.startsWith(sourceUrl + "/") ||
+				targetUrl.startsWith(sourceUrl + "\\")
+			) {
+				alert(strings.warning, "Cannot paste a folder into its subdirectory");
+				return;
+			}
+		}
+
 		let CASE = "";
 		const $src = clipBoard.$el;
 		const srcType = $src.dataset.type;
@@ -559,8 +580,47 @@ function execOperation(type, action, url, $target, name) {
 				if (!confirmation) return;
 			}
 			let newUrl;
-			if (clipBoard.action === "cut") newUrl = await fs.moveTo(url);
-			else newUrl = await fs.copyTo(url);
+			if (clipBoard.action === "cut") {
+				// Special handling for Termux SAF folders - move manually due to SAF limitations
+				if (
+					clipBoard.url.startsWith("content://com.termux.documents/tree/") &&
+					IS_DIR
+				) {
+					const moveRecursively = async (sourceUrl, targetParentUrl) => {
+						const sourceFs = fsOperation(sourceUrl);
+						const sourceName = Url.basename(sourceUrl);
+						const targetUrl = Url.join(targetParentUrl, sourceName);
+
+						// Create target folder
+						await fsOperation(targetParentUrl).createDirectory(sourceName);
+
+						// Get all entries in source folder
+						const entries = await sourceFs.lsDir();
+
+						// Move all files and folders recursively
+						for (const entry of entries) {
+							if (entry.isDirectory) {
+								await moveRecursively(entry.url, targetUrl);
+							} else {
+								const fileContent = await fsOperation(entry.url).readFile();
+								const fileName = entry.name || Url.basename(entry.url);
+								await fsOperation(targetUrl).createFile(fileName, fileContent);
+								await fsOperation(entry.url).delete();
+							}
+						}
+
+						// Delete the now-empty source folder
+						await sourceFs.delete();
+						return targetUrl;
+					};
+
+					newUrl = await moveRecursively(clipBoard.url, url);
+				} else {
+					newUrl = await fs.moveTo(url);
+				}
+			} else {
+				newUrl = await fs.copyTo(url);
+			}
 			const { name: newName } = await fsOperation(newUrl).stat();
 			stopLoading();
 			/**
