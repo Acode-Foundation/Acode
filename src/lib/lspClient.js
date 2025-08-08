@@ -1,4 +1,5 @@
 import { AceLanguageClient } from "ace-linters/build/ace-language-client";
+import settings from "./settings";
 
 export default class lspClient {
 	constructor(wsUrl, modes) {
@@ -107,6 +108,9 @@ export default class lspClient {
 		}
 
 		try {
+			settings.update({
+				showAnnotations: true,
+			});
 			this.languageProvider.registerEditor(editor);
 			this.registeredEditors.add(editor);
 
