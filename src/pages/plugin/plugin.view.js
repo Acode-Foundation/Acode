@@ -27,6 +27,7 @@ export default (props) => {
 		author_verified: authorVerified,
 		author_github: authorGithub,
 		comment_count: commentCount,
+		package_updated_at: packageUpdatedAt,
 	} = props;
 
 	let rating = "unrated";
@@ -41,6 +42,48 @@ export default (props) => {
 	if (votesUp || votesDown) {
 		rating = `${Math.round((votesUp / (votesUp + votesDown)) * 100)}%`;
 	}
+
+	const formatUpdatedDate = (dateString) => {
+		if (!dateString) return null;
+
+		const date = new Date(dateString);
+		const now = new Date();
+		const diffTime = now - date;
+
+		if (diffTime < 0) return null;
+
+		const diffSeconds = Math.floor(diffTime / 1000);
+		const diffMinutes = Math.floor(diffSeconds / 60);
+		const diffHours = Math.floor(diffMinutes / 60);
+		const diffDays = Math.floor(diffHours / 24);
+		const diffWeeks = Math.floor(diffDays / 7);
+		const diffMonths = Math.floor(diffDays / 30);
+		const diffYears = Math.floor(diffDays / 365);
+
+		if (diffSeconds < 60) {
+			return "just now";
+		} else if (diffMinutes < 60) {
+			return `${diffMinutes}m ago`;
+		} else if (diffHours < 24) {
+			return `${diffHours}h ago`;
+		} else if (diffDays === 1) {
+			return "yesterday";
+		} else if (diffDays < 7) {
+			return `${diffDays}d ago`;
+		} else if (diffWeeks === 1) {
+			return "1w ago";
+		} else if (diffDays < 30) {
+			return `${diffWeeks}w ago`;
+		} else if (diffMonths === 1) {
+			return "1mo ago";
+		} else if (diffDays < 365) {
+			return `${diffMonths}mo ago`;
+		} else if (diffYears === 1) {
+			return "1y ago";
+		} else {
+			return `${diffYears}y ago`;
+		}
+	};
 
 	return (
 		<div className="main" id="plugin">
@@ -62,7 +105,11 @@ export default (props) => {
 					<div className="plugin-meta">
 						<span className="meta-item">
 							<i className="licons tag" style={{ fontSize: "12px" }}></i>
-							<Version {...props} />
+							<Version
+								{...props}
+								packageUpdatedAt={packageUpdatedAt}
+								formatUpdatedDate={formatUpdatedDate}
+							/>
 						</span>
 						<span className="meta-item author-name">
 							<i className="icon person"></i>
@@ -307,11 +354,32 @@ function Buttons({
 	);
 }
 
-function Version({ currentVersion, version }) {
-	if (!currentVersion) return <span>v{version}</span>;
+function Version({
+	currentVersion,
+	version,
+	packageUpdatedAt,
+	formatUpdatedDate,
+}) {
+	const updatedText =
+		formatUpdatedDate && packageUpdatedAt
+			? formatUpdatedDate(packageUpdatedAt)
+			: null;
+
+	if (!currentVersion) {
+		return (
+			<span>
+				v{version}
+				{updatedText && (
+					<span className="version-updated">({updatedText})</span>
+				)}
+			</span>
+		);
+	}
+
 	return (
 		<span>
 			v{currentVersion}&nbsp;&#8594;&nbsp;v{version}
+			{updatedText && <span className="version-updated">({updatedText})</span>}
 		</span>
 	);
 }
