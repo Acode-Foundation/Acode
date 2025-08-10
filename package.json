@@ -123,6 +123,7 @@
     "markdown-it-task-lists": "^2.1.1",
     "mime-types": "^2.1.35",
     "minimatch": "^9.0.4",
+    "moment": "^2.30.1",
     "mustache": "^4.2.0",
     "url-parse": "^1.5.10",
     "vanilla-picker": "^2.12.3",

@@ -6,6 +6,7 @@ import DOMPurify from "dompurify";
 import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
 import constants from "lib/constants";
+import moment from "moment";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
 
@@ -46,42 +47,14 @@ export default (props) => {
 	const formatUpdatedDate = (dateString) => {
 		if (!dateString) return null;
 
-		const date = new Date(dateString);
-		const now = new Date();
-		const diffTime = now - date;
+		try {
+			const updateTime = moment.utc(dateString);
+			if (!updateTime.isValid()) return null;
 
-		if (diffTime < 0) return null;
-
-		const diffSeconds = Math.floor(diffTime / 1000);
-		const diffMinutes = Math.floor(diffSeconds / 60);
-		const diffHours = Math.floor(diffMinutes / 60);
-		const diffDays = Math.floor(diffHours / 24);
-		const diffWeeks = Math.floor(diffDays / 7);
-		const diffMonths = Math.floor(diffDays / 30);
-		const diffYears = Math.floor(diffDays / 365);
-
-		if (diffSeconds < 60) {
-			return "just now";
-		} else if (diffMinutes < 60) {
-			return `${diffMinutes}m ago`;
-		} else if (diffHours < 24) {
-			return `${diffHours}h ago`;
-		} else if (diffDays === 1) {
-			return "yesterday";
-		} else if (diffDays < 7) {
-			return `${diffDays}d ago`;
-		} else if (diffWeeks === 1) {
-			return "1w ago";
-		} else if (diffDays < 30) {
-			return `${diffWeeks}w ago`;
-		} else if (diffMonths === 1) {
-			return "1mo ago";
-		} else if (diffDays < 365) {
-			return `${diffMonths}mo ago`;
-		} else if (diffYears === 1) {
-			return "1y ago";
-		} else {
-			return `${diffYears}y ago`;
+			return updateTime.fromNow();
+		} catch (error) {
+			console.warn("Error parsing date with moment:", dateString, error);
+			return null;
 		}
 	};
 
