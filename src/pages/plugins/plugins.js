@@ -14,8 +14,11 @@ import installPlugin from "lib/installPlugin";
 import prompt from "dialogs/prompt";
 import actionStack from "lib/actionStack";
 import Contextmenu from "components/contextmenu";
+
+import internalFs from "fileSystem/internalFs";
 import settings from "lib/settings";
 import loadPlugin from "lib/loadPlugin";
+
 
 /**
  *
@@ -354,9 +357,8 @@ export default function PluginsInclude(updates) {
         hasMore = false;
       }
 
-      const installed = await fsOperation(PLUGIN_DIR).lsDir();
+      const installed = await internalFs.listDir(PLUGIN_DIR)
       const disabledMap = settings.value.pluginsDisabled || {};
-      
       installed.forEach(({ url }) => {
         const plugin = newPlugins.find(({ id }) => id === Url.basename(url));
         if (plugin) {
@@ -388,16 +390,15 @@ export default function PluginsInclude(updates) {
   async function getInstalledPlugins(updates) {
     $list.installed.setAttribute("empty-msg", strings["loading..."]);
     plugins.installed = [];
+    const installed = await internalFs.listDir(PLUGIN_DIR)
     const disabledMap = settings.value.pluginsDisabled || {};
-    const installed = await fsOperation(PLUGIN_DIR).lsDir();
     await Promise.all(
       installed.map(async (item) => {
         const id = Url.basename(item.url);
         if (!((updates && updates.includes(id)) || !updates)) return;
         const url = Url.join(item.url, "plugin.json");
         const plugin = await fsOperation(url).readFile("json");
-        const iconUrl = getLocalRes(id, plugin.icon);
-        plugin.icon = await helpers.toInternalUri(iconUrl);
+        plugin.icon = Capacitor.convertFileSrc(getLocalRes(id, plugin.icon))
         plugin.installed = true;
         plugin.enabled = disabledMap[id] !== true; // default to true
         plugin.onToggleEnabled = onToggleEnabled;
