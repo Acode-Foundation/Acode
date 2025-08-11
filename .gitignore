@@ -1,7 +1,6 @@
 /node_modules
 /build.json
-/www/js/build
-/www/css/build
+/www/build
 /plugins
 /platforms
 /keystore.jks
