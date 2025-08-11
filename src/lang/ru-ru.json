@@ -421,5 +421,7 @@
 	"terminal:cursor style": "Cursor Style",
 	"terminal:font family": "Font Family",
 	"terminal:convert eol": "Convert EOL",
-	"terminal": "Terminal"
+	"terminal": "Terminal",
+	"allFileAccess": "All file access",
+	"fonts": "Fonts"
 }

@@ -534,7 +534,7 @@ function ListItem({ icon, name, id, version, downloads, installed, source }) {
 					iap.setPurchaseUpdatedListener(
 						...purchaseListener(onpurchase, onerror),
 					);
-					await helpers.promisify(iap.purchase, product.json);
+					await helpers.promisify(iap.purchase, product.productId);
 
 					async function onpurchase(e) {
 						const purchase = await getPurchase(product.productId);

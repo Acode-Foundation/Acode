@@ -126,7 +126,6 @@
 	"animation": "Animation",
 	"backup": "Backup",
 	"restore": "Restore",
-	"allFileAccess": "All file access",
 	"backup successful": "Backup successful",
 	"invalid backup file": "Invalid backup file",
 	"add path": "Add path",
@@ -211,7 +210,6 @@
 	"normal": "Normal",
 	"app settings": "App settings",
 	"disable in-app-browser caching": "Disable in-app-browser caching",
-	"Should use Current File For preview instead of default (index.html)": "Should use Current File For preview instead of default (index.html)",
 	"copied to clipboard": "Copied to clipboard",
 	"remember opened files": "Remember opened files",
 	"remember opened folders": "Remember opened folders",
@@ -422,5 +420,7 @@
 	"terminal:cursor style": "Cursor Style",
 	"terminal:font family": "Font Family",
 	"terminal:convert eol": "Convert EOL",
-	"terminal": "Terminal"
+	"terminal": "Terminal",
+	"allFileAccess": "All file access",
+	"fonts": "Fonts"
 }

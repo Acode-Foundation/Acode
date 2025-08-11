@@ -130,6 +130,14 @@ function getNames() {
 	return [...fonts.keys()];
 }
 
+function remove(name) {
+	return fonts.delete(name);
+}
+
+function has(name) {
+	return fonts.has(name);
+}
+
 async function setFont(name) {
 	loader.showTitleLoader();
 	try {
@@ -215,6 +223,8 @@ export default {
 	add,
 	get,
 	getNames,
+	remove,
+	has,
 	setFont,
 	loadFont,
 };

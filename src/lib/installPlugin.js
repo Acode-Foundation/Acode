@@ -343,7 +343,7 @@ async function resolveDep(manifest) {
 
 		iap.setPurchaseUpdatedListener(...purchaseListener(onpurchase, onerror));
 		loaderDialog.setMessage(strings["loading..."]);
-		await helpers.promisify(iap.purchase, product.json);
+		await helpers.promisify(iap.purchase, product.productId);
 
 		async function onpurchase(e) {
 			const purchase = await getPurchase(product.productId);

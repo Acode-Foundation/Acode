@@ -32,6 +32,7 @@
         <preference name="AndroidLaunchMode" value="singleTask" />
         <preference name="prerendered-icon" value="false" />
         <preference name="androidxEnabled" value="true" />
+        <preference name="android-targetSdkVersion" value="35" />
 
         
         <edit-config file="app/src/main/AndroidManifest.xml" mode="merge" target="/manifest/application">

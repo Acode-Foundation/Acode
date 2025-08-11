@@ -12,6 +12,7 @@
     gap: 20px;
     align-items: start;
     margin-bottom: 24px;
+
     .plugin-icon {
       width: 80px;
       height: 80px;
@@ -20,6 +21,7 @@
       background-repeat: no-repeat;
       background-size: contain;
     }
+
     .plugin-info {
       .title-wrapper {
         display: flex;
@@ -27,10 +29,12 @@
         flex-wrap: wrap;
         gap: 16px;
         margin-bottom: 8px;
+
         .plugin-name {
           font-size: 24px;
           margin-bottom: 0;
         }
+
         .source-indicator {
           display: flex;
           align-items: center;
@@ -45,16 +49,19 @@
           transition: all 0.3s ease;
           border: 1px solid rgba(255, 255, 255, 0.1);
           text-decoration: none;
+
           &:hover {
             background-color: rgba(0, 0, 0, 0.5);
             transform: translateY(-1px);
           }
+
           .icon {
             color: var(--primary-text-color);
             font-size: 14px;
           }
         }
       }
+
       .plugin-meta {
         display: flex;
         gap: 16px;
@@ -62,18 +69,27 @@
         color: color-mix(in srgb, var(--primary-text-color) 60%, transparent);
         font-size: 14px;
         margin-bottom: 12px;
+
         .author-name {
           display: inline-flex;
           align-items: center;
           gap: 4px;
+
           a {
             text-decoration: none;
             color: inherit;
           }
         }
+
         .verified-tick {
           color: #3b82f6;
           font-size: 16px;
+        }
+
+        .version-updated {
+          opacity: 0.6;
+          font-size: 0.8em;
+          margin-left: 4px;
         }
       }
 
@@ -88,10 +104,12 @@
           display: flex;
           align-items: center;
           gap: 4px;
+
           .metric-value {
             color: var(--primary-text-color);
             font-weight: 500;
           }
+
           .rating-value {
             padding: 2px 8px;
             border-radius: 12px;
@@ -114,6 +132,7 @@
           }
         }
       }
+
       .keywords {
         display: flex;
         gap: 6px;
@@ -122,21 +141,19 @@
         position: relative;
 
         .keyword {
-          background: color-mix(
-            in srgb,
-            var(--link-text-color) 10%,
-            transparent
-          );
+          background: color-mix(in srgb,
+              var(--link-text-color) 10%,
+              transparent);
           color: var(--link-text-color);
           padding: 6px 10px;
           border-radius: 12px;
           font-size: 13px;
           transition: all 0.2s;
-          border: 1px solid
-            color-mix(in srgb, var(--link-text-color) 25%, transparent);
+          border: 1px solid color-mix(in srgb, var(--link-text-color) 25%, transparent);
         }
       }
     }
+
     .action-buttons {
       display: flex;
       gap: 8px;
@@ -164,10 +181,12 @@
         display: inline-flex;
         align-items: center;
         gap: 6px;
+
         &:hover {
           transform: translateY(-1px);
         }
       }
+
       .btn-install {
         background: var(--button-background-color);
         color: white;
@@ -182,12 +201,14 @@
         background-color: var(--danger-color) !important;
         color: white;
       }
+
       .btn-secondary {
         background: var(--primary-color);
         color: var(--primary-text-color);
-        shadow: 0 0 10px var(--box-shadow-color);
+        box-shadow: 0 0 10px var(--box-shadow-color);
       }
     }
+
     .more-info-small {
       text-align: center;
       font-style: italic;
@@ -231,6 +252,7 @@
           width: calc(100% - 10px);
           display: block;
           user-select: text;
+
           div {
             background: var(--primary-color);
           }
@@ -279,17 +301,20 @@
         }
       }
     }
+
     #changelog {
       .no-changelog {
         text-align: center;
         padding: 2rem;
         color: color-mix(in srgb, var(--primary-text-color) 60%, transparent);
+
         i {
           font-size: 3rem;
           margin-bottom: 1rem;
           opacity: 0.7;
           display: block;
         }
+
         p {
           margin: 0.5rem 0;
         }
@@ -309,6 +334,7 @@
       top: 20px;
       right: 20px;
     }
+
     .title-wrapper,
     .plugin-meta,
     .metrics-row,
@@ -333,6 +359,7 @@
     }
   }
 }
+
 .reviews-container {
   position: fixed;
   display: flex;

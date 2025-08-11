@@ -13,7 +13,7 @@ export default function removeAds() {
 			iap.setPurchaseUpdatedListener(...purchaseListener(onpurchase, reject));
 
 			iap.purchase(
-				product.json,
+				product.productId,
 				(code) => {
 					// ignore
 				},
