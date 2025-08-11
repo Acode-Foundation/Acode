@@ -48,10 +48,14 @@ function patchTargetSdkVersion() {
   const sdkRegex = /targetSdkVersion\s+(cordovaConfig\.SDK_VERSION|\d+)/;
 
   if (sdkRegex.test(content)) {
-    const fdroid = fs.readFileSync(path.join(prefix,'fdroid.bool'), 'utf-8').trim();
-    var api = "35"
-    if(fdroid == "true"){
-      api = "28"
+    let api = "35"
+    const froidFlag = path.join(prefix, 'fdroid.bool');
+    
+    if(fs.existsSync(froidFlag)){
+      const fdroid = fs.readFileSync(froidFlag, 'utf-8').trim();
+      if(fdroid == "true"){
+        api = "28"
+      }
     }
     
     content = content.replace(sdkRegex, 'targetSdkVersion '+api);

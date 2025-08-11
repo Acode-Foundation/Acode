@@ -1,0 +1,161 @@
+#sponsor-page {
+  overflow: auto;
+
+  .tier-icon {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    margin-right: 8px;
+    border-radius: 50%;
+
+    &.basic {
+      background: linear-gradient(45deg, #95a5a6, #bdc3c7);
+    }
+
+    &.bronze {
+      background: linear-gradient(45deg, #cd7f32, #ff8c42);
+    }
+
+    &.silver {
+      background: linear-gradient(45deg, #c0c0c0, #e6e6fa);
+    }
+
+    &.gold {
+      background: linear-gradient(45deg, #ffd700, #ffed4e);
+    }
+
+    &.platinum {
+      background: linear-gradient(45deg, #e5e4e2, #ffffff);
+    }
+
+    &.titanium {
+      background: linear-gradient(45deg, #878681, #c4c4b0);
+    }
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 30px;
+    animation: fadeInUp 0.8s ease-out;
+  }
+
+  .logo {
+    display: block;
+    width: 150px;
+    height: 150px;
+    position: relative;
+    margin: auto;
+
+    &::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: url(../../res/logo/logo.png);
+      background-size: 80px;
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle, rgb(68, 153, 254, 0.5), rgb(68, 153, 254, 0.1), rgb(68, 153, 254, 0), rgb(68, 153, 254, 0));
+      overflow: visible;
+    }
+  }
+
+  h1 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+
+  .subtitle {
+    font-size: 16px;
+    opacity: 0.9;
+    margin-bottom: 10px;
+  }
+
+  .tier {
+    width: 90%;
+    max-width: 400px;
+    margin: 0 auto;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 15px;
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+    animation: fadeInUp 0.8s ease-out calc(0.6s + var(--delay, 0s)) both;
+    box-sizing: border-box;
+  }
+
+  .tier-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .tier-name {
+    font-size: 18px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+  }
+
+  .tier-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    margin-right: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+  }
+
+  .tier-price {
+    font-size: 16px;
+    font-weight: 600;
+    opacity: 0.9;
+  }
+
+  .tier-description {
+    font-size: 14px;
+    opacity: 0.8;
+    line-height: 1.4;
+  }
+
+  .purchase-btn {
+    background: linear-gradient(45deg, #4ecdc4, #44a08d);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 100%;
+    margin-top: 10px;
+  }
+
+  .purchase-btn:active {
+    background: linear-gradient(45deg, #44a08d, #4ecdc4);
+  }
+
+  .purchase-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+}

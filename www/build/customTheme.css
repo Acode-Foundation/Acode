@@ -1,0 +1,16 @@
+/*!***************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/postcss-loader/dist/cjs.js!./node_modules/sass-loader/dist/cjs.js!./src/pages/customTheme/customTheme.scss ***!
+  \***************************************************************************************************************************************************************************/
+#custom-theme {
+  overflow: auto;
+}
+#custom-theme .icon.color::before {
+  content: "";
+  height: 30px;
+  width: 30px;
+  border: solid 1px rgb(255, 255, 255);
+  border-radius: 50%;
+  -webkit-box-shadow: 0 0 2px 2px rgba(0, 0, 0, 0.2);
+          box-shadow: 0 0 2px 2px rgba(0, 0, 0, 0.2);
+  background-color: currentColor;
+}

@@ -2,6 +2,7 @@ import "./about.scss";
 import Page from "components/page";
 import actionStack from "lib/actionStack";
 import mustache from "mustache";
+import logo from "res/logo/logo.png";
 import helpers from "utils/helpers";
 import _template from "./about.hbs";
 
@@ -31,6 +32,7 @@ export default function AboutInclude() {
 			mustache.render(_template, {
 				...BuildInfo,
 				webview,
+				logo,
 			}),
 		);
 

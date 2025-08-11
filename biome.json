@@ -1,10 +1,16 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.1.1/schema.json",
+	"$schema": "https://biomejs.dev/schemas/2.1.4/schema.json",
 	"formatter": {
 		"enabled": true,
 		"indentStyle": "tab"
 	},
-	"assist": { "actions": { "source": { "organizeImports": "on" } } },
+	"assist": {
+		"actions": {
+			"source": {
+				"organizeImports": "on"
+			}
+		}
+	},
 	"linter": {
 		"enabled": true,
 		"rules": {
@@ -35,12 +41,10 @@
 		"includes": [
 			"**/src/**/*",
 			"**/utils/**/*.js",
-			"**/www/**/*.js",
+			"!**/www/build/**/*",
 			"**/www/res/**/*.css",
 			"**/src/plugins/terminal/**",
 			"!**/ace-builds",
-			"!**/www/js/**/*.js",
-			"!**/www/css/**/*.css",
 			"!**/src/plugins/**/*",
 			"!**/plugins/**/*",
 			"!**/hooks/**/*",

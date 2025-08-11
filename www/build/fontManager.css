@@ -1,0 +1,50 @@
+/*!*********************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/postcss-loader/dist/cjs.js!./node_modules/sass-loader/dist/cjs.js!./src/pages/fontManager/style.scss ***!
+  \*********************************************************************************************************************************************************************/
+.main.list .list-item.current-font {
+  background: var(--active-color-5, rgba(51, 153, 255, 0.1)) !important;
+  border-left: 3px solid var(--active-color) !important;
+}
+.main.list .list-item.current-font .text {
+  font-weight: 600 !important;
+}
+.main.list .list-item.current-font .icon:first-child {
+  color: var(--active-color) !important;
+}
+
+.font-manager .list-item .container {
+  -webkit-box-flex: 1;
+  -webkit-flex: 1;
+     -moz-box-flex: 1;
+      -ms-flex: 1;
+          flex: 1;
+}
+.font-manager .list-item .icon.visibility, .font-manager .list-item .icon.delete {
+  opacity: 0.6;
+  -webkit-transition: opacity 0.2s ease;
+  -moz-transition: opacity 0.2s ease;
+  transition: opacity 0.2s ease;
+  cursor: pointer;
+}
+.font-manager .list-item .icon.visibility:hover, .font-manager .list-item .icon.delete:hover {
+  opacity: 1;
+}
+.font-manager .list-item .icon.delete:hover:not(.disabled) {
+  color: var(--error-text-color);
+}
+.font-manager .list-item .icon.delete.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.font-manager .list-item .icon.delete.disabled:hover {
+  opacity: 0.3;
+}
+
+.prompt.box .font-css-editor.input {
+  border-bottom: 1px solid var(--border-color);
+  min-height: 120px;
+  margin-top: 5px;
+}
+.prompt.box .font-css-editor.input:focus {
+  border-bottom-color: var(--active-color);
+}

@@ -1,0 +1,197 @@
+/*!*****************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/postcss-loader/dist/cjs.js!./node_modules/sass-loader/dist/cjs.js!./src/pages/sponsor/style.scss ***!
+  \*****************************************************************************************************************************************************************/
+#sponsor-page {
+  overflow: auto;
+}
+#sponsor-page .tier-icon {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  margin-right: 8px;
+  border-radius: 50%;
+}
+#sponsor-page .tier-icon.basic {
+  background: -moz-linear-gradient(45deg, #95a5a6, #bdc3c7);
+  background: linear-gradient(45deg, #95a5a6, #bdc3c7);
+}
+#sponsor-page .tier-icon.bronze {
+  background: -moz-linear-gradient(45deg, #cd7f32, #ff8c42);
+  background: linear-gradient(45deg, #cd7f32, #ff8c42);
+}
+#sponsor-page .tier-icon.silver {
+  background: -moz-linear-gradient(45deg, #c0c0c0, #e6e6fa);
+  background: linear-gradient(45deg, #c0c0c0, #e6e6fa);
+}
+#sponsor-page .tier-icon.gold {
+  background: -moz-linear-gradient(45deg, #ffd700, #ffed4e);
+  background: linear-gradient(45deg, #ffd700, #ffed4e);
+}
+#sponsor-page .tier-icon.platinum {
+  background: -moz-linear-gradient(45deg, #e5e4e2, #ffffff);
+  background: linear-gradient(45deg, #e5e4e2, #ffffff);
+}
+#sponsor-page .tier-icon.titanium {
+  background: -moz-linear-gradient(45deg, #878681, #c4c4b0);
+  background: linear-gradient(45deg, #878681, #c4c4b0);
+}
+#sponsor-page .header {
+  text-align: center;
+  margin-bottom: 30px;
+  -webkit-animation: fadeInUp 0.8s ease-out;
+     -moz-animation: fadeInUp 0.8s ease-out;
+          animation: fadeInUp 0.8s ease-out;
+}
+#sponsor-page .logo {
+  display: block;
+  width: 150px;
+  height: 150px;
+  position: relative;
+  margin: auto;
+}
+#sponsor-page .logo::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url(/build/logo.png);
+  background-size: 80px;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+#sponsor-page .logo::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: -moz-radial-gradient(circle, rgba(68, 153, 254, 0.5), rgba(68, 153, 254, 0.1), rgba(68, 153, 254, 0), rgba(68, 153, 254, 0));
+  background: radial-gradient(circle, rgba(68, 153, 254, 0.5), rgba(68, 153, 254, 0.1), rgba(68, 153, 254, 0), rgba(68, 153, 254, 0));
+  overflow: visible;
+}
+#sponsor-page h1 {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+#sponsor-page .subtitle {
+  font-size: 16px;
+  opacity: 0.9;
+  margin-bottom: 10px;
+}
+#sponsor-page .tier {
+  width: 90%;
+  max-width: 400px;
+  margin: 0 auto;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 15px;
+  -webkit-backdrop-filter: blur(10px);
+          backdrop-filter: blur(10px);
+  border: 1px solid var(--border-color);
+  -webkit-transition: all 0.3s ease;
+  -moz-transition: all 0.3s ease;
+  transition: all 0.3s ease;
+  -webkit-animation: fadeInUp 0.8s ease-out -webkit-calc(0.6s + var(--delay, 0s)) both;
+     -moz-animation: fadeInUp 0.8s ease-out -moz-calc(0.6s + var(--delay, 0s)) both;
+          animation: fadeInUp 0.8s ease-out calc(0.6s + var(--delay, 0s)) both;
+  -webkit-box-sizing: border-box;
+     -moz-box-sizing: border-box;
+          box-sizing: border-box;
+}
+#sponsor-page .tier-header {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: -moz-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+     -moz-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+  -webkit-box-pack: justify;
+  -webkit-justify-content: space-between;
+     -moz-box-pack: justify;
+      -ms-flex-pack: justify;
+          justify-content: space-between;
+  margin-bottom: 10px;
+}
+#sponsor-page .tier-name {
+  font-size: 18px;
+  font-weight: 600;
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: -moz-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+     -moz-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+}
+#sponsor-page .tier-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  margin-right: 10px;
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: -moz-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+     -moz-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+  -webkit-box-pack: center;
+  -webkit-justify-content: center;
+     -moz-box-pack: center;
+      -ms-flex-pack: center;
+          justify-content: center;
+  font-size: 14px;
+}
+#sponsor-page .tier-price {
+  font-size: 16px;
+  font-weight: 600;
+  opacity: 0.9;
+}
+#sponsor-page .tier-description {
+  font-size: 14px;
+  opacity: 0.8;
+  line-height: 1.4;
+}
+#sponsor-page .purchase-btn {
+  background: -moz-linear-gradient(45deg, #4ecdc4, #44a08d);
+  background: linear-gradient(45deg, #4ecdc4, #44a08d);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-transition: all 0.3s ease;
+  -moz-transition: all 0.3s ease;
+  transition: all 0.3s ease;
+  width: 100%;
+  margin-top: 10px;
+}
+#sponsor-page .purchase-btn:active {
+  background: -moz-linear-gradient(45deg, #44a08d, #4ecdc4);
+  background: linear-gradient(45deg, #44a08d, #4ecdc4);
+}
+#sponsor-page .purchase-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  -webkit-transform: none;
+     -moz-transform: none;
+      -ms-transform: none;
+          transform: none;
+}

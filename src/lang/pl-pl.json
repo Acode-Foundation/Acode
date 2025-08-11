@@ -201,8 +201,6 @@
 	"add a storage": "Dodaj pamięć",
 	"rate acode": "Oceń Acode",
 	"support": "Wesprzyj",
-	"donate": "Przekaż {amount}",
-	"donation message": "Są ludzie, którzy nie przekazują darowizn, ponieważ zakładają, że wszyscy inni to robią, i są tacy, którzy biorą pochodnię i z nią biegną. Dziękuję za bycie tym drugim oraz za miłą i serdeczną darowiznę.",
 	"downloading file": "Pobieranie {file}",
 	"downloading...": "Pobieranie...",
 	"folder name": "Nazwa folderu",
@@ -422,5 +420,6 @@
 	"terminal:convert eol": "Convert EOL",
 	"terminal": "Terminal",
 	"allFileAccess": "All file access",
-	"fonts": "Fonts"
+	"fonts": "Fonts",
+	"sponsor": "Sponsor"
 }

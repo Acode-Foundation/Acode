@@ -1,0 +1,1771 @@
+@font-face {
+  font-family: 'file-icons';
+  src: url('file-icons.ttf?ujkkfk') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
+.file {
+  /* use !important to prevent issues with browser extensions that change fonts */
+  font-family: 'file-icons' !important;
+  speak: never;
+  font-style: normal;
+  font-weight: normal;
+  font-variant: normal;
+  text-transform: none;
+  line-height: 1;
+
+  /* Better Font Rendering =========== */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.file_type_default:before {
+  content: "\e91a";
+  color: #c5c5c5;
+}
+
+.file_type_text:before {
+  content: "\e985";
+  color: #8fa5c2;
+}
+
+.file_type_txt:before {
+  content: "\e985";
+  color: #8fa5c2;
+}
+
+.file_type_image:before {
+  content: "\e934";
+  color: #96e5cf;
+}
+
+.file_type_video:before {
+  content: "\e991";
+  color: #e75749;
+}
+
+.file_type_astro:before {
+  content: "\e9a4";
+  color: #fff;
+}
+
+.file_type_music:before {
+  content: "\e950";
+}
+
+.file_type_zip:before {
+  content: "\e99b";
+  color: #a08a00;
+}
+
+.file_type_compressed:before {
+  content: "\e99b";
+  color: #a08a00;
+}
+
+.file_type_android:before {
+  content: "\e99e";
+  color: #3ddc84;
+}
+
+.file_type_smali:before {
+  content: "\e99e";
+  color: #3ddc84;
+}
+
+.file_type_rhtml:before {
+  content: "\e9a0";
+  color: #c00;
+}
+
+.file_type_forth:before {
+  content: "\e9a1";
+  color: #35c0ed;
+}
+
+.file_type_frt:before {
+  content: "\e9a1";
+  color: #35c0ed;
+}
+
+.file_type_fs:before {
+  content: "\e9a1";
+  color: #35c0ed;
+}
+
+.file_type_ldr:before {
+  content: "\e9a1";
+  color: #35c0ed;
+}
+
+.file_type_fth:before {
+  content: "\e9a1";
+  color: #35c0ed;
+}
+
+.file_type_4th:before {
+  content: "\e9a1";
+  color: #35c0ed;
+}
+
+.file_type_alda:before {
+  content: "\e99f";
+  color: #35c0ed;
+}
+
+.file_type_abc:before {
+  content: "\e9ea";
+  color: #00aeef;
+}
+
+.file_type_sap:before {
+  content: "\e9eb";
+  color: #00aeef;
+}
+
+.file_type_abap:before {
+  content: "\e9eb";
+  color: #00aeef;
+}
+
+.file_type_apache:before {
+  content: "\e900";
+  color: #d22128;
+}
+
+.file_type_apache_conf:before {
+  content: "\e900";
+  color: #d22128;
+}
+
+.file_type_htaccess:before {
+  content: "\e900";
+  color: #d22128;
+}
+
+.file_type_htgroups:before {
+  content: "\e900";
+  color: #d22128;
+}
+
+.file_type_conf:before {
+  content: "\e900";
+  color: #d22128;
+}
+
+.file_type_htpasswd:before {
+  content: "\e900";
+  color: #d22128;
+}
+
+.file_type_apex:before {
+  content: "\e901";
+  color: #0072a0;
+}
+
+.file_type_cls:before {
+  content: "\e901";
+  color: #0072a0;
+}
+
+.file_type_trigger:before {
+  content: "\e901";
+  color: #0072a0;
+}
+
+.file_type_tgr:before {
+  content: "\e901";
+  color: #0072a0;
+}
+
+.file_type_asciidoc:before {
+  content: "\e902";
+  color: #e40046;
+}
+
+.file_type_adoc:before {
+  content: "\e902";
+  color: #e40046;
+}
+
+.file_type_asl:before {
+  content: "\e903";
+  color: #65bed9;
+}
+
+.file_type_dsl:before {
+  content: "\e903";
+  color: #65bed9;
+}
+
+.file_type_assembly:before {
+  content: "\e904";
+  color: #0000bf;
+}
+
+.file_type_a:before {
+  content: "\e904";
+  color: #0000bf;
+}
+
+.file_type_asm:before {
+  content: "\e904";
+  color: #0000bf;
+}
+
+.file_type_assembly_x86:before {
+  content: "\e904";
+  color: #0000bf;
+}
+
+.file_type_autohotkey:before {
+  content: "\e905";
+  color: #44a915;
+}
+
+.file_type_ahk:before {
+  content: "\e905";
+  color: #44a915;
+}
+
+.file_type_babel:before {
+  content: "\e906";
+  color: #f9dc3e;
+}
+
+.file_type_babelrc:before {
+  content: "\e906";
+  color: #f9dc3e;
+}
+
+.file_type_bibtex:before {
+  content: "\e907";
+}
+
+.file_type_bib:before {
+  content: "\e907";
+}
+
+.file_type_blade:before {
+  content: "\e908";
+  color: #ff2d20;
+}
+
+.file_type_php_laravel_blade:before {
+  content: "\e908";
+  color: #ff2d20;
+}
+
+.file_type_c:before {
+  content: "\e909";
+  color: #005f91;
+}
+
+.file_type_cabal:before {
+  content: "\e90a";
+  color: #6bc9dd;
+}
+
+.file_type_haskell_cabal:before {
+  content: "\e90a";
+  color: #6bc9dd;
+}
+
+.file_type_cheader:before {
+  content: "\e90b";
+  color: #005f91;
+}
+
+.file_type_clojure:before {
+  content: "\e90c";
+  color: #5881d8;
+}
+
+.file_type_clj:before {
+  content: "\e90c";
+  color: #5881d8;
+}
+
+.file_type_clojurescript:before {
+  content: "\e90d";
+  color: #5f7fbf;
+}
+
+.file_type_cljs:before {
+  content: "\e90d";
+  color: #5f7fbf;
+}
+
+.file_type_cmake:before {
+  content: "\e90e";
+  color: #064f8c;
+}
+
+.file_type_cobol:before {
+  content: "\e90f";
+  color: #005ca5;
+}
+
+.file_type_cbl:before {
+  content: "\e90f";
+  color: #005ca5;
+}
+
+.file_type_cob:before {
+  content: "\e90f";
+  color: #005ca5;
+}
+
+.file_type_coffeescript:before {
+  content: "\e910";
+}
+
+.file_type_coffee:before {
+  content: "\e910";
+}
+
+.file_type_cf:before {
+  content: "\e910";
+}
+
+.file_type_cson:before {
+  content: "\e910";
+}
+
+.file_type_cakefile:before {
+  content: "\e910";
+}
+
+.file_type_coldfussion:before {
+  content: "\e911";
+  color: #859aa5;
+}
+
+.file_type_cfm:before {
+  content: "\e911";
+  color: #859aa5;
+}
+
+.file_type_cfc:before {
+  content: "\e911";
+  color: #859aa5;
+}
+
+.file_type_cpp:before {
+  content: "\e912";
+  color: #984c93;
+}
+
+.file_type_cc:before {
+  content: "\e912";
+  color: #984c93;
+}
+
+.file_type_cxx:before {
+  content: "\e912";
+  color: #984c93;
+}
+
+.file_type_ino:before {
+  content: "\e912";
+  color: #984c93;
+}
+
+.file_type_cppheader:before {
+  content: "\e913";
+  color: #984c93;
+}
+
+.file_type_hh:before {
+  content: "\e913";
+  color: #984c93;
+}
+
+.file_type_hpp:before {
+  content: "\e913";
+  color: #984c93;
+}
+
+.file_type_crystal:before {
+  content: "\e914";
+  color: #c8c8c8;
+}
+
+.file_type_cr:before {
+  content: "\e914";
+  color: #c8c8c8;
+}
+
+.file_type_csharp:before {
+  content: "\e915";
+  color: #368832;
+}
+
+.file_type_cs:before {
+  content: "\e915";
+  color: #368832;
+}
+
+.file_type_css:before {
+  content: "\e916";
+  color: #1572b6;
+}
+
+.file_type_cssmap:before {
+  content: "\e917";
+  color: #33a9dc;
+}
+
+.file_type_dartlang:before {
+  content: "\e918";
+  color: #0175c2;
+}
+
+.file_type_dart:before {
+  content: "\e918";
+  color: #0175c2;
+}
+
+.file_type_db:before {
+  content: "\e919";
+  color: #c4c7ce;
+}
+
+.file_type_aql:before {
+  content: "\e919";
+  color: #c4c7ce;
+}
+
+.file_type_diff:before {
+  content: "\e91b";
+  color: #536653;
+}
+
+.file_type_patch:before {
+  content: "\e91b";
+  color: #536653;
+}
+
+.file_type_django:before {
+  content: "\e91c";
+  color: #44b78b;
+}
+
+.file_type_dlang:before {
+  content: "\e91d";
+  color: #b03931;
+}
+
+.file_type_d:before {
+  content: "\e91d";
+  color: #b03931;
+}
+
+.file_type_di:before {
+  content: "\e91d";
+  color: #b03931;
+}
+
+.file_type_docker:before {
+  content: "\e91e";
+  color: #00aada;
+}
+
+.file_type_dockerfile:before {
+  content: "\e91e";
+  color: #00aada;
+}
+
+.file_type_docz:before {
+  content: "\e91f";
+  color: #5f5846;
+}
+
+.file_type_drools:before {
+  content: "\e920";
+  color: #0095dd;
+}
+
+.file_type_drl:before {
+  content: "\e920";
+  color: #0095dd;
+}
+
+.file_type_ejs:before {
+  content: "\e921";
+  color: #90a93a;
+}
+
+.file_type_elixir:before {
+  content: "\e922";
+  color: #7c648f;
+}
+
+.file_type_ex:before {
+  content: "\e922";
+  color: #7c648f;
+}
+
+.file_type_exs:before {
+  content: "\e922";
+  color: #7c648f;
+}
+
+.file_type_html_elixir:before {
+  content: "\e922";
+  color: #7c648f;
+}
+
+.file_type_elm:before {
+  content: "\e923";
+  color: #8cd636;
+}
+
+.file_type_erlang:before {
+  content: "\e924";
+  color: #a2003e;
+}
+
+.file_type_erl:before {
+  content: "\e924";
+  color: #a2003e;
+}
+
+.file_type_hrl:before {
+  content: "\e924";
+  color: #a2003e;
+}
+
+.file_type_eslint:before {
+  content: "\e925";
+  color: #4b32c3;
+}
+
+.file_type_fortran:before {
+  content: "\e926";
+  color: #9e564c;
+}
+
+.file_type_f:before {
+  content: "\e926";
+  color: #9e564c;
+}
+
+.file_type_f90:before {
+  content: "\e926";
+  color: #9e564c;
+}
+
+.file_type_fsharp:before {
+  content: "\e927";
+  color: #378bba;
+}
+
+.file_type_fs1:before {
+  content: "\e927";
+  color: #378bba;
+}
+
+.file_type_fsi:before {
+  content: "\e927";
+  color: #378bba;
+}
+
+.file_type_fsx:before {
+  content: "\e927";
+  color: #378bba;
+}
+
+.file_type_fsscript:before {
+  content: "\e927";
+  color: #378bba;
+}
+
+.file_type_gcode:before {
+  content: "\e928";
+  color: #ba0000;
+}
+
+.file_type_git:before {
+  content: "\e929";
+  color: #f05032;
+}
+
+.file_type_gitignore:before {
+  content: "\e929";
+  color: #f05032;
+}
+
+.file_type_golang:before {
+  content: "\e92a";
+  color: #00add8;
+}
+
+.file_type_go:before {
+  content: "\e92a";
+  color: #00add8;
+}
+
+.file_type_gradle:before {
+  content: "\e92b";
+  color: #136a7d;
+}
+
+.file_type_graphql:before {
+  content: "\e92c";
+  color: #e10098;
+}
+
+.file_type_gql:before {
+  content: "\e92c";
+  color: #e10098;
+}
+
+.file_type_graphqlschema:before {
+  content: "\e92c";
+  color: #e10098;
+}
+
+.file_type_prql:before {
+  content: "\e9a3";
+  color: #dfb13c;
+}
+
+.file_type_groovy:before {
+  content: "\e92d";
+}
+
+.file_type_haml:before {
+  content: "\e92e";
+}
+
+.file_type_handlebars:before {
+  content: "\e92f";
+  color: #c19770;
+}
+
+.file_type_hbs:before {
+  content: "\e92f";
+  color: #c19770;
+}
+
+.file_type_tpl:before {
+  content: "\e92f";
+  color: #c19770;
+}
+
+.file_type_mustache:before {
+  content: "\e92f";
+  color: #c19770;
+}
+
+.file_type_haskell:before {
+  content: "\e930";
+  color: #5d4f85;
+}
+
+.file_type_hs:before {
+  content: "\e930";
+  color: #5d4f85;
+}
+
+.file_type_haxe:before {
+  content: "\e931";
+  color: #ea8220;
+}
+
+.file_type_hx:before {
+  content: "\e931";
+  color: #ea8220;
+}
+
+.file_type_hjson:before {
+  content: "\e932";
+  color: #01ca24;
+}
+
+.file_type_html:before {
+  content: "\e933";
+  color: #e34f26;
+}
+
+.file_type_htm:before {
+  content: "\e933";
+  color: #e34f26;
+}
+
+.file_type_xhtml:before {
+  content: "\e933";
+  color: #e34f26;
+}
+
+.file_type_we:before {
+  content: "\e933";
+  color: #e34f26;
+}
+
+.file_type_wpy:before {
+  content: "\e933";
+  color: #e34f26;
+}
+
+.file_type_ini:before {
+  content: "\e935";
+  color: #99b8c4;
+}
+
+.file_type_conf1:before {
+  content: "\e935";
+  color: #99b8c4;
+}
+
+.file_type_cfg:before {
+  content: "\e935";
+  color: #99b8c4;
+}
+
+.file_type_prefs:before {
+  content: "\e935";
+  color: #99b8c4;
+}
+
+.file_type_io:before {
+  content: "\e936";
+  color: #c2c2c2;
+}
+
+.file_type_java:before {
+  content: "\e937";
+  color: #007396;
+}
+
+.file_type_javascript:before {
+  content: "\e938";
+  color: #f5de19;
+}
+
+.file_type_js:before {
+  content: "\e938";
+  color: #f5de19;
+}
+
+.file_type_jsm:before {
+  content: "\e938";
+  color: #f5de19;
+}
+
+.file_type_jsx:before {
+  content: "\e938";
+  color: #f5de19;
+}
+
+.file_type_mjs:before {
+  content: "\e938";
+  color: #f5de19;
+}
+
+.file_type_cjs:before {
+  content: "\e938";
+  color: #f5de19;
+}
+
+.file_type_jsbeautify:before {
+  content: "\e939";
+  color: #f1662a;
+}
+
+.file_type_jsconfig:before {
+  content: "\e93a";
+  color: #f5de19;
+}
+
+.file_type_jsmap:before {
+  content: "\e93b";
+  color: #f5de19;
+}
+
+.file_type_json:before {
+  content: "\e93c";
+  color: #f5de19;
+}
+
+.file_type_curly:before {
+  content: "\e93c";
+  color: #f5de19;
+}
+
+.file_type_json5:before {
+  content: "\e93c";
+  color: #f5de19;
+}
+
+.file_type_jsp:before {
+  content: "\e93d";
+  color: #e56f14;
+}
+
+.file_type_julia:before {
+  content: "\e93e";
+  color: #aa79c1;
+}
+
+.file_type_jl:before {
+  content: "\e93e";
+  color: #aa79c1;
+}
+
+.file_type_jupyter:before {
+  content: "\e93f";
+  color: #f37626;
+}
+
+.file_type_kotlin:before {
+  content: "\e940";
+  color: #0095d5;
+}
+
+.file_type_kt:before {
+  content: "\e940";
+  color: #0095d5;
+}
+
+.file_type_kts:before {
+  content: "\e940";
+  color: #0095d5;
+}
+
+.file_type_latex:before {
+  content: "\e941";
+  color: #008080;
+}
+
+.file_type_less:before {
+  content: "\e942";
+  color: #294e82;
+}
+
+.file_type_license:before {
+  content: "\e943";
+  color: #aa79c1;
+}
+
+.file_type_odin:before {
+  content: "\e9a2";
+  color: #00f3ff;
+}
+
+.file_type_liquid:before {
+  content: "\e944";
+  color: #004999;
+}
+
+.file_type_lisp:before {
+  content: "\e945";
+  color: #c40804;
+}
+
+.file_type_livescript:before {
+  content: "\e946";
+  color: #317eac;
+}
+
+.file_type_log:before {
+  content: "\e947";
+  color: #00bd02;
+}
+
+.file_type_lsl:before {
+  content: "\e948";
+  color: #7fadb2;
+}
+
+.file_type_lua:before {
+  content: "\e949";
+  color: #2c2d72;
+}
+
+.file_type_lp:before {
+  content: "\e949";
+  color: #2c2d72;
+}
+
+.file_type_luapage:before {
+  content: "\e949";
+  color: #2c2d72;
+}
+
+.file_type_makefile:before {
+  content: "\e94a";
+  color: #a42e2b;
+}
+
+.file_type_gnumakefile:before {
+  content: "\e94a";
+  color: #a42e2b;
+}
+
+.file_type_ocamlmakefile:before {
+  content: "\e94a";
+  color: #a42e2b;
+}
+
+.file_type_make:before {
+  content: "\e94a";
+  color: #a42e2b;
+}
+
+.file_type_map:before {
+  content: "\e94b";
+  color: #45d339;
+}
+
+.file_type_mariadb:before {
+  content: "\e94c";
+  color: #c49a6c;
+}
+
+.file_type_markdown:before {
+  content: "\e94d";
+}
+
+.file_type_md:before {
+  content: "\e94d";
+}
+
+.file_type_matlab:before {
+  content: "\e94e";
+  color: #ff8d10;
+}
+
+.file_type_mediawiki:before {
+  content: "\e94f";
+  color: #ffd800;
+}
+
+.file_type_wiki:before {
+  content: "\e94f";
+  color: #ffd800;
+}
+
+.file_type_mysql:before {
+  content: "\e951";
+  color: #4479a1;
+}
+
+.file_type_mysqlserver:before {
+  content: "\e951";
+  color: #4479a1;
+}
+
+.file_type_nginx:before {
+  content: "\e952";
+  color: #269539;
+}
+
+.file_type_nim:before {
+  content: "\e953";
+  color: #ffe953;
+}
+
+.file_type_npm:before {
+  content: "\e954";
+  color: #cb3837;
+}
+
+.file_type_nunjucks:before {
+  content: "\e955";
+  color: #486411;
+}
+
+.file_type_nunjs:before {
+  content: "\e955";
+  color: #486411;
+}
+
+.file_type_nj:before {
+  content: "\e955";
+  color: #486411;
+}
+
+.file_type_njk:before {
+  content: "\e955";
+  color: #486411;
+}
+
+.file_type_objectivec:before {
+  content: "\e956";
+  color: #c2c2c2;
+}
+
+.file_type_m:before {
+  content: "\e956";
+  color: #c2c2c2;
+}
+
+.file_type_objectivecpp:before {
+  content: "\e957";
+  color: #c2c2c2;
+}
+
+.file_type_mm:before {
+  content: "\e957";
+  color: #c2c2c2;
+}
+
+.file_type_ocaml:before {
+  content: "\e958";
+  color: #ec6813;
+}
+
+.file_type_ml:before {
+  content: "\e958";
+  color: #ec6813;
+}
+
+.file_type_mli:before {
+  content: "\e958";
+  color: #ec6813;
+}
+
+.file_type_opengl:before {
+  content: "\e959";
+  color: #4386b5;
+}
+
+.file_type_glsl:before {
+  content: "\e959";
+  color: #4386b5;
+}
+
+.file_type_frag:before {
+  content: "\e959";
+  color: #4386b5;
+}
+
+.file_type_vert:before {
+  content: "\e959";
+  color: #4386b5;
+}
+
+.file_type_perl:before {
+  content: "\e95a";
+  color: #3a3c5b;
+}
+
+.file_type_pl:before {
+  content: "\e95a";
+  color: #3a3c5b;
+}
+
+.file_type_pm:before {
+  content: "\e95a";
+  color: #3a3c5b;
+}
+
+.file_type_p6:before {
+  content: "\e95a";
+  color: #3a3c5b;
+}
+
+.file_type_pl6:before {
+  content: "\e95a";
+  color: #3a3c5b;
+}
+
+.file_type_pm6:before {
+  content: "\e95a";
+  color: #3a3c5b;
+}
+
+.file_type_pgsql:before {
+  content: "\e95b";
+  color: #336791;
+}
+
+.file_type_php:before {
+  content: "\e95c";
+  color: #777bb4;
+}
+
+.file_type_inc:before {
+  content: "\e95c";
+  color: #777bb4;
+}
+
+.file_type_phtml:before {
+  content: "\e95c";
+  color: #777bb4;
+}
+
+.file_type_shtml:before {
+  content: "\e95c";
+  color: #777bb4;
+}
+
+.file_type_php3:before {
+  content: "\e95c";
+  color: #777bb4;
+}
+
+.file_type_php4:before {
+  content: "\e95c";
+  color: #777bb4;
+}
+
+.file_type_php5:before {
+  content: "\e95c";
+  color: #777bb4;
+}
+
+.file_type_phps:before {
+  content: "\e95c";
+  color: #777bb4;
+}
+
+.file_type_aw:before {
+  content: "\e95c";
+  color: #777bb4;
+}
+
+.file_type_ctp:before {
+  content: "\e95c";
+  color: #777bb4;
+}
+
+.file_type_module:before {
+  content: "\e95c";
+  color: #777bb4;
+}
+
+.file_type_plsql:before {
+  content: "\e95d";
+  color: #f00;
+}
+
+.file_type_postcss:before {
+  content: "\e95e";
+  color: #dd3735;
+}
+
+.file_type_postcssconfig:before {
+  content: "\e95f";
+  color: #dd3735;
+}
+
+.file_type_postgresql:before {
+  content: "\e960";
+  color: #336791;
+}
+
+.file_type_powershell:before {
+  content: "\e961";
+  color: #5391fe;
+}
+
+.file_type_ps1:before {
+  content: "\e961";
+  color: #5391fe;
+}
+
+.file_type_batchfile:before {
+  content: "\e961";
+  color: #5391fe;
+}
+
+.file_type_bat:before {
+  content: "\e961";
+  color: #5391fe;
+}
+
+.file_type_cmd:before {
+  content: "\e961";
+  color: #5391fe;
+}
+
+.file_type_prettier:before {
+  content: "\e962";
+  color: #f7b93e;
+}
+
+.file_type_prisma:before {
+  content: "\e963";
+  color: #d2d2d2;
+}
+
+.file_type_prolog:before {
+  content: "\e964";
+  color: #ec1c24;
+}
+
+.file_type_plg:before {
+  content: "\e964";
+  color: #ec1c24;
+}
+
+.file_type_protobuf:before {
+  content: "\e965";
+  color: #ff5c77;
+}
+
+.file_type_proto:before {
+  content: "\e965";
+  color: #ff5c77;
+}
+
+.file_type_puppet:before {
+  content: "\e966";
+  color: #ffae1a;
+}
+
+.file_type_epp:before {
+  content: "\e966";
+  color: #ffae1a;
+}
+
+.file_type_pp:before {
+  content: "\e966";
+  color: #ffae1a;
+}
+
+.file_type_python:before {
+  content: "\e967";
+  color: #3776ab;
+}
+
+.file_type_py:before {
+  content: "\e967";
+  color: #3776ab;
+}
+
+.file_type_pyc:before {
+  content: "\e967";
+  color: #3776ab;
+}
+
+.file_type_pyd:before {
+  content: "\e967";
+  color: #3776ab;
+}
+
+.file_type_pyo:before {
+  content: "\e967";
+  color: #3776ab;
+}
+
+.file_type_pyw:before {
+  content: "\e967";
+  color: #3776ab;
+}
+
+.file_type_pyz:before {
+  content: "\e967";
+  color: #3776ab;
+}
+
+.file_type_gyp:before {
+  content: "\e967";
+  color: #3776ab;
+}
+
+.file_type_q:before {
+  content: "\e968";
+  color: #1e78b3;
+}
+
+.file_type_qml:before {
+  content: "\e969";
+  color: #41cd52;
+}
+
+.file_type_qsharp:before {
+  content: "\e96a";
+  color: #33c;
+}
+
+.file_type_rlang:before {
+  content: "\e96b";
+  color: #276dc3;
+}
+
+.file_type_r:before {
+  content: "\e96b";
+  color: #276dc3;
+}
+
+.file_type_razor:before {
+  content: "\e96c";
+  color: #368832;
+}
+
+.file_type_cshtml:before {
+  content: "\e96c";
+  color: #368832;
+}
+
+.file_type_asp:before {
+  content: "\e96c";
+  color: #368832;
+}
+
+.file_type_red:before {
+  content: "\e96d";
+  color: #b32629;
+}
+
+.file_type_reds:before {
+  content: "\e96d";
+  color: #b32629;
+}
+
+.file_type_rest:before {
+  content: "\e96e";
+  color: #ce3f31;
+}
+
+.file_type_robot:before {
+  content: "\e96f";
+  color: #00b0d8;
+}
+
+.file_type_resource:before {
+  content: "\e96f";
+  color: #00b0d8;
+}
+
+.file_type_rollup:before {
+  content: "\e970";
+  color: #ec4a3f;
+}
+
+.file_type_ruby:before {
+  content: "\e971";
+  color: #cc342d;
+}
+
+.file_type_rakefile:before {
+  content: "\e971";
+  color: #cc342d;
+}
+
+.file_type_guardfile:before {
+  content: "\e971";
+  color: #cc342d;
+}
+
+.file_type_gemfile:before {
+  content: "\e971";
+  color: #cc342d;
+}
+
+.file_type_rb:before {
+  content: "\e971";
+  color: #cc342d;
+}
+
+.file_type_ru:before {
+  content: "\e971";
+  color: #cc342d;
+}
+
+.file_type_gemspec:before {
+  content: "\e971";
+  color: #cc342d;
+}
+
+.file_type_rake:before {
+  content: "\e971";
+  color: #cc342d;
+}
+
+.file_type_rust:before {
+  content: "\e972";
+}
+
+.file_type_rs:before {
+  content: "\e972";
+}
+
+.file_type_sass:before {
+  content: "\e973";
+  color: #cd6799;
+}
+
+.file_type_scala:before {
+  content: "\e974";
+  color: #dc322f;
+}
+
+.file_type_sbt:before {
+  content: "\e974";
+  color: #dc322f;
+}
+
+.file_type_scss:before {
+  content: "\e975";
+  color: #cd6799;
+}
+
+.file_type_shell:before {
+  content: "\e976";
+  color: #d9b400;
+}
+
+.file_type_sh:before {
+  content: "\e976";
+  color: #d9b400;
+}
+
+.file_type_bash:before {
+  content: "\e976";
+  color: #d9b400;
+}
+
+.file_type_bashrc:before {
+  content: "\e976";
+  color: #d9b400;
+}
+
+.file_type_slim:before {
+  content: "\e977";
+  color: #5b4a8f;
+}
+
+.file_type_skim:before {
+  content: "\e977";
+  color: #5b4a8f;
+}
+
+.file_type_smarty:before {
+  content: "\e978";
+  color: #fdf700;
+}
+
+.file_type_tpl1:before {
+  content: "\e978";
+  color: #fdf700;
+}
+
+.file_type_sql:before {
+  content: "\e979";
+  color: #ffda44;
+}
+
+.file_type_sqlserver:before {
+  content: "\e979";
+  color: #ffda44;
+}
+
+.file_type_sqlite:before {
+  content: "\e97a";
+  color: #0f80cc;
+}
+
+.file_type_sqlite3:before {
+  content: "\e97a";
+  color: #0f80cc;
+}
+
+.file_type_stylus:before {
+  content: "\e97b";
+}
+
+.file_type_styl:before {
+  content: "\e97b";
+}
+
+.file_type_svelte:before {
+  content: "\e97c";
+  color: #ff3e00;
+}
+
+.file_type_svg:before {
+  content: "\e97d";
+  color: #ffb13b;
+}
+
+.file_type_swift:before {
+  content: "\e97e";
+  color: #fa7343;
+}
+
+.file_type_tailwind:before {
+  content: "\e97f";
+  color: #44a8b3;
+}
+
+.file_type_tcl:before {
+  content: "\e980";
+  color: #c3b15f;
+}
+
+.file_type_terraform:before {
+  content: "\e981";
+  color: #623ce4;
+}
+
+.file_type_tf:before {
+  content: "\e981";
+  color: #623ce4;
+}
+
+.file_type_tfvars:before {
+  content: "\e981";
+  color: #623ce4;
+}
+
+.file_type_terragrunt:before {
+  content: "\e981";
+  color: #623ce4;
+}
+
+.file_type_testjs:before {
+  content: "\e982";
+  color: #f5de19;
+}
+
+.file_type_testts:before {
+  content: "\e983";
+  color: #007acc;
+}
+
+.file_type_tex:before {
+  content: "\e984";
+  color: #cfcfcf;
+}
+
+.file_type_textile:before {
+  content: "\e986";
+  color: #ffe7ac;
+}
+
+.file_type_toml:before {
+  content: "\e987";
+  color: #aaa;
+}
+
+.file_type_tsconfig:before {
+  content: "\e988";
+  color: #007acc;
+}
+
+.file_type_twig:before {
+  content: "\e989";
+  color: #78dc50;
+}
+
+.file_type_swig:before {
+  content: "\e989";
+  color: #78dc50;
+}
+
+.file_type_typescript:before {
+  content: "\e98a";
+  color: #007acc;
+}
+
+.file_type_ts:before {
+  content: "\e98a";
+  color: #007acc;
+}
+
+.file_type_typescriptdef:before {
+  content: "\e98b";
+  color: #007acc;
+}
+
+.file_type_types:before {
+  content: "\e98b";
+  color: #007acc;
+}
+
+.file_type_typings:before {
+  content: "\e98b";
+  color: #007acc;
+}
+
+.file_type_vala:before {
+  content: "\e98c";
+  color: #403757;
+}
+
+.file_type_vb:before {
+  content: "\e98d";
+  color: #00519a;
+}
+
+.file_type_vbs:before {
+  content: "\e98d";
+  color: #00519a;
+}
+
+.file_type_velocity:before {
+  content: "\e98e";
+  color: #262693;
+}
+
+.file_type_vm:before {
+  content: "\e98e";
+  color: #262693;
+}
+
+.file_type_verilog:before {
+  content: "\e98f";
+  color: #1a348f;
+}
+
+.file_type_v:before {
+  content: "\e98f";
+  color: #1a348f;
+}
+
+.file_type_vh:before {
+  content: "\e98f";
+  color: #1a348f;
+}
+
+.file_type_sv:before {
+  content: "\e98f";
+  color: #1a348f;
+}
+
+.file_type_svh:before {
+  content: "\e98f";
+  color: #1a348f;
+}
+
+.file_type_vhdl:before {
+  content: "\e990";
+  color: #0d9b35;
+}
+
+.file_type_vhd:before {
+  content: "\e990";
+  color: #0d9b35;
+}
+
+.file_type_view:before {
+  content: "\e992";
+  color: #e44f26;
+}
+
+.file_type_vue:before {
+  content: "\e993";
+  color: #41b883;
+}
+
+.file_type_wasm:before {
+  content: "\e994";
+  color: #654ff0;
+}
+
+.file_type_webpack:before {
+  content: "\e995";
+  color: #8dd6f9;
+}
+
+.file_type_xml:before {
+  content: "\e996";
+  color: #f1662a;
+}
+
+.file_type_rdf:before {
+  content: "\e996";
+  color: #f1662a;
+}
+
+.file_type_rss:before {
+  content: "\e996";
+  color: #f1662a;
+}
+
+.file_type_wsdl:before {
+  content: "\e996";
+  color: #f1662a;
+}
+
+.file_type_xslt:before {
+  content: "\e996";
+  color: #f1662a;
+}
+
+.file_type_xamlatom:before {
+  content: "\e996";
+  color: #f1662a;
+}
+
+.file_type_mathml:before {
+  content: "\e996";
+  color: #f1662a;
+}
+
+.file_type_mml:before {
+  content: "\e996";
+  color: #f1662a;
+}
+
+.file_type_xul:before {
+  content: "\e996";
+  color: #f1662a;
+}
+
+.file_type_xbl:before {
+  content: "\e996";
+  color: #f1662a;
+}
+
+.file_type:before {
+  content: "\e996";
+  color: #f1662a;
+}
+
+.file_type_xquery:before {
+  content: "\e997";
+  color: #f1662a;
+}
+
+.file_type_xsl:before {
+  content: "\e998";
+  color: #33a9dc;
+}
+
+.file_type_yaml:before {
+  content: "\e999";
+  color: #ffe885;
+}
+
+.file_type_yml:before {
+  content: "\e999";
+  color: #ffe885;
+}
+
+.file_type_yarn:before {
+  content: "\e99a";
+  color: #2188b6;
+}
+
+.file_type_actionscript:before {
+  content: "\e99c";
+  color: #c41718;
+}
+
+.file_type_as:before {
+  content: "\e99c";
+  color: #c41718;
+}
+
+.file_type_ada:before {
+  content: "\e99d";
+  color: #0f23c3;
+}
+
+.file_type_adb:before {
+  content: "\e99d";
+  color: #0f23c3;
+}
+
+.file_type_zig:before {
+  content: "\e9a5";
+  color: #f7a41d;
+}

@@ -1,4 +1,4 @@
-@import "../../styles/mixins.scss";
+@use "../../styles/mixins.scss";
 
 #hints {
   position: fixed;
@@ -82,7 +82,7 @@
   }
 
   &.loading {
-    @include loader(18px);
+    @include mixins.loader(18px);
   }
 
   &:empty {

@@ -202,8 +202,6 @@
 	"add a storage": "Add a storage",
 	"rate acode": "Rate Acode",
 	"support": "Support",
-	"donate": "Donate {amount}",
-	"donation message": "There are people who don’t donate because they assume everyone else is, and there are those who take up the torch and run with it. Thank you for being the latter, and for your kind and heartwarming donation.",
 	"downloading file": "Downloading {file}",
 	"downloading...": "Downloading...",
 	"folder name": "Folder name",
@@ -423,5 +421,6 @@
 	"terminal:convert eol": "Convert EOL",
 	"terminal": "Terminal",
 	"allFileAccess": "All file access",
-	"fonts": "Fonts"
+	"fonts": "Fonts",
+	"sponsor": "حامی مالی"
 }

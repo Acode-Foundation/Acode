@@ -201,8 +201,6 @@
 	"add a storage": "Tárhely hozzáadása",
 	"rate acode": "Acode értékelése",
 	"support": "Támogatás",
-	"donate": "{amount} adományozása",
-	"donation message": "Vannak emberek, akik nem adományoznak, mert azt feltételezik, hogy mindenki más is, és vannak olyanok, akik felkapják a fáklyát, és futnak vele. Köszönöm, hogy az utóbbiak közé tartozol, és köszönöm kedves és szívmelengető adományodat.",
 	"downloading file": "A(z) {file} fájl letöltése",
 	"downloading...": "Letöltés…",
 	"folder name": "Mappanév",
@@ -422,5 +420,6 @@
 	"terminal:convert eol": "Sorvégződések konvertálása",
 	"terminal": "Terminál",
 	"allFileAccess": "Hozzáférés az összes fájlhoz",
-	"fonts": "Fonts"
+	"fonts": "Fonts",
+	"sponsor": "Szponzor"
 }

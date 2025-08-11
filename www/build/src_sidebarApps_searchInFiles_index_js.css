@@ -1,0 +1,143 @@
+/*!******************************************************************************************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js!./node_modules/postcss-loader/dist/cjs.js!./node_modules/sass-loader/dist/cjs.js!./src/sidebarApps/searchInFiles/styles.scss ***!
+  \******************************************************************************************************************************************************************************/
+@charset "UTF-8";
+.search-in-files {
+  width: -webkit-calc(100% - 40px - 20px) !important;
+  width: -moz-calc(100% - 40px - 20px) !important;
+  width: calc(100% - 40px - 20px) !important;
+  margin: 0 auto;
+  overflow: visible !important;
+}
+.search-in-files [is=details] {
+  width: 100%;
+}
+.search-in-files [is=details] > [is=summary] {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: -moz-box;
+  display: -ms-flexbox;
+  display: flex;
+  -webkit-box-pack: justify;
+  -webkit-justify-content: space-between;
+     -moz-box-pack: justify;
+      -ms-flex-pack: justify;
+          justify-content: space-between;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+     -moz-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+  margin-bottom: 10px;
+}
+.search-in-files [is=details] > [is=summary] textarea,
+.search-in-files [is=details] > [is=summary] input {
+  margin: 0 !important;
+  white-space: nowrap;
+  overflow-x: auto !important;
+}
+.search-in-files [is=details] > [is=summary] .marker::after {
+  width: 10px;
+  font-size: 1rem;
+  content: "▶";
+}
+.search-in-files [is=details] > [is=summary] ~ * {
+  display: none;
+  margin: 0 0 5px auto !important;
+}
+.search-in-files [is=details][open] > [is=summary] .marker::after {
+  content: "▼";
+}
+.search-in-files [is=details][open] > [is=summary] ~ * {
+  display: block;
+}
+.search-in-files [is=details][open] > [is=summary] ~ div {
+  display: -webkit-box !important;
+  display: -webkit-flex !important;
+  display: -moz-box !important;
+  display: -ms-flexbox !important;
+  display: flex !important;
+  -webkit-box-pack: justify;
+  -webkit-justify-content: space-between;
+     -moz-box-pack: justify;
+      -ms-flex-pack: justify;
+          justify-content: space-between;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+     -moz-box-align: center;
+      -ms-flex-align: center;
+          align-items: center;
+}
+.search-in-files [is=details][open] > [is=summary] ~ div > * {
+  margin: 0 !important;
+}
+.search-in-files .ace_editor {
+  height: 100%;
+  width: -webkit-calc(100% + 18px);
+  width: -moz-calc(100% + 18px);
+  width: calc(100% + 18px);
+  margin-left: -8px;
+  background-color: rgb(153, 153, 255);
+  background-color: var(--primary-color);
+  color: rgb(255, 255, 255);
+  color: var(--primary-text-color);
+}
+.search-in-files .ace_editor .ace_gutter,
+.search-in-files .ace_editor .ace_gutter-cell {
+  background-color: inherit !important;
+  color: inherit !important;
+}
+.search-in-files .ace_editor .ace_fold {
+  display: none !important;
+}
+.search-in-files .ace_editor .ace_bracket {
+  display: none !important;
+}
+.search-in-files .ace_editor .ace_cursor {
+  display: none !important;
+}
+.search-in-files .ace_editor .ace_marker-layer {
+  display: none !important;
+}
+.search-in-files .ace_editor .ace_highlight {
+  border: solid 1px rgba(122, 122, 122, 0.2);
+  border: solid 1px var(--border-color);
+  border-radius: 2px;
+  background-color: rgb(255, 255, 255);
+  background-color: var(--secondary-color);
+  color: rgb(37, 37, 37);
+  color: var(--secondary-text-color);
+}
+.search-in-files .ace_editor .ace_file_name {
+  color: rgb(255, 215, 0);
+  color: var(--active-text-color);
+}
+.search-in-files .ace_editor .ace_gutter-cell:nth-child(odd),
+.search-in-files .ace_editor .ace_line_group:nth-child(odd) {
+  background-color: rgba(0, 0, 0, 0.2) !important;
+}
+.search-in-files .extras {
+  display: block !important;
+  line-height: 0px !important;
+  margin-bottom: 10px !important;
+  text-align: right !important;
+}
+.search-in-files .options {
+  width: 100%;
+  margin-bottom: 10px;
+  text-align: right;
+}
+.search-in-files button {
+  display: inline-block;
+  background-color: transparent;
+  border: none;
+  color: rgb(37, 37, 37);
+  color: var(--secondary-text-color);
+}
+.search-in-files .error {
+  color: orangered;
+}
+.search-in-files .search-result {
+  position: relative;
+  padding-bottom: 5px;
+}

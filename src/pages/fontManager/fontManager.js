@@ -21,7 +21,7 @@ export default function fontManager() {
 	const $page = Page(strings.fonts?.capitalize());
 	const $search = <span attr-action="search" className="icon search"></span>;
 	const $addFont = <span attr-action="add-font" className="icon add"></span>;
-	const list = new Ref();
+	const list = Ref();
 
 	actionStack.push({
 		id: "fontManager",

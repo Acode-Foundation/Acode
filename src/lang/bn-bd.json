@@ -201,8 +201,6 @@
 	"add a storage": "স্টোরেজ যোগ করুন",
 	"rate acode": "Acode-কে রেট করুন",
 	"support": "সমর্থন",
-	"donate": "{amount} দান করুন",
-	"donation message": "এমন কিছু লোক আছে যারা দান করে না কারণ তারা অনুমান করে যে অন্য সবাই আছে এবং এমন কিছু লোক আছে দায়িত্ব নিয়ে আসে । পরবর্তীজন হওয়ায় এবং আপনার সদয় ও হৃদয়গ্রাহী দানের জন্য, আপনাকে ধন্যবাদ।",
 	"downloading file": "{file} ডাউনলোড হচ্ছে",
 	"downloading...": "ডাউনলোড হচ্ছে...",
 	"folder name": "ফোল্ডারের-এর নাম",
@@ -422,5 +420,6 @@
 	"terminal:convert eol": "Convert EOL",
 	"terminal": "Terminal",
 	"allFileAccess": "All file access",
-	"fonts": "Fonts"
+	"fonts": "Fonts",
+	"sponsor": "স্পন্সর"
 }

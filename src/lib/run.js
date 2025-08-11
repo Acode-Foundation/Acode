@@ -200,7 +200,7 @@ async function run(
 					isConsole ||
 					appSettings.value.console === appSettings.CONSOLE_LEGACY
 				) {
-					url = `${ASSETS_DIRECTORY}/js/build/console.build.js`;
+					url = `${ASSETS_DIRECTORY}/build/console.js`;
 				} else {
 					url = `${DATA_STORAGE}/eruda.js`;
 				}
@@ -435,7 +435,7 @@ async function run(
 	 * @param {string} reqId
 	 */
 	function sendIco(assets, reqId) {
-		const ico = Url.join(assets, "res/logo/favicon.ico");
+		const ico = Url.join(assets, "favicon.ico");
 		sendFile(ico, reqId);
 	}
 

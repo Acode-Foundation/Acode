@@ -201,8 +201,6 @@
 	"add a storage": "Adicionar um armazenamento",
 	"rate acode": "Avaliar Acode",
 	"support": "Suporte",
-	"donate": "Doar {amount}",
-	"donation message": "Há pessoas que não doam porque assumem que todo mundo está, e há quem pegue a tocha e siga em frente. Obrigado por ser o último, e por sua gentileza e carinho",
 	"downloading file": "Baixando {file}",
 	"downloading...": "Baixando...",
 	"folder name": "Nome da pasta",
@@ -422,5 +420,6 @@
 	"terminal:convert eol": "Convert EOL",
 	"terminal": "Terminal",
 	"allFileAccess": "All file access",
-	"fonts": "Fonts"
+	"fonts": "Fonts",
+	"sponsor": "Patrocinador"
 }

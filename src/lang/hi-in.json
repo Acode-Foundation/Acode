@@ -202,8 +202,6 @@
 	"add a storage": "एक स्टोरेज जोड़ें",
 	"rate acode": "Rate Acode",
 	"support": "सहायता",
-	"donate": "Donate {amount}",
-	"donation message": "There are people who don’t donate because they assume everyone else is, and there are those who take up the torch and run with it. Thank you for being the latter, and for your kind and heartwarming donation.",
 	"downloading file": "डौन्लोडिंग {file}",
 	"downloading...": "डौन्लोडिंग...",
 	"folder name": "फोल्डर का नाम",
@@ -423,5 +421,6 @@
 	"terminal:convert eol": "Convert EOL",
 	"terminal": "Terminal",
 	"allFileAccess": "All file access",
-	"fonts": "Fonts"
+	"fonts": "Fonts",
+	"sponsor": "स्पॉन्सर"
 }

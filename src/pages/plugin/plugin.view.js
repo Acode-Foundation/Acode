@@ -378,9 +378,9 @@ function Version({
 }
 
 async function showReviews(pluginId, author) {
-	const mask = new Ref();
-	const body = new Ref();
-	const container = new Ref();
+	const mask = Ref();
+	const body = Ref();
+	const container = Ref();
 
 	actionStack.push({
 		id: "reviews",
@@ -489,8 +489,8 @@ function Review({
 	author_reply: authorReply,
 }) {
 	let dp = Url.join(constants.API_BASE, `../user.png`);
-	let voteImage = new Ref();
-	let review = new Ref();
+	let voteImage = Ref();
+	let review = Ref();
 
 	if (github) {
 		dp = `https://avatars.githubusercontent.com/${github}`;

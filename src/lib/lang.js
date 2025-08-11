@@ -192,7 +192,7 @@ export default {
 		code = code?.toLowerCase();
 		const lang = langMap[code] || langMap["en-us"];
 		const strings = await lang.strings();
-		window.strings = strings;
+		window.strings = strings.default;
 	},
 	list: Object.keys(langMap).map((code) => [code, langMap[code].name]),
 	getName(code) {

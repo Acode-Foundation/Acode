@@ -201,8 +201,6 @@
 	"add a storage": "添加存儲位置",
 	"rate acode": "評價 Acode",
 	"support": "支持",
-	"donate": "捐助 {amount}",
-	"donation message": "因為覺得其他人亦如此所以一些人不選擇捐助，同時又有一些人選擇拿起火炬去傳遞它，感謝您選擇成為後者，以及您友善而暖心的捐助。",
 	"downloading file": "正在下載 {file}",
 	"downloading...": "下載中...",
 	"folder name": "文件夾名稱",
@@ -422,5 +420,6 @@
 	"terminal:convert eol": "Convert EOL",
 	"terminal": "Terminal",
 	"allFileAccess": "All file access",
-	"fonts": "Fonts"
+	"fonts": "Fonts",
+	"sponsor": "贊助"
 }

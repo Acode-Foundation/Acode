@@ -21,7 +21,7 @@ import Ref from "html-tag-js/ref";
  * @param {"checkbox"|"radio"} [type] Type of checkbox
  * @param {Ref} [ref] A reference to the input element
  * @param {string} [size] Size of checkbox
- * @returns {Checkbox}
+ * @returns {Checkbox & HTMLLabelElement}
  */
 function Checkbox(text, checked, name, id, type, ref, size) {
 	if (typeof text === "object") {
@@ -30,7 +30,7 @@ function Checkbox(text, checked, name, id, type, ref, size) {
 
 	size = size || "1rem";
 
-	const $input = ref || new Ref();
+	const $input = ref || Ref();
 	const $checkbox = (
 		<label className="input-checkbox">
 			<input

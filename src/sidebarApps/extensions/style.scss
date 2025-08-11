@@ -1,4 +1,4 @@
-@import "../../styles/mixins.scss";
+@use "../../styles/mixins.scss";
 
 .container.extensions {
   .header {
@@ -110,7 +110,7 @@
     min-height: 0;
 
     &.loading {
-      @include loader(20px);
+      @include mixins.loader(20px);
     }
 
     .filter-message {
@@ -151,6 +151,7 @@
     align-items: center;
     min-height: 35px;
     padding: 6px 8px;
+
     .text {
       &.sub-text {
         font-size: 0.8rem;

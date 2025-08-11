@@ -201,8 +201,6 @@
 	"add a storage": "Tambahkan penyimpanan",
 	"rate acode": "Nilai Acode",
 	"support": "Dukung",
-	"donate": "Donasi {amount}",
-	"donation message": "Ada orang yang tidak menyumbang karena mereka berasumsi orang lain juga menyumbang, dan ada orang yang meneruskannya. Terima kasih karena telah menjadi orang yang terakhir, dan atas sumbangan Anda yang baik dan menyentuh hati.",
 	"downloading file": "Mengunduh {file}",
 	"downloading...": "Mengunduh...",
 	"folder name": "Nama Folder",
@@ -423,5 +421,6 @@
 	"terminal:convert eol": "Konversi Akhir Baris",
 	"terminal": "Terminal",
 	"allFileAccess": "Semua akses berkas",
-	"fonts": "Fonts"
+	"fonts": "Fonts",
+	"sponsor": "Sponsor"
 }

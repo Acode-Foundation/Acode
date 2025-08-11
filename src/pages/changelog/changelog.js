@@ -18,8 +18,8 @@ export default async function Changelog() {
 
 	let selectedVersion = currentVersion;
 	let selectedStatus = "current";
-	const versionIndicatorRef = new Ref();
-	const versionTextRef = new Ref();
+	const versionIndicatorRef = Ref();
+	const versionTextRef = Ref();
 
 	const versionSelector = (
 		<div className="changelog-version-selector" data-action="select-version">

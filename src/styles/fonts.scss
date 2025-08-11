@@ -1,6 +1,6 @@
 @font-face {
   font-family: 'Fira Code';
-  src: url('../../res/fonts/FiraCode.ttf') format('truetype');
+  src: url('../res/fonts/FiraCode.ttf') format('truetype');
   font-weight: 300 700;
   font-style: normal;
 }
@@ -10,40 +10,40 @@
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('../../res/fonts/RobotoMono.ttf') format('truetype');
+  src: url('../res/fonts/RobotoMono.ttf') format('truetype');
   unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
 }
 
 @font-face {
   font-family: 'Source Code';
-  src: url('../../res/fonts/SourceCodePro.ttf') format('truetype');
+  src: url('../res/fonts/SourceCodePro.ttf') format('truetype');
   font-weight: 300 700;
   font-style: normal;
 }
 
 @font-face {
   font-family: 'Cascadia Code';
-  src: url('../../res/fonts/CascadiaCode.ttf') format('truetype');
+  src: url('../res/fonts/CascadiaCode.ttf') format('truetype');
   font-weight: 300 700;
   font-style: normal;
 }
 
 @font-face {
   font-family: 'Proggy Clean';
-  src: url('../../res/fonts/ProggyClean.ttf') format('truetype');
+  src: url('../res/fonts/ProggyClean.ttf') format('truetype');
   font-weight: 300 700;
   font-style: normal;
 }
 
 @font-face {
   font-family: 'JetBrains Mono Bold';
-  src: url('../../res/fonts/JetBrainsMono-Bold.ttf') format('truetype');
+  src: url('../res/fonts/JetBrainsMono-Bold.ttf') format('truetype');
   font-weight: 300 700;
 }
 
 @font-face {
   font-family: 'JetBrains Mono Regular';
-  src: url('../../res/fonts/JetBrainsMono-Regular.ttf') format('truetype');
+  src: url('../res/fonts/JetBrainsMono-Regular.ttf') format('truetype');
   font-weight: 300 700;
   font-style: normal;
 }
@@ -53,7 +53,7 @@
   font-family: Poppins;
   font-style: normal;
   font-weight: 400;
-  src: local('Poppins-Regular'), url('../../res/fonts/Poppins-Regular.woff2') format('woff2');
+  src: local('Poppins-Regular'), url('../res/fonts/Poppins-Regular.woff2') format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
@@ -62,7 +62,7 @@
   font-family: Poppins;
   font-style: normal;
   font-weight: 500;
-  src: local('Poppins-Medium'), url('../../res/fonts/Poppins-Medium.woff2') format('woff2');
+  src: local('Poppins-Medium'), url('../res/fonts/Poppins-Medium.woff2') format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
@@ -70,13 +70,13 @@
   font-family: Righteous;
   font-style: normal;
   font-weight: 400;
-  src: url('../../res/fonts/righteous-latin-regular.woff') format('woff');
+  src: url('../res/fonts/righteous-latin-regular.woff') format('woff');
 }
 
 @font-face {
   font-display: swap;
   font-family: NotoMono;
-  src: url('../../res/fonts/NotoMono-Regular.woff') format("woff");
+  src: url('../res/fonts/NotoMono-Regular.woff') format("woff");
   font-weight: 400;
   font-style: normal;
 }
@@ -84,7 +84,7 @@
 @font-face {
   font-display: swap;
   font-family: NotoMono;
-  src: url('../../res/fonts/CourierNew-Regular.woff2') format("woff2");
+  src: url('../res/fonts/CourierNew-Regular.woff2') format("woff2");
   font-weight: 400;
   font-style: normal;
   unicode-range: U+0590-06FF;

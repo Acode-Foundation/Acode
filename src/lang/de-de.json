@@ -201,8 +201,6 @@
 	"add a storage": "Speicher hinzufügen",
 	"rate acode": "Acode bewerten",
 	"support": "Unterstützung",
-	"donate": "Spenden {amount}",
-	"donation message": "Es gibt Personen die nicht spenden, weil sie meinen das alle anderen es tun und es gibt diejenigen die mit der Fackel vorangehen. Vielen Dank das Sie zu Letzteren gehören und für Ihre freundliche und warmherzige Spende.",
 	"downloading file": "{file} herunterladen",
 	"downloading...": "herunterladen...",
 	"folder name": "Ordnername",
@@ -422,5 +420,6 @@
 	"terminal:convert eol": "EOL (Zeilenende) konvertieren",
 	"terminal": "Terminal",
 	"allFileAccess": "Zugriff auf alle Dateien",
-	"fonts": "Fonts"
+	"fonts": "Fonts",
+	"sponsor": "Sponsor"
 }

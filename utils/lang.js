@@ -1,9 +1,10 @@
 const path = require("node:path");
 const fs = require("node:fs");
 const yargs = require("yargs");
+const { hideBin } = require("yargs/helpers");
 const readline = require("node:readline");
-const args = yargs.alias("a", "all").argv;
 
+const args = yargs(hideBin(process.argv)).alias("a", "all").argv;
 const dir = path.resolve(__dirname, "../src/lang");
 const read = readline.createInterface({
 	input: process.stdin,

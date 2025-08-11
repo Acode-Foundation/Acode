@@ -17,16 +17,16 @@ const results = [];
 const filesSearched = [];
 const filesReplaced = [];
 
-const $container = new Ref();
-const $regExp = new Ref();
-const $search = new Ref();
-const $replace = new Ref();
-const $exclude = new Ref();
-const $include = new Ref();
-const $wholeWord = new Ref();
-const $caseSensitive = new Ref();
-const $btnReplaceAll = new Ref();
-const $resultOverview = new Ref();
+const $container = Ref();
+const $regExp = Ref();
+const $search = Ref();
+const $replace = Ref();
+const $exclude = Ref();
+const $include = Ref();
+const $wholeWord = Ref();
+const $caseSensitive = Ref();
+const $btnReplaceAll = Ref();
+const $resultOverview = Ref();
 const $error = <></>;
 const $progress = <>0</>;
 

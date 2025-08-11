@@ -1,4 +1,4 @@
-@import "../../styles/mixins.scss";
+@use "../../styles/mixins.scss";
 
 #plugin {
   overflow: auto;
@@ -421,7 +421,7 @@
     overflow: auto;
 
     &.loading {
-      @include loader(30px);
+      @include mixins.loader(30px);
     }
 
     .review {
