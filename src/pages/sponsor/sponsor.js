@@ -183,6 +183,7 @@ export default function Sponsor(onclose) {
 
 async function handlePurchase(productId, title) {
 	let image;
+	let result;
 	const extraFields = [];
 
 	if (["silver", "gold", "platinum", "titanium"].includes(productId)) {
@@ -238,7 +239,7 @@ async function handlePurchase(productId, title) {
 		});
 	}
 
-	const result = await multiPrompt(onlyTitle(title), [
+	result = await multiPrompt(onlyTitle(title), [
 		{
 			placeholder: "Name",
 			required: true,

@@ -161,6 +161,7 @@ function SponsorCard({ name, image, website, tier, tagline }) {
 			attr-role="button"
 			className={`sponsor-card ${tier}`}
 			onclick={() => {
+				if (!website) return;
 				if (!website.startsWith("http")) {
 					website = "http://" + website;
 				}

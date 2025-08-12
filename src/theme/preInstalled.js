@@ -116,7 +116,7 @@ moon.popupActiveColor = "rgb(51, 153, 255)";
 moon.buttonBackgroundColor = "rgb(0, 173, 181)";
 moon.buttonTextColor = "rgb(0, 142, 149)";
 moon.buttonActiveColor = "rgb(0, 173, 181)";
-bump.preferredEditorTheme = "ace/theme/one_dark";
+moon.preferredEditorTheme = "ace/theme/one_dark";
 
 const atticus = createBuiltInTheme("Atticus");
 atticus.darkenedPrimaryColor = "rgb(32, 30, 30)";
