@@ -93,7 +93,7 @@ export default function Sponsors() {
 					</div>
 					<div className="tier">
 						<div className="tier-name">
-							<span className="tier-icon basic"></span>Crystal
+							<span className="tier-icon crystal"></span>Crystal
 						</div>
 						<div
 							className="sponsors"
@@ -140,7 +140,7 @@ export default function Sponsors() {
 						case "bronze":
 							bronzeSponsors.append(<SponsorCard {...sponsor} />);
 							break;
-						case "basic":
+						case "crystal":
 							crystalSponsors.append(<SponsorCard {...sponsor} />);
 							break;
 					}
@@ -152,17 +152,27 @@ export default function Sponsors() {
 	}
 }
 
-function SponsorCard({ name, image, website }) {
+function SponsorCard({ name, image, website, tier, tagline }) {
+	// for crystal tier only text, for bronze slightly bigger text, for silver bigger clickable text,
+	// for gold text with image, for platinum and titanium text with big image
+
 	return (
 		<div
 			attr-role="button"
-			className="sponsor-card"
-			onclick={() => website && system.openInBrowser(website)}
+			className={`sponsor-card ${tier}`}
+			onclick={() => {
+				if (!website.startsWith("http")) {
+					website = "http://" + website;
+				}
+				system.openInBrowser(website);
+			}}
 		>
 			<div className="sponsor-avatar">
 				<img src={`https://acode.app/sponsor/image/${image}`} />
 			</div>
 			<div className="sponsor-name">{name}</div>
+			<div className="sponsor-tagline">{tagline}</div>
+			{website && <small className="sponsor-website">{website}</small>}
 		</div>
 	);
 }

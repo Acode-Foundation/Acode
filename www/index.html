@@ -30,55 +30,54 @@
           this.appendChild(docFrag);
         };
       }
-    })();
 
-    window._regeneratorRuntime = null;
-    function startsWith(string, needle) {
-      return string.indexOf(needle) === 0;
-    }
-
-    // save all touch events added by ace editor so it can be use in src/ade/touchHandler.js
-    var __oldAddEventListener = HTMLElement.prototype.addEventListener;
-    HTMLElement.prototype.addEventListener = function (
-      type,
-      listener,
-      useCapture,
-      allowed,
-    ) {
-      if (typeof useCapture === "boolean") {
-        allowed = useCapture;
-        useCapture = undefined;
+      function startsWith(string, needle) {
+        return string.indexOf(needle) === 0;
       }
 
-      if (type === "contextmenu" && !allowed) {
-        return;
-      }
-
-      if (allowed) {
-        __oldAddEventListener.call(this, type, listener, useCapture);
-        return;
-      }
-
-      if (
-        this.classList.contains("editor-container") &&
-        startsWith(type, "touch")
+      // save all touch events added by ace editor so it can be use in src/ade/touchHandler.js
+      var __oldAddEventListener = HTMLElement.prototype.addEventListener;
+      HTMLElement.prototype.addEventListener = function (
+        type,
+        listener,
+        useCapture,
+        allowed,
       ) {
-        if (!this.eventListeners) {
-          this.eventListeners = {};
+        if (typeof useCapture === "boolean") {
+          allowed = useCapture;
+          useCapture = undefined;
         }
 
-        if (!this.eventListeners[type]) {
-          this.eventListeners[type] = [];
+        if (type === "contextmenu" && !allowed) {
+          return;
         }
-        this.eventListeners[type].push({
-          listener: listener,
-          useCapture: useCapture,
-        });
 
-        return;
-      }
-      __oldAddEventListener.call(this, type, listener, useCapture);
-    };
+        if (allowed) {
+          __oldAddEventListener.call(this, type, listener, useCapture);
+          return;
+        }
+
+        if (
+          this.classList.contains("editor-container") &&
+          startsWith(type, "touch")
+        ) {
+          if (!this.eventListeners) {
+            this.eventListeners = {};
+          }
+
+          if (!this.eventListeners[type]) {
+            this.eventListeners[type] = [];
+          }
+          this.eventListeners[type].push({
+            listener: listener,
+            useCapture: useCapture,
+          });
+
+          return;
+        }
+        __oldAddEventListener.call(this, type, listener, useCapture);
+      };
+    })();
   </script>
 
   <script src="cordova.js"></script>
@@ -100,15 +99,19 @@
   <script src="./js/ace/ext-inline_autocomplete.js"></script>
 
   <script>
-    var color = localStorage.getItem("__primary_color");
-    var __bg_color = "#20202c";
-    if (color) {
-      __bg_color = color;
-    }
+    (function () {
+      var color = localStorage.getItem("__primary_color");
+      var __bg_color = "#20202c";
+      if (color) {
+        __bg_color = color;
+      }
 
-    document.querySelector(":root").style.cssText =
-      "--bg-color: " + __bg_color;
+      document.querySelector(":root").style.cssText =
+        "--bg-color: " + __bg_color;
+    })();
   </script>
+
+  <script></script>
 
   <style>
     :root {

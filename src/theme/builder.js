@@ -31,7 +31,6 @@ export default class ThemeBuilder {
 	version = "free";
 	name = "Default";
 	type = "light";
-	darkenedPrimaryColor = "rgb(92, 92, 153)";
 	/** Whether Auto update darkened primary color when primary color is updated. */
 	autoDarkened = true;
 	preferredEditorTheme = null;

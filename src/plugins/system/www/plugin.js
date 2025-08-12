@@ -8,41 +8,41 @@ module.exports = {
   requestStorageManager: function (success, error) {
     cordova.exec(success, error, 'System', 'requestStorageManager', []);
   },
-  copyToUri: function (srcUri,destUri,fileName, success, error) {
-    cordova.exec(success, error, 'System', 'copyToUri', [srcUri,destUri,fileName]);
+  copyToUri: function (srcUri, destUri, fileName, success, error) {
+    cordova.exec(success, error, 'System', 'copyToUri', [srcUri, destUri, fileName]);
   },
-  fileExists: function (path,countSymlinks, success, error) {
-      cordova.exec(success, error, 'System', 'fileExists', [path,String(countSymlinks)]);
-    },
-  
-    createSymlink: function (target, linkPath, success, error) {
-      cordova.exec(success, error, 'System', 'createSymlink', [target, linkPath]);
-    },
-    writeText: function (path, content, success, error) {
-      cordova.exec(success, error, 'System', 'writeText', [path, content]);
-    },
-  
-    getNativeLibraryPath: function (success, error) {
-      cordova.exec(success, error, 'System', 'getNativeLibraryPath', []);
-    },
-  
-    getFilesDir: function (success, error) {
-      cordova.exec(success, error, 'System', 'getFilesDir', []);
-    },
-  
-    getParentPath: function (path, success, error) {
-      cordova.exec(success, error, 'System', 'getParentPath', [path]);
-    },
-  
-    listChildren: function (path, success, error) {
-      cordova.exec(success, error, 'System', 'listChildren', [path]);
-    },
-    mkdirs: function (path, success, error) {
-      cordova.exec(success, error, 'System', 'mkdirs', [path]);
-    },
-    getArch: function (success, error) {
-      cordova.exec(success, error, 'System', 'getArch', []);
-    },
+  fileExists: function (path, countSymlinks, success, error) {
+    cordova.exec(success, error, 'System', 'fileExists', [path, String(countSymlinks)]);
+  },
+
+  createSymlink: function (target, linkPath, success, error) {
+    cordova.exec(success, error, 'System', 'createSymlink', [target, linkPath]);
+  },
+  writeText: function (path, content, success, error) {
+    cordova.exec(success, error, 'System', 'writeText', [path, content]);
+  },
+
+  getNativeLibraryPath: function (success, error) {
+    cordova.exec(success, error, 'System', 'getNativeLibraryPath', []);
+  },
+
+  getFilesDir: function (success, error) {
+    cordova.exec(success, error, 'System', 'getFilesDir', []);
+  },
+
+  getParentPath: function (path, success, error) {
+    cordova.exec(success, error, 'System', 'getParentPath', [path]);
+  },
+
+  listChildren: function (path, success, error) {
+    cordova.exec(success, error, 'System', 'listChildren', [path]);
+  },
+  mkdirs: function (path, success, error) {
+    cordova.exec(success, error, 'System', 'mkdirs', [path]);
+  },
+  getArch: function (success, error) {
+    cordova.exec(success, error, 'System', 'getArch', []);
+  },
 
   clearCache: function (success, fail) {
     return cordova.exec(success, fail, "System", "clearCache", []);

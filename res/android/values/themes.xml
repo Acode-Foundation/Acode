@@ -7,4 +7,7 @@
         <item name="postSplashScreenTheme">@style/Theme.AppCompat.DayNight.NoActionBar</item>
         <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
     </style>
+    <style name="Theme.App.Activity" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
+    </style>
 </resources>

@@ -6,7 +6,7 @@
     border-radius: 50%;
     margin-right: 8px;
 
-    &.basic {
+    &.crystal {
       background: linear-gradient(45deg, #95a5a6, #bdc3c7);
     }
 
@@ -103,36 +103,76 @@
     .sponsor-card {
       flex-grow: 1;
       min-width: 150px;
-      background: rgba(255, 255, 255, 0.1);
+      background: var(--popup-background-color);
+      color: var(--popup-text-color);
       border-radius: 12px;
       padding: 15px;
       text-align: center;
       backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      border: 1px solid var(--border-color);
       transition: all 0.3s ease;
-    }
 
-    .sponsor-avatar {
-      width: 50px;
-      height: 50px;
-      display: flex;
-      margin: 0 auto 10px;
-      align-items: center;
-      justify-content: center;
-      font-weight: bold;
-      font-size: 18px;
+      .sponsor-avatar {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        margin: 0 auto 10px;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 18px;
+        overflow: hidden;
+        background-color: currentColor;
 
-      img {
-        max-width: 100%;
-        max-height: 100%;
-        object-fit: contain;
+        img {
+          max-width: 100%;
+          max-height: 100%;
+          object-fit: cover;
+        }
       }
-    }
 
-    .sponsor-name {
-      font-size: 14px;
-      font-weight: 500;
-      margin-bottom: 5px;
+      .sponsor-name {
+        font-size: 14px;
+        font-weight: 500;
+        margin-bottom: 5px;
+      }
+
+      .sponsor-website {
+        opacity: 0.6;
+        font-size: 12px;
+      }
+
+      &.crystal,
+      &.bronze,
+      &.silver {
+        .sponsor-avatar {
+          display: none;
+        }
+      }
+
+      &.bronze,
+      &.crystal {
+        pointer-events: none;
+      }
+
+      &.silver,
+      &.bronze,
+      &.gold,
+      &.platinum,
+      &.titanium {
+        .sponsor-name {
+          font-size: 16px;
+        }
+      }
+
+      &.platinum,
+      &.titanium {
+        .sponsor-avatar {
+          width: 100px;
+          height: 100px;
+        }
+      }
     }
   }
 }

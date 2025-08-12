@@ -35,10 +35,10 @@
       },
       "cordova-plugin-websocket": {},
       "cordova-plugin-buildinfo": {},
-      "cordova-plugin-system": {},
       "com.foxdebug.acode.rk.exec.terminal": {},
       "com.foxdebug.acode.rk.exec.proot": {},
-      "cordova-plugin-browser": {}
+      "cordova-plugin-browser": {},
+      "cordova-plugin-system": {}
     },
     "platforms": [
       "android"

@@ -161,7 +161,7 @@ export default function Sponsor(onclose) {
 									<span className={`tier-icon ${product.productId}`}></span>
 									{onlyTitle(product.title)}
 								</div>
-								<div className="tier-price">{product.price}</div>
+								<div className="tier-price">{product.price}/Month</div>
 							</div>
 							<div
 								className="tier-description"
@@ -183,24 +183,28 @@ export default function Sponsor(onclose) {
 
 async function handlePurchase(productId, title) {
 	let image;
-	const result = await multiPrompt(onlyTitle(title), [
-		{
-			placeholder: "Name",
-			required: true,
-			id: "name",
-		},
-		{
-			placeholder: "Email",
-			required: false,
-			id: "email",
-		},
-		{
+	const extraFields = [];
+
+	if (["silver", "gold", "platinum", "titanium"].includes(productId)) {
+		extraFields.push({
 			placeholder: "Website",
 			required: false,
 			id: "website",
 			type: "url",
-		},
-		{
+		});
+	}
+
+	if (productId === "titanium") {
+		extraFields.push({
+			placeholder: "Tagline",
+			required: false,
+			id: "tagline",
+			type: "text",
+		});
+	}
+
+	if (["gold", "platinum", "titanium"].includes(productId)) {
+		extraFields.push({
 			placeholder: "Logo/Image (500KB max)",
 			required: false,
 			type: "text",
@@ -231,7 +235,22 @@ async function handlePurchase(productId, title) {
 					reader.readAsDataURL(blob);
 				}, "image/*");
 			},
+		});
+	}
+
+	const result = await multiPrompt(onlyTitle(title), [
+		{
+			placeholder: "Name",
+			required: true,
+			id: "name",
 		},
+		{
+			placeholder: "Email",
+			required: false,
+			id: "email",
+			type: "email",
+		},
+		...extraFields,
 		{
 			placeholder: "Show in sponsors list",
 			required: false,
