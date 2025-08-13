@@ -45,7 +45,6 @@
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
     margin-bottom: 15px;
     width: 90%;
     max-width: 400px;
@@ -55,7 +54,6 @@
     margin: auto;
 
     .icon {
-      color: #6b6bff;
       margin-left: 10px;
     }
   }
@@ -69,7 +67,6 @@
 
   .sponsors-container {
     padding: 1rem;
-    margin-top: 2rem;
 
     h2 {
       text-align: center;
@@ -109,7 +106,7 @@
       padding: 15px;
       text-align: center;
       backdrop-filter: blur(10px);
-      border: 1px solid var(--border-color);
+      border: 1px solid var(--popup-border-color);
       transition: all 0.3s ease;
 
       .sponsor-avatar {

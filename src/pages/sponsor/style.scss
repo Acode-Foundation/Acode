@@ -35,7 +35,7 @@
 
   .header {
     text-align: center;
-    margin-bottom: 30px;
+    margin-bottom: 10px;
     animation: fadeInUp 0.8s ease-out;
   }
 
@@ -74,7 +74,6 @@
   h1 {
     font-size: 28px;
     font-weight: 700;
-    margin-bottom: 10px;
   }
 
   .subtitle {
@@ -87,12 +86,12 @@
     width: 90%;
     max-width: 400px;
     margin: 0 auto;
-    background: rgba(255, 255, 255, 0.15);
     border-radius: 16px;
     padding: 20px;
     margin-bottom: 15px;
-    backdrop-filter: blur(10px);
-    border: 1px solid var(--border-color);
+    background-color: var(--popup-background-color);
+    color: var(--popup-text-color);
+    border: 1px solid var(--popup-border-color);
     transition: all 0.3s ease;
     animation: fadeInUp 0.8s ease-out calc(0.6s + var(--delay, 0s)) both;
     box-sizing: border-box;

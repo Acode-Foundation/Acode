@@ -345,6 +345,7 @@ export default {
 
 		let newname = await prompt(strings.rename, file.filename, "filename", {
 			match: constants.FILE_NAME_REGEX,
+			capitalize: false,
 		});
 
 		newname = helpers.fixFilename(newname);

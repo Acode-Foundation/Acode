@@ -8,6 +8,7 @@ import appSettings from "lib/settings";
  * @property {RegExp} [match]
  * @property {boolean} [required]
  * @property {string} [placeholder]
+ * @property {boolean} [capitalize] - If true, the first letter of the input will be capitalized
  * @property {(any)=>boolean} [test]
  */
 
@@ -28,8 +29,9 @@ export default function prompt(
 ) {
 	const commands = editorManager.editor.commands;
 	const originalExec = commands.exec;
+	const { capitalize = true } = options;
 
-	commands.exec = () => {}; // Disable all shortcuts
+	commands.exec = () => { }; // Disable all shortcuts
 
 	return new Promise((resolve) => {
 		const inputType = type === "textarea" ? "textarea" : "input";
@@ -43,6 +45,7 @@ export default function prompt(
 			value: defaultValue,
 			className: "input",
 			placeholder: options.placeholder,
+			autocapitalize: capitalize ? "on" : "off",
 		});
 		const okBtn = tag("button", {
 			type: "submit",
