@@ -155,7 +155,7 @@ export default function fontManager() {
 			if (editedCSS === null) return; // User cancelled
 
 			// Add the font
-			fonts.add(fontName, editedCSS);
+			fonts.addCustom(fontName, editedCSS);
 			renderFonts();
 			toast(`Font "${fontName}" added successfully`);
 		} catch (error) {

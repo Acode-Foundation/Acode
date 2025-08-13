@@ -7,6 +7,8 @@ import MesloLGSNFRegular from "../res/fonts/MesloLGSNFRegular.ttf";
 import robotoMono from "../res/fonts/RobotoMono.ttf";
 
 const fonts = new Map();
+const customFontNames = new Set();
+const CUSTOM_FONTS_KEY = "custom_fonts";
 
 add(
 	"Fira Code",
@@ -121,8 +123,45 @@ add(
 }`,
 );
 
+// Load custom fonts on module initialization
+loadCustomFonts();
+
 function add(name, css) {
 	fonts.set(name, css);
+}
+
+function addCustom(name, css) {
+	fonts.set(name, css);
+	customFontNames.add(name);
+	saveCustomFonts();
+}
+
+function saveCustomFonts() {
+	const customFonts = {};
+
+	for (const name of customFontNames) {
+		const css = fonts.get(name);
+		if (css) {
+			customFonts[name] = css;
+		}
+	}
+
+	localStorage.setItem(CUSTOM_FONTS_KEY, JSON.stringify(customFonts));
+}
+
+function loadCustomFonts() {
+	try {
+		const customFonts = localStorage.getItem(CUSTOM_FONTS_KEY);
+		if (customFonts) {
+			const parsed = JSON.parse(customFonts);
+			for (const [name, css] of Object.entries(parsed)) {
+				fonts.set(name, css);
+				customFontNames.add(name);
+			}
+		}
+	} catch (error) {
+		console.error("Failed to load custom fonts:", error);
+	}
 }
 
 function get(name) {
@@ -134,7 +173,12 @@ function getNames() {
 }
 
 function remove(name) {
-	return fonts.delete(name);
+	const result = fonts.delete(name);
+	if (result) {
+		customFontNames.delete(name);
+		saveCustomFonts();
+	}
+	return result;
 }
 
 function has(name) {
@@ -224,6 +268,7 @@ async function loadFont(name) {
 
 export default {
 	add,
+	addCustom,
 	get,
 	getNames,
 	remove,
