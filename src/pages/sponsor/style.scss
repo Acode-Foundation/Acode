@@ -103,8 +103,8 @@
   }
 
   .purchase-btn {
-    background: linear-gradient(45deg, #4ecdc4, #44a08d);
-    color: white;
+    background: var(--button-background-color);
+    color: var(--button-text-color);
     border: none;
     padding: 10px 20px;
     border-radius: 20px;

@@ -8,7 +8,7 @@ module.exports = (env, options) => {
   const { mode = 'development' } = options;
   const rules = [
     {
-      test: /\.hbs$/,
+      test: /\.(hbs|md)$/,
       use: ['raw-loader'],
     },
     {

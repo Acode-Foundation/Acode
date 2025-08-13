@@ -45,15 +45,19 @@ export default function AboutInclude() {
 					<div className="info-item-icon">
 						<span className="icon acode"></span>
 					</div>
-					<div className="info-item-text">Official webpage</div>
-					<small>https://acode.app</small>
+					<div className="info-item-text">
+						Official webpage
+						<div className="info-item-subtext">https://acode.app</div>
+					</div>
 				</a>
 				<a href="https://foxbiz.io" className="info-item">
 					<div className="info-item-icon">
 						<span className="icon foxbiz"></span>
 					</div>
-					<div className="info-item-text">Foxbiz Software Pvt. Ltd.</div>
-					<small>https://www.foxbiz.io</small>
+					<div className="info-item-text">
+						Foxbiz Software Pvt. Ltd.
+						<div className="info-item-subtext">https://www.foxbiz.io</div>
+					</div>
 				</a>
 			</div>
 

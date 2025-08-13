@@ -78,12 +78,10 @@ export default function multiPrompt(message, inputs, help) {
 				hide();
 			},
 		});
-		const $errorMessage = tag("span", {
-			className: "error-msg",
-		});
-		const $mask = tag("span", {
-			className: "mask",
-		});
+		const $errorMessage = (
+			<span className="error-msg" style={{ display: "block" }} />
+		);
+		const $mask = <span className="mask" />;
 		const $promptDiv = tag("form", {
 			action: "#",
 			className: "prompt multi",

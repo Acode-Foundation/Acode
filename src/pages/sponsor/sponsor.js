@@ -113,6 +113,7 @@ export default function Sponsor(onclose) {
 			if (err !== iap.USER_CANCELED) {
 				alert(strings.error.toUpperCase(), err);
 			}
+			loader.removeTitleLoader();
 		},
 	);
 
@@ -251,6 +252,8 @@ async function handlePurchase(productId, title) {
 			required: false,
 			id: "email",
 			type: "email",
+			match:
+				/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|.(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/,
 		},
 		...extraFields,
 		{
@@ -272,15 +275,7 @@ async function handlePurchase(productId, title) {
 
 	localStorage.setItem(`sponsor_${productId}`, JSON.stringify(result));
 	loader.showTitleLoader();
-	iap.purchase(
-		productId,
-		() => {},
-		(err) => {
-			if (err !== iap.USER_CANCELED) {
-				alert(strings.error, err);
-			}
-		},
-	);
+	iap.purchase(productId);
 }
 
 function onlyTitle(title) {
