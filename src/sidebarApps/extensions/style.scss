@@ -2,26 +2,30 @@
 
 .container.extensions {
   .header {
+    padding: 10px;
     display: flex;
     flex-direction: column;
     border-bottom: 1px solid var(--border-color);
 
     .title {
-      font-size: 1.125rem;
       font-weight: 600;
       display: flex;
-      justify-content: space-between;
+      justify-content: space-between !important;
       align-items: center;
       width: 100%;
       color: var(--primary-text-color);
       margin-bottom: 8px;
+
+      .actions {
+        display: flex;
+        align-items: center;
+      }
 
       .icon-button {
         background: none;
         border: none;
         cursor: pointer;
         color: var(--primary-text-color);
-        padding: 0.4rem;
         margin-left: 0.4rem;
         border-radius: 6px;
         transition: all 0.2s ease;

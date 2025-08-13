@@ -39,12 +39,14 @@ const $header = (
 	<div className="header">
 		<div className="title">
 			<span>{strings.plugins}</span>
-			<button type="button" className="icon-button" onclick={filterPlugins}>
-				<span className="icon tune" />
-			</button>
-			<button type="button" className="icon-button" onclick={addSource}>
-				<span className="icon more_vert" />
-			</button>
+			<div className="actions">
+				<button type="button" className="icon-button" onclick={filterPlugins}>
+					<span className="icon tune" />
+				</button>
+				<button type="button" className="icon-button" onclick={addSource}>
+					<span className="icon add" />
+				</button>
+			</div>
 		</div>
 		<input
 			oninput={searchPlugin}

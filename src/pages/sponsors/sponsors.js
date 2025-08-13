@@ -1,6 +1,7 @@
 import ajax from "@deadlyjack/ajax";
 import "./style.scss";
 import Page from "components/page";
+import toast from "components/toast";
 import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
 import constants from "lib/constants";
@@ -110,48 +111,72 @@ export default function Sponsors() {
 	app.append(page);
 
 	async function render() {
+		let sponsors = [];
 		try {
 			const res = await ajax.get(`${constants.API_BASE}/sponsors`);
 			if (res.error) {
-				helpers.error(res.error);
+				toast("Unable to load sponsors...");
+				console.error("Error loading sponsors:", res.error);
 			} else {
-				titaniumSponsors.content = "";
-				platinumSponsors.content = "";
-				goldSponsors.content = "";
-				silverSponsors.content = "";
-				bronzeSponsors.content = "";
-				crystalSponsors.content = "";
-
-				for (const sponsor of res) {
-					// Append each sponsor to the corresponding tier
-					switch (sponsor.tier) {
-						case "titanium":
-							titaniumSponsors.append(<SponsorCard {...sponsor} />);
-							break;
-						case "platinum":
-							platinumSponsors.append(<SponsorCard {...sponsor} />);
-							break;
-						case "gold":
-							goldSponsors.append(<SponsorCard {...sponsor} />);
-							break;
-						case "silver":
-							silverSponsors.append(<SponsorCard {...sponsor} />);
-							break;
-						case "bronze":
-							bronzeSponsors.append(<SponsorCard {...sponsor} />);
-							break;
-						case "crystal":
-							crystalSponsors.append(<SponsorCard {...sponsor} />);
-							break;
-					}
-				}
+				sponsors = res;
+				localStorage.setItem("cached_sponsors", JSON.stringify(sponsors));
 			}
 		} catch (error) {
-			helpers.error(error);
+			toast("Unable to load sponsors...");
+			console.error("Error loading sponsors:", error);
+		}
+
+		if (!sponsors.length && "cached_sponsors" in localStorage) {
+			try {
+				sponsors = JSON.parse(localStorage.getItem("cached_sponsors")) || [];
+			} catch (error) {
+				console.error("Failed to parse cached sponsors", error);
+			}
+		}
+
+		titaniumSponsors.content = "";
+		platinumSponsors.content = "";
+		goldSponsors.content = "";
+		silverSponsors.content = "";
+		bronzeSponsors.content = "";
+		crystalSponsors.content = "";
+
+		for (const sponsor of sponsors) {
+			// Append each sponsor to the corresponding tier
+			switch (sponsor.tier) {
+				case "titanium":
+					titaniumSponsors.append(<SponsorCard {...sponsor} />);
+					break;
+				case "platinum":
+					platinumSponsors.append(<SponsorCard {...sponsor} />);
+					break;
+				case "gold":
+					goldSponsors.append(<SponsorCard {...sponsor} />);
+					break;
+				case "silver":
+					silverSponsors.append(<SponsorCard {...sponsor} />);
+					break;
+				case "bronze":
+					bronzeSponsors.append(<SponsorCard {...sponsor} />);
+					break;
+				case "crystal":
+					crystalSponsors.append(<SponsorCard {...sponsor} />);
+					break;
+			}
 		}
 	}
 }
 
+/**
+ * Sponsor Card Component
+ * @param {object} props
+ * @param {string} props.name - The name of the sponsor
+ * @param {string} props.image - The image URL of the sponsor
+ * @param {string} props.website - The website URL of the sponsor
+ * @param {string} props.tier - The tier of the sponsor
+ * @param {string} props.tagline - The tagline of the sponsor
+ * @returns {JSX.Element}
+ */
 function SponsorCard({ name, image, website, tier, tagline }) {
 	// for crystal tier only text, for bronze slightly bigger text, for silver bigger clickable text,
 	// for gold text with image, for platinum and titanium text with big image
