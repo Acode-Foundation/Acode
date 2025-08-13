@@ -40,7 +40,7 @@ export default function Sponsors() {
 			</div>
 			<div className="sponsors-container">
 				<h2>Acode's Sponsors</h2>
-				<div className="sponsors-list">
+				<div className="sponsors-list" onclick={handleLinkClick}>
 					<div className="tier">
 						<div className="tier-name">
 							<span className="tier-icon titanium"></span>Titanium
@@ -159,21 +159,33 @@ function SponsorCard({ name, image, website, tier, tagline }) {
 	return (
 		<div
 			attr-role="button"
+			data-website={website}
 			className={`sponsor-card ${tier}`}
-			onclick={() => {
-				if (!website) return;
-				if (!website.startsWith("http")) {
-					website = "http://" + website;
-				}
-				system.openInBrowser(website);
-			}}
 		>
-			<div className="sponsor-avatar">
-				<img src={`https://acode.app/sponsor/image/${image}`} />
-			</div>
+			{image && (
+				<div className="sponsor-avatar">
+					<img src={`https://acode.app/sponsor/image/${image}`} />
+				</div>
+			)}
 			<div className="sponsor-name">{name}</div>
-			<div className="sponsor-tagline">{tagline}</div>
+			{tagline && <div className="sponsor-tagline">{tagline}</div>}
 			{website && <small className="sponsor-website">{website}</small>}
 		</div>
 	);
+}
+
+/**
+ * Handle link click
+ * @param {MouseEvent} e
+ * @returns
+ */
+function handleLinkClick(e) {
+	const target = e.target.closest(".sponsor-card");
+	if (!target) return;
+	const { website } = target.dataset;
+	if (!website) return;
+	if (!website.startsWith("http")) {
+		website = "http://" + website;
+	}
+	system.openInBrowser(website);
 }

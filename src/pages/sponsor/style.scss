@@ -59,7 +59,7 @@
     margin-bottom: 15px;
     background-color: var(--popup-background-color);
     color: var(--popup-text-color);
-    border: 1px solid var(--popup-border-color);
+    border: 1px solid var(--border-color);
     transition: all 0.3s ease;
     animation: fadeInUp 0.8s ease-out calc(0.6s + var(--delay, 0s)) both;
     box-sizing: border-box;
