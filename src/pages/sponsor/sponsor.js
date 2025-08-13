@@ -1,6 +1,7 @@
 import "./style.scss";
 import fsOperation from "fileSystem";
 import ajax from "@deadlyjack/ajax";
+import Logo from "components/logo";
 import Page from "components/page";
 import alert from "dialogs/alert";
 import box from "dialogs/box";
@@ -149,7 +150,7 @@ export default function Sponsor(onclose) {
 		$page.body = (
 			<div id="sponsor-page" className="main">
 				<div className="header">
-					<span className="logo"></span>
+					<Logo />
 					<h1>Sponsor Acode</h1>
 					<p className="subtitle">Support the future of mobile coding</p>
 				</div>

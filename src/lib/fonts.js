@@ -2,6 +2,9 @@ import fsOperation from "fileSystem";
 import loader from "dialogs/loader";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
+import firaCode from "../res/fonts/FiraCode.ttf";
+import MesloLGSNFRegular from "../res/fonts/MesloLGSNFRegular.ttf";
+import robotoMono from "../res/fonts/RobotoMono.ttf";
 
 const fonts = new Map();
 
@@ -9,7 +12,7 @@ add(
 	"Fira Code",
 	`@font-face {
   font-family: 'Fira Code';
-  src: url(../res/fonts/FiraCode.ttf) format('truetype');
+  src: url(${firaCode}) format('truetype');
   font-weight: 300 700;
   font-style: normal;
 }`,
@@ -22,7 +25,7 @@ add(
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url(../res/fonts/RobotoMono.ttf) format('truetype');
+  src: url(${robotoMono}) format('truetype');
   unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F,
     U+FE2E-FE2F;
 }`,
@@ -34,7 +37,7 @@ add(
   font-family: 'MesloLGS NF Regular';
   font-style: normal;
   font-weight: normal;
-  src: url(../res/fonts/MesloLGSNFRegular.ttf) format('truetype');
+  src: url(${MesloLGSNFRegular}) format('truetype');
 }`,
 );
 

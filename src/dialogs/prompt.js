@@ -31,7 +31,7 @@ export default function prompt(
 	const originalExec = commands.exec;
 	const { capitalize = true } = options;
 
-	commands.exec = () => { }; // Disable all shortcuts
+	commands.exec = () => {}; // Disable all shortcuts
 
 	return new Promise((resolve) => {
 		const inputType = type === "textarea" ? "textarea" : "input";
