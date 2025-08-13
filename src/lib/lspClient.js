@@ -158,6 +158,35 @@ export default class lspClient {
 	}
 
 	/**
+	 *
+	 * This method sends a request to the LSP server to change the current workspace folder.
+	 * The server must have access to the specified `uri`.
+	 *
+	 * ⚠️ Note:
+	 * - The LSP server must be running and connected before calling this method.
+	 * - Android SAF (`content://`) URIs are not supported — use a file system–accessible path instead.
+	 *
+	 * @async
+	 * @param {string} uri - The URI of the workspace folder to set (e.g., "file:///path/to/folder").
+	 * @returns {Promise<boolean>} Resolves to `true` if the operation was successful, otherwise `false`.
+	 */
+	async setWorkspaceFolder(uri) {
+		if (!this.languageProvider) {
+			console.error(
+				"Language provider not initialized. Connect to the LSP server first.",
+			);
+			return false;
+		}
+
+		try {
+			await this.languageProvider.changeWorkspaceFolder(uri);
+		} catch (error) {
+			console.error("Error setting workspace folder:", error);
+			return false;
+		}
+	}
+
+	/**
 	 * Get the current connection status
 	 * @returns {boolean}
 	 */
@@ -228,21 +257,3 @@ export default class lspClient {
 		});
 	}
 }
-
-// Usage example:
-/*
-const client = new lspClient('ws://localhost:8080/lsp', ['javascript', 'typescript']);
-
-// Connect to server
-await client.connect();
-
-// Add editors
-const editor1 = editorManager.activeFile.session.$editor;
-client.addEditor(editor1);
-
-// Later, remove editor
-client.removeEditor(editor1);
-
-// Disconnect when done
-client.disconnect();
-*/
