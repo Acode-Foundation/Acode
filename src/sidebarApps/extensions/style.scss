@@ -6,6 +6,7 @@
     display: flex;
     flex-direction: column;
     border-bottom: 1px solid var(--border-color);
+    box-sizing: border-box;
 
     .title {
       font-weight: 600;
@@ -43,14 +44,15 @@
     }
 
     input[type="search"] {
-      width: 100%;
-      padding: 0.5rem;
+      width: 100% !important;
+      padding: 0.5rem !important;
       border: 1px solid var(--border-color);
       border-radius: 6px;
       background: var(--secondary-color);
       color: var(--primary-text-color);
       font-size: 0.875rem;
       transition: all 0.2s ease;
+      margin: 0 !important;
 
       &:focus {
         outline: none;
