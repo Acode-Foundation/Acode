@@ -24,13 +24,7 @@ import com.foxdebug.acode.R;
 public class AlpineDocumentProvider extends DocumentsProvider {
     
     private static final String ALL_MIME_TYPES = "*/*";
-    private static final File BASE_DIR = new File("/data/data/com.foxdebug.acode/files/public");
 
-    public AlpineDocumentProvider(){
-        if (!BASE_DIR.exists()) {
-            BASE_DIR.mkdirs();
-        }
-    }
     
     // The default columns to return information about a root if no specific
     // columns are requested in a query.
@@ -58,6 +52,11 @@ public class AlpineDocumentProvider extends DocumentsProvider {
 
     @Override
     public Cursor queryRoots(String[] projection) {
+        File BASE_DIR = new File(getContext().getFilesDir(),"public");
+        if (!BASE_DIR.exists()) {
+            BASE_DIR.mkdirs();
+        }
+
         MatrixCursor result = new MatrixCursor(
             projection != null ? projection : DEFAULT_ROOT_PROJECTION
         );
@@ -185,6 +184,10 @@ public class AlpineDocumentProvider extends DocumentsProvider {
         String query,
         String[] projection
     ) throws FileNotFoundException {
+        File BASE_DIR = new File(getContext().getFilesDir(),"public");
+        if (!BASE_DIR.exists()) {
+            BASE_DIR.mkdirs();
+        }
         MatrixCursor result = new MatrixCursor(
             projection != null ? projection : DEFAULT_DOCUMENT_PROJECTION
         );
