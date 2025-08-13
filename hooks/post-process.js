@@ -29,9 +29,9 @@ deleteDirRecursively(resPath, [
   'xml',
 ]);
 copyDirRecursively(localResPath, resPath);
-enableLegacyJni()
-enableStaticContext()
-patchTargetSdkVersion()
+enableLegacyJni();
+enableStaticContext();
+patchTargetSdkVersion();
 
 
 function patchTargetSdkVersion() {
@@ -48,19 +48,19 @@ function patchTargetSdkVersion() {
   const sdkRegex = /targetSdkVersion\s+(cordovaConfig\.SDK_VERSION|\d+)/;
 
   if (sdkRegex.test(content)) {
-    let api = "35"
+    let api = "35";
     const froidFlag = path.join(prefix, 'fdroid.bool');
-    
-    if(fs.existsSync(froidFlag)){
+
+    if (fs.existsSync(froidFlag)) {
       const fdroid = fs.readFileSync(froidFlag, 'utf-8').trim();
-      if(fdroid == "true"){
-        api = "28"
+      if (fdroid == "true") {
+        api = "28";
       }
     }
-    
-    content = content.replace(sdkRegex, 'targetSdkVersion '+api);
+
+    content = content.replace(sdkRegex, 'targetSdkVersion ' + api);
     fs.writeFileSync(gradleFile, content, 'utf-8');
-    console.log('[Cordova Hook] ✅ Patched targetSdkVersion to '+api);
+    console.log('[Cordova Hook] ✅ Patched targetSdkVersion to ' + api);
   } else {
     console.warn('[Cordova Hook] ⚠️ targetSdkVersion not found');
   }

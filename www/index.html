@@ -7,6 +7,15 @@
 
   <script>
     (function () {
+      var color = localStorage.getItem("__primary_color");
+      var __bg_color = "#20202c";
+      if (color) {
+        __bg_color = color;
+      }
+
+      document.querySelector(":root").style.cssText =
+        "--bg-color: " + __bg_color;
+
       var __testEl = document.createElement("div");
       var __testChildEl = document.createElement("div");
       if (__testEl.append) {
@@ -30,54 +39,50 @@
           this.appendChild(docFrag);
         };
       }
+    })();
 
-      function startsWith(string, needle) {
-        return string.indexOf(needle) === 0;
+    // save all touch events added by ace editor so it can be use in src/ade/touchHandler.js
+    var __oldAddEventListener = HTMLElement.prototype.addEventListener;
+    HTMLElement.prototype.addEventListener = function (
+      type,
+      listener,
+      useCapture,
+      allowed,
+    ) {
+      if (typeof useCapture === "boolean") {
+        allowed = useCapture;
+        useCapture = undefined;
       }
 
-      // save all touch events added by ace editor so it can be use in src/ade/touchHandler.js
-      var __oldAddEventListener = HTMLElement.prototype.addEventListener;
-      HTMLElement.prototype.addEventListener = function (
-        type,
-        listener,
-        useCapture,
-        allowed,
-      ) {
-        if (typeof useCapture === "boolean") {
-          allowed = useCapture;
-          useCapture = undefined;
-        }
+      if (type === "contextmenu" && !allowed) {
+        return;
+      }
 
-        if (type === "contextmenu" && !allowed) {
-          return;
-        }
-
-        if (allowed) {
-          __oldAddEventListener.call(this, type, listener, useCapture);
-          return;
-        }
-
-        if (
-          this.classList.contains("editor-container") &&
-          startsWith(type, "touch")
-        ) {
-          if (!this.eventListeners) {
-            this.eventListeners = {};
-          }
-
-          if (!this.eventListeners[type]) {
-            this.eventListeners[type] = [];
-          }
-          this.eventListeners[type].push({
-            listener: listener,
-            useCapture: useCapture,
-          });
-
-          return;
-        }
+      if (allowed) {
         __oldAddEventListener.call(this, type, listener, useCapture);
-      };
-    })();
+        return;
+      }
+
+      if (
+        this.classList.contains("editor-container") &&
+        type.indexOf("touch") === 0
+      ) {
+        if (!this.eventListeners) {
+          this.eventListeners = {};
+        }
+
+        if (!this.eventListeners[type]) {
+          this.eventListeners[type] = [];
+        }
+        this.eventListeners[type].push({
+          listener: listener,
+          useCapture: useCapture,
+        });
+
+        return;
+      }
+      __oldAddEventListener.call(this, type, listener, useCapture);
+    };
   </script>
 
   <script src="cordova.js"></script>
@@ -97,21 +102,6 @@
   <script src="./js/ace/ext-whitespace.js"></script>
   <script src="./js/ace/ext-static_highlight.js"></script>
   <script src="./js/ace/ext-inline_autocomplete.js"></script>
-
-  <script>
-    (function () {
-      var color = localStorage.getItem("__primary_color");
-      var __bg_color = "#20202c";
-      if (color) {
-        __bg_color = color;
-      }
-
-      document.querySelector(":root").style.cssText =
-        "--bg-color: " + __bg_color;
-    })();
-  </script>
-
-  <script></script>
 
   <style>
     :root {
@@ -162,7 +152,6 @@
 
   <script src="./build/main.js"></script>
   <link rel="stylesheet" href="./build/main.css">
-
   <title>Acode</title>
 </head>
 
