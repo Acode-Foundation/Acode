@@ -319,34 +319,42 @@ async function run(
 
 				console.log(`RootFolder ${rootFolder}`);
 				console.log(`PARTS ${pathParts.join("/")}`);
-				const overlap = findOverlap(rootFolder, pathParts.join("/"));
 
 				let fullPath;
-				if (overlap !== "") {
-					fullPath = Url.join(
-						rootFolder,
-						removePrefix(pathParts.join("/"), overlap),
-					);
-				} else {
+				// Skip overlap detection for GitHub URIs as it causes path corruption
+				if (rootFolder.startsWith("gh://")) {
 					fullPath = Url.join(rootFolder, pathParts.join("/"));
+				} else {
+					const overlap = findOverlap(rootFolder, pathParts.join("/"));
+					if (overlap !== "") {
+						fullPath = Url.join(
+							rootFolder,
+							removePrefix(pathParts.join("/"), overlap),
+						);
+					} else {
+						fullPath = Url.join(rootFolder, pathParts.join("/"));
+					}
 				}
 
 				console.log(`Full PATH ${fullPath}`);
 
 				const urlFile = fsOperation(fullPath);
 
-				const stats = await urlFile.stat();
+				// Skip stat check for GitHub URIs as they are handled differently
+				if (!fullPath.startsWith("gh://")) {
+					const stats = await urlFile.stat();
 
-				if (!stats.exists) {
-					error(reqId);
-					return;
-				}
+					if (!stats.exists) {
+						error(reqId);
+						return;
+					}
 
-				if (!stats.isFile) {
-					if (fullPath.endsWith("/")) {
-						fullPath += "index.html";
-					} else {
-						fullPath += "/index.html";
+					if (!stats.isFile) {
+						if (fullPath.endsWith("/")) {
+							fullPath += "index.html";
+						} else {
+							fullPath += "/index.html";
+						}
 					}
 				}
 
