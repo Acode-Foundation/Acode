@@ -202,8 +202,6 @@
 	"add a storage": "Добавить хранилище",
 	"rate acode": "Оценить Acode",
 	"support": "Поддержка",
-	"donate": "Пожертвовать {amount}",
-	"donation message": "Есть люди, которые не делают пожертвований, потому что предполагают, что это делают все остальные, а есть те, кто берет факел и бежит с ним. Спасибо вам за ваше доброе и трогательное пожертвование!",
 	"downloading file": "Загрузка {file}",
 	"downloading...": "Загрузка...",
 	"folder name": "Имя папки",
@@ -422,5 +420,7 @@
 	"terminal:font family": "Font Family",
 	"terminal:convert eol": "Convert EOL",
 	"terminal": "Terminal",
-	"allFileAccess": "All file access"
+	"allFileAccess": "All file access",
+	"fonts": "Fonts",
+	"sponsor": "Спонсор"
 }

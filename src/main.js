@@ -1,9 +1,9 @@
 import "core-js/stable";
 import "html-tag-js/dist/polyfill";
 
-import "styles/main.scss";
-import "styles/page.scss";
-import "styles/list.scss";
+import "./main.scss";
+import "res/icons/style.css";
+import "res/file-icons/style.css";
 import "styles/overrideAceStyle.scss";
 
 import "lib/polyfill";
@@ -50,7 +50,7 @@ import loadPolyFill from "utils/polyfill";
 import Url from "utils/Url";
 import $_fileMenu from "views/file-menu.hbs";
 import $_menu from "views/menu.hbs";
-import auth, { loginEvents } from "./auth";
+import auth, { loginEvents } from "./lib/auth";
 
 const previousVersionCode = Number.parseInt(localStorage.versionCode, 10);
 

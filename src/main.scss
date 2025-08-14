@@ -1,7 +1,9 @@
-@import "./mixins.scss";
-@import "./keyframes.scss";
-@import "./fileInfo.scss";
-@import "./markdown.scss";
+@use "./styles/page.scss";
+@use "./styles/list.scss";
+@use "./styles/mixins.scss";
+@use "./styles/keyframes.scss";
+@use "./styles/fileInfo.scss";
+@use "./styles/markdown.scss";
 
 :root {
   --scrollbar-width: 4px;
@@ -71,7 +73,7 @@ body {
       top: 6px;
       left: 50%;
       transform: translateX(-50%);
-      background-image: url(https://localhost/__cdvfile_assets__/www/res/tail-spin.svg);
+      background-image: url(res/tail-spin.svg);
       background-repeat: no-repeat;
       background-position: center;
       background-size: 30px;
@@ -240,7 +242,7 @@ a.icon {
   }
 
   &.notice {
-    @include icon-badge;
+    @include mixins.icon-badge;
   }
 
   &.angularjs::before {
@@ -277,10 +279,6 @@ a.icon {
     background-color: var(--active-icon-color) !important;
   }
 
-  &.foxdebug {
-    background-image: url(https://localhost/__cdvfile_assets__/www/res/logo/favicon.ico);
-  }
-
   &.no-icon {
     max-width: 5px;
     margin-right: 5px;
@@ -307,6 +305,7 @@ a.icon {
 }
 
 footer {
+
   &.button-container,
   .button-container {
     overflow-x: auto;
@@ -316,7 +315,7 @@ footer {
       min-width: 100%;
 
       .icon.active {
-        @include active-icon;
+        @include mixins.active-icon;
       }
     }
 
@@ -373,7 +372,7 @@ footer {
     }
   }
 
-  > button {
+  >button {
     flex: 1;
     display: inline-flex;
     align-items: center;
@@ -552,8 +551,8 @@ textarea {
   transform-origin: left center;
   z-index: 4;
 
-  > span,
-  > div {
+  >span,
+  >div {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -889,6 +888,7 @@ input[type="search"]::-webkit-search-results-decoration {
     transform: translateX(120%);
     opacity: 0;
   }
+
   to {
     transform: translateX(0);
     opacity: 1;

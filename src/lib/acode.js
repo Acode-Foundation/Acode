@@ -345,7 +345,7 @@ export default class Acode {
 														);
 														return helpers.promisify(
 															iap.purchase,
-															product.json,
+															product.productId,
 														);
 													});
 												}

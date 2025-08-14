@@ -201,8 +201,6 @@
 	"add a storage": "Дадаць сховішча",
 	"rate acode": "Ацаніць Acode",
 	"support": "Падтрымка",
-	"donate": "Ахвяраваць {amount}",
-	"donation message": "Ёсць людзі, якія не ахвяруюць, бо мяркуюць, што ўсе астатнія ахвяруюць, а ёсць тыя, хто бярэ факел і бяжыць з ім. Дзякуй за тое, што вы сталі апошнім, і за вашае шчырае ахвяраванне.",
 	"downloading file": "Спампоўванне {file}",
 	"downloading...": "Спампоўванне...",
 	"folder name": "Назва каталога",
@@ -422,5 +420,7 @@
 	"terminal:font family": "Font Family",
 	"terminal:convert eol": "Convert EOL",
 	"terminal": "Terminal",
-	"allFileAccess": "All file access"
+	"allFileAccess": "All file access",
+	"fonts": "Fonts",
+	"sponsor": "Спонсар"
 }

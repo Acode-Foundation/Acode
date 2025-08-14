@@ -201,8 +201,6 @@
 	"add a storage": "സ്റ്റോറേജ് ആഡ് ചെയുക ",
 	"rate acode": "റേറ്റ് ആക്കോട് ",
 	"support": "സപ്പോർട്ട് ",
-	"donate": "ഡോനെഷൻ {amount}",
-	"donation message": "മറ്റുള്ളവരെല്ലാം ഉണ്ടെന്ന് കരുതി സംഭാവന നൽകാത്തവരുണ്ട്, ടോർച്ച് എടുത്ത് ഓടുന്നവരുമുണ്ട്. രണ്ടാമനായതിനും നിങ്ങളുടെ ദയയും ഹൃദയസ്പർശിയായ സംഭാവനയ്ക്കും നന്ദി.",
 	"downloading file": "ഡൗൺലോഡിങ് {file}",
 	"downloading...": "ഡൗൺലോഡിങ്...",
 	"folder name": "ഫോൾഡർ നെയിം",
@@ -421,5 +419,7 @@
 	"terminal:font family": "Font Family",
 	"terminal:convert eol": "Convert EOL",
 	"terminal": "Terminal",
-	"allFileAccess": "All file access"
+	"allFileAccess": "All file access",
+	"fonts": "Fonts",
+	"sponsor": "സ്പോൺസർ"
 }

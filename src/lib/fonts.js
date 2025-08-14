@@ -2,14 +2,19 @@ import fsOperation from "fileSystem";
 import loader from "dialogs/loader";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
+import firaCode from "../res/fonts/FiraCode.ttf";
+import MesloLGSNFRegular from "../res/fonts/MesloLGSNFRegular.ttf";
+import robotoMono from "../res/fonts/RobotoMono.ttf";
 
 const fonts = new Map();
+const customFontNames = new Set();
+const CUSTOM_FONTS_KEY = "custom_fonts";
 
 add(
 	"Fira Code",
 	`@font-face {
   font-family: 'Fira Code';
-  src: url(../res/fonts/FiraCode.ttf) format('truetype');
+  src: url(${firaCode}) format('truetype');
   font-weight: 300 700;
   font-style: normal;
 }`,
@@ -22,7 +27,7 @@ add(
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url(../res/fonts/RobotoMono.ttf) format('truetype');
+  src: url(${robotoMono}) format('truetype');
   unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F,
     U+FE2E-FE2F;
 }`,
@@ -34,7 +39,7 @@ add(
   font-family: 'MesloLGS NF Regular';
   font-style: normal;
   font-weight: normal;
-  src: url(../res/fonts/MesloLGSNFRegular.ttf) format('truetype');
+  src: url(${MesloLGSNFRegular}) format('truetype');
 }`,
 );
 
@@ -118,8 +123,45 @@ add(
 }`,
 );
 
+// Load custom fonts on module initialization
+loadCustomFonts();
+
 function add(name, css) {
 	fonts.set(name, css);
+}
+
+function addCustom(name, css) {
+	fonts.set(name, css);
+	customFontNames.add(name);
+	saveCustomFonts();
+}
+
+function saveCustomFonts() {
+	const customFonts = {};
+
+	for (const name of customFontNames) {
+		const css = fonts.get(name);
+		if (css) {
+			customFonts[name] = css;
+		}
+	}
+
+	localStorage.setItem(CUSTOM_FONTS_KEY, JSON.stringify(customFonts));
+}
+
+function loadCustomFonts() {
+	try {
+		const customFonts = localStorage.getItem(CUSTOM_FONTS_KEY);
+		if (customFonts) {
+			const parsed = JSON.parse(customFonts);
+			for (const [name, css] of Object.entries(parsed)) {
+				fonts.set(name, css);
+				customFontNames.add(name);
+			}
+		}
+	} catch (error) {
+		console.error("Failed to load custom fonts:", error);
+	}
 }
 
 function get(name) {
@@ -128,6 +170,19 @@ function get(name) {
 
 function getNames() {
 	return [...fonts.keys()];
+}
+
+function remove(name) {
+	const result = fonts.delete(name);
+	if (result) {
+		customFontNames.delete(name);
+		saveCustomFonts();
+	}
+	return result;
+}
+
+function has(name) {
+	return fonts.has(name);
 }
 
 async function setFont(name) {
@@ -213,8 +268,11 @@ async function loadFont(name) {
 
 export default {
 	add,
+	addCustom,
 	get,
 	getNames,
+	remove,
+	has,
 	setFont,
 	loadFont,
 };

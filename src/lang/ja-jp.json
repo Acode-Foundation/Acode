@@ -201,8 +201,6 @@
 	"add a storage": "ストレージを追加",
 	"rate acode": "Acodeを評価する",
 	"support": "支援する",
-	"donate": "{amount}を寄付する",
-	"donation message": "「みんなしていないだろうし……」と寄付をしない人がいる一方、自ら聖火を持って走り出す人もいます。後者のような人になっていただきありがとうございます。あなたの優しく温かいご支援に感謝します。",
 	"downloading file": "{file}をダウンロード中",
 	"downloading...": "ダウンロード中...",
 	"folder name": "フォルダ名",
@@ -421,5 +419,7 @@
 	"terminal:font family": "Font Family",
 	"terminal:convert eol": "Convert EOL",
 	"terminal": "Terminal",
-	"allFileAccess": "All file access"
+	"allFileAccess": "All file access",
+	"fonts": "Fonts",
+	"sponsor": "スポンサー"
 }

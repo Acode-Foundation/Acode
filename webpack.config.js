@@ -8,7 +8,7 @@ module.exports = (env, options) => {
   const { mode = 'development' } = options;
   const rules = [
     {
-      test: /\.hbs$/,
+      test: /\.(hbs|md)$/,
       use: ['raw-loader'],
     },
     {
@@ -20,20 +20,16 @@ module.exports = (env, options) => {
       ],
     },
     {
+      test: /\.(png|svg|jpg|jpeg|ico|ttf|webp|eot|woff|webm|mp4|webp|wav)(\?.*)?$/,
+      type: "asset/resource",
+    },
+    {
       test: /(?<!\.module)\.(sa|sc|c)ss$/,
       use: [
         {
           loader: MiniCssExtractPlugin.loader,
-          options: {
-            publicPath: '../../',
-          },
         },
-        {
-          loader: 'css-loader',
-          options: {
-            url: false,
-          },
-        },
+        'css-loader',
         'postcss-loader',
         'sass-loader',
       ],
@@ -55,20 +51,20 @@ module.exports = (env, options) => {
   });
   // }
 
-  clearOutputDir();
-
   const main = {
     mode,
     entry: {
-      main: './src/lib/main.js',
+      main: './src/main.js',
       console: './src/lib/console.js',
       searchInFilesWorker: './src/sidebarApps/searchInFiles/worker.js',
     },
     output: {
-      path: path.resolve(__dirname, 'www/js/build/'),
-      filename: '[name].build.js',
-      chunkFilename: '[name].build.js',
-      publicPath: './js/build/',
+      path: path.resolve(__dirname, 'www/build/'),
+      filename: '[name].js',
+      chunkFilename: '[name].chunk.js',
+      assetModuleFilename: '[name][ext]',
+      publicPath: '/build/',
+      clean: true,
     },
     module: {
       rules,
@@ -82,25 +78,10 @@ module.exports = (env, options) => {
     },
     plugins: [
       new MiniCssExtractPlugin({
-        filename: '../../css/build/[name].css',
+        filename: '[name].css',
       }),
     ],
   };
 
   return [main];
 };
-
-function clearOutputDir() {
-  const css = path.join(WWW, 'css/build');
-  const js = path.join(WWW, 'js/build');
-
-  fs.rmSync(css, { recursive: true });
-  fs.rmSync(js, { recursive: true });
-
-  fs.mkdir(css, (err) => {
-    if (err) console.log(err);
-  });
-  fs.mkdir(js, (err) => {
-    if (err) console.log(err);
-  });
-}

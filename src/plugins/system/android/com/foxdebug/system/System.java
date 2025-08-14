@@ -1,5 +1,6 @@
 package com.foxdebug.system;
 
+import static android.os.Build.VERSION.SDK_INT;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -57,6 +58,7 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import android.content.Context;
 import android.net.Uri;
+import android.util.Log;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -1038,11 +1040,11 @@ public class System extends CordovaPlugin {
 
     private void setUiTheme(
         final String systemBarColor,
-        final JSONObject schema,
+        final JSONObject scheme,
         final CallbackContext callback
     ) {
         this.systemBarColor = Color.parseColor(systemBarColor);
-        this.theme = new Theme(schema);
+        this.theme = new Theme(scheme);
 
         final Window window = activity.getWindow();
         // Method and constants not available on all SDKs but we want to be able to compile this code with any SDK
@@ -1088,34 +1090,73 @@ public class System extends CordovaPlugin {
     }
 
     private void setStatusBarStyle(final Window window) {
-        View decorView = window.getDecorView();
-        int uiOptions = decorView.getSystemUiVisibility();
         String themeType = theme.getType();
+        View decorView = window.getDecorView();
+        int uiOptions;
+        int lightStatusBar;
 
-        if (themeType.equals("light")) {
-            decorView.setSystemUiVisibility(
-                uiOptions | View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
-            );
+        if (SDK_INT <= 30) {
+            uiOptions = getDeprecatedSystemUiVisibility(decorView);
+            lightStatusBar = deprecatedFlagUiLightStatusBar();
+
+            if (themeType.equals("light")) {
+                setDeprecatedSystemUiVisibility(decorView, uiOptions | lightStatusBar);
+                return;
+            }
+            setDeprecatedSystemUiVisibility(decorView, uiOptions & ~lightStatusBar);
             return;
         }
-        decorView.setSystemUiVisibility(
-            uiOptions & ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
-        );
+
+        uiOptions = Objects.requireNonNull(decorView.getWindowInsetsController()).getSystemBarsAppearance();
+        lightStatusBar = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS;
+
+        if (themeType.equals("light")) {
+            decorView.getWindowInsetsController().setSystemBarsAppearance(uiOptions | lightStatusBar, lightStatusBar);
+            return;
+        }
+
+        decorView.getWindowInsetsController().setSystemBarsAppearance(uiOptions & ~lightStatusBar, lightStatusBar);
     }
 
     private void setNavigationBarStyle(final Window window) {
-        View decorView = window.getDecorView();
-        int uiOptions = decorView.getSystemUiVisibility();
         String themeType = theme.getType();
+        View decorView = window.getDecorView();
+        int uiOptions;
 
-        // 0x80000000 FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS
-        // 0x00000010 SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+        if (SDK_INT <= 30) {
+            uiOptions = getDeprecatedSystemUiVisibility(decorView);
+            // 0x80000000 FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS
+            // 0x00000010 SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
 
-        if (themeType.equals("light")) {
-            decorView.setSystemUiVisibility(uiOptions | 0x80000000 | 0x00000010);
+            if (themeType.equals("light")) {
+                setDeprecatedSystemUiVisibility(decorView, uiOptions | 0x80000000 | 0x00000010);
+                return;
+            }
+            setDeprecatedSystemUiVisibility(decorView, uiOptions | (0x80000000 & ~0x00000010));
             return;
         }
-        decorView.setSystemUiVisibility(uiOptions | (0x80000000 & ~0x00000010));
+
+        uiOptions = Objects.requireNonNull(decorView.getWindowInsetsController()).getSystemBarsAppearance();
+        int lightNavigationBar = WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+
+        if (themeType.equals("light")) {
+            decorView.getWindowInsetsController().setSystemBarsAppearance(uiOptions | lightNavigationBar, lightNavigationBar);
+            return;
+        }
+
+        decorView.getWindowInsetsController().setSystemBarsAppearance(uiOptions & ~lightNavigationBar, lightNavigationBar);
+    }
+
+    private int deprecatedFlagUiLightStatusBar() {
+        return View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+    }
+
+    private int getDeprecatedSystemUiVisibility(View decorView) {
+        return decorView.getSystemUiVisibility();
+    }
+
+    private void setDeprecatedSystemUiVisibility(View decorView, int visibility) {
+        decorView.setSystemUiVisibility(visibility);
     }
 
     private void getCordovaIntent(CallbackContext callback) {

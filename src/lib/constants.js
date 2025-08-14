@@ -21,6 +21,6 @@ export default {
 	},
 	API_BASE: "https://acode.app/api",
 	// API_BASE: 'https://192.168.0.102:3001/api', // test api
-	SKU_LIST: ["basic", "bronze", "silver", "gold", "platinum"],
+	SKU_LIST: ["crystal", "bronze", "silver", "gold", "platinum", "titanium"],
 	LOG_FILE_NAME: "Acode.log",
 };

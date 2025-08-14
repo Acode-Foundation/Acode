@@ -240,7 +240,7 @@ export default async function PluginInclude(
 
 			iap.setPurchaseUpdatedListener(...purchaseListener(onpurchase, onerror));
 			$button.textContent = strings["loading..."];
-			await helpers.promisify(iap.purchase, product.json);
+			await helpers.promisify(iap.purchase, product.productId);
 
 			async function onpurchase(e) {
 				const purchase = await getPurchase(product.productId);

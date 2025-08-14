@@ -1,4 +1,4 @@
-@import "../styles/mixins.scss";
+@use "../styles/mixins.scss";
 
 .prompt {
   position: fixed;
@@ -161,7 +161,7 @@
     }
   }
 
-  & + .mask {
+  &+.mask {
     z-index: 111;
     background-color: rgb(0, 0, 0);
     opacity: 0.4;
@@ -172,7 +172,7 @@
     transform: translate(-50%, -50%) scale(0.95) translateZ(0);
     opacity: 0;
 
-    & + .mask {
+    &+.mask {
       opacity: 0;
     }
   }
@@ -275,7 +275,7 @@
       align-items: center;
 
       .loader {
-        @include circular-loader(30px);
+        @include mixins.circular-loader(30px);
         margin: 0 10px;
       }
 

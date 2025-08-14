@@ -201,8 +201,6 @@
 	"add a storage": "Añadir un almacenamiento",
 	"rate acode": "Califica Acode",
 	"support": "Apoyar",
-	"donate": "Donar {amount}",
-	"donation message": "Hay personas que no donan porque asumen que todos los demás lo hacen, y hay quienes toman la antorcha y corren con ella.  Gracias por ser el último y por su amable y conmovedora donación.",
 	"downloading file": "Descargando {file}",
 	"downloading...": "Descargando...",
 	"folder name": "Nombre de la carpeta",
@@ -421,5 +419,7 @@
 	"terminal:font family": "Font Family",
 	"terminal:convert eol": "Convert EOL",
 	"terminal": "Terminal",
-	"allFileAccess": "All file access"
+	"allFileAccess": "All file access",
+	"fonts": "Fonts",
+	"sponsor": "Patrocinador"
 }

@@ -201,8 +201,6 @@
 	"add a storage": "Додати сховище",
 	"rate acode": "Оцінити Acode",
 	"support": "Підтримка",
-	"donate": "Пожертвуйте {amount}",
-	"donation message": "Є люди, які не жертвують, тому що вважають, що це зробить хтось інший, а є ті, хто береться за смолоскип і бігає з ним. Дякую Вам за те, що Ви є останніми, і за Вашу люб’язну і теплу пожертву.",
 	"downloading file": "Завантажується {file}",
 	"downloading...": "Завантаження...",
 	"folder name": "Назва теки",
@@ -421,5 +419,7 @@
 	"terminal:font family": "Font Family",
 	"terminal:convert eol": "Convert EOL",
 	"terminal": "Terminal",
-	"allFileAccess": "All file access"
+	"allFileAccess": "All file access",
+	"fonts": "Fonts",
+	"sponsor": "Спонсор"
 }

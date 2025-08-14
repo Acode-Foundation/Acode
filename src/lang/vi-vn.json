@@ -201,8 +201,6 @@
 	"add a storage": "Thêm một lưu trữ",
 	"rate acode": "Đánh giá Acode",
 	"support": "Hỗ trợ",
-	"donate": "Quyên tặng {amount}",
-	"donation message": "Có những người không quyên góp vì họ cho rằng mọi người khác đều quyên góp, và có những người nắm lấy ngọn đuốc và chạy theo nó. Cảm ơn bạn đã là người thứ hai và vì sự đóng góp tử tế và ấm áp của bạn.",
 	"downloading file": "Đang tải {file}",
 	"downloading...": "Đang tải...",
 	"folder name": "Tên thư mục",
@@ -422,5 +420,7 @@
 	"terminal:font family": "Họ phông chữ",
 	"terminal:convert eol": "Chuyển Đổi Cuối Dòng",
 	"terminal": "Terminal",
-	"allFileAccess": "All file access"
+	"allFileAccess": "All file access",
+	"fonts": "Fonts",
+	"sponsor": "Nhà tài trợ"
 }

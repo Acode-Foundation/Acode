@@ -201,8 +201,6 @@
 	"add a storage": "Ajouter un stockage",
 	"rate acode": "Évaluer Acode",
 	"support": "Soutenir",
-	"donate": "Donner {amount}",
-	"donation message": "Il y a les gens qui ne font pas de don parce qu'ils supposent que tout le monde le fait et il y a ceux qui reprennent le flambeau et courent avec. Merci d'être l'une des personnes à faire un don aimable et réconfortant.",
 	"downloading file": "Téléchargement de {file}",
 	"downloading...": "Téléchargement...",
 	"folder name": "Nom du dossier",
@@ -421,5 +419,7 @@
 	"terminal:font family": "Font Family",
 	"terminal:convert eol": "Convert EOL",
 	"terminal": "Terminal",
-	"allFileAccess": "All file access"
+	"allFileAccess": "All file access",
+	"fonts": "Fonts",
+	"sponsor": "Parrainer"
 }

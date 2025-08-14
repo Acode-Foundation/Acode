@@ -9,7 +9,6 @@ import MarkdownItGitHubAlerts from "markdown-it-github-alerts";
 import markdownItTaskLists from "markdown-it-task-lists";
 import mimeType from "mime-types";
 import mustache from "mustache";
-import path from "path-browserify";
 import browser from "plugins/browser";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
@@ -17,7 +16,6 @@ import $_console from "views/console.hbs";
 import $_markdown from "views/markdown.hbs";
 import constants from "./constants";
 import EditorFile from "./editorFile";
-import EditorManager from "./editorManager";
 import openFolder, { addedFolder } from "./openFolder";
 import appSettings from "./settings";
 
@@ -200,7 +198,7 @@ async function run(
 					isConsole ||
 					appSettings.value.console === appSettings.CONSOLE_LEGACY
 				) {
-					url = `${ASSETS_DIRECTORY}/js/build/console.build.js`;
+					url = `${ASSETS_DIRECTORY}/build/console.js`;
 				} else {
 					url = `${DATA_STORAGE}/eruda.js`;
 				}
@@ -435,7 +433,7 @@ async function run(
 	 * @param {string} reqId
 	 */
 	function sendIco(assets, reqId) {
-		const ico = Url.join(assets, "res/logo/favicon.ico");
+		const ico = Url.join(assets, "favicon.ico");
 		sendFile(ico, reqId);
 	}
 

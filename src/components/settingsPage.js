@@ -200,8 +200,8 @@ function listItems($list, items, callback) {
 		return acc.text.localeCompare(cur.text);
 	});
 	items.forEach((item) => {
-		const $setting = new Ref();
-		const $settingName = new Ref();
+		const $setting = Ref();
+		const $settingName = Ref();
 		/**@type {HTMLDivElement} */
 		const $item = (
 			<div

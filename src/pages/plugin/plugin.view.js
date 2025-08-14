@@ -6,6 +6,7 @@ import DOMPurify from "dompurify";
 import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
 import constants from "lib/constants";
+import moment from "moment";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
 
@@ -27,6 +28,7 @@ export default (props) => {
 		author_verified: authorVerified,
 		author_github: authorGithub,
 		comment_count: commentCount,
+		package_updated_at: packageUpdatedAt,
 	} = props;
 
 	let rating = "unrated";
@@ -41,6 +43,40 @@ export default (props) => {
 	if (votesUp || votesDown) {
 		rating = `${Math.round((votesUp / (votesUp + votesDown)) * 100)}%`;
 	}
+
+	const formatUpdatedDate = (dateString) => {
+		if (!dateString) return null;
+
+		try {
+			// Configure moment for shorter relative time format
+			moment.updateLocale("en", {
+				relativeTime: {
+					future: "in %s",
+					past: "%s ago",
+					s: "now",
+					ss: "now",
+					m: "1m",
+					mm: "%dm",
+					h: "1h",
+					hh: "%dh",
+					d: "1d",
+					dd: "%dd",
+					M: "1mo",
+					MM: "%dmo",
+					y: "1y",
+					yy: "%dy",
+				},
+			});
+
+			const updateTime = moment.utc(dateString);
+			if (!updateTime.isValid()) return null;
+
+			return updateTime.fromNow();
+		} catch (error) {
+			console.warn("Error parsing date with moment:", dateString, error);
+			return null;
+		}
+	};
 
 	return (
 		<div className="main" id="plugin">
@@ -62,7 +98,11 @@ export default (props) => {
 					<div className="plugin-meta">
 						<span className="meta-item">
 							<i className="licons tag" style={{ fontSize: "12px" }}></i>
-							<Version {...props} />
+							<Version
+								{...props}
+								packageUpdatedAt={packageUpdatedAt}
+								formatUpdatedDate={formatUpdatedDate}
+							/>
 						</span>
 						<span className="meta-item author-name">
 							<i className="icon person"></i>
@@ -307,19 +347,40 @@ function Buttons({
 	);
 }
 
-function Version({ currentVersion, version }) {
-	if (!currentVersion) return <span>v{version}</span>;
+function Version({
+	currentVersion,
+	version,
+	packageUpdatedAt,
+	formatUpdatedDate,
+}) {
+	const updatedText =
+		formatUpdatedDate && packageUpdatedAt
+			? formatUpdatedDate(packageUpdatedAt)
+			: null;
+
+	if (!currentVersion) {
+		return (
+			<span>
+				v{version}
+				{updatedText && (
+					<span className="version-updated">({updatedText})</span>
+				)}
+			</span>
+		);
+	}
+
 	return (
 		<span>
 			v{currentVersion}&nbsp;&#8594;&nbsp;v{version}
+			{updatedText && <span className="version-updated">({updatedText})</span>}
 		</span>
 	);
 }
 
 async function showReviews(pluginId, author) {
-	const mask = new Ref();
-	const body = new Ref();
-	const container = new Ref();
+	const mask = Ref();
+	const body = Ref();
+	const container = Ref();
 
 	actionStack.push({
 		id: "reviews",
@@ -428,8 +489,8 @@ function Review({
 	author_reply: authorReply,
 }) {
 	let dp = Url.join(constants.API_BASE, `../user.png`);
-	let voteImage = new Ref();
-	let review = new Ref();
+	let voteImage = Ref();
+	let review = Ref();
 
 	if (github) {
 		dp = `https://avatars.githubusercontent.com/${github}`;

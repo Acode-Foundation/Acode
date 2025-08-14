@@ -1,4 +1,5 @@
 import helpers from "utils/helpers";
+import pluginIcon from './plugin-icon.png';
 
 /**
  * Creates a plugin list item
@@ -49,7 +50,7 @@ export default function Item({
     >
       <div className="plugin-header">
         <div className="plugin-icon">
-          <img src={icon || "./res/puzzle.png"} alt={name + " icon"} />
+          <img src={icon || pluginIcon} alt={name + " icon"} />
         </div>
         <div className="plugin-info">
           <div className="plugin-main">

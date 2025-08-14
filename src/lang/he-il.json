@@ -201,8 +201,6 @@
 	"add a storage": "הוסף אחסון",
 	"rate acode": "דרג את Acode",
 	"support": "תמיכה",
-	"donate": "תרום {amount}",
-	"donation message": "יש אנשים שלא תורמים כי הם מניחים שכולם תורמים, ויש כאלה שלוקחים את הלפיד ורצים איתו. תודה לך על היותך האחרון, ועל תרומתך האדיבה והמרגשת..",
 	"downloading file": "מוריד את {file}",
 	"downloading...": "מוריד...",
 	"folder name": "שם  תיקיה",
@@ -422,5 +420,7 @@
 	"terminal:font family": "Font Family",
 	"terminal:convert eol": "Convert EOL",
 	"terminal": "Terminal",
-	"allFileAccess": "All file access"
+	"allFileAccess": "All file access",
+	"fonts": "Fonts",
+	"sponsor": "לָתֵת חָסוּת"
 }

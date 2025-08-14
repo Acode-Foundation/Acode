@@ -39,12 +39,14 @@ const $header = (
 	<div className="header">
 		<div className="title">
 			<span>{strings.plugins}</span>
-			<button type="button" className="icon-button" onclick={filterPlugins}>
-				<span className="icon tune" />
-			</button>
-			<button type="button" className="icon-button" onclick={addSource}>
-				<span className="icon more_vert" />
-			</button>
+			<div className="actions">
+				<button type="button" className="icon-button" onclick={filterPlugins}>
+					<span className="icon tune" />
+				</button>
+				<button type="button" className="icon-button" onclick={addSource}>
+					<span className="icon add" />
+				</button>
+			</div>
 		</div>
 		<input
 			oninput={searchPlugin}
@@ -534,7 +536,7 @@ function ListItem({ icon, name, id, version, downloads, installed, source }) {
 					iap.setPurchaseUpdatedListener(
 						...purchaseListener(onpurchase, onerror),
 					);
-					await helpers.promisify(iap.purchase, product.json);
+					await helpers.promisify(iap.purchase, product.productId);
 
 					async function onpurchase(e) {
 						const purchase = await getPurchase(product.productId);

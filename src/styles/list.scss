@@ -1,4 +1,4 @@
-@import "./mixins.scss";
+@use "./mixins.scss";
 
 .list {
   width: 100%;
@@ -13,18 +13,18 @@
         display: none;
       }
 
-      > .tile {
-        > .folder::before {
+      >.tile {
+        >.folder::before {
           content: "\e92c" !important;
         }
 
-        > .indicator::before {
+        >.indicator::before {
           content: "\e9bd" !important;
         }
       }
     }
 
-    > .tile {
+    >.tile {
       position: relative;
       height: 30px;
       font-size: 1em;
@@ -32,14 +32,14 @@
       background-color: rgba($color: #000000, $alpha: 0.1);
 
       &.loading {
-        @include linear-loader(30%, 2px);
+        @include mixins.linear-loader(30%, 2px);
       }
 
-      > .folder::before {
+      >.folder::before {
         content: "\e92d";
       }
 
-      > .indicator::before {
+      >.indicator::before {
         content: "\e9a6";
       }
 
@@ -74,7 +74,7 @@
       padding-left: 10px;
       box-sizing: border-box;
 
-      > .tile {
+      >.tile {
         height: 30px;
 
         .icon {
@@ -105,7 +105,7 @@
       }
 
       .collapsible {
-        > .tile {
+        >.tile {
           background-color: transparent;
         }
       }
@@ -122,7 +122,7 @@
     }
   }
 
-  > .list-item {
+  >.list-item {
     display: flex;
     min-height: 60px;
     text-decoration: none;
@@ -322,6 +322,7 @@ ul {
 }
 
 .list {
+
   &:empty,
   &.empty {
     display: flex;

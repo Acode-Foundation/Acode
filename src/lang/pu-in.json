@@ -201,8 +201,6 @@
 	"add a storage": "ਸਟੋਰੇਜ ਸ਼ਾਮਲ ਕਰੋ",
 	"rate acode": "Acode ਨੂੰ ਰੇਟ ਕਰੋ (NiceSapien ਦੁਆਰਾ ਪੰਜਾਬੀ ਅਨੁਵਾਦ)",
 	"support": "ਸਪੋਰਟ",
-	"donate": "ਦਾਨ ਕਰੋ {amount}",
-	"donation message": "ਅਜਿਹੇ ਲੋਕ ਹਨ ਜੋ ਦਾਨ ਨਹੀਂ ਕਰਦੇ ਕਿਉਂਕਿ ਉਹ ਮੰਨਦੇ ਹਨ ਕਿ ਹਰ ਕੋਈ ਹੈ, ਅਤੇ ਅਜਿਹੇ ਲੋਕ ਹਨ ਜੋ ਟਾਰਚ ਨੂੰ ਚੁੱਕਦੇ ਹਨ ਅਤੇ ਇਸ ਨਾਲ ਦੌੜਦੇ ਹਨ। ਤੁਹਾਡੇ ਦਿਆਲੂ ਅਤੇ ਦਿਲਕਸ਼ ਦਾਨ ਲਈ ਤੁਹਾਡਾ ਧੰਨਵਾਦ।",
 	"downloading file": "ਡਾਊਨਲੋਡ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ {file}",
 	"downloading...": "ਡਾਊਨਲੋਡ ਕੀਤਾ ਜਾ ਰਿਹਾ ਹੈ...",
 	"folder name": "ਫੋਲਡਰ ਦਾ ਨਾਮ",
@@ -421,5 +419,7 @@
 	"terminal:font family": "Font Family",
 	"terminal:convert eol": "Convert EOL",
 	"terminal": "Terminal",
-	"allFileAccess": "All file access"
+	"allFileAccess": "All file access",
+	"fonts": "Fonts",
+	"sponsor": "ਸਪਾਂਸਰ"
 }

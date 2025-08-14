@@ -1,17 +1,12 @@
-import restoreTheme from "lib/restoreTheme";
 import appSettings from "lib/settings";
-import { isDeviceDarkTheme } from "lib/systemConfiguration";
-import color from "utils/color";
 import { createBuiltInTheme } from "./builder";
-import { apply, update } from "./list";
+import { apply } from "./list";
 
 const WHITE = "rgb(255, 255, 255)";
-const BLACK = "rgb(0, 0, 0)";
 
 const dark = createBuiltInTheme("Dark", "dark", "free");
 dark.primaryColor = "rgb(35, 39, 42)";
 dark.primaryTextColor = "rgb(245, 245, 245)";
-dark.darkenedPrimaryColor = "rgb(24, 27, 30)";
 dark.secondaryColor = "rgb(45, 49, 52)";
 dark.secondaryTextColor = "rgb(228, 228, 228)";
 dark.activeColor = "rgb(66, 133, 244)";
@@ -25,6 +20,7 @@ dark.activeTextColor = "rgb(255, 255, 255)";
 dark.errorTextColor = "rgb(255, 185, 92)";
 dark.dangerColor = "rgb(220, 38, 38)";
 dark.scrollbarColor = "rgba(255, 255, 255, 0.2)";
+dark.preferredEditorTheme = getSystemEditorTheme(true);
 
 const oled = createBuiltInTheme("OLED");
 oled.primaryColor = "rgb(0, 0, 0)";
@@ -45,11 +41,11 @@ oled.boxShadowColor = "rgba(0, 0, 0, 0.8)";
 oled.buttonBackgroundColor = "rgb(0, 122, 255)";
 oled.buttonTextColor = "rgb(255, 255, 255)";
 oled.buttonActiveColor = "rgb(10, 132, 255)";
-oled.preferredEditorTheme = "ace/theme/monokai";
 oled.activeTextColor = "rgb(255, 255, 255)";
 oled.errorTextColor = "rgb(255, 69, 58)";
 oled.dangerColor = "rgb(255, 69, 58)";
 oled.scrollbarColor = "rgba(255, 255, 255, 0.1)";
+oled.preferredEditorTheme = "ace/theme/terminal";
 
 const ocean = createBuiltInTheme("Ocean");
 ocean.darkenedPrimaryColor = "rgb(19, 19, 26)";
@@ -84,6 +80,7 @@ bump.popupActiveColor = "rgb(255, 215, 0)";
 bump.buttonBackgroundColor = "rgb(242, 163, 101)";
 bump.buttonTextColor = "rgb(236, 236, 236)";
 bump.buttonActiveColor = "rgb(212, 137, 79)";
+bump.preferredEditorTheme = "ace/theme/one_dark";
 
 const bling = createBuiltInTheme("Bling");
 bling.darkenedPrimaryColor = "rgb(19, 19, 38)";
@@ -101,6 +98,7 @@ bling.popupActiveColor = "rgb(51, 153, 255)";
 bling.buttonBackgroundColor = "rgb(255, 99, 99)";
 bling.buttonTextColor = "rgb(255, 189, 105)";
 bling.buttonActiveColor = "rgb(160, 99, 52)";
+bling.preferredEditorTheme = "ace/theme/tomorrow_night_blue";
 
 const moon = createBuiltInTheme("Moon");
 moon.darkenedPrimaryColor = "rgb(20, 24, 29)";
@@ -118,6 +116,7 @@ moon.popupActiveColor = "rgb(51, 153, 255)";
 moon.buttonBackgroundColor = "rgb(0, 173, 181)";
 moon.buttonTextColor = "rgb(0, 142, 149)";
 moon.buttonActiveColor = "rgb(0, 173, 181)";
+moon.preferredEditorTheme = "ace/theme/one_dark";
 
 const atticus = createBuiltInTheme("Atticus");
 atticus.darkenedPrimaryColor = "rgb(32, 30, 30)";
@@ -135,6 +134,7 @@ atticus.popupActiveColor = "rgb(51, 153, 255)";
 atticus.buttonBackgroundColor = "rgb(225, 100, 40)";
 atticus.buttonTextColor = "rgb(246, 233, 233)";
 atticus.buttonActiveColor = "rgb(0, 145, 153)";
+atticus.preferredEditorTheme = "ace/theme/pastel_on_dark";
 
 const tomyris = createBuiltInTheme("Tomyris");
 tomyris.darkenedPrimaryColor = "rgb(32, 30, 30)";
@@ -152,6 +152,7 @@ tomyris.popupActiveColor = "rgb(51, 153, 255)";
 tomyris.buttonBackgroundColor = "rgb(161, 37, 89)";
 tomyris.buttonTextColor = "rgb(241, 187, 213)";
 tomyris.buttonActiveColor = "rgb(0, 145, 153)";
+tomyris.preferredEditorTheme = "ace/theme/cobalt";
 
 const menes = createBuiltInTheme("Menes");
 menes.darkenedPrimaryColor = "rgb(31, 34, 38)";
@@ -169,9 +170,9 @@ menes.popupActiveColor = "rgb(51, 153, 255)";
 menes.buttonBackgroundColor = "rgb(95, 133, 219)";
 menes.buttonTextColor = "rgb(144, 184, 248)";
 menes.buttonActiveColor = "rgb(0, 145, 153)";
+menes.preferredEditorTheme = "ace/theme/nord_dark";
 
 const light = createBuiltInTheme("Light", "light");
-light.darkenedPrimaryColor = "rgb(247, 250, 252)";
 light.primaryColor = "rgb(255, 255, 255)";
 light.primaryTextColor = "rgb(15, 23, 42)";
 light.secondaryColor = "rgb(248, 250, 252)";
@@ -187,6 +188,7 @@ light.activeTextColor = "rgb(255, 255, 255)";
 light.errorTextColor = "rgb(185, 28, 28)";
 light.dangerColor = "rgb(220, 38, 38)";
 light.scrollbarColor = "rgba(0, 0, 0, 0.2)";
+light.preferredEditorTheme = getSystemEditorTheme(false);
 
 const system = createBuiltInTheme("System", "dark", "free");
 
@@ -198,8 +200,13 @@ export function getSystemEditorTheme(darkTheme) {
 	}
 }
 
+/**
+ * Update the system theme based on the user's preference.
+ * @param {boolean} darkTheme Whether the user prefers a dark theme.
+ */
 export function updateSystemTheme(darkTheme) {
 	if (darkTheme) {
+		system.type = "dark";
 		system.primaryColor = "rgb(35, 39, 42)";
 		system.primaryTextColor = "rgb(245, 245, 245)";
 		system.darkenedPrimaryColor = "rgb(24, 27, 30)";
@@ -213,10 +220,8 @@ export function updateSystemTheme(darkTheme) {
 		system.popupBackgroundColor = "rgb(35, 39, 42)";
 		system.popupTextColor = "rgb(245, 245, 245)";
 		system.popupActiveColor = "rgb(66, 133, 244)";
-		system.type = "dark";
 	} else {
 		system.type = "light";
-		system.darkenedPrimaryColor = "rgb(247, 250, 252)";
 		system.primaryColor = "rgb(255, 255, 255)";
 		system.primaryTextColor = "rgb(15, 23, 42)";
 		system.secondaryColor = "rgb(248, 250, 252)";
@@ -233,17 +238,10 @@ export function updateSystemTheme(darkTheme) {
 
 	system.preferredEditorTheme = getSystemEditorTheme(darkTheme);
 
-	if (
-		appSettings !== undefined &&
-		appSettings.value !== undefined &&
-		appSettings.value.appTheme !== undefined &&
-		appSettings.value.appTheme.toLowerCase() === "system"
-	) {
-		apply(system.id, true);
+	if (appSettings?.value?.appTheme === "system") {
+		apply(system.id);
 	}
 }
-
-updateSystemTheme(isDeviceDarkTheme());
 
 const glass = createBuiltInTheme("Glass");
 glass.darkenedPrimaryColor = "rgb(250, 250, 255)";

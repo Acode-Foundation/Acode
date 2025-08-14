@@ -7,8 +7,8 @@ import removeAds from "lib/removeAds";
 import appSettings from "lib/settings";
 import settings from "lib/settings";
 import Changelog from "pages/changelog/changelog";
-import Donate from "pages/donate";
 import plugins from "pages/plugins";
+import Sponsors from "pages/sponsors";
 import themeSetting from "pages/themeSetting";
 import helpers from "utils/helpers";
 import About from "../pages/about";
@@ -32,11 +32,10 @@ export default function mainSettings() {
 			index: 0,
 		},
 		{
-			key: "donate",
-			text: strings.support,
+			key: "sponsors",
+			text: strings.sponsor,
 			icon: "favorite",
 			iconColor: "orangered",
-			sake: true,
 			index: 1,
 		},
 		{
@@ -137,8 +136,8 @@ export default function mainSettings() {
 				About();
 				break;
 
-			case "donate":
-				Donate();
+			case "sponsors":
+				Sponsors();
 				break;
 
 			case "rateapp":

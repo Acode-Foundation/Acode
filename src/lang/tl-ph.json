@@ -201,8 +201,6 @@
 	"add a storage": "Add a storage",
 	"rate acode": "I-rate ang Acode",
 	"support": "Suportahan",
-	"donate": "Mag-donate ng {amount}",
-	"donation message": "May mga taong hindi nagdo-donate dahil inaakala nilang iyon rin ang ginagawa ng iba, at mayroon ding mga kumukuha ng sulo at tumakbo kasama nito. Salamat sa pagiging parte nito, at para sa iyong mabait at nakakabagbag-damdaming donasyon.",
 	"downloading file": "Downloading {file}",
 	"downloading...": "Downloading...",
 	"folder name": "Folder name",
@@ -421,5 +419,7 @@
 	"terminal:font family": "Font Family",
 	"terminal:convert eol": "Convert EOL",
 	"terminal": "Terminal",
-	"allFileAccess": "All file access"
+	"allFileAccess": "All file access",
+	"fonts": "Fonts",
+	"sponsor": "Sponsor"
 }
