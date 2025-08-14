@@ -283,6 +283,10 @@ export default class ThemeBuilder {
 			.hex.toString();
 	}
 
+	matches(id) {
+		return this.id.toLowerCase() === id.toLowerCase();
+	}
+
 	/**
 	 * Creates a theme from a CSS string
 	 * @param {string} name
