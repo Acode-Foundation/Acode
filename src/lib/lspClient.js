@@ -187,6 +187,94 @@ export default class lspClient {
 	}
 
 	/**
+	 * Format the current document or selection
+	 * @param {Object} editor - Ace editor instance
+	 * @param {Object} [range] - Formatting range (optional)
+	 * @returns {Promise<boolean>}
+	 */
+	async formatDocument(editor, range) {
+		if (!this.isConnected || !this.languageProvider) return false;
+
+		try {
+			await this.languageProvider.format(editor, range);
+			return true;
+		} catch (error) {
+			console.error("Formatting failed:", error);
+			return false;
+		}
+	}
+
+	/**
+	 * Get hover information at current cursor position
+	 * @param {Object} editor - Ace editor instance
+	 * @returns {Promise<Object|null>}
+	 */
+	async getHoverInfo(editor) {
+		if (!this.isConnected || !this.languageProvider) return null;
+
+		const session = editor.getSession();
+		const cursor = editor.getCursorPosition();
+
+		try {
+			return await this.languageProvider.doHover(session, cursor);
+		} catch (error) {
+			console.error("Hover request failed:", error);
+			return null;
+		}
+	}
+
+	/**
+	 * Go to definition of symbol at cursor
+	 * @param {Object} editor - Ace editor instance
+	 * @returns {Promise<Object|null>} Location of definition
+	 */
+	async goToDefinition(editor, uri) {
+		if (!this.isConnected || !this.languageProvider?.client) return null;
+
+		const session = editor.getSession();
+		const cursor = editor.getCursorPosition();
+
+		try {
+			return await this.languageProvider.sendRequest(
+				"textDocument/definition",
+				{
+					textDocument: { uri },
+					position: { line: cursor.row, character: cursor.column },
+				},
+			);
+		} catch (error) {
+			console.error("Go to definition failed:", error);
+			return null;
+		}
+	}
+
+	/**
+	 * Find references to symbol at cursor
+	 * @param {Object} editor - Ace editor instance
+	 * @returns {Promise<Array|null>} Reference locations
+	 */
+	async findReferences(editor, uri) {
+		if (!this.isConnected || !this.languageProvider?.client) return null;
+
+		const session = editor.getSession();
+		const cursor = editor.getCursorPosition();
+
+		try {
+			return await this.languageProvider.sendRequest(
+				"textDocument/references",
+				{
+					textDocument: { uri },
+					position: { line: cursor.row, character: cursor.column },
+					context: { includeDeclaration: true },
+				},
+			);
+		} catch (error) {
+			console.error("Find references failed:", error);
+			return null;
+		}
+	}
+
+	/**
 	 * Get the current connection status
 	 * @returns {boolean}
 	 */
