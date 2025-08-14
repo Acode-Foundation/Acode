@@ -14,13 +14,6 @@ let firstTime = true;
 
 function init() {
 	themes.forEach((theme) => add(theme));
-	const { appTheme } = settings.value;
-	if (appTheme !== "system") {
-		apply(appTheme);
-	} else {
-		updateSystemTheme(isDeviceDarkTheme());
-		themeApplied = true;
-	}
 }
 
 /**
@@ -68,6 +61,17 @@ function add(theme) {
 	if (appThemes.has(theme.id)) return;
 
 	appThemes.set(theme.id, theme);
+
+	const { appTheme } = settings.value;
+
+	if (theme.matches(appTheme)) {
+		if (appTheme !== "system") {
+			apply(appTheme);
+		} else {
+			updateSystemTheme(isDeviceDarkTheme());
+			themeApplied = true;
+		}
+	}
 }
 
 /**
