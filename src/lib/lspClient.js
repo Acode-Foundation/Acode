@@ -91,7 +91,7 @@ export default class lspClient {
 	 * Add an editor to the language provider
 	 * @param {Object} editor - Ace editor instance
 	 * @returns {boolean} - Success status
-	 * 
+	 *
 	 * Note: this is not limited to a single editor tab
 	 */
 	addEditor(editor) {
@@ -306,7 +306,7 @@ export default class lspClient {
 					params,
 					(result) => {
 						resolve(result);
-					}
+					},
 				);
 			} catch (err) {
 				reject(err);
@@ -314,7 +314,7 @@ export default class lspClient {
 		});
 	}
 
-	async getDefination(editor, uri) {
+	async getDefinition(editor, uri) {
 		const result = await this.sendRequest("textDocument/definition", {
 			textDocument: { uri },
 			position: {
@@ -325,7 +325,6 @@ export default class lspClient {
 
 		return result;
 	}
-
 
 	// Private helper methods
 
