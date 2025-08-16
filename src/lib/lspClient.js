@@ -2,13 +2,14 @@ import { AceLanguageClient } from "ace-linters/build/ace-language-client";
 import settings from "./settings";
 
 export default class lspClient {
-	constructor(wsUrl, modes) {
+	constructor(wsUrl, modes, initializationOptions = {}) {
 		this.wsUrl = wsUrl;
 		// Convert modes array to string if needed, or keep as string
 		this.modes = Array.isArray(modes) ? modes.join(",") : modes;
 		this.socket = null;
 		this.languageProvider = null;
 		this.registeredEditors = new Set();
+		this.initializationOptions = initializationOptions;
 		this.isConnected = false;
 	}
 
@@ -306,10 +307,11 @@ export default class lspClient {
 			modes: this.modes,
 			type: "socket",
 			socket: this.socket,
+			initializationOptions: this.initializationOptions
 		};
 
 		try {
-			this.languageProvider = AceLanguageClient.for(serverData);
+			this.languageProvider = AceLanguageClient.for(serverData, this.initializationOptions);
 			console.log("Language provider initialized");
 		} catch (error) {
 			console.error("Failed to initialize language provider:", error);
