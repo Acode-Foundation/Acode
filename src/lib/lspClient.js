@@ -307,11 +307,14 @@ export default class lspClient {
 			modes: this.modes,
 			type: "socket",
 			socket: this.socket,
-			initializationOptions: this.initializationOptions
+			initializationOptions: this.initializationOptions,
 		};
 
 		try {
-			this.languageProvider = AceLanguageClient.for(serverData, this.initializationOptions);
+			this.languageProvider = AceLanguageClient.for(
+				serverData,
+				this.initializationOptions,
+			);
 			console.log("Language provider initialized");
 		} catch (error) {
 			console.error("Failed to initialize language provider:", error);
