@@ -1,7 +1,7 @@
+import fsOperation from "fileSystem";
 import tutorial from "components/tutorial";
 import alert from "dialogs/alert";
 import box from "dialogs/box";
-import fsOperation from "fileSystem";
 import markdownIt from "markdown-it";
 import anchor from "markdown-it-anchor";
 import markdownItFootnote from "markdown-it-footnote";
@@ -9,15 +9,13 @@ import MarkdownItGitHubAlerts from "markdown-it-github-alerts";
 import markdownItTaskLists from "markdown-it-task-lists";
 import mimeType from "mime-types";
 import mustache from "mustache";
-import path from "path-browserify";
 import browser from "plugins/browser";
-import Url from "utils/Url";
 import helpers from "utils/helpers";
+import Url from "utils/Url";
 import $_console from "views/console.hbs";
 import $_markdown from "views/markdown.hbs";
 import constants from "./constants";
 import EditorFile from "./editorFile";
-import EditorManager from "./editorManager";
 import openFolder, { addedFolder } from "./openFolder";
 import appSettings from "./settings";
 
@@ -200,7 +198,7 @@ async function run(
 					isConsole ||
 					appSettings.value.console === appSettings.CONSOLE_LEGACY
 				) {
-					url = `${ASSETS_DIRECTORY}/js/build/console.build.js`;
+					url = `${ASSETS_DIRECTORY}/build/console.js`;
 				} else {
 					url = `${DATA_STORAGE}/eruda.js`;
 				}
@@ -321,19 +319,44 @@ async function run(
 
 				console.log(`RootFolder ${rootFolder}`);
 				console.log(`PARTS ${pathParts.join("/")}`);
-				const overlap = findOverlap(rootFolder, pathParts.join("/"));
 
 				let fullPath;
-				if (overlap !== "") {
-					fullPath = Url.join(
-						rootFolder,
-						removePrefix(pathParts.join("/"), overlap),
-					);
-				} else {
+				// Skip overlap detection for GitHub URIs as it causes path corruption
+				if (rootFolder.startsWith("gh://")) {
 					fullPath = Url.join(rootFolder, pathParts.join("/"));
+				} else {
+					const overlap = findOverlap(rootFolder, pathParts.join("/"));
+					if (overlap !== "") {
+						fullPath = Url.join(
+							rootFolder,
+							removePrefix(pathParts.join("/"), overlap),
+						);
+					} else {
+						fullPath = Url.join(rootFolder, pathParts.join("/"));
+					}
 				}
 
 				console.log(`Full PATH ${fullPath}`);
+
+				const urlFile = fsOperation(fullPath);
+
+				// Skip stat check for GitHub URIs as they are handled differently
+				if (!fullPath.startsWith("gh://")) {
+					const stats = await urlFile.stat();
+
+					if (!stats.exists) {
+						error(reqId);
+						return;
+					}
+
+					if (!stats.isFile) {
+						if (fullPath.endsWith("/")) {
+							fullPath += "index.html";
+						} else {
+							fullPath += "/index.html";
+						}
+					}
+				}
 
 				// Add back the query if present
 				url = query ? `${fullPath}?${query}` : fullPath;
@@ -418,7 +441,7 @@ async function run(
 	 * @param {string} reqId
 	 */
 	function sendIco(assets, reqId) {
-		const ico = Url.join(assets, "res/logo/favicon.ico");
+		const ico = Url.join(assets, "favicon.ico");
 		sendFile(ico, reqId);
 	}
 

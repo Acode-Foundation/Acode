@@ -12,7 +12,7 @@ import actionStack from "lib/actionStack";
 function searchBar($list, setHide, onhideCb, searchFunction) {
 	let hideOnBlur = true;
 	let timeout = null;
-	const $searchInput = new Ref();
+	const $searchInput = Ref();
 	/**@type {HTMLDivElement} */
 	const $container = (
 		<div id="search-bar">

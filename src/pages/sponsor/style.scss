@@ -1,0 +1,128 @@
+#sponsor-page {
+  overflow: auto;
+
+  .tier-icon {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    margin-right: 8px;
+    border-radius: 50%;
+
+    &.crystal {
+      background: linear-gradient(45deg, #95a5a6, #bdc3c7);
+    }
+
+    &.bronze {
+      background: linear-gradient(45deg, #cd7f32, #ff8c42);
+    }
+
+    &.silver {
+      background: linear-gradient(45deg, #c0c0c0, #e6e6fa);
+    }
+
+    &.gold {
+      background: linear-gradient(45deg, #ffd700, #ffed4e);
+    }
+
+    &.platinum {
+      background: linear-gradient(45deg, #e5e4e2, #ffffff);
+    }
+
+    &.titanium {
+      background: linear-gradient(45deg, #878681, #c4c4b0);
+    }
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 10px;
+    animation: fadeInUp 0.8s ease-out;
+  }
+
+  h1 {
+    font-size: 28px;
+    font-weight: 700;
+  }
+
+  .subtitle {
+    font-size: 16px;
+    opacity: 0.9;
+    margin-bottom: 10px;
+  }
+
+  .tier {
+    width: 90%;
+    max-width: 400px;
+    margin: 0 auto;
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 15px;
+    background-color: var(--popup-background-color);
+    color: var(--popup-text-color);
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+    animation: fadeInUp 0.8s ease-out calc(0.6s + var(--delay, 0s)) both;
+    box-sizing: border-box;
+  }
+
+  .tier-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .tier-name {
+    font-size: 18px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+  }
+
+  .tier-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    margin-right: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+  }
+
+  .tier-price {
+    font-size: 16px;
+    font-weight: 600;
+    opacity: 0.9;
+  }
+
+  .tier-description {
+    font-size: 14px;
+    opacity: 0.8;
+    line-height: 1.4;
+  }
+
+  .purchase-btn {
+    background: var(--button-background-color);
+    color: var(--button-text-color);
+    border: none;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 100%;
+    margin-top: 10px;
+  }
+
+  .purchase-btn:active {
+    background: linear-gradient(45deg, #44a08d, #4ecdc4);
+  }
+
+  .purchase-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+}

@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - name: Checkout Actions Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Check spelling
         uses: crate-ci/typos@master
@@ -26,7 +26,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Biome
         uses: biomejs/setup-biome@v2

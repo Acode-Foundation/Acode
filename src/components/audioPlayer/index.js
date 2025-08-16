@@ -7,14 +7,14 @@ export default class AudioPlayer {
 		this.audio = new Audio();
 		this.isPlaying = false;
 		this.elements = {
-			playBtn: new Ref(),
-			playIcon: new Ref(),
-			timeline: new Ref(),
-			progress: new Ref(),
-			progressHandle: new Ref(),
-			timeDisplay: new Ref(),
-			duration: new Ref(),
-			volumeBtn: new Ref(),
+			playBtn: Ref(),
+			playIcon: Ref(),
+			timeline: Ref(),
+			progress: Ref(),
+			progressHandle: Ref(),
+			timeDisplay: Ref(),
+			duration: Ref(),
+			volumeBtn: Ref(),
 		};
 		this.initializeUI();
 		this.initializeEvents();

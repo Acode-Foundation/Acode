@@ -34,9 +34,9 @@ function create($container, $toggler) {
 	const START_THRESHOLD = constants.SIDEBAR_SLIDE_START_THRESHOLD_PX; //Point where to start swipe
 	const MIN_WIDTH = 200; //Min width of the side bar
 	const MAX_WIDTH = () => innerWidth * 0.7; //Max width of the side bar
-	const resizeBar = new Ref();
-	const userAvatar = new Ref();
-	const userContextMenu = new Ref();
+	const resizeBar = Ref();
+	const userAvatar = Ref();
+	const userContextMenu = Ref();
 
 	$container = $container || app;
 	let mode = innerWidth > 600 ? "tab" : "phone";

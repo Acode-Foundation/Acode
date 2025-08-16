@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0" xmlns:android="http://schemas.android.com/apk/res/android" id="com.foxdebug.acode.rk.exec.proot" version="1.0.0">
+    <name>Proot</name>
+
+
+    <platform name="android">
+        <!-- Use flavors if F-Droid complains about native libs -->
+
+        <!-- x86_64 / x64 only (32bit is not supported) -->
+        <source-file src="libs/x64/libproot.so" target-dir="libs/x86_64" />
+        <source-file src="libs/x64/libproot32.so" target-dir="libs/x86_64" />
+        <source-file src="libs/x64/libproot-xed.so" target-dir="libs/x86_64" />
+        <source-file src="libs/x64/libtalloc.so" target-dir="libs/x86_64" />
+
+        <!-- arm64 / arm-v8a -->
+        <source-file src="libs/arm64/libproot.so" target-dir="libs/arm64-v8a" />
+        <source-file src="libs/arm64/libproot32.so" target-dir="libs/arm64-v8a" />
+        <source-file src="libs/arm64/libproot-xed.so" target-dir="libs/arm64-v8a" />
+        <source-file src="libs/arm64/libtalloc.so" target-dir="libs/arm64-v8a" />
+
+
+        <!-- armhf / armeabi-v7a (armeabi / armeabi-v6a not supported)-->
+        <source-file src="libs/arm32/libproot.so" target-dir="libs/armeabi-v7a" />
+        <source-file src="libs/arm32/libproot-xed.so" target-dir="libs/armeabi-v7a" />       
+        <source-file src="libs/arm32/libtalloc.so" target-dir="libs/armeabi-v7a" />
+
+           
+    </platform>
+</plugin>

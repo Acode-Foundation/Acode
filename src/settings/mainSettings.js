@@ -7,8 +7,8 @@ import removeAds from "lib/removeAds";
 import appSettings from "lib/settings";
 import settings from "lib/settings";
 import Changelog from "pages/changelog/changelog";
-import Donate from "pages/donate";
 import plugins from "pages/plugins";
+import Sponsors from "pages/sponsors";
 import themeSetting from "pages/themeSetting";
 import helpers from "utils/helpers";
 import About from "../pages/about";
@@ -20,6 +20,7 @@ import formatterSettings from "./formatterSettings";
 import previewSettings from "./previewSettings";
 import scrollSettings from "./scrollSettings";
 import searchSettings from "./searchSettings";
+import terminalSettings from "./terminalSettings";
 
 export default function mainSettings() {
 	const title = strings.settings.capitalize();
@@ -31,11 +32,10 @@ export default function mainSettings() {
 			index: 0,
 		},
 		{
-			key: "donate",
-			text: strings.support,
+			key: "sponsors",
+			text: strings.sponsor,
 			icon: "favorite",
 			iconColor: "orangered",
-			sake: true,
 			index: 1,
 		},
 		{
@@ -79,13 +79,19 @@ export default function mainSettings() {
 			key: "reset",
 			text: strings["restore default settings"],
 			icon: "historyrestore",
-			index: 5,
+			index: 6,
 		},
 		{
 			key: "preview-settings",
 			text: strings["preview settings"],
 			icon: "play_arrow",
 			index: 4,
+		},
+		{
+			key: "terminal-settings",
+			text: `${strings["terminal settings"]}`,
+			icon: "licons terminal",
+			index: 5,
 		},
 		{
 			key: "editSettings",
@@ -118,6 +124,7 @@ export default function mainSettings() {
 			case "backup-restore":
 			case "editor-settings":
 			case "preview-settings":
+			case "terminal-settings":
 				appSettings.uiSettings[key].show();
 				break;
 
@@ -129,8 +136,8 @@ export default function mainSettings() {
 				About();
 				break;
 
-			case "donate":
-				Donate();
+			case "sponsors":
+				Sponsors();
 				break;
 
 			case "rateapp":
@@ -191,4 +198,5 @@ export default function mainSettings() {
 	appSettings.uiSettings["scroll-settings"] = scrollSettings();
 	appSettings.uiSettings["search-settings"] = searchSettings();
 	appSettings.uiSettings["preview-settings"] = previewSettings();
+	appSettings.uiSettings["terminal-settings"] = terminalSettings();
 }

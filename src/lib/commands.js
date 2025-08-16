@@ -1,12 +1,12 @@
+import fsOperation from "fileSystem";
 import Sidebar from "components/sidebar";
+import { TerminalManager } from "components/terminal";
 import color from "dialogs/color";
 import confirm from "dialogs/confirm";
 import prompt from "dialogs/prompt";
 import select from "dialogs/select";
-import fsOperation from "fileSystem";
 import actions from "handlers/quickTools";
 import recents from "lib/recents";
-import AiAssistant from "pages/aiAssistant";
 import FileBrowser from "pages/fileBrowser";
 import plugins from "pages/plugins";
 import Problems from "pages/problems/problems";
@@ -18,9 +18,9 @@ import findFile from "palettes/findFile";
 import browser from "plugins/browser";
 import help from "settings/helpSettings";
 import mainSettings from "settings/mainSettings";
-import Url from "utils/Url";
 import { getColorRange } from "utils/color/regex";
 import helpers from "utils/helpers";
+import Url from "utils/Url";
 import checkFiles from "./checkFiles";
 import constants from "./constants";
 import EditorFile from "./editorFile";
@@ -188,10 +188,6 @@ export default {
 				FileBrowser();
 				break;
 
-			case "ai_assistant":
-				AiAssistant();
-				break;
-
 			default:
 				return;
 		}
@@ -349,6 +345,7 @@ export default {
 
 		let newname = await prompt(strings.rename, file.filename, "filename", {
 			match: constants.FILE_NAME_REGEX,
+			capitalize: false,
 		});
 
 		newname = helpers.fixFilename(newname);
@@ -468,5 +465,13 @@ Additional Info:
 				console.error("Error getting device info:", error);
 				toast("Failed to get device info");
 			});
+	},
+	async "new-terminal"() {
+		try {
+			await TerminalManager.createServerTerminal();
+		} catch (error) {
+			console.error("Failed to create terminal:", error);
+			window.toast("Failed to create terminal");
+		}
 	},
 };

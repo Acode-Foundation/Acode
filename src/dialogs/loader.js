@@ -41,8 +41,8 @@ function create(titleText, message = "", options = {}) {
 
 	if ($oldLoader) $oldLoader.remove();
 
-	const $message = new Ref();
-	const $titleSpan = new Ref();
+	const $message = Ref();
+	const $titleSpan = Ref();
 
 	const $mask = $oldMask || <span className="mask" id="__loader-mask"></span>;
 	const $dialog = $oldLoader || (

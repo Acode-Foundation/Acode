@@ -1,13 +1,14 @@
+import fsOperation from "fileSystem";
 import TabView from "components/tabView";
 import toast from "components/toast";
 import alert from "dialogs/alert";
 import DOMPurify from "dompurify";
-import fsOperation from "fileSystem";
 import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
 import constants from "lib/constants";
-import Url from "utils/Url";
+import moment from "moment";
 import helpers from "utils/helpers";
+import Url from "utils/Url";
 
 export default (props) => {
 	const {
@@ -27,6 +28,7 @@ export default (props) => {
 		author_verified: authorVerified,
 		author_github: authorGithub,
 		comment_count: commentCount,
+		package_updated_at: packageUpdatedAt,
 	} = props;
 
 	let rating = "unrated";
@@ -42,6 +44,40 @@ export default (props) => {
 		rating = `${Math.round((votesUp / (votesUp + votesDown)) * 100)}%`;
 	}
 
+	const formatUpdatedDate = (dateString) => {
+		if (!dateString) return null;
+
+		try {
+			// Configure moment for shorter relative time format
+			moment.updateLocale("en", {
+				relativeTime: {
+					future: "in %s",
+					past: "%s ago",
+					s: "now",
+					ss: "now",
+					m: "1m",
+					mm: "%dm",
+					h: "1h",
+					hh: "%dh",
+					d: "1d",
+					dd: "%dd",
+					M: "1mo",
+					MM: "%dmo",
+					y: "1y",
+					yy: "%dy",
+				},
+			});
+
+			const updateTime = moment.utc(dateString);
+			if (!updateTime.isValid()) return null;
+
+			return updateTime.fromNow();
+		} catch (error) {
+			console.warn("Error parsing date with moment:", dateString, error);
+			return null;
+		}
+	};
+
 	return (
 		<div className="main" id="plugin">
 			<div className="plugin-header">
@@ -52,33 +88,35 @@ export default (props) => {
 				<div className="plugin-info">
 					<div className="title-wrapper">
 						<h1 className="plugin-name">{name}</h1>
-						{repository ? (
-							<a href={repository} className="source-indicator">
-								<i className="icon github"></i>
-								<span>{strings.open_source}</span>
-							</a>
-						) : null}
+						{repository
+							? <a href={repository} className="source-indicator">
+									<i className="icon github"></i>
+									<span>{strings.open_source}</span>
+								</a>
+							: null}
 					</div>
 					<div className="plugin-meta">
 						<span className="meta-item">
 							<i className="licons tag" style={{ fontSize: "12px" }}></i>
-							<Version {...props} />
+							<Version
+								{...props}
+								packageUpdatedAt={packageUpdatedAt}
+								formatUpdatedDate={formatUpdatedDate}
+							/>
 						</span>
 						<span className="meta-item author-name">
 							<i className="icon person"></i>
 							<a href={`https://github.com/${authorGithub}`} className="">
 								{author}
 							</a>
-							{authorVerified ? (
-								<i
-									on:click={() => {
-										toast(strings["verified publisher"]);
-									}}
-									className="licons verified verified-tick"
-								></i>
-							) : (
-								""
-							)}
+							{authorVerified
+								? <i
+										on:click={() => {
+											toast(strings["verified publisher"]);
+										}}
+										className="licons verified verified-tick"
+									></i>
+								: ""}
 						</span>
 						<span className="meta-item">
 							<span
@@ -88,44 +126,44 @@ export default (props) => {
 							{license || "Unknown"}
 						</span>
 					</div>
-					{votesUp !== undefined ? (
-						<div className="metrics-row">
-							<div className="metric">
-								<span className="icon save_alt"></span>
-								<span className="metric-value">
-									{helpers.formatDownloadCount(
-										typeof downloads === "string"
-											? Number.parseInt(downloads)
-											: downloads,
-									)}
-								</span>
-								<span>downloads</span>
-							</div>
-							<div className="metric">
-								<i className="icon favorite"></i>
-								<span
-									className={`rating-value ${rating === "unrated" ? "" : rating.replace("%", "") >= 80 ? "rating-high" : rating.replace("%", "") >= 50 ? "rating-medium" : "rating-low"}`}
+					{votesUp !== undefined
+						? <div className="metrics-row">
+								<div className="metric">
+									<span className="icon save_alt"></span>
+									<span className="metric-value">
+										{helpers.formatDownloadCount(
+											typeof downloads === "string"
+												? Number.parseInt(downloads)
+												: downloads,
+										)}
+									</span>
+									<span>downloads</span>
+								</div>
+								<div className="metric">
+									<i className="icon favorite"></i>
+									<span
+										className={`rating-value ${rating === "unrated" ? "" : rating.replace("%", "") >= 80 ? "rating-high" : rating.replace("%", "") >= 50 ? "rating-medium" : "rating-low"}`}
+									>
+										{rating}
+									</span>
+								</div>
+								<div
+									className="metric"
+									onclick={showReviews.bind(null, id, author)}
 								>
-									{rating}
-								</span>
+									<i className="icon chat_bubble"></i>
+									<span className="metric-value">{commentCount}</span>
+									<span>reviews</span>
+								</div>
 							</div>
-							<div
-								className="metric"
-								onclick={showReviews.bind(null, id, author)}
-							>
-								<i className="icon chat_bubble"></i>
-								<span className="metric-value">{commentCount}</span>
-								<span>reviews</span>
+						: null}
+					{Array.isArray(keywords) && keywords.length
+						? <div className="keywords">
+								{keywords.map((keyword) => (
+									<span className="keyword">{keyword}</span>
+								))}
 							</div>
-						</div>
-					) : null}
-					{Array.isArray(keywords) && keywords.length ? (
-						<div className="keywords">
-							{keywords.map((keyword) => (
-								<span className="keyword">{keyword}</span>
-							))}
-						</div>
-					) : null}
+						: null}
 				</div>
 				<div className="action-buttons">
 					<Buttons {...props} />
@@ -309,19 +347,40 @@ function Buttons({
 	);
 }
 
-function Version({ currentVersion, version }) {
-	if (!currentVersion) return <span>v{version}</span>;
+function Version({
+	currentVersion,
+	version,
+	packageUpdatedAt,
+	formatUpdatedDate,
+}) {
+	const updatedText =
+		formatUpdatedDate && packageUpdatedAt
+			? formatUpdatedDate(packageUpdatedAt)
+			: null;
+
+	if (!currentVersion) {
+		return (
+			<span>
+				v{version}
+				{updatedText && (
+					<span className="version-updated">({updatedText})</span>
+				)}
+			</span>
+		);
+	}
+
 	return (
 		<span>
 			v{currentVersion}&nbsp;&#8594;&nbsp;v{version}
+			{updatedText && <span className="version-updated">({updatedText})</span>}
 		</span>
 	);
 }
 
 async function showReviews(pluginId, author) {
-	const mask = new Ref();
-	const body = new Ref();
-	const container = new Ref();
+	const mask = Ref();
+	const body = Ref();
+	const container = Ref();
 
 	actionStack.push({
 		id: "reviews",
@@ -430,8 +489,8 @@ function Review({
 	author_reply: authorReply,
 }) {
 	let dp = Url.join(constants.API_BASE, `../user.png`);
-	let voteImage = new Ref();
-	let review = new Ref();
+	let voteImage = Ref();
+	let review = Ref();
 
 	if (github) {
 		dp = `https://avatars.githubusercontent.com/${github}`;

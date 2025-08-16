@@ -1,8 +1,8 @@
-import ajax from "@deadlyjack/ajax";
 import fsOperation from "fileSystem";
-import Url from "utils/Url";
+import ajax from "@deadlyjack/ajax";
 import { decode, encode } from "utils/encodings";
 import helpers from "utils/helpers";
+import Url from "utils/Url";
 
 const internalFs = {
 	/**

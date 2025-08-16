@@ -1,7 +1,7 @@
 import "./style.scss";
-import WCPage from "components/WebComponents/wcPage";
 import Page from "components/page";
 import items, { description } from "components/quickTools/items";
+import WCPage from "components/WebComponents/wcPage";
 import select from "dialogs/select";
 import actionStack from "lib/actionStack";
 import settings from "lib/settings";
@@ -31,7 +31,7 @@ export default function QuickTools() {
  * @param {WCPage} $page
  */
 function render($page) {
-	$page.content = (
+	$page.body = (
 		<div className="main" id="quicktools-settings">
 			{(() => {
 				const totalRows = settings.QUICKTOOLS_ROWS * settings.QUICKTOOLS_GROUPS;

@@ -15,7 +15,7 @@ export default function () {
 	const $page = Page(strings.theme.capitalize());
 	const $search = <span attr-action="search" className="icon search"></span>;
 	const $themePreview = <div id="theme-preview"></div>;
-	const list = new Ref();
+	const list = Ref();
 	const editor = ace.edit($themePreview);
 
 	const session = ace.createEditSession("");

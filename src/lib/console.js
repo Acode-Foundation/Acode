@@ -1,7 +1,7 @@
 import "core-js/stable";
 import "html-tag-js/dist/polyfill";
 import * as esprima from "esprima";
-import css from "styles/console.module.scss";
+import css from "styles/console.m.scss";
 import loadPolyFill from "utils/polyfill";
 
 (function () {
@@ -468,7 +468,7 @@ import loadPolyFill from "utils/polyfill";
 						);
 						break;
 					default:
-						$msg.innerHTML = arg;
+						$msg.textContent = arg;
 						break;
 				}
 			}
@@ -494,7 +494,7 @@ import loadPolyFill from "utils/polyfill";
 	 * @returns
 	 */
 	function format(args) {
-		if (args.length <= 1) return [escapeHTML(args[0])];
+		if (args.length <= 1) return [args[0]];
 
 		const originalArgs = [].concat(args);
 		const styles = [];
@@ -548,7 +548,10 @@ import loadPolyFill from "utils/polyfill";
 						break;
 				}
 			}
-			msg = msg.substring(0, pos) + escapeHTML(value) + msg.substring(pos + 2);
+			// Only escape HTML for the %o/%O case where we're injecting actual HTML
+			const escapedValue =
+				specifier === "%o" || specifier === "%O" ? value : escapeHTML(value);
+			msg = msg.substring(0, pos) + escapedValue + msg.substring(pos + 2);
 			matched = matchRegex(msg);
 		}
 

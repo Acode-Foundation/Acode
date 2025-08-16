@@ -1,65 +1,41 @@
 #about-page {
-  padding: 32px 16px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 24px;
   overflow-y: auto;
 
-  .logo {
-    width: clamp(80px, 25vmin, 120px);
-    height: clamp(80px, 25vmin, 120px);
-    border-radius: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 8px;
-    background: color-mix(
-      in srgb,
-      var(--popup-background-color) 20%,
-      transparent
-    );
-    overflow: hidden;
-    padding: 8px;
-    img {
-      width: auto;
-      max-width: 100%;
-      height: auto;
-      max-height: 100%;
-      background-repeat: no-repeat;
-      background-position: center;
-      background-size: contain;
-      object-fit: contain;
-    }
-  }
   .version-info {
     text-align: center;
     margin-bottom: 32px;
+
     .version-title {
       font-size: 24px;
       font-weight: 600;
       margin-bottom: 4px;
     }
+
     .version-number {
       color: color-mix(in srgb, var(--primary-text-color) 60%, transparent);
       font-size: 14px;
     }
   }
+
   .info-section {
     width: 100%;
     max-width: 400px;
     min-height: fit-content;
     height: auto;
-    background: color-mix(
-      in srgb,
-      var(--popup-background-color) 20%,
-      transparent
-    );
+    background: color-mix(in srgb,
+        var(--popup-background-color) 20%,
+        transparent);
     border-radius: 12px;
     overflow: visible;
     margin-bottom: 16px;
     display: flex;
     flex-direction: column;
+
     .info-item {
       display: flex;
       align-items: center;
@@ -68,16 +44,17 @@
       text-decoration: none;
       border-bottom: 1px solid var(--border-color);
       transition: background 0.2s ease;
+
       &:last-child {
         border-bottom: none;
       }
+
       &:hover {
-        background: color-mix(
-          in srgb,
-          var(--popup-background-color) 40%,
-          transparent
-        );
+        background: color-mix(in srgb,
+            var(--popup-background-color) 40%,
+            transparent);
       }
+
       .info-item-icon {
         width: 24px;
         height: 24px;
@@ -86,9 +63,11 @@
         align-items: center;
         font-size: 24px;
       }
+
       .info-item-text {
         flex: 1;
         font-size: 15px;
+
         .info-item-subtext {
           color: color-mix(in srgb, var(--primary-text-color) 60%, transparent);
           font-size: 13px;
@@ -104,27 +83,26 @@
     gap: 12px;
     width: 100%;
     max-width: 400px;
+
     .social-link {
       display: inline-flex;
       align-items: center;
       padding: 12px;
-      background: color-mix(
-        in srgb,
-        var(--popup-background-color) 20%,
-        transparent
-      );
+      background: color-mix(in srgb,
+          var(--popup-background-color) 20%,
+          transparent);
       border-radius: 12px;
       color: var(--secondary-text-color);
       text-decoration: none;
       transition: all 0.2s ease;
+
       &:hover {
-        background: color-mix(
-          in srgb,
-          var(--popup-background-color) 40%,
-          transparent
-        );
+        background: color-mix(in srgb,
+            var(--popup-background-color) 40%,
+            transparent);
         transform: translateY(-1px);
       }
+
       .social-icon {
         width: 24px;
         height: 24px;
@@ -134,5 +112,18 @@
         align-items: center;
       }
     }
+  }
+
+  .icon {
+    height: 100%;
+    width: 100%;
+  }
+
+  .foxbiz {
+    background-image: url(./foxbiz.svg);
+  }
+
+  .discord {
+    background-image: url(./discord.svg);
   }
 }

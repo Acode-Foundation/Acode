@@ -1,4 +1,4 @@
-@import "./mixins.scss";
+@use "./mixins.scss";
 
 .list {
   width: 100%;
@@ -13,18 +13,18 @@
         display: none;
       }
 
-      > .tile {
-        > .folder::before {
+      >.tile {
+        >.folder::before {
           content: "\e92c" !important;
         }
 
-        > .indicator::before {
+        >.indicator::before {
           content: "\e9bd" !important;
         }
       }
     }
 
-    > .tile {
+    >.tile {
       position: relative;
       height: 30px;
       font-size: 1em;
@@ -32,20 +32,40 @@
       background-color: rgba($color: #000000, $alpha: 0.1);
 
       &.loading {
-        @include linear-loader(30%, 2px);
+        @include mixins.linear-loader(30%, 2px);
       }
 
-      > .folder::before {
+      >.folder::before {
         content: "\e92d";
       }
 
-      > .indicator::before {
+      >.indicator::before {
         content: "\e9a6";
       }
 
       .icon {
         height: 30px;
         min-width: 30px;
+      }
+
+      @media (min-width: 769px) {
+        height: 35px;
+        font-size: 1.1em;
+
+        .icon {
+          height: 35px;
+          min-width: 35px;
+        }
+      }
+
+      @media (min-width: 1024px) {
+        height: 40px;
+        font-size: 1.2em;
+
+        .icon {
+          height: 40px;
+          min-width: 40px;
+        }
       }
     }
 
@@ -54,7 +74,7 @@
       padding-left: 10px;
       box-sizing: border-box;
 
-      > .tile {
+      >.tile {
         height: 30px;
 
         .icon {
@@ -62,10 +82,30 @@
           min-width: 28px;
           font-size: 1em;
         }
+
+        @media (min-width: 769px) {
+          height: 35px;
+
+          .icon {
+            height: 33px;
+            min-width: 33px;
+            font-size: 1.1em;
+          }
+        }
+
+        @media (min-width: 1024px) {
+          height: 40px;
+
+          .icon {
+            height: 38px;
+            min-width: 38px;
+            font-size: 1.2em;
+          }
+        }
       }
 
       .collapsible {
-        > .tile {
+        >.tile {
           background-color: transparent;
         }
       }
@@ -82,7 +122,7 @@
     }
   }
 
-  > .list-item {
+  >.list-item {
     display: flex;
     min-height: 60px;
     text-decoration: none;
@@ -109,6 +149,16 @@
       .container .value {
         text-transform: none;
       }
+    }
+
+    @media (min-width: 769px) {
+      min-height: 70px;
+      font-size: 1.1em;
+    }
+
+    @media (min-width: 1024px) {
+      min-height: 80px;
+      font-size: 1.2em;
     }
 
     .container {
@@ -170,6 +220,26 @@
 
       &.no-icon {
         width: 20px;
+      }
+
+      @media (min-width: 769px) {
+        height: 70px;
+        width: 70px;
+        font-size: 1.6em;
+
+        &.no-icon {
+          width: 25px;
+        }
+      }
+
+      @media (min-width: 1024px) {
+        height: 80px;
+        width: 80px;
+        font-size: 1.8em;
+
+        &.no-icon {
+          width: 30px;
+        }
       }
     }
 
@@ -252,6 +322,7 @@ ul {
 }
 
 .list {
+
   &:empty,
   &.empty {
     display: flex;

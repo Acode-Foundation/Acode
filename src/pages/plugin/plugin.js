@@ -1,9 +1,9 @@
 import "./plugin.scss";
+import fsOperation from "fileSystem";
 import ajax from "@deadlyjack/ajax";
 import Page from "components/page";
 import alert from "dialogs/alert";
 import loader from "dialogs/loader";
-import fsOperation from "fileSystem";
 import purchaseListener from "handlers/purchase";
 import actionStack from "lib/actionStack";
 import constants from "lib/constants";
@@ -15,8 +15,8 @@ import anchor from "markdown-it-anchor";
 import markdownItFootnote from "markdown-it-footnote";
 import MarkdownItGitHubAlerts from "markdown-it-github-alerts";
 import markdownItTaskLists from "markdown-it-task-lists";
-import Url from "utils/Url";
 import helpers from "utils/helpers";
+import Url from "utils/Url";
 import view from "./plugin.view.js";
 
 let $lastPluginPage;
@@ -73,13 +73,25 @@ export default async function PluginInclude(
 
 	try {
 		if (installed) {
-			const installedPlugin = await fsOperation(
-				Url.join(PLUGIN_DIR, id, "plugin.json"),
-			).readFile("json");
+			const manifest = Url.join(PLUGIN_DIR, id, "plugin.json");
+			const installedPlugin = await fsOperation(manifest)
+				.readFile("json")
+				.catch((err) => {
+					alert(`Failed to load plugin metadata: ${manifest}`);
+					console.error(err);
+				});
 			const { author } = installedPlugin;
-			const description = await fsOperation(
-				Url.join(PLUGIN_DIR, id, installedPlugin.readme),
-			).readFile("utf8");
+			const readme = Url.join(
+				PLUGIN_DIR,
+				id,
+				installedPlugin.readme || "readme.md",
+			);
+			const description = await fsOperation(readme)
+				.readFile("utf8")
+				.catch((err) => {
+					alert(`Failed to load plugin readme: ${readme}`);
+					console.error(err);
+				});
 			let changelogs = "";
 			if (installedPlugin.changelogs) {
 				const changelogPath = Url.join(
@@ -163,7 +175,7 @@ export default async function PluginInclude(
 					}
 				}
 			} catch (error) {
-				console.log(error);
+				console.error(error);
 			} finally {
 				loader.removeTitleLoader();
 			}
@@ -177,7 +189,7 @@ export default async function PluginInclude(
 			$button?.click();
 		}
 	} catch (err) {
-		console.log(err);
+		console.error(err);
 		helpers.error(err);
 	} finally {
 		loader.removeTitleLoader();
@@ -240,7 +252,7 @@ export default async function PluginInclude(
 
 			iap.setPurchaseUpdatedListener(...purchaseListener(onpurchase, onerror));
 			$button.textContent = strings["loading..."];
-			await helpers.promisify(iap.purchase, product.json);
+			await helpers.promisify(iap.purchase, product.productId);
 
 			async function onpurchase(e) {
 				const purchase = await getPurchase(product.productId);

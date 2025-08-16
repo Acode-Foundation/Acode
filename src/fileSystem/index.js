@@ -1,6 +1,6 @@
 import ajax from "@deadlyjack/ajax";
-import Url from "utils/Url";
 import { decode } from "utils/encodings";
+import Url from "utils/Url";
 import externalFs from "./externalFs";
 import Ftp from "./ftp";
 import internalFs from "./internalFs";

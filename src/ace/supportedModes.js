@@ -22,6 +22,7 @@ const modeList = {
 	C9Search: "c9search_results",
 	Cirru: "cirru|cr",
 	Clojure: "clj|cljs",
+	Clue: "clue",
 	Cobol: "CBL|COB",
 	coffee: "coffee|cf|cson|^Cakefile",
 	ColdFusion: "cfm|cfc",

@@ -19,10 +19,10 @@ let $searchRow1;
 /**@type {HTMLElement} */
 let $searchRow2;
 
-const $searchInput = new Ref();
-const $replaceInput = new Ref();
-const $searchPos = new Ref();
-const $searchTotal = new Ref();
+const $searchInput = Ref();
+const $replaceInput = Ref();
+const $searchPos = Ref();
+const $searchTotal = Ref();
 
 export default {
 	get $footer() {

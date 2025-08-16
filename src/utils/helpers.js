@@ -1,8 +1,7 @@
-import ajax from "@deadlyjack/ajax";
-import escapeStringRegexp from "escape-string-regexp";
 import fsOperation from "fileSystem";
-
+import ajax from "@deadlyjack/ajax";
 import alert from "dialogs/alert";
+import escapeStringRegexp from "escape-string-regexp";
 import constants from "lib/constants";
 import path from "./Path";
 import Uri from "./Uri";
@@ -397,12 +396,45 @@ export default {
 				currentUri.includes("com.termux.documents")
 			)
 		) {
-			if (isFile) {
-				uri = await fsOperation(uri).createFile(pathString);
-			} else {
-				uri = await fsOperation(uri).createDirectory(pathString);
+			// Handle nested paths for regular file:// URIs
+			const pathParts = pathString.split("/").filter(Boolean);
+			let currentPath = uri;
+			let firstCreatedPath = null;
+			let firstCreatedType = null;
+
+			for (let i = 0; i < pathParts.length; i++) {
+				const isLastPart = i === pathParts.length - 1;
+				const partName = pathParts[i];
+				const newPath = Url.join(currentPath, partName);
+
+				if (isLastPart && isFile) {
+					// Create file if it's the last part and we're creating a file
+					if (!(await fsOperation(newPath).exists())) {
+						await fsOperation(currentPath).createFile(partName);
+						if (firstCreatedPath === null) {
+							firstCreatedPath = newPath;
+							firstCreatedType = "file";
+						}
+					}
+				} else {
+					// Create directory for intermediate parts or when creating a folder
+					if (!(await fsOperation(newPath).exists())) {
+						await fsOperation(currentPath).createDirectory(partName);
+						if (firstCreatedPath === null) {
+							firstCreatedPath = newPath;
+							firstCreatedType = "folder";
+						}
+					}
+				}
+				currentPath = newPath;
 			}
-			return { uri: uri, type: isFile ? "file" : "folder" };
+
+			return {
+				uri: firstCreatedPath || Url.join(uri, pathParts[0]),
+				type:
+					firstCreatedType ||
+					(isFile && pathParts.length === 1 ? "file" : "folder"),
+			};
 		}
 
 		for (let i = 0; i < parts.length; i++) {

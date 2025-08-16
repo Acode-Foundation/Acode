@@ -1,6 +1,6 @@
+import fsOperation from "fileSystem";
 import palette from "components/palette";
 import confirm from "dialogs/confirm";
-import fsOperation from "fileSystem";
 import encodings from "utils/encodings";
 
 export default function changeEncoding() {

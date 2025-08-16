@@ -1,5 +1,6 @@
 import quickTools from "components/quickTools";
 import actionStack from "lib/actionStack";
+import searchHistory from "lib/searchHistory";
 import appSettings from "lib/settings";
 import searchSettings from "settings/searchSettings";
 import KeyboardEvent from "utils/keyboardEvent";
@@ -74,6 +75,67 @@ appSettings.on("update:quicktoolsItems:after", () => {
 		$footer.content = [$row1, $row2].slice(0, height);
 	}, 100);
 });
+
+// Initialize history navigation
+function setupHistoryNavigation() {
+	const { $searchInput, $replaceInput } = quickTools;
+
+	// Search input history navigation
+	if ($searchInput.el) {
+		$searchInput.el.addEventListener("keydown", (e) => {
+			if (e.key === "ArrowUp") {
+				e.preventDefault();
+				const newValue = searchHistory.navigateSearchUp($searchInput.el.value);
+				$searchInput.el.value = newValue;
+				// Trigger search
+				if (newValue) find(0, false);
+			} else if (e.key === "ArrowDown") {
+				e.preventDefault();
+				const newValue = searchHistory.navigateSearchDown(
+					$searchInput.el.value,
+				);
+				$searchInput.el.value = newValue;
+				// Trigger search
+				if (newValue) find(0, false);
+			} else if (e.key === "Enter" || e.key === "Escape") {
+				// Reset navigation on enter or escape
+				searchHistory.resetSearchNavigation();
+			}
+		});
+
+		// Reset navigation when user starts typing
+		$searchInput.el.addEventListener("input", () => {
+			searchHistory.resetSearchNavigation();
+		});
+	}
+
+	// Replace input history navigation
+	if ($replaceInput.el) {
+		$replaceInput.el.addEventListener("keydown", (e) => {
+			if (e.key === "ArrowUp") {
+				e.preventDefault();
+				const newValue = searchHistory.navigateReplaceUp(
+					$replaceInput.el.value,
+				);
+				$replaceInput.el.value = newValue;
+			} else if (e.key === "ArrowDown") {
+				e.preventDefault();
+				const newValue = searchHistory.navigateReplaceDown(
+					$replaceInput.el.value,
+				);
+				$replaceInput.el.value = newValue;
+			} else if (e.key === "Enter" || e.key === "Escape") {
+				// Reset navigation on enter or escape
+				searchHistory.resetReplaceNavigation();
+			}
+		});
+
+		// Reset navigation when user starts typing
+		$replaceInput.el.addEventListener("input", () => {
+			searchHistory.resetReplaceNavigation();
+		});
+	}
+}
 
 export const key = {
 	get shift() {
@@ -169,10 +231,16 @@ export default function actions(action, value) {
 			return true;
 
 		case "search-prev":
+			if (quickTools.$searchInput.el.value) {
+				searchHistory.addToHistory(quickTools.$searchInput.el.value);
+			}
 			find(1, true);
 			return true;
 
 		case "search-next":
+			if (quickTools.$searchInput.el.value) {
+				searchHistory.addToHistory(quickTools.$searchInput.el.value);
+			}
 			find(1, false);
 			return true;
 
@@ -181,10 +249,16 @@ export default function actions(action, value) {
 			return true;
 
 		case "search-replace":
+			if ($replaceInput.value) {
+				searchHistory.addToHistory($replaceInput.value);
+			}
 			editor.replace($replaceInput.value || "");
 			return true;
 
 		case "search-replace-all":
+			if ($replaceInput.value) {
+				searchHistory.addToHistory($replaceInput.value);
+			}
 			editor.replaceAll($replaceInput.value || "");
 			return true;
 
@@ -227,8 +301,14 @@ function toggleSearch() {
 		};
 
 		$searchInput.onsearch = function () {
-			if (this.value) find(1, false);
+			if (this.value) {
+				searchHistory.addToHistory(this.value);
+				find(1, false);
+			}
 		};
+
+		// Setup history navigation for search inputs
+		setupHistoryNavigation();
 
 		setFooterHeight(2);
 		find(0, false);
@@ -327,6 +407,22 @@ function removeSearch() {
 	$footer.removeAttribute("data-searching");
 	$searchRow1.remove();
 	$searchRow2.remove();
+
+	// Reset history navigation when search is closed
+	searchHistory.resetAllNavigation();
+
+	const { activeFile } = editorManager;
+
+	// Check if current tab is a terminal
+	if (
+		activeFile &&
+		activeFile.type === "terminal" &&
+		activeFile.terminalComponent
+	) {
+		activeFile.terminalComponent.searchAddon?.clearDecorations();
+		activeFile.terminalComponent.searchAddon?.clearActiveDecoration();
+		return;
+	}
 	focusEditor();
 }
 
@@ -337,20 +433,44 @@ function removeSearch() {
  */
 function find(skip, backward) {
 	const { $searchInput } = quickTools;
-	editorManager.editor.find($searchInput.value, {
-		skipCurrent: skip,
-		...appSettings.value.search,
-		backwards: backward,
-	});
+	const { activeFile } = editorManager;
+
+	// Check if current tab is a terminal
+	if (
+		activeFile &&
+		activeFile.type === "terminal" &&
+		activeFile.terminalComponent
+	) {
+		activeFile.terminalComponent.search($searchInput.value, skip, backward);
+	} else {
+		// Use ACE editor search for regular files
+		editorManager.editor.find($searchInput.value, {
+			skipCurrent: skip,
+			...appSettings.value.search,
+			backwards: backward,
+		});
+	}
 
 	updateSearchState();
 }
 
 function updateSearchState() {
 	const MAX_COUNT = 999;
-	const { editor } = editorManager;
+	const { activeFile } = editorManager;
 	const { $searchPos, $searchTotal } = quickTools;
 
+	// Check if current tab is a terminal
+	if (activeFile && activeFile.type === "terminal") {
+		// For terminal, we can't easily count all matches like in ACE editor
+		// xterm search addon doesn't provide this information
+		// So we just show a generic indicator
+		$searchTotal.textContent = "?";
+		$searchPos.textContent = "?";
+		return;
+	}
+
+	// Use ACE editor search state for regular files
+	const { editor } = editorManager;
 	let regex = editor.$search.$options.re;
 	let all = 0;
 	let before = 0;

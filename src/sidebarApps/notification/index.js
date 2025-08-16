@@ -22,10 +22,13 @@ const $header = (
 	<div className="header">
 		<div className="title">
 			{strings["notifications"]}
-			<span
-				className="clear-all icon delete_outline"
+			<button
+				type="button"
+				className="icon-button"
 				onclick={() => notificationManager.clearAll()}
-			></span>
+			>
+				<span data-action="clear" className="icon clearclose"></span>
+			</button>
 		</div>
 	</div>
 );

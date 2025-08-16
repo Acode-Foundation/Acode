@@ -1,7 +1,7 @@
 import fsOperation from "fileSystem";
 import { isDeviceDarkTheme } from "lib/systemConfiguration";
-import Url from "utils/Url";
 import color from "utils/color";
+import Url from "utils/Url";
 import fonts from "../lib/fonts";
 import settings from "../lib/settings";
 import ThemeBuilder from "./builder";
@@ -10,12 +10,10 @@ import themes, { updateSystemTheme } from "./preInstalled";
 /** @type {Map<string, ThemeBuilder>} */
 const appThemes = new Map();
 let themeApplied = false;
+let firstTime = true;
 
 function init() {
 	themes.forEach((theme) => add(theme));
-	(async () => {
-		updateSystemTheme(isDeviceDarkTheme());
-	})();
 }
 
 /**
@@ -61,9 +59,18 @@ function get(name) {
 function add(theme) {
 	if (!(theme instanceof ThemeBuilder)) return;
 	if (appThemes.has(theme.id)) return;
+
 	appThemes.set(theme.id, theme);
-	if (settings.value.appTheme === theme.id) {
-		apply(theme.id);
+
+	const { appTheme } = settings.value;
+
+	if (theme.matches(appTheme)) {
+		if (appTheme !== "system") {
+			apply(appTheme);
+		} else {
+			updateSystemTheme(isDeviceDarkTheme());
+			themeApplied = true;
+		}
 	}
 }
 
@@ -111,11 +118,18 @@ export async function apply(id, init) {
 	$style.textContent = theme.css;
 	document.head.append($style);
 
+	const primaryColor = color(theme.primaryColor).hex.toString();
+	const scheme = theme.toJSON("hex");
 	// Set status bar and navigation bar color
-	system.setUiTheme(
-		color(theme.primaryColor).hex.toString(),
-		theme.toJSON("hex"),
-	);
+	system.setUiTheme(primaryColor, scheme);
+
+	if (firstTime) {
+		// To make sure system bars are updated
+		setTimeout(() => {
+			system.setUiTheme(primaryColor, scheme);
+		}, 1000);
+		firstTime = false;
+	}
 
 	try {
 		let fs = fsOperation(loaderFile);

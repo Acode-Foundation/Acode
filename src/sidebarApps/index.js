@@ -1,3 +1,4 @@
+import Sponsors from "pages/sponsors";
 import SidebarApp from "./sidebarApp";
 
 const SIDEBAR_APPS_LAST_SECTION = "sidebarAppsLastSection";
@@ -74,6 +75,7 @@ async function loadApps() {
 	add(...(await import("./searchInFiles")).default);
 	add(...(await import("./extensions")).default);
 	add(...(await import("./notification")).default);
+	$apps.append(<span className="icon favorite" onclick={Sponsors} />);
 }
 
 /**

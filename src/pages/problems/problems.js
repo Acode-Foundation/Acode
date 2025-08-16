@@ -59,7 +59,7 @@ export default function Problems() {
 	});
 
 	$content.addEventListener("click", clickHandler);
-	$page.content = $content;
+	$page.body = $content;
 	app.append($page);
 	helpers.showAd();
 

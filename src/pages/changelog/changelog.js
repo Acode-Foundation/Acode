@@ -1,7 +1,8 @@
-import fsOperation from "fileSystem";
 import "./style.scss";
+import fsOperation from "fileSystem";
 import Contextmenu from "components/contextmenu";
 import Page from "components/page";
+import toast from "components/toast";
 import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
 import markdownIt from "markdown-it";
@@ -18,8 +19,9 @@ export default async function Changelog() {
 
 	let selectedVersion = currentVersion;
 	let selectedStatus = "current";
-	const versionIndicatorRef = new Ref();
-	const versionTextRef = new Ref();
+	const versionIndicatorRef = Ref();
+	const versionTextRef = Ref();
+	const body = Ref();
 
 	const versionSelector = (
 		<div className="changelog-version-selector" data-action="select-version">
@@ -40,6 +42,7 @@ export default async function Changelog() {
 		right: "5px",
 		toggler: versionSelector,
 		transformOrigin: "top right",
+		onclick: menuClickHandler,
 		innerHTML: () => {
 			return `
         <li action="current">
@@ -58,10 +61,24 @@ export default async function Changelog() {
 		},
 	});
 
-	const $content = <div className="md" id="changelog"></div>;
-	$content.innerHTML = '<div class="loading">Loading changelog...</div>';
-	$page.content = $content;
+	const changelogMd = await import("../../../CHANGELOG.md");
+
+	toast("Loading changelog...");
+	loadVersionChangelog();
+	body.onref = () => renderChangelog(changelogMd.default);
+	$page.body = <div className="md" id="changelog" ref={body} />;
 	app.append($page);
+	helpers.showAd();
+
+	$page.onhide = function () {
+		actionStack.remove("changelog");
+		helpers.hideAd();
+	};
+
+	actionStack.push({
+		id: "changelog",
+		action: $page.hide,
+	});
 
 	async function loadLatestRelease() {
 		try {
@@ -73,8 +90,8 @@ export default async function Changelog() {
 			updateVersionSelector();
 			return renderChangelog(releases.body);
 		} catch (error) {
-			$content.innerHTML =
-				'<div class="error">Failed to load latest release notes</div>';
+			toast("Failed to load latest release notes");
+			renderChangelog(changelogMd.default);
 		}
 	}
 
@@ -83,7 +100,7 @@ export default async function Changelog() {
 			const releases = await fsOperation(GITHUB_API_URL).readFile("json");
 			const betaRelease = releases.find((r) => r.prerelease);
 			if (!betaRelease) {
-				$content.innerHTML = '<div class="error">No beta release found</div>';
+				body.content = <div className="error">No beta release found</div>;
 				return;
 			}
 			selectedVersion = betaRelease.tag_name.replace("v", "");
@@ -91,8 +108,8 @@ export default async function Changelog() {
 			updateVersionSelector();
 			return renderChangelog(betaRelease.body);
 		} catch (error) {
-			$content.innerHTML =
-				'<div class="error">Failed to load beta release notes</div>';
+			toast("Failed to load beta release notes");
+			renderChangelog(changelogMd.default);
 		}
 	}
 
@@ -106,8 +123,8 @@ export default async function Changelog() {
 			updateVersionSelector();
 			return renderChangelog(cleanedText);
 		} catch (error) {
-			$content.innerHTML =
-				'<div class="error">Failed to load full changelog</div>';
+			toast("Failed to load full changelog");
+			renderChangelog(changelogMd.default);
 		}
 	}
 
@@ -126,8 +143,8 @@ export default async function Changelog() {
 				return loadLatestRelease();
 			}
 		} catch (error) {
-			$content.innerHTML =
-				'<div class="error">Failed to load version changelog</div>';
+			toast("Failed to load version changelog");
+			renderChangelog(changelogMd.default);
 		}
 	}
 
@@ -138,20 +155,16 @@ export default async function Changelog() {
 			// Convert full PR URLs to #number format with links preserved in markdown
 			.replace(
 				/https:\/\/github\.com\/Acode-Foundation\/Acode\/pull\/(\d+)/g,
-				"[#$1](https://github.com/Acode-Foundation/Acode/pull/$1)",
+				`[#$1](${REPO_URL}/pull/$1)`,
 			)
 			// Convert existing #number references to links if they aren't already
-			.replace(
-				/(?<!\[)#(\d+)(?!\])/g,
-				"[#$1](https://github.com/Acode-Foundation/Acode/pull/$1)",
-			)
+			.replace(/(?<!\[)#(\d+)(?!\])/g, `[#$1](${REPO_URL}/pull/$1)`)
 			// Convert @username mentions to GitHub profile links
 			.replace(/@(\w+)/g, "[@$1](https://github.com/$1)");
 
 		md.use(markdownItTaskLists);
 		md.use(markdownItFootnote);
-		const htmlContent = md.render(processedText);
-		$content.innerHTML = htmlContent;
+		body.innerHTML = md.render(processedText);
 	}
 
 	function updateVersionSelector() {
@@ -159,7 +172,7 @@ export default async function Changelog() {
 		versionIndicatorRef.className = "status-indicator status-" + selectedStatus;
 	}
 
-	versionSelectorMenu.onclick = async function (e) {
+	async function menuClickHandler(e) {
 		const action = e.target.closest("li")?.getAttribute("action");
 		if (!action) return;
 		versionSelectorMenu.hide();
@@ -178,17 +191,5 @@ export default async function Changelog() {
 				await loadFullChangelog();
 				break;
 		}
-	};
-
-	// Load current version changelog by default
-	loadVersionChangelog();
-
-	$page.onhide = function () {
-		actionStack.remove("changelog");
-	};
-
-	actionStack.push({
-		id: "changelog",
-		action: $page.hide,
-	});
+	}
 }

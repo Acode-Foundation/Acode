@@ -12,7 +12,7 @@ export default function TabView({ id, disableSwipe = false }, children) {
 	let lastX = 0;
 	let lastY = 0;
 	let isScrolling = false;
-	const el = new Ref();
+	const el = Ref();
 	return (
 		<div
 			ref={el}

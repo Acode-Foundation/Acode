@@ -1,9 +1,9 @@
-import box from "dialogs/box";
 import fsOperation from "fileSystem";
+import box from "dialogs/box";
 import { filesize } from "filesize";
 import mustache from "mustache";
-import Url from "utils/Url";
 import helpers from "utils/helpers";
+import Url from "utils/Url";
 import $_fileInfo from "views/file-info.hbs";
 import settings from "./settings";
 

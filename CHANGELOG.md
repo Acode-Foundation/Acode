@@ -1,5 +1,45 @@
 # Change Log
 
+## v1.11.5 (963)
+
+* Alpine Linux Backend by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1401
+* fix: html escaping for console page by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1411
+* Create plugin for native libs by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1413
+* feat: terminal frontend by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1415
+* Update hu-hu.json translation by @summoner001 in https://github.com/Acode-Foundation/Acode/pull/1423, https://github.com/Acode-Foundation/Acode/pull/1425, https://github.com/Acode-Foundation/Acode/pull/1440
+* chore: update id-id.json translation by @hyperz111 in https://github.com/Acode-Foundation/Acode/pull/1424, https://github.com/Acode-Foundation/Acode/pull/1447
+* All file access permission for terminal by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1426
+* refactor: plugins page by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1428
+	* Fixed infinite scrolling in case of filtering on both plugin page and sidebar
+    * Ui improvements on plugin page
+* Revamped few themes(fixes visibility issue) and Added few new ones  by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1430
+	* New theme: Neon, Sunset, Glass, Glass Dark
+	* Revamped themes: System (Dark & Light), Oled, Light
+	* System theme option is available on free too.
+* fix: scaling issue by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1431
+* fix: quicktools toggler responsiveness(scaling) and migrate biome by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1442
+* chore: update ace to v1.43.2 by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1443
+* feat: add uninstall option in terminal setting and tab subtitle fixes by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1445
+* feat: alpine document provider(exposes terminal public dir to saf picker) by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1444
+* feat: improved logging + fix terminal installation failure by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1446
+* some terminal related quality improvements by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1449
+	* fix: dont start selection in case of back gesture
+	* remove useless border-radius from terminal container
+	* fix: improve terminal cursor positioning for mobile keyboard events
+	* fix: update terminal container background when theme changes
+* exclude alpine/public while backup by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1450
+* Custom port support in Terminal manager by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1459
+* 🌐 i18n(locale): update vietnamese translations by @Nekitori17 in https://github.com/Acode-Foundation/Acode/pull/1461
+* fix: infinite loading when previewing by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1460
+* Feat/some improvements to terminal and its api by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1463
+* Fixes/sidebar extension state by clearing and active autocompletion box background  by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1466
+* feat: add terminal like search and replace history by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1467
+* fix: theme issue in terminal context menu
+* fix: prevent folder paste loops and improve SAF handling(termux) in cut operation by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1474
+	- Add validation to prevent pasting folders into themselves or subdirectories
+	- Implement special Termux SAF handling for cut operations with recursive file/folder moving
+	- Fix createFileStructure to handle nested paths (foo/bar) for file:// URIs
+
 ## v1.11.4 (962)
 
 * Fix renaming current Termux URI file whilst viewing/editing it by @peasneovoyager2banana2

@@ -1,8 +1,8 @@
-.container.notifications{
+.container.notifications {
     display: flex;
     flex-direction: column;
 
-    .header{
+    .header {
         padding: 10px;
         display: flex;
         justify-content: space-between;
@@ -10,19 +10,32 @@
         border-bottom: 1px solid var(--border-color);
 
         .title {
-            font-size: 20px;
-            font-weight: 600;
-            color: var(--primary-text-color);
-            display: flex;
-            align-items: center;
             gap: 4px;
-        }
+            display: flex;
+            font-weight: 600;
+            align-items: center;
+            color: var(--primary-text-color);
+            justify-content: space-between !important;
 
-        .clear-all {
-            font-size: 12px;
-            color: var(--secondary-text-color);
-            background: none;
-            padding: 5px;
+            .icon-button {
+                border: none;
+                background: none;
+                cursor: pointer;
+                color: var(--primary-text-color);
+                margin-left: 0.4rem;
+                border-radius: 6px;
+                transition: all 0.2s ease;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                min-width: 32px;
+                min-height: 32px;
+                font-size: 1.1em;
+
+                &:hover {
+                    background-color: var(--primary-color);
+                }
+            }
         }
     }
 
@@ -40,6 +53,7 @@
             padding: 20px;
             font-size: 14px;
         }
+
         .notification-item {
             padding: 10px 12px;
             border-radius: 6px;
@@ -55,6 +69,7 @@
                 background: rgba($color: #000000, $alpha: 0.2);
                 border-color: var(--popup-border-color);
             }
+
             .notification-icon {
                 width: 20px;
                 height: 20px;
@@ -64,6 +79,7 @@
                 flex-shrink: 0;
                 color: var(--primary-text-color);
             }
+
             .notification-content {
                 flex: 1;
                 min-width: 0;
@@ -85,11 +101,13 @@
                         color: var(--secondary-text-color);
                     }
                 }
+
                 .notification-message {
                     font-size: 12px;
                     color: var(--secondary-text-color);
                     line-height: 1.4;
                 }
+
                 .notification-actions {
                     margin-top: 8px;
                     display: flex;
@@ -113,9 +131,11 @@
                             color: var(--primary-text-color);
                             border-color: var(--border-color);
                         }
+
                         &:active {
                             transform: translateY(1px);
                         }
+
                         &::before {
                             content: '×';
                             font-size: 14px;
@@ -135,6 +155,7 @@
         transform: translateX(100%);
         opacity: 0;
     }
+
     to {
         transform: translateX(0);
         opacity: 1;

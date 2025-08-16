@@ -1,39 +1,39 @@
-@import '../../styles/mixins.scss';
+@use '../../styles/mixins.scss';
 
 #quick-tools {
   .icon.click {
-    @include active-icon;
+    @include mixins.active-icon;
     transition: all 0.3s ease-in-out;
     transform: scale(1.2);
   }
 
   &[data-alt="true"] {
     [data-id="alt-key"] {
-      @include active-icon;
+      @include mixins.active-icon;
     }
   }
 
   &[data-shift="true"] {
     [data-id="shift-key"] {
-      @include active-icon;
+      @include mixins.active-icon;
     }
   }
 
   &[data-ctrl="true"] {
     [data-id="ctrl-key"] {
-      @include active-icon;
+      @include mixins.active-icon;
     }
   }
 
   &[data-meta="true"] {
     [data-id="meta-key"] {
-      @include active-icon;
+      @include mixins.active-icon;
     }
   }
 
   &[data-unsaved="true"] {
     [data-id="save"] {
-      @include icon-badge;
+      @include mixins.icon-badge;
     }
   }
 }

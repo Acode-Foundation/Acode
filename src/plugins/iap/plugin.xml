@@ -22,6 +22,6 @@
     </config-file>
 
     <source-file src="src/com/foxdebug/iap/Iap.java" target-dir="src/com/foxdebug/iap"/>
-    <framework src="com.android.billingclient:billing:6.0.1" />
+    <framework src="com.android.billingclient:billing:8.0.0" />
   </platform>
 </plugin>

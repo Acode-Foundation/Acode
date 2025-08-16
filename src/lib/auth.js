@@ -1,5 +1,5 @@
-import toast from "components/toast";
 import fsOperation from "fileSystem";
+import toast from "components/toast";
 import { addIntentHandler } from "handlers/intent";
 import constants from "./constants";
 

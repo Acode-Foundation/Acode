@@ -1,12 +1,12 @@
+import fsOperation from "fileSystem";
 import ajax from "@deadlyjack/ajax";
 import alert from "dialogs/alert";
 import confirm from "dialogs/confirm";
 import loader from "dialogs/loader";
-import fsOperation from "fileSystem";
 import purchaseListener from "handlers/purchase";
 import JSZip from "jszip";
-import Url from "utils/Url";
 import helpers from "utils/helpers";
+import Url from "utils/Url";
 import constants from "./constants";
 import InstallState from "./installState";
 import loadPlugin from "./loadPlugin";
@@ -343,7 +343,7 @@ async function resolveDep(manifest) {
 
 		iap.setPurchaseUpdatedListener(...purchaseListener(onpurchase, onerror));
 		loaderDialog.setMessage(strings["loading..."]);
-		await helpers.promisify(iap.purchase, product.json);
+		await helpers.promisify(iap.purchase, product.productId);
 
 		async function onpurchase(e) {
 			const purchase = await getPurchase(product.productId);

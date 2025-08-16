@@ -78,12 +78,10 @@ export default function multiPrompt(message, inputs, help) {
 				hide();
 			},
 		});
-		const $errorMessage = tag("span", {
-			className: "error-msg",
-		});
-		const $mask = tag("span", {
-			className: "mask",
-		});
+		const $errorMessage = (
+			<span className="error-msg" style={{ display: "block" }} />
+		);
+		const $mask = <span className="mask" />;
 		const $promptDiv = tag("form", {
 			action: "#",
 			className: "prompt multi",
@@ -183,7 +181,7 @@ export default function multiPrompt(message, inputs, help) {
 				if (typeof input === "string") {
 					$text.textContent = input;
 				} else {
-					$input = createInput(input);
+					$input = createInput(input, true);
 					$group.append($input);
 				}
 			});
@@ -194,9 +192,10 @@ export default function multiPrompt(message, inputs, help) {
 		/**
 		 * Creates an input
 		 * @param {Input} input Input object
+		 * @param {boolean} group Whether the input is part of a group
 		 * @returns {HTMLInputElement|HTMLTextAreaElement}
 		 */
-		function createInput(input) {
+		function createInput(input, group = false) {
 			const {
 				id,
 				required,
@@ -221,6 +220,10 @@ export default function multiPrompt(message, inputs, help) {
 
 			if (_type === "checkbox" || _type === "radio") {
 				$input = Checkbox(placeholder, value, name, id, type);
+
+				if (!group) {
+					$input.style.marginTop = "1rem";
+				}
 			} else {
 				$input = tag(inputType, {
 					id,
@@ -252,9 +255,14 @@ export default function multiPrompt(message, inputs, help) {
 
 				$input.oninput = function () {
 					if (match && !match.test(this.value)) {
-						okBtn.disabled = true;
-						$promptDiv.insertBefore($errorMessage, $input.nextElementSibling);
+						const $parent = this.parentElement;
+						if ($input.nextElementSibling) {
+							$parent.insertBefore($errorMessage, $input.nextElementSibling);
+						} else {
+							$parent.append($errorMessage);
+						}
 						$errorMessage.textContent = strings["invalid value"];
+						okBtn.disabled = true;
 					} else {
 						okBtn.disabled = false;
 						$errorMessage.textContent = "";
@@ -268,6 +276,25 @@ export default function multiPrompt(message, inputs, help) {
 
 			Object.defineProperty($input, "prompt", {
 				value: { $body, hide },
+			});
+
+			Object.defineProperty($input, "setError", {
+				value(message) {
+					if (!message) {
+						$errorMessage.textContent = "";
+						okBtn.disabled = false;
+						return;
+					}
+
+					const $parent = this.parentElement;
+					if ($input.nextElementSibling) {
+						$parent.insertBefore($errorMessage, $input.nextElementSibling);
+					} else {
+						$parent.append($errorMessage);
+					}
+					$errorMessage.textContent = message;
+					okBtn.disabled = !!message;
+				},
 			});
 
 			if (onclick) $input.onclick = onclick.bind($input);

@@ -7,23 +7,24 @@ import com.android.billingclient.api.AcknowledgePurchaseParams;
 import com.android.billingclient.api.AcknowledgePurchaseResponseListener;
 import com.android.billingclient.api.BillingClient;
 import com.android.billingclient.api.BillingClient.BillingResponseCode;
-import com.android.billingclient.api.BillingClient.SkuType;
 import com.android.billingclient.api.BillingClientStateListener;
 import com.android.billingclient.api.BillingFlowParams;
 import com.android.billingclient.api.BillingResult;
 import com.android.billingclient.api.ConsumeParams;
 import com.android.billingclient.api.ConsumeResponseListener;
+import com.android.billingclient.api.PendingPurchasesParams;
+import com.android.billingclient.api.ProductDetails;
+import com.android.billingclient.api.ProductDetailsResponseListener;
 import com.android.billingclient.api.Purchase;
 import com.android.billingclient.api.PurchasesResponseListener;
 import com.android.billingclient.api.PurchasesUpdatedListener;
+import com.android.billingclient.api.QueryProductDetailsParams;
+import com.android.billingclient.api.QueryProductDetailsResult;
 import com.android.billingclient.api.QueryPurchasesParams;
-import com.android.billingclient.api.SkuDetails;
-import com.android.billingclient.api.SkuDetailsParams;
-import com.android.billingclient.api.SkuDetailsResponseListener;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.lang.ref.WeakReference;
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaPlugin;
@@ -103,9 +104,10 @@ public class Iap extends CordovaPlugin {
   }
 
   private BillingClient getBillingClient() {
-    return BillingClient
-      .newBuilder(this.contextRef.get())
-      .enablePendingPurchases()
+    return BillingClient.newBuilder(this.contextRef.get())
+      .enablePendingPurchases(
+        PendingPurchasesParams.newBuilder().enableOneTimeProducts().build()
+      )
       .setListener(
         new PurchasesUpdatedListener() {
           public void onPurchasesUpdated(
@@ -143,8 +145,7 @@ public class Iap extends CordovaPlugin {
   }
 
   private void consume(String token, CallbackContext callbackContext) {
-    ConsumeParams consumeParams = ConsumeParams
-      .newBuilder()
+    ConsumeParams consumeParams = ConsumeParams.newBuilder()
       .setPurchaseToken(token)
       .build();
     billingClient.consumeAsync(
@@ -200,37 +201,49 @@ public class Iap extends CordovaPlugin {
       callbackContext.error("Billing client is not connected");
       return;
     }
-    SkuDetailsParams.Builder params = SkuDetailsParams.newBuilder();
-    params.setSkusList(idList).setType(SkuType.INAPP);
+    List<QueryProductDetailsParams.Product> productList = new ArrayList<>();
+    for (String productId : idList) {
+      productList.add(
+        QueryProductDetailsParams.Product.newBuilder()
+          .setProductId(productId)
+          .setProductType(BillingClient.ProductType.INAPP)
+          .build()
+      );
+    }
+    QueryProductDetailsParams params = QueryProductDetailsParams.newBuilder()
+      .setProductList(productList)
+      .build();
 
-    billingClient.querySkuDetailsAsync(
-      params.build(),
-      new SkuDetailsResponseListener() {
-        public void onSkuDetailsResponse(
+    billingClient.queryProductDetailsAsync(
+      params,
+      new ProductDetailsResponseListener() {
+        public void onProductDetailsResponse(
           BillingResult billingResult,
-          List<SkuDetails> skuDetailsList
+          QueryProductDetailsResult queryProductDetailsResult
         ) {
           try {
             int responseCode = billingResult.getResponseCode();
             if (responseCode == BillingResponseCode.OK) {
+              List<ProductDetails> productDetailsList = queryProductDetailsResult.getProductDetailsList();
               JSONArray products = new JSONArray();
-              Log.d("IAP", "Got " + skuDetailsList.size() + " products");
-              for (SkuDetails skuDetails : skuDetailsList) {
+              for (ProductDetails productDetails : productDetailsList) {
                 JSONObject product = new JSONObject();
-                product.put("json", skuDetails.getOriginalJson());
-                product.put("productId", skuDetails.getSku());
-                product.put("title", skuDetails.getTitle());
-                product.put("description", skuDetails.getDescription());
-                product.put("price", skuDetails.getPrice());
-                product.put(
-                  "priceAmountMicros",
-                  skuDetails.getPriceAmountMicros()
-                );
-                product.put(
-                  "priceCurrencyCode",
-                  skuDetails.getPriceCurrencyCode()
-                );
-                product.put("type", skuDetails.getType());
+                ProductDetails.OneTimePurchaseOfferDetails offerDetails = productDetails.getOneTimePurchaseOfferDetails();
+                if (offerDetails != null) {
+                  product.put("productId", productDetails.getProductId());
+                  product.put("title", productDetails.getTitle());
+                  product.put("description", productDetails.getDescription());
+                  product.put("price", offerDetails.getFormattedPrice());
+                  product.put(
+                    "priceAmountMicros",
+                    offerDetails.getPriceAmountMicros()
+                  );
+                  product.put(
+                    "priceCurrencyCode",
+                    offerDetails.getPriceCurrencyCode()
+                  );
+                  product.put("type", productDetails.getProductType());
+                }
                 products.put(product);
               }
               callbackContext.success(products);
@@ -245,21 +258,64 @@ public class Iap extends CordovaPlugin {
     );
   }
 
-  private void purchase(String json, CallbackContext callbackContext) {
+  private void purchase(String productIdOrJson, CallbackContext callbackContext) {
     try {
-      SkuDetails skuDetails = new SkuDetails(json);
-      BillingResult result = billingClient.launchBillingFlow(
-        activityRef.get(),
-        BillingFlowParams.newBuilder().setSkuDetails(skuDetails).build()
-      );
-      int responseCode = result.getResponseCode();
-      if (responseCode == BillingResponseCode.OK) {
-        callbackContext.success();
-      } else {
-        callbackContext.error(responseCode);
+      if (productIdOrJson == null || productIdOrJson.trim().isEmpty()) {
+        callbackContext.error("Product ID cannot be null or empty");
+        return;
       }
-    } catch (JSONException e) {
-      callbackContext.error(e.getMessage());
+      
+      final String productId = productIdOrJson;
+      
+      List<QueryProductDetailsParams.Product> productList = new ArrayList<>();
+      productList.add(
+        QueryProductDetailsParams.Product.newBuilder()
+          .setProductId(productId)
+          .setProductType(BillingClient.ProductType.INAPP)
+          .build()
+      );
+      QueryProductDetailsParams params = QueryProductDetailsParams.newBuilder()
+        .setProductList(productList)
+        .build();
+        
+      billingClient.queryProductDetailsAsync(
+        params,
+        new ProductDetailsResponseListener() {
+          public void onProductDetailsResponse(
+            BillingResult billingResult,
+            QueryProductDetailsResult queryProductDetailsResult
+          ) {
+            if (billingResult.getResponseCode() == BillingResponseCode.OK) {
+              List<ProductDetails> productDetailsList = queryProductDetailsResult.getProductDetailsList();
+              if (!productDetailsList.isEmpty()) {
+                ProductDetails productDetails = productDetailsList.get(0);
+                BillingResult result = billingClient.launchBillingFlow(
+                  activityRef.get(),
+                  BillingFlowParams.newBuilder().setProductDetailsParamsList(
+                    Arrays.asList(
+                      BillingFlowParams.ProductDetailsParams.newBuilder()
+                        .setProductDetails(productDetails)
+                        .build()
+                    )
+                  ).build()
+                );
+                int responseCode = result.getResponseCode();
+                if (responseCode == BillingResponseCode.OK) {
+                  callbackContext.success();
+                } else {
+                  callbackContext.error(responseCode);
+                }
+              } else {
+                callbackContext.error("No product details found for: " + productId);
+              }
+            } else {
+              callbackContext.error(billingResult.getResponseCode());
+            }
+          }
+        }
+      );
+    } catch (Exception e) {
+      callbackContext.error("Purchase error: " + e.getMessage());
     }
   }
 
@@ -270,8 +326,7 @@ public class Iap extends CordovaPlugin {
       return;
     }
 
-    QueryPurchasesParams params = QueryPurchasesParams
-      .newBuilder()
+    QueryPurchasesParams params = QueryPurchasesParams.newBuilder()
       .setProductType(BillingClient.ProductType.INAPP)
       .build();
     billingClient.queryPurchasesAsync(
@@ -310,8 +365,7 @@ public class Iap extends CordovaPlugin {
       return;
     }
 
-    AcknowledgePurchaseParams params = AcknowledgePurchaseParams
-      .newBuilder()
+    AcknowledgePurchaseParams params = AcknowledgePurchaseParams.newBuilder()
       .setPurchaseToken(purchaseToken)
       .build();
 
@@ -339,10 +393,8 @@ public class Iap extends CordovaPlugin {
     }
     item.put("productIds", skuArray);
     item.put("orderId", purchase.getOrderId());
-    item.put("sate", purchase.getPurchaseState());
     item.put("signature", purchase.getSignature());
     item.put("purchaseTime", purchase.getPurchaseTime());
-    item.put("isAcknowledged", purchase.isAcknowledged());
     item.put("purchaseToken", purchase.getPurchaseToken());
     item.put("purchaseState", purchase.getPurchaseState());
     item.put("isAcknowledged", purchase.isAcknowledged());
@@ -362,22 +414,6 @@ public class Iap extends CordovaPlugin {
       return args.getString(index);
     } catch (JSONException e) {
       return null;
-    }
-  }
-
-  private int getInt(JSONArray args, int index) {
-    try {
-      return args.getInt(index);
-    } catch (JSONException e) {
-      return 0;
-    }
-  }
-
-  private boolean getBoolean(JSONArray args, int index) {
-    try {
-      return args.getBoolean(index);
-    } catch (JSONException e) {
-      return false;
     }
   }
 
