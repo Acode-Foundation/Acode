@@ -91,6 +91,8 @@ export default class lspClient {
 	 * Add an editor to the language provider
 	 * @param {Object} editor - Ace editor instance
 	 * @returns {boolean} - Success status
+	 * 
+	 * Note: this is not limited to a single editor tab
 	 */
 	addEditor(editor) {
 		if (!editor) {
@@ -295,6 +297,36 @@ export default class lspClient {
 		return new Set(this.registeredEditors);
 	}
 
+	async sendRequest(method, params) {
+		return new Promise((resolve, reject) => {
+			try {
+				this.languageProvider.sendRequest(
+					"lspClient",
+					method,
+					params,
+					(result) => {
+						resolve(result);
+					}
+				);
+			} catch (err) {
+				reject(err);
+			}
+		});
+	}
+
+	async getDefination(editor, uri) {
+		const result = await this.sendRequest("textDocument/definition", {
+			textDocument: { uri },
+			position: {
+				line: editor.getCursorPosition().row,
+				character: editor.getCursorPosition().column,
+			},
+		});
+
+		return result;
+	}
+
+
 	// Private helper methods
 
 	/**
@@ -307,6 +339,7 @@ export default class lspClient {
 			modes: this.modes,
 			type: "socket",
 			socket: this.socket,
+			serviceName: "lspClient",
 			initializationOptions: this.initializationOptions,
 		};
 
