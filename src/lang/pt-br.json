@@ -419,7 +419,18 @@
 	"terminal:font family": "Família da Fonte",
 	"terminal:convert eol": "Converter EOL",
 	"terminal": "Terminal",
+<<<<<<< Updated upstream
 	"allFileAccess": "Acesso total aos arquivos",
 	"fonts": "Fontes",
 	"sponsor": "Patrocinador"
+=======
+	"allFileAccess": "All file access",
+	"fonts": "Fonts",
+	"sponsor": "Patrocinador",
+	"downloads": "downloads",
+	"reviews": "reviews",
+	"overview": "Overview",
+	"contributors": "Contributors",
+	"quicktools:hyphen": "Insert hyphen symbol"
+>>>>>>> Stashed changes
 }

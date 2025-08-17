@@ -137,7 +137,7 @@ export default (props) => {
 												: downloads,
 										)}
 									</span>
-									<span>downloads</span>
+									<span>{strings.downloads}</span>
 								</div>
 								<div className="metric">
 									<i className="icon favorite"></i>
@@ -153,7 +153,7 @@ export default (props) => {
 								>
 									<i className="icon chat_bubble"></i>
 									<span className="metric-value">{commentCount}</span>
-									<span>reviews</span>
+									<span>{strings.reviews}</span>
 								</div>
 							</div>
 						: null}
@@ -173,13 +173,13 @@ export default (props) => {
 			<TabView id="plugin-tab" disableSwipe={true}>
 				<div className="options" onclick={handleTabClick}>
 					<span className="tab active" data-tab="overview" tabindex="0">
-						Overview
+						{strings.overview}
 					</span>
 					<span className="tab" data-tab="contributors" tabindex="0">
-						Contributors
+						{strings.contributors}
 					</span>
 					<span className="tab" data-tab="changelog" tabindex="0">
-						Changelog
+						{strings.changelog}
 					</span>
 				</div>
 				<div className="tab-content">
