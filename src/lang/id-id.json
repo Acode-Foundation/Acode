@@ -422,5 +422,10 @@
 	"terminal": "Terminal",
 	"allFileAccess": "Semua akses berkas",
 	"fonts": "Huruf",
-	"sponsor": "Sponsor"
+	"sponsor": "Sponsor",
+	"downloads": "downloads",
+	"reviews": "reviews",
+	"overview": "Overview",
+	"contributors": "Contributors",
+	"quicktools:hyphen": "Insert hyphen symbol"
 }

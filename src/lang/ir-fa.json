@@ -422,5 +422,10 @@
 	"terminal": "Terminal",
 	"allFileAccess": "All file access",
 	"fonts": "Fonts",
-	"sponsor": "حامی مالی"
+	"sponsor": "حامی مالی",
+	"downloads": "downloads",
+	"reviews": "reviews",
+	"overview": "Overview",
+	"contributors": "Contributors",
+	"quicktools:hyphen": "Insert hyphen symbol"
 }

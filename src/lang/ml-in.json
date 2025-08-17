@@ -421,5 +421,10 @@
 	"terminal": "Terminal",
 	"allFileAccess": "All file access",
 	"fonts": "Fonts",
-	"sponsor": "സ്പോൺസർ"
+	"sponsor": "സ്പോൺസർ",
+	"downloads": "downloads",
+	"reviews": "reviews",
+	"overview": "Overview",
+	"contributors": "Contributors",
+	"quicktools:hyphen": "Insert hyphen symbol"
 }

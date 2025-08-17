@@ -421,5 +421,10 @@
 	"terminal": "Terminal",
 	"allFileAccess": "All file access",
 	"fonts": "Fonts",
-	"sponsor": "스폰서"
+	"sponsor": "스폰서",
+	"downloads": "downloads",
+	"reviews": "reviews",
+	"overview": "Overview",
+	"contributors": "Contributors",
+	"quicktools:hyphen": "Insert hyphen symbol"
 }
