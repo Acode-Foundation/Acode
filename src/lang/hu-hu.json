@@ -422,9 +422,9 @@
 	"allFileAccess": "Hozzáférés az összes fájlhoz",
 	"fonts": "Betűtípusok",
 	"sponsor": "Szponzor",
-	"downloads": "downloads",
-	"reviews": "reviews",
-	"overview": "Overview",
-	"contributors": "Contributors",
-	"quicktools:hyphen": "Insert hyphen symbol"
+	"downloads": "letöltések",
+	"reviews": "áttekintések",
+	"overview": "Áttekintés",
+	"contributors": "Közreműködők",
+	"quicktools:hyphen": "Kötőjel beszúrása"
 }
