@@ -45,6 +45,7 @@ export default [
 	item("dollar", "letters", "insert", "$", "$"),
 	item("modulo", "letters", "insert", "%", "%"),
 	item("caret", "letters", "insert", "^", "^"),
+	item("hyphen", "letters", "insert", "-", "-"),
 ];
 
 /**
