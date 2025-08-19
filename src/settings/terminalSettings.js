@@ -6,12 +6,12 @@ import {
 } from "components/terminal";
 import toast from "components/toast";
 import alert from "dialogs/alert";
+import confirm from "dialogs/confirm";
 import loader from "dialogs/loader";
 import fonts from "lib/fonts";
 import appSettings from "lib/settings";
 import FileBrowser from "pages/fileBrowser";
 import helpers from "utils/helpers";
-import confirm from "dialogs/confirm";
 
 export default function terminalSettings() {
 	const title = strings["terminal settings"];
@@ -214,22 +214,25 @@ export default function terminalSettings() {
 				return;
 
 			case "uninstall":
-				const confirmation = await confirm(strings.confirm, "Are you sure you want to uninstall the terminal?");
+				const confirmation = await confirm(
+					strings.confirm,
+					"Are you sure you want to uninstall the terminal?",
+				);
 				if (confirmation) {
 					loader.showTitleLoader();
 					Terminal.uninstall()
 						.then(() => {
 							loader.removeTitleLoader();
 							alert(
-							strings.success.toUpperCase(),
-							"Terminal uninstalled successfully.",
-						);
-					})
-					.catch((error) => {
-						loader.removeTitleLoader();
-						console.error("Terminal uninstall failed:", error);
-						helpers.error(error);
-					});
+								strings.success.toUpperCase(),
+								"Terminal uninstalled successfully.",
+							);
+						})
+						.catch((error) => {
+							loader.removeTitleLoader();
+							console.error("Terminal uninstall failed:", error);
+							helpers.error(error);
+						});
 				}
 				return;
 
