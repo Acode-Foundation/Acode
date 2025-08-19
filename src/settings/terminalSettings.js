@@ -11,6 +11,7 @@ import fonts from "lib/fonts";
 import appSettings from "lib/settings";
 import FileBrowser from "pages/fileBrowser";
 import helpers from "utils/helpers";
+import confirm from "dialogs/confirm";
 
 export default function terminalSettings() {
 	const title = strings["terminal settings"];
@@ -188,7 +189,7 @@ export default function terminalSettings() {
 	 * @param {string} key
 	 * @param {string} value
 	 */
-	function callback(key, value) {
+	async function callback(key, value) {
 		switch (key) {
 			case "all_file_access":
 				if (ANDROID_SDK_INT >= 30) {
@@ -213,11 +214,13 @@ export default function terminalSettings() {
 				return;
 
 			case "uninstall":
-				loader.showTitleLoader();
-				Terminal.uninstall()
-					.then(() => {
-						loader.removeTitleLoader();
-						alert(
+				const confirmation = await confirm(strings.confirm, "Are you sure you want to uninstall the terminal?");
+				if (confirmation) {
+					loader.showTitleLoader();
+					Terminal.uninstall()
+						.then(() => {
+							loader.removeTitleLoader();
+							alert(
 							strings.success.toUpperCase(),
 							"Terminal uninstalled successfully.",
 						);
@@ -227,6 +230,7 @@ export default function terminalSettings() {
 						console.error("Terminal uninstall failed:", error);
 						helpers.error(error);
 					});
+				}
 				return;
 
 			default:
