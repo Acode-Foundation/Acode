@@ -2,6 +2,7 @@ import "./themeSetting.scss";
 import Page from "components/page";
 import searchBar from "components/searchbar";
 import TabView from "components/tabView";
+import alert from "dialogs/alert";
 import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
 import removeAds from "lib/removeAds";
@@ -10,7 +11,6 @@ import CustomTheme from "pages/customTheme";
 import ThemeBuilder from "theme/builder";
 import themes from "theme/list";
 import helpers from "utils/helpers";
-import alert from "dialogs/alert";
 
 export default function () {
 	const $page = Page(strings.theme.capitalize());
@@ -195,7 +195,9 @@ console.log(message);`);
 	 */
 	function setEditorTheme({ caption, theme }) {
 		if (appSettings.value.appTheme.toLowerCase() === "system") {
-			alert("Info", "App theme is set to 'System'. Changing the editor theme will not affect the editor appearance.",
+			alert(
+				"Info",
+				"App theme is set to 'System'. Changing the editor theme will not affect the editor appearance.",
 			);
 			return;
 		}
