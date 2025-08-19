@@ -83,11 +83,21 @@ async function run(
 		try {
 			const fs = fsOperation(activeFile.uri);
 			const res = await fs.readFile();
-			const blob = new Blob([new Uint8Array(res)], {
-				type: mimeType.lookup(extension),
-			});
+			let text = new TextDecoder().decode(res);
 
-			box(filename, `<img src='${URL.createObjectURL(blob)}'>`);
+			if (!/^<\?xml/.test(text)) {
+				text = `<?xml version="1.0" encoding="UTF-8"?>\n` + text;
+			}
+
+			const blob = new Blob([text], { type: mimeType.lookup(extension) });
+			const url = URL.createObjectURL(blob);
+
+			box(
+				filename,
+				`<div style="display:flex;justify-content:center;align-items:center;height:100%">
+			   <img src="${url}" alt="${filename}" style="max-width:100%;max-height:100%">
+			 </div>`,
+			);
 		} catch (err) {
 			helpers.error(err);
 		}
