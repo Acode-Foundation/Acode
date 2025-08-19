@@ -10,12 +10,13 @@ import CustomTheme from "pages/customTheme";
 import ThemeBuilder from "theme/builder";
 import themes from "theme/list";
 import helpers from "utils/helpers";
+import alert from "dialogs/alert";
 
 export default function () {
 	const $page = Page(strings.theme.capitalize());
 	const $search = <span attr-action="search" className="icon search"></span>;
 	const $themePreview = <div id="theme-preview"></div>;
-	const list = Ref();
+	const list = new Ref();
 	const editor = ace.edit($themePreview);
 
 	const session = ace.createEditSession("");
@@ -194,9 +195,9 @@ console.log(message);`);
 	 */
 	function setEditorTheme({ caption, theme }) {
 		if (appSettings.value.appTheme.toLowerCase() === "system") {
-			alert(
-				"App theme is set to 'System'. Changing the editor theme will not affect the editor appearance.",
+			alert("Info", "App theme is set to 'System'. Changing the editor theme will not affect the editor appearance.",
 			);
+			return;
 		}
 		editorManager.editor.setTheme(theme);
 		editor.setTheme(theme); // preview
