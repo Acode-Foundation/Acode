@@ -274,18 +274,6 @@ wc-page {
           background-color: var(--active-color);
         }
       }
-
-      @media (min-width: 1024px) {
-        height: 45px;
-        min-height: 45px;
-        font-size: 1.1em;
-
-        >* {
-          &.active::after {
-            height: 3px;
-          }
-        }
-      }
     }
   }
 
@@ -312,10 +300,6 @@ wc-page {
 
     #quicktools-toggler {
       transform: translate3d(0, -40px, 0);
-
-      @media (min-width: 1024px) {
-        transform: translate3d(0, -45px, 0);
-      }
     }
 
     &.top-bar {
@@ -345,10 +329,6 @@ wc-page {
 
     #quicktools-toggler {
       transform: translate3d(0, -80px, 0);
-
-      @media (min-width: 1024px) {
-        transform: translate3d(0, -100px, 0);
-      }
     }
 
     &.top-bar {
@@ -378,10 +358,6 @@ wc-page {
 
     #quicktools-toggler {
       transform: translate3d(0, -140px, 0);
-
-      @media (min-width: 1024px) {
-        transform: translate3d(0, -150px, 0);
-      }
     }
 
     &.top-bar {
@@ -530,28 +506,6 @@ wc-page {
           font-family: "code-editor-icon";
           content: "\E99E";
           margin: auto 1.5px;
-        }
-      }
-
-      @media (min-width: 1024px) {
-        height: 35px;
-
-        .nav {
-          height: 30px;
-          font-size: 1em;
-          margin: auto 2px;
-
-          &::after {
-            padding: 3px;
-          }
-
-          &:first-of-type {
-            margin-left: 15px;
-          }
-
-          &:not(:first-of-type)::before {
-            margin: auto 2px;
-          }
         }
       }
     }

@@ -18,14 +18,6 @@ header {
       white-space: nowrap;
       overflow: auto;
     }
-
-    @media (min-width: 1024px) {
-      height: 60px;
-
-      >.text {
-        font-size: 1.4em;
-      }
-    }
   }
 }
 
@@ -104,13 +96,6 @@ header {
     &:active {
       transition: all 100ms ease;
       transform: scale(0.95) translateZ(0);
-    }
-
-    @media (min-width: 1024px) {
-      height: 60px;
-      width: 60px;
-      font-size: 2.5em;
-      background-size: 2em;
     }
   }
 }

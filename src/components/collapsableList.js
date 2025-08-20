@@ -68,6 +68,8 @@ export default function collapsableList(
 
 	[$title, $mainWrapper].forEach(defineProperties);
 
+	$mainWrapper.dataset.id = `${Math.random().toString(36).substring(2, 15)}`;
+
 	return $mainWrapper;
 
 	function onUlScroll() {

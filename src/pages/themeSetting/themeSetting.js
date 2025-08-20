@@ -246,8 +246,8 @@ console.log(message);`);
 				<div className="container">
 					<span className="text">{name}</span>
 				</div>
-				{isCurrent ? check : <></>}
-				{isPremium ? star : <></>}
+				{isCurrent && check}
+				{isPremium && star}
 			</div>
 		);
 

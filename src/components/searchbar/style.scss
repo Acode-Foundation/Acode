@@ -44,21 +44,4 @@
     opacity: 0;
     transform: translate(0, -100%, 0);
   }
-
-  @media (min-width: 1024px) {
-    height: 50px;
-
-    input {
-      margin: 8px;
-      border-radius: 6px;
-      font-size: 1.1em;
-      padding: 0 12px;
-    }
-
-    .icon {
-      height: 50px;
-      width: 50px;
-      font-size: 1.3em;
-    }
-  }
 }

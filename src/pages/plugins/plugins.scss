@@ -52,9 +52,9 @@
   }
 
   .list-item {
-    margin: 0 0.75rem 0.5rem 0.75rem;
+    margin: 0 0.5rem 0.5rem 0.5rem;
     background: var(--secondary-color);
-    padding: 1rem;
+    padding: 0.875rem;
     border-radius: 12px;
     transition: all 0.2s ease;
     display: flex;
@@ -78,16 +78,16 @@
     .plugin-header {
       display: flex;
       align-items: center;
-      gap: 1rem;
+      gap: 0.75rem;
       width: 100%;
       max-width: 100%;
       height: fit-content;
-      min-height: 48px;
+      min-height: 40px;
 
       .plugin-icon {
-        width: 48px;
-        height: 48px;
-        border-radius: 12px;
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
         flex-shrink: 0;
         overflow: hidden;
         display: flex;
@@ -110,7 +110,7 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 1rem;
+        gap: 0.75rem;
         margin: 0;
         height: fit-content;
 
@@ -127,7 +127,7 @@
 
             .plugin-name {
               font-weight: 600;
-              font-size: 1rem;
+              font-size: 0.95rem;
               overflow: hidden;
               text-overflow: ellipsis;
               white-space: nowrap;
@@ -216,7 +216,7 @@
       gap: 0.5rem;
       cursor: pointer;
       z-index: 100;
-      min-width: 120px;
+      min-width: 100px;
       pointer-events: auto !important;
       position: relative;
       margin-left: auto;
@@ -231,8 +231,8 @@
     }
 
     .plugin-toggle-track {
-      width: 44px;
-      height: 24px;
+      width: 40px;
+      height: 22px;
       border-radius: 12px;
       background: #e5e7eb;
       position: relative;
@@ -252,8 +252,8 @@
       position: absolute;
       left: 2px;
       top: 2px;
-      width: 20px;
-      height: 20px;
+      width: 18px;
+      height: 18px;
       border-radius: 50%;
       background: white;
       box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
@@ -262,138 +262,7 @@
 
     .plugin-toggle-switch[data-enabled="true"] .plugin-toggle-thumb,
     .plugin-toggle-track[data-enabled="true"] .plugin-toggle-thumb {
-      left: 22px;
-    }
-
-    // Responsive design for larger screens
-    @media (min-width: 1024px) {
-      margin: 0 1rem 0.75rem 1rem;
-      padding: 1.25rem;
-      border-radius: 16px;
-
-      .plugin-header {
-        gap: 1.25rem;
-        min-height: 56px;
-
-        .plugin-icon {
-          width: 56px;
-          height: 56px;
-          border-radius: 14px;
-        }
-
-        .plugin-info {
-          gap: 1.25rem;
-
-          .plugin-main {
-            .plugin-title {
-              gap: 1rem;
-              margin-bottom: 0.5rem;
-
-              .plugin-name {
-                font-size: 1.1rem;
-                font-weight: 700;
-              }
-
-              .plugin-version {
-                font-size: 0.8rem;
-                padding: 0.3rem 0.6rem;
-              }
-            }
-
-            .plugin-meta {
-              font-size: 0.95rem;
-              gap: 0.75rem;
-
-              .plugin-stats {
-                font-size: 0.95rem;
-                gap: 0.5rem;
-
-                .icon {
-                  width: 16px;
-                  height: 16px;
-                  font-size: 16px;
-                }
-              }
-            }
-          }
-
-          .plugin-price {
-            padding: 0.5rem 1rem;
-            font-size: 0.95rem;
-            border-radius: 10px;
-          }
-        }
-      }
-
-      .plugin-toggle-switch {
-        min-width: 140px;
-        padding: 0.75rem;
-
-        .plugin-toggle-track {
-          width: 52px;
-          height: 28px;
-          border-radius: 14px;
-        }
-
-        .plugin-toggle-thumb {
-          width: 24px;
-          height: 24px;
-          left: 2px;
-          top: 2px;
-        }
-
-        &[data-enabled="true"] .plugin-toggle-thumb {
-          left: 26px;
-        }
-      }
-    }
-
-    // Responsive design for smaller screens
-    @media (max-width: 1024px) {
-      margin: 0 0.5rem 0.5rem 0.5rem;
-      padding: 0.875rem;
-
-      .plugin-header {
-        gap: 0.75rem;
-        min-height: 40px;
-
-        .plugin-icon {
-          width: 40px;
-          height: 40px;
-          border-radius: 10px;
-        }
-
-        .plugin-info {
-          gap: 0.75rem;
-
-          .plugin-main {
-            .plugin-title {
-              .plugin-name {
-                font-size: 0.95rem;
-              }
-            }
-          }
-        }
-      }
-
-      .plugin-toggle-switch {
-        min-width: 100px;
-      }
-
-      .plugin-toggle-track {
-        width: 40px;
-        height: 22px;
-      }
-
-      .plugin-toggle-thumb {
-        width: 18px;
-        height: 18px;
-      }
-
-      .plugin-toggle-switch[data-enabled="true"] .plugin-toggle-thumb,
-      .plugin-toggle-track[data-enabled="true"] .plugin-toggle-thumb {
-        left: 20px;
-      }
+      left: 20px;
     }
   }
 }

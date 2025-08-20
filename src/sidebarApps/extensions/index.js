@@ -57,6 +57,10 @@ const $header = (
 	</div>
 );
 
+const $style = <style></style>;
+/** @type {Set<HTMLElement>} */
+const $scrollableLists = new Set();
+
 let searchTimeout = null;
 let installedPlugins = [];
 
@@ -104,11 +108,11 @@ function initApp(el) {
 	if (!$installed) {
 		$installed = collapsableList(strings.installed);
 		$installed.ontoggle = loadInstalled;
-		//$installed.expand();
 		container.append($installed);
 	}
 
 	Sidebar.on("show", onSelected);
+	document.head.append($style);
 }
 
 async function handleScroll(e) {
@@ -284,15 +288,6 @@ async function filterPlugins() {
 	}
 }
 
-async function clearFilter() {
-	currentFilter = null;
-	filterCurrentPage = 1;
-	filterHasMore = true;
-	isFilterLoading = false;
-	$searchResult.content = "";
-	$searchResult.onscroll = null;
-}
-
 async function addSource() {
 	const sourceOption = [
 		["remote", strings.remote],
@@ -421,30 +416,63 @@ function updateHeight($el) {
 	removeHeight($installed, $el !== $installed);
 	removeHeight($explore, $el !== $explore);
 
-	let height = $header.getBoundingClientRect().height;
-	if ($el === $searchResult) {
-		height += 60;
-	} else {
-		height += $searchResult.getBoundingClientRect().height + 30;
-	}
+	try {
+		let height = $header.getBoundingClientRect().height;
+		const tileHeight = $el.get(":scope>.tile").getBoundingClientRect().height;
+		if ($el === $searchResult) {
+			height += 60;
+		} else {
+			height += $searchResult.getBoundingClientRect().height + tileHeight;
+		}
 
-	setHeight($el, height);
+		setHeight($el, height);
+	} catch (error) {
+		console.error(error);
+	}
 }
 
+/**
+ * Remove height styles from an element
+ * @param {HTMLElement} $el
+ * @param {Boolean} collapse
+ */
 function removeHeight($el, collapse = false) {
 	if (collapse) $el.collapse?.();
-	$el.style.removeProperty("max-height");
-	$el.style.removeProperty("height");
+
+	$scrollableLists.delete($el);
+	updateStyle();
 }
 
+/**
+ * Change the height of an element
+ * @param {HTMLElement} $el
+ * @param {Number} height
+ */
 function setHeight($el, height) {
+	$scrollableLists.add($el);
+
 	const calcHeight = height ? `calc(100% - ${height}px)` : "100%";
-	$el.style.maxHeight = calcHeight;
+	$el.dataset.height = calcHeight;
 	if ($el === $searchResult) {
 		$el.style.height = "fit-content";
 		return;
 	}
-	$el.style.height = calcHeight;
+
+	updateStyle();
+}
+
+function updateStyle() {
+	let style = "";
+
+	$scrollableLists.forEach(($el) => {
+		style += `
+			.list.collapsible[data-id="${$el.dataset.id}"] {
+				max-height: ${$el.dataset.height} !important;
+			}
+		`;
+	});
+
+	$style.innerHTML = style;
 }
 
 function getLocalRes(id, name) {
@@ -640,7 +668,9 @@ async function loadAd(el) {
 			await window.iad.load();
 			el.textContent = oldText;
 		}
-	} catch (error) {}
+	} catch (error) {
+		console.error(error);
+	}
 }
 
 async function uninstall(id) {

@@ -1,5 +1,5 @@
-import toast from "components/toast";
 import "./style.scss";
+import toast from "components/toast";
 import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
 import auth, { loginEvents } from "lib/auth";
