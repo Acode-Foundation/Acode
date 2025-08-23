@@ -441,4 +441,9 @@
 	"unauthorized": "Не авторизован",
 	"unknown error": "Неизвестная ошибка",
 	"not found": "Не найдено"
+	"downloads": "Загрузки",
+    "reviews": "Отзывы",
+    "overview": "Обзор",
+    "contributors": "Авторы",
+	"quicktools:hyphen": "Вставить символ дефиса"
 }
