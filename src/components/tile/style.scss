@@ -10,29 +10,13 @@ header {
     color: rgb(255, 255, 255);
     color: var(--primary-text-color);
 
-    > .text {
+    >.text {
       pointer-events: all !important;
       margin: auto;
       font-weight: bold;
       font-size: 1.2em;
       white-space: nowrap;
       overflow: auto;
-    }
-
-    @media (min-width: 769px) {
-      height: 60px;
-
-      > .text {
-        font-size: 1.4em;
-      }
-    }
-
-    @media (min-width: 1024px) {
-      height: 70px;
-
-      > .text {
-        font-size: 1.6em;
-      }
     }
   }
 }
@@ -80,7 +64,7 @@ header {
     opacity: 0.6;
   }
 
-  > .text {
+  >.text {
     flex: 1;
     white-space: nowrap;
     overflow: hidden;
@@ -112,20 +96,6 @@ header {
     &:active {
       transition: all 100ms ease;
       transform: scale(0.95) translateZ(0);
-    }
-
-    @media (min-width: 769px) {
-      height: 60px;
-      width: 60px;
-      font-size: 2.5em;
-      background-size: 2em;
-    }
-
-    @media (min-width: 1024px) {
-      height: 70px;
-      width: 70px;
-      font-size: 3em;
-      background-size: 2.2em;
     }
   }
 }

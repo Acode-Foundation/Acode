@@ -44,38 +44,4 @@
     opacity: 0;
     transform: translate(0, -100%, 0);
   }
-
-  @media (min-width: 769px) {
-    height: 60px;
-
-    input {
-      margin: 8px;
-      border-radius: 6px;
-      font-size: 1.1em;
-      padding: 0 12px;
-    }
-
-    .icon {
-      height: 60px;
-      width: 60px;
-      font-size: 1.4em;
-    }
-  }
-
-  @media (min-width: 1024px) {
-    height: 70px;
-
-    input {
-      margin: 10px;
-      border-radius: 8px;
-      font-size: 1.2em;
-      padding: 0 16px;
-    }
-
-    .icon {
-      height: 70px;
-      width: 70px;
-      font-size: 1.6em;
-    }
-  }
 }

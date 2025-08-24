@@ -6,6 +6,7 @@ import {
 } from "components/terminal";
 import toast from "components/toast";
 import alert from "dialogs/alert";
+import confirm from "dialogs/confirm";
 import loader from "dialogs/loader";
 import fonts from "lib/fonts";
 import appSettings from "lib/settings";
@@ -188,7 +189,7 @@ export default function terminalSettings() {
 	 * @param {string} key
 	 * @param {string} value
 	 */
-	function callback(key, value) {
+	async function callback(key, value) {
 		switch (key) {
 			case "all_file_access":
 				if (ANDROID_SDK_INT >= 30) {
@@ -213,20 +214,26 @@ export default function terminalSettings() {
 				return;
 
 			case "uninstall":
-				loader.showTitleLoader();
-				Terminal.uninstall()
-					.then(() => {
-						loader.removeTitleLoader();
-						alert(
-							strings.success.toUpperCase(),
-							"Terminal uninstalled successfully.",
-						);
-					})
-					.catch((error) => {
-						loader.removeTitleLoader();
-						console.error("Terminal uninstall failed:", error);
-						helpers.error(error);
-					});
+				const confirmation = await confirm(
+					strings.confirm,
+					"Are you sure you want to uninstall the terminal?",
+				);
+				if (confirmation) {
+					loader.showTitleLoader();
+					Terminal.uninstall()
+						.then(() => {
+							loader.removeTitleLoader();
+							alert(
+								strings.success.toUpperCase(),
+								"Terminal uninstalled successfully.",
+							);
+						})
+						.catch((error) => {
+							loader.removeTitleLoader();
+							console.error("Terminal uninstall failed:", error);
+							helpers.error(error);
+						});
+				}
 				return;
 
 			default:

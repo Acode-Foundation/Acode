@@ -64,52 +64,6 @@
         color: var(--secondary-text-color);
       }
     }
-
-    @media (min-width: 769px) {
-      padding: 12px;
-
-      .title {
-        font-size: 1.25rem;
-        margin-bottom: 10px;
-
-        .icon-button {
-          padding: 0.5rem;
-          margin-left: 0.5rem;
-          border-radius: 8px;
-          min-width: 36px;
-          min-height: 36px;
-          font-size: 1.1em;
-        }
-      }
-
-      input[type="search"] {
-        padding: 0.6rem;
-        font-size: 0.95rem;
-      }
-    }
-
-    @media (min-width: 1024px) {
-      padding: 16px;
-
-      .title {
-        font-size: 1.375rem;
-        margin-bottom: 12px;
-
-        .icon-button {
-          padding: 0.6rem;
-          margin-left: 0.6rem;
-          border-radius: 10px;
-          min-width: 40px;
-          min-height: 40px;
-          font-size: 1.2em;
-        }
-      }
-
-      input[type="search"] {
-        padding: 0.7rem;
-        font-size: 1rem;
-      }
-    }
   }
 
   .list.search-result {
@@ -155,7 +109,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    min-height: 35px;
+    min-height: 30px;
     padding: 6px 8px;
 
     .text {
@@ -213,52 +167,10 @@
         transform: scale(0.95);
       }
     }
-
-    @media (min-width: 769px) {
-      min-height: 42px;
-      padding: 8px 10px;
-
-      .text {
-        font-size: 1.05em;
-
-        &.sub-text {
-          font-size: 0.85rem;
-
-          &::after {
-            font-size: 0.75rem;
-          }
-        }
-      }
-    }
-
-    @media (min-width: 1024px) {
-      min-height: 48px;
-      padding: 10px 14px;
-
-      .text {
-        font-size: 1.1em;
-
-        &.sub-text {
-          font-size: 0.9rem;
-
-          &::after {
-            font-size: 0.8rem;
-          }
-        }
-      }
-    }
   }
 
   .icon {
     background-size: 24px !important;
     background-position: center !important;
-
-    @media (min-width: 769px) {
-      background-size: 28px !important;
-    }
-
-    @media (min-width: 1024px) {
-      background-size: 32px !important;
-    }
   }
 }

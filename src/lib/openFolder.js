@@ -114,7 +114,6 @@ function openFolder(_path, opts = {}) {
 			$root.expand();
 		},
 	};
-	addedFolder.push(folder);
 
 	editorManager.emit("update", "add-folder");
 	editorManager.onupdate("add-folder", event);
@@ -136,6 +135,7 @@ function openFolder(_path, opts = {}) {
 		}
 
 		folder.listFiles = listFiles;
+		addedFolder.push(folder);
 	})();
 
 	if (listState[_path]) {
@@ -833,29 +833,6 @@ function createFileTile(name, url) {
 
 	return $tile;
 }
-
-/**
- * Create a tail for the tile
- * @param {object} param0
- * @param {HTMLElement} param0.target
- * @returns {HTMLElement}
- */
-// function Tail({ target }) {
-// 	return (
-// 		<span
-// 			className="icon more_vert"
-// 			attr-action="close"
-// 			onclick={(e) => {
-// 				e.stopPropagation();
-// 				e.preventDefault();
-// 				handleItems({
-// 					target: target(),
-// 					type: "contextmenu",
-// 				});
-// 			}}
-// 		></span>
-// 	);
-// }
 
 /**
  * Add file or folder to the list if expanded

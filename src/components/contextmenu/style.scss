@@ -29,21 +29,7 @@ body.no-animation {
   border: solid 1px transparent;
   border: solid 1px var(--popup-border-color);
 
-  @media (min-width: 769px) {
-    min-width: 260px;
-    max-width: 400px;
-    min-height: 48px;
-    box-shadow: 0 0 8px var(--box-shadow-color);
-  }
-
-  @media (min-width: 1024px) {
-    min-width: 300px;
-    max-width: 480px;
-    min-height: 56px;
-    box-shadow: 0 0 16px var(--box-shadow-color);
-  }
-
-  & + .mask {
+  &+.mask {
     z-index: 110;
   }
 
@@ -108,44 +94,6 @@ body.no-animation {
     &.disabled {
       pointer-events: none;
       opacity: 0.5;
-    }
-
-    @media (min-width: 769px) {
-      height: 56px;
-      font-size: 1.05em;
-
-      &.notice::after {
-        font-size: 1.3em;
-      }
-
-      .text {
-        .value {
-          font-size: 0.85em;
-        }
-      }
-
-      .icon {
-        font-size: 1.1em;
-      }
-    }
-
-    @media (min-width: 1024px) {
-      height: 64px;
-      font-size: 1.1em;
-
-      &.notice::after {
-        font-size: 1.4em;
-      }
-
-      .text {
-        .value {
-          font-size: 0.9em;
-        }
-      }
-
-      .icon {
-        font-size: 1.2em;
-      }
     }
   }
 

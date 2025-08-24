@@ -73,7 +73,7 @@ body {
               transform: translate3d(-110px, 0, 0);
             }
 
-            > header {
+            >header {
               top: 10px;
               right: 10px;
               height: 40px;
@@ -106,7 +106,7 @@ body {
             width: calc(100% - 140px);
           }
 
-          > header {
+          >header {
             display: flex;
             justify-content: flex-end;
 
@@ -118,26 +118,26 @@ body {
 
         &.primary {
           &.top-bar {
-            > main {
+            >main {
               height: calc(100vh - 30px);
               min-height: calc(100vh - 30px);
             }
           }
 
-          > main {
+          >main {
             height: 100vh;
             min-height: 100vh;
           }
 
           &[footer-height="1"] {
             &.top-bar {
-              > main {
+              >main {
                 height: calc(100vh - 70px);
                 min-height: calc(100vh - 70px);
               }
             }
 
-            > main {
+            >main {
               height: calc(100vh - 40px);
               min-height: calc(100vh - 40px);
             }
@@ -247,14 +247,14 @@ wc-page {
   }
 
   .main {
-    > .options {
+    >.options {
       display: flex;
       height: 40px;
       min-height: 40px;
       box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
       box-shadow: 0 1px 4px var(--box-shadow-color);
 
-      > * {
+      >* {
         position: relative;
         display: flex;
         flex: 1;
@@ -272,30 +272,6 @@ wc-page {
           animation: strech 300ms ease 1;
           background-color: rgb(51, 153, 255);
           background-color: var(--active-color);
-        }
-      }
-
-      @media (min-width: 769px) {
-        height: 50px;
-        min-height: 50px;
-        font-size: 1.1em;
-
-        > * {
-          &.active::after {
-            height: 3px;
-          }
-        }
-      }
-
-      @media (min-width: 1024px) {
-        height: 60px;
-        min-height: 60px;
-        font-size: 1.2em;
-
-        > * {
-          &.active::after {
-            height: 4px;
-          }
         }
       }
     }
@@ -324,17 +300,10 @@ wc-page {
 
     #quicktools-toggler {
       transform: translate3d(0, -40px, 0);
-
-      @media (min-width: 769px) {
-        transform: translate3d(0, -50px, 0);
-      }
-
-      @media (min-width: 1024px) {
-        transform: translate3d(0, -60px, 0);
-      }
     }
 
     &.top-bar {
+
       main,
       .main {
         height: calc(100vh - 115px);
@@ -360,17 +329,10 @@ wc-page {
 
     #quicktools-toggler {
       transform: translate3d(0, -80px, 0);
-
-      @media (min-width: 769px) {
-        transform: translate3d(0, -100px, 0);
-      }
-
-      @media (min-width: 1024px) {
-        transform: translate3d(0, -120px, 0);
-      }
     }
 
     &.top-bar {
+
       .main,
       main {
         height: calc(100vh - 155px);
@@ -396,17 +358,10 @@ wc-page {
 
     #quicktools-toggler {
       transform: translate3d(0, -140px, 0);
-
-      @media (min-width: 769px) {
-        transform: translate3d(0, -150px, 0);
-      }
-
-      @media (min-width: 1024px) {
-        transform: translate3d(0, -180px, 0);
-      }
     }
 
     &.top-bar {
+
       .main,
       main {
         height: calc(100vh - 195px);
@@ -551,50 +506,6 @@ wc-page {
           font-family: "code-editor-icon";
           content: "\E99E";
           margin: auto 1.5px;
-        }
-      }
-
-      @media (min-width: 769px) {
-        height: 35px;
-
-        .nav {
-          height: 30px;
-          font-size: 1em;
-          margin: auto 2px;
-
-          &::after {
-            padding: 3px;
-          }
-
-          &:first-of-type {
-            margin-left: 15px;
-          }
-
-          &:not(:first-of-type)::before {
-            margin: auto 2px;
-          }
-        }
-      }
-
-      @media (min-width: 1024px) {
-        height: 40px;
-
-        .nav {
-          height: 35px;
-          font-size: 1.1em;
-          margin: auto 3px;
-
-          &::after {
-            padding: 4px;
-          }
-
-          &:first-of-type {
-            margin-left: 20px;
-          }
-
-          &:not(:first-of-type)::before {
-            margin: auto 3px;
-          }
         }
       }
     }
