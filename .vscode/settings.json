@@ -372,5 +372,6 @@
     "wxss",
     "xquery",
     "Zeek"
-  ]
+  ],
+  "discord.enabled": true
 }
