@@ -91,7 +91,8 @@ function isValidUTF8(bytes) {
 
 export async function detectEncoding(buffer) {
 	if (!buffer || buffer.byteLength === 0) {
-		return settings.value.defaultFileEncoding || "UTF-8";
+		const def = settings.value.defaultFileEncoding;
+		return def === "auto" ? "UTF-8" : def || "UTF-8";
 	}
 
 	const bytes = new Uint8Array(buffer);
@@ -115,7 +116,9 @@ export async function detectEncoding(buffer) {
 	const encodings = [
 		...new Set([
 			"UTF-8",
-			settings.value.defaultFileEncoding || "UTF-8",
+			settings.value.defaultFileEncoding === "auto"
+				? "UTF-8"
+				: settings.value.defaultFileEncoding || "UTF-8",
 			"windows-1252",
 			"ISO-8859-1",
 		]),
@@ -144,7 +147,8 @@ export async function detectEncoding(buffer) {
 		}
 	}
 
-	return settings.value.defaultFileEncoding || "UTF-8";
+	const def = settings.value.defaultFileEncoding;
+	return def === "auto" ? "UTF-8" : def || "UTF-8";
 }
 
 /**
@@ -164,6 +168,8 @@ export async function decode(buffer, charset) {
 	if (!charset) {
 		charset = settings.value.defaultFileEncoding;
 	}
+
+	if (charset === "auto") charset = "UTF-8";
 
 	charset = getEncoding(charset).name;
 	const text = await execDecode(buffer, charset);
@@ -185,6 +191,8 @@ export function encode(text, charset) {
 	if (!charset) {
 		charset = settings.value.defaultFileEncoding;
 	}
+
+	if (charset === "auto") charset = "UTF-8";
 
 	charset = getEncoding(charset).name;
 	return execEncode(text, charset);

@@ -386,14 +386,21 @@ export default async function openFile(file, options = {}) {
 
 		const binData = await fs.readFile();
 
-		// Detect encoding if not explicitly provided
+		// Determine encoding: if explicit provided use it, otherwise
+		// if settings.defaultFileEncoding === 'auto' then detect; else use the default as-is
 		let detectedEncoding = file.encoding || encoding;
 		if (!detectedEncoding) {
-			try {
-				detectedEncoding = await detectEncoding(binData);
-			} catch (error) {
-				console.warn("Encoding detection failed, using default:", error);
-				detectedEncoding = appSettings.value.defaultFileEncoding;
+			const defaultSetting = appSettings.value.defaultFileEncoding;
+			if (defaultSetting === "auto") {
+				try {
+					detectedEncoding = await detectEncoding(binData);
+					if (detectedEncoding === "auto") detectedEncoding = "UTF-8";
+				} catch (error) {
+					console.warn("Encoding detection failed, using UTF-8:", error);
+					detectedEncoding = "UTF-8";
+				}
+			} else {
+				detectedEncoding = defaultSetting || "UTF-8";
 			}
 		}
 

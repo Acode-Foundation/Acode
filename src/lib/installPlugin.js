@@ -173,6 +173,9 @@ export default async function installPlugin(
 				await fsOperation(PLUGIN_DIR).createDirectory(id);
 			}
 
+			// Track unsafe absolute entries to skip
+			const ignoredUnsafeEntries = new Set();
+
 			const promises = Object.keys(zip.files).map(async (file) => {
 				try {
 					let correctFile = file;
@@ -180,14 +183,39 @@ export default async function installPlugin(
 						correctFile = correctFile.replace(/\\/g, "/");
 					}
 
-					const fileUrl = Url.join(pluginDir, correctFile);
+					// Determine if the zip entry is a directory from JSZip metadata
+					const isDirEntry = !!zip.files[file].dir || /\/$/.test(correctFile);
 
-					if (!state.exists(correctFile)) {
-						await createFileRecursive(pluginDir, correctFile);
+					// If the original path is absolute or otherwise unsafe, skip it and warn later
+					console.log(
+						`Skipping unsafe path: ${file} : ${isUnsafeAbsolutePath(file)}`,
+					);
+					if (isUnsafeAbsolutePath(file)) {
+						ignoredUnsafeEntries.add(file);
+						return;
 					}
 
-					// Skip directories
-					if (correctFile.endsWith("/")) return;
+					// Sanitize path so it cannot escape pluginDir or start with '/'
+					correctFile = sanitizeZipPath(correctFile, isDirEntry);
+					if (!correctFile) return; // nothing to do
+					const fileUrl = Url.join(pluginDir, correctFile);
+
+					// Always ensure directories exist for dir entries
+					if (isDirEntry) {
+						await createFileRecursive(pluginDir, correctFile, true);
+						return;
+					}
+
+					// For files, ensure parent directory exists even if state claims it exists
+					const lastSlash = correctFile.lastIndexOf("/");
+					if (lastSlash >= 0) {
+						const parentRel = correctFile.slice(0, lastSlash + 1);
+						await createFileRecursive(pluginDir, parentRel, true);
+					}
+
+					if (!state.exists(correctFile)) {
+						await createFileRecursive(pluginDir, correctFile, false);
+					}
 
 					let data = await zip.files[file].async("ArrayBuffer");
 
@@ -205,6 +233,20 @@ export default async function installPlugin(
 
 			// Wait for all files to be processed
 			await Promise.allSettled(promises);
+
+			// Emit a non-blocking warning if any unsafe entries were skipped
+			if (!isDependency && ignoredUnsafeEntries.size) {
+				const sample = Array.from(ignoredUnsafeEntries).slice(0, 3).join(", ");
+				loaderDialog.setMessage(
+					`Skipped ${ignoredUnsafeEntries.size} unsafe archive entr${
+						ignoredUnsafeEntries.size === 1 ? "y" : "ies"
+					} (e.g., ${sample})`,
+				);
+				console.warn(
+					"Plugin installer: skipped unsafe absolute paths in archive:",
+					Array.from(ignoredUnsafeEntries),
+				);
+			}
 
 			if (isDependency) {
 				depsLoaders.push(async () => {
@@ -245,28 +287,105 @@ export default async function installPlugin(
  * @param {string} parent
  * @param {Array<string> | string} dir
  */
-async function createFileRecursive(parent, dir) {
-	let isDir = false;
+async function createFileRecursive(parent, dir, shouldBeDirAtEnd) {
+	let wantDirEnd = !!shouldBeDirAtEnd;
+	/** @type {string[]} */
+	let parts;
 	if (typeof dir === "string") {
-		if (dir.endsWith("/")) {
-			isDir = true;
-			dir = dir.slice(0, -1);
-		}
-		dir = dir.split("/");
+		if (dir.endsWith("/")) wantDirEnd = true;
+		dir = dir.replace(/\\/g, "/");
+		parts = dir.split("/");
+	} else {
+		parts = dir;
 	}
-	dir = dir.filter((d) => d);
-	const cd = dir.shift();
+	parts = parts.filter((d) => d);
+	const cd = parts.shift();
+	if (!cd) return;
 	const newParent = Url.join(parent, cd);
+
+	const isLast = parts.length === 0;
+	const needDir = !isLast || wantDirEnd;
 	if (!(await fsOperation(newParent).exists())) {
-		if (dir.length || isDir) {
-			await fsOperation(parent).createDirectory(cd);
+		if (needDir) {
+			try {
+				await fsOperation(parent).createDirectory(cd);
+			} catch (e) {
+				// If another concurrent task created it, consider it fine
+				if (!(await fsOperation(newParent).exists())) throw e;
+			}
 		} else {
-			await fsOperation(parent).createFile(cd);
+			try {
+				await fsOperation(parent).createFile(cd);
+			} catch (e) {
+				if (!(await fsOperation(newParent).exists())) throw e;
+			}
 		}
 	}
-	if (dir.length) {
-		await createFileRecursive(newParent, dir);
+	if (parts.length) {
+		await createFileRecursive(newParent, parts, wantDirEnd);
 	}
+}
+
+/**
+ * Sanitize zip entry path to ensure it's relative and safe under pluginDir
+ * - Normalizes separators to '/'
+ * - Strips leading slashes and Windows drive prefixes (e.g., C:/)
+ * - Resolves '.' and '..' segments
+ * - Preserves trailing slash for directory entries
+ * @param {string} p
+ * @param {boolean} isDir
+ * @returns {string} sanitized relative path
+ */
+function sanitizeZipPath(p, isDir) {
+	if (!p) return "";
+	let path = String(p);
+	// Normalize separators
+	path = path.replace(/\\/g, "/");
+	// Remove URL-like scheme if present accidentally
+	path = path.replace(/^[a-zA-Z]+:\/\//, "");
+	// Strip leading slashes
+	path = path.replace(/^\/+/, "");
+	// Strip Windows drive letter, e.g., C:/
+	path = path.replace(/^[A-Za-z]:\//, "");
+
+	const parts = path.split("/");
+	const stack = [];
+	for (const part of parts) {
+		if (!part || part === ".") continue;
+		if (part === "..") {
+			if (stack.length) stack.pop();
+			continue;
+		}
+		stack.push(part);
+	}
+	let safe = stack.join("/");
+	if (isDir && safe && !safe.endsWith("/")) safe += "/";
+	return safe;
+}
+
+/**
+ * Detects unsafe absolute paths in zip entries that should be ignored.
+ * Treats leading '/' as absolute, Windows drive roots like 'C:/' as absolute,
+ * and common Android/Linux device roots like '/data', '/root', '/system'.
+ * @param {string} p
+ */
+function isUnsafeAbsolutePath(p) {
+	if (!p) return false;
+	const s = String(p);
+	if (/^[A-Za-z]:[\\\/]/.test(s)) return true; // Windows drive root
+	if (s.startsWith("//")) return true; // network path
+	if (s.startsWith("/")) {
+		return (
+			s.startsWith("/data") ||
+			s.startsWith("/system") ||
+			s.startsWith("/vendor") ||
+			s.startsWith("/storage") ||
+			s.startsWith("/sdcard") ||
+			s.startsWith("/root") ||
+			true // any leading slash is unsafe
+		);
+	}
+	return false;
 }
 
 /**
