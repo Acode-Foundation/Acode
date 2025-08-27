@@ -668,6 +668,9 @@ async function EditorManager($header, $body) {
 			}
 		}
 
+		file.tab.classList.add("active");
+		file.tab.scrollIntoView();
+
 		if (file?.hideQuickTools) {
 			root.classList.add("hide-floating-button");
 			actions("set-height", { height: 0, save: false });
