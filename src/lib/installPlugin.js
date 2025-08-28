@@ -187,9 +187,6 @@ export default async function installPlugin(
 					const isDirEntry = !!zip.files[file].dir || /\/$/.test(correctFile);
 
 					// If the original path is absolute or otherwise unsafe, skip it and warn later
-					console.log(
-						`Skipping unsafe path: ${file} : ${isUnsafeAbsolutePath(file)}`,
-					);
 					if (isUnsafeAbsolutePath(file)) {
 						ignoredUnsafeEntries.add(file);
 						return;
