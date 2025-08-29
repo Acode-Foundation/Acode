@@ -426,5 +426,6 @@
 	"reviews": "reviews",
 	"overview": "Overview",
 	"contributors": "Contributors",
-	"quicktools:hyphen": "Insert hyphen symbol"
+	"quicktools:hyphen": "Insert hyphen symbol",
+	"search exclude": "Search Exclude"
 }

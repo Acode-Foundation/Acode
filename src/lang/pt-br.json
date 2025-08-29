@@ -426,5 +426,6 @@
 	"reviews": "Avaliações",
 	"overview": "Visão Geral",
 	"contributors": "Contribuidores",
-	"quicktools:hyphen": "Inserir símbolo de hífen"
+	"quicktools:hyphen": "Inserir símbolo de hífen",
+	"search exclude": "Search Exclude"
 }

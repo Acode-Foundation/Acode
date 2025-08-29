@@ -426,5 +426,6 @@
 	"reviews": "Отзывы",
 	"overview": "Обзор",
 	"contributors": "Авторы",
-	"quicktools:hyphen": "Вставить символ дефиса"
+	"quicktools:hyphen": "Вставить символ дефиса",
+	"search exclude": "Search Exclude"
 }

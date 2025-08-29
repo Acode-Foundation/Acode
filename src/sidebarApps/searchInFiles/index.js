@@ -422,7 +422,9 @@ async function searchAll() {
 
 	addEvents();
 
+	files.search = true;
 	const allFiles = files();
+	files.search = false;
 	editorManager.files.forEach((file) => {
 		const exists = allFiles.find((f) => f.url === file.uri);
 		if (exists) return;
