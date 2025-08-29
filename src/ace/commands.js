@@ -310,6 +310,14 @@ const commands = [
 		readOnly: true,
 	},
 	{
+		name: "openAiAssistant",
+		description: "AI Assistant",
+		exec() {
+			acode.exec("open", "ai_assistant");
+		},
+		readOnly: true,
+	},
+	{
 		name: "openFileExplorer",
 		description: "File Explorer",
 		exec() {
