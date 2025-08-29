@@ -77,6 +77,9 @@ function patchTargetSdkVersion() {
       if (fdroid == "true") {
         api = "28";
       }
+    } else {
+      console.error(`${getTmpDir()}/fdroid.bool not found`);
+      process.exit(1);
     }
 
     content = content.replace(sdkRegex, 'targetSdkVersion ' + api);
