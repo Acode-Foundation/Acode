@@ -37,6 +37,7 @@
 * fix: ftp infinite loading by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1552
 * fix: tab active state when switching tab with api by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1557
 * fix: resize of terminal and some small patches by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1562
+* fix: fdroid builds by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1565
 
 ## v1.11.5 (963)
 
