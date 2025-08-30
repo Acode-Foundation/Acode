@@ -1,0 +1,20 @@
+from moviepy.editor import VideoFileClip, vfx
+
+# Input/Output paths
+input_path = "/mnt/data/video_20250830_110741_edit.mp4"
+output_path = "/mnt/data/chou_edit_tiktok_short.mp4"
+
+# Load video
+clip = VideoFileClip(input_path)
+
+# Cut first 15 seconds
+clip_short = clip.subclip(0, min(15, clip.duration))
+
+# Resize to TikTok vertical 9:16 format
+clip_resized = clip_short.resize(height=1080).crop(x_center=clip.w/2, width=608, height=1080)
+
+# Add slow motion effect (0.8x speed for dramatic moment)
+clip_effect = clip_resized.fx(vfx.speedx, 0.8)
+
+# Export final 15s edit
+clip_effect.write_videofile(output_path, codec="libx264", audio_codec="aac")
