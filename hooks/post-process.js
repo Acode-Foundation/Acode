@@ -34,6 +34,27 @@ enableStaticContext();
 patchTargetSdkVersion();
 
 
+function getTmpDir() {
+  const tmpdirEnv = process.env.TMPDIR;
+
+  if (tmpdirEnv) {
+    try {
+      fs.accessSync(tmpdirEnv, fs.constants.R_OK | fs.constants.W_OK);
+      return tmpdirEnv;
+    } catch {
+      // TMPDIR exists but not accessible
+    }
+  }
+
+  try {
+    fs.accessSync("/tmp", fs.constants.R_OK | fs.constants.W_OK);
+    return "/tmp";
+  } catch {
+    console.error("Error: No usable temporary directory found (TMPDIR or /tmp not accessible).");
+    process.exit(1);
+  }
+}
+
 function patchTargetSdkVersion() {
   const prefix = execSync('npm prefix').toString().trim();
   const gradleFile = path.join(prefix, 'platforms/android/app/build.gradle');
@@ -49,13 +70,16 @@ function patchTargetSdkVersion() {
 
   if (sdkRegex.test(content)) {
     let api = "35";
-    const froidFlag = path.join(prefix, 'fdroid.bool');
+    const froidFlag = path.join(getTmpDir(), 'fdroid.bool');
 
     if (fs.existsSync(froidFlag)) {
       const fdroid = fs.readFileSync(froidFlag, 'utf-8').trim();
       if (fdroid == "true") {
         api = "28";
       }
+    } else {
+      console.error(`${getTmpDir()}/fdroid.bool not found`);
+      process.exit(1);
     }
 
     content = content.replace(sdkRegex, 'targetSdkVersion ' + api);

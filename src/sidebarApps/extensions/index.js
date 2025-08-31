@@ -417,12 +417,12 @@ function updateHeight($el) {
 	removeHeight($explore, $el !== $explore);
 
 	try {
-		let height = $header.getBoundingClientRect().height;
-		const tileHeight = $el.get(":scope>.tile").getBoundingClientRect().height;
+		let height = $header?.getBoundingClientRect().height;
+		const tileHeight = $el.get(":scope>.tile")?.getBoundingClientRect().height;
 		if ($el === $searchResult) {
 			height += 60;
 		} else {
-			height += $searchResult.getBoundingClientRect().height + tileHeight;
+			height += $searchResult?.getBoundingClientRect().height + tileHeight;
 		}
 
 		setHeight($el, height);

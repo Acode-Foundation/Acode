@@ -1,5 +1,44 @@
 # Change Log
 
+## v1.11.6 (965)
+
+* fix: Terminal in F-Droid flavour by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1478
+* feat: update target SDK to API 35 and fix edge-to-edge compatibility by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1486
+* improve German translation by @brian200508 in https://github.com/Acode-Foundation/Acode/pull/1487
+* Translation: Update hu-hu.json by @summoner001 in https://github.com/Acode-Foundation/Acode/pull/1489
+* chore(update IAP library to lateset version) by @deadlyjack in https://github.com/Acode-Foundation/Acode/pull/1405
+* feat: font manager ui for managing custom fonts by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1491
+* feat: add package updated time display on plugin page by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1494
+* chore: update id-id.json by @hyperz111 in https://github.com/Acode-Foundation/Acode/pull/1495
+* fix: document provider by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1497
+* feat(sponsor page) by @deadlyjack in https://github.com/Acode-Foundation/Acode/pull/1496
+* fix: load custom fonts on restart by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1499
+* Update hu-hu.json by @summoner001 in https://github.com/Acode-Foundation/Acode/pull/1498
+* fix: resolve GitHub URI preview issues in server by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1501
+* fix: plugins page scrolling by @deadlyjack in https://github.com/Acode-Foundation/Acode/pull/1505
+* [chore] bump workflow dependencies to latest versions by @Jvr2022 in https://github.com/Acode-Foundation/Acode/pull/1506
+* fix: load base app stylesheet in custom editor tab by @deadlyjack in https://github.com/Acode-Foundation/Acode/pull/1507
+* update src/lang/pt-br.json by @sebastianjnuwu in https://github.com/Acode-Foundation/Acode/pull/1510
+* Add code formatter keybind by @UnschooledGamer in https://github.com/Acode-Foundation/Acode/pull/1511
+* Added hyphen in quicktools and more strings for i18n by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1516
+* chore(i18n): update id-id.json with new strings by @hyperz111 in https://github.com/Acode-Foundation/Acode/pull/1521
+* chore(i18n): update hu-hu.json with new strings by @summoner001 in https://github.com/Acode-Foundation/Acode/pull/1520
+* Add/Update Bengali (bn-BD) Translation File by @thebadhonbiswas in https://github.com/Acode-Foundation/Acode/pull/1522
+* feat: take confirmation before uninstalling terminal by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1528
+* fix ui issue by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1527
+* fix: disable changing editor theme when system is selected by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1529
+* fix: svg render issue by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1530
+* fix: encoding detection by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1533
+* fix: big screen ui and global search worker issue by @deadlyjack in https://github.com/Acode-Foundation/Acode/pull/1534
+* fix: improved terminal mounts by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1537
+* chore(i18n): refine Russian (ru-ru.json) localization with updated and new strings by @Nein-Ich-wurde-Gewinnen in https://github.com/Acode-Foundation/Acode/pull/1541
+* Fixed Plugin installation issues(in some cases) by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1546
+* feat: add option to auto detect encoding by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1547
+* fix: ftp infinite loading by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1552
+* fix: tab active state when switching tab with api by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1557
+* fix: resize of terminal and some small patches by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1562
+* fix: fdroid builds by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1565
+
 ## v1.11.5 (963)
 
 * Alpine Linux Backend by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1401
