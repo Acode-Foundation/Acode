@@ -20,6 +20,8 @@
         <config-file parent="/*" target="AndroidManifest.xml" />
 
         <source-file src="src/android/Executor.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
+        <source-file src="src/android/TerminalService.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
+        
         <source-file src="src/android/AlpineDocumentProvider.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
 
         <source-file src="scripts/init-sandbox.sh" target-dir="assets"/>
@@ -29,16 +31,30 @@
 
         <config-file target="AndroidManifest.xml" parent="./application">
             <provider
-            android:name="com.foxdebug.acode.rk.exec.terminal.AlpineDocumentProvider"
-            android:authorities="${applicationId}.documents"
-            android:exported="true"
-            android:grantUriPermissions="true"
-            android:icon="@mipmap/ic_launcher"
-            android:permission="android.permission.MANAGE_DOCUMENTS">
+                android:name="com.foxdebug.acode.rk.exec.terminal.AlpineDocumentProvider"
+                android:authorities="${applicationId}.documents"
+                android:exported="true"
+                android:grantUriPermissions="true"
+                android:icon="@mipmap/ic_launcher"
+                android:permission="android.permission.MANAGE_DOCUMENTS">
             <intent-filter>
                 <action android:name="android.content.action.DOCUMENTS_PROVIDER" />
             </intent-filter>
             </provider>
+
+            <service
+                android:name="com.foxdebug.acode.rk.exec.terminal.TerminalService"
+                android:enabled="true"
+                android:foregroundServiceType="specialUse"
+                android:exported="true" />
+
+        </config-file>
+
+        <config-file target="AndroidManifest.xml" parent="/manifest">
+            <uses-permission android:name="android.permission.WAKE_LOCK"/>
+            <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+            <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
+            <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
         </config-file>
 
            
