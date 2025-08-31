@@ -5,6 +5,7 @@ import "./main.scss";
 import "res/icons/style.css";
 import "res/file-icons/style.css";
 import "styles/overrideAceStyle.scss";
+import "styles/wideScreen.scss";
 
 import "lib/polyfill";
 import "ace/supportedModes";
@@ -204,16 +205,6 @@ async function onDeviceReady() {
 				"data-small-msg",
 				"This is taking unexpectedly long time!",
 			);
-			// share the log file (but currently doesn't work)
-			// system.fileAction(
-			//   Url.join(DATA_STORAGE, constants.LOG_FILE_NAME),
-			//   constants.LOG_FILE_NAME,
-			//   "SEND",
-			//   "text/plain",
-			//   () => {
-			//     toast(strings["no app found to handle this file"]);
-			//   },
-			// );
 		}
 	}, 1000 * 10);
 

@@ -55,9 +55,44 @@ function detectBOM(bytes) {
 	return null;
 }
 
+function isValidUTF8(bytes) {
+	let i = 0;
+	while (i < bytes.length) {
+		const byte = bytes[i];
+
+		if (byte < 0x80) {
+			i++;
+		} else if (byte >> 5 === 0x06) {
+			if (i + 1 >= bytes.length || bytes[i + 1] >> 6 !== 0x02) return false;
+			i += 2;
+		} else if (byte >> 4 === 0x0e) {
+			if (
+				i + 2 >= bytes.length ||
+				bytes[i + 1] >> 6 !== 0x02 ||
+				bytes[i + 2] >> 6 !== 0x02
+			)
+				return false;
+			i += 3;
+		} else if (byte >> 3 === 0x1e) {
+			if (
+				i + 3 >= bytes.length ||
+				bytes[i + 1] >> 6 !== 0x02 ||
+				bytes[i + 2] >> 6 !== 0x02 ||
+				bytes[i + 3] >> 6 !== 0x02
+			)
+				return false;
+			i += 4;
+		} else {
+			return false;
+		}
+	}
+	return true;
+}
+
 export async function detectEncoding(buffer) {
 	if (!buffer || buffer.byteLength === 0) {
-		return settings.value.defaultFileEncoding || "UTF-8";
+		const def = settings.value.defaultFileEncoding;
+		return def === "auto" ? "UTF-8" : def || "UTF-8";
 	}
 
 	const bytes = new Uint8Array(buffer);
@@ -74,13 +109,16 @@ export async function detectEncoding(buffer) {
 		else if (byte < 0x80) ascii++;
 	}
 
-	if (ascii / sample.length > 0.95) return "UTF-8";
 	if (nulls > sample.length * 0.3) return "UTF-16LE";
+
+	if (isValidUTF8(sample)) return "UTF-8";
 
 	const encodings = [
 		...new Set([
 			"UTF-8",
-			settings.value.defaultFileEncoding || "UTF-8",
+			settings.value.defaultFileEncoding === "auto"
+				? "UTF-8"
+				: settings.value.defaultFileEncoding || "UTF-8",
 			"windows-1252",
 			"ISO-8859-1",
 		]),
@@ -109,7 +147,8 @@ export async function detectEncoding(buffer) {
 		}
 	}
 
-	return settings.value.defaultFileEncoding || "UTF-8";
+	const def = settings.value.defaultFileEncoding;
+	return def === "auto" ? "UTF-8" : def || "UTF-8";
 }
 
 /**
@@ -129,6 +168,8 @@ export async function decode(buffer, charset) {
 	if (!charset) {
 		charset = settings.value.defaultFileEncoding;
 	}
+
+	if (charset === "auto") charset = "UTF-8";
 
 	charset = getEncoding(charset).name;
 	const text = await execDecode(buffer, charset);
@@ -150,6 +191,8 @@ export function encode(text, charset) {
 	if (!charset) {
 		charset = settings.value.defaultFileEncoding;
 	}
+
+	if (charset === "auto") charset = "UTF-8";
 
 	charset = getEncoding(charset).name;
 	return execEncode(text, charset);

@@ -2,6 +2,7 @@ import "./themeSetting.scss";
 import Page from "components/page";
 import searchBar from "components/searchbar";
 import TabView from "components/tabView";
+import alert from "dialogs/alert";
 import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
 import removeAds from "lib/removeAds";
@@ -15,7 +16,7 @@ export default function () {
 	const $page = Page(strings.theme.capitalize());
 	const $search = <span attr-action="search" className="icon search"></span>;
 	const $themePreview = <div id="theme-preview"></div>;
-	const list = Ref();
+	const list = new Ref();
 	const editor = ace.edit($themePreview);
 
 	const session = ace.createEditSession("");
@@ -195,8 +196,10 @@ console.log(message);`);
 	function setEditorTheme({ caption, theme }) {
 		if (appSettings.value.appTheme.toLowerCase() === "system") {
 			alert(
+				"Info",
 				"App theme is set to 'System'. Changing the editor theme will not affect the editor appearance.",
 			);
+			return;
 		}
 		editorManager.editor.setTheme(theme);
 		editor.setTheme(theme); // preview
@@ -243,8 +246,8 @@ console.log(message);`);
 				<div className="container">
 					<span className="text">{name}</span>
 				</div>
-				{isCurrent ? check : <></>}
-				{isPremium ? star : <></>}
+				{isCurrent && check}
+				{isPremium && star}
 			</div>
 		);
 

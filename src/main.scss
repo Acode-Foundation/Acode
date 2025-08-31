@@ -27,10 +27,6 @@ body {
   width: 100%;
   height: 100%;
   font-size: 14px;
-
-  @media (min-width: 1024px) {
-    font-size: 15px;
-  }
 }
 
 body {
@@ -331,10 +327,6 @@ footer {
   user-select: none;
   width: 100%;
 
-  @media (min-width: 1024px) {
-    min-height: 45px;
-  }
-
   &.primary {
     button {
       color: white !important;
@@ -411,10 +403,6 @@ footer {
   .icon {
     color: inherit;
     font-size: 1.3em;
-
-    @media (min-width: 1024px) {
-      font-size: 1.4em;
-    }
   }
 
   .search,
@@ -440,12 +428,6 @@ input {
   &:focus {
     border-bottom-color: #a90000 !important;
     border-bottom-color: var(--active-color) !important;
-  }
-
-  @media (min-width: 1024px) {
-    height: 45px;
-    font-size: 1.1em;
-    text-indent: 12px;
   }
 }
 
@@ -608,14 +590,6 @@ textarea {
 
   &.hide {
     opacity: 0 !important;
-  }
-
-  @media (min-width: 1024px) {
-    height: 65px;
-    width: 65px;
-    font-size: 2rem;
-    top: 15px;
-    right: 15px;
   }
 }
 

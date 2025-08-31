@@ -178,11 +178,15 @@ export default function otherSettings() {
 			key: "defaultFileEncoding",
 			text: strings["default file encoding"],
 			value: values.defaultFileEncoding,
-			valueText: (value) => getEncoding(value).label,
-			select: Object.keys(encodings).map((id) => {
-				const encoding = encodings[id];
-				return [id, encoding.label];
-			}),
+			valueText: (value) =>
+				value === "auto" ? strings.auto || "Auto" : getEncoding(value).label,
+			select: [
+				["auto", strings.auto || "Auto"],
+				...Object.keys(encodings).map((id) => {
+					const encoding = encodings[id];
+					return [id, encoding.label];
+				}),
+			],
 		},
 	];
 

@@ -19,7 +19,7 @@
         </config-file>
 
         <source-file src="src/android/com/foxdebug/ftp/Ftp.java" target-dir="src/com/foxdebug/ftp" />
-        <framework src="commons-net:commons-net:3.11.1" />
+        <framework src="commons-net:commons-net:3.12.0" />
     </platform>
 
 </plugin>

@@ -26,9 +26,28 @@ export default class InstallState {
 
 			state.storeUrl = Url.join(INSTALL_STATE_STORAGE, state.id);
 			if (await fsOperation(state.storeUrl).exists()) {
-				state.store = JSON.parse(
-					await fsOperation(state.storeUrl).readFile("utf-8"),
-				);
+				let raw = "{}";
+				try {
+					raw = await fsOperation(state.storeUrl).readFile("utf-8");
+					state.store = JSON.parse(raw);
+				} catch (err) {
+					console.error(
+						"InstallState: Failed to parse state file, deleting:",
+						err,
+					);
+					// Delete corrupted state file to avoid parse errors such as 'Unexpected end of JSON'
+					state.store = {};
+					try {
+						await fsOperation(state.storeUrl).delete();
+						// Recreate a fresh empty file to keep invariant
+						await fsOperation(INSTALL_STATE_STORAGE).createFile(state.id);
+					} catch (writeErr) {
+						console.error(
+							"InstallState: Failed to recreate state file:",
+							writeErr,
+						);
+					}
+				}
 
 				const patchedStore = {};
 				for (const [key, value] of Object.entries(state.store)) {
@@ -101,7 +120,19 @@ export default class InstallState {
 		try {
 			this.store = {};
 			this.updatedStore = {};
-			await fsOperation(this.storeUrl).writeFile("{}");
+			// Delete the state file entirely to avoid corrupted/partial JSON issues
+			if (await fsOperation(this.storeUrl).exists()) {
+				try {
+					await fsOperation(this.storeUrl).delete();
+				} catch (delErr) {
+					console.error(
+						"InstallState: Failed to delete state file during clear:",
+						delErr,
+					);
+					// As a fallback, overwrite with a valid empty JSON
+					await fsOperation(this.storeUrl).writeFile("{}");
+				}
+			}
 		} catch (error) {
 			console.error("Failed to clear install state:", error);
 		}

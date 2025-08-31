@@ -29,12 +29,6 @@ body.no-animation {
   border: solid 1px transparent;
   border: solid 1px var(--popup-border-color);
 
-  @media (min-width: 1024px) {
-    min-width: 260px;
-    max-width: 400px;
-    min-height: 48px;
-  }
-
   &+.mask {
     z-index: 110;
   }
@@ -100,25 +94,6 @@ body.no-animation {
     &.disabled {
       pointer-events: none;
       opacity: 0.5;
-    }
-
-    @media (min-width: 1024px) {
-      height: 55px;
-      font-size: 1.05em;
-
-      &.notice::after {
-        font-size: 1.3em;
-      }
-
-      .text {
-        .value {
-          font-size: 0.85em;
-        }
-      }
-
-      .icon {
-        font-size: 1.1em;
-      }
     }
   }
 

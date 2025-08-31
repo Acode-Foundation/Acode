@@ -44,12 +44,15 @@ class TerminalManager {
 				id: `terminal-${terminalId}`,
 			});
 
-			// Terminal styles
-			const terminalStyles = this.getTerminalStyles();
-			const terminalStyle = tag("style", {
-				textContent: terminalStyles,
-			});
-			document.body.appendChild(terminalStyle);
+			// Terminal styles (inject once)
+			if (!document.getElementById("acode-terminal-styles")) {
+				const terminalStyles = this.getTerminalStyles();
+				const terminalStyle = tag("style", {
+					id: "acode-terminal-styles",
+					textContent: terminalStyles,
+				});
+				document.body.appendChild(terminalStyle);
+			}
 
 			// Create EditorFile for terminal
 			const terminalFile = new EditorFile(terminalName, {
@@ -188,12 +191,15 @@ class TerminalManager {
 			id: `terminal-${terminalId}`,
 		});
 
-		// Terminal styles
-		const terminalStyles = this.getTerminalStyles();
-		const terminalStyle = tag("style", {
-			textContent: terminalStyles,
-		});
-		document.body.appendChild(terminalStyle);
+		// Terminal styles (inject once)
+		if (!document.getElementById("acode-terminal-styles")) {
+			const terminalStyles = this.getTerminalStyles();
+			const terminalStyle = tag("style", {
+				id: "acode-terminal-styles",
+				textContent: terminalStyles,
+			});
+			document.body.appendChild(terminalStyle);
+		}
 
 		// Create EditorFile for terminal
 		const terminalFile = new EditorFile(terminalName, {
@@ -257,10 +263,25 @@ class TerminalManager {
 	setupTerminalHandlers(terminalFile, terminalComponent, terminalId) {
 		// Handle tab focus/blur
 		terminalFile.onfocus = () => {
-			setTimeout(() => {
+			// Guarded fit on focus: only fit if cols/rows would change, then focus
+			const run = () => {
+				try {
+					const pd = terminalComponent.fitAddon?.proposeDimensions?.();
+					if (
+						pd &&
+						(pd.cols !== terminalComponent.terminal.cols ||
+							pd.rows !== terminalComponent.terminal.rows)
+					) {
+						terminalComponent.fitAddon.fit();
+					}
+				} catch {}
 				terminalComponent.focus();
-				terminalComponent.fit();
-			}, 10);
+			};
+			if (typeof requestAnimationFrame === "function") {
+				requestAnimationFrame(run);
+			} else {
+				setTimeout(run, 0);
+			}
 		};
 
 		// Handle tab close
@@ -273,8 +294,14 @@ class TerminalManager {
 		const RESIZE_DEBOUNCE = 200;
 		let lastResizeTime = 0;
 
+		let lastWidth = 0;
+		let lastHeight = 0;
 		const resizeObserver = new ResizeObserver((entries) => {
 			const now = Date.now();
+			const entry = entries && entries[0];
+			const cr = entry?.contentRect;
+			const width = cr?.width ?? terminalFile.content?.clientWidth ?? 0;
+			const height = cr?.height ?? terminalFile.content?.clientHeight ?? 0;
 
 			// Clear any pending resize
 			if (resizeTimeout) {
@@ -289,24 +316,14 @@ class TerminalManager {
 						return;
 					}
 
-					// Get current terminal state
-					const currentRows = terminalComponent.terminal.rows;
-					const currentCols = terminalComponent.terminal.cols;
-
-					// Fit the terminal to new container size
-					terminalComponent.fit();
-
-					// Check if dimensions actually changed after fit
-					const newRows = terminalComponent.terminal.rows;
-					const newCols = terminalComponent.terminal.cols;
-
+					// Only fit if actual size changed to reduce reflows
 					if (
-						Math.abs(newRows - currentRows) > 1 ||
-						Math.abs(newCols - currentCols) > 1
+						Math.abs(width - lastWidth) > 0.5 ||
+						Math.abs(height - lastHeight) > 0.5
 					) {
-						// console.log(
-						// 	`Terminal ${terminalId} resized: ${currentRows}x${currentCols} -> ${newRows}x${newCols}`,
-						// );
+						terminalComponent.fit();
+						lastWidth = width;
+						lastHeight = height;
 					}
 
 					// Update last resize time
@@ -322,6 +339,8 @@ class TerminalManager {
 			const containerElement = terminalFile.content;
 			if (containerElement && containerElement instanceof Element) {
 				resizeObserver.observe(containerElement);
+				// store observer so we can disconnect on close
+				terminalFile._resizeObserver = resizeObserver;
 			} else {
 				console.warn("Terminal container not available for ResizeObserver");
 			}
@@ -472,7 +491,11 @@ class TerminalManager {
 				background: #1e1e1e;
 				overflow: hidden;
 				position: relative;
+			}
+
+			.terminal-content .xterm {
 				padding: 0.25rem;
+				box-sizing: border-box;
 			}
 		`;
 	}

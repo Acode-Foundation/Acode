@@ -47,16 +47,6 @@
         height: 30px;
         min-width: 30px;
       }
-
-      @media (min-width: 1024px) {
-        height: 35px;
-        font-size: 1.1em;
-
-        .icon {
-          height: 35px;
-          min-width: 35px;
-        }
-      }
     }
 
     ul {
@@ -71,16 +61,6 @@
           height: 28px;
           min-width: 28px;
           font-size: 1em;
-        }
-
-        @media (min-width: 1024px) {
-          height: 35px;
-
-          .icon {
-            height: 32px;
-            min-width: 32px;
-            font-size: 1.1em;
-          }
         }
       }
 
@@ -129,11 +109,6 @@
       .container .value {
         text-transform: none;
       }
-    }
-
-    @media (min-width: 1024px) {
-      min-height: 65px;
-      font-size: 1.1em;
     }
 
     .container {
@@ -196,17 +171,6 @@
       &.no-icon {
         width: 20px;
       }
-
-      @media (min-width: 1024px) {
-        height: 65px;
-        width: 65px;
-        font-size: 1.6em;
-
-        &.no-icon {
-          width: 25px;
-        }
-      }
-
     }
 
     .icon {
