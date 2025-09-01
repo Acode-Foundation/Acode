@@ -104,7 +104,11 @@ export function fixHeight(target) {
 		if (list === activeFileList) return;
 
 		if (target === activeFileList) {
-			if (list.collapsed) return;
+			if (list.collapsed) {
+				list.style.removeProperty("max-height");
+				list.style.removeProperty("height");
+				return;
+			}
 			target = list;
 		}
 
@@ -114,7 +118,11 @@ export function fixHeight(target) {
 			return;
 		}
 
-		if (list.collapsed) return;
+		if (list.collapsed) {
+			list.style.removeProperty("max-height");
+			list.style.removeProperty("height");
+			return;
+		}
 
 		list.collapse();
 		list.style.removeProperty("max-height");

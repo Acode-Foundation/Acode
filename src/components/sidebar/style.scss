@@ -139,8 +139,8 @@ body.no-animation {
       max-height: 100%;
 
       &.hidden {
-        max-height: 30px;
-        min-height: 30px;
+        max-height: 30px !important;
+        min-height: 30px !important;
         overflow: hidden !important;
       }
 
