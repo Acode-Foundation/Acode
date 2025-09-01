@@ -161,10 +161,24 @@ export default function otherSettings() {
 			checkbox: values.showSideButtons,
 		},
 		{
-			key: "excludeFolders",
+			key: "excludeFiles",
 			text: strings["exclude files"],
-			value: values.excludeFolders.join("\n"),
+			value: values.excludeFiles.join("\n"),
 			prompt: strings["exclude files"],
+			promptType: "textarea",
+			promptOptions: {
+				test(value) {
+					return value.split("\n").every((item) => {
+						return item.trim().length > 0;
+					});
+				},
+			},
+		},
+		{
+			key: "searchExclude",
+			text: strings["search exclude"],
+			value: values.searchExclude.join("\n"),
+			prompt: strings["search exclude"],
 			promptType: "textarea",
 			promptOptions: {
 				test(value) {
@@ -275,6 +289,13 @@ export default function otherSettings() {
 				break;
 
 			case "excludeFolders":
+				value = value
+					.split("\n")
+					.map((item) => item.trim())
+					.filter((item) => item.length > 0);
+				break;
+
+			case "explorerExludeFiles":
 				value = value
 					.split("\n")
 					.map((item) => item.trim())
