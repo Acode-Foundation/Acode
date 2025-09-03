@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What's Cooking? - Recipe Finder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827;
+            color: #F9FAFB;
+        }
+        .recipe-card {
+            background-color: #1F2937;
+            border: 1px solid #374151;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .recipe-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+        }
+        .loader {
+            border-top-color: #3498db;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .ingredient-tag {
+            background-color: #374151;
+            color: #D1D5DB;
+        }
+        .has-ingredient {
+            background-color: #10B981;
+            color: #FFFFFF;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-4xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-white mb-2">What's Cooking?</h1>
+            <p class="text-lg md:text-xl text-gray-400">Enter your ingredients and discover your next meal.</p>
+        </header>
+
+        <main>
+            <div class="bg-gray-800 p-6 rounded-2xl shadow-lg mb-8">
+                <div class="flex flex-col md:flex-row gap-4">
+                    <input type="text" id="ingredientsInput" class="w-full px-4 py-3 bg-gray-700 text-white border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 placeholder-gray-400" placeholder="e.g., chicken, rice, tomatoes, onion...">
+                    <button id="findRecipesBtn" class="w-full md:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-8 py-3 rounded-lg transition-colors duration-300 whitespace-nowrap">
+                        Find Recipes
+                    </button>
+                </div>
+            </div>
+
+            <!-- Loading Indicator -->
+            <div id="loader" class="hidden text-center py-8">
+                <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12 mx-auto mb-4"></div>
+                <p class="text-gray-300 text-lg">Finding delicious recipes for you...</p>
+            </div>
+            
+            <!-- Error Message -->
+            <div id="errorMessage" class="hidden text-center p-4 bg-red-900 border border-red-700 rounded-lg">
+                <p id="errorText" class="text-white"></p>
+            </div>
+
+            <!-- Results Section -->
+            <div id="results" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Recipe cards will be inserted here -->
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const ingredientsInput = document.getElementById('ingredientsInput');
+        const findRecipesBtn = document.getElementById('findRecipesBtn');
+        const loader = document.getElementById('loader');
+        const resultsContainer = document.getElementById('results');
+        const errorMessage = document.getElementById('errorMessage');
+        const errorText = document.getElementById('errorText');
+
+        findRecipesBtn.addEventListener('click', findRecipes);
+        ingredientsInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                findRecipes();
+            }
+        });
+
+        async function findRecipes() {
+            const userIngredients = ingredientsInput.value.trim();
+            if (!userIngredients) {
+                showError("Please enter some ingredients.");
+                return;
+            }
+
+            loader.classList.remove('hidden');
+            resultsContainer.innerHTML = '';
+            errorMessage.classList.add('hidden');
+
+            const systemPrompt = `You are a helpful chef's assistant. Based on the user's ingredients, suggest 3 creative recipes. For each recipe, provide a title, a list of all necessary ingredients, and clear, step-by-step instructions. Some ingredients might need quantities, but focus on the items themselves.`;
+            const userQuery = `I have these ingredients: ${userIngredients}. What can I make?`;
+            const apiKey = ""; // API key will be automatically provided in the environment.
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                },
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            recipes: {
+                                type: "ARRAY",
+                                items: {
+                                    type: "OBJECT",
+                                    properties: {
+                                        title: { type: "STRING" },
+                                        description: { type: "STRING" },
+                                        ingredients: {
+                                            type: "ARRAY",
+                                            items: { type: "STRING" }
+                                        },
+                                        instructions: {
+                                            type: "ARRAY",
+                                            items: { type: "STRING" }
+                                        }
+                                    },
+                                    required: ["title", "description", "ingredients", "instructions"]
+                                }
+                            }
+                        },
+                        required: ["recipes"]
+                    }
+                }
+            };
+            
+            try {
+                const response = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API request failed with status ${response.status}`);
+                }
+                
+                const result = await response.json();
+                const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                if (jsonText) {
+                    const parsedJson = JSON.parse(jsonText);
+                    displayRecipes(parsedJson.recipes, userIngredients);
+                } else {
+                    throw new Error("Could not find recipe data in the response.");
+                }
+
+            } catch (error) {
+                console.error('Error fetching recipes:', error);
+                showError("Sorry, we couldn't fetch recipes at the moment. Please try again later.");
+            } finally {
+                loader.classList.add('hidden');
+            }
+        }
+        
+        async function fetchWithRetry(url, options, retries = 3, delay = 1000) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (response.status !== 429) { // Not a throttling error
+                        return response;
+                    }
+                    // Throttling error, wait and retry
+                    console.warn(`Request throttled. Retrying in ${delay}ms...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    delay *= 2; // Exponential backoff
+                } catch (error) {
+                    if (i === retries - 1) throw error; // Rethrow last error
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    delay *= 2;
+                }
+            }
+        }
+
+        function displayRecipes(recipes, userIngredients) {
+            if (!recipes || recipes.length === 0) {
+                showError("No recipes could be generated with these ingredients. Try adding more items!");
+                return;
+            }
+            
+            const userIngredientsList = userIngredients.toLowerCase().split(',').map(item => item.trim());
+
+            recipes.forEach(recipe => {
+                const card = document.createElement('div');
+                card.className = 'recipe-card rounded-2xl p-6 flex flex-col';
+
+                // Ingredients List
+                const ingredientsHtml = recipe.ingredients.map(ingredient => {
+                    const hasIngredient = userIngredientsList.some(userIng => ingredient.toLowerCase().includes(userIng));
+                    const tagClass = hasIngredient ? 'has-ingredient' : 'ingredient-tag';
+                    return `<span class="ingredient-tag ${tagClass} text-sm font-medium mr-2 mb-2 px-2.5 py-1 rounded-full">${ingredient}</span>`;
+                }).join('');
+
+                // Instructions List
+                const instructionsHtml = recipe.instructions.map(step => `<li class="mb-2 text-gray-300">${step}</li>`).join('');
+
+                card.innerHTML = `
+                    <h3 class="text-2xl font-bold text-white mb-2">${recipe.title}</h3>
+                    <p class="text-gray-400 mb-4 flex-grow">${recipe.description}</p>
+                    
+                    <div class="mb-4">
+                        <h4 class="font-semibold text-lg text-white mb-3">Ingredients</h4>
+                        <div class="flex flex-wrap">
+                            ${ingredientsHtml}
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h4 class="font-semibold text-lg text-white mb-3">Instructions</h4>
+                        <ol class="list-decimal list-inside space-y-2 text-gray-300">
+                            ${instructionsHtml}
+                        </ol>
+                    </div>
+                `;
+                resultsContainer.appendChild(card);
+            });
+        }
+
+        function showError(message) {
+            errorText.textContent = message;
+            errorMessage.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
