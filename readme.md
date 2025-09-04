@@ -60,7 +60,7 @@ yarn setup
 2. Build the project:
 
 ```shell
-yarn build <free|paid> <p|prod|d|dev> [fdroid]
+yarn build <free|paid> <p|prod|d|dev> [fdroid] <apk/bundle>
 ```
 
 **Note**: Add the fdroid flag only if you want to build the F-Droid-compatible version of Acode.

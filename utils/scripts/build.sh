@@ -1,9 +1,9 @@
 #!/bin/bash
-
 # Default values
 app="paid"
 mode="d"
 fdroidFlag=""
+buildType="apk"  # New default: apk or aar
 webpackmode="development"
 cordovamode=""
 
@@ -18,6 +18,9 @@ for arg in "$@"; do
             ;;
         "fdroid")
             fdroidFlag="fdroid"
+            ;;
+        "apk"|"bundle")
+            buildType="$arg"
             ;;
         *)
             echo "Warning: Unknown argument '$arg' ignored"
@@ -52,12 +55,21 @@ webpackmode="production"
 cordovamode="--release"
 fi
 
+# Set build target based on buildType
+if [ "$buildType" = "aar" ]; then
+    echo "Building AAR library file..."
+else
+    echo "Building APK file..."
+fi
+
 RED=''
 NC=''
+
 script1="node ./utils/config.js $mode $app"
 script2="webpack --progress --mode $webpackmode "
 # script3="node ./utils/loadStyles.js"
-script4="cordova build android $cordovamode"
+script4="cordova build android $cordovamode -- --packageType=$buildType"
+
 eval "
 echo \"${RED}$script1${NC}\";
 $script1;
