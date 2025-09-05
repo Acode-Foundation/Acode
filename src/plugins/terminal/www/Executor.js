@@ -30,22 +30,33 @@ const Executor = {
    */
 
 
-  start(command,onData){
-    this.start(command,onData,false)
+  start(command, onData) {
+    this.start(command, onData, false);
   },
 
   start(command, onData, alpine) {
-    return new Promise((resolve, reject) => {
-      exec(
-        (message) => {
-          // Stream stdout, stderr, or exit notifications
-          if (message.startsWith("stdout:")) return onData("stdout", message.slice(7));
-          if (message.startsWith("stderr:")) return onData("stderr", message.slice(7));
-          if (message.startsWith("exit:")) return onData("exit", message.slice(5));
+    console.log("start: " + command);
 
+    return new Promise((resolve, reject) => {
+      let first = true;
+      exec(async (message) => {
+        console.log(message);
+        if (first) {
+          first = false;
+          await new Promise(resolve => setTimeout(resolve, 100));
           // First message is always the process UUID
           resolve(message);
-        },
+        } else {
+          const match = message.match(/^([^:]+):(.*)$/);
+          if (match) {
+            const prefix = match[1];     // e.g. "stdout"
+            const message = match[2].trim(); // output
+            onData(prefix, message);
+          } else {
+            onData("unknown", message);
+          }
+        }
+      },
         reject,
         "Executor",
         "start",
@@ -62,9 +73,10 @@ const Executor = {
    * @returns {Promise<string>} Resolves once the input is written.
    *
    * @example
-   * Executor.write(uuid, 'ls /data');
+   * Executor.write(uuid, 'ls /sdcard');
    */
   write(uuid, input) {
+    console.log("write: " + input + " to " + uuid);
     return new Promise((resolve, reject) => {
       exec(resolve, reject, "Executor", "write", [uuid, input]);
     });
@@ -115,8 +127,8 @@ const Executor = {
    *   .then(console.log)
    *   .catch(console.error);
    */
-  execute(command){
-    this.execute(command,false)
+  execute(command) {
+    this.execute(command, false);
   }
   ,
   execute(command, alpine) {
@@ -125,7 +137,7 @@ const Executor = {
     });
   },
 
-  loadLibrary(path){
+  loadLibrary(path) {
     return new Promise((resolve, reject) => {
       exec(resolve, reject, "Executor", "loadLibrary", [path]);
     });
