@@ -19,26 +19,62 @@ import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 //import com.foxdebug.acode.rk.exec.terminal.TerminalService;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.os.Build;
+import android.os.Bundle;
+
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import android.app.Activity;
 
 public class Executor extends CordovaPlugin {
 
     private Messenger serviceMessenger;
     private boolean isServiceBound;
     private Context context;
+    private Activity activity;
     private final Messenger handlerMessenger = new Messenger(new IncomingHandler());
     private CountDownLatch serviceConnectedLatch = new CountDownLatch(1);
     private final java.util.Map<String, CallbackContext> callbackContextMap = new java.util.concurrent.ConcurrentHashMap<>();
+
+    private static final int REQUEST_POST_NOTIFICATIONS = 1001;
+    private void askNotificationPermission(Activity context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(
+                    context, Manifest.permission.POST_NOTIFICATIONS) ==
+                    PackageManager.PERMISSION_GRANTED) {
+            } else if (ActivityCompat.shouldShowRequestPermissionRationale(
+                    context, Manifest.permission.POST_NOTIFICATIONS)) {
+                ActivityCompat.requestPermissions(
+                        context,
+                        new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                        REQUEST_POST_NOTIFICATIONS
+                );
+            } else {
+                ActivityCompat.requestPermissions(
+                        context,
+                        new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                        REQUEST_POST_NOTIFICATIONS
+                );
+            }
+        }
+    }
 
     @Override
     public void initialize(CordovaInterface cordova, CordovaWebView webView) {
         super.initialize(cordova, webView);
         this.context = cordova.getContext();
+        this.activity = cordova.getActivity();
+        askNotificationPermission(activity);
         bindService();
     }
 
     private void bindService() {
         Intent intent = new Intent(context, TerminalService.class);
-        context.startService(intent); // Ensure service is started
+        context.startService(intent);
         context.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
     }
 
@@ -47,7 +83,7 @@ public class Executor extends CordovaPlugin {
         public void onServiceConnected(ComponentName name, IBinder service) {
             serviceMessenger = new Messenger(service);
             isServiceBound = true;
-            serviceConnectedLatch.countDown(); // Signal that service is connected
+            serviceConnectedLatch.countDown();
         }
 
         @Override
@@ -103,7 +139,6 @@ public class Executor extends CordovaPlugin {
 
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
-        // Wait for service to be bound with a timeout
         try {
             if (!isServiceBound && !serviceConnectedLatch.await(5, TimeUnit.SECONDS)) {
                 callbackContext.error("Service not bound - timeout");
@@ -177,7 +212,6 @@ public class Executor extends CordovaPlugin {
     try {
         serviceMessenger.send(msg);
     } catch (RemoteException e) {
-        // Remove the redeclaration of callbackContext here
         CallbackContext errorContext = getCallbackContext(pid);
         if (errorContext != null) {
             errorContext.error("Failed to start process: " + e.getMessage());

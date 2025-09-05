@@ -3,7 +3,9 @@ package com.foxdebug.acode.rk.exec.terminal;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
@@ -11,6 +13,7 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.os.Messenger;
+import android.os.PowerManager;
 import android.os.RemoteException;
 import androidx.core.app.NotificationCompat;
 import com.foxdebug.acode.R;
@@ -22,6 +25,8 @@ import java.io.OutputStream;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
+import java.lang.reflect.Field;
+
 
 public class TerminalService extends Service {
 
@@ -32,6 +37,9 @@ public class TerminalService extends Service {
     public static final int MSG_EXEC = 5;
 
     public static final String CHANNEL_ID = "terminal_exec_channel";
+    
+    public static final String ACTION_EXIT_SERVICE = "com.foxdebug.acode.ACTION_EXIT_SERVICE";
+    public static final String ACTION_TOGGLE_WAKE_LOCK = "com.foxdebug.acode.ACTION_TOGGLE_WAKE_LOCK";
 
     private final Map<String, Process> processes = new ConcurrentHashMap<>();
     private final Map<String, OutputStream> processInputs = new ConcurrentHashMap<>();
@@ -39,10 +47,28 @@ public class TerminalService extends Service {
     private final java.util.concurrent.ExecutorService threadPool = Executors.newCachedThreadPool();
 
     private final Messenger serviceMessenger = new Messenger(new ServiceHandler());
+    
+    private PowerManager.WakeLock wakeLock;
+    private boolean isWakeLockHeld = false;
 
     @Override
     public IBinder onBind(Intent intent) {
         return serviceMessenger.getBinder();
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent != null) {
+            String action = intent.getAction();
+            if (ACTION_EXIT_SERVICE.equals(action)) {
+                stopForeground(true);
+                stopSelf();
+                return START_NOT_STICKY;
+            } else if (ACTION_TOGGLE_WAKE_LOCK.equals(action)) {
+                toggleWakeLock();
+            }
+        }
+        return START_STICKY;
     }
 
     private class ServiceHandler extends Handler {
@@ -79,13 +105,40 @@ public class TerminalService extends Service {
         }
     }
 
+    private void toggleWakeLock() {
+        if (isWakeLockHeld) {
+            releaseWakeLock();
+        } else {
+            acquireWakeLock();
+        }
+        updateNotification();
+    }
+
+    private void acquireWakeLock() {
+        if (wakeLock == null) {
+            PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
+            wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "AcodeTerminal:WakeLock");
+        }
+        
+        if (!isWakeLockHeld) {
+            wakeLock.acquire();
+            isWakeLockHeld = true;
+        }
+    }
+
+    private void releaseWakeLock() {
+        if (wakeLock != null && isWakeLockHeld) {
+            wakeLock.release();
+            isWakeLockHeld = false;
+        }
+    }
+
     private void startProcess(String pid, String cmd, String alpine) {
         threadPool.execute(() -> {
             try {
                 String xcmd = alpine.equals("true") ? "source $PREFIX/init-sandbox.sh " + cmd : cmd;
                 ProcessBuilder builder = new ProcessBuilder("sh", "-c", xcmd);
 
-                // Set environment variables
                 Map<String, String> env = builder.environment();
                 env.put("PREFIX", getFilesDir().getAbsolutePath());
                 env.put("NATIVE_DIR", getApplicationInfo().nativeLibraryDir);
@@ -100,14 +153,8 @@ public class TerminalService extends Service {
                 Process process = builder.start();
                 processes.put(pid, process);
                 processInputs.put(pid, process.getOutputStream());
-
-                // Stream stdout
                 threadPool.execute(() -> streamOutput(process.getInputStream(), pid, "stdout"));
-
-                // Stream stderr
                 threadPool.execute(() -> streamOutput(process.getErrorStream(), pid, "stderr"));
-
-                // Wait for process to complete
                 threadPool.execute(() -> {
                     try {
                         int exitCode = process.waitFor();
@@ -131,8 +178,6 @@ public class TerminalService extends Service {
             try {
                 String xcmd = alpine.equals("true") ? "source $PREFIX/init-sandbox.sh " + cmd : cmd;
                 ProcessBuilder builder = new ProcessBuilder("sh", "-c", xcmd);
-
-                // Set environment variables
                 Map<String, String> env = builder.environment();
                 env.put("PREFIX", getFilesDir().getAbsolutePath());
                 env.put("NATIVE_DIR", getApplicationInfo().nativeLibraryDir);
@@ -145,8 +190,6 @@ public class TerminalService extends Service {
                 }
 
                 Process process = builder.start();
-
-                // Capture stdout
                 BufferedReader stdOutReader = new BufferedReader(
                         new InputStreamReader(process.getInputStream()));
                 StringBuilder stdOut = new StringBuilder();
@@ -155,7 +198,6 @@ public class TerminalService extends Service {
                     stdOut.append(line).append("\n");
                 }
 
-                // Capture stderr
                 BufferedReader stdErrReader = new BufferedReader(
                         new InputStreamReader(process.getErrorStream()));
                 StringBuilder stdErr = new StringBuilder();
@@ -205,7 +247,6 @@ public class TerminalService extends Service {
                 msg.setData(bundle);
                 clientMessenger.send(msg);
             } catch (RemoteException e) {
-                // Client is no longer available, clean up
                 cleanup(id);
             }
         }
@@ -224,7 +265,6 @@ public class TerminalService extends Service {
                 msg.setData(bundle);
                 clientMessenger.send(msg);
             } catch (RemoteException e) {
-                // Client is no longer available, clean up
                 cleanup(id);
             }
         }
@@ -242,9 +282,23 @@ public class TerminalService extends Service {
         }
     }
 
+    private long getPid(Process process) {
+    try {
+        Field f = process.getClass().getDeclaredField("pid");
+        f.setAccessible(true);
+        return f.getLong(process);
+    } catch (Exception e) {
+        return -1;
+    }
+}
+
+
     private void stopProcess(String pid) {
         Process process = processes.get(pid);
         if (process != null) {
+            try {
+                Runtime.getRuntime().exec("kill -9 -" + getPid(process));
+            } catch (Exception ignored) {}
             process.destroy();
             cleanup(pid);
         }
@@ -275,13 +329,7 @@ public class TerminalService extends Service {
     public void onCreate() {
         super.onCreate();
         createNotificationChannel();
-        Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("Acode Service")
-                .setContentText("Executor service")
-                .setSmallIcon(R.drawable.ic_launcher_foreground)
-                .setOngoing(true)
-                .build();
-        startForeground(1, notification);
+        updateNotification();
     }
 
     private void createNotificationChannel() {
@@ -298,13 +346,44 @@ public class TerminalService extends Service {
         }
     }
 
+    private void updateNotification() {
+        Intent exitIntent = new Intent(this, TerminalService.class);
+        exitIntent.setAction(ACTION_EXIT_SERVICE);
+        PendingIntent exitPendingIntent = PendingIntent.getService(this, 0, exitIntent, 
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+        Intent wakeLockIntent = new Intent(this, TerminalService.class);
+        wakeLockIntent.setAction(ACTION_TOGGLE_WAKE_LOCK);
+        PendingIntent wakeLockPendingIntent = PendingIntent.getService(this, 1, wakeLockIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+        String contentText = "Executor service" + (isWakeLockHeld ? " (wakelock held)" : "");
+        String wakeLockButtonText = isWakeLockHeld ? "Release Wake Lock" : "Acquire Wake Lock";
+
+        Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle("Acode Service")
+                .setContentText(contentText)
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setOngoing(true)
+                .addAction(R.drawable.ic_launcher_foreground, wakeLockButtonText, wakeLockPendingIntent)
+                .addAction(R.drawable.ic_launcher_foreground, "Exit", exitPendingIntent)
+                .build();
+
+        startForeground(1, notification);
+    }
+
     @Override
     public void onDestroy() {
         super.onDestroy();
-        // Clean up all processes when service is destroyed
+        releaseWakeLock();
+        
         for (Process process : processes.values()) {
-            process.destroy();
+            try {
+                Runtime.getRuntime().exec("kill -9 -" + getPid(process));
+            } catch (Exception ignored) {}
+            process.destroyForcibly();
         }
+
         processes.clear();
         processInputs.clear();
         clientMessengers.clear();
