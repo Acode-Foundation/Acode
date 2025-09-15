@@ -47,6 +47,9 @@ import android.webkit.DownloadListener;
 import android.webkit.URLUtil;
 import android.webkit.WebView;
 import android.widget.Toast;
+import android.os.Handler;
+import android.os.Looper;
+
 
 
 
@@ -164,7 +167,9 @@ public class Browser extends LinearLayout {
 
             String fileName = URLUtil.guessFileName(url, contentDisposition, mimeType);
 
-            new AlertDialog.Builder(getContext())
+            new Handler(Looper.getMainLooper()).post(() -> {
+
+              new AlertDialog.Builder(getContext())
                 .setTitle("Download file")
                 .setMessage("Do you want to download \"" + fileName + "\"?")
                 .setPositiveButton("Yes", (dialog, which) -> {
@@ -184,6 +189,10 @@ public class Browser extends LinearLayout {
                 })
                 .setNegativeButton("Cancel", null)
                 .show();
+
+
+            });
+            
         }
     });
 
