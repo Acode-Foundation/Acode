@@ -2,7 +2,6 @@ set -e  # Exit immediately on Failure
 
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/share/bin:/usr/share/sbin:/usr/local/bin:/usr/local/sbin:/system/bin:/system/xbin:$PREFIX/local/bin
 export PS1="\[\e[38;5;46m\]\u\[\033[39m\]@localhost \[\033[39m\]\w \[\033[0m\]\\$ "
-export PIP_BREAK_SYSTEM_PACKAGES=1
 export HOME=/home
 export TERM=xterm-256color
 required_packages="bash"
@@ -43,7 +42,26 @@ if [ "$#" -eq 0 ]; then
     if [ -e "$PREFIX/alpine/initrc" ]; then
         :
     else
-        touch $PREFIX/alpine/initrc
+        cat <<EOF > "$PREFIX/alpine/initrc"
+
+if [[ -f ~/.bashrc ]]; then
+    source ~/.bashrc
+fi
+
+if [[ -f /etc/bash/bashrc ]]; then
+    source /etc/bash/bashrc
+fi
+
+export PATH=\$PATH:/bin:/sbin:/usr/bin:/usr/sbin:/usr/share/bin:/usr/share/sbin:/usr/local/bin:/usr/local/sbin
+export PS1="\[\e[38;5;46m\]\u\[\e[0m\]@localhost \[\e[0m\]\w \[\e[0m\]\\$ "
+export HOME=/home
+export TERM=xterm-256color
+export SHELL=\$(command -v bash)
+
+
+
+EOF
+
     fi
     
     chmod +x $PREFIX/alpine/initrc
