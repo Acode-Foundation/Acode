@@ -74,7 +74,7 @@ export HOME=/home
 export TERM=xterm-256color
 export SHELL=\$(command -v bash)
 
-if [ -f /etc/acode_motd ]; then
+if [ -s /etc/acode_motd ]; then
     cat /etc/acode_motd
 fi
 
