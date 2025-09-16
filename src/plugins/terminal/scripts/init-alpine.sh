@@ -29,9 +29,6 @@ if [[ ! -f /linkerconfig/ld.config.txt ]];then
     touch /linkerconfig/ld.config.txt
 fi
 
-[ ! -L /bin/login ] && mv /bin/login /bin/real_login
-ln -sf /bin/bash /bin/login
-
 if [ "$1" = "--installing" ]; then
   mkdir -p $PREFIX/.configured
   echo "Installation completed."
@@ -39,11 +36,18 @@ if [ "$1" = "--installing" ]; then
 fi
 
 
-
 if [ "$#" -eq 0 ]; then
     echo "$$" > $PREFIX/pid
     chmod +x $PREFIX/axs
-    $PREFIX/axs
+    
+    if [ -e "$PREFIX/alpine/initrc" ]; then
+        :
+    else
+        touch $PREFIX/alpine/initrc
+    fi
+    
+    chmod +x $PREFIX/alpine/initrc
+    $PREFIX/axs -c "bash --rcfile /initrc -i"
 else
     exec "$@"
 fi
