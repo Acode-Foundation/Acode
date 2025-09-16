@@ -44,6 +44,20 @@ if [ "$#" -eq 0 ]; then
     echo "$$" > "$PREFIX/pid"
     chmod +x "$PREFIX/axs"
 
+    if [ ! -e "$PREFIX/alpine/etc/acode_motd" ]; then
+        cat <<EOF > "$PREFIX/alpine/etc/acode_motd"
+Welcome to Alpine Linux in Acode!
+
+Working with packages:
+
+ - Search:  apk search <query>
+ - Install: apk add <package>
+ - Uninstall: apk del <package>
+ - Upgrade: apk update && apk upgrade
+
+EOF
+    fi
+
     # Create initrc if it doesn't exist
     if [ ! -e "$PREFIX/alpine/initrc" ]; then
         cat <<EOF > "$PREFIX/alpine/initrc"
@@ -56,13 +70,18 @@ if [[ -f /etc/bash/bashrc ]]; then
 fi
 
 export PATH=\$PATH:/bin:/sbin:/usr/bin:/usr/sbin:/usr/share/bin:/usr/share/sbin:/usr/local/bin:/usr/local/sbin
-export PS1="\[\e[38;5;46m\]\u\[\e[0m\]@localhost \[\e[0m\]\w \[\e[0m\]\\$ "
 export HOME=/home
 export TERM=xterm-256color
 export SHELL=\$(command -v bash)
+
+if [ -f /etc/acode_motd ]; then
+    cat /etc/acode_motd
+fi
+
 EOF
     fi
 
+    echo 'export PS1="\[\e[38;5;46m\]\u\[\e[0m\]@localhost \[\e[0m\]\w \[\e[0m\]\\$ "' >> $PREFIX/alpine/initrc
     chmod +x "$PREFIX/alpine/initrc"
     "$PREFIX/axs" -c "bash --rcfile /initrc -i"
 else
