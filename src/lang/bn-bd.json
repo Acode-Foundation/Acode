@@ -426,5 +426,6 @@
 	"reviews": "রিভিউ",
 	"overview": "সংক্ষিপ্ত বিবরণ",
 	"contributors": "অবদানকারী",
-	"quicktools:hyphen": "হাইফেন যুক্ত করুন"
+	"quicktools:hyphen": "হাইফেন যুক্ত করুন",
+	"search exclude": "Search Exclude"
 }

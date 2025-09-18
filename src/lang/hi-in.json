@@ -427,5 +427,6 @@
 	"reviews": "समीक्षाएँ",
 	"overview": "ओवरव्यू",
 	"contributors": "सहयोगी",
-	"quicktools:hyphen": "हाइफ़न प्रतीक डालें"
+	"quicktools:hyphen": "हाइफ़न प्रतीक डालें",
+	"search exclude": "Search Exclude"
 }

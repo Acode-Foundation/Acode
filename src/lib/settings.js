@@ -40,45 +40,47 @@ class Settings {
 		showHiddenFiles: false,
 		sortByName: true,
 	};
-	#excludeFolders = [
-		"**/node_modules/**",
-		"**/bower_components/**",
-		"**/jspm_packages/**",
-		"**/.npm/**",
-		"**/flow-typed/**",
-		"**/vendor/**",
-		"**/composer/**",
-		"**/venv/**",
-		"**/.virtualenv/**",
-		"**/__pycache__/**",
-		"**/.pytest_cache/**",
-		"**/.eggs/**",
-		"**/*.egg-info/**",
-		"**/.git/**",
-		"**/.svn/**",
-		"**/.hg/**",
-		"**/.vscode/**",
-		"**/.idea/**",
-		"**/.vs/**",
-		"**/.project/**",
-		"**/.settings/**",
-		"**/.classpath/**",
-		"**/dist/**",
-		"**/build/**",
-		"**/out/**",
-		"**/target/**",
-		"**/bin/**",
-		"**/obj/**",
-		"**/coverage/**",
-		"**/.nyc_output/**",
-		"**/htmlcov/**",
-		"**/temp/**",
-		"**/tmp/**",
-		"**/.cache/**",
-		"**/logs/**",
-		"**/.sass-cache/**",
-		"**/.DS_Store/**",
-		"**/Thumbs.db/**",
+	#excludeFiles = [
+		"**/.git",
+		"**/.svn",
+		"**/.hg",
+		"**/.DS_Store",
+		"**/Thumbs.db",
+	];
+	#searchExclude = [
+		"**/node_modules",
+		"**/bower_components",
+		"**/jspm_packages",
+		"**/.npm",
+		"**/flow-typed",
+		"**/vendor",
+		"**/composer",
+		"**/venv",
+		"**/.virtualenv",
+		"**/__pycache__",
+		"**/.pytest_cache",
+		"**/.eggs",
+		"**/*.egg-info",
+		"**/.vscode",
+		"**/.idea",
+		"**/.vs",
+		"**/.project",
+		"**/.settings",
+		"**/.classpath",
+		"**/dist",
+		"**/build",
+		"**/out",
+		"**/target",
+		"**/bin",
+		"**/obj",
+		"**/coverage",
+		"**/.nyc_output",
+		"**/htmlcov",
+		"**/temp",
+		"**/tmp",
+		"**/.cache",
+		"**/logs",
+		"**/.sass-cache",
 	];
 	#IS_TABLET = innerWidth > 768;
 
@@ -167,7 +169,9 @@ class Settings {
 			useTextareaForIME: false,
 			touchMoveThreshold: Math.round((1 / devicePixelRatio) * 10) / 20,
 			quicktoolsItems: [...Array(this.#QUICKTOOLS_SIZE).keys()],
-			excludeFolders: this.#excludeFolders,
+			excludeFiles: this.#excludeFiles,
+			searchExclude: this.#searchExclude,
+			excludeGitIgnore: false,
 			defaultFileEncoding: "UTF-8",
 			inlineAutoCompletion: true,
 			colorPreview: true,
@@ -265,6 +269,7 @@ class Settings {
 
 		if (settings) {
 			Object.keys(settings).forEach((key) => {
+				key = this.#patchKey(key);
 				if (key in this.value) this.value[key] = settings[key];
 			});
 		}
@@ -333,7 +338,7 @@ class Settings {
 	 * @returns
 	 */
 	get(key) {
-		return this.value[key];
+		return this.value[this.#patchKey(key)];
 	}
 
 	/**
@@ -367,6 +372,14 @@ class Settings {
 
 			default:
 				break;
+		}
+	}
+
+	#patchKey(key) {
+		if (key === "excludeFolders") {
+			return "excludeFiles";
+		} else {
+			return key;
 		}
 	}
 
