@@ -9,6 +9,8 @@ import robotoMono from "../res/fonts/RobotoMono.ttf";
 const fonts = new Map();
 const customFontNames = new Set();
 const CUSTOM_FONTS_KEY = "custom_fonts";
+const FONT_FACE_STYLE_ID = "font-face-style";
+const EDITOR_STYLE_ID = "editor-font-style";
 
 add(
 	"Fira Code",
@@ -188,29 +190,14 @@ function has(name) {
 async function setFont(name) {
 	loader.showTitleLoader();
 	try {
-		const $style = tag.get("style#font-style") ?? (
-			<style id="font-style"></style>
-		);
-		let css = get(name);
-
-		// Get all URL font references
-		const urls = [...css.matchAll(/url\((.*?)\)/g)].map((match) => match[1]);
-
-		urls?.map(async (url) => {
-			if (!/^https?/.test(url)) return;
-			if (/^https?:\/\/localhost/.test(url)) return;
-			const fontFile = await downloadFont(name, url);
-			const internalUrl = await helpers.toInternalUri(fontFile);
-			css = css.replace(url, internalUrl);
-		}),
-			($style.textContent = `${css}
-  .editor-container.ace_editor{
+		await loadFont(name);
+		const $style = ensureStyleElement(EDITOR_STYLE_ID);
+		$style.textContent = `.editor-container.ace_editor{
     font-family: "${name}", NotoMono, Monaco, MONOSPACE !important;
   }
   .ace_text{
     font-family: inherit !important;
-  }`);
-		document.head.append($style);
+  }`;
 	} catch (error) {
 		toast(`${name} font not found`, "error");
 		setFont("Roboto Mono");
@@ -238,7 +225,7 @@ async function downloadFont(name, link) {
 }
 
 async function loadFont(name) {
-	const $style = tag.get("style#font-style") ?? <style id="font-style"></style>;
+	const $style = ensureStyleElement(FONT_FACE_STYLE_ID);
 	let css = get(name);
 
 	if (!css) {
@@ -260,10 +247,18 @@ async function loadFont(name) {
 	// Add font face to document if not already present
 	if (!$style.textContent.includes(`font-family: '${name}'`)) {
 		$style.textContent = `${$style.textContent}\n${css}`;
-		document.head.append($style);
 	}
 
 	return css;
+}
+
+function ensureStyleElement(id) {
+	const selector = `style#${id}`;
+	const $style = tag.get(selector) ?? <style id={id}></style>;
+	if (!$style.isConnected) {
+		document.head.append($style);
+	}
+	return $style;
 }
 
 export default {
