@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SABID - Game Jualan Minuman</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #ff5252, #ffd740);
+    text-align: center;
+    padding: 40px;
+    color: #fff;
+  }
+  h1 {
+    font-size: 2.5rem;
+    margin-bottom: 20px;
+    text-shadow: 2px 2px #333;
+  }
+  .stats {
+    font-size: 1.3rem;
+    margin-bottom: 30px;
+  }
+  button {
+    padding: 15px 25px;
+    margin: 10px;
+    border: none;
+    border-radius: 12px;
+    background: #fff;
+    color: #e53935;
+    font-weight: bold;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+  button:hover {
+    background: #ffe57f;
+    transform: scale(1.05);
+  }
+  #message {
+    margin-top: 20px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    min-height: 30px;
+  }
+  /* Animasi minuman */
+  .drink {
+    width: 120px;
+    margin: 20px auto;
+    transition: transform 0.3s;
+  }
+  .shake {
+    animation: shake 0.4s;
+  }
+  @keyframes shake {
+    0% { transform: translateX(0); }
+    25% { transform: translateX(-8px); }
+    50% { transform: translateX(8px); }
+    75% { transform: translateX(-5px); }
+    100% { transform: translateX(0); }
+  }
+</style>
+</head>
+<body>
+
+  <h1>🥤 SABID - Jualan Minuman Dingin</h1>
+
+  <img src="https://cdn-icons-png.flaticon.com/512/2738/2738894.png"
+       id="drinkImage"
+       class="drink"
+       alt="Minuman SABID">
+
+  <div class="stats">
+    💰 Uang: <span id="money">10000</span><br>
+    🥤 Stok Minuman: <span id="stock">10</span>
+  </div>
+
+  <button onclick="sellDrink()">Jual Minuman (+Rp5.000)</button>
+  <button onclick="buyStock()">Beli Stok (-Rp3.000)</button>
+
+  <div id="message"></div>
+
+  <!-- Suara kasir -->
+  <audio id="cashSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_42d073f317.mp3?filename=ding-36029.mp3"></audio>
+
+<script>
+  let money = 10000;
+  let stock = 10;
+  const sellPrice = 5000;
+  const buyPrice = 3000;
+
+  const moneyEl = document.getElementById('money');
+  const stockEl = document.getElementById('stock');
+  const messageEl = document.getElementById('message');
+  const drinkImage = document.getElementById('drinkImage');
+  const cashSound = document.getElementById('cashSound');
+
+  function updateDisplay() {
+    moneyEl.textContent = money;
+    stockEl.textContent = stock;
+  }
+
+  function playSound() {
+    cashSound.currentTime = 0;
+    cashSound.play();
+  }
+
+  function animateDrink() {
+    drinkImage.classList.add('shake');
+    setTimeout(() => drinkImage.classList.remove('shake'), 400);
+  }
+
+  function sellDrink() {
+    if (stock > 0) {
+      stock--;
+      money += sellPrice;
+      messageEl.textContent = "✅ Minuman SABID laku terjual!";
+      playSound();
+      animateDrink();
+    } else {
+      messageEl.textContent = "❌ Stok habis! Beli stok dulu.";
+    }
+    checkGameOver();
+    updateDisplay();
+  }
+
+  function buyStock() {
+    if (money >= buyPrice) {
+      stock++;
+      money -= buyPrice;
+      messageEl.textContent = "🛒 Kamu membeli 1 stok minuman.";
+      playSound();
+    } else {
+      messageEl.textContent = "⚠️ Uang tidak cukup!";
+    }
+    checkGameOver();
+    updateDisplay();
+  }
+
+  function checkGameOver() {
+    if (stock === 0 && money < buyPrice) {
+      messageEl.textContent = "💀 Game Over! Uang habis dan stok kosong.";
+    }
+  }
+
+  updateDisplay();
+</script>
+</body>
+</html>
