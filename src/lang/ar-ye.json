@@ -318,7 +318,7 @@
 	"exclude files": "استثناء الملفات",
 	"include files": "ضمن الملفات",
 	"search result": "{matches} نتيجة في {files} ملف.",
-	"invalid regex": "Invalid regular expression: {message}.",
+	"invalid regex": "تعبير عادي غير صالح: {message}",
 	"bottom": "أسفل",
 	"save all": "حفظ الكل",
 	"close all": "أغلاق الكل",
