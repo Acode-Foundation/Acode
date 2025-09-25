@@ -374,6 +374,7 @@ public class TerminalService extends Service {
 
     @Override
     public void onDestroy() {
+        stopForeground(true);
         super.onDestroy();
         releaseWakeLock();
         

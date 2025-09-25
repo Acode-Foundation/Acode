@@ -322,7 +322,6 @@ public class System extends CordovaPlugin {
                     callbackContext.error("mkdirs failed");
                 }
                 return true;
-
             default:
                 return false;
         }

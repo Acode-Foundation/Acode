@@ -114,6 +114,12 @@ const Executor = {
     });
   },
 
+  stopService() {
+    return new Promise((resolve, reject) => {
+      exec(resolve, reject, "Executor", "stopService", []);
+    });
+  },
+
   /**
    * Executes a shell command once and waits for it to finish.
    * Unlike {@link Executor.start}, this does not stream output.
