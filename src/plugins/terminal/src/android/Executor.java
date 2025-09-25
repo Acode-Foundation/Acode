@@ -395,6 +395,5 @@ public class Executor extends CordovaPlugin {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        stopServiceNow();
     }
 }
