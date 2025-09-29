@@ -24,16 +24,18 @@
 	z-index: 101;
 	cursor: grab;
 	transition: transform 0.15s ease;
+	border-radius: 50% 50% 50% 0;
 }
 
 .terminal-selection-handle:active {
 	cursor: grabbing;
 }
 
-.terminal-selection-handle-start,
+.terminal-selection-handle-start {
+	transform: rotate(180deg) translateX(87%);
+}
 .terminal-selection-handle-end {
-	transform: rotate(135deg);
-	border-radius: 50% 50% 50% 0;
+	transform: rotate(90deg) translateX(-13%);
 }
 
 .terminal-context-menu {
