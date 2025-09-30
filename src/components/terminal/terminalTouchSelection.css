@@ -35,7 +35,7 @@
 	transform: rotate(180deg) translateX(87%);
 }
 .terminal-selection-handle-end {
-	transform: rotate(90deg) translateX(-13%);
+	transform: rotate(90deg) translateY(-13%);
 }
 
 .terminal-context-menu {
