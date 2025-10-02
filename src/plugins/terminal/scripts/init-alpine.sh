@@ -73,7 +73,7 @@ export PATH=\$PATH:/bin:/sbin:/usr/bin:/usr/sbin:/usr/share/bin:/usr/share/sbin:
 export HOME=/home
 export TERM=xterm-256color
 export SHELL=\$(command -v bash)
-export PIP_BREAK_SYSTEM_PACKAGES=1"
+export PIP_BREAK_SYSTEM_PACKAGES=1
 
 if [ -s /etc/acode_motd ]; then
     cat /etc/acode_motd
