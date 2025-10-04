@@ -149,6 +149,9 @@
         - name: Install Node.js Packages
           run: npm install
 
+        - name: Install Cordova CLI
+          run: npm install -g cordova
+
         - name: Run npm setup
           run: npm run setup
 
