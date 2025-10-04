@@ -26,8 +26,8 @@
 
         <source-file src="scripts/init-sandbox.sh" target-dir="assets"/>
         <source-file src="scripts/init-alpine.sh" target-dir="assets"/>
+        <source-file src="scripts/rm-wrapper.sh" target-dir="assets"/>
 
-        <config-file target="AndroidManifest.xml" parent="/manifest"></config-file>
 
         <config-file target="AndroidManifest.xml" parent="./application">
             <provider
@@ -57,6 +57,9 @@
             <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
         </config-file>
 
-           
+
+        <!-- DO NOT EDIT OR REMOVE-->
+        <config-file target="AndroidManifest.xml" parent="/manifest"></config-file>
+
     </platform>
 </plugin>
