@@ -315,12 +315,26 @@ public class System extends CordovaPlugin {
 
                 return true;
             case "mkdirs":
-                File file = new File(args.getString(0));
-                if (file.mkdirs()) {
+                if (new File(args.getString(0)).mkdirs()) {
                     callbackContext.success();
                 } else {
                     callbackContext.error("mkdirs failed");
                 }
+                return true;
+            case "deleteFile":
+                if (new File(args.getString(0)).delete()) {
+                    callbackContext.success();
+                } else {
+                    callbackContext.error("delete failed");
+                }
+                return true;
+            case "setExec":
+                if (new File(args.getString(0)).setExecutable(Boolean.parseBoolean(args.getString(1)))) {
+                    callbackContext.success();
+                } else {
+                    callbackContext.error("set exec faild");
+                }
+
                 return true;
             default:
                 return false;
