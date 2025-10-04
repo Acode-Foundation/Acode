@@ -173,6 +173,33 @@ public class AlpineDocumentProvider extends DocumentsProvider {
     }
 
     @Override
+    public String renameDocument(String documentId, String displayName) throws FileNotFoundException {
+        File file = getFileForDocId(documentId);
+        File parent = file.getParentFile();
+        if (parent == null) {
+            throw new FileNotFoundException("Failed to rename root document with id " + documentId);
+        }
+        if (displayName == null || displayName.trim().isEmpty()) {
+            throw new FileNotFoundException("Failed to rename document with id " + documentId);
+        }
+        if (displayName.equals(file.getName())) {
+            return documentId;
+        }
+        if (displayName.contains(File.separator)) {
+            throw new FileNotFoundException("Invalid display name for rename: " + displayName);
+        }
+
+        File target = new File(parent, displayName);
+        if (target.exists()) {
+            throw new FileNotFoundException("Target already exists: " + target.getAbsolutePath());
+        }
+        if (!file.renameTo(target)) {
+            throw new FileNotFoundException("Failed to rename document with id " + documentId);
+        }
+        return getDocIdForFile(target);
+    }
+
+    @Override
     public String getDocumentType(String documentId) throws FileNotFoundException {
         File file = getFileForDocId(documentId);
         return getMimeType(file);
@@ -258,6 +285,7 @@ public class AlpineDocumentProvider extends DocumentsProvider {
         File parentFile = file.getParentFile();
         if (parentFile != null && parentFile.canWrite()) {
             flags = flags | DocumentsContract.Document.FLAG_SUPPORTS_DELETE;
+            flags = flags | DocumentsContract.Document.FLAG_SUPPORTS_RENAME;
         }
 
         String displayName = file.getName();
