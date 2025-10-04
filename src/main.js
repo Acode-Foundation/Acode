@@ -260,7 +260,7 @@ async function onDeviceReady() {
 	}
 
 	// Check for app updates
-	if (navigator.onLine) {
+	if (settings.value.checkForUpdates && navigator.onLine) {
 		cordova.plugin.http.sendRequest(
 			"https://api.github.com/repos/Acode-Foundation/Acode/releases/latest",
 			{
