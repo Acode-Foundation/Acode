@@ -149,6 +149,7 @@ class Settings {
 			lineHeight: 2,
 			leftMargin: 50,
 			checkFiles: true,
+			checkForAppUpdates: false,
 			desktopMode: false,
 			console: this.CONSOLE_LEGACY,
 			keyboardMode: this.KEYBOARD_MODE_NO_SUGGESTIONS_AGGRESSIVE,
