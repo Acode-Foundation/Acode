@@ -329,8 +329,7 @@ async function promptUpdateCheckConsent() {
 			return;
 		}
 
-		const message =
-			"Acode can check for new app updates when you're online. Enable update checks?";
+		const message = strings["prompt update check consent message"];
 		const shouldEnable = await confirm(strings?.confirm, message);
 		localStorage.setItem("checkForUpdatesPrompted", "true");
 		if (shouldEnable) {
