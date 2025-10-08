@@ -66,48 +66,108 @@ export default function PluginsInclude(updates) {
     },
   });
 
+  const verifiedLabel = strings["verified publisher"];
+  const authorLabel = strings.author || strings.name;
+  const keywordsLabel = strings.keywords;
+
+  const filterOptions = {
+    "orderBy:top_rated": { type: "orderBy", value: "top_rated", baseLabel: strings.top_rated },
+    "orderBy:newest": { type: "orderBy", value: "newest", baseLabel: strings.newly_added },
+    "orderBy:downloads": { type: "orderBy", value: "downloads", baseLabel: strings.most_downloaded },
+    "attribute:verified": { type: "verified", value: true, baseLabel: verifiedLabel },
+    "attribute:author": { type: "author", baseLabel: authorLabel },
+    "attribute:keywords": { type: "keywords", baseLabel: keywordsLabel },
+  };
+
+  async function applyFilter(filterState) {
+    if (!filterState) return;
+
+    const normalizedFilter = {
+      ...filterState,
+      displayLabel: filterState.displayLabel || filterState.baseLabel,
+      nextPage: 1,
+      buffer: [],
+      hasMoreSource: true,
+    };
+
+    currentFilter = normalizedFilter;
+    currentPage = 1;
+    hasMore = true;
+    isLoading = false;
+    plugins.all = [];
+
+    if (currSection !== "all") {
+      render("all");
+    } else {
+      $list.all.replaceChildren();
+    }
+
+    const filterMessage = (
+      <div className="filter-message">
+        {strings["filtered by"]} <strong>{normalizedFilter.displayLabel}</strong>
+        <span className="icon clearclose" data-action="clear-filter" onclick={clearFilter}></span>
+      </div>
+    );
+
+    $list.all.append(filterMessage);
+    $list.all.setAttribute("empty-msg", strings["loading..."]);
+    await getFilteredPlugins(currentFilter, true);
+  }
+
+  function clearFilter() {
+    currentFilter = null;
+    currentPage = 1;
+    hasMore = true;
+    isLoading = false;
+    plugins.all = [];
+    $list.all.replaceChildren();
+    $list.all.setAttribute("empty-msg", strings["loading..."]);
+    getAllPlugins();
+  }
+
   Contextmenu({
     toggler: $filter,
     top: "8px",
     right: "16px",
     items: [
-      [strings.top_rated, "top_rated"],
-      [strings.newly_added, "newest"],
-      [strings.most_downloaded, "downloads"],
+      [strings.top_rated, "orderBy:top_rated"],
+      [strings.newly_added, "orderBy:newest"],
+      [strings.most_downloaded, "orderBy:downloads"],
+      [verifiedLabel, "attribute:verified"],
+      [authorLabel, "attribute:author"],
+      [keywordsLabel, "attribute:keywords"],
     ],
-    onselect(item) {
-      const filterNames = {
-        top_rated: strings.top_rated,
-        newest: strings.newly_added,
-        downloads: strings.most_downloaded,
+    async onselect(action) {
+      const option = filterOptions[action];
+      if (!option) return;
+
+      const filterState = {
+        type: option.type,
+        value: option.value,
+        baseLabel: option.baseLabel,
+        displayLabel: option.baseLabel,
       };
-      const filterName = filterNames[item];
-      currentFilter = item;
-      currentPage = 1;
-      hasMore = true;
-      isLoading = false;
-      plugins.all = []; // Reset the all plugins array
-      render("all");
-      $list.all.replaceChildren();
-      $list.all.append(
-        <div className="filter-message">
-          Filtered by <strong>{filterName}</strong>
-          <span
-            className="icon clearclose"
-            data-action="clear-filter"
-            onclick={() => {
-              currentFilter = null;
-              currentPage = 1;
-              hasMore = true;
-              isLoading = false;
-              plugins.all = []; // Reset the all plugins array
-              $list.all.replaceChildren();
-              getAllPlugins();
-            }}
-          ></span>
-        </div>,
-      );
-      getFilteredPlugins(item);
+
+      if (option.type === "author") {
+        const authorName = (await prompt("Enter author name", "", "text"))?.trim();
+        if (!authorName) return;
+        filterState.value = authorName.toLowerCase();
+        filterState.originalValue = authorName;
+        filterState.displayLabel = `${option.baseLabel}: ${authorName}`;
+      } else if (option.type === "keywords") {
+        const rawKeywords = (await prompt("Enter keywords", "", "text"))?.trim();
+        if (!rawKeywords) return;
+      const keywordList = rawKeywords
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
+      if (!keywordList.length) return;
+      filterState.value = keywordList.map((item) => item.toLowerCase());
+      filterState.originalValue = keywordList.join(", ");
+      filterState.displayLabel = `${option.baseLabel}: ${filterState.originalValue}`;
+      }
+
+      await applyFilter(filterState);
     },
   });
 
@@ -250,7 +310,9 @@ export default function PluginsInclude(updates) {
       isLoading = false;
       plugins.all = []; // Reset the all plugins array
       $list.all.replaceChildren();
-      getAllPlugins();
+      if (!currentFilter) {
+        getAllPlugins();
+      }
     }
     $page.get(".options .active").classList.remove("active");
     $page.get(`#${section}_plugins`).classList.add("active");
@@ -258,6 +320,9 @@ export default function PluginsInclude(updates) {
 
   function renderAll() {
     render("all");
+    if (currentFilter) {
+      applyFilter(currentFilter);
+    }
   }
 
   function renderInstalled() {
@@ -285,32 +350,25 @@ export default function PluginsInclude(updates) {
     }
   }
 
-  async function getFilteredPlugins(filterName) {
+  async function getFilteredPlugins(filterState, isInitial = false) {
+    if (!filterState) return;
     if (isLoading || !hasMore) return;
-    
+
     try {
       isLoading = true;
       $list.all.setAttribute("empty-msg", strings["loading..."]);
-      
-      let response;
-      if (filterName === "top_rated") {
-        response = await fetch(`${constants.API_BASE}/plugins?explore=random&page=${currentPage}&limit=${LIMIT}`);
-      } else {
-        response = await fetch(
-          `${constants.API_BASE}/plugin?orderBy=${filterName}&page=${currentPage}&limit=${LIMIT}`,
-        );
+
+      const { items, hasMore: hasMoreResults } = await retrieveFilteredPlugins(filterState);
+
+      if (currentFilter !== filterState) {
+        return;
       }
-      const fetchedPlugins = await response.json();
-      
-      if (fetchedPlugins.length < LIMIT) {
-        hasMore = false;
-      }
-      
+
       const installed = await fsOperation(PLUGIN_DIR).lsDir();
       const disabledMap = settings.value.pluginsDisabled || {};
-      
+
       installed.forEach(({ url }) => {
-        const plugin = fetchedPlugins.find(({ id }) => id === Url.basename(url));
+        const plugin = items.find(({ id }) => id === Url.basename(url));
         if (plugin) {
           plugin.installed = true;
           plugin.enabled = disabledMap[plugin.id] !== true;
@@ -318,28 +376,180 @@ export default function PluginsInclude(updates) {
           plugin.localPlugin = getLocalRes(plugin.id, "plugin.json");
         }
       });
-      
-      // Add plugins to the all plugins array 
-      plugins.all.push(...fetchedPlugins);
-      
+
+      if (isInitial) {
+        $list.all.querySelectorAll(".filter-empty").forEach((el) => el.remove());
+      }
+
+      plugins.all.push(...items);
+
       const fragment = document.createDocumentFragment();
-      fetchedPlugins.forEach((plugin) => {
+      items.forEach((plugin) => {
         fragment.append(<Item {...plugin} updates={updates} />);
       });
-      $list.all.append(fragment);
-      
-      currentPage++;
-      $list.all.setAttribute("empty-msg", strings["no plugins found"]);
+
+      if (fragment.childNodes.length) {
+        $list.all.append(fragment);
+      } else if (isInitial) {
+        $list.all.append(
+          <div className="filter-empty">{strings["no plugins found"] || "No plugins found"}</div>,
+        );
+      }
+
+      hasMore = hasMoreResults;
+      if (!hasMore) {
+        $list.all.setAttribute("empty-msg", strings["no plugins found"]);
+      }
     } catch (error) {
       $list.all.setAttribute("empty-msg", strings["error"]);
-      window.log("error", "Failed to filter plugins:");
-      window.log("error", error);
+      console.error("Failed to filter plugins:", error);
+      hasMore = false;
     } finally {
       isLoading = false;
     }
   }
 
+  async function retrieveFilteredPlugins(filterState) {
+    if (!filterState) return { items: [], hasMore: false };
+
+    if (filterState.type === "orderBy") {
+      const page = filterState.nextPage || 1;
+      try {
+        let response;
+        if (filterState.value === "top_rated") {
+          response = await fetch(
+            `${constants.API_BASE}/plugins?explore=random&page=${page}&limit=${LIMIT}`,
+          );
+        } else {
+          response = await fetch(
+            `${constants.API_BASE}/plugin?orderBy=${filterState.value}&page=${page}&limit=${LIMIT}`,
+          );
+        }
+        const items = await response.json();
+        if (!Array.isArray(items)) {
+          return { items: [], hasMore: false };
+        }
+        filterState.nextPage = page + 1;
+        const hasMoreResults = items.length === LIMIT;
+        return { items, hasMore: hasMoreResults };
+      } catch (error) {
+        console.error("Failed to fetch ordered plugins:", error);
+        return { items: [], hasMore: false };
+      }
+    }
+
+    if (!Array.isArray(filterState.buffer)) {
+      filterState.buffer = [];
+    }
+    if (filterState.hasMoreSource === undefined) {
+      filterState.hasMoreSource = true;
+    }
+    if (!filterState.nextPage) {
+      filterState.nextPage = 1;
+    }
+
+    const items = [];
+
+    while (items.length < LIMIT) {
+      if (filterState.buffer.length) {
+        items.push(filterState.buffer.shift());
+        continue;
+      }
+
+      if (filterState.hasMoreSource === false) break;
+
+      try {
+        const page = filterState.nextPage;
+        const response = await fetch(
+          `${constants.API_BASE}/plugins?page=${page}&limit=${LIMIT}`,
+        );
+        const data = await response.json();
+        filterState.nextPage = page + 1;
+
+        if (!Array.isArray(data) || !data.length) {
+          filterState.hasMoreSource = false;
+          break;
+        }
+
+        if (data.length < LIMIT) {
+          filterState.hasMoreSource = false;
+        }
+
+        const matched = data.filter((plugin) => matchesFilter(plugin, filterState));
+        filterState.buffer.push(...matched);
+      } catch (error) {
+        console.error("Failed to fetch filtered plugins:", error);
+        filterState.hasMoreSource = false;
+        break;
+      }
+    }
+
+    while (items.length < LIMIT && filterState.buffer.length) {
+      items.push(filterState.buffer.shift());
+    }
+
+    const hasMoreResults =
+      (filterState.hasMoreSource !== false && filterState.nextPage) ||
+      filterState.buffer.length > 0;
+
+    return { items, hasMore: Boolean(hasMoreResults) };
+  }
+
+  function matchesFilter(plugin, filterState) {
+    if (!plugin) return false;
+
+    switch (filterState.type) {
+      case "verified":
+        return Boolean(plugin.author_verified);
+      case "author": {
+        const authorName = normalizePluginAuthor(plugin);
+        if (!authorName) return false;
+        return authorName.toLowerCase().includes(filterState.value);
+      }
+      case "keywords": {
+        const pluginKeywords = normalizePluginKeywords(plugin)
+          .map((keyword) => keyword.toLowerCase())
+          .filter(Boolean);
+        if (!pluginKeywords.length) return false;
+        return filterState.value.some((keyword) =>
+          pluginKeywords.some((pluginKeyword) => pluginKeyword.includes(keyword)),
+        );
+      }
+      default:
+        return true;
+    }
+  }
+
+  function normalizePluginAuthor(plugin) {
+    const { author } = plugin || {};
+    if (!author) return "";
+    if (typeof author === "string") return author;
+    if (typeof author === "object") {
+      return author.name || author.username || author.github || "";
+    }
+    return "";
+  }
+
+  function normalizePluginKeywords(plugin) {
+    const { keywords } = plugin || {};
+    if (!keywords) return [];
+    if (Array.isArray(keywords)) return keywords;
+    if (typeof keywords === "string") {
+      try {
+        const parsed = JSON.parse(keywords);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (error) {
+        return keywords
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean);
+      }
+    }
+    return [];
+  }
+
   async function getAllPlugins() {
+    if (currentFilter) return;
     if (isLoading || !hasMore) return;
 
     try {
@@ -356,7 +566,7 @@ export default function PluginsInclude(updates) {
 
       const installed = await fsOperation(PLUGIN_DIR).lsDir();
       const disabledMap = settings.value.pluginsDisabled || {};
-      
+
       installed.forEach(({ url }) => {
         const plugin = newPlugins.find(({ id }) => id === Url.basename(url));
         if (plugin) {
@@ -369,7 +579,7 @@ export default function PluginsInclude(updates) {
 
       // Add plugins to the all plugins array
       plugins.all.push(...newPlugins);
-      
+
       const fragment = document.createDocumentFragment();
       newPlugins.forEach((plugin) => {
         fragment.append(<Item {...plugin} updates={updates} />);
@@ -413,19 +623,19 @@ export default function PluginsInclude(updates) {
     $list.owned.setAttribute("empty-msg", strings["loading..."]);
     const purchases = await helpers.promisify(iap.getPurchases);
     const disabledMap = settings.value.pluginsDisabled || {};
-    
+
     purchases.forEach(async ({ productIds }) => {
       const [sku] = productIds;
       const url = Url.join(constants.API_BASE, "plugin/owned", sku);
       const plugin = await fsOperation(url).readFile("json");
       const isInstalled = plugins.installed.find(({ id }) => id === plugin.id);
       plugin.installed = !!isInstalled;
-      
+
       if (plugin.installed) {
         plugin.enabled = disabledMap[plugin.id] !== true;
         plugin.onToggleEnabled = onToggleEnabled;
       }
-      
+
       plugins.owned.push(plugin);
       $list.owned.append(<Item {...plugin} updates={updates} />);
     });
@@ -525,12 +735,12 @@ export default function PluginsInclude(updates) {
      if (installedPlugin) {
        installedPlugin.enabled = !enabled;
      }
-     
+
      const allPlugin = plugins.all.find(p => p.id === id);
      if (allPlugin) {
        allPlugin.enabled = !enabled;
      }
-     
+
      const ownedPlugin = plugins.owned.find(p => p.id === id);
      if (ownedPlugin) {
        ownedPlugin.enabled = !enabled;
@@ -542,13 +752,13 @@ export default function PluginsInclude(updates) {
        const $newItem = <Item {...installedPlugin} updates={updates} />;
        $installedItem.replaceWith($newItem);
      }
-     
+
      const $allItem = $list.all.get(`[data-id="${id}"]`);
      if ($allItem && allPlugin) {
        const $newItem = <Item {...allPlugin} updates={updates} />;
        $allItem.replaceWith($newItem);
      }
-     
+
      const $ownedItem = $list.owned.get(`[data-id="${id}"]`);
      if ($ownedItem && ownedPlugin) {
        const $newItem = <Item {...ownedPlugin} updates={updates} />;

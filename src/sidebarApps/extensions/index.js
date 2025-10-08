@@ -31,7 +31,6 @@ let currentPage = 1;
 let hasMore = true;
 let isLoading = false;
 let currentFilter = null;
-let filterCurrentPage = 1;
 let filterHasMore = true;
 let isFilterLoading = false;
 
@@ -163,28 +162,35 @@ async function loadMorePlugins() {
 	}
 }
 
-async function loadFilteredPlugins(filterName, isInitial = false) {
-	if (isFilterLoading || !filterHasMore) return;
+async function loadFilteredPlugins(filterState, isInitial = false) {
+	if (isFilterLoading || !filterHasMore || !filterState) return;
 
 	try {
 		isFilterLoading = true;
 
-		const plugins = await getFilteredPlugins(filterName, filterCurrentPage);
+		const { items, hasMore } = await getFilteredPlugins(filterState);
 
-		if (plugins.length < LIMIT) {
-			filterHasMore = false;
+		if (currentFilter !== filterState) {
+			return;
 		}
 
 		installedPlugins = await listInstalledPlugins();
-		const pluginElements = plugins.map(ListItem);
-
-		if (isInitial) {
+		const pluginElements = items.map(ListItem);
+		if (pluginElements.length) {
 			$searchResult.append(...pluginElements);
-		} else {
-			$searchResult.append(...pluginElements);
+		} else if (isInitial) {
+			$searchResult.append(
+				<span className="error empty">
+					{strings["no plugins found"] || strings.empty || "No plugins found"}
+				</span>,
+			);
 		}
 
-		filterCurrentPage++;
+		filterHasMore = hasMore;
+		if (!filterHasMore) {
+			$searchResult.onscroll = null;
+		}
+
 		updateHeight($searchResult);
 	} catch (error) {
 		window.log("error", "Error loading filtered plugins:");
@@ -199,7 +205,6 @@ async function searchPlugin() {
 	searchTimeout = setTimeout(async () => {
 		// Clear filter when searching
 		currentFilter = null;
-		filterCurrentPage = 1;
 		filterHasMore = true;
 		isFilterLoading = false;
 		$searchResult.onscroll = null;
@@ -235,28 +240,88 @@ async function searchPlugin() {
 }
 
 async function filterPlugins() {
-	const filterOptions = {
-		[strings.top_rated]: "top_rated",
-		[strings.newly_added]: "newest",
-		[strings.most_downloaded]: "downloads",
+	const verifiedLabel = strings["verified publisher"];
+	const authorLabel = strings.author || strings.name;
+	const keywordsLabel = strings.keywords;
+
+	const filterItems = [
+		{ value: "orderBy:top_rated", text: strings.top_rated },
+		{ value: "orderBy:newest", text: strings.newly_added },
+		{ value: "orderBy:downloads", text: strings.most_downloaded },
+		{ value: "attribute:verified", text: verifiedLabel },
+		{ value: "attribute:author", text: authorLabel },
+		{ value: "attribute:keywords", text: keywordsLabel },
+	];
+
+	const filterConfig = {
+		"orderBy:top_rated": {
+			type: "orderBy",
+			value: "top_rated",
+			baseLabel: strings.top_rated,
+		},
+		"orderBy:newest": {
+			type: "orderBy",
+			value: "newest",
+			baseLabel: strings.newly_added,
+		},
+		"orderBy:downloads": {
+			type: "orderBy",
+			value: "downloads",
+			baseLabel: strings.most_downloaded,
+		},
+		"attribute:verified": {
+			type: "verified",
+			baseLabel: verifiedLabel,
+			value: true,
+		},
+		"attribute:author": { type: "author", baseLabel: authorLabel },
+		"attribute:keywords": { type: "keywords", baseLabel: keywordsLabel },
 	};
 
-	const filterName = await select("Filter", Object.keys(filterOptions));
-	if (!filterName) return;
+	const selection = await select("Filter", filterItems);
+	if (!selection) return;
 
-	$searchResult.content = "";
-	const filterParam = filterOptions[filterName];
-	currentFilter = filterParam;
-	filterCurrentPage = 1;
+	const option = filterConfig[selection];
+	if (!option) return;
+
+	const filterState = {
+		...option,
+		nextPage: 1,
+		buffer: [],
+		hasMoreSource: true,
+		displayLabel: option.baseLabel,
+	};
+
+	if (option.type === "author") {
+		const authorName = (await prompt("Enter author name", "", "text"))?.trim();
+		if (!authorName) return;
+		filterState.value = authorName.toLowerCase();
+		filterState.originalValue = authorName;
+		filterState.displayLabel = `${option.baseLabel}: ${authorName}`;
+	} else if (option.type === "keywords") {
+		const rawKeywords = (await prompt("Enter keywords", "", "text"))?.trim();
+		if (!rawKeywords) return;
+		const keywordList = rawKeywords
+			.split(",")
+			.map((item) => item.trim())
+			.filter(Boolean);
+		if (!keywordList.length) return;
+		filterState.value = keywordList.map((item) => item.toLowerCase());
+		filterState.originalValue = keywordList.join(", ");
+		filterState.displayLabel = `${option.baseLabel}: ${filterState.originalValue}`;
+	}
+
+	currentFilter = filterState;
 	filterHasMore = true;
 	isFilterLoading = false;
+	$searchResult.content = "";
 
 	try {
 		$searchResult.classList.add("loading");
 		const filterMessage = (
 			<div className="filter-message">
 				<span>
-					Filtered by <strong>{filterName}</strong>
+					{strings["filtered by"]} <strong>{filterState.displayLabel}</strong>
 				</span>
 				<span
 					className="icon clearclose close-button"
@@ -267,12 +332,11 @@ async function filterPlugins() {
 		);
 		$searchResult.content = [filterMessage];
 		$searchResult.onscroll = handleFilterScroll;
-		await loadFilteredPlugins(filterParam, true);
+		await loadFilteredPlugins(currentFilter, true);
 		updateHeight($searchResult);
 
 		function clearFilter() {
 			currentFilter = null;
-			filterCurrentPage = 1;
 			filterHasMore = true;
 			isFilterLoading = false;
 			$searchResult.content = "";
@@ -381,23 +445,146 @@ async function listInstalledPlugins() {
 	return plugins;
 }
 
-async function getFilteredPlugins(filterName, page = 1) {
-	try {
-		let response;
-		if (filterName === "top_rated") {
-			response = await fetch(
-				`${constants.API_BASE}/plugins?explore=random&page=${page}&limit=${LIMIT}`,
+async function getFilteredPlugins(filterState) {
+	if (!filterState) return { items: [], hasMore: false };
+
+	if (filterState.type === "orderBy") {
+		const page = filterState.nextPage || 1;
+		try {
+			let response;
+			if (filterState.value === "top_rated") {
+				response = await fetch(
+					`${constants.API_BASE}/plugins?explore=random&page=${page}&limit=${LIMIT}`,
+				);
+			} else {
+				response = await fetch(
+					`${constants.API_BASE}/plugin?orderBy=${filterState.value}&page=${page}&limit=${LIMIT}`,
+				);
+			}
+			const items = await response.json();
+			if (!Array.isArray(items)) {
+				return { items: [], hasMore: false };
+			}
+			filterState.nextPage = page + 1;
+			const hasMore = items.length === LIMIT;
+			return { items, hasMore };
+		} catch (error) {
+			console.error(`Failed to get Filtered Plugins: `, error);
+			return { items: [], hasMore: false };
+		}
+	}
+
+	if (!Array.isArray(filterState.buffer)) {
+		filterState.buffer = [];
+	}
+	if (filterState.hasMoreSource === undefined) {
+		filterState.hasMoreSource = true;
+	}
+	if (!filterState.nextPage) {
+		filterState.nextPage = 1;
+	}
+
+	const items = [];
+
+	while (items.length < LIMIT) {
+		if (filterState.buffer.length) {
+			items.push(filterState.buffer.shift());
+			continue;
+		}
+
+		if (filterState.hasMoreSource === false) break;
+
+		try {
+			const page = filterState.nextPage;
+			const response = await fetch(
+				`${constants.API_BASE}/plugins?page=${page}&limit=${LIMIT}`,
 			);
-		} else {
-			response = await fetch(
-				`${constants.API_BASE}/plugin?orderBy=${filterName}&page=${page}&limit=${LIMIT}`,
+			const data = await response.json();
+			filterState.nextPage = page + 1;
+
+			if (!Array.isArray(data) || !data.length) {
+				filterState.hasMoreSource = false;
+				break;
+			}
+
+			if (data.length < LIMIT) {
+				filterState.hasMoreSource = false;
+			}
+
+			const matched = data.filter((plugin) =>
+				doesPluginMatchFilter(plugin, filterState),
+			);
+			filterState.buffer.push(...matched);
+		} catch (error) {
+			window.log("error", "Failed to fetch filtered plugins:");
+			window.log("error", error);
+			filterState.hasMoreSource = false;
+			break;
+		}
+	}
+
+	while (items.length < LIMIT && filterState.buffer.length) {
+		items.push(filterState.buffer.shift());
+	}
+
+	const hasMore =
+		(filterState.hasMoreSource !== false && filterState.nextPage) ||
+		filterState.buffer.length > 0;
+
+	return { items, hasMore: Boolean(hasMore) };
+}
+
+function doesPluginMatchFilter(plugin, filterState) {
+	if (!plugin) return false;
+
+	switch (filterState.type) {
+		case "verified":
+			return Boolean(plugin.author_verified);
+		case "author": {
+			const authorName = getPluginAuthorName(plugin);
+			if (!authorName) return false;
+			return authorName.toLowerCase().includes(filterState.value);
+		}
+		case "keywords": {
+			const pluginKeywords = getPluginKeywords(plugin)
+				.map((keyword) => keyword.toLowerCase())
+				.filter(Boolean);
+			if (!pluginKeywords.length) return false;
+			return filterState.value.some((keyword) =>
+				pluginKeywords.some((pluginKeyword) => pluginKeyword.includes(keyword)),
 			);
 		}
-		return await response.json();
-	} catch (error) {
-		window.log("error", error);
-		return [];
+		default:
+			return true;
 	}
+}
+
+function getPluginAuthorName(plugin) {
+	const { author } = plugin || {};
+	if (!author) return "";
+	if (typeof author === "string") return author;
+	if (typeof author === "object") {
+		return author.name || author.username || author.github || "";
+	}
+	return "";
+}
+
+function getPluginKeywords(plugin) {
+	const { keywords } = plugin || {};
+	if (!keywords) return [];
+	if (Array.isArray(keywords)) return keywords;
+	if (typeof keywords === "string") {
+		try {
+			const parsed = JSON.parse(keywords);
+			if (Array.isArray(parsed)) return parsed;
+		} catch (error) {
+			return keywords
+				.split(",")
+				.map((item) => item.trim())
+				.filter(Boolean);
+		}
+	}
+	return [];
 }
 
 function startLoading($list) {
@@ -596,7 +783,6 @@ function ListItem({ icon, name, id, version, downloads, installed, source }) {
 					$searchResult.content = "";
 					// Reset filter state when clearing search results
 					currentFilter = null;
-					filterCurrentPage = 1;
 					filterHasMore = true;
 					isFilterLoading = false;
 					$searchResult.onscroll = null;
@@ -690,7 +876,6 @@ async function uninstall(id) {
 			$searchResult.content = "";
 			// Reset filter state when clearing search results
 			currentFilter = null;
-			filterCurrentPage = 1;
 			filterHasMore = true;
 			isFilterLoading = false;
 			$searchResult.onscroll = null;
