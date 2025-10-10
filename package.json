@@ -35,9 +35,11 @@
       "cordova-plugin-websocket": {},
       "cordova-plugin-buildinfo": {},
       "cordova-plugin-browser": {},
+      "com.foxdebug.acode.rk.exec.terminal": {},
+      "com.foxdebug.acode.rk.exec.proot": {},
       "cordova-plugin-sftp": {},
-      "cordova-plugin-system": {},
-      "com.foxdebug.acode.rk.exec.terminal": {}
+      "com.foxdebug.acode.rk.nativeFile": {},
+      "cordova-plugin-system": {}
     },
     "platforms": [
       "android"
@@ -79,6 +81,7 @@
     "cordova-plugin-websocket": "file:src/plugins/websocket",
     "css-loader": "^7.1.2",
     "mini-css-extract-plugin": "^2.9.3",
+    "native_file": "file:src/plugins/nativeFile",
     "path-browserify": "^1.0.1",
     "postcss-loader": "^8.1.1",
     "prettier": "^3.6.2",
