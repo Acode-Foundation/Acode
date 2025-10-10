@@ -426,5 +426,7 @@
 	"reviews": "Bewertungen",
 	"overview": "Überblick",
 	"contributors": "Mitwirkende",
-	"quicktools:hyphen": "Bindestrich-Symbol einfügen"
+	"quicktools:hyphen": "Bindestrich-Symbol einfügen",
+	"check for app updates": "Check for app updates",
+	"prompt update check consent message": "Acode can check for new app updates when you're online. Enable update checks?"
 }

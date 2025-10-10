@@ -22,6 +22,7 @@ import { TerminalManager } from "components/terminal";
 import tile from "components/tile";
 import toast from "components/toast";
 import tutorial from "components/tutorial";
+import confirm from "dialogs/confirm";
 import intentHandler, { processPendingIntents } from "handlers/intent";
 import keyboardHandler, { keydownState } from "handlers/keyboard";
 import quickToolsInit from "handlers/quickToolsInit";
@@ -259,8 +260,10 @@ async function onDeviceReady() {
 		}, 500);
 	}
 
+	await promptUpdateCheckConsent();
+
 	// Check for app updates
-	if (navigator.onLine) {
+	if (settings.value.checkForAppUpdates && navigator.onLine) {
 		cordova.plugin.http.sendRequest(
 			"https://api.github.com/repos/Acode-Foundation/Acode/releases/latest",
 			{
@@ -315,6 +318,26 @@ async function onDeviceReady() {
 			);
 		})
 		.catch(console.error);
+}
+
+async function promptUpdateCheckConsent() {
+	try {
+		if (Boolean(localStorage.getItem("checkForUpdatesPrompted"))) return;
+
+		if (settings.value.checkForAppUpdates) {
+			localStorage.setItem("checkForUpdatesPrompted", "true");
+			return;
+		}
+
+		const message = strings["prompt update check consent message"];
+		const shouldEnable = await confirm(strings?.confirm, message);
+		localStorage.setItem("checkForUpdatesPrompted", "true");
+		if (shouldEnable) {
+			await settings.update({ checkForAppUpdates: true }, false);
+		}
+	} catch (error) {
+		console.error("Failed to prompt for update check consent", error);
+	}
 }
 
 async function loadApp() {

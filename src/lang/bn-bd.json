@@ -426,5 +426,7 @@
 	"reviews": "রিভিউ",
 	"overview": "সংক্ষিপ্ত বিবরণ",
 	"contributors": "অবদানকারী",
-	"quicktools:hyphen": "হাইফেন যুক্ত করুন"
+	"quicktools:hyphen": "হাইফেন যুক্ত করুন",
+	"check for app updates": "Check for app updates",
+	"prompt update check consent message": "Acode can check for new app updates when you're online. Enable update checks?"
 }

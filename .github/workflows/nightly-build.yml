@@ -1,3 +1,5 @@
+# Implement to use environment secrets someday, At the moment GH Actions doesn't support those in reusable workflows (ref: https://github.com/actions/runner/issues/1490)
+# at least that's what I found.
   name: Nightly Build
 
   on:
@@ -28,6 +30,12 @@
           value: ${{ jobs.build.result }}
 
     workflow_dispatch:
+      inputs:
+        skip_tagging_and_releases:
+          required: false
+          default: true
+          type: boolean
+          description: Skips Tagging & releases, since workflow_call isn't available for github.event_name, default is true
 
   concurrency:
     # Allow only one workflow per any non-`main` branch.
@@ -51,7 +59,7 @@
       permissions:
 #        contents write is needed to create Nightly Releases.
         contents: write
-        issues: write
+#        issues: write
         pull-requests: write
 
       outputs:
@@ -89,13 +97,16 @@
           uses: actions/checkout@v4
           with:
             fetch-depth: 0 # Required for tags
+            # persists credentials locally if tagging and releases are not skipped.
+            persist-credentials: ${{ ! inputs.skip_tagging_and_releases }}
+            ref: ${{ (inputs.is_PR && inputs.PR_NUMBER) && github.event.pull_request.head.sha || '' }}
 
         - name: Set up Java 21
           uses: actions/setup-java@v4
           with:
             distribution: 'temurin'
             java-version: '21'
-            cache: ${{ (github.ref == 'refs/heads/main' && 'gradle') || '' }}
+            cache: ${{ (!(inputs.is_PR && inputs.PR_NUMBER) && github.ref == 'refs/heads/main' && 'gradle') || '' }}
 
         - name: Set up Node.js
           uses: actions/setup-node@v4
@@ -148,6 +159,9 @@
 
         - name: Install Node.js Packages
           run: npm install
+
+        - name: Install Cordova CLI
+          run: npm install -g cordova
 
         - name: Run npm setup
           run: npm run setup
@@ -207,7 +221,8 @@
               platforms/android/app/build/outputs/apk/debug/app-debug.apk
             body: |
               Automated Nightly (pre-release) Releases for Today
-              \n\n[Compare Changes](https://github.com/${{ github.repository }}/compare/${{ env.TAG_COMMIT }}...${{ github.sha }})
+              
+              [Compare Changes](https://github.com/${{ github.repository }}/compare/${{ env.TAG_COMMIT }}...${{ github.sha }})
 
         - name: Update Last Comment by bot (If ran in PR)
           if: inputs.is_PR

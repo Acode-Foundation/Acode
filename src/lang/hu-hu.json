@@ -426,5 +426,7 @@
 	"reviews": "áttekintések",
 	"overview": "Áttekintés",
 	"contributors": "Közreműködők",
-	"quicktools:hyphen": "Kötőjel beszúrása"
+	"quicktools:hyphen": "Kötőjel beszúrása",
+	"check for app updates": "Alkalmazásfrissítések ellenőrzése",
+	"prompt update check consent message": "Internetkapcsolat esetén az Acode ellenőrizheti az új alkalmazásfrissítéseket. Engedélyezi a frissítések ellenőrzését?"
 }

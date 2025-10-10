@@ -426,5 +426,7 @@
 	"reviews": "التقييمات",
 	"overview": "نظرة عامة",
 	"contributors": "المساهمون",
-	"quicktools:hyphen": "إدراج شرطة"
+	"quicktools:hyphen": "إدراج شرطة",
+	"check for app updates": "Check for app updates",
+	"prompt update check consent message": "Acode can check for new app updates when you're online. Enable update checks?"
 }

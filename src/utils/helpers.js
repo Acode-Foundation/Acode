@@ -387,14 +387,22 @@ export default {
 		// Determine if it's a special case URI
 		const isSpecialCase = currentUri.includes("::");
 		let baseFolder;
+		const isExternalStorageUri = currentUri.includes(
+			"com.android.externalstorage.documents",
+		);
+		const isTermuxUri = currentUri.includes("com.termux.documents");
+		const isAcodeTerminalPublicSafUri = currentUri.includes(
+			"com.foxdebug.acode.documents",
+		);
+		const [, treeSegment = ""] = currentUri.split("/tree/");
+		const terminalBasePath = isAcodeTerminalPublicSafUri
+			? decodeURIComponent(treeSegment.split("::")[0] || "")
+			: "";
 
-		if (currentUri.includes("com.android.externalstorage.documents")) {
+		if (isExternalStorageUri) {
 			baseFolder = decodeURIComponent(currentUri.split("%3A")[1].split("/")[0]);
 		} else if (
-			!(
-				currentUri.includes("com.android.externalstorage.documents") ||
-				currentUri.includes("com.termux.documents")
-			)
+			!(isExternalStorageUri || isTermuxUri || isAcodeTerminalPublicSafUri)
 		) {
 			// Handle nested paths for regular file:// URIs
 			const pathParts = pathString.split("/").filter(Boolean);
@@ -443,15 +451,24 @@ export default {
 			let fullUri = currentUri;
 
 			// Adjust URI for special cases
-			if (currentUri.includes("com.android.externalstorage.documents")) {
+			if (isExternalStorageUri) {
 				if (!isSpecialCase && i === 0) {
 					fullUri += `::primary:${baseFolder}/${name}`;
 				} else {
 					fullUri += `/${name}`;
 				}
-			} else if (currentUri.includes("com.termux.documents")) {
+			} else if (isTermuxUri) {
 				if (!isSpecialCase && i === 0) {
 					fullUri += `::/data/data/com.termux/files/home/${name}`;
+				} else {
+					fullUri += `/${name}`;
+				}
+			} else if (isAcodeTerminalPublicSafUri) {
+				if (!isSpecialCase && i === 0) {
+					const sanitizedBase = terminalBasePath.endsWith("/")
+						? `${terminalBasePath}${name}`
+						: `${terminalBasePath}/${name}`;
+					fullUri += `::${sanitizedBase}`;
 				} else {
 					fullUri += `/${name}`;
 				}
