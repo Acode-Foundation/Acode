@@ -7,7 +7,7 @@ export HOME=/home
 export TERM=xterm-256color
 
 
-required_packages="bash"
+required_packages="bash command-not-found"
 missing_packages=""
 
 for pkg in $required_packages; do
@@ -78,6 +78,24 @@ export PIP_BREAK_SYSTEM_PACKAGES=1
 if [ -s /etc/acode_motd ]; then
     cat /etc/acode_motd
 fi
+
+command_not_found_handle() {
+    local cmd="$1"
+    local pkg
+    local green="\033[1;32m"
+    local reset="\033[0m"
+
+    # Search for package providing the command
+    pkg=$(apk search -x "cmd:$cmd" 2>/dev/null | awk -F'-[0-9]' '{print $1}' | head -n 1)
+
+    if [ -n "$pkg" ]; then
+        printf "The program %s is not installed. Install it by executing:\n ${green}apk add %s${reset}\n" "$cmd" "$pkg" >&2
+    else
+        printf "The program %s is not installed and no package provides it.\n" "$cmd" >&2
+    fi
+
+    return 127
+}
 
 EOF
     fi
