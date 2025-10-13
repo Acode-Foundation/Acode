@@ -78,11 +78,12 @@ if [ -f /etc/bash/bashrc ]; then
 fi
 
 # Environment setup
-PATH=$PATH:/bin:/sbin:/usr/bin:/usr/sbin:/usr/share/bin:/usr/share/sbin:/usr/local/bin:/usr/local/sbin
-export PATH HOME=/home 
-TERM=xterm-256color 
+export PATH=$PATH:/bin:/sbin:/usr/bin:/usr/sbin:/usr/share/bin:/usr/share/sbin:/usr/local/bin:/usr/local/sbin
+
+export HOME=/home 
+export TERM=xterm-256color 
 SHELL=/bin/bash
-PIP_BREAK_SYSTEM_PACKAGES=1
+export PIP_BREAK_SYSTEM_PACKAGES=1
 
 # Display MOTD if available
 if [ -s /etc/acode_motd ]; then
