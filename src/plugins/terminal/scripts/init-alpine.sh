@@ -93,19 +93,20 @@ fi
 command_not_found_handle() {
     cmd="$1"
     pkg=""
-    green="\033[1;32m"
-    reset="\033[0m"
+    green="\e[1;32m"
+    reset="\e[0m"
 
     pkg=$(apk search -x "cmd:$cmd" 2>/dev/null | awk -F'-[0-9]' '{print $1}' | head -n 1)
 
     if [ -n "$pkg" ]; then
-        printf "The program '%s' is not installed.\nInstall it by executing:\n %sapk add %s%s\n" "$cmd" "$green" "$pkg" "$reset" >&2
+        echo -e "The program '$cmd' is not installed.\nInstall it by executing:\n ${green}apk add $pkg${reset}" >&2
     else
-        printf "The program '%s' is not installed and no package provides it.\n" "$cmd" >&2
+        echo "The program '$cmd' is not installed and no package provides it." >&2
     fi
 
     return 127
 }
+
 EOF
 fi
 
