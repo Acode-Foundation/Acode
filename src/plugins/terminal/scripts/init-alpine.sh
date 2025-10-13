@@ -1,4 +1,3 @@
-set -e  # Exit immediately on failure
 
 
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/share/bin:/usr/share/sbin:/usr/local/bin:/usr/local/sbin:/system/bin:/system/xbin:$PREFIX/local/bin
@@ -118,7 +117,7 @@ fi
 chmod +x "$PREFIX/alpine/initrc"
 
 #actual souce
-"$PREFIX/axs" -c "sh --rcfile /initrc -i"
+"$PREFIX/axs" -c "bash --rcfile /initrc -i"
 
 else
     exec "$@"
