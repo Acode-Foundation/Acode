@@ -39,16 +39,19 @@ fi
 
 ARGS="--kill-on-exit"
 
-for system_mnt in /apex /odm /product /system /system_ext /vendor \
- /linkerconfig/ld.config.txt \
- /linkerconfig/com.android.art/ld.config.txt \
- /plat_property_contexts /property_contexts; do
+
+
+for system_mnt in /apex /odm /product /system /system_ext /vendor /linkerconfig/ld.config.txt /linkerconfig/com.android.art/ld.config.txt /plat_property_contexts /property_contexts; do
 
  if [ -e "$system_mnt" ]; then
   system_mnt=$(realpath "$system_mnt")
   ARGS="$ARGS -b ${system_mnt}"
  fi
 done
+
+
+
+
 unset system_mnt
 
 ARGS="$ARGS -b /sdcard"
