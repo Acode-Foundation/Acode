@@ -428,9 +428,9 @@
 	"overview": "Ikhtisar",
 	"contributors": "Kontributor",
 	"quicktools:hyphen": "Masukkan simbol tanda hubung",
-	"check for app updates": "Check for app updates",
-	"prompt update check consent message": "Acode can check for new app updates when you're online. Enable update checks?",
-	"keywords": "Keywords",
-	"author": "Author",
-	"filtered by": "Filtered by"
+	"check for app updates": "Periksa pembaruan aplikasi",
+	"prompt update check consent message": "Acode dapat memeriksa pembaruan aplikasi baru saat Anda online. Aktifkan pemeriksaan pembaruan?",
+	"keywords": "Kata kunci",
+	"author": "Pembuat",
+	"filtered by": "Disaring oleh"
 }
