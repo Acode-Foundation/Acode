@@ -19,6 +19,13 @@ import openFile from "./openFile";
 import recents from "./recents";
 import appSettings from "./settings";
 
+const isTermuxSafUri = (value = "") =>
+	value.startsWith("content://com.termux.documents/tree/");
+const isAcodeTerminalPublicSafUri = (value = "") =>
+	value.startsWith("content://com.foxdebug.acode.documents/tree/");
+const isTerminalSafUri = (value = "") =>
+	isTermuxSafUri(value) || isAcodeTerminalPublicSafUri(value);
+
 /**
  * @typedef {import('../components/collapsableList').Collapsible} Collapsible
  */
@@ -401,7 +408,7 @@ function execOperation(type, action, url, $target, name) {
 			editorManager.onupdate("delete-file");
 			editorManager.emit("update", "delete-file");
 		} else {
-			if (url.startsWith("content://com.termux.documents/tree/")) {
+			if (isTerminalSafUri(url)) {
 				const fs = fsOperation(url);
 				const entries = await fs.lsDir();
 				if (entries.length === 0) {
@@ -436,10 +443,7 @@ function execOperation(type, action, url, $target, name) {
 	}
 
 	async function renameFile() {
-		if (
-			url.startsWith("content://com.termux.documents/tree/") &&
-			!helpers.isFile(type)
-		) {
+		if (isTermuxSafUri(url) && !helpers.isFile(type)) {
 			alert(strings.warning, strings["rename not supported"]);
 			return;
 		}
@@ -455,11 +459,8 @@ function execOperation(type, action, url, $target, name) {
 		const fs = fsOperation(url);
 		let newUrl;
 
-		if (
-			url.startsWith("content://com.termux.documents/tree/") &&
-			helpers.isFile(type)
-		) {
-			// Special handling for Termux content files
+		if (isTermuxSafUri(url) && helpers.isFile(type)) {
+			// Special handling for Termux SAF content files
 			const newFilePath = Url.join(Url.dirname(url), newName);
 			const content = await fs.readFile();
 			await fsOperation(Url.dirname(url)).createFile(newName, content);
@@ -581,11 +582,8 @@ function execOperation(type, action, url, $target, name) {
 			}
 			let newUrl;
 			if (clipBoard.action === "cut") {
-				// Special handling for Termux SAF folders - move manually due to SAF limitations
-				if (
-					clipBoard.url.startsWith("content://com.termux.documents/tree/") &&
-					IS_DIR
-				) {
+				// Special handling for SAF folders backed by terminal providers - move manually due to SAF limitations
+				if (isTerminalSafUri(clipBoard.url) && IS_DIR) {
 					const moveRecursively = async (sourceUrl, targetParentUrl) => {
 						const sourceFs = fsOperation(sourceUrl);
 						const sourceName = Url.basename(sourceUrl);

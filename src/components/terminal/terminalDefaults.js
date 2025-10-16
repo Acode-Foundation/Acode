@@ -1,12 +1,12 @@
 import appSettings from "lib/settings";
 
 export const DEFAULT_TERMINAL_SETTINGS = {
-	fontSize: 14,
+	fontSize: 12,
 	fontFamily: "MesloLGS NF Regular",
 	fontWeight: "normal",
 	cursorBlink: true,
 	cursorStyle: "block",
-	cursorInactiveStyle: "underline",
+	cursorInactiveStyle: "outline",
 	scrollback: 1000,
 	theme: "dark",
 	tabStopWidth: 4,

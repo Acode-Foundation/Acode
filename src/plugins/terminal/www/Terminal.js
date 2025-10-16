@@ -19,6 +19,12 @@ const Terminal = {
                     system.writeText(`${filesDir}/init-alpine.sh`, content, logger, err_logger);
                 });
 
+                readAsset("rm-wrapper.sh", async (content) => {
+                    system.deleteFile(`${filesDir}/alpine/bin/rm`, logger, err_logger);
+                    system.writeText(`${filesDir}/alpine/bin/rm`, content, logger, err_logger);
+                    system.setExec(`${filesDir}/alpine/bin/rm`, true, logger, err_logger);
+                });
+
                 readAsset("init-sandbox.sh", (content) => {
                     system.writeText(`${filesDir}/init-sandbox.sh`, content, logger, err_logger);
 
@@ -38,6 +44,12 @@ const Terminal = {
                 });
             });
         } else {
+            readAsset("rm-wrapper.sh", async (content) => {
+                system.deleteFile(`${filesDir}/alpine/bin/rm`, logger, err_logger);
+                system.writeText(`${filesDir}/alpine/bin/rm`, content, logger, err_logger);
+                system.setExec(`${filesDir}/alpine/bin/rm`, true, logger, err_logger);
+            });
+
             readAsset("init-alpine.sh", async (content) => {
                 system.writeText(`${filesDir}/init-alpine.sh`, content, logger, err_logger);
             });
@@ -221,6 +233,12 @@ const Terminal = {
 
             logger("⚙️  Applying basic configuration...");
             system.writeText(`${alpineDir}/etc/resolv.conf`, `nameserver 8.8.4.4 \nnameserver 8.8.8.8`);
+
+            readAsset("rm-wrapper.sh", async (content) => {
+                system.deleteFile(`${alpineDir}/bin/rm`, logger, err_logger);
+                system.writeText(`${alpineDir}/bin/rm`, content, logger, err_logger);
+                system.setExec(`${alpineDir}/bin/rm`, true, logger, err_logger);
+            });
 
             logger("✅  Extraction complete");
             await new Promise((resolve, reject) => {

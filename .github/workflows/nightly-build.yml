@@ -1,0 +1,249 @@
+# Implement to use environment secrets someday, At the moment GH Actions doesn't support those in reusable workflows (ref: https://github.com/actions/runner/issues/1490)
+# at least that's what I found.
+  name: Nightly Build
+
+  on:
+    schedule:
+      # Fire every day at 7:00am UTC (Roughly before EU workday and after US workday)
+      - cron: "0 7 * * *"
+    push:
+      tags:
+        - nightly
+    workflow_call:
+      inputs:
+        is_PR:
+          default: false
+          type: boolean
+          description: If a Pull Request has triggered it.
+        PR_NUMBER:
+          required: true
+          type: number
+          description: The Pull Request that triggered this workflow
+        skip_tagging_and_releases:
+          required: false
+          default: true
+          type: boolean
+          description: Skips Tagging & releases, since workflow_call isn't available for github.event_name, default is true
+      outputs:
+        job_result:
+          description: "Build job result"
+          value: ${{ jobs.build.result }}
+
+    workflow_dispatch:
+      inputs:
+        skip_tagging_and_releases:
+          required: false
+          default: true
+          type: boolean
+          description: Skips Tagging & releases, since workflow_call isn't available for github.event_name, default is true
+
+  concurrency:
+    # Allow only one workflow per any non-`main` branch.
+    group: ${{ github.workflow }}-${{ github.ref_name }}-${{ github.ref_name == 'main' && github.sha || 'anysha' }}-${{ inputs.is_PR && 'is_PR' || 'not_PR'}}
+    cancel-in-progress: true
+
+  permissions:
+    contents: read
+
+  env:
+    STORE_FILE_PATH: /tmp/app-debug.keystore
+    BUILD_JSON_PATH: build.json
+    VERSION_LABEL: ${{ (inputs.is_PR && 'pr') || 'nightly' }}
+    DISCORD_RELEASE_NOTIFIER_ENABLED: "true"
+  jobs:
+    build:
+      timeout-minutes: 60
+      runs-on: ubuntu-latest
+      if: github.repository_owner == 'Acode-Foundation'
+
+      permissions:
+#        contents write is needed to create Nightly Releases.
+        contents: write
+#        issues: write
+        pull-requests: write
+
+      outputs:
+         release_output_url: ${{ steps.release.outputs.url }} 
+         updated_version: ${{ steps.update-version.outputs.UPDATED_VERSION}} 
+      steps:
+        - name: Fast Fail if secrets are missing
+          if: ${{ env.KEYSTORE_CONTENT == '' || env.BUILD_JSON_CONTENT == '' }}
+          env:
+             KEYSTORE_CONTENT: ${{ secrets.KEYSTORE_CONTENT }} 
+             BUILD_JSON_CONTENT: ${{ secrets.BUILD_JSON_CONTENT }} 
+          run: |
+            echo "::error title=Missing Secrets::KEYSTORE_CONTENT or BUILD_JSON_CONTENT secrets are missing! Aborting workflow."
+            exit 1
+        
+        - name: Logging & summaries
+          run: |
+            echo "::group::Logging" 
+            echo "🎯 github trigger event name: ${{ github.event_name }}"
+            echo "is_PR: ${{ inputs.is_PR }} "
+            echo "PR_NUMBER: ${{ inputs.PR_NUMBER }}" 
+            echo "env: STORE_FILE_PATH: ${{ env.STORE_FILE_PATH }}" 
+            echo "env: BUILD_JSON_PATH: ${{ env.BUILD_JSON_PATH }}" 
+            echo "env: VERSION_LABEL: ${{ env. VERSION_LABEL }}"
+            echo "github sha: ${{ github.sha }}" 
+            echo "should not skip tags, releases: ${{ ! inputs.skip_tagging_and_releases }} " 
+            echo "::endgroup::" 
+            
+            echo "## 🚀 Build Type: ${{ env.VERSION_LABEL }}" >> $GITHUB_STEP_SUMMARY
+            echo "is_PR: ${{ inputs.is_PR || 'NOT a PR' }}" >> $GITHUB_STEP_SUMMARY
+            echo "PR_NUMBER: ${{ inputs.PR_NUMBER || 'not a PR' }}" >> $GITHUB_STEP_SUMMARY
+            echo "should not skip tags, releases: ${{ ! inputs.skip_tagging_and_releases }}" >> $GITHUB_STEP_SUMMARY     
+
+        - name: Checkout Repository
+          uses: actions/checkout@v4
+          with:
+            fetch-depth: 0 # Required for tags
+            # persists credentials locally if tagging and releases are not skipped.
+            persist-credentials: ${{ ! inputs.skip_tagging_and_releases }}
+            ref: ${{ (inputs.is_PR && inputs.PR_NUMBER) && github.event.pull_request.head.sha || '' }}
+
+        - name: Set up Java 21
+          uses: actions/setup-java@v4
+          with:
+            distribution: 'temurin'
+            java-version: '21'
+            cache: ${{ (!(inputs.is_PR && inputs.PR_NUMBER) && github.ref == 'refs/heads/main' && 'gradle') || '' }}
+
+        - name: Set up Node.js
+          uses: actions/setup-node@v4
+          with:
+            node-version: 'lts/*' # or '18.x' for latest stable
+
+        - name: Add keystore and build.json from secrets
+          run: |
+            echo "${{ secrets.KEYSTORE_CONTENT }}" | base64 -d > $STORE_FILE_PATH
+            echo "${{ secrets.BUILD_JSON_CONTENT }}" | base64 -d > $BUILD_JSON_PATH
+            echo "Keystore and build.json added successfully."
+
+        - name: Export Commit Hash & prev tag
+          run: |
+            echo "GIT_COMMIT=$(git rev-parse HEAD)" >> $GITHUB_ENV
+            echo "PREV_TAG=$(git describe --tags --abbrev=0 || git rev-list --max-parents=0 HEAD)" >> $GITHUB_ENV
+
+        - name: Extract versionCode and version from config.xml
+          id: extract_version
+          run: |
+            if [ ! -f config.xml ]; then
+            echo "config.xml not found!"
+            exit 1
+            fi
+            VERSION_CODE=$(grep 'versionCode=' config.xml | sed -E 's/.*versionCode="([0-9]+)".*/\1/')
+            VERSION=$(grep -oP 'version="\K[0-9.]+' config.xml)
+            echo "VERSION_CODE=$VERSION_CODE" >> $GITHUB_OUTPUT
+            echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+            echo "Extracted Version Code: $VERSION_CODE"
+            echo "Extracted Version: $VERSION"
+
+        - name: Append Commit Hash to Version and Update config.xml
+          id: update-version 
+          run: |
+            SHORT_COMMIT_HASH=$(echo "${{ env.GIT_COMMIT }}" | cut -c 1-7)
+            if ${{ inputs.is_PR  || false }}; then 
+              PR_NUMBER=${{ inputs.PR_NUMBER }}
+            else
+              PR_NUMBER=
+            fi
+            UPDATED_VERSION="${{ steps.extract_version.outputs.VERSION }}-${{ env.VERSION_LABEL }}.${PR_NUMBER:-$SHORT_COMMIT_HASH}"
+            echo "Updated Version: $UPDATED_VERSION"
+            
+            # Update config.xml with the new version
+            sed -i "s/version=\"${{ steps.extract_version.outputs.VERSION }}\"/version=\"$UPDATED_VERSION\"/g" config.xml
+            echo "Updated version in config.xml"
+            # Output the updated version
+            echo "UPDATED_VERSION=$UPDATED_VERSION" >> $GITHUB_ENV
+            echo "UPDATED_VERSION=$UPDATED_VERSION" >> $GITHUB_OUTPUT 
+
+        - name: Install Node.js Packages
+          run: npm install
+
+        - name: Install Cordova CLI
+          run: npm install -g cordova
+
+        - name: Run npm setup
+          run: npm run setup
+
+        - name: Run npm build paid dev apk
+          run: |
+             node utils/storage_manager.mjs y
+             npm run build paid dev apk
+             echo "VERSION: $UPDATED_VERSION" >> $GITHUB_STEP_SUMMARY
+
+        - name: Upload APK Artifact
+          uses: actions/upload-artifact@v4
+          with:
+            name: app-debug-${{ env.GIT_COMMIT }}
+            path: platforms/android/app/build/outputs/apk/debug/app-debug.apk
+
+        - name: remove keystore and build.json
+          run: |
+            rm $STORE_FILE_PATH $BUILD_JSON_PATH
+            echo "Keystore and build.json removed successfully."
+        
+        - name: Check Nightly Tag and Force Update
+          #if: github.event_name == 'push' && contains(github.event.ref, 'tags/nightly') == false
+          if: ${{ ! inputs.skip_tagging_and_releases }}
+          run: |
+            # Check if the nightly tag exists and get the commit it points to
+            if git show-ref --quiet refs/tags/nightly; then
+              TAG_COMMIT=$(git rev-parse nightly)
+            else
+              TAG_COMMIT=""
+            fi
+            
+            # If the current commit is the same as the tag, skip updating the tag
+            if [ "$TAG_COMMIT" != "${{ env.GIT_COMMIT }}" ]; then
+              echo "releaseRequired=true" >> $GITHUB_ENV
+              # export tag commit before updating for change logs comparing. 
+              echo "TAG_COMMIT=$TAG_COMMIT" >> $GITHUB_ENV 
+            
+              git config --global user.name 'GitHub Actions'
+              git config --global user.email 'github-actions@github.com'
+              git tag -f nightly
+              git push origin nightly --force
+            else
+              echo "Nightly tag already points to this commit. Skipping update."
+            fi
+
+        - name: Release Nightly Version
+#          Only run this step, if not called from another workflow. And a previous step is successful with releasedRequired=true
+          id: release
+          if: ${{ ! inputs.skip_tagging_and_releases && success() && env.releaseRequired == 'true' }}
+          uses: softprops/action-gh-release@v2
+          with:
+            prerelease: true
+            name: ${{ env.UPDATED_VERSION }}
+            tag_name: ${{ env.UPDATED_VERSION }} 
+            files: |
+              platforms/android/app/build/outputs/apk/debug/app-debug.apk
+            body: |
+              Automated Nightly (pre-release) Releases for Today
+              
+              [Compare Changes](https://github.com/${{ github.repository }}/compare/${{ env.TAG_COMMIT }}...${{ github.sha }})
+
+        - name: Update Last Comment by bot (If ran in PR)
+          if: inputs.is_PR
+          uses: marocchino/sticky-pull-request-comment@v2
+          with:
+             hide_and_recreate: true
+             hide_classify: "OUTDATED"
+             header: on-demand-build-status
+             message: |
+                   Preview Release for this, has been built.
+         
+                   [Click here to view that github actions build](https://github.com/${{ github.repository}}/actions/runs/${{ github.run_id }})
+             
+
+    community-release-notifier:
+      needs: build
+#      Run only if push tags, or triggered by a schedule
+      if: ${{ github.repository_owner == 'Acode-Foundation' && (contains(fromJSON('["push", "schedule"]'), github.event_name) || ! inputs.skip_tagging_and_releases) && needs.build.outputs.release_output_url }}
+      uses: Acode-Foundation/acode/.github/workflows/community-release-notifier.yml@main
+      with:
+         tag_name: ${{ needs.build.outputs.updated_version }}
+         url: ${{ needs.build.outputs.release_output_url }}
+      secrets:
+        DISCORD_WEBHOOK_RELEASE_NOTES: ${{ secrets.DISCORD_WEBHOOK_RELEASE_NOTES }}

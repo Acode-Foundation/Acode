@@ -21,6 +21,13 @@ module.exports = {
   writeText: function (path, content, success, error) {
     cordova.exec(success, error, 'System', 'writeText', [path, content]);
   },
+  deleteFile: function (path, success, error) {
+    cordova.exec(success, error, 'System', 'deleteFile', [path]);
+  },
+  setExec: function (path, executable, success, error) {
+    cordova.exec(success, error, 'System', 'setExec', [path, String(executable)]);
+  },
+
 
   getNativeLibraryPath: function (success, error) {
     cordova.exec(success, error, 'System', 'getNativeLibraryPath', []);

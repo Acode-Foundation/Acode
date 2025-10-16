@@ -50,8 +50,9 @@ function getTmpDir() {
     fs.accessSync("/tmp", fs.constants.R_OK | fs.constants.W_OK);
     return "/tmp";
   } catch {
-    console.error("Error: No usable temporary directory found (TMPDIR or /tmp not accessible).");
-    process.exit(1);
+    console.log("Error: No usable temporary directory found (TMPDIR or /tmp not accessible).");
+    return null;
+    // process.exit(1);
   }
 }
 
@@ -70,17 +71,31 @@ function patchTargetSdkVersion() {
 
   if (sdkRegex.test(content)) {
     let api = "35";
-    const froidFlag = path.join(getTmpDir(), 'fdroid.bool');
-
-    if (fs.existsSync(froidFlag)) {
-      const fdroid = fs.readFileSync(froidFlag, 'utf-8').trim();
-      if (fdroid == "true") {
-        api = "28";
-      }
+    const tmp = getTmpDir();
+    if (tmp == null) {
+      console.warn("---------------------------------------------------------------------------------\n\n\n\n");
+      console.warn(`⚠️ fdroid.bool not found`);
+      console.warn("⚠️ Fdroid flavour will be built");
+      api = "28";
+      console.warn("\n\n\n\n---------------------------------------------------------------------------------");
     } else {
-      console.error(`${getTmpDir()}/fdroid.bool not found`);
-      process.exit(1);
+      const froidFlag = path.join(getTmpDir(), 'fdroid.bool');
+
+      if (fs.existsSync(froidFlag)) {
+        const fdroid = fs.readFileSync(froidFlag, 'utf-8').trim();
+        if (fdroid == "true") {
+          api = "28";
+        }
+      } else {
+        console.warn("---------------------------------------------------------------------------------\n\n\n\n");
+        console.warn(`⚠️ fdroid.bool not found`);
+        console.warn("⚠️ Fdroid flavour will be built");
+        api = "28";
+        console.warn("\n\n\n\n---------------------------------------------------------------------------------");
+        //process.exit(1);
+      }
     }
+
 
     content = content.replace(sdkRegex, 'targetSdkVersion ' + api);
     fs.writeFileSync(gradleFile, content, 'utf-8');

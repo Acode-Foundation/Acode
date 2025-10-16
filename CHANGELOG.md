@@ -203,7 +203,7 @@
 * Fixed an issue where the info dialog wouldn't appear for non-editor tabs in #1167
 * Fixed incorrect file attributes in FTP by @bajrangCoder in #1194
 * Fixed the palette not opening when triggered from an existing palette by @bajrangCoder in #1197
-* Fixed trigering of infinite scroll on plugin page while searching by @bajrangCoder in #1200
+* Fixed triggering of infinite scroll on plugin page while searching by @bajrangCoder in #1200
 
 ### Features
 * Improved tab view gesture handling to distinguish between scroll and swipe on the plugin page by @bajrangCoder in #1131

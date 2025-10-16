@@ -1,0 +1,38 @@
+name: community-release-notifier
+on:
+  release:
+    types: [ released ]
+  workflow_call:
+    inputs:
+       tag_name:
+          required: true
+          description: "Release tag_name"
+          type: 'string' 
+       url: 
+          required: true
+          description: "release URL"
+          type: 'string'
+    secrets:
+      DISCORD_WEBHOOK_RELEASE_NOTES:
+        description: 'Discord Webhook for Notifying Releases to Discord'
+        required: true
+
+jobs:
+  discord-release:
+    if: github.repository_owner == 'Acode-Foundation'
+    runs-on: ubuntu-latest
+    steps:
+    - name: Get Release Content
+      id: get-release-content
+      uses: 2428392/gh-truncate-string-action@b3ff790d21cf42af3ca7579146eedb93c8fb0757 # v1.4.1
+      with:
+        maxLength: 2000
+        stringToTruncate: |
+          📢 Acode [${{ github.event.release.tag_name || inputs.tag_name }}](<${{ github.event.release.url || inputs.url }}>) was just Released 🎉!
+          
+
+    - name: Discord Webhook Action (Publishing)
+      uses: tsickert/discord-webhook@c840d45a03a323fbc3f7507ac7769dbd91bfb164 # v5.3.0
+      with:
+        webhook-url: ${{ secrets.DISCORD_WEBHOOK_RELEASE_NOTES }}
+        content: ${{ steps.get-release-content.outputs.string }}

@@ -1,0 +1,105 @@
+name: On Demand Preview Releases for PR
+#  avoids paths like .md, and anything in .github folder
+on:
+  pull_request_target:
+    paths-ignore:
+      - '!*.md'
+#      - '.github/**'
+    types: [labeled, synchronize]
+
+# defined at workflow-level as the workflow, Requires these permissions to function.
+permissions:
+  contents: write
+  pull-requests: write
+  # All Pull Requests are issues, but not all issues are Pull Requests (like GitHub says 🙃)
+  issues: write
+
+concurrency:
+  # Allow only one workflow per any non-`main` branch.
+  group: ${{ github.workflow }}-${{ github.ref_name }}-${{ github.ref_name == 'main' && github.sha || 'anysha' }}
+  cancel-in-progress: true
+
+jobs:
+  job_trigger:
+    name: Trigger Preview Release (if conditions met)
+    if: |
+        github.event.pull_request.draft == false
+        && (github.repository_owner == 'Acode-Foundation'
+        && (!contains(github.event.pull_request.labels.*.name, 'DO NOT PREVIEW RELEASE') 
+        && (contains(github.event.pull_request.labels.*.name, 'Bypass check - PREVIEW RELEASE') 
+        || contains(github.event.pull_request.labels.*.name, 'CI: RUN ON-DEMAND PREVIEW RELEASES')))
+        )
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          clean: false
+          fetch-depth: 0
+          persist-credentials: false
+          # Checkout pull request HEAD commit instead of merge commit
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Remove Manually added PR Label
+        if: |
+          contains(github.event.pull_request.labels.*.name, 'CI: RUN ON-DEMAND PREVIEW RELEASES')
+
+        run: gh pr edit $PR --remove-label "$labels"
+        env:
+           PR: ${{ github.event.pull_request.number }}
+           labels: 'CI: RUN ON-DEMAND PREVIEW RELEASES'
+           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Add comment to PR
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          hide_and_recreate: true
+          hide_classify: "OUTDATED"
+          header: on-demand-build-status
+          message: |
+            ⚒️ Starting a workflow to build, Your On-Demand Preview Release/build for ${{ github.event.pull_request.html_url || github.event.pull_request.url }}.
+            
+            status: **\`🟡 in_progress\`**
+            
+            Kindly wait, this message may be updated with success or failure status.
+            
+            For Owners: Please [Click here to view that github actions](https://github.com/${{ github.repository}}/actions/runs/${{ github.run_id }})/
+
+        env:
+          PR: ${{ github.event.pull_request.number }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  trigger_builder:
+      needs: job_trigger
+      secrets: inherit
+      uses: Acode-Foundation/acode/.github/workflows/nightly-build.yml@main
+      with:
+        is_PR: true
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        skip_tagging_and_releases: true
+
+  update_Last_Comment:
+      needs: [job_trigger,trigger_builder]
+      runs-on: ubuntu-latest
+      if: ${{ github.repository_owner == 'Acode-Foundation' && always() && contains(fromJSON('["failure","cancelled"]'), needs.trigger_builder.result) }}
+      steps:
+#        - name: Checkout code
+#          uses: actions/checkout@v4
+#          with:
+#            clean: false
+#            fetch-depth: 0
+
+        - name: Update Last Comment by bot (if Workflow Triggering failed)
+          uses: marocchino/sticky-pull-request-comment@v2
+          with:
+             hide_and_recreate: true
+             hide_classify: "OUTDATED"
+             header: on-demand-build-status
+             message: |
+                   🔴 (Workflow Trigger stopped), Your On-Demand Preview Release/build for ${{ github.event.pull_request.html_url || github.event.pull_request.url }}.
+                   status: **${{ needs.trigger_builder.result || 'failure'}}**         
+               
+                   ---
+                   For Owners: Please [Click here to view that github actions](https://github.com/${{ github.repository}}/actions/runs/${{ github.run_id }})
