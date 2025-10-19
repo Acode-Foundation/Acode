@@ -1,9 +1,9 @@
 {
-  "name": "native_file",
+  "name": "file",
   "version": "1.0.0",
   "description": "Full api of java.io.File",
   "cordova": {
-    "id": "com.foxdebug.acode.rk.nativeFile",
+    "id": "com.foxdebug.acode.rk.file",
     "platforms": [
       "android"
     ]

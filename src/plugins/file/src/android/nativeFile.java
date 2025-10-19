@@ -1,4 +1,4 @@
-package com.foxdebug.acode.rk.nativeFile;
+package com.foxdebug.acode.rk.file;
 
 import org.apache.cordova.*;
 import org.json.JSONArray;
