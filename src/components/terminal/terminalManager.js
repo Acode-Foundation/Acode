@@ -7,6 +7,8 @@ import EditorFile from "lib/editorFile";
 import TerminalComponent from "./terminal";
 import "@xterm/xterm/css/xterm.css";
 import toast from "components/toast";
+import confirm from "dialogs/confirm";
+import appSettings from "lib/settings";
 import helpers from "utils/helpers";
 
 const TERMINAL_SESSION_STORAGE_KEY = "acodeTerminalSessions";
@@ -413,6 +415,22 @@ class TerminalManager {
 			this.closeTerminal(terminalId);
 		};
 
+		terminalFile._skipTerminalCloseConfirm = false;
+		const originalRemove = terminalFile.remove.bind(terminalFile);
+		terminalFile.remove = async (force = false) => {
+			if (
+				!terminalFile._skipTerminalCloseConfirm &&
+				this.shouldConfirmTerminalClose()
+			) {
+				const message = `${strings["close"]} ${strings["terminal"]}?`;
+				const shouldClose = await confirm(strings["confirm"], message);
+				if (!shouldClose) return;
+			}
+
+			terminalFile._skipTerminalCloseConfirm = false;
+			return originalRemove(force);
+		};
+
 		// Enhanced resize handling with debouncing
 		let resizeTimeout = null;
 		const RESIZE_DEBOUNCE = 200;
@@ -519,6 +537,7 @@ class TerminalManager {
 			}
 
 			this.closeTerminal(terminalId);
+			terminalFile._skipTerminalCloseConfirm = true;
 			terminalFile.remove(true);
 			toast(message);
 		};
@@ -730,6 +749,14 @@ class TerminalManager {
 				console.error(`Error stabilizing terminal ${terminal.id}:`, error);
 			}
 		});
+	}
+
+	shouldConfirmTerminalClose() {
+		const settings = appSettings?.value?.terminalSettings;
+		if (settings && settings.confirmTabClose === false) {
+			return false;
+		}
+		return true;
 	}
 }
 
