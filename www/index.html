@@ -47,7 +47,7 @@
       type,
       listener,
       useCapture,
-      allowed,
+      allowed
     ) {
       if (typeof useCapture === "boolean") {
         allowed = useCapture;
@@ -76,7 +76,7 @@
         }
         this.eventListeners[type].push({
           listener: listener,
-          useCapture: useCapture,
+          useCapture: useCapture
         });
 
         return;

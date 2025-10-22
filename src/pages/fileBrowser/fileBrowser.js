@@ -1333,14 +1333,16 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		 * @param {String} url
 		 */
 		function pushToNavbar(name, url, action) {
+			if (!url) return;
+			const displayName = name || Url.basename(url) || url;
 			$navigation.append(
 				<span
 					id={getNavId(url)}
 					className="nav"
 					data-url={url}
-					data-name={name}
+					data-name={displayName}
 					attr-action="navigation"
-					attr-text={name}
+					attr-text={displayName}
 					tabIndex={-1}
 				></span>,
 			);
@@ -1359,14 +1361,20 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		 * @param {Array<Location>} states
 		 */
 		function loadStates(states) {
-			if (!Array.isArray(states)) return;
+			if (!Array.isArray(states) || !states.length) return;
 
 			const backNavigation = [];
-			const { url, name } = states.pop();
+			const lastState = states.pop();
+			if (!lastState || !lastState.url) return;
+			const { url } = lastState;
+			const name = lastState.name || Url.basename(url) || url;
 			let { url: lastUrl, name: lastName } = currentDir;
 
 			while (states.length) {
 				const location = states.splice(0, 1)[0];
+				if (!location || !location.url) {
+					continue;
+				}
 				const { url, name } = location;
 				let action;
 
