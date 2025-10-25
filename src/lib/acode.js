@@ -44,6 +44,7 @@ import helpers from "utils/helpers";
 import KeyboardEvent from "utils/keyboardEvent";
 import Url from "utils/Url";
 import constants from "./constants";
+import {NativeFileWrapper} from "../fileSystem/NativeFileWrapper";
 
 export default class Acode {
 	#modules = {};
@@ -119,6 +120,7 @@ export default class Acode {
 			},
 		};
 
+        this.define("nativeFile",NativeFileWrapper);
 		this.define("Url", Url);
 		this.define("page", Page);
 		this.define("Color", Color);
