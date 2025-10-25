@@ -17,12 +17,15 @@ class TerminalManager {
 		this.terminalCounter = 0;
 	}
 
-	getPersistedSessions() {
+	async getPersistedSessions() {
 		try {
 			const stored = helpers.parseJSON(
 				localStorage.getItem(TERMINAL_SESSION_STORAGE_KEY),
 			);
 			if (!Array.isArray(stored)) return [];
+            if (!await Terminal.isAxsRunning()){
+                return [];
+            }
 			return stored
 				.map((entry) => {
 					if (!entry) return null;
@@ -56,11 +59,11 @@ class TerminalManager {
 		}
 	}
 
-	persistTerminalSession(pid, name) {
+	async persistTerminalSession(pid, name) {
 		if (!pid) return;
 
 		const pidStr = String(pid);
-		const sessions = this.getPersistedSessions();
+		const sessions = await this.getPersistedSessions();
 		const existingIndex = sessions.findIndex(
 			(session) => session.pid === pidStr,
 		);
@@ -81,11 +84,11 @@ class TerminalManager {
 		this.savePersistedSessions(sessions);
 	}
 
-	removePersistedSession(pid) {
+	async removePersistedSession(pid) {
 		if (!pid) return;
 
 		const pidStr = String(pid);
-		const sessions = this.getPersistedSessions();
+		const sessions = await this.getPersistedSessions();
 		const nextSessions = sessions.filter((session) => session.pid !== pidStr);
 
 		if (nextSessions.length !== sessions.length) {
@@ -94,7 +97,7 @@ class TerminalManager {
 	}
 
 	async restorePersistedSessions() {
-		const sessions = this.getPersistedSessions();
+		const sessions = await this.getPersistedSessions();
 		if (!sessions.length) return;
 
 		const manager = window.editorManager;
@@ -183,54 +186,52 @@ class TerminalManager {
 			});
 
 			// Wait for tab creation and setup
-			const terminalInstance = await new Promise((resolve, reject) => {
-				setTimeout(async () => {
-					try {
-						// Mount terminal component
-						terminalComponent.mount(terminalContainer);
+            return await new Promise((resolve, reject) => {
+                setTimeout(async () => {
+                    try {
+                        // Mount terminal component
+                        terminalComponent.mount(terminalContainer);
 
-						// Connect to session if in server mode
-						if (terminalComponent.serverMode) {
-							await terminalComponent.connectToSession(terminalOptions.pid);
-						} else {
-							// For local mode, just write a welcome message
-							terminalComponent.write(
-								"Local terminal mode - ready for output\r\n",
-							);
-						}
+                        // Connect to session if in server mode
+                        if (terminalComponent.serverMode) {
+                            await terminalComponent.connectToSession(terminalOptions.pid);
+                        } else {
+                            // For local mode, just write a welcome message
+                            terminalComponent.write(
+                                "Local terminal mode - ready for output\r\n",
+                            );
+                        }
 
-						// Use PID as unique ID if available, otherwise fall back to terminalId
-						const uniqueId = terminalComponent.pid || terminalId;
+                        // Use PID as unique ID if available, otherwise fall back to terminalId
+                        const uniqueId = terminalComponent.pid || terminalId;
 
-						// Setup event handlers
-						this.setupTerminalHandlers(
-							terminalFile,
-							terminalComponent,
-							uniqueId,
-						);
+                        // Setup event handlers
+                        this.setupTerminalHandlers(
+                            terminalFile,
+                            terminalComponent,
+                            uniqueId,
+                        );
 
-						const instance = {
-							id: uniqueId,
-							name: terminalName,
-							component: terminalComponent,
-							file: terminalFile,
-							container: terminalContainer,
-						};
+                        const instance = {
+                            id: uniqueId,
+                            name: terminalName,
+                            component: terminalComponent,
+                            file: terminalFile,
+                            container: terminalContainer,
+                        };
 
-						this.terminals.set(uniqueId, instance);
+                        this.terminals.set(uniqueId, instance);
 
-						if (terminalComponent.serverMode && terminalComponent.pid) {
-							this.persistTerminalSession(terminalComponent.pid, terminalName);
-						}
-						resolve(instance);
-					} catch (error) {
-						console.error("Failed to initialize terminal:", error);
-						reject(error);
-					}
-				}, 100);
-			});
-
-			return terminalInstance;
+                        if (terminalComponent.serverMode && terminalComponent.pid) {
+                            await this.persistTerminalSession(terminalComponent.pid, terminalName);
+                        }
+                        resolve(instance);
+                    } catch (error) {
+                        console.error("Failed to initialize terminal:", error);
+                        reject(error);
+                    }
+                }, 100);
+            });
 		} catch (error) {
 			console.error("Failed to create terminal:", error);
 			throw error;
@@ -334,48 +335,46 @@ class TerminalManager {
 		});
 
 		// Wait for tab creation and setup
-		const terminalInstance = await new Promise((resolve, reject) => {
-			setTimeout(async () => {
-				try {
-					// Mount terminal component
-					terminalComponent.mount(terminalContainer);
+        return await new Promise((resolve, reject) => {
+            setTimeout(async () => {
+                try {
+                    // Mount terminal component
+                    terminalComponent.mount(terminalContainer);
 
-					// Write initial message
-					terminalComponent.write("🚀 Installing Terminal Environment...\r\n");
-					terminalComponent.write(
-						"This may take a few minutes depending on your connection.\r\n\r\n",
-					);
+                    // Write initial message
+                    terminalComponent.write("🚀 Installing Terminal Environment...\r\n");
+                    terminalComponent.write(
+                        "This may take a few minutes depending on your connection.\r\n\r\n",
+                    );
 
-					// Setup event handlers
-					this.setupTerminalHandlers(
-						terminalFile,
-						terminalComponent,
-						terminalId,
-					);
+                    // Setup event handlers
+                    this.setupTerminalHandlers(
+                        terminalFile,
+                        terminalComponent,
+                        terminalId,
+                    );
 
-					// Set up custom title for installation terminal
-					terminalFile.setCustomTitle(
-						() => "Installing Terminal Environment...",
-					);
+                    // Set up custom title for installation terminal
+                    terminalFile.setCustomTitle(
+                        () => "Installing Terminal Environment...",
+                    );
 
-					const instance = {
-						id: terminalId,
-						name: terminalName,
-						component: terminalComponent,
-						file: terminalFile,
-						container: terminalContainer,
-					};
+                    const instance = {
+                        id: terminalId,
+                        name: terminalName,
+                        component: terminalComponent,
+                        file: terminalFile,
+                        container: terminalContainer,
+                    };
 
-					this.terminals.set(terminalId, instance);
-					resolve(instance);
-				} catch (error) {
-					console.error("Failed to create installation terminal:", error);
-					reject(error);
-				}
-			}, 100);
-		});
-
-		return terminalInstance;
+                    this.terminals.set(terminalId, instance);
+                    resolve(instance);
+                } catch (error) {
+                    console.error("Failed to create installation terminal:", error);
+                    reject(error);
+                }
+            }, 100);
+        });
 	}
 
 	/**
@@ -384,7 +383,7 @@ class TerminalManager {
 	 * @param {TerminalComponent} terminalComponent - Terminal component
 	 * @param {string} terminalId - Terminal ID
 	 */
-	setupTerminalHandlers(terminalFile, terminalComponent, terminalId) {
+	async setupTerminalHandlers(terminalFile, terminalComponent, terminalId) {
 		// Handle tab focus/blur
 		terminalFile.onfocus = () => {
 			// Guarded fit on focus: only fit if cols/rows would change, then focus
@@ -486,26 +485,26 @@ class TerminalManager {
 			this.closeTerminal(terminalId);
 		};
 
-		terminalComponent.onTitleChange = (title) => {
-			if (title) {
-				// Format terminal title as "Terminal ! - title"
-				const formattedTitle = `Terminal ${this.terminalCounter} - ${title}`;
-				terminalFile.filename = formattedTitle;
+		terminalComponent.onTitleChange = async (title) => {
+            if (title) {
+                // Format terminal title as "Terminal ! - title"
+                const formattedTitle = `Terminal ${this.terminalCounter} - ${title}`;
+                terminalFile.filename = formattedTitle;
 
-				if (terminalComponent.serverMode && terminalComponent.pid) {
-					this.persistTerminalSession(terminalComponent.pid, formattedTitle);
-				}
+                if (terminalComponent.serverMode && terminalComponent.pid) {
+                    await this.persistTerminalSession(terminalComponent.pid, formattedTitle);
+                }
 
-				// Refresh the header subtitle if this terminal is active
-				if (
-					editorManager.activeFile &&
-					editorManager.activeFile.id === terminalFile.id
-				) {
-					// Force refresh of the header subtitle
-					terminalFile.setCustomTitle(getTerminalTitle);
-				}
-			}
-		};
+                // Refresh the header subtitle if this terminal is active
+                if (
+                    editorManager.activeFile &&
+                    editorManager.activeFile.id === terminalFile.id
+                ) {
+                    // Force refresh of the header subtitle
+                    terminalFile.setCustomTitle(getTerminalTitle);
+                }
+            }
+        };
 
 		terminalComponent.onProcessExit = (exitData) => {
 			// Format exit message based on exit code and signal
