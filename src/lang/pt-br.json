@@ -428,5 +428,8 @@
 	"contributors": "Contribuidores",
 	"quicktools:hyphen": "Inserir símbolo de hífen",
 	"check for app updates": "Check for app updates",
-	"prompt update check consent message": "Acode can check for new app updates when you're online. Enable update checks?"
+	"prompt update check consent message": "Acode can check for new app updates when you're online. Enable update checks?",
+	"keywords": "Keywords",
+	"author": "Author",
+	"filtered by": "Filtered by"
 }

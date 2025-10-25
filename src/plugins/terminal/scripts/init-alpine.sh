@@ -1,4 +1,3 @@
-set -e  # Exit immediately on failure
 
 
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/share/bin:/usr/share/sbin:/usr/local/bin:/usr/local/sbin:/system/bin:/system/xbin:$PREFIX/local/bin
@@ -7,7 +6,7 @@ export HOME=/home
 export TERM=xterm-256color
 
 
-required_packages="bash"
+required_packages="bash command-not-found"
 missing_packages=""
 
 for pkg in $required_packages; do
@@ -59,32 +58,68 @@ EOF
     fi
 
     # Create initrc if it doesn't exist
-    if [ ! -e "$PREFIX/alpine/initrc" ]; then
-        cat <<EOF > "$PREFIX/alpine/initrc"
-if [[ -f ~/.bashrc ]]; then
-    source ~/.bashrc
+    #initrc runs in bash so we can use bash features 
+if [ ! -e "$PREFIX/alpine/initrc" ]; then
+    cat <<'EOF' > "$PREFIX/alpine/initrc"
+# Source rc files if they exist
+
+if [ -f "/etc/profile" ]; then
+    source "/etc/profile"
 fi
 
-if [[ -f /etc/bash/bashrc ]]; then
+
+if [ -f "$HOME/.bashrc" ]; then
+    source "$HOME/.bashrc"
+fi
+
+if [ -f /etc/bash/bashrc ]; then
     source /etc/bash/bashrc
 fi
 
-export PATH=\$PATH:/bin:/sbin:/usr/bin:/usr/sbin:/usr/share/bin:/usr/share/sbin:/usr/local/bin:/usr/local/sbin
-export HOME=/home
-export TERM=xterm-256color
-export SHELL=\$(command -v bash)
+# Environment setup
+export PATH=$PATH:/bin:/sbin:/usr/bin:/usr/sbin:/usr/share/bin:/usr/share/sbin:/usr/local/bin:/usr/local/sbin
+
+export HOME=/home 
+export TERM=xterm-256color 
+SHELL=/bin/bash
 export PIP_BREAK_SYSTEM_PACKAGES=1
 
+# Display MOTD if available
 if [ -s /etc/acode_motd ]; then
     cat /etc/acode_motd
 fi
 
-EOF
+# Command-not-found handler
+command_not_found_handle() {
+    cmd="$1"
+    pkg=""
+    green="\e[1;32m"
+    reset="\e[0m"
+
+    pkg=$(apk search -x "cmd:$cmd" 2>/dev/null | awk -F'-[0-9]' '{print $1}' | head -n 1)
+
+    if [ -n "$pkg" ]; then
+        echo -e "The program '$cmd' is not installed.\nInstall it by executing:\n ${green}apk add $pkg${reset}" >&2
+    else
+        echo "The program '$cmd' is not installed and no package provides it." >&2
     fi
 
-    echo 'export PS1="\[\e[38;5;46m\]\u\[\e[0m\]@localhost \[\e[0m\]\w \[\e[0m\]\\$ "' >> $PREFIX/alpine/initrc
-    chmod +x "$PREFIX/alpine/initrc"
-    "$PREFIX/axs" -c "bash --rcfile /initrc -i"
+    return 127
+}
+
+EOF
+fi
+
+# Add PS1 only if not already present
+if ! grep -q 'PS1=' "$PREFIX/alpine/initrc"; then
+    echo 'PS1="\033[1;32m\u\033[0m@localhost \w \$ "' >> "$PREFIX/alpine/initrc"
+fi
+
+chmod +x "$PREFIX/alpine/initrc"
+
+#actual souce
+"$PREFIX/axs" -c "bash --rcfile /initrc -i"
+
 else
     exec "$@"
 fi

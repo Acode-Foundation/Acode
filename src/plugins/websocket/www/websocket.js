@@ -58,13 +58,21 @@ class WebSocketInstance extends EventTarget {
 
             if (event.type === 'close') {
                 this.readyState = WebSocketInstance.CLOSED;
-                const closeEvent = new CloseEvent('close', { code: event.data?.code, reason: event.data?.reason });
+                const closeData = event && event.data ? event.data : {};
+                const closeEvent = new CloseEvent('close', {
+                    code: closeData.code,
+                    reason: closeData.reason,
+                });
                 if (this.onclose) this.onclose(closeEvent);
                 this.dispatchEvent(closeEvent);
             }
 
             if (event.type === 'error') {
-                const errorEvent = new Event('error', { message: event?.data });
+                const errorMessage = event && event.data ? event.data : undefined;
+                const errorEvent = new Event('error');
+                if (errorMessage !== undefined) {
+                    errorEvent.message = errorMessage;
+                }
                 if (this.onerror) this.onerror(errorEvent);
                 this.dispatchEvent(errorEvent);
             }

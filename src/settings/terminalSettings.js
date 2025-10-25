@@ -166,6 +166,12 @@ export default function terminalSettings() {
 			info: "Whether font ligatures are enabled in the terminal.",
 		},
 		{
+			key: "confirmTabClose",
+			text: `${strings["confirm"]} ${strings["terminal"]} tab close`,
+			checkbox: terminalValues.confirmTabClose !== false,
+			info: "Ask for confirmation before closing terminal tabs.",
+		},
+		{
 			key: "backup",
 			text: strings.backup.capitalize(),
 			info: "Creates a backup of the terminal installation",
