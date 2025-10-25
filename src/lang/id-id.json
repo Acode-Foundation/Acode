@@ -432,5 +432,9 @@
 	"prompt update check consent message": "Acode dapat memeriksa pembaruan aplikasi baru saat Anda online. Aktifkan pemeriksaan pembaruan?",
 	"keywords": "Kata kunci",
 	"author": "Pembuat",
-	"filtered by": "Disaring oleh"
+	"filtered by": "Disaring oleh",
+	"add to home screen": "Add to home screen",
+	"pin shortcuts not supported": "Home screen shortcuts are not supported on this device.",
+	"save file before home shortcut": "Save the file before adding it to the home screen.",
+	"shortcut request sent": "Shortcut request opened. Tap Add to finish."
 }

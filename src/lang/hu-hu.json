@@ -431,5 +431,9 @@
 	"prompt update check consent message": "Internetkapcsolat esetén az Acode ellenőrizheti az új alkalmazásfrissítéseket. Engedélyezi a frissítések ellenőrzését?",
 	"keywords": "Kulcsszavak",
 	"author": "Szerző",
-	"filtered by": "Szűrési szempont"
+	"filtered by": "Szűrési szempont",
+	"add to home screen": "Add to home screen",
+	"pin shortcuts not supported": "Home screen shortcuts are not supported on this device.",
+	"save file before home shortcut": "Save the file before adding it to the home screen.",
+	"shortcut request sent": "Shortcut request opened. Tap Add to finish."
 }

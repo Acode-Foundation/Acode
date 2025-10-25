@@ -96,6 +96,9 @@ module.exports = {
   pinShortcut: function (id, onSuccess, onFail) {
     cordova.exec(onSuccess, onFail, 'System', 'pin-shortcut', [id]);
   },
+  pinFileShortcut: function (shortcut, onSuccess, onFail) {
+    cordova.exec(onSuccess, onFail, 'System', 'pin-file-shortcut', [shortcut]);
+  },
   manageAllFiles: function (onSuccess, onFail) {
     cordova.exec(onSuccess, onFail, 'System', 'manage-all-files', []);
   },
