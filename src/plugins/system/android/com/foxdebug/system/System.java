@@ -104,6 +104,7 @@ public class System extends CordovaPlugin {
     private Theme theme;
     private CallbackContext intentHandler;
     private CordovaWebView webView;
+    private String fileProviderAuthority;
 
     public void initialize(CordovaInterface cordova, CordovaWebView webView) {
         super.initialize(cordova, webView);
@@ -879,7 +880,11 @@ public class System extends CordovaPlugin {
     ) {
         Activity activity = this.activity;
         Context context = this.context;
-        Uri uri = this.getContentProviderUri(fileURI);
+        Uri uri = this.getContentProviderUri(fileURI, filename);
+        if (uri == null) {
+            callback.error("Unable to access file for action " + action);
+            return;
+        }
         try {
             Intent intent = new Intent(action);
 
@@ -887,12 +892,34 @@ public class System extends CordovaPlugin {
                 mimeType = "text/plain";
             }
 
+            mimeType = resolveMimeType(mimeType, uri, filename);
+
+            String clipLabel = null;
+            if (filename != null && !filename.isEmpty()) {
+                clipLabel = new File(filename).getName();
+            }
+            if (clipLabel == null || clipLabel.isEmpty()) {
+                clipLabel = uri.getLastPathSegment();
+            }
+            if (clipLabel == null || clipLabel.isEmpty()) {
+                clipLabel = "shared-file";
+            }
             if (action.equals(Intent.ACTION_SEND)) {
+                intent.setType(mimeType);
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                intent.setClipData(
+                    ClipData.newUri(
+                        context.getContentResolver(),
+                        clipLabel,
+                        uri
+                    )
+                );
                 intent.putExtra(Intent.EXTRA_STREAM, uri);
-                if (!filename.equals("")) {
+                intent.putExtra(Intent.EXTRA_TITLE, clipLabel);
+                intent.putExtra(Intent.EXTRA_SUBJECT, clipLabel);
+                if (filename != null && !filename.isEmpty()) {
                     intent.putExtra(Intent.EXTRA_TEXT, filename);
                 }
-                intent.setType(mimeType);
             } else {
                 int flags =
                     Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION |
@@ -904,9 +931,42 @@ public class System extends CordovaPlugin {
 
                 intent.setFlags(flags);
                 intent.setDataAndType(uri, mimeType);
+                intent.setClipData(
+                    ClipData.newUri(
+                        context.getContentResolver(),
+                        clipLabel,
+                        uri
+                    )
+                );
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                if (!clipLabel.equals("shared-file")) {
+                    intent.putExtra(Intent.EXTRA_TITLE, clipLabel);
+                }
+                if (action.equals(Intent.ACTION_EDIT)) {
+                    intent.putExtra(Intent.EXTRA_STREAM, uri);
+                }
             }
 
-            activity.startActivity(intent);
+            int permissionFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION;
+            if (action.equals(Intent.ACTION_EDIT)) {
+                permissionFlags |= Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
+            }
+            grantUriPermissions(intent, uri, permissionFlags);
+
+            if (action.equals(Intent.ACTION_SEND)) {
+                Intent chooserIntent = Intent.createChooser(intent, null);
+                chooserIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                activity.startActivity(chooserIntent);
+            } else if (action.equals(Intent.ACTION_EDIT) || action.equals(Intent.ACTION_VIEW)) {
+                Intent chooserIntent = Intent.createChooser(intent, null);
+                chooserIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                if (action.equals(Intent.ACTION_EDIT)) {
+                    chooserIntent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                }
+                activity.startActivity(chooserIntent);
+            } else {
+                activity.startActivity(intent);
+            }
             callback.success(uri.toString());
         } catch (Exception e) {
             callback.error(e.getMessage());
@@ -1263,22 +1323,166 @@ public class System extends CordovaPlugin {
     }
 
     private Uri getContentProviderUri(String fileUri, String filename) {
+        if (fileUri == null || fileUri.isEmpty()) {
+            return null;
+        }
+
         Uri uri = Uri.parse(fileUri);
-        String Id = context.getPackageName();
-        if (fileUri.matches("file:///(.*)")) {
-            File file = new File(uri.getPath());
-            if (filename.equals("")) {
-                return FileProvider.getUriForFile(context, Id + ".provider", file);
+        if (uri == null) {
+            return null;
+        }
+
+        if ("file".equalsIgnoreCase(uri.getScheme())) {
+            File originalFile = new File(uri.getPath());
+            if (!originalFile.exists()) {
+                Log.e("System", "File does not exist for URI: " + fileUri);
+                return null;
             }
 
-            return FileProvider.getUriForFile(
-                context,
-                Id + ".provider",
-                file,
-                filename
-            );
+            String authority = getFileProviderAuthority();
+            if (authority == null) {
+                Log.e("System", "No FileProvider authority available.");
+                return null;
+            }
+
+            try {
+                return FileProvider.getUriForFile(context, authority, originalFile);
+            } catch (IllegalArgumentException | SecurityException ex) {
+                try {
+                    File cacheCopy = ensureShareableCopy(originalFile, filename);
+                    return FileProvider.getUriForFile(context, authority, cacheCopy);
+                } catch (Exception copyError) {
+                    Log.e("System", "Failed to expose file via FileProvider", copyError);
+                    return null;
+                }
+            }
         }
         return uri;
+    }
+
+    private File ensureShareableCopy(File source, String displayName) throws IOException {
+        File cacheRoot = new File(context.getCacheDir(), "shared");
+        if (!cacheRoot.exists() && !cacheRoot.mkdirs()) {
+            throw new IOException("Unable to create shared cache directory");
+        }
+
+        if (displayName != null && !displayName.isEmpty()) {
+            displayName = new File(displayName).getName();
+        }
+        if (displayName == null || displayName.isEmpty()) {
+            displayName = source.getName();
+        }
+        if (displayName == null || displayName.isEmpty()) {
+            displayName = "shared-file";
+        }
+
+        File target = new File(cacheRoot, displayName);
+        target = ensureUniqueFile(target);
+        copyFile(source, target);
+        return target;
+    }
+
+    private File ensureUniqueFile(File target) {
+        if (!target.exists()) {
+            return target;
+        }
+
+        String name = target.getName();
+        String prefix = name;
+        String suffix = "";
+        int dotIndex = name.lastIndexOf('.');
+        if (dotIndex > 0) {
+            prefix = name.substring(0, dotIndex);
+            suffix = name.substring(dotIndex);
+        }
+
+        int index = 1;
+        File candidate = target;
+        while (candidate.exists()) {
+            candidate = new File(target.getParentFile(), prefix + "-" + index + suffix);
+            index++;
+        }
+        return candidate;
+    }
+
+    private void copyFile(File source, File destination) throws IOException {
+        try (
+            InputStream in = new FileInputStream(source);
+            OutputStream out = new FileOutputStream(destination)
+        ) {
+            byte[] buffer = new byte[8192];
+            int length;
+            while ((length = in.read(buffer)) != -1) {
+                out.write(buffer, 0, length);
+            }
+            out.flush();
+        }
+    }
+
+    private void grantUriPermissions(Intent intent, Uri uri, int flags) {
+        if (uri == null) return;
+        PackageManager pm = context.getPackageManager();
+        List<ResolveInfo> resInfoList = pm.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY);
+        for (ResolveInfo resolveInfo: resInfoList) {
+            String packageName = resolveInfo.activityInfo.packageName;
+            context.grantUriPermission(packageName, uri, flags);
+        }
+    }
+
+    private String resolveMimeType(String currentMime, Uri uri, String filename) {
+        if (currentMime != null && !currentMime.isEmpty() && !currentMime.equals("*/*")) {
+            return currentMime;
+        }
+
+        String mime = null;
+        if (uri != null) {
+            mime = context.getContentResolver().getType(uri);
+        }
+
+        if ((mime == null || mime.isEmpty()) && filename != null) {
+            mime = getMimeTypeFromExtension(filename);
+        }
+
+        if ((mime == null || mime.isEmpty()) && uri != null) {
+            String path = uri.getPath();
+            if (path != null) {
+                mime = getMimeTypeFromExtension(path);
+            }
+        }
+
+        return (mime != null && !mime.isEmpty()) ? mime : "*/*";
+    }
+
+    private String getFileProviderAuthority() {
+        if (fileProviderAuthority != null && !fileProviderAuthority.isEmpty()) {
+            return fileProviderAuthority;
+        }
+
+        try {
+            PackageManager pm = context.getPackageManager();
+            PackageInfo packageInfo = pm.getPackageInfo(
+                context.getPackageName(),
+                PackageManager.GET_PROVIDERS
+            );
+            if (packageInfo.providers != null) {
+                for (ProviderInfo providerInfo: packageInfo.providers) {
+                    if (
+                        providerInfo != null &&
+                        providerInfo.name != null &&
+                        providerInfo.name.equals(FileProvider.class.getName())
+                    ) {
+                        fileProviderAuthority = providerInfo.authority;
+                        break;
+                    }
+                }
+            }
+        } catch (PackageManager.NameNotFoundException ignored) {}
+
+        if (fileProviderAuthority == null || fileProviderAuthority.isEmpty()) {
+            fileProviderAuthority = context.getPackageName() + ".provider";
+        }
+
+        return fileProviderAuthority;
     }
 
     private boolean isPackageInstalled(
