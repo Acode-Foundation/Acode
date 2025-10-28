@@ -31,7 +31,7 @@ export default function terminalSettings() {
 	const items = [
 		{
 			key: "all_file_access",
-			text: strings.allFileAccess?.capitalize(),
+			text: strings["allFileAccess"],
 			info: "Enable access of /sdcard and /storage in terminal",
 		},
 		{
@@ -173,17 +173,17 @@ export default function terminalSettings() {
 		},
 		{
 			key: "backup",
-			text: strings.backup.capitalize(),
+			text: strings.backup,
 			info: "Creates a backup of the terminal installation",
 		},
 		{
 			key: "restore",
-			text: strings.restore.capitalize(),
+			text: strings.restore,
 			info: "Restores a backup of the terminal installation",
 		},
 		{
 			key: "uninstall",
-			text: strings.uninstall.capitalize(),
+			text: strings.uninstall,
 			info: "Uninstalls the terminal installation",
 		},
 	];

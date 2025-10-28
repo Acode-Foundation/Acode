@@ -10,7 +10,7 @@ export default function editorSettings() {
 	const items = [
 		{
 			key: "autosave",
-			text: strings.autosave.capitalize(),
+			text: strings.autosave,
 			value: values.autosave,
 			valueText: (value) => (value ? value : strings.no),
 			prompt: strings.delay + " (>=1000 || 0)",
@@ -88,12 +88,12 @@ export default function editorSettings() {
 		},
 		{
 			key: "liveAutoCompletion",
-			text: strings["live autocompletion"].capitalize(),
+			text: strings["live autocompletion"],
 			checkbox: values.liveAutoCompletion,
 		},
 		{
 			key: "showPrintMargin",
-			text: strings["show print margin"].capitalize(),
+			text: strings["show print margin"],
 			checkbox: values.showPrintMargin,
 		},
 		{
