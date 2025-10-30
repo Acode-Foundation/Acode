@@ -31,7 +31,7 @@ export class Log {
 
 	d(message: any, ...args: any[]): void {
 		//TODO: Only show debug messages in debug mode
-		console.debug(
+		console.log(
 			`%c${this.format("DEBUG", message)}`,
 			"color: #999999",
 			...args,
