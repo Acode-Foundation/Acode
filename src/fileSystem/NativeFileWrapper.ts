@@ -1,14 +1,46 @@
-import { FileObject } from "./fileObject";
+import {FileObject} from "./fileObject";
 
 declare var cordova: any;
 
-export class NativeFileWrapper implements FileObject {
-    private readonly path: string;
 
-    constructor(absolutePath: string) {
-        this.path = absolutePath;
-        //console.log(`[NativeFileWrapper] Created for path: ${absolutePath}`);
+//alternative for internalFs.js
+export class NativeFileWrapper implements FileObject {
+    private path: string | undefined;
+
+    //always check if fileobject is ready before calling any class function
+    ready: Promise<void>;
+
+
+
+    private removePrefix(str: string, prefix: string): string {
+        return str.startsWith(prefix) ? str.slice(prefix.length) : str;
     }
+
+
+    constructor(absolutePathOrUri: string,onReady:(obj:NativeFileWrapper)=>void) {
+        this.ready = (async () => {
+            let temp = absolutePathOrUri;
+
+            if (absolutePathOrUri.startsWith("cdvfile://")) {
+                temp = await new Promise<string>((resolve, reject) => {
+                    // @ts-ignore
+                    window.resolveLocalFileSystemURL(
+                        absolutePathOrUri,
+                        (entry: any) => resolve(entry.toURL()),
+                        reject
+                    );
+                });
+            }
+
+            this.path = this.removePrefix(temp, "file://");
+
+            onReady(this)
+        })();
+    }
+
+
+
+
 
     private execPlugin(action: string, args: any[] = []): Promise<any> {
         //console.log(`[NativeFileWrapper] execPlugin called: action=${action}, args=${JSON.stringify(args)}`);
@@ -90,7 +122,7 @@ export class NativeFileWrapper implements FileObject {
             const childPath = await this.execPlugin('getChildByName', [name]);
             //console.log(`[getChildByName] path=${this.path}, name=${name}, childPath=${childPath}`);
             if (childPath && childPath !== "") {
-                return new NativeFileWrapper(childPath);
+                return new NativeFileWrapper(childPath,()=>{});
             }
             return null;
         } catch (error) {
@@ -126,7 +158,7 @@ export class NativeFileWrapper implements FileObject {
             const parentPath = await this.execPlugin('getParentFile');
             //console.log(`[getParentFile] path=${this.path}, parentPath=${parentPath}`);
             if (parentPath && parentPath !== "") {
-                return new NativeFileWrapper(parentPath);
+                return new NativeFileWrapper(parentPath,()=>{});
             }
             return null;
         } catch (error) {
@@ -194,7 +226,7 @@ export class NativeFileWrapper implements FileObject {
         try {
             const paths: string[] = await this.execPlugin('listFiles');
             //console.log(`[listFiles] path=${this.path}, files=${JSON.stringify(paths)}`);
-            return paths.map(path => new NativeFileWrapper(path));
+            return paths.map(path => new NativeFileWrapper(path,()=>{}));
         } catch (error) {
             console.error(`[listFiles] path=${this.path}, error=${error}`);
             return [];
@@ -236,9 +268,8 @@ export class NativeFileWrapper implements FileObject {
 
     async toUri(): Promise<string> {
         try {
-            const uri = await this.execPlugin('toUri');
             //console.log(`[toUri] path=${this.path}, uri=${uri}`);
-            return uri;
+            return await this.execPlugin('toUri');
         } catch (error) {
             console.error(`[toUri] path=${this.path}, error=${error}`);
             return `file://${this.path}`;
@@ -257,6 +288,6 @@ export class NativeFileWrapper implements FileObject {
 
     getPath(): string {
         //console.log(`[getPath] returning path=${this.path}`);
-        return this.path;
+        return this.path!!;
     }
 }
