@@ -1,3 +1,4 @@
+import { Exception } from "sass";
 import { FileObject } from "./fileObject";
 
 declare var cordova: any;
@@ -20,18 +21,26 @@ export class NativeFileWrapper implements FileObject {
 		this.ready = (async () => {
 			let temp = absolutePathOrUri;
 
+			//NOTE: only cvfiles are supported which are backed by the native filesystem files with http:// is not supported
 			if (absolutePathOrUri.startsWith("cdvfile://")) {
 				temp = await new Promise<string>((resolve, reject) => {
 					// @ts-ignore
 					window.resolveLocalFileSystemURL(
 						absolutePathOrUri,
-						(entry: any) => resolve(entry.toURL()),
+						//                             nativeURL
+						(entry: any) => resolve(entry.nativeURL()),
 						reject,
 					);
 				});
 			}
 
 			this.path = this.removePrefix(temp, "file://");
+
+			if (!this.path.endsWith("/")) {
+				throw new Error(
+					`Path "${absolutePathOrUri}" converted to "${this.path}" which is invalid since it does not start with / `,
+				);
+			}
 
 			onReady(this);
 		})();
