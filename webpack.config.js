@@ -36,6 +36,13 @@ module.exports = (env, options) => {
     },
   ];
 
+  rules.push({
+          test: /\.ts$/,
+          use: 'ts-loader',
+          exclude: /node_modules/,
+      }
+  )
+
   // if (mode === 'production') {
   rules.push({
     test: /\.m?js$/,
@@ -68,13 +75,14 @@ module.exports = (env, options) => {
     module: {
       rules,
     },
-    resolve: {
-      fallback: {
-        path: require.resolve('path-browserify'),
-        crypto: false,
+      resolve: {
+          extensions: ['.ts', '.js'],
+          fallback: {
+              path: require.resolve('path-browserify'),
+              crypto: false,
+          },
+          modules: ["node_modules", "src"],
       },
-      modules: ["node_modules", "src"],
-    },
     plugins: [
       new MiniCssExtractPlugin({
         filename: '[name].css',
