@@ -36,7 +36,7 @@ export class NativeFileWrapper implements FileObject {
 
 			this.path = this.removePrefix(temp, "file://");
 
-			if (!this.path.endsWith("/")) {
+			if (!this.path.startsWith("/")) {
 				throw new Error(
 					`Path "${absolutePathOrUri}" converted to "${this.path}" which is invalid since it does not start with / `,
 				);
