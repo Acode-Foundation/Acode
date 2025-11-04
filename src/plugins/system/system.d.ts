@@ -19,6 +19,14 @@ interface ShortCut {
   data: string;
 }
 
+interface FileShortcut {
+  id: string;
+  label: string;
+  description?: string;
+  icon?: string;
+  uri: string;
+}
+
 interface Intent {
   action: string;
   data: string;
@@ -131,6 +139,17 @@ interface System {
    * @param onFail
    */
   pinShortcut(id: string, onSuccess: OnSuccessBool, onFail: OnFail): void;
+  /**
+   * Pin a shortcut for a specific file to the home screen
+   * @param shortcut Shortcut configuration
+   * @param onSuccess
+   * @param onFail
+   */
+  pinFileShortcut(
+    shortcut: FileShortcut,
+    onSuccess: OnSuccessBool,
+    onFail: OnFail,
+  ): void;
   /**
    * Gets android version
    * @param onSuccess
