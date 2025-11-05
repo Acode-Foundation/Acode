@@ -18,6 +18,9 @@ import constants from "./constants";
 import EditorFile from "./editorFile";
 import openFolder, {addedFolder} from "./openFolder";
 import appSettings from "./settings";
+import {Log} from "./Log";
+import {SAFDocumentFile} from "../fileSystem/SAFDocumentFile";
+import {FileServer} from "./fileServer";
 
 
 /**
@@ -46,6 +49,56 @@ async function run(
             return;
         }
     }
+
+    const activeFile = editorManager.activeFile;
+    if(!await activeFile?.canRun()){
+        //can not run
+        return;
+    }
+
+    const log = new Log("Code Runner")
+    log.d(activeFile.uri)
+
+    //todo use NativeFileObject for file:// uri
+    const documentFile = new SAFDocumentFile(activeFile.uri)
+
+    log.d(await documentFile.getName())
+    log.d(await documentFile.readText())
+
+    const fileParent = await documentFile.getParentFile()
+    log.d(await fileParent.uri)
+
+    const port = 8080
+    let fileServer;
+
+    let url = `http://localhost:${port}/${await documentFile.getName()}`;
+
+    if (!await fileParent.exists()){
+        log.d("No file parent")
+        fileServer = new FileServer(port,documentFile)
+    }else{
+        log.d(await fileParent.getName())
+        fileServer = new FileServer(port,fileParent)
+    }
+
+
+    fileServer.start((msg)=>{
+        //success
+        log.d(msg)
+
+        if (target === "browser") {
+            system.openInBrowser(url);
+        }else{
+            browser.open(url,false);
+        }
+
+
+    },(err)=>{
+        //error
+        log.e(err)
+    })
+
+
 
 
 }

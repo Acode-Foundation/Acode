@@ -67,8 +67,12 @@ export class SAFDocumentFile implements FileObject {
 		return stat.size ?? 0;
 	}
 
+    private removeSuffix(str:string, suffix:string) {
+        return str.endsWith(suffix) ? str.slice(0, -suffix.length) : str;
+    }
+
 	async getName(): Promise<string> {
-		const parts = this.uri.split("/");
+		const parts = this.removeSuffix(this.uri,"/").split("/");
 		return parts[parts.length - 1] || "";
 	}
 
