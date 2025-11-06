@@ -418,6 +418,8 @@
 	"terminal:cursor style": "Estilo do Cursor",
 	"terminal:font family": "Família da Fonte",
 	"terminal:convert eol": "Converter EOL",
+	"terminal:confirm tab close": "Confirm terminal tab close",
+	"terminal:image support": "Image support",
 	"terminal": "Terminal",
 	"allFileAccess": "Acesso total aos arquivos",
 	"fonts": "Fontes",

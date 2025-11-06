@@ -419,6 +419,8 @@
 	"terminal:cursor style": "Gaya Kursor",
 	"terminal:font family": "Keluarga Huruf",
 	"terminal:convert eol": "Konversi Akhir Baris",
+	"terminal:confirm tab close": "Confirm terminal tab close",
+	"terminal:image support": "Image support",
 	"terminal": "Terminal",
 	"allFileAccess": "Semua akses berkas",
 	"fonts": "Huruf",

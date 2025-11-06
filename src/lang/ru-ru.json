@@ -418,6 +418,8 @@
 	"terminal:cursor style": "Стиль курсора",
 	"terminal:font family": "Семейство шрифтов",
 	"terminal:convert eol": "Преобразовывать EOL",
+	"terminal:confirm tab close": "Confirm terminal tab close",
+	"terminal:image support": "Image support",
 	"terminal": "Терминал",
 	"allFileAccess": "Доступ ко всем файлам",
 	"fonts": "Шрифты",

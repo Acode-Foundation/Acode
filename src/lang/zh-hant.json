@@ -418,6 +418,8 @@
 	"terminal:cursor style": "游標樣式",
 	"terminal:font family": "字體",
 	"terminal:convert eol": "轉換行尾符",
+	"terminal:confirm tab close": "Confirm terminal tab close",
+	"terminal:image support": "Image support",
 	"terminal": "終端機",
 	"allFileAccess": "所有文件讀寫權限",
 	"fonts": "字體",

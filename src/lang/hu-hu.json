@@ -418,6 +418,8 @@
 	"terminal:cursor style": "Kurzor stílusa",
 	"terminal:font family": "Betűtípuscsalád",
 	"terminal:convert eol": "Sorvégződések konvertálása",
+	"terminal:confirm tab close": "Confirm terminal tab close",
+	"terminal:image support": "Image support",
 	"terminal": "Terminál",
 	"allFileAccess": "Hozzáférés az összes fájlhoz",
 	"fonts": "Betűtípusok",
