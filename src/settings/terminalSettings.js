@@ -155,7 +155,7 @@ export default function terminalSettings() {
 		},
 		{
 			key: "imageSupport",
-			text: `${strings["image"]} Support`,
+			text: strings["terminal:image support"],
 			checkbox: terminalValues.imageSupport,
 			info: "Whether images are supported in the terminal.",
 		},
@@ -167,7 +167,7 @@ export default function terminalSettings() {
 		},
 		{
 			key: "confirmTabClose",
-			text: `${strings["confirm"]} ${strings["terminal"]} tab close`,
+			text: strings["terminal:confirm tab close"],
 			checkbox: terminalValues.confirmTabClose !== false,
 			info: "Ask for confirmation before closing terminal tabs.",
 		},
