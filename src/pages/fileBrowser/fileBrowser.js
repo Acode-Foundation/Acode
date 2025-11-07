@@ -748,6 +748,20 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				});
 			}
 
+			async function getShareableUri(fileUrl) {
+				if (!fileUrl) return null;
+				try {
+					const fs = fsOperation(fileUrl);
+					if (/^s?ftp:/.test(fileUrl)) {
+						return fs.localName;
+					}
+					const stat = await fs.stat();
+					return stat?.url || null;
+				} catch (error) {
+					return null;
+				}
+			}
+
 			async function contextMenuHandler() {
 				if (appSettings.value.vibrateOnTap) {
 					navigator.vibrate(constants.VIBRATION_TIME);
@@ -824,19 +838,20 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 					case "open_with":
 						try {
-							let mimeType = mimeTypes.lookup(name || "text/plain");
-							const fs = fsOperation(url);
-							if (/^s?ftp:/.test(url)) return fs.localName;
+							const shareableUri = await getShareableUri(url);
+							if (!shareableUri) {
+								toast(strings["no app found to handle this file"]);
+								break;
+							}
 
-							system.fileAction(
-								(await fs.stat()).url,
-								name,
-								"VIEW",
-								mimeType,
-								() => {
-									toast(strings["no app found to handle this file"]);
-								},
-							);
+							const mimeType =
+								mimeTypes.lookup(name) ||
+								mimeTypes.lookup(shareableUri) ||
+								"text/plain";
+
+							system.fileAction(shareableUri, name, "VIEW", mimeType, () => {
+								toast(strings["no app found to handle this file"]);
+							});
 						} catch (error) {
 							console.error(error);
 							toast(strings.error);
@@ -1333,14 +1348,16 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		 * @param {String} url
 		 */
 		function pushToNavbar(name, url, action) {
+			if (!url) return;
+			const displayName = name || Url.basename(url) || url;
 			$navigation.append(
 				<span
 					id={getNavId(url)}
 					className="nav"
 					data-url={url}
-					data-name={name}
+					data-name={displayName}
 					attr-action="navigation"
-					attr-text={name}
+					attr-text={displayName}
 					tabIndex={-1}
 				></span>,
 			);
@@ -1359,14 +1376,20 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		 * @param {Array<Location>} states
 		 */
 		function loadStates(states) {
-			if (!Array.isArray(states)) return;
+			if (!Array.isArray(states) || !states.length) return;
 
 			const backNavigation = [];
-			const { url, name } = states.pop();
+			const lastState = states.pop();
+			if (!lastState || !lastState.url) return;
+			const { url } = lastState;
+			const name = lastState.name || Url.basename(url) || url;
 			let { url: lastUrl, name: lastName } = currentDir;
 
 			while (states.length) {
 				const location = states.splice(0, 1)[0];
+				if (!location || !location.url) {
+					continue;
+				}
 				const { url, name } = location;
 				let action;
 

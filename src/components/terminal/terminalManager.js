@@ -7,6 +7,8 @@ import EditorFile from "lib/editorFile";
 import TerminalComponent from "./terminal";
 import "@xterm/xterm/css/xterm.css";
 import toast from "components/toast";
+import confirm from "dialogs/confirm";
+import appSettings from "lib/settings";
 import helpers from "utils/helpers";
 
 const TERMINAL_SESSION_STORAGE_KEY = "acodeTerminalSessions";
@@ -17,12 +19,15 @@ class TerminalManager {
 		this.terminalCounter = 0;
 	}
 
-	getPersistedSessions() {
+	async getPersistedSessions() {
 		try {
 			const stored = helpers.parseJSON(
 				localStorage.getItem(TERMINAL_SESSION_STORAGE_KEY),
 			);
 			if (!Array.isArray(stored)) return [];
+			if (!(await Terminal.isAxsRunning())) {
+				return [];
+			}
 			return stored
 				.map((entry) => {
 					if (!entry) return null;
@@ -56,11 +61,11 @@ class TerminalManager {
 		}
 	}
 
-	persistTerminalSession(pid, name) {
+	async persistTerminalSession(pid, name) {
 		if (!pid) return;
 
 		const pidStr = String(pid);
-		const sessions = this.getPersistedSessions();
+		const sessions = await this.getPersistedSessions();
 		const existingIndex = sessions.findIndex(
 			(session) => session.pid === pidStr,
 		);
@@ -81,11 +86,11 @@ class TerminalManager {
 		this.savePersistedSessions(sessions);
 	}
 
-	removePersistedSession(pid) {
+	async removePersistedSession(pid) {
 		if (!pid) return;
 
 		const pidStr = String(pid);
-		const sessions = this.getPersistedSessions();
+		const sessions = await this.getPersistedSessions();
 		const nextSessions = sessions.filter((session) => session.pid !== pidStr);
 
 		if (nextSessions.length !== sessions.length) {
@@ -94,7 +99,7 @@ class TerminalManager {
 	}
 
 	async restorePersistedSessions() {
-		const sessions = this.getPersistedSessions();
+		const sessions = await this.getPersistedSessions();
 		if (!sessions.length) return;
 
 		const manager = window.editorManager;
@@ -183,7 +188,7 @@ class TerminalManager {
 			});
 
 			// Wait for tab creation and setup
-			const terminalInstance = await new Promise((resolve, reject) => {
+			return await new Promise((resolve, reject) => {
 				setTimeout(async () => {
 					try {
 						// Mount terminal component
@@ -220,7 +225,10 @@ class TerminalManager {
 						this.terminals.set(uniqueId, instance);
 
 						if (terminalComponent.serverMode && terminalComponent.pid) {
-							this.persistTerminalSession(terminalComponent.pid, terminalName);
+							await this.persistTerminalSession(
+								terminalComponent.pid,
+								terminalName,
+							);
 						}
 						resolve(instance);
 					} catch (error) {
@@ -229,8 +237,6 @@ class TerminalManager {
 					}
 				}, 100);
 			});
-
-			return terminalInstance;
 		} catch (error) {
 			console.error("Failed to create terminal:", error);
 			throw error;
@@ -334,7 +340,7 @@ class TerminalManager {
 		});
 
 		// Wait for tab creation and setup
-		const terminalInstance = await new Promise((resolve, reject) => {
+		return await new Promise((resolve, reject) => {
 			setTimeout(async () => {
 				try {
 					// Mount terminal component
@@ -374,8 +380,6 @@ class TerminalManager {
 				}
 			}, 100);
 		});
-
-		return terminalInstance;
 	}
 
 	/**
@@ -384,7 +388,7 @@ class TerminalManager {
 	 * @param {TerminalComponent} terminalComponent - Terminal component
 	 * @param {string} terminalId - Terminal ID
 	 */
-	setupTerminalHandlers(terminalFile, terminalComponent, terminalId) {
+	async setupTerminalHandlers(terminalFile, terminalComponent, terminalId) {
 		// Handle tab focus/blur
 		terminalFile.onfocus = () => {
 			// Guarded fit on focus: only fit if cols/rows would change, then focus
@@ -411,6 +415,22 @@ class TerminalManager {
 		// Handle tab close
 		terminalFile.onclose = () => {
 			this.closeTerminal(terminalId);
+		};
+
+		terminalFile._skipTerminalCloseConfirm = false;
+		const originalRemove = terminalFile.remove.bind(terminalFile);
+		terminalFile.remove = async (force = false) => {
+			if (
+				!terminalFile._skipTerminalCloseConfirm &&
+				this.shouldConfirmTerminalClose()
+			) {
+				const message = `${strings["close"]} ${strings["terminal"]}?`;
+				const shouldClose = await confirm(strings["confirm"], message);
+				if (!shouldClose) return;
+			}
+
+			terminalFile._skipTerminalCloseConfirm = false;
+			return originalRemove(force);
 		};
 
 		// Enhanced resize handling with debouncing
@@ -486,14 +506,17 @@ class TerminalManager {
 			this.closeTerminal(terminalId);
 		};
 
-		terminalComponent.onTitleChange = (title) => {
+		terminalComponent.onTitleChange = async (title) => {
 			if (title) {
 				// Format terminal title as "Terminal ! - title"
 				const formattedTitle = `Terminal ${this.terminalCounter} - ${title}`;
 				terminalFile.filename = formattedTitle;
 
 				if (terminalComponent.serverMode && terminalComponent.pid) {
-					this.persistTerminalSession(terminalComponent.pid, formattedTitle);
+					await this.persistTerminalSession(
+						terminalComponent.pid,
+						formattedTitle,
+					);
 				}
 
 				// Refresh the header subtitle if this terminal is active
@@ -519,6 +542,7 @@ class TerminalManager {
 			}
 
 			this.closeTerminal(terminalId);
+			terminalFile._skipTerminalCloseConfirm = true;
 			terminalFile.remove(true);
 			toast(message);
 		};
@@ -730,6 +754,14 @@ class TerminalManager {
 				console.error(`Error stabilizing terminal ${terminal.id}:`, error);
 			}
 		});
+	}
+
+	shouldConfirmTerminalClose() {
+		const settings = appSettings?.value?.terminalSettings;
+		if (settings && settings.confirmTabClose === false) {
+			return false;
+		}
+		return true;
 	}
 }
 

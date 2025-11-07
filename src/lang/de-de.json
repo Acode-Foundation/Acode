@@ -418,6 +418,8 @@
 	"terminal:cursor style": "Cursorstil",
 	"terminal:font family": "Schriftfamilie",
 	"terminal:convert eol": "Zeilenende konvertieren",
+	"terminal:confirm tab close": "Terminal-Tab schließen bestätigen",
+	"terminal:image support": "Bildunterstützung",
 	"terminal": "Terminal",
 	"allFileAccess": "Zugriff auf alle Dateien",
 	"fonts": "Schriftarten",

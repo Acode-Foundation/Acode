@@ -24,7 +24,7 @@ jobs:
           close-issue-message: "This issue was closed because it has been inactive for 14 days since being marked as stale."
           days-before-pr-stale: -1
           days-before-pr-close: -1
-          exempt-issue-labels: "new plugin idea, todo"
+          exempt-issue-labels: "new plugin idea, todo, enhancement, bug, Low priority, documentation"
           operations-per-run: 100
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           

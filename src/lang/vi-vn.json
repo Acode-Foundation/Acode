@@ -419,6 +419,8 @@
 	"terminal:cursor style": "Kiểu Con Trỏ",
 	"terminal:font family": "Họ phông chữ",
 	"terminal:convert eol": "Chuyển Đổi Cuối Dòng",
+	"terminal:confirm tab close": "Confirm terminal tab close",
+	"terminal:image support": "Image support",
 	"terminal": "Terminal",
 	"allFileAccess": "All file access",
 	"fonts": "Fonts",

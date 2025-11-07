@@ -418,6 +418,8 @@
 	"terminal:cursor style": "কার্সর স্টাইল",
 	"terminal:font family": "ফন্ট ফ্যামিলি",
 	"terminal:convert eol": "EOL রূপান্তর করুন",
+	"terminal:confirm tab close": "Confirm terminal tab close",
+	"terminal:image support": "Image support",
 	"terminal": "টার্মিনাল",
 	"allFileAccess": "সকল ফাইল অ্যাক্সেস",
 	"fonts": "ফন্ট",
