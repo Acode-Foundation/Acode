@@ -10,10 +10,59 @@ import Url from "utils/Url";
 import { FileObject } from "./fileObject";
 
 declare const sdcard: any;
+declare var cordova: any;
 
 //alternative for externalFs.js
 export class SAFDocumentFile implements FileObject {
 	constructor(private uri: string) {}
+
+    private execPlugin(action: string, args: any[] = []): Promise<any> {
+        return new Promise((resolve, reject) => {
+            cordova.exec(
+                (result: any) => {
+                    //console.log(`[NativeFileWrapper] execPlugin success: action=${action}, result=${JSON.stringify(result)}`);
+                    resolve(result);
+                },
+                (error: any) => {
+                    console.error(
+                        `[SAFDocumentFile] execPlugin error: action=${action}, error=${JSON.stringify(error)}`,
+                    );
+                    reject(error);
+                },
+                "documentFile",
+                action,
+                [this.uri, ...args],
+            );
+        });
+    }
+
+    //if this fails then...
+    async isMyChild(fileObject: FileObject): Promise<boolean> {
+        if (!(fileObject instanceof SAFDocumentFile)){
+            return false
+        }
+        if (!(await this.isDirectory())) {
+            return false;
+        }
+
+        let current: FileObject | null = fileObject;
+
+        while (current !== null) {
+            const parent:FileObject | null = await current.getParentFile();
+            if (parent === null) {
+                return false; // Reached root without finding this
+            }
+
+            const parentUri = await parent.toUri();
+            if (parentUri === this.uri) {
+                return true; // Found a match
+            }
+
+            current = parent;
+        }
+
+        return false;
+    }
 
 	async canRead(): Promise<boolean> {
 		const stat = await this.stat();
@@ -77,9 +126,18 @@ export class SAFDocumentFile implements FileObject {
 	}
 
 	async getParentFile(): Promise<FileObject | null> {
-		const parent = Url.dirname(this.uri);
-		if (!parent || parent === this.uri) return null;
-		return new SAFDocumentFile(parent);
+        //fixme
+        if (!this.uri){
+            return null
+        }
+
+        try{
+            const result = await this.execPlugin("getParentFile")
+            return new SAFDocumentFile(result);
+        }catch (e) {
+            return null;
+        }
+
 	}
 
 	async isDirectory(): Promise<boolean> {

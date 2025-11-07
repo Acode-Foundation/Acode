@@ -132,6 +132,8 @@ export interface FileObject {
 	 */
 	getChildByName(name: string): Promise<FileObject | null>;
 
+    isMyChild(fileObject:FileObject): Promise<boolean>;
+
 	/**
 	 * Returns the parent directory of this file.
 	 * @returns A promise resolving to the parent `FileObject`, or `null` if there’s no parent.

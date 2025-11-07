@@ -86,6 +86,7 @@ public class documentFile extends CordovaPlugin {
     }
 
     private boolean handleGetParentFile(JSONArray args, CallbackContext cb) throws JSONException {
+        android.util.Log.d("DocumentFile.java",args.getString(0));
         DocumentFile f = fromUri(args.getString(0));
         DocumentFile parent = f != null ? f.getParentFile() : null;
         cb.success(parent != null ? parent.getUri().toString() : "");
