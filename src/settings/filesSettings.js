@@ -15,7 +15,6 @@ export default function filesSettings() {
 			key: "showHiddenFiles",
 			text: strings["show hidden files"],
 			checkbox: values.showHiddenFiles,
-			info: "Show hidden files and folders. (Start with .)",
 		},
 	];
 
