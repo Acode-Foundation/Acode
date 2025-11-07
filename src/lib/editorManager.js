@@ -633,6 +633,7 @@ async function EditorManager($header, $body) {
 		if (activeFileId === id) return;
 
 		const file = manager.getFile(id);
+		if (!file) return;
 
 		manager.activeFile?.tab.classList.remove("active");
 
@@ -684,6 +685,7 @@ async function EditorManager($header, $body) {
 		}
 
 		$header.text = file.filename;
+		$header.subText = file.headerSubtitle || "";
 		manager.onupdate("switch-file");
 		events.emit("switch-file", file);
 	}

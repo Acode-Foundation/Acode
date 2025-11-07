@@ -31,7 +31,7 @@ export default function terminalSettings() {
 	const items = [
 		{
 			key: "all_file_access",
-			text: strings.allFileAccess?.capitalize(),
+			text: strings["allFileAccess"],
 			info: "Enable access of /sdcard and /storage in terminal",
 		},
 		{
@@ -155,7 +155,7 @@ export default function terminalSettings() {
 		},
 		{
 			key: "imageSupport",
-			text: `${strings["image"]} Support`,
+			text: strings["terminal:image support"],
 			checkbox: terminalValues.imageSupport,
 			info: "Whether images are supported in the terminal.",
 		},
@@ -167,23 +167,23 @@ export default function terminalSettings() {
 		},
 		{
 			key: "confirmTabClose",
-			text: `${strings["confirm"]} ${strings["terminal"]} tab close`,
+			text: strings["terminal:confirm tab close"],
 			checkbox: terminalValues.confirmTabClose !== false,
 			info: "Ask for confirmation before closing terminal tabs.",
 		},
 		{
 			key: "backup",
-			text: strings.backup.capitalize(),
+			text: strings.backup,
 			info: "Creates a backup of the terminal installation",
 		},
 		{
 			key: "restore",
-			text: strings.restore.capitalize(),
+			text: strings.restore,
 			info: "Restores a backup of the terminal installation",
 		},
 		{
 			key: "uninstall",
-			text: strings.uninstall.capitalize(),
+			text: strings.uninstall,
 			info: "Uninstalls the terminal installation",
 		},
 	];

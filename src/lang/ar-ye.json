@@ -418,6 +418,8 @@
 	"terminal:cursor style": "شكل المؤشر",
 	"terminal:font family": "عائلة الخطوط",
 	"terminal:convert eol": "تحويل نهاية السطر",
+	"terminal:confirm tab close": "Confirm terminal tab close",
+	"terminal:image support": "Image support",
 	"terminal": "الطرفية",
 	"allFileAccess": "الوصول إلى جميع الملفات",
 	"fonts": "الخطوط",
