@@ -69,7 +69,8 @@ export default function otherSettings() {
 			key: "checkForAppUpdates",
 			text: strings["check for app updates"],
 			checkbox: values.checkForAppUpdates,
-			info: strings["info-checkForAppUpdates"],		},
+			info: strings["info-checkForAppUpdates"],
+		},
 		{
 			key: "console",
 			text: strings.console,
