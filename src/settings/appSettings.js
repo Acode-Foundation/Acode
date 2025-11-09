@@ -68,8 +68,8 @@ export default function otherSettings() {
 		{
 			key: "checkForAppUpdates",
 			text: strings["check for app updates"],
-			info: "Check for app updates automatically",
 			checkbox: values.checkForAppUpdates,
+			info: strings["info-checkForAppUpdates"],
 		},
 		{
 			key: "console",
@@ -128,7 +128,7 @@ export default function otherSettings() {
 			key: "quickTools",
 			text: strings["quick tools"],
 			checkbox: !!values.quickTools,
-			info: "Show or hide quick tools.",
+			info: strings["info-quickTools"],
 		},
 		{
 			key: "quickToolsTriggerMode",
