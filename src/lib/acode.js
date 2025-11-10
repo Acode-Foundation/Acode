@@ -45,6 +45,9 @@ import KeyboardEvent from "utils/keyboardEvent";
 import Url from "utils/Url";
 import constants from "./constants";
 
+const { Fold } = ace.require("ace/edit_session/fold");
+const { Range } = ace.require("ace/range");
+
 export default class Acode {
 	#modules = {};
 	#pluginsInit = {};
@@ -475,19 +478,28 @@ export default class Acode {
 
 	async format(selectIfNull = true) {
 		const file = editorManager.activeFile;
+		if (!file?.session) return;
+
 		const name = (file.session.getMode().$id || "").split("/").pop();
 		const formatterId = appSettings.value.formatter[name];
 		const formatter = this.#formatter.find(({ id }) => id === formatterId);
 
-		await formatter?.format();
-
-		if (!formatter && selectIfNull) {
+		if (!formatter) {
+			if (!selectIfNull) {
+				toast(strings["please select a formatter"]);
+				return;
+			}
 			formatterSettings(name);
 			this.#afterSelectFormatter(name);
 			return;
 		}
-		if (!formatter && !selectIfNull) {
-			toast(strings["please select a formatter"]);
+
+		const foldsSnapshot = this.#captureFoldState(file.session);
+
+		try {
+			await formatter.format();
+		} finally {
+			this.#restoreFoldState(file.session, foldsSnapshot);
 		}
 	}
 
@@ -504,6 +516,77 @@ export default class Acode {
 
 	fsOperation(file) {
 		return fsOperation(file);
+	}
+
+	#captureFoldState(session) {
+		if (!session?.getAllFolds) return null;
+		return this.#serializeFolds(session.getAllFolds());
+	}
+
+	#restoreFoldState(session, folds) {
+		if (!session || !Array.isArray(folds) || !folds.length) return;
+
+		try {
+			const foldObjects = this.#parseSerializableFolds(folds);
+			if (!foldObjects.length) return;
+			session.removeAllFolds?.();
+			session.addFolds?.(foldObjects);
+		} catch (error) {
+			console.warn("Failed to restore folds after formatting:", error);
+		}
+	}
+
+	#serializeFolds(folds) {
+		if (!Array.isArray(folds) || !folds.length) return null;
+
+		return folds
+			.map((fold) => {
+				if (!fold?.range) return null;
+				const { start, end } = fold.range;
+				if (!start || !end) return null;
+
+				return {
+					range: {
+						start: { row: start.row, column: start.column },
+						end: { row: end.row, column: end.column },
+					},
+					placeholder: fold.placeholder,
+					ranges: this.#serializeFolds(fold.ranges || []),
+				};
+			})
+			.filter(Boolean);
+	}
+
+	#parseSerializableFolds(folds) {
+		if (!Array.isArray(folds) || !folds.length) return [];
+
+		return folds
+			.map((fold) => {
+				const { range, placeholder, ranges } = fold;
+				const { start, end } = range || {};
+				if (!start || !end) return null;
+
+				try {
+					const foldInstance = new Fold(
+						new Range(start.row, start.column, end.row, end.column),
+						placeholder,
+					);
+
+					if (Array.isArray(ranges) && ranges.length) {
+						const subFolds = this.#parseSerializableFolds(ranges);
+						if (subFolds.length) {
+							foldInstance.subFolds = subFolds;
+							foldInstance.ranges = subFolds;
+						}
+					}
+
+					return foldInstance;
+				} catch (error) {
+					console.warn("Failed to parse fold:", error);
+					return null;
+				}
+			})
+			.filter(Boolean);
 	}
 
 	newEditorFile(filename, options) {

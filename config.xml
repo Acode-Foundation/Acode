@@ -32,9 +32,10 @@
         <preference name="AndroidLaunchMode" value="singleTask" />
         <preference name="prerendered-icon" value="false" />
         <preference name="androidxEnabled" value="true" />
+        <preference name="GradlePluginKotlinEnabled" value="true" />
         <preference name="android-targetSdkVersion" value="35" />
 
-        
+
         <edit-config file="app/src/main/AndroidManifest.xml" mode="merge" target="/manifest/application">
             <application android:networkSecurityConfig="@xml/network_security_config" />
             <application android:hardwareAccelerated="true" />
