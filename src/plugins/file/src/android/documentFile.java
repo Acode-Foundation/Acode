@@ -51,9 +51,28 @@ public class documentFile extends CordovaPlugin {
     }
 
     private DocumentFile fromUri(String uriStr) {
-        Uri uri = Uri.parse(uriStr);
-        return DocumentFile.fromTreeUri(getContext(), uri);
+        try {
+            // Decode once if double-encoded
+            if (uriStr.contains("%25")) {
+                uriStr = Uri.decode(uriStr);
+            }
+
+            Uri uri = Uri.parse(uriStr);
+
+            DocumentFile file;
+            if (DocumentsContract.isTreeUri(uri)) {
+                file = DocumentFile.fromTreeUri(getContext(), uri);
+            } else {
+                file = DocumentFile.fromSingleUri(getContext(), uri);
+            }
+
+            return file;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
+
 
     private boolean handleExists(JSONArray args, CallbackContext cb) throws JSONException {
         DocumentFile f = fromUri(args.getString(0));
