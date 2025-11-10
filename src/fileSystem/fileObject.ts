@@ -132,7 +132,7 @@ export interface FileObject {
 	 */
 	getChildByName(name: string): Promise<FileObject | null>;
 
-    isMyChild(fileObject:FileObject): Promise<boolean>;
+	isMyChild(fileObject: FileObject): Promise<boolean>;
 
 	/**
 	 * Returns the parent directory of this file.

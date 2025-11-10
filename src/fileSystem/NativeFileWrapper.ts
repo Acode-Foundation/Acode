@@ -46,16 +46,16 @@ export class NativeFileWrapper implements FileObject {
 		})();
 	}
 
-    async isMyChild(fileObject: FileObject): Promise<boolean> {
-        if (!(fileObject instanceof NativeFileWrapper)){
-            return false
-        }
-        if (!(await this.isDirectory())) {
-            return false;
-        }
+	async isMyChild(fileObject: FileObject): Promise<boolean> {
+		if (!(fileObject instanceof NativeFileWrapper)) {
+			return false;
+		}
+		if (!(await this.isDirectory())) {
+			return false;
+		}
 
-        return fileObject.getPath().includes(this.getPath());
-    }
+		return fileObject.getPath().includes(this.getPath());
+	}
 
 	private execPlugin(action: string, args: any[] = []): Promise<any> {
 		//console.log(`[NativeFileWrapper] execPlugin called: action=${action}, args=${JSON.stringify(args)}`);
