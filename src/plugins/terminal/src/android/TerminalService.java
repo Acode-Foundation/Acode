@@ -16,7 +16,6 @@ import android.os.Messenger;
 import android.os.PowerManager;
 import android.os.RemoteException;
 import androidx.core.app.NotificationCompat;
-import com.foxdebug.acode.R;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -360,13 +359,15 @@ public class TerminalService extends Service {
         String contentText = "Executor service" + (isWakeLockHeld ? " (wakelock held)" : "");
         String wakeLockButtonText = isWakeLockHeld ? "Release Wake Lock" : "Acquire Wake Lock";
 
+        int notificationIcon = resolveDrawableId("ic_notification", "ic_launcher_foreground", "ic_launcher");
+
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("Acode Service")
                 .setContentText(contentText)
-                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setSmallIcon(notificationIcon)
                 .setOngoing(true)
-                .addAction(R.drawable.ic_launcher_foreground, wakeLockButtonText, wakeLockPendingIntent)
-                .addAction(R.drawable.ic_launcher_foreground, "Exit", exitPendingIntent)
+                .addAction(notificationIcon, wakeLockButtonText, wakeLockPendingIntent)
+                .addAction(notificationIcon, "Exit", exitPendingIntent)
                 .build();
 
         startForeground(1, notification);
@@ -389,5 +390,13 @@ public class TerminalService extends Service {
         processInputs.clear();
         clientMessengers.clear();
         threadPool.shutdown();
+    }
+
+    private int resolveDrawableId(String... names) {
+        for (String name : names) {
+            int id = getResources().getIdentifier(name, "drawable", getPackageName());
+            if (id != 0) return id;
+        }
+        return android.R.drawable.sym_def_app_icon;
     }
 }
