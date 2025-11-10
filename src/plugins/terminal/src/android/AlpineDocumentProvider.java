@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.Locale;
+import com.foxdebug.acode.R
 
 public class AlpineDocumentProvider extends DocumentsProvider {
     
