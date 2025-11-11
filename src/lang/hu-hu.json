@@ -306,7 +306,7 @@
 	"info-checkForAppUpdates": "Alkalmazás-frissítések automatikus ellenőrzése.",
 	"info-quickTools": "Gyors-eszközök megjelenítése vagy elrejtése.",
 	"info-showHiddenFiles": "Rejtett fájlok és mappák megjelenítése (, amelyek nevei „.” ponttal kezdődnek)",
-	"info-all_file_access": "Hozzáférés engedélyezése az „/sdcard” és „/storage” mappához a terminálban",
+	"info-all_file_access": "Hozzáférés engedélyezése az „/sdcard” és „/storage” mappához a terminálban.",
 	"info-fontSize": "Szöveg rendereléséhez használt betűméret.",
 	"info-fontFamily": "Szöveg rendereléséhez használt betűtípus.",
 	"info-theme": "Terminál színtémája.",
