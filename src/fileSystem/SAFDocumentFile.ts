@@ -37,34 +37,50 @@ export class SAFDocumentFile implements FileObject {
 	}
 
 	//if this fails then...
-	async isMyChild(fileObject: FileObject): Promise<boolean> {
-		if (!(fileObject instanceof SAFDocumentFile)) {
-			return false;
-		}
-		if (!(await this.isDirectory())) {
-			return false;
-		}
+    async isMyChild(fileObject: FileObject): Promise<boolean> {
+        console.log(`[isMyChild] Checking if`, fileObject, `is a child of`, this);
 
-		let current: FileObject | null = fileObject;
+        if (!(fileObject instanceof SAFDocumentFile)) {
+            console.log(`[isMyChild] Not an SAFDocumentFile`);
+            return false;
+        }
 
-		while (current !== null) {
-			const parent: FileObject | null = await current.getParentFile();
-			if (parent === null) {
-				return false; // Reached root without finding this
-			}
+        const isDir = await this.isDirectory();
+        if (!isDir) {
+            console.log(`[isMyChild] This file is not a directory`);
+            return false;
+        }
 
-			const parentUri = await parent.toUri();
-			if (parentUri === this.uri) {
-				return true; // Found a match
-			}
+        let current: FileObject | null = fileObject;
 
-			current = parent;
-		}
+        while (current !== null) {
+            console.log(`[isMyChild] Checking parent of`, current);
 
-		return false;
-	}
+            const parent: FileObject | null = await current.getParentFile();
+            if (parent === null) {
+                console.log(`[isMyChild] Reached root without finding match`);
+                return false;
+            }
 
-	async canRead(): Promise<boolean> {
+            const parentUri = (await parent.toUri())?.replace(/\/+$/, "");
+            const thisUri = this.uri?.replace(/\/+$/, "");
+
+            console.log(`[isMyChild] parentUri=${parentUri}, thisUri=${thisUri}`);
+
+            if (parentUri === thisUri) {
+                console.log(`[isMyChild] Match found!`);
+                return true;
+            }
+
+            current = parent;
+        }
+
+        console.log(`[isMyChild] No match found after traversal`);
+        return false;
+    }
+
+
+    async canRead(): Promise<boolean> {
 		const stat = await this.stat();
 		return !!stat.canRead;
 	}
