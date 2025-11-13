@@ -36,30 +36,30 @@ export class SAFDocumentFile implements FileObject {
 		});
 	}
 
-    async isMyChild(fileObject: FileObject): Promise<boolean> {
-        if (!(fileObject instanceof SAFDocumentFile)) {
-            console.log(`[isMyChild] Not an SAFDocumentFile`);
-            return false;
-        }
+	async isMyChild(fileObject: FileObject): Promise<boolean> {
+		if (!(fileObject instanceof SAFDocumentFile)) {
+			console.log(`[isMyChild] Not an SAFDocumentFile`);
+			return false;
+		}
 
-        try {
-            console.log(`[isMyChild] Checking if ${fileObject.uri} is a child of ${this.uri}`);
-            const result = await this.execPlugin("isMyChild", [fileObject.uri]);
+		try {
+			console.log(
+				`[isMyChild] Checking if ${fileObject.uri} is a child of ${this.uri}`,
+			);
+			const result = await this.execPlugin("isMyChild", [fileObject.uri]);
 
-            // result will be 1 or 0 (from the native plugin)
-            const isChild = result === 1 || result === true;
+			// result will be 1 or 0 (from the native plugin)
+			const isChild = result === 1 || result === true;
 
-            console.log(`[isMyChild] Result from native =`, isChild);
-            return isChild;
-        } catch (err) {
-            console.error(`[isMyChild] Error:`, err);
-            return false;
-        }
-    }
+			console.log(`[isMyChild] Result from native =`, isChild);
+			return isChild;
+		} catch (err) {
+			console.error(`[isMyChild] Error:`, err);
+			return false;
+		}
+	}
 
-
-
-    async canRead(): Promise<boolean> {
+	async canRead(): Promise<boolean> {
 		const stat = await this.stat();
 		return !!stat.canRead;
 	}

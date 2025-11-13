@@ -49,12 +49,12 @@ async function run(
 	let root = documentFile;
 	if (await projectFolder.isMyChild(documentFile)) {
 		root = projectFolder;
-        log.d("Not a child of project folder");
+		log.d("Not a child of project folder");
 	} else {
 		root = await documentFile.getParentFile();
-		if (root == null || (!await root.exists())) {
+		if (root == null || !(await root.exists())) {
 			root = documentFile;
-            log.d("llll")
+			log.d("llll");
 		}
 	}
 
