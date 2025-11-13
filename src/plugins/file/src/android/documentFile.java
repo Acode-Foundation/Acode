@@ -14,6 +14,8 @@ import androidx.documentfile.provider.DocumentFile;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import android.provider.DocumentsContract;
+
 
 public class documentFile extends CordovaPlugin {
 
@@ -41,6 +43,7 @@ public class documentFile extends CordovaPlugin {
                 case "canWrite": return handleCanWrite(args, callbackContext);
                 case "childByNameExists": return handleChildByNameExists(args, callbackContext);
                 case "getChildByName": return handleGetChildByName(args, callbackContext);
+                case "isMyChild": return handleIsMyChild(args, callbackContext);
                 case "toUri": return handleToUri(args, callbackContext);
                 default: return false;
             }
@@ -49,6 +52,55 @@ public class documentFile extends CordovaPlugin {
             return true;
         }
     }
+
+    private boolean handleIsMyChild(JSONArray args, CallbackContext cb) throws JSONException {
+        String parentUriStr = args.getString(0);
+        String childUriStr = args.getString(1);
+
+        try {
+            Uri parentUri = Uri.parse(parentUriStr);
+            Uri childUri = Uri.parse(childUriStr);
+
+            boolean result = false;
+
+            // SAF-safe check
+            if (DocumentsContract.isDocumentUri(getContext(), childUri)) {
+                try {
+                    result = DocumentsContract.isChildDocument(
+                        getContext().getContentResolver(),
+                        parentUri,
+                        childUri
+                    );
+                } catch (Exception e) {
+                    // If that fails, fallback to ID-based check
+                    result = isChildByDocIdFallback(parentUri, childUri);
+                }
+            } else {
+                // Non-SAF fallback: compare normalized paths
+                String p = parentUri.getPath();
+                String c = childUri.getPath();
+                if (p != null && c != null && c.startsWith(p)) {
+                    result = true;
+                }
+            }
+
+            cb.success(result ? 1 : 0);
+        } catch (Exception e) {
+            cb.error("Error: " + e.getMessage());
+        }
+        return true;
+    }
+
+    /**
+     * Fallback if DocumentsContract.isChildDocument() fails.
+     * Checks if the child’s document ID starts with parent’s document ID.
+     */
+    private boolean isChildByDocIdFallback(Uri parentUri, Uri childUri) {
+        String parentId = DocumentsContract.getDocumentId(parentUri);
+        String childId = DocumentsContract.getDocumentId(childUri);
+        return childId != null && parentId != null && childId.startsWith(parentId + "%2F");
+    }
+
 
     private DocumentFile fromUri(String uriStr) {
         try {

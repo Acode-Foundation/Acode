@@ -36,48 +36,27 @@ export class SAFDocumentFile implements FileObject {
 		});
 	}
 
-	//if this fails then...
     async isMyChild(fileObject: FileObject): Promise<boolean> {
-        console.log(`[isMyChild] Checking if`, fileObject, `is a child of`, this);
-
         if (!(fileObject instanceof SAFDocumentFile)) {
             console.log(`[isMyChild] Not an SAFDocumentFile`);
             return false;
         }
 
-        const isDir = await this.isDirectory();
-        if (!isDir) {
-            console.log(`[isMyChild] This file is not a directory`);
+        try {
+            console.log(`[isMyChild] Checking if ${fileObject.uri} is a child of ${this.uri}`);
+            const result = await this.execPlugin("isMyChild", [fileObject.uri]);
+
+            // result will be 1 or 0 (from the native plugin)
+            const isChild = result === 1 || result === true;
+
+            console.log(`[isMyChild] Result from native =`, isChild);
+            return isChild;
+        } catch (err) {
+            console.error(`[isMyChild] Error:`, err);
             return false;
         }
-
-        let current: FileObject | null = fileObject;
-
-        while (current !== null) {
-            console.log(`[isMyChild] Checking parent of`, current);
-
-            const parent: FileObject | null = await current.getParentFile();
-            if (parent === null) {
-                console.log(`[isMyChild] Reached root without finding match`);
-                return false;
-            }
-
-            const parentUri = (await parent.toUri())?.replace(/\/+$/, "");
-            const thisUri = this.uri?.replace(/\/+$/, "");
-
-            console.log(`[isMyChild] parentUri=${parentUri}, thisUri=${thisUri}`);
-
-            if (parentUri === thisUri) {
-                console.log(`[isMyChild] Match found!`);
-                return true;
-            }
-
-            current = parent;
-        }
-
-        console.log(`[isMyChild] No match found after traversal`);
-        return false;
     }
+
 
 
     async canRead(): Promise<boolean> {
