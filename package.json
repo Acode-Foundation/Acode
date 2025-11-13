@@ -35,10 +35,11 @@
       "cordova-plugin-websocket": {},
       "cordova-plugin-buildinfo": {},
       "cordova-plugin-browser": {},
+      "com.foxdebug.acode.rk.exec.terminal": {},
+      "com.foxdebug.acode.rk.exec.proot": {},
       "cordova-plugin-sftp": {},
       "cordova-plugin-system": {},
-      "com.foxdebug.acode.rk.exec.terminal": {},
-      "com.foxdebug.acode.rk.exec.proot": {}
+      "com.foxdebug.acode.rk.file": {}
     },
     "platforms": [
       "android"
@@ -80,7 +81,9 @@
     "cordova-plugin-system": "file:src/plugins/system",
     "cordova-plugin-websocket": "file:src/plugins/websocket",
     "css-loader": "^7.1.2",
+    "file": "file:src/plugins/file",
     "mini-css-extract-plugin": "^2.9.3",
+    "native_file": "file:src/plugins/nativeFile",
     "path-browserify": "^1.0.1",
     "postcss-loader": "^8.1.1",
     "prettier": "^3.6.2",
@@ -90,6 +93,8 @@
     "sass-loader": "^16.0.5",
     "style-loader": "^4.0.0",
     "terminal": "^0.1.4",
+    "ts-loader": "^9.5.4",
+    "typescript": "^5.9.3",
     "webpack": "^5.101.0",
     "webpack-cli": "^6.0.1"
   },

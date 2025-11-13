@@ -43,7 +43,11 @@ import encodings, { decode, encode } from "utils/encodings";
 import helpers from "utils/helpers";
 import KeyboardEvent from "utils/keyboardEvent";
 import Url from "utils/Url";
+import { NativeFileWrapper } from "../fileSystem/NativeFileWrapper";
+import { SAFDocumentFile } from "../fileSystem/SAFDocumentFile";
 import constants from "./constants";
+import { FileServer } from "./fileServer";
+import { Log } from "./Log";
 
 const { Fold } = ace.require("ace/edit_session/fold");
 const { Range } = ace.require("ace/range");
@@ -122,6 +126,10 @@ export default class Acode {
 			},
 		};
 
+		this.define("nativeFile", NativeFileWrapper);
+		this.define("SAFDocumentFile", SAFDocumentFile);
+		this.define("fileServer", FileServer);
+		this.define("log", Log);
 		this.define("Url", Url);
 		this.define("page", Page);
 		this.define("Color", Color);
