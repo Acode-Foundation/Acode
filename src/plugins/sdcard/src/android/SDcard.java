@@ -452,7 +452,7 @@ public class SDcard extends CordovaPlugin {
             try {
               DocumentFile file = getFile(filename);
               if (file == null) {
-                callback.error("File not fount.");
+                callback.error("File not found.");
                 return;
               }
               if (canWrite(file.getUri())) {
