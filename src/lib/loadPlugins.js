@@ -24,11 +24,15 @@ const THEME_IDENTIFIERS = new Set([
 	"acode.plugin.extra_syntax_highlights",
 ]);
 
+export const onPluginLoadCallback = Symbol("onPluginLoadCallback");
+export const onPluginsLoadCompleteCallback = Symbol("onPluginsLoadCompleteCallback");
+
+export const LOADED_PLUGINS = new Set();
+
 export default async function loadPlugins(loadOnlyTheme = false) {
 	const plugins = await fsOperation(PLUGIN_DIR).lsDir();
 	const results = [];
 	const failedPlugins = [];
-	const loadedPlugins = new Set();
 
 	if (plugins.length > 0) {
 		toast(strings["loading plugins"]);
@@ -42,7 +46,7 @@ export default async function loadPlugins(loadOnlyTheme = false) {
 		// Only load theme plugins matching current theme
 		pluginsToLoad = plugins.filter((pluginDir) => {
 			const pluginId = Url.basename(pluginDir.url);
-			return isThemePlugin(pluginId) && !loadedPlugins.has(pluginId);
+			return isThemePlugin(pluginId) && !LOADED_PLUGINS.has(pluginId);
 		});
 	} else {
 		// Load non-theme plugins that aren't loaded yet and are enabled
@@ -50,7 +54,7 @@ export default async function loadPlugins(loadOnlyTheme = false) {
 			const pluginId = Url.basename(pluginDir.url);
 			return (
 				!isThemePlugin(pluginId) &&
-				!loadedPlugins.has(pluginId) &&
+				!LOADED_PLUGINS.has(pluginId) &&
 				enabledMap[pluginId] !== true
 			);
 		});
@@ -74,7 +78,10 @@ export default async function loadPlugins(loadOnlyTheme = false) {
 
 		try {
 			await loadPlugin(pluginId);
-			loadedPlugins.add(pluginId);
+			LOADED_PLUGINS.add(pluginId);
+
+			acode[onPluginLoadCallback](pluginId);
+			
 			results.push(true);
 		} catch (error) {
 			console.error(`Error loading plugin ${pluginId}:`, error);
@@ -82,8 +89,10 @@ export default async function loadPlugins(loadOnlyTheme = false) {
 			results.push(false);
 		}
 	});
-
+	
 	await Promise.allSettled(loadPromises);
+
+	acode[onPluginsLoadCompleteCallback](pluginId);
 
 	if (failedPlugins.length > 0) {
 		setTimeout(() => {
@@ -94,6 +103,7 @@ export default async function loadPlugins(loadOnlyTheme = false) {
 	}
 	return results.filter(Boolean).length;
 }
+
 
 function isThemePlugin(pluginId) {
 	// Convert to lowercase for case-insensitive matching

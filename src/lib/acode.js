@@ -44,6 +44,7 @@ import helpers from "utils/helpers";
 import KeyboardEvent from "utils/keyboardEvent";
 import Url from "utils/Url";
 import constants from "./constants";
+import { onPluginLoadCallback, onPluginsLoadCompleteCallback, LOADED_PLUGINS } from "lib/loadPlugins";
 
 const { Fold } = ace.require("ace/edit_session/fold");
 const { Range } = ace.require("ace/range");
@@ -65,6 +66,7 @@ export default class Acode {
 			},
 		},
 	];
+	#pluginWatchers = {}
 
 	constructor() {
 		const encodingsModule = {
@@ -81,7 +83,7 @@ export default class Acode {
 			list: themes.list,
 			update: themes.update,
 			// Deprecated, not supported anymore
-			apply: () => {},
+			apply: () => { },
 		};
 
 		const sidebarAppsModule = {
@@ -288,21 +290,21 @@ export default class Acode {
 	 */
 	installPlugin(pluginId, installerPluginName) {
 		return new Promise((resolve, reject) => {
-			confirm(
-				strings.install,
-				`Do you want to install plugin '${pluginId}'${installerPluginName ? ` requested by ${installerPluginName}` : ""}?`,
-			)
-				.then((confirmation) => {
-					if (!confirmation) {
-						reject(new Error("User cancelled installation"));
+			fsOperation(Url.join(PLUGIN_DIR, pluginId))
+				.exists()
+				.then((isPluginExists) => {
+					if (isPluginExists) {
+						reject(new Error("Plugin already installed"));
 						return;
 					}
 
-					fsOperation(Url.join(PLUGIN_DIR, pluginId))
-						.exists()
-						.then((isPluginExists) => {
-							if (isPluginExists) {
-								reject(new Error("Plugin already installed"));
+					confirm(
+						strings.install,
+						`Do you want to install plugin '${pluginId}'${installerPluginName ? ` requested by ${installerPluginName}` : ""}?`,
+					)
+						.then((confirmation) => {
+							if (!confirmation) {
+								reject(new Error("User cancelled installation"));
 								return;
 							}
 
@@ -398,6 +400,31 @@ export default class Acode {
 				.catch((error) => {
 					reject(error);
 				});
+		});
+	}
+
+	[onPluginLoadCallback](pluginId) {
+		if (this.#pluginWatchers[pluginId]) {
+			this.#pluginWatchers[pluginId].resolve();
+			delete this.#pluginWatchers[pluginId];
+		}
+	}
+
+	[onPluginsLoadCompleteCallback]() {
+		for (const key in this.#pluginWatchers) {
+			this.#pluginWatchers[key].reject();
+		}
+	}
+
+	waitForPlugin(pluginId) {
+		return new Promise((resolve, reject) => {
+			if (LOADED_PLUGINS.has(pluginId)) {
+				return resolve(true);
+			}
+
+			this.#pluginWatchers[pluginId] = {
+				resolve, reject
+			}
 		});
 	}
 
