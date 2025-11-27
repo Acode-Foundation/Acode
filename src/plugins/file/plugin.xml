@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0" xmlns:android="http://schemas.android.com/apk/res/android" id="com.foxdebug.acode.rk.file" version="1.0.0">
+    <name>file</name>
+   
+    <platform name="android">
+        <config-file parent="/*" target="res/xml/config.xml">
+            <feature name="nativeFile">
+                <param name="android-package" value="com.foxdebug.acode.rk.file.nativeFile" />
+            </feature>
+            <feature name="documentFile">
+                <param name="android-package" value="com.foxdebug.acode.rk.file.documentFile" />
+            </feature>
+        </config-file>
+
+        <source-file src="src/android/nativeFile.java" target-dir="src/com/foxdebug/acode/rk/file" />
+        <source-file src="src/android/documentFile.java" target-dir="src/com/foxdebug/acode/rk/file" />
+
+    </platform>
+</plugin>
