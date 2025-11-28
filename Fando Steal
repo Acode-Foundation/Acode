@@ -1,0 +1,114 @@
+/* ====== AUTO-UPDATE FROM REMOTE JSON (Opción A) ======
+   - Cambia REMOTE_JSON_URL por la URL raw de tu brainrots.json
+   - El script:
+       1) carga al iniciar,
+       2) compara lastUpdated,
+       3) actualiza UI si hay cambio,
+       4) reintenta cada 60s.
+   - Si el fetch falla, usa datos locales (fallback).
+*/
+
+const REMOTE_JSON_URL = "https://raw.githubusercontent.com/TU_USUARIO/REPO/main/brainrots.json";
+// Ejemplo de URL raw Gist: "https://gist.githubusercontent.com/TU_USUARIO/GIST_ID/raw/brainrots.json"
+
+const POLL_INTERVAL_MS = 60 * 1000; // 60 segundos
+
+// --- Fallback local (por si el fetch falla) ---
+let remoteData = null;
+let lastRemoteUpdated = null;
+
+// Si ya tienes 'brainrots' variables en tu app, puedes reemplazarlas en esta función.
+function applyRemoteData(data) {
+  if(!data) return;
+
+  // Actualiza timestamp
+  lastRemoteUpdated = data.lastUpdated || new Date().toISOString();
+  remoteData = data;
+
+  // Ejemplo: reemplazamos la lista global 'brainrots' y 'mutaciones' si existen
+  if(Array.isArray(data.brainrots)) {
+    // Normaliza cada objeto (opcional)
+    window.brainrots = data.brainrots.map(b => ({
+      name: b.name,
+      display: b.display || b.name,
+      rarity: b.rarity || "Common",
+      priceRaw: b.buyPrice || b.buy_price || b.buyPrice || "",
+      price: parseFriendly(b.buyPrice || b.buy_price || b.buyPrice || "0"),
+      mpsRaw: b.moneyPerSecond || b.money_per_second || b.mps || "0",
+      mps: parseFriendly(b.moneyPerSecond || b.money_per_second || b.mps || "0"),
+      mutation: b.mutation || "Default",
+      favorite: false
+    }));
+  }
+
+  if(Array.isArray(data.mutations)){
+    window.mutations = data.mutations;
+  }
+
+  // Llamamos tu render actual para que actualice UI
+  if(typeof renderTable === "function") renderTable();
+  if(typeof renderSpawnList === "function") renderSpawnList();
+  if(typeof renderFavs === "function") renderFavs();
+}
+
+// Parse friendly like 1.5k / 2M
+function parseFriendly(s){
+  if(s === null || s === undefined) return 0;
+  const t = String(s).trim().replace(/,/g,'').toLowerCase();
+  if(t.endsWith('k')) return parseFloat(t) * 1e3;
+  if(t.endsWith('m')) return parseFloat(t) * 1e6;
+  if(t.endsWith('b')) return parseFloat(t) * 1e9;
+  const n = parseFloat(t.replace(/[^0-9\.\-]/g,''));
+  return isNaN(n) ? 0 : n;
+}
+
+// Fetch remoto y aplicar si hay cambios
+async function fetchAndApplyRemote(){
+  try {
+    const resp = await fetch(REMOTE_JSON_URL, { cache: "no-store" });
+    if(!resp.ok) throw new Error("HTTP " + resp.status);
+    const data = await resp.json();
+
+    // Si no hay lastUpdated en JSON, siempre aplicamos
+    const remoteUpdated = data.lastUpdated || new Date().toISOString();
+
+    // Si no hemos cargado nada antes, aplicamos directo
+    if(!lastRemoteUpdated || remoteUpdated !== lastRemoteUpdated){
+      console.log("FandoSteal: datos remotos actualizados -> aplicando cambios", remoteUpdated);
+      applyRemoteData(data);
+      // guarda en localStorage para respaldo
+      try { localStorage.setItem('fando_remote_cache', JSON.stringify({data, fetchedAt: new Date().toISOString()})); } catch(e){}
+    } else {
+      // no hay cambios
+      // console.log("No hay cambios remotos.");
+    }
+  } catch(err) {
+    console.warn("No se pudo cargar JSON remoto:", err.message);
+    // Si hay cache en localStorage, leer y aplicar
+    try {
+      const cached = JSON.parse(localStorage.getItem('fando_remote_cache') || "null");
+      if(cached && cached.data && (!remoteData || !lastRemoteUpdated)){
+        console.log("Aplicando cache local del remote JSON");
+        applyRemoteData(cached.data);
+      }
+    } catch(e){}
+  }
+}
+
+// Inicializar: intenta cargar remoto ahora y luego setInterval
+function startRemotePolling(){
+  // primera carga inmediata
+  fetchAndApplyRemote();
+  // luego cada intervalo
+  setInterval(fetchAndApplyRemote, POLL_INTERVAL_MS);
+}
+
+// Ejecuta al cargar la app
+startRemotePolling();
+
+/* --------------------------------------------------
+  Integración con tu UI existente:
+  - Si tu app ya tiene `brainrots` y funciones like renderTable, renderSpawnList,
+    applyRemoteData reemplazará la lista y llamará esas funciones.
+  - Si tus funciones tienen otros nombres, reemplázalas en applyRemoteData.
+-------------------------------------------------- */
