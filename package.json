@@ -105,7 +105,7 @@
     "@xterm/addon-webgl": "^0.18.0",
     "@xterm/xterm": "^5.5.0",
     "autosize": "^6.0.1",
-    "cordova": "12.0.0",
+    "cordova": "13.0.0",
     "core-js": "^3.45.0",
     "crypto-js": "^4.2.0",
     "dompurify": "^3.2.6",
