@@ -33,13 +33,10 @@ fi
 if [ "$1" = "--installing" ]; then
     echo "Configuring timezone..."
     
-    # Fetch timezone using wget
-    TZ=$(wget -qO- https://ipapi.co/timezone)
-
-    if [ -n "$TZ" ] && [ -f "/usr/share/zoneinfo/$TZ" ]; then
+    if [ -n "$ANDROID_TZ" ] && [ -f "/usr/share/zoneinfo/$ANDROID_TZ" ]; then
         ln -sf "/usr/share/zoneinfo/$TZ" /etc/localtime
-        echo "$TZ" > /etc/timezone
-        echo "Timezone set to: $TZ"
+        echo "$ANDROID_TZ" > /etc/timezone
+        echo "Timezone set to: $ANDROID_TZ"
     else
         echo "Failed to detect timezone"
     fi
