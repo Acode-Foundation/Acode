@@ -34,7 +34,7 @@ if [ "$1" = "--installing" ]; then
     echo "Configuring timezone..."
     
     if [ -n "$ANDROID_TZ" ] && [ -f "/usr/share/zoneinfo/$ANDROID_TZ" ]; then
-        ln -sf "/usr/share/zoneinfo/$TZ" /etc/localtime
+        ln -sf "/usr/share/zoneinfo/$ANDROID_TZ" /etc/localtime
         echo "$ANDROID_TZ" > /etc/timezone
         echo "Timezone set to: $ANDROID_TZ"
     else
