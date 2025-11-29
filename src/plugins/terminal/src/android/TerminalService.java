@@ -26,6 +26,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.lang.reflect.Field;
 
+import java.util.TimeZone;
+import java.util.Map;
+import java.util.HashMap;
+
+
 
 public class TerminalService extends Service {
 
@@ -141,6 +146,9 @@ public class TerminalService extends Service {
                 Map<String, String> env = builder.environment();
                 env.put("PREFIX", getFilesDir().getAbsolutePath());
                 env.put("NATIVE_DIR", getApplicationInfo().nativeLibraryDir);
+                TimeZone tz = TimeZone.getDefault();
+                String timezoneId = tz.getID();
+                env.put("ANDROID_TZ", timezoneId);
 
                 try {
                     int target = getPackageManager().getPackageInfo(getPackageName(), 0).applicationInfo.targetSdkVersion;
@@ -180,6 +188,9 @@ public class TerminalService extends Service {
                 Map<String, String> env = builder.environment();
                 env.put("PREFIX", getFilesDir().getAbsolutePath());
                 env.put("NATIVE_DIR", getApplicationInfo().nativeLibraryDir);
+                TimeZone tz = TimeZone.getDefault();
+                String timezoneId = tz.getID();
+                env.put("ANDROID_TZ", timezoneId);
 
                 try {
                     int target = getPackageManager().getPackageInfo(getPackageName(), 0).applicationInfo.targetSdkVersion;
