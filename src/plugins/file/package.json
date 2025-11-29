@@ -1,0 +1,17 @@
+{
+  "name": "file",
+  "version": "1.0.0",
+  "description": "Full api of java.io.File",
+  "cordova": {
+    "id": "com.foxdebug.acode.rk.file",
+    "platforms": [
+      "android"
+    ]
+  },
+  "keywords": [
+    "ecosystem:cordova",
+    "cordova-android"
+  ],
+  "author": "@RohitKushvaha01",
+  "license": "MIT"
+}
