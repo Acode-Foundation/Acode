@@ -11,18 +11,10 @@ unlink_recursive() {
         unlink_recursive "$entry"
     done 2>/dev/null
     
-    # Then try to remove the path itself
-    if rmdir "$path" 2>/dev/null; then
-        :
-    elif unlink "$path" 2>/dev/null; then
-        :
-    else
-        :
-    fi
+    unlink "$path" 2>/dev/null || :
 }
 
 for target in "$@"; do
-    echo "Unlinking broken symlinks..."
     unlink_recursive "$target"
 done
 
