@@ -55,49 +55,78 @@ body.no-animation {
   }
 
   .apps {
-    width: 45px;
-    min-width: 45px;
+    width: 52px;
+    min-width: 52px;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.2);
-    padding: 10px 0;
+    background-color: rgba(0, 0, 0, 0.15);
+    padding: 0;
     display: flex;
     flex-direction: column;
     position: relative;
+    box-sizing: border-box;
 
     .app-icons-container {
       flex: 1;
       overflow-y: auto;
-      padding: 10px 0;
+      overflow-x: hidden;
+      padding: 8px 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+
+      &::-webkit-scrollbar {
+        display: none;
+      }
     }
 
     .user-icon-container {
       position: sticky;
       bottom: 0;
       width: 100%;
-      padding: 10px 0;
+      padding: 12px 0;
       display: flex;
       justify-content: center;
-      border-top: 1px solid var(--border-color);
+      align-items: center;
+      background-color: rgba(0, 0, 0, 0.1);
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
 
       .avatar {
         display: block;
-        height: 35px;
-        width: 35px;
+        height: 32px;
+        width: 32px;
         border-radius: 50%;
         object-fit: cover;
         object-position: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border: 2px solid transparent;
+
+        &:hover {
+          transform: scale(1.05);
+          border-color: rgba(255, 255, 255, 0.3);
+        }
       }
 
       .icon {
         height: 40px;
         width: 40px;
         color: currentColor;
-        font-size: 1.6em;
-        border-radius: 12px;
-        opacity: 0.5;
+        font-size: 1.4em;
+        border-radius: 10px;
+        opacity: 0.6;
         transition: all 0.2s ease;
         margin: 0 auto;
         cursor: pointer;
+        text-align: center;
+        line-height: 40px;
+
+        &:hover {
+          opacity: 0.9;
+          background-color: rgba(255, 255, 255, 0.08);
+        }
 
         &.active {
           opacity: 1;
@@ -106,17 +135,64 @@ body.no-animation {
     }
 
     .icon {
-      height: 35px;
-      width: 35px;
+      height: 40px;
+      width: 40px;
+      min-height: 40px;
       color: currentColor;
-      font-size: 1em;
-      border-radius: 12px;
-      opacity: 0.5;
-      transition: all 0.2s ease;
+      font-size: 1.3em;
+      border-radius: 10px;
+      opacity: 0.55;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       margin: 0 auto;
+      cursor: pointer;
+      position: relative;
+      box-sizing: border-box;
+      text-align: center;
+      line-height: 40px;
+
+      // Active indicator bar using ::after to not interfere with font icon's ::before
+      &::after {
+        content: '';
+        position: absolute;
+        left: -6px;
+        top: 50%;
+        transform: translateY(-50%) scaleY(0);
+        width: 3px;
+        height: 20px;
+        background-color: currentColor;
+        border-radius: 0 2px 2px 0;
+        transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+        opacity: 0;
+      }
+
+      &:hover {
+        opacity: 0.85;
+        background-color: rgba(255, 255, 255, 0.08);
+      }
 
       &.active {
         opacity: 1;
+        background-color: rgba(255, 255, 255, 0.12);
+
+        &::after {
+          transform: translateY(-50%) scaleY(1);
+          opacity: 1;
+        }
+      }
+
+      // Special styling for the favorites/sponsors icon
+      &.favorite {
+        margin-top: 8px;
+
+        &::after {
+          display: none;
+        }
+
+        &:hover {
+          color: #ff6b8a;
+          opacity: 1;
+          background-color: rgba(255, 107, 138, 0.12);
+        }
       }
     }
   }
@@ -139,8 +215,8 @@ body.no-animation {
       max-height: 100%;
 
       &.hidden {
-        max-height: 30px !important;
-        min-height: 30px !important;
+        max-height: 36px !important;
+        min-height: 36px !important;
         overflow: hidden !important;
       }
 
@@ -162,18 +238,21 @@ body.no-animation {
       }
 
       .icon {
-        height: 30px;
-        width: 30px;
+        height: 34px;
+        width: 34px;
+        min-width: 34px;
         color: currentColor;
-        font-size: 1em;
+        font-size: 1.15em;
+        text-align: center;
+        line-height: 34px;
       }
 
       >ul {
         overflow: auto;
         width: 100%;
         max-width: 100%;
-        max-height: calc(100% - 30px);
-        height: calc(100% - 30px);
+        max-height: calc(100% - 36px);
+        height: calc(100% - 36px);
 
         .tile:active {
           >*:nth-child(2) {
@@ -250,7 +329,7 @@ body.no-animation {
     .title {
       display: flex;
       width: 100%;
-      height: 30px;
+      height: 36px;
       align-items: center;
       justify-content: center;
       font-weight: 600;
