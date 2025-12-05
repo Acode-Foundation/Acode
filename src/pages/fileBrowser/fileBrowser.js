@@ -1242,6 +1242,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		 */
 		async function create(arg) {
 			const { url } = currentDir;
+			const isFtp = /^ftp:/.test(url);
 			const alreadyCreated = [];
 			const options = [];
 			let ctUrl = "";
@@ -1265,14 +1266,24 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				if (!entryName) return;
 				entryName = helpers.fixFilename(entryName);
 
-				if (arg === "folder") {
-					newUrl = await helpers.createFileStructure(url, entryName, false);
-				}
-				if (arg === "file") {
-					newUrl = await helpers.createFileStructure(url, entryName);
+				if (isFtp) {
+					const fs = fsOperation(url);
+					if (arg === "folder") {
+						newUrl = await fs.createDirectory(entryName);
+					}
+					if (arg === "file") {
+						newUrl = await fs.createFile(entryName);
+					}
+				} else {
+					if (arg === "folder") {
+						newUrl = await helpers.createFileStructure(url, entryName, false);
+					}
+					if (arg === "file") {
+						newUrl = await helpers.createFileStructure(url, entryName);
+					}
 				}
 				if (!newUrl) return;
-				return newUrl.uri;
+				return typeof newUrl === "string" ? newUrl : newUrl.uri;
 			}
 
 			if (arg === "project") {
