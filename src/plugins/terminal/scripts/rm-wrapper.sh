@@ -10,7 +10,7 @@ unlink_recursive() {
         esac
         unlink_recursive "$entry"
     done 2>/dev/null
-    
+
     unlink "$path" 2>/dev/null || :
 }
 
@@ -19,3 +19,9 @@ for target in "$@"; do
 done
 
 busybox rm "$@"
+
+# Run busybox rm, capture stderr, and filter out the "No such file or directory" message
+err="$(busybox rm "$@" 2>&1 >/dev/null)"
+
+# Print only real errors
+printf "%s\n" "$err" | grep -v "No such file or directory"
