@@ -31,7 +31,7 @@ const Executor = {
 
 
   start(command,onData){
-    this.start(command,onData,false)
+    this.start(command,onData,true)
   },
 
   start(command, onData, alpine) {

@@ -14,7 +14,7 @@ import org.json.JSONException;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.io.OutputStream;
 
 import java.util.Map;
@@ -281,16 +281,14 @@ public class Executor extends CordovaPlugin {
         }
     }
 
-
-    private void cleanupCallback(String id) {
-        callbackContextMap.remove(id);
-    }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        Intent serviceIntent = new Intent(context, KeepAliveService.class);
-        context.stopService(serviceIntent);
+    private void streamOutput(InputStream inputStream, String pid, String streamType) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sendPluginMessage(pid, streamType + ":" + line);
+            }
+        } catch (IOException ignored) {
+        }
     }
 
     private void sendPluginMessage(String pid, String message) {
@@ -300,6 +298,13 @@ public class Executor extends CordovaPlugin {
             result.setKeepCallback(true);
             ctx.sendPluginResult(result);
         }
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        //Intent serviceIntent = new Intent(context, KeepAliveService.class);
+        //context.stopService(serviceIntent);
     }
 
     private void cleanup(String pid) {
