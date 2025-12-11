@@ -36,14 +36,9 @@
       "cordova-plugin-buildinfo": {},
       "com.foxdebug.acode.rk.exec.terminal": {},
       "cordova-plugin-browser": {},
-<<<<<<< HEAD
       "cordova-plugin-sftp": {},
       "cordova-plugin-system": {},
-      "com.foxdebug.acode.rk.exec.terminal": {},
       "com.foxdebug.acode.rk.exec.proot": {}
-=======
-      "cordova-plugin-system": {}
->>>>>>> parent of 10f82de0 (Terminal Service (#1570))
     },
     "platforms": [
       "android"
