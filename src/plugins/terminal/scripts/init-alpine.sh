@@ -120,7 +120,7 @@ fi
 
 # Add PS1 only if not already present
 if ! grep -q 'PS1=' "$PREFIX/alpine/initrc"; then
-    echo 'PS1="\033[1;32m\u\033[0m@localhost \w \$ "' >> "$PREFIX/alpine/initrc"
+    echo 'PS1="\[\033[1;32m\]\u\[\033[0m\]@localhost \w \$ "' >> "$PREFIX/alpine/initrc"
 fi
 
 chmod +x "$PREFIX/alpine/initrc"
