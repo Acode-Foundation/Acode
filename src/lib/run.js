@@ -14,11 +14,11 @@ import helpers from "utils/helpers";
 import Url from "utils/Url";
 import $_console from "views/console.hbs";
 import $_markdown from "views/markdown.hbs";
+import { SAFDocumentFile } from "../fileSystem/SAFDocumentFile";
 import constants from "./constants";
 import EditorFile from "./editorFile";
 import openFolder, { addedFolder } from "./openFolder";
 import appSettings from "./settings";
-import { SAFDocumentFile } from "../fileSystem/SAFDocumentFile";
 
 /**@type {Server} */
 let webServer;
@@ -303,7 +303,7 @@ async function run(
 						const rootFile = new SAFDocumentFile(rootFolder);
 
 						// Split the request path to navigate through directories
-						const pathParts = reqPath.split("/").filter(p => p);
+						const pathParts = reqPath.split("/").filter((p) => p);
 
 						// Start from root and navigate to the requested file
 						let currentFile = rootFile;
@@ -494,20 +494,22 @@ async function run(
           theme: 'dark'
         });
 
-        ${target === "inapp"
-				? "eruda._shadowRoot.querySelector('.eruda-entry-btn').style.display = 'none';"
-				: ""
-			}
+        ${
+					target === "inapp"
+						? "eruda._shadowRoot.querySelector('.eruda-entry-btn').style.display = 'none';"
+						: ""
+				}
 
         sessionStorage.setItem('__console_available', true);
         document.addEventListener('showconsole', function () {eruda.show()});
         document.addEventListener('hideconsole', function () {eruda.hide()});
       }else if(document.querySelector('c-toggler')){
-        ${target === "inapp" ||
-				(target !== "inapp" && !appSettings.value.showConsoleToggler)
-				? "document.querySelector('c-toggler').style.display = 'none';"
-				: ""
-			}
+        ${
+					target === "inapp" ||
+					(target !== "inapp" && !appSettings.value.showConsoleToggler)
+						? "document.querySelector('c-toggler').style.display = 'none';"
+						: ""
+				}
       }
       setTimeout(function(){
         var scripts = document.querySelectorAll('.${uuid}');
@@ -660,7 +662,11 @@ async function run(
 		let rootFolder = pathName;
 
 		// Use SAFDocumentFile for Android content URIs
-		if (activeFile && activeFile.uri && activeFile.uri.startsWith("content://")) {
+		if (
+			activeFile &&
+			activeFile.uri &&
+			activeFile.uri.startsWith("content://")
+		) {
 			try {
 				console.log(`DEBUG - Using SAFDocumentFile for URI: ${activeFile.uri}`);
 
@@ -690,8 +696,8 @@ async function run(
 						console.log(`DEBUG - Checking parent URI: ${parentUri}`);
 
 						// Normalize URIs for comparison
-						const normalizedParentUri = parentUri.replace(/\/+$/, '');
-						const normalizedRootFolder = rootFolder.replace(/\/+$/, '');
+						const normalizedParentUri = parentUri.replace(/\/+$/, "");
+						const normalizedRootFolder = rootFolder.replace(/\/+$/, "");
 
 						if (normalizedParentUri === normalizedRootFolder) {
 							console.log(`DEBUG - Reached root folder`);
@@ -706,7 +712,7 @@ async function run(
 						parent = await current.getParentFile();
 					}
 
-					const relativePath = relativeParts.join('/');
+					const relativePath = relativeParts.join("/");
 					console.log(`DEBUG - Final SAF relative path: ${relativePath}`);
 					return relativePath;
 				} else {
@@ -715,7 +721,7 @@ async function run(
 					return fileName;
 				}
 			} catch (e) {
-				console.error('Error using SAFDocumentFile:', e);
+				console.error("Error using SAFDocumentFile:", e);
 				// Fall through to existing logic
 			}
 		}
