@@ -39,9 +39,7 @@
       "com.foxdebug.acode.rk.exec.proot": {},
       "cordova-plugin-sftp": {},
       "cordova-plugin-system": {},
-      "com.foxdebug.acode.rk.file": {},
-      "com.foxdebug.acode.rk.exec.proot": {},
-      "com.foxdebug.acode.rk.exec.terminal": {}
+      "com.foxdebug.acode.rk.file": {}
     },
     "platforms": [
       "android"
