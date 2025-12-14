@@ -1,22 +1,20 @@
-import fsOperation from "fileSystem";
 import tutorial from "components/tutorial";
 import alert from "dialogs/alert";
 import box from "dialogs/box";
+import fsOperation from "fileSystem";
 import markdownIt from "markdown-it";
 import anchor from "markdown-it-anchor";
-import markdownItFootnote from "markdown-it-footnote";
 import MarkdownItGitHubAlerts from "markdown-it-github-alerts";
-import markdownItTaskLists from "markdown-it-task-lists";
 import mimeType from "mime-types";
 import mustache from "mustache";
 import browser from "plugins/browser";
-import helpers from "utils/helpers";
 import Url from "utils/Url";
+import helpers from "utils/helpers";
 import $_console from "views/console.hbs";
 import $_markdown from "views/markdown.hbs";
 import constants from "./constants";
 import EditorFile from "./editorFile";
-import openFolder, { addedFolder } from "./openFolder";
+import openFolder from "./openFolder";
 import appSettings from "./settings";
 
 /**@type {Server} */
@@ -60,7 +58,6 @@ async function run(
 	const uuid = helpers.uuid();
 
 	let isLoading = false;
-	let isFallback = false;
 	let filename, pathName, extension;
 	let port = appSettings.value.serverPort;
 	let EXECUTING_SCRIPT = uuid + "_script.js";
@@ -83,21 +80,11 @@ async function run(
 		try {
 			const fs = fsOperation(activeFile.uri);
 			const res = await fs.readFile();
-			let text = new TextDecoder().decode(res);
+			const blob = new Blob([new Uint8Array(res)], {
+				type: mimeType.lookup(extension),
+			});
 
-			if (!/^<\?xml/.test(text)) {
-				text = `<?xml version="1.0" encoding="UTF-8"?>\n` + text;
-			}
-
-			const blob = new Blob([text], { type: mimeType.lookup(extension) });
-			const url = URL.createObjectURL(blob);
-
-			box(
-				filename,
-				`<div style="display:flex;justify-content:center;align-items:center;height:100%">
-			   <img src="${url}" alt="${filename}" style="max-width:100%;max-height:100%">
-			 </div>`,
-			);
+			box(filename, `<img src='${URL.createObjectURL(blob)}'>`);
 		} catch (err) {
 			helpers.error(err);
 		}
@@ -137,17 +124,17 @@ async function run(
 	}
 
 	function startConsole() {
+		runConsole();
+		start();
+	}
+
+	function runConsole() {
 		if (!isConsole) EXECUTING_SCRIPT = activeFile.filename;
 		isConsole = true;
 		target = "inapp";
 		filename = "console.html";
-
-		//this extra www is incorrect because asset_directory itself has www
-		//but keeping it in case something depends on it
 		pathName = `${ASSETS_DIRECTORY}www/`;
 		port = constants.CONSOLE_PORT;
-
-		start();
 	}
 
 	function start() {
@@ -165,7 +152,6 @@ async function run(
 	}
 
 	function startServer() {
-		//isFallback = true;
 		webServer?.stop();
 		webServer = CreateServer(port, openBrowser, onError);
 		webServer.setOnRequestHandler(handleRequest);
@@ -186,18 +172,13 @@ async function run(
 	 * @param {string} req.requestId
 	 * @param {string} req.path
 	 */
-	async function handleRequest(req) {
+	function handleRequest(req) {
 		const reqId = req.requestId;
 		let reqPath = req.path.substring(1);
 
-		console.log(`XREQPATH ${reqPath}`);
-		console.log(req);
-
-		if (!reqPath || (reqPath.endsWith("/") && reqPath.length === 1)) {
-			reqPath = getRelativePath();
+		if (!reqPath || reqPath.endsWith("/")) {
+			reqPath += "index.html";
 		}
-
-		console.log(`XREQPATH1 ${reqPath}`);
 
 		const ext = Url.extname(reqPath);
 		let url = null;
@@ -208,7 +189,7 @@ async function run(
 					isConsole ||
 					appSettings.value.console === appSettings.CONSOLE_LEGACY
 				) {
-					url = `${ASSETS_DIRECTORY}/build/console.js`;
+					url = `${ASSETS_DIRECTORY}/js/build/console.build.js`;
 				} else {
 					url = `${DATA_STORAGE}/eruda.js`;
 				}
@@ -266,111 +247,10 @@ async function run(
 			}
 
 			let url = activeFile.uri;
-
 			let file = activeFile.SAFMode === "single" ? activeFile : null;
 
 			if (pathName) {
-				const projectFolder = addedFolder[0];
-				const query = url.split("?")[1];
-				let rootFolder = "";
-
-				if (
-					projectFolder !== undefined &&
-					pathName.includes(projectFolder.url)
-				) {
-					rootFolder = projectFolder.url;
-				} else {
-					rootFolder = pathName;
-				}
-
-				if (
-					(rootFolder.startsWith("ftp:") || rootFolder.startsWith("sftp:")) &&
-					rootFolder.includes("?")
-				) {
-					rootFolder = rootFolder.split("?")[0];
-				}
-
-				rootFolder = rootFolder.replace(/\/+$/, ""); // remove trailing slash
-				reqPath = reqPath.replace(/^\/+/, ""); // remove leading slash
-
-				const rootParts = rootFolder.split("/");
-				const pathParts = reqPath.split("/");
-
-				if (pathParts[0] === rootParts[rootParts.length - 1]) {
-					pathParts.shift();
-				}
-
-				function removePrefix(str, prefix) {
-					if (str.startsWith(prefix)) {
-						return str.slice(prefix.length);
-					}
-					return str;
-				}
-
-				function findOverlap(a, b) {
-					// Start with the smallest possible overlap (1 character) and increase
-					let maxOverlap = "";
-
-					// Check all possible overlapping lengths
-					for (let i = 1; i <= Math.min(a.length, b.length); i++) {
-						// Get the ending substring of a with length i
-						const endOfA = a.slice(-i);
-						// Get the starting substring of b with length i
-						const startOfB = b.slice(0, i);
-
-						// If they match, we have a potential overlap
-						if (endOfA === startOfB) {
-							maxOverlap = endOfA;
-						}
-					}
-
-					return maxOverlap;
-				}
-
-				console.log(`RootFolder ${rootFolder}`);
-				console.log(`PARTS ${pathParts.join("/")}`);
-
-				let fullPath;
-				// Skip overlap detection for GitHub URIs as it causes path corruption
-				if (rootFolder.startsWith("gh://")) {
-					fullPath = Url.join(rootFolder, pathParts.join("/"));
-				} else {
-					const overlap = findOverlap(rootFolder, pathParts.join("/"));
-					if (overlap !== "") {
-						fullPath = Url.join(
-							rootFolder,
-							removePrefix(pathParts.join("/"), overlap),
-						);
-					} else {
-						fullPath = Url.join(rootFolder, pathParts.join("/"));
-					}
-				}
-
-				console.log(`Full PATH ${fullPath}`);
-
-				const urlFile = fsOperation(fullPath);
-
-				// Skip stat check for GitHub URIs as they are handled differently
-				if (!fullPath.startsWith("gh://")) {
-					const stats = await urlFile.stat();
-
-					if (!stats.exists) {
-						error(reqId);
-						return;
-					}
-
-					if (!stats.isFile) {
-						if (fullPath.endsWith("/")) {
-							fullPath += "index.html";
-						} else {
-							fullPath += "/index.html";
-						}
-					}
-				}
-
-				// Add back the query if present
-				url = query ? `${fullPath}?${query}` : fullPath;
-
+				url = Url.join(pathName, reqPath);
 				file = editorManager.getFile(url, "uri");
 			} else if (!activeFile.uri) {
 				file = activeFile;
@@ -397,8 +277,6 @@ async function run(
 										.toLowerCase()
 										.replace(/[^a-z0-9]+/g, "-"),
 							})
-							.use(markdownItTaskLists)
-							.use(markdownItFootnote)
 							.render(file.session.getValue());
 						const doc = mustache.render($_markdown, {
 							html,
@@ -411,15 +289,11 @@ async function run(
 
 				default:
 					if (file && file.loaded && file.isUnsaved) {
-						if (file.filename.endsWith(".html")) {
-							sendHTML(file.session.getValue(), reqId);
-						} else {
-							sendText(
-								file.session.getValue(),
-								reqId,
-								mimeType.lookup(file.filename),
-							);
-						}
+						sendText(
+							file.session.getValue(),
+							reqId,
+							mimeType.lookup(file.filename),
+						);
 					} else if (url) {
 						if (reqPath === "favicon.ico") {
 							sendIco(ASSETS_DIRECTORY, reqId);
@@ -451,7 +325,7 @@ async function run(
 	 * @param {string} reqId
 	 */
 	function sendIco(assets, reqId) {
-		const ico = Url.join(assets, "favicon.ico");
+		const ico = Url.join(assets, "res/logo/favicon.ico");
 		sendFile(ico, reqId);
 	}
 
@@ -469,22 +343,20 @@ async function run(
           theme: 'dark'
         });
 
-        ${
-					target === "inapp"
-						? "eruda._shadowRoot.querySelector('.eruda-entry-btn').style.display = 'none';"
-						: ""
-				}
+        ${target === "inapp"
+				? "eruda._shadowRoot.querySelector('.eruda-entry-btn').style.display = 'none';"
+				: ""
+			}
 
         sessionStorage.setItem('__console_available', true);
         document.addEventListener('showconsole', function () {eruda.show()});
         document.addEventListener('hideconsole', function () {eruda.hide()});
       }else if(document.querySelector('c-toggler')){
-        ${
-					target === "inapp" ||
-					(target !== "inapp" && !appSettings.value.showConsoleToggler)
-						? "document.querySelector('c-toggler').style.display = 'none';"
-						: ""
-				}
+        ${target === "inapp" ||
+				(target !== "inapp" && !appSettings.value.showConsoleToggler)
+				? "document.querySelector('c-toggler').style.display = 'none';"
+				: ""
+			}
       }
       setTimeout(function(){
         var scripts = document.querySelectorAll('.${uuid}');
@@ -573,20 +445,10 @@ async function run(
 	 * @returns
 	 */
 	async function sendFileContent(url, id, mime, processText) {
-		let fs = fsOperation(url);
+		const fs = fsOperation(url);
 
 		if (!(await fs.exists())) {
-			const xfs = fsOperation(Url.join(pathName, filename));
-
-			if (await xfs.exists()) {
-				fs = xfs;
-				isFallback = true;
-				console.log(`fallback ${Url.join(pathName, filename)}`);
-			} else {
-				console.log(`${url} doesnt exists`);
-				error(id);
-			}
-
+			error(id);
 			return;
 		}
 
@@ -616,208 +478,18 @@ async function run(
 		});
 	}
 
-	function makeUriAbsoluteIfNeeded(uri) {
-		const termuxRootEncoded =
-			"content://com.termux.documents/tree/%2Fdata%2Fdata%2Fcom.termux%2Ffiles%2Fhome";
-		const termuxRootDecoded = "/data/data/com.termux/files/home";
-
-		if (uri.startsWith(termuxRootEncoded)) {
-			// Extract subpath after `::` if already absolute
-			if (uri.includes("::")) return uri;
-
-			const decodedPath = decodeURIComponent(uri.split("tree/")[1] || "");
-			return `${termuxRootEncoded}::${decodedPath}/`;
-		}
-
-		return uri;
-	}
-
-	function getRelativePath() {
-		// Get the project url
-		const projectFolder = addedFolder[0];
-
-		// FIXED: Better root folder determination for Termux URIs
-		let rootFolder = pathName;
-
-		// Special handling for Termux URIs - extract the actual root from the URI structure
-		if (
-			activeFile &&
-			activeFile.uri &&
-			activeFile.uri.includes("com.termux.documents") &&
-			activeFile.uri.includes("tree/")
-		) {
-			// Extract the tree part and decode it to get the actual root path
-			const treeMatch = activeFile.uri.match(/tree\/([^:]+)/);
-			if (treeMatch) {
-				try {
-					const decodedRoot = decodeURIComponent(treeMatch[1]);
-					rootFolder = decodedRoot;
-					console.log(`DEBUG - Termux root folder set to: ${rootFolder}`);
-				} catch (e) {
-					console.error("Error decoding Termux root:", e);
-				}
-			}
-		} else if (
-			projectFolder !== undefined &&
-			pathName &&
-			pathName.includes(projectFolder.url)
-		) {
-			rootFolder = projectFolder.url;
-		}
-
-		//make the uri absolute if necessary
-		rootFolder = makeUriAbsoluteIfNeeded(rootFolder);
-
-		// Parent of the file
-		let filePath = pathName;
-
-		if (rootFolder.startsWith("ftp:") || rootFolder.startsWith("sftp:")) {
-			if (rootFolder.includes("?")) {
-				rootFolder = rootFolder.split("?")[0];
-			}
-		}
-
-		//remove the query string if present this is needs to be removed because the url is not valid
-		if (filePath.startsWith("ftp:") || rootFolder.startsWith("sftp:")) {
-			if (filePath.includes("?")) {
-				filePath = filePath.split("?")[0];
-			}
-		}
-
-		// Create full file path
-		let temp = Url.join(filePath, filename);
-
-		// Special handling for Termux URIs
-		if (temp.includes("com.termux.documents") && temp.includes("::")) {
-			try {
-				const [, realPath] = temp.split("::");
-
-				console.log(`DEBUG - realPath: ${realPath}`);
-				console.log(`DEBUG - rootFolder: ${rootFolder}`);
-
-				// Ensure rootFolder doesn't have trailing slash for comparison
-				const normalizedRoot = rootFolder.replace(/\/+$/, "");
-
-				// Check if realPath starts with rootFolder
-				if (realPath.startsWith(normalizedRoot)) {
-					// Remove the rootFolder from the beginning of realPath
-					let relativePath = realPath.substring(normalizedRoot.length);
-
-					// Remove leading slash if present
-					relativePath = relativePath.replace(/^\/+/, "");
-
-					console.log(`DEBUG - relativePath: ${relativePath}`);
-
-					if (relativePath) {
-						return relativePath;
-					}
-				}
-			} catch (e) {
-				console.error("Error handling Termux URI:", e);
-			}
-		}
-
-		// Handle other content:// URIs
-		if (temp.includes("content://") && temp.includes("::")) {
-			try {
-				// Get the part after :: which contains the actual file path
-				const afterDoubleColon = temp.split("::")[1];
-
-				if (afterDoubleColon) {
-					// Extract the rootFolder's content path if it has ::
-					let rootFolderPath = rootFolder;
-					if (rootFolder.includes("::")) {
-						rootFolderPath = rootFolder.split("::")[1];
-					}
-
-					// If rootFolder doesn't have ::, try to extract the last part of the path
-					if (!rootFolderPath.includes("::")) {
-						const rootParts = rootFolder.split("/");
-						const lastPart = rootParts[rootParts.length - 1];
-
-						// Check if the lastPart is encoded
-						if (lastPart.includes("%3A")) {
-							// Try to decode it
-							try {
-								const decoded = decodeURIComponent(lastPart);
-								rootFolderPath = decoded;
-							} catch (e) {
-								console.error("Error decoding URI component:", e);
-								rootFolderPath = lastPart;
-							}
-						} else {
-							rootFolderPath = lastPart;
-						}
-					}
-
-					// Use direct string replacement instead of path component comparison
-					const normalizedRoot = rootFolderPath.replace(/\/+$/, "");
-					if (afterDoubleColon.startsWith(normalizedRoot)) {
-						let relativePath = afterDoubleColon.substring(
-							normalizedRoot.length,
-						);
-						// Remove leading slash if present
-						relativePath = relativePath.replace(/^\/+/, "");
-
-						if (relativePath) {
-							return relativePath;
-						}
-					}
-				}
-			} catch (e) {
-				console.error("Error parsing content URI:", e);
-			}
-		}
-
-		// For regular paths or if content:// URI parsing failed
-		// Try to find a common prefix between rootFolder and temp
-		// and remove it from temp
-		try {
-			const rootParts = rootFolder.split("/");
-			const tempParts = temp.split("/");
-
-			let commonIndex = 0;
-			for (let i = 0; i < Math.min(rootParts.length, tempParts.length); i++) {
-				if (rootParts[i] === tempParts[i]) {
-					commonIndex = i + 1;
-				} else {
-					break;
-				}
-			}
-
-			if (commonIndex > 0) {
-				return tempParts.slice(commonIndex).join("/");
-			}
-		} catch (e) {
-			console.error("Error finding common path:", e);
-		}
-
-		// If all else fails, just return the filename
-		if (filename) {
-			return filename;
-		}
-
-		console.log("Unable to determine relative path, returning full path");
-		return temp;
-	}
-
 	/**
 	 * Opens the preview in browser
 	 */
 	function openBrowser() {
-		let url = "";
-		if (pathName === null && !activeFile.location) {
-			url = `http://localhost:${port}/__unsaved_file__`;
-		} else {
-			url = `http://localhost:${port}/${getRelativePath()}`;
-		}
-
+		console.count("openBrowser");
+		const src = `http://localhost:${port}/${filename}`;
 		if (target === "browser") {
-			system.openInBrowser(url);
+			system.openInBrowser(src);
 			return;
 		}
 
-		browser.open(url, isConsole);
+		browser.open(src, isConsole);
 	}
 }
 
