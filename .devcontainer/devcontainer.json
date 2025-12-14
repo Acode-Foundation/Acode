@@ -1,6 +1,43 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/java
 {
-	"image": "mcr.microsoft.com/devcontainers/universal:2",
+	"name": "Java",
+	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
+	"image": "mcr.microsoft.com/devcontainers/java:1-21-bullseye",
+
 	"features": {
-		"ghcr.io/nordcominc/devcontainer-features/android-sdk:1": {}
+		"ghcr.io/devcontainers/features/java:1": {
+			"installGradle": true,
+			"installGroovy": false,
+			"installMaven": false,
+			"installAnt": false,
+			"version": "21",
+			"jdkDistro": "ms",
+			"gradleVersion": "latest",
+			"mavenVersion": "none"
+		},
+		"ghcr.io/nordcominc/devcontainer-features/android-sdk:1": {
+			"platform": "35",
+			"build_tools": "35.0.0"
+		},
+		"ghcr.io/devcontainers/features/node:1": {
+			"nodeGypDependencies": false,
+			"installYarnUsingApt": false,
+			"version": "lts",
+			"pnpmVersion": "latest",
+			"nvmVersion": "latest"
+		}
 	}
+
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	// "forwardPorts": [],
+
+	// Use 'postCreateCommand' to run commands after the container is created.
+	// "postCreateCommand": "java -version",
+
+	// Configure tool-specific properties.
+	// "customizations": {},
+
+	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
+	// "remoteUser": "root"
 }
