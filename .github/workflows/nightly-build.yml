@@ -170,13 +170,28 @@
           run: |
              node utils/storage_manager.mjs y
              npm run build paid dev apk
+             mv platforms/android/app/build/outputs/apk/debug/app-debug.apk /tmp/app-debug-normal.apk
              echo "VERSION: $UPDATED_VERSION" >> $GITHUB_STEP_SUMMARY
-
+             
         - name: Upload APK Artifact
           uses: actions/upload-artifact@v4
           with:
             name: app-debug-${{ env.GIT_COMMIT }}
-            path: platforms/android/app/build/outputs/apk/debug/app-debug.apk
+            path: /tmp/app-debug-normal.apk
+        
+        - name: Run npm build paid dev apk fdroid (for F-Droid)
+          if: ${{ !inputs.is_PR }}
+          run: |
+            node utils/storage_manager.mjs y
+            npm run build paid dev apk fdroid
+            mv platforms/android/app/build/outputs/apk/debug/app-debug.apk /tmp/app-debug-fdroid.apk
+        
+        - name: Upload APK Artifact
+          uses: actions/upload-artifact@v4
+          if: ${{ !inputs.is_PR }}
+          with:
+            name: app-debug-fdroid-${{ env.GIT_COMMIT }}
+            path: /tmp/app-debug-fdroid.apk
 
         - name: remove keystore and build.json
           run: |
@@ -211,14 +226,15 @@
         - name: Release Nightly Version
 #          Only run this step, if not called from another workflow. And a previous step is successful with releasedRequired=true
           id: release
-          if: ${{ ! inputs.skip_tagging_and_releases && success() && env.releaseRequired == 'true' }}
+          if: ${{ ! inputs.skip_tagging_and_releases && success() && env.releaseRequired == 'true' && !inputs.is_PR }}
           uses: softprops/action-gh-release@v2
           with:
             prerelease: true
             name: ${{ env.UPDATED_VERSION }}
             tag_name: ${{ env.UPDATED_VERSION }} 
             files: |
-              platforms/android/app/build/outputs/apk/debug/app-debug.apk
+              /tmp/app-debug-normal.apk
+              /tmp/app-debug-fdroid.apk
             body: |
               Automated Nightly (pre-release) Releases for Today
               

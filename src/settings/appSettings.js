@@ -68,14 +68,18 @@ export default function otherSettings() {
 		{
 			key: "checkForAppUpdates",
 			text: strings["check for app updates"],
-			info: "Check for app updates automatically",
 			checkbox: values.checkForAppUpdates,
+			info: strings["info-checkForAppUpdates"],
 		},
 		{
 			key: "console",
 			text: strings.console,
 			value: values.console,
 			select: [appSettings.CONSOLE_LEGACY, appSettings.CONSOLE_ERUDA],
+		},
+		{
+			key: "cleanInstallState",
+			text: strings["clean install state"],
 		},
 		{
 			key: "keyboardMode",
@@ -128,7 +132,7 @@ export default function otherSettings() {
 			key: "quickTools",
 			text: strings["quick tools"],
 			checkbox: !!values.quickTools,
-			info: "Show or hide quick tools.",
+			info: strings["info-quickTools"],
 		},
 		{
 			key: "quickToolsTriggerMode",
@@ -242,6 +246,28 @@ export default function otherSettings() {
 					loader.destroy();
 				} catch (error) {
 					helpers.error(error);
+				}
+			}
+
+			case "cleanInstallState": {
+				const INSTALL_STATE_STORAGE = Url.join(DATA_STORAGE, ".install-state");
+
+				const fs = fsOperation(INSTALL_STATE_STORAGE);
+
+				if (!(await fs.exists())) {
+					toast(strings["no such file or directory"]);
+					break;
+				}
+
+				loader.create("loading...");
+
+				try {
+					await fs.delete();
+					loader.destroy();
+					toast(strings["success"]);
+				} catch (error) {
+					helpers.error(error);
+					loader.destroy();
 				}
 			}
 

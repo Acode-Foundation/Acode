@@ -31,8 +31,8 @@ export default function terminalSettings() {
 	const items = [
 		{
 			key: "all_file_access",
-			text: strings.allFileAccess?.capitalize(),
-			info: "Enable access of /sdcard and /storage in terminal",
+			text: strings["allFileAccess"],
+			info: strings["info-all_file_access"],
 		},
 		{
 			key: "fontSize",
@@ -46,7 +46,7 @@ export default function terminalSettings() {
 					return value >= 8 && value <= 32;
 				},
 			},
-			info: "The font size used to render text.",
+			info: strings["info-fontSize"],
 		},
 		{
 			key: "fontFamily",
@@ -55,13 +55,13 @@ export default function terminalSettings() {
 			get select() {
 				return fonts.getNames();
 			},
-			info: "The font family used to render text.",
+			info: strings["info-fontFamily"],
 		},
 		{
 			key: "theme",
 			text: strings["theme"],
 			value: terminalValues.theme,
-			info: "The color theme of the terminal.",
+			info: strings["info-theme"],
 			get select() {
 				return TerminalThemeManager.getThemeNames().map((name) => [
 					name,
@@ -78,14 +78,14 @@ export default function terminalSettings() {
 			text: strings["terminal:cursor style"],
 			value: terminalValues.cursorStyle,
 			select: ["block", "underline", "bar"],
-			info: "The style of the cursor when the terminal is focused.",
+			info: strings["info-cursorStyle"],
 		},
 		{
 			key: "cursorInactiveStyle",
 			text: strings["terminal:cursor inactive style"],
 			value: terminalValues.cursorInactiveStyle,
 			select: ["outline", "block", "bar", "underline", "none"],
-			info: "The style of the cursor when the terminal is not focused.",
+			info: strings["info-cursorInactiveStyle"],
 		},
 		{
 			key: "fontWeight",
@@ -104,13 +104,13 @@ export default function terminalSettings() {
 				"800",
 				"900",
 			],
-			info: "The font weight used to render non-bold text.",
+			info: strings["info-fontWeight"],
 		},
 		{
 			key: "cursorBlink",
 			text: strings["terminal:cursor blink"],
 			checkbox: terminalValues.cursorBlink,
-			info: "Whether the cursor blinks.",
+			info: strings["info-cursorBlink"],
 		},
 		{
 			key: "scrollback",
@@ -124,7 +124,7 @@ export default function terminalSettings() {
 					return value >= 100 && value <= 10000;
 				},
 			},
-			info: "The amount of scrollback in the terminal. Scrollback is the amount of rows that are retained when lines are scrolled beyond the initial viewport.",
+			info: strings["info-scrollback"],
 		},
 		{
 			key: "tabStopWidth",
@@ -138,7 +138,7 @@ export default function terminalSettings() {
 					return value >= 1 && value <= 8;
 				},
 			},
-			info: "The size of tab stops in the terminal.",
+			info: strings["info-tabStopWidth"],
 		},
 		{
 			key: "letterSpacing",
@@ -146,7 +146,7 @@ export default function terminalSettings() {
 			value: terminalValues.letterSpacing,
 			prompt: strings["letter spacing"],
 			promptType: "number",
-			info: "The spacing in whole pixels between characters.",
+			info: strings["info-letterSpacing"],
 		},
 		{
 			key: "convertEol",
@@ -155,36 +155,36 @@ export default function terminalSettings() {
 		},
 		{
 			key: "imageSupport",
-			text: `${strings["image"]} Support`,
+			text: strings["terminal:image support"],
 			checkbox: terminalValues.imageSupport,
-			info: "Whether images are supported in the terminal.",
+			info: strings["info-imageSupport"],
 		},
 		{
 			key: "fontLigatures",
 			text: strings["font ligatures"],
 			checkbox: terminalValues.fontLigatures,
-			info: "Whether font ligatures are enabled in the terminal.",
+			info: strings["info-fontLigatures"],
 		},
 		{
 			key: "confirmTabClose",
-			text: `${strings["confirm"]} ${strings["terminal"]} tab close`,
+			text: strings["terminal:confirm tab close"],
 			checkbox: terminalValues.confirmTabClose !== false,
-			info: "Ask for confirmation before closing terminal tabs.",
+			info: strings["info-confirmTabClose"],
 		},
 		{
 			key: "backup",
-			text: strings.backup.capitalize(),
-			info: "Creates a backup of the terminal installation",
+			text: strings.backup,
+			info: strings["info-backup"],
 		},
 		{
 			key: "restore",
-			text: strings.restore.capitalize(),
-			info: "Restores a backup of the terminal installation",
+			text: strings.restore,
+			info: strings["info-restore"],
 		},
 		{
 			key: "uninstall",
-			text: strings.uninstall.capitalize(),
-			info: "Uninstalls the terminal installation",
+			text: strings.uninstall,
+			info: strings["info-uninstall"],
 		},
 	];
 

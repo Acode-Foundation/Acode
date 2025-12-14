@@ -944,6 +944,10 @@ export default class EditorFile {
 		}
 	}
 
+	get headerSubtitle() {
+		return this.#getTitle();
+	}
+
 	/**
 	 *
 	 * @param {FileAction} action

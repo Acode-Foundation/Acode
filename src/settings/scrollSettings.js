@@ -36,11 +36,6 @@ export default function scrollSettings() {
 			valueText: (size) => `${size}px`,
 			select: [5, 10, 15, 20],
 		},
-		{
-			key: "textWrap",
-			text: strings["text wrap"],
-			checkbox: values.textWrap,
-		},
 	];
 
 	return settingsPage(title, items, callback);

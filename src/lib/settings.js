@@ -185,12 +185,10 @@ class Settings {
 		if (this.#initialized) return;
 		this.settingsFile = Url.join(DATA_STORAGE, "settings.json");
 
-		if (!IS_FREE_VERSION) {
-			this.#defaultSettings.appTheme = "system";
-			this.#defaultSettings.editorTheme = getSystemEditorTheme(
-				isDeviceDarkTheme(),
-			);
-		}
+		this.#defaultSettings.appTheme = "system";
+		this.#defaultSettings.editorTheme = getSystemEditorTheme(
+			isDeviceDarkTheme(),
+		);
 
 		this.#initialized = true;
 
