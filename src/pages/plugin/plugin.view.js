@@ -186,7 +186,7 @@ export default (props) => {
 					<div
 						id="overview"
 						className="content-section active md"
-						innerHTML={body}
+						innerHTML={DOMPurify.sanitize(body)}
 					></div>
 					<div id="contributors" className="content-section">
 						{(() => {

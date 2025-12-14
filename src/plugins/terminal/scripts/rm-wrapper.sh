@@ -10,20 +10,16 @@ unlink_recursive() {
         esac
         unlink_recursive "$entry"
     done 2>/dev/null
-    
-    # Then try to remove the path itself
-    if rmdir "$path" 2>/dev/null; then
-        :
-    elif unlink "$path" 2>/dev/null; then
-        :
-    else
-        :
-    fi
+
+    unlink "$path" 2>/dev/null || :
 }
 
 for target in "$@"; do
-    echo "Unlinking broken symlinks..."
     unlink_recursive "$target"
 done
 
-busybox rm "$@"
+# Run busybox rm, capture stderr, and filter out the "No such file or directory" message
+err="$(busybox rm "$@" 2>&1 >/dev/null)"
+
+# Print only real errors
+printf "%s\n" "$err" | grep -v "No such file or directory"
