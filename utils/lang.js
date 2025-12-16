@@ -4,7 +4,9 @@ const yargs = require("yargs");
 const { hideBin } = require("yargs/helpers");
 const readline = require("node:readline");
 
-const args = yargs(hideBin(process.argv)).alias("a", "all").argv;
+const args = yargs(hideBin(process.argv))
+	.alias("a", "all")
+	.alias("b", "bulk").argv;
 const dir = path.resolve(__dirname, "../src/lang");
 const read = readline.createInterface({
 	input: process.stdin,
@@ -35,15 +37,139 @@ switch (command) {
 	case "check":
 		update();
 		break;
+	case "add-all":
+		addToAllFiles();
+		break;
+	case "bulk-add":
+		bulkAddStrings();
+		break;
 	default:
 		console.error(`Missing/Invalid arguments.
 use 'add' to add a new string
+use 'add-all <key> <value>' to add the same string to ALL language files at once
+use 'bulk-add <json-file>' to add multiple strings from a JSON file to all language files
 use 'remove' to remove a string
 use 'search' to search a string
 use 'update' to update a string
 use 'update-key' to update a key
 use 'check' to check a string`);
 		process.exit();
+}
+
+/**
+ * Adds a key-value pair to ALL language files at once
+ * Usage: pnpm lang add-all "key" "value"
+ */
+function addToAllFiles() {
+	if (!arg || !val) {
+		console.error('Usage: pnpm lang add-all "<key>" "<value>"');
+		console.error('Example: pnpm lang add-all "hello world" "Hello World"');
+		process.exit(1);
+	}
+
+	const key = arg.toLowerCase();
+	let addedCount = 0;
+	let skippedCount = 0;
+
+	for (const lang of list) {
+		const file = path.resolve(dir, lang);
+		const text = fs.readFileSync(file, "utf8");
+		const strings = JSON.parse(text);
+
+		if (key in strings) {
+			console.log(`${lang}: Skipped (already exists)`);
+			skippedCount++;
+			continue;
+		}
+
+		strings[key] = val;
+		const newText = JSON.stringify(strings, undefined, 2);
+		fs.writeFileSync(file, newText, "utf8");
+		console.log(`${lang}: Added ✓`);
+		addedCount++;
+	}
+
+	console.log(
+		`\nDone! Added to ${addedCount} files, skipped ${skippedCount} files.`,
+	);
+	process.exit(0);
+}
+
+/**
+ * Bulk add multiple strings from a JSON file to ALL language files
+ * Usage: pnpm lang bulk-add strings.json
+ *
+ * JSON file format:
+ * {
+ *   "key1": "value1",
+ *   "key2": "value2"
+ * }
+ */
+function bulkAddStrings() {
+	if (!arg) {
+		console.error("Usage: pnpm lang bulk-add <json-file>");
+		console.error("Example: pnpm lang bulk-add new-strings.json");
+		console.error("\nJSON file format:");
+		console.error("{");
+		console.error('  "key1": "value1",');
+		console.error('  "key2": "value2"');
+		console.error("}");
+		process.exit(1);
+	}
+
+	const jsonFilePath = path.resolve(process.cwd(), arg);
+
+	if (!fs.existsSync(jsonFilePath)) {
+		console.error(`File not found: ${jsonFilePath}`);
+		process.exit(1);
+	}
+
+	let newStrings;
+	try {
+		const jsonContent = fs.readFileSync(jsonFilePath, "utf8");
+		newStrings = JSON.parse(jsonContent);
+	} catch (err) {
+		console.error(`Error parsing JSON file: ${err.message}`);
+		process.exit(1);
+	}
+
+	const keys = Object.keys(newStrings);
+	if (keys.length === 0) {
+		console.error("No strings found in the JSON file.");
+		process.exit(1);
+	}
+
+	console.log(
+		`Adding ${keys.length} strings to ${list.length} language files...\n`,
+	);
+
+	for (const lang of list) {
+		const file = path.resolve(dir, lang);
+		const text = fs.readFileSync(file, "utf8");
+		const strings = JSON.parse(text);
+		let addedCount = 0;
+		let skippedCount = 0;
+
+		for (const key of keys) {
+			const lowerKey = key.toLowerCase();
+			if (lowerKey in strings) {
+				skippedCount++;
+				continue;
+			}
+			strings[lowerKey] = newStrings[key];
+			addedCount++;
+		}
+
+		if (addedCount > 0) {
+			const newText = JSON.stringify(strings, undefined, 2);
+			fs.writeFileSync(file, newText, "utf8");
+		}
+
+		console.log(`${lang}: Added ${addedCount}, Skipped ${skippedCount}`);
+	}
+
+	console.log(`\nDone! Added ${keys.length} strings to all language files.`);
+	process.exit(0);
 }
 
 async function update() {
