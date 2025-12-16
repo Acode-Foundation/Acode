@@ -231,6 +231,9 @@ async function onDeviceReady() {
 			// load plugins
 			try {
 				await loadPlugins();
+				// Ensure at least one sidebar app is active after all plugins are loaded
+				// This handles cases where the stored section was from an uninstalled plugin
+				sidebarApps.ensureActiveApp();
 
 				// Re-emit events for active file after plugins are loaded
 				const { activeFile } = editorManager;

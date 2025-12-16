@@ -89,8 +89,29 @@ export default class SidebarApp {
 		this.#active = !!value;
 		this.#icon.classList.toggle("active", this.#active);
 		if (this.#active) {
-			const child = getContainer(this.#container);
-			$sidebar.replaceChild($contaienr, child);
+			const oldContainer = getContainer(this.#container);
+			// Try to replace the old container, or append if it's not in the DOM
+			try {
+				if (oldContainer && oldContainer.parentNode === $sidebar) {
+					$sidebar.replaceChild($contaienr, oldContainer);
+				} else {
+					// Old container not in sidebar, just append the new one
+					const existingContainer = $sidebar.get(".container");
+					if (existingContainer) {
+						$sidebar.replaceChild($contaienr, existingContainer);
+					} else {
+						$sidebar.appendChild($contaienr);
+					}
+				}
+			} catch (error) {
+				// Fallback: append the new container
+				console.warn("Error switching sidebar container:", error);
+				const existingContainer = $sidebar.get(".container");
+				if (existingContainer) {
+					existingContainer.remove();
+				}
+				$sidebar.appendChild($contaienr);
+			}
 			this.#onselect(this.#container);
 		}
 	}
@@ -111,10 +132,14 @@ export default class SidebarApp {
 	}
 
 	remove() {
-		this.#icon.remove();
-		this.#container.remove();
-		this.#icon = null;
-		this.#container = null;
+		if (this.#icon) {
+			this.#icon.remove();
+			this.#icon = null;
+		}
+		if (this.#container) {
+			this.#container.remove();
+			this.#container = null;
+		}
 	}
 }
 
