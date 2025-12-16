@@ -476,5 +476,16 @@
 	"paid plugin skipped": "Paid plugin - purchase not found",
 	"source not found": "Source file no longer exists",
 	"restored": "Restored",
-	"skipped": "Skipped"
+	"skipped": "Skipped",
+	"backup not valid object": "Backup file is not a valid object",
+	"backup no data": "Backup file contains no data to restore",
+	"backup legacy warning": "This is an older backup format (v1). Some features may be limited.",
+	"backup missing metadata": "Missing backup metadata - some info may be unavailable",
+	"backup checksum mismatch": "Checksum mismatch - backup file may have been modified or corrupted. Proceed with caution.",
+	"backup checksum verify failed": "Could not verify checksum",
+	"backup invalid settings": "Invalid settings format",
+	"backup invalid keybindings": "Invalid keyBindings format",
+	"backup invalid plugins": "Invalid installedPlugins format",
+	"issues found": "Issues found",
+	"error details": "Error details"
 }

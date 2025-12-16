@@ -55,7 +55,7 @@ function validateBackupStructure(backup) {
 	const warnings = [];
 
 	if (!backup || typeof backup !== "object") {
-		errors.push("Backup file is not a valid object");
+		errors.push(strings["backup not valid object"]);
 		return { valid: false, errors, warnings, isLegacy: false };
 	}
 
@@ -67,16 +67,14 @@ function validateBackupStructure(backup) {
 		const hasData =
 			backup.settings || backup.keyBindings || backup.installedPlugins;
 		if (!hasData) {
-			errors.push("Backup file contains no data to restore");
+			errors.push(strings["backup no data"]);
 		}
-		warnings.push(
-			"This is an older backup format (v1). Some features may be limited.",
-		);
+		warnings.push(strings["backup legacy warning"]);
 	} else {
 		// Version 2+ backup
 		if (backup.version >= 2) {
 			if (!backup.metadata) {
-				warnings.push("Missing backup metadata - some info may be unavailable");
+				warnings.push(strings["backup missing metadata"]);
 			}
 
 			// Verify checksum if present
@@ -89,12 +87,10 @@ function validateBackupStructure(backup) {
 					});
 					const expectedChecksum = generateChecksum(dataToCheck);
 					if (backup.checksum !== expectedChecksum) {
-						warnings.push(
-							"Checksum mismatch - backup file may have been modified or corrupted. Proceed with caution.",
-						);
+						warnings.push(strings["backup checksum mismatch"]);
 					}
 				} catch (e) {
-					warnings.push("Could not verify checksum");
+					warnings.push(strings["backup checksum verify failed"]);
 				}
 			}
 		}
@@ -102,7 +98,7 @@ function validateBackupStructure(backup) {
 
 	// Validate settings (both versions)
 	if (backup.settings !== undefined && typeof backup.settings !== "object") {
-		errors.push("Invalid settings format");
+		errors.push(strings["backup invalid settings"]);
 	}
 
 	// Validate keyBindings (both versions)
@@ -110,7 +106,7 @@ function validateBackupStructure(backup) {
 		backup.keyBindings !== undefined &&
 		typeof backup.keyBindings !== "object"
 	) {
-		errors.push("Invalid keyBindings format");
+		errors.push(strings["backup invalid keybindings"]);
 	}
 
 	// Validate installedPlugins (both versions)
@@ -118,7 +114,7 @@ function validateBackupStructure(backup) {
 		backup.installedPlugins !== undefined &&
 		!Array.isArray(backup.installedPlugins)
 	) {
-		errors.push("Invalid installedPlugins format");
+		errors.push(strings["backup invalid plugins"]);
 	}
 
 	return { valid: errors.length === 0, errors, warnings, isLegacy };
@@ -383,7 +379,7 @@ backupRestore.restore = async function (url) {
 			const errorMessage = [
 				strings["invalid backup file"],
 				"",
-				"Issues found:",
+				`${strings["issues found"]}:`,
 				...validation.errors.map((e) => `• ${e}`),
 			].join("\n");
 			alert(strings.error.toUpperCase(), errorMessage);
