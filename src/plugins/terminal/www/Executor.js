@@ -86,7 +86,13 @@ const Executor = {
     return new Promise((resolve, reject) => {
       exec(resolve, reject, "Executor", "moveToBackground", []);
     });
-  }
+  },
+
+  moveToForeground() {
+    return new Promise((resolve, reject) => {
+      exec(resolve, reject, "Executor", "moveToForeground", []);
+    });
+  },
 
   /**
    * Terminates a running process.

@@ -43,8 +43,10 @@ public class TerminalService extends Service {
     public static final String CHANNEL_ID = "terminal_exec_channel";
     
     public static final String ACTION_EXIT_SERVICE = "com.foxdebug.acode.ACTION_EXIT_SERVICE";
-     public static final String MOVE_TO_BACKGROUND = "com.foxdebug.acode.MOVE_TO_BACKGROUND";
+    public static final String MOVE_TO_BACKGROUND = "com.foxdebug.acode.MOVE_TO_BACKGROUND";
+     public static final String MOVE_TO_FOREGROUND = "com.foxdebug.acode.MOVE_TO_FOREGROUND";
     public static final String ACTION_TOGGLE_WAKE_LOCK = "com.foxdebug.acode.ACTION_TOGGLE_WAKE_LOCK";
+    public static boolean Default_Foreground = true;
 
     private final Map<String, Process> processes = new ConcurrentHashMap<>();
     private final Map<String, OutputStream> processInputs = new ConcurrentHashMap<>();
@@ -72,7 +74,12 @@ public class TerminalService extends Service {
             } else if (ACTION_TOGGLE_WAKE_LOCK.equals(action)) {
                 toggleWakeLock();
             }else if(MOVE_TO_BACKGROUND.equals(action)){
+                Default_Foreground = false;
                 stopForeground(true);
+            }else if(MOVE_TO_FOREGROUND.equals(action)){
+                Default_Foreground = true;
+                createNotificationChannel();
+                updateNotification();
             }
         }
         return START_STICKY;
@@ -341,8 +348,11 @@ public class TerminalService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        createNotificationChannel();
-        updateNotification();
+        if(Default_Foreground){
+            createNotificationChannel();
+            updateNotification();
+        }
+       
     }
 
     private void createNotificationChannel() {

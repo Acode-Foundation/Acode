@@ -243,6 +243,14 @@ public class Executor extends CordovaPlugin {
             return true;
         }
 
+        if (action.equals("moveToForeground")) {
+            Intent intent = new Intent(context, TerminalService.class);
+            intent.setAction(TerminalService.MOVE_TO_FOREGROUND);
+            context.startService(intent);
+            callbackContext.success("Service moved to foreground mode");
+            return true;
+        }
+
         // For all other actions, ensure service is bound first
         if (!ensureServiceBound(callbackContext)) {
             // Error already sent by ensureServiceBound
