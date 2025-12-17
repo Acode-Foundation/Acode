@@ -43,6 +43,7 @@ public class TerminalService extends Service {
     public static final String CHANNEL_ID = "terminal_exec_channel";
     
     public static final String ACTION_EXIT_SERVICE = "com.foxdebug.acode.ACTION_EXIT_SERVICE";
+     public static final String MOVE_TO_BACKGROUND = "com.foxdebug.acode.MOVE_TO_BACKGROUND";
     public static final String ACTION_TOGGLE_WAKE_LOCK = "com.foxdebug.acode.ACTION_TOGGLE_WAKE_LOCK";
 
     private final Map<String, Process> processes = new ConcurrentHashMap<>();
@@ -70,6 +71,8 @@ public class TerminalService extends Service {
                 return START_NOT_STICKY;
             } else if (ACTION_TOGGLE_WAKE_LOCK.equals(action)) {
                 toggleWakeLock();
+            }else if(MOVE_TO_BACKGROUND.equals(action)){
+                stopForeground(true);
             }
         }
         return START_STICKY;

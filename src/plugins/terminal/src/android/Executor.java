@@ -235,6 +235,14 @@ public class Executor extends CordovaPlugin {
             return true;
         }
 
+        if (action.equals("moveToBackground")) {
+            Intent intent = new Intent(context, TerminalService.class);
+            intent.setAction(TerminalService.MOVE_TO_BACKGROUND);
+            context.startService(intent);
+            callbackContext.success("Service moved to background mode");
+            return true;
+        }
+
         // For all other actions, ensure service is bound first
         if (!ensureServiceBound(callbackContext)) {
             // Error already sent by ensureServiceBound
