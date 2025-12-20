@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>CK Bird Game</title>
+  <style>
+    body {
+      margin: 0;
+      background: skyblue;
+      text-align: center;
+      font-family: Arial;
+    }
+    canvas {
+      background: #70c5ce;
+      display: none;
+      margin: auto;
+    }
+    #menu {
+      margin-top: 150px;
+    }
+    button {
+      padding: 15px 30px;
+      font-size: 18px;
+      margin: 10px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<h1>CK</h1>
+
+<div id="menu">
+  <button onclick="startGame()">▶ Play</button><br>
+  <button onclick="exitGame()">❌ Exit</button>
+</div>
+
+<canvas id="game" width="400" height="500"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let birdY = 200;
+let birdVelocity = 0;
+let gravity = 0.6;
+let jump = -10;
+
+let pipeX = 400;
+let pipeGap = 140;
+let pipeTopHeight = 150;
+
+function startGame() {
+  document.getElementById("menu").style.display = "none";
+  canvas.style.display = "block";
+  requestAnimationFrame(update);
+}
+
+function exitGame() {
+  alert("Thanks for playing CK!");
+}
+
+document.addEventListener("click", () => {
+  birdVelocity = jump;
+});
+
+function update() {
+  ctx.clearRect(0,0,400,500);
+
+  // Bird
+  birdVelocity += gravity;
+  birdY += birdVelocity;
+  ctx.fillStyle = "yellow";
+  ctx.beginPath();
+  ctx.arc(80, birdY, 15, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Pipes
+  pipeX -= 2;
+  if (pipeX < -60) {
+    pipeX = 400;
+    pipeTopHeight = Math.random() * 200 + 50;
+  }
+
+  ctx.fillStyle = "green";
+  ctx.fillRect(pipeX, 0, 50, pipeTopHeight);
+  ctx.fillRect(pipeX, pipeTopHeight + pipeGap, 50, 500);
+
+  // Collision
+  if (
+    birdY < 0 ||
+    birdY > 500 ||
+    (80 > pipeX && 80 < pipeX + 50 &&
+    (birdY < pipeTopHeight || birdY > pipeTopHeight + pipeGap))
+  ) {
+    alert("Game Over!");
+    location.reload();
+  }
+
+  requestAnimationFrame(update);
+}
+</script>
+
+</body>
+</html>
