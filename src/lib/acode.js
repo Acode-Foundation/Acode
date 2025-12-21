@@ -629,14 +629,46 @@ export default class Acode {
 		return Url.join(...args);
 	}
 
-	addIcon(className, src) {
+	/**
+	 * Adds a custom icon class that can be used with the .icon element
+	 * @param {string} className - The class name for the icon (used as .icon.className)
+	 * @param {string} src - URL or data URI of the icon image
+	 * @param {object} [options] - Optional settings
+	 * @param {boolean} [options.monochrome=false] - If true, icon will use currentColor and adapt to theme
+	 */
+	addIcon(className, src, options = {}) {
 		let style = document.head.get(`style[icon="${className}"]`);
 		if (!style) {
-			style = (
-				<style
-					icon={className}
-				>{`.icon.${className}{background-image: url(${src})}`}</style>
-			);
+			let css;
+			if (options.monochrome) {
+				// Monochrome icons: use mask-image (on ::before) for currentColor/theme support
+				// Using ::before ensures we don't mask the ::after active indicator or the background
+				css = `.icon.${className}::before {
+					content: '';
+					display: inline-block;
+					width: 24px;
+					height: 24px;
+					vertical-align: middle;
+					-webkit-mask-image: url(${src});
+					mask-image: url(${src});
+					-webkit-mask-size: contain;
+					mask-size: contain;
+					-webkit-mask-repeat: no-repeat;
+					mask-repeat: no-repeat;
+					-webkit-mask-position: center;
+					mask-position: center;
+					background-color: currentColor;
+				}`;
+			} else {
+				// Default: preserve original icon colors
+				css = `.icon.${className}{
+					background-image: url(${src});
+					background-size: 24px;
+					background-repeat: no-repeat;
+					background-position: center;
+				}`;
+			}
+			style = <style icon={className}>{css}</style>;
 			document.head.appendChild(style);
 		}
 	}
