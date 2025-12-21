@@ -649,23 +649,14 @@ export default class Acode {
 					width: 24px;
 					height: 24px;
 					vertical-align: middle;
-					-webkit-mask-image: url(${src});
-					mask-image: url(${src});
-					-webkit-mask-size: contain;
-					mask-size: contain;
-					-webkit-mask-repeat: no-repeat;
-					mask-repeat: no-repeat;
-					-webkit-mask-position: center;
-					mask-position: center;
+					-webkit-mask: url(${src}) no-repeat center / contain;
+					mask: url(${src}) no-repeat center / contain;
 					background-color: currentColor;
 				}`;
 			} else {
 				// Default: preserve original icon colors
 				css = `.icon.${className}{
-					background-image: url(${src});
-					background-size: 24px;
-					background-repeat: no-repeat;
-					background-position: center;
+					background: url(${src}) no-repeat center / 24px;
 				}`;
 			}
 			style = <style icon={className}>{css}</style>;
