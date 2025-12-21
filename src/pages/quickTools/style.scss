@@ -63,7 +63,8 @@
     padding-top: 5px;
 
     &.active-grid {
-      min-height: 80px;
+      grid-template-columns: repeat(8, 1fr);
+      min-height: auto;
       margin-bottom: 5px;
     }
   }
