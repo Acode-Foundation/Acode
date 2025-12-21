@@ -8,7 +8,7 @@
 
 @font-face {
   font-family: "li-icon";
-  src: url("li-icons.ttf?6wte0b") format("truetype");
+  src: url("li-icon.ttf") format("truetype");
   font-weight: normal;
   font-style: normal;
   font-display: block;
@@ -30,9 +30,8 @@
 }
 
 .licons {
-  /* use !important to prevent issues with browser extensions that change fonts */
+  /* Use !important to prevent extensions from overriding this font. */
   font-family: "li-icon" !important;
-  speak: none;
   font-style: normal;
   font-weight: normal;
   font-variant: normal;
@@ -44,20 +43,28 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-.licons.terminal:before {
-  content: "\e900";
-}
-.licons.cart:before {
-  content: "\e901";
-}
 .licons.scale:before {
-  content: "\e902";
+  content: "\f006";
 }
-.licons.tag:before {
-  content: "\e903";
+
+.licons.cart:before {
+  content: "\f005";
 }
+
+.licons.zap:before {
+  content: "\f000";
+}
+
 .licons.verified:before {
-  content: "\e904";
+  content: "\f001";
+}
+
+.licons.terminal:before {
+  content: "\f002";
+}
+
+.licons.tag:before {
+  content: "\f003";
 }
 
 .icon.acode:before {
