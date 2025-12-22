@@ -20,6 +20,9 @@
         <config-file parent="/*" target="AndroidManifest.xml" />
 
         <source-file src="src/android/BackgroundExecutor.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
+        <source-file src="src/android/ProcessManager.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
+        <source-file src="src/android/ProcessUtil.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
+        <source-file src="src/android/StreamHandler.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
 
         <source-file src="src/android/Executor.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
 

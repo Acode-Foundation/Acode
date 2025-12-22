@@ -26,7 +26,7 @@ class Executor {
    * @example
    * const executor = new Executor();
    * executor.start('sh', (type, data) => {
-   *   console.log(`[${type}] ${data}`);
+   *   //console.log(`[${type}] ${data}`);
    * }).then(uuid => {
    *   executor.write(uuid, 'echo Hello World');
    *   executor.stop(uuid);
@@ -37,7 +37,7 @@ class Executor {
       let first = true;
       exec(
         async (message) => {
-          console.log(message);
+          //console.log(message);
           if (first) {
             first = false;
             await new Promise(resolve => setTimeout(resolve, 100));
@@ -73,7 +73,7 @@ class Executor {
    * executor.write(uuid, 'ls /sdcard');
    */
   write(uuid, input) {
-    console.log("write: " + input + " to " + uuid);
+    //console.log("write: " + input + " to " + uuid);
     return new Promise((resolve, reject) => {
       exec(resolve, reject, this.ExecutorType, "write", [uuid, input]);
     });
@@ -169,7 +169,7 @@ class Executor {
    *
    * @example
    * executor.execute('ls -l')
-   *   .then(console.log)
+   *   .then(//console.log)
    *   .catch(console.error);
    */
   execute(command, alpine = false) {
