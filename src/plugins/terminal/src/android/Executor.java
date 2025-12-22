@@ -27,6 +27,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import android.app.Activity;
+import com.foxdebug.acode.rk.exec.terminal.*;
 
 public class Executor extends CordovaPlugin {
 

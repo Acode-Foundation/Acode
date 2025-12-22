@@ -5,6 +5,7 @@ import org.json.*;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.*;
+import com.foxdebug.acode.rk.exec.terminal.*;
 
 public class BackgroundExecutor extends CordovaPlugin {
 

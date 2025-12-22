@@ -21,6 +21,8 @@ import java.io.OutputStream;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
+import com.foxdebug.acode.rk.exec.terminal.*;
+
 
 public class TerminalService extends Service {
 

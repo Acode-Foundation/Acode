@@ -20,6 +20,7 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.Locale;
 import com.foxdebug.acode.R;
+import com.foxdebug.acode.rk.exec.terminal.*;
 
 public class AlpineDocumentProvider extends DocumentsProvider {
     
