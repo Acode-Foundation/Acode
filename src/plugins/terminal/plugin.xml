@@ -19,7 +19,10 @@
         </config-file>
         <config-file parent="/*" target="AndroidManifest.xml" />
 
+        <source-file src="src/android/BackgroundExecutor.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
+
         <source-file src="src/android/Executor.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
+
         <source-file src="src/android/TerminalService.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
         
         <source-file src="src/android/AlpineDocumentProvider.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
