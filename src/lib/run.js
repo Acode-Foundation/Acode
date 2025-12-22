@@ -189,7 +189,7 @@ async function run(
 					isConsole ||
 					appSettings.value.console === appSettings.CONSOLE_LEGACY
 				) {
-					url = `${ASSETS_DIRECTORY}/js/build/console.build.js`;
+					url = `${ASSETS_DIRECTORY}/build/console.js`;
 				} else {
 					url = `${DATA_STORAGE}/eruda.js`;
 				}
@@ -343,22 +343,20 @@ async function run(
           theme: 'dark'
         });
 
-        ${
-					target === "inapp"
-						? "eruda._shadowRoot.querySelector('.eruda-entry-btn').style.display = 'none';"
-						: ""
-				}
+        ${target === "inapp"
+				? "eruda._shadowRoot.querySelector('.eruda-entry-btn').style.display = 'none';"
+				: ""
+			}
 
         sessionStorage.setItem('__console_available', true);
         document.addEventListener('showconsole', function () {eruda.show()});
         document.addEventListener('hideconsole', function () {eruda.hide()});
       }else if(document.querySelector('c-toggler')){
-        ${
-					target === "inapp" ||
-					(target !== "inapp" && !appSettings.value.showConsoleToggler)
-						? "document.querySelector('c-toggler').style.display = 'none';"
-						: ""
-				}
+        ${target === "inapp" ||
+				(target !== "inapp" && !appSettings.value.showConsoleToggler)
+				? "document.querySelector('c-toggler').style.display = 'none';"
+				: ""
+			}
       }
       setTimeout(function(){
         var scripts = document.querySelectorAll('.${uuid}');
