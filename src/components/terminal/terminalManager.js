@@ -392,22 +392,31 @@ class TerminalManager {
 	async setupTerminalHandlers(terminalFile, terminalComponent, terminalId) {
 		const textarea = terminalComponent.terminal?.textarea;
 		if (textarea) {
-			textarea.addEventListener("focus", () => {
+			const onFocus = () => {
 				const { $toggler } = quickTools;
 				$toggler.classList.add("hide");
 				clearTimeout(this.togglerTimeout);
 				this.togglerTimeout = setTimeout(() => {
 					$toggler.style.display = "none";
 				}, 300);
-			});
-			textarea.addEventListener("blur", () => {
+			};
+
+			const onBlur = () => {
 				const { $toggler } = quickTools;
 				clearTimeout(this.togglerTimeout);
 				$toggler.style.display = "";
 				setTimeout(() => {
 					$toggler.classList.remove("hide");
 				}, 10);
-			});
+			};
+
+			textarea.addEventListener("focus", onFocus);
+			textarea.addEventListener("blur", onBlur);
+
+			terminalComponent.cleanupFocusHandlers = () => {
+				textarea.removeEventListener("focus", onFocus);
+				textarea.removeEventListener("blur", onBlur);
+			};
 		}
 
 		// Handle tab focus/blur
@@ -601,6 +610,11 @@ class TerminalManager {
 			// Cleanup resize observer
 			if (terminal.file._resizeObserver) {
 				terminal.file._resizeObserver.disconnect();
+			}
+
+			// Cleanup focus handlers
+			if (terminal.component.cleanupFocusHandlers) {
+				terminal.component.cleanupFocusHandlers();
 			}
 
 			// Dispose terminal component
