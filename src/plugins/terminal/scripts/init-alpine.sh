@@ -94,7 +94,15 @@ export PIP_BREAK_SYSTEM_PACKAGES=1
 
 # Smart path shortening function (fish-style: ~/p/s/components)
 _shorten_path() {
-    local path="${PWD/#$HOME/\~}"
+    local path="$PWD"
+    
+    if [[ "$HOME" != "/" && "$path" == "$HOME" ]]; then
+        echo "~"
+        return
+    elif [[ "$HOME" != "/" && "$path" == "$HOME/"* ]]; then
+        path="~${path#$HOME}"
+    fi
+    
     [[ "$path" == "~" ]] && echo "~" && return
     
     local parts result=""
