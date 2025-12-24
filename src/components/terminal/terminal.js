@@ -131,14 +131,30 @@ export default class TerminalComponent {
 	 */
 	setupOscHandler() {
 		// Register custom OSC handler for ID 7777
+		// Format: command;arg1;arg2;... where arg2 (path) may contain semicolons
 		this.terminal.parser.registerOscHandler(7777, (data) => {
-			const parts = data.split(";");
-			const command = parts[0];
+			const firstSemi = data.indexOf(";");
+			if (firstSemi === -1) {
+				console.warn("Invalid OSC 7777 format:", data);
+				return true;
+			}
+
+			const command = data.substring(0, firstSemi);
+			const rest = data.substring(firstSemi + 1);
 
 			switch (command) {
-				case "open":
-					this.handleOscOpen(parts[1], parts[2]);
+				case "open": {
+					// Format: open;type;path (path may contain semicolons)
+					const secondSemi = rest.indexOf(";");
+					if (secondSemi === -1) {
+						console.warn("Invalid OSC 7777 open format:", data);
+						return true;
+					}
+					const type = rest.substring(0, secondSemi);
+					const path = rest.substring(secondSemi + 1);
+					this.handleOscOpen(type, path);
 					break;
+				}
 				default:
 					console.warn("Unknown OSC 7777 command:", command);
 			}
