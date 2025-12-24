@@ -65,6 +65,70 @@ Working with packages:
 EOF
     fi
 
+    # Create acode CLI tool
+    if [ ! -e "$PREFIX/alpine/usr/local/bin/acode" ]; then
+        mkdir -p "$PREFIX/alpine/usr/local/bin"
+        cat <<'ACODE_CLI' > "$PREFIX/alpine/usr/local/bin/acode"
+#!/bin/bash
+# acode - Open files/folders in Acode editor
+# Uses OSC escape sequences to communicate with the Acode terminal
+
+usage() {
+    echo "Usage: acode [file/folder...]"
+    echo ""
+    echo "Open files or folders in Acode editor."
+    echo ""
+    echo "Examples:"
+    echo "  acode file.txt      # Open a file"
+    echo "  acode .             # Open current folder"
+    echo "  acode ~/project     # Open a folder"
+    echo "  acode -h, --help    # Show this help"
+}
+
+get_abs_path() {
+    local path="$1"
+    if [[ "$path" == /* ]]; then
+        realpath "$path" 2>/dev/null || echo "$path"
+    else
+        realpath "$path" 2>/dev/null || echo "$(pwd)/$path"
+    fi
+}
+
+open_in_acode() {
+    local path=$(get_abs_path "$1")
+    local type="file"
+    [[ -d "$path" ]] && type="folder"
+    
+    # Send OSC 7777 escape sequence: \e]7777;cmd;type;path\a
+    # The terminal component will intercept and handle this
+    printf '\e]7777;open;%s;%s\a' "$type" "$path"
+}
+
+if [[ $# -eq 0 ]]; then
+    open_in_acode "."
+    exit 0
+fi
+
+for arg in "$@"; do
+    case "$arg" in
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            if [[ -e "$arg" ]]; then
+                open_in_acode "$arg"
+            else
+                echo "Error: '$arg' does not exist" >&2
+                exit 1
+            fi
+            ;;
+    esac
+done
+ACODE_CLI
+        chmod +x "$PREFIX/alpine/usr/local/bin/acode"
+    fi
+
     # Create initrc if it doesn't exist
     #initrc runs in bash so we can use bash features 
 if [ ! -e "$PREFIX/alpine/initrc" ]; then

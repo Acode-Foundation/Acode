@@ -9,6 +9,8 @@ import "@xterm/xterm/css/xterm.css";
 import quickTools from "components/quickTools";
 import toast from "components/toast";
 import confirm from "dialogs/confirm";
+import openFile from "lib/openFile";
+import openFolder from "lib/openFolder";
 import appSettings from "lib/settings";
 import helpers from "utils/helpers";
 
@@ -577,6 +579,30 @@ class TerminalManager {
 			toast(message);
 		};
 
+		// Handle acode CLI open commands (OSC 7777)
+		terminalComponent.onOscOpen = async (type, path) => {
+			if (!path) return;
+
+			// Convert proot path
+			const fileUri = this.convertProotPath(path);
+			// Extract folder/file name from path
+			const name = path.split("/").filter(Boolean).pop() || "folder";
+
+			try {
+				if (type === "folder") {
+					// Open folder in sidebar
+					await openFolder(fileUri, { name, saveState: true, listFiles: true });
+					toast(`Opened folder: ${name}`);
+				} else {
+					// Open file in editor
+					await openFile(fileUri, { render: true });
+				}
+			} catch (error) {
+				console.error("Failed to open from terminal:", error);
+				toast(`Failed to open: ${path}`);
+			}
+		};
+
 		// Store references for cleanup
 		terminalFile._terminalId = terminalId;
 		terminalFile.terminalComponent = terminalComponent;
@@ -789,6 +815,43 @@ class TerminalManager {
 				console.error(`Error stabilizing terminal ${terminal.id}:`, error);
 			}
 		});
+	}
+
+	/**
+	 * Convert proot internal path to app-accessible path
+	 * @param {string} prootPath - Path from inside proot environment
+	 * @returns {string} App filesystem path
+	 */
+	convertProotPath(prootPath) {
+		if (!prootPath) return prootPath;
+
+		const packageName = window.BuildInfo?.packageName || "com.foxdebug.acode";
+		const dataDir = `/data/user/0/${packageName}`;
+		const alpineRoot = `${dataDir}/files/alpine`;
+
+		let convertedPath;
+
+		if (prootPath.startsWith("/public")) {
+			// /public -> /data/user/0/com.foxdebug.acode/files/public
+			convertedPath = `file://${dataDir}/files${prootPath}`;
+		} else if (prootPath.startsWith("/sdcard")) {
+			// /sdcard
+			convertedPath = `file://${prootPath}`;
+		} else if (prootPath.startsWith("/storage")) {
+			// /storage
+			convertedPath = `file://${prootPath}`;
+		} else if (prootPath.startsWith("/data")) {
+			// /data
+			convertedPath = `file://${prootPath}`;
+		} else if (prootPath.startsWith("/")) {
+			// Everything else is relative to alpine root
+			convertedPath = `file://${alpineRoot}${prootPath}`;
+		} else {
+			convertedPath = prootPath;
+		}
+
+		//console.log(`Path conversion: ${prootPath} -> ${convertedPath}`);
+		return convertedPath;
 	}
 
 	shouldConfirmTerminalClose() {

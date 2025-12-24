@@ -120,6 +120,42 @@ export default class TerminalComponent {
 
 		// Handle copy/paste keybindings
 		this.setupCopyPasteHandlers();
+
+		// Handle custom OSC 7777 for acode CLI commands
+		this.setupOscHandler();
+	}
+
+	/**
+	 * Setup custom OSC handler for acode CLI integration
+	 * OSC 7777 format: \e]7777;command;arg1;arg2;...\a
+	 */
+	setupOscHandler() {
+		// Register custom OSC handler for ID 7777
+		this.terminal.parser.registerOscHandler(7777, (data) => {
+			const parts = data.split(";");
+			const command = parts[0];
+
+			switch (command) {
+				case "open":
+					this.handleOscOpen(parts[1], parts[2]);
+					break;
+				default:
+					console.warn("Unknown OSC 7777 command:", command);
+			}
+			return true;
+		});
+	}
+
+	/**
+	 * Handle OSC open command from acode CLI
+	 * @param {string} type - "file" or "folder"
+	 * @param {string} path - Path to open
+	 */
+	handleOscOpen(type, path) {
+		if (!path) return;
+
+		// Emit event for the app to handle
+		this.onOscOpen?.(type, path);
 	}
 
 	/**
