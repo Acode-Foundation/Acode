@@ -87,11 +87,16 @@ usage() {
 
 get_abs_path() {
     local path="$1"
-    if [[ "$path" == /* ]]; then
-        realpath "$path" 2>/dev/null || echo "$path"
-    else
-        realpath "$path" 2>/dev/null || echo "$(pwd)/$path"
+    local abs_path
+    abs_path=$(realpath -- "$path" 2>/dev/null)
+    if [[ $? -ne 0 ]]; then
+        if [[ "$path" == /* ]]; then
+            abs_path="$path"
+        else
+            abs_path="$PWD/$path"
+        fi
     fi
+    echo "$abs_path"
 }
 
 open_in_acode() {
