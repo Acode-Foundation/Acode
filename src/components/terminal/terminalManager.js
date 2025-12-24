@@ -834,14 +834,11 @@ class TerminalManager {
 		if (prootPath.startsWith("/public")) {
 			// /public -> /data/user/0/com.foxdebug.acode/files/public
 			convertedPath = `file://${dataDir}/files${prootPath}`;
-		} else if (prootPath.startsWith("/sdcard")) {
-			// /sdcard
-			convertedPath = `file://${prootPath}`;
-		} else if (prootPath.startsWith("/storage")) {
-			// /storage
-			convertedPath = `file://${prootPath}`;
-		} else if (prootPath.startsWith("/data")) {
-			// /data
+		} else if (
+			prootPath.startsWith("/sdcard") ||
+			prootPath.startsWith("/storage") ||
+			prootPath.startsWith("/data")
+		) {
 			convertedPath = `file://${prootPath}`;
 		} else if (prootPath.startsWith("/")) {
 			// Everything else is relative to alpine root
