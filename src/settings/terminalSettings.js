@@ -188,7 +188,9 @@ export default function terminalSettings() {
 		},
 	];
 
-	return settingsPage(title, items, callback);
+	return settingsPage(title, items, callback, undefined, {
+		preserveOrder: true,
+	});
 
 	/**
 	 * Callback for settings page when an item is clicked
