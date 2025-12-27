@@ -105,7 +105,7 @@ export default class FileTree {
 		const name = entry.name || Path.basename(entry.url);
 
 		if (entry.isDirectory) {
-			return this.createFolderElement(name, entry.url);
+			return this.createFolderElement(name, entry.url, recycledEl);
 		} else {
 			return this.createFileElement(name, entry.url, recycledEl);
 		}
@@ -115,12 +115,39 @@ export default class FileTree {
 	 * Create folder element (collapsible)
 	 * @param {string} name
 	 * @param {string} url
+	 * @param {HTMLElement} [recycledEl] - Optional recycled element for reuse
 	 * @returns {HTMLElement}
 	 */
-	createFolderElement(name, url) {
+	createFolderElement(name, url, recycledEl) {
+		// Try to recycle existing folder element
+		if (recycledEl && recycledEl.classList.contains("collapsible")) {
+			const $title = recycledEl.$title;
+			if ($title) {
+				$title.dataset.url = url;
+				$title.dataset.name = name;
+				const textEl = $title.querySelector(".text");
+				if (textEl) textEl.textContent = name;
+
+				// Collapse if expanded and clear children
+				if (!recycledEl.classList.contains("hidden")) {
+					recycledEl.classList.add("hidden");
+					const childTree = this.childTrees.get(recycledEl._folderUrl);
+					if (childTree) {
+						childTree.destroy();
+						this.childTrees.delete(recycledEl._folderUrl);
+					}
+					recycledEl.$ul.innerHTML = "";
+				}
+
+				recycledEl._folderUrl = url;
+				return recycledEl;
+			}
+		}
+
 		const $wrapper = tag("div", {
 			className: "list collapsible hidden",
 		});
+		$wrapper._folderUrl = url;
 
 		const $indicator = tag("span", { className: "icon folder" });
 
@@ -189,10 +216,11 @@ export default class FileTree {
 			queueMicrotask(() => toggle());
 		}
 
-		// Add properties for external access
+		// Add properties for external access (keep unclasped for collapsableList compatibility)
 		Object.defineProperties($wrapper, {
 			collapsed: { get: () => $wrapper.classList.contains("hidden") },
-			unclasped: { get: () => !$wrapper.classList.contains("hidden") },
+			expanded: { get: () => !$wrapper.classList.contains("hidden") },
+			unclasped: { get: () => !$wrapper.classList.contains("hidden") }, // Legacy compatibility
 			$title: { get: () => $title },
 			$ul: { get: () => $content },
 			expand: {
@@ -302,22 +330,35 @@ export default class FileTree {
 	 */
 	appendEntry(name, url, isDirectory) {
 		const entry = { name, url, isDirectory, isFile: !isDirectory };
-		const $el = this.createEntryElement(entry);
 
+		// Insert in sorted position
 		if (isDirectory) {
-			// Insert at beginning (before files)
-			const firstFile = this.container.querySelector('[data-type="file"]');
-			if (firstFile) {
-				this.container.insertBefore($el, firstFile);
+			// Find first file or end of dirs
+			const insertIndex = this.entries.findIndex((e) => !e.isDirectory);
+			if (insertIndex === -1) {
+				this.entries.push(entry);
 			} else {
-				this.container.appendChild($el);
+				this.entries.splice(insertIndex, 0, entry);
 			}
 		} else {
-			// Append at end
-			this.container.appendChild($el);
+			this.entries.push(entry);
 		}
 
-		this.entries.push(entry);
+		// Re-sort entries
+		this.entries = helpers.sortDir(this.entries, {
+			sortByName: true,
+			showHiddenFiles: true,
+		});
+
+		// Update rendering based on mode
+		if (this.virtualList) {
+			// Virtual list mode: update items
+			this.virtualList.setItems(this.entries);
+		} else {
+			// Fragment mode: re-render
+			this.container.innerHTML = "";
+			this.renderWithFragment();
+		}
 	}
 
 	/**
@@ -325,15 +366,34 @@ export default class FileTree {
 	 * @param {string} url
 	 */
 	removeEntry(url) {
-		const $el = this.findElement(url);
-		if ($el) {
-			// For folders, remove the wrapper div
-			if ($el.dataset.type === "dir") {
-				$el.closest(".list.collapsible")?.remove();
-			} else {
-				$el.remove();
+		// Update data first
+		const index = this.entries.findIndex((e) => e.url === url);
+		if (index === -1) return;
+
+		// Clean up child tree if folder
+		const entry = this.entries[index];
+		if (entry.isDirectory && this.childTrees.has(url)) {
+			this.childTrees.get(url).destroy();
+			this.childTrees.delete(url);
+		}
+
+		// Remove from entries
+		this.entries.splice(index, 1);
+
+		// Update rendering based on mode
+		if (this.virtualList) {
+			// Virtual list mode: update items
+			this.virtualList.setItems(this.entries);
+		} else {
+			// Fragment mode: remove element directly
+			const $el = this.findElement(url);
+			if ($el) {
+				if ($el.dataset.type === "dir") {
+					$el.closest(".list.collapsible")?.remove();
+				} else {
+					$el.remove();
+				}
 			}
-			this.entries = this.entries.filter((e) => e.url !== url);
 		}
 	}
 }
