@@ -20,6 +20,7 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.webkit.ConsoleMessage;
 import android.webkit.ValueCallback;
+import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -49,6 +50,9 @@ import android.webkit.WebView;
 import android.widget.Toast;
 import android.os.Handler;
 import android.os.Looper;
+import android.content.ClipboardManager;
+import android.content.ClipData;
+import android.webkit.JavascriptInterface;
 
 
 
@@ -207,7 +211,14 @@ public class Browser extends LinearLayout {
     settings.setDomStorageEnabled(true);
     settings.setAllowContentAccess(true);
     settings.setDisplayZoomControls(false);
-    settings.setDomStorageEnabled(true);
+    settings.setAllowFileAccess(true);
+    settings.setDatabaseEnabled(true);
+    
+    // Enable hardware acceleration for better performance
+    webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+    
+    // Add clipboard bridge for JavaScript access
+    webView.addJavascriptInterface(new ClipboardBridge(context), "AndroidClipboard");
 
     webViewContainer = new LinearLayout(context);
     webViewContainer.setGravity(Gravity.CENTER);
@@ -654,6 +665,112 @@ class BrowserChromeClient extends WebChromeClient {
 
     return true;
   }
+
+  @Override
+  public void onPermissionRequest(final PermissionRequest request) {
+    final String[] resources = request.getResources();
+    final Uri origin = request.getOrigin();
+    
+    // Build a human-readable list of requested permissions
+    StringBuilder permissionList = new StringBuilder();
+    for (String resource : resources) {
+      if (resource.equals(PermissionRequest.RESOURCE_VIDEO_CAPTURE)) {
+        permissionList.append("• Camera\n");
+      } else if (resource.equals(PermissionRequest.RESOURCE_AUDIO_CAPTURE)) {
+        permissionList.append("• Microphone\n");
+      } else if (resource.equals(PermissionRequest.RESOURCE_PROTECTED_MEDIA_ID)) {
+        permissionList.append("• Protected Media\n");
+      } else if (resource.equals(PermissionRequest.RESOURCE_MIDI_SYSEX)) {
+        permissionList.append("• MIDI Device\n");
+      } else {
+        permissionList.append("• ").append(resource).append("\n");
+      }
+    }
+
+    // Get the site URL
+    final String siteUrl = origin != null ? origin.toString() : "";
+    String siteName = origin != null ? origin.getHost() : "This site";
+    if (siteName == null || siteName.isEmpty()) {
+      siteName = "This site";
+    }
+
+    final String message = siteName + " is requesting access to:\n\n" + permissionList.toString() + 
+        "\n\nThese permissions are not available in the in-app browser. " +
+        "Please open this page in an external browser to use these features.";
+
+    new Handler(Looper.getMainLooper()).post(() -> {
+      new AlertDialog.Builder(browser.context)
+        .setTitle("⚠️ Permission Not Available")
+        .setMessage(message)
+        .setPositiveButton("Open in Browser", (dlg, which) -> {
+          request.deny();
+          // Open in external browser
+          try {
+            Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(siteUrl));
+            browser.context.startActivity(browserIntent);
+          } catch (Exception e) {
+            Toast.makeText(browser.context, "Could not open browser", Toast.LENGTH_SHORT).show();
+          }
+        })
+        .setNegativeButton("Cancel", (dlg, which) -> {
+          request.deny();
+        })
+        .setOnCancelListener(dlg -> {
+          request.deny();
+        })
+        .setCancelable(true)
+        .show();
+    });
+  }
+
+  @Override
+  public void onPermissionRequestCanceled(PermissionRequest request) {
+    super.onPermissionRequestCanceled(request);
+  }
+  
+  // Geolocation permission handling
+  @Override
+  public void onGeolocationPermissionsShowPrompt(final String origin, 
+      final android.webkit.GeolocationPermissions.Callback callback) {
+    
+    // Get site name from origin
+    String siteName = origin;
+    try {
+      Uri uri = Uri.parse(origin);
+      siteName = uri.getHost() != null ? uri.getHost() : origin;
+    } catch (Exception e) {
+      // Keep original
+    }
+    
+    final String displayName = siteName;
+    final String message = displayName + " is requesting access to your location.\n\n" +
+        "Location access is not available in the in-app browser. " +
+        "Please open this page in an external browser to use location features.";
+    
+    new Handler(Looper.getMainLooper()).post(() -> {
+      new AlertDialog.Builder(browser.context)
+        .setTitle("📍 Location Not Available")
+        .setMessage(message)
+        .setPositiveButton("Open in Browser", (dialog, which) -> {
+          callback.invoke(origin, false, false);
+          // Open in external browser
+          try {
+            Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(origin));
+            browser.context.startActivity(browserIntent);
+          } catch (Exception e) {
+            Toast.makeText(browser.context, "Could not open browser", Toast.LENGTH_SHORT).show();
+          }
+        })
+        .setNegativeButton("Cancel", (dialog, which) -> {
+          callback.invoke(origin, false, false);
+        })
+        .setOnCancelListener(dialog -> {
+          callback.invoke(origin, false, false);
+        })
+        .setCancelable(true)
+        .show();
+    });
+  }
 }
 
 class BrowserWebViewClient extends WebViewClient {
@@ -682,6 +799,37 @@ class BrowserWebViewClient extends WebViewClient {
   public void onPageFinished(WebView view, String url) {
     super.onPageFinished(view, url);
     browser.setProgressBarVisible(false);
+    
+    // Inject clipboard polyfill to use native AndroidClipboard bridge
+    // Always override because WebView's native clipboard throws permission errors
+    String clipboardPolyfill = 
+      "if (typeof AndroidClipboard !== 'undefined') {" +
+      "  navigator.clipboard = navigator.clipboard || {};" +
+      "  navigator.clipboard.readText = function() {" +
+      "    return new Promise(function(resolve, reject) {" +
+      "      try {" +
+      "        var text = AndroidClipboard.getText();" +
+      "        resolve(text || '');" +
+      "      } catch(e) {" +
+      "        reject(e);" +
+      "      }" +
+      "    });" +
+      "  };" +
+      "  navigator.clipboard.writeText = function(text) {" +
+      "    return new Promise(function(resolve, reject) {" +
+      "      try {" +
+      "        if (AndroidClipboard.setText(text)) {" +
+      "          resolve();" +
+      "        } else {" +
+      "          reject(new Error('Failed to write to clipboard'));" +
+      "        }" +
+      "      } catch(e) {" +
+      "        reject(e);" +
+      "      }" +
+      "    });" +
+      "  };" +
+      "}";
+    view.evaluateJavascript(clipboardPolyfill, null);
 
     // Inject console for external sites
     // this is not a good solution but for now its good, later we'll improve this
@@ -760,5 +908,46 @@ class BrowserWebViewClient extends WebViewClient {
   @Override
   public void onLoadResource(WebView view, String url) {
     browser.setDesktopMode();
+  }
+}
+
+// Clipboard bridge for JavaScript access
+class ClipboardBridge {
+  private Context context;
+  
+  public ClipboardBridge(Context context) {
+    this.context = context;
+  }
+  
+  @JavascriptInterface
+  public String getText() {
+    try {
+      ClipboardManager clipboard = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
+      if (clipboard != null && clipboard.hasPrimaryClip()) {
+        ClipData clip = clipboard.getPrimaryClip();
+        if (clip != null && clip.getItemCount() > 0) {
+          CharSequence text = clip.getItemAt(0).getText();
+          return text != null ? text.toString() : "";
+        }
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+    return "";
+  }
+  
+  @JavascriptInterface
+  public boolean setText(String text) {
+    try {
+      ClipboardManager clipboard = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
+      if (clipboard != null) {
+        ClipData clip = ClipData.newPlainText("text", text);
+        clipboard.setPrimaryClip(clip);
+        return true;
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+    return false;
   }
 }
