@@ -1,0 +1,9 @@
+.virtual-spacer {
+	width: 100%;
+	pointer-events: none;
+}
+
+.virtual-items {
+	position: relative;
+	min-width: 100%;
+}
