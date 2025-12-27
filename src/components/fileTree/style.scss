@@ -1,0 +1,75 @@
+@use "../../styles/mixins.scss";
+
+.file-tree {
+    --file-tree-indent: 24px;
+
+    min-width: 100%;
+    width: max-content;
+
+    &.virtual-scroll {
+        position: relative;
+        overflow-y: auto;
+        will-change: transform;
+    }
+
+    // Collapsible folder structure
+    .list.collapsible {
+        &.hidden>ul {
+            display: none;
+        }
+
+        >.tile {
+            cursor: pointer;
+
+            &.loading {
+                @include mixins.linear-loader(30%, 2px);
+            }
+        }
+    }
+
+    // Folder content with indent
+    ul.folder-content {
+        padding-left: var(--file-tree-indent);
+        position: relative;
+        margin-left: 0;
+        min-width: 100%;
+        width: max-content;
+        overflow-x: visible !important;
+        max-width: none;
+    }
+
+    // Indent guides
+    &.show-indent-guide {
+        >.list.collapsible>ul.folder-content {
+            &::before {
+                content: "";
+                position: absolute;
+                left: calc(var(--file-tree-indent) / 2);
+                top: 0;
+                height: 100%;
+                width: 1px;
+                background: var(--border-color);
+                z-index: 0;
+            }
+        }
+    }
+
+    .tile {
+        min-width: 100%;
+        width: max-content;
+
+        >.text {
+            white-space: nowrap !important;
+            overflow: visible !important;
+            width: max-content !important;
+            text-overflow: clip !important;
+        }
+    }
+
+    // File items
+    li,
+    [data-type="file"] {
+        min-width: 100%;
+        width: max-content;
+    }
+}

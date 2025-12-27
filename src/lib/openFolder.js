@@ -1,6 +1,7 @@
 import fsOperation from "fileSystem";
 import sidebarApps from "sidebarApps";
 import collapsableList from "components/collapsableList";
+import FileTree from "components/fileTree";
 import Sidebar from "components/sidebar";
 import tile from "components/tile";
 import toast from "components/toast";
@@ -182,35 +183,38 @@ async function expandList($list) {
 
 	if (!$ul) return;
 
-	$ul.textContent = null;
+	// Cleanup existing file tree
+	if ($ul._fileTree) {
+		$ul._fileTree.destroy();
+		$ul._fileTree = null;
+	}
+	$ul.innerHTML = "";
+
 	if (saveState) listState[url] = $list.unclasped;
 	if (!$list.unclasped) return;
 
 	try {
 		startLoading();
-		const entries = await fsOperation(url).lsDir();
-		helpers
-			.sortDir(entries, {
-				sortByName: true,
-				showHiddenFiles: true,
-			})
-			.map((entry) => {
-				const name = entry.name || Path.basename(entry.url);
-				if (entry.isDirectory) {
-					const $list = createFolderTile(name, entry.url);
-					$ul.appendChild($list);
 
-					if (listState[entry.url]) {
-						$list.expand();
-					}
-				} else {
-					const $item = createFileTile(name, entry.url);
-					$ul.append($item);
-				}
-			});
+		const fileTree = new FileTree($ul, {
+			getEntries: (dirUrl) => fsOperation(dirUrl).lsDir(),
+			expandedState: listState,
+			onExpandedChange: (folderUrl, isExpanded) => {
+				if (saveState) listState[folderUrl] = isExpanded;
+			},
+			onFileClick: (fileUrl) => {
+				handleClick("file", fileUrl);
+			},
+			onContextMenu: (type, itemUrl, name, $target) => {
+				handleContextmenu(type, itemUrl, name, $target);
+			},
+		});
+
+		await fileTree.load(url);
+		$ul._fileTree = fileTree;
 	} catch (err) {
 		$list.collapse();
-		if (err?.includes("Invalid message length")) {
+		if (err?.includes?.("Invalid message length")) {
 			console.error(err);
 			toast("SFTP connection broken. Restart the app");
 			return;
