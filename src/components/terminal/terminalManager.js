@@ -573,15 +573,7 @@ class TerminalManager {
 			console.error(`Terminal ${terminalId} error:`, error);
 
 			// Close the terminal and remove the tab
-			this.closeTerminal(terminalId);
-
-			// Force remove the tab
-			try {
-				terminalFile._skipTerminalCloseConfirm = true;
-				terminalFile.remove(true);
-			} catch (removeError) {
-				console.error("Error removing terminal tab:", removeError);
-			}
+			this.closeTerminal(terminalId, true);
 
 			// Show alert for connection error
 			const errorMessage = error?.message || "Connection lost";
