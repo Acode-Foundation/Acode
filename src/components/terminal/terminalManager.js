@@ -8,6 +8,7 @@ import TerminalComponent from "./terminal";
 import "@xterm/xterm/css/xterm.css";
 import quickTools from "components/quickTools";
 import toast from "components/toast";
+import alert from "dialogs/alert";
 import confirm from "dialogs/confirm";
 import openFile from "lib/openFile";
 import openFolder from "lib/openFolder";
@@ -108,6 +109,7 @@ class TerminalManager {
 		const manager = window.editorManager;
 		const activeFileId = manager?.activeFile?.id;
 		const restoredTerminals = [];
+		const failedSessions = [];
 
 		for (const session of sessions) {
 			if (!session?.pid) continue;
@@ -126,8 +128,18 @@ class TerminalManager {
 					`Failed to restore terminal session ${session.pid}:`,
 					error,
 				);
+				failedSessions.push(session.name || session.pid);
 				this.removePersistedSession(session.pid);
 			}
+		}
+
+		// Show alert for failed sessions (don't await to not block UI)
+		if (failedSessions.length > 0) {
+			const message =
+				failedSessions.length === 1
+					? `Failed to restore terminal: ${failedSessions[0]}`
+					: `Failed to restore ${failedSessions.length} terminals: ${failedSessions.join(", ")}`;
+			alert(strings["error"], message);
 		}
 
 		if (activeFileId && manager?.getFile) {
@@ -236,6 +248,32 @@ class TerminalManager {
 						resolve(instance);
 					} catch (error) {
 						console.error("Failed to initialize terminal:", error);
+
+						// Cleanup on failure - dispose component and remove broken tab
+						try {
+							terminalComponent.dispose();
+						} catch (disposeError) {
+							console.error(
+								"Error disposing terminal component:",
+								disposeError,
+							);
+						}
+
+						try {
+							// Force remove the tab without confirmation
+							terminalFile._skipTerminalCloseConfirm = true;
+							terminalFile.remove(true);
+						} catch (removeError) {
+							console.error("Error removing terminal tab:", removeError);
+						}
+
+						// Show alert for terminal creation failure
+						const errorMessage = error?.message || "Unknown error";
+						alert(
+							strings["error"],
+							`Failed to create terminal: ${errorMessage}`,
+						);
+
 						reject(error);
 					}
 				}, 100);
@@ -533,9 +571,21 @@ class TerminalManager {
 
 		terminalComponent.onError = (error) => {
 			console.error(`Terminal ${terminalId} error:`, error);
-			window.toast?.("Terminal connection error");
-			// Close the terminal tab on error
+
+			// Close the terminal and remove the tab
 			this.closeTerminal(terminalId);
+
+			// Force remove the tab
+			try {
+				terminalFile._skipTerminalCloseConfirm = true;
+				terminalFile.remove(true);
+			} catch (removeError) {
+				console.error("Error removing terminal tab:", removeError);
+			}
+
+			// Show alert for connection error
+			const errorMessage = error?.message || "Connection lost";
+			alert(strings["error"], `Terminal connection error: ${errorMessage}`);
 		};
 
 		terminalComponent.onTitleChange = async (title) => {
@@ -624,7 +674,7 @@ class TerminalManager {
 	 * Close a terminal session
 	 * @param {string} terminalId - Terminal ID
 	 */
-	closeTerminal(terminalId) {
+	closeTerminal(terminalId, removeTab = false) {
 		const terminal = this.terminals.get(terminalId);
 		if (!terminal) return;
 
@@ -636,6 +686,7 @@ class TerminalManager {
 			// Cleanup resize observer
 			if (terminal.file._resizeObserver) {
 				terminal.file._resizeObserver.disconnect();
+				terminal.file._resizeObserver = null;
 			}
 
 			// Cleanup focus handlers
@@ -648,6 +699,16 @@ class TerminalManager {
 
 			// Remove from map
 			this.terminals.delete(terminalId);
+
+			// Optionally remove the tab as well
+			if (removeTab && terminal.file) {
+				try {
+					terminal.file._skipTerminalCloseConfirm = true;
+					terminal.file.remove(true);
+				} catch (removeError) {
+					console.error("Error removing terminal tab:", removeError);
+				}
+			}
 
 			if (this.getAllTerminals().size <= 0) {
 				Executor.stopService();
