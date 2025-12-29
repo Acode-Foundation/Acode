@@ -29,8 +29,8 @@ export default async function startAd() {
 
 	const currentHour = new Date().getHours();
 	//currentHour >= 22: Covers 10:00 PM to 11:59 PM.
-	//currentHour < 5: Covers 12:00 AM to 4:59 AM.
-	const isQuietHours = currentHour >= 22 || currentHour < 5;
+	//currentHour < 4: Covers 12:00 AM to 3:59 AM.
+	const isQuietHours = currentHour >= 22 || currentHour < 4;
 
 	await admob.configure({
 		appMuted: isQuietHours,
