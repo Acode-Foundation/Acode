@@ -27,6 +27,18 @@ export default async function startAd() {
 
 	await admob.start();
 
+
+	const currentHour = new Date().getHours();
+	//currentHour >= 22: Covers 10:00 PM to 11:59 PM.
+	//currentHour < 5: Covers 12:00 AM to 4:59 AM.
+	const isQuietHours = currentHour >= 22 || currentHour < 5;
+
+	await admob.configure({
+		appMuted: isQuietHours,
+		appVolume: isQuietHours ? 0.0 : 1.0
+	});
+
+
 	const banner = new admob.BannerAd({
 		adUnitId: adUnitIdBanner,
 		position: "bottom",
