@@ -186,7 +186,7 @@ export default (props) => {
 					<div
 						id="overview"
 						className="content-section active md"
-						innerHTML={DOMPurify.sanitize(body)}
+						innerHTML={DOMPurify.sanitize(body, { FORBID_TAGS: ["style"] })}
 					></div>
 					<div id="contributors" className="content-section">
 						{(() => {
@@ -223,7 +223,7 @@ export default (props) => {
 						id="changelog"
 						className="content-section md"
 						innerHTML={
-							DOMPurify.sanitize(changelogs) ||
+							DOMPurify.sanitize(changelogs, { FORBID_TAGS: ["style"] }) ||
 							`
 							<div class="no-changelog">
 								<i class="icon historyrestore"></i>
