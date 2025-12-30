@@ -270,9 +270,7 @@
 
     .content-section.md {
       overflow-x: hidden;
-      word-wrap: break-word;
       overflow-wrap: break-word;
-      word-break: break-word;
 
       img {
         max-width: 100%;
@@ -280,13 +278,6 @@
       }
 
       pre {
-        overflow-x: auto;
-        max-width: 100%;
-      }
-
-      // Tables should scroll if too wide
-      table {
-        display: block;
         overflow-x: auto;
         max-width: 100%;
       }
