@@ -1,0 +1,224 @@
+#welcome-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 100%;
+    height: auto;
+    padding: 32px 24px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background-color: var(--secondary-color);
+
+    // Hero Header
+    .welcome-header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 48px;
+
+        .logo {
+            width: 64px;
+            height: 64px;
+            flex-shrink: 0;
+
+            &::after {
+                background-size: 48px;
+            }
+
+            &::before {
+                background: radial-gradient(circle,
+                        color-mix(in srgb, var(--button-background-color) 30%, transparent) 0%,
+                        transparent 70%);
+            }
+        }
+
+        .welcome-header-text {
+            h1 {
+                font-size: 20px;
+                font-weight: 600;
+                color: var(--primary-text-color);
+                margin: 0 0 4px 0;
+                letter-spacing: -0.3px;
+            }
+
+            .tagline {
+                font-size: 13px;
+                color: color-mix(in srgb, var(--secondary-text-color) 60%, transparent);
+                margin: 0;
+            }
+        }
+    }
+
+    // Section Styles
+    .welcome-section {
+        width: 100%;
+        max-width: 400px;
+        margin-bottom: 32px;
+
+        .section-label {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            color: color-mix(in srgb, var(--secondary-text-color) 50%, transparent);
+            margin: 0 0 12px 0;
+            padding-left: 4px;
+        }
+    }
+
+    // Action List
+    .action-list {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .action-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: background-color 0.15s ease;
+
+        &:hover,
+        &:active {
+            background-color: color-mix(in srgb, var(--popup-background-color) 40%, transparent);
+        }
+
+        .icon {
+            font-size: 16px;
+            color: color-mix(in srgb, var(--secondary-text-color) 70%, transparent);
+            width: 20px;
+            text-align: center;
+        }
+
+        .action-label {
+            flex: 1;
+            font-size: 14px;
+            color: var(--secondary-text-color);
+        }
+
+        .action-shortcut {
+            font-size: 12px;
+            font-family: 'Roboto Mono', monospace;
+            color: color-mix(in srgb, var(--secondary-text-color) 40%, transparent);
+            letter-spacing: 0.5px;
+        }
+    }
+
+    // Links Section
+    .welcome-links {
+        margin-top: 16px;
+
+        .link-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: flex-start;
+        }
+
+        .link-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            color: var(--secondary-text-color);
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.15s ease;
+            background-color: color-mix(in srgb, var(--popup-background-color) 25%, transparent);
+            border: 1px solid color-mix(in srgb, var(--border-color) 20%, transparent);
+
+            &:hover,
+            &:active {
+                background-color: color-mix(in srgb, var(--popup-background-color) 50%, transparent);
+                border-color: color-mix(in srgb, var(--border-color) 40%, transparent);
+                transform: translateY(-1px);
+            }
+
+            .icon {
+                font-size: 16px;
+                color: color-mix(in srgb, var(--secondary-text-color) 80%, transparent);
+            }
+        }
+    }
+}
+
+// Responsive adjustments for smaller screens
+@media (max-width: 360px) {
+    #welcome-tab {
+        padding: 24px 16px;
+
+        .welcome-header {
+            flex-direction: column;
+            text-align: center;
+            margin-bottom: 36px;
+
+            .logo {
+                width: 56px;
+                height: 56px;
+
+                &::after {
+                    background-size: 40px;
+                }
+            }
+
+            .welcome-header-text h1 {
+                font-size: 18px;
+            }
+        }
+
+        .welcome-section {
+            margin-bottom: 24px;
+        }
+
+        .action-row {
+            padding: 8px 10px;
+
+            .action-label {
+                font-size: 13px;
+            }
+
+            .action-shortcut {
+                font-size: 11px;
+            }
+        }
+
+        .welcome-links .link-row {
+            justify-content: center;
+        }
+    }
+}
+
+// Larger screens - center content better
+@media (min-width: 600px) {
+    #welcome-tab {
+        .welcome-section {
+            max-width: 480px;
+        }
+
+        .action-row {
+            padding: 12px 16px;
+        }
+    }
+}
+
+// Discord icon
+.icon.discord {
+    position: relative;
+
+    &::before {
+        content: '';
+        display: block;
+        width: 16px;
+        height: 16px;
+        background-image: url(../../pages/about/discord.svg);
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+    }
+}

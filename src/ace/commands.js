@@ -349,6 +349,14 @@ const commands = [
 		},
 		readOnly: true,
 	},
+	{
+		name: "acode:showWelcome",
+		description: "Show Welcome",
+		exec() {
+			acode.exec("welcome");
+		},
+		readOnly: true,
+	},
 ];
 
 export function setCommands(editor) {

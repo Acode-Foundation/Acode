@@ -7,9 +7,11 @@ import prompt from "dialogs/prompt";
 import select from "dialogs/select";
 import actions from "handlers/quickTools";
 import recents from "lib/recents";
+import About from "pages/about";
 import FileBrowser from "pages/fileBrowser";
 import plugins from "pages/plugins";
 import Problems from "pages/problems/problems";
+import openWelcomeTab from "pages/welcome/welcome";
 import changeEncoding from "palettes/changeEncoding";
 import changeMode from "palettes/changeMode";
 import changeTheme from "palettes/changeTheme";
@@ -186,6 +188,10 @@ export default {
 
 			case "file_browser":
 				FileBrowser();
+				break;
+
+			case "about":
+				About();
 				break;
 
 			default:
@@ -473,5 +479,8 @@ Additional Info:
 			console.error("Failed to create terminal:", error);
 			window.toast("Failed to create terminal");
 		}
+	},
+	welcome() {
+		openWelcomeTab();
 	},
 };
