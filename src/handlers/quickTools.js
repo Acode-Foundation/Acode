@@ -361,7 +361,13 @@ function toggle() {
 
 function setHeight(height = 1, save = true) {
 	const { $footer, $row1, $row2 } = quickTools;
-	const { editor } = editorManager;
+	const { editor, activeFile } = editorManager;
+
+	// If active file has hideQuickTools, force height to 0 and don't save
+	if (activeFile?.hideQuickTools) {
+		height = 0;
+		save = false;
+	}
 
 	setFooterHeight(height);
 	if (save) {

@@ -4,6 +4,7 @@ import tile from "components/tile";
 import confirm from "dialogs/confirm";
 import DOMPurify from "dompurify";
 import startDrag from "handlers/editorFileTab";
+import actions from "handlers/quickTools";
 import tag from "html-tag-js";
 import mimeTypes from "mime-types";
 import helpers from "utils/helpers";
@@ -813,6 +814,19 @@ export default class EditorFile {
 
 		if (this.type === "editor" && !this.loaded && !this.loading) {
 			this.#loadText();
+		}
+
+		// Handle quicktools visibility based on hideQuickTools property
+		if (this.hideQuickTools) {
+			root.classList.add("hide-floating-button");
+			actions("set-height", { height: 0, save: false });
+		} else {
+			root.classList.remove("hide-floating-button");
+			const quickToolsHeight =
+				appSettings.value.quickTools !== undefined
+					? appSettings.value.quickTools
+					: 1;
+			actions("set-height", { height: quickToolsHeight, save: false });
 		}
 
 		editorManager.header.subText = this.#getTitle();
