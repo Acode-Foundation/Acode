@@ -489,5 +489,9 @@
 	"issues found": "Problémák találhatók",
 	"error details": "Hiba részletei",
 	"active tools": "Aktív eszközök",
-	"available tools": "Elérhető eszközök"
+	"available tools": "Elérhető eszközök",
+	"recent": "Recent Files",
+	"command palette": "Open Command Palette",
+	"change theme": "Change Theme",
+	"documentation": "Documentation"
 }

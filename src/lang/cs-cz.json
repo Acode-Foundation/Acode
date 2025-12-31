@@ -489,5 +489,9 @@
 	"issues found": "Nalezené problémy",
 	"error details": "Podrobnosti o chybě",
 	"active tools": "Active tools",
-	"available tools": "Available tools"
+	"available tools": "Available tools",
+	"recent": "Recent Files",
+	"command palette": "Open Command Palette",
+	"change theme": "Change Theme",
+	"documentation": "Documentation"
 }

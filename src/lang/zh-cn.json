@@ -489,5 +489,9 @@
 	"issues found": "出现问题",
 	"error details": "详细错误信息",
 	"active tools": "已启用工具",
-	"available tools": "可用的工具"
+	"available tools": "可用的工具",
+	"recent": "Recent Files",
+	"command palette": "Open Command Palette",
+	"change theme": "Change Theme",
+	"documentation": "Documentation"
 }

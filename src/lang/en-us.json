@@ -489,5 +489,9 @@
 	"issues found": "Issues found",
 	"error details": "Error details",
 	"active tools": "Active tools",
-	"available tools": "Available tools"
+	"available tools": "Available tools",
+	"recent": "Recent Files",
+	"command palette": "Open Command Palette",
+	"change theme": "Change Theme",
+	"documentation": "Documentation"
 }
