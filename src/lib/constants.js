@@ -23,4 +23,14 @@ export default {
 	// API_BASE: 'https://192.168.0.102:3001/api', // test api
 	SKU_LIST: ["crystal", "bronze", "silver", "gold", "platinum", "titanium"],
 	LOG_FILE_NAME: "Acode.log",
+
+	// Social Links
+	DOCS_URL: "https://docs.acode.app",
+	WEBSITE_URL: "https://acode.app",
+	GITHUB_URL: "https://github.com/Acode-Foundation/Acode",
+	TELEGRAM_URL: "https://t.me/foxdebug_acode",
+	DISCORD_URL: "https://discord.gg/nDqZsh7Rqz",
+	TWITTER_URL: "https://x.com/foxbiz_io",
+	INSTAGRAM_URL: "https://www.instagram.com/foxbiz.io/",
+	FOXBIZ_URL: "https://foxbiz.io",
 };
