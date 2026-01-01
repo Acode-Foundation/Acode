@@ -490,8 +490,8 @@
 	"error details": "Hiba részletei",
 	"active tools": "Aktív eszközök",
 	"available tools": "Elérhető eszközök",
-	"recent": "Recent Files",
-	"command palette": "Open Command Palette",
-	"change theme": "Change Theme",
-	"documentation": "Documentation"
+	"recent": "Legutóbbi fájlok",
+	"command palette": "Parancspaletta megnyitása",
+	"change theme": "Téma módosítása",
+	"documentation": "Dokumentáció"
 }
