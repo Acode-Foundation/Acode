@@ -489,5 +489,9 @@
 	"issues found": "Problemas encontrados",
 	"error details": "Detalhes do erro",
 	"active tools": "Ferramentas ativas",
-	"available tools": "Ferramentas disponíveis"
+	"available tools": "Ferramentas disponíveis",
+	"shortcut request sent": "Shortcut request opened. Tap Add to finish.",
+	"add to home screen": "Add to home screen",
+	"pin shortcuts not supported": "Home screen shortcuts are not supported on this device.",
+	"save file before home shortcut": "Save the file before adding it to the home screen."
 }
