@@ -32,7 +32,7 @@ class Executor {
    *   executor.stop(uuid);
    * });
    */
-  start(command, onData, alpine = false) {
+  start(command, onData, alpine = true) {
     return new Promise((resolve, reject) => {
       let first = true;
       exec(
@@ -172,7 +172,7 @@ class Executor {
    *   .then(//console.log)
    *   .catch(console.error);
    */
-  execute(command, alpine = false) {
+  execute(command, alpine = true) {
     return new Promise((resolve, reject) => {
       exec(resolve, reject, this.ExecutorType, "exec", [command, String(alpine)]);
     });
