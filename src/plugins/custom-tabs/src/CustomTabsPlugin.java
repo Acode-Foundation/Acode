@@ -51,18 +51,17 @@ public class CustomTabsPlugin extends CordovaPlugin {
     private void openCustomTab(String url, JSONObject options) {
         CustomTabsIntent.Builder builder = new CustomTabsIntent.Builder();
 
-        if (options.optBoolean("showTitle", true)) {
-            builder.setShowTitle(true);
-        }
-
         String toolbarColor = options.optString("toolbarColor", null);
         if (toolbarColor != null && !toolbarColor.isEmpty()) {
             builder.setToolbarColor(Color.parseColor(toolbarColor));
         }
 
         CustomTabsIntent customTabsIntent = builder.build();
-        customTabsIntent.intent.setPackage("com.android.chrome");
 
+        if (options.optBoolean("showTitle", true)) {
+            customTabsIntent.intent.putExtra(CustomTabsIntent.EXTRA_TITLE_VISIBILITY_STATE, CustomTabsIntent.SHOW_PAGE_TITLE);
+        }
+        
         try {
             customTabsIntent.launchUrl(
                     cordova.getActivity(),
