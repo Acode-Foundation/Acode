@@ -118,11 +118,16 @@ function categorizeCommits(commits, { mergeOnly, importantOnly }) {
 		if (mergeOnly && !isMerge) continue;
 
 		const type =
-			Object.keys(sections).find(
-				(k) =>
-					msg.toLowerCase().startsWith(`${k}:`) ||
-					msg.toLowerCase().startsWith(`${k} `),
-			) || "other";
+			Object.keys(sections).find((k) => {
+				const lowerMsg = msg.toLowerCase();
+				return (
+					lowerMsg.startsWith(`${k}:`) ||
+					lowerMsg.startsWith(`${k} `) ||
+					lowerMsg.startsWith(`${k}(`) ||
+					lowerMsg.startsWith(`${k}: `) ||
+					lowerMsg.startsWith(`${k}(`) // handles e.g. 'feat(plugin-api): ...'
+				);
+			}) || "other";
 
 		if (
 			importantOnly &&
