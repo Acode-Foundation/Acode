@@ -38,7 +38,8 @@
       "cordova-plugin-sftp": {},
       "cordova-plugin-system": {},
       "com.foxdebug.acode.rk.exec.proot": {},
-      "com.foxdebug.acode.rk.exec.terminal": {}
+      "com.foxdebug.acode.rk.exec.terminal": {},
+      "com.foxdebug.acode.rk.customtabs": {}
     },
     "platforms": [
       "android"
@@ -63,6 +64,7 @@
     "@types/url-parse": "^1.4.11",
     "autoprefixer": "^10.4.21",
     "babel-loader": "^10.0.0",
+    "com.foxdebug.acode.rk.customtabs": "file:src/plugins/custom-tabs",
     "com.foxdebug.acode.rk.exec.proot": "file:src/plugins/proot",
     "com.foxdebug.acode.rk.exec.terminal": "file:src/plugins/terminal",
     "cordova-android": "^14.0.1",
