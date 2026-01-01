@@ -1,9 +1,9 @@
 {
-  "name": "com.foxdebug.acode.rk.exec.proot",
+  "name": "com.foxdebug.acode.rk.customtabs",
   "version": "1.0.0",
-  "description": "Proot stuff",
+  "description": "Custom tabs api",
   "cordova": {
-    "id": "com.foxdebug.acode.rk.exec.proot",
+    "id": "com.foxdebug.acode.rk.customtabs",
     "platforms": [
       "android"
     ]

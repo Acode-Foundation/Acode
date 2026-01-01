@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0" xmlns:android="http://schemas.android.com/apk/res/android" id="com.foxdebug.acode.rk.customtabs" version="1.0.0">
+    <name>Custom Tabs</name>
+
+
+    <js-module name="CustomTabs" src="www/customtabs.js">
+        <clobbers target="CustomTabs"/>
+    </js-module>
+
+
+    <platform name="android">
+
+         <config-file parent="/*" target="res/xml/config.xml">
+            <feature name="CustomTabs">
+                <param name="android-package" value="com.foxdebug.acode.rk.customtabs.CustomTabsPlugin" />
+            </feature>
+           
+        </config-file>
+
+       <config-file parent="/*" target="AndroidManifest.xml">
+              <queries>
+                <intent>
+                    <action android:name="android.support.customtabs.action.CustomTabsService" />
+                </intent>
+            </queries>
+        </config-file>
+
+        <framework src="androidx.browser:browser:1.8.0"/>
+
+        <source-file
+            src="src/CustomTabsPlugin.java"
+            target-dir="src/com/foxdebug/acode/rk/customtabs"/>
+
+           
+    </platform>
+</plugin>
