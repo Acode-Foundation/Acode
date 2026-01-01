@@ -123,7 +123,6 @@ function categorizeCommits(commits, { mergeOnly, importantOnly }) {
 				return (
 					lowerMsg.startsWith(`${k}:`) ||
 					lowerMsg.startsWith(`${k} `) ||
-					lowerMsg.startsWith(`${k}(`) ||
 					lowerMsg.startsWith(`${k}: `) ||
 					lowerMsg.startsWith(`${k}(`) // handles e.g. 'feat(plugin-api): ...'
 				);
