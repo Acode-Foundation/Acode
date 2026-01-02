@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>10 Track DJ Mixer</title>
+<style>
+body{
+  background:#000;
+  color:#fff;
+  font-family:Arial;
+  text-align:center;
+}
+.track{
+  border:1px solid #444;
+  margin:10px;
+  padding:10px;
+}
+button{
+  padding:8px 15px;
+  margin:5px;
+  font-size:16px;
+}
+input[type=range]{
+  width:80%;
+}
+</style>
+</head>
+<body>
+
+<h2>🎧 Plug & Play DJ Mixer (10 Track)</h2>
+
+<script>
+let tracks = [];
+for(let i=1;i<=10;i++){
+  tracks[i] = new Audio("track"+i+".mp3");
+}
+function play(i){ tracks[i].play(); }
+function pause(i){ tracks[i].pause(); }
+function volume(i,v){ tracks[i].volume=v; }
+</script>
+
+<!-- 10 Tracks -->
+<div id="mixer">
+<script>
+for(let i=1;i<=10;i++){
+  document.write(`
+  <div class="track">
+    <h3>Track ${i}</h3>
+    <button onclick="play(${i})">▶ Play</button>
+    <button onclick="pause(${i})">⏸ Pause</button><br>
+    Volume:
+    <input type="range" min="0" max="1" step="0.01"
+     value="1" oninput="volume(${i},this.value)">
+  </div>
+  `);
+}
+</script>
+</div>
+
+</body>
+</html>dj-app/
+│
+├── index.html
+├── track1.mp3
+├── track2.mp3
+├── track3.mp3
+├── track4.mp3
+├── track5.mp3
+├── track6.mp3
+├── track7.mp3
+├── track8.mp3
+├── track9.mp3
+└── track10.mp3
