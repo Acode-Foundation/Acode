@@ -74,6 +74,7 @@ class AuthService {
 			await this._exec("isLoggedIn");
 			return true;
 		} catch (error) {
+			console.error(error);
 			// error is typically the status code (0 if no token, 401 if invalid)
 			return false;
 		}
@@ -92,7 +93,6 @@ class AuthService {
 	async getAvatar() {
 		try {
 			const userData = await this.getUserInfo();
-			console.log(userData);
 			if (!userData) return null;
 
 			if (userData.github) {
