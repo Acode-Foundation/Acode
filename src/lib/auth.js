@@ -130,7 +130,11 @@ class AuthService {
 			"#4CAF50",
 			"#FF9800",
 		];
-    ctx.fillStyle = colors[name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length];
+		ctx.fillStyle =
+			colors[
+				name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0) %
+					colors.length
+			];
 		ctx.fillRect(0, 0, 100, 100);
 
 		ctx.fillStyle = "#ffffff";
