@@ -88,7 +88,7 @@ public class Authenticator extends CordovaPlugin {
         
         if (token == null) {
             Log.e(TAG, "getUserInfo: No token found.");
-            callbackContext.error("No token found");
+            callbackContext.error(0);
             return;
         }
         
