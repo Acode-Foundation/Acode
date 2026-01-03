@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>JJK Mobile Game</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { background: #1a1a1a; color: #fff; font-family: sans-serif; text-align: center; }
+        #game-box { border: 2px solid #7d2ae8; margin: 20px auto; padding: 20px; max-width: 90%; border-radius: 10px; }
+        button { background: #7d2ae8; color: white; border: none; padding: 10px 20px; margin: 5px; border-radius: 5px; font-weight: bold; }
+        #status { color: #ff4757; font-weight: bold; margin: 15px 0; }
+        .hp-bar { background: #444; height: 20px; width: 100%; border-radius: 10px; margin-bottom: 10px; }
+        #hp-fill { background: #2ed573; height: 100%; width: 100%; border-radius: 10px; transition: 0.5s; }
+    </style>
+</head>
+<body>
+    <h2>JUJUTSU KAISEN: CỬA TỬ</h2>
+    <div id="game-box">
+        <p>Đang đối đầu với: <strong>Nguyền Hồn Cấp Đặc Biệt</strong></p>
+        <div class="hp-bar"><div id="hp-fill"></div></div>
+        <p id="message">Bạn nhìn thấy một thực thể đáng sợ. Hãy chọn chiêu thức!</p>
+        <div id="status"></div>
+        <button onclick="attack('Black Flash')">Hắc Thiểm (70% trúng)</button>
+        <button onclick="attack('Divergent Fist')">Kính Đấm (Chắc chắn trúng)</button>
+    </div>
+
+    <script>
+        let bossHP = 100;
+        function attack(move) {
+            let damage = 0;
+            let msg = "";
+            if(move === 'Black Flash') {
+                if(Math.random() > 0.3) {
+                    damage = 35;
+                    msg = "KHOẢNH KHẮC CỦA TIA CHỚP ĐEN! Bạn gây " + damage + " sát thương!";
+                } else {
+                    msg = "Hắc thiểm thất bại! Bạn bị phản đòn!";
+                }
+            } else {
+                damage = 15;
+                msg = "Bạn dùng Kính Đấm trúng đích! Gây " + damage + " sát thương.";
+            }
+
+            bossHP -= damage;
+            if(bossHP <= 0) {
+                bossHP = 0;
+                msg = "CHÚC MỪNG! Bạn đã thanh tẩy Nguyền hồn!";
+            }
+            
+            document.getElementById('hp-fill').style.width = bossHP + "%";
+            document.getElementById('message').innerText = msg;
+            if(bossHP <= 0) document.querySelector('#game-box').innerHTML += "<h3>VICTORY!</h3>";
+        }
+    </script>
+</body>
+</html>
