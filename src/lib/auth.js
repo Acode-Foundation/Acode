@@ -48,15 +48,26 @@ class AuthService {
 			cordova.exec(resolve, reject, "Authenticator", action, args);
 		});
 	}
+	async openLoginUrl() {
+		const url = "https://acode.app/login?redirect=app";
 
-	openLoginUrl() {
 		try {
-			//todo use Custom tabs api for better ux
-			system.openInBrowser("https://acode.app/login?redirect=app");
+			await new Promise((resolve, reject) => {
+				CustomTabs.open(
+					url,
+					{ showTitle: true },
+					resolve,
+					reject
+				);
+			});
 		} catch (error) {
-			console.error("Failed while opening login page.", error);
+			console.error("CustomTabs failed, opening system browser.", error);
+			system.openInBrowser(url);
 		}
 	}
+
+
+
 
 	async logout() {
 		try {
@@ -132,8 +143,8 @@ class AuthService {
 		];
 		ctx.fillStyle =
 			colors[
-				name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0) %
-					colors.length
+			name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0) %
+			colors.length
 			];
 		ctx.fillRect(0, 0, 100, 100);
 
