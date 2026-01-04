@@ -1,0 +1,74 @@
+index.html
+<!DOCTYPE html>
+<html>
+<head>
+  <title>AI Chat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: Arial;
+      background: #0f172a;
+      color: white;
+      padding: 20px;
+    }
+    #chat {
+      max-width: 500px;
+      margin: auto;
+    }
+    input, button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      border-radius: 6px;
+      border: none;
+    }
+    button {
+      background: #38bdf8;
+      font-weight: bold;
+    }
+    .msg {
+      margin: 8px 0;
+    }
+    .user { color: #4ade80; }
+    .ai { color: #60a5fa; }
+  </style>
+</head>
+<body>
+
+<div id="chat">
+  <h2>🤖 AI Chat</h2>
+  <div id="messages"></div>
+
+  <input id="input" placeholder="Type your message..." />
+  <button onclick="send()">Send</button>
+</div>
+
+<script>
+async function send() {
+  const input = document.getElementById("input");
+  const text = input.value;
+  if (!text) return;
+
+  addMessage("You", text, "user");
+  input.value = "";
+
+  const res = await fetch("YOUR_REPLIT_URL/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message: text })
+  });
+
+  const data = await res.json();
+  addMessage("AI", data.reply, "ai");
+}
+
+function addMessage(sender, text, cls) {
+  const div = document.createElement("div");
+  div.className = "msg " + cls;
+  div.innerText = sender + ": " + text;
+  document.getElementById("messages").appendChild(div);
+}
+</script>https://yourusername.github.io/ai-chat-live
+
+</body>
+</html>
