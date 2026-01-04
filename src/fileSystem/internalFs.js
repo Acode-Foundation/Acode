@@ -49,15 +49,12 @@ const internalFs = {
 						{ create, exclusive },
 						(fileEntry) => {
 							fileEntry.createWriter((writer) => {
-								writer.onerror = (err) => reject(err.target.error);
-								// Truncate file to 0 to clear any old content
-								// This prevents trailing garbage when new data is smaller than old data
-								writer.truncate(0);
-								writer.onwriteend = () => {
-									// After truncate completes, write new data
-									writer.onwriteend = (res) => resolve(filename);
+								writer.onerror = (e) => reject(e.target.error);
+								writer.onwrite = () => {
+									writer.onwrite = () => resolve(filename);
 									writer.write(data);
 								};
+								writer.truncate(0);
 							});
 						},
 						reject,
