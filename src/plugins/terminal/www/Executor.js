@@ -47,7 +47,7 @@ class Executor {
             const match = message.match(/^([^:]+):(.*)$/);
             if (match) {
               const prefix = match[1];         // e.g. "stdout"
-              const content = match[2].trim(); // output
+              const content = match[2]; // output
               onData(prefix, content);
             } else {
               onData("unknown", message);
