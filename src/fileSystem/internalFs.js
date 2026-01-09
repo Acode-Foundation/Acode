@@ -48,10 +48,13 @@ const internalFs = {
 						name,
 						{ create, exclusive },
 						(fileEntry) => {
-							fileEntry.createWriter((file) => {
-								file.onwriteend = (res) => resolve(filename);
-								file.onerror = (err) => reject(err.target.error);
-								file.write(data);
+							fileEntry.createWriter((writer) => {
+								writer.onerror = (e) => reject(e.target.error);
+								writer.onwrite = () => {
+									writer.onwrite = () => resolve(filename);
+									writer.write(data);
+								};
+								writer.truncate(0);
 							});
 						},
 						reject,
