@@ -1173,7 +1173,7 @@ export default class EditorFile {
 		const event = createFileEvent(this);
 		this.#emit("run", event);
 		if (event.defaultPrevented) return;
-		run(false, file ? "inapp" : appSettings.value.previewMode, file);
+		run(false, appSettings.value.previewMode, file);
 	}
 
 	#updateTab() {
