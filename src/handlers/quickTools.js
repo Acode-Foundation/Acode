@@ -83,7 +83,12 @@ function setupHistoryNavigation() {
 	// Search input history navigation
 	if ($searchInput.el) {
 		$searchInput.el.addEventListener("keydown", (e) => {
-			if (e.key === "ArrowUp") {
+			if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
+				e.preventDefault();
+				const { editor, activeFile } = editorManager;
+				editor.focus();
+				toggleSearch();
+			} else if (e.key === "ArrowUp") {
 				e.preventDefault();
 				const newValue = searchHistory.navigateSearchUp($searchInput.el.value);
 				$searchInput.el.value = newValue;
