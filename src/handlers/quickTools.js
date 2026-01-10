@@ -83,7 +83,7 @@ function setupHistoryNavigation() {
 	// Search input history navigation
 	if ($searchInput.el) {
 		$searchInput.el.addEventListener("keydown", (e) => {
-			if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+			if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
 				e.preventDefault();
 				const { editor, activeFile } = editorManager;
 				editor.focus();
