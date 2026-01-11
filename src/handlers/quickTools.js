@@ -76,8 +76,6 @@ appSettings.on("update:quicktoolsItems:after", () => {
 	}, 100);
 });
 
-
-
 let historyNavigationInitialized = false;
 // Initialize history navigation
 function setupHistoryNavigation() {
