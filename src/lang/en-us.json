@@ -59,7 +59,6 @@
 	"open file": "Open file",
 	"open files and folders": "Open files and folders",
 	"open folder": "Open folder",
-	"open in terminal": "Open in Terminal",
 	"open recent": "Open recent",
 	"ok": "ok",
 	"overwrite": "Overwrite",
@@ -494,5 +493,6 @@
 	"recent": "Recent Files",
 	"command palette": "Open Command Palette",
 	"change theme": "Change Theme",
-	"documentation": "Documentation"
+	"documentation": "Documentation",
+	"open in terminal": "Open in Terminal"
 }

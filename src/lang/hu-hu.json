@@ -493,5 +493,6 @@
 	"recent": "Legutóbbi fájlok",
 	"command palette": "Parancspaletta megnyitása",
 	"change theme": "Téma módosítása",
-	"documentation": "Dokumentáció"
+	"documentation": "Dokumentáció",
+	"open in terminal": "Open in Terminal"
 }

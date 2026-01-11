@@ -494,5 +494,6 @@
 	"recent": "Recent Files",
 	"command palette": "Open Command Palette",
 	"change theme": "Change Theme",
-	"documentation": "Documentation"
+	"documentation": "Documentation",
+	"open in terminal": "Open in Terminal"
 }
