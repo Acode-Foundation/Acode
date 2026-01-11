@@ -461,6 +461,15 @@ function execOperation(type, action, url, $target, name) {
 				render: true,
 			});
 			if (terminal?.component) {
+				const waitForConnection = () =>
+					new Promise((resolve) => {
+						const check = () =>
+							terminal.component.isConnected
+								? resolve()
+								: setTimeout(check, 50);
+						check();
+					});
+				await waitForConnection();
 				terminal.component.write(`cd ${JSON.stringify(prootPath)}\n`);
 				Sidebar.hide();
 			}
