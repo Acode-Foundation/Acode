@@ -3,6 +3,7 @@ import sidebarApps from "sidebarApps";
 import collapsableList from "components/collapsableList";
 import FileTree from "components/fileTree";
 import Sidebar from "components/sidebar";
+import { TerminalManager } from "components/terminal";
 import tile from "components/tile";
 import toast from "components/toast";
 import alert from "dialogs/alert";
@@ -26,6 +27,39 @@ const isAcodeTerminalPublicSafUri = (value = "") =>
 	value.startsWith("content://com.foxdebug.acode.documents/tree/");
 const isTerminalSafUri = (value = "") =>
 	isTermuxSafUri(value) || isAcodeTerminalPublicSafUri(value);
+
+const getTerminalPaths = () => {
+	const packageName = window.BuildInfo?.packageName || "com.foxdebug.acode";
+	const dataDir = `/data/user/0/${packageName}`;
+	const alpineRoot = `${dataDir}/files/alpine`;
+	const publicDir = `${dataDir}/files/public`;
+	return { alpineRoot, publicDir, dataDir };
+};
+
+const isTerminalAccessiblePath = (url = "") => {
+	if (isAcodeTerminalPublicSafUri(url)) return true;
+	const { alpineRoot, publicDir } = getTerminalPaths();
+	const cleanUrl = url.replace(/^file:\/\//, "");
+	if (cleanUrl.startsWith(alpineRoot) || cleanUrl.startsWith(publicDir)) {
+		return true;
+	}
+	return false;
+};
+
+const convertToProotPath = (url = "") => {
+	const { alpineRoot, publicDir } = getTerminalPaths();
+	if (isAcodeTerminalPublicSafUri(url)) {
+		return "/public";
+	}
+	const cleanUrl = url.replace(/^file:\/\//, "");
+	if (cleanUrl.startsWith(publicDir)) {
+		return cleanUrl.replace(publicDir, "/public");
+	}
+	if (cleanUrl.startsWith(alpineRoot)) {
+		return cleanUrl.replace(alpineRoot, "") || "/";
+	}
+	return cleanUrl;
+};
 
 /**
  * @typedef {import('../components/collapsableList').Collapsible} Collapsible
@@ -311,6 +345,15 @@ async function handleContextmenu(type, url, name, $target) {
 		}
 
 		options.push(NEW_FILE, NEW_FOLDER, OPEN_FOLDER, INSERT_FILE);
+
+		if (isTerminalAccessiblePath(url)) {
+			const OPEN_IN_TERMINAL = [
+				"open-in-terminal",
+				strings["open in terminal"] || "Open in Terminal",
+				"licons terminal",
+			];
+			options.push(OPEN_IN_TERMINAL);
+		}
 	} else if (type === "root") {
 		options = [];
 
@@ -318,7 +361,18 @@ async function handleContextmenu(type, url, name, $target) {
 			options.push(PASTE);
 		}
 
-		options.push(NEW_FILE, NEW_FOLDER, INSERT_FILE, CLOSE_FOLDER);
+		options.push(NEW_FILE, NEW_FOLDER, INSERT_FILE);
+
+		if (isTerminalAccessiblePath(url)) {
+			const OPEN_IN_TERMINAL = [
+				"open-in-terminal",
+				strings["open in terminal"] || "Open in Terminal",
+				"licons terminal",
+			];
+			options.push(OPEN_IN_TERMINAL);
+		}
+
+		options.push(CLOSE_FOLDER);
 	}
 
 	if (clipBoard.action) options.push(CANCEL);
@@ -378,6 +432,9 @@ function execOperation(type, action, url, $target, name) {
 
 		case "install-plugin":
 			return installPlugin();
+
+		case "open-in-terminal":
+			return openInTerminal();
 	}
 
 	async function installPlugin() {
@@ -393,6 +450,23 @@ function execOperation(type, action, url, $target, name) {
 		} catch (error) {
 			helpers.error(error);
 			console.error(error);
+		}
+	}
+
+	async function openInTerminal() {
+		try {
+			const prootPath = convertToProotPath(url);
+			const terminal = await TerminalManager.createTerminal({
+				name: `Terminal - ${name}`,
+				render: true,
+			});
+			if (terminal?.component) {
+				terminal.component.write(`cd ${JSON.stringify(prootPath)}\n`);
+				Sidebar.hide();
+			}
+		} catch (error) {
+			console.error("Failed to open terminal:", error);
+			toast(strings["error"] || "Error");
 		}
 	}
 
