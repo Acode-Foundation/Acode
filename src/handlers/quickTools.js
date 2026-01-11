@@ -76,8 +76,13 @@ appSettings.on("update:quicktoolsItems:after", () => {
 	}, 100);
 });
 
+
+
+let historyNavigationInitialized = false;
 // Initialize history navigation
 function setupHistoryNavigation() {
+	if (historyNavigationInitialized) return;
+	historyNavigationInitialized = true;
 	const { $searchInput, $replaceInput } = quickTools;
 
 	// Search input history navigation
@@ -87,7 +92,7 @@ function setupHistoryNavigation() {
 				e.preventDefault();
 				const { editor, activeFile } = editorManager;
 				editor.focus();
-				toggleSearch();
+				actionStack.get("search-bar")?.action();
 			} else if (e.key === "ArrowUp") {
 				e.preventDefault();
 				const newValue = searchHistory.navigateSearchUp($searchInput.el.value);
