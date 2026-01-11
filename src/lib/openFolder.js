@@ -58,6 +58,7 @@ const convertToProotPath = (url = "") => {
 	if (cleanUrl.startsWith(alpineRoot)) {
 		return cleanUrl.replace(alpineRoot, "") || "/";
 	}
+	console.warn(`Unrecognized path for terminal conversion: ${url}`);
 	return cleanUrl;
 };
 
@@ -461,12 +462,18 @@ function execOperation(type, action, url, $target, name) {
 				render: true,
 			});
 			if (terminal?.component) {
-				const waitForConnection = () =>
-					new Promise((resolve) => {
-						const check = () =>
-							terminal.component.isConnected
-								? resolve()
-								: setTimeout(check, 50);
+				const waitForConnection = (timeoutMs = 5000) =>
+					new Promise((resolve, reject) => {
+						const startTime = Date.now();
+						const check = () => {
+							if (terminal.component.isConnected) {
+								resolve();
+							} else if (Date.now() - startTime > timeoutMs) {
+								reject(new Error("Terminal connection timeout"));
+							} else {
+								setTimeout(check, 50);
+							}
+						};
 						check();
 					});
 				await waitForConnection();
@@ -475,7 +482,8 @@ function execOperation(type, action, url, $target, name) {
 			}
 		} catch (error) {
 			console.error("Failed to open terminal:", error);
-			toast(strings["error"] || "Error");
+			const errorMsg = error.message || "Unknown error occurred";
+			toast(`Failed to open terminal: ${errorMsg}`);
 		}
 	}
 
