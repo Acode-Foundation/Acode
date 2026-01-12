@@ -14,8 +14,8 @@ export async function runAllTests() {
 
 	try {
 		// Run unit tests
-		await runSanityTests();
-		await runAceEditorTests();
+		await runSanityTests(write);
+		await runAceEditorTests(write);
 
 		write("\x1b[36m\x1b[1mTests completed!\x1b[0m\n");
 	} catch (error) {
@@ -200,8 +200,8 @@ class TestRunner {
 
 		line(
 			`  Tests: ${COLORS.BRIGHT}${total}${COLORS.RESET} | ` +
-				`${statusColor}Passed: ${this.passed}${COLORS.RESET} | ` +
-				`${COLORS.RED}Failed: ${this.failed}${COLORS.RESET}`,
+			`${statusColor}Passed: ${this.passed}${COLORS.RESET} | ` +
+			`${COLORS.RED}Failed: ${this.failed}${COLORS.RESET}`,
 			statusColor,
 		);
 
