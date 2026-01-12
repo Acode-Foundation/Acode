@@ -18,15 +18,29 @@ export async function runAceEditorTests(writeOutput) {
 		let editor, container;
 
 		try {
-			({ editor, container } = createEditor());
+			const result = createEditor();
+			editor = result.editor;
+			container = result.container;
 			test.assert(editor != null, "Editor instance should be created");
 			await new Promise((resolve) => setTimeout(resolve, 100));
 			await fn(editor);
 			await new Promise((resolve) => setTimeout(resolve, 200));
+		} catch (error) {
+			// Re-throw to let test runner handle it
+			throw error;
 		} finally {
-			if (editor) editor.destroy();
-			if (container) container.remove();
+			try {
+				if (editor) editor.destroy();
+			} catch (cleanupError) {
+				console.warn("Failed to destroy editor:", cleanupError);
+			}
+			try {
+				if (container && container.parentNode) container.remove();
+			} catch (cleanupError) {
+				console.warn("Failed to remove container:", cleanupError);
+			}
 		}
+	}
 	}
 
 	// Test 1: Ace is available
