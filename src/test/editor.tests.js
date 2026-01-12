@@ -178,7 +178,7 @@ export async function runAceEditorTests(writeOutput) {
 	runner.test("Scroll API", async (test) => {
 		await withEditor(test, async (editor) => {
 			editor.setValue(Array(100).fill("line").join("\n"), -1);
-			editor.scrollToLine(50, true, true, () => { });
+			editor.scrollToLine(50, true, true, () => {});
 
 			const firstVisibleRow = editor.renderer.getFirstVisibleRow();
 			test.assert(firstVisibleRow >= 0);
