@@ -44,8 +44,7 @@ export async function runAceEditorTests(writeOutput) {
 	}
 
 	// Test 1: Ace is available
-	runner.test("Ace is loaded", async (test) => {
-		test.assert(typeof ace !== "undefined", "Ace should be available globally");
+		test.assert(typeof ace === "object" && ace !== null, "Ace should be available globally as an object");
 		test.assert(
 			typeof ace.edit === "function",
 			"ace.edit should be a function",
