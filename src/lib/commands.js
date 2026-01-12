@@ -20,6 +20,7 @@ import findFile from "palettes/findFile";
 import browser from "plugins/browser";
 import help from "settings/helpSettings";
 import mainSettings from "settings/mainSettings";
+import { runAllTests } from "test/tester";
 import { getColorRange } from "utils/color/regex";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
@@ -32,7 +33,6 @@ import run from "./run";
 import saveState from "./saveState";
 import appSettings from "./settings";
 import showFileInfo from "./showFileInfo";
-import { runAllTests } from "test/tester";
 
 export default {
 	async "run-tests"() {

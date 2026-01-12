@@ -704,6 +704,6 @@ export default {
 		description: "Run Tests",
 		key: "Ctrl-T",
 		readOnly: true,
-		action: "run-tests"
-	}
+		action: "run-tests",
+	},
 };
