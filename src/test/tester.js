@@ -1,7 +1,5 @@
-/**
- * Runtime Test Suite for Acode Plugin
- * Tests execute at plugin initialization and print results to terminal
- */
+import { runAceEditorTests } from "./editor.tests";
+import { runSanityTests } from "./sanity.tests";
 
 export async function runAllTests() {
 	const terminal = acode.require("terminal");
@@ -16,8 +14,8 @@ export async function runAllTests() {
 
 	try {
 		// Run unit tests
-		await runSanityTests(write);
-		await runAceEditorTests(write);
+		await runSanityTests();
+		await runAceEditorTests();
 
 		write("\x1b[36m\x1b[1mTests completed!\x1b[0m\n");
 	} catch (error) {

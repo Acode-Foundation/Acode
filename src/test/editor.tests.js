@@ -1,4 +1,4 @@
-import { TestRunner } from "../tester.js";
+import { TestRunner } from "./tester";
 
 export async function runAceEditorTests(writeOutput) {
 	const runner = new TestRunner("Ace Editor API Tests");

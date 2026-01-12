@@ -1,6 +1,3 @@
-import { description } from "components/quickTools/items";
-import actions, { key } from "handlers/quickTools";
-
 export default {
 	focusEditor: {
 		description: "Focus editor",
