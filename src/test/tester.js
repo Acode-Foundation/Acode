@@ -200,8 +200,8 @@ class TestRunner {
 
 		line(
 			`  Tests: ${COLORS.BRIGHT}${total}${COLORS.RESET} | ` +
-			`${statusColor}Passed: ${this.passed}${COLORS.RESET} | ` +
-			`${COLORS.RED}Failed: ${this.failed}${COLORS.RESET}`,
+				`${statusColor}Passed: ${this.passed}${COLORS.RESET} | ` +
+				`${COLORS.RED}Failed: ${this.failed}${COLORS.RESET}`,
 			statusColor,
 		);
 
