@@ -699,7 +699,7 @@ export default {
 	},
 	"run-tests": {
 		description: "Run Tests",
-		key: "Ctrl-T",
+		key: "Ctrl-Shift-T",
 		readOnly: true,
 		action: "run-tests",
 	},
