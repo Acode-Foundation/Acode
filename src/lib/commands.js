@@ -36,7 +36,7 @@ import { runAllTests } from "test/tester";
 
 export default {
 	async "run-tests"() {
-		runAllTests();
+		await runAllTests();
 	},
 	async "close-all-tabs"() {
 		let save = false;
