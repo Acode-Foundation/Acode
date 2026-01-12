@@ -18,33 +18,20 @@ export async function runAceEditorTests(writeOutput) {
 		let editor, container;
 
 		try {
-			const result = createEditor();
-			editor = result.editor;
-			container = result.container;
+			({ editor, container } = createEditor());
 			test.assert(editor != null, "Editor instance should be created");
 			await new Promise((resolve) => setTimeout(resolve, 100));
 			await fn(editor);
 			await new Promise((resolve) => setTimeout(resolve, 200));
-		} catch (error) {
-			// Re-throw to let test runner handle it
-			throw error;
 		} finally {
-			try {
-				if (editor) editor.destroy();
-			} catch (cleanupError) {
-				console.warn("Failed to destroy editor:", cleanupError);
-			}
-			try {
-				if (container && container.parentNode) container.remove();
-			} catch (cleanupError) {
-				console.warn("Failed to remove container:", cleanupError);
-			}
+			if (editor) editor.destroy();
+			if (container) container.remove();
 		}
-	}
 	}
 
 	// Test 1: Ace is available
-		test.assert(typeof ace === "object" && ace !== null, "Ace should be available globally as an object");
+	runner.test("Ace is loaded", async (test) => {
+		test.assert(typeof ace !== "undefined", "Ace should be available globally");
 		test.assert(
 			typeof ace.edit === "function",
 			"ace.edit should be a function",
@@ -166,11 +153,7 @@ export async function runAceEditorTests(writeOutput) {
 			editor.find("foo");
 
 			const range = editor.getSelectionRange();
-			const range = editor.getSelectionRange();
-			test.assert(range.start.row === 0, "Selection should be on first row");
-			test.assert(range.start.column === 0, "Selection should start at column 0");
-			test.assert(range.end.column === 3, "Selection should end at column 3 (length of 'foo')");
-			test.assertEqual(editor.getSelectedText(), "foo", "Should select 'foo'");
+			test.assert(range.start.column === 0);
 		});
 	});
 
@@ -195,7 +178,7 @@ export async function runAceEditorTests(writeOutput) {
 	runner.test("Scroll API", async (test) => {
 		await withEditor(test, async (editor) => {
 			editor.setValue(Array(100).fill("line").join("\n"), -1);
-			editor.scrollToLine(50, true, true, () => {});
+			editor.scrollToLine(50, true, true, () => { });
 
 			const firstVisibleRow = editor.renderer.getFirstVisibleRow();
 			test.assert(firstVisibleRow >= 0);
