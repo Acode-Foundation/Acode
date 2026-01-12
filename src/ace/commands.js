@@ -357,6 +357,14 @@ const commands = [
 		},
 		readOnly: true,
 	},
+	{
+		name: "run-tests",
+		description: "Run Tests",
+		exec() {
+			acode.exec("run-tests");
+		},
+		readOnly: true,
+	},
 ];
 
 export function setCommands(editor) {

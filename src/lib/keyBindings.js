@@ -697,7 +697,7 @@ export default {
 		readOnly: true,
 		action: "new-terminal",
 	},
-	runTests: {
+	"run-tests": {
 		description: "Run Tests",
 		key: "Ctrl-T",
 		readOnly: true,

@@ -160,7 +160,7 @@ class TestRunner {
 			const stopSpinner = startSpinner(writeOutput, `Running ${test.name}...`);
 
 			try {
-				await delay(500);
+				await delay(300);
 
 				await this._runWithTimeout(test.fn, this, 3000);
 
@@ -200,8 +200,8 @@ class TestRunner {
 
 		line(
 			`  Tests: ${COLORS.BRIGHT}${total}${COLORS.RESET} | ` +
-			`${statusColor}Passed: ${this.passed}${COLORS.RESET} | ` +
-			`${COLORS.RED}Failed: ${this.failed}${COLORS.RESET}`,
+				`${statusColor}Passed: ${this.passed}${COLORS.RESET} | ` +
+				`${COLORS.RED}Failed: ${this.failed}${COLORS.RESET}`,
 			statusColor,
 		);
 
