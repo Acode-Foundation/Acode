@@ -167,7 +167,11 @@ export async function runAceEditorTests(writeOutput) {
 			editor.find("foo");
 
 			const range = editor.getSelectionRange();
-			test.assert(range.start.column === 0);
+			const range = editor.getSelectionRange();
+			test.assert(range.start.row === 0, "Selection should be on first row");
+			test.assert(range.start.column === 0, "Selection should start at column 0");
+			test.assert(range.end.column === 3, "Selection should end at column 3 (length of 'foo')");
+			test.assertEqual(editor.getSelectedText(), "foo", "Should select 'foo'");
 		});
 	});
 
