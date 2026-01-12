@@ -11,7 +11,7 @@ export async function runAceEditorTests(writeOutput) {
         container = document.createElement('div');
         container.style.width = '500px';
         container.style.height = '300px';
-        container.style.backgroundColor = '#a02f2fff';
+        container.style.backgroundColor = '#a02f2f';
         document.body.appendChild(container);
         return ace.edit(container);
     }
