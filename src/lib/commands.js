@@ -32,8 +32,12 @@ import run from "./run";
 import saveState from "./saveState";
 import appSettings from "./settings";
 import showFileInfo from "./showFileInfo";
+import { runAllTests } from "test/tester";
 
 export default {
+	async "run-tests"() {
+		runAllTests();
+	},
 	async "close-all-tabs"() {
 		let save = false;
 		const unsavedFiles = editorManager.files.filter(

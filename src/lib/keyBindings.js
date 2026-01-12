@@ -1,3 +1,6 @@
+import { description } from "components/quickTools/items";
+import actions, { key } from "handlers/quickTools";
+
 export default {
 	focusEditor: {
 		description: "Focus editor",
@@ -697,4 +700,10 @@ export default {
 		readOnly: true,
 		action: "new-terminal",
 	},
+	runTests: {
+		description: "Run Tests",
+		key: "Ctrl-T",
+		readOnly: true,
+		actions: "run-tests"
+	}
 };
