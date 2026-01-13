@@ -89,6 +89,7 @@ import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.provider.DocumentsContract;
 import android.provider.Settings;
 
 import androidx.core.content.ContextCompat;
@@ -681,11 +682,43 @@ public class System extends CordovaPlugin {
                 Path path = file.toPath();
                 fileContent = new String(Files.readAllBytes(path), charset);
 
-            } else {
-                // Handle content:// URIs
+            } else if ("content".equalsIgnoreCase(uri.getScheme())) {
+                // Handle content:// URIs (including SAF tree URIs)
                 InputStream inputStream = null;
                 try {
-                    inputStream = context.getContentResolver().openInputStream(uri);
+                    String uriString = fileUri;
+                    Uri resolvedUri = uri;
+                    
+                    // Check if this is a SAF tree URI with :: separator
+                    if (uriString.contains("::")) {
+                        try {
+                            // Split into tree URI and document ID
+                            String[] parts = uriString.split("::", 2);
+                            String treeUriStr = parts[0];
+                            String docId = parts[1];
+                            
+                            // Convert to proper document URI using DocumentsContract
+                            Uri treeUri = Uri.parse(treeUriStr);
+                            String treeDocId = DocumentsContract.getTreeDocumentId(treeUri);
+                            Uri baseUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, treeDocId);
+                            resolvedUri = DocumentsContract.buildDocumentUriUsingTree(baseUri, docId);
+                        } catch (Exception e) {
+                            callback.error("SAF_FALLBACK: Invalid SAF URI format - " + e.getMessage());
+                            return;
+                        }
+                    } else if (uriString.contains("/tree/")) {
+                        // Regular tree URI without :: separator
+                        try {
+                            String treeDocId = DocumentsContract.getTreeDocumentId(uri);
+                            resolvedUri = DocumentsContract.buildDocumentUriUsingTree(uri, treeDocId);
+                        } catch (Exception e) {
+                            // Not a valid tree URI, use as-is
+                            resolvedUri = uri;
+                        }
+                    }
+                    
+                    // Try to open the resolved URI
+                    inputStream = context.getContentResolver().openInputStream(resolvedUri);
                     
                     if (inputStream == null) {
                         callback.error("Cannot open file");
@@ -710,6 +743,9 @@ public class System extends CordovaPlugin {
                         } catch (IOException ignored) {}
                     }
                 }
+            } else {
+                callback.error("Unsupported URI scheme: " + uri.getScheme());
+                return;
             }
 
             // check length first 

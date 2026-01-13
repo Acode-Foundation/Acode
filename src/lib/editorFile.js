@@ -612,39 +612,55 @@ export default class EditorFile {
 		const protocol = Url.getProtocol(this.#uri);
 		const text = this.session.getValue();
 
+		// Helper for JS-based comparison (used as fallback)
+		const jsCompare = async (fileUri) => {
+			const fs = fsOperation(fileUri);
+			const oldText = await fs.readFile(this.encoding);
+			return await system.compareTexts(oldText, text);
+		};
+
 		if (/s?ftp:/.test(protocol)) {
-			// if file is a ftp or sftp file, get file content from cached file.
-			// remove ':' from protocol because cache file of remote files are
-			// stored as ftp102525465N i.e. protocol + id
-			// Cache files are local file:// URIs, so native file reading works
+			// FTP/SFTP files use cached local file
 			const cacheFilename = protocol.slice(0, -1) + this.id;
 			const cacheFileUri = Url.join(CACHE_STORAGE, cacheFilename);
 
 			try {
 				return await system.compareFileText(cacheFileUri, this.encoding, text);
 			} catch (error) {
-				console.error("Native compareFileText failed:", error);
-				return false;
+				console.error(
+					"Native compareFileText failed, using JS fallback:",
+					error,
+				);
+				try {
+					return await jsCompare(cacheFileUri);
+				} catch (fallbackError) {
+					console.error(fallbackError);
+					return false;
+				}
 			}
 		}
 
 		if (/^(file|content):/.test(protocol)) {
-			// file:// and content:// URIs can be handled by native Android code
-			// Native reads file AND compares in background thread
+			// file:// and content:// URIs - try native first, fallback to JS
 			try {
 				return await system.compareFileText(this.uri, this.encoding, text);
 			} catch (error) {
-				console.error("Native compareFileText failed:", error);
-				return false;
+				console.error(
+					"Native compareFileText failed, using JS fallback:",
+					error,
+				);
+				try {
+					return await jsCompare(this.uri);
+				} catch (fallbackError) {
+					console.error(fallbackError);
+					return false;
+				}
 			}
 		}
 
+		// Other protocols - JS reads file, native compares strings
 		try {
-			const fs = fsOperation(this.uri);
-			const oldText = await fs.readFile(this.encoding);
-
-			// Offload string comparison to background thread
-			return await system.compareTexts(oldText, text);
+			return await jsCompare(this.uri);
 		} catch (error) {
 			console.error(error);
 			return false;
