@@ -1,5 +1,8 @@
-import { runAceEditorTests } from "./editor.tests";
+
+import { runExecutorTests } from "./exec.tests";
 import { runSanityTests } from "./sanity.tests";
+import { runAceEditorTests } from "./editor.tests";
+
 
 export async function runAllTests() {
 	const terminal = acode.require("terminal");
