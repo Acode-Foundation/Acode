@@ -697,23 +697,12 @@ public class System extends CordovaPlugin {
                             String treeUriStr = parts[0];
                             String docId = parts[1];
                             
-                            // Convert to proper document URI using DocumentsContract
+                            // Build document URI directly from tree URI and document ID
                             Uri treeUri = Uri.parse(treeUriStr);
-                            String treeDocId = DocumentsContract.getTreeDocumentId(treeUri);
-                            Uri baseUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, treeDocId);
-                            resolvedUri = DocumentsContract.buildDocumentUriUsingTree(baseUri, docId);
+                            resolvedUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, docId);
                         } catch (Exception e) {
                             callback.error("SAF_FALLBACK: Invalid SAF URI format - " + e.getMessage());
                             return;
-                        }
-                    } else if (uriString.contains("/tree/")) {
-                        // Regular tree URI without :: separator
-                        try {
-                            String treeDocId = DocumentsContract.getTreeDocumentId(uri);
-                            resolvedUri = DocumentsContract.buildDocumentUriUsingTree(uri, treeDocId);
-                        } catch (Exception e) {
-                            // Not a valid tree URI, use as-is
-                            resolvedUri = uri;
                         }
                     }
                     
