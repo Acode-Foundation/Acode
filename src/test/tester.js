@@ -16,6 +16,7 @@ export async function runAllTests() {
 		// Run unit tests
 		await runSanityTests(write);
 		await runAceEditorTests(write);
+		await runExecutorTests(write);
 
 		write("\x1b[36m\x1b[1mTests completed!\x1b[0m\n");
 	} catch (error) {
@@ -80,6 +81,7 @@ class TestRunner {
 		this.passed = 0;
 		this.failed = 0;
 		this.results = [];
+		this.skipped = 0;
 	}
 
 	/**
@@ -103,6 +105,11 @@ class TestRunner {
 			throw new Error(message || `Expected ${expected}, got ${actual}`);
 		}
 	}
+
+	skip(reason = "Skipped") {
+		throw new SkipTest(reason);
+	}
+
 
 	async _runWithTimeout(fn, ctx, timeoutMs) {
 		return new Promise((resolve, reject) => {
@@ -161,32 +168,52 @@ class TestRunner {
 
 			try {
 				await delay(200);
-
 				await this._runWithTimeout(test.fn, this, 3000);
 
 				stopSpinner();
 
 				this.passed++;
-				this.results.push({ name: test.name, status: "PASS", error: null });
+				this.results.push({ name: test.name, status: "PASS" });
 				line(`  ${COLORS.GREEN}✓${COLORS.RESET} ${test.name}`, COLORS.GREEN);
+
 			} catch (error) {
 				stopSpinner();
 
-				this.failed++;
-				this.results.push({
-					name: test.name,
-					status: "FAIL",
-					error: error.message,
-				});
-				line(
-					`  ${COLORS.RED}✗${COLORS.RESET} ${test.name}`,
-					COLORS.RED + COLORS.BRIGHT,
-				);
-				line(
-					`     ${COLORS.DIM}└─ ${error.message}${COLORS.RESET}`,
-					COLORS.RED + COLORS.DIM,
-				);
+				if (error instanceof SkipTest) {
+					this.skipped++;
+					this.results.push({
+						name: test.name,
+						status: "SKIP",
+						reason: error.message,
+					});
+
+					line(
+						`  ${COLORS.YELLOW}?${COLORS.RESET} ${test.name}`,
+						COLORS.YELLOW + COLORS.BRIGHT,
+					);
+					line(
+						`     ${COLORS.DIM}└─ ${error.message}${COLORS.RESET}`,
+						COLORS.YELLOW + COLORS.DIM,
+					);
+				} else {
+					this.failed++;
+					this.results.push({
+						name: test.name,
+						status: "FAIL",
+						error: error.message,
+					});
+
+					line(
+						`  ${COLORS.RED}✗${COLORS.RESET} ${test.name}`,
+						COLORS.RED + COLORS.BRIGHT,
+					);
+					line(
+						`     ${COLORS.DIM}└─ ${error.message}${COLORS.RESET}`,
+						COLORS.RED + COLORS.DIM,
+					);
+				}
 			}
+
 		}
 
 		// Summary
@@ -194,15 +221,20 @@ class TestRunner {
 		line("─────────────────────────────────────────────", COLORS.GRAY);
 
 		const total = this.tests.length;
-		const percentage = total ? ((this.passed / total) * 100).toFixed(1) : "0.0";
+		const effectiveTotal = total - this.skipped;
+
+		const percentage = effectiveTotal
+			? ((this.passed / effectiveTotal) * 100).toFixed(1)
+			: "0.0";
+
 
 		const statusColor = this.failed === 0 ? COLORS.GREEN : COLORS.YELLOW;
 
 		line(
 			`  Tests: ${COLORS.BRIGHT}${total}${COLORS.RESET} | ` +
-				`${statusColor}Passed: ${this.passed}${COLORS.RESET} | ` +
-				`${COLORS.RED}Failed: ${this.failed}${COLORS.RESET}`,
-			statusColor,
+			`${COLORS.GREEN}Passed: ${this.passed}${COLORS.RESET} | ` +
+			`${COLORS.YELLOW}Skipped: ${this.skipped}${COLORS.RESET} | ` +
+			`${COLORS.RED}Failed: ${this.failed}${COLORS.RESET}`,
 		);
 
 		line(
@@ -225,5 +257,14 @@ class TestRunner {
 		);
 	}
 }
+
+
+class SkipTest extends Error {
+	constructor(message = "Skipped") {
+		super(message);
+		this.name = "SkipTest";
+	}
+}
+
 
 export { TestRunner };
