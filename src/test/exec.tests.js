@@ -52,12 +52,12 @@ export async function runExecutorTests(writeOutput) {
     runner.test("start() (BackgroundExecutor)", async (test) => {
         let stdout = "";
 
-        const uuid = await Executor.start("sh", (type, data) => {
+        const uuid = await Executor.BackgroundExecutor.start("sh", (type, data) => {
             if (type === "stdout") stdout += data;
         });
 
-        await Executor.write(uuid, "echo hello\n");
-        await Executor.stop(uuid);
+        await Executor.BackgroundExecutor.write(uuid, "echo hello\n");
+        await Executor.BackgroundExecutor.stop(uuid);
 
         await new Promise(r => setTimeout(r, 200));
 
