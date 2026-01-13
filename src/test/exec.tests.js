@@ -97,7 +97,7 @@ export async function runExecutorTests(writeOutput) {
     runner.test("start/stop() (BackgroundExecutor)", async (test) => {
         let stdout = "";
 
-        const uuid = await Executor.start("sh", (type, data) => {
+        const uuid = await Executor.BackgroundExecutor.start("sh", (type, data) => {
 
         });
 
@@ -105,7 +105,7 @@ export async function runExecutorTests(writeOutput) {
 
 
 
-        const isRunning = await Executor.isRunning(uuid);
+        const isRunning = await Executor.BackgroundExecutor.isRunning(uuid);
 
         test.assert(isRunning === true, "Executor must be running");
 
@@ -113,13 +113,13 @@ export async function runExecutorTests(writeOutput) {
         await new Promise(r => setTimeout(r, 200));
 
 
-        await Executor.stop(uuid);
+        await Executor.BackgroundExecutor.stop(uuid);
 
         await new Promise(r => setTimeout(r, 200));
 
 
-        test.assert(isRunning !== await Executor.isRunning(uuid), "Executor must be stopped");
-        test.assert(await Executor.isRunning(uuid) === false, "Executor must be stopped");
+        test.assert(isRunning !== await Executor.BackgroundExecutor.isRunning(uuid), "Executor must be stopped");
+        test.assert(await Executor.BackgroundExecutor.isRunning(uuid) === false, "Executor must be stopped");
 
     });
 
