@@ -89,8 +89,6 @@ export async function runExecutorTests(writeOutput) {
 
         await new Promise(r => setTimeout(r, 200));
 
-
-        test.assert(isRunning !== await Executor.isRunning(uuid), "Executor must be stopped");
         test.assert(await Executor.isRunning(uuid) === false, "Executor must be stopped");
 
     });
@@ -152,8 +150,6 @@ export async function runExecutorTests(writeOutput) {
 
         await new Promise(r => setTimeout(r, 200));
 
-
-        test.assert(isRunning !== await Executor.isRunning(uuid), "Executor must be stopped");
         test.assert(await Executor.isRunning(uuid) === false, "Executor must be stopped");
 
     });
