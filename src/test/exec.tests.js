@@ -40,7 +40,7 @@ export async function runExecutorTests(writeOutput) {
         });
 
         await Executor.write(uuid, "echo hello\n");
-
+        await new Promise(r => setTimeout(r, 200));
         await Executor.stop(uuid);
 
         await new Promise(r => setTimeout(r, 200));
@@ -57,6 +57,7 @@ export async function runExecutorTests(writeOutput) {
         });
 
         await Executor.BackgroundExecutor.write(uuid, "echo hello\n");
+        await new Promise(r => setTimeout(r, 200));
         await Executor.BackgroundExecutor.stop(uuid);
 
         await new Promise(r => setTimeout(r, 200));
