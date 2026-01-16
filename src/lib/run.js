@@ -258,7 +258,15 @@ async function run(
 
 			// Handle extensionless URLs (e.g., "about" -> "about.html" or "about/index.html")
 			if (!ext && pathName) {
-				// Try path.html first
+				// Try exact match first for extensionless files (LICENSE, README, etc.)
+				const exactUrl = Url.join(pathName, reqPath);
+				const exactFs = fsOperation(exactUrl);
+				if (await exactFs.exists()) {
+					sendFile(exactUrl, reqId);
+					return;
+				}
+
+				// Try path.html
 				const htmlUrl = Url.join(pathName, reqPath + ".html");
 				const htmlFile = editorManager.getFile(htmlUrl, "uri");
 				if (htmlFile?.loaded && htmlFile.isUnsaved) {
