@@ -15,7 +15,7 @@ export async function runExecutorTests(writeOutput) {
     runner.test("execute()", async (test) => {
 
         test.assert(
-            await Executor.execute("echo test123").includes("test123"),
+            (await Executor.execute("echo test123")).includes("test123"),
             "Command output should match"
         );
 
@@ -26,7 +26,7 @@ export async function runExecutorTests(writeOutput) {
     runner.test("execute() (BackgroundExecutor)", async (test) => {
 
         test.assert(
-            await Executor.BackgroundExecutor.execute("echo test123").includes("test123"),
+            (await Executor.BackgroundExecutor.execute("echo test123")).includes("test123"),
             "Command output should match"
         );
 

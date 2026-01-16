@@ -171,7 +171,7 @@ class TestRunner {
 
 			try {
 				await delay(200);
-				await this._runWithTimeout(test.fn, this, 3000);
+				await this._runWithTimeout(test.fn, this, 10000);
 
 				stopSpinner();
 

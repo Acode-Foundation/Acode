@@ -263,11 +263,24 @@ public class TerminalService extends Service {
         }
     }
 
-    private void isProcessRunning(String pid, Messenger clientMessenger) {
-        Process process = processes.get(pid);
-        String status = process != null && ProcessUtils.isAlive(process) ? "running" : "not_found";
-        sendMessageToClient(pid, "isRunning", status);
+   private void isProcessRunning(String pid, Messenger clientMessenger) {
+    boolean running =
+        processes.containsKey(pid) &&
+        ProcessUtils.isAlive(processes.get(pid));
+
+    try {
+        Message reply = Message.obtain();
+        Bundle bundle = new Bundle();
+        bundle.putString("id", pid);
+        bundle.putString("action", "isRunning");
+        bundle.putString("data", running ? "running" : "stopped");
+        reply.setData(bundle);
+        clientMessenger.send(reply);
+    } catch (RemoteException e) {
+        // nothing else to do
     }
+}
+
 
     private void cleanup(String id) {
         processes.remove(id);
