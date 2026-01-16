@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+platforms/
+plugins/
+www/css/build/
+www/js/build/
+
+# IDE
+.vscode/
+.idea/
+
+# Git
+.git/
+.gitignore
+
+# Misc
+*.log
+*.apk
+*.aab
+.DS_Store
+Thumbs.db
