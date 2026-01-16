@@ -1,8 +1,6 @@
-
+import { runAceEditorTests } from "./editor.tests";
 import { runExecutorTests } from "./exec.tests";
 import { runSanityTests } from "./sanity.tests";
-import { runAceEditorTests } from "./editor.tests";
-
 
 export async function runAllTests() {
 	const terminal = acode.require("terminal");
@@ -113,7 +111,6 @@ class TestRunner {
 		throw new SkipTest(reason);
 	}
 
-
 	async _runWithTimeout(fn, ctx, timeoutMs) {
 		return new Promise((resolve, reject) => {
 			let finished = false;
@@ -178,7 +175,6 @@ class TestRunner {
 				this.passed++;
 				this.results.push({ name: test.name, status: "PASS" });
 				line(`  ${COLORS.GREEN}✓${COLORS.RESET} ${test.name}`, COLORS.GREEN);
-
 			} catch (error) {
 				stopSpinner();
 
@@ -216,7 +212,6 @@ class TestRunner {
 					);
 				}
 			}
-
 		}
 
 		// Summary
@@ -230,14 +225,13 @@ class TestRunner {
 			? ((this.passed / effectiveTotal) * 100).toFixed(1)
 			: "0.0";
 
-
 		const statusColor = this.failed === 0 ? COLORS.GREEN : COLORS.YELLOW;
 
 		line(
 			`  Tests: ${COLORS.BRIGHT}${total}${COLORS.RESET} | ` +
-			`${COLORS.GREEN}Passed: ${this.passed}${COLORS.RESET} | ` +
-			`${COLORS.YELLOW}Skipped: ${this.skipped}${COLORS.RESET} | ` +
-			`${COLORS.RED}Failed: ${this.failed}${COLORS.RESET}`,
+				`${COLORS.GREEN}Passed: ${this.passed}${COLORS.RESET} | ` +
+				`${COLORS.YELLOW}Skipped: ${this.skipped}${COLORS.RESET} | ` +
+				`${COLORS.RED}Failed: ${this.failed}${COLORS.RESET}`,
 		);
 
 		line(
@@ -261,13 +255,11 @@ class TestRunner {
 	}
 }
 
-
 class SkipTest extends Error {
 	constructor(message = "Skipped") {
 		super(message);
 		this.name = "SkipTest";
 	}
 }
-
 
 export { TestRunner };
