@@ -15,7 +15,7 @@
       "jdkDistro": "ms",
       "gradleVersion": "latest",
       "mavenVersion": "none",
-    },
+      "mavenVersion": "none"
     "ghcr.io/nordcominc/devcontainer-features/android-sdk:1": {
       "platform": "35",
       "build_tools": "35.0.0",
