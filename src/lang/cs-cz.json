@@ -488,11 +488,11 @@
 	"backup invalid plugins": "Neplatný formát instalovaných pluginů",
 	"issues found": "Nalezené problémy",
 	"error details": "Podrobnosti o chybě",
-	"active tools": "Active tools",
-	"available tools": "Available tools",
-	"recent": "Recent Files",
-	"command palette": "Open Command Palette",
-	"change theme": "Change Theme",
-	"documentation": "Documentation",
-	"open in terminal": "Open in Terminal"
+	"active tools": "Aktivní nástroje",
+	"available tools": "Dostupné nástroje",
+	"recent": "Nedávné soubory",
+	"command palette": "Otevřít paletu příkazů",
+	"change theme": "Změnit motiv",
+	"documentation": "Dokumentace",
+	"open in terminal": "Otevřít v terminálu"
 }
