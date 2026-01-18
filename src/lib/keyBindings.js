@@ -703,4 +703,10 @@ export default {
 		readOnly: true,
 		action: "run-tests",
 	},
+	toggleInspector: {
+		description: "Toggle Inspector",
+		key: "Ctrl-Shift-I",
+		readOnly: true,
+		action: "toggle-inspector",
+	},
 };

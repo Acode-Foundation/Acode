@@ -78,6 +78,12 @@ export default function otherSettings() {
 			select: [appSettings.CONSOLE_LEGACY, appSettings.CONSOLE_ERUDA],
 		},
 		{
+			key: "developerMode",
+			text: strings["developer mode"],
+			checkbox: values.developerMode,
+			info: strings["info-developerMode"],
+		},
+		{
 			key: "cleanInstallState",
 			text: strings["clean install state"],
 		},
@@ -247,6 +253,30 @@ export default function otherSettings() {
 				} catch (error) {
 					helpers.error(error);
 				}
+				break;
+			}
+
+			case "developerMode": {
+				if (value) {
+					const devTools = (await import("lib/devTools")).default;
+					try {
+						await devTools.init(true);
+						toast(
+							strings["developer mode enabled"] ||
+								"Developer mode enabled. Use command palette to toggle inspector.",
+						);
+					} catch (error) {
+						helpers.error(error);
+						value = false;
+					}
+				} else {
+					const devTools = (await import("lib/devTools")).default;
+					devTools.destroy();
+					toast(
+						strings["developer mode disabled"] || "Developer mode disabled",
+					);
+				}
+				break;
 			}
 
 			case "cleanInstallState": {

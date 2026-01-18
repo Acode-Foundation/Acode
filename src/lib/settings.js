@@ -177,6 +177,7 @@ class Settings {
 			showSideButtons: true,
 			showAnnotations: false,
 			pluginsDisabled: {}, // pluginId: true/false
+			developerMode: false,
 		};
 		this.value = structuredClone(this.#defaultSettings);
 	}

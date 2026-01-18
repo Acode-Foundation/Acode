@@ -219,6 +219,15 @@ async function onDeviceReady() {
 	acode.setLoadingMessage("Loading language...");
 	await lang.set(settings.value.lang);
 
+	if (settings.value.developerMode) {
+		try {
+			const devTools = (await import("lib/devTools")).default;
+			await devTools.init(false);
+		} catch (error) {
+			console.error("Failed to initialize developer tools", error);
+		}
+	}
+
 	try {
 		await loadApp();
 	} catch (error) {

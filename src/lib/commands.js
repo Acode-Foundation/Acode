@@ -487,4 +487,12 @@ Additional Info:
 	welcome() {
 		openWelcomeTab();
 	},
+	async "toggle-inspector"() {
+		const devTools = (await import("lib/devTools")).default;
+		devTools.toggle();
+	},
+	async "open-inspector"() {
+		const devTools = (await import("lib/devTools")).default;
+		devTools.show();
+	},
 };

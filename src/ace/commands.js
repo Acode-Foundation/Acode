@@ -365,6 +365,22 @@ const commands = [
 		},
 		readOnly: true,
 	},
+	{
+		name: "dev:toggleInspector",
+		description: "Toggle Inspector",
+		exec() {
+			acode.exec("toggle-inspector");
+		},
+		readOnly: true,
+	},
+	{
+		name: "dev:openInspector",
+		description: "Open Inspector",
+		exec() {
+			acode.exec("open-inspector");
+		},
+		readOnly: true,
+	},
 ];
 
 export function setCommands(editor) {
