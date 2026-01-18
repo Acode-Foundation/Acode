@@ -494,5 +494,9 @@
 	"command palette": "Parancspaletta megnyitása",
 	"change theme": "Téma módosítása",
 	"documentation": "Dokumentáció",
-	"open in terminal": "Megnyitás terminálban"
+	"open in terminal": "Megnyitás terminálban",
+	"developer mode": "Developer Mode",
+	"info-developermode": "Enable developer tools (Eruda) for debugging plugins and inspecting app state. Inspector will be initialized on app start.",
+	"developer mode enabled": "Developer mode enabled. Use command palette to toggle inspector (Ctrl+Shift+I).",
+	"developer mode disabled": "Developer mode disabled"
 }

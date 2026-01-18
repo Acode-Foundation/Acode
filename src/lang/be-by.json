@@ -495,5 +495,9 @@
 	"command palette": "Open Command Palette",
 	"change theme": "Change Theme",
 	"documentation": "Documentation",
-	"open in terminal": "Open in Terminal"
+	"open in terminal": "Open in Terminal",
+	"developer mode": "Developer Mode",
+	"info-developermode": "Enable developer tools (Eruda) for debugging plugins and inspecting app state. Inspector will be initialized on app start.",
+	"developer mode enabled": "Developer mode enabled. Use command palette to toggle inspector (Ctrl+Shift+I).",
+	"developer mode disabled": "Developer mode disabled"
 }
