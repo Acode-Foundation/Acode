@@ -81,7 +81,7 @@ export default function otherSettings() {
 			key: "developerMode",
 			text: strings["developer mode"],
 			checkbox: values.developerMode,
-			info: strings["info-developerMode"],
+			info: strings["info-developermode"],
 		},
 		{
 			key: "cleanInstallState",
