@@ -397,7 +397,7 @@
 	"show side buttons": "Show side buttons",
 	"bug_report": "Надіслати звіт про помилку",
 	"verified publisher": "Verified publisher",
-	"most_downloaded": "Найпопулярніші завантаження",
+    "most_downloaded": "Найбільш завантажувані",
 	"newly_added": "Нещодавно додані",
 	"top_rated": "Top Rated",
 	"rename not supported": "Rename on termux dir isn't supported",
