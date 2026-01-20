@@ -326,7 +326,7 @@
 	"owned": "Owned",
 	"api_error": "API server down, please try after some time.",
 	"installed": "Встановлено",
-	"all": "Все",
+    "all": "Усі",
 	"medium": "Medium",
 	"refund": "Refund",
 	"product not available": "Product not available",
