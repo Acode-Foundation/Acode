@@ -240,7 +240,7 @@
 	"no plugins found": "Плагіни не знайдені",
 	"name": "Ім'я",
 	"username": "Ім'я користувача",
-	"optional": "опціонально",
+    "optional": "Опціонально",
 	"hostname": "Ім'я хоста",
 	"password": "Пароль",
 	"security type": "Тип безпеки",
