@@ -22,6 +22,7 @@ const THEME_IDENTIFIERS = new Set([
 	"moonlight",
 	"bluloco",
 	"acode.plugin.extra_syntax_highlights",
+	"documentsviewer",
 ]);
 
 export const onPluginLoadCallback = Symbol("onPluginLoadCallback");
