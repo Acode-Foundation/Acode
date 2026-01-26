@@ -1,39 +1,83 @@
-name: CI
+name: CI/CD Pipeline
 
 on:
   push:
+    branches: [main, master, develop]
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.txt'
+      - '**/.gitignore'
   pull_request:
+    branches: [main, master]
+  workflow_dispatch:  # 允許手動觸發
+    inputs:
+      environment:
+        description: '部署環境'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+      skip-tests:
+        description: '跳過測試'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  NODE_VERSION: '20.x'
+  PNPM_VERSION: '8.x'
 
 jobs:
+  # ==================== 代碼質量檢查 ====================
   spell-check:
     timeout-minutes: 5
     name: Check spelling
     runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[skip spell]') }}
 
     steps:
       - name: Checkout Actions Repository
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Check spelling
-        uses: crate-ci/typos@master
+        uses: crate-ci/typos@v1.26.4
         with:
           config: ./_typos.toml
 
   quality:
-    timeout-minutes: 5
+    timeout-minutes: 10
     name: Linting and formatting
     runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[skip lint]') }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Setup Biome
         uses: biomejs/setup-biome@v2
+        with:
+          version: latest
 
       - name: Run Biome
-        run: biome ci .
+        run: biome ci --error-on-warnings .
 
+      - name: Upload Biome report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: biome-report
+          path: |
+            biome.json
+            biome-check.md
+
+  # ==================== 翻譯檢查 ====================
   translation-check:
     name: Translation Check (On PR Only)
     timeout-minutes: 5
@@ -42,13 +86,18 @@ jobs:
       contents: read
       pull-requests: read
     if: github.event_name == 'pull_request'
+    
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
       - name: Use Node.js
         uses: actions/setup-node@v5
         with:
-          cache: npm
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
           cache-dependency-path: '**/package-lock.json'
 
       - name: Detect Changed Files
@@ -60,8 +109,292 @@ jobs:
             translation:
               - 'src/lang/*.json'
           token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Translation Files Check (if changed)
         if: steps.file-changes.outputs.translation == 'true'
         run: |
-            npm ci --no-audit --no-fund
-            npm run lang check
+          npm ci --no-audit --no-fund
+          npm run lang check
+
+  # ==================== 測試套件 ====================
+  test:
+    name: Run Tests
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    needs: [quality, spell-check]
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+        os: [ubuntu-latest]
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[skip tests]') }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Run unit tests
+        run: npm test -- --coverage
+
+      - name: Run integration tests
+        run: npm run test:integration
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.node-version }}
+          path: |
+            coverage/
+            test-results/
+
+  # ==================== 構建檢查 ====================
+  build:
+    name: Build and Bundle
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    needs: [test]
+    strategy:
+      matrix:
+        environment: [development, staging, production]
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build for ${{ matrix.environment }}
+        env:
+          NODE_ENV: ${{ matrix.environment }}
+          VITE_ENVIRONMENT: ${{ matrix.environment }}
+        run: npm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.environment }}
+          path: |
+            dist/
+            build/
+          retention-days: 7
+
+  # ==================== 安全掃描 ====================
+  security:
+    name: Security Scan
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Run dependency audit
+        run: npm audit --audit-level=moderate
+
+      - name: Run Snyk security scan
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  # ==================== 容器構建 ====================
+  docker:
+    name: Build Docker Image
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/ai-automation:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/ai-automation:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+  # ==================== 部署到 Cloudflare ====================
+  deploy-cloudflare:
+    name: Deploy to Cloudflare
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
+    needs: [docker, security]
+    environment: 
+      name: ${{ github.event.inputs.environment || 'production' }}
+      url: https://ai-automation.company.com
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install Wrangler
+        run: npm install -g wrangler
+
+      - name: Setup environment variables
+        run: |
+          echo "SYSTEM_VERSION=v7.0" >> $GITHUB_ENV
+          echo "ENVIRONMENT=${{ github.event.inputs.environment || 'production' }}" >> $GITHUB_ENV
+          echo "DEPLOYMENT_REGIONS=us-east-1,eu-central-1,ap-southeast-1" >> $GITHUB_ENV
+
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy
+          environment: ${{ github.event.inputs.environment || 'production' }}
+          secrets: |
+            CLOUDFLARE_API_KEY
+            GROK_API_KEY
+            OPENAI_API_KEY
+            GITHUB_TOKEN
+            JWT_SECRET
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: "ai-automation-v7"
+          directory: "./dist"
+          branch: main
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Post-deployment smoke test
+        run: |
+          echo "Running smoke tests..."
+          curl -f https://ai-automation.company.com/health
+          curl -f https://ai-automation.company.com/api/version
+
+      - name: Send deployment notification
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: repo,message,commit,author,action,eventName,ref,workflow
+          channel: '#deployments'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # ==================== 環境清理 ====================
+  cleanup:
+    name: Cleanup
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [deploy-cloudflare, test, build]
+
+    steps:
+      - name: Delete old artifacts
+        uses: c-hive/gha-remove-artifacts@v1
+        with:
+          age: '7 days'
+          skip-tags: true
+
+      - name: Cleanup Docker images
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          docker system prune -f --filter "until=24h"
+
+      - name: Post cleanup notification
+        if: always()
+        run: |
+          echo "Cleanup completed at $(date)"
+
+# ==================== 工作流程結論 ====================
+conclusion:
+  success:
+    if: ${{ always() && (contains(needs.*.result, 'success') || contains(needs.*.result, 'skipped')) }}
+    description: 'CI/CD 管道執行成功'
+  failure:
+    if: ${{ contains(needs.*.result, 'failure') }}
+    description: 'CI/CD 管道執行失敗'
+  cancelled:
+    if: ${{ cancelled() }}
+    description: 'CI/CD 管道被取消'concurrency:
+      # .env.example (範例檔案，不包含真實數據)
+# 請複製為 .env 並填入真實值
+
+# ==================== 支付配置 ====================
+PAYMENT_ENABLED=true
+DEFAULT_PAYMENT_METHOD=bank_transfer
+
+# Visa 支付（加密儲存）
+VISA_CARD_NUMBER=
+VISA_CARD_HOLDER=
+VISA_CARD_EXPIRY=
+VISA_CARD_CVV=
+VISA_ENCRYPTION_KEY=${ENCRYPTION_KEY}
+
+# 聯邦銀行帳戶
+FEDERAL_BANK_CODE=803
+FEDERAL_BANK_ACCOUNT=
+FEDERAL_BANK_SWIFT=
+FEDERAL_BANK_BRANCH=
+
+# 支付網關
+PAYMENT_GATEWAY_URL=https://api.payment-gateway.com/v1
+PAYMENT_GATEWAY_API_KEY=
+PAYMENT_WEBHOOK_SECRET=
+
+# 交易限制
+DAILY_TRANSACTION_LIMIT=100000
+SINGLE_TRANSACTION_LIMIT=50000
+CURRENCY=TWD
