@@ -1,105 +1,548 @@
-name: On Demand Preview Releases for PR
-#  avoids paths like .md, and anything in .github folder
-on:
-  pull_request_target:
-    paths-ignore:
-      - '!*.md'
-#      - '.github/**'
-    types: [labeled, synchronize]
+{
+  "fund_management": {
+    "primary_account": {
+      "bank_name": "聯邦銀行",
+      "bank_code": "803",
+      "account_number": "061-50-7123481",
+      "account_type": "企業主帳戶",
+      "purpose": "主要資金流通與分潤",
+      "daily_limit": 1000000,
+      "monthly_limit": 10000000
+    },
+    "payment_methods": {
+      "visa_card": {
+        "type": "Visa商務卡",
+        "number": "4213-7800-5670-0836",
+        "holder": "企業帳戶",
+        "purpose": "直接支付/緊急支出",
+        "credit_limit": 200000,
+        "daily_limit": 50000
+      },
+      "digital_wallets": [
+        {
+          "platform": "Line Pay",
+          "account": "企業帳號",
+          "daily_limit": 100000
+        },
+        {
+          "platform": "街口支付",
+          "account": "企業帳號", 
+          "daily_limit": 100000
+        }
+      ]
+    },
+    "backup_accounts": [
+      {
+        "bank_name": "備用銀行",
+        "purpose": "風險分散"
+      }
+    ]
+  }
+}// src/components/FundDashboard.vue
+<template>
+  <div class="fund-dashboard">
+    <!-- 即時資金概況 -->
+    <div class="real-time-overview">
+      <h2>💰 即時資金概況</h2>
+      <div class="cards">
+        <div class="card balance">
+          <h3>主帳戶餘額</h3>
+          <div class="amount">TWD {{ formatCurrency(balance) }}</div>
+          <div class="trend" :class="balanceTrend">
+            <span>{{ balanceChange }}%</span>
+          </div>
+        </div>
+        
+        <div class="card available">
+          <h3>可用資金</h3>
+          <div class="amount">TWD {{ formatCurrency(availableFunds) }}</div>
+          <div class="progress">
+            <div class="progress-bar" :style="{ width: utilizationRate + '%' }"></div>
+          </div>
+          <div class="utilization">利用率: {{ utilizationRate }}%</div>
+        </div>
+        
+        <div class="card pending">
+          <h3>待處理交易</h3>
+          <div class="amount">TWD {{ formatCurrency(pendingTransactions) }}</div>
+          <div class="count">{{ pendingCount }} 筆</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 分潤分配 -->
+    <div class="profit-sharing">
+      <h2>🎯 分潤分配（A-E五類）</h2>
+      <div class="distribution-chart">
+        <div class="category a">
+          <div class="label">A類 (40%)</div>
+          <div class="bar" :style="{ height: categoryA.percentage + '%' }">
+            <div class="amount">TWD {{ formatCurrency(categoryA.amount) }}</div>
+          </div>
+          <div class="status">{{ categoryA.status }}</div>
+        </div>
+        <!-- B-E類類似 -->
+      </div>
+      
+      <div class="distribution-table">
+        <table>
+          <thead>
+            <tr>
+              <th>類別</th>
+              <th>比例</th>
+              <th>金額</th>
+              <th>狀態</th>
+              <th>下次分配</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="category in categories" :key="category.id">
+              <td>{{ category.name }}</td>
+              <td>{{ category.percentage }}%</td>
+              <td>TWD {{ formatCurrency(category.amount) }}</td>
+              <td>
+                <span :class="['status', category.status]">
+                  {{ category.statusText }}
+                </span>
+              </td>
+              <td>{{ category.nextDistribution }}</td>
+              <td>
+                <button @click="viewCategoryDetails(category.id)">
+                  詳情
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    
+    <!-- 交易記錄 -->
+    <div class="transaction-history">
+      <h2>📋 近期交易記錄</h2>
+      <div class="filters">
+        <select v-model="filterType">
+          <option value="all">所有交易</option>
+          <option value="income">收入</option>
+          <option value="expense">支出</option>
+          <option value="transfer">轉帳</option>
+        </select>
+        <input type="date" v-model="startDate">
+        <input type="date" v-model="endDate">
+        <button @click="exportTransactions">匯出CSV</button>
+      </div>
+      
+      <div class="transactions">
+        <div v-for="transaction in filteredTransactions" :key="transaction.id" 
+             class="transaction" :class="transaction.type">
+          <div class="date">{{ formatDate(transaction.date) }}</div>
+          <div class="description">{{ transaction.description }}</div>
+          <div class="category">{{ transaction.category }}</div>
+          <div class="amount" :class="transaction.type">
+            {{ transaction.type === 'income' ? '+' : '-' }}
+            TWD {{ formatCurrency(transaction.amount) }}
+          </div>
+          <div class="balance">餘額: TWD {{ formatCurrency(transaction.balance) }}</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 資金預測 -->
+    <div class="forecast">
+      <h2>🔮 資金流預測</h2>
+      <div class="chart-container">
+        <canvas ref="forecastChart"></canvas>
+      </div>
+      <div class="forecast-summary">
+        <div class="item">
+          <div class="label">30天預測餘額</div>
+          <div class="value">TWD {{ formatCurrency(forecast.balance30d) }}</div>
+        </div>
+        <div class="item">
+          <div class="label">預計收入</div>
+          <div class="value">TWD {{ formatCurrency(forecast.estimatedIncome) }}</div>
+        </div>
+        <div class="item">
+          <div class="label">預計支出</div>
+          <div class="value">TWD {{ formatCurrency(forecast.estimatedExpenses) }}</div>
+        </div>
+        <div class="item warning" v-if="forecast.warning">
+          <div class="label">⚠️ 資金預警</div>
+          <div class="value">{{ forecast.warningMessage }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
 
-# defined at workflow-level as the workflow, Requires these permissions to function.
-permissions:
-  contents: write
-  pull-requests: write
-  # All Pull Requests are issues, but not all issues are Pull Requests (like GitHub says 🙃)
-  issues: write
+<script>
+import { ref, computed, onMounted } from 'vue'
+import axios from 'axios'
+import Chart from 'chart.js/auto'
 
-concurrency:
-  # Allow only one workflow per any non-`main` branch.
-  group: ${{ github.workflow }}-${{ github.ref_name }}-${{ github.ref_name == 'main' && github.sha || 'anysha' }}
-  cancel-in-progress: true
+export default {
+  name: 'FundDashboard',
+  
+  setup() {
+    // 響應式數據
+    const balance = ref(0)
+    const availableFunds = ref(0)
+    const pendingTransactions = ref(0)
+    const categories = ref([])
+    const transactions = ref([])
+    const forecast = ref({})
+    
+    // 計算屬性
+    const utilizationRate = computed(() => {
+      if (balance.value === 0) return 0
+      return Math.round(((balance.value - availableFunds.value) / balance.value) * 100)
+    })
+    
+    const filteredTransactions = computed(() => {
+      return transactions.value.filter(t => {
+        const matchesType = filterType.value === 'all' || t.type === filterType.value
+        const matchesDate = (!startDate.value || t.date >= startDate.value) && 
+                           (!endDate.value || t.date <= endDate.value)
+        return matchesType && matchesDate
+      })
+    })
+    
+    // 方法
+    const fetchFinancialData = async () => {
+      try {
+        const response = await axios.get('/api/financial/overview')
+        balance.value = response.data.balance
+        availableFunds.value = response.data.available
+        pendingTransactions.value = response.data.pending
+        categories.value = response.data.categories
+        transactions.value = response.data.transactions
+        forecast.value = response.data.forecast
+      } catch (error) {
+        console.error('獲取財務數據失敗:', error)
+      }
+    }
+    
+    const formatCurrency = (amount) => {
+      return new Intl.NumberFormat('zh-TW').format(amount)
+    }
+    
+    const formatDate = (dateString) => {
+      return new Date(dateString).toLocaleDateString('zh-TW')
+    }
+    
+    const exportTransactions = () => {
+      const csv = transactionsToCSV(filteredTransactions.value)
+      downloadCSV(csv, 'transactions.csv')
+    }
+    
+    // 初始化圖表
+    const initForecastChart = () => {
+      const ctx = document.getElementById('forecastChart')
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: forecast.value.labels,
+          datasets: [
+            {
+              label: '預測餘額',
+              data: forecast.value.balances,
+              borderColor: '#4CAF50',
+              backgroundColor: 'rgba(76, 175, 80, 0.1)'
+            },
+            {
+              label: '預計收入',
+              data: forecast.value.incomes,
+              borderColor: '#2196F3',
+              backgroundColor: 'rgba(33, 150, 243, 0.1)'
+            },
+            {
+              label: '預計支出',
+              data: forecast.value.expenses,
+              borderColor: '#F44336',
+              backgroundColor: 'rgba(244, 67, 54, 0.1)'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: {
+              position: 'top'
+            }
+          }
+        }
+      })
+    }
+    
+    // 生命週期
+    onMounted(() => {
+      fetchFinancialData()
+      setInterval(fetchFinancialData, 300000) // 每5分鐘更新
+    })
+    
+    return {
+      balance,
+      availableFunds,
+      pendingTransactions,
+      categories,
+      transactions,
+      forecast,
+      utilizationRate,
+      filteredTransactions,
+      fetchFinancialData,
+      formatCurrency,
+      formatDate,
+      exportTransactions,
+      initForecastChart
+    }
+  }
+}
+</script>{
+  "fund_management": {
+    "primary_account": {
+      "bank_name": "聯邦銀行",
+      "bank_code": "803",
+      "account_number": "061-50-7123481",
+      "account_type": "企業主帳戶",
+      "purpose": "主要資金流通與分潤",
+      "daily_limit": 1000000,
+      "monthly_limit": 10000000
+    },
+    "payment_methods": {
+      "visa_card": {
+        "type": "Visa商務卡",
+        "number": "4213-7800-5670-0836",
+        "holder": "企業帳戶",
+        "purpose": "直接支付/緊急支出",
+        "credit_limit": 200000,
+        "daily_limit": 50000
+      },
+      "digital_wallets": [
+        {
+          "platform": "Line Pay",
+          "account": "企業帳號",
+          "daily_limit": 100000
+        },
+        {
+          "platform": "街口支付",
+          "account": "企業帳號", 
+          "daily_limit": 100000
+        }
+      ]
+    },
+    "backup_accounts": [
+      {
+        "bank_name": "備用銀行",
+        "purpose": "風險分散"
+      }
+    ]
+  }
+}# security/fund-security.yml
+security_policies:
+  authentication:
+    multi_factor: true
+    biometric_auth: true
+    session_timeout: 900  # 15分鐘
+    
+  authorization:
+    role_based_access:
+      viewer: ["read_balance"]
+      operator: ["read_balance", "initiate_transfer"]
+      manager: ["read_balance", "initiate_transfer", "approve_transfer"]
+      admin: ["all_permissions"]
+    
+    transfer_limits:
+      daily: 1000000
+      per_transaction: 500000
+      manager_approval_threshold: 200000
+      admin_approval_threshold: 500000
+  
+  monitoring:
+    real_time_alerts:
+      - large_transaction: "> 100000"
+      - unusual_pattern: "檢測異常交易模式"
+      - multiple_failed_attempts: "3次以上失敗嘗試"
+    
+    audit_logging:
+      enabled: true
+      retention_days: 3650  # 10年
+      fields_logged:
+        - user_id
+        - action
+        - amount
+        - timestamp
+        - ip_address
+        - device_info
+  
+  encryption:
+    data_at_rest: "AES-256"
+    data_in_transit: "TLS 1.3"
+    key_rotation: "90天"
+    hardware_security_module: true# bot/fund_notification_bot.py
+import asyncio
+import json
+from datetime import datetime
+import aiohttp
+from typing import Dict, List, Optional
 
-jobs:
-  job_trigger:
-    name: Trigger Preview Release (if conditions met)
-    if: |
-        github.event.pull_request.draft == false
-        && (github.repository_owner == 'Acode-Foundation'
-        && (!contains(github.event.pull_request.labels.*.name, 'DO NOT PREVIEW RELEASE') 
-        && (contains(github.event.pull_request.labels.*.name, 'Bypass check - PREVIEW RELEASE') 
-        || contains(github.event.pull_request.labels.*.name, 'CI: RUN ON-DEMAND PREVIEW RELEASES')))
-        )
-
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          clean: false
-          fetch-depth: 0
-          persist-credentials: false
-          # Checkout pull request HEAD commit instead of merge commit
-          ref: ${{ github.event.pull_request.head.sha }}
-
-      - name: Remove Manually added PR Label
-        if: |
-          contains(github.event.pull_request.labels.*.name, 'CI: RUN ON-DEMAND PREVIEW RELEASES')
-
-        run: gh pr edit $PR --remove-label "$labels"
-        env:
-           PR: ${{ github.event.pull_request.number }}
-           labels: 'CI: RUN ON-DEMAND PREVIEW RELEASES'
-           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Add comment to PR
-        uses: marocchino/sticky-pull-request-comment@v2
-        with:
-          hide_and_recreate: true
-          hide_classify: "OUTDATED"
-          header: on-demand-build-status
-          message: |
-            ⚒️ Starting a workflow to build, Your On-Demand Preview Release/build for ${{ github.event.pull_request.html_url || github.event.pull_request.url }}.
+class FundNotificationBot:
+    def __init__(self, config_path: str = "config/fund_bot.json"):
+        """初始化資金通知機器人"""
+        with open(config_path, 'r') as f:
+            self.config = json.load(f)
+        
+        self.bank_api = self.config['bank_api']
+        self.notification_channels = self.config['notification_channels']
+        self.rules = self.config['notification_rules']
+        
+    async def monitor_funds(self):
+        """監控資金狀態"""
+        while True:
+            try:
+                # 獲取即時數據
+                balance = await self.get_current_balance()
+                transactions = await self.get_recent_transactions()
+                alerts = await self.check_alerts(balance, transactions)
+                
+                if alerts:
+                    await self.send_notifications(alerts)
+                
+                # 每5分鐘檢查一次
+                await asyncio.sleep(300)
+                
+            except Exception as e:
+                print(f"監控錯誤: {e}")
+                await asyncio.sleep(60)  # 錯誤時等待1分鐘
+    
+    async def check_alerts(self, balance: float, transactions: List[Dict]) -> List[Dict]:
+        """檢查警報條件"""
+        alerts = []
+        
+        # 餘額低於閾值
+        if balance < self.rules['low_balance_threshold']:
+            alerts.append({
+                'type': 'low_balance',
+                'message': f'⚠️ 餘額低於警戒線: TWD {balance:,}',
+                'priority': 'high'
+            })
+        
+        # 大額交易警報
+        large_transactions = [
+            t for t in transactions 
+            if t['amount'] > self.rules['large_transaction_threshold']
+        ]
+        
+        for transaction in large_transactions:
+            alerts.append({
+                'type': 'large_transaction',
+                'message': f'💰 大額交易: TWD {transaction["amount"]:,} - {transaction["description"]}',
+                'priority': 'medium'
+            })
+        
+        # 異常交易模式
+        if await self.detect_anomaly_pattern(transactions):
+            alerts.append({
+                'type': 'anomaly_pattern',
+                'message': '🚨 檢測到異常交易模式',
+                'priority': 'critical'
+            })
+        
+        return alerts
+    
+    async def send_notifications(self, alerts: List[Dict]):
+        """發送通知到各渠道"""
+        for alert in alerts:
+            # 發送到Telegram
+            if 'telegram' in self.notification_channels:
+                await self.send_telegram(alert)
             
-            status: **\`🟡 in_progress\`**
+            # 發送到Slack
+            if 'slack' in self.notification_channels:
+                await self.send_slack(alert)
             
-            Kindly wait, this message may be updated with success or failure status.
+            # 發送郵件
+            if 'email' in self.notification_channels:
+                await self.send_email(alert)
             
-            For Owners: Please [Click here to view that github actions](https://github.com/${{ github.repository}}/actions/runs/${{ github.run_id }})/
-
-        env:
-          PR: ${{ github.event.pull_request.number }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  trigger_builder:
-      needs: job_trigger
-      secrets: inherit
-      uses: Acode-Foundation/acode/.github/workflows/nightly-build.yml@main
-      with:
-        is_PR: true
-        PR_NUMBER: ${{ github.event.pull_request.number }}
-        skip_tagging_and_releases: true
-
-  update_Last_Comment:
-      needs: [job_trigger,trigger_builder]
-      runs-on: ubuntu-latest
-      if: ${{ github.repository_owner == 'Acode-Foundation' && always() && contains(fromJSON('["failure","cancelled"]'), needs.trigger_builder.result) }}
-      steps:
-#        - name: Checkout code
-#          uses: actions/checkout@v4
-#          with:
-#            clean: false
-#            fetch-depth: 0
-
-        - name: Update Last Comment by bot (if Workflow Triggering failed)
-          uses: marocchino/sticky-pull-request-comment@v2
-          with:
-             hide_and_recreate: true
-             hide_classify: "OUTDATED"
-             header: on-demand-build-status
-             message: |
-                   🔴 (Workflow Trigger stopped), Your On-Demand Preview Release/build for ${{ github.event.pull_request.html_url || github.event.pull_request.url }}.
-                   status: **${{ needs.trigger_builder.result || 'failure'}}**         
-               
-                   ---
-                   For Owners: Please [Click here to view that github actions](https://github.com/${{ github.repository}}/actions/runs/${{ github.run_id }})
+            # 緊急情況發送簡訊
+            if alert['priority'] == 'critical':
+                await self.send_sms(alert)
+    
+    async def send_telegram(self, alert: Dict):
+        """發送Telegram通知"""
+        message = f"""
+🔔 資金警報
+類型: {alert['type']}
+訊息: {alert['message']}
+時間: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+        """
+        
+        async with aiohttp.ClientSession() as session:
+            await session.post(
+                f"https://api.telegram.org/bot{self.config['telegram_bot_token']}/sendMessage",
+                json={
+                    'chat_id': self.config['telegram_chat_id'],
+                    'text': message,
+                    'parse_mode': 'HTML'
+                }
+            )
+    
+    async def send_slack(self, alert: Dict):
+        """發送Slack通知"""
+        color_map = {
+            'critical': '#ff0000',
+            'high': '#ff9900',
+            'medium': '#ffff00',
+            'low': '#00ff00'
+        }
+        
+        payload = {
+            "attachments": [{
+                "color": color_map.get(alert['priority'], '#cccccc'),
+                "title": f"資金警報: {alert['type']}",
+                "text": alert['message'],
+                "fields": [
+                    {
+                        "title": "優先級",
+                        "value": alert['priority'],
+                        "short": True
+                    },
+                    {
+                        "title": "時間",
+                        "value": datetime.now().strftime('%H:%M:%S'),
+                        "short": True
+                    }
+                ],
+                "footer": "AAEC v8.0 資金管理系統"
+            }]
+        }
+        
+        async with aiohttp.ClientSession() as session:
+            await session.post(
+                self.config['slack_webhook_url'],
+                json=payload
+            )
+    
+    async def generate_daily_report(self):
+        """生成每日報告"""
+        report = {
+            'date': datetime.now().strftime('%Y-%m-%d'),
+            'start_balance': await self.get_start_of_day_balance(),
+            'end_balance': await self.get_current_balance(),
+            'total_income': await self.get_daily_income(),
+            'total_expenses': await self.get_daily_expenses(),
+            'transactions_count': await self.get_daily_transactions_count(),
+            'profit_sharing': await self.calculate_daily_profits(),
+            'alerts_today': self.todays_alerts
+        }
+        
+        # 保存報告
+        report_filename = f"reports/daily-{datetime.now().strftime('%Y%m%d')}.json"
+        with open(report_filename, 'w') as f:
+            json.dump(report, f, indent=2)
+        
+        # 發送報告
+        await self.send_report(report)
+        
+        return report
