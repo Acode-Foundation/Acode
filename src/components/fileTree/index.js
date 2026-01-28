@@ -5,7 +5,7 @@ import tag from "html-tag-js";
 import helpers from "utils/helpers";
 import Path from "utils/Path";
 
-const VIRTUALIZATION_THRESHOLD = 100;
+const VIRTUALIZATION_THRESHOLD = Number.POSITIVE_INFINITY; // FIX: temporary due to some scrolling issues in VirtualList
 const ITEM_HEIGHT = 30;
 
 /**
