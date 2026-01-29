@@ -155,5 +155,44 @@ module.exports = {
   },
   getGlobalSetting: function (key, onSuccess, onFail) {
     cordova.exec(onSuccess, onFail, 'System', 'get-global-setting', [key]);
+  },
+  /**
+   * Compare file content with provided text in a background thread.
+   * @param {string} fileUri - The URI of the file to read
+   * @param {string} encoding - The character encoding to use
+   * @param {string} currentText - The text to compare against
+   * @returns {Promise<boolean>} - Resolves to true if content differs, false if same
+   */
+  compareFileText: function (fileUri, encoding, currentText) {
+    return new Promise((resolve, reject) => {
+      cordova.exec(
+        function(result) {
+          resolve(result === 1);
+        },
+        reject,
+        'System',
+        'compare-file-text',
+        [fileUri, encoding, currentText]
+      );
+    });
+  },
+  /**
+   * Compare two text strings in a background thread.
+   * @param {string} text1 - First text to compare
+   * @param {string} text2 - Second text to compare
+   * @returns {Promise<boolean>} - Resolves to true if texts differ, false if same
+   */
+  compareTexts: function (text1, text2) {
+    return new Promise((resolve, reject) => {
+      cordova.exec(
+        function(result) {
+          resolve(result === 1);
+        },
+        reject,
+        'System',
+        'compare-texts',
+        [text1, text2]
+      );
+    });
   }
 };

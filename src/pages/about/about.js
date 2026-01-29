@@ -3,6 +3,7 @@ import Logo from "components/logo";
 import Page from "components/page";
 import Reactive from "html-tag-js/reactive";
 import actionStack from "lib/actionStack";
+import constants from "lib/constants";
 import helpers from "utils/helpers";
 
 export default function AboutInclude() {
@@ -41,22 +42,22 @@ export default function AboutInclude() {
 						<div className="info-item-subtext">{webviewPackageName}</div>
 					</div>
 				</a>
-				<a href="https://acode.app" className="info-item">
+				<a href={constants.WEBSITE_URL} className="info-item">
 					<div className="info-item-icon">
 						<span className="icon acode"></span>
 					</div>
 					<div className="info-item-text">
 						Official webpage
-						<div className="info-item-subtext">https://acode.app</div>
+						<div className="info-item-subtext">{constants.WEBSITE_URL}</div>
 					</div>
 				</a>
-				<a href="https://foxbiz.io" className="info-item">
+				<a href={constants.FOXBIZ_URL} className="info-item">
 					<div className="info-item-icon">
 						<span className="icon foxbiz"></span>
 					</div>
 					<div className="info-item-text">
 						Foxbiz Software Pvt. Ltd.
-						<div className="info-item-subtext">https://www.foxbiz.io</div>
+						<div className="info-item-subtext">{constants.FOXBIZ_URL}</div>
 					</div>
 				</a>
 			</div>
@@ -68,34 +69,31 @@ export default function AboutInclude() {
 					</div>
 					Mail
 				</a>
-				<a href="https://x.com/foxbiz_io" className="social-link">
+				<a href={constants.TWITTER_URL} className="social-link">
 					<div className="social-icon">
 						<span className="icon twitter"></span>
 					</div>
 					Twitter
 				</a>
-				<a href="https://www.instagram.com/foxbiz.io/" className="social-link">
+				<a href={constants.INSTAGRAM_URL} className="social-link">
 					<div className="social-icon">
 						<span className="icon instagram"></span>
 					</div>
 					Instagram
 				</a>
-				<a
-					href="https://github.com/Acode-Foundation/Acode"
-					className="social-link"
-				>
+				<a href={constants.GITHUB_URL} className="social-link">
 					<div className="social-icon">
 						<span className="icon github"></span>
 					</div>
 					GitHub
 				</a>
-				<a href="https://t.me/foxdebug_acode" className="social-link">
+				<a href={constants.TELEGRAM_URL} className="social-link">
 					<div className="social-icon">
 						<span className="icon telegram"></span>
 					</div>
 					Telegram
 				</a>
-				<a href="https://discord.gg/nDqZsh7Rqz" className="social-link">
+				<a href={constants.DISCORD_URL} className="social-link">
 					<div className="social-icon">
 						<span className="icon discord"></span>
 					</div>

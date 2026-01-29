@@ -29,6 +29,12 @@ import EditorFile from "lib/editorFile";
 import files from "lib/fileList";
 import fileTypeHandler from "lib/fileTypeHandler";
 import fonts from "lib/fonts";
+import {
+	BROKEN_PLUGINS,
+	LOADED_PLUGINS,
+	onPluginLoadCallback,
+	onPluginsLoadCompleteCallback,
+} from "lib/loadPlugins";
 import NotificationManager from "lib/notificationManager";
 import openFolder, { addedFolder } from "lib/openFolder";
 import projects from "lib/projects";
@@ -44,6 +50,9 @@ import helpers from "utils/helpers";
 import KeyboardEvent from "utils/keyboardEvent";
 import Url from "utils/Url";
 import constants from "./constants";
+
+const { Fold } = ace.require("ace/edit_session/fold");
+const { Range } = ace.require("ace/range");
 
 export default class Acode {
 	#modules = {};
@@ -62,6 +71,21 @@ export default class Acode {
 			},
 		},
 	];
+	#pluginWatchers = {};
+
+	/**
+	 * Clear a plugin's broken mark (so it can be retried)
+	 * @param {string} pluginId
+	 */
+	clearBrokenPluginMark(pluginId) {
+		try {
+			if (BROKEN_PLUGINS.has(pluginId)) {
+				BROKEN_PLUGINS.delete(pluginId);
+			}
+		} catch (e) {
+			console.warn("Failed to clear broken plugin mark:", e);
+		}
+	}
 
 	constructor() {
 		const encodingsModule = {
@@ -285,116 +309,144 @@ export default class Acode {
 	 */
 	installPlugin(pluginId, installerPluginName) {
 		return new Promise((resolve, reject) => {
-			confirm(
-				strings.install,
-				`Do you want to install plugin '${pluginId}'${installerPluginName ? ` requested by ${installerPluginName}` : ""}?`,
-			)
-				.then((confirmation) => {
-					if (!confirmation) {
-						reject(new Error("User cancelled installation"));
+			fsOperation(Url.join(PLUGIN_DIR, pluginId))
+				.exists()
+				.then((isPluginExists) => {
+					if (isPluginExists) {
+						reject(new Error("Plugin already installed"));
 						return;
 					}
 
-					fsOperation(Url.join(PLUGIN_DIR, pluginId))
-						.exists()
-						.then((isPluginExists) => {
-							if (isPluginExists) {
-								reject(new Error("Plugin already installed"));
-								return;
-							}
+					confirm(
+						strings.install,
+						`Do you want to install plugin '${pluginId}'${installerPluginName ? ` requested by ${installerPluginName}` : ""}?`,
+					).then((confirmation) => {
+						if (!confirmation) {
+							reject(new Error("User cancelled installation"));
+							return;
+						}
 
-							let purchaseToken;
-							let product;
-							const pluginUrl = Url.join(
-								constants.API_BASE,
-								`plugin/${pluginId}`,
-							);
-							fsOperation(pluginUrl)
-								.readFile("json")
-								.catch(() => {
-									reject(new Error("Failed to fetch plugin details"));
-									return null;
-								})
-								.then((remotePlugin) => {
-									if (remotePlugin) {
-										const isPaid = remotePlugin.price > 0;
-										helpers
-											.promisify(iap.getProducts, [remotePlugin.sku])
-											.then((products) => {
-												[product] = products;
-												if (product) {
-													return getPurchase(product.productId);
-												}
-												return null;
-											})
-											.then((purchase) => {
-												purchaseToken = purchase?.purchaseToken;
+						let purchaseToken;
+						let product;
+						const pluginUrl = Url.join(
+							constants.API_BASE,
+							`plugin/${pluginId}`,
+						);
+						fsOperation(pluginUrl)
+							.readFile("json")
+							.catch(() => {
+								reject(new Error("Failed to fetch plugin details"));
+								return null;
+							})
+							.then((remotePlugin) => {
+								if (remotePlugin) {
+									const isPaid = remotePlugin.price > 0;
+									helpers
+										.promisify(iap.getProducts, [remotePlugin.sku])
+										.then((products) => {
+											[product] = products;
+											if (product) {
+												return getPurchase(product.productId);
+											}
+											return null;
+										})
+										.then((purchase) => {
+											purchaseToken = purchase?.purchaseToken;
 
-												if (isPaid && !purchaseToken) {
-													if (!product) throw new Error("Product not found");
-													return helpers.checkAPIStatus().then((apiStatus) => {
-														if (!apiStatus) {
-															alert(strings.error, strings.api_error);
-															return;
-														}
+											if (isPaid && !purchaseToken) {
+												if (!product) throw new Error("Product not found");
+												return helpers.checkAPIStatus().then((apiStatus) => {
+													if (!apiStatus) {
+														alert(strings.error, strings.api_error);
+														return;
+													}
 
-														iap.setPurchaseUpdatedListener(
-															...purchaseListener(onpurchase, onerror),
-														);
-														return helpers.promisify(
-															iap.purchase,
-															product.productId,
-														);
+													iap.setPurchaseUpdatedListener(
+														...purchaseListener(onpurchase, onerror),
+													);
+													return helpers.promisify(
+														iap.purchase,
+														product.productId,
+													);
+												});
+											}
+										})
+										.then(() => {
+											import("lib/installPlugin").then(
+												({ default: installPlugin }) => {
+													installPlugin(
+														pluginId,
+														remotePlugin.name,
+														purchaseToken,
+													).then(() => {
+														resolve();
 													});
-												}
-											})
-											.then(() => {
-												import("lib/installPlugin").then(
-													({ default: installPlugin }) => {
-														installPlugin(
-															pluginId,
-															remotePlugin.name,
-															purchaseToken,
-														).then(() => {
-															resolve();
-														});
-													},
-												);
-											});
-
-										async function onpurchase(e) {
-											const purchase = await getPurchase(product.productId);
-											await ajax.post(
-												Url.join(constants.API_BASE, "plugin/order"),
-												{
-													data: {
-														id: remotePlugin.id,
-														token: purchase?.purchaseToken,
-														package: BuildInfo.packageName,
-													},
 												},
 											);
-											purchaseToken = purchase?.purchaseToken;
-										}
+										});
 
-										async function onerror(error) {
-											throw error;
-										}
+									async function onpurchase(e) {
+										const purchase = await getPurchase(product.productId);
+										await ajax.post(
+											Url.join(constants.API_BASE, "plugin/order"),
+											{
+												data: {
+													id: remotePlugin.id,
+													token: purchase?.purchaseToken,
+													package: BuildInfo.packageName,
+												},
+											},
+										);
+										purchaseToken = purchase?.purchaseToken;
 									}
-								});
 
-							async function getPurchase(sku) {
-								const purchases = await helpers.promisify(iap.getPurchases);
-								const purchase = purchases.find((p) =>
-									p.productIds.includes(sku),
-								);
-								return purchase;
-							}
-						});
+									async function onerror(error) {
+										throw error;
+									}
+								}
+							});
+
+						async function getPurchase(sku) {
+							const purchases = await helpers.promisify(iap.getPurchases);
+							const purchase = purchases.find((p) =>
+								p.productIds.includes(sku),
+							);
+							return purchase;
+						}
+					});
 				})
 				.catch((error) => {
 					reject(error);
 				});
+		});
+	}
+
+	[onPluginLoadCallback](pluginId) {
+		if (this.#pluginWatchers[pluginId]) {
+			this.#pluginWatchers[pluginId].resolve();
+			delete this.#pluginWatchers[pluginId];
+		}
+	}
+
+	[onPluginsLoadCompleteCallback]() {
+		for (const pluginId in this.#pluginWatchers) {
+			this.#pluginWatchers[pluginId].reject(
+				new Error(`Plugin '${pluginId}' failed to load.`),
+			);
+		}
+		this.#pluginWatchers = {};
+	}
+
+	waitForPlugin(pluginId) {
+		return new Promise((resolve, reject) => {
+			if (LOADED_PLUGINS.has(pluginId)) {
+				return resolve(true);
+			}
+
+			this.#pluginWatchers[pluginId] = {
+				resolve,
+				reject,
+			};
 		});
 	}
 
@@ -475,19 +527,28 @@ export default class Acode {
 
 	async format(selectIfNull = true) {
 		const file = editorManager.activeFile;
+		if (!file?.session) return;
+
 		const name = (file.session.getMode().$id || "").split("/").pop();
 		const formatterId = appSettings.value.formatter[name];
 		const formatter = this.#formatter.find(({ id }) => id === formatterId);
 
-		await formatter?.format();
-
-		if (!formatter && selectIfNull) {
+		if (!formatter) {
+			if (!selectIfNull) {
+				toast(strings["please select a formatter"]);
+				return;
+			}
 			formatterSettings(name);
 			this.#afterSelectFormatter(name);
 			return;
 		}
-		if (!formatter && !selectIfNull) {
-			toast(strings["please select a formatter"]);
+
+		const foldsSnapshot = this.#captureFoldState(file.session);
+
+		try {
+			await formatter.format();
+		} finally {
+			this.#restoreFoldState(file.session, foldsSnapshot);
 		}
 	}
 
@@ -504,6 +565,77 @@ export default class Acode {
 
 	fsOperation(file) {
 		return fsOperation(file);
+	}
+
+	#captureFoldState(session) {
+		if (!session?.getAllFolds) return null;
+		return this.#serializeFolds(session.getAllFolds());
+	}
+
+	#restoreFoldState(session, folds) {
+		if (!session || !Array.isArray(folds) || !folds.length) return;
+
+		try {
+			const foldObjects = this.#parseSerializableFolds(folds);
+			if (!foldObjects.length) return;
+			session.removeAllFolds?.();
+			session.addFolds?.(foldObjects);
+		} catch (error) {
+			console.warn("Failed to restore folds after formatting:", error);
+		}
+	}
+
+	#serializeFolds(folds) {
+		if (!Array.isArray(folds) || !folds.length) return null;
+
+		return folds
+			.map((fold) => {
+				if (!fold?.range) return null;
+				const { start, end } = fold.range;
+				if (!start || !end) return null;
+
+				return {
+					range: {
+						start: { row: start.row, column: start.column },
+						end: { row: end.row, column: end.column },
+					},
+					placeholder: fold.placeholder,
+					ranges: this.#serializeFolds(fold.ranges || []),
+				};
+			})
+			.filter(Boolean);
+	}
+
+	#parseSerializableFolds(folds) {
+		if (!Array.isArray(folds) || !folds.length) return [];
+
+		return folds
+			.map((fold) => {
+				const { range, placeholder, ranges } = fold;
+				const { start, end } = range || {};
+				if (!start || !end) return null;
+
+				try {
+					const foldInstance = new Fold(
+						new Range(start.row, start.column, end.row, end.column),
+						placeholder,
+					);
+
+					if (Array.isArray(ranges) && ranges.length) {
+						const subFolds = this.#parseSerializableFolds(ranges);
+						if (subFolds.length) {
+							foldInstance.subFolds = subFolds;
+							foldInstance.ranges = subFolds;
+						}
+					}
+
+					return foldInstance;
+				} catch (error) {
+					console.warn("Failed to parse fold:", error);
+					return null;
+				}
+			})
+			.filter(Boolean);
 	}
 
 	newEditorFile(filename, options) {
@@ -546,14 +678,37 @@ export default class Acode {
 		return Url.join(...args);
 	}
 
-	addIcon(className, src) {
+	/**
+	 * Adds a custom icon class that can be used with the .icon element
+	 * @param {string} className - The class name for the icon (used as .icon.className)
+	 * @param {string} src - URL or data URI of the icon image
+	 * @param {object} [options] - Optional settings
+	 * @param {boolean} [options.monochrome=false] - If true, icon will use currentColor and adapt to theme
+	 */
+	addIcon(className, src, options = {}) {
 		let style = document.head.get(`style[icon="${className}"]`);
 		if (!style) {
-			style = (
-				<style
-					icon={className}
-				>{`.icon.${className}{background-image: url(${src})}`}</style>
-			);
+			let css;
+			if (options.monochrome) {
+				// Monochrome icons: use mask-image (on ::before) for currentColor/theme support
+				// Using ::before ensures we don't mask the ::after active indicator or the background
+				css = `.icon.${className}::before {
+					content: '';
+					display: inline-block;
+					width: 24px;
+					height: 24px;
+					vertical-align: middle;
+					-webkit-mask: url(${src}) no-repeat center / contain;
+					mask: url(${src}) no-repeat center / contain;
+					background-color: currentColor;
+				}`;
+			} else {
+				// Default: preserve original icon colors
+				css = `.icon.${className}{
+					background: url(${src}) no-repeat center / 24px;
+				}`;
+			}
+			style = <style icon={className}>{css}</style>;
 			document.head.appendChild(style);
 		}
 	}

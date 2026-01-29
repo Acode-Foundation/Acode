@@ -1,6 +1,42 @@
 {
-	"image": "mcr.microsoft.com/devcontainers/universal:2",
-	"features": {
-		"ghcr.io/nordcominc/devcontainer-features/android-sdk:1": {}
-	}
+  "name": "Acode Development",
+  "image": "mcr.microsoft.com/devcontainers/java:1-21-bullseye",
+
+  "features": {
+    "ghcr.io/devcontainers/features/java:1": {
+      "installGradle": true,
+      "installGroovy": false,
+      "installMaven": false,
+      "installAnt": false,
+      "version": "21",
+      "jdkDistro": "ms",
+      "gradleVersion": "latest"
+    },
+    "ghcr.io/nordcominc/devcontainer-features/android-sdk:1": {
+      "platform": "35",
+      "build_tools": "35.0.0"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "nodeGypDependencies": false,
+      "installYarnUsingApt": false,
+      "version": "lts",
+      "pnpmVersion": "latest",
+      "nvmVersion": "latest"
+    }
+  },
+
+  "postCreateCommand": "pnpm run setup",
+
+  "customizations": {
+    "vscode": {
+      "extensions": ["biomejs.biome", "redhat.java"],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "biomejs.biome",
+        "[java]": {
+          "editor.defaultFormatter": "redhat.java"
+        }
+      }
+    }
+  }
 }

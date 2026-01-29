@@ -5,8 +5,8 @@ import restoreTheme from "lib/restoreTheme";
 /**
  * Confirm dialog box
  * @param {string} titleText Title text
- * @param {string} message Alert message
- * @param {boolean} isHTML Whether the message is HTML
+ * @param {string} [message] Alert message
+ * @param {boolean} [isHTML] Whether the message is HTML
  * @returns {Promise<boolean>}
  */
 function confirm(titleText, message, isHTML) {

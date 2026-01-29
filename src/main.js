@@ -45,6 +45,7 @@ import settings from "lib/settings";
 import startAd from "lib/startAd";
 import mustache from "mustache";
 import plugins from "pages/plugins";
+import openWelcomeTab from "pages/welcome";
 import otherSettings from "settings/appSettings";
 import themes from "theme/list";
 import { getEncoding, initEncodings } from "utils/encodings";
@@ -218,6 +219,15 @@ async function onDeviceReady() {
 	acode.setLoadingMessage("Loading language...");
 	await lang.set(settings.value.lang);
 
+	if (settings.value.developerMode) {
+		try {
+			const devTools = (await import("lib/devTools")).default;
+			await devTools.init(false);
+		} catch (error) {
+			console.error("Failed to initialize developer tools", error);
+		}
+	}
+
 	try {
 		await loadApp();
 	} catch (error) {
@@ -231,6 +241,9 @@ async function onDeviceReady() {
 			// load plugins
 			try {
 				await loadPlugins();
+				// Ensure at least one sidebar app is active after all plugins are loaded
+				// This handles cases where the stored section was from an uninstalled plugin
+				sidebarApps.ensureActiveApp();
 
 				// Re-emit events for active file after plugins are loaded
 				const { activeFile } = editorManager;
@@ -471,7 +484,13 @@ async function loadApp() {
 
 	window.log("info", "Started app and its services...");
 
-	new EditorFile();
+	// Show welcome tab on first launch, otherwise create default file
+	const isFirstLaunch = Number.isNaN(previousVersionCode);
+	if (isFirstLaunch) {
+		openWelcomeTab();
+	} else {
+		new EditorFile();
+	}
 
 	// load theme plugins
 	try {

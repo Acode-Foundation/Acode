@@ -76,14 +76,22 @@ appSettings.on("update:quicktoolsItems:after", () => {
 	}, 100);
 });
 
+let historyNavigationInitialized = false;
 // Initialize history navigation
 function setupHistoryNavigation() {
+	if (historyNavigationInitialized) return;
+	historyNavigationInitialized = true;
 	const { $searchInput, $replaceInput } = quickTools;
 
 	// Search input history navigation
 	if ($searchInput.el) {
 		$searchInput.el.addEventListener("keydown", (e) => {
-			if (e.key === "ArrowUp") {
+			if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
+				e.preventDefault();
+				const { editor, activeFile } = editorManager;
+				editor.focus();
+				actionStack.get("search-bar")?.action();
+			} else if (e.key === "ArrowUp") {
 				e.preventDefault();
 				const newValue = searchHistory.navigateSearchUp($searchInput.el.value);
 				$searchInput.el.value = newValue;
@@ -361,7 +369,13 @@ function toggle() {
 
 function setHeight(height = 1, save = true) {
 	const { $footer, $row1, $row2 } = quickTools;
-	const { editor } = editorManager;
+	const { editor, activeFile } = editorManager;
+
+	// If active file has hideQuickTools, force height to 0 and don't save
+	if (activeFile?.hideQuickTools) {
+		height = 0;
+		save = false;
+	}
 
 	setFooterHeight(height);
 	if (save) {

@@ -47,13 +47,39 @@ export default function loadPolyFill() {
 	if (!String.prototype.hashCode) {
 		Object.defineProperty(String.prototype, "hashCode", {
 			value: function () {
-				let hash = 0;
-				for (let i = 0; i < this.length; i++) {
-					const chr = this.charCodeAt(i);
-					hash = (hash << 5) - hash + chr;
-					hash |= 0; // Convert to 32bit integer
+				const str = this.toString();
+				const len = str.length;
+
+				if (len === 0) return "0";
+
+				// Produces a 48-char hex string (192 bits)
+				const FNV_PRIME = 0x01000193;
+				const FNV_OFFSET = 0x811c9dc5;
+
+				// Generate 6 different 32-bit hashes with different seeds/offsets
+				const hashes = [];
+				for (let pass = 0; pass < 6; pass++) {
+					let hash = FNV_OFFSET ^ (pass * 0x1234567);
+
+					for (let i = 0; i < len; i++) {
+						const char = str.charCodeAt(i);
+						// XOR with byte and multiply by prime
+						hash ^= char;
+						hash = Math.imul(hash, FNV_PRIME);
+						// Mix in position and pass for additional entropy
+						hash ^= (i + pass) & 0xff;
+						hash = Math.imul(hash, FNV_PRIME);
+					}
+
+					// Additional mixing
+					hash ^= len;
+					hash = Math.imul(hash, FNV_PRIME);
+					hash ^= hash >>> 16;
+
+					hashes.push((hash >>> 0).toString(16).padStart(8, "0"));
 				}
-				return Math.abs(hash) + (hash < 0 ? "N" : "");
+
+				return hashes.join("");
 			},
 		});
 	}

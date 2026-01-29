@@ -25,8 +25,8 @@
     </platform>
 
     <framework src="commons-io:commons-io:2.11.0" />
-    <framework src="com.sshtools:maverick-synergy-client:3.1.2" />
+    <framework src="com.sshtools:maverick-synergy-client:3.1.4" />
 <!--    <framework src="com.sshtools:maverick-bc:3.1.2" />-->
-    <framework src="org.bouncycastle:bcprov-jdk15to18:1.79" />
-    <framework src="org.bouncycastle:bcpkix-jdk15to18:1.79" />
+    <framework src="org.bouncycastle:bcprov-jdk15to18:1.83" />
+    <framework src="org.bouncycastle:bcpkix-jdk15to18:1.83" />
 </plugin>

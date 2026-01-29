@@ -1,5 +1,129 @@
 # Change Log
 
+## v1.11.8 (967) 
+
+### Features
+* feat: add acode cli by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1768
+* feat: Add FileTree component with virtual scrolling by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1774
+* feat(welcome): add welcome tab for first-time users by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1783
+* feat: Add visibility toggle for quicktools toggler on terminal input by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1766
+* feat: Add smart path shortening to terminal prompt by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1767
+* feat(settings): add option to preserve original item order by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1772
+* feat: add "Open in Terminal" option to folder context menu by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1809
+* feat: add proper fallback and saf uri handling for ischeck by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1814
+* feat: extensionless URL resolution in preview server by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1824
+* feat: improve DevContainer and Docker support for easier dev setup by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1823
+* feat: add eruda devtools for debugging by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1831
+* feat: Refactor li-icon set and add new icon by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1759
+* feat: Enhance `addIcon` to support svg currentColor by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1760
+* feat: Offload file change detection to background thread by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1802
+* feat: move service to background by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1754
+* feat: add quiet hours for ads by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1779
+* feat(auth): move authentication to native Android plugin with encrypted storage by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1794
+* feat: do not close milestone issues by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1799
+* feat: close search dialog with ctrl+f by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1807
+* feat: added executor tests by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1816
+* Added tests by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1813
+* CustomTabs web api for plugins by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1785
+* Implement plugin loading callbacks and tracking for installed plugins by @7HR4IZ3 in https://github.com/Acode-Foundation/Acode/pull/1558
+* Added Documents viewer plugin id to load pdf/excel/csv etc. files by @hackesofice in https://github.com/Acode-Foundation/Acode/pull/1833
+* Refactor quicktools settings by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1761
+
+### Fixes
+* fix: use correct timezone by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1716
+* fix: sanitize plugin readme before rendering by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1731
+* fix: make rm wrapper silent by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1727
+* fix: remove duplicate rm command by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1732
+* fix: sidebar app icon size and scrolling by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1733
+* fix: terminal bug by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1741
+* fix: sidebar apps active and removal things with fallback by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1749
+* fix: improve the backup and restore by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1744
+* fix: console by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1763
+* fix(terminal): cleanup broken tabs and show alerts on terminal errors by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1780
+* fix(plugin): sanitize markdown and prevent horizontal overflow by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1782
+* fix: run current File not respecting `preview mode` option. by @UnschooledGamer in https://github.com/Acode-Foundation/Acode/pull/1805
+* fix: memory leak when toggling search panel by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1808
+* fix: prevent mixed content in SFTP/FTP cached files by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1815
+* Fix: Remove trimming of matched content in Executor.js by @dikidjatar in https://github.com/Acode-Foundation/Acode/pull/1798
+* revert: relative http paths by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1743
+
+### Chore & CI
+* Add F-droid Build in GH nightly releases by @UnschooledGamer in https://github.com/Acode-Foundation/Acode/pull/1719
+* fix(CI): normal nightly & fdroid flavor build paths. by @UnschooledGamer in https://github.com/Acode-Foundation/Acode/pull/1722
+* Update devcontainer.json and add Dependabot for devcontainer's version updates by @UnschooledGamer in https://github.com/Acode-Foundation/Acode/pull/1742
+* enhance nightly build workflow by adding a step to generate release notes by @UnschooledGamer in https://github.com/Acode-Foundation/Acode/pull/1747
+* chore: update nightly build workflow to use a fine-grained GITHUB_TOKEN for generating nightly release notes by @UnschooledGamer in https://github.com/Acode-Foundation/Acode/pull/1751
+* chore: message type detection in release notes script by @UnschooledGamer in https://github.com/Acode-Foundation/Acode/pull/1786
+* update(sftp): dependencies for SFTP plugin by @UnschooledGamer in https://github.com/Acode-Foundation/Acode/pull/1792
+* chore(deps): bump tmp and cordova by @dependabot[bot] in https://github.com/Acode-Foundation/Acode/pull/1720
+* chore(deps): bump tough-cookie and cordova by @dependabot[bot] in https://github.com/Acode-Foundation/Acode/pull/1721
+* chore(deps): bump systeminformation from 5.27.11 to 5.27.14 by @dependabot[bot] in https://github.com/Acode-Foundation/Acode/pull/1750
+* chore(deps): bump tar from 7.5.2 to 7.5.3 by @dependabot[bot] in https://github.com/Acode-Foundation/Acode/pull/1829
+
+### Translations & i18n
+* `pl-pl.json` by @andrewczm in https://github.com/Acode-Foundation/Acode/pull/1709
+* `de-de.json` by @Mr-Update in https://github.com/Acode-Foundation/Acode/pull/1714, https://github.com/Acode-Foundation/Acode/pull/1764
+* `cs-cz.json` by @Amereyeu in https://github.com/Acode-Foundation/Acode/pull/1752, https://github.com/Acode-Foundation/Acode/pull/1828
+* `hu-hu.json` by @summoner001 in https://github.com/Acode-Foundation/Acode/pull/1755, https://github.com/Acode-Foundation/Acode/pull/1762, https://github.com/Acode-Foundation/Acode/pull/1787, https://github.com/Acode-Foundation/Acode/pull/1810, https://github.com/Acode-Foundation/Acode/pull/1834
+* `zh-cn.json`, `zh-hant.json` by @LaunchLee in https://github.com/Acode-Foundation/Acode/pull/1769
+* `pt-br.json` by @sebastianjnuwu in https://github.com/Acode-Foundation/Acode/pull/1775
+* `uk-ua.json` by @PavloPogonets in https://github.com/Acode-Foundation/Acode/pull/1818, https://github.com/Acode-Foundation/Acode/pull/1821
+
+## v1.11.7 (966) 
+
+* revert: sidebar/style.scss changes to fix collapse folders by @UnschooledGamer in https://github.com/Acode-Foundation/Acode/pull/1572
+* Terminal Service by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1570
+* fix(i18n): fix typo in ./src/lang/id-id.json by @hyperz111 in https://github.com/Acode-Foundation/Acode/pull/1577
+* fix: browser download by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1587
+* Terminal initrc support by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1590
+* chore(i18n): update de-de.json by @Mr-Update in https://github.com/Acode-Foundation/Acode/pull/1600
+* Updated & Added Missing ar-ye.json (Arabic) translations by @Hussain96o in https://github.com/Acode-Foundation/Acode/pull/1601
+* Restore terminal tabs  by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1592
+  - fix: terminal font issue
+  - Breaking change: Changed default terminal configs
+* feat: service on/off by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1602
+* fix: service stop on app exit by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1603
+* fix: ED25519 SSH keys not working by @UnschooledGamer in https://github.com/Acode-Foundation/Acode/pull/1595
+* CI: Nightly Builds by @UnschooledGamer in https://github.com/Acode-Foundation/Acode/pull/1612
+* style(terminal): Some touch selection handle enhancements by @peasneovoyager2banana2 in https://github.com/Acode-Foundation/Acode/pull/1611
+* fix: pip by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1617
+* feat: Enable all file access in nightly builds by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1618
+* Add support for renaming documents in provider by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1619
+* fix: support for Acode terminal SAF URIs by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1621
+* fix: rm command by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1623
+* feat: add 'check for app updates' setting to toggle the automatic behaviour by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1624
+* chore(i18n): update hu-hu.json by @summoner001 in https://github.com/Acode-Foundation/Acode/pull/1626
+* Enforce Unix lf endings for shell scripts by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1637
+* AutoSuggest install command in terminal by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1638
+* feat: add plugin filtering by author and keywords by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1625
+  - Refactored filtering logic to support multi-page results and improved UI feedback for filter actions.
+* Translation: Update hu-hu.json by @summoner001 in https://github.com/Acode-Foundation/Acode/pull/1640
+* fix: init-alpine by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1641
+* fix: ANSI escape sequence in init-alpine by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1643
+* chore(i18n): update de-de.json by @Mr-Update in https://github.com/Acode-Foundation/Acode/pull/1648
+* fix: update proot binaries to support 16kb page size by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1649
+* chore(i18n): update id-id.json with new strings by @hyperz111 in https://github.com/Acode-Foundation/Acode/pull/1650
+* Translation: Update hu-Hu.json by @summoner001 in https://github.com/Acode-Foundation/Acode/pull/1653
+* Add confirmation prompt before closing terminal tabs by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1655
+* fix: compatibility for old android versions by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1656
+* fix: improve file sharing and URI handling by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1662
+  - Improved file sharing and fixed permission issue (also in case of open with , edit with)
+* fix: do not restore terminals if axs is dead by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1664
+* fix: .capitalize() removed because it changes the translations (also English) by @Mr-Update in https://github.com/Acode-Foundation/Acode/pull/1665
+* fix: `switchFile` api to respect custom subtitle by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1672
+* Update zh-cn.json and zh-hant.json by @LaunchLee in https://github.com/Acode-Foundation/Acode/pull/1674
+* fix: Translation corrected in terminal settings by @Mr-Update in https://github.com/Acode-Foundation/Acode/pull/1676
+* fix: Added missing translation for info window in file browser and app settings. by @Mr-Update in https://github.com/Acode-Foundation/Acode/pull/1677
+* Translation: Update hungarian hu-HU.json by @summoner001 in https://github.com/Acode-Foundation/Acode/pull/1680
+* Update ads plugin and fix some issues of free version by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1683
+  - fix: system them on free version
+* fix: restore folds when formatting if available by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1682
+* fix: Added missing translation for info window in terminal settings by @Mr-Update in https://github.com/Acode-Foundation/Acode/pull/1681
+* Translation: Update hungarian hu-hu.json by @summoner001 in https://github.com/Acode-Foundation/Acode/pull/1687
+* feat: Add clean install state functionality to app settings by @UnschooledGamer in https://github.com/Acode-Foundation/Acode/pull/1690
+* Translation: Update hungarian hu-hu.json by @summoner001 in https://github.com/Acode-Foundation/Acode/pull/1693
+
+
 ## v1.11.6 (965)
 
 * fix: Terminal in F-Droid flavour by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1478

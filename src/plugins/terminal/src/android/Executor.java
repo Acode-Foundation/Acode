@@ -27,6 +27,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import android.app.Activity;
+import com.foxdebug.acode.rk.exec.terminal.*;
 
 public class Executor extends CordovaPlugin {
 
@@ -232,6 +233,22 @@ public class Executor extends CordovaPlugin {
         if (action.equals("stopService")) {
             stopServiceNow();
             callbackContext.success("Service stopped");
+            return true;
+        }
+
+        if (action.equals("moveToBackground")) {
+            Intent intent = new Intent(context, TerminalService.class);
+            intent.setAction(TerminalService.MOVE_TO_BACKGROUND);
+            context.startService(intent);
+            callbackContext.success("Service moved to background mode");
+            return true;
+        }
+
+        if (action.equals("moveToForeground")) {
+            Intent intent = new Intent(context, TerminalService.class);
+            intent.setAction(TerminalService.MOVE_TO_FOREGROUND);
+            context.startService(intent);
+            callbackContext.success("Service moved to foreground mode");
             return true;
         }
 

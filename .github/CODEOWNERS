@@ -1,4 +1,4 @@
-.github/CODEOWNERS @Acode-Foundation
+.github/CODEOWNERS @Acode-Foundation/acode 
 
 # workflows
 .github/workflows/nightly-build.yml @unschooledgamer

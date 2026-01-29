@@ -349,6 +349,38 @@ const commands = [
 		},
 		readOnly: true,
 	},
+	{
+		name: "acode:showWelcome",
+		description: "Show Welcome",
+		exec() {
+			acode.exec("welcome");
+		},
+		readOnly: true,
+	},
+	{
+		name: "run-tests",
+		description: "Run Tests",
+		exec() {
+			acode.exec("run-tests");
+		},
+		readOnly: true,
+	},
+	{
+		name: "dev:toggleDevTools",
+		description: "Toggle Developer Tools",
+		exec() {
+			acode.exec("toggle-inspector");
+		},
+		readOnly: true,
+	},
+	{
+		name: "dev:openInspector",
+		description: "Open Inspector",
+		exec() {
+			acode.exec("open-inspector");
+		},
+		readOnly: true,
+	},
 ];
 
 export function setCommands(editor) {

@@ -91,7 +91,7 @@ const Terminal = {
 
         if (!pidExists) return false;
 
-        const result = await Executor.execute(`kill -0 $(cat $PREFIX/pid) 2>/dev/null && echo "true" || echo "false"`);
+        const result = await Executor.BackgroundExecutor.execute(`kill -0 $(cat $PREFIX/pid) 2>/dev/null && echo "true" || echo "false"`);
         return String(result).toLowerCase() === "true";
     },
 

@@ -6,7 +6,9 @@ const toastQueue = [];
 /**
  * Show a toast message
  * @param {string|HTMLElement} message
- * @param {number|false} duration
+ * @param {number|false} [duration=0]
+ * @param {string} [bgColor]
+ * @param {string} [color]
  */
 export default function toast(message, duration = 0, bgColor, color) {
 	const $oldToast = tag.get("#toast");

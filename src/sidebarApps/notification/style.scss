@@ -106,6 +106,10 @@
                     font-size: 12px;
                     color: var(--secondary-text-color);
                     line-height: 1.4;
+                    overflow: hidden;
+                    display: -webkit-box;
+                    -webkit-box-orient: vertical;
+                    word-break: break-word;
                 }
 
                 .notification-actions {

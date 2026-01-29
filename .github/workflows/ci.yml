@@ -33,3 +33,35 @@ jobs:
 
       - name: Run Biome
         run: biome ci .
+
+  translation-check:
+    name: Translation Check (On PR Only)
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    permissions: 
+      contents: read
+      pull-requests: read
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v5
+      - name: Use Node.js
+        uses: actions/setup-node@v5
+        with:
+          cache: npm
+          cache-dependency-path: '**/package-lock.json'
+
+      - name: Detect Changed Files
+        uses: dorny/paths-filter@v3
+        id: file-changes
+        with:
+          list-files: shell
+          filters: |
+            translation:
+              - 'src/lang/*.json'
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Translation Files Check (if changed)
+        if: steps.file-changes.outputs.translation == 'true'
+        run: |
+            npm ci --no-audit --no-fund
+            npm run lang check

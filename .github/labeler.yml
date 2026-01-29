@@ -1,0 +1,13 @@
+translations:
+  - any: 
+    - changed-files: 
+      - any-glob-to-any-file: 'src/lang/*.json'
+
+docs:
+  - any: 
+    - changed-files: 
+      - any-glob-to-any-file: '**/*.md'
+
+enhancement:
+  - any:
+    - head-branch: ['^feature', 'feature', '^feat', '^add']

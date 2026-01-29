@@ -320,7 +320,7 @@ public class Sftp extends CordovaPlugin {
                 try (
                   InputStream inputStream = sftp.getInputStream(filename);
                   java.io.OutputStream outputStream =
-                    contentResolver.openOutputStream(fileUri)
+                    contentResolver.openOutputStream(fileUri, "wt")
                 ) {
                   byte[] buffer = new byte[32768];
                   int bytesRead;

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0" xmlns:android="http://schemas.android.com/apk/res/android" id="com.foxdebug.acode.rk.auth" version="1.0.0">
+    <name>Authentication</name>
+
+
+    <platform name="android">
+       <config-file parent="/*" target="res/xml/config.xml">
+            <feature name="Authenticator">
+                <param name="android-package" value="com.foxdebug.acode.rk.auth.Authenticator" />
+            </feature>
+        </config-file>
+
+        <framework src="androidx.security:security-crypto:1.1.0" />
+
+        <source-file src="src/android/Authenticator.java" target-dir="src/com/foxdebug/acode/rk/auth" />
+        <source-file src="src/android/EncryptedPreferenceManager.java" target-dir="src/com/foxdebug/acode/rk/auth" />
+        
+           
+    </platform>
+</plugin>

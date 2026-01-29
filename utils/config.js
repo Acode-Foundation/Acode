@@ -85,7 +85,7 @@ const exec = promisify(require("node:child_process").exec);
 								`cordova plugin add cordova-plugin-consent@2.4.0 --save`,
 							);
 							await exec(
-								`cordova plugin add admob-plus-cordova@1.28.0 --save --variable APP_ID_ANDROID="${AD_APP_ID}" --variable PLAY_SERVICES_VERSION="21.5.0"`,
+								`cordova plugin add admob-plus-cordova@2.0.0-alpha.19 --save --variable APP_ID_ANDROID="${AD_APP_ID}" --variable PLAY_SERVICES_VERSION="23.2.0"`,
 							);
 							console.log("DONE! Installing admob-plus-cordova");
 						} else {
@@ -96,7 +96,7 @@ const exec = promisify(require("node:child_process").exec);
 						}
 
 						console.log(`|--- Reinstalling platform ---|`);
-						const { stderr } = await exec(`yarn clean`);
+						const { stderr } = await exec(`npm run clean`);
 						if (stderr) console.error(stderr);
 						else console.log("DONE! Reinstalling platform");
 					})(),

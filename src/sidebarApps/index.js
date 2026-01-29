@@ -48,11 +48,14 @@ function add(
 function remove(id) {
 	const app = apps.find((app) => app.id === id);
 	if (!app) return;
+	const wasActive = app.active;
 	app.remove();
 	apps.splice(apps.indexOf(app), 1);
-	if (app.active) {
+	if (wasActive && apps.length > 0) {
 		const firstApp = apps[0];
 		firstApp.active = true;
+		currentSection = firstApp.id;
+		localStorage.setItem(SIDEBAR_APPS_LAST_SECTION, firstApp.id);
 	}
 }
 
@@ -79,6 +82,22 @@ async function loadApps() {
 }
 
 /**
+ * Ensures that at least one app is active.
+ * Call this AFTER all plugins have been loaded to handle cases where
+ * the stored section was from an uninstalled plugin.
+ * @returns {void}
+ */
+function ensureActiveApp() {
+	const hasActiveApp = apps.some((app) => app.active);
+	if (!hasActiveApp && apps.length > 0) {
+		const firstApp = apps[0];
+		firstApp.active = true;
+		currentSection = firstApp.id;
+		localStorage.setItem(SIDEBAR_APPS_LAST_SECTION, firstApp.id);
+	}
+}
+
+/**
  * Gets the container of the app with the given ID.
  * @param {string} id
  * @returns
@@ -101,8 +120,8 @@ function onclick(e) {
 	localStorage.setItem(SIDEBAR_APPS_LAST_SECTION, id);
 	const activeApp = apps.find((app) => app.active);
 	const app = apps.find((app) => app.id === id);
-	activeApp.active = false;
-	app.active = true;
+	if (activeApp) activeApp.active = false;
+	if (app) app.active = true;
 }
 
 export default {
@@ -111,4 +130,5 @@ export default {
 	get,
 	remove,
 	loadApps,
+	ensureActiveApp,
 };

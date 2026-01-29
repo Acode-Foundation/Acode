@@ -7,9 +7,11 @@ import prompt from "dialogs/prompt";
 import select from "dialogs/select";
 import actions from "handlers/quickTools";
 import recents from "lib/recents";
+import About from "pages/about";
 import FileBrowser from "pages/fileBrowser";
 import plugins from "pages/plugins";
 import Problems from "pages/problems/problems";
+import openWelcomeTab from "pages/welcome/welcome";
 import changeEncoding from "palettes/changeEncoding";
 import changeMode from "palettes/changeMode";
 import changeTheme from "palettes/changeTheme";
@@ -18,6 +20,7 @@ import findFile from "palettes/findFile";
 import browser from "plugins/browser";
 import help from "settings/helpSettings";
 import mainSettings from "settings/mainSettings";
+import { runAllTests } from "test/tester";
 import { getColorRange } from "utils/color/regex";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
@@ -32,6 +35,9 @@ import appSettings from "./settings";
 import showFileInfo from "./showFileInfo";
 
 export default {
+	async "run-tests"() {
+		await runAllTests();
+	},
 	async "close-all-tabs"() {
 		let save = false;
 		const unsavedFiles = editorManager.files.filter(
@@ -186,6 +192,10 @@ export default {
 
 			case "file_browser":
 				FileBrowser();
+				break;
+
+			case "about":
+				About();
 				break;
 
 			default:
@@ -473,5 +483,16 @@ Additional Info:
 			console.error("Failed to create terminal:", error);
 			window.toast("Failed to create terminal");
 		}
+	},
+	welcome() {
+		openWelcomeTab();
+	},
+	async "toggle-inspector"() {
+		const devTools = (await import("lib/devTools")).default;
+		devTools.toggle();
+	},
+	async "open-inspector"() {
+		const devTools = (await import("lib/devTools")).default;
+		devTools.show();
 	},
 };

@@ -120,6 +120,58 @@ export default class TerminalComponent {
 
 		// Handle copy/paste keybindings
 		this.setupCopyPasteHandlers();
+
+		// Handle custom OSC 7777 for acode CLI commands
+		this.setupOscHandler();
+	}
+
+	/**
+	 * Setup custom OSC handler for acode CLI integration
+	 * OSC 7777 format: \e]7777;command;arg1;arg2;...\a
+	 */
+	setupOscHandler() {
+		// Register custom OSC handler for ID 7777
+		// Format: command;arg1;arg2;... where arg2 (path) may contain semicolons
+		this.terminal.parser.registerOscHandler(7777, (data) => {
+			const firstSemi = data.indexOf(";");
+			if (firstSemi === -1) {
+				console.warn("Invalid OSC 7777 format:", data);
+				return true;
+			}
+
+			const command = data.substring(0, firstSemi);
+			const rest = data.substring(firstSemi + 1);
+
+			switch (command) {
+				case "open": {
+					// Format: open;type;path (path may contain semicolons)
+					const secondSemi = rest.indexOf(";");
+					if (secondSemi === -1) {
+						console.warn("Invalid OSC 7777 open format:", data);
+						return true;
+					}
+					const type = rest.substring(0, secondSemi);
+					const path = rest.substring(secondSemi + 1);
+					this.handleOscOpen(type, path);
+					break;
+				}
+				default:
+					console.warn("Unknown OSC 7777 command:", command);
+			}
+			return true;
+		});
+	}
+
+	/**
+	 * Handle OSC open command from acode CLI
+	 * @param {string} type - "file" or "folder"
+	 * @param {string} path - Path to open
+	 */
+	handleOscOpen(type, path) {
+		if (!path) return;
+
+		// Emit event for the app to handle
+		this.onOscOpen?.(type, path);
 	}
 
 	/**

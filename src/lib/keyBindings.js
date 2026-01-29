@@ -697,4 +697,16 @@ export default {
 		readOnly: true,
 		action: "new-terminal",
 	},
+	"run-tests": {
+		description: "Run Tests",
+		key: "Ctrl-Shift-T",
+		readOnly: true,
+		action: "run-tests",
+	},
+	"dev:toggleDevTools": {
+		description: "Toggle DevTools",
+		key: "Ctrl-Shift-I",
+		readOnly: true,
+		action: "toggle-inspector",
+	},
 };

@@ -1,0 +1,17 @@
+{
+  "name": "com.foxdebug.acode.rk.auth",
+  "version": "1.0.0",
+  "description": "Authentication plugin",
+  "cordova": {
+    "id": "com.foxdebug.acode.rk.auth",
+    "platforms": [
+      "android"
+    ]
+  },
+  "keywords": [
+    "ecosystem:cordova",
+    "cordova-android"
+  ],
+  "author": "@RohitKushvaha01",
+  "license": "MIT"
+}

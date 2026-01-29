@@ -78,6 +78,8 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.IOException;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 
 import android.os.Build;
 import android.os.Environment;
@@ -87,6 +89,7 @@ import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.provider.DocumentsContract;
 import android.provider.Settings;
 
 import androidx.core.content.ContextCompat;
@@ -169,6 +172,8 @@ public class System extends CordovaPlugin {
             case "decode":
             case "encode":
             case "copyToUri":
+            case "compare-file-text":
+            case "compare-texts":
                 break;
             case "get-configuration":
                 getConfiguration(callbackContext);
@@ -505,6 +510,12 @@ public class System extends CordovaPlugin {
                             case "encode":
                                 encode(arg1, arg2, callbackContext);
                                 break;
+                            case "compare-file-text":
+                                compareFileText(arg1, arg2, arg3, callbackContext);
+                                break;
+                            case "compare-texts":
+                                compareTexts(arg1, arg2, callbackContext);
+                                break;
                             default:
                                 break;
                         }
@@ -611,6 +622,170 @@ public class System extends CordovaPlugin {
             byte[] bytes = new byte[byteBuffer.remaining()];
             byteBuffer.get(bytes);
             callback.success(bytes);
+        } catch (Exception e) {
+            callback.error(e.toString());
+        }
+    }
+
+    /**
+     * Compares file content with provided text.
+     * This method runs in a background thread to avoid blocking the UI.
+     * 
+     * @param fileUri The URI of the file to read (file:// or content://)
+     * @param encoding The character encoding to use when reading the file
+     * @param currentText The text to compare against the file content
+     * @param callback Returns 1 if texts are different, 0 if same
+     */
+    private void compareFileText(
+        String fileUri,
+        String encoding,
+        String currentText,
+        CallbackContext callback
+    ) {
+        try {
+            if (fileUri == null || fileUri.isEmpty()) {
+                callback.error("File URI is required");
+                return;
+            }
+
+            if (encoding == null || encoding.isEmpty()) {
+                encoding = "UTF-8";
+            }
+
+            if (!Charset.isSupported(encoding)) {
+                callback.error("Charset not supported: " + encoding);
+                return;
+            }
+
+            Uri uri = Uri.parse(fileUri);
+            Charset charset = Charset.forName(encoding);
+            String fileContent;
+
+            // Handle file:// URIs
+            if ("file".equalsIgnoreCase(uri.getScheme())) {
+                File file = new File(uri.getPath());
+                
+                // Validate file
+                if (!file.exists()) {
+                    callback.error("File does not exist");
+                    return;
+                }
+                if (!file.isFile()) {
+                    callback.error("Path is not a file");
+                    return;
+                }
+                if (!file.canRead()) {
+                    callback.error("File is not readable");
+                    return;
+                }
+
+                Path path = file.toPath();
+                fileContent = new String(Files.readAllBytes(path), charset);
+
+            } else if ("content".equalsIgnoreCase(uri.getScheme())) {
+                // Handle content:// URIs (including SAF tree URIs)
+                InputStream inputStream = null;
+                try {
+                    String uriString = fileUri;
+                    Uri resolvedUri = uri;
+                    
+                    // Check if this is a SAF tree URI with :: separator
+                    if (uriString.contains("::")) {
+                        try {
+                            // Split into tree URI and document ID
+                            String[] parts = uriString.split("::", 2);
+                            String treeUriStr = parts[0];
+                            String docId = parts[1];
+                            
+                            // Build document URI directly from tree URI and document ID
+                            Uri treeUri = Uri.parse(treeUriStr);
+                            resolvedUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, docId);
+                        } catch (Exception e) {
+                            callback.error("SAF_FALLBACK: Invalid SAF URI format - " + e.getMessage());
+                            return;
+                        }
+                    }
+                    
+                    // Try to open the resolved URI
+                    inputStream = context.getContentResolver().openInputStream(resolvedUri);
+                    
+                    if (inputStream == null) {
+                        callback.error("Cannot open file");
+                        return;
+                    }
+
+                    StringBuilder sb = new StringBuilder();
+                    try (BufferedReader reader = new BufferedReader(
+                            new InputStreamReader(inputStream, charset))) {
+                        char[] buffer = new char[8192];
+                        int charsRead;
+                        while ((charsRead = reader.read(buffer)) != -1) {
+                            sb.append(buffer, 0, charsRead);
+                        }
+                    }
+                    fileContent = sb.toString();
+                    
+                } finally {
+                    if (inputStream != null) {
+                        try {
+                            inputStream.close();
+                        } catch (IOException ignored) {}
+                    }
+                }
+            } else {
+                callback.error("Unsupported URI scheme: " + uri.getScheme());
+                return;
+            }
+
+            // check length first 
+            if (fileContent.length() != currentText.length()) {
+                callback.success(1); // Changed
+                return;
+            }
+
+            // Full comparison
+            if (fileContent.equals(currentText)) {
+                callback.success(0); // Not changed
+            } else {
+                callback.success(1); // Changed
+            }
+
+        } catch (Exception e) {
+            callback.error(e.toString());
+        }
+    }
+
+    /**
+     * Compares two text strings.
+     * This method runs in a background thread to avoid blocking the UI
+     * for large string comparisons.
+     * 
+     * @param text1 First text to compare
+     * @param text2 Second text to compare
+     * @param callback Returns 1 if texts are different, 0 if same
+     */
+    private void compareTexts(
+        String text1,
+        String text2,
+        CallbackContext callback
+    ) {
+        try {
+            if (text1 == null) text1 = "";
+            if (text2 == null) text2 = "";
+
+            // check length first
+            if (text1.length() != text2.length()) {
+                callback.success(1); // Changed
+                return;
+            }
+
+            // Full comparison
+            if (text1.equals(text2)) {
+                callback.success(0); // Not changed
+            } else {
+                callback.success(1); // Changed
+            }
+
         } catch (Exception e) {
             callback.error(e.toString());
         }

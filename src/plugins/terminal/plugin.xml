@@ -16,10 +16,19 @@
             <feature name="Executor">
                 <param name="android-package" value="com.foxdebug.acode.rk.exec.terminal.Executor" />
             </feature>
+            <feature name="BackgroundExecutor">
+                <param name="android-package" value="com.foxdebug.acode.rk.exec.terminal.BackgroundExecutor" />
+            </feature>
         </config-file>
         <config-file parent="/*" target="AndroidManifest.xml" />
 
+        <source-file src="src/android/BackgroundExecutor.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
+        <source-file src="src/android/ProcessManager.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
+        <source-file src="src/android/ProcessUtils.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
+        <source-file src="src/android/StreamHandler.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
+
         <source-file src="src/android/Executor.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
+
         <source-file src="src/android/TerminalService.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
         
         <source-file src="src/android/AlpineDocumentProvider.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />

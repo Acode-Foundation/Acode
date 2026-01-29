@@ -4,6 +4,7 @@ import tile from "components/tile";
 import confirm from "dialogs/confirm";
 import DOMPurify from "dompurify";
 import startDrag from "handlers/editorFileTab";
+import actions from "handlers/quickTools";
 import tag from "html-tag-js";
 import mimeTypes from "mime-types";
 import helpers from "utils/helpers";
@@ -609,26 +610,59 @@ export default class EditorFile {
 		}
 
 		const protocol = Url.getProtocol(this.#uri);
-		let fs;
+		const text = this.session.getValue();
+
+		// Helper for JS-based comparison (used as fallback)
+		const jsCompare = async (fileUri) => {
+			const fs = fsOperation(fileUri);
+			const oldText = await fs.readFile(this.encoding);
+			return await system.compareTexts(oldText, text);
+		};
+
 		if (/s?ftp:/.test(protocol)) {
-			// if file is a ftp or sftp file, get file content from cached file.
-			// remove ':' from protocol because cache file of remote files are
-			// stored as ftp102525465N i.e. protocol + id
+			// FTP/SFTP files use cached local file
 			const cacheFilename = protocol.slice(0, -1) + this.id;
-			const cacheFile = Url.join(CACHE_STORAGE, cacheFilename);
-			fs = fsOperation(cacheFile);
-		} else {
-			fs = fsOperation(this.uri);
+			const cacheFileUri = Url.join(CACHE_STORAGE, cacheFilename);
+
+			try {
+				return await system.compareFileText(cacheFileUri, this.encoding, text);
+			} catch (error) {
+				console.error(
+					"Native compareFileText failed, using JS fallback:",
+					error,
+				);
+				try {
+					return await jsCompare(cacheFileUri);
+				} catch (fallbackError) {
+					console.error(fallbackError);
+					return false;
+				}
+			}
 		}
 
-		try {
-			const oldText = await fs.readFile(this.encoding);
-			const text = this.session.getValue();
+		if (/^(file|content):/.test(protocol)) {
+			// file:// and content:// URIs - try native first, fallback to JS
+			try {
+				return await system.compareFileText(this.uri, this.encoding, text);
+			} catch (error) {
+				console.error(
+					"Native compareFileText failed, using JS fallback:",
+					error,
+				);
+				try {
+					return await jsCompare(this.uri);
+				} catch (fallbackError) {
+					console.error(fallbackError);
+					return false;
+				}
+			}
+		}
 
-			if (oldText.length !== text.length) return true;
-			return oldText !== text;
+		// Other protocols - JS reads file, native compares strings
+		try {
+			return await jsCompare(this.uri);
 		} catch (error) {
-			window.log("error", error);
+			console.error(error);
 			return false;
 		}
 	}
@@ -813,6 +847,19 @@ export default class EditorFile {
 
 		if (this.type === "editor" && !this.loaded && !this.loading) {
 			this.#loadText();
+		}
+
+		// Handle quicktools visibility based on hideQuickTools property
+		if (this.hideQuickTools) {
+			root.classList.add("hide-floating-button");
+			actions("set-height", { height: 0, save: false });
+		} else {
+			root.classList.remove("hide-floating-button");
+			const quickToolsHeight =
+				appSettings.value.quickTools !== undefined
+					? appSettings.value.quickTools
+					: 1;
+			actions("set-height", { height: quickToolsHeight, save: false });
 		}
 
 		editorManager.header.subText = this.#getTitle();
@@ -1142,7 +1189,7 @@ export default class EditorFile {
 		const event = createFileEvent(this);
 		this.#emit("run", event);
 		if (event.defaultPrevented) return;
-		run(false, file ? "inapp" : appSettings.value.previewMode, file);
+		run(false, appSettings.value.previewMode, file);
 	}
 
 	#updateTab() {

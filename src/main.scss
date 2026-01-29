@@ -729,18 +729,25 @@ input[type="search"]::-webkit-search-results-decoration {
 .notification-toast-container {
   position: absolute;
   bottom: 20px;
-  right: 20px;
+  left: 10px;
+  right: 10px;
   display: flex;
   flex-direction: column;
+  align-items: flex-end;
   gap: 8px;
   z-index: 1000;
+  pointer-events: none;
+
+  >* {
+    pointer-events: auto;
+  }
 
   .notification-toast {
     padding: 12px;
     border-radius: 6px;
     background: var(--secondary-color);
-    min-width: 300px;
-    max-width: 400px;
+    min-width: 200px;
+    max-width: min(400px, calc(100vw - 40px));
     display: flex;
     gap: 12px;
     align-items: flex-start;
@@ -750,6 +757,7 @@ input[type="search"]::-webkit-search-results-decoration {
     border: 1px solid var(--border-color);
     word-break: break-word;
     white-space: normal;
+    box-sizing: border-box;
 
     &.hiding {
       transform: translateX(120%);
@@ -826,9 +834,11 @@ input[type="search"]::-webkit-search-results-decoration {
   }
 
   @media (max-width: 768px) {
+    align-items: stretch;
+
     .notification-toast {
       min-width: auto;
-      max-width: calc(100vw - 40px);
+      max-width: 100%;
     }
   }
 }

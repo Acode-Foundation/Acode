@@ -22,11 +22,17 @@ import searchBar from "./searchbar";
  */
 
 /**
+ * @typedef {Object} SettingsPageOptions
+ * @property {boolean} [preserveOrder] - If true, items are listed in the order provided instead of alphabetical
+ */
+
+/**
  *  Creates a settings page
  * @param {string} title
  * @param {ListItem[]} settings
  * @param {(key, value) => void} callback  called when setting is changed
  * @param {'united'|'separate'} [type='united']
+ * @param {SettingsPageOptions} [options={}]
  * @returns {SettingsPage}
  */
 export default function settingsPage(
@@ -34,6 +40,7 @@ export default function settingsPage(
 	settings,
 	callback,
 	type = "united",
+	options = {},
 ) {
 	let hideSearchBar = () => {};
 	const $page = Page(title);
@@ -96,7 +103,7 @@ export default function settingsPage(
 		actionStack.remove(title);
 	};
 
-	listItems($list, settings, callback);
+	listItems($list, settings, callback, options);
 	$page.body = $list;
 
 	/**@type {HTMLElement[]} */
@@ -190,15 +197,18 @@ export default function settingsPage(
  * @param {HTMLUListElement} $list
  * @param {Array<ListItem>} items
  * @param {()=>void} callback called when setting is changed
+ * @param {SettingsPageOptions} [options={}]
  */
-function listItems($list, items, callback) {
+function listItems($list, items, callback, options = {}) {
 	const $items = [];
 
-	// sort settings by text before rendering
-	items.sort((acc, cur) => {
-		if (!acc?.text || !cur?.text) return 0;
-		return acc.text.localeCompare(cur.text);
-	});
+	// sort settings by text before rendering (unless preserveOrder is true)
+	if (!options.preserveOrder) {
+		items.sort((acc, cur) => {
+			if (!acc?.text || !cur?.text) return 0;
+			return acc.text.localeCompare(cur.text);
+		});
+	}
 	items.forEach((item) => {
 		const $setting = Ref();
 		const $settingName = Ref();

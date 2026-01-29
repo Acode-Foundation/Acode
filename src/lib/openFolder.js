@@ -1,7 +1,9 @@
 import fsOperation from "fileSystem";
 import sidebarApps from "sidebarApps";
 import collapsableList from "components/collapsableList";
+import FileTree from "components/fileTree";
 import Sidebar from "components/sidebar";
+import { TerminalManager } from "components/terminal";
 import tile from "components/tile";
 import toast from "components/toast";
 import alert from "dialogs/alert";
@@ -25,6 +27,40 @@ const isAcodeTerminalPublicSafUri = (value = "") =>
 	value.startsWith("content://com.foxdebug.acode.documents/tree/");
 const isTerminalSafUri = (value = "") =>
 	isTermuxSafUri(value) || isAcodeTerminalPublicSafUri(value);
+
+const getTerminalPaths = () => {
+	const packageName = window.BuildInfo?.packageName || "com.foxdebug.acode";
+	const dataDir = `/data/user/0/${packageName}`;
+	const alpineRoot = `${dataDir}/files/alpine`;
+	const publicDir = `${dataDir}/files/public`;
+	return { alpineRoot, publicDir, dataDir };
+};
+
+const isTerminalAccessiblePath = (url = "") => {
+	if (isAcodeTerminalPublicSafUri(url)) return true;
+	const { alpineRoot, publicDir } = getTerminalPaths();
+	const cleanUrl = url.replace(/^file:\/\//, "");
+	if (cleanUrl.startsWith(alpineRoot) || cleanUrl.startsWith(publicDir)) {
+		return true;
+	}
+	return false;
+};
+
+const convertToProotPath = (url = "") => {
+	const { alpineRoot, publicDir } = getTerminalPaths();
+	if (isAcodeTerminalPublicSafUri(url)) {
+		return "/public";
+	}
+	const cleanUrl = url.replace(/^file:\/\//, "");
+	if (cleanUrl.startsWith(publicDir)) {
+		return cleanUrl.replace(publicDir, "/public");
+	}
+	if (cleanUrl.startsWith(alpineRoot)) {
+		return cleanUrl.replace(alpineRoot, "") || "/";
+	}
+	console.warn(`Unrecognized path for terminal conversion: ${url}`);
+	return cleanUrl;
+};
 
 /**
  * @typedef {import('../components/collapsableList').Collapsible} Collapsible
@@ -182,35 +218,38 @@ async function expandList($list) {
 
 	if (!$ul) return;
 
-	$ul.textContent = null;
+	// Cleanup existing file tree
+	if ($ul._fileTree) {
+		$ul._fileTree.destroy();
+		$ul._fileTree = null;
+	}
+	$ul.innerHTML = "";
+
 	if (saveState) listState[url] = $list.unclasped;
 	if (!$list.unclasped) return;
 
 	try {
 		startLoading();
-		const entries = await fsOperation(url).lsDir();
-		helpers
-			.sortDir(entries, {
-				sortByName: true,
-				showHiddenFiles: true,
-			})
-			.map((entry) => {
-				const name = entry.name || Path.basename(entry.url);
-				if (entry.isDirectory) {
-					const $list = createFolderTile(name, entry.url);
-					$ul.appendChild($list);
 
-					if (listState[entry.url]) {
-						$list.expand();
-					}
-				} else {
-					const $item = createFileTile(name, entry.url);
-					$ul.append($item);
-				}
-			});
+		const fileTree = new FileTree($ul, {
+			getEntries: (dirUrl) => fsOperation(dirUrl).lsDir(),
+			expandedState: listState,
+			onExpandedChange: (folderUrl, isExpanded) => {
+				if (saveState) listState[folderUrl] = isExpanded;
+			},
+			onFileClick: (fileUrl) => {
+				handleClick("file", fileUrl);
+			},
+			onContextMenu: (type, itemUrl, name, $target) => {
+				handleContextmenu(type, itemUrl, name, $target);
+			},
+		});
+
+		await fileTree.load(url);
+		$ul._fileTree = fileTree;
 	} catch (err) {
 		$list.collapse();
-		if (err?.includes("Invalid message length")) {
+		if (err?.includes?.("Invalid message length")) {
 			console.error(err);
 			toast("SFTP connection broken. Restart the app");
 			return;
@@ -307,6 +346,15 @@ async function handleContextmenu(type, url, name, $target) {
 		}
 
 		options.push(NEW_FILE, NEW_FOLDER, OPEN_FOLDER, INSERT_FILE);
+
+		if (isTerminalAccessiblePath(url)) {
+			const OPEN_IN_TERMINAL = [
+				"open-in-terminal",
+				strings["open in terminal"] || "Open in Terminal",
+				"licons terminal",
+			];
+			options.push(OPEN_IN_TERMINAL);
+		}
 	} else if (type === "root") {
 		options = [];
 
@@ -314,7 +362,18 @@ async function handleContextmenu(type, url, name, $target) {
 			options.push(PASTE);
 		}
 
-		options.push(NEW_FILE, NEW_FOLDER, INSERT_FILE, CLOSE_FOLDER);
+		options.push(NEW_FILE, NEW_FOLDER, INSERT_FILE);
+
+		if (isTerminalAccessiblePath(url)) {
+			const OPEN_IN_TERMINAL = [
+				"open-in-terminal",
+				strings["open in terminal"] || "Open in Terminal",
+				"licons terminal",
+			];
+			options.push(OPEN_IN_TERMINAL);
+		}
+
+		options.push(CLOSE_FOLDER);
 	}
 
 	if (clipBoard.action) options.push(CANCEL);
@@ -374,6 +433,9 @@ function execOperation(type, action, url, $target, name) {
 
 		case "install-plugin":
 			return installPlugin();
+
+		case "open-in-terminal":
+			return openInTerminal();
 	}
 
 	async function installPlugin() {
@@ -389,6 +451,39 @@ function execOperation(type, action, url, $target, name) {
 		} catch (error) {
 			helpers.error(error);
 			console.error(error);
+		}
+	}
+
+	async function openInTerminal() {
+		try {
+			const prootPath = convertToProotPath(url);
+			const terminal = await TerminalManager.createTerminal({
+				name: `Terminal - ${name}`,
+				render: true,
+			});
+			if (terminal?.component) {
+				const waitForConnection = (timeoutMs = 5000) =>
+					new Promise((resolve, reject) => {
+						const startTime = Date.now();
+						const check = () => {
+							if (terminal.component.isConnected) {
+								resolve();
+							} else if (Date.now() - startTime > timeoutMs) {
+								reject(new Error("Terminal connection timeout"));
+							} else {
+								setTimeout(check, 50);
+							}
+						};
+						check();
+					});
+				await waitForConnection();
+				terminal.component.write(`cd ${JSON.stringify(prootPath)}\n`);
+				Sidebar.hide();
+			}
+		} catch (error) {
+			console.error("Failed to open terminal:", error);
+			const errorMsg = error.message || "Unknown error occurred";
+			toast(`Failed to open terminal: ${errorMsg}`);
 		}
 	}
 

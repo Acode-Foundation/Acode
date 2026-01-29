@@ -97,6 +97,11 @@ export default function editorSettings() {
 			checkbox: values.showPrintMargin,
 		},
 		{
+			key: "textWrap",
+			text: strings["text wrap"],
+			checkbox: values.textWrap,
+		},
+		{
 			key: "printMargin",
 			text: strings["print margin"],
 			value: values.printMargin,
