@@ -1,6 +1,6 @@
 import fsOperation from "fileSystem";
 import toast from "components/toast";
-import { minimatch } from "minimatch";
+import picomatch from "picomatch/posix";
 import Url from "utils/Url";
 import { addedFolder } from "./openFolder";
 import settings from "./settings";
@@ -310,8 +310,10 @@ async function createChildTree(parent, item, root) {
 
 	parent.children.push(file);
 	if (isDirectory) {
-		const ignore = !!settings.value.excludeFolders.find((folder) =>
-			minimatch(Url.join(file.path, ""), folder, { matchBase: true }),
+		const ignore = picomatch.isMatch(
+			Url.join(file.path, ""),
+			settings.value.excludeFolders,
+			{ matchBase: true },
 		);
 		if (ignore) return;
 
