@@ -108,6 +108,7 @@
     "@xterm/addon-web-links": "^0.11.0",
     "@xterm/addon-webgl": "^0.18.0",
     "@xterm/xterm": "^5.5.0",
+    "acorn": "^8.15.0",
     "autosize": "^6.0.1",
     "cordova": "13.0.0",
     "core-js": "^3.45.0",
