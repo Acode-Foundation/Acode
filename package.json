@@ -115,7 +115,6 @@
     "crypto-js": "^4.2.0",
     "dompurify": "^3.2.6",
     "escape-string-regexp": "^5.0.0",
-    "esprima": "^4.0.1",
     "filesize": "^11.0.2",
     "html-tag-js": "^2.4.15",
     "js-base64": "^3.7.7",
