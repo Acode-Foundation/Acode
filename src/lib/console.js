@@ -1,6 +1,6 @@
 import "core-js/stable";
 import "html-tag-js/dist/polyfill";
-import * as esprima from "esprima";
+import { parse } from "acorn";
 import css from "styles/console.m.scss";
 import loadPolyFill from "utils/polyfill";
 
@@ -374,16 +374,21 @@ import loadPolyFill from "utils/polyfill";
 		});
 	}
 
+	/** @type {import("acorn").Options} */
+	const acornOptions = {
+		ecmaVersion: "latest",
+	};
+
 	function parseFunction(data) {
 		let parsed;
 		let str;
 
 		try {
-			parsed = esprima.parse(data.toString()).body[0];
+			parsed = parse(data.toString(), acornOptions).body[0];
 		} catch (error) {
 			try {
 				const fun = ("(" + data.toString() + ")").replace(/\{.*\}/, "{}");
-				parsed = esprima.parse(fun).body[0];
+				parsed = parse(fun, acornOptions).body[0];
 			} catch (error) {
 				return data
 					.toString()
@@ -632,9 +637,7 @@ import loadPolyFill from "utils/polyfill";
 	function execute(code) {
 		let res = null;
 		try {
-			const parsed = esprima.parse(code, {
-				range: true,
-			}).body;
+			const parsed = parse(code, acornOptions).body;
 			res = execParsedCode(parsed);
 		} catch (e) {
 			res = execParsedCode([]);
@@ -648,8 +651,7 @@ import loadPolyFill from "utils/polyfill";
 				if (st.type === "VariableDeclaration") {
 					if (["const", "let"].indexOf(st.kind) < 0) return;
 
-					const range = st.range;
-					const exCode = code.substring(range[0], range[1]) + ";";
+					const exCode = code.substring(st.start, st.end) + ";";
 					extra += exCode;
 				}
 			});
