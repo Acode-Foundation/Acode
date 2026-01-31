@@ -490,13 +490,13 @@
 	"error details": "Fehlerdetails",
 	"active tools": "Aktive Tools",
 	"available tools": "Verfügbare Tools",
-	"recent": "Recent Files",
-	"command palette": "Open Command Palette",
-	"change theme": "Change Theme",
-	"documentation": "Documentation",
-	"open in terminal": "Open in Terminal",
-	"developer mode": "Developer Mode",
-	"info-developermode": "Enable developer tools (Eruda) for debugging plugins and inspecting app state. Inspector will be initialized on app start.",
-	"developer mode enabled": "Developer mode enabled. Use command palette to toggle inspector (Ctrl+Shift+I).",
-	"developer mode disabled": "Developer mode disabled"
+	"recent": "Zuletzt verwendete Dateien",
+	"command palette": "Befehlspalette öffnen",
+	"change theme": "Design ändern",
+	"documentation": "Dokumentation",
+	"open in terminal": "Im Terminal öffnen",
+	"developer mode": "Entwicklermodus",
+	"info-developermode": "Aktivieren Sie die Entwicklertools (Eruda) zum Debuggen von Plugins und Überprüfen des App-Status. Der Inspektor wird beim Start der App initialisiert.",
+	"developer mode enabled": "Entwicklermodus aktiviert. Verwenden Sie die Befehlspalette, um den Inspektor umzuschalten (Strg+Umschalt+I).",
+	"developer mode disabled": "Entwicklermodus deaktiviert"
 }
