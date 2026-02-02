@@ -1,6 +1,10 @@
 import fsOperation from "fileSystem";
 import TabView from "components/tabView";
 import toast from "components/toast";
+import dayjs from "dayjs/esm";
+import dayjsRelativeTime from "dayjs/esm/plugin/relativeTime";
+import dayjsUpdateLocale from "dayjs/esm/plugin/updateLocale";
+import dayjsUtc from "dayjs/esm/plugin/utc";
 import alert from "dialogs/alert";
 import DOMPurify from "dompurify";
 import Ref from "html-tag-js/ref";
@@ -8,11 +12,9 @@ import actionStack from "lib/actionStack";
 import constants from "lib/constants";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
-import dayjs from "dayjs/esm";
-import dayjsRelativeTime from "dayjs/esm/plugin/relativeTime";
-import dayjsUpdateLocale from "dayjs/esm/plugin/updateLocale";
 
 dayjs.extend(dayjsRelativeTime);
+dayjs.extend(dayjsUtc);
 dayjs.extend(dayjsUpdateLocale);
 
 export default (props) => {
@@ -73,7 +75,7 @@ export default (props) => {
 				},
 			});
 
-			const updateTime = dayjs(dateString);
+			const updateTime = dayjs.utc(dateString);
 			if (!updateTime.isValid()) return null;
 
 			return updateTime.fromNow(true);
