@@ -498,5 +498,6 @@
 	"developer mode": "Entwicklermodus",
 	"info-developermode": "Aktivieren Sie die Entwicklertools (Eruda) zum Debuggen von Plugins und Überprüfen des App-Status. Der Inspektor wird beim Start der App initialisiert.",
 	"developer mode enabled": "Entwicklermodus aktiviert. Verwenden Sie die Befehlspalette, um den Inspektor umzuschalten (Strg+Umschalt+I).",
-	"developer mode disabled": "Entwicklermodus deaktiviert"
+	"developer mode disabled": "Entwicklermodus deaktiviert",
+	"copy relative path": "Copy Relative Path"
 }
