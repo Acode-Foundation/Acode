@@ -6,9 +6,14 @@ import DOMPurify from "dompurify";
 import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
 import constants from "lib/constants";
-import moment from "moment";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
+import dayjs from "dayjs/esm";
+import dayjsRelativeTime from "dayjs/esm/plugin/relativeTime";
+import dayjsUpdateLocale from "dayjs/esm/plugin/updateLocale";
+
+dayjs.extend(dayjsRelativeTime);
+dayjs.extend(dayjsUpdateLocale);
 
 export default (props) => {
 	const {
@@ -48,8 +53,8 @@ export default (props) => {
 		if (!dateString) return null;
 
 		try {
-			// Configure moment for shorter relative time format
-			moment.updateLocale("en", {
+			// Configure dayjs for shorter relative time format
+			dayjs.updateLocale("en", {
 				relativeTime: {
 					future: "in %s",
 					past: "%s ago",
@@ -68,12 +73,12 @@ export default (props) => {
 				},
 			});
 
-			const updateTime = moment.utc(dateString);
+			const updateTime = dayjs(dateString);
 			if (!updateTime.isValid()) return null;
 
-			return updateTime.fromNow();
+			return updateTime.fromNow(true);
 		} catch (error) {
-			console.warn("Error parsing date with moment:", dateString, error);
+			console.warn("Error parsing date with dayjs:", dateString, error);
 			return null;
 		}
 	};
