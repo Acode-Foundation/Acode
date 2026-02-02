@@ -499,5 +499,6 @@
 	"developer mode": "Mode Pengembang",
 	"info-developermode": "Aktifkan alat pengembang (Eruda) untuk men-debug plugin dan memeriksa status aplikasi. Inspektor akan diinisialisasi saat aplikasi dimulai.",
 	"developer mode enabled": "Mode pengembang diaktifkan. Gunakan palet perintah untuk mengaktifkan/menonaktifkan inspektor (Ctrl+Shift+I).",
-	"developer mode disabled": "Mode pengembang dinonaktifkan"
+	"developer mode disabled": "Mode pengembang dinonaktifkan",
+	"copy relative path": "Copy Relative Path"
 }

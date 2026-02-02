@@ -311,6 +311,11 @@ async function handleContextmenu(type, url, name, $target) {
 	const cancel = `${strings.cancel}${clipBoard ? ` (${strings[clipBoard.action]})` : ""}`;
 	const COPY = ["copy", strings.copy, "copy"];
 	const CUT = ["cut", strings.cut, "cut"];
+	const COPY_RELATIVE_PATH = [
+		"copy-relative-path",
+		strings["copy relative path"],
+		"attach_file",
+	];
 	const REMOVE = ["delete", strings.delete, "delete"];
 	const RENAME = ["rename", strings.rename, "edit"];
 	const PASTE = ["paste", strings.paste, "paste", !!clipBoard];
@@ -329,7 +334,7 @@ async function handleContextmenu(type, url, name, $target) {
 	let options;
 
 	if (helpers.isFile(type)) {
-		options = [COPY, CUT, RENAME, REMOVE];
+		options = [COPY, CUT, COPY_RELATIVE_PATH, RENAME, REMOVE];
 		if (
 			url.toLowerCase().endsWith(".zip") &&
 			(await fsOperation(
@@ -339,7 +344,7 @@ async function handleContextmenu(type, url, name, $target) {
 			options.push(INSTALL_PLUGIN);
 		}
 	} else if (helpers.isDir(type)) {
-		options = [COPY, CUT, REMOVE, RENAME];
+		options = [COPY, CUT, COPY_RELATIVE_PATH, REMOVE, RENAME];
 
 		if (clipBoard.url != null) {
 			options.push(PASTE);
@@ -397,7 +402,7 @@ async function handleContextmenu(type, url, name, $target) {
  * @param {string} name Name of file or folder
  */
 function execOperation(type, action, url, $target, name) {
-	const { clipBoard, $node, remove } = openFolder.find(url);
+	const { clipBoard, $node, remove, url: rootUrl } = openFolder.find(url);
 	const startLoading = () => $node.$title.classList.add("loading");
 	const stopLoading = () => $node.$title.classList.remove("loading");
 
@@ -436,6 +441,9 @@ function execOperation(type, action, url, $target, name) {
 
 		case "open-in-terminal":
 			return openInTerminal();
+
+		case "copy-relative-path":
+			return copyRelativePath();
 	}
 
 	async function installPlugin() {
@@ -451,6 +459,61 @@ function execOperation(type, action, url, $target, name) {
 		} catch (error) {
 			helpers.error(error);
 			console.error(error);
+		}
+	}
+
+	async function copyRelativePath() {
+		try {
+			// Validate inputs
+			if (!url) {
+				console.error("File path not available");
+				return;
+			}
+
+			if (!rootUrl) {
+				console.error("Root folder not found");
+				return;
+			}
+
+			let relativePath;
+
+			// Try using Url.pathname for protocol-based URLs
+			const rootPath = Url.pathname(rootUrl);
+			const targetPath = Url.pathname(url);
+
+			if (rootPath && targetPath) {
+				// Both pathnames extracted successfully
+				relativePath = Path.convertToRelative(rootPath, targetPath);
+			} else {
+				// Fallback: Use simple string comparison for URIs where pathname extraction fails
+				const cleanRoot = rootUrl.endsWith("/")
+					? rootUrl.slice(0, -1)
+					: rootUrl;
+				const cleanTarget = url.endsWith("/") ? url.slice(0, -1) : url;
+
+				// Check if target URL starts with root URL
+				if (cleanTarget.startsWith(cleanRoot)) {
+					relativePath = cleanTarget.slice(cleanRoot.length + 1);
+				} else {
+					// If not a child path, just use basename
+					relativePath = Url.basename(url);
+				}
+			}
+
+			if (!relativePath) {
+				console.error("Unable to calculate relative path");
+				return;
+			}
+
+			if (cordova.plugins.clipboard) {
+				cordova.plugins.clipboard.copy(relativePath);
+				toast(strings.success || "Relative path copied to clipboard");
+			} else {
+				console.error("Clipboard not available");
+				toast("Clipboard not available");
+			}
+		} catch (error) {
+			console.error("Failed to copy relative path:", error);
 		}
 	}
 
