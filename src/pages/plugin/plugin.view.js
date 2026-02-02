@@ -17,6 +17,26 @@ dayjs.extend(dayjsRelativeTime);
 dayjs.extend(dayjsUtc);
 dayjs.extend(dayjsUpdateLocale);
 
+// Configure dayjs for shorter relative time format
+dayjs.updateLocale("en", {
+	relativeTime: {
+		future: "in %s",
+		past: "%s ago",
+		s: "now",
+		ss: "now",
+		m: "1m",
+		mm: "%dm",
+		h: "1h",
+		hh: "%dh",
+		d: "1d",
+		dd: "%dd",
+		M: "1mo",
+		MM: "%dmo",
+		y: "1y",
+		yy: "%dy",
+	},
+});
+
 export default (props) => {
 	const {
 		id,
@@ -55,26 +75,6 @@ export default (props) => {
 		if (!dateString) return null;
 
 		try {
-			// Configure dayjs for shorter relative time format
-			dayjs.updateLocale("en", {
-				relativeTime: {
-					future: "in %s",
-					past: "%s ago",
-					s: "now",
-					ss: "now",
-					m: "1m",
-					mm: "%dm",
-					h: "1h",
-					hh: "%dh",
-					d: "1d",
-					dd: "%dd",
-					M: "1mo",
-					MM: "%dmo",
-					y: "1y",
-					yy: "%dy",
-				},
-			});
-
 			const updateTime = dayjs.utc(dateString);
 			if (!updateTime.isValid()) return null;
 
