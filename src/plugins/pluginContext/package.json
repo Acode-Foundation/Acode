@@ -1,0 +1,17 @@
+{
+  "name": "com.foxdebug.acode.rk.plugin.plugincontext",
+  "version": "1.0.0",
+  "description": "PluginContext",
+  "cordova": {
+    "id": "com.foxdebug.acode.rk.plugin.plugincontext",
+    "platforms": [
+      "android"
+    ]
+  },
+  "keywords": [
+    "ecosystem:cordova",
+    "cordova-android"
+  ],
+  "author": "@RohitKushvaha01",
+  "license": "MIT"
+}
