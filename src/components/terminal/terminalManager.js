@@ -627,8 +627,8 @@ class TerminalManager {
 
 			// Convert proot path
 			const fileUri = this.convertProotPath(path);
-			// Extract folder/file name from path
-			const name = path.split("/").filter(Boolean).pop() || "folder";
+			// Extract folder/file name from normalized path
+			const name = this.getPathDisplayName(path);
 
 			try {
 				if (type === "folder") {
@@ -902,6 +902,28 @@ class TerminalManager {
 
 		//console.log(`Path conversion: ${prootPath} -> ${convertedPath}`);
 		return convertedPath;
+	}
+
+	/**
+	 * Get a stable display name from a filesystem path.
+	 * Handles trailing "." and ".." segments (e.g. "/a/b/." -> "b").
+	 * @param {string} path
+	 * @returns {string}
+	 */
+	getPathDisplayName(path) {
+		if (!path) return "folder";
+
+		const normalized = [];
+		for (const segment of String(path).split("/")) {
+			if (!segment || segment === ".") continue;
+			if (segment === "..") {
+				if (normalized.length) normalized.pop();
+				continue;
+			}
+			normalized.push(segment);
+		}
+
+		return normalized.pop() || "folder";
 	}
 
 	shouldConfirmTerminalClose() {
