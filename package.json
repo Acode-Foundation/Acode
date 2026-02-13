@@ -119,7 +119,7 @@
     "html-tag-js": "^2.4.15",
     "js-base64": "^3.7.7",
     "jszip": "^3.10.1",
-    "markdown-it": "^14.1.0",
+    "markdown-it": "^14.1.1",
     "markdown-it-anchor": "^9.2.0",
     "markdown-it-footnote": "^4.0.0",
     "markdown-it-github-alerts": "^1.0.0",
