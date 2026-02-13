@@ -15,9 +15,14 @@ import java.util.HashSet;
 
 public class Tee extends CordovaPlugin {
 
-    private static final Map<String, String> tokenStore = new HashMap<>();
-    private static final HashSet<String> disclosed = new HashSet<>();
-    private static final Map<String, List<String>> permissionStore = new HashMap<>();
+    // pluginId : token
+    private /*static*/ final Map<String, String> tokenStore = new HashMap<>();
+
+    //assined tokens
+    private /*static*/ final HashSet<String> disclosed = new HashSet<>();
+
+    // token : list of permissions
+    private /*static*/ final Map<String, List<String>> permissionStore = new HashMap<>();
 
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callback)
@@ -62,12 +67,20 @@ public class Tee extends CordovaPlugin {
         return false;
     }
 
-    private boolean grantedPermission(String token, String permission) {
+    //============================================================
+    //do not change function signatures
+    public boolean isTokenValid(String token, String pluginId) {
+        String storedToken = tokenStore.get(pluginId);
+        return storedToken != null && token.equals(storedToken);
+    }
+
+
+    public boolean grantedPermission(String token, String permission) {
         List<String> permissions = permissionStore.get(token);
         return permissions != null && permissions.contains(permission);
     }
 
-    private List<String> listAllPermissions(String token) {
+    public List<String> listAllPermissions(String token) {
         List<String> permissions = permissionStore.get(token);
 
         if (permissions == null) {
@@ -76,6 +89,7 @@ public class Tee extends CordovaPlugin {
 
         return new ArrayList<>(permissions); // return copy (safe)
     }
+    //============================================================
 
 
     private synchronized void handleTokenRequest(

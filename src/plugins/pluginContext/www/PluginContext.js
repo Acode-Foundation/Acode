@@ -1,33 +1,44 @@
 var exec = require("cordova/exec");
 
 const PluginContext = (function () {
-  const _state = new WeakMap();
-
+  //=============================
   class _PluginContext {
-    time = Date.now();
-    constructor(pluginId, uuid) {
-      _state.set(this, { pluginId, uuid });
+    constructor(uuid) {
+      this.created_at = Date.now();
+      this.uuid = uuid;
       Object.freeze(this);
     }
+
+    toString() {
+      return this.uuid;
+    }
+
+    [Symbol.toPrimitive](hint) {
+      if (hint === "number") {
+        return NaN; // prevent numeric coercion
+      }
+      return this.uuid;
+    }
+
     grantedPermission(permission) {
-      const state = _state.get(this);
       return new Promise((resolve, reject) => {
         exec(resolve, reject, "Tee", "grantedPermission", [
-          state.uuid,
+          this.uuid,
           permission,
         ]);
       });
     }
 
     listAllPermissions() {
-      const state = _state.get(this);
       return new Promise((resolve, reject) => {
-        exec(resolve, reject, "Tee", "listAllPermissions", [state.uuid]);
+        exec(resolve, reject, "Tee", "listAllPermissions", [this.uuid]);
       });
     }
   }
 
   //Object.freeze(this);
+
+  //===============================
 
   return {
     generate: async function (pluginId, pluginJson) {
@@ -42,11 +53,9 @@ const PluginContext = (function () {
         }
 
         const uuid = await requestToken(pluginId);
-        return new _PluginContext(pluginId, uuid);
+        return new _PluginContext(uuid);
       } catch (err) {
-        console.warn(
-          `PluginContext generation failed for pluginId ${pluginId}:`,
-        );
+        console.warn(`PluginContext creation failed for pluginId ${pluginId}:`);
         return null;
       }
     },
