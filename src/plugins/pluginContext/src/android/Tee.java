@@ -18,7 +18,7 @@ public class Tee extends CordovaPlugin {
     // pluginId : token
     private /*static*/ final Map<String, String> tokenStore = new HashMap<>();
 
-    //assined tokens
+    //assigned tokens
     private /*static*/ final HashSet<String> disclosed = new HashSet<>();
 
     // token : list of permissions
