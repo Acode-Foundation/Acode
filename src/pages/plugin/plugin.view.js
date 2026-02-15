@@ -78,7 +78,7 @@ export default (props) => {
 			const updateTime = dayjs.utc(dateString);
 			if (!updateTime.isValid()) return null;
 
-			return updateTime.fromNow(true);
+			return updateTime.fromNow();
 		} catch (error) {
 			console.warn("Error parsing date with dayjs:", dateString, error);
 			return null;
