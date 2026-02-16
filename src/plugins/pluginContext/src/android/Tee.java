@@ -12,17 +12,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class Tee extends CordovaPlugin {
 
     // pluginId : token
-    private /*static*/ final Map<String, String> tokenStore = new HashMap<>();
+    private /*static*/ final Map<String, String> tokenStore = new ConcurrentHashMap<>();
 
     //assigned tokens
-    private /*static*/ final HashSet<String> disclosed = new HashSet<>();
+    private /*static*/ final Set<String> disclosed = ConcurrentHashMap.newKeySet();
 
     // token : list of permissions
-    private /*static*/ final Map<String, List<String>> permissionStore = new HashMap<>();
+    private /*static*/ final Map<String, List<String>> permissionStore = new ConcurrentHashMap<>();
 
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callback)
