@@ -55,7 +55,7 @@ const PluginContext = (function () {
         const uuid = await requestToken(pluginId);
         return new _PluginContext(uuid);
       } catch (err) {
-        console.warn(`PluginContext creation failed for pluginId ${pluginId}:`);
+        console.warn(`PluginContext creation failed for pluginId ${pluginId}:`, err);
         return null;
       }
     },
