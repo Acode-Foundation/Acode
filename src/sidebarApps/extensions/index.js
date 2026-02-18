@@ -688,18 +688,18 @@ function ListItem({ icon, name, id, version, downloads, installed, source }) {
 			</span>
 			{installed
 				? <>
-					{source
-						? <span className="icon replay" data-action="rebuild-plugin" />
-						: null}
-					<span className="icon more_vert" data-action="more-plugin-action" />
-				</>
+						{source
+							? <span className="icon replay" data-action="rebuild-plugin" />
+							: null}
+						<span className="icon more_vert" data-action="more-plugin-action" />
+					</>
 				: <button
-					type="button"
-					className="install-btn"
-					data-action="install-plugin"
-				>
-					<span className="icon file_downloadget_app" />
-				</button>}
+						type="button"
+						className="install-btn"
+						data-action="install-plugin"
+					>
+						<span className="icon file_downloadget_app" />
+					</button>}
 		</div>
 	);
 
@@ -868,8 +868,8 @@ async function uninstall(id) {
 			fsOperation(pluginDir).delete(),
 			state.delete(state.storeUrl),
 		]);
-		const pluginMainScript = document.getElementById(`${id}-mainScript`)
-		if (pluginMainScript) document.head.removeChild(pluginMainScript)
+		const pluginMainScript = document.getElementById(`${id}-mainScript`);
+		if (pluginMainScript) document.head.removeChild(pluginMainScript);
 		acode.unmountPlugin(id);
 
 		const searchInput = container.querySelector('input[name="search-ext"]');
