@@ -277,7 +277,7 @@
 	"remote": "Távoli",
 	"show console toggler": "Konzolkapcsoló megjelenítése",
 	"binary file": "Ez a fájl bináris adatokat tartalmaz, biztosan meg akarja nyitni?",
-	"relative line numbers": "Viszonylagos sorszámok",
+	"relative line numbers": "Relatív sorszámok",
 	"elastic tabstops": "Rugalmas tabulátor",
 	"line based rtl switching": "Sor alapú RTL-váltás",
 	"hard wrap": "Kemény törés",
@@ -499,5 +499,5 @@
 	"info-developermode": "Engedélyezze a fejlesztői eszközöket (Eruda) a bővítmények hibakereséséhez és az alkalmazás állapotának megfigyeléséhez. A megfigyelő az alkalmazás indításakor előkészítődik.",
 	"developer mode enabled": "Fejlesztői mód engedélyezve. A parancspaletta használatával kapcsolhatja be/ki a megfigyelőt (Ctrl+Shift+I).",
 	"developer mode disabled": "Fejlesztői mód letiltva",
-	"copy relative path": "Copy Relative Path"
+	"copy relative path": "Relatív elérési útvonal másolása"
 }

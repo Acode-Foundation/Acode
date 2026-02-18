@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0" xmlns:android="http://schemas.android.com/apk/res/android" id="com.foxdebug.acode.rk.plugin.plugincontext" version="1.0.0">
+    <name>PluginContext</name>
+
+
+        <js-module name="PluginContext" src="www/PluginContext.js">
+        <clobbers target="window.PluginContext" />
+    </js-module>
+
+
+    <platform name="android">
+        <config-file parent="/*" target="res/xml/config.xml">
+            <feature name="Tee">
+                <param name="android-package" value="com.foxdebug.acode.rk.plugin.Tee" />
+            </feature>
+        </config-file>
+
+        <source-file src="src/android/Tee.java" target-dir="src/com/foxdebug/acode/rk/plugin" />
+
+           
+    </platform>
+</plugin>

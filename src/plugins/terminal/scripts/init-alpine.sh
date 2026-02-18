@@ -87,15 +87,27 @@ usage() {
 
 get_abs_path() {
     local path="$1"
-    local abs_path
-    abs_path=$(realpath -- "$path" 2>/dev/null)
-    if [[ $? -ne 0 ]]; then
-        if [[ "$path" == /* ]]; then
+    local abs_path=""
+
+    if command -v realpath >/dev/null 2>&1; then
+        abs_path=$(realpath -- "$path" 2>/dev/null)
+    fi
+
+    if [[ -z "$abs_path" ]]; then
+        if [[ -d "$path" ]]; then
+            abs_path=$(cd -- "$path" 2>/dev/null && pwd -P)
+        elif [[ -e "$path" ]]; then
+            local dir_name file_name
+            dir_name=$(dirname -- "$path")
+            file_name=$(basename -- "$path")
+            abs_path="$(cd -- "$dir_name" 2>/dev/null && pwd -P)/$file_name"
+        elif [[ "$path" == /* ]]; then
             abs_path="$path"
         else
             abs_path="$PWD/$path"
         fi
     fi
+
     echo "$abs_path"
 }
 

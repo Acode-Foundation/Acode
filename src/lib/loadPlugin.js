@@ -56,6 +56,10 @@ export default async function loadPlugin(pluginId, justInstalled = false) {
 					cacheFileUrl: await helpers.toInternalUri(cacheFile),
 					cacheFile: fsOperation(cacheFile),
 					firstInit: justInstalled,
+					ctx: await PluginContext.generate(
+						pluginId,
+						JSON.stringify(pluginJson),
+					),
 				});
 
 				resolve();
