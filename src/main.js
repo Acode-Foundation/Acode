@@ -364,8 +364,6 @@ async function setDebugInfo() {
 	].join("\n");
 
 	document.body.setAttribute("data-version", info);
-
-	await new Promise((resolve) => setTimeout(resolve, 5000));
 }
 
 async function promptUpdateCheckConsent() {
