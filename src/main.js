@@ -199,7 +199,7 @@ async function onDeviceReady() {
 	try {
 		await setDebugInfo();
 	} catch (e) {
-		console.err(e);
+		console.error(e);
 	}
 
 	acode.setLoadingMessage("Loading settings...");
