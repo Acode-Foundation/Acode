@@ -374,6 +374,6 @@
     "Zeek"
   ],
   "[javascript]": {
-    "editor.defaultFormatter": "biomejs.biome"
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   }
 }
