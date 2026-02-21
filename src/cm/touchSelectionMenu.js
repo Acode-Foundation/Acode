@@ -1152,6 +1152,11 @@ class TouchSelectionMenuController {
 		}
 		if (!element) return false;
 		if (element.closest(".cm-tooltip, .cm-panel")) return true;
+		// CodeMirror editor surface is contenteditable; do not ignore it.
+		const editorContent = element.closest(".cm-content");
+		if (editorContent && this.#view.dom.contains(editorContent)) {
+			return false;
+		}
 		if (
 			element.closest(
 				'input, textarea, select, button, a, [contenteditable], [role="button"]',
