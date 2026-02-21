@@ -922,6 +922,62 @@ async function EditorManager($header, $body) {
 	};
 
 	/**
+	 * Ace-compatible selection range getter with 0-based rows.
+	 * @returns {{start: {row: number, column: number}, end: {row: number, column: number}}}
+	 */
+	editor.getSelectionRange = function () {
+		try {
+			const { from, to } = editor.state.selection.main;
+			const fromLine = editor.state.doc.lineAt(from);
+			const toLine = editor.state.doc.lineAt(to);
+			return {
+				start: {
+					row: Math.max(0, fromLine.number - 1),
+					column: from - fromLine.from,
+				},
+				end: {
+					row: Math.max(0, toLine.number - 1),
+					column: to - toLine.from,
+				},
+			};
+		} catch (_) {
+			return { start: { row: 0, column: 0 }, end: { row: 0, column: 0 } };
+		}
+	};
+
+	/**
+	 * Ace-compatible row scrolling helper.
+	 * @param {number} row - 0-based row index, supports Infinity to jump to end.
+	 * @returns {boolean}
+	 */
+	editor.scrollToRow = function (row) {
+		try {
+			const scroller = editor.scrollDOM;
+			if (!scroller) return false;
+
+			if (row === Number.POSITIVE_INFINITY) {
+				scroller.scrollTop = Math.max(
+					scroller.scrollHeight - scroller.clientHeight,
+					0,
+				);
+				return true;
+			}
+
+			const parsedRow = Number(row);
+			if (!Number.isFinite(parsedRow)) return false;
+			const aceRow = Math.max(0, Math.floor(parsedRow));
+			const lineNum = Math.min(editor.state.doc.lines, aceRow + 1);
+			const line = editor.state.doc.line(lineNum);
+			editor.dispatch({
+				effects: EditorView.scrollIntoView(line.from, { y: "start" }),
+			});
+			return true;
+		} catch (_) {
+			return false;
+		}
+	};
+
+	/**
 	 * Move cursor to specific position
 	 * @param {{row: number, column: number}} pos - Position to move to
 	 */

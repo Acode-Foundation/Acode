@@ -15,7 +15,12 @@ import fsOperation from "fileSystem";
 import sidebarApps from "sidebarApps";
 import ajax from "@deadlyjack/ajax";
 import { setKeyBindings } from "cm/commandRegistry";
-import { initModes } from "cm/modelist";
+import {
+	getModeForPath,
+	getModes,
+	getModesByName,
+	initModes,
+} from "cm/modelist";
 import Contextmenu from "components/contextmenu";
 import { hasConnectedServers } from "components/lspInfoDialog";
 import Sidebar from "components/sidebar";
@@ -63,6 +68,59 @@ const previousVersionCode = Number.parseInt(localStorage.versionCode, 10);
 
 window.onload = Main;
 const logger = new Logger();
+
+function createAceModelistCompatModule() {
+	const toAceMode = (mode) => {
+		const resolved = mode || getModeForPath("");
+		if (!resolved) return null;
+		const name = resolved.name || "text";
+		const rawMode = String(resolved.mode || name);
+		const modePath = rawMode.startsWith("ace/mode/")
+			? rawMode
+			: `ace/mode/${rawMode}`;
+		return {
+			...resolved,
+			name,
+			caption: resolved.caption || name,
+			mode: modePath,
+		};
+	};
+
+	return {
+		get modes() {
+			return getModes()
+				.map((mode) => toAceMode(mode))
+				.filter(Boolean);
+		},
+		get modesByName() {
+			const source = getModesByName();
+			const result = {};
+			Object.keys(source).forEach((name) => {
+				result[name] = toAceMode(source[name]);
+			});
+			return result;
+		},
+		getModeForPath(path) {
+			return toAceMode(getModeForPath(String(path || "")));
+		},
+	};
+}
+
+function ensureAceCompatApi() {
+	const ace = window.ace || {};
+	const modelistModule = createAceModelistCompatModule();
+	const originalRequire =
+		typeof ace.require === "function" ? ace.require.bind(ace) : null;
+
+	ace.require = (moduleId) => {
+		if (moduleId === "ace/ext/modelist" || moduleId === "ace/ext/modelist.js") {
+			return modelistModule;
+		}
+		return originalRequire?.(moduleId);
+	};
+
+	window.ace = ace;
+}
 
 async function Main() {
 	const oldPreventDefault = TouchEvent.prototype.preventDefault;
@@ -179,6 +237,7 @@ async function onDeviceReady() {
 		return true;
 	})();
 	window.acode = new Acode();
+	ensureAceCompatApi();
 
 	system.requestPermission("android.permission.READ_EXTERNAL_STORAGE");
 	system.requestPermission("android.permission.WRITE_EXTERNAL_STORAGE");

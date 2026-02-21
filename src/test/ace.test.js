@@ -99,6 +99,27 @@ export async function runAceCompatibilityTests(writeOutput) {
 		test.assert(range.end != null, "range should have end");
 	});
 
+	runner.test("editor.getSelectionRange()", (test) => {
+		const editor = getEditor();
+		test.assert(
+			typeof editor.getSelectionRange === "function",
+			"getSelectionRange should be a function",
+		);
+		const range = editor.getSelectionRange();
+		test.assert(range.start != null, "range should have start");
+		test.assert(range.end != null, "range should have end");
+	});
+
+	runner.test("editor.scrollToRow()", (test) => {
+		const editor = getEditor();
+		test.assert(
+			typeof editor.scrollToRow === "function",
+			"scrollToRow should be a function",
+		);
+		const ok = editor.scrollToRow(0);
+		test.assert(ok === true || ok === undefined, "scrollToRow should not fail");
+	});
+
 	runner.test("editor.selection.getCursor()", (test) => {
 		const editor = getEditor();
 		test.assert(
@@ -197,6 +218,20 @@ export async function runAceCompatibilityTests(writeOutput) {
 	runner.test("editor.contentDOM (CodeMirror)", (test) => {
 		const editor = getEditor();
 		test.assert(editor.contentDOM != null, "contentDOM should exist");
+	});
+
+	runner.test("ace.require('ace/ext/modelist')", (test) => {
+		test.assert(window.ace != null, "window.ace should exist");
+		test.assert(
+			typeof window.ace.require === "function",
+			"ace.require should be a function",
+		);
+		const modelist = window.ace.require("ace/ext/modelist");
+		test.assert(modelist != null, "modelist should be available");
+		test.assert(
+			typeof modelist.getModeForPath === "function",
+			"modelist.getModeForPath should be a function",
+		);
 	});
 
 	// Session API tests
