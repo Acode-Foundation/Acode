@@ -140,7 +140,6 @@ interface System {
    */
   pinShortcut(id: string, onSuccess: OnSuccessBool, onFail: OnFail): void;
 
-    pinShortcut(id: string, onSuccess: OnSuccessBool, onFail: OnFail): void;
   /**
    * Pin a shortcut for a specific file to the home screen
    * @param shortcut Shortcut configuration
