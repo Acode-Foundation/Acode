@@ -101,6 +101,11 @@ import android.graphics.Typeface;
 import android.graphics.Canvas;
 import android.util.TypedValue;
 
+import android.provider.MediaStore;
+import android.graphics.Bitmap;
+import android.os.Build;
+import android.graphics.ImageDecoder;
+
 
 
 public class System extends CordovaPlugin {
@@ -1095,31 +1100,55 @@ public class System extends CordovaPlugin {
         }
 
         if (!ShortcutManagerCompat.isRequestPinShortcutSupported(context)) {
-            callback.error("Not supported");
+            callback.error("Pin shortcut not supported on this launcher");
             return;
         }
 
         try {
             Uri dataUri = Uri.parse(uriString);
-            
             String packageName = context.getPackageName();
-            Intent launchIntent = context.getPackageManager().getLaunchIntentForPackage(packageName);
+            PackageManager pm = context.getPackageManager();
+
+            Intent launchIntent = pm.getLaunchIntentForPackage(packageName);
+            if (launchIntent == null) {
+                callback.error("Launch intent not found for package: " + packageName);
+                return;
+            }
+
             ComponentName componentName = launchIntent.getComponent();
+            if (componentName == null) {
+                callback.error("ComponentName is null");
+                return;
+            }
 
             Intent intent = new Intent(Intent.ACTION_VIEW);
             intent.setComponent(componentName);
-
             intent.setData(dataUri);
             intent.putExtra("acodeFileUri", uriString);
 
             IconCompat icon;
+
             if (iconSrc != null && !iconSrc.isEmpty()) {
-                ImageDecoder.Source imgSrc = ImageDecoder.createSource(
-                    context.getContentResolver(),
-                    Uri.parse(iconSrc)
-                );
-                Bitmap bitmap = ImageDecoder.decodeBitmap(imgSrc);
-                icon = IconCompat.createWithBitmap(bitmap);
+                try {
+                    Uri iconUri = Uri.parse(iconSrc);
+                    Bitmap bitmap;
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        ImageDecoder.Source imgSrc =
+                            ImageDecoder.createSource(context.getContentResolver(), iconUri);
+                        bitmap = ImageDecoder.decodeBitmap(imgSrc);
+                    } else {
+                        bitmap = MediaStore.Images.Media.getBitmap(
+                            context.getContentResolver(),
+                            iconUri
+                        );
+                    }
+
+                    icon = IconCompat.createWithBitmap(bitmap);
+
+                } catch (Exception e) {
+                    icon = getFileShortcutIcon(label);
+                }
             } else {
                 icon = getFileShortcutIcon(label);
             }
