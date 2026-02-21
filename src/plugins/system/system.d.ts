@@ -152,8 +152,6 @@ interface System {
     onFail: OnFail,
   ): void;
   /**
-
-  /**
    * Gets android version
    * @param onSuccess
    * @param onFail
