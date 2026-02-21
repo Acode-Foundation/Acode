@@ -52,6 +52,12 @@ export default function PluginsInclude(updates) {
   let isSearching = false;
   let currentFilter = null;
   const LIMIT = 50;
+  const SUPPORTED_EDITOR = "cm";
+
+  const withSupportedEditor = (url) => {
+    const separator = url.includes("?") ? "&" : "?";
+    return `${url}${separator}supported_editor=${SUPPORTED_EDITOR}`;
+  };
 
   Contextmenu({
     toggler: $add,
@@ -337,7 +343,7 @@ export default function PluginsInclude(updates) {
     if (!query) return [];
     try {
       const response = await fetch(
-        `${constants.API_BASE}/plugins?name=${query}`,
+        withSupportedEditor(`${constants.API_BASE}/plugins?name=${query}`),
       );
       const plugins = await response.json();
       // Map the plugins to Item elements and return
@@ -418,11 +424,15 @@ export default function PluginsInclude(updates) {
         let response;
         if (filterState.value === "top_rated") {
           response = await fetch(
-            `${constants.API_BASE}/plugins?explore=random&page=${page}&limit=${LIMIT}`,
+            withSupportedEditor(
+              `${constants.API_BASE}/plugins?explore=random&page=${page}&limit=${LIMIT}`,
+            ),
           );
         } else {
           response = await fetch(
-            `${constants.API_BASE}/plugin?orderBy=${filterState.value}&page=${page}&limit=${LIMIT}`,
+            withSupportedEditor(
+              `${constants.API_BASE}/plugin?orderBy=${filterState.value}&page=${page}&limit=${LIMIT}`,
+            ),
           );
         }
         const items = await response.json();
@@ -461,7 +471,7 @@ export default function PluginsInclude(updates) {
       try {
         const page = filterState.nextPage;
         const response = await fetch(
-          `${constants.API_BASE}/plugins?page=${page}&limit=${LIMIT}`,
+          withSupportedEditor(`${constants.API_BASE}/plugins?page=${page}&limit=${LIMIT}`),
         );
         const data = await response.json();
         filterState.nextPage = page + 1;
@@ -557,7 +567,9 @@ export default function PluginsInclude(updates) {
 
       $list.all.setAttribute("empty-msg", strings["loading..."]);
 
-      const response = await fetch(`${constants.API_BASE}/plugins?page=${currentPage}&limit=${LIMIT}`);
+      const response = await fetch(
+        withSupportedEditor(`${constants.API_BASE}/plugins?page=${currentPage}&limit=${LIMIT}`),
+      );
       const newPlugins = await response.json();
 
       if (newPlugins.length < LIMIT) {
