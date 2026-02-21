@@ -499,5 +499,9 @@
 	"info-developermode": "Увімкнути інструменти розробника (Eruda) для налагодження плагінів та перевірки стану програми. Інспектор буде ініціалізовано під час запуску програми.",
 	"developer mode enabled": "Режим розробника ввімкнено. Використовуйте палітру команд для перемикання інспектора (Ctrl+Shift+I).",
 	"developer mode disabled": "Режим розробника вимкнено",
-	"copy relative path": "Копіювати відносний шлях"
+	"copy relative path": "Копіювати відносний шлях",
+	"shortcut request sent": "Shortcut request opened. Tap Add to finish.",
+	"add to home screen": "Add to home screen",
+	"pin shortcuts not supported": "Home screen shortcuts are not supported on this device.",
+	"save file before home shortcut": "Save the file before adding it to the home screen."
 }

@@ -289,6 +289,60 @@ export default {
 	share() {
 		editorManager.activeFile.share();
 	},
+	async "pin-file-shortcut"() {
+		const file = editorManager.activeFile;
+		if (!file?.uri) {
+			toast(strings["save file before home shortcut"]);
+			return;
+		}
+
+		if (typeof system?.pinFileShortcut !== "function") {
+			toast(strings["pin shortcuts not supported"]);
+			return;
+		}
+
+		const { uri, filename } = file;
+		const label = filename;
+		const description = filename;
+
+		let id = uri.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+		if (!id) {
+			id = helpers.uuid();
+		}
+		if (id.length > 40) {
+			id = id.slice(-40);
+		}
+		id = `file-${id}`;
+
+		const shortcut = {
+			id,
+			label,
+			description,
+			uri,
+		};
+
+		const requestShortcut = new Promise((resolve, reject) => {
+			system.pinFileShortcut(
+				shortcut,
+				() => resolve(true),
+				(err) => reject(err),
+			);
+		});
+
+		try {
+			await requestShortcut;
+			toast(strings["shortcut request sent"]);
+		} catch (error) {
+			if (
+				typeof error === "string" &&
+				error.toLowerCase().includes("not supported")
+			) {
+				toast(strings["pin shortcuts not supported"]);
+				return;
+			}
+			helpers.error(error);
+		}
+	},
 	syntax() {
 		changeMode();
 	},

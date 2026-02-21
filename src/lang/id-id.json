@@ -500,5 +500,9 @@
 	"info-developermode": "Aktifkan alat pengembang (Eruda) untuk men-debug plugin dan memeriksa status aplikasi. Inspektor akan diinisialisasi saat aplikasi dimulai.",
 	"developer mode enabled": "Mode pengembang diaktifkan. Gunakan palet perintah untuk mengaktifkan/menonaktifkan inspektor (Ctrl+Shift+I).",
 	"developer mode disabled": "Mode pengembang dinonaktifkan",
-	"copy relative path": "Copy Relative Path"
+	"copy relative path": "Copy Relative Path",
+	"shortcut request sent": "Shortcut request opened. Tap Add to finish.",
+	"add to home screen": "Add to home screen",
+	"pin shortcuts not supported": "Home screen shortcuts are not supported on this device.",
+	"save file before home shortcut": "Save the file before adding it to the home screen."
 }

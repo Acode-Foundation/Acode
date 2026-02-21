@@ -500,5 +500,9 @@
 	"info-developermode": "Enable developer tools (Eruda) for debugging plugins and inspecting app state. Inspector will be initialized on app start.",
 	"developer mode enabled": "Developer mode enabled. Use command palette to toggle inspector (Ctrl+Shift+I).",
 	"developer mode disabled": "Developer mode disabled",
-	"copy relative path": "Copy Relative Path"
+	"copy relative path": "Copy Relative Path",
+	"shortcut request sent": "Shortcut request opened. Tap Add to finish.",
+	"add to home screen": "Add to home screen",
+	"pin shortcuts not supported": "Home screen shortcuts are not supported on this device.",
+	"save file before home shortcut": "Save the file before adding it to the home screen."
 }

@@ -499,5 +499,9 @@
 	"info-developermode": "啟用開發者工具 (Eruda)，用於調試插件和檢查應用狀態。檢查器將在應用啟動時初始化。",
 	"developer mode enabled": "開發者模式已啟用。使用命令面板切換檢查器 (Ctrl+Shift+I)。",
 	"developer mode disabled": "開發者模式已禁用",
-	"copy relative path": "複製相對路徑"
+	"copy relative path": "複製相對路徑",
+	"shortcut request sent": "Shortcut request opened. Tap Add to finish.",
+	"add to home screen": "Add to home screen",
+	"pin shortcuts not supported": "Home screen shortcuts are not supported on this device.",
+	"save file before home shortcut": "Save the file before adding it to the home screen."
 }

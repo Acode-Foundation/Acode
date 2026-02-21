@@ -499,5 +499,9 @@
 	"info-developermode": "Aktivieren Sie die Entwicklertools (Eruda) zum Debuggen von Plugins und Überprüfen des App-Status. Der Inspektor wird beim Start der App initialisiert.",
 	"developer mode enabled": "Entwicklermodus aktiviert. Verwenden Sie die Befehlspalette, um den Inspektor umzuschalten (Strg+Umschalt+I).",
 	"developer mode disabled": "Entwicklermodus deaktiviert",
-	"copy relative path": "Copy Relative Path"
+	"copy relative path": "Copy Relative Path",
+	"shortcut request sent": "Shortcut request opened. Tap Add to finish.",
+	"add to home screen": "Add to home screen",
+	"pin shortcuts not supported": "Home screen shortcuts are not supported on this device.",
+	"save file before home shortcut": "Save the file before adding it to the home screen."
 }

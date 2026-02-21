@@ -37,12 +37,12 @@
       "cordova-plugin-buildinfo": {},
       "cordova-plugin-browser": {},
       "cordova-plugin-sftp": {},
-      "cordova-plugin-system": {},
       "com.foxdebug.acode.rk.exec.proot": {},
       "com.foxdebug.acode.rk.exec.terminal": {},
       "com.foxdebug.acode.rk.customtabs": {},
       "com.foxdebug.acode.rk.plugin.plugincontext": {},
-      "com.foxdebug.acode.rk.auth": {}
+      "com.foxdebug.acode.rk.auth": {},
+      "cordova-plugin-system": {}
     },
     "platforms": [
       "android"
