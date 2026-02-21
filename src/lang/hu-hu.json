@@ -500,8 +500,8 @@
 	"developer mode enabled": "Fejlesztői mód engedélyezve. A parancspaletta használatával kapcsolhatja be/ki a megfigyelőt (Ctrl+Shift+I).",
 	"developer mode disabled": "Fejlesztői mód letiltva",
 	"copy relative path": "Relatív elérési útvonal másolása",
-	"shortcut request sent": "Shortcut request opened. Tap Add to finish.",
-	"add to home screen": "Add to home screen",
-	"pin shortcuts not supported": "Home screen shortcuts are not supported on this device.",
-	"save file before home shortcut": "Save the file before adding it to the home screen."
+	"shortcut request sent": "Parancsikon-kérelem megnyitva. A befejezéshez koppintson a hozzáadás gombra.",
+	"add to home screen": "Hozzáadás a kezdőképernyőhöz",
+	"pin shortcuts not supported": "Ez az eszköz nem támogatja a kezdőképernyő-parancsikonokat.",
+	"save file before home shortcut": "A kezdőképernyőhöz való hozzáadás előtt mentse el a fájlt."
 }
