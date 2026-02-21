@@ -34,6 +34,10 @@ export async function runAceCompatibilityTests(writeOutput) {
 		);
 	});
 
+	runner.test("editorManager isCodeMirror flag", (test) => {
+		test.assertEqual(editorManager.isCodeMirror, true);
+	});
+
 	runner.test("editor.getValue()", (test) => {
 		const editor = getEditor();
 		test.assert(

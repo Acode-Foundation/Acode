@@ -1192,6 +1192,7 @@ async function EditorManager($header, $body) {
 		files: [],
 		onupdate: () => {},
 		activeFile: null,
+		isCodeMirror: true,
 		addFile,
 		editor,
 		readOnlyCompartment,

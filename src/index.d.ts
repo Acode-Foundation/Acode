@@ -69,6 +69,7 @@ interface Window {
 
 interface EditorManager {
 	editor?: import("@codemirror/view").EditorView;
+	isCodeMirror?: boolean;
 	activeFile?: AcodeFile;
 	getLspMetadata?: (file: AcodeFile) => LspFileMetadata | null;
 }
