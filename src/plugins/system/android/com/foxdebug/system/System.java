@@ -1138,10 +1138,9 @@ public class System extends CordovaPlugin {
                             ImageDecoder.createSource(context.getContentResolver(), iconUri);
                         bitmap = ImageDecoder.decodeBitmap(imgSrc);
                     } else {
-                        bitmap = MediaStore.Images.Media.getBitmap(
-                            context.getContentResolver(),
-                            iconUri
-                        );
+                        ContentResolver resolver = context.getContentResolver();
+                        ImageDecoder.Source source = ImageDecoder.createSource(resolver, iconUri);
+                        bitmap = ImageDecoder.decodeBitmap(source);
                     }
 
                     icon = IconCompat.createWithBitmap(bitmap);
