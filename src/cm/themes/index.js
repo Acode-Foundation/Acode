@@ -12,6 +12,10 @@ import solarizedLight, {
 } from "./solarizedLight";
 import tokyoNight, { config as tokyoNightConfig } from "./tokyoNight";
 import tokyoNightDay, { config as tokyoNightDayConfig } from "./tokyoNightDay";
+import tomorrowNight, { config as tomorrowNightConfig } from "./tomorrowNight";
+import tomorrowNightBright, {
+	config as tomorrowNightBrightConfig,
+} from "./tomorrowNightBright";
 import vscodeDark, { config as vscodeDarkConfig } from "./vscodeDark";
 
 const oneDarkConfig = {
@@ -206,6 +210,20 @@ addTheme(
 	!!tokyoNightConfig.dark,
 	() => tokyoNight(),
 	tokyoNightConfig,
+);
+addTheme(
+	tomorrowNightConfig.name,
+	"Tomorrow Night",
+	!!tomorrowNightConfig.dark,
+	() => tomorrowNight(),
+	tomorrowNightConfig,
+);
+addTheme(
+	tomorrowNightBrightConfig.name,
+	"Tomorrow Night Bright",
+	!!tomorrowNightBrightConfig.dark,
+	() => tomorrowNightBright(),
+	tomorrowNightBrightConfig,
 );
 addTheme(
 	monokaiConfig.name,
