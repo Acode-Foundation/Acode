@@ -25,7 +25,13 @@ const STATUS_DECLINED: InstallStatus = "declined";
 const STATUS_FAILED: InstallStatus = "failed";
 
 const AXS_BINARY = "$PREFIX/axs";
-const TERMINAL_REQUIRED_MESSAGE = strings.terminal_required_message_for_lsp;
+
+function getTerminalRequiredMessage(): string {
+	return (
+		strings?.terminal_required_message_for_lsp ??
+		"Terminal not installed. Please install Terminal first to use LSP servers."
+	);
+}
 
 interface LspError extends Error {
 	code?: string;
@@ -610,8 +616,9 @@ export async function ensureServerRunning(
 		isTerminalInstalled = Boolean(await terminal?.isInstalled?.());
 	} catch {}
 	if (!isTerminalInstalled) {
-		alert(strings.error, TERMINAL_REQUIRED_MESSAGE);
-		const unavailable: LspError = new Error(TERMINAL_REQUIRED_MESSAGE);
+		const message = getTerminalRequiredMessage();
+		alert(strings?.error, message);
+		const unavailable: LspError = new Error(message);
 		unavailable.code = "LSP_SERVER_UNAVAILABLE";
 		throw unavailable;
 	}
