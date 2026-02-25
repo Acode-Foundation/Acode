@@ -504,5 +504,6 @@
 	"add to home screen": "Hozzáadás a kezdőképernyőhöz",
 	"pin shortcuts not supported": "Ez az eszköz nem támogatja a kezdőképernyő-parancsikonokat.",
 	"save file before home shortcut": "A kezdőképernyőhöz való hozzáadás előtt mentse el a fájlt.",
-	"terminal_required_message_for_lsp": "Terminal not installed. Please install Terminal first to use LSP servers."
+	"terminal_required_message_for_lsp": "Terminal not installed. Please install Terminal first to use LSP servers.",
+	"shift click selection": "Shift + tap/click selection"
 }

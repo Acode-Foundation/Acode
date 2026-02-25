@@ -33,6 +33,11 @@ export default function editorSettings() {
 			},
 		},
 		{
+			key: "shiftClickSelection",
+			text: strings["shift click selection"],
+			checkbox: values.shiftClickSelection,
+		},
+		{
 			key: "softTab",
 			text: strings["soft tab"],
 			checkbox: values.softTab,

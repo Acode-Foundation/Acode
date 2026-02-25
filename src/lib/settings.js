@@ -184,6 +184,7 @@ class Settings {
 				servers: {},
 			},
 			developerMode: false,
+			shiftClickSelection: false,
 		};
 		this.value = structuredClone(this.#defaultSettings);
 	}

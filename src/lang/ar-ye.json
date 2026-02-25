@@ -503,5 +503,6 @@
 	"add to home screen": "Add to home screen",
 	"pin shortcuts not supported": "Home screen shortcuts are not supported on this device.",
 	"save file before home shortcut": "Save the file before adding it to the home screen.",
-	"terminal_required_message_for_lsp": "Terminal not installed. Please install Terminal first to use LSP servers."
+	"terminal_required_message_for_lsp": "Terminal not installed. Please install Terminal first to use LSP servers.",
+	"shift click selection": "Shift + tap/click selection"
 }
