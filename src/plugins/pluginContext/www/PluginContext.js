@@ -34,6 +34,31 @@ const PluginContext = (function () {
         exec(resolve, reject, "Tee", "listAllPermissions", [this.uuid]);
       });
     }
+
+    getSecret(token, key, defaultValue = "") {
+      return new Promise((resolve, reject) => {
+        exec(
+          resolve,
+          reject,
+          "Tee",             
+          "get_secret",       
+          [token, key, defaultValue]
+        );
+      });
+    }
+
+
+    setSecret(token, key, value) {
+      return new Promise((resolve, reject) => {
+        exec(
+          resolve,
+          reject,
+          "Tee",
+          "set_secret",
+          [token, key, value]
+        );
+      });
+    }
   }
 
   //Object.freeze(this);

@@ -15,6 +15,9 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+//auth plugin
+import com.foxdebug.acode.rk.auth.EncryptedPreferenceManager;
+
 public class Tee extends CordovaPlugin {
 
     // pluginId : token
@@ -26,9 +29,61 @@ public class Tee extends CordovaPlugin {
     // token : list of permissions
     private /*static*/ final Map<String, List<String>> permissionStore = new ConcurrentHashMap<>();
 
+
+
+    private Context context;
+
+
+    public void initialize(CordovaInterface cordova, CordovaWebView webView) {
+        super.initialize(cordova, webView);
+        this.context = cordova.getContext();
+    }
+
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callback)
             throws JSONException {
+
+
+        if ("get_secret".equals(action)) {
+            String token = args.getString(0);
+            String key = args.getString(1);
+            String defaultValue = args.getString(2);
+
+            String pluginId = getPluginIdFromToken(token);
+
+            if (pluginId == null) {
+                callback.error("INVALID_TOKEN");
+                return true;
+            }
+
+            EncryptedPreferenceManager prefs =
+                    new EncryptedPreferenceManager(context, pluginId);
+
+            String value = prefs.getString(key, defaultValue);
+            callback.success(value);
+            return true;
+        }
+
+        if ("set_secret".equals(action)) {
+            String token = args.getString(0);
+            String key = args.getString(1);
+            String value = args.getString(2);
+
+            String pluginId = getPluginIdFromToken(token);
+
+            if (pluginId == null) {
+                callback.error("INVALID_TOKEN");
+                return true;
+            }
+
+            EncryptedPreferenceManager prefs =
+                    new EncryptedPreferenceManager(context, pluginId);
+
+            prefs.setString(key, value);
+            callback.success();
+            return true;
+        }
+
 
         if ("requestToken".equals(action)) {
             String pluginId = args.getString(0);
@@ -67,6 +122,16 @@ public class Tee extends CordovaPlugin {
         }
 
         return false;
+    }
+
+
+    private String getPluginIdFromToken(String token) {
+        for (Map.Entry<String, String> entry : tokenStore.entrySet()) {
+            if (entry.getValue().equals(token)) {
+                return entry.getKey();
+            }
+        }
+        return null;
     }
 
     //============================================================
