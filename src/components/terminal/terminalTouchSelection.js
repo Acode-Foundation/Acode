@@ -30,6 +30,8 @@ export default class TerminalTouchSelection {
 		this.initialTouchPos = { x: 0, y: 0 };
 		this.tapHoldTimeout = null;
 		this.dragHandle = null;
+		this.isSelectionTouchActive = false;
+		this.pendingSelectionClearTouch = null;
 
 		// Zoom tracking
 		this.pinchStartDistance = 0;
@@ -58,6 +60,12 @@ export default class TerminalTouchSelection {
 		// Selection protection during keyboard events
 		this.selectionProtected = false;
 		this.protectionTimeout = null;
+
+		// Scroll tracking
+		this.scrollElement = null;
+		this.isTerminalScrolling = false;
+		this.scrollEndTimeout = null;
+		this.scrollEndDelay = 100;
 
 		this.init();
 	}
@@ -189,15 +197,6 @@ export default class TerminalTouchSelection {
 		this.boundHandlers.selectionChange = this.onSelectionChange.bind(this);
 		this.terminal.onSelectionChange(this.boundHandlers.selectionChange);
 
-		// Click outside to clear selection - only within terminal area
-		this.boundHandlers.terminalAreaTouchStart =
-			this.onTerminalAreaTouchStart.bind(this);
-		this.terminal.element.addEventListener(
-			"touchstart",
-			this.boundHandlers.terminalAreaTouchStart,
-			{ passive: false },
-		);
-
 		// Orientation change
 		this.boundHandlers.orientationChange = this.onOrientationChange.bind(this);
 		window.addEventListener(
@@ -208,7 +207,10 @@ export default class TerminalTouchSelection {
 
 		// Terminal scroll listener
 		this.boundHandlers.terminalScroll = this.onTerminalScroll.bind(this);
-		this.terminal.element.addEventListener(
+		this.scrollElement =
+			this.terminal.element.querySelector(".xterm-viewport") ||
+			this.terminal.element;
+		this.scrollElement.addEventListener(
 			"scroll",
 			this.boundHandlers.terminalScroll,
 			{ passive: true },
@@ -237,6 +239,14 @@ export default class TerminalTouchSelection {
 
 		// If already selecting, don't start new selection
 		if (this.isSelecting) {
+			this.isSelectionTouchActive = false;
+			this.pendingSelectionClearTouch = {
+				x: touch.clientX,
+				y: touch.clientY,
+				moved: false,
+			};
+			// Hide menu while user scrolls or repositions, then restore on touch end.
+			this.hideContextMenu(true);
 			return;
 		}
 
@@ -251,6 +261,8 @@ export default class TerminalTouchSelection {
 		}
 
 		// Start tap-hold timer
+		this.pendingSelectionClearTouch = null;
+		this.isSelectionTouchActive = false;
 		this.tapHoldTimeout = setTimeout(() => {
 			if (!this.isSelecting && !this.isPinching) {
 				this.startSelection(touch);
@@ -275,6 +287,18 @@ export default class TerminalTouchSelection {
 		const deltaX = Math.abs(touch.clientX - this.touchStartPos.x);
 		const deltaY = Math.abs(touch.clientY - this.touchStartPos.y);
 		const horizontalDelta = touch.clientX - this.touchStartPos.x;
+		const clearTouch = this.pendingSelectionClearTouch;
+
+		if (clearTouch) {
+			const clearDeltaX = Math.abs(touch.clientX - clearTouch.x);
+			const clearDeltaY = Math.abs(touch.clientY - clearTouch.y);
+			if (
+				clearDeltaX > this.options.moveThreshold ||
+				clearDeltaY > this.options.moveThreshold
+			) {
+				clearTouch.moved = true;
+			}
+		}
 
 		// Check if this looks like a back gesture (started near edge and moving horizontally inward)
 		if (
@@ -301,7 +325,11 @@ export default class TerminalTouchSelection {
 			}
 
 			// If we're selecting, extend selection
-			if (this.isSelecting && !this.isHandleDragging) {
+			if (
+				this.isSelecting &&
+				!this.isHandleDragging &&
+				this.isSelectionTouchActive
+			) {
 				event.preventDefault();
 				this.extendSelection(touch);
 			}
@@ -320,8 +348,25 @@ export default class TerminalTouchSelection {
 			this.tapHoldTimeout = null;
 		}
 
+		const shouldClearSelectionByTap =
+			this.isSelecting &&
+			!this.isHandleDragging &&
+			this.pendingSelectionClearTouch &&
+			!this.pendingSelectionClearTouch.moved &&
+			!this.isTerminalScrolling &&
+			!this.selectionProtected;
+
+		this.pendingSelectionClearTouch = null;
+		this.isSelectionTouchActive = false;
+
+		if (shouldClearSelectionByTap) {
+			this.clearSelection();
+			return;
+		}
+
 		// If we were selecting and not dragging handles, finalize selection
 		if (this.isSelecting && !this.isHandleDragging) {
+			if (this.isTerminalScrolling) return;
 			this.finalizeSelection();
 		} else if (!this.isSelecting) {
 			// Only focus terminal on touch end if not selecting and terminal was already focused
@@ -365,6 +410,8 @@ export default class TerminalTouchSelection {
 
 		this.isHandleDragging = true;
 		this.dragHandle = handleType;
+		this.isSelectionTouchActive = false;
+		this.pendingSelectionClearTouch = null;
 
 		// Store the initial touch position for delta calculations
 		const touch = event.touches[0];
@@ -452,9 +499,6 @@ export default class TerminalTouchSelection {
 		event.preventDefault();
 		event.stopPropagation();
 
-		// Store the current drag handle before clearing
-		const currentDragHandle = this.dragHandle;
-
 		this.isHandleDragging = false;
 		this.dragHandle = null;
 
@@ -481,43 +525,6 @@ export default class TerminalTouchSelection {
 		}
 	}
 
-	onTerminalAreaTouchStart(event) {
-		// Clear selection if touching terminal area while selecting, except on handles or context menu
-		if (this.isSelecting) {
-			// Don't clear selection if it's protected (during keyboard events)
-			if (this.selectionProtected) {
-				return;
-			}
-
-			// Don't interfere with context menu at all
-			if (this.contextMenu && this.contextMenu.style.display === "flex") {
-				// Context menu is visible, check if touching it
-				const rect = this.contextMenu.getBoundingClientRect();
-				const touchX = event.touches[0].clientX;
-				const touchY = event.touches[0].clientY;
-
-				if (
-					touchX >= rect.left &&
-					touchX <= rect.right &&
-					touchY >= rect.top &&
-					touchY <= rect.bottom
-				) {
-					// Touching context menu area, don't clear selection
-					return;
-				}
-			}
-
-			const isHandleTouch =
-				this.startHandle.contains(event.target) ||
-				this.endHandle.contains(event.target);
-
-			// Only clear if touching within terminal but not on handles
-			if (!isHandleTouch && this.terminal.element.contains(event.target)) {
-				this.clearSelection();
-			}
-		}
-	}
-
 	onOrientationChange() {
 		// Update cell dimensions and handle positions after orientation change
 		setTimeout(() => {
@@ -529,13 +536,28 @@ export default class TerminalTouchSelection {
 	}
 
 	onTerminalScroll() {
-		// Update handle positions when terminal is scrolled
-		if (this.isSelecting) {
-			this.updateHandlePositions();
-			// Hide context menu if it's open during scroll
-			if (this.contextMenu && this.contextMenu.style.display === "flex") {
-				this.hideContextMenu();
-			}
+		if (!this.isSelecting || this.isHandleDragging) return;
+
+		this.isTerminalScrolling = true;
+		this.hideHandles();
+		this.hideContextMenu(true);
+
+		if (this.scrollEndTimeout) {
+			clearTimeout(this.scrollEndTimeout);
+		}
+		this.scrollEndTimeout = setTimeout(() => {
+			this.onTerminalScrollEnd();
+		}, this.scrollEndDelay);
+	}
+
+	onTerminalScrollEnd() {
+		this.scrollEndTimeout = null;
+		this.isTerminalScrolling = false;
+		if (!this.isSelecting || this.isHandleDragging) return;
+
+		this.updateHandlePositions();
+		if (this.contextMenuShouldStayVisible && this.options.showContextMenu) {
+			this.showContextMenu();
 		}
 	}
 
@@ -565,7 +587,7 @@ export default class TerminalTouchSelection {
 					this.updateHandlePositions();
 					// Temporarily hide context menu during resize but keep selection
 					if (this.contextMenu && this.contextMenu.style.display === "flex") {
-						this.hideContextMenu();
+						this.hideContextMenu(true);
 					}
 					// Re-show context menu after resize if selection is still active
 					setTimeout(() => {
@@ -596,6 +618,8 @@ export default class TerminalTouchSelection {
 		}, 1000);
 
 		this.isSelecting = true;
+		this.isSelectionTouchActive = true;
+		this.pendingSelectionClearTouch = null;
 
 		// Try to auto-select word at touch position
 		const wordBounds = this.getWordBoundsAt(coords);
@@ -873,9 +897,9 @@ export default class TerminalTouchSelection {
 		this.selectionOverlay.appendChild(this.contextMenu);
 	}
 
-	hideContextMenu() {
+	hideContextMenu(force = false) {
 		// Only hide if explicitly requested or if context menu should not stay visible
-		if (this.contextMenu && !this.contextMenuShouldStayVisible) {
+		if (this.contextMenu && (force || !this.contextMenuShouldStayVisible)) {
 			this.contextMenu.style.display = "none";
 		}
 	}
@@ -930,6 +954,9 @@ export default class TerminalTouchSelection {
 		this.selectionEnd = null;
 		this.currentSelection = null;
 		this.dragHandle = null;
+		this.pendingSelectionClearTouch = null;
+		this.isSelectionTouchActive = false;
+		this.isTerminalScrolling = false;
 
 		this.terminal.clearSelection();
 		this.hideHandles();
@@ -938,6 +965,10 @@ export default class TerminalTouchSelection {
 		if (this.tapHoldTimeout) {
 			clearTimeout(this.tapHoldTimeout);
 			this.tapHoldTimeout = null;
+		}
+		if (this.scrollEndTimeout) {
+			clearTimeout(this.scrollEndTimeout);
+			this.scrollEndTimeout = null;
 		}
 
 		// Clear protection timeout
@@ -963,7 +994,6 @@ export default class TerminalTouchSelection {
 
 	forceClearSelection() {
 		// Temporarily disable protection to force clear
-		const wasProtected = this.selectionProtected;
 		this.selectionProtected = false;
 		this.clearSelection();
 		// Don't restore protection state since we're clearing
@@ -1225,19 +1255,23 @@ export default class TerminalTouchSelection {
 			this.boundHandlers.handleTouchEnd,
 		);
 
-		this.terminal.element.removeEventListener(
-			"touchstart",
-			this.boundHandlers.terminalAreaTouchStart,
-		);
-		this.terminal.element.removeEventListener(
-			"scroll",
-			this.boundHandlers.terminalScroll,
-		);
+		if (this.scrollElement) {
+			this.scrollElement.removeEventListener(
+				"scroll",
+				this.boundHandlers.terminalScroll,
+			);
+			this.scrollElement = null;
+		}
 		window.removeEventListener(
 			"orientationchange",
 			this.boundHandlers.orientationChange,
 		);
 		window.removeEventListener("resize", this.boundHandlers.orientationChange);
+
+		if (this.scrollEndTimeout) {
+			clearTimeout(this.scrollEndTimeout);
+			this.scrollEndTimeout = null;
+		}
 
 		// Remove selection change listener
 		if (this.terminal.onSelectionChange) {
