@@ -27,11 +27,10 @@ export default function prompt(
 	type = "text",
 	options = {},
 ) {
-	const commands = editorManager.editor.commands;
-	const originalExec = commands.exec;
+	// CodeMirror doesn't use commands.exec like ACE, so we store a reference to the editor
+	// to potentially disable keymaps if needed in the future
+	const editor = editorManager.editor;
 	const { capitalize = true } = options;
-
-	commands.exec = () => {}; // Disable all shortcuts
 
 	return new Promise((resolve) => {
 		const inputType = type === "textarea" ? "textarea" : "input";
@@ -161,7 +160,7 @@ export default function prompt(
 		}
 
 		function hide() {
-			commands.exec = originalExec;
+			// CodeMirror keymaps are handled differently - no need to restore commands.exec
 			actionStack.remove("prompt");
 			system.setInputType(appSettings.value.keyboardMode);
 			hidePrompt();

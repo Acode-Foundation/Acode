@@ -19,6 +19,14 @@ interface ShortCut {
   data: string;
 }
 
+interface FileShortcut {
+  id: string;
+  label: string;
+  description?: string;
+  icon?: string;
+  uri: string;
+}
+
 interface Intent {
   action: string;
   data: string;
@@ -131,6 +139,18 @@ interface System {
    * @param onFail
    */
   pinShortcut(id: string, onSuccess: OnSuccessBool, onFail: OnFail): void;
+
+  /**
+   * Pin a shortcut for a specific file to the home screen
+   * @param shortcut Shortcut configuration
+   * @param onSuccess
+   * @param onFail
+   */
+  pinFileShortcut(
+    shortcut: FileShortcut,
+    onSuccess: OnSuccessBool,
+    onFail: OnFail,
+  ): void;
   /**
    * Gets android version
    * @param onSuccess
@@ -235,6 +255,18 @@ interface System {
    * @param onFail
    */
   getCordovaIntent(onSuccess: (intent: Intent) => void, onFail: OnFail): void;
+  /**
+   * Enable/disable native WebView long-press context behavior.
+   * Use this when rendering a custom editor context menu.
+   * @param disabled
+   * @param onSuccess
+   * @param onFail
+   */
+  setNativeContextMenuDisabled(
+    disabled: boolean,
+    onSuccess?: () => void,
+    onFail?: OnFail,
+  ): void;
 }
 
 interface Window{

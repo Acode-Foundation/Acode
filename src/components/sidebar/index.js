@@ -259,7 +259,8 @@ function create($container, $toggler) {
 			root.style.removeProperty("margin-left");
 			root.style.removeProperty("width");
 			$el.remove();
-			editorManager.editor.resize(true);
+			// TODO : Codemirror
+			//editorManager.editor.resize(true);
 		}
 	}
 

@@ -95,6 +95,18 @@ import android.provider.Settings;
 import androidx.core.content.ContextCompat;
 
 
+import android.graphics.Paint;
+import android.graphics.RectF;
+import android.graphics.Typeface;
+import android.graphics.Canvas;
+import android.util.TypedValue;
+
+import android.provider.MediaStore;
+import android.graphics.Bitmap;
+import android.os.Build;
+import android.graphics.ImageDecoder;
+
+
 
 public class System extends CordovaPlugin {
 
@@ -114,6 +126,14 @@ public class System extends CordovaPlugin {
         this.context = cordova.getContext();
         this.activity = cordova.getActivity();
         this.webView = webView;
+        this.activity.runOnUiThread(
+            new Runnable() {
+                @Override
+                public void run() {
+                    setNativeContextMenuDisabled(true);
+                }
+            }
+        );
 
         // Set up global exception handler
         Thread.setDefaultUncaughtExceptionHandler(
@@ -174,6 +194,7 @@ public class System extends CordovaPlugin {
             case "copyToUri":
             case "compare-file-text":
             case "compare-texts":
+            case "pin-file-shortcut":
                 break;
             case "get-configuration":
                 getConfiguration(callbackContext);
@@ -181,6 +202,18 @@ public class System extends CordovaPlugin {
             case "set-input-type":
                 setInputType(arg1);
                 callbackContext.success();
+                return true;
+            case "set-native-context-menu-disabled":
+                this.cordova.getActivity()
+                    .runOnUiThread(
+                        new Runnable() {
+                            @Override
+                            public void run() {
+                                setNativeContextMenuDisabled(Boolean.parseBoolean(arg1));
+                                callbackContext.success();
+                            }
+                        }
+                    );
                 return true;
             case "get-cordova-intent":
                 getCordovaIntent(callbackContext);
@@ -338,7 +371,7 @@ public class System extends CordovaPlugin {
                 if (new File(args.getString(0)).setExecutable(Boolean.parseBoolean(args.getString(1)))) {
                     callbackContext.success();
                 } else {
-                    callbackContext.error("set exec faild");
+                    callbackContext.error("set exec failed");
                 }
 
                 return true;
@@ -462,6 +495,9 @@ public class System extends CordovaPlugin {
                                 break;
                             case "get-app-info":
                                 getAppInfo(callbackContext);
+                                break;
+                            case "pin-file-shortcut":
+                                pinFileShortcut(args.optJSONObject(0), callbackContext);
                                 break;
                             case "add-shortcut":
                                 addShortcut(
@@ -1044,6 +1080,309 @@ public class System extends CordovaPlugin {
         boolean powerSaveMode = powerManager.isPowerSaveMode();
 
         callback.success(powerSaveMode ? 1 : 0);
+    }
+
+    private void pinFileShortcut(JSONObject shortcutJson, CallbackContext callback) {
+        if (shortcutJson == null) {
+            callback.error("Invalid shortcut data");
+            return;
+        }
+
+        String id = shortcutJson.optString("id", "");
+        String label = shortcutJson.optString("label", "");
+        String description = shortcutJson.optString("description", label);
+        String iconSrc = shortcutJson.optString("icon", "");
+        String uriString = shortcutJson.optString("uri", "");
+
+        if (id.isEmpty() || label.isEmpty() || uriString.isEmpty()) {
+            callback.error("Missing required shortcut fields");
+            return;
+        }
+
+        if (!ShortcutManagerCompat.isRequestPinShortcutSupported(context)) {
+            callback.error("Pin shortcut not supported on this launcher");
+            return;
+        }
+
+        try {
+            Uri dataUri = Uri.parse(uriString);
+            String packageName = context.getPackageName();
+            PackageManager pm = context.getPackageManager();
+
+            Intent launchIntent = pm.getLaunchIntentForPackage(packageName);
+            if (launchIntent == null) {
+                callback.error("Launch intent not found for package: " + packageName);
+                return;
+            }
+
+            ComponentName componentName = launchIntent.getComponent();
+            if (componentName == null) {
+                callback.error("ComponentName is null");
+                return;
+            }
+
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setComponent(componentName);
+            intent.setData(dataUri);
+            intent.putExtra("acodeFileUri", uriString);
+
+            IconCompat icon;
+
+            if (iconSrc != null && !iconSrc.isEmpty()) {
+                try {
+                    Uri iconUri = Uri.parse(iconSrc);
+                    Bitmap bitmap;
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        // API 28+
+                        ImageDecoder.Source source =
+                                ImageDecoder.createSource(
+                                        context.getContentResolver(),
+                                        iconUri
+                                );
+                        bitmap = ImageDecoder.decodeBitmap(source);
+                    } else {
+                        // Below API 28
+                        bitmap = MediaStore.Images.Media.getBitmap(
+                                context.getContentResolver(),
+                                iconUri
+                        );
+                    }
+
+                    icon = IconCompat.createWithBitmap(bitmap);
+
+                } catch (Exception e) {
+                    icon = getFileShortcutIcon(label);
+                }
+            } else {
+                icon = getFileShortcutIcon(label);
+            }
+
+            ShortcutInfoCompat shortcut = new ShortcutInfoCompat.Builder(context, id)
+                .setShortLabel(label)
+                .setLongLabel(
+                    description != null && !description.isEmpty() ? description : label
+                )
+                .setIcon(icon)
+                .setIntent(intent)
+                .build();
+
+            ShortcutManagerCompat.pushDynamicShortcut(context, shortcut);
+
+            boolean requested = ShortcutManagerCompat.requestPinShortcut(
+                context,
+                shortcut,
+                null
+            );
+
+            if (!requested) {
+                callback.error("Failed to request pin shortcut");
+                return;
+            }
+
+            callback.success();
+        } catch (Exception e) {
+            callback.error(e.toString());
+        }
+    }
+
+    private IconCompat getFileShortcutIcon(String filename) {
+        Bitmap fallback = createFileShortcutBitmap(filename);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            return IconCompat.createWithAdaptiveBitmap(fallback);
+        }
+        return IconCompat.createWithBitmap(fallback);
+    }
+
+    private Bitmap createFileShortcutBitmap(String filename) {
+        final float baseSizeDp = 72f;
+        float sizePx = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP,
+            baseSizeDp,
+            context.getResources().getDisplayMetrics()
+        );
+        if (sizePx <= 0) {
+            sizePx = baseSizeDp;
+        }
+        int size = Math.round(sizePx);
+        Bitmap bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG | Paint.FILTER_BITMAP_FLAG);
+
+        int backgroundColor = pickShortcutColor(filename);
+        paint.setColor(backgroundColor);
+        float radius = size * 0.24f;
+        RectF bounds = new RectF(0, 0, size, size);
+        canvas.drawRoundRect(bounds, radius, radius, paint);
+
+        paint.setColor(Color.WHITE);
+        paint.setTextAlign(Paint.Align.CENTER);
+        paint.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
+
+        String label = getShortcutLabel(filename);
+        float textLength = Math.max(1, label.length());
+        float factor = textLength > 4 ? 0.22f : textLength > 3 ? 0.26f : 0.34f;
+        paint.setTextSize(size * factor);
+        Paint.FontMetrics metrics = paint.getFontMetrics();
+        float baseline = (size - metrics.bottom - metrics.top) / 2f;
+        canvas.drawText(label, size / 2f, baseline, paint);
+
+        return bitmap;
+    }
+
+    private String getFileExtension(String filename) {
+        if (filename == null) return "";
+        int dot = filename.lastIndexOf('.');
+        if (dot < 0 || dot == filename.length() - 1) return "";
+        return filename.substring(dot + 1).toLowerCase(Locale.getDefault());
+    }
+
+    private String getShortcutLabel(String filename) {
+        String ext = getFileExtension(filename);
+        if (!ext.isEmpty()) {
+            switch (ext) {
+                case "js":
+                case "jsx":
+                    return "JS";
+                case "ts":
+                case "tsx":
+                    return "TS";
+                case "md":
+                case "markdown":
+                    return "MD";
+                case "json":
+                    return "JSON";
+                case "html":
+                case "htm":
+                    return "HTML";
+                case "css":
+                    return "CSS";
+                case "java":
+                    return "JAVA";
+                case "kt":
+                case "kts":
+                    return "KOT";
+                case "py":
+                    return "PY";
+                case "rb":
+                    return "RB";
+                case "c":
+                    return "C";
+                case "cpp":
+                case "cc":
+                case "cxx":
+                    return "CPP";
+                case "h":
+                case "hpp":
+                    return "HDR";
+                case "go":
+                    return "GO";
+                case "rs":
+                    return "RS";
+                case "php":
+                    return "PHP";
+                case "xml":
+                    return "XML";
+                case "yml":
+                case "yaml":
+                    return "YML";
+                case "txt":
+                    return "TXT";
+                case "sh":
+                case "bash":
+                    return "SH";
+                default:
+                    String label = ext.replaceAll("[^A-Za-z0-9]", "");
+                    if (label.isEmpty()) label = ext;
+                    if (label.length() > 4) {
+                        label = label.substring(0, 4);
+                    }
+                    return label.toUpperCase(Locale.getDefault());
+            }
+        }
+
+        if (filename != null && !filename.trim().isEmpty()) {
+            String cleaned = filename.replaceAll("[^A-Za-z0-9]", "");
+            if (!cleaned.isEmpty()) {
+                if (cleaned.length() > 3) cleaned = cleaned.substring(0, 3);
+                return cleaned.toUpperCase(Locale.getDefault());
+            }
+            return filename.substring(0, 1).toUpperCase(Locale.getDefault());
+        }
+
+        return "FILE";
+    }
+
+    private int pickShortcutColor(String filename) {
+        String ext = getFileExtension(filename);
+        switch (ext) {
+            case "js":
+            case "jsx":
+                return 0xFFF7DF1E;
+            case "ts":
+            case "tsx":
+                return 0xFF3178C6;
+            case "md":
+            case "markdown":
+                return 0xFF546E7A;
+            case "json":
+                return 0xFF4CAF50;
+            case "html":
+            case "htm":
+                return 0xFFF4511E;
+            case "css":
+                return 0xFF2962FF;
+            case "java":
+                return 0xFFEC6F2D;
+            case "kt":
+            case "kts":
+                return 0xFF7F52FF;
+            case "py":
+                return 0xFF306998;
+            case "rb":
+                return 0xFFCC342D;
+            case "c":
+                return 0xFF546E7A;
+            case "cpp":
+            case "cc":
+            case "cxx":
+                return 0xFF00599C;
+            case "h":
+            case "hpp":
+                return 0xFF8D6E63;
+            case "go":
+                return 0xFF00ADD8;
+            case "rs":
+                return 0xFFB7410E;
+            case "php":
+                return 0xFF8892BF;
+            case "xml":
+                return 0xFF5C6BC0;
+            case "yml":
+            case "yaml":
+                return 0xFF757575;
+            case "txt":
+                return 0xFF546E7A;
+            case "sh":
+            case "bash":
+                return 0xFF388E3C;
+            default:
+                final int[] colors = new int[] {
+                    0xFF1E88E5,
+                    0xFF6D4C41,
+                    0xFF00897B,
+                    0xFF8E24AA,
+                    0xFF3949AB,
+                    0xFF039BE5,
+                    0xFFD81B60,
+                    0xFF43A047
+                };
+                String key = ext.isEmpty()
+                    ? (filename == null ? "file" : filename)
+                    : ext;
+                int hash = Math.abs(key.hashCode());
+                return colors[hash % colors.length];
+        }
     }
 
     private void fileAction(
@@ -1694,5 +2033,31 @@ public class System extends CordovaPlugin {
             mode = 1;
         }
         webView.setInputType(mode);
+    }
+
+    private void setNativeContextMenuDisabled(boolean disabled) {
+        View webViewView = webView == null ? null : webView.getView();
+        if (webViewView == null) {
+            return;
+        }
+
+        webViewView.setLongClickable(!disabled);
+        webViewView.setHapticFeedbackEnabled(!disabled);
+        if (disabled) {
+            webViewView.setOnLongClickListener(v -> true);
+        } else {
+            webViewView.setOnLongClickListener(null);
+        }
+
+        try {
+            Method method = webViewView
+                .getClass()
+                .getMethod("setNativeContextMenuDisabled", boolean.class);
+            method.invoke(webViewView, disabled);
+        } catch (NoSuchMethodException ignored) {
+            // Fallback above keeps long-press context disabled even without CordovaLib patch.
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            Log.w("System", "Failed to toggle native context menu state", e);
+        }
     }
 }

@@ -15,6 +15,7 @@ import anchor from "markdown-it-anchor";
 import markdownItFootnote from "markdown-it-footnote";
 import MarkdownItGitHubAlerts from "markdown-it-github-alerts";
 import markdownItTaskLists from "markdown-it-task-lists";
+import { highlightCodeBlock, initHighlighting } from "utils/codeHighlight";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
 import view from "./plugin.view.js";
@@ -405,7 +406,10 @@ export default async function PluginInclude(
 			);
 		});
 
-		// add copy button to code blocks
+		// Initialize theme-aware highlight styles
+		initHighlighting();
+
+		// Add copy button and syntax highlighting to code blocks
 		const codeBlocks = $page.body.querySelectorAll("pre");
 		codeBlocks.forEach((pre) => {
 			pre.style.position = "relative";
@@ -415,22 +419,16 @@ export default async function PluginInclude(
 
 			const codeElement = pre.querySelector("code");
 			if (codeElement) {
-				const langMatch = codeElement.className.match(
-					/language-(\w+)|(javascript)/,
-				);
+				const langMatch = codeElement.className.match(/language-(\w+)/);
 				if (langMatch) {
-					const langMap = {
-						bash: "sh",
-						shell: "sh",
-					};
-					const lang = langMatch[1] || langMatch[2];
-					const mappedLang = langMap[lang] || lang;
-					const highlight = ace.require("ace/ext/static_highlight");
-					highlight(codeElement, {
-						mode: `ace/mode/${mappedLang}`,
-						theme: settings.value.editorTheme.startsWith("ace/theme/")
-							? settings.value.editorTheme
-							: "ace/theme/" + settings.value.editorTheme,
+					const lang = langMatch[1];
+					const originalCode = codeElement.textContent || "";
+					codeElement.classList.add("cm-highlighted");
+
+					highlightCodeBlock(originalCode, lang).then((highlighted) => {
+						if (highlighted && highlighted !== originalCode) {
+							codeElement.innerHTML = highlighted;
+						}
 					});
 				}
 			}

@@ -1,5 +1,6 @@
 import fsOperation from "fileSystem";
 import ajax from "@deadlyjack/ajax";
+import { getModeForPath as getCMModeForPath } from "cm/modelist";
 import alert from "dialogs/alert";
 import escapeStringRegexp from "escape-string-regexp";
 import constants from "lib/constants";
@@ -73,11 +74,17 @@ export default {
 	 * @param {string} filename
 	 */
 	getIconForFile(filename) {
-		const { getModeForPath } = ace.require("ace/ext/modelist");
 		const type = getFileType(filename);
-		const { name } = getModeForPath(filename);
+		// Use CodeMirror's modelist to determine mode name
+		let modeName = "text";
+		try {
+			const mode = getCMModeForPath?.(filename);
+			modeName = mode?.name || modeName;
+		} catch (e) {
+			// fallback to default if CodeMirror modelist isn't available yet
+		}
 
-		const iconForMode = `file_type_${name}`;
+		const iconForMode = `file_type_${modeName}`;
 		const iconForType = `file_type_${type}`;
 
 		return `file file_type_default ${iconForMode} ${iconForType}`;

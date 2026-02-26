@@ -1,6 +1,6 @@
 import "./styles.scss";
 import fsOperation from "fileSystem";
-import addTouchListeners from "ace/touchHandler";
+import { EditorView } from "@codemirror/view";
 import autosize from "autosize";
 import Checkbox from "components/checkbox";
 import Sidebar, { preventSlide } from "components/sidebar";
@@ -11,7 +11,12 @@ import files, { Tree } from "lib/fileList";
 import openFile from "lib/openFile";
 import settings from "lib/settings";
 import helpers from "utils/helpers";
-import { fileNames, words } from "./searchResultMode";
+import { createSearchResultView } from "./cmResultView";
+
+// Local highlight sources
+const words = [];
+const fileNames = [];
+const MAX_HL_WORDS = 400; // cap to avoid massive regex in result view
 
 const workers = [];
 const results = [];
@@ -84,8 +89,8 @@ const store = {
 const debounceSearch = helpers.debounce(searchAll, 500);
 
 let useIncludeAndExclude = false;
-/**@type {AceAjax.Editor} */
-let searchResult = null;
+let searchResult = null; // CM6 wrapper from createSearchResultView
+let currentSearchRegex = null;
 let replacing = false;
 let newFiles = 0;
 let searching = false;
@@ -104,19 +109,13 @@ files.on("push-file", () => {
 });
 
 $container.onref = ($el) => {
-	searchResult = ace.edit($el, {
-		readOnly: true,
-		useWorker: false,
-		showLineNumbers: false,
-		fontSize: "14px",
-		mode: "ace/mode/search_result",
+	searchResult = createSearchResultView($el, {
+		onLineClick: onCursorChange,
+		getWords: () => words,
+		getFileNames: () => fileNames,
+		getRegex: () => currentSearchRegex,
 	});
-	searchResult.focus = () => {};
 	$container.style.lineHeight = "1.5";
-	searchResult.session.setTabSize(1);
-	searchResult.renderer.setMargin(0, 0, -20, 0);
-	addTouchListeners(searchResult, true, onCursorChange);
-	searchResult.session.setUseWrapMode(true);
 };
 
 preventSlide((target) => {
@@ -215,9 +214,7 @@ export default [
 		);
 	},
 	false, // show as first item
-	() => {
-		searchResult?.resize(true);
-	},
+	() => {},
 ];
 
 /**
@@ -238,8 +235,12 @@ async function onWorkerMessage(e) {
 			let readError;
 
 			const editorFile = editorManager.getFile(data, "uri");
-			if (editorFile) {
-				content = editorFile.session?.getValue() || "";
+			if (editorFile?.session?.doc) {
+				try {
+					content = editorFile.session.doc.toString() || "";
+				} catch (_) {
+					content = "";
+				}
 			} else {
 				try {
 					content = await fsOperation(data).readFile(
@@ -266,6 +267,10 @@ async function onWorkerMessage(e) {
 			if (filesSearched.includes(file)) return;
 
 			filesSearched.push(Tree.fromJSON(file));
+			// Clear any ghost text on first result
+			if (filesSearched.length === 1) {
+				searchResult.setValue("");
+			}
 			resultOverview.filesCount += 1;
 			resultOverview.matchesCount += matches.length;
 			$resultOverview.innerHTML = searchResultText(
@@ -280,18 +285,16 @@ async function onWorkerMessage(e) {
 				position: null,
 			});
 
-			fileNames.push(escapeStringRegexp(file.name));
-			forceTokenizer();
+			fileNames.push(file.name);
 			for (const result of matches) {
 				result.file = index;
 				results.push(result);
-				if (!words.includes(result.renderText)) {
-					words.push(escapeStringRegexp(result.renderText));
-					forceTokenizer();
+				if (words.length < MAX_HL_WORDS) {
+					const token = escapeStringRegexp(result.renderText);
+					if (!words.includes(token)) words.push(token);
 				}
 			}
 
-			searchResult.navigateFileEnd();
 			if (fileNames.length > 1) {
 				searchResult.insert(`\n${text}`);
 			} else {
@@ -367,6 +370,7 @@ async function onWorkerMessage(e) {
  * On input event handler
  * @param {InputEvent} e
  */
+
 function onInput(e) {
 	if (!searchResult || replacing) return;
 
@@ -439,6 +443,7 @@ async function searchAll() {
 	searching = true;
 	words.length = 0;
 	fileNames.length = 0;
+	currentSearchRegex = regex;
 	searchResult.setGhostText(strings["searching..."], { row: 0, column: 0 });
 	sendMessage("search-files", allFiles, regex, options);
 }
@@ -712,14 +717,12 @@ function toRegex(search, options) {
 /**
  * On cursor change event handler
  */
-async function onCursorChange() {
-	const line = searchResult.selection.getCursor().row;
+async function onCursorChange(line) {
 	const result = results[line];
 	if (!result) return;
 	const { file, position } = result;
 	if (!position) {
-		// fold the file
-		searchResult.execCommand("toggleFoldWidget");
+		// header line clicked; CM view folding not implemented yet
 		return;
 	}
 
@@ -727,10 +730,18 @@ async function onCursorChange() {
 	const { url } = filesSearched[file];
 	await openFile(url, { render: true });
 	const { editor } = editorManager;
-	editor.moveCursorTo(position.start.row, position.start.column, false);
-	editor.selection.setRange(position);
-	editor.centerSelection();
-	editor.focus();
+	try {
+		// Compute offsets from row/column (rows from worker are 0-based)
+		const doc = editor.state.doc;
+		const startLine = doc.line(position.start.row + 1);
+		const endLine = doc.line(position.end.row + 1);
+		const from = Math.min(startLine.from + position.start.column, startLine.to);
+		const to = Math.min(endLine.from + position.end.column, endLine.to);
+		editor.dispatch({
+			selection: { anchor: from, head: to },
+			effects: EditorView.scrollIntoView(from, { y: "center" }),
+		});
+	} catch (_) {}
 }
 
 /**
@@ -766,14 +777,4 @@ function removeEvents() {
 	files.off("refresh", onInput);
 	editorManager.off("rename-file", onInput);
 	editorManager.off("file-content-changed", onInput);
-}
-
-function forceTokenizer() {
-	const { session } = searchResult;
-	// force recreation of tokenizer
-	session.$mode.$tokenizer = null;
-	session.bgTokenizer.setTokenizer(session.$mode.getTokenizer());
-	// force re-highlight whole document
-	const row = session.getLength() - 1;
-	session.bgTokenizer.start(row);
 }

@@ -8,15 +8,21 @@ import "styles/overrideAceStyle.scss";
 import "styles/wideScreen.scss";
 
 import "lib/polyfill";
-import "ace/supportedModes";
+import "cm/supportedModes";
 import "components/WebComponents";
 
 import fsOperation from "fileSystem";
 import sidebarApps from "sidebarApps";
 import ajax from "@deadlyjack/ajax";
-import { setKeyBindings } from "ace/commands";
-import { initModes } from "ace/modelist";
+import { setKeyBindings } from "cm/commandRegistry";
+import {
+	getModeForPath,
+	getModes,
+	getModesByName,
+	initModes,
+} from "cm/modelist";
 import Contextmenu from "components/contextmenu";
+import { hasConnectedServers } from "components/lspInfoDialog";
 import Sidebar from "components/sidebar";
 import { TerminalManager } from "components/terminal";
 import tile from "components/tile";
@@ -40,6 +46,7 @@ import loadPlugins from "lib/loadPlugins";
 import Logger from "lib/logger";
 import NotificationManager from "lib/notificationManager";
 import openFolder, { addedFolder } from "lib/openFolder";
+import { registerPrettierFormatter } from "lib/prettierFormatter";
 import restoreFiles from "lib/restoreFiles";
 import settings from "lib/settings";
 import startAd from "lib/startAd";
@@ -48,6 +55,7 @@ import plugins from "pages/plugins";
 import openWelcomeTab from "pages/welcome";
 import otherSettings from "settings/appSettings";
 import themes from "theme/list";
+import { initHighlighting } from "utils/codeHighlight";
 import { getEncoding, initEncodings } from "utils/encodings";
 import helpers from "utils/helpers";
 import loadPolyFill from "utils/polyfill";
@@ -60,6 +68,59 @@ const previousVersionCode = Number.parseInt(localStorage.versionCode, 10);
 
 window.onload = Main;
 const logger = new Logger();
+
+function createAceModelistCompatModule() {
+	const toAceMode = (mode) => {
+		const resolved = mode || getModeForPath("");
+		if (!resolved) return null;
+		const name = resolved.name || "text";
+		const rawMode = String(resolved.mode || name);
+		const modePath = rawMode.startsWith("ace/mode/")
+			? rawMode
+			: `ace/mode/${rawMode}`;
+		return {
+			...resolved,
+			name,
+			caption: resolved.caption || name,
+			mode: modePath,
+		};
+	};
+
+	return {
+		get modes() {
+			return getModes()
+				.map((mode) => toAceMode(mode))
+				.filter(Boolean);
+		},
+		get modesByName() {
+			const source = getModesByName();
+			const result = {};
+			Object.keys(source).forEach((name) => {
+				result[name] = toAceMode(source[name]);
+			});
+			return result;
+		},
+		getModeForPath(path) {
+			return toAceMode(getModeForPath(String(path || "")));
+		},
+	};
+}
+
+function ensureAceCompatApi() {
+	const ace = window.ace || {};
+	const modelistModule = createAceModelistCompatModule();
+	const originalRequire =
+		typeof ace.require === "function" ? ace.require.bind(ace) : null;
+
+	ace.require = (moduleId) => {
+		if (moduleId === "ace/ext/modelist" || moduleId === "ace/ext/modelist.js") {
+			return modelistModule;
+		}
+		return originalRequire?.(moduleId);
+	};
+
+	window.ace = ace;
+}
 
 async function Main() {
 	const oldPreventDefault = TouchEvent.prototype.preventDefault;
@@ -176,6 +237,7 @@ async function onDeviceReady() {
 		return true;
 	})();
 	window.acode = new Acode();
+	ensureAceCompatApi();
 
 	system.requestPermission("android.permission.READ_EXTERNAL_STORAGE");
 	system.requestPermission("android.permission.WRITE_EXTERNAL_STORAGE");
@@ -192,10 +254,13 @@ async function onDeviceReady() {
 	}
 
 	localStorage.versionCode = versionCode;
-	document.body.setAttribute(
-		"data-version",
-		`v${BuildInfo.version} (${versionCode})`,
-	);
+
+	try {
+		await setDebugInfo();
+	} catch (e) {
+		console.error(e);
+	}
+
 	acode.setLoadingMessage("Loading settings...");
 
 	window.resolveLocalFileSystemURL = function (url, ...args) {
@@ -215,6 +280,9 @@ async function onDeviceReady() {
 	acode.setLoadingMessage("Loading settings...");
 	await settings.init();
 	themes.init();
+	initHighlighting();
+
+	registerPrettierFormatter();
 
 	acode.setLoadingMessage("Loading language...");
 	await lang.set(settings.value.lang);
@@ -331,6 +399,30 @@ async function onDeviceReady() {
 			);
 		})
 		.catch(console.error);
+}
+
+async function setDebugInfo() {
+	const { version, versionCode } = BuildInfo;
+
+	const userAgent = navigator.userAgent;
+	const language = navigator.language;
+
+	// Extract Android version
+	const androidMatch = userAgent.match(/Android\s([0-9.]+)/);
+	const androidVersion = androidMatch ? androidMatch[1] : "Unknown";
+
+	// Extract Chrome/WebView version
+	const chromeMatch = userAgent.match(/Chrome\/([0-9.]+)/);
+	const webviewVersion = chromeMatch ? chromeMatch[1] : "Unknown";
+
+	const info = [
+		`App: v${version} (${versionCode})`,
+		`Android: ${androidVersion}`,
+		`WebView: ${webviewVersion}`,
+		`Language: ${language}`,
+	].join("\n");
+
+	document.body.setAttribute("data-version", info);
 }
 
 async function promptUpdateCheckConsent() {
@@ -471,7 +563,7 @@ async function loadApp() {
 
 	$sidebar.onshow = () => {
 		const activeFile = editorManager.activeFile;
-		if (activeFile) editorManager.editor.blur();
+		if (activeFile) editorManager.editor.contentDOM.blur();
 	};
 	sdcard.watchFile(KEYBINDING_FILE, async () => {
 		await setKeyBindings(editorManager.editor);
@@ -621,7 +713,8 @@ function onClickApp(e) {
 
 function mainPageOnShow() {
 	const { editor } = editorManager;
-	editor.resize(true);
+	// TODO : Codemirror
+	//editor.resize(true);
 }
 
 function createMainMenu({ top, bottom, toggler }) {
@@ -658,17 +751,19 @@ function createFileMenu({ top, bottom, toggler }) {
 
 			const { label: encoding } = getEncoding(file.encoding);
 			const isEditorFile = file.type === "editor";
+			const cmEditor = window.editorManager?.editor;
+			const hasSelection = !!cmEditor && !cmEditor.state.selection.main.empty;
 			return mustache.render($_fileMenu, {
 				...strings,
-				file_mode: isEditorFile
-					? (file.session?.getMode()?.$id || "").split("/").pop()
-					: "",
+				// Use CodeMirror mode stored on EditorFile (set in setMode)
+				file_mode: isEditorFile ? file.currentMode || "" : "",
 				file_encoding: isEditorFile ? encoding : "",
 				file_read_only: !file.editable,
 				file_on_disk: !!file.uri,
 				file_eol: isEditorFile ? file.eol : "",
-				copy_text: !!window.editorManager.editor.getCopyText(),
+				copy_text: isEditorFile ? hasSelection : false,
 				is_editor: isEditorFile,
+				has_lsp_servers: isEditorFile && hasConnectedServers(),
 			});
 		},
 	});

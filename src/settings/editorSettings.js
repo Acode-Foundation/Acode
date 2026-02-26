@@ -33,6 +33,11 @@ export default function editorSettings() {
 			},
 		},
 		{
+			key: "shiftClickSelection",
+			text: strings["shift click selection"],
+			checkbox: values.shiftClickSelection,
+		},
+		{
 			key: "softTab",
 			text: strings["soft tab"],
 			checkbox: values.softTab,
@@ -54,6 +59,11 @@ export default function editorSettings() {
 			key: "linenumbers",
 			text: strings["show line numbers"],
 			checkbox: values.linenumbers,
+		},
+		{
+			key: "lintGutter",
+			text: strings["lint gutter"] || "Show lint gutter",
+			checkbox: values.lintGutter ?? true,
 		},
 		{
 			key: "lineHeight",
@@ -91,28 +101,28 @@ export default function editorSettings() {
 			text: strings["live autocompletion"],
 			checkbox: values.liveAutoCompletion,
 		},
-		{
-			key: "showPrintMargin",
-			text: strings["show print margin"],
-			checkbox: values.showPrintMargin,
-		},
+		// {
+		// 	key: "showPrintMargin",
+		// 	text: strings["show print margin"].capitalize(),
+		// 	checkbox: values.showPrintMargin,
+		// },
+		// {
+		// 	key: "printMargin",
+		// 	text: strings["print margin"],
+		// 	value: values.printMargin,
+		// 	prompt: strings["print margin"],
+		// 	promptType: "number",
+		// 	promptOptions: {
+		// 		test(value) {
+		// 			value = Number.parseInt(value);
+		// 			return value >= 10 && value <= 200;
+		// 		},
+		// 	},
+		// },
 		{
 			key: "textWrap",
 			text: strings["text wrap"],
 			checkbox: values.textWrap,
-		},
-		{
-			key: "printMargin",
-			text: strings["print margin"],
-			value: values.printMargin,
-			prompt: strings["print margin"],
-			promptType: "number",
-			promptOptions: {
-				test(value) {
-					value = Number.parseInt(value);
-					return value >= 10 && value <= 200;
-				},
-			},
 		},
 		{
 			key: "teardropSize",
@@ -133,11 +143,11 @@ export default function editorSettings() {
 			text: strings["relative line numbers"],
 			checkbox: values.relativeLineNumbers,
 		},
-		{
-			key: "elasticTabstops",
-			text: strings["elastic tabstops"],
-			checkbox: values.elasticTabstops,
-		},
+		// {
+		// 	key: "elasticTabstops",
+		// 	text: strings["elastic tabstops"],
+		// 	checkbox: values.elasticTabstops,
+		// },
 		{
 			key: "rtlText",
 			text: strings["line based rtl switching"],
@@ -148,15 +158,25 @@ export default function editorSettings() {
 			text: strings["hard wrap"],
 			checkbox: values.hardWrap,
 		},
-		{
-			key: "useTextareaForIME",
-			text: strings["use textarea for ime"],
-			checkbox: values.useTextareaForIME,
-		},
+		// {
+		// 	key: "useTextareaForIME",
+		// 	text: strings["use textarea for ime"],
+		// 	checkbox: values.useTextareaForIME,
+		// },
 		{
 			key: "fadeFoldWidgets",
 			text: strings["fade fold widgets"],
 			checkbox: values.fadeFoldWidgets,
+		},
+		{
+			key: "rainbowBrackets",
+			text: strings["rainbow brackets"] || "Rainbow brackets",
+			checkbox: values.rainbowBrackets ?? true,
+		},
+		{
+			key: "indentGuides",
+			text: strings["indent guides"] || "Indent guides",
+			checkbox: values.indentGuides ?? true,
 		},
 		{
 			index: 0,

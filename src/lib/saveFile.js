@@ -53,7 +53,7 @@ async function saveFile(file, isSaveAs = false) {
 	 * File data
 	 * @type {string}
 	 */
-	const data = file.session.getValue();
+	const data = file.session ? file.session.doc.toString() : "";
 	/**
 	 * File tab bar text element, used to show saving status
 	 * @type {HTMLElement}

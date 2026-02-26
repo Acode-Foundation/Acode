@@ -247,40 +247,46 @@ export const colorRegex = {
 };
 
 /**
- * Select the color at current line and cursor position
- * @returns {AceAjax.Range}
+ * Select the color at current line and cursor position (CodeMirror)
+ * @returns {{from:number,to:number}|null}
  */
 export function getColorRange() {
 	const { editor } = editorManager;
-	const copyText = editor.getCopyText();
 
-	if (copyText) {
-		if (!isValidColor(copyText)) return null;
-		return editor.selection.getRange();
-	}
+	try {
+		const sel = editor.state.selection.main;
+		const from = sel.from;
+		const to = sel.to;
 
-	const { Range } = ace.require("ace/range");
-	let range;
-
-	const cursorPos = editor.selection.getCursor();
-	/**@type {string} */
-	const line = editor.session.getLine(cursorPos.row);
-
-	// match color in current line and get range
-	const regex = colorRegex.anyGlobal;
-	let match;
-
-	while ((match = regex.exec(line))) {
-		const start = match.index + match[1].length;
-		const end = start + match[2].length;
-
-		if (cursorPos.column >= start && cursorPos.column <= end) {
-			range = new Range(cursorPos.row, start, cursorPos.row, end);
-			break;
+		// If there is a selection, validate and return it
+		if (from !== to) {
+			const text = editor.state.doc.sliceString(from, to);
+			if (!isValidColor(text)) return null;
+			return { from, to };
 		}
-	}
 
-	return range;
+		// No selection: find color under cursor in the current line
+		const head = sel.head;
+		const line = editor.state.doc.lineAt(head);
+		const lineText = line.text;
+		const col = head - line.from;
+
+		const regex = colorRegex.anyGlobal;
+		let match;
+
+		while ((match = regex.exec(lineText))) {
+			const startCol = match.index + match[1].length;
+			const endCol = startCol + match[2].length;
+
+			if (col >= startCol && col <= endCol) {
+				return { from: line.from + startCol, to: line.from + endCol };
+			}
+		}
+
+		return null;
+	} catch {
+		return null;
+	}
 }
 
 export function isValidColor(value) {

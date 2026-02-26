@@ -23,6 +23,8 @@ export default {
 		});
 
 		system.setInputType(appSettings.value.keyboardMode);
+		// Keep native context menu enabled globally; editor manager scopes disabling to CodeMirror focus.
+		system.setNativeContextMenuDisabled(false);
 	},
 	afterRender() {
 		const { value: settings } = appSettings;

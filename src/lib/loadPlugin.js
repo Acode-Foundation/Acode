@@ -22,7 +22,9 @@ export default async function loadPlugin(pluginId, justInstalled = false) {
 	}
 
 	return new Promise((resolve, reject) => {
-		const $script = <script src={mainUrl}></script>;
+		const $script = (
+			<script id={`${pluginId}-mainScript`} src={mainUrl}></script>
+		);
 
 		$script.onerror = (error) => {
 			reject(

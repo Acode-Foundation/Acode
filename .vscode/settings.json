@@ -372,5 +372,8 @@
     "wxss",
     "xquery",
     "Zeek"
-  ]
+  ],
+  "[javascript]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  }
 }

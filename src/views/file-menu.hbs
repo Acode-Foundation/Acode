@@ -42,6 +42,12 @@
     <span>{{format}}</span>
   </div>
 </li>
+{{#has_lsp_servers}}
+<li action="lsp-info">
+  <span class="text">LSP Info</span>
+  <span class="licons zap"></span>
+</li>
+{{/has_lsp_servers}}
 {{/is_editor}}
 <hr>
 {{#file_on_disk}}
@@ -56,6 +62,10 @@
 <li action="edit-with">
   <span class="text">{{edit with}}</span>
   <span class="icon edit"></span>
+</li>
+<li action="pin-file-shortcut">
+  <span class="text">{{add to home screen}}</span>
+  <span class="icon home"></span>
 </li>
 {{/file_on_disk}}
 

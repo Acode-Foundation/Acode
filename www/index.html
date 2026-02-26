@@ -1,162 +1,126 @@
 <!doctype html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
 
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
 
-  <script>
-    (function () {
-      var color = localStorage.getItem("__primary_color");
-      var __bg_color = "#20202c";
-      if (color) {
-        __bg_color = color;
+    <style>
+      html,
+      body {
+        margin: 0;
+        background-color: #20202c; /* fallback dark */
       }
 
-      document.querySelector(":root").style.cssText =
-        "--bg-color: " + __bg_color;
+      :root {
+        --bg-color: #20202c; /* fallback splash color */
+        --test-height: 45px;
+      }
 
-      var __testEl = document.createElement("div");
-      var __testChildEl = document.createElement("div");
-      if (__testEl.append) {
-        __testEl.append(__testChildEl);
-        if (__testEl.children.length === 1) {
-          return;
+      body.loading {
+        position: relative;
+      }
+
+      body.loading #splash {
+        display: block;
+      }
+
+      #splash {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 999999;
+
+        background-image: url("./logo.svg");
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: 180px;
+        background-color: var(--bg-color);
+
+        text-align: center;
+
+        /* Disable any possible fade */
+        animation: none !important;
+        transition: none !important;
+      }
+
+      .splash-version {
+        position: absolute;
+        top: 15px;
+        left: 15px;
+
+        color: rgb(209, 209, 209);
+        font-size: 0.8rem;
+        white-space: pre;
+        font-family: monospace;
+        text-align: left;
+      }
+
+      .splash-message {
+        position: absolute;
+        bottom: 15px;
+        left: 50%;
+        transform: translateX(-50%);
+        color: rgb(209, 209, 209);
+        font-size: 1rem;
+        width: 90vw;
+        text-align: center;
+      }
+    </style>
+
+    <!-- Set theme color BEFORE UI renders -->
+    <script>
+      (function () {
+        var color = localStorage.getItem("__primary_color");
+        var bg = color || "#20202c";
+
+        document.documentElement.style.setProperty("--bg-color", bg);
+        document.documentElement.style.backgroundColor = bg;
+        document.body && (document.body.style.backgroundColor = bg);
+      })();
+    </script>
+
+    <!-- Core Scripts -->
+    <script src="cordova.js"></script>
+    
+    <script src="./build/main.js"></script>
+
+
+    <link rel="stylesheet" href="./build/main.css" />
+
+    <title>Acode</title>
+  </head>
+
+  <body class="loading" data-version="" data-small-msg="">
+    <div id="splash">
+      <div class="splash-version"></div>
+      <div class="splash-message"></div>
+    </div>
+
+    <wc-page id="root" class="primary"></wc-page>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const splash = document.getElementById("splash");
+
+        function updateSplash() {
+          splash.querySelector(".splash-version").textContent =
+            document.body.getAttribute("data-version") || "";
+
+          splash.querySelector(".splash-message").textContent =
+            document.body.getAttribute("data-small-msg") || "";
         }
 
-        HTMLElement.prototype.append = function () {
-          var argArr = Array.prototype.slice.call(arguments),
-            docFrag = document.createDocumentFragment();
+        updateSplash();
 
-          argArr.forEach(function (argItem) {
-            var isNode = argItem instanceof Node;
-            argItem = isNode
-              ? argItem
-              : document.createTextNode(String(argItem));
-            docFrag.appendChild(argItem);
-          });
-
-          this.appendChild(docFrag);
-        };
-      }
-    })();
-
-    // save all touch events added by ace editor so it can be use in src/ade/touchHandler.js
-    var __oldAddEventListener = HTMLElement.prototype.addEventListener;
-    HTMLElement.prototype.addEventListener = function (
-      type,
-      listener,
-      useCapture,
-      allowed
-    ) {
-      if (typeof useCapture === "boolean") {
-        allowed = useCapture;
-        useCapture = undefined;
-      }
-
-      if (type === "contextmenu" && !allowed) {
-        return;
-      }
-
-      if (allowed) {
-        __oldAddEventListener.call(this, type, listener, useCapture);
-        return;
-      }
-
-      if (
-        this.classList.contains("editor-container") &&
-        type.indexOf("touch") === 0
-      ) {
-        if (!this.eventListeners) {
-          this.eventListeners = {};
-        }
-
-        if (!this.eventListeners[type]) {
-          this.eventListeners[type] = [];
-        }
-        this.eventListeners[type].push({
-          listener: listener,
-          useCapture: useCapture
+        new MutationObserver(updateSplash).observe(document.body, {
+          attributes: true,
+          attributeFilter: ["data-version", "data-small-msg"],
         });
-
-        return;
-      }
-      __oldAddEventListener.call(this, type, listener, useCapture);
-    };
-  </script>
-
-  <script src="cordova.js"></script>
-  <script src="./js/emmet-core.js"></script>
-  <script src="./js/ace/ace.js"></script>
-  <script src="./js/ace/ext-beautify.js"></script>
-  <script src="./js/ace/ext-code_lens.js"></script>
-  <script src="./js/ace/ext-emmet.js"></script>
-  <script src="./js/ace/ext-language_tools.js"></script>
-  <script src="./js/ace/ext-themelist.js"></script>
-  <script src="./js/ace/ext-elastic_tabstops_lite.js"></script>
-  <script src="./js/ace/ext-hardwrap.js"></script>
-  <script src="./js/ace/ext-linking.js"></script>
-  <script src="./js/ace/ext-rtl.js"></script>
-  <script src="./js/ace/ext-spellcheck.js"></script>
-  <script src="./js/ace/ext-error_marker.js"></script>
-  <script src="./js/ace/ext-whitespace.js"></script>
-  <script src="./js/ace/ext-static_highlight.js"></script>
-  <script src="./js/ace/ext-inline_autocomplete.js"></script>
-
-  <style>
-    :root {
-      --test-height: 45px;
-    }
-
-    body.loading {
-      position: relative;
-    }
-
-    body.loading.splash::before {
-      content: attr(data-version);
-      background-image: url("./logo.svg");
-      background-position: center;
-      background-repeat: no-repeat;
-      background-size: 180px;
-      background-color: #9999ff;
-      background-color: var(--bg-color);
-      position: fixed;
-      top: 0;
-      right: 0;
-      height: 100vh;
-      width: 100vw;
-      z-index: 999999;
-      text-align: center;
-      line-height: 150vh;
-      color: rgb(209, 209, 209);
-      letter-spacing: 2.4px;
-      font-size: 1.2rem;
-      font-weight: 600;
-    }
-
-    body.loading.splash::after {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      left: 50%;
-      transform: translate(-50%, 0);
-      content: attr(data-small-msg);
-      margin: 15px auto;
-      z-index: 999999;
-      color: rgb(209, 209, 209);
-      font-size: 1rem;
-      width: 90vw;
-      text-align: center;
-    }
-  </style>
-
-  <script src="./build/main.js"></script>
-  <link rel="stylesheet" href="./build/main.css">
-  <title>Acode</title>
-</head>
-
-<body class="loading splash" data-version="">
-  <wc-page id="root" class="primary"></wc-page>
-</body>
-
+      });
+    </script>
+  </body>
 </html>

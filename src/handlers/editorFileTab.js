@@ -208,14 +208,15 @@ function releaseDrag(e) {
 	} else if (
 		$target.tagName === "INPUT" ||
 		$target.tagName === "TEXTAREA" ||
-		$target.classList.contains("ace_text-input") ||
-		$target.closest(".ace_editor")
+		$target.isContentEditable ||
+		$target.closest(".cm-editor")
 	) {
-		// If released on an input area or ace editor
+		// If released on an input area or CodeMirror editor
 		const filePath = editorManager.activeFile.uri;
 		if (filePath) {
-			if ($target.closest(".ace_editor")) {
-				editorManager.editor.insert(filePath);
+			if ($target.closest(".cm-editor")) {
+				const view = editorManager.editor;
+				view.dispatch(view.state.replaceSelection(filePath));
 			} else {
 				$target.value += filePath;
 			}

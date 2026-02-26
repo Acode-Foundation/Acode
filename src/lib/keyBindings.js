@@ -1,712 +1,656 @@
-export default {
-	focusEditor: {
+import * as cmCommands from "@codemirror/commands";
+import {
+	defaultKeymap,
+	emacsStyleKeymap,
+	historyKeymap,
+	indentWithTab,
+	standardKeymap,
+} from "@codemirror/commands";
+
+const MODIFIER_ORDER = ["Ctrl", "Alt", "Shift", "Cmd"];
+const KEYMAP_SOURCES = [
+	...standardKeymap,
+	...defaultKeymap,
+	...historyKeymap,
+	...emacsStyleKeymap,
+	indentWithTab,
+];
+
+const APP_BINDING_CONFIG = [
+	{
+		name: "focusEditor",
 		description: "Focus editor",
 		key: "Ctrl-1",
 		readOnly: false,
 	},
-	copy: {
-		description: "Copy",
-		key: "Ctrl-C",
-		readOnly: true,
-		editorOnly: true,
-	},
-	cut: {
-		description: "Cut",
-		key: "Ctrl-X",
-		readOnly: false,
-		editorOnly: true,
-	},
-	paste: {
-		description: "Paste",
-		key: "Ctrl-V",
-		readOnly: false,
-		editorOnly: true,
-	},
-	findFile: {
+	{
+		name: "findFile",
 		description: "Find a file",
 		key: "Ctrl-P",
 		action: "find-file",
 	},
-	closeCurrentTab: {
+	{
+		name: "closeCurrentTab",
 		description: "Close current tab.",
 		key: "Ctrl-Q",
-		readOnly: false,
 		action: "close-current-tab",
+		readOnly: false,
 	},
-	closeAllTabs: {
+	{
+		name: "closeAllTabs",
 		description: "Close all tabs.",
 		key: "Ctrl-Shift-Q",
-		readOnly: false,
 		action: "close-all-tabs",
+		readOnly: false,
 	},
-	newFile: {
+	{
+		name: "newFile",
 		description: "Create new file",
 		key: "Ctrl-N",
-		readOnly: true,
 		action: "new-file",
+		readOnly: true,
 	},
-	openFile: {
+	{
+		name: "openFile",
 		description: "Open a file",
 		key: "Ctrl-O",
-		readOnly: true,
 		action: "open-file",
+		readOnly: true,
 	},
-	openFolder: {
+	{
+		name: "openFolder",
 		description: "Open a folder",
 		key: "Ctrl-Shift-O",
-		readOnly: true,
 		action: "open-folder",
+		readOnly: true,
 	},
-	saveFile: {
+	{
+		name: "saveFile",
 		description: "Save current file",
 		key: "Ctrl-S",
-		readOnly: true,
 		action: "save",
+		readOnly: true,
 		editorOnly: true,
 	},
-	saveFileAs: {
+	{
+		name: "saveFileAs",
 		description: "Save as current file",
 		key: "Ctrl-Shift-S",
-		readOnly: true,
 		action: "save-as",
+		readOnly: true,
 		editorOnly: true,
 	},
-	nextFile: {
+	{
+		name: "saveAllChanges",
+		description: "Save all changes",
+		key: null,
+		action: "save-all-changes",
+		readOnly: true,
+	},
+	{
+		name: "nextFile",
 		description: "Open next file tab",
 		key: "Ctrl-Tab",
-		readOnly: true,
 		action: "next-file",
+		readOnly: true,
 	},
-	prevFile: {
+	{
+		name: "prevFile",
 		description: "Open previous file tab",
 		key: "Ctrl-Shift-Tab",
-		readOnly: true,
 		action: "prev-file",
+		readOnly: true,
 	},
-	renameFile: {
+	{
+		name: "showSettingsMenu",
+		description: "Show settings menu",
+		key: "Ctrl-,",
+		readOnly: false,
+	},
+	{
+		name: "renameFile",
 		description: "Rename current file",
 		key: "F2",
-		readOnly: true,
 		action: "rename",
+		readOnly: true,
 		editorOnly: true,
 	},
-	run: {
+	{
+		name: "run",
 		description: "Run current file",
 		key: "F5",
-		readOnly: false,
 		action: "run",
-		editorOnly: true,
-	},
-	selectWord: {
-		description: "Select current word",
-		key: "Ctrl-D",
 		readOnly: false,
-		action: "select-word",
 		editorOnly: true,
 	},
-	autoindent: {
+	{
+		name: "openInAppBrowser",
+		description: "Open in-app browser",
 		key: null,
-		description: "Auto indentation",
-		readOnly: false,
+		readOnly: true,
 	},
-	showSettingsMenu: {
-		key: "Ctrl-,",
-		description: "Show settings menu",
-		readOnly: false,
-	},
-	toggleFullscreen: {
-		key: "F11",
+	{
+		name: "toggleFullscreen",
 		description: "Toggle full screen mode",
-		readOnly: false,
+		key: "F11",
 		action: "toggle-fullscreen",
+		readOnly: false,
 	},
-	toggleSidebar: {
-		key: "Ctrl-B",
+	{
+		name: "toggleSidebar",
 		description: "Toggle sidebar",
-		readOnly: true,
+		key: "Ctrl-B",
 		action: "toggle-sidebar",
+		readOnly: true,
 	},
-	toggleMenu: {
+	{
+		name: "toggleMenu",
+		description: "Toggle menu",
 		key: "F3",
-		description: "Toggle edit menu",
-		readOnly: true,
 		action: "toggle-menu",
-	},
-	toggleEditMenu: {
-		key: "F4",
-		description: "Toggle edit menu",
 		readOnly: true,
+	},
+	{
+		name: "toggleEditMenu",
+		description: "Toggle edit menu",
+		key: "F4",
 		action: "toggle-editmenu",
+		readOnly: true,
 	},
-	goToNextError: {
-		key: "Alt-E",
-		description: "Go to next error",
-		readOnly: false,
-		editorOnly: true,
-	},
-	goToPreviousError: {
-		key: "Alt-Shift-E",
-		description: "Go to previous error",
-		readOnly: false,
-		editorOnly: true,
-	},
-	selectall: {
+	{
+		name: "selectall",
 		description: "Select all",
 		key: "Ctrl-A",
 		readOnly: true,
 		editorOnly: true,
 	},
-	centerselection: {
-		description: "Center selection",
-		key: null,
-		readOnly: false,
-	},
-	gotoline: {
-		description: "Go to line...",
+	{
+		name: "gotoline",
+		description: "Go to line",
 		key: "Ctrl-G",
 		readOnly: true,
 		editorOnly: true,
 	},
-	fold: {
-		description: "Fold",
-		key: "Alt-L|Ctrl-F1",
-		readOnly: false,
-		editorOnly: true,
-	},
-	unfold: {
-		description: "Unfold",
-		key: "Alt-Shift-L|Ctrl-Shift-F1",
-		readOnly: false,
-		editorOnly: true,
-	},
-	toggleFoldWidget: {
-		key: null,
-		readOnly: false,
-		editorOnly: true,
-	},
-	toggleParentFoldWidget: {
-		key: "Alt-F2",
-		readOnly: false,
-		editorOnly: true,
-	},
-	foldall: {
-		description: "Fold all",
-		key: null,
-		readOnly: false,
-		editorOnly: true,
-	},
-	foldOther: {
-		description: "Fold other",
-		key: "Alt-0",
-		readOnly: false,
-		editorOnly: true,
-	},
-	unfoldall: {
-		description: "Unfold all",
-		key: "Alt-Shift-0",
-		readOnly: false,
-		editorOnly: true,
-	},
-	findnext: {
-		description: "Find next",
-		key: "Ctrl-K",
-		readOnly: false,
-	},
-	findprevious: {
-		description: "Find previous",
-		key: "Ctrl-Shift-X",
-		readOnly: false,
-	},
-	selectOrFindNext: {
-		description: "Select or find next",
-		key: "Alt-K",
-		readOnly: false,
-	},
-	selectOrFindPrevious: {
-		description: "Select or find previous",
-		key: "Alt-Shift-K",
-		readOnly: false,
-	},
-	find: {
+	{
+		name: "find",
 		description: "Find",
 		key: "Ctrl-F",
 		readOnly: true,
 		editorOnly: true,
 	},
-	overwrite: {
-		description: "Overwrite",
-		key: "Insert",
-		readOnly: true,
-	},
-	selecttostart: {
-		description: "Select to start",
-		key: "Ctrl-Shift-Home",
+	{
+		name: "copy",
+		description: "Copy",
+		key: "Ctrl-C",
 		readOnly: true,
 		editorOnly: true,
 	},
-	gotostart: {
-		description: "Go to start",
-		key: "Ctrl-Home",
-		readOnly: true,
-		editorOnly: true,
-	},
-	selectup: {
-		description: "Select up",
-		key: "Shift-Up",
-		readOnly: true,
-		editorOnly: true,
-	},
-	golineup: {
-		description: "Go line up",
-		key: "Up",
-		readOnly: true,
-		editorOnly: true,
-	},
-	selecttoend: {
-		description: "Select to end",
-		key: "Ctrl-Shift-End",
-		readOnly: true,
-		editorOnly: true,
-	},
-	gotoend: {
-		description: "Go to end",
-		key: "Ctrl-End",
-		readOnly: true,
-		editorOnly: true,
-	},
-	selectdown: {
-		description: "Select down",
-		key: "Shift-Down",
-		readOnly: true,
-		editorOnly: true,
-	},
-	golinedown: {
-		description: "Go line down",
-		key: "Down",
-		readOnly: true,
-		editorOnly: true,
-	},
-	selectwordleft: {
-		description: "Select word left",
-		key: "Ctrl-Shift-Left",
-		readOnly: true,
-		editorOnly: true,
-	},
-	gotowordleft: {
-		description: "Go to word left",
-		key: "Ctrl-Left",
-		readOnly: true,
-		editorOnly: true,
-	},
-	selecttolinestart: {
-		description: "Select to line start",
-		key: "Alt-Shift-Left",
-		readOnly: true,
-		editorOnly: true,
-	},
-	gotolinestart: {
-		description: "Go to line start",
-		key: "Alt-Left|Home",
-		readOnly: true,
-		editorOnly: true,
-	},
-	selectleft: {
-		description: "Select left",
-		key: "Shift-Left",
-		readOnly: true,
-		editorOnly: true,
-	},
-	gotoleft: {
-		description: "Go to left",
-		key: "Left",
-		readOnly: true,
-		editorOnly: true,
-	},
-	selectwordright: {
-		description: "Select word right",
-		key: "Ctrl-Shift-Right",
-		readOnly: true,
-		editorOnly: true,
-	},
-	gotowordright: {
-		description: "Go to word right",
-		key: "Ctrl-Right",
-		readOnly: true,
-		editorOnly: true,
-	},
-	selecttolineend: {
-		description: "Select to line end",
-		key: "Alt-Shift-Right",
-		readOnly: true,
-		editorOnly: true,
-	},
-	gotolineend: {
-		description: "Go to line end",
-		key: "Alt-Right|End",
-		readOnly: true,
-		editorOnly: true,
-	},
-	selectright: {
-		description: "Select right",
-		key: "Shift-Right",
-		readOnly: true,
-		editorOnly: true,
-	},
-	gotoright: {
-		description: "Go to right",
-		key: "Right",
-		readOnly: true,
-		editorOnly: true,
-	},
-	selectpagedown: {
-		description: "Select page down",
-		key: "Shift-PageDown",
-		readOnly: true,
-		editorOnly: true,
-	},
-	pagedown: {
-		description: "Page down",
-		key: null,
-		readOnly: true,
-		editorOnly: true,
-	},
-	gotopagedown: {
-		description: "Go to page down",
-		key: "PageDown",
+	{
+		name: "cut",
+		description: "Cut",
+		key: "Ctrl-X",
 		readOnly: false,
 		editorOnly: true,
 	},
-	selectpageup: {
-		description: "Select page up",
-		key: "Shift-PageUp",
-		readOnly: true,
-		editorOnly: true,
-	},
-	pageup: {
-		description: "Page up",
-		key: null,
+	{
+		name: "paste",
+		description: "Paste",
+		key: "Ctrl-V",
 		readOnly: false,
 		editorOnly: true,
 	},
-	problems: {
+	{
+		name: "problems",
 		description: "Show problems",
-		key: "Ctrl-Shift-K",
-		readOnly: true,
-		editorOnly: true,
-	},
-	gotopageup: {
-		description: "Go to page up",
-		key: "PageUp",
-		readOnly: true,
-		editorOnly: true,
-	},
-	scrollup: {
-		description: "Scroll up",
-		key: "Ctrl-Up",
-		readOnly: true,
-		editorOnly: true,
-	},
-	scrolldown: {
-		description: "Scroll down",
-		key: "Ctrl-Down",
-		readOnly: true,
-		editorOnly: true,
-	},
-	selectlinestart: {
-		description: "Select line start",
-		key: "Shift-Home",
-		readOnly: true,
-		editorOnly: true,
-	},
-	selectlineend: {
-		description: "Select line end",
-		key: "Shift-End",
-		readOnly: true,
-		editorOnly: true,
-	},
-	togglerecording: {
-		description: "Toggle recording",
-		key: "Ctrl-Alt-E",
-		readOnly: true,
-		editorOnly: true,
-	},
-	formatcode: {
-		description: "Format Code",
-		key: "Ctrl-Alt-F",
-		readOnly: false,
-		editorOnly: true,
-		action: "format",
-	},
-	replaymacro: {
-		description: "Replay macro",
-		key: "Ctrl-Shift-E",
-		readOnly: true,
-		editorOnly: true,
-	},
-	jumptomatching: {
-		description: "Jump to matching",
-		key: "Ctrl-\\",
-		readOnly: true,
-		editorOnly: true,
-	},
-	selecttomatching: {
-		description: "Select to matching",
-		key: "Ctrl-Shift-\\",
-		readOnly: false,
-		editorOnly: true,
-	},
-	expandToMatching: {
-		description: "Expand to matching",
-		key: "Ctrl-Shift-M",
-		readOnly: false,
-		editorOnly: true,
-	},
-	removeline: {
-		description: "Remove line",
 		key: null,
-		readOnly: false,
+		readOnly: true,
 		editorOnly: true,
 	},
-	duplicateSelection: {
-		description: "Duplicate selection",
-		key: "Ctrl-Shift-D",
-		readOnly: false,
-		editorOnly: true,
-	},
-	sortlines: {
-		description: "Sort lines",
-		key: "Ctrl-Alt-S",
-		readOnly: false,
-		editorOnly: true,
-	},
-	togglecomment: {
-		description: "Toggle comment",
-		key: "Ctrl-/",
-		readOnly: false,
-		editorOnly: true,
-	},
-	toggleBlockComment: {
-		description: "Toggle block comment",
-		key: "Ctrl-Shift-/",
-		readOnly: false,
-		editorOnly: true,
-	},
-	modifyNumberUp: {
-		description: "Modify number up",
-		key: "Ctrl-Shift-Up",
-		readOnly: false,
-		editorOnly: true,
-	},
-	modifyNumberDown: {
-		description: "Modify number down",
-		key: "Ctrl-Shift-Down",
-		readOnly: false,
-		editorOnly: true,
-	},
-	replace: {
+	{
+		name: "replace",
 		description: "Replace",
 		key: "Ctrl-R",
 		readOnly: false,
 		editorOnly: true,
 	},
-	undo: {
-		description: "Undo",
-		key: "Ctrl-Z",
-		readOnly: false,
-		editorOnly: true,
-	},
-	redo: {
-		description: "Redo",
-		key: "Ctrl-Shift-Z|Ctrl-Y",
-		readOnly: false,
-		editorOnly: true,
-	},
-	copylinesup: {
-		description: "Copy lines up",
-		key: "Alt-Shift-Up",
-		readOnly: false,
-		editorOnly: true,
-	},
-	movelinesup: {
-		description: "Move lines up",
-		key: "Alt-Up",
-		readOnly: false,
-		editorOnly: true,
-	},
-	copylinesdown: {
-		description: "Copy lines down",
-		key: "Alt-Shift-Down",
-		readOnly: false,
-		editorOnly: true,
-	},
-	movelinesdown: {
-		description: "Move lines down",
-		key: "Alt-Down",
-		readOnly: false,
-		editorOnly: true,
-	},
-	del: {
-		description: "Delete",
-		key: "Delete",
-		readOnly: true,
-		editorOnly: true,
-	},
-	backspace: {
-		description: "Backspace",
-		key: "Shift-Backspace|Backspace",
-		readOnly: false,
-		editorOnly: true,
-	},
-	cut_or_delete: {
-		description: "Cut or delete",
-		key: "Shift-Delete",
-		readOnly: false,
-		editorOnly: true,
-	},
-	removetolinestart: {
-		description: "Remove to line start",
-		key: "Alt-Backspace",
-		readOnly: false,
-		editorOnly: true,
-	},
-	removetolineend: {
-		description: "Remove to line end",
-		key: "Alt-Delete",
-		readOnly: false,
-		editorOnly: true,
-	},
-	removetolinestarthard: {
-		description: "Remove to line start hard",
-		key: "Ctrl-Shift-Backspace",
-		readOnly: false,
-		editorOnly: true,
-	},
-	removetolineendhard: {
-		description: "Remove to line end hard",
-		key: "Ctrl-Shift-Delete",
-		readOnly: false,
-		editorOnly: true,
-	},
-	removewordleft: {
-		description: "Remove word left",
-		key: "Ctrl-Backspace",
-		readOnly: false,
-		editorOnly: true,
-	},
-	removewordright: {
-		description: "Remove word right",
-		key: "Ctrl-Delete",
-		readOnly: false,
-		editorOnly: true,
-	},
-	outdent: {
-		description: "Outdent",
-		key: "Shift-Tab",
-		readOnly: false,
-		editorOnly: true,
-	},
-	indent: {
-		description: "Indent",
-		key: "Tab",
-		readOnly: true,
-		editorOnly: true,
-	},
-	blockoutdent: {
-		description: "Block outdent",
-		key: "Ctrl-[",
-		readOnly: false,
-		editorOnly: true,
-	},
-	blockindent: {
-		description: "Block indent",
-		key: "Ctrl-]",
-		readOnly: false,
-		editorOnly: true,
-	},
-	splitline: {
-		description: "Split line",
-		key: null,
-		readOnly: false,
-		editorOnly: true,
-	},
-	transposeletters: {
-		description: "Transpose letters",
-		key: "Alt-Shift-X",
-		readOnly: false,
-		editorOnly: true,
-	},
-	touppercase: {
-		description: "To uppercase",
-		key: "Ctrl-U",
-		readOnly: false,
-		editorOnly: true,
-	},
-	tolowercase: {
-		description: "To lowercase",
-		key: "Ctrl-Shift-U",
-		readOnly: false,
-		editorOnly: true,
-	},
-	expandtoline: {
-		description: "Expand to line",
-		key: "Ctrl-Shift-L",
-		readOnly: true,
-		editorOnly: true,
-	},
-	joinlines: {
-		description: "Join lines",
-		key: null,
-		readOnly: false,
-		editorOnly: true,
-	},
-	invertSelection: {
-		description: "Invert selection",
-		key: null,
-		readOnly: false,
-		editorOnly: true,
-	},
-	openCommandPalette: {
+	{
+		name: "openCommandPalette",
 		description: "Open command palette",
 		key: "Ctrl-Shift-P",
 		readOnly: true,
 	},
-	modeSelect: {
+	{
+		name: "modeSelect",
 		description: "Change language mode",
 		key: "Ctrl-M",
 		readOnly: false,
 		editorOnly: true,
 	},
-	increaseFontSize: {
-		description: "Increase font size",
-		key: "Ctrl-+|Ctrl-=",
+	{
+		name: "toggleQuickTools",
+		description: "Toggle quick tools",
+		key: null,
+		readOnly: true,
+	},
+	{
+		name: "selectWord",
+		description: "Select current word",
+		key: "Ctrl-D",
+		action: "select-word",
+		readOnly: false,
 		editorOnly: true,
 	},
-	decreaseFontSize: {
-		description: "Decrease font size",
-		key: "Ctrl+-|Ctrl-_",
-		editorOnly: true,
+	{
+		name: "openLogFile",
+		description: "Open log file",
+		key: null,
+		action: "open-log-file",
+		readOnly: true,
 	},
-	resetFontSize: {
-		description: "Reset font size",
-		key: "Ctrl+0|Ctrl-Numpad0",
-		editorOnly: true,
+	{
+		name: "openPluginsPage",
+		description: "Open plugins page",
+		key: null,
+		readOnly: true,
 	},
-	openTerminal: {
-		description: "Open Terminal",
+	{
+		name: "openFileExplorer",
+		description: "Open file explorer",
+		key: null,
+		readOnly: true,
+	},
+	{
+		name: "copyDeviceInfo",
+		description: "Copy device info",
+		key: null,
+		action: "copy-device-info",
+		readOnly: true,
+	},
+	{
+		name: "changeAppTheme",
+		description: "Change app theme",
+		key: null,
+		action: "change-app-theme",
+		readOnly: true,
+	},
+	{
+		name: "changeEditorTheme",
+		description: "Change editor theme",
+		key: null,
+		action: "change-editor-theme",
+		readOnly: true,
+	},
+	{
+		name: "openTerminal",
+		description: "Open terminal",
 		key: "Ctrl-`",
-		readOnly: true,
 		action: "new-terminal",
-	},
-	"run-tests": {
-		description: "Run Tests",
-		key: "Ctrl-Shift-T",
 		readOnly: true,
-		action: "run-tests",
 	},
-	"dev:toggleDevTools": {
-		description: "Toggle DevTools",
-		key: "Ctrl-Shift-I",
+	{
+		name: "documentSymbols",
+		description: "Go to symbol in document",
+		key: null,
 		readOnly: true,
-		action: "toggle-inspector",
+		editorOnly: true,
 	},
-};
+	{
+		name: "duplicateSelection",
+		description: "Duplicate selection",
+		key: "Ctrl-Shift-D",
+		readOnly: false,
+		editorOnly: true,
+	},
+	{
+		name: "copylinesdown",
+		description: "Copy lines down",
+		key: "Alt-Shift-Down",
+		readOnly: false,
+		editorOnly: true,
+	},
+	{
+		name: "copylinesup",
+		description: "Copy lines up",
+		key: "Alt-Shift-Up",
+		readOnly: false,
+		editorOnly: true,
+	},
+	{
+		name: "movelinesdown",
+		description: "Move lines down",
+		key: "Alt-Down",
+		readOnly: false,
+		editorOnly: true,
+	},
+	{
+		name: "movelinesup",
+		description: "Move lines up",
+		key: "Alt-Up",
+		readOnly: false,
+		editorOnly: true,
+	},
+	{
+		name: "removeline",
+		description: "Remove line",
+		key: null,
+		readOnly: false,
+		editorOnly: true,
+	},
+	{
+		name: "insertlineafter",
+		description: "Insert line after",
+		key: null,
+		readOnly: false,
+		editorOnly: true,
+	},
+	{
+		name: "selectline",
+		description: "Select line",
+		key: null,
+		readOnly: true,
+		editorOnly: true,
+	},
+	{
+		name: "selectlinesdown",
+		description: "Select lines down",
+		key: null,
+		readOnly: true,
+		editorOnly: true,
+	},
+	{
+		name: "selectlinesup",
+		description: "Select lines up",
+		key: null,
+		readOnly: true,
+		editorOnly: true,
+	},
+	{
+		name: "selectlinestart",
+		description: "Select line start",
+		key: "Shift-Home",
+		readOnly: true,
+		editorOnly: true,
+	},
+	{
+		name: "selectlineend",
+		description: "Select line end",
+		key: "Shift-End",
+		readOnly: true,
+		editorOnly: true,
+	},
+	{
+		name: "indent",
+		description: "Indent",
+		key: "Tab",
+		readOnly: false,
+		editorOnly: true,
+	},
+	{
+		name: "outdent",
+		description: "Outdent",
+		key: "Shift-Tab",
+		readOnly: false,
+		editorOnly: true,
+	},
+	{
+		name: "indentselection",
+		description: "Indent selection",
+		key: null,
+		readOnly: false,
+		editorOnly: true,
+	},
+	{
+		name: "newline",
+		description: "Insert newline",
+		key: null,
+		readOnly: false,
+		editorOnly: true,
+	},
+	{
+		name: "joinlines",
+		description: "Join lines",
+		key: null,
+		readOnly: false,
+		editorOnly: true,
+	},
+	{
+		name: "deletetolinestart",
+		description: "Delete to line start",
+		key: null,
+		readOnly: false,
+		editorOnly: true,
+	},
+	{
+		name: "deletetolineend",
+		description: "Delete to line end",
+		key: null,
+		readOnly: false,
+		editorOnly: true,
+	},
+	{
+		name: "togglecomment",
+		description: "Toggle comment",
+		key: "Ctrl-/",
+		readOnly: false,
+		editorOnly: true,
+	},
+	{
+		name: "comment",
+		description: "Add line comment",
+		key: null,
+		readOnly: false,
+		editorOnly: true,
+	},
+	{
+		name: "uncomment",
+		description: "Remove line comment",
+		key: null,
+		readOnly: false,
+		editorOnly: true,
+	},
+	{
+		name: "toggleBlockComment",
+		description: "Toggle block comment",
+		key: "Ctrl-Shift-/",
+		readOnly: false,
+		editorOnly: true,
+	},
+	{
+		name: "undo",
+		description: "Undo",
+		key: "Ctrl-Z",
+		readOnly: false,
+		editorOnly: true,
+	},
+	{
+		name: "redo",
+		description: "Redo",
+		key: "Ctrl-Shift-Z|Ctrl-Y",
+		readOnly: false,
+		editorOnly: true,
+	},
+	{
+		name: "simplifySelection",
+		description: "Simplify selection",
+		key: null,
+		readOnly: true,
+		editorOnly: true,
+	},
+];
+
+const APP_KEY_BINDINGS = buildAppBindings(APP_BINDING_CONFIG);
+const APP_CUSTOM_COMMANDS = new Set(
+	APP_BINDING_CONFIG.filter((config) => !config.action).map(
+		(config) => config.name,
+	),
+);
+
+const FORCE_READ_ONLY = new Set([
+	"toggleTabFocusMode",
+	"temporarilySetTabFocusMode",
+]);
+const MUTATING_COMMAND_PATTERN =
+	/^(delete|insert|indent|move|copy|split|transpose|toggle|undo|redo|line|block)/i;
+
+const CODEMIRROR_COMMAND_NAMES = new Set(
+	Object.entries(cmCommands)
+		.filter(([, value]) => typeof value === "function")
+		.map(([name]) => name),
+);
+
+const CODEMIRROR_KEY_BINDINGS = buildCodemirrorKeyBindings(APP_KEY_BINDINGS);
+
+const keyBindings = Object.fromEntries(
+	Object.entries({ ...CODEMIRROR_KEY_BINDINGS, ...APP_KEY_BINDINGS })
+		.filter(
+			([name, binding]) =>
+				binding &&
+				(binding.action ||
+					APP_CUSTOM_COMMANDS.has(name) ||
+					CODEMIRROR_COMMAND_NAMES.has(name)),
+		)
+		.sort((a, b) => a[0].localeCompare(b[0])),
+);
+
+export default keyBindings;
+
+function buildAppBindings(configs) {
+	return Object.fromEntries(
+		configs.map(
+			({
+				name,
+				description,
+				key = null,
+				action,
+				readOnly = true,
+				editorOnly,
+			}) => [
+				name,
+				{
+					description: description ?? humanizeCommandName(name),
+					key,
+					readOnly,
+					...(editorOnly !== undefined ? { editorOnly } : {}),
+					...(action ? { action } : {}),
+				},
+			],
+		),
+	);
+}
+
+function buildCodemirrorKeyBindings(appBindings) {
+	const commandEntries = Object.entries(cmCommands).filter(
+		([, value]) => typeof value === "function",
+	);
+	const commandNameByFunction = new Map(
+		commandEntries.map(([name, fn]) => [fn, name]),
+	);
+	const comboMap = new Map();
+
+	for (const binding of KEYMAP_SOURCES) {
+		const baseCombos = new Set();
+
+		pushCommandCombo(binding.run, binding.key, "win", baseCombos);
+		pushCommandCombo(binding.run, binding.win, "win", baseCombos);
+		pushCommandCombo(binding.run, binding.linux, "win", baseCombos);
+		pushCommandCombo(binding.run, binding.mac, "mac", baseCombos);
+
+		if (binding.shift) {
+			const shiftName = commandNameByFunction.get(binding.shift);
+			if (shiftName && !appBindings[shiftName]) {
+				const combos = baseCombos.size
+					? Array.from(baseCombos)
+					: [
+							normalizeKey(binding.key, "win"),
+							normalizeKey(binding.win, "win"),
+							normalizeKey(binding.linux, "win"),
+							normalizeKey(binding.mac, "mac"),
+						].filter(Boolean);
+				for (const combo of combos) {
+					addCommandCombo(comboMap, shiftName, ensureModifier(combo, "Shift"));
+				}
+			}
+		}
+	}
+
+	const result = {};
+	for (const [name, combos] of comboMap.entries()) {
+		if (!combos.size || appBindings[name]) continue;
+		result[name] = {
+			description: humanizeCommandName(name),
+			key: Array.from(combos)
+				.sort((a, b) => a.localeCompare(b))
+				.join("|"),
+			readOnly: inferReadOnly(name),
+			editorOnly: true,
+		};
+	}
+	return result;
+
+	function pushCommandCombo(commandFn, key, platform, baseCombos) {
+		if (!commandFn) return;
+		const name = commandNameByFunction.get(commandFn);
+		if (!name || appBindings[name]) return;
+		const normalized = normalizeKey(key, platform);
+		if (!normalized) return;
+		addCommandCombo(comboMap, name, normalized);
+		baseCombos.add(normalized);
+	}
+}
+
+function addCommandCombo(map, name, combo) {
+	if (!combo) return;
+	let entry = map.get(name);
+	if (!entry) {
+		entry = new Set();
+		map.set(name, entry);
+	}
+	entry.add(combo);
+}
+
+function normalizeKey(key, platform = "win") {
+	if (!key) return null;
+	const replaced = key.replace(/Mod/g, platform === "mac" ? "Cmd" : "Ctrl");
+	const { modifiers, baseKey } = parseKeyParts(replaced);
+	if (!baseKey) return [...modifiers].join("-") || null;
+	const ordered = MODIFIER_ORDER.filter((mod) => modifiers.has(mod));
+	return [...ordered, baseKey].join("-");
+}
+
+function ensureModifier(combo, modifier) {
+	if (!combo) return null;
+	const { modifiers, baseKey } = parseKeyParts(combo);
+	if (!baseKey) return combo;
+	modifiers.add(modifier);
+	const ordered = MODIFIER_ORDER.filter((mod) => modifiers.has(mod));
+	return [...ordered, baseKey].join("-");
+}
+
+function parseKeyParts(combo) {
+	const modifiers = new Set();
+	let baseKey = "";
+	if (!combo) return { modifiers, baseKey };
+	for (const rawPart of combo.split("-")) {
+		const part = rawPart.trim();
+		if (!part) continue;
+		const normalized = part.charAt(0).toUpperCase() + part.slice(1);
+		if (MODIFIER_ORDER.includes(normalized)) {
+			modifiers.add(normalized);
+		} else {
+			baseKey = part;
+		}
+	}
+	return { modifiers, baseKey };
+}
+
+function humanizeCommandName(name) {
+	return name
+		.replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+		.replace(/_/g, " ")
+		.replace(/^./, (char) => char.toUpperCase());
+}
+
+function inferReadOnly(name) {
+	if (FORCE_READ_ONLY.has(name)) return true;
+	return !MUTATING_COMMAND_PATTERN.test(name);
+}

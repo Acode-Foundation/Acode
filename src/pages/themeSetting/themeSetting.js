@@ -1,4 +1,10 @@
 import "./themeSetting.scss";
+import { javascript } from "@codemirror/lang-javascript";
+// For CodeMirror preview
+import { EditorState } from "@codemirror/state";
+import { oneDark } from "@codemirror/theme-one-dark";
+import { getThemeExtensions, getThemes } from "cm/themes";
+import { basicSetup, EditorView } from "codemirror";
 import Page from "components/page";
 import searchBar from "components/searchbar";
 import TabView from "components/tabView";
@@ -15,33 +21,39 @@ import helpers from "utils/helpers";
 export default function () {
 	const $page = Page(strings.theme.capitalize());
 	const $search = <span attr-action="search" className="icon search"></span>;
-	const $themePreview = <div id="theme-preview"></div>;
+	const $themePreview = (
+		<div
+			id="theme-preview"
+			style="min-height:120px;height:30vh;display:flex;"
+		></div>
+	);
 	const list = new Ref();
-	const editor = ace.edit($themePreview);
-
-	const session = ace.createEditSession("");
-	const activeFile = editorManager.activeFile;
-
-	if (activeFile && activeFile.type === "editor") {
-		const currentSession = activeFile.session;
-		session.setMode(currentSession.getMode());
-		session.setValue(currentSession.getValue());
-	} else {
-		// Fallback content for preview
-		session.setMode("ace/mode/javascript");
-		session.setValue(`// Acode is awesome!
-const message = "Welcome to Acode";
-console.log(message);`);
+	let cmPreview = null;
+	const previewDoc = `// Acode is awesome!\nconst message = "Welcome to Acode";\nconsole.log(message);`;
+	function createPreview(themeId) {
+		if (cmPreview) {
+			cmPreview.destroy();
+			cmPreview = null;
+		}
+		const theme = getThemeExtensions(themeId, [oneDark]);
+		const fixedHeightTheme = EditorView.theme({
+			"&": { height: "100%", flex: "1 1 auto" },
+			".cm-scroller": { height: "100%", overflow: "auto" },
+		});
+		const state = EditorState.create({
+			doc: previewDoc,
+			extensions: [basicSetup, javascript(), fixedHeightTheme, ...theme],
+		});
+		cmPreview = new EditorView({ state, parent: $themePreview });
+		cmPreview.contentDOM.setAttribute("aria-readonly", "true");
 	}
-
-	editor.setReadOnly(true);
-	editor.setSession(session);
-	editor.renderer.setMargin(0, 0, -16, 0);
 
 	actionStack.push({
 		id: "appTheme",
 		action: () => {
-			editor.destroy();
+			try {
+				cmPreview?.destroy();
+			} catch (_) {}
 			$page.hide();
 			$page.removeEventListener("click", clickHandler);
 		},
@@ -74,6 +86,10 @@ console.log(message);`);
 	$page.addEventListener("click", clickHandler);
 
 	function renderAppThemes() {
+		// Remove and destroy CodeMirror preview when showing app themes
+		try {
+			cmPreview?.destroy();
+		} catch (_) {}
 		$themePreview.remove();
 		const content = [];
 
@@ -111,30 +127,26 @@ console.log(message);`);
 	}
 
 	function renderEditorThemes() {
-		const currentTheme = appSettings.value.editorTheme;
-		const themePrefix = "ace/theme/";
-		const fullThemePath = currentTheme.startsWith(themePrefix)
-			? currentTheme
-			: themePrefix + currentTheme;
-
-		editor.setTheme(fullThemePath);
+		const currentTheme = (
+			appSettings.value.editorTheme || "one_dark"
+		).toLowerCase();
 		if (innerHeight * 0.3 >= 120) {
 			$page.body.append($themePreview);
-			editor.resize();
+			createPreview(currentTheme);
 		} else {
 			$themePreview.remove();
 		}
 
-		const themeList = ace.require("ace/ext/themelist");
+		const themeList = getThemes();
 		let $currentItem;
-		list.el.content = themeList.themes.map((theme) => {
-			const isCurrent = theme.theme === fullThemePath;
+		list.el.content = themeList.map((t) => {
+			const isCurrent = t.id === currentTheme;
 			const $item = (
 				<Item
-					name={theme.caption}
+					name={t.caption}
 					isCurrent={isCurrent}
-					isDark={theme.isDark}
-					onclick={() => setEditorTheme(theme)}
+					isDark={t.isDark}
+					onclick={() => setEditorTheme({ caption: t.caption, theme: t.id })}
 				/>
 			);
 			if (isCurrent) $currentItem = $item;
@@ -201,8 +213,15 @@ console.log(message);`);
 			);
 			return;
 		}
-		editorManager.editor.setTheme(theme);
-		editor.setTheme(theme); // preview
+		const ok = editorManager.editor.setTheme(theme);
+		if (!ok) {
+			alert(
+				"Invalid theme",
+				"This editor theme is not compatible with Acode's CodeMirror runtime.",
+			);
+			return;
+		}
+		if (cmPreview) createPreview(theme);
 		appSettings.update(
 			{
 				editorTheme: theme,
@@ -222,8 +241,8 @@ console.log(message);`);
 	}
 
 	function Item({ name, color, isDark, onclick, isCurrent, isPremium }) {
-		const check = <span ref={check} className="icon check"></span>;
-		const star = <span ref={star} className="icon stars"></span>;
+		const check = <span className="icon check"></span>;
+		const star = <span className="icon stars"></span>;
 		let style = {};
 		let className = "icon color";
 

@@ -4,37 +4,19 @@ import appSettings from "lib/settings";
 import { isDeviceDarkTheme } from "lib/systemConfiguration";
 import themes from "theme/list";
 import { updateSystemTheme } from "theme/preInstalled";
+import changeEditorTheme from "../changeEditorTheme";
 
 export default function changeTheme(type = "editor") {
+	if (type === "editor") return changeEditorTheme();
 	palette(
 		() => generateHints(type),
 		(value) => onselect(value),
-		strings[type === "editor" ? "editor theme" : "app theme"],
+		strings["app theme"],
 	);
 }
 
 function generateHints(type) {
-	if (type === "editor") {
-		const themeList = ace.require("ace/ext/themelist");
-		const currentTheme = appSettings.value.editorTheme;
-		const themePrefix = "ace/theme/";
-
-		return themeList.themes.map((theme) => {
-			const isCurrent =
-				theme.theme ===
-				(currentTheme.startsWith(themePrefix)
-					? currentTheme
-					: themePrefix + currentTheme);
-
-			return {
-				value: JSON.stringify({ type: "editor", theme: theme.theme }),
-				text: `<div class="theme-item">
-										<span>${theme.caption}</span>
-										${isCurrent ? '<span class="current">current</span>' : ""}
-								</div>`,
-			};
-		});
-	}
+	// Editor handled by changeEditorTheme
 
 	// App themes
 	const currentTheme = appSettings.value.appTheme;

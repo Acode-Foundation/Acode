@@ -222,7 +222,53 @@ function done(ratio, mode) {
  * @param {string} arg.include - The inclusion patterns separated by commas.
  */
 function Skip({ exclude, include }) {
-	const excludeFiles = (exclude ? exclude.split(",") : []).map((p) => p.trim());
+	// Default exclude patterns for binary/media/archives/fonts/etc.
+	const defaultExcludes = [
+		"**/*.png",
+		"**/*.jpg",
+		"**/*.jpeg",
+		"**/*.gif",
+		"**/*.bmp",
+		"**/*.webp",
+		"**/*.avif",
+		"**/*.ico",
+		"**/*.svgz",
+		"**/*.mp3",
+		"**/*.wav",
+		"**/*.ogg",
+		"**/*.flac",
+		"**/*.m4a",
+		"**/*.aac",
+		"**/*.mp4",
+		"**/*.mkv",
+		"**/*.webm",
+		"**/*.mov",
+		"**/*.avi",
+		"**/*.zip",
+		"**/*.gz",
+		"**/*.bz2",
+		"**/*.xz",
+		"**/*.7z",
+		"**/*.rar",
+		"**/*.tar",
+		"**/*.exe",
+		"**/*.dll",
+		"**/*.so",
+		"**/*.bin",
+		"**/*.class",
+		"**/*.ttf",
+		"**/*.otf",
+		"**/*.woff",
+		"**/*.woff2",
+		"**/*.pdf",
+		"**/*.psd",
+		"**/*.ai",
+		"**/*.sketch",
+	];
+	const userExcludes = (exclude ? exclude.split(",") : [])
+		.map((p) => p.trim())
+		.filter(Boolean);
+	const excludeFiles = [...defaultExcludes, ...userExcludes];
 	const includeFiles = (include ? include.split(",") : ["**"]).map((p) =>
 		p.trim(),
 	);

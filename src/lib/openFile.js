@@ -39,11 +39,12 @@ export default async function openFile(file, options = {}) {
 
 		if (existingFile) {
 			// If file is already opened and new text is provided
-			const existingText = existingFile.session.getValue();
-			const existingCursorPos = existingFile.session.selection.getCursor();
+			const existingText = existingFile.session.doc.toString() ?? "";
 
 			// If file is already opened
 			existingFile.makeActive();
+
+			const { editor } = editorManager;
 
 			if (onsave) {
 				existingFile.onsave = onsave;
@@ -57,20 +58,24 @@ export default async function openFile(file, options = {}) {
 				// }
 				// if (confirmation) {
 				// }
-				existingFile.session.setValue(text);
+				editor.dispatch({
+					changes: {
+						from: 0,
+						to: editor.state.doc.length,
+						insert: String(text),
+					},
+				});
 			}
 
-			if (
-				cursorPos &&
-				existingCursorPos &&
-				existingCursorPos.row !== cursorPos.row &&
-				existingCursorPos.column !== cursorPos.column
-			) {
-				existingFile.session.selection.moveCursorTo(
-					cursorPos.row,
-					cursorPos.column,
-				);
-			}
+			// Move cursor if requested and different
+			try {
+				if (cursorPos) {
+					const cur = editor.getCursorPosition();
+					if (cur.row !== cursorPos.row || cur.column !== cursorPos.column) {
+						editor.gotoLine(cursorPos.row, cursorPos.column);
+					}
+				}
+			} catch (_) {}
 
 			if (encoding && existingFile.encoding !== encoding) {
 				reopenWithNewEncoding(encoding);

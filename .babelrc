@@ -6,7 +6,8 @@
         "useBuiltIns": "entry",
         "corejs": "3.22"
       }
-    ]
+    ],
+    "@babel/preset-typescript"
   ],
   "plugins": [
     "html-tag-js/jsx/jsx-to-tag.js",

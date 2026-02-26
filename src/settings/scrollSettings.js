@@ -7,7 +7,7 @@ export default function scrollSettings() {
 	const title = strings["scroll settings"];
 
 	const items = [
-		{
+		/*{
 			key: "scrollSpeed",
 			text: strings["scroll speed"],
 			value: values.scrollSpeed,
@@ -18,17 +18,17 @@ export default function scrollSettings() {
 				[constants.SCROLL_SPEED_NORMAL, strings.normal],
 				[constants.SCROLL_SPEED_SLOW, strings.slow],
 			],
-		},
-		{
+		},*/
+		/*{
 			key: "reverseScrolling",
 			text: strings["reverse scrolling"],
 			checkbox: values.reverseScrolling,
-		},
-		{
+		},*/
+		/*{
 			key: "diagonalScrolling",
 			text: strings["diagonal scrolling"],
 			checkbox: values.diagonalScrolling,
-		},
+		},*/
 		{
 			key: "scrollbarSize",
 			text: strings["scrollbar size"],

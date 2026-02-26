@@ -43,6 +43,10 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+.licons.lightbulb:before {
+  content: "\f004";
+}
+
 .licons.scale:before {
   content: "\f006";
 }

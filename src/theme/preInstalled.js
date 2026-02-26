@@ -45,7 +45,7 @@ oled.activeTextColor = "rgb(255, 255, 255)";
 oled.errorTextColor = "rgb(255, 69, 58)";
 oled.dangerColor = "rgb(255, 69, 58)";
 oled.scrollbarColor = "rgba(255, 255, 255, 0.1)";
-oled.preferredEditorTheme = "ace/theme/terminal";
+oled.preferredEditorTheme = "tokyoNight";
 
 const ocean = createBuiltInTheme("Ocean");
 ocean.darkenedPrimaryColor = "rgb(19, 19, 26)";
@@ -61,7 +61,7 @@ ocean.popupBackgroundColor = "rgb(32, 32, 44)";
 ocean.popupTextColor = WHITE;
 ocean.popupActiveColor = "rgb(255, 215, 0)";
 ocean.boxShadowColor = "rgba(0, 0, 0, 0.5)";
-ocean.preferredEditorTheme = "ace/theme/solarized_dark";
+ocean.preferredEditorTheme = "solarizedDark";
 ocean.preferredFont = "Fira Code";
 
 const bump = createBuiltInTheme("Bump");
@@ -80,7 +80,7 @@ bump.popupActiveColor = "rgb(255, 215, 0)";
 bump.buttonBackgroundColor = "rgb(242, 163, 101)";
 bump.buttonTextColor = "rgb(236, 236, 236)";
 bump.buttonActiveColor = "rgb(212, 137, 79)";
-bump.preferredEditorTheme = "ace/theme/one_dark";
+bump.preferredEditorTheme = "one_dark";
 
 const bling = createBuiltInTheme("Bling");
 bling.darkenedPrimaryColor = "rgb(19, 19, 38)";
@@ -98,7 +98,6 @@ bling.popupActiveColor = "rgb(51, 153, 255)";
 bling.buttonBackgroundColor = "rgb(255, 99, 99)";
 bling.buttonTextColor = "rgb(255, 189, 105)";
 bling.buttonActiveColor = "rgb(160, 99, 52)";
-bling.preferredEditorTheme = "ace/theme/tomorrow_night_blue";
 
 const moon = createBuiltInTheme("Moon");
 moon.darkenedPrimaryColor = "rgb(20, 24, 29)";
@@ -116,7 +115,7 @@ moon.popupActiveColor = "rgb(51, 153, 255)";
 moon.buttonBackgroundColor = "rgb(0, 173, 181)";
 moon.buttonTextColor = "rgb(0, 142, 149)";
 moon.buttonActiveColor = "rgb(0, 173, 181)";
-moon.preferredEditorTheme = "ace/theme/one_dark";
+moon.preferredEditorTheme = "tokyoNight";
 
 const atticus = createBuiltInTheme("Atticus");
 atticus.darkenedPrimaryColor = "rgb(32, 30, 30)";
@@ -134,7 +133,6 @@ atticus.popupActiveColor = "rgb(51, 153, 255)";
 atticus.buttonBackgroundColor = "rgb(225, 100, 40)";
 atticus.buttonTextColor = "rgb(246, 233, 233)";
 atticus.buttonActiveColor = "rgb(0, 145, 153)";
-atticus.preferredEditorTheme = "ace/theme/pastel_on_dark";
 
 const tomyris = createBuiltInTheme("Tomyris");
 tomyris.darkenedPrimaryColor = "rgb(32, 30, 30)";
@@ -152,7 +150,6 @@ tomyris.popupActiveColor = "rgb(51, 153, 255)";
 tomyris.buttonBackgroundColor = "rgb(161, 37, 89)";
 tomyris.buttonTextColor = "rgb(241, 187, 213)";
 tomyris.buttonActiveColor = "rgb(0, 145, 153)";
-tomyris.preferredEditorTheme = "ace/theme/cobalt";
 
 const menes = createBuiltInTheme("Menes");
 menes.darkenedPrimaryColor = "rgb(31, 34, 38)";
@@ -170,7 +167,6 @@ menes.popupActiveColor = "rgb(51, 153, 255)";
 menes.buttonBackgroundColor = "rgb(95, 133, 219)";
 menes.buttonTextColor = "rgb(144, 184, 248)";
 menes.buttonActiveColor = "rgb(0, 145, 153)";
-menes.preferredEditorTheme = "ace/theme/nord_dark";
 
 const light = createBuiltInTheme("Light", "light");
 light.primaryColor = "rgb(255, 255, 255)";
@@ -194,9 +190,9 @@ const system = createBuiltInTheme("System", "dark", "free");
 
 export function getSystemEditorTheme(darkTheme) {
 	if (darkTheme) {
-		return "ace/theme/clouds_midnight";
+		return "one_dark";
 	} else {
-		return "ace/theme/crimson_editor";
+		return "noctisLilac";
 	}
 }
 
@@ -282,7 +278,7 @@ neon.buttonBackgroundColor = "rgb(255, 20, 147)";
 neon.buttonTextColor = "rgb(0, 0, 0)";
 neon.buttonActiveColor = "rgb(0, 255, 255)";
 neon.boxShadowColor = "rgba(10, 255, 200, 0.2)";
-neon.preferredEditorTheme = "ace/theme/monokai";
+neon.preferredEditorTheme = "monokai";
 neon.activeTextColor = "rgb(0, 0, 0)";
 neon.errorTextColor = "rgb(255, 20, 147)";
 neon.dangerColor = "rgb(255, 20, 147)";
@@ -309,7 +305,7 @@ glassDark.activeTextColor = "rgb(255, 255, 255)";
 glassDark.errorTextColor = "rgb(248, 113, 113)";
 glassDark.dangerColor = "rgb(239, 68, 68)";
 glassDark.scrollbarColor = "rgba(255, 255, 255, 0.2)";
-glassDark.preferredEditorTheme = "ace/theme/one_dark";
+glassDark.preferredEditorTheme = "tokyoNight";
 
 const sunset = createBuiltInTheme("Sunset");
 sunset.darkenedPrimaryColor = "rgb(251, 243, 235)";

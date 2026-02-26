@@ -1,4 +1,5 @@
 import fsOperation from "fileSystem";
+import { selectAll } from "@codemirror/commands";
 import Sidebar from "components/sidebar";
 import { TerminalManager } from "components/terminal";
 import color from "dialogs/color";
@@ -143,12 +144,9 @@ export default {
 		});
 
 		if (!res) return;
-
-		const [line, col] = `${res}`.split(".");
-		const editor = editorManager.editor;
-
-		editor.focus();
-		editor.gotoLine(line, col, true);
+		const [lineStr, colStr] = String(res).split(".");
+		const { editor } = editorManager;
+		editor.gotoLine(lineStr, colStr);
 	},
 	async "new-file"() {
 		let filename = await prompt(strings["enter file name"], "", "filename", {
@@ -201,19 +199,19 @@ export default {
 			default:
 				return;
 		}
-		editorManager.editor.blur();
+		editorManager.editor.contentDOM.blur();
 	},
 	"open-with"() {
 		editorManager.activeFile.openWith();
 	},
 	"open-file"() {
-		editorManager.editor.blur();
+		editorManager.editor.contentDOM.blur();
 		FileBrowser("file")
 			.then(FileBrowser.openFile)
 			.catch(FileBrowser.openFileError);
 	},
 	"open-folder"() {
-		editorManager.editor.blur();
+		editorManager.editor.contentDOM.blur();
 		FileBrowser("folder")
 			.then(FileBrowser.openFolder)
 			.catch(FileBrowser.openFolderError);
@@ -251,7 +249,8 @@ export default {
 		this.find();
 	},
 	"resize-editor"() {
-		editorManager.editor.resize(true);
+		// TODO : Codemirror
+		//editorManager.editor.resize(true);
 	},
 	"open-inapp-browser"(url) {
 		browser.open(url);
@@ -290,6 +289,60 @@ export default {
 	share() {
 		editorManager.activeFile.share();
 	},
+	async "pin-file-shortcut"() {
+		const file = editorManager.activeFile;
+		if (!file?.uri) {
+			toast(strings["save file before home shortcut"]);
+			return;
+		}
+
+		if (typeof system?.pinFileShortcut !== "function") {
+			toast(strings["pin shortcuts not supported"]);
+			return;
+		}
+
+		const { uri, filename } = file;
+		const label = filename;
+		const description = filename;
+
+		let id = uri.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+		if (!id) {
+			id = helpers.uuid();
+		}
+		if (id.length > 40) {
+			id = id.slice(-40);
+		}
+		id = `file-${id}`;
+
+		const shortcut = {
+			id,
+			label,
+			description,
+			uri,
+		};
+
+		const requestShortcut = new Promise((resolve, reject) => {
+			system.pinFileShortcut(
+				shortcut,
+				() => resolve(true),
+				(err) => reject(err),
+			);
+		});
+
+		try {
+			await requestShortcut;
+			toast(strings["shortcut request sent"]);
+		} catch (error) {
+			if (
+				typeof error === "string" &&
+				error.toLowerCase().includes("not supported")
+			) {
+				toast(strings["pin shortcuts not supported"]);
+				return;
+			}
+			helpers.error(error);
+		}
+	},
 	syntax() {
 		changeMode();
 	},
@@ -315,9 +368,17 @@ export default {
 	async "insert-color"() {
 		const { editor } = editorManager;
 		const range = getColorRange();
-		let defaultColor = range ? editor.session.getTextRange(range) : "";
+		let defaultColor = "";
 
-		editor.blur();
+		if (range) {
+			try {
+				defaultColor = editor.state.doc.sliceString(range.from, range.to);
+			} catch (_) {
+				defaultColor = "";
+			}
+		}
+
+		editor.contentDOM.blur();
 		const wasFocused = editorManager.activeFile.focused;
 		const res = await color(defaultColor, () => {
 			if (wasFocused) {
@@ -326,7 +387,9 @@ export default {
 		});
 
 		if (range) {
-			editor.session.replace(range, res);
+			editor.dispatch({
+				changes: { from: range.from, to: range.to, insert: res },
+			});
 			return;
 		}
 		editor.insert(res);
@@ -342,8 +405,7 @@ export default {
 	},
 	"select-all"() {
 		const { editor } = editorManager;
-		editor.execCommand("selectall");
-		editor.scrollToRow(Number.POSITIVE_INFINITY);
+		selectAll(editor);
 	},
 	async rename(file) {
 		file = file || editorManager.activeFile;
@@ -395,8 +457,11 @@ export default {
 		const { editor } = editorManager;
 		const pos = editor.getCursorPosition();
 
-		await acode.format(selectIfNull);
-		editor.selection.moveCursorToPosition(pos);
+		const didFormat = await acode.format(selectIfNull);
+		if (didFormat) {
+			// Restore cursor position after formatting (pos.row is now 1-based)
+			editor.gotoLine(pos.row, pos.column);
+		}
 	},
 	async eol() {
 		const eol = await select(strings["new line mode"], ["unix", "windows"], {
@@ -494,5 +559,9 @@ Additional Info:
 	async "open-inspector"() {
 		const devTools = (await import("lib/devTools")).default;
 		devTools.show();
+	},
+	async "lsp-info"() {
+		const { showLspInfoDialog } = await import("components/lspInfoDialog");
+		showLspInfoDialog();
 	},
 };

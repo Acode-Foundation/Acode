@@ -499,5 +499,11 @@
 	"info-developermode": "Engedélyezze a fejlesztői eszközöket (Eruda) a bővítmények hibakereséséhez és az alkalmazás állapotának megfigyeléséhez. A megfigyelő az alkalmazás indításakor előkészítődik.",
 	"developer mode enabled": "Fejlesztői mód engedélyezve. A parancspaletta használatával kapcsolhatja be/ki a megfigyelőt (Ctrl+Shift+I).",
 	"developer mode disabled": "Fejlesztői mód letiltva",
-	"copy relative path": "Relatív elérési útvonal másolása"
+	"copy relative path": "Relatív elérési útvonal másolása",
+	"shortcut request sent": "Parancsikon-kérelem megnyitva. A befejezéshez koppintson a hozzáadás gombra.",
+	"add to home screen": "Hozzáadás a kezdőképernyőhöz",
+	"pin shortcuts not supported": "Ez az eszköz nem támogatja a kezdőképernyő-parancsikonokat.",
+	"save file before home shortcut": "A kezdőképernyőhöz való hozzáadás előtt mentse el a fájlt.",
+	"terminal_required_message_for_lsp": "A Terminál nincs telepítve. Először telepítse a Terminált, hogy használni tudja az LSP-kiszolgálókat.",
+	"shift click selection": "Shift + koppintás/kattintás a kiválasztáshoz"
 }

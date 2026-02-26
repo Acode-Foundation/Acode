@@ -10,6 +10,20 @@ const exec = (command) => {
 	editor.focus();
 };
 
+const showCodeActions = async () => {
+	const { editor } = editorManager;
+	if (!editor) return;
+
+	try {
+		const { showCodeActionsMenu, supportsCodeActions } = await import("cm/lsp");
+		if (supportsCodeActions(editor)) {
+			await showCodeActionsMenu(editor);
+		}
+	} catch (error) {
+		console.warn("[SelectionMenu] Code actions not available:", error);
+	}
+};
+
 const items = [];
 
 export default function selectionMenu() {
@@ -32,6 +46,12 @@ export default function selectionMenu() {
 			(color) => acode.exec("insert-color", color),
 			<span className="icon color_lenspalette"></span>,
 			"all",
+		),
+		item(
+			() => showCodeActions(),
+			<span className="licons lightbulb" title="Code Actions"></span>,
+			"all",
+			true,
 		),
 		...items,
 	];

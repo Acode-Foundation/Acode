@@ -1,0 +1,130 @@
+.editor-container {
+  position: relative;
+}
+
+.cm-editor,
+.cm-editor * {
+  -webkit-touch-callout: none;
+}
+
+.editor-container > .cursor {
+  pointer-events: auto;
+  touch-action: none;
+  z-index: 600;
+}
+
+.editor-container > .cursor-menu {
+  z-index: 600;
+}
+
+.cm-tooltip {
+  box-sizing: border-box;
+  max-width: min(32rem, calc(100vw - 1.25rem));
+  width: max-content;
+  padding: 0.4rem 0.45rem;
+  border-radius: 0;
+  overscroll-behavior: contain;
+  overflow-y: auto;
+  max-height: min(70vh, 22rem);
+
+  .cm-tooltip-section + .cm-tooltip-section {
+    margin-top: 0.5rem;
+  }
+}
+
+.cm-tooltip.cm-tooltip-hover {
+  font-size: 0.9rem;
+  line-height: 1.45;
+  word-break: break-word;
+  max-height: min(65vh, 20rem);
+}
+
+.cm-tooltip.cm-tooltip-autocomplete {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 0.4rem;
+  width: auto;
+  min-width: min(15rem, calc(100vw - 1.75rem));
+  max-width: min(32rem, calc(100vw - 1.25rem));
+  max-height: min(60vh, 20rem);
+  padding: 0.25rem;
+  overflow: visible;
+}
+
+.cm-tooltip.cm-tooltip-autocomplete > ul {
+  flex: 1 1 auto;
+  max-height: inherit;
+  overflow: auto;
+  padding: 0.25rem;
+  margin: 0;
+  scrollbar-gutter: stable;
+}
+
+.cm-tooltip.cm-tooltip-autocomplete > ul > li {
+  display: flex;
+  align-items: center;
+  gap: 0.12rem;
+  padding: 0.3rem 0.36rem;
+  border-radius: 0.2rem;
+}
+
+.cm-tooltip.cm-tooltip-autocomplete .cm-completionIcon {
+  flex: 0 0 auto;
+  min-width: 1rem;
+  text-align: center;
+  line-height: 1;
+}
+
+.cm-tooltip.cm-tooltip-autocomplete .cm-completionLabel {
+  flex: 1 1 auto;
+  font-size: 0.95em;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.cm-tooltip.cm-tooltip-autocomplete .cm-completionMatchedText {
+  font-weight: 600;
+}
+
+.cm-tooltip.cm-tooltip-autocomplete .cm-completionDetail {
+  margin-left: auto;
+  font-size: 0.85em;
+}
+
+.cm-tooltip.cm-tooltip-autocomplete .cm-completionInfo {
+  flex: 1 1 45%;
+  min-width: min(12rem, calc(100vw - 3rem));
+  max-width: min(18rem, calc(100vw - 2.5rem));
+  max-height: inherit;
+  padding: 0.3rem 0.35rem;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  overflow: auto;
+}
+
+@media (max-width: 480px) {
+  .cm-tooltip {
+    font-size: 0.9rem;
+    max-width: calc(100vw - 1.25rem);
+    max-height: min(70vh, 20rem);
+  }
+
+  .cm-tooltip.cm-tooltip-autocomplete {
+    flex-direction: column;
+    min-width: min(13.5rem, calc(100vw - 1.5rem));
+    max-width: calc(100vw - 1.35rem);
+    max-height: min(65vh, 18rem);
+  }
+
+  .cm-tooltip.cm-tooltip-autocomplete > ul > li {
+    padding: 0.32rem 0.4rem;
+  }
+
+  .cm-tooltip.cm-tooltip-autocomplete .cm-completionInfo {
+    min-width: auto;
+    max-width: 100%;
+    max-height: 12rem;
+    padding: 0.35rem 0.4rem 0.2rem;
+  }
+}

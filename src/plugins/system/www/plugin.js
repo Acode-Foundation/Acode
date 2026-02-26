@@ -96,6 +96,9 @@ module.exports = {
   pinShortcut: function (id, onSuccess, onFail) {
     cordova.exec(onSuccess, onFail, 'System', 'pin-shortcut', [id]);
   },
+  pinFileShortcut: function (shortcut, onSuccess, onFail) {
+    cordova.exec(onSuccess, onFail, 'System', 'pin-file-shortcut', [shortcut]);
+  },
   manageAllFiles: function (onSuccess, onFail) {
     cordova.exec(onSuccess, onFail, 'System', 'manage-all-files', []);
   },
@@ -152,6 +155,15 @@ module.exports = {
   },
   setInputType: function (type, onSuccess, onFail) {
     cordova.exec(onSuccess, onFail, 'System', 'set-input-type', [type]);
+  },
+  setNativeContextMenuDisabled: function (disabled, onSuccess, onFail) {
+    cordova.exec(
+      onSuccess,
+      onFail,
+      'System',
+      'set-native-context-menu-disabled',
+      [String(!!disabled)],
+    );
   },
   getGlobalSetting: function (key, onSuccess, onFail) {
     cordova.exec(onSuccess, onFail, 'System', 'get-global-setting', [key]);

@@ -1,3 +1,4 @@
+import { getModes } from "cm/modelist";
 import settingsPage from "components/settingsPage";
 import appSettings from "lib/settings";
 
@@ -5,13 +6,16 @@ export default function formatterSettings(languageName) {
 	const title = strings.formatter;
 	const values = appSettings.value;
 	const { formatters } = acode;
-	const { modes } = ace.require("ace/ext/modelist");
 
-	const items = modes.map((mode) => {
-		const { name, caption } = mode;
+	// Build items from CodeMirror modelist
+	const items = getModes().map((mode) => {
+		const { name, caption, extensions } = mode;
 		const formatterID = values.formatter[name] || null;
-		const extensions = mode.extensions.split("|");
-		const options = acode.getFormatterFor(extensions);
+		// Only pass real extensions (skip anchored filename patterns like ^Dockerfile)
+		const extList = String(extensions)
+			.split("|")
+			.filter((e) => e && !e.startsWith("^"));
+		const options = acode.getFormatterFor(extList);
 
 		return {
 			key: name,

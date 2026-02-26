@@ -17,6 +17,7 @@ import backupRestore from "./backupRestore";
 import editorSettings from "./editorSettings";
 import filesSettings from "./filesSettings";
 import formatterSettings from "./formatterSettings";
+import lspSettings from "./lspSettings";
 import previewSettings from "./previewSettings";
 import scrollSettings from "./scrollSettings";
 import searchSettings from "./searchSettings";
@@ -94,6 +95,12 @@ export default function mainSettings() {
 			index: 5,
 		},
 		{
+			key: "lsp-settings",
+			text: strings?.lsp_settings || "Language servers",
+			icon: "licons zap",
+			index: 7,
+		},
+		{
 			key: "editSettings",
 			text: `${strings["edit"]} settings.json`,
 			icon: "edit",
@@ -125,6 +132,7 @@ export default function mainSettings() {
 			case "editor-settings":
 			case "preview-settings":
 			case "terminal-settings":
+			case "lsp-settings":
 				appSettings.uiSettings[key].show();
 				break;
 
@@ -199,4 +207,5 @@ export default function mainSettings() {
 	appSettings.uiSettings["search-settings"] = searchSettings();
 	appSettings.uiSettings["preview-settings"] = previewSettings();
 	appSettings.uiSettings["terminal-settings"] = terminalSettings();
+	appSettings.uiSettings["lsp-settings"] = lspSettings();
 }

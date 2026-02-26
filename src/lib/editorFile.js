@@ -1,4 +1,13 @@
 import fsOperation from "fileSystem";
+// CodeMirror imports for document state management
+import { EditorState, Text } from "@codemirror/state";
+import {
+	clearSelection,
+	restoreFolds,
+	restoreSelection,
+	setScrollPosition,
+} from "cm/editorUtils";
+import { getModeForPath } from "cm/modelist";
 import Sidebar from "components/sidebar";
 import tile from "components/tile";
 import confirm from "dialogs/confirm";
@@ -16,8 +25,188 @@ import run from "./run";
 import saveFile from "./saveFile";
 import appSettings from "./settings";
 
-const { Fold } = ace.require("ace/edit_session/fold");
-const { Range } = ace.require("ace/range");
+/**
+ * Creates a Proxy around an EditorState that provides Ace-compatible methods.
+ * @param {EditorState} state - The raw CodeMirror EditorState
+ * @param {EditorFile} file - The parent EditorFile instance
+ * @returns {Proxy} Proxied state with Ace-compatible methods
+ */
+function createSessionProxy(state, file) {
+	if (!state) return null;
+
+	/**
+	 * Convert Ace position {row, column} to CodeMirror offset
+	 */
+	function positionToOffset(pos, doc) {
+		if (!pos || !doc) return 0;
+		try {
+			const lineNum = Math.max(1, Math.min((pos.row ?? 0) + 1, doc.lines));
+			const line = doc.line(lineNum);
+			const col = Math.max(0, Math.min(pos.column ?? 0, line.length));
+			return line.from + col;
+		} catch (_) {
+			return 0;
+		}
+	}
+
+	/**
+	 * Convert CodeMirror offset to Ace position {row, column}
+	 */
+	function offsetToPosition(offset, doc) {
+		if (!doc) return { row: 0, column: 0 };
+		try {
+			const line = doc.lineAt(offset);
+			return { row: line.number - 1, column: offset - line.from };
+		} catch (_) {
+			return { row: 0, column: 0 };
+		}
+	}
+
+	return new Proxy(state, {
+		get(target, prop) {
+			// Ace-compatible method: getValue()
+			if (prop === "getValue") {
+				return () => target.doc.toString();
+			}
+
+			// Ace-compatible method: setValue(text)
+			if (prop === "setValue") {
+				return (text) => {
+					const newText = String(text ?? "");
+					const { activeFile, editor } = editorManager;
+					if (activeFile?.id === file.id && editor) {
+						// Active file: dispatch to live EditorView
+						editor.dispatch({
+							changes: {
+								from: 0,
+								to: editor.state.doc.length,
+								insert: newText,
+							},
+						});
+					} else {
+						// Inactive file: update stored state
+						file._setRawSession(
+							target.update({
+								changes: { from: 0, to: target.doc.length, insert: newText },
+							}).state,
+						);
+					}
+				};
+			}
+
+			// Ace-compatible method: getLine(row)
+			if (prop === "getLine") {
+				return (row) => {
+					try {
+						return target.doc.line(row + 1).text;
+					} catch (_) {
+						return "";
+					}
+				};
+			}
+
+			// Ace-compatible method: getLength()
+			if (prop === "getLength") {
+				return () => target.doc.lines;
+			}
+
+			// Ace-compatible method: getTextRange(range)
+			if (prop === "getTextRange") {
+				return (range) => {
+					if (!range) return "";
+					try {
+						const from = positionToOffset(range.start, target.doc);
+						const to = positionToOffset(range.end, target.doc);
+						return target.doc.sliceString(from, to);
+					} catch (_) {
+						return "";
+					}
+				};
+			}
+
+			// Ace-compatible method: insert(position, text)
+			if (prop === "insert") {
+				return (position, text) => {
+					const { activeFile, editor } = editorManager;
+					const offset = positionToOffset(position, target.doc);
+					if (activeFile?.id === file.id && editor) {
+						editor.dispatch({
+							changes: { from: offset, insert: String(text ?? "") },
+						});
+					} else {
+						file._setRawSession(
+							target.update({
+								changes: { from: offset, insert: String(text ?? "") },
+							}).state,
+						);
+					}
+				};
+			}
+
+			// Ace-compatible method: remove(range)
+			if (prop === "remove") {
+				return (range) => {
+					if (!range) return "";
+					const from = positionToOffset(range.start, target.doc);
+					const to = positionToOffset(range.end, target.doc);
+					const removed = target.doc.sliceString(from, to);
+					const { activeFile, editor } = editorManager;
+					if (activeFile?.id === file.id && editor) {
+						editor.dispatch({ changes: { from, to, insert: "" } });
+					} else {
+						file._setRawSession(
+							target.update({ changes: { from, to, insert: "" } }).state,
+						);
+					}
+					return removed;
+				};
+			}
+
+			// Ace-compatible method: replace(range, text)
+			if (prop === "replace") {
+				return (range, text) => {
+					if (!range) return;
+					const from = positionToOffset(range.start, target.doc);
+					const to = positionToOffset(range.end, target.doc);
+					const { activeFile, editor } = editorManager;
+					if (activeFile?.id === file.id && editor) {
+						editor.dispatch({
+							changes: { from, to, insert: String(text ?? "") },
+						});
+					} else {
+						file._setRawSession(
+							target.update({
+								changes: { from, to, insert: String(text ?? "") },
+							}).state,
+						);
+					}
+				};
+			}
+
+			// Ace-compatible method: getWordRange(row, column)
+			if (prop === "getWordRange") {
+				return (row, column) => {
+					const offset = positionToOffset({ row, column }, target.doc);
+					const word = target.wordAt(offset);
+					if (word) {
+						return {
+							start: offsetToPosition(word.from, target.doc),
+							end: offsetToPosition(word.to, target.doc),
+						};
+					}
+					return { start: { row, column }, end: { row, column } };
+				};
+			}
+
+			// Pass through all other properties to the real EditorState
+			const value = target[prop];
+			if (typeof value === "function") {
+				return value.bind(target);
+			}
+			return value;
+		},
+	});
+}
 
 /**
  * @typedef {'run'|'save'|'change'|'focus'|'blur'|'close'|'rename'|'load'|'loadError'|'loadStart'|'loadEnd'|'changeMode'|'changeEncoding'|'changeReadOnly'} FileEvents
@@ -93,10 +282,10 @@ export default class EditorFile {
 	 */
 	deletedFile = false;
 	/**
-	 * EditSession of the file
-	 * @type {AceAjax.IEditSession}
+	 * Raw CodeMirror EditorState. Use session getter to access with Ace-compatible methods.
+	 * @type {EditorState}
 	 */
-	session = null;
+	#rawSession = null;
 	/**
 	 * Encoding of the text e.g. 'gbk'
 	 * @type {string}
@@ -340,7 +529,9 @@ export default class EditorFile {
 		editorManager.emit("new-file", this);
 
 		if (this.#type === "editor") {
-			this.session = ace.createEditSession(options?.text || "");
+			this.#rawSession = EditorState.create({
+				doc: options?.text || "",
+			});
 			this.setMode();
 			this.#setupSession();
 		}
@@ -358,6 +549,32 @@ export default class EditorFile {
 
 	get content() {
 		return this.#content;
+	}
+
+	/**
+	 * Session with Ace-compatible methods
+	 * Returns a Proxy over the raw EditorState.
+	 * @returns {Proxy<EditorState>}
+	 */
+	get session() {
+		return createSessionProxy(this.#rawSession, this);
+	}
+
+	/**
+	 * Set the session
+	 * @param {EditorState} value
+	 */
+	set session(value) {
+		this.#rawSession = value;
+	}
+
+	/**
+	 * Internal method to update the raw session state.
+	 * Used by the Proxy for inactive file updates.
+	 * @param {EditorState} state
+	 */
+	_setRawSession(state) {
+		this.#rawSession = state;
 	}
 
 	/**
@@ -413,10 +630,10 @@ export default class EditorFile {
 			this.#tab.text = value;
 			this.#name = value;
 
+			if (oldExt !== newExt) this.setMode();
+
 			editorManager.onupdate("rename-file");
 			editorManager.emit("rename-file", this);
-
-			if (oldExt !== newExt) this.setMode();
 		})();
 	}
 
@@ -490,7 +707,7 @@ export default class EditorFile {
 	 * End of line
 	 */
 	get eol() {
-		return /\r/.test(this.session.getValue()) ? "windows" : "unix";
+		return /\r/.test(this.session.doc.toString()) ? "windows" : "unix";
 	}
 
 	/**
@@ -500,7 +717,7 @@ export default class EditorFile {
 	set eol(value) {
 		if (this.type !== "editor") return;
 		if (this.eol === value) return;
-		let text = this.session.getValue();
+		let text = this.session.doc.toString();
 
 		if (value === "windows") {
 			text = text.replace(/(?<!\r)\n/g, "\r\n");
@@ -508,6 +725,7 @@ export default class EditorFile {
 			text = text.replace(/\r/g, "");
 		}
 
+		// Update the document in the session
 		this.session.setValue(text);
 	}
 
@@ -524,7 +742,7 @@ export default class EditorFile {
 	 */
 	set editable(value) {
 		if (this.#editable === value) return;
-		editorManager.editor.setReadOnly(!value);
+		this.setReadOnly(!value);
 		editorManager.onupdate("read-only");
 		editorManager.emit("update", "read-only");
 		this.#editable = value;
@@ -574,7 +792,7 @@ export default class EditorFile {
 	}
 
 	async writeToCache() {
-		const text = this.session.getValue();
+		const text = this.session.doc.toString();
 		const fs = fsOperation(this.cacheFile);
 
 		try {
@@ -610,7 +828,7 @@ export default class EditorFile {
 		}
 
 		const protocol = Url.getProtocol(this.#uri);
-		const text = this.session.getValue();
+		const text = this.session.doc.toString();
 
 		// Helper for JS-based comparison (used as fallback)
 		const jsCompare = async (fileUri) => {
@@ -772,13 +990,32 @@ export default class EditorFile {
 		return this.#save(true);
 	}
 
+	setReadOnly(value) {
+		try {
+			const { editor, readOnlyCompartment } = editorManager;
+			if (!editor) return;
+			if (!readOnlyCompartment) return;
+			editor.dispatch({
+				effects: readOnlyCompartment.reconfigure(
+					EditorState.readOnly.of(!!value),
+				),
+			});
+		} catch (_) {}
+
+		// Sync internal flags and header
+		this.readOnly = !!value;
+		this.#editable = !this.readOnly;
+		if (editorManager.activeFile?.id === this.id) {
+			editorManager.header.subText = this.#getTitle();
+		}
+	}
+
 	/**
 	 * Sets syntax highlighting of the file.
 	 * @param {string} [mode]
 	 */
 	setMode(mode) {
 		if (this.type !== "editor") return;
-		const modelist = ace.require("ace/ext/modelist");
 		const event = createFileEvent(this);
 		this.#emit("changemode", event);
 		if (event.defaultPrevented) return;
@@ -789,12 +1026,16 @@ export default class EditorFile {
 			if (modes?.[ext]) {
 				mode = modes[ext];
 			} else {
-				mode = modelist.getModeForPath(this.filename).mode;
+				const modeInfo = getModeForPath(this.filename);
+				mode = modeInfo?.name || "text";
 			}
 		}
 
-		// sets ace editor EditSession mode
-		this.session.setMode(mode);
+		// Store mode info for later use when creating editor view
+		this.currentMode = mode;
+		this.currentLanguageExtension = getModeForPath(
+			this.filename,
+		)?.getExtension();
 
 		// sets file icon
 		this.#tab.lead(
@@ -827,7 +1068,11 @@ export default class EditorFile {
 			if (this.focused) {
 				editor.focus();
 			} else {
-				editor.blur();
+				editor.contentDOM.blur();
+				// Ensure any native DOM selection is cleared on blur to avoid sticky selection handles
+				try {
+					document.getSelection()?.removeAllRanges();
+				} catch (_) {}
 			}
 		} else {
 			editorManager.container.style.display = "none";
@@ -837,8 +1082,9 @@ export default class EditorFile {
 					editorManager.container.parentElement.appendChild(this.content);
 				}
 			}
+
 			if (activeFile && activeFile.type === "editor") {
-				activeFile.session.selection.clearSelection();
+				clearSelection(editorManager.editor);
 			}
 		}
 
@@ -1064,11 +1310,19 @@ export default class EditorFile {
 
 		this.#loadOptions = null;
 
-		editor.setReadOnly(true);
+		this.setReadOnly(true);
 		this.loading = true;
 		this.markChanged = false;
 		this.#emit("loadstart", createFileEvent(this));
 		this.session.setValue(strings["loading..."]);
+
+		// Immediately reflect "loading..." in the visible editor if this tab is active
+		try {
+			const { activeFile, emit } = editorManager;
+			if (activeFile?.id === this.id) {
+				emit("file-loaded", this);
+			}
+		} catch (_) {}
 
 		try {
 			const cacheFs = fsOperation(this.cacheFile);
@@ -1099,22 +1353,20 @@ export default class EditorFile {
 
 			const { activeFile, emit } = editorManager;
 			if (activeFile.id === this.id) {
-				editor.setReadOnly(false);
+				this.setReadOnly(false);
 			}
 
 			setTimeout(() => {
 				this.#emit("load", createFileEvent(this));
 				emit("file-loaded", this);
-				if (cursorPos)
-					this.session.selection.moveCursorTo(cursorPos.row, cursorPos.column);
-				if (scrollTop) this.session.setScrollTop(scrollTop);
-				if (scrollLeft) this.session.setScrollLeft(scrollLeft);
-				if (editable !== undefined) this.editable = editable;
-
-				if (Array.isArray(folds)) {
-					const parsedFolds = EditorFile.#parseFolds(folds);
-					this.session?.addFolds(parsedFolds);
+				if (cursorPos) {
+					restoreSelection(editor, cursorPos);
 				}
+				if (scrollTop || scrollLeft) {
+					setScrollPosition(editor, scrollTop, scrollLeft);
+				}
+				if (editable !== undefined) this.editable = editable;
+				restoreFolds(editor, folds);
 			}, 0);
 		} catch (error) {
 			this.#emit("loaderror", createFileEvent(this));
@@ -1127,55 +1379,18 @@ export default class EditorFile {
 		}
 	}
 
-	static #onfold(e) {
-		editorManager.editor._emit("fold", e);
-	}
+	// TODO: Implement CodeMirror equivalents for folding and scroll events
+	// static #onfold(e) {
+	// 	editorManager.editor._emit("fold", e);
+	// }
 
-	static #onscrolltop(e) {
-		editorManager.editor._emit("scrolltop", e);
-	}
+	// static #onscrolltop(e) {
+	// 	editorManager.editor._emit("scrolltop", e);
+	// }
 
-	static #onscrollleft(e) {
-		editorManager.editor._emit("scrollleft", e);
-	}
-
-	/**
-	 * Parse folds
-	 * @param {Array<Fold>} folds
-	 */
-	static #parseFolds(folds) {
-		if (!Array.isArray(folds)) return [];
-
-		const foldDataAr = [];
-
-		folds.forEach((fold) => {
-			if (!fold || !fold.range) return;
-
-			const { range } = fold;
-			const { start, end } = range;
-
-			if (!start || !end) return;
-
-			try {
-				const foldData = new Fold(
-					new Range(start.row, start.column, end.row, end.column),
-					fold.placeholder,
-				);
-
-				if (Array.isArray(fold.ranges) && fold.ranges.length > 0) {
-					const subFolds = EditorFile.#parseFolds(fold.ranges);
-					foldData.subFolds = subFolds;
-					foldData.ranges = subFolds;
-				}
-
-				foldDataAr.push(foldData);
-			} catch (error) {
-				console.warn("Error parsing fold:", error);
-			}
-		});
-
-		return foldDataAr;
-	}
+	// static #onscrollleft(e) {
+	// 	editorManager.editor._emit("scrollleft", e);
+	// }
 
 	#save(as) {
 		const event = createFileEvent(this);
@@ -1201,35 +1416,26 @@ export default class EditorFile {
 	}
 
 	/**
-	 * Setup Ace EditSession for the file
+	 * Setup CodeMirror EditorState for the file
 	 */
 	#setupSession() {
 		if (this.type !== "editor") return;
-		const { value: settings } = appSettings;
-
-		this.session.setTabSize(settings.tabSize);
-		this.session.setUseSoftTabs(settings.softTab);
-		this.session.setUseWrapMode(settings.textWrap);
-		this.session.setUseWorker(false);
-
-		this.session.on("changeScrollTop", EditorFile.#onscrolltop);
-		this.session.on("changeScrollLeft", EditorFile.#onscrollleft);
-		this.session.on("changeFold", EditorFile.#onfold);
-		this.session.on("changeAnnotation", () => {
-			editorManager.editor._emit("changeAnnotation", this);
-		});
+		// CodeMirror configuration will be handled in the EditorView
+		// Store settings for when the editor view is created
+		this.editorSettings = {
+			tabSize: appSettings.value.tabSize,
+			softTab: appSettings.value.softTab,
+			textWrap: appSettings.value.textWrap,
+		};
 	}
 
 	#destroy() {
 		this.#emit("close", createFileEvent(this));
 		appSettings.off("update:openFileListPos", this.#onFilePosChange);
 		if (this.type === "editor") {
-			this.session?.off("changeScrollTop", EditorFile.#onscrolltop);
-			this.session?.off("changeScrollLeft", EditorFile.#onscrollleft);
-			this.session?.off("changeFold", EditorFile.#onfold);
 			this.#removeCache();
-			this.session?.destroy();
-			delete this.session;
+			// CodeMirror EditorState doesn't need explicit cleanup
+			this.session = null;
 		} else if (this.content) {
 			this.content.remove();
 		}

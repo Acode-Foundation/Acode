@@ -20,6 +20,8 @@ export default async function checkFiles() {
 		return;
 	}
 	const files = editorManager.files;
+	// @ts-check
+	/** @type {{ editor: import('@codemirror/view').EditorView }} */
 	const { editor } = editorManager;
 
 	recursiveFileCheck([...files]);
@@ -70,7 +72,7 @@ export default async function checkFiles() {
 			}
 
 			const text = await fs.readFile(file.encoding);
-			const loadedText = file.session.getValue();
+			const loadedText = file.session.doc.toString();
 
 			if (text !== loadedText) {
 				try {
@@ -87,7 +89,6 @@ export default async function checkFiles() {
 					file.markChanged = false;
 					file.session.setValue(text);
 					editor.gotoLine(cursorPos.row, cursorPos.column);
-					editor.renderer.scrollCursorIntoView(cursorPos, 0.5);
 				} catch (error) {
 					// ignore
 				}

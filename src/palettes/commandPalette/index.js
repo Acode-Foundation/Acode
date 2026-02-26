@@ -1,44 +1,39 @@
+import { executeCommand, getRegisteredCommands } from "cm/commandRegistry";
 import palette from "components/palette";
 import helpers from "utils/helpers";
 
 export default async function commandPalette() {
 	const recentCommands = RecentlyUsedCommands();
 	const { editor } = editorManager;
-	const commands = Object.values(editor.commands.commands);
-
-	const isEditorFocused = editor.isFocused();
+	const wasFocused = editor?.hasFocus ?? false;
 
 	palette(generateHints, onselect, strings["type command"], () => {
-		if (isEditorFocused) editor.focus();
+		if (wasFocused) editor?.focus();
 	});
 
 	function generateHints() {
+		const registeredCommands = getRegisteredCommands();
 		const hints = [];
 
-		commands.forEach(({ name, description, bindKey }) => {
-			/**
-			 * @param {boolean} recentlyUsed Is the command recently used
-			 * @returns {{value: string, text: string}}
-			 */
+		registeredCommands.forEach(({ name, description, key }) => {
+			const keyLabel = key ? key.split("|")[0] : "";
 			const item = (recentlyUsed) => ({
 				value: name,
-				text: `<span ${recentlyUsed ? `data-str='${strings["recently used"]}'` : ""}>${description ?? name}</span><small>${bindKey?.win ?? ""}</small>`,
+				text: `<span ${recentlyUsed ? `data-str='${strings["recently used"]}'` : ""}>${description ?? name}</span><small>${keyLabel}</small>`,
 			});
 			if (recentCommands.commands.includes(name)) {
 				hints.unshift(item(true));
 				return;
 			}
-			hints.push(item());
+			hints.push(item(false));
 		});
 
 		return hints;
 	}
 
 	function onselect(value) {
-		const command = commands.find(({ name }) => name === value);
-		if (!command) return;
-		recentCommands.push(value);
-		command.exec(editorManager.editor);
+		const executed = executeCommand(value, editorManager.editor);
+		if (executed) recentCommands.push(value);
 	}
 }
 

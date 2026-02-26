@@ -4,6 +4,7 @@
 @use "./styles/keyframes.scss";
 @use "./styles/fileInfo.scss";
 @use "./styles/markdown.scss";
+@use "./styles/codemirror.scss";
 
 :root {
   --scrollbar-width: 4px;

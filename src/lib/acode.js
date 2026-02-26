@@ -1,7 +1,28 @@
 import fsOperation from "fileSystem";
 import sidebarApps from "sidebarApps";
+import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import { Compartment, EditorState, Prec, StateEffect } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
 import ajax from "@deadlyjack/ajax";
-import { addMode, removeMode } from "ace/modelist";
+import { tags } from "@lezer/highlight";
+import {
+	getRegisteredCommands as listRegisteredCommands,
+	refreshCommandKeymap,
+	registerExternalCommand,
+	removeExternalCommand,
+	executeCommand as runCommand,
+} from "cm/commandRegistry";
+import lspClientManager from "cm/lsp/clientManager";
+import { registerLspFormatter } from "cm/lsp/formatter";
+import serverRegistry from "cm/lsp/serverRegistry";
+import {
+	addMode,
+	getModeForPath,
+	getModes,
+	getModesByName,
+	removeMode,
+} from "cm/modelist";
+import cmThemeRegistry from "cm/themes";
 import Contextmenu from "components/contextmenu";
 import inputhints from "components/inputhints";
 import Page from "components/page";
@@ -51,26 +72,12 @@ import KeyboardEvent from "utils/keyboardEvent";
 import Url from "utils/Url";
 import constants from "./constants";
 
-const { Fold } = ace.require("ace/edit_session/fold");
-const { Range } = ace.require("ace/range");
-
 export default class Acode {
 	#modules = {};
 	#pluginsInit = {};
 	#pluginUnmount = {};
-	#formatter = [
-		{
-			id: "default",
-			name: "Default",
-			exts: ["*"],
-			format: async () => {
-				const { beautify } = ace.require("ace/ext/beautify");
-				const cursorPos = editorManager.editor.getCursorPosition();
-				beautify(editorManager.editor.session);
-				editorManager.editor.gotoLine(cursorPos.row + 1, cursorPos.column);
-			},
-		},
-	];
+	// Registered formatter implementations (populated by plugins)
+	#formatter = [];
 	#pluginWatchers = {};
 
 	/**
@@ -105,15 +112,169 @@ export default class Acode {
 			apply: () => {},
 		};
 
+		// CodeMirror editor theme API for plugins
+		const normalizeThemeSpec = (spec) => {
+			if (!spec || typeof spec !== "object" || Array.isArray(spec)) {
+				console.warn(
+					"[editorThemes] register(spec) expects an object: { id, caption?, dark?, getExtension|extensions|extension|theme, config? }",
+				);
+				return null;
+			}
+
+			const id = spec.id || spec.name;
+			if (!id) {
+				console.warn("[editorThemes] register(spec) requires a valid `id`.");
+				return null;
+			}
+
+			const extensionSource =
+				spec.getExtension || spec.extensions || spec.extension || spec.theme;
+			if (extensionSource === undefined || extensionSource === null) {
+				console.warn(
+					`[editorThemes] register('${id}') requires extensions via getExtension/extensions/extension/theme.`,
+				);
+				return null;
+			}
+
+			return {
+				id,
+				caption: spec.caption || spec.label || id,
+				isDark: spec.isDark ?? spec.dark ?? false,
+				getExtension:
+					typeof extensionSource === "function"
+						? extensionSource
+						: () => extensionSource,
+				config: spec.config ?? null,
+			};
+		};
+
+		const createHighlightStyle = (spec) => {
+			if (!spec) return null;
+			if (Array.isArray(spec)) return HighlightStyle.define(spec);
+			return spec;
+		};
+
+		const createTheme = ({
+			styles,
+			dark = false,
+			highlightStyle,
+			extensions = [],
+		} = {}) => {
+			const ext = [];
+
+			if (styles && typeof styles === "object") {
+				ext.push(EditorView.theme(styles, { dark: !!dark }));
+			}
+
+			const resolvedHighlight = createHighlightStyle(highlightStyle);
+			if (resolvedHighlight) {
+				ext.push(syntaxHighlighting(resolvedHighlight));
+			}
+
+			if (Array.isArray(extensions)) {
+				ext.push(...extensions);
+			} else if (extensions) {
+				ext.push(extensions);
+			}
+
+			return ext;
+		};
+
+		const editorThemesModule = {
+			/**
+			 * Register a CodeMirror theme from plugin code.
+			 * @param {{
+			 *   id: string,
+			 *   caption?: string,
+			 *   dark?: boolean,
+			 *   getExtension?: Function,
+			 *   extensions?: unknown,
+			 *   config?: object
+			 * }} spec
+			 * `isDark`, `extension`, and `theme` are accepted aliases for compatibility.
+			 * @returns {boolean}
+			 */
+			register: (spec) => {
+				const resolved = normalizeThemeSpec(spec);
+				if (!resolved) return false;
+				return cmThemeRegistry.addTheme(
+					resolved.id,
+					resolved.caption,
+					resolved.isDark,
+					resolved.getExtension,
+					resolved.config,
+				);
+			},
+			unregister: (id) => cmThemeRegistry.removeTheme(id),
+			list: () => cmThemeRegistry.getThemes(),
+			apply: (id) => editorManager?.editor?.setTheme?.(id),
+			get: (id) => cmThemeRegistry.getThemeById(id),
+			getConfig: (id) => cmThemeRegistry.getThemeConfig(id),
+			createTheme,
+			createHighlightStyle,
+			cm: {
+				EditorView,
+				HighlightStyle,
+				syntaxHighlighting,
+				tags,
+			},
+		};
+
 		const sidebarAppsModule = {
 			add: sidebarApps.add,
 			get: sidebarApps.get,
 			remove: sidebarApps.remove,
 		};
 
+		const lspModule = {
+			registerServer: (definition, options) =>
+				serverRegistry.registerServer(definition, options),
+			unregisterServer: (id) => serverRegistry.unregisterServer(id),
+			updateServer: (id, updater) => serverRegistry.updateServer(id, updater),
+			getServer: (id) => serverRegistry.getServer(id),
+			listServers: () => serverRegistry.listServers(),
+			getServersForLanguage: (languageId, options) =>
+				serverRegistry.getServersForLanguage(languageId, options),
+			clientManager: {
+				setOptions: (options) => lspClientManager.setOptions(options),
+				getActiveClients: () => lspClientManager.getActiveClients(),
+			},
+		};
+
+		const getModeByName = (name) => {
+			const normalized = String(name || "")
+				.trim()
+				.toLowerCase();
+			if (!normalized) return null;
+			return getModesByName()[normalized] || null;
+		};
+
+		const listModes = () => [...getModes()];
+		const listModesByName = () => ({ ...getModesByName() });
+
 		const aceModes = {
 			addMode,
 			removeMode,
+			getModeForPath: (path) => getModeForPath(String(path || "")),
+			getModes: () => listModes(),
+			getModesByName: () => listModesByName(),
+			getMode: (name) => getModeByName(name),
+		};
+
+		// Preferred CodeMirror language registration API for plugins
+		const editorLanguages = {
+			// name: string, extensions: string|Array<string>, caption?: string,
+			// loader?: () => Extension | Promise<Extension>
+			register: (name, extensions, caption, loader) =>
+				addMode(name, extensions, caption, loader),
+			unregister: (name) => removeMode(name),
+			add: (name, extensions, caption, loader) =>
+				addMode(name, extensions, caption, loader),
+			remove: (name) => removeMode(name),
+			list: () => listModes(),
+			listByName: () => listModesByName(),
+			get: (name) => getModeByName(name),
+			getForPath: (path) => getModeForPath(String(path || "")),
 		};
 
 		const intent = {
@@ -163,6 +324,9 @@ export default class Acode {
 		this.define("tutorial", tutorial);
 		this.define("aceModes", aceModes);
 		this.define("themes", themesModule);
+		this.define("editorLanguages", editorLanguages);
+		this.define("editorThemes", editorThemesModule);
+		this.define("lsp", lspModule);
 		this.define("settings", appSettings);
 		this.define("sideButton", SideButton);
 		this.define("EditorFile", EditorFile);
@@ -184,6 +348,9 @@ export default class Acode {
 		this.define("terminal", terminalModule);
 		this.define("createKeyboardEvent", KeyboardEvent);
 		this.define("toInternalUrl", helpers.toInternalUri);
+		this.define("commands", this.#createCommandApi());
+
+		registerLspFormatter(this);
 	}
 
 	/**
@@ -504,10 +671,20 @@ export default class Acode {
 		delete appSettings.uiSettings[`plugin-${id}`];
 	}
 
-	registerFormatter(id, extensions, format) {
+	registerFormatter(id, extensions, format, displayName) {
+		let exts;
+		if (Array.isArray(extensions)) {
+			exts = extensions.filter(Boolean);
+			if (!exts.length) exts = ["*"];
+		} else if (typeof extensions === "string" && extensions) {
+			exts = [extensions];
+		} else {
+			exts = ["*"];
+		}
 		this.#formatter.unshift({
 			id,
-			exts: extensions,
+			name: displayName,
+			exts: exts,
 			format,
 		});
 	}
@@ -527,28 +704,42 @@ export default class Acode {
 
 	async format(selectIfNull = true) {
 		const file = editorManager.activeFile;
-		if (!file?.session) return;
+		if (!file || file.type !== "editor") return false;
 
-		const name = (file.session.getMode().$id || "").split("/").pop();
-		const formatterId = appSettings.value.formatter[name];
+		let resolvedMode = file.currentMode;
+		if (!resolvedMode) {
+			try {
+				resolvedMode = getModeForPath(file.filename)?.name;
+			} catch (_) {
+				resolvedMode = null;
+			}
+		}
+		const modeName = resolvedMode || "text";
+		const formatterMap = appSettings.value.formatter || {};
+		const formatterId = formatterMap[modeName];
 		const formatter = this.#formatter.find(({ id }) => id === formatterId);
 
 		if (!formatter) {
-			if (!selectIfNull) {
-				toast(strings["please select a formatter"]);
-				return;
+			if (formatterId) {
+				delete formatterMap[modeName];
+				await appSettings.update(false);
 			}
-			formatterSettings(name);
-			this.#afterSelectFormatter(name);
-			return;
-		}
 
-		const foldsSnapshot = this.#captureFoldState(file.session);
+			if (selectIfNull) {
+				formatterSettings(modeName);
+				this.#afterSelectFormatter(modeName);
+			} else {
+				toast(strings["please select a formatter"]);
+			}
+			return false;
+		}
 
 		try {
 			await formatter.format();
-		} finally {
-			this.#restoreFoldState(file.session, foldsSnapshot);
+			return true;
+		} catch (error) {
+			helpers.error(error);
+			return false;
 		}
 	}
 
@@ -565,77 +756,6 @@ export default class Acode {
 
 	fsOperation(file) {
 		return fsOperation(file);
-	}
-
-	#captureFoldState(session) {
-		if (!session?.getAllFolds) return null;
-		return this.#serializeFolds(session.getAllFolds());
-	}
-
-	#restoreFoldState(session, folds) {
-		if (!session || !Array.isArray(folds) || !folds.length) return;
-
-		try {
-			const foldObjects = this.#parseSerializableFolds(folds);
-			if (!foldObjects.length) return;
-			session.removeAllFolds?.();
-			session.addFolds?.(foldObjects);
-		} catch (error) {
-			console.warn("Failed to restore folds after formatting:", error);
-		}
-	}
-
-	#serializeFolds(folds) {
-		if (!Array.isArray(folds) || !folds.length) return null;
-
-		return folds
-			.map((fold) => {
-				if (!fold?.range) return null;
-				const { start, end } = fold.range;
-				if (!start || !end) return null;
-
-				return {
-					range: {
-						start: { row: start.row, column: start.column },
-						end: { row: end.row, column: end.column },
-					},
-					placeholder: fold.placeholder,
-					ranges: this.#serializeFolds(fold.ranges || []),
-				};
-			})
-			.filter(Boolean);
-	}
-
-	#parseSerializableFolds(folds) {
-		if (!Array.isArray(folds) || !folds.length) return [];
-
-		return folds
-			.map((fold) => {
-				const { range, placeholder, ranges } = fold;
-				const { start, end } = range || {};
-				if (!start || !end) return null;
-
-				try {
-					const foldInstance = new Fold(
-						new Range(start.row, start.column, end.row, end.column),
-						placeholder,
-					);
-
-					if (Array.isArray(ranges) && ranges.length) {
-						const subFolds = this.#parseSerializableFolds(ranges);
-						if (subFolds.length) {
-							foldInstance.subFolds = subFolds;
-							foldInstance.ranges = subFolds;
-						}
-					}
-
-					return foldInstance;
-				} catch (error) {
-					console.warn("Failed to parse fold:", error);
-					return null;
-				}
-			})
-			.filter(Boolean);
 	}
 
 	newEditorFile(filename, options) {
@@ -785,5 +905,63 @@ export default class Acode {
 	 */
 	unregisterFileHandler(id) {
 		fileTypeHandler.unregisterFileHandler(id);
+	}
+
+	addCommand(descriptor) {
+		const command = registerExternalCommand(descriptor);
+		this.#refreshCommandBindings();
+		return command;
+	}
+
+	removeCommand(name) {
+		if (!name) return;
+		removeExternalCommand(name);
+		this.#refreshCommandBindings();
+	}
+
+	execCommand(name, view, args) {
+		if (!name) return false;
+		const targetView = view || window.editorManager?.editor;
+		return runCommand(name, targetView, args);
+	}
+
+	listCommands() {
+		return listRegisteredCommands();
+	}
+
+	#refreshCommandBindings() {
+		const view = window.editorManager?.editor;
+		if (view) refreshCommandKeymap(view);
+	}
+
+	#createCommandApi() {
+		const commandRegistry = {
+			add: this.addCommand,
+			execute: this.execCommand,
+			remove: this.removeCommand,
+			list: this.listCommands,
+		};
+
+		const addCommand = (descriptor) => {
+			try {
+				return this.addCommand(descriptor);
+			} catch (error) {
+				console.error("Failed to add command", descriptor?.name);
+				throw error;
+			}
+		};
+
+		const removeCommand = (name) => {
+			if (!name) return;
+			this.removeCommand(name);
+		};
+
+		return {
+			addCommand,
+			removeCommand,
+			get registry() {
+				return commandRegistry;
+			},
+		};
 	}
 }

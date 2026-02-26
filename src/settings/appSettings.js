@@ -1,6 +1,6 @@
 import fsOperation from "fileSystem";
 import ajax from "@deadlyjack/ajax";
-import { resetKeyBindings } from "ace/commands";
+import { resetKeyBindings } from "cm/commandRegistry";
 import settingsPage from "components/settingsPage";
 import loader from "dialogs/loader";
 import actions from "handlers/quickTools";

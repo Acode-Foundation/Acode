@@ -1,0 +1,457 @@
+:root {
+    --lsp-status-active: #22c55e;
+    --lsp-status-connecting: #f59e0b;
+    --lsp-status-stopped: #6b7280;
+}
+
+.lsp-info-dialog {
+    max-width: 360px;
+    min-width: 300px;
+
+    .title {
+        display: flex;
+        align-items: center;
+        text-transform: none;
+        font-weight: 500;
+    }
+}
+
+.lsp-dialog-body {
+    overflow-y: auto;
+    max-height: 65vh;
+
+    &::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: var(--scrollbar-color);
+        border-radius: 2px;
+    }
+}
+
+.lsp-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 24px;
+    color: var(--popup-text-color);
+    text-align: center;
+
+    .icon {
+        font-size: 2.5rem;
+        margin-bottom: 16px;
+        opacity: 0.3;
+    }
+
+    p {
+        font-size: 0.9rem;
+        margin: 0;
+        opacity: 0.6;
+
+        strong {
+            opacity: 1;
+        }
+    }
+}
+
+.lsp-list-actions {
+    display: flex;
+    gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.lsp-action-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    justify-content: center;
+    padding: 8px 12px;
+    background-color: var(--box-shadow-color);
+    border: none;
+    color: var(--popup-text-color);
+    cursor: pointer;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    transition: all 0.12s ease;
+
+    .icon {
+        font-size: 0.9rem;
+    }
+
+    &:hover {
+        background-color: var(--active-icon-color);
+    }
+
+    &.danger {
+        color: var(--danger-color);
+
+        &:hover {
+            background-color: color-mix(in srgb, var(--danger-color) 15%, transparent);
+        }
+    }
+}
+
+.lsp-server-list {
+    list-style: none;
+    padding: 8px;
+    margin: 0;
+}
+
+.lsp-server-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.12s ease;
+    color: var(--popup-text-color);
+
+    &:hover {
+        background-color: var(--box-shadow-color);
+    }
+
+    &:active {
+        background-color: var(--active-icon-color);
+    }
+
+    &:not(:last-child) {
+        border-bottom: 1px solid var(--border-color);
+    }
+}
+
+.lsp-arrow {
+    font-size: 1.3rem;
+    opacity: 0.35;
+    margin-left: auto;
+}
+
+.lsp-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.lsp-server-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.lsp-server-name {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--popup-text-color);
+}
+
+.lsp-server-status {
+    font-size: 0.72rem;
+    color: var(--popup-text-color);
+    opacity: 0.5;
+    text-transform: capitalize;
+}
+
+.lsp-error-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    background-color: var(--danger-color);
+    color: var(--danger-text-color);
+    font-size: 0.65rem;
+    font-weight: 600;
+    border-radius: 9px;
+}
+
+.lsp-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.lsp-details-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.lsp-header-actions {
+    display: flex;
+    gap: 4px;
+    margin-left: auto;
+}
+
+.lsp-icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: none;
+    color: var(--popup-text-color);
+    cursor: pointer;
+    border-radius: 6px;
+    padding: 0;
+    transition: all 0.12s ease;
+    opacity: 0.7;
+
+    &:hover {
+        background-color: var(--box-shadow-color);
+        opacity: 1;
+    }
+
+    &:active {
+        background-color: var(--active-icon-color);
+    }
+
+    .icon {
+        font-size: 1.1rem;
+    }
+
+    &.small {
+        width: 26px;
+        height: 26px;
+
+        .icon {
+            font-size: 0.95rem;
+        }
+    }
+
+    &.danger {
+        color: var(--danger-color);
+
+        &:hover {
+            background-color: color-mix(in srgb, var(--danger-color) 15%, transparent);
+        }
+    }
+}
+
+.lsp-details-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--popup-text-color);
+}
+
+.lsp-section {
+    padding: 10px 14px;
+
+    &:last-child {
+        border-bottom: none;
+    }
+}
+
+.lsp-section-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--popup-text-color);
+    opacity: 0.5;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.lsp-chip-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.lsp-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    background: var(--box-shadow-color);
+    color: var(--popup-text-color);
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 500;
+
+    &.ext {
+        font-family: monospace;
+        font-weight: 600;
+        background: color-mix(in srgb, var(--active-color) 15%, transparent);
+        color: var(--active-color);
+    }
+}
+
+.lsp-project-path {
+    font-size: 0.75rem;
+    font-family: monospace;
+    color: var(--popup-text-color);
+    opacity: 0.75;
+    word-break: break-all;
+    padding: 8px 10px;
+    background-color: var(--box-shadow-color);
+    border-radius: 6px;
+    line-height: 1.3;
+}
+
+.lsp-logs-section {
+    margin: 8px 14px 12px;
+
+    &.collapsed {
+        .lsp-logs-container {
+            display: none;
+        }
+
+        .lsp-expand-icon {
+            transform: rotate(-90deg);
+        }
+
+        .lsp-clear-btn {
+            display: none;
+        }
+    }
+}
+
+.lsp-logs-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    padding: 6px 8px;
+    margin: 0 -8px;
+}
+
+.lsp-logs-title {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--popup-text-color);
+    opacity: 0.7;
+}
+
+.lsp-expand-icon {
+    font-size: 1.1rem;
+    transition: transform 0.15s ease;
+}
+
+.lsp-log-count {
+    font-size: 0.65rem;
+    opacity: 0.5;
+    margin-left: 2px;
+}
+
+.lsp-logs-actions {
+    display: flex;
+    gap: 2px;
+}
+
+.lsp-logs-container {
+    max-height: 160px;
+    overflow-y: auto;
+    background-color: var(--box-shadow-color);
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 0.65rem;
+    margin-top: 4px;
+
+    &::-webkit-scrollbar {
+        width: 3px;
+    }
+
+    &::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: var(--scrollbar-color);
+        border-radius: 2px;
+    }
+}
+
+.lsp-logs-empty {
+    padding: 14px;
+    text-align: center;
+    color: var(--popup-text-color);
+    opacity: 0.4;
+    font-size: 0.7rem;
+    font-family: inherit;
+}
+
+.lsp-log {
+    display: flex;
+    gap: 6px;
+    padding: 1px 8px;
+    line-height: 1.3;
+
+    &:first-child {
+        padding-top: 4px;
+    }
+
+    &:last-child {
+        padding-bottom: 4px;
+    }
+
+    &.error .lsp-log-text {
+        color: var(--danger-color);
+    }
+
+    &.warn .lsp-log-text {
+        color: var(--error-text-color);
+    }
+
+    &.stderr .lsp-log-text {
+        color: var(--error-text-color);
+    }
+}
+
+.lsp-log-time {
+    flex-shrink: 0;
+    color: var(--popup-text-color);
+    opacity: 0.35;
+    font-size: 0.6rem;
+}
+
+.lsp-log-text {
+    flex: 1;
+    color: var(--popup-text-color);
+    opacity: 0.85;
+    word-break: break-word;
+}
+
+.lsp-stats-container {
+    display: flex;
+    gap: 16px;
+}
+
+.lsp-stat {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.lsp-stat-label {
+    font-size: 0.65rem;
+    font-weight: 500;
+    color: var(--popup-text-color);
+    opacity: 0.75;
+}
+
+.lsp-stat-value {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--popup-text-color);
+    font-family: monospace;
+}
