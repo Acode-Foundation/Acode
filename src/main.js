@@ -605,7 +605,7 @@ async function loadApp() {
 		try {
 			await restoreFiles(files);
 			// save state to handle file loading gracefully
-			sessionStorage.setItem("isfilesRestored", true);
+			sessionStorage.setItem("isfileRestored", true);
 			// Process any pending intents that were queued before files were restored
 			await processPendingIntents();
 		} catch (error) {
@@ -615,7 +615,7 @@ async function loadApp() {
 		}
 	} else {
 		// Even when no files need to be restored, mark as restored and process pending intents
-		sessionStorage.setItem("isfilesRestored", true);
+		sessionStorage.setItem("isfileRestored", true);
 		await processPendingIntents();
 		onEditorUpdate(undefined, false);
 	}

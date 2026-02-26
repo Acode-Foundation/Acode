@@ -44,7 +44,7 @@ export default async function HandleIntent(intent = {}) {
 			return;
 		}
 
-		if (sessionStorage.getItem("isfilesRestored") === "true") {
+		if (sessionStorage.getItem("isfileRestored") === "true") {
 			await openFile(url, {
 				mode: "single",
 				render: true,
@@ -77,11 +77,11 @@ export function removeIntentHandler(handler) {
 
 /**
  * Process all pending intents that were queued before files were restored.
- * This function is called after isfilesRestored is set to true in main.js.
+ * This function is called after isfileRestored is set to true in main.js.
  * @returns {Promise<void>}
  */
 export async function processPendingIntents() {
-	if (sessionStorage.getItem("isfilesRestored") !== "true") return;
+	if (sessionStorage.getItem("isfileRestored") !== "true") return;
 
 	// Process all pending intents
 	while (pendingIntents.length > 0) {

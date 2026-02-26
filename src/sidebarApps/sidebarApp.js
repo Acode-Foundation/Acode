@@ -3,7 +3,7 @@ let $apps;
 /**@type {HTMLElement} */
 let $sidebar;
 /**@type {HTMLElement} */
-let $contaienr;
+let $container;
 
 export default class SidebarApp {
 	/**@type {HTMLSpanElement} */
@@ -93,14 +93,14 @@ export default class SidebarApp {
 			// Try to replace the old container, or append if it's not in the DOM
 			try {
 				if (oldContainer && oldContainer.parentNode === $sidebar) {
-					$sidebar.replaceChild($contaienr, oldContainer);
+					$sidebar.replaceChild($container, oldContainer);
 				} else {
 					// Old container not in sidebar, just append the new one
 					const existingContainer = $sidebar.get(".container");
 					if (existingContainer) {
-						$sidebar.replaceChild($contaienr, existingContainer);
+						$sidebar.replaceChild($container, existingContainer);
 					} else {
-						$sidebar.appendChild($contaienr);
+						$sidebar.appendChild($container);
 					}
 				}
 			} catch (error) {
@@ -110,7 +110,7 @@ export default class SidebarApp {
 				if (existingContainer) {
 					existingContainer.remove();
 				}
-				$sidebar.appendChild($contaienr);
+				$sidebar.appendChild($container);
 			}
 			this.#onselect(this.#container);
 		}
@@ -168,10 +168,10 @@ function Icon({ icon, id, title }) {
  * @returns {HTMLElement}
  */
 function getContainer($el) {
-	const res = $contaienr;
+	const res = $container;
 
 	if ($el) {
-		$contaienr = $el;
+		$container = $el;
 	}
 
 	return res || $sidebar.get(".container");
