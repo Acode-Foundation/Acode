@@ -177,6 +177,11 @@ export default function otherSettings() {
 			checkbox: values.showSideButtons,
 		},
 		{
+			key: "showSponsorSidebarApp",
+			text: `${strings.sponsor} (${strings.sidebar})`,
+			checkbox: values.showSponsorSidebarApp,
+		},
+		{
 			key: "excludeFolders",
 			text: strings["exclude files"],
 			value: values.excludeFolders.join("\n"),
