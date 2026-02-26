@@ -944,6 +944,14 @@ export default class TerminalTouchSelection {
 
 			menuX = centerX - menuWidth / 2;
 			menuY = baseY + this.cellDimensions.height + 40;
+
+			// If menu would overflow below, prefer placing it above selection.
+			const maxY = containerRect.height - menuHeight - 10;
+			if (menuY > maxY) {
+				const topY =
+					startPos && endPos ? Math.min(startPos.y, endPos.y) : baseY;
+				menuY = topY - menuHeight - 10;
+			}
 		} else {
 			menuX = (containerRect.width - menuWidth) / 2;
 			menuY = containerRect.height - menuHeight - 20;
