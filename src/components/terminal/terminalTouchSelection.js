@@ -1,10 +1,139 @@
 /**
  * Touch Selection for Terminal
  */
+import select from "dialogs/select";
 import "./terminalTouchSelection.css";
 
+const DEFAULT_MORE_OPTION_ID = "__acode_terminal_select_all__";
+const terminalMoreOptions = new Map();
+let terminalMoreOptionCounter = 0;
+
+function ensureDefaultMoreOption() {
+	if (terminalMoreOptions.has(DEFAULT_MORE_OPTION_ID)) return;
+
+	terminalMoreOptions.set(DEFAULT_MORE_OPTION_ID, {
+		id: DEFAULT_MORE_OPTION_ID,
+		label: () => strings["select all"] || "Select all",
+		icon: "text_format",
+		action: ({ touchSelection }) => touchSelection.selectAllText(),
+	});
+}
+
+function normalizeMoreOption(option) {
+	if (!option || typeof option !== "object" || Array.isArray(option)) {
+		console.warn(
+			"[TerminalTouchSelection] addMoreOption expects an option object.",
+		);
+		return null;
+	}
+
+	const id =
+		option.id != null && option.id !== ""
+			? String(option.id)
+			: `terminal_more_option_${++terminalMoreOptionCounter}`;
+	const label = option.label ?? option.text ?? option.title;
+	const action = option.action || option.onselect || option.onclick;
+
+	if (!label) {
+		console.warn(
+			`[TerminalTouchSelection] More option '${id}' must provide a label/text/title.`,
+		);
+		return null;
+	}
+
+	if (typeof action !== "function") {
+		console.warn(
+			`[TerminalTouchSelection] More option '${id}' must provide an action function.`,
+		);
+		return null;
+	}
+
+	return {
+		id,
+		label,
+		icon: option.icon || null,
+		enabled: option.enabled,
+		action,
+	};
+}
+
+function resolveMoreOptionLabel(option, context) {
+	try {
+		const value =
+			typeof option.label === "function" ? option.label(context) : option.label;
+		return value == null ? "" : String(value);
+	} catch (error) {
+		console.warn(
+			`[TerminalTouchSelection] Failed to resolve label for option '${option.id}'.`,
+			error,
+		);
+		return "";
+	}
+}
+
+function isMoreOptionEnabled(option, context) {
+	try {
+		if (typeof option.enabled === "function") {
+			return option.enabled(context) !== false;
+		}
+		if (option.enabled === undefined) return true;
+		return option.enabled !== false;
+	} catch (error) {
+		console.warn(
+			`[TerminalTouchSelection] Failed to resolve enabled state for option '${option.id}'.`,
+			error,
+		);
+		return true;
+	}
+}
+
 export default class TerminalTouchSelection {
+	/**
+	 * Register an option for the "More" menu in touch selection.
+	 * @param {{
+	 *  id?: string,
+	 *  label?: string|function(object):string,
+	 *  text?: string,
+	 *  title?: string,
+	 *  icon?: string,
+	 *  enabled?: boolean|function(object):boolean,
+	 *  action?: function(object):void|Promise<void>,
+	 *  onselect?: function(object):void|Promise<void>,
+	 *  onclick?: function(object):void|Promise<void>
+	 * }} option
+	 * @returns {string|null}
+	 */
+	static addMoreOption(option) {
+		ensureDefaultMoreOption();
+		const normalized = normalizeMoreOption(option);
+		if (!normalized) return null;
+		terminalMoreOptions.set(normalized.id, normalized);
+		return normalized.id;
+	}
+
+	/**
+	 * Remove a registered "More" menu option by id.
+	 * @param {string} id
+	 * @returns {boolean}
+	 */
+	static removeMoreOption(id) {
+		ensureDefaultMoreOption();
+		if (id == null || id === "") return false;
+		return terminalMoreOptions.delete(String(id));
+	}
+
+	/**
+	 * List all registered "More" menu options.
+	 * @returns {Array<object>}
+	 */
+	static getMoreOptions() {
+		ensureDefaultMoreOption();
+		return [...terminalMoreOptions.values()].map((option) => ({ ...option }));
+	}
+
 	constructor(terminal, container, options = {}) {
+		ensureDefaultMoreOption();
+
 		this.terminal = terminal;
 		this.container = container;
 		this.options = {
@@ -783,17 +912,27 @@ export default class TerminalTouchSelection {
 		// Mark that context menu should stay visible
 		this.contextMenuShouldStayVisible = true;
 
-		// Position context menu - center it on selection with viewport bounds checking
-		const startPos = this.terminalCoordsToPixels(this.selectionStart);
-		const endPos = this.terminalCoordsToPixels(this.selectionEnd);
+		// Position context menu - center it on selection (or fallback to center).
+		const startPos = this.selectionStart
+			? this.terminalCoordsToPixels(this.selectionStart)
+			: null;
+		const endPos = this.selectionEnd
+			? this.terminalCoordsToPixels(this.selectionEnd)
+			: null;
+
+		const menuWidth = this.contextMenu.offsetWidth || 200;
+		const menuHeight = this.contextMenu.offsetHeight || 50;
+		const containerRect = this.container.getBoundingClientRect();
+
+		let menuX;
+		let menuY;
 
 		if (startPos || endPos) {
-			// Use whichever position is available, or center between them
-			let centerX, baseY;
+			let centerX;
+			let baseY;
 
 			if (startPos && endPos) {
 				centerX = (startPos.x + endPos.x) / 2;
-				// Position below the lower of the two positions
 				baseY = Math.max(startPos.y, endPos.y);
 			} else if (startPos) {
 				centerX = startPos.x;
@@ -803,36 +942,24 @@ export default class TerminalTouchSelection {
 				baseY = endPos.y;
 			}
 
-			const menuWidth = this.contextMenu.offsetWidth || 200;
-			const menuHeight = this.contextMenu.offsetHeight || 50;
-
-			const containerRect = this.container.getBoundingClientRect();
-
-			// Calculate initial position
-			let menuX = centerX - menuWidth / 2;
-			let menuY = baseY + this.cellDimensions.height + 40;
-
-			// Ensure menu stays within terminal bounds horizontally
-			const minX = 10; // padding from left edge
-			const maxX = containerRect.width - menuWidth - 10; // padding from right edge
-			menuX = Math.max(minX, Math.min(menuX, maxX));
-
-			// Ensure menu stays within terminal bounds vertically
-			const maxY = containerRect.height - menuHeight - 10; // padding from bottom
-			if (menuY > maxY) {
-				// If menu would go below terminal, position it above the selection
-				const topY =
-					startPos && endPos ? Math.min(startPos.y, endPos.y) : baseY;
-				menuY = topY - menuHeight - 10;
-			}
-
-			// Final bounds check
-			menuY = Math.max(10, Math.min(menuY, maxY));
-
-			this.contextMenu.style.left = `${menuX}px`;
-			this.contextMenu.style.top = `${menuY}px`;
-			this.contextMenu.style.display = "flex";
+			menuX = centerX - menuWidth / 2;
+			menuY = baseY + this.cellDimensions.height + 40;
+		} else {
+			menuX = (containerRect.width - menuWidth) / 2;
+			menuY = containerRect.height - menuHeight - 20;
 		}
+
+		const minX = 10;
+		const maxX = containerRect.width - menuWidth - 10;
+		menuX = Math.max(minX, Math.min(menuX, maxX));
+
+		const minY = 10;
+		const maxY = containerRect.height - menuHeight - 10;
+		menuY = Math.max(minY, Math.min(menuY, maxY));
+
+		this.contextMenu.style.left = `${menuX}px`;
+		this.contextMenu.style.top = `${menuY}px`;
+		this.contextMenu.style.display = "flex";
 	}
 
 	createContextMenu() {
@@ -843,7 +970,10 @@ export default class TerminalTouchSelection {
 		const menuItems = [
 			{ label: strings["copy"], action: this.copySelection.bind(this) },
 			{ label: strings["paste"], action: this.pasteFromClipboard.bind(this) },
-			{ label: "More...", action: this.showMoreOptions.bind(this) },
+			{
+				label: `${strings["more"] || "More"}...`,
+				action: this.showMoreOptions.bind(this),
+			},
 		];
 
 		menuItems.forEach((item) => {
@@ -932,10 +1062,96 @@ export default class TerminalTouchSelection {
 		}
 	}
 
+	selectAllText() {
+		if (!this.terminal?.selectAll) return;
+		this.terminal.selectAll();
+		this.currentSelection = this.terminal.getSelection();
+		this.isSelecting = !!this.currentSelection;
+		this.selectionStart = null;
+		this.selectionEnd = null;
+		this.hideHandles();
+
+		if (this.options.showContextMenu && this.currentSelection) {
+			this.showContextMenu();
+		}
+	}
+
+	getMoreOptionsContext() {
+		return {
+			terminal: this.terminal,
+			touchSelection: this,
+			selection: this.currentSelection || this.terminal.getSelection(),
+			clearSelection: () => this.forceClearSelection(),
+			copySelection: () => this.copySelection(),
+			pasteFromClipboard: () => this.pasteFromClipboard(),
+			selectAll: () => this.selectAllText(),
+		};
+	}
+
+	getResolvedMoreOptions() {
+		ensureDefaultMoreOption();
+		const context = this.getMoreOptionsContext();
+
+		return [...terminalMoreOptions.values()]
+			.map((option) => {
+				const label = resolveMoreOptionLabel(option, context);
+				if (!label) return null;
+
+				return {
+					...option,
+					label,
+					disabled: !isMoreOptionEnabled(option, context),
+				};
+			})
+			.filter(Boolean);
+	}
+
+	async executeMoreOption(option) {
+		if (!option || typeof option.action !== "function" || option.disabled) {
+			if (this.isSelecting && this.options.showContextMenu) {
+				this.showContextMenu();
+			}
+			return;
+		}
+
+		try {
+			await option.action(this.getMoreOptionsContext());
+		} catch (error) {
+			console.error(
+				`[TerminalTouchSelection] Failed to execute more option '${option.id}'.`,
+				error,
+			);
+			window.toast?.("Failed to execute action.");
+		} finally {
+			if (this.isSelecting && this.options.showContextMenu) {
+				this.showContextMenu();
+			}
+		}
+	}
+
 	showMoreOptions() {
-		// Implement additional options if needed
-		window.toast("More options are not implemented yet.");
-		this.forceClearSelection();
+		const moreOptions = this.getResolvedMoreOptions();
+		if (!moreOptions.length) return;
+
+		const items = moreOptions.map((option) => ({
+			value: option.id,
+			text: option.label,
+			icon: option.icon,
+			disabled: option.disabled,
+		}));
+
+		this.hideContextMenu(true);
+
+		select(strings["more"] || "More", items, true)
+			.then((selectedId) => {
+				const option = moreOptions.find((entry) => entry.id === selectedId);
+				return this.executeMoreOption(option);
+			})
+			.catch(() => {
+				if (this.isSelecting && this.options.showContextMenu) {
+					this.showContextMenu();
+				}
+			});
 	}
 
 	clearSelection() {

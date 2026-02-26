@@ -5,6 +5,7 @@
 
 import EditorFile from "lib/editorFile";
 import TerminalComponent from "./terminal";
+import TerminalTouchSelection from "./terminalTouchSelection";
 import "@xterm/xterm/css/xterm.css";
 import quickTools from "components/quickTools";
 import toast from "components/toast";
@@ -727,6 +728,32 @@ class TerminalManager {
 	 */
 	getAllTerminals() {
 		return this.terminals;
+	}
+
+	/**
+	 * Register a touch-selection "More" menu option.
+	 * @param {object} option
+	 * @returns {string|null}
+	 */
+	addTouchSelectionMoreOption(option) {
+		return TerminalTouchSelection.addMoreOption(option);
+	}
+
+	/**
+	 * Remove a touch-selection "More" menu option.
+	 * @param {string} id
+	 * @returns {boolean}
+	 */
+	removeTouchSelectionMoreOption(id) {
+		return TerminalTouchSelection.removeMoreOption(id);
+	}
+
+	/**
+	 * List touch-selection "More" menu options.
+	 * @returns {Array<object>}
+	 */
+	getTouchSelectionMoreOptions() {
+		return TerminalTouchSelection.getMoreOptions();
 	}
 
 	/**

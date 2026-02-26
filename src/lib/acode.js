@@ -282,6 +282,12 @@ export default class Acode {
 			removeHandler: removeIntentHandler,
 		};
 
+		const terminalTouchSelectionMoreOptions = {
+			add: (option) => TerminalManager.addTouchSelectionMoreOption(option),
+			remove: (id) => TerminalManager.removeTouchSelectionMoreOption(id),
+			list: () => TerminalManager.getTouchSelectionMoreOptions(),
+		};
+
 		const terminalModule = {
 			create: (options) => TerminalManager.createTerminal(options),
 			createLocal: (options) => TerminalManager.createLocalTerminal(options),
@@ -291,6 +297,10 @@ export default class Acode {
 			write: (id, data) => this.#secureTerminalWrite(id, data),
 			clear: (id) => TerminalManager.clearTerminal(id),
 			close: (id) => TerminalManager.closeTerminal(id),
+			moreOptions: terminalTouchSelectionMoreOptions,
+			touchSelection: {
+				moreOptions: terminalTouchSelectionMoreOptions,
+			},
 			themes: {
 				register: (name, theme, pluginId) =>
 					TerminalThemeManager.registerTheme(name, theme, pluginId),
