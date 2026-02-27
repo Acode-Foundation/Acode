@@ -225,15 +225,15 @@ export default class TerminalTouchSelection {
 	createHandles() {
 		this.startHandle = this.createHandle("start");
 		this.startHandle.style.cssText += `
-      transform: rotate(180deg) translateX(87%);
       border-radius: 50% 50% 50% 0;
     `;
+		this.setHandleOrientation(this.startHandle, "start");
 
 		this.endHandle = this.createHandle("end");
 		this.endHandle.style.cssText += `
-      transform: rotate(90deg) translateY(-13%);
       border-radius: 50% 50% 50% 0;
     `;
+		this.setHandleOrientation(this.endHandle, "end");
 
 		this.selectionOverlay.appendChild(this.startHandle);
 		this.selectionOverlay.appendChild(this.endHandle);
@@ -866,6 +866,44 @@ export default class TerminalTouchSelection {
 		this.endHandle.style.display = "none";
 	}
 
+	getHandleBaseTransform(orientation) {
+		if (orientation === "start") {
+			return "rotate(180deg) translateX(87%)";
+		}
+		return "rotate(90deg) translateY(-13%)";
+	}
+
+	setHandleOrientation(handle, orientation) {
+		if (!handle) return;
+
+		const baseTransform = this.getHandleBaseTransform(orientation);
+		const hasScale = /\bscale\(/.test(handle.style.transform || "");
+		handle.dataset.orientation = orientation;
+		handle.style.transform = hasScale
+			? `${baseTransform} scale(1.2)`
+			: baseTransform;
+	}
+
+	updateHandleOrientationForViewportEdges() {
+		const overlayRect = this.selectionOverlay.getBoundingClientRect();
+
+		if (this.startHandle.style.display !== "none") {
+			this.setHandleOrientation(this.startHandle, "start");
+			const startRect = this.startHandle.getBoundingClientRect();
+			if (startRect.left < overlayRect.left) {
+				this.setHandleOrientation(this.startHandle, "end");
+			}
+		}
+
+		if (this.endHandle.style.display !== "none") {
+			this.setHandleOrientation(this.endHandle, "end");
+			const endRect = this.endHandle.getBoundingClientRect();
+			if (endRect.right > overlayRect.right) {
+				this.setHandleOrientation(this.endHandle, "start");
+			}
+		}
+	}
+
 	updateHandlePositions() {
 		if (!this.selectionStart || !this.selectionEnd) return;
 
@@ -902,6 +940,8 @@ export default class TerminalTouchSelection {
 		} else {
 			this.endHandle.style.display = "none";
 		}
+
+		this.updateHandleOrientationForViewportEdges();
 	}
 
 	showContextMenu() {

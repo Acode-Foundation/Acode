@@ -24,6 +24,32 @@ class TerminalManager {
 		this.terminalCounter = 0;
 	}
 
+	extractTerminalNumber(name) {
+		if (!name) return null;
+		const match = String(name).match(/^Terminal\s+(\d+)(?:\b| - )/i);
+		if (!match) return null;
+		const number = Number.parseInt(match[1], 10);
+		return Number.isInteger(number) && number > 0 ? number : null;
+	}
+
+	getNextAvailableTerminalNumber() {
+		const usedNumbers = new Set();
+
+		for (const terminal of this.terminals.values()) {
+			const number = terminal?.terminalNumber;
+			if (Number.isInteger(number) && number > 0) {
+				usedNumbers.add(number);
+			}
+		}
+
+		let nextNumber = 1;
+		while (usedNumbers.has(nextNumber)) {
+			nextNumber++;
+		}
+
+		return nextNumber;
+	}
+
 	async getPersistedSessions() {
 		try {
 			const stored = helpers.parseJSON(
@@ -163,7 +189,15 @@ class TerminalManager {
 			const isServerMode = serverMode !== false;
 
 			const terminalId = `terminal_${++this.terminalCounter}`;
-			const terminalName = options.name || `Terminal ${this.terminalCounter}`;
+			const providedName =
+				typeof options.name === "string" ? options.name.trim() : "";
+			const terminalNumber = providedName
+				? this.extractTerminalNumber(providedName)
+				: this.getNextAvailableTerminalNumber();
+			const terminalName = providedName || `Terminal ${terminalNumber}`;
+			const titlePrefix = terminalNumber
+				? `Terminal ${terminalNumber}`
+				: terminalName;
 
 			// Check if terminal is installed before proceeding
 			if (isServerMode) {
@@ -228,11 +262,13 @@ class TerminalManager {
 							terminalFile,
 							terminalComponent,
 							uniqueId,
+							titlePrefix,
 						);
 
 						const instance = {
 							id: uniqueId,
 							name: terminalName,
+							terminalNumber,
 							component: terminalComponent,
 							file: terminalFile,
 							container: terminalContainer,
@@ -430,7 +466,12 @@ class TerminalManager {
 	 * @param {TerminalComponent} terminalComponent - Terminal component
 	 * @param {string} terminalId - Terminal ID
 	 */
-	async setupTerminalHandlers(terminalFile, terminalComponent, terminalId) {
+	async setupTerminalHandlers(
+		terminalFile,
+		terminalComponent,
+		terminalId,
+		titlePrefix = terminalId,
+	) {
 		const textarea = terminalComponent.terminal?.textarea;
 		if (textarea) {
 			const onFocus = () => {
@@ -583,8 +624,8 @@ class TerminalManager {
 
 		terminalComponent.onTitleChange = async (title) => {
 			if (title) {
-				// Format terminal title as "Terminal ! - title"
-				const formattedTitle = `Terminal ${this.terminalCounter} - ${title}`;
+				// Keep the tab prefix stable for this terminal instance.
+				const formattedTitle = `${titlePrefix} - ${title}`;
 				terminalFile.filename = formattedTitle;
 
 				if (terminalComponent.serverMode && terminalComponent.pid) {
