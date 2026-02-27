@@ -43,7 +43,9 @@ function generateHints(type) {
 let previousDark = isDeviceDarkTheme();
 const updateTimeMs = 2000;
 
-let intervalId = setInterval(async () => {
+let intervalId = null;
+
+function syncSystemTheme() {
 	if (appSettings.value.appTheme.toLowerCase() === "system") {
 		const isDark = isDeviceDarkTheme();
 		if (isDark !== previousDark) {
@@ -51,33 +53,37 @@ let intervalId = setInterval(async () => {
 			updateSystemTheme(isDark);
 		}
 	}
-}, updateTimeMs);
+}
+
+function startSystemThemeWatcher() {
+	if (intervalId) return;
+	intervalId = setInterval(syncSystemTheme, updateTimeMs);
+}
+
+function stopSystemThemeWatcher() {
+	if (!intervalId) return;
+	clearInterval(intervalId);
+	intervalId = null;
+}
+
+function updateSystemThemeWatcher(theme) {
+	if (String(theme).toLowerCase() === "system") {
+		startSystemThemeWatcher();
+		syncSystemTheme();
+		return;
+	}
+	stopSystemThemeWatcher();
+}
+
+updateSystemThemeWatcher(appSettings.value.appTheme);
+appSettings.on("update:appTheme", updateSystemThemeWatcher);
 
 function onselect(value) {
 	if (!value) return;
 
 	const selection = JSON.parse(value);
 
-	if (selection.theme === "system") {
-		// Start interval if not already started
-		if (!intervalId) {
-			intervalId = setInterval(async () => {
-				if (appSettings.value.appTheme.toLowerCase() === "system") {
-					const isDark = isDeviceDarkTheme();
-					if (isDark !== previousDark) {
-						previousDark = isDark;
-						updateSystemTheme(isDark);
-					}
-				}
-			}, updateTimeMs);
-		}
-	} else {
-		// Cancel interval if it's running
-		if (intervalId) {
-			clearInterval(intervalId);
-			intervalId = null;
-		}
-	}
+	updateSystemThemeWatcher(selection.theme);
 
 	if (selection.type === "editor") {
 		editorManager.editor.setTheme(selection.theme);
