@@ -8,13 +8,15 @@ const recents = {
 	 * @returns {Array<String>}
 	 */
 	get files() {
-		return JSON.parse(localStorage.recentFiles || "[]");
+		const files = helpers.parseJSON(localStorage.recentFiles);
+		return Array.isArray(files) ? files : [];
 	},
 	/**
 	 * @returns {{url: String, opts: Map<String, String>}[]}
 	 */
 	get folders() {
-		return JSON.parse(localStorage.recentFolders || "[]");
+		const folders = helpers.parseJSON(localStorage.recentFolders);
+		return Array.isArray(folders) ? folders : [];
 	},
 	set files(list) {
 		if (Array.isArray(list)) localStorage.recentFiles = JSON.stringify(list);

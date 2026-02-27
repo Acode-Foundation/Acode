@@ -1,5 +1,6 @@
 import { getModes } from "cm/modelist";
 import palette from "components/palette";
+import helpers from "utils/helpers";
 import Path from "utils/Path";
 
 export default function changeMode() {
@@ -25,7 +26,7 @@ function onselect(mode) {
 
 	let modeAssociated;
 	try {
-		modeAssociated = JSON.parse(localStorage.modeassoc || "{}");
+		modeAssociated = helpers.parseJSON(localStorage.modeassoc) || {};
 	} catch (error) {
 		modeAssociated = {};
 	}

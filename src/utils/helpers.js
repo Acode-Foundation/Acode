@@ -242,7 +242,8 @@ export default {
 		}
 
 		/**@type {string[]} */
-		const storageList = JSON.parse(localStorage.storageList || "[]");
+		const storageList = this.parseJSON(localStorage.storageList);
+		if (!Array.isArray(storageList)) return url;
 		const storageListLen = storageList.length;
 
 		for (let i = 0; i < storageListLen; ++i) {
