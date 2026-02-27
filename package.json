@@ -42,7 +42,14 @@
       "com.foxdebug.acode.rk.customtabs": {},
       "com.foxdebug.acode.rk.plugin.plugincontext": {},
       "com.foxdebug.acode.rk.auth": {},
-      "cordova-plugin-system": {}
+      "cordova-plugin-system": {},
+      "cordova-plugin-consent": {
+        "UMP_VERSION": "1.0.0+"
+      },
+      "admob-plus-cordova": {
+        "APP_ID_ANDROID": "ca-app-pub-5911839694379275~4255791238",
+        "PLAY_SERVICES_VERSION": "23.2.0"
+      }
     },
     "platforms": [
       "android"
@@ -146,9 +153,11 @@
     "@xterm/addon-webgl": "^0.18.0",
     "@xterm/xterm": "^5.5.0",
     "acorn": "^8.15.0",
+    "admob-plus-cordova": "2.0.0-alpha.19",
     "autosize": "^6.0.1",
     "codemirror": "^6.0.2",
     "cordova": "13.0.0",
+    "cordova-plugin-consent": "2.4.0",
     "core-js": "^3.47.0",
     "crypto-js": "^4.2.0",
     "dayjs": "^1.11.19",
