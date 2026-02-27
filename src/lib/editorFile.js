@@ -1000,7 +1000,12 @@ export default class EditorFile {
 					EditorState.readOnly.of(!!value),
 				),
 			});
-		} catch (_) {}
+		} catch (error) {
+			console.warn(
+				`Failed to update read-only state for ${this.filename || this.uri}`,
+				error,
+			);
+		}
 
 		// Sync internal flags and header
 		this.readOnly = !!value;
@@ -1072,7 +1077,9 @@ export default class EditorFile {
 				// Ensure any native DOM selection is cleared on blur to avoid sticky selection handles
 				try {
 					document.getSelection()?.removeAllRanges();
-				} catch (_) {}
+				} catch (error) {
+					console.warn("Failed to clear native text selection.", error);
+				}
 			}
 		} else {
 			editorManager.container.style.display = "none";
@@ -1322,7 +1329,9 @@ export default class EditorFile {
 			if (activeFile?.id === this.id) {
 				emit("file-loaded", this);
 			}
-		} catch (_) {}
+		} catch (error) {
+			console.warn("Failed to emit interim file-loaded event.", error);
+		}
 
 		try {
 			const cacheFs = fsOperation(this.cacheFile);

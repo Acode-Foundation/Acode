@@ -106,6 +106,15 @@ async function EditorManager($header, $body) {
 	let touchSelectionController = null;
 	let touchSelectionSyncRaf = 0;
 	let nativeContextMenuDisabled = null;
+	const recoverableWarningKeys = new Set();
+
+	function warnRecoverable(message, error, key) {
+		if (key) {
+			if (recoverableWarningKeys.has(key)) return;
+			recoverableWarningKeys.add(key);
+		}
+		console.warn(message, error);
+	}
 
 	const setNativeContextMenuDisabled = (disabled) => {
 		const value = !!disabled;
@@ -626,7 +635,13 @@ async function EditorManager($header, $body) {
 		try {
 			const guess = getModeForPath(file.filename || file.name || "");
 			if (guess?.name) return String(guess.name).toLowerCase();
-		} catch (_) {}
+		} catch (error) {
+			warnRecoverable(
+				`Failed to resolve language id for ${file.filename || file.name || "untitled file"}`,
+				error,
+				"language-id-resolution",
+			);
+		}
 		return "plaintext";
 	}
 
@@ -634,11 +649,9 @@ async function EditorManager($header, $body) {
 		const uri = context.uri || context.file?.uri;
 		if (!uri) return null;
 		for (const folder of addedFolder) {
-			try {
-				const base = folder?.url;
-				if (!base) continue;
-				if (uri.startsWith(base)) return base;
-			} catch (_) {}
+			const base = typeof folder?.url === "string" ? folder.url : "";
+			if (!base) continue;
+			if (uri.startsWith(base)) return base;
 		}
 		return uri;
 	}
@@ -1153,7 +1166,13 @@ async function EditorManager($header, $body) {
 								editor.dispatch({
 									effects: languageCompartment.reconfigure(ext || []),
 								});
-							} catch (_) {}
+							} catch (error) {
+								warnRecoverable(
+									"Failed to apply async language extensions.",
+									error,
+									"async-language-reconfigure",
+								);
+							}
 						})
 						.catch(() => {
 							// ignore load errors; remain in plain text
@@ -1208,7 +1227,13 @@ async function EditorManager($header, $body) {
 				const mainIndex = sel.mainIndex ?? 0;
 				restoreSelection(editor, { ranges, mainIndex });
 			}
-		} catch (_) {}
+		} catch (error) {
+			warnRecoverable(
+				"Failed to restore selection from previous session state.",
+				error,
+				"restore-selection",
+			);
+		}
 
 		// Restore folds from previous state if available
 		try {
@@ -1216,7 +1241,13 @@ async function EditorManager($header, $body) {
 			if (folds && folds.length) {
 				restoreFolds(editor, folds);
 			}
-		} catch (_) {}
+		} catch (error) {
+			warnRecoverable(
+				"Failed to restore folded regions from previous session state.",
+				error,
+				"restore-folds",
+			);
+		}
 
 		// Restore last known scroll position if present
 		if (
@@ -1360,9 +1391,7 @@ async function EditorManager($header, $body) {
 		const listener = () => {
 			const active = manager.activeFile;
 			if (active?.type === "editor") {
-				try {
-					active.session = editor.state;
-				} catch (_) {}
+				active.session = editor.state;
 			}
 			toggleProblemButton();
 		};
@@ -1424,7 +1453,13 @@ async function EditorManager($header, $body) {
 			try {
 				const mode = getModeForPath(uri);
 				if (mode?.name) return String(mode.name).toLowerCase();
-			} catch (_) {}
+			} catch (error) {
+				warnRecoverable(
+					`Failed to resolve language id for URI: ${uri}`,
+					error,
+					"lsp-language-id-resolution",
+				);
+			}
 			return "plaintext";
 		},
 		clientExtensions: [diagnosticsClientExt],
@@ -1440,7 +1475,14 @@ async function EditorManager($header, $body) {
 	try {
 		const desired = appSettings?.value?.editorTheme || "one_dark";
 		editor.setTheme(desired);
-	} catch (_) {}
+	} catch (error) {
+		warnRecoverable(
+			"Failed to apply configured editor theme. Falling back to one_dark.",
+			error,
+			"initial-editor-theme",
+		);
+		editor.setTheme("one_dark");
+	}
 
 	// Ensure initial options reflect settings
 	applyOptions();
@@ -1608,9 +1650,7 @@ async function EditorManager($header, $body) {
 			if (!update.docChanged) return;
 
 			// Mirror latest state only on doc changes to avoid clobbering async loads
-			try {
-				file.session = update.state;
-			} catch (_) {}
+			file.session = update.state;
 
 			// Debounced change handling (unsaved flag, cache, autosave)
 			if (checkTimeout) clearTimeout(checkTimeout);
@@ -1621,7 +1661,13 @@ async function EditorManager($header, $body) {
 				file.isUnsaved = changed;
 				try {
 					await file.writeToCache();
-				} catch (_) {}
+				} catch (error) {
+					warnRecoverable(
+						`Failed to write cache for ${file.filename || file.uri}`,
+						error,
+						`cache-write-${file.id}`,
+					);
+				}
 
 				events.emit("file-content-changed", file);
 				manager.onupdate("file-changed");
@@ -1657,7 +1703,12 @@ async function EditorManager($header, $body) {
 				effects: readOnlyCompartment.reconfigure(EditorState.readOnly.of(ro)),
 			});
 			touchSelectionController?.onStateChanged();
-		} catch (_) {
+		} catch (error) {
+			warnRecoverable(
+				"Failed to apply read-only compartment update. Recreating editor state.",
+				error,
+				"readonly-reconfigure",
+			);
 			// Fallback: full re-apply
 			applyFileToEditor(file);
 		}
@@ -1682,7 +1733,13 @@ async function EditorManager($header, $body) {
 		editor.dispatch({
 			effects: StateEffect.appendConfig.of(getDocSyncListener()),
 		});
-	} catch (_) {}
+	} catch (error) {
+		warnRecoverable(
+			"Failed to attach document sync listener to editor.",
+			error,
+			"doc-sync-listener",
+		);
+	}
 
 	return manager;
 
@@ -2043,14 +2100,26 @@ async function EditorManager($header, $body) {
 			try {
 				const annotations = session.getAnnotations() || [];
 				if (annotations.length) return true;
-			} catch (_) {}
+			} catch (error) {
+				warnRecoverable(
+					"Failed to read editor annotations while checking problems.",
+					error,
+					"read-annotations",
+				);
+			}
 		}
 
 		if (typeof state.field !== "function") return false;
 		try {
 			const diagnostics = getLspDiagnostics(state);
 			return diagnostics.length > 0;
-		} catch (_) {}
+		} catch (error) {
+			warnRecoverable(
+				"Failed to read LSP diagnostics while checking problems.",
+				error,
+				"read-lsp-diagnostics",
+			);
+		}
 
 		return false;
 	}
@@ -2135,13 +2204,9 @@ async function EditorManager($header, $body) {
 		// Persist the previous editor's state before switching away
 		const prev = manager.activeFile;
 		if (prev?.type === "editor") {
-			try {
-				prev.session = editor.state;
-			} catch (_) {}
-			try {
-				prev.lastScrollTop = editor.scrollDOM?.scrollTop || 0;
-				prev.lastScrollLeft = editor.scrollDOM?.scrollLeft || 0;
-			} catch (_) {}
+			prev.session = editor.state;
+			prev.lastScrollTop = editor.scrollDOM?.scrollTop || 0;
+			prev.lastScrollLeft = editor.scrollDOM?.scrollLeft || 0;
 		}
 
 		manager.activeFile = file;

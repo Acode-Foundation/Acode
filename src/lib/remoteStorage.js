@@ -434,5 +434,7 @@ async function loadAd() {
 			toast(strings.loading);
 			await window.iad.load();
 		}
-	} catch (error) {}
+	} catch (error) {
+		console.warn("Failed to load interstitial ad.", error);
+	}
 }

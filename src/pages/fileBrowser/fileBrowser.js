@@ -1089,7 +1089,9 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 						storageType: "sd",
 					});
 				});
-			} catch (err) {}
+			} catch (err) {
+				console.warn("Unable to list external storages.", err);
+			}
 
 			storageList.forEach((storage) => {
 				let url = storage.url || /**@deprecated */ storage["uri"];

@@ -481,7 +481,9 @@ export default async function PluginInclude(
 				await window.iad.load();
 				el.textContent = oldText;
 			}
-		} catch (error) {}
+		} catch (error) {
+			console.warn("Failed to load plugin page ad.", error);
+		}
 	}
 
 	async function getPurchase(sku) {

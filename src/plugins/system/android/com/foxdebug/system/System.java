@@ -109,6 +109,7 @@ import android.graphics.ImageDecoder;
 
 
 public class System extends CordovaPlugin {
+    private static final String TAG = "SystemPlugin";
 
     private CallbackContext requestPermissionCallback;
     private Activity activity;
@@ -765,7 +766,9 @@ public class System extends CordovaPlugin {
                     if (inputStream != null) {
                         try {
                             inputStream.close();
-                        } catch (IOException ignored) {}
+                        } catch (IOException closeError) {
+                            Log.w(TAG, "Failed to close input stream while reading file.", closeError);
+                        }
                     }
                 }
             } else {
@@ -1013,13 +1016,15 @@ public class System extends CordovaPlugin {
         for (int i = 0; i < arr.length(); i++) {
             try {
                 String permission = arr.getString(i);
-                if (permission != null || !permission.equals("")) {
+                if (permission == null || permission.equals("")) {
                     throw new Exception("Permission cannot be null or empty");
                 }
                 if (!cordova.hasPermission(permission)) {
                     list.add(permission);
                 }
-            } catch (JSONException e) {}
+            } catch (JSONException e) {
+                Log.w(TAG, "Invalid permission entry at index " + i, e);
+            }
         }
 
         String[] res = new String[list.size()];
@@ -1990,7 +1995,9 @@ public class System extends CordovaPlugin {
                     }
                 }
             }
-        } catch (PackageManager.NameNotFoundException ignored) {}
+        } catch (PackageManager.NameNotFoundException error) {
+            Log.w(TAG, "Unable to inspect package providers for FileProvider authority.", error);
+        }
 
         if (fileProviderAuthority == null || fileProviderAuthority.isEmpty()) {
             fileProviderAuthority = context.getPackageName() + ".provider";

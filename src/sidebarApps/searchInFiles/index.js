@@ -741,7 +741,9 @@ async function onCursorChange(line) {
 			selection: { anchor: from, head: to },
 			effects: EditorView.scrollIntoView(from, { y: "center" }),
 		});
-	} catch (_) {}
+	} catch (error) {
+		console.warn(`Failed to focus search result at line ${line}.`, error);
+	}
 }
 
 /**

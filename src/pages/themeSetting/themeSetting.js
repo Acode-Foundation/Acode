@@ -30,11 +30,20 @@ export default function () {
 	const list = new Ref();
 	let cmPreview = null;
 	const previewDoc = `// Acode is awesome!\nconst message = "Welcome to Acode";\nconsole.log(message);`;
-	function createPreview(themeId) {
-		if (cmPreview) {
+
+	function destroyPreview(context) {
+		if (!cmPreview) return;
+		try {
 			cmPreview.destroy();
+		} catch (error) {
+			console.warn(`Failed to destroy theme preview (${context}).`, error);
+		} finally {
 			cmPreview = null;
 		}
+	}
+
+	function createPreview(themeId) {
+		destroyPreview("create");
 		const theme = getThemeExtensions(themeId, [oneDark]);
 		const fixedHeightTheme = EditorView.theme({
 			"&": { height: "100%", flex: "1 1 auto" },
@@ -51,9 +60,7 @@ export default function () {
 	actionStack.push({
 		id: "appTheme",
 		action: () => {
-			try {
-				cmPreview?.destroy();
-			} catch (_) {}
+			destroyPreview("close");
 			$page.hide();
 			$page.removeEventListener("click", clickHandler);
 		},
@@ -87,9 +94,7 @@ export default function () {
 
 	function renderAppThemes() {
 		// Remove and destroy CodeMirror preview when showing app themes
-		try {
-			cmPreview?.destroy();
-		} catch (_) {}
+		destroyPreview("switch-tab");
 		$themePreview.remove();
 		const content = [];
 

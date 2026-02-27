@@ -75,7 +75,12 @@ export default async function openFile(file, options = {}) {
 						editor.gotoLine(cursorPos.row, cursorPos.column);
 					}
 				}
-			} catch (_) {}
+			} catch (error) {
+				console.warn(
+					`Failed to move cursor for ${existingFile.filename || existingFile.uri}`,
+					error,
+				);
+			}
 
 			if (encoding && existingFile.encoding !== encoding) {
 				reopenWithNewEncoding(encoding);

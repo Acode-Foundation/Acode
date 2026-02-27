@@ -109,7 +109,12 @@ export default class AcodeWorkspace extends Workspace {
 			if (mode?.name) {
 				return String(mode.name).toLowerCase();
 			}
-		} catch (_) {}
+		} catch (error) {
+			console.warn(
+				`[LSP:Workspace] Failed to resolve language id for ${uri}`,
+				error,
+			);
+		}
 		return "plaintext";
 	}
 

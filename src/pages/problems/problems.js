@@ -129,13 +129,9 @@ export default function Problems() {
 		return diagnostics
 			.map((diagnostic) => {
 				const start = clampPosition(diagnostic.from, doc.length);
-				let row = 0;
-				let column = 0;
-				try {
-					const line = doc.lineAt(start);
-					row = Math.max(0, line.number - 1);
-					column = Math.max(0, start - line.from);
-				} catch (_) {}
+				const line = doc.lineAt(start);
+				const row = Math.max(0, line.number - 1);
+				const column = Math.max(0, start - line.from);
 
 				let message = diagnostic.message || "";
 				if (diagnostic.source) {

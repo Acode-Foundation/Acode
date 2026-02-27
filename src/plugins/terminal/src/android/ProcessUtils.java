@@ -1,6 +1,7 @@
 package com.foxdebug.acode.rk.exec.terminal;
 
 import java.lang.reflect.Field;
+import android.util.Log;
 import com.foxdebug.acode.rk.exec.terminal.*;
 
 public class ProcessUtils {
@@ -39,7 +40,9 @@ public class ProcessUtils {
             if (pid > 0) {
                 Runtime.getRuntime().exec("kill -9 -" + pid);
             }
-        } catch (Exception ignored) {}
+        } catch (Exception error) {
+            Log.w("ProcessUtils", "Failed to kill process tree.", error);
+        }
         process.destroy();
     }
 }

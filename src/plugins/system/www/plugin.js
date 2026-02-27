@@ -130,17 +130,30 @@ module.exports = {
     };
 
     cordova.exec(function (data) {
-      try {
-        var dataTag = data.split(':')[0];
-        var dataUrl = data.split(':')[1];
-        if (dataTag === 'onOpenExternalBrowser') {
+      if (typeof data !== 'string') {
+        console.warn('System.inAppBrowser: invalid callback payload', data);
+        return;
+      }
+      var separatorIndex = data.indexOf(':');
+      if (separatorIndex < 0) {
+        console.warn('System.inAppBrowser: malformed callback payload', data);
+        return;
+      }
+      var dataTag = data.slice(0, separatorIndex);
+      var dataUrl = data.slice(separatorIndex + 1);
+      if (dataTag === 'onOpenExternalBrowser') {
+        if (typeof myInAppBrowser.onOpenExternalBrowser === 'function') {
           myInAppBrowser.onOpenExternalBrowser(dataUrl);
+        } else {
+          console.warn('System.inAppBrowser: onOpenExternalBrowser handler is not set');
         }
-      } catch (error) { }
+      }
     }, function (err) {
-      try {
-        onError(err);
-      } catch (error) { }
+      if (typeof myInAppBrowser.onError === 'function') {
+        myInAppBrowser.onError(err);
+        return;
+      }
+      console.warn('System.inAppBrowser error callback not handled', err);
     }, 'System', 'in-app-browser', [url, title, !!showButtons, disableCache]);
     return myInAppBrowser;
   },

@@ -55,7 +55,9 @@ export default function CustomThemeInclude() {
 						["dark", strings["dark"]],
 					]);
 					applyTheme();
-				} catch (error) {}
+				} catch (error) {
+					console.warn("Unable to update custom theme type.", error);
+				}
 				return;
 			}
 
