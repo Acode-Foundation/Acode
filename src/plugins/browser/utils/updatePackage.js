@@ -18,7 +18,7 @@ try {
   
   const docProviderData = fs.readFileSync(docProvider, "utf8");
   const newFileData = docProviderData.replace(/(import com\.foxdebug\.)(acode|acodefree)(.R;)/, `$1${appName}$3`);
-  fs.writeFileSync(docProvider, docProviderData);
+  fs.writeFileSync(docProvider, newFileData);
 
 
   
