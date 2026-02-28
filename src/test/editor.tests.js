@@ -9,6 +9,7 @@ import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import { EditorSelection, EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import createBaseExtensions from "cm/baseExtensions";
+import { getEdgeScrollDirections } from "cm/touchSelectionMenu";
 import { TestRunner } from "./tester";
 
 export async function runCodeMirrorTests(writeOutput) {
@@ -698,6 +699,42 @@ export async function runCodeMirrorTests(writeOutput) {
 
 			test.assert(pos != null || pos === null, "posAtCoords should return");
 		});
+	});
+
+	runner.test("Edge scroll direction helper", async (test) => {
+		const rect = {
+			left: 100,
+			right: 300,
+			top: 200,
+			bottom: 400,
+		};
+
+		const leftTop = getEdgeScrollDirections({
+			x: 110,
+			y: 210,
+			rect,
+			allowHorizontal: true,
+		});
+		test.assertEqual(leftTop.horizontal, -1);
+		test.assertEqual(leftTop.vertical, -1);
+
+		const rightBottom = getEdgeScrollDirections({
+			x: 295,
+			y: 395,
+			rect,
+			allowHorizontal: true,
+		});
+		test.assertEqual(rightBottom.horizontal, 1);
+		test.assertEqual(rightBottom.vertical, 1);
+
+		const noHorizontal = getEdgeScrollDirections({
+			x: 110,
+			y: 395,
+			rect,
+			allowHorizontal: false,
+		});
+		test.assertEqual(noHorizontal.horizontal, 0);
+		test.assertEqual(noHorizontal.vertical, 1);
 	});
 
 	runner.test("lineBlockAt", async (test) => {
