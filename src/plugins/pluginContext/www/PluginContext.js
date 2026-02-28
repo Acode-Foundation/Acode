@@ -35,14 +35,14 @@ const PluginContext = (function () {
       });
     }
 
-    getSecret(token, key, defaultValue = "") {
+    getSecret(key, defaultValue = "") {
       return new Promise((resolve, reject) => {
         exec(
           resolve,
           reject,
           "Tee",             
           "get_secret",       
-          [token, key, defaultValue]
+          [this.uuid, key, defaultValue]
         );
       });
     }
