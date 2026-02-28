@@ -14,6 +14,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import android.content.Context;
+import org.apache.cordova.*;
 
 //auth plugin
 import com.foxdebug.acode.rk.auth.EncryptedPreferenceManager;
