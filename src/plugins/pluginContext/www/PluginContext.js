@@ -48,14 +48,14 @@ const PluginContext = (function () {
     }
 
 
-    setSecret(token, key, value) {
+    setSecret(key, value) {
       return new Promise((resolve, reject) => {
         exec(
           resolve,
           reject,
           "Tee",
           "set_secret",
-          [token, key, value]
+          [this.uuid, key, value]
         );
       });
     }
