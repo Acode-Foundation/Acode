@@ -4,6 +4,7 @@ import secureAdRewardState from "./secureAdRewardState";
 
 const ONE_HOUR = 60 * 60 * 1000;
 const MAX_TIMEOUT = 2_147_483_647;
+const REWARDED_RESULT_TIMEOUT_MS = 90 * 1000;
 
 const OFFERS = [
 	{
@@ -219,16 +220,25 @@ function waitForRewardedResult(ad) {
 	return new Promise((resolve, reject) => {
 		let earned = false;
 		let settled = false;
+		const timeoutId = setTimeout(() => {
+			fail(
+				new Error(
+					"Rewarded ad timed out before completion. Please try again.",
+				),
+			);
+		}, REWARDED_RESULT_TIMEOUT_MS);
 
 		const finish = (result) => {
 			if (settled) return;
 			settled = true;
+			clearTimeout(timeoutId);
 			resolve(result);
 		};
 
 		const fail = (error) => {
 			if (settled) return;
 			settled = true;
+			clearTimeout(timeoutId);
 			reject(
 				error instanceof Error
 					? error
