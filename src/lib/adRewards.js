@@ -222,9 +222,7 @@ function waitForRewardedResult(ad) {
 		let settled = false;
 		const timeoutId = setTimeout(() => {
 			fail(
-				new Error(
-					"Rewarded ad timed out before completion. Please try again.",
-				),
+				new Error("Rewarded ad timed out before completion. Please try again."),
 			);
 		}, REWARDED_RESULT_TIMEOUT_MS);
 
