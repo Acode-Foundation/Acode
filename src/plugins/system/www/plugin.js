@@ -36,6 +36,12 @@ module.exports = {
   getFilesDir: function (success, error) {
     cordova.exec(success, error, 'System', 'getFilesDir', []);
   },
+  getRewardStatus: function (success, error) {
+    cordova.exec(success, error, 'System', 'getRewardStatus', []);
+  },
+  redeemReward: function (offerId, success, error) {
+    cordova.exec(success, error, 'System', 'redeemReward', [offerId]);
+  },
 
   getParentPath: function (path, success, error) {
     cordova.exec(success, error, 'System', 'getParentPath', [path]);

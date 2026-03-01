@@ -121,12 +121,14 @@ public class System extends CordovaPlugin {
     private CallbackContext intentHandler;
     private CordovaWebView webView;
     private String fileProviderAuthority;
+    private RewardPassManager rewardPassManager;
 
     public void initialize(CordovaInterface cordova, CordovaWebView webView) {
         super.initialize(cordova, webView);
         this.context = cordova.getContext();
         this.activity = cordova.getActivity();
         this.webView = webView;
+        this.rewardPassManager = new RewardPassManager(this.context);
         this.activity.runOnUiThread(
             new Runnable() {
                 @Override
@@ -257,6 +259,12 @@ public class System extends CordovaPlugin {
 
             case "getFilesDir":
                 callbackContext.success(getFilesDir());
+                return true;
+            case "getRewardStatus":
+                callbackContext.success(rewardPassManager.getRewardStatus());
+                return true;
+            case "redeemReward":
+                callbackContext.success(rewardPassManager.redeemReward(args.getString(0)));
                 return true;
 
             case "getParentPath":

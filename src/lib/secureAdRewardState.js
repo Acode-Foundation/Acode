@@ -1,18 +1,18 @@
-function execAuthenticator(action, args = []) {
+function execSystem(action, args = []) {
 	return new Promise((resolve, reject) => {
 		if (!window.cordova?.exec) {
 			reject(new Error("Cordova exec is unavailable."));
 			return;
 		}
 
-		cordova.exec(resolve, reject, "Authenticator", action, args);
+		cordova.exec(resolve, reject, "System", action, args);
 	});
 }
 
 export default {
 	async getStatus() {
 		try {
-			const raw = await execAuthenticator("getRewardStatus");
+			const raw = await execSystem("getRewardStatus");
 			if (!raw) return null;
 			return typeof raw === "string" ? JSON.parse(raw) : raw;
 		} catch (error) {
@@ -22,7 +22,7 @@ export default {
 	},
 	async redeem(offerId) {
 		try {
-			const raw = await execAuthenticator("redeemReward", [offerId]);
+			const raw = await execSystem("redeemReward", [offerId]);
 			if (!raw) return null;
 			return typeof raw === "string" ? JSON.parse(raw) : raw;
 		} catch (error) {
