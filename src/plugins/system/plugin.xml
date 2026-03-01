@@ -41,8 +41,6 @@
     <framework src="androidx.core:core:1.6.0" />
     <framework src="androidx.core:core-google-shortcuts:1.0.0" />
     <framework src="androidx.documentfile:documentfile:1.0.1" />
-    <framework src="androidx.security:security-crypto:1.1.0" />
-    <source-file src="android/com/foxdebug/system/EncryptedPreferenceManager.java" target-dir="src/com/foxdebug/system"/>
     <source-file src="android/com/foxdebug/system/RewardPassManager.java" target-dir="src/com/foxdebug/system"/>
   </platform>
 </plugin>
