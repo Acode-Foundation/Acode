@@ -1,5 +1,6 @@
 import confirm from "dialogs/confirm";
 import appSettings from "lib/settings";
+import helpers from "utils/helpers";
 
 const stack = [];
 let mark = null;
@@ -93,9 +94,7 @@ export default {
 				}
 			}
 
-			if (IS_FREE_VERSION && window.iad?.isLoaded()) {
-				window.iad.show();
-			}
+			helpers.showInterstitialIfReady();
 
 			exitApp();
 		}

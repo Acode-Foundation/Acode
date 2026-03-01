@@ -6,6 +6,7 @@ import openFile from "lib/openFile";
 import removeAds from "lib/removeAds";
 import appSettings from "lib/settings";
 import settings from "lib/settings";
+import openAdRewardsPage from "pages/adRewards";
 import Changelog from "pages/changelog/changelog";
 import plugins from "pages/plugins";
 import Sponsors from "pages/sponsors";
@@ -114,6 +115,11 @@ export default function mainSettings() {
 
 	if (IS_FREE_VERSION) {
 		items.push({
+			key: "adRewards",
+			text: "Earn ad-free time",
+			icon: "play_arrow",
+		});
+		items.push({
 			key: "removeads",
 			text: strings["remove ads"],
 			icon: "cancel",
@@ -154,6 +160,10 @@ export default function mainSettings() {
 
 			case "plugins":
 				plugins();
+				break;
+
+			case "adRewards":
+				openAdRewardsPage();
 				break;
 
 			case "formatter":

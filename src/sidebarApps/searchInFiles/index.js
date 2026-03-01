@@ -320,9 +320,7 @@ async function onWorkerMessage(e) {
 				break;
 			}
 
-			if (IS_FREE_VERSION && (await window.iad?.isLoaded())) {
-				window.iad.show();
-			}
+			await helpers.showInterstitialIfReady();
 
 			terminateWorker(false);
 			replacing = false;
@@ -337,8 +335,8 @@ async function onWorkerMessage(e) {
 			}
 
 			const showAd = results.length > 100;
-			if (IS_FREE_VERSION && showAd && (await window.iad?.isLoaded())) {
-				window.iad.show();
+			if (showAd) {
+				await helpers.showInterstitialIfReady();
 			}
 
 			if (!results.length) {

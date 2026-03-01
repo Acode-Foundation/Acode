@@ -3,6 +3,7 @@ import ajax from "@deadlyjack/ajax";
 import { getModeForPath as getCMModeForPath } from "cm/modelist";
 import alert from "dialogs/alert";
 import escapeStringRegexp from "escape-string-regexp";
+import adRewards from "lib/adRewards";
 import constants from "lib/constants";
 import path from "./Path";
 import Uri from "./Uri";
@@ -287,12 +288,23 @@ export default {
 		editorManager.onupdate("file-delete");
 		editorManager.emit("update", "file-delete");
 	},
+	canShowAds() {
+		return Boolean(IS_FREE_VERSION && adRewards.canShowAds());
+	},
+	async showInterstitialIfReady() {
+		if (!this.canShowAds()) return false;
+		if (await window.iad?.isLoaded()) {
+			window.iad.show();
+			return true;
+		}
+		return false;
+	},
 	/**
 	 * Displays ad on the current page
 	 */
 	showAd() {
 		const { ad } = window;
-		if (IS_FREE_VERSION && innerHeight * devicePixelRatio > 600 && ad) {
+		if (this.canShowAds() && innerHeight * devicePixelRatio > 600 && ad) {
 			const $page = tag.getAll("wc-page:not(#root)").pop();
 			if ($page) {
 				ad.active = true;
@@ -306,7 +318,7 @@ export default {
 	 */
 	hideAd(force = false) {
 		const { ad } = window;
-		if (IS_FREE_VERSION && ad?.active) {
+		if (ad?.active) {
 			const $pages = tag.getAll(".page-replacement");
 			const hide = $pages.length === 1;
 

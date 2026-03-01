@@ -1,0 +1,249 @@
+#ad-rewards-page {
+	padding: 16px;
+	max-width: 600px;
+	margin: 0 auto;
+	color: var(--primary-text-color);
+
+	.reward-hero {
+		margin-bottom: 20px;
+
+		.hero-copy {
+			margin-bottom: 16px;
+
+			.eyebrow {
+				display: inline-flex;
+				align-items: center;
+				padding: 4px 10px;
+				border-radius: 6px;
+				background: color-mix(in srgb,
+						var(--active-color) 15%,
+						transparent);
+				color: var(--active-color);
+				font-size: 0.72rem;
+				font-weight: 600;
+				letter-spacing: 0.05em;
+				text-transform: uppercase;
+			}
+
+			h1 {
+				margin: 10px 0 6px;
+				font-size: 1.2rem;
+				font-weight: 700;
+				line-height: 1.3;
+			}
+
+			p {
+				margin: 0;
+				font-size: 0.85rem;
+				color: color-mix(in srgb,
+						var(--primary-text-color) 60%,
+						transparent);
+				line-height: 1.5;
+			}
+		}
+
+		.reward-status {
+			padding: 12px 14px;
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			flex-wrap: wrap;
+			background: color-mix(in srgb,
+					var(--primary-color) 10%,
+					transparent);
+			border-radius: 10px;
+			border: 1px solid var(--border-color);
+			transition: all 0.2s ease;
+
+			&.is-active {
+				border-color: color-mix(in srgb,
+						var(--active-color) 50%,
+						transparent);
+				background: color-mix(in srgb,
+						var(--active-color) 10%,
+						transparent);
+			}
+
+			.status-label {
+				font-size: 0.72rem;
+				font-weight: 600;
+				text-transform: uppercase;
+				letter-spacing: 0.04em;
+				color: color-mix(in srgb,
+						var(--primary-text-color) 55%,
+						transparent);
+			}
+
+			.status-value {
+				font-size: 0.9rem;
+				font-weight: 700;
+				flex: 1;
+				min-width: 0;
+			}
+
+			.status-note {
+				font-size: 0.78rem;
+				color: color-mix(in srgb,
+						var(--primary-text-color) 55%,
+						transparent);
+				width: 100%;
+			}
+
+			.status-subnote {
+				font-size: 0.74rem;
+				color: color-mix(in srgb,
+						var(--primary-text-color) 50%,
+						transparent);
+				width: 100%;
+			}
+		}
+	}
+
+	.reward-grid {
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+		gap: 10px;
+		margin-bottom: 20px;
+	}
+
+	.reward-offer {
+		background: color-mix(in srgb,
+				var(--popup-background-color) 20%,
+				transparent);
+		border-radius: 12px;
+		border: 1px solid var(--border-color);
+		padding: 14px;
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+		transition: border-color 0.2s ease;
+
+		&.is-focus {
+			border-color: color-mix(in srgb,
+					var(--link-text-color) 50%,
+					transparent);
+		}
+
+		&.is-upgrade {
+			border-color: color-mix(in srgb,
+					var(--button-background-color) 40%,
+					transparent);
+		}
+
+		.offer-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: flex-start;
+			gap: 8px;
+		}
+
+		.offer-kicker {
+			font-size: 0.68rem;
+			font-weight: 600;
+			text-transform: uppercase;
+			letter-spacing: 0.04em;
+			color: color-mix(in srgb,
+					var(--primary-text-color) 55%,
+					transparent);
+		}
+
+		h2 {
+			margin: 3px 0 0;
+			font-size: 0.88rem;
+			font-weight: 600;
+		}
+
+		.offer-duration {
+			padding: 3px 8px;
+			border-radius: 6px;
+			background: var(--primary-color);
+			color: var(--primary-text-color);
+			font-size: 0.68rem;
+			font-weight: 600;
+			white-space: nowrap;
+			align-self: flex-start;
+		}
+
+		p {
+			margin: 0;
+			color: color-mix(in srgb,
+					var(--primary-text-color) 60%,
+					transparent);
+			line-height: 1.45;
+			font-size: 0.8rem;
+			flex: 1;
+		}
+
+		.offer-limit {
+			font-size: 0.74rem;
+			line-height: 1.4;
+			color: color-mix(in srgb,
+					var(--primary-text-color) 55%,
+					transparent);
+		}
+	}
+
+	.offer-action {
+		appearance: none;
+		border: 0;
+		border-radius: 8px;
+		padding: 9px 12px;
+		font: inherit;
+		font-size: 0.82rem;
+		font-weight: 600;
+		background: var(--button-background-color);
+		color: var(--button-text-color);
+		cursor: pointer;
+		transition: all 0.2s ease;
+
+		&:active {
+			transform: translateY(1px);
+			opacity: 0.9;
+		}
+
+		&:disabled {
+			opacity: 0.45;
+			cursor: not-allowed;
+		}
+
+		&.secondary {
+			background: var(--primary-color);
+			color: var(--primary-text-color);
+		}
+	}
+
+	.reward-notes {
+		display: grid;
+		gap: 10px;
+
+		.note-card {
+			padding: 12px 14px;
+			border-left: 3px solid var(--active-color);
+			border-radius: 0 8px 8px 0;
+			background: color-mix(in srgb,
+					var(--primary-color) 8%,
+					transparent);
+
+			h3 {
+				margin: 0 0 4px;
+				font-size: 0.82rem;
+				font-weight: 600;
+			}
+
+			p {
+				margin: 0;
+				line-height: 1.45;
+				font-size: 0.78rem;
+				color: color-mix(in srgb,
+						var(--primary-text-color) 60%,
+						transparent);
+			}
+		}
+	}
+}
+
+@media (max-width: 400px) {
+	#ad-rewards-page .reward-grid {
+		grid-template-columns: 1fr;
+	}
+}

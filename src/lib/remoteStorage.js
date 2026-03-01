@@ -65,9 +65,7 @@ export default {
 				res.home = home;
 			}
 			loader.destroy();
-			if (IS_FREE_VERSION && (await window.iad?.isLoaded())) {
-				window.iad.show();
-			}
+			await helpers.showInterstitialIfReady();
 			return res;
 		} catch (err) {
 			if (stopConnection) {
@@ -232,9 +230,7 @@ export default {
 				},
 			});
 			loader.destroy();
-			if (IS_FREE_VERSION && (await window.iad?.isLoaded())) {
-				window.iad.show();
-			}
+			await helpers.showInterstitialIfReady();
 			return {
 				alias,
 				name: alias,
@@ -428,7 +424,7 @@ export default {
 };
 
 async function loadAd() {
-	if (!IS_FREE_VERSION) return;
+	if (!helpers.canShowAds()) return;
 	try {
 		if (!(await window.iad?.isLoaded())) {
 			toast(strings.loading);

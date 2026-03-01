@@ -205,8 +205,8 @@ export default async function PluginInclude(
 			if (onInstall) onInstall(plugin);
 			installed = true;
 			update = false;
-			if (!plugin.price && IS_FREE_VERSION && (await window.iad?.isLoaded())) {
-				window.iad.show();
+			if (!plugin.price) {
+				await helpers.showInterstitialIfReady();
 			}
 			render();
 		} catch (err) {
@@ -228,8 +228,8 @@ export default async function PluginInclude(
 			if (onUninstall) onUninstall(plugin.id);
 			installed = false;
 			update = false;
-			if (!plugin.price && IS_FREE_VERSION && (await window.iad?.isLoaded())) {
-				window.iad.show();
+			if (!plugin.price) {
+				await helpers.showInterstitialIfReady();
 			}
 			render();
 		} catch (err) {
@@ -473,7 +473,7 @@ export default async function PluginInclude(
 	}
 
 	async function loadAd(el) {
-		if (!IS_FREE_VERSION) return;
+		if (!helpers.canShowAds()) return;
 		try {
 			if (!(await window.iad?.isLoaded())) {
 				const oldText = el.textContent;

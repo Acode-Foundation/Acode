@@ -1,5 +1,6 @@
 let adUnitIdBanner = "ca-app-pub-5911839694379275/9157899592"; // Production
 let adUnitIdInterstitial = "ca-app-pub-5911839694379275/9570937608"; // Production
+let adUnitIdRewarded = "ca-app-pub-5911839694379275/1633667633"; // Production
 let initialized = false;
 
 export default async function startAd() {
@@ -11,6 +12,7 @@ export default async function startAd() {
 		if (BuildInfo.type === "debug") {
 			adUnitIdBanner = "ca-app-pub-3940256099942544/6300978111"; // Test
 			adUnitIdInterstitial = "ca-app-pub-3940256099942544/5224354917"; // Test
+			adUnitIdRewarded = "ca-app-pub-3940256099942544/5224354917"; // Test
 		}
 	}
 
@@ -53,4 +55,5 @@ export default async function startAd() {
 	});
 	window.ad = banner;
 	window.iad = interstitial;
+	window.adRewardedUnitId = adUnitIdRewarded;
 }
