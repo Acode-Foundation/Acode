@@ -410,7 +410,7 @@
 	"notifications": "Повідомлення",
 	"no_unread_notifications": "Немає непрочитаних повідомлень",
 	"should_use_current_file_for_preview": "Слід використовувати Поточний файл для попереднього перегляду замість стандартного (index.html)",
-	"fade fold widgets": "Віджети з ефектом зникання",
+	"fade fold widgets": "Віджети згортання з ефектом зникання",
 	"quicktools:home-key": "Клавіша Home",
 	"quicktools:end-key": "Клавіша End",
 	"quicktools:pageup-key": "Клавіша PageUp",
