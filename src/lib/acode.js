@@ -3,15 +3,12 @@ import sidebarApps from "sidebarApps";
 import * as cmAutocomplete from "@codemirror/autocomplete";
 import * as cmCommands from "@codemirror/commands";
 import * as cmLanguage from "@codemirror/language";
-import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import * as cmLint from "@codemirror/lint";
 import * as cmSearch from "@codemirror/search";
 import * as cmState from "@codemirror/state";
-import { Compartment, EditorState, Prec, StateEffect } from "@codemirror/state";
 import * as cmView from "@codemirror/view";
-import { EditorView } from "@codemirror/view";
 import ajax from "@deadlyjack/ajax";
-import { tags } from "@lezer/highlight";
+import * as lezerHighlight from "@lezer/highlight";
 import {
 	getRegisteredCommands as listRegisteredCommands,
 	refreshCommandKeymap,
@@ -157,7 +154,7 @@ export default class Acode {
 
 		const createHighlightStyle = (spec) => {
 			if (!spec) return null;
-			if (Array.isArray(spec)) return HighlightStyle.define(spec);
+			if (Array.isArray(spec)) return cmLanguage.HighlightStyle.define(spec);
 			return spec;
 		};
 
@@ -170,12 +167,12 @@ export default class Acode {
 			const ext = [];
 
 			if (styles && typeof styles === "object") {
-				ext.push(EditorView.theme(styles, { dark: !!dark }));
+				ext.push(cmView.EditorView.theme(styles, { dark: !!dark }));
 			}
 
 			const resolvedHighlight = createHighlightStyle(highlightStyle);
 			if (resolvedHighlight) {
-				ext.push(syntaxHighlighting(resolvedHighlight));
+				ext.push(cmLanguage.syntaxHighlighting(resolvedHighlight));
 			}
 
 			if (Array.isArray(extensions)) {
@@ -220,10 +217,10 @@ export default class Acode {
 			createTheme,
 			createHighlightStyle,
 			cm: {
-				EditorView,
-				HighlightStyle,
-				syntaxHighlighting,
-				tags,
+				EditorView: cmView.EditorView,
+				HighlightStyle: cmLanguage.HighlightStyle,
+				syntaxHighlighting: cmLanguage.syntaxHighlighting,
+				tags: lezerHighlight.tags,
 			},
 		};
 
@@ -325,6 +322,7 @@ export default class Acode {
 			autocomplete: cmAutocomplete,
 			commands: cmCommands,
 			language: cmLanguage,
+			lezer: lezerHighlight,
 			lint: cmLint,
 			search: cmSearch,
 			state: cmState,
@@ -381,6 +379,7 @@ export default class Acode {
 		this.define("@codemirror/search", cmSearch);
 		this.define("@codemirror/state", cmState);
 		this.define("@codemirror/view", cmView);
+		this.define("@lezer/highlight", lezerHighlight);
 		this.define("createKeyboardEvent", KeyboardEvent);
 		this.define("toInternalUrl", helpers.toInternalUri);
 		this.define("commands", this.#createCommandApi());

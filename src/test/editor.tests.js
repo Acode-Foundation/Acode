@@ -68,17 +68,37 @@ export async function runCodeMirrorTests(writeOutput) {
 	runner.test("Acode exposes shared CodeMirror modules", async (test) => {
 		const codemirror = acode.require("codemirror");
 		const language = acode.require("@codemirror/language");
+		const lezer = acode.require("@lezer/highlight");
 		const state = acode.require("@codemirror/state");
 		const view = acode.require("@codemirror/view");
 
 		test.assert(codemirror != null, "codemirror namespace should exist");
 		test.assert(language != null, "@codemirror/language should exist");
+		test.assert(lezer != null, "@lezer/highlight should exist");
 		test.assert(state != null, "@codemirror/state should exist");
 		test.assert(view != null, "@codemirror/view should exist");
+		test.assert(
+			language.StreamLanguage != null,
+			"@codemirror/language should export StreamLanguage",
+		);
+		test.assert(lezer.tags != null, "@lezer/highlight should export tags");
+		test.assert(
+			state.EditorState != null,
+			"@codemirror/state should export EditorState",
+		);
+		test.assert(
+			view.EditorView != null,
+			"@codemirror/view should export EditorView",
+		);
 		test.assertEqual(
 			language.StreamLanguage,
 			codemirror.language.StreamLanguage,
 			"language exports should share the same singleton instance",
+		);
+		test.assertEqual(
+			lezer.tags,
+			codemirror.lezer.tags,
+			"lezer exports should share the same singleton instance",
 		);
 		test.assertEqual(
 			state.EditorState,
