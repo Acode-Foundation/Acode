@@ -1,7 +1,14 @@
 import fsOperation from "fileSystem";
 import sidebarApps from "sidebarApps";
+import * as cmAutocomplete from "@codemirror/autocomplete";
+import * as cmCommands from "@codemirror/commands";
+import * as cmLanguage from "@codemirror/language";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import * as cmLint from "@codemirror/lint";
+import * as cmSearch from "@codemirror/search";
+import * as cmState from "@codemirror/state";
 import { Compartment, EditorState, Prec, StateEffect } from "@codemirror/state";
+import * as cmView from "@codemirror/view";
 import { EditorView } from "@codemirror/view";
 import ajax from "@deadlyjack/ajax";
 import { tags } from "@lezer/highlight";
@@ -314,6 +321,16 @@ export default class Acode {
 			},
 		};
 
+		const codemirrorModule = Object.freeze({
+			autocomplete: cmAutocomplete,
+			commands: cmCommands,
+			language: cmLanguage,
+			lint: cmLint,
+			search: cmSearch,
+			state: cmState,
+			view: cmView,
+		});
+
 		this.define("Url", Url);
 		this.define("page", Page);
 		this.define("Color", Color);
@@ -356,6 +373,14 @@ export default class Acode {
 		this.define("selectionMenu", selectionMenu);
 		this.define("sidebarApps", sidebarAppsModule);
 		this.define("terminal", terminalModule);
+		this.define("codemirror", codemirrorModule);
+		this.define("@codemirror/autocomplete", cmAutocomplete);
+		this.define("@codemirror/commands", cmCommands);
+		this.define("@codemirror/language", cmLanguage);
+		this.define("@codemirror/lint", cmLint);
+		this.define("@codemirror/search", cmSearch);
+		this.define("@codemirror/state", cmState);
+		this.define("@codemirror/view", cmView);
 		this.define("createKeyboardEvent", KeyboardEvent);
 		this.define("toInternalUrl", helpers.toInternalUri);
 		this.define("commands", this.#createCommandApi());

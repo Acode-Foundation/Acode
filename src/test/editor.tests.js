@@ -65,6 +65,33 @@ export async function runCodeMirrorTests(writeOutput) {
 		);
 	});
 
+	runner.test("Acode exposes shared CodeMirror modules", async (test) => {
+		const codemirror = acode.require("codemirror");
+		const language = acode.require("@codemirror/language");
+		const state = acode.require("@codemirror/state");
+		const view = acode.require("@codemirror/view");
+
+		test.assert(codemirror != null, "codemirror namespace should exist");
+		test.assert(language != null, "@codemirror/language should exist");
+		test.assert(state != null, "@codemirror/state should exist");
+		test.assert(view != null, "@codemirror/view should exist");
+		test.assertEqual(
+			language.StreamLanguage,
+			codemirror.language.StreamLanguage,
+			"language exports should share the same singleton instance",
+		);
+		test.assertEqual(
+			state.EditorState,
+			codemirror.state.EditorState,
+			"state exports should share the same singleton instance",
+		);
+		test.assertEqual(
+			view.EditorView,
+			codemirror.view.EditorView,
+			"view exports should share the same singleton instance",
+		);
+	});
+
 	runner.test("Editor creation", async (test) => {
 		const { view, container } = createEditor();
 		test.assert(view != null, "EditorView instance should be created");
