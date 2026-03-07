@@ -384,12 +384,6 @@ function readNumber(stream: StringStream, firstChar: string) {
 		return;
 	}
 
-	if (firstChar === "0" && next && /[bB]/.test(next)) {
-		stream.next();
-		stream.eatWhile(/[01_]/);
-		return;
-	}
-
 	stream.eatWhile(/[\d_]/);
 
 	if (stream.peek() === "." && stream.string.charAt(stream.pos + 1) !== ".") {
@@ -554,11 +548,13 @@ const normal: Tokenizer = (stream, state) => {
 			return "comment";
 		}
 		if (stream.eat("[")) {
+			const longBracketStart = stream.pos;
 			const level = readLongBracket(stream);
 			if (level >= 0) {
 				pushTokenizer(state, bracketed(level, "comment"));
 				return state.cur(stream, state);
 			}
+			stream.backUp(stream.pos - longBracketStart);
 		}
 		stream.skipToEnd();
 		return "comment";
@@ -575,11 +571,13 @@ const normal: Tokenizer = (stream, state) => {
 	}
 
 	if (char === "[") {
+		const longBracketStart = stream.pos;
 		const level = readLongBracket(stream);
 		if (level >= 0) {
 			pushTokenizer(state, bracketed(level, "string"));
 			return state.cur(stream, state);
 		}
+		stream.backUp(stream.pos - longBracketStart);
 	}
 
 	if (char === "@" && isWordStart(stream.peek() || "")) {
