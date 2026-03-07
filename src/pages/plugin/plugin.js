@@ -19,6 +19,7 @@ import { highlightCodeBlock, initHighlighting } from "utils/codeHighlight";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
 import view from "./plugin.view.js";
+import { hideAd } from "./startAd.js";
 
 let $lastPluginPage;
 
@@ -61,7 +62,7 @@ export default async function PluginInclude(
 	});
 
 	$page.onhide = function () {
-		helpers.hideAd();
+		hideAd();
 		actionStack.remove("plugin");
 		loader.removeTitleLoader();
 		cancelled = true;

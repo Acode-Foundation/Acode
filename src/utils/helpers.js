@@ -312,22 +312,6 @@ export default {
 			}
 		}
 	},
-	/**
-	 * Hides the ad
-	 * @param {Boolean} [force=false]
-	 */
-	hideAd(force = false) {
-		const { ad } = window;
-		if (ad?.active) {
-			const $pages = tag.getAll(".page-replacement");
-			const hide = $pages.length === 1;
-
-			if (force || hide) {
-				ad.active = false;
-				ad.hide();
-			}
-		}
-	},
 	async toInternalUri(uri) {
 		return new Promise((resolve, reject) => {
 			window.resolveLocalFileSystemURL(

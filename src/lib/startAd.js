@@ -57,3 +57,20 @@ export default async function startAd() {
 	window.iad = interstitial;
 	window.adRewardedUnitId = adUnitIdRewarded;
 }
+
+/**
+	 * Hides the ad
+	 * @param {Boolean} [force=false]
+	 */
+	export function hideAd(force = false) {
+		const { ad } = window;
+		if (ad?.active) {
+			const $pages = tag.getAll(".page-replacement");
+			const hide = $pages.length === 1;
+
+			if (force || hide) {
+				ad.active = false;
+				ad.hide();
+			}
+		}
+	}

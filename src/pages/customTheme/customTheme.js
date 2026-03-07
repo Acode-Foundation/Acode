@@ -10,6 +10,7 @@ import ThemeBuilder from "theme/builder";
 import themes from "theme/list";
 import { isValidColor } from "utils/color/regex";
 import helpers from "utils/helpers";
+import { hideAd } from "./startAd.js";
 
 export default function CustomThemeInclude() {
 	const theme = themes.get("custom");
@@ -34,7 +35,7 @@ export default function CustomThemeInclude() {
 
 	$page.onhide = () => {
 		actionStack.remove("custom-theme");
-		helpers.hideAd();
+		hideAd();
 	};
 
 	$page.addEventListener("click", handleClick);

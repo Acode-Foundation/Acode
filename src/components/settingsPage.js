@@ -11,6 +11,7 @@ import helpers from "utils/helpers";
 import Checkbox from "./checkbox";
 import Page from "./page";
 import searchBar from "./searchbar";
+import { hideAd } from "./startAd.js";
 
 /**
  * @typedef {object} SettingsPage
@@ -99,7 +100,7 @@ export default function settingsPage(
 	/** DISCLAIMER: do not assign hideSearchBar directly because it can change  */
 	$page.ondisconnect = () => hideSearchBar();
 	$page.onhide = () => {
-		helpers.hideAd();
+		hideAd();
 		actionStack.remove(title);
 	};
 

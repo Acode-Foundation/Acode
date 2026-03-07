@@ -4,6 +4,7 @@ import items, { description } from "components/quickTools/items";
 import actionStack from "lib/actionStack";
 import settings from "lib/settings";
 import helpers from "utils/helpers";
+import { hideAd } from "./startAd.js";
 
 export default function QuickTools() {
 	const $page = Page(strings["shortcut buttons"]);
@@ -30,7 +31,7 @@ export default function QuickTools() {
 
 	$page.onhide = () => {
 		actionStack.remove("quicktools-settings");
-		helpers.hideAd();
+		hideAd();
 		// Cleanup manager
 		manager.destroy();
 	};

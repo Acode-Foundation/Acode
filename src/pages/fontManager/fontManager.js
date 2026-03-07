@@ -15,6 +15,7 @@ import appSettings from "lib/settings";
 import FileBrowser from "pages/fileBrowser";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
+import { hideAd } from "./startAd.js";
 
 export default function fontManager() {
 	const defaultFont = "Roboto Mono";
@@ -32,7 +33,7 @@ export default function fontManager() {
 	});
 
 	$page.onhide = () => {
-		helpers.hideAd();
+		hideAd();
 		actionStack.remove("fontManager");
 	};
 

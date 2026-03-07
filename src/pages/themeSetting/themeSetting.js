@@ -17,6 +17,7 @@ import CustomTheme from "pages/customTheme";
 import ThemeBuilder from "theme/builder";
 import themes from "theme/list";
 import helpers from "utils/helpers";
+import { hideAd } from "./startAd.js";
 
 export default function () {
 	const $page = Page(strings.theme.capitalize());
@@ -67,7 +68,7 @@ export default function () {
 	});
 
 	$page.onhide = () => {
-		helpers.hideAd();
+		hideAd();
 		actionStack.remove("appTheme");
 	};
 
