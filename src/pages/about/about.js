@@ -5,6 +5,7 @@ import Reactive from "html-tag-js/reactive";
 import actionStack from "lib/actionStack";
 import constants from "lib/constants";
 import helpers from "utils/helpers";
+import { hideAd } from "./startAd.js";
 
 export default function AboutInclude() {
 	const $page = Page(strings.about.capitalize());
@@ -115,7 +116,7 @@ export default function AboutInclude() {
 
 	$page.onhide = function () {
 		actionStack.remove("about");
-		helpers.hideAd();
+		hideAd();
 	};
 
 	app.append($page);

@@ -4,6 +4,7 @@ import Page from "components/page";
 import actionStack from "lib/actionStack";
 import EditorFile from "lib/editorFile";
 import helpers from "utils/helpers";
+import { hideAd } from "./startAd.js";
 
 export default function Problems() {
 	const $page = Page(strings["problems"]);
@@ -53,7 +54,7 @@ export default function Problems() {
 	helpers.showAd();
 
 	$page.onhide = function () {
-		helpers.hideAd();
+		hideAd();
 		actionStack.remove("problems");
 	};
 

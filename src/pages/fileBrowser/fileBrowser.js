@@ -31,6 +31,7 @@ import _addMenuHome from "./add-menu-home.hbs";
 import _template from "./fileBrowser.hbs";
 import _list from "./list.hbs";
 import util from "./util";
+import { hideAd } from "./startAd.js";
 
 /**
  * @typedef {{url: String, name: String}} Location
@@ -511,7 +512,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 		$page.onhide = function () {
 			hideSearchBar();
-			helpers.hideAd();
+			hideAd();
 			actionStack.clearFromMark();
 			actionStack.remove("filebrowser");
 			$content.removeEventListener("click", handleClick);
