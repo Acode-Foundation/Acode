@@ -25,8 +25,14 @@ export const DEFAULT_TERMINAL_SETTINGS = {
 
 export function getTerminalSettings() {
 	const settings = appSettings.value.terminalSettings || {};
-	return {
+	const merged = {
 		...DEFAULT_TERMINAL_SETTINGS,
 		...settings,
 	};
+
+	let spacing = Number.parseFloat(merged.letterSpacing);
+	if (!Number.isFinite(spacing)) spacing = DEFAULT_TERMINAL_SETTINGS.letterSpacing;
+	merged.letterSpacing = Math.max(0, Math.min(2, spacing));
+
+	return merged;
 }

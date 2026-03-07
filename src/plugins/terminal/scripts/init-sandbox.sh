@@ -6,6 +6,14 @@ mkdir -p "$PREFIX/public"
 
 export PROOT_TMP_DIR=$PREFIX/tmp
 
+# Disable seccomp filter in proot to avoid SIGSEGV/SIGBUS on kernels
+# with strict seccomp policies.
+# Impact: may slightly reduce syscall-level sandboxing on permissive kernels.
+# Rationale: proot's seccomp filter is a performance optimization, not a security
+# boundary; disabling it universally is the only way to prevent hard crashes on
+# affected devices, with negligible downside on unaffected ones.
+export PROOT_NO_SECCOMP=1
+
 if [ "$FDROID" = "true" ]; then
 
     if [ -f "$PREFIX/libproot.so" ]; then
@@ -86,8 +94,12 @@ fi
 ARGS="$ARGS -r $PREFIX/alpine"
 ARGS="$ARGS -0"
 ARGS="$ARGS --link2symlink"
-ARGS="$ARGS --sysvipc"
+# --sysvipc removed: SysV IPC emulation causes Bus Error on some Android kernels.
+# Impact: programs relying on SysV semaphores/shared-memory (e.g. PostgreSQL)
+# will fail; most CLI tools are unaffected.
+# Rationale: Bus Error is an unrecoverable crash that kills the entire proot
+# session; the few programs needing SysV IPC are niche in a mobile editor
+# context, whereas the crash affects all users on vulnerable kernels.
 ARGS="$ARGS -L"
-
 
 $PROOT $ARGS /bin/sh $PREFIX/init-alpine.sh "$@"
