@@ -34,7 +34,7 @@ export default class TerminalComponent {
 			port: options.port || 8767,
 			renderer: options.renderer || "auto", // 'auto' | 'canvas' | 'webgl'
 			fontSize: terminalSettings.fontSize,
-			fontFamily: terminalSettings.fontFamily,
+			fontFamily: `"${terminalSettings.fontFamily}", monospace`,
 			fontWeight: terminalSettings.fontWeight,
 			theme: TerminalThemeManager.getTheme(terminalSettings.theme),
 			cursorBlink: terminalSettings.cursorBlink,
@@ -181,17 +181,13 @@ export default class TerminalComponent {
 		let resizeTimeout = null;
 		let lastKnownScrollPosition = 0;
 		let isResizing = false;
-		let resizeCount = 0;
 		const RESIZE_DEBOUNCE = 100;
-		const MAX_RAPID_RESIZES = 3;
 
 		// Store original dimensions for comparison
 		let originalRows = this.terminal.rows;
 		let originalCols = this.terminal.cols;
 
 		this.terminal.onResize((size) => {
-			// Track resize events
-			resizeCount++;
 			isResizing = true;
 
 			// Store current scroll position before resize
@@ -207,19 +203,22 @@ export default class TerminalComponent {
 			// Debounced resize handling
 			resizeTimeout = setTimeout(async () => {
 				try {
-					// Only proceed with server resize if dimensions actually changed significantly
-					const rowDiff = Math.abs(size.rows - originalRows);
-					const colDiff = Math.abs(size.cols - originalCols);
-
-					// If this is a minor resize (likely intermediate state), skip server update
-					if (rowDiff < 2 && colDiff < 2 && resizeCount > 1) {
-						console.log("Skipping minor resize to prevent instability");
-						isResizing = false;
-						resizeCount = 0;
-						return;
-					}
-
-					// Handle server resize
+					// Always sync cols/rows to backend PTY on every client resize.
+					//
+					// The original code only synced when heightRatio < 0.75 (the "keyboard resize"
+					// heuristic below). That fails in several real scenarios on mobile:
+					//   1. Small keyboard height changes (e.g. switching input methods, suggestion
+					//      bar appearing/disappearing) shrink height by <25%, bypassing the threshold.
+					//   2. Width-only changes (screen rotation, split-screen toggle) leave height
+					//      unchanged so heightRatio ≈ 1.0, but cols change and PTY must know.
+					//   3. Animated keyboard open/close fires many incremental resize events; each
+					//      individual step is a tiny delta that never crosses 0.75, yet the
+					//      accumulated drift corrupts output.
+					//   4. Different ROMs / WebView versions report slightly different viewport sizes
+					//      for the same keyboard, making any fixed threshold unreliable.
+					//
+					// Unconditionally syncing is cheap (one small HTTP POST per debounced resize)
+					// and guarantees the PTY always matches the client grid.
 					if (this.serverMode) {
 						await this.resizeTerminal(size.cols, size.rows);
 					}
@@ -262,7 +261,6 @@ export default class TerminalComponent {
 
 					// Mark resize as complete
 					isResizing = false;
-					resizeCount = 0;
 
 					// Notify touch selection if it exists
 					if (this.touchSelection) {
@@ -271,7 +269,6 @@ export default class TerminalComponent {
 				} catch (error) {
 					console.error("Resize handling failed:", error);
 					isResizing = false;
-					resizeCount = 0;
 				}
 			}, RESIZE_DEBOUNCE);
 		});
@@ -581,31 +578,57 @@ export default class TerminalComponent {
 
 		try {
 			// Check if terminal is installed before starting AXS
-			if (!(await Terminal.isInstalled())) {
+			const installed = await Terminal.isInstalled();
+			if (!installed) {
 				throw new Error(
 					"Terminal not installed. Please install terminal first.",
 				);
 			}
 
 			// Start AXS if not running
-			if (!(await Terminal.isAxsRunning())) {
+			const axsRunning = await Terminal.isAxsRunning();
+
+			// Poll by hitting the actual HTTP endpoint, not just checking PID liveness.
+			// isAxsRunning() only does kill -0 on the PID file, which can return true
+			// while the HTTP server inside proot is still booting.
+			const pollAxs = async (maxRetries = 30, intervalMs = 1000) => {
+				for (let i = 0; i < maxRetries; i++) {
+					await new Promise((r) => setTimeout(r, intervalMs));
+					try {
+						const resp = await fetch(`http://localhost:${this.options.port}/`, { method: 'GET', signal: AbortSignal.timeout(2000) });
+						if (resp.ok || resp.status < 500) return true;
+					} catch (_) {
+						// HTTP not yet reachable
+					}
+				}
+				return false;
+			};
+
+			if (!axsRunning) {
+				// In debug builds, refresh axs binary from assets before starting
+				await Terminal.refreshAxsBinary();
 				await Terminal.startAxs(false, () => {}, console.error);
 
-				// Check if AXS started with interval polling
-				const maxRetries = 10;
-				let retries = 0;
-				while (retries < maxRetries) {
-					await new Promise((resolve) => setTimeout(resolve, 1000));
-					if (await Terminal.isAxsRunning()) {
-						break;
-					}
-					retries++;
-				}
+				// Wait for axs HTTP server to become reachable
+				const pollResult = await pollAxs(30);
+				if (!pollResult) {
+					// AXS failed to start — attempt auto-repair
+					toast("Repairing terminal environment...");
 
-				// If AXS still not running after retries, throw error
-				if (!(await Terminal.isAxsRunning())) {
-					toast("Failed to start AXS server after multiple attempts");
-					//throw new Error("Failed to start AXS server after multiple attempts");
+					try { await Terminal.stopAxs(); } catch (_) { /* ignore */ }
+
+					// Re-run installing flow to repair packages / config
+					const repairOk = await Terminal.startAxs(true, console.log, console.error);
+					if (repairOk) {
+						// Start AXS again after repair
+						await Terminal.startAxs(false, () => {}, console.error);
+					}
+
+					if (!(await pollAxs(30))) {
+						// Still broken — clear .configured so next open re-triggers install
+						try { await Terminal.resetConfigured(); } catch (_) { /* ignore */ }
+						throw new Error("Failed to start AXS server after repair attempt");
+					}
 				}
 			}
 
@@ -630,6 +653,32 @@ export default class TerminalComponent {
 			}
 
 			const data = await response.text();
+
+			// Detect PTY errors from axs server (e.g. incompatible binary)
+			if (data.includes('"error"') && data.includes('Failed to open PTY')) {
+				const refreshed = await Terminal.refreshAxsBinary();
+				if (refreshed) {
+					// Kill old axs, restart with fresh binary, and retry once
+					try { await Terminal.stopAxs(); } catch (_) {}
+					await Terminal.startAxs(false, () => {}, console.error);
+					const pollResult = await pollAxs(30);
+					if (pollResult) {
+						const retryResp = await fetch(
+							`http://localhost:${this.options.port}/terminals`,
+							{ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(requestBody) },
+						);
+						if (retryResp.ok) {
+							const retryData = await retryResp.text();
+							if (!retryData.includes('"error"')) {
+								this.pid = retryData.trim();
+								return this.pid;
+							}
+						}
+					}
+				}
+				throw new Error('Failed to open PTY even after refreshing AXS binary');
+			}
+
 			this.pid = data.trim();
 			return this.pid;
 		} catch (error) {
@@ -663,6 +712,14 @@ export default class TerminalComponent {
 			this.isConnected = true;
 			this.onConnect?.();
 
+			// Explicitly dispose old AttachAddon before replacing it.
+			// Reassigning this.attachAddon does NOT auto-clean listeners bound by the old instance,
+			// which can cause duplicate socket handlers and leaks after reconnects.
+			if (this.attachAddon) {
+				try { this.attachAddon.dispose(); } catch (_) {}
+				this.attachAddon = null;
+			}
+
 			// Load attach addon after connection
 			this.attachAddon = new AttachAddon(this.websocket);
 			this.terminal.loadAddon(this.attachAddon);
@@ -689,13 +746,31 @@ export default class TerminalComponent {
 			// For binary data or non-exit text messages, let attachAddon handle them
 		};
 
+		// Also sniff the data to detect critical Alpine container corruption (e.g. bash/readline broken)
+		this.websocket.addEventListener("message", async (event) => {
+			try {
+				let text = "";
+				if (typeof event.data === "string") {
+					text = event.data;
+				} else if (event.data instanceof ArrayBuffer || event.data instanceof Blob) {
+					text = await new Response(event.data).text();
+				}
+				
+				if (text.includes("Error relocating") && text.includes("symbol not found")) {
+					console.error("Detected critical Alpine libc corruption! Terminating and triggering reinstall.");
+					if (this.onCrashData) {
+						this.onCrashData("relocation_error");
+					}
+				}
+			} catch (err) {}
+		});
+
 		this.websocket.onclose = (event) => {
 			this.isConnected = false;
 			this.onDisconnect?.();
 		};
 
 		this.websocket.onerror = (error) => {
-			console.error("WebSocket error:", error);
 			this.onError?.(error);
 		};
 	}
@@ -922,10 +997,21 @@ export default class TerminalComponent {
 	 * Load terminal font if it's not already loaded
 	 */
 	async loadTerminalFont() {
-		const fontFamily = this.options.fontFamily;
+		// Use original name without quotes for Acode fonts.get
+		const fontFamily = this.options.fontFamily.replace(/^"|"$/g, '').replace(/",\s*monospace$/, '');
 		if (fontFamily && fonts.get(fontFamily)) {
 			try {
 				await fonts.loadFont(fontFamily);
+				// Make Xterm.js aware that the font is fully loaded
+				// Setting options.fontFamily triggers a re-eval of character dimensions
+				if (this.terminal) {
+					this.terminal.options.fontFamily = `"${fontFamily}", monospace`;
+					if (this.webglAddon) {
+						try { this.webglAddon.clearTextureAtlas(); } catch (e) {}
+					}
+					// Ensure terminal dimensions are updated after font load changes char size
+					setTimeout(() => this.fit(), 100);
+				}
 			} catch (error) {
 				console.warn(`Failed to load terminal font ${fontFamily}:`, error);
 			}
@@ -998,8 +1084,8 @@ export default class TerminalComponent {
 						method: "POST",
 					},
 				);
-			} catch (error) {
-				console.error("Failed to terminate terminal:", error);
+			} catch {
+				// Expected: terminal process may have already exited and acodex-server disconnected
 			}
 		}
 	}

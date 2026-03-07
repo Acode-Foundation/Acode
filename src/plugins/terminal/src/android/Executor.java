@@ -284,6 +284,11 @@ public class Executor extends CordovaPlugin {
                 callbackContextMap.put(pidCheck, callbackContext);
                 isProcessRunning(pidCheck);
                 return true;
+            case "download":
+                String downloadUrl = args.getString(0);
+                String downloadDest = args.getString(1);
+                cordova.getThreadPool().execute(() -> DownloadHelper.download(downloadUrl, downloadDest, callbackContext));
+                return true;
             default:
                 callbackContext.error("Unknown action: " + action);
                 return false;

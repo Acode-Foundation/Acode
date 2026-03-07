@@ -78,8 +78,7 @@ class AuthService {
 			await this._exec("isLoggedIn");
 			return true;
 		} catch (error) {
-			console.error(error);
-			// error is typically the status code (0 if no token, 401 if invalid)
+			// Not an error — native rejects when not logged in (0 = no token, 401 = expired)
 			return false;
 		}
 	}

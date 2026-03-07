@@ -384,6 +384,24 @@ public class System extends CordovaPlugin {
                 }
 
                 return true;
+            case "copyAsset": {
+                String assetName = args.getString(0);
+                String destPath = args.getString(1);
+                try {
+                    java.io.InputStream in = cordova.getActivity().getAssets().open(assetName);
+                    java.io.FileOutputStream out = new java.io.FileOutputStream(destPath);
+                    byte[] buf = new byte[65536];
+                    int len;
+                    while ((len = in.read(buf)) != -1) out.write(buf, 0, len);
+                    out.close();
+                    in.close();
+                    new File(destPath).setExecutable(true);
+                    callbackContext.success();
+                } catch (Exception e) {
+                    callbackContext.error(e.getMessage());
+                }
+                return true;
+            }
             default:
                 return false;
         }

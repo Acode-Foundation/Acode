@@ -2,6 +2,25 @@ const Executor = require("./Executor");
 
 const Terminal = {
     /**
+     * In debug builds, overwrite the axs binary from bundled assets to ensure
+     * the running version always matches the build. Returns true if replaced.
+     */
+    async refreshAxsBinary() {
+        if (typeof BuildInfo === 'undefined' || !BuildInfo.debug) return false;
+        const filesDir = await new Promise((resolve, reject) => {
+            system.getFilesDir(resolve, reject);
+        });
+        try {
+            await new Promise((resolve, reject) => {
+                system.copyAsset("axs", `${filesDir}/axs`, resolve, reject);
+            });
+            return true;
+        } catch (e) {
+            return false;
+        }
+    },
+
+    /**
      * Starts the AXS environment by writing init scripts and executing the sandbox.
      * @param {boolean} [installing=false] - Whether AXS is being started during installation.
      * @param {Function} [logger=console.log] - Function to log standard output.
@@ -9,6 +28,9 @@ const Terminal = {
      * @returns {Promise<boolean>} - Returns true if installation completes with exit code 0, void if not installing
      */
     async startAxs(installing = false, logger = console.log, err_logger = console.error) {
+        // Keep app alive in background
+        await Executor.moveToForeground().catch(() => {});
+
         const filesDir = await new Promise((resolve, reject) => {
             system.getFilesDir(resolve, reject);
         });
@@ -33,7 +55,22 @@ const Terminal = {
 
                         // Check for exit code during installation
                         if (type === "exit") {
-                            resolve(data === "0");
+                            const success = data === "0";
+                            if (success) {
+                                // Delete old .configured if it's a directory (from earlier proot mkdir -p).
+                                // Then create it as a file via writeText (idempotent).
+                                const writeMarker = () => {
+                                    system.writeText(`${filesDir}/.configured`, "1", () => {
+                                        resolve(true);
+                                    }, (err) => {
+                                        resolve(true); // still consider install OK
+                                    });
+                                };
+                                // Try to remove old directory first, ignore errors
+                                Executor.execute(`rm -rf "${filesDir}/.configured"`).then(writeMarker).catch(writeMarker);
+                            } else {
+                                resolve(false);
+                            }
                         }
                     }).then(async (uuid) => {
                         await Executor.write(uuid, `source ${filesDir}/init-sandbox.sh ${installing ? "--installing" : ""}; exit`);
@@ -60,7 +97,11 @@ const Terminal = {
                 Executor.start("sh", (type, data) => {
                     logger(`${type} ${data}`);
                 }).then(async (uuid) => {
-                    await Executor.write(uuid, `source ${filesDir}/init-sandbox.sh ${installing ? "--installing" : ""}; exit`);
+                    // Normal startup path: do not pass --installing.
+                    // This avoids entering install-time setup when just launching AXS.
+                    await Executor.write(uuid, `source ${filesDir}/init-sandbox.sh; exit`);
+                }).catch((error) => {
+                    err_logger("Failed to start AXS:", error);
                 });
             });
         }
@@ -71,7 +112,7 @@ const Terminal = {
      * @returns {Promise<void>}
      */
     async stopAxs() {
-        await Executor.execute(`kill -KILL $(cat $PREFIX/pid)`);
+        await Executor.execute(`kill -KILL $(cat $PREFIX/pid) 2>/dev/null`);
     },
 
     /**
@@ -98,19 +139,18 @@ const Terminal = {
     /**
      * Installs Alpine by downloading binaries and extracting the root filesystem.
      * Also sets up additional dependencies for F-Droid variant.
+     * Supports incremental install: skips already-completed steps based on
+     * marker files (.downloaded, .extracted, .configured) and existing binaries.
      * @param {Function} [logger=console.log] - Function to log standard output.
      * @param {Function} [err_logger=console.error] - Function to log errors.
      * @returns {Promise<boolean>} - Returns true if installation completes with exit code 0
      */
-    async install(logger = console.log, err_logger = console.error) {
+    async install(logger = console.log, err_logger = console.error, _retried = false) {
         if (!(await this.isSupported())) return false;
 
-        try {
-            //cleanup before insatll
-            await this.uninstall();
-        } catch (e) {
-            //supress error
-        }
+        // Start foreground service to prevent Android from killing the app
+        // during lengthy downloads/extraction when user switches away
+        await Executor.moveToForeground().catch(() => {});
 
         const filesDir = await new Promise((resolve, reject) => {
             system.getFilesDir(resolve, reject);
@@ -119,6 +159,27 @@ const Terminal = {
         const arch = await new Promise((resolve, reject) => {
             system.getArch(resolve, reject);
         });
+
+        // Helper: check if a file exists
+        const fileExists = (path) => new Promise((resolve) => {
+            system.fileExists(path, false, (result) => resolve(result == 1), () => resolve(false));
+        });
+
+        const formatBytes = (bytes) => {
+            if (bytes < 1024) return bytes + " B";
+            if (bytes < 1048576) return (bytes / 1024).toFixed(1) + " KB";
+            return (bytes / 1048576).toFixed(1) + " MB";
+        };
+        const formatEta = (seconds) => {
+            if (seconds < 60) return seconds + "s";
+            const m = Math.floor(seconds / 60);
+            const s = seconds % 60;
+            return m + "m" + (s > 0 ? s + "s" : "");
+        };
+
+        // Check which stages are already done
+        let alreadyDownloaded = await fileExists(`${filesDir}/.downloaded`);
+        const alreadyExtracted = await fileExists(`${filesDir}/.extracted`);
 
         try {
             let alpineUrl;
@@ -152,106 +213,149 @@ const Terminal = {
                 throw new Error(`Unsupported architecture: ${arch}`);
             }
 
-
-            logger("⬇️  Downloading sandbox filesystem...");
-            await new Promise((resolve, reject) => {
-                cordova.plugin.http.downloadFile(
-                    alpineUrl, {}, {},
-                    cordova.file.dataDirectory + "alpine.tar.gz",
-                    resolve, reject
-                );
-            });
-
-            logger("⬇️  Downloading axs...");
-            await new Promise((resolve, reject) => {
-                cordova.plugin.http.downloadFile(
-                    axsUrl, {}, {},
-                    cordova.file.dataDirectory + "axs",
-                    resolve, reject
-                );
-            });
-
-            const isFdroid = await Executor.execute("echo $FDROID");
-            if (isFdroid === "true") {
-                logger("🐧  F-Droid flavor detected, downloading additional files...");
-                logger("⬇️  Downloading compatibility layer...");
-                await new Promise((resolve, reject) => {
-                    cordova.plugin.http.downloadFile(
-                        prootUrl, {}, {},
-                        cordova.file.dataDirectory + "libproot-xed.so",
-                        resolve, reject
-                    );
-                });
-
-                logger("⬇️  Downloading supporting library...");
-                await new Promise((resolve, reject) => {
-                    cordova.plugin.http.downloadFile(
-                        libTalloc, {}, {},
-                        cordova.file.dataDirectory + "libtalloc.so.2",
-                        resolve, reject
-                    );
-                });
-
-                if (libproot != null) {
-                    await new Promise((resolve, reject) => {
-                        cordova.plugin.http.downloadFile(
-                            libproot, {}, {},
-                            cordova.file.dataDirectory + "libproot.so",
-                            resolve, reject
-                        );
-                    });
+            // Invalidate download cache if URLs changed (e.g. version bump)
+            if (alreadyDownloaded) {
+                const currentManifest = [alpineUrl, axsUrl].join("\n");
+                const savedManifest = await Executor.execute(`cat "${filesDir}/.download-manifest" 2>/dev/null || echo ""`);
+                if (savedManifest !== currentManifest) {
+                    logger("🔄  Update detected, clearing download cache...");
+                    await Executor.execute(`rm -rf "${filesDir}/.downloaded" "${filesDir}/.extracted" "${filesDir}/alpine" "${filesDir}/alpine.tar.gz" "${filesDir}/axs" "${filesDir}/.download-manifest"`).catch(() => {});
+                    alreadyDownloaded = false;
                 }
-
-                if (libproot32 != null) {
-                    await new Promise((resolve, reject) => {
-                        cordova.plugin.http.downloadFile(
-                            libproot32, {}, {},
-                            cordova.file.dataDirectory + "libproot32.so",
-                            resolve, reject
-                        );
-                    });
-                }
-
             }
 
-            logger("✅  All downloads completed");
+            // ── Phase 1: Download (skip if .downloaded marker exists) ──
+            if (!alreadyDownloaded) {
+                // Check individual files and only download what's missing
+                const hasAlpineTar = await fileExists(`${filesDir}/alpine.tar.gz`);
+                const hasAxs = await fileExists(`${filesDir}/axs`);
 
-            logger("📁  Setting up directories...");
+                if (!hasAlpineTar) {
+                    logger("⬇️  Downloading sandbox filesystem...");
+                    await Executor.download(alpineUrl, `${filesDir}/alpine.tar.gz`, (p) => {
+                        const dl = formatBytes(p.downloaded);
+                        const total = p.total > 0 ? formatBytes(p.total) : "?";
+                        const speed = formatBytes(p.speed) + "/s";
+                        const eta = p.eta > 0 ? formatEta(p.eta) : "--";
+                        logger(`⬇️  ${dl} / ${total}  ${speed}  ETA ${eta}`);
+                    });
+                } else {
+                    logger("✅  Sandbox filesystem already downloaded");
+                }
 
-            await new Promise((resolve, reject) => {
-                system.mkdirs(`${filesDir}/.downloaded`, resolve, reject);
-            });
+                if (!hasAxs) {
+                    let copiedFromAsset = false;
+                    // Only use bundled axs in debug builds; release builds always download latest
+                    if (typeof BuildInfo !== 'undefined' && BuildInfo.debug) {
+                        try {
+                            logger("📦  Copying bundled axs from assets...");
+                            await new Promise((resolve, reject) => {
+                                system.copyAsset("axs", `${filesDir}/axs`, resolve, reject);
+                            });
+                            copiedFromAsset = true;
+                            logger("✅  Bundled AXS copied from assets");
+                        } catch (assetError) {
+                            logger("⚠️  Asset copy failed, will download instead");
+                        }
+                    }
 
-            const alpineDir = `${filesDir}/alpine`;
+                    if (!copiedFromAsset) {
+                        logger("⬇️  Downloading axs...");
+                        await Executor.download(axsUrl, `${filesDir}/axs`, (p) => {
+                            const dl = formatBytes(p.downloaded);
+                            const total = p.total > 0 ? formatBytes(p.total) : "?";
+                            const speed = formatBytes(p.speed) + "/s";
+                            const eta = p.eta > 0 ? formatEta(p.eta) : "--";
+                            logger(`⬇️  ${dl} / ${total}  ${speed}  ETA ${eta}`);
+                        });
+                    }
+                } else {
+                    logger("✅  AXS binary already downloaded");
+                }
 
-            await new Promise((resolve, reject) => {
-                system.mkdirs(alpineDir, resolve, reject);
-            });
+                const isFdroid = await Executor.execute("echo $FDROID");
+                if (isFdroid === "true") {
+                    logger("🐧  F-Droid flavor detected, checking additional files...");
 
-            logger("📦  Extracting sandbox filesystem...");
-            await Executor.execute(`tar --no-same-owner -xf ${filesDir}/alpine.tar.gz -C ${alpineDir}`);
+                    const hasProot = await fileExists(`${filesDir}/libproot-xed.so`);
+                    if (!hasProot) {
+                        logger("⬇️  Downloading compatibility layer...");
+                        await Executor.download(prootUrl, `${filesDir}/libproot-xed.so`);
+                    }
 
-            logger("⚙️  Applying basic configuration...");
-            system.writeText(`${alpineDir}/etc/resolv.conf`, `nameserver 8.8.4.4 \nnameserver 8.8.8.8`);
+                    const hasTalloc = await fileExists(`${filesDir}/libtalloc.so.2`);
+                    if (!hasTalloc) {
+                        logger("⬇️  Downloading supporting library...");
+                        await Executor.download(libTalloc, `${filesDir}/libtalloc.so.2`);
+                    }
 
-            readAsset("rm-wrapper.sh", async (content) => {
-                system.deleteFile(`${alpineDir}/bin/rm`, logger, err_logger);
-                system.writeText(`${alpineDir}/bin/rm`, content, logger, err_logger);
-                system.setExec(`${alpineDir}/bin/rm`, true, logger, err_logger);
-            });
+                    if (libproot != null && !(await fileExists(`${filesDir}/libproot.so`))) {
+                        await Executor.download(libproot, `${filesDir}/libproot.so`);
+                    }
 
-            logger("✅  Extraction complete");
-            await new Promise((resolve, reject) => {
-                system.mkdirs(`${filesDir}/.extracted`, resolve, reject);
-            });
+                    if (libproot32 != null && !(await fileExists(`${filesDir}/libproot32.so`))) {
+                        await Executor.download(libproot32, `${filesDir}/libproot32.so`);
+                    }
+                }
 
+                logger("✅  All downloads completed");
+
+                // Save URL manifest for cache invalidation on version change
+                system.writeText(`${filesDir}/.download-manifest`, [alpineUrl, axsUrl].join("\n"));
+
+                logger("📁  Setting up directories...");
+                await new Promise((resolve, reject) => {
+                    system.mkdirs(`${filesDir}/.downloaded`, resolve, reject);
+                });
+            } else {
+                logger("✅  Downloads cached, skipping download phase");
+            }
+
+            // ── Phase 2: Extract (skip if .extracted marker exists) ──
+            if (!alreadyExtracted) {
+                const alpineDir = `${filesDir}/alpine`;
+
+                // Clean up partial extraction from previous failed attempt
+                await Executor.execute(`rm -rf ${alpineDir}`).catch(() => {});
+                await new Promise((resolve, reject) => {
+                    system.mkdirs(alpineDir, resolve, reject);
+                });
+
+                logger("📦  Extracting sandbox filesystem...");
+                await Executor.execute(`tar --no-same-owner -xf ${filesDir}/alpine.tar.gz -C ${alpineDir}`);
+
+                logger("⚙️  Applying basic configuration...");
+                system.writeText(`${alpineDir}/etc/resolv.conf`, `nameserver 8.8.4.4\nnameserver 8.8.8.8`);
+
+                readAsset("rm-wrapper.sh", async (content) => {
+                    system.deleteFile(`${alpineDir}/bin/rm`, logger, err_logger);
+                    system.writeText(`${alpineDir}/bin/rm`, content, logger, err_logger);
+                    system.setExec(`${alpineDir}/bin/rm`, true, logger, err_logger);
+                });
+
+                logger("✅  Extraction complete");
+                await new Promise((resolve, reject) => {
+                    system.mkdirs(`${filesDir}/.extracted`, resolve, reject);
+                });
+            } else {
+                logger("✅  Extraction cached, skipping extraction phase");
+            }
+
+            // ── Phase 3: Configure (always run — installs packages, creates configs) ──
             logger("⚙️  Updating sandbox enviroment...");
             const installResult = await this.startAxs(true, logger, err_logger);
+            // .configured marker is now created inside startAxs(true) via system.writeText
             return installResult;
 
         } catch (e) {
             err_logger("Installation failed:", e);
             console.error("Installation failed:", e);
+            // Clean up everything so retry starts fresh (including potentially corrupted downloads)
+            await Executor.execute(`rm -rf ${filesDir}/.downloaded ${filesDir}/.extracted ${filesDir}/.configured ${filesDir}/alpine ${filesDir}/alpine.tar.gz ${filesDir}/alpine.tar ${filesDir}/.download-manifest`).catch(() => {});
+            if (!_retried) {
+                logger("🔄  Retrying installation from scratch...");
+                return this.install(logger, err_logger, true);
+            }
             return false;
         }
     },
@@ -400,21 +504,38 @@ const Terminal = {
         });
     },
     /**
+     * Removes the .configured marker so the next terminal open triggers re-install.
+     * Does NOT delete the rootfs or downloaded files — only the config flag.
+     * @returns {Promise<boolean>} - `true` if marker is removed, `false` otherwise.
+     */
+    async resetConfigured() {
+        const filesDir = await new Promise((resolve, reject) => {
+            system.getFilesDir(resolve, reject);
+        });
+
+        try {
+            await Executor.execute(`rm -rf "$PREFIX/.configured" "${filesDir}/.configured"`);
+        } catch (error) {
+            // continue to existence check below
+        }
+
+        const stillExists = await new Promise((resolve, reject) => {
+            system.fileExists(`${filesDir}/.configured`, false, (result) => {
+                resolve(result == 1);
+            }, reject);
+        });
+
+        return !stillExists;
+    },
+
+    /**
      * Uninstalls the Alpine Linux installation
      * @async
      * @function uninstall
-     * @description Completely removes the Alpine Linux installation from the device by deleting all
-     * Alpine-related files and directories. This function stops any running Alpine processes before
-     * removal. NOTE: This does not perform cleanup of $PREFIX
+     * @description Removes the Alpine Linux rootfs and config markers, but preserves
+     * downloaded binaries (alpine.tar.gz, axs) as cache for faster re-install.
      * @returns {Promise<string>} Promise that resolves to "ok" when uninstallation completes successfully
      * @throws {string} Rejects with command output if uninstallation fails
-     * @example
-     * try {
-     *   await uninstall();
-     *   console.log("Alpine installation removed successfully");
-     * } catch (error) {
-     *   console.error(`Uninstall failed: ${error}`);
-     * }
      */
     uninstall() {
         return new Promise(async (resolve, reject) => {
@@ -422,19 +543,45 @@ const Terminal = {
                 await this.stopAxs();
             }
 
+            // Remove rootfs and markers, but keep downloaded files as cache
+            // (alpine.tar.gz, axs binary, libproot*.so, libtalloc.so.2)
             const cmd = `
             set -e
 
-            INCLUDE_FILES="$PREFIX/alpine $PREFIX/.downloaded $PREFIX/.extracted $PREFIX/axs"
-
-            if [ "$FDROID" = "true" ]; then
-                INCLUDE_FILES="$INCLUDE_FILES $PREFIX/libtalloc.so.2 $PREFIX/libproot-xed.so"
-            fi
+            INCLUDE_FILES="$PREFIX/alpine $PREFIX/.downloaded $PREFIX/.extracted $PREFIX/.configured"
 
             for item in $INCLUDE_FILES; do
                 rm -rf -- "$item"
             done
 
+            echo "ok"
+            `;
+            const result = await Executor.execute(cmd);
+            if (result === "ok") {
+                resolve(result);
+            } else {
+                reject(result);
+            }
+        });
+    },
+
+    /**
+     * Fully uninstalls Alpine including download cache.
+     * @returns {Promise<string>} Resolves to "ok" when complete.
+     */
+    uninstallFull() {
+        return new Promise(async (resolve, reject) => {
+            if (await this.isAxsRunning()) {
+                await this.stopAxs();
+            }
+
+            const filesDir = await new Promise((resolve, reject) => {
+                system.getFilesDir(resolve, reject);
+            });
+
+            const cmd = `
+            set -e
+            rm -rf "${filesDir}/alpine" "${filesDir}/.downloaded" "${filesDir}/.extracted" "${filesDir}/.configured" "${filesDir}/alpine.tar.gz" "${filesDir}/alpine.tar" "${filesDir}/axs" "${filesDir}/libproot-xed.so" "${filesDir}/libtalloc.so.2" "${filesDir}/libproot.so" "${filesDir}/libproot32.so" "${filesDir}/.download-manifest"
             echo "ok"
             `;
             const result = await Executor.execute(cmd);

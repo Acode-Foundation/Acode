@@ -1,26 +1,51 @@
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/share/bin:/usr/share/sbin:/usr/local/bin:/usr/local/sbin:/system/bin:/system/xbin:$PREFIX/local/bin
-export PS1="\[\e[38;5;46m\]\u\[\033[39m\]@localhost \[\033[39m\]\w \[\033[0m\]\\$ "
 export HOME=/home
 export TERM=xterm-256color
 
 
-required_packages="bash command-not-found tzdata wget"
-missing_packages=""
+# ── Package check (runs every startup, file-stat only — negligible cost) ──
+# Check by file existence rather than apk info (which is unreliable in proot)
+is_apk_installed() {
+    local package_name="$1"
+    [ -f /lib/apk/db/installed ] && grep -q "^P:${package_name}$" /lib/apk/db/installed
+}
 
-for pkg in $required_packages; do
-    if ! apk info -e "$pkg" >/dev/null 2>&1; then
-        missing_packages="$missing_packages $pkg"
-    fi
-done
+missing_packages=""
+[ ! -f /usr/bin/bash ] && [ ! -f /bin/bash ] && missing_packages="$missing_packages bash"
+[ ! -f /usr/share/zoneinfo/UTC ] && missing_packages="$missing_packages tzdata"
+[ ! -f /usr/bin/wget ] && missing_packages="$missing_packages wget"
+! is_apk_installed command-not-found && missing_packages="$missing_packages command-not-found"
 
 if [ -n "$missing_packages" ]; then
-    echo -e "\e[34;1m[*] \e[0mInstalling important packages\e[0m"
-    apk update && apk upgrade
-    apk add $missing_packages
-    if [ $? -eq 0 ]; then
-        echo -e "\e[32;1m[+] \e[0mSuccessfully installed\e[0m"
+    echo -e "\e[34;1m[*] \e[0mInstalling packages:$missing_packages\e[0m"
+
+    # In proot, post-install scripts may fail with error 127;
+    # manual fixup below compensates if needed.
+    apk update 2>/dev/null
+
+    apk add $missing_packages 2>/dev/null
+    if [ $? -ne 0 ]; then
+        echo -e "\e[33;1m[!] \e[0mRetrying with mirror...\e[0m"
+        cp /etc/apk/repositories /etc/apk/repositories.bak
+        echo "https://mirrors.tuna.tsinghua.edu.cn/alpine/v3.21/main" > /etc/apk/repositories
+        echo "https://mirrors.tuna.tsinghua.edu.cn/alpine/v3.21/community" >> /etc/apk/repositories
+        apk update 2>/dev/null
+        apk add $missing_packages 2>/dev/null
+        mv /etc/apk/repositories.bak /etc/apk/repositories 2>/dev/null
     fi
-    echo -e "\e[34m[*] \e[0mUse \e[32mapk\e[0m to install new packages\e[0m"
+
+    # Post-install fixup: ensure bash is usable even if scripts failed
+    if [ -f /usr/bin/bash ] && [ ! -e /bin/bash ]; then
+        ln -sf /usr/bin/bash /bin/bash 2>/dev/null
+    fi
+    # Ensure /etc/shells has bash
+    if [ -f /usr/bin/bash ] && ! grep -q "/bin/bash" /etc/shells 2>/dev/null; then
+        echo "/bin/bash" >> /etc/shells 2>/dev/null
+    fi
+
+    # Verify
+    [ ! -f /usr/bin/bash ] && [ ! -f /bin/bash ] && echo -e "\e[31;1m[!] \e[0mbash still missing\e[0m"
+    [ ! -f /usr/bin/wget ] && echo -e "\e[31;1m[!] \e[0mwget still missing\e[0m"
 fi
 
 
@@ -41,7 +66,9 @@ if [ "$1" = "--installing" ]; then
         echo "Failed to detect timezone"
     fi
 
-    mkdir -p "$PREFIX/.configured"
+    # .configured marker is created by JS layer (system.writeText) after proot exits.
+    # Do NOT create it here — proot bind-mount mkdir causes Java mkdirs() to fail
+    # because it sees the directory already exists.
     echo "Installation completed."
     exit 0
 fi
@@ -65,90 +92,9 @@ Working with packages:
 EOF
     fi
 
-    # Create acode CLI tool
-    if [ ! -e "$PREFIX/alpine/usr/local/bin/acode" ]; then
-        mkdir -p "$PREFIX/alpine/usr/local/bin"
-        cat <<'ACODE_CLI' > "$PREFIX/alpine/usr/local/bin/acode"
-#!/bin/bash
-# acode - Open files/folders in Acode editor
-# Uses OSC escape sequences to communicate with the Acode terminal
-
-usage() {
-    echo "Usage: acode [file/folder...]"
-    echo ""
-    echo "Open files or folders in Acode editor."
-    echo ""
-    echo "Examples:"
-    echo "  acode file.txt      # Open a file"
-    echo "  acode .             # Open current folder"
-    echo "  acode ~/project     # Open a folder"
-    echo "  acode -h, --help    # Show this help"
-}
-
-get_abs_path() {
-    local path="$1"
-    local abs_path=""
-
-    if command -v realpath >/dev/null 2>&1; then
-        abs_path=$(realpath -- "$path" 2>/dev/null)
-    fi
-
-    if [[ -z "$abs_path" ]]; then
-        if [[ -d "$path" ]]; then
-            abs_path=$(cd -- "$path" 2>/dev/null && pwd -P)
-        elif [[ -e "$path" ]]; then
-            local dir_name file_name
-            dir_name=$(dirname -- "$path")
-            file_name=$(basename -- "$path")
-            abs_path="$(cd -- "$dir_name" 2>/dev/null && pwd -P)/$file_name"
-        elif [[ "$path" == /* ]]; then
-            abs_path="$path"
-        else
-            abs_path="$PWD/$path"
-        fi
-    fi
-
-    echo "$abs_path"
-}
-
-open_in_acode() {
-    local path=$(get_abs_path "$1")
-    local type="file"
-    [[ -d "$path" ]] && type="folder"
-    
-    # Send OSC 7777 escape sequence: \e]7777;cmd;type;path\a
-    # The terminal component will intercept and handle this
-    printf '\e]7777;open;%s;%s\a' "$type" "$path"
-}
-
-if [[ $# -eq 0 ]]; then
-    open_in_acode "."
-    exit 0
-fi
-
-for arg in "$@"; do
-    case "$arg" in
-        -h|--help)
-            usage
-            exit 0
-            ;;
-        *)
-            if [[ -e "$arg" ]]; then
-                open_in_acode "$arg"
-            else
-                echo "Error: '$arg' does not exist" >&2
-                exit 1
-            fi
-            ;;
-    esac
-done
-ACODE_CLI
-        chmod +x "$PREFIX/alpine/usr/local/bin/acode"
-    fi
-
-    # Create initrc if it doesn't exist
+    # Create/update initrc (always overwrite to keep in sync with app updates)
+    # Cost: ~3KB heredoc write per startup, sub-millisecond — negligible.
     #initrc runs in bash so we can use bash features 
-if [ ! -e "$PREFIX/alpine/initrc" ]; then
     cat <<'EOF' > "$PREFIX/alpine/initrc"
 # Source rc files if they exist
 
@@ -195,7 +141,16 @@ _shorten_path() {
     [[ "$path" == /* ]] && echo "/$result" || echo "$result"
 }
 
-PROMPT_COMMAND='_PS1_PATH=$(_shorten_path); _PS1_EXIT=$?'
+_PS1_PATH="$(_shorten_path)"
+_PS1_EXIT=0
+
+_update_prompt_state() {
+    local last_exit=$?
+    _PS1_PATH="$(_shorten_path)"
+    _PS1_EXIT=$last_exit
+}
+
+PROMPT_COMMAND='_update_prompt_state'
 
 # Source user configs AFTER defaults (so user can override PROMPT_COMMAND)
 if [ -f "$HOME/.bashrc" ]; then
@@ -206,37 +161,95 @@ if [ -f /etc/bash/bashrc ]; then
     source /etc/bash/bashrc
 fi
 
-
-# Display MOTD if available
+# Display MOTD (only source that reliably runs in proot bash)
 if [ -s /etc/acode_motd ]; then
     cat /etc/acode_motd
 fi
 
-# Command-not-found handler
+# Work around proot shebang execution failures for Bash's missing-command hook.
+# Bash normally auto-executes /usr/libexec/command-not-found when a command is
+# missing, but direct shebang execution can fail in proot with
+# "bad interpreter: Bad address". Run the original script explicitly through
+# /bin/sh so the script keeps working without relying on the broken shebang path.
 command_not_found_handle() {
-    cmd="$1"
-    pkg=""
-    green="\e[1;32m"
-    reset="\e[0m"
-
-    pkg=$(apk search -x "cmd:$cmd" 2>/dev/null | awk -F'-[0-9]' '{print $1}' | head -n 1)
-
-    if [ -n "$pkg" ]; then
-        echo -e "The program '$cmd' is not installed.\nInstall it by executing:\n ${green}apk add $pkg${reset}" >&2
-    else
-        echo "The program '$cmd' is not installed and no package provides it." >&2
+    if [ -x /usr/libexec/command-not-found ]; then
+        /bin/sh /usr/libexec/command-not-found "$@"
+        return $?
     fi
 
+    printf '%s: command not found\n' "$1" >&2
     return 127
 }
 
+# acode CLI: defined as a bash function instead of a standalone script.
+# In proot, a script with #!/bin/bash triggers execve("/bin/bash"), which the
+# kernel handles in kernel-space. proot relies on ptrace to intercept execve and
+# translate paths, but the kernel's shebang-triggered second execve can bypass
+# proot's path translation (especially with --link2symlink or Android's ptrace
+# restrictions), causing "bad interpreter: No such file or directory".
+# A bash function runs in the current process — no execve, no shebang, no issue.
+_acode_get_abs_path() {
+    local path="$1" abs_path=""
+    if command -v realpath >/dev/null 2>&1; then
+        abs_path=$(realpath -- "$path" 2>/dev/null)
+    fi
+    if [[ -z "$abs_path" ]]; then
+        if [[ -d "$path" ]]; then
+            abs_path=$(cd -- "$path" 2>/dev/null && pwd -P)
+        elif [[ -e "$path" ]]; then
+            abs_path="$(cd -- "$(dirname -- "$path")" 2>/dev/null && pwd -P)/$(basename -- "$path")"
+        elif [[ "$path" == /* ]]; then
+            abs_path="$path"
+        else
+            abs_path="$PWD/$path"
+        fi
+    fi
+    echo "$abs_path"
+}
+_acode_open() {
+    local path=$(_acode_get_abs_path "$1")
+    local type="file"
+    [[ -d "$path" ]] && type="folder"
+    printf '\e]7777;open;%s;%s\a' "$type" "$path"
+}
+acode() {
+    if [[ $# -eq 0 ]]; then
+        _acode_open "."
+        return 0
+    fi
+    local arg
+    for arg in "$@"; do
+        case "$arg" in
+            -h|--help)
+                echo "Usage: acode [file/folder...]"
+                echo ""
+                echo "Open files or folders in Acode editor."
+                echo ""
+                echo "Examples:"
+                echo "  acode file.txt      # Open a file"
+                echo "  acode .             # Open current folder"
+                echo "  acode ~/project     # Open a folder"
+                echo "  acode -h, --help    # Show this help"
+                return 0
+                ;;
+            *)
+                if [[ -e "$arg" ]]; then
+                    _acode_open "$arg"
+                else
+                    echo "Error: '$arg' does not exist" >&2
+                    return 1
+                fi
+                ;;
+        esac
+    done
+}
+
 EOF
-fi
 
 # Add PS1 only if not already present
 if ! grep -q 'PS1=' "$PREFIX/alpine/initrc"; then
     # Smart path shortening (fish-style: ~/p/s/components)
-    echo 'PS1="\[\033[1;32m\]\u\[\033[0m\]@localhost \[\033[1;34m\]\$_PS1_PATH\[\033[0m\] \[\$([ \$_PS1_EXIT -ne 0 ] && echo \"\033[31m\")\]\$\[\033[0m\] "' >> "$PREFIX/alpine/initrc"
+    echo 'PS1="\[\033[1;32m\]\u\[\033[0m\]@localhost \[\033[1;34m\]\$_PS1_PATH\[\033[0m\] \[\$([ "${_PS1_EXIT:-0}" -ne 0 ] && echo \"\033[31m\")\]\$\[\033[0m\] "' >> "$PREFIX/alpine/initrc"
     # Simple prompt (uncomment below and comment above if you prefer full paths)
     # echo 'PS1="\[\033[1;32m\]\u\[\033[0m\]@localhost \[\033[1;34m\]\w\[\033[0m\] \$ "' >> "$PREFIX/alpine/initrc"
 fi
@@ -245,7 +258,10 @@ chmod +x "$PREFIX/alpine/initrc"
 
 #actual source
 #everytime a terminal is started initrc will run
-"$PREFIX/axs" -c "bash --rcfile /initrc -i"
+# Required for the WebView's HTTP probe and terminal requests to localhost:8767.
+# Without this CORS allowance, fetch() fails with "TypeError: Failed to fetch"
+# even though axs is already listening, which triggers false repair/reinstall loops.
+"$PREFIX/axs" --allow-any-origin -c "bash --rcfile /initrc -i"
 
 else
     exec "$@"
