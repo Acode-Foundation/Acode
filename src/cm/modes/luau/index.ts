@@ -169,15 +169,7 @@ const typeTerminators = new Set([
 	"while",
 ]);
 
-const indentTokens = new Set([
-	"do",
-	"for",
-	"function",
-	"if",
-	"repeat",
-	"(",
-	"{",
-]);
+const indentTokens = new Set(["do", "function", "if", "repeat", "(", "{"]);
 const dedentTokens = new Set(["end", "until", ")", "}"]);
 const dedentPartial = /^(?:end|until|\)|}|else|elseif)\b/;
 
@@ -698,6 +690,9 @@ const normal: Tokenizer = (stream, state) => {
 	if (char === "(" || char === "{" || char === "[") {
 		if (char === "(" && state.expectFunctionName) {
 			state.expectFunctionName = false;
+		}
+		if (char === "(") {
+			state.expectTypeName = false;
 		}
 		if (state.inType) state.typeDepth++;
 		state.lastIdentifierWasStandard = false;
