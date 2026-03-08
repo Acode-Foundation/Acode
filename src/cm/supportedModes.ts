@@ -56,3 +56,9 @@ for (const lang of languages as readonly LanguageDescription[]) {
 		// Ignore faulty entries to avoid breaking the whole registration
 	}
 }
+
+// Luau isn't bundled in @codemirror/language-data, so register it explicitly.
+addMode("Luau", "luau", "Luau", async () => {
+	const { luau } = await import("./modes/luau");
+	return luau();
+});

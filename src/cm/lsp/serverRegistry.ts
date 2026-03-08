@@ -610,6 +610,39 @@ function registerBuiltinServers(): void {
 			},
 			enabled: true,
 		},
+		// 		{
+		// 			id: "luau",
+		// 			label: "Luau",
+		// 			useWorkspaceFolders: true,
+		// 			languages: ["luau"],
+		// 			transport: {
+		// 				kind: "websocket",
+		// 			},
+		// 			launcher: {
+		// 				bridge: {
+		// 					kind: "axs",
+		// 					command: "luau-lsp",
+		// 					args: ["lsp"],
+		// 				},
+		// 				checkCommand: "which luau-lsp",
+		// 				install: {
+		// 					command: `apk add --no-cache curl unzip && \
+		// ARCH="$(uname -m)" && \
+		// case "$ARCH" in \
+		// 	aarch64|arm64) ASSET="luau-lsp-linux-arm64.zip" ;; \
+		// 	x86_64|amd64) ASSET="luau-lsp-linux-x86_64.zip" ;; \
+		// 	*) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;; \
+		// esac && \
+		// TMP_DIR="$(mktemp -d)" && \
+		// cleanup() { rm -rf "$TMP_DIR"; } && \
+		// trap cleanup EXIT && \
+		// curl -fsSL "https://github.com/JohnnyMorganz/luau-lsp/releases/latest/download/$ASSET" -o "$TMP_DIR/luau-lsp.zip" && \
+		// unzip -oq "$TMP_DIR/luau-lsp.zip" -d "$TMP_DIR" && \
+		// install -Dm755 "$TMP_DIR/luau-lsp" /usr/local/bin/luau-lsp`,
+		// 				},
+		// 			},
+		// 			enabled: true,
+		// 		},
 		{
 			id: "eslint",
 			label: "ESLint",

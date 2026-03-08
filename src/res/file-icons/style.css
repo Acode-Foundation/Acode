@@ -886,6 +886,11 @@
   color: #2c2d72;
 }
 
+.file_type_luau:before {
+  content: "\e949";
+  color: #2c2d72;
+}
+
 .file_type_lp:before {
   content: "\e949";
   color: #2c2d72;
