@@ -704,11 +704,14 @@ class TerminalManager {
 					// Uninstall corrupted rootfs
 					terminalComponent.write("Removing corrupted rootfs...\r\n");
 					if (
-						window.Terminal &&
-						typeof window.Terminal.uninstall === "function"
+						!window.Terminal ||
+						typeof window.Terminal.uninstall !== "function"
 					) {
-						await window.Terminal.uninstall();
+						throw new Error(
+							"Terminal uninstall API is unavailable; cannot repair corrupted rootfs.",
+						);
 					}
+					await window.Terminal.uninstall();
 					terminalComponent.write("Rootfs removed. Reinstalling...\r\n\r\n");
 
 					// Reinstall, routing all progress output to this terminal

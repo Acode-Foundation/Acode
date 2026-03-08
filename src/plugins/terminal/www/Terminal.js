@@ -164,6 +164,9 @@ const Terminal = {
         const fileExists = (path) => new Promise((resolve) => {
             system.fileExists(path, false, (result) => resolve(result == 1), () => resolve(false));
         });
+        const writeText = (path, content) => new Promise((resolve, reject) => {
+            system.writeText(path, content, resolve, reject);
+        });
 
         const formatBytes = (bytes) => {
             if (bytes < 1024) return bytes + " B";
@@ -301,7 +304,7 @@ const Terminal = {
                 logger("✅  All downloads completed");
 
                 // Save URL manifest for cache invalidation on version change
-                system.writeText(`${filesDir}/.download-manifest`, [alpineUrl, axsUrl].join("\n"));
+                await writeText(`${filesDir}/.download-manifest`, [alpineUrl, axsUrl].join("\n"));
 
                 logger("📁  Setting up directories...");
                 await new Promise((resolve, reject) => {
