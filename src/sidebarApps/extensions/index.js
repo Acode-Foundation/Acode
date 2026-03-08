@@ -145,12 +145,11 @@ async function loadMorePlugins() {
 		isLoading = true;
 		startLoading($explore);
 
-		const response = await fetch(
+		const newPlugins = await helpers.requestJson(
 			withSupportedEditor(
 				`${constants.API_BASE}/plugins?page=${currentPage}&limit=${LIMIT}`,
 			),
 		);
-		const newPlugins = await response.json();
 
 		if (newPlugins.length < LIMIT) {
 			hasMore = false;
@@ -218,7 +217,7 @@ async function searchPlugin() {
 		$searchResult.onscroll = null;
 
 		$searchResult.content = "";
-		const status = helpers.checkAPIStatus();
+		const status = await helpers.checkAPIStatus();
 		if (!status) {
 			$searchResult.content = (
 				<span className="error">{strings.api_error}</span>
@@ -228,14 +227,15 @@ async function searchPlugin() {
 
 		const query = this.value;
 		if (!query) return;
+		const encodedQuery = encodeURIComponent(query);
 
 		try {
 			$searchResult.classList.add("loading");
-			const plugins = await fsOperation(
+			const plugins = await helpers.requestJson(
 				withSupportedEditor(
-					Url.join(constants.API_BASE, `plugins?name=${query}`),
+					Url.join(constants.API_BASE, `plugins?name=${encodedQuery}`),
 				),
-			).readFile("json");
+			);
 
 			installedPlugins = await listInstalledPlugins();
 			$searchResult.content = plugins.map(ListItem);
@@ -409,7 +409,7 @@ async function loadInstalled() {
 async function loadExplore() {
 	if (this.collapsed) return;
 
-	const status = helpers.checkAPIStatus();
+	const status = await helpers.checkAPIStatus();
 	if (!status) {
 		$explore.$ul.content = <span className="error">{strings.api_error}</span>;
 		return;
@@ -420,12 +420,11 @@ async function loadExplore() {
 		currentPage = 1;
 		hasMore = true;
 
-		const response = await fetch(
+		const plugins = await helpers.requestJson(
 			withSupportedEditor(
 				`${constants.API_BASE}/plugins?page=${currentPage}&limit=${LIMIT}`,
 			),
 		);
-		const plugins = await response.json();
 
 		if (plugins.length < LIMIT) {
 			hasMore = false;
@@ -463,21 +462,20 @@ async function getFilteredPlugins(filterState) {
 	if (filterState.type === "orderBy") {
 		const page = filterState.nextPage || 1;
 		try {
-			let response;
+			let items;
 			if (filterState.value === "top_rated") {
-				response = await fetch(
+				items = await helpers.requestJson(
 					withSupportedEditor(
 						`${constants.API_BASE}/plugins?explore=random&page=${page}&limit=${LIMIT}`,
 					),
 				);
 			} else {
-				response = await fetch(
+				items = await helpers.requestJson(
 					withSupportedEditor(
 						`${constants.API_BASE}/plugin?orderBy=${filterState.value}&page=${page}&limit=${LIMIT}`,
 					),
 				);
 			}
-			const items = await response.json();
 			if (!Array.isArray(items)) {
 				return { items: [], hasMore: false };
 			}
@@ -512,12 +510,11 @@ async function getFilteredPlugins(filterState) {
 
 		try {
 			const page = filterState.nextPage;
-			const response = await fetch(
+			const data = await helpers.requestJson(
 				withSupportedEditor(
 					`${constants.API_BASE}/plugins?page=${page}&limit=${LIMIT}`,
 				),
 			);
-			const data = await response.json();
 			filterState.nextPage = page + 1;
 
 			if (!Array.isArray(data) || !data.length) {

@@ -341,16 +341,16 @@ export default function PluginsInclude(updates) {
 
   async function searchRemotely(query) {
     if (!query) return [];
+    const encodedQuery = encodeURIComponent(query);
+    const searchUrl = withSupportedEditor(
+      `${constants.API_BASE}/plugins?name=${encodedQuery}`,
+    );
     try {
-      const response = await fetch(
-        withSupportedEditor(`${constants.API_BASE}/plugins?name=${query}`),
-      );
-      const plugins = await response.json();
+      const plugins = await helpers.requestJson(searchUrl);
       // Map the plugins to Item elements and return
       return plugins.map((plugin) => <Item {...plugin} />);
     } catch (error) {
       $list.all.setAttribute("empty-msg", strings["error"]);
-      window.log("error", "Failed to search remotely:");
       window.log("error", error);
       return [];
     }
@@ -421,21 +421,20 @@ export default function PluginsInclude(updates) {
     if (filterState.type === "orderBy") {
       const page = filterState.nextPage || 1;
       try {
-        let response;
+        let items;
         if (filterState.value === "top_rated") {
-          response = await fetch(
+          items = await helpers.requestJson(
             withSupportedEditor(
               `${constants.API_BASE}/plugins?explore=random&page=${page}&limit=${LIMIT}`,
             ),
           );
         } else {
-          response = await fetch(
+          items = await helpers.requestJson(
             withSupportedEditor(
               `${constants.API_BASE}/plugin?orderBy=${filterState.value}&page=${page}&limit=${LIMIT}`,
             ),
           );
         }
-        const items = await response.json();
         if (!Array.isArray(items)) {
           return { items: [], hasMore: false };
         }
@@ -470,10 +469,9 @@ export default function PluginsInclude(updates) {
 
       try {
         const page = filterState.nextPage;
-        const response = await fetch(
+        const data = await helpers.requestJson(
           withSupportedEditor(`${constants.API_BASE}/plugins?page=${page}&limit=${LIMIT}`),
         );
-        const data = await response.json();
         filterState.nextPage = page + 1;
 
         if (!Array.isArray(data) || !data.length) {
@@ -567,10 +565,9 @@ export default function PluginsInclude(updates) {
 
       $list.all.setAttribute("empty-msg", strings["loading..."]);
 
-      const response = await fetch(
+      const newPlugins = await helpers.requestJson(
         withSupportedEditor(`${constants.API_BASE}/plugins?page=${currentPage}&limit=${LIMIT}`),
       );
-      const newPlugins = await response.json();
 
       if (newPlugins.length < LIMIT) {
         hasMore = false;
