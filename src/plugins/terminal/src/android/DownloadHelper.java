@@ -57,6 +57,9 @@ class DownloadHelper {
                         return;
                     }
 
+                    // GitHub release assets routinely redirect to signed CDN hosts, so
+                    // same-host enforcement would break valid downloads. We only allow
+                    // HTTP(S) targets and block HTTPS downgrade instead of pinning hosts.
                     currentUri = redirectUri;
                     redirectCount++;
                     continue;

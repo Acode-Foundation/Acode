@@ -187,6 +187,7 @@ class TerminalManager {
 			const { render, serverMode, ...terminalOptions } = options;
 			const shouldRender = render !== false;
 			const isServerMode = serverMode !== false;
+			const isReconnecting = terminalOptions.reconnecting === true;
 
 			const terminalId = `terminal_${++this.terminalCounter}`;
 			const providedName =
@@ -256,6 +257,11 @@ class TerminalManager {
 						// Connect to session if in server mode
 						if (terminalComponent.serverMode) {
 							await terminalComponent.connectToSession(terminalOptions.pid);
+							if (isReconnecting) {
+								terminalComponent.write(
+									"\x1b[36m[Restored existing terminal session. MOTD is only shown when a new shell starts.]\x1b[0m\r\n",
+								);
+							}
 						} else {
 							// For local mode, just write a welcome message
 							terminalComponent.write(
