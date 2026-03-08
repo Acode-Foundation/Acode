@@ -585,10 +585,10 @@ function buildInstallCommand(
 			const downloadUrl = `https://github.com/${spec.repo}/releases/latest/download/$ASSET`;
 
 			if (spec.archiveType === "binary") {
-				return `apk add --no-cache curl && ARCH="$(uname -m)" && case "$ARCH" in\n${caseLines}\n\t*) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;;\nesac && TMP_DIR="$(mktemp -d)" && cleanup() { rm -rf "$TMP_DIR"; } && trap cleanup EXIT && curl -fsSL ${quoteArg(downloadUrl)} -o ${archivePath} && install -Dm755 ${archivePath} ${installTarget}`;
+				return `apk add --no-cache curl && ARCH="$(uname -m)" && case "$ARCH" in\n${caseLines}\n\t*) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;;\nesac && TMP_DIR="$(mktemp -d)" && cleanup() { rm -rf "$TMP_DIR"; } && trap cleanup EXIT && curl -fsSL "${downloadUrl}" -o ${archivePath} && install -Dm755 ${archivePath} ${installTarget}`;
 			}
 
-			return `apk add --no-cache curl unzip && ARCH="$(uname -m)" && case "$ARCH" in\n${caseLines}\n\t*) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;;\nesac && TMP_DIR="$(mktemp -d)" && cleanup() { rm -rf "$TMP_DIR"; } && trap cleanup EXIT && curl -fsSL ${quoteArg(downloadUrl)} -o ${archivePath} && unzip -oq ${archivePath} -d "$TMP_DIR" && install -Dm755 "$TMP_DIR"/${extractedFile} ${installTarget}`;
+			return `apk add --no-cache curl unzip && ARCH="$(uname -m)" && case "$ARCH" in\n${caseLines}\n\t*) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;;\nesac && TMP_DIR="$(mktemp -d)" && cleanup() { rm -rf "$TMP_DIR"; } && trap cleanup EXIT && curl -fsSL "${downloadUrl}" -o ${archivePath} && unzip -oq ${archivePath} -d "$TMP_DIR" && install -Dm755 "$TMP_DIR"/${extractedFile} ${installTarget}`;
 		}
 		case "manual":
 			return null;
@@ -749,6 +749,9 @@ async function ensureInstalled(server: LspServerDefinition): Promise<boolean> {
 		if (status === STATUS_PRESENT) {
 			return true;
 		}
+		if (status === STATUS_DECLINED) {
+			return false;
+		}
 		checkedCommands.delete(cacheKey);
 	}
 
@@ -890,6 +893,10 @@ export async function uninstallServer(
 		resetInstallState(server.id);
 		stopManagedServer(server.id);
 		return true;
+	} catch (error) {
+		console.error(`Failed to uninstall ${server.id}`, error);
+		toast(strings?.error ?? "Error");
+		throw error;
 	} finally {
 		loadingDialog?.destroy();
 	}
