@@ -1,9 +1,14 @@
+import {
+	bindServerRegistry,
+	ensureBuiltinBundlesRegistered,
+} from "./serverCatalog";
 import type {
 	AcodeClientConfig,
 	BridgeConfig,
 	LanguageResolverContext,
 	LauncherConfig,
 	LspServerDefinition,
+	LspServerManifest,
 	RegistryEventListener,
 	RegistryEventType,
 	RootUriContext,
@@ -56,6 +61,31 @@ interface RawBridgeConfig {
 	session?: string;
 }
 
+function sanitizeInstallKind(
+	value: unknown,
+):
+	| "apk"
+	| "npm"
+	| "pip"
+	| "cargo"
+	| "github-release"
+	| "manual"
+	| "shell"
+	| undefined {
+	switch (value) {
+		case "apk":
+		case "npm":
+		case "pip":
+		case "cargo":
+		case "github-release":
+		case "manual":
+		case "shell":
+			return value;
+		default:
+			return undefined;
+	}
+}
+
 function sanitizeBridge(
 	serverId: string,
 	bridge: RawBridgeConfig | undefined | null,
@@ -98,30 +128,32 @@ interface RawLauncherConfig {
 	args?: unknown[];
 	startCommand?: string | string[];
 	checkCommand?: string;
-	install?: { command?: string };
+	versionCommand?: string;
+	updateCommand?: string;
+	install?: {
+		kind?: string;
+		command?: string;
+		updateCommand?: string;
+		uninstallCommand?: string;
+		label?: string;
+		source?: string;
+		executable?: string;
+		packages?: unknown[];
+		pipCommand?: string;
+		npmCommand?: string;
+		pythonCommand?: string;
+		global?: boolean;
+		breakSystemPackages?: boolean;
+		repo?: string;
+		assetNames?: Record<string, unknown>;
+		archiveType?: string;
+		extractFile?: string;
+		binaryPath?: string;
+	};
 	bridge?: RawBridgeConfig;
 }
 
-interface RawServerDefinition {
-	id?: string;
-	label?: string;
-	enabled?: boolean;
-	languages?: string[];
-	transport?: RawTransportDescriptor | TransportDescriptor;
-	initializationOptions?: Record<string, unknown>;
-	clientConfig?: Record<string, unknown> | AcodeClientConfig;
-	startupTimeout?: number;
-	capabilityOverrides?: Record<string, unknown>;
-	rootUri?:
-		| ((uri: string, context: unknown) => string | null)
-		| ((uri: string, context: RootUriContext) => string | null)
-		| null;
-	resolveLanguageId?:
-		| ((context: LanguageResolverContext) => string | null)
-		| null;
-	launcher?: RawLauncherConfig | LauncherConfig;
-	useWorkspaceFolders?: boolean;
-}
+export type RawServerDefinition = LspServerManifest;
 
 function sanitizeDefinition(
 	definition: RawServerDefinition,
@@ -181,6 +213,10 @@ function sanitizeDefinition(
 	let launcher: LauncherConfig | undefined;
 	if (definition.launcher && typeof definition.launcher === "object") {
 		const rawLauncher = definition.launcher;
+		const installExecutable =
+			typeof rawLauncher.install?.executable === "string"
+				? rawLauncher.install.executable.trim()
+				: "";
 		launcher = {
 			command: rawLauncher.command,
 			args: Array.isArray(rawLauncher.args)
@@ -190,14 +226,57 @@ function sanitizeDefinition(
 				? rawLauncher.startCommand.map((arg) => String(arg))
 				: rawLauncher.startCommand,
 			checkCommand: rawLauncher.checkCommand,
+			versionCommand: rawLauncher.versionCommand,
+			updateCommand: rawLauncher.updateCommand,
+			uninstallCommand: rawLauncher.uninstallCommand,
 			install:
 				rawLauncher.install && typeof rawLauncher.install === "object"
 					? {
+							kind: sanitizeInstallKind(rawLauncher.install.kind),
 							command: rawLauncher.install.command ?? "",
+							updateCommand: rawLauncher.install.updateCommand,
+							uninstallCommand: rawLauncher.install.uninstallCommand,
+							label: rawLauncher.install.label,
+							source: rawLauncher.install.source,
+							executable: installExecutable || undefined,
+							packages: Array.isArray(rawLauncher.install.packages)
+								? rawLauncher.install.packages.map((entry) => String(entry))
+								: undefined,
+							pipCommand: rawLauncher.install.pipCommand,
+							npmCommand: rawLauncher.install.npmCommand,
+							pythonCommand: rawLauncher.install.pythonCommand,
+							global: rawLauncher.install.global,
+							breakSystemPackages: rawLauncher.install.breakSystemPackages,
+							repo: rawLauncher.install.repo,
+							assetNames:
+								rawLauncher.install.assetNames &&
+								typeof rawLauncher.install.assetNames === "object"
+									? Object.fromEntries(
+											Object.entries(rawLauncher.install.assetNames).map(
+												([key, value]) => [String(key), String(value)],
+											),
+										)
+									: undefined,
+							archiveType:
+								rawLauncher.install.archiveType === "binary" ? "binary" : "zip",
+							extractFile: rawLauncher.install.extractFile,
+							binaryPath: rawLauncher.install.binaryPath,
 						}
 					: undefined,
 			bridge: sanitizeBridge(id, rawLauncher.bridge),
 		};
+
+		const installKind = launcher.install?.kind;
+		const isManagedInstall = installKind && installKind !== "shell";
+		if (isManagedInstall) {
+			const providedExecutable =
+				launcher.install?.binaryPath || launcher.install?.executable;
+			if (!providedExecutable) {
+				throw new Error(
+					`LSP server ${id} managed installers must declare install.binaryPath or install.executable`,
+				);
+			}
+		}
 	}
 
 	const sanitized: LspServerDefinition = {
@@ -228,27 +307,6 @@ function sanitizeDefinition(
 	}
 
 	return sanitized;
-}
-
-function resolveJsTsLanguageId(
-	languageId: string | undefined,
-	languageName: string | undefined,
-): string | null {
-	const lang = toKey(languageId ?? languageName);
-	switch (lang) {
-		case "tsx":
-		case "typescriptreact":
-			return "typescriptreact";
-		case "jsx":
-		case "javascriptreact":
-			return "javascriptreact";
-		case "ts":
-			return "typescript";
-		case "js":
-			return "javascript";
-		default:
-			return lang || null;
-	}
 }
 
 function notify(event: RegistryEventType, payload: LspServerDefinition): void {
@@ -349,721 +407,11 @@ export function onRegistryChange(listener: RegistryEventListener): () => void {
 	return () => listeners.delete(listener);
 }
 
-function registerBuiltinServers(): void {
-	const defaults: RawServerDefinition[] = [
-		{
-			id: "typescript",
-			label: "TypeScript / JavaScript",
-			useWorkspaceFolders: true,
-			languages: [
-				"javascript",
-				"javascriptreact",
-				"typescript",
-				"typescriptreact",
-				"tsx",
-				"jsx",
-			],
-			transport: {
-				kind: "websocket",
-			},
-			launcher: {
-				bridge: {
-					kind: "axs",
-					command: "typescript-language-server",
-					args: ["--stdio"],
-				},
-				checkCommand: "which typescript-language-server",
-				install: {
-					command:
-						"apk add --no-cache nodejs npm && npm install -g typescript-language-server typescript",
-				},
-			},
-			enabled: true,
-			initializationOptions: {
-				provideFormatter: true,
-				hostInfo: "acode",
-				tsserver: {
-					maxTsServerMemory: 4096,
-					useSeparateSyntaxServer: true,
-				},
-				preferences: {
-					includeInlayParameterNameHints: "all",
-					includeInlayParameterNameHintsWhenArgumentMatchesName: true,
-					includeInlayFunctionParameterTypeHints: true,
-					includeInlayVariableTypeHints: true,
-					includeInlayVariableTypeHintsWhenTypeMatchesName: false,
-					includeInlayPropertyDeclarationTypeHints: true,
-					includeInlayFunctionLikeReturnTypeHints: true,
-					includeInlayEnumMemberValueHints: true,
-					importModuleSpecifierPreference: "shortest",
-					importModuleSpecifierEnding: "auto",
-					includePackageJsonAutoImports: "auto",
-					provideRefactorNotApplicableReason: true,
-					allowIncompleteCompletions: true,
-					allowRenameOfImportPath: true,
-					generateReturnInDocTemplate: true,
-					organizeImportsIgnoreCase: "auto",
-					organizeImportsCollation: "ordinal",
-					organizeImportsCollationConfig: "default",
-					autoImportFileExcludePatterns: [],
-					preferTypeOnlyAutoImports: false,
-				},
-				completions: {
-					completeFunctionCalls: true,
-				},
-				diagnostics: {
-					reportStyleChecksAsWarnings: true,
-				},
-			},
-			resolveLanguageId: ({ languageId, languageName }) =>
-				resolveJsTsLanguageId(languageId, languageName),
-		},
-		{
-			id: "vtsls",
-			label: "TypeScript / JavaScript (vtsls)",
-			useWorkspaceFolders: true,
-			languages: [
-				"javascript",
-				"javascriptreact",
-				"typescript",
-				"typescriptreact",
-				"tsx",
-				"jsx",
-			],
-			transport: {
-				kind: "websocket",
-			},
-			launcher: {
-				bridge: {
-					kind: "axs",
-					command: "vtsls",
-					args: ["--stdio"],
-				},
-				checkCommand: "which vtsls",
-				install: {
-					command:
-						"apk add --no-cache nodejs npm && npm install -g @vtsls/language-server",
-				},
-			},
-			enabled: false,
-			initializationOptions: {
-				hostInfo: "acode",
-				typescript: {
-					enablePromptUseWorkspaceTsdk: true,
-					inlayHints: {
-						parameterNames: {
-							enabled: "all",
-							suppressWhenArgumentMatchesName: false,
-						},
-						parameterTypes: {
-							enabled: true,
-						},
-						variableTypes: {
-							enabled: true,
-							suppressWhenTypeMatchesName: false,
-						},
-						propertyDeclarationTypes: {
-							enabled: true,
-						},
-						functionLikeReturnTypes: {
-							enabled: true,
-						},
-						enumMemberValues: {
-							enabled: true,
-						},
-					},
-					suggest: {
-						completeFunctionCalls: true,
-						includeCompletionsForModuleExports: true,
-						includeCompletionsWithInsertText: true,
-						includeAutomaticOptionalChainCompletions: true,
-						includeCompletionsWithSnippetText: true,
-						includeCompletionsWithClassMemberSnippets: true,
-						includeCompletionsWithObjectLiteralMethodSnippets: true,
-						autoImports: true,
-						classMemberSnippets: {
-							enabled: true,
-						},
-						objectLiteralMethodSnippets: {
-							enabled: true,
-						},
-					},
-					preferences: {
-						importModuleSpecifier: "shortest",
-						importModuleSpecifierEnding: "auto",
-						includePackageJsonAutoImports: "auto",
-						preferTypeOnlyAutoImports: false,
-						quoteStyle: "auto",
-						jsxAttributeCompletionStyle: "auto",
-					},
-					format: {
-						enable: true,
-						insertSpaceAfterCommaDelimiter: true,
-						insertSpaceAfterSemicolonInForStatements: true,
-						insertSpaceBeforeAndAfterBinaryOperators: true,
-						insertSpaceAfterKeywordsInControlFlowStatements: true,
-						insertSpaceAfterFunctionKeywordForAnonymousFunctions: false,
-						insertSpaceAfterOpeningAndBeforeClosingNonemptyParenthesis: false,
-						insertSpaceAfterOpeningAndBeforeClosingNonemptyBrackets: false,
-						insertSpaceAfterOpeningAndBeforeClosingNonemptyBraces: true,
-						insertSpaceAfterOpeningAndBeforeClosingTemplateStringBraces: false,
-						insertSpaceAfterOpeningAndBeforeClosingJsxExpressionBraces: false,
-						placeOpenBraceOnNewLineForFunctions: false,
-						placeOpenBraceOnNewLineForControlBlocks: false,
-						semicolons: "ignore",
-					},
-					updateImportsOnFileMove: {
-						enabled: "always",
-					},
-					codeActionsOnSave: {
-						organizeImports: false,
-						addMissingImports: false,
-					},
-					workspaceSymbols: {
-						scope: "allOpenProjects",
-					},
-				},
-				javascript: {
-					inlayHints: {
-						parameterNames: {
-							enabled: "all",
-							suppressWhenArgumentMatchesName: false,
-						},
-						parameterTypes: {
-							enabled: true,
-						},
-						variableTypes: {
-							enabled: true,
-							suppressWhenTypeMatchesName: false,
-						},
-						propertyDeclarationTypes: {
-							enabled: true,
-						},
-						functionLikeReturnTypes: {
-							enabled: true,
-						},
-						enumMemberValues: {
-							enabled: true,
-						},
-					},
-					suggest: {
-						completeFunctionCalls: true,
-						includeCompletionsForModuleExports: true,
-						autoImports: true,
-						classMemberSnippets: {
-							enabled: true,
-						},
-					},
-					preferences: {
-						importModuleSpecifier: "shortest",
-						quoteStyle: "auto",
-					},
-					format: {
-						enable: true,
-					},
-					updateImportsOnFileMove: {
-						enabled: "always",
-					},
-				},
-				tsserver: {
-					maxTsServerMemory: 8092,
-				},
-				vtsls: {
-					experimental: {
-						completion: {
-							enableServerSideFuzzyMatch: true,
-							entriesLimit: 5000,
-						},
-					},
-					autoUseWorkspaceTsdk: true,
-				},
-			},
-			resolveLanguageId: ({ languageId, languageName }) =>
-				resolveJsTsLanguageId(languageId, languageName),
-		},
-		{
-			id: "python",
-			label: "Python (pylsp)",
-			languages: ["python"],
-			transport: {
-				kind: "websocket",
-			},
-			launcher: {
-				bridge: {
-					kind: "axs",
-					command: "pylsp",
-				},
-				checkCommand: "which pylsp",
-				install: {
-					command:
-						"apk update && apk upgrade && apk add python3 py3-pip && PIP_BREAK_SYSTEM_PACKAGES=1 pip install 'python-lsp-server[all]'",
-				},
-			},
-			initializationOptions: {
-				pylsp: {
-					plugins: {
-						pyflakes: { enabled: true },
-						pycodestyle: { enabled: true },
-						mccabe: { enabled: true },
-					},
-				},
-			},
-			enabled: true,
-		},
-		// 		{
-		// 			id: "luau",
-		// 			label: "Luau",
-		// 			useWorkspaceFolders: true,
-		// 			languages: ["luau"],
-		// 			transport: {
-		// 				kind: "websocket",
-		// 			},
-		// 			launcher: {
-		// 				bridge: {
-		// 					kind: "axs",
-		// 					command: "luau-lsp",
-		// 					args: ["lsp"],
-		// 				},
-		// 				checkCommand: "which luau-lsp",
-		// 				install: {
-		// 					command: `apk add --no-cache curl unzip && \
-		// ARCH="$(uname -m)" && \
-		// case "$ARCH" in \
-		// 	aarch64|arm64) ASSET="luau-lsp-linux-arm64.zip" ;; \
-		// 	x86_64|amd64) ASSET="luau-lsp-linux-x86_64.zip" ;; \
-		// 	*) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;; \
-		// esac && \
-		// TMP_DIR="$(mktemp -d)" && \
-		// cleanup() { rm -rf "$TMP_DIR"; } && \
-		// trap cleanup EXIT && \
-		// curl -fsSL "https://github.com/JohnnyMorganz/luau-lsp/releases/latest/download/$ASSET" -o "$TMP_DIR/luau-lsp.zip" && \
-		// unzip -oq "$TMP_DIR/luau-lsp.zip" -d "$TMP_DIR" && \
-		// install -Dm755 "$TMP_DIR/luau-lsp" /usr/local/bin/luau-lsp`,
-		// 				},
-		// 			},
-		// 			enabled: true,
-		// 		},
-		{
-			id: "eslint",
-			label: "ESLint",
-			languages: [
-				"javascript",
-				"javascriptreact",
-				"typescript",
-				"typescriptreact",
-				"tsx",
-				"jsx",
-				"vue",
-				"svelte",
-				"html",
-				"markdown",
-				"json",
-				"jsonc",
-			],
-			transport: {
-				kind: "websocket",
-			},
-			launcher: {
-				bridge: {
-					kind: "axs",
-					command: "vscode-eslint-language-server",
-					args: ["--stdio"],
-				},
-				checkCommand: "which vscode-eslint-language-server",
-				install: {
-					command:
-						"apk add --no-cache nodejs npm && npm install -g vscode-langservers-extracted",
-				},
-			},
-			enabled: false,
-			initializationOptions: {
-				validate: "on",
-				rulesCustomizations: [],
-				run: "onType",
-				nodePath: null,
-				workingDirectory: {
-					mode: "auto",
-				},
-				problems: {
-					shortenToSingleLine: false,
-				},
-				codeActionOnSave: {
-					enable: true,
-					rules: [],
-					mode: "all",
-				},
-				codeAction: {
-					disableRuleComment: {
-						enable: true,
-						location: "separateLine",
-						commentStyle: "line",
-					},
-					showDocumentation: {
-						enable: true,
-					},
-				},
-				experimental: {
-					useFlatConfig: false,
-				},
-				format: {
-					enable: true,
-				},
-				quiet: false,
-				onIgnoredFiles: "off",
-				useESLintClass: false,
-			},
-			clientConfig: {
-				builtinExtensions: {
-					hover: false,
-					completion: false,
-					signature: false,
-					keymaps: false,
-					diagnostics: true,
-				},
-			},
-			resolveLanguageId: ({ languageId, languageName }) =>
-				resolveJsTsLanguageId(languageId, languageName),
-		},
-		{
-			id: "clangd",
-			label: "C / C++ (clangd)",
-			languages: ["c", "cpp"],
-			transport: {
-				kind: "websocket",
-			},
-			launcher: {
-				bridge: {
-					kind: "axs",
-					command: "clangd",
-				},
-				checkCommand: "which clangd",
-				install: {
-					command: "apk add --no-cache clang-extra-tools",
-				},
-			},
-			enabled: false,
-		},
-		{
-			id: "html",
-			label: "HTML",
-			languages: ["html", "vue", "svelte"],
-			transport: {
-				kind: "websocket",
-			},
-			launcher: {
-				bridge: {
-					kind: "axs",
-					command: "vscode-html-language-server",
-					args: ["--stdio"],
-				},
-				checkCommand: "which vscode-html-language-server",
-				install: {
-					command:
-						"apk add --no-cache nodejs npm && npm install -g vscode-langservers-extracted",
-				},
-			},
-			enabled: true,
-		},
-		{
-			id: "css",
-			label: "CSS",
-			languages: ["css", "scss", "less"],
-			transport: {
-				kind: "websocket",
-			},
-			launcher: {
-				bridge: {
-					kind: "axs",
-					command: "vscode-css-language-server",
-					args: ["--stdio"],
-				},
-				checkCommand: "which vscode-css-language-server",
-				install: {
-					command:
-						"apk add --no-cache nodejs npm && npm install -g vscode-langservers-extracted",
-				},
-			},
-			enabled: true,
-		},
-		{
-			id: "json",
-			label: "JSON",
-			languages: ["json", "jsonc"],
-			transport: {
-				kind: "websocket",
-			},
-			launcher: {
-				bridge: {
-					kind: "axs",
-					command: "vscode-json-language-server",
-					args: ["--stdio"],
-				},
-				checkCommand: "which vscode-json-language-server",
-				install: {
-					command:
-						"apk add --no-cache nodejs npm && npm install -g vscode-langservers-extracted",
-				},
-			},
-			enabled: true,
-		},
-		{
-			id: "gopls",
-			label: "Go (gopls)",
-			languages: ["go", "go.mod", "go.sum", "gotmpl"],
-			transport: {
-				kind: "websocket",
-			},
-			launcher: {
-				bridge: {
-					kind: "axs",
-					command: "gopls",
-					args: ["serve"],
-				},
-				checkCommand: "which gopls",
-				install: {
-					command: "apk add --no-cache go gopls",
-				},
-			},
-			initializationOptions: {
-				usePlaceholders: false,
-				completeUnimported: true,
-				deepCompletion: true,
-				completionBudget: "100ms",
-				matcher: "Fuzzy",
-				staticcheck: true,
-				gofumpt: true,
-				hints: {
-					assignVariableTypes: true,
-					compositeLiteralFields: true,
-					compositeLiteralTypes: true,
-					constantValues: true,
-					functionTypeParameters: true,
-					parameterNames: true,
-					rangeVariableTypes: true,
-				},
-				diagnosticsDelay: "250ms",
-				diagnosticsTrigger: "Edit",
-				annotations: {
-					bounds: true,
-					escape: true,
-					inline: true,
-					nil: true,
-				},
-				semanticTokens: true,
-				analyses: {
-					nilness: true,
-					unusedparams: true,
-					unusedvariable: true,
-					unusedwrite: true,
-					shadow: true,
-					fieldalignment: false,
-					stringintconv: true,
-				},
-				importShortcut: "Both",
-				symbolMatcher: "FastFuzzy",
-				symbolStyle: "Dynamic",
-				symbolScope: "all",
-				local: "",
-				linksInHover: true,
-				hoverKind: "FullDocumentation",
-				verboseOutput: false,
-			},
-			enabled: true,
-		},
-		{
-			id: "rust-analyzer",
-			label: "Rust (rust-analyzer)",
-			useWorkspaceFolders: true,
-			languages: ["rust"],
-			transport: {
-				kind: "websocket",
-			},
-			launcher: {
-				bridge: {
-					kind: "axs",
-					command: "rust-analyzer",
-				},
-				checkCommand: "which rust-analyzer",
-				install: {
-					command: "apk add --no-cache rust cargo rust-analyzer",
-				},
-			},
-			initializationOptions: {
-				cargo: {
-					allFeatures: true,
-					buildScripts: {
-						enable: true,
-					},
-					loadOutDirsFromCheck: true,
-				},
-				procMacro: {
-					enable: true,
-					attributes: {
-						enable: true,
-					},
-				},
-				checkOnSave: {
-					enable: true,
-					command: "clippy",
-					extraArgs: ["--no-deps"],
-				},
-				diagnostics: {
-					enable: true,
-					experimental: {
-						enable: true,
-					},
-				},
-				inlayHints: {
-					bindingModeHints: {
-						enable: false,
-					},
-					chainingHints: {
-						enable: true,
-					},
-					closingBraceHints: {
-						enable: true,
-						minLines: 25,
-					},
-					closureReturnTypeHints: {
-						enable: "with_block",
-					},
-					lifetimeElisionHints: {
-						enable: "skip_trivial",
-						useParameterNames: true,
-					},
-					maxLength: 25,
-					parameterHints: {
-						enable: true,
-					},
-					reborrowHints: {
-						enable: "mutable",
-					},
-					typeHints: {
-						enable: true,
-						hideClosureInitialization: false,
-						hideNamedConstructor: false,
-					},
-				},
-				lens: {
-					enable: true,
-					debug: {
-						enable: true,
-					},
-					implementations: {
-						enable: true,
-					},
-					references: {
-						adt: { enable: false },
-						enumVariant: { enable: false },
-						method: { enable: false },
-						trait: { enable: false },
-					},
-					run: {
-						enable: true,
-					},
-				},
-				completion: {
-					autoimport: {
-						enable: true,
-					},
-					autoself: {
-						enable: true,
-					},
-					callable: {
-						snippets: "fill_arguments",
-					},
-					postfix: {
-						enable: true,
-					},
-					privateEditable: {
-						enable: false,
-					},
-				},
-				semanticHighlighting: {
-					doc: {
-						comment: {
-							inject: {
-								enable: true,
-							},
-						},
-					},
-					operator: {
-						enable: true,
-						specialization: {
-							enable: true,
-						},
-					},
-					punctuation: {
-						enable: false,
-						separate: {
-							macro: {
-								bang: true,
-							},
-						},
-						specialization: {
-							enable: true,
-						},
-					},
-					strings: {
-						enable: true,
-					},
-				},
-				hover: {
-					actions: {
-						debug: {
-							enable: true,
-						},
-						enable: true,
-						gotoTypeDef: {
-							enable: true,
-						},
-						implementations: {
-							enable: true,
-						},
-						references: {
-							enable: true,
-						},
-						run: {
-							enable: true,
-						},
-					},
-					documentation: {
-						enable: true,
-					},
-					links: {
-						enable: true,
-					},
-				},
-				workspace: {
-					symbol: {
-						search: {
-							kind: "all_symbols",
-							scope: "workspace",
-						},
-					},
-				},
-				rustfmt: {
-					extraArgs: [],
-					overrideCommand: null,
-					rangeFormatting: {
-						enable: false,
-					},
-				},
-			},
-			enabled: true,
-		},
-	];
-
-	defaults.forEach((def) => {
-		try {
-			registerServer(def, { replace: false });
-		} catch (error) {
-			console.error("Failed to register builtin LSP server", def.id, error);
-		}
-	});
-}
-
-registerBuiltinServers();
+bindServerRegistry({
+	registerServer,
+	unregisterServer,
+});
+ensureBuiltinBundlesRegistered();
 
 export default {
 	registerServer,

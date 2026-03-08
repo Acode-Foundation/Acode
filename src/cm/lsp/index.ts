@@ -1,3 +1,13 @@
+export {
+	bundles,
+	default as lspApi,
+	defineBundle,
+	defineServer,
+	installers,
+	register,
+	servers,
+	upsert,
+} from "./api";
 export { default as clientManager, LspClientManager } from "./clientManager";
 export type { CodeActionItem } from "./codeActions";
 export {
