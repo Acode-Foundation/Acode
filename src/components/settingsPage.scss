@@ -269,7 +269,7 @@ wc-page.detail-settings-page {
 			flex-direction: column;
 			min-width: 0;
 			overflow: visible;
-			gap: 0.14rem;
+			gap: 0.18rem;
 			padding-right: 0.35rem;
 
 			> .text {
@@ -311,8 +311,21 @@ wc-page.detail-settings-page {
 
 	.detail-settings-list > .list-item.has-subtitle > .container,
 	.settings-section-card > .list-item.has-subtitle > .container {
-		padding-top: 0.12rem;
-		padding-right: 0.55rem;
+		gap: 0.24rem;
+		padding-top: 0.14rem;
+		padding-right: 0.6rem;
+	}
+
+	.detail-settings-list > .list-item.has-subtitle.has-tail-value > .container,
+	.settings-section-card > .list-item.has-subtitle.has-tail-value > .container {
+		padding-right: 0.95rem;
+	}
+
+	.detail-settings-list > .list-item.has-subtitle.has-tail-value > .setting-tail,
+	.settings-section-card > .list-item.has-subtitle.has-tail-value > .setting-tail {
+		align-self: flex-start;
+		margin-top: 0.16rem;
+		margin-left: 1.3rem;
 	}
 
 	.detail-settings-list > .list-item.compact > .container,
@@ -342,7 +355,23 @@ wc-page.detail-settings-page {
 		box-sizing: border-box;
 
 		&.is-select {
-			gap: 0.15rem;
+			min-width: clamp(6.75rem, 30vw, 8.5rem);
+			max-width: min(45vw, 11.5rem);
+			min-height: 2.35rem;
+			padding: 0 0.8rem 0 0.95rem;
+			gap: 0.55rem;
+			justify-content: space-between;
+			border: 1px solid var(--border-color);
+			border: 1px solid color-mix(in srgb, var(--border-color), transparent 12%);
+			border-radius: 0.56rem;
+			background: color-mix(
+				in srgb,
+				var(--secondary-color),
+				var(--popup-background-color) 42%
+			);
+			box-shadow:
+				inset 0 0 0 1px color-mix(in srgb, var(--border-color), transparent 44%),
+				0 1px 2px rgba(0, 0, 0, 0.12);
 		}
 	}
 
@@ -352,6 +381,17 @@ wc-page.detail-settings-page {
 		color: inherit;
 		text-transform: none;
 		white-space: nowrap;
+
+		&.is-select {
+			flex: 1;
+			min-width: 0;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			font-size: 0.94rem;
+			font-weight: 500;
+			letter-spacing: -0.01em;
+			color: color-mix(in srgb, var(--popup-text-color), transparent 14%);
+		}
 	}
 
 	.setting-value-icon,
@@ -368,6 +408,14 @@ wc-page.detail-settings-page {
 		min-width: 1rem;
 		height: 1rem;
 		font-size: 1rem;
+
+		.setting-value-display.is-select & {
+			width: 0.95rem;
+			min-width: 0.95rem;
+			height: 0.95rem;
+			font-size: 1rem;
+			color: color-mix(in srgb, var(--secondary-text-color), transparent 22%);
+		}
 	}
 
 	.settings-chevron {
@@ -512,6 +560,29 @@ wc-page.detail-settings-page {
 			overflow: hidden;
 			text-overflow: ellipsis;
 		}
+
+		.setting-value-display.is-select {
+			min-width: 6.25rem;
+			max-width: 9rem;
+			padding-left: 0.85rem;
+			padding-right: 0.7rem;
+		}
+	}
+
+	.detail-settings-list > .list-item.has-tail-select:focus .setting-value-display.is-select,
+	.detail-settings-list > .list-item.has-tail-select:active .setting-value-display.is-select,
+	.settings-section-card
+		> .list-item.has-tail-select:focus
+		.setting-value-display.is-select,
+	.settings-section-card
+		> .list-item.has-tail-select:active
+		.setting-value-display.is-select {
+		border-color: color-mix(in srgb, var(--active-color), transparent 48%);
+		background: color-mix(
+			in srgb,
+			var(--popup-background-color),
+			var(--active-color) 9%
+		);
 	}
 
 	.icon {

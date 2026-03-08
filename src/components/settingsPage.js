@@ -327,6 +327,12 @@ function listItems($list, items, callback, options = {}) {
 			item.checkbox === undefined &&
 			typeof item.value !== "boolean"
 		) {
+			$item.classList.add("has-tail-value");
+
+			if (item.select) {
+				$item.classList.add("has-tail-select");
+			}
+
 			$trailingValueText = (
 				<small
 					className={`setting-trailing-value ${item.select ? "is-select" : ""}`}
