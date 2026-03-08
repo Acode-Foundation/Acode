@@ -28,88 +28,124 @@ export default function mainSettings() {
 	const title = strings.settings.capitalize();
 	const items = [
 		{
-			key: "about",
-			text: strings.about,
-			icon: "acode",
-			index: 0,
-		},
-		{
-			key: "sponsors",
-			text: strings.sponsor,
-			icon: "favorite",
-			iconColor: "orangered",
-			index: 1,
+			key: "app-settings",
+			text: strings["app settings"],
+			icon: "tune",
+			info: "Language, behavior, and quick tools",
+			category: "Core",
+			chevron: true,
 		},
 		{
 			key: "editor-settings",
 			text: strings["editor settings"],
 			icon: "text_format",
-			index: 3,
-		},
-		{
-			key: "app-settings",
-			text: strings["app settings"],
-			icon: "tune",
-			index: 2,
-		},
-		{
-			key: "formatter",
-			text: strings.formatter,
-			icon: "stars",
-		},
-		{
-			key: "theme",
-			text: strings.theme,
-			icon: "color_lenspalette",
-		},
-		{
-			key: "backup-restore",
-			text: strings.backup.capitalize() + "/" + strings.restore.capitalize(),
-			icon: "cached",
-		},
-		{
-			key: "rateapp",
-			text: strings["rate acode"],
-			icon: "googleplay",
-		},
-		{
-			key: "plugins",
-			text: strings["plugins"],
-			icon: "extension",
-		},
-		{
-			key: "reset",
-			text: strings["restore default settings"],
-			icon: "historyrestore",
-			index: 6,
-		},
-		{
-			key: "preview-settings",
-			text: strings["preview settings"],
-			icon: "play_arrow",
-			index: 4,
+			info: "Font, tabs, autocomplete, and display",
+			category: "Core",
+			chevron: true,
 		},
 		{
 			key: "terminal-settings",
 			text: `${strings["terminal settings"]}`,
 			icon: "licons terminal",
-			index: 5,
+			info: "Theme, fonts, shell, and scrollback",
+			category: "Core",
+			chevron: true,
+		},
+		{
+			key: "preview-settings",
+			text: strings["preview settings"],
+			icon: "public",
+			info: "Live preview, rendering, ports, and browser mode",
+			category: "Core",
+			chevron: true,
+		},
+		{
+			key: "formatter",
+			text: strings.formatter,
+			icon: "spellcheck",
+			info: "Per-language format tools",
+			category: "Appearance & Tools",
+			chevron: true,
+		},
+		{
+			key: "theme",
+			text: strings.theme,
+			icon: "color_lenspalette",
+			info: "App theme, contrast, and custom colors",
+			category: "Appearance & Tools",
+			chevron: true,
+		},
+		{
+			key: "plugins",
+			text: strings["plugins"],
+			icon: "extension",
+			info: "Manage installed extensions and plugin actions",
+			category: "Appearance & Tools",
+			chevron: true,
 		},
 		{
 			key: "lsp-settings",
 			text: strings?.lsp_settings || "Language servers",
 			icon: "licons zap",
-			index: 7,
+			info: "Configure language servers and code intelligence",
+			category: "Appearance & Tools",
+			chevron: true,
+		},
+		{
+			key: "backup-restore",
+			text: `${strings.backup.capitalize()} & ${strings.restore.capitalize()}`,
+			icon: "cached",
+			info: "Export or import your settings",
+			category: "Data",
+			chevron: true,
 		},
 		{
 			key: "editSettings",
 			text: `${strings["edit"]} settings.json`,
 			icon: "edit",
+			info: "Advanced raw configuration",
+			category: "Data",
+			chevron: true,
+		},
+		{
+			key: "reset",
+			text: strings["restore default settings"],
+			icon: "historyrestore",
+			info: "Reset the app back to its default configuration",
+			category: "Data",
+			chevron: true,
+		},
+		{
+			key: "about",
+			text: strings.about,
+			icon: "info",
+			info: `Version ${BuildInfo.version}`,
+			category: "About",
+			chevron: true,
+		},
+		{
+			key: "sponsors",
+			text: strings.sponsor,
+			icon: "favorite",
+			info: "Support Acode development",
+			category: "About",
+			chevron: true,
 		},
 		{
 			key: "changeLog",
 			text: `${strings["changelog"]}`,
 			icon: "update",
+			info: "Recent updates and release notes",
+			category: "About",
+			chevron: true,
+		},
+		{
+			key: "rateapp",
+			text: strings["rate acode"],
+			icon: "star_outline",
+			info: "Rate Acode on Google Play",
+			category: "About",
+			chevron: true,
 		},
 	];
 
@@ -118,11 +154,17 @@ export default function mainSettings() {
 			key: "adRewards",
 			text: "Earn ad-free time",
 			icon: "play_arrow",
+			info: "Watch ads to unlock temporary ad-free access",
+			category: "Support",
+			chevron: true,
 		});
 		items.push({
 			key: "removeads",
 			text: strings["remove ads"],
-			icon: "cancel",
+			icon: "block",
+			info: "Unlock permanent ad-free access",
+			category: "Support",
+			chevron: true,
 		});
 	}
 
@@ -205,7 +247,11 @@ export default function mainSettings() {
 		}
 	}
 
-	const page = settingsPage(title, items, callback);
+	const page = settingsPage(title, items, callback, undefined, {
+		preserveOrder: true,
+		pageClassName: "main-settings-page",
+		listClassName: "main-settings-list",
+	});
 	page.show();
 
 	appSettings.uiSettings["main-settings"] = page;

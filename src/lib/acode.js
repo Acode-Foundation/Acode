@@ -677,6 +677,15 @@ export default class Acode {
 			id,
 			settings.list,
 			settings.cb,
+			undefined,
+			{
+				preserveOrder: true,
+				pageClassName: "detail-settings-page",
+				listClassName: "detail-settings-list",
+				infoAsDescription: true,
+				valueInTail: true,
+				groupByDefault: true,
+			},
 		);
 	}
 

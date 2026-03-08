@@ -1,4 +1,3 @@
-import Checkbox from "components/checkbox";
 import settingsPage from "components/settingsPage";
 import appSettings from "lib/settings";
 
@@ -19,6 +18,8 @@ export default function previewSettings() {
 					return PORT_REGEX.test(value);
 				},
 			},
+			info: "Port used by the live preview server",
+			category: "Network",
 		},
 		{
 			key: "serverPort",
@@ -31,6 +32,8 @@ export default function previewSettings() {
 					return PORT_REGEX.test(value);
 				},
 			},
+			info: "Port used by the internal app server",
+			category: "Network",
 		},
 		{
 			key: "previewMode",
@@ -40,6 +43,8 @@ export default function previewSettings() {
 				[appSettings.PREVIEW_MODE_BROWSER, strings.browser],
 				[appSettings.PREVIEW_MODE_INAPP, strings.inapp],
 			],
+			info: "Where preview opens when you launch it",
+			category: "Network",
 		},
 		{
 			key: "host",
@@ -57,28 +62,42 @@ export default function previewSettings() {
 					}
 				},
 			},
+			info: "Hostname used when opening the preview URL",
+			category: "Network",
 		},
 		{
 			key: "disableCache",
 			text: strings["disable in-app-browser caching"],
 			checkbox: values.disableCache,
+			info: "Always reload content in the in-app browser",
+			category: "Behavior",
 		},
 		{
 			key: "useCurrentFileForPreview",
 			text: strings["should_use_current_file_for_preview"],
 			checkbox: !!values.useCurrentFileForPreview,
+			info: "Prefer the current file when starting preview",
+			category: "Behavior",
 		},
 		{
 			key: "showConsoleToggler",
 			text: strings["show console toggler"],
 			checkbox: values.showConsoleToggler,
+			info: "Show the console button in preview",
+			category: "Behavior",
 		},
 		{
 			note: strings["preview settings note"],
 		},
 	];
 
-	return settingsPage(title, items, callback);
+	return settingsPage(title, items, callback, undefined, {
+		preserveOrder: true,
+		pageClassName: "detail-settings-page",
+		listClassName: "detail-settings-list",
+		infoAsDescription: true,
+		valueInTail: true,
+	});
 
 	function callback(key, value) {
 		appSettings.update({

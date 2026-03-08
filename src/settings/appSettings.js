@@ -20,9 +20,13 @@ export default function otherSettings() {
 	const title = strings["app settings"].capitalize();
 	const items = [
 		{
-			key: "retryRemoteFsAfterFail",
-			text: strings["retry ftp/sftp when fail"],
-			checkbox: values.retryRemoteFsAfterFail,
+			key: "lang",
+			text: strings["change language"],
+			value: values.lang,
+			select: lang.list,
+			valueText: (value) => lang.getName(value),
+			info: "App language and translated labels",
+			category: "Interface",
 		},
 		{
 			key: "animation",
@@ -34,58 +38,15 @@ export default function otherSettings() {
 				["yes", strings.yes],
 				["system", strings.system],
 			],
+			info: "Transition effects throughout the app",
+			category: "Interface",
 		},
 		{
 			key: "fullscreen",
 			text: strings.fullscreen.capitalize(),
 			checkbox: values.fullscreen,
-		},
-		{
-			key: "lang",
-			text: strings["change language"],
-			value: values.lang,
-			select: lang.list,
-			valueText: (value) => lang.getName(value),
-		},
-		{
-			key: "keybindings",
-			text: strings["key bindings"],
-			select: [
-				["edit", strings.edit],
-				["reset", strings.reset],
-			],
-		},
-		{
-			key: "confirmOnExit",
-			text: strings["confirm on exit"],
-			checkbox: values.confirmOnExit,
-		},
-		{
-			key: "checkFiles",
-			text: strings["check file changes"],
-			checkbox: values.checkFiles,
-		},
-		{
-			key: "checkForAppUpdates",
-			text: strings["check for app updates"],
-			checkbox: values.checkForAppUpdates,
-			info: strings["info-checkForAppUpdates"],
-		},
-		{
-			key: "console",
-			text: strings.console,
-			value: values.console,
-			select: [appSettings.CONSOLE_LEGACY, appSettings.CONSOLE_ERUDA],
-		},
-		{
-			key: "developerMode",
-			text: strings["developer mode"],
-			checkbox: values.developerMode,
-			info: strings["info-developermode"],
-		},
-		{
-			key: "cleanInstallState",
-			text: strings["clean install state"],
+			info: "Hide the system status bar",
+			category: "Interface",
 		},
 		{
 			key: "keyboardMode",
@@ -102,26 +63,36 @@ export default function otherSettings() {
 					strings["no suggestions aggressive"],
 				],
 			],
+			info: "How the software keyboard behaves while editing",
+			category: "Interface",
 		},
 		{
 			key: "vibrateOnTap",
 			text: strings["vibrate on tap"],
 			checkbox: values.vibrateOnTap,
-		},
-		{
-			key: "rememberFiles",
-			text: strings["remember opened files"],
-			checkbox: values.rememberFiles,
-		},
-		{
-			key: "rememberFolders",
-			text: strings["remember opened folders"],
-			checkbox: values.rememberFolders,
+			info: "Haptic feedback on taps and controls",
+			category: "Interface",
 		},
 		{
 			key: "floatingButton",
 			text: strings["floating button"],
 			checkbox: values.floatingButton,
+			info: "Quick action overlay",
+			category: "Interface",
+		},
+		{
+			key: "showSideButtons",
+			text: strings["show side buttons"],
+			checkbox: values.showSideButtons,
+			info: "Show the extra side action buttons",
+			category: "Interface",
+		},
+		{
+			key: "showSponsorSidebarApp",
+			text: `${strings.sponsor} (${strings.sidebar})`,
+			checkbox: values.showSponsorSidebarApp,
+			info: "Show the sponsor entry in the sidebar",
+			category: "Interface",
 		},
 		{
 			key: "openFileListPos",
@@ -133,12 +104,15 @@ export default function otherSettings() {
 				[appSettings.OPEN_FILE_LIST_POS_HEADER, strings.header],
 				[appSettings.OPEN_FILE_LIST_POS_BOTTOM, strings.bottom],
 			],
+			info: "Where the active files list appears",
+			category: "Interface",
 		},
 		{
 			key: "quickTools",
 			text: strings["quick tools"],
 			checkbox: !!values.quickTools,
 			info: strings["info-quickTools"],
+			category: "Interface",
 		},
 		{
 			key: "quickToolsTriggerMode",
@@ -148,6 +122,15 @@ export default function otherSettings() {
 				[appSettings.QUICKTOOLS_TRIGGER_MODE_CLICK, "click"],
 				[appSettings.QUICKTOOLS_TRIGGER_MODE_TOUCH, "touch"],
 			],
+			info: "How quick tools open on tap or touch",
+			category: "Interface",
+		},
+		{
+			key: "quickToolsSettings",
+			text: strings["shortcut buttons"],
+			info: "Reorder and customise quick tool shortcuts",
+			category: "Interface",
+			chevron: true,
 		},
 		{
 			key: "touchMoveThreshold",
@@ -160,26 +143,36 @@ export default function otherSettings() {
 					return value >= 0;
 				},
 			},
-		},
-		{
-			key: "quickToolsSettings",
-			text: strings["shortcut buttons"],
-			index: 0,
+			info: "Minimum movement before touch drag is detected",
+			category: "Interface",
 		},
 		{
 			key: "fontManager",
 			text: strings["fonts"],
-			index: 1,
+			info: "Install or remove app fonts",
+			category: "Personalization",
+			chevron: true,
 		},
 		{
-			key: "showSideButtons",
-			text: strings["show side buttons"],
-			checkbox: values.showSideButtons,
+			key: "rememberFiles",
+			text: strings["remember opened files"],
+			checkbox: values.rememberFiles,
+			info: "Restore the files you had open last time",
+			category: "Workspace",
 		},
 		{
-			key: "showSponsorSidebarApp",
-			text: `${strings.sponsor} (${strings.sidebar})`,
-			checkbox: values.showSponsorSidebarApp,
+			key: "rememberFolders",
+			text: strings["remember opened folders"],
+			checkbox: values.rememberFolders,
+			info: "Restore folders from the previous session",
+			category: "Workspace",
+		},
+		{
+			key: "retryRemoteFsAfterFail",
+			text: strings["retry ftp/sftp when fail"],
+			checkbox: values.retryRemoteFsAfterFail,
+			info: "Retry remote file operations after a failed transfer",
+			category: "Workspace",
 		},
 		{
 			key: "excludeFolders",
@@ -194,6 +187,8 @@ export default function otherSettings() {
 					});
 				},
 			},
+			info: "Folders and patterns to skip while searching or scanning",
+			category: "Workspace",
 		},
 		{
 			key: "defaultFileEncoding",
@@ -208,10 +203,73 @@ export default function otherSettings() {
 					return [id, encoding.label];
 				}),
 			],
+			info: "Default encoding when opening or creating files",
+			category: "Workspace",
+		},
+		{
+			key: "keybindings",
+			text: strings["key bindings"],
+			value: "edit",
+			valueText: (value) => (value === "reset" ? strings.reset : strings.edit),
+			select: [
+				["edit", strings.edit],
+				["reset", strings.reset],
+			],
+			info: "Edit the key bindings file or reset shortcuts",
+			category: "Advanced",
+		},
+		{
+			key: "confirmOnExit",
+			text: strings["confirm on exit"],
+			checkbox: values.confirmOnExit,
+			info: "Ask before leaving the app",
+			category: "Advanced",
+		},
+		{
+			key: "checkFiles",
+			text: strings["check file changes"],
+			checkbox: values.checkFiles,
+			info: "Detect external file changes and refresh editors",
+			category: "Advanced",
+		},
+		{
+			key: "checkForAppUpdates",
+			text: strings["check for app updates"],
+			checkbox: values.checkForAppUpdates,
+			info: strings["info-checkForAppUpdates"],
+			category: "Advanced",
+		},
+		{
+			key: "console",
+			text: strings.console,
+			value: values.console,
+			select: [appSettings.CONSOLE_LEGACY, appSettings.CONSOLE_ERUDA],
+			info: "Which debug console integration to use",
+			category: "Advanced",
+		},
+		{
+			key: "developerMode",
+			text: strings["developer mode"],
+			checkbox: values.developerMode,
+			info: strings["info-developermode"],
+			category: "Advanced",
+		},
+		{
+			key: "cleanInstallState",
+			text: strings["clean install state"],
+			info: "Clear stored install state used by onboarding and setup flows",
+			category: "Advanced",
+			chevron: true,
 		},
 	];
 
-	return settingsPage(title, items, callback);
+	return settingsPage(title, items, callback, undefined, {
+		preserveOrder: true,
+		pageClassName: "detail-settings-page",
+		listClassName: "detail-settings-list",
+		infoAsDescription: true,
+		valueInTail: true,
+	});
 
 	async function callback(key, value) {
 		switch (key) {

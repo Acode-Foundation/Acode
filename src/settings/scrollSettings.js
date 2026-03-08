@@ -38,7 +38,14 @@ export default function scrollSettings() {
 		},
 	];
 
-	return settingsPage(title, items, callback);
+	return settingsPage(title, items, callback, undefined, {
+		preserveOrder: true,
+		pageClassName: "detail-settings-page",
+		listClassName: "detail-settings-list",
+		infoAsDescription: true,
+		valueInTail: true,
+		groupByDefault: true,
+	});
 
 	function callback(key, value) {
 		appSettings.update({

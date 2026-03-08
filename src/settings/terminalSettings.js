@@ -33,6 +33,8 @@ export default function terminalSettings() {
 			key: "all_file_access",
 			text: strings["allFileAccess"],
 			info: strings["info-all_file_access"],
+			category: "Access",
+			chevron: true,
 		},
 		{
 			key: "fontSize",
@@ -47,6 +49,7 @@ export default function terminalSettings() {
 				},
 			},
 			info: strings["info-fontSize"],
+			category: "Appearance",
 		},
 		{
 			key: "fontFamily",
@@ -56,6 +59,7 @@ export default function terminalSettings() {
 				return fonts.getNames();
 			},
 			info: strings["info-fontFamily"],
+			category: "Appearance",
 		},
 		{
 			key: "theme",
@@ -72,6 +76,7 @@ export default function terminalSettings() {
 				const option = this.select.find(([v]) => v === value);
 				return option ? option[1] : value;
 			},
+			category: "Appearance",
 		},
 		{
 			key: "cursorStyle",
@@ -79,6 +84,7 @@ export default function terminalSettings() {
 			value: terminalValues.cursorStyle,
 			select: ["block", "underline", "bar"],
 			info: strings["info-cursorStyle"],
+			category: "Cursor",
 		},
 		{
 			key: "cursorInactiveStyle",
@@ -86,6 +92,7 @@ export default function terminalSettings() {
 			value: terminalValues.cursorInactiveStyle,
 			select: ["outline", "block", "bar", "underline", "none"],
 			info: strings["info-cursorInactiveStyle"],
+			category: "Cursor",
 		},
 		{
 			key: "fontWeight",
@@ -105,12 +112,14 @@ export default function terminalSettings() {
 				"900",
 			],
 			info: strings["info-fontWeight"],
+			category: "Appearance",
 		},
 		{
 			key: "cursorBlink",
 			text: strings["terminal:cursor blink"],
 			checkbox: terminalValues.cursorBlink,
 			info: strings["info-cursorBlink"],
+			category: "Cursor",
 		},
 		{
 			key: "scrollback",
@@ -125,6 +134,7 @@ export default function terminalSettings() {
 				},
 			},
 			info: strings["info-scrollback"],
+			category: "Behavior",
 		},
 		{
 			key: "tabStopWidth",
@@ -139,6 +149,7 @@ export default function terminalSettings() {
 				},
 			},
 			info: strings["info-tabStopWidth"],
+			category: "Behavior",
 		},
 		{
 			key: "letterSpacing",
@@ -147,49 +158,65 @@ export default function terminalSettings() {
 			prompt: strings["letter spacing"],
 			promptType: "number",
 			info: strings["info-letterSpacing"],
+			category: "Appearance",
 		},
 		{
 			key: "convertEol",
 			text: strings["terminal:convert eol"],
 			checkbox: terminalValues.convertEol,
+			info: "Convert line endings when pasting or rendering output",
+			category: "Behavior",
 		},
 		{
 			key: "imageSupport",
 			text: strings["terminal:image support"],
 			checkbox: terminalValues.imageSupport,
 			info: strings["info-imageSupport"],
+			category: "Behavior",
 		},
 		{
 			key: "fontLigatures",
 			text: strings["font ligatures"],
 			checkbox: terminalValues.fontLigatures,
 			info: strings["info-fontLigatures"],
+			category: "Appearance",
 		},
 		{
 			key: "confirmTabClose",
 			text: strings["terminal:confirm tab close"],
 			checkbox: terminalValues.confirmTabClose !== false,
 			info: strings["info-confirmTabClose"],
+			category: "Behavior",
 		},
 		{
 			key: "backup",
 			text: strings.backup,
 			info: strings["info-backup"],
+			category: "Data",
+			chevron: true,
 		},
 		{
 			key: "restore",
 			text: strings.restore,
 			info: strings["info-restore"],
+			category: "Data",
+			chevron: true,
 		},
 		{
 			key: "uninstall",
 			text: strings.uninstall,
 			info: strings["info-uninstall"],
+			category: "Data",
+			chevron: true,
 		},
 	];
 
 	return settingsPage(title, items, callback, undefined, {
 		preserveOrder: true,
+		pageClassName: "detail-settings-page",
+		listClassName: "detail-settings-list",
+		infoAsDescription: true,
+		valueInTail: true,
 	});
 
 	/**

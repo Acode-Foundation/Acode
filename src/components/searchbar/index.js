@@ -49,8 +49,6 @@ function searchBar($list, setHide, onhideCb, searchFunction) {
 
 	function hide() {
 		actionStack.remove("searchbar");
-
-		if (!$list.parentElement) return;
 		if (typeof onhideCb === "function") onhideCb();
 
 		$list.content = children;
@@ -70,6 +68,12 @@ function searchBar($list, setHide, onhideCb, searchFunction) {
 	 */
 	async function searchNow() {
 		const val = $searchInput.value.toLowerCase();
+
+		if (!val) {
+			$list.content = children;
+			return;
+		}
+
 		let result;
 
 		if (searchFunction) {
@@ -89,7 +93,7 @@ function searchBar($list, setHide, onhideCb, searchFunction) {
 		}
 
 		$list.textContent = "";
-		$list.append(...result);
+		$list.append(...buildSearchContent(result, val));
 	}
 
 	/**
@@ -102,6 +106,63 @@ function searchBar($list, setHide, onhideCb, searchFunction) {
 			const text = child.textContent.toLowerCase();
 			return text.match(val, "i");
 		});
+	}
+
+	/**
+	 * Keep grouped settings search results in section cards instead of flattening them.
+	 * @param {HTMLElement[]} result
+	 * @param {string} val
+	 * @returns {HTMLElement[]}
+	 */
+	function buildSearchContent(result, val) {
+		if (!val || !result.length) return result;
+
+		const groups = new Map();
+		let hasGroups = false;
+
+		result.forEach(($item) => {
+			const label = $item.dataset.searchGroup;
+			if (!label) return;
+			hasGroups = true;
+
+			if (!groups.has(label)) {
+				groups.set(label, []);
+			}
+			groups.get(label).push($item);
+		});
+
+		if (!hasGroups) return result.map(cloneSearchItem);
+
+		const countLabel = `${result.length} ${result.length === 1 ? "RESULT" : "RESULTS"}`;
+		const content = [
+			<div className="settings-search-summary">{countLabel}</div>,
+		];
+
+		groups.forEach((items, label) => {
+			content.push(
+				<section className="settings-section settings-search-section">
+					<div className="settings-section-label">{label}</div>
+					<div className="settings-section-card">
+						{items.map(cloneSearchItem)}
+					</div>
+				</section>,
+			);
+		});
+
+		return content;
+	}
+
+	/**
+	 * Render search results without moving the original list items out of their groups.
+	 * @param {HTMLElement} $item
+	 * @returns {HTMLElement}
+	 */
+	function cloneSearchItem($item) {
+		const $clone = $item.cloneNode(true);
+		$clone.addEventListener("click", () => {
+			$item.click();
+		});
+		return $clone;
 	}
 }
 

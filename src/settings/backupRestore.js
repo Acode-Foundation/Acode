@@ -142,18 +142,25 @@ function backupRestore() {
 			key: "backup",
 			text: strings.backup.capitalize(),
 			icon: "file_downloadget_app",
+			chevron: true,
 		},
 		{
 			key: "restore",
 			text: strings.restore.capitalize(),
 			icon: "historyrestore",
+			chevron: true,
 		},
 		{
 			note: strings["backup/restore note"],
 		},
 	];
 
-	return settingsPage(title, items, callback);
+	return settingsPage(title, items, callback, undefined, {
+		preserveOrder: true,
+		pageClassName: "detail-settings-page",
+		listClassName: "detail-settings-list",
+		groupByDefault: true,
+	});
 
 	function callback(key) {
 		switch (key) {

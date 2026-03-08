@@ -9,6 +9,13 @@ export default function editorSettings() {
 	const values = appSettings.value;
 	const items = [
 		{
+			key: "scroll-settings",
+			text: strings["scroll settings"],
+			info: "Scrollbar size, speed, and gesture behaviour",
+			category: "Navigation",
+			chevron: true,
+		},
+		{
 			key: "autosave",
 			text: strings.autosave,
 			value: values.autosave,
@@ -21,6 +28,8 @@ export default function editorSettings() {
 					return value >= 1000 || value === 0;
 				},
 			},
+			info: "Automatically save changes after a delay",
+			category: "Editing",
 		},
 		{
 			key: "fontSize",
@@ -31,16 +40,15 @@ export default function editorSettings() {
 				required: true,
 				match: constants.FONT_SIZE,
 			},
-		},
-		{
-			key: "shiftClickSelection",
-			text: strings["shift click selection"],
-			checkbox: values.shiftClickSelection,
+			info: "Editor text size",
+			category: "Editing",
 		},
 		{
 			key: "softTab",
 			text: strings["soft tab"],
 			checkbox: values.softTab,
+			info: "Use spaces instead of tabs",
+			category: "Editing",
 		},
 		{
 			key: "tabSize",
@@ -54,16 +62,67 @@ export default function editorSettings() {
 					return value >= 1 && value <= 8;
 				},
 			},
+			info: "Number of spaces for each tab step",
+			category: "Editing",
+		},
+		{
+			key: "formatOnSave",
+			text: strings["format on save"],
+			checkbox: values.formatOnSave,
+			info: "Run the formatter when saving files",
+			category: "Editing",
+		},
+		{
+			key: "editorFont",
+			text: strings["editor font"],
+			value: values.editorFont,
+			get select() {
+				return fonts.getNames();
+			},
+			info: "Typeface used in the editor",
+			category: "Editing",
+		},
+		{
+			key: "liveAutoCompletion",
+			text: strings["live autocompletion"],
+			checkbox: values.liveAutoCompletion,
+			info: "Show suggestions while you type",
+			category: "Editing",
+		},
+		{
+			key: "textWrap",
+			text: strings["text wrap"],
+			checkbox: values.textWrap,
+			info: "Wrap long lines inside the editor",
+			category: "Display",
+		},
+		{
+			key: "hardWrap",
+			text: strings["hard wrap"],
+			checkbox: values.hardWrap,
+			info: "Insert line breaks instead of only wrapping visually",
+			category: "Display",
 		},
 		{
 			key: "linenumbers",
 			text: strings["show line numbers"],
 			checkbox: values.linenumbers,
+			info: "Show the gutter with line numbers",
+			category: "Display",
+		},
+		{
+			key: "relativeLineNumbers",
+			text: strings["relative line numbers"],
+			checkbox: values.relativeLineNumbers,
+			info: "Show distance from the current line",
+			category: "Display",
 		},
 		{
 			key: "lintGutter",
 			text: strings["lint gutter"] || "Show lint gutter",
 			checkbox: values.lintGutter ?? true,
+			info: "Show diagnostics and lint markers in the gutter",
+			category: "Display",
 		},
 		{
 			key: "lineHeight",
@@ -77,52 +136,22 @@ export default function editorSettings() {
 					return value >= 1 && value <= 2;
 				},
 			},
-		},
-		{
-			key: "formatOnSave",
-			text: strings["format on save"],
-			checkbox: values.formatOnSave,
+			info: "Vertical spacing between lines",
+			category: "Display",
 		},
 		{
 			key: "showSpaces",
 			text: strings["show spaces"],
 			checkbox: values.showSpaces,
+			info: "Display visible whitespace markers",
+			category: "Display",
 		},
 		{
-			key: "editorFont",
-			text: strings["editor font"],
-			value: values.editorFont,
-			get select() {
-				return fonts.getNames();
-			},
-		},
-		{
-			key: "liveAutoCompletion",
-			text: strings["live autocompletion"],
-			checkbox: values.liveAutoCompletion,
-		},
-		// {
-		// 	key: "showPrintMargin",
-		// 	text: strings["show print margin"].capitalize(),
-		// 	checkbox: values.showPrintMargin,
-		// },
-		// {
-		// 	key: "printMargin",
-		// 	text: strings["print margin"],
-		// 	value: values.printMargin,
-		// 	prompt: strings["print margin"],
-		// 	promptType: "number",
-		// 	promptOptions: {
-		// 		test(value) {
-		// 			value = Number.parseInt(value);
-		// 			return value >= 10 && value <= 200;
-		// 		},
-		// 	},
-		// },
-		{
-			key: "textWrap",
-			text: strings["text wrap"],
-			checkbox: values.textWrap,
+			key: "colorPreview",
+			text: strings["color preview"],
+			checkbox: values.colorPreview,
+			info: "Preview color values inline",
+			category: "Display",
 		},
 		{
 			key: "teardropSize",
@@ -137,60 +166,53 @@ export default function editorSettings() {
 				[30, strings.medium],
 				[60, strings.large],
 			],
+			info: "Cursor handle size for touch editing",
+			category: "Cursor & Selection",
 		},
 		{
-			key: "relativeLineNumbers",
-			text: strings["relative line numbers"],
-			checkbox: values.relativeLineNumbers,
+			key: "shiftClickSelection",
+			text: strings["shift click selection"],
+			checkbox: values.shiftClickSelection,
+			info: "Extend selection with shift + tap or click",
+			category: "Cursor & Selection",
 		},
-		// {
-		// 	key: "elasticTabstops",
-		// 	text: strings["elastic tabstops"],
-		// 	checkbox: values.elasticTabstops,
-		// },
 		{
 			key: "rtlText",
 			text: strings["line based rtl switching"],
 			checkbox: values.rtlText,
+			info: "Switch right-to-left behaviour per line",
+			category: "Cursor & Selection",
 		},
-		{
-			key: "hardWrap",
-			text: strings["hard wrap"],
-			checkbox: values.hardWrap,
-		},
-		// {
-		// 	key: "useTextareaForIME",
-		// 	text: strings["use textarea for ime"],
-		// 	checkbox: values.useTextareaForIME,
-		// },
 		{
 			key: "fadeFoldWidgets",
 			text: strings["fade fold widgets"],
 			checkbox: values.fadeFoldWidgets,
+			info: "Dim fold markers until they are needed",
+			category: "Cursor & Selection",
 		},
 		{
 			key: "rainbowBrackets",
 			text: strings["rainbow brackets"] || "Rainbow brackets",
 			checkbox: values.rainbowBrackets ?? true,
+			info: "Color matching brackets by nesting level",
+			category: "Cursor & Selection",
 		},
 		{
 			key: "indentGuides",
 			text: strings["indent guides"] || "Indent guides",
 			checkbox: values.indentGuides ?? true,
-		},
-		{
-			index: 0,
-			key: "scroll-settings",
-			text: strings["scroll settings"],
-		},
-		{
-			key: "colorPreview",
-			text: strings["color preview"],
-			checkbox: values.colorPreview,
+			info: "Show indentation guide lines",
+			category: "Cursor & Selection",
 		},
 	];
 
-	return settingsPage(title, items, callback);
+	return settingsPage(title, items, callback, undefined, {
+		preserveOrder: true,
+		pageClassName: "detail-settings-page",
+		listClassName: "detail-settings-list",
+		infoAsDescription: true,
+		valueInTail: true,
+	});
 
 	/**
 	 * Callback for settings page when an item is clicked
@@ -201,7 +223,7 @@ export default function editorSettings() {
 		switch (key) {
 			case "scroll-settings":
 				appSettings.uiSettings[key].show();
-				break;
+				return;
 
 			case "editorFont":
 				fonts.setFont(value);

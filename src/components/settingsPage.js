@@ -1,4 +1,4 @@
-import alert from "dialogs/alert";
+import "./settingsPage.scss";
 import colorPicker from "dialogs/color";
 import prompt from "dialogs/prompt";
 import select from "dialogs/select";
@@ -24,6 +24,13 @@ import searchBar from "./searchbar";
 /**
  * @typedef {Object} SettingsPageOptions
  * @property {boolean} [preserveOrder] - If true, items are listed in the order provided instead of alphabetical
+ * @property {string} [pageClassName] - Extra classes to apply to the page element
+ * @property {string} [listClassName] - Extra classes to apply to the list element
+ * @property {string} [defaultSearchGroup] - Default search result group label for this page
+ * @property {boolean} [infoAsDescription] - Prefer item.info as subtitle instead of item.value
+ * @property {boolean} [valueInTail] - Render item.value as a trailing control/value instead of subtitle
+ * @property {boolean} [groupByDefault] - Wrap uncategorized settings in a grouped section shell
+ * @property {"top"|"bottom"} [notePosition] - Render note before or after the settings list
  */
 
 /**
@@ -45,10 +52,19 @@ export default function settingsPage(
 	let hideSearchBar = () => {};
 	const $page = Page(title);
 	$page.id = "settings";
+
+	if (options.pageClassName) {
+		$page.classList.add(...options.pageClassName.split(" ").filter(Boolean));
+	}
+
 	/**@type {HTMLDivElement} */
 	const $list = <div tabIndex={0} className="main list"></div>;
 	/**@type {ListItem} */
 	let note;
+
+	if (options.listClassName) {
+		$list.classList.add(...options.listClassName.split(" ").filter(Boolean));
+	}
 
 	settings = settings.filter((setting) => {
 		if ("note" in setting) {
@@ -82,15 +98,20 @@ export default function settingsPage(
 							});
 						}
 					: null,
-				type === "united"
-					? (key) => {
-							const $items = [];
-							Object.values(appSettings.uiSettings).forEach((page) => {
-								$items.push(...page.search(key));
-							});
-							return $items;
-						}
-					: null,
+				(key) => {
+					if (type === "united") {
+						const $items = [];
+						Object.values(appSettings.uiSettings).forEach((page) => {
+							$items.push(...page.search(key));
+						});
+						return $items;
+					}
+
+					return state.searchItems.filter((item) => {
+						const text = item.textContent.toLowerCase();
+						return text.match(key, "i");
+					});
+				},
 			);
 
 		$page.header.append($search);
@@ -103,24 +124,34 @@ export default function settingsPage(
 		actionStack.remove(title);
 	};
 
-	listItems($list, settings, callback, options);
+	const state = listItems($list, settings, callback, {
+		defaultSearchGroup: title,
+		...options,
+	});
+	let children = [...state.children];
 	$page.body = $list;
 
-	/**@type {HTMLElement[]} */
-	const children = [...$list.children];
+	const searchableItems = state.searchItems;
 
 	if (note) {
-		$page.append(
+		const $note = (
 			<div className="note">
 				<div className="note-title">
-					<span className="icon info"></span>
+					<span className="icon info_outline"></span>
 					<span>{strings.info}</span>
 				</div>
 				<p innerHTML={note}></p>
-			</div>,
+			</div>
 		);
+
+		if (options.notePosition === "top") {
+			children.unshift($note);
+		} else {
+			children.push($note);
+		}
 	}
 
+	$list.content = children;
 	$page.append(<div style={{ height: "50vh" }}></div>);
 
 	return {
@@ -156,7 +187,7 @@ export default function settingsPage(
 		 * @param {string} key
 		 */
 		search(key) {
-			return children.filter((child) => {
+			return searchableItems.filter((child) => {
 				const text = child.textContent.toLowerCase();
 				return text.match(key, "i");
 			});
@@ -186,7 +217,10 @@ export default function settingsPage(
  * @property {string} [info]
  * @property {string} [value]
  * @property {(value:string)=>string} [valueText]
+ * @property {string} [category]
+ * @property {string} [searchGroup]
  * @property {boolean} [checkbox]
+ * @property {boolean} [chevron]
  * @property {string} [prompt]
  * @property {string} [promptType]
  * @property {import('dialogs/prompt').PromptOptions} [promptOptions]
@@ -200,7 +234,12 @@ export default function settingsPage(
  * @param {SettingsPageOptions} [options={}]
  */
 function listItems($list, items, callback, options = {}) {
-	const $items = [];
+	const renderedItems = [];
+	const $searchItems = [];
+	const $content = [];
+	/** @type {HTMLElement | null} */
+	let $currentSectionCard = null;
+	let currentCategory = null;
 
 	// sort settings by text before rendering (unless preserveOrder is true)
 	if (!options.preserveOrder) {
@@ -212,11 +251,12 @@ function listItems($list, items, callback, options = {}) {
 	items.forEach((item) => {
 		const $setting = Ref();
 		const $settingName = Ref();
+		const $tail = Ref();
 		/**@type {HTMLDivElement} */
 		const $item = (
 			<div
 				tabIndex={1}
-				className={`list-item ${item.sake ? "sake" : ""}`}
+				className={`list-item ${item.sake ? "sake" : ""} ${item.icon ? "" : "no-leading-icon"}`}
 				data-key={item.key}
 				data-action="list-item"
 			>
@@ -229,44 +269,141 @@ function listItems($list, items, callback, options = {}) {
 						{item.text?.capitalize?.(0) ?? item.text}
 					</div>
 				</div>
+				<div ref={$tail} className="setting-tail"></div>
 			</div>
 		);
 
 		let $checkbox, $valueText;
+		let $trailingValueText;
+		const subtitle = getSubtitleText(item, options);
+		const showInfoAsSubtitle =
+			options.infoAsDescription || (item.value === undefined && item.info);
+		const searchGroup =
+			item.searchGroup || item.category || options.defaultSearchGroup;
+		const hasSubtitle =
+			subtitle !== undefined && subtitle !== null && subtitle !== "";
+		const shouldShowTailChevron =
+			item.chevron ||
+			(!item.select &&
+				Boolean(item.prompt || item.file || item.folder || item.link));
 
-		if (item.info) {
-			$settingName.append(
-				<span
-					className="icon info info-button"
-					data-action="info"
-					onclick={() => {
-						alert(strings.info, item.info);
-					}}
-				></span>,
-			);
+		if (searchGroup) {
+			$item.dataset.searchGroup = searchGroup;
 		}
+
+		let subtitleRendered = false;
 
 		if (item.checkbox !== undefined || typeof item.value === "boolean") {
 			$checkbox = Checkbox("", item.checkbox || item.value);
-			$item.appendChild($checkbox);
-			$item.style.paddingRight = "10px";
-		} else if (item.value !== undefined) {
+			$tail.el.appendChild($checkbox);
+		} else if (subtitle !== undefined) {
 			$valueText = <small className="value"></small>;
-			setValueText($valueText, item.value, item.valueText?.bind(item));
+			setValueText(
+				$valueText,
+				subtitle,
+				showInfoAsSubtitle ? null : item.valueText?.bind(item),
+			);
+			if (showInfoAsSubtitle) {
+				$valueText.classList.add("setting-info");
+			}
 			$setting.append($valueText);
-			setColor($item, item.value);
+			subtitleRendered = true;
+			if (!showInfoAsSubtitle) {
+				setColor($item, item.value);
+			}
+		}
+
+		if (subtitleRendered) {
+			$item.classList.add("has-subtitle");
+		} else {
+			$item.classList.add("compact");
+		}
+
+		if (
+			options.valueInTail &&
+			item.value !== undefined &&
+			item.checkbox === undefined &&
+			typeof item.value !== "boolean"
+		) {
+			$trailingValueText = (
+				<small
+					className={`setting-trailing-value ${item.select ? "is-select" : ""}`}
+				></small>
+			);
+			setValueText($trailingValueText, item.value, item.valueText?.bind(item));
+
+			const $valueDisplay = (
+				<div
+					className={`setting-value-display ${item.select ? "is-select" : ""}`}
+				>
+					{$trailingValueText}
+					{item.select
+						? <span className="icon keyboard_arrow_down setting-value-icon"></span>
+						: null}
+				</div>
+			);
+			$tail.el.append($valueDisplay);
+		}
+
+		if (shouldShowTailChevron) {
+			$tail.el.append(
+				<span className="icon keyboard_arrow_right settings-chevron"></span>,
+			);
+		}
+
+		if (!$tail.el.children.length) {
+			$tail.el.remove();
 		}
 
 		if (Number.isInteger(item.index)) {
-			$items.splice(item.index, 0, $item);
+			renderedItems.splice(item.index, 0, { item, $item });
 		} else {
-			$items.push($item);
+			renderedItems.push({ item, $item });
 		}
 
 		$item.addEventListener("click", onclick);
+		$searchItems.push($item);
 	});
 
-	$list.content = $items;
+	renderedItems.forEach(({ item, $item }) => {
+		const category =
+			item.category?.trim() || (options.groupByDefault ? "__default__" : "");
+
+		if (!category) {
+			currentCategory = null;
+			$currentSectionCard = null;
+			$content.push($item);
+			return;
+		}
+
+		if (currentCategory !== category || !$currentSectionCard) {
+			currentCategory = category;
+			const shouldShowLabel = category !== "__default__";
+			const $label = shouldShowLabel
+				? <div className="settings-section-label">{category}</div>
+				: null;
+			$currentSectionCard = <div className="settings-section-card"></div>;
+			$content.push(
+				<section className="settings-section">
+					{$label}
+					{$currentSectionCard}
+				</section>,
+			);
+		}
+
+		$currentSectionCard.append($item);
+	});
+
+	const topLevelChildren = $content.length
+		? $content
+		: renderedItems.map(({ $item }) => $item);
+
+	$list.content = topLevelChildren;
+
+	return {
+		children: topLevelChildren,
+		searchItems: $searchItems,
+	};
 
 	/**
 	 * Click handler for $list
@@ -274,8 +411,8 @@ function listItems($list, items, callback, options = {}) {
 	 * @param {MouseEvent} e
 	 */
 	async function onclick(e) {
-		const $target = e.target;
-		const { key } = e.target.dataset;
+		const $target = e.currentTarget;
+		const { key } = $target.dataset;
 
 		const item = items.find((item) => item.key === key);
 		if (!item) return;
@@ -294,25 +431,32 @@ function listItems($list, items, callback, options = {}) {
 
 		const $valueText = $target.get(".value");
 		const $checkbox = $target.get(".input-checkbox");
+		const $trailingValueText = $target.get(".setting-trailing-value");
 		let res;
+		let shouldUpdateValue = false;
 
 		try {
 			if (options) {
 				res = await select(text, options, {
 					default: value,
 				});
+				shouldUpdateValue = res !== undefined;
 			} else if (checkbox !== undefined) {
 				$checkbox.toggle();
 				res = $checkbox.checked;
+				shouldUpdateValue = true;
 			} else if (promptText) {
 				res = await prompt(promptText, value, promptType, promptOptions);
 				if (res === null) return;
+				shouldUpdateValue = true;
 			} else if (file || folder) {
 				const mode = file ? "file" : "folder";
 				const { url } = await FileBrowser(mode);
 				res = url;
+				shouldUpdateValue = true;
 			} else if (selectColor) {
 				res = await colorPicker(value);
+				shouldUpdateValue = true;
 			} else if (link) {
 				system.openInBrowser(link);
 				return;
@@ -321,11 +465,23 @@ function listItems($list, items, callback, options = {}) {
 			window.log("error", error);
 		}
 
-		item.value = res;
-		setValueText($valueText, res, valueText?.bind(item));
-		setColor($target, res);
+		if (shouldUpdateValue) {
+			item.value = res;
+			setValueText($valueText, res, valueText?.bind(item));
+			setValueText($trailingValueText, res, valueText?.bind(item));
+			setColor($target, res);
+		}
+
 		callback.call($target, key, item.value);
 	}
+}
+
+function getSubtitleText(item, options) {
+	if (options.infoAsDescription) {
+		return item.info;
+	}
+
+	return item.value ?? item.info;
 }
 
 /**
@@ -357,10 +513,13 @@ function setValueText($valueText, value, valueText) {
 	}
 
 	if (typeof value === "string") {
-		if (value.match("\n")) [value] = value.split("\n");
+		const shouldPreserveFullText = $valueText.classList.contains("value");
+		if (!shouldPreserveFullText) {
+			if (value.includes("\n")) [value] = value.split("\n");
 
-		if (value.length > 47) {
-			value = value.slice(0, 47) + "...";
+			if (value.length > 47) {
+				value = value.slice(0, 47) + "...";
+			}
 		}
 	}
 
