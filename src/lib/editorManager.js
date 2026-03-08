@@ -36,6 +36,7 @@ import {
 	registerExternalCommand,
 	removeExternalCommand,
 } from "cm/commandRegistry";
+import lspApi from "cm/lsp/api";
 import lspClientManager from "cm/lsp/clientManager";
 import {
 	getLspDiagnostics,
@@ -44,7 +45,6 @@ import {
 	lspDiagnosticsUiExtension,
 } from "cm/lsp/diagnostics";
 import { stopManagedServer } from "cm/lsp/serverLauncher";
-import serverRegistry from "cm/lsp/serverRegistry";
 // CodeMirror mode management
 import {
 	getModeForPath,
@@ -676,9 +676,9 @@ async function EditorManager($header, $body) {
 				.trim()
 				.toLowerCase();
 			if (!key) continue;
-			const existing = serverRegistry.getServer(key);
+			const existing = lspApi.servers.get(key);
 			if (existing) {
-				serverRegistry.updateServer(key, (current) => {
+				lspApi.servers.update(key, (current) => {
 					const next = { ...current };
 					if (Array.isArray(config.languages) && config.languages.length) {
 						next.languages = config.languages.map((lang) =>
@@ -729,7 +729,7 @@ async function EditorManager($header, $body) {
 				typeof config.transport === "object"
 			) {
 				try {
-					serverRegistry.registerServer({
+					lspApi.upsert({
 						id: key,
 						label: config.label || key,
 						languages: config.languages,
@@ -740,7 +740,7 @@ async function EditorManager($header, $body) {
 						launcher: config.launcher,
 						enabled: config.enabled !== false,
 					});
-					serverRegistry.updateServer(key, (current) => {
+					lspApi.servers.update(key, (current) => {
 						if (current.transport?.protocols) {
 							const updated = { ...current };
 							updated.transport = { ...current.transport };
