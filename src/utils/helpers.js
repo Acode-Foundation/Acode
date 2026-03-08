@@ -352,6 +352,10 @@ export default {
 	async requestJson(url, headers = {}) {
 		const nativeHttp = window.cordova?.plugin?.http;
 		if (typeof nativeHttp?.get !== "function") {
+			// Do not fall back to fetch here: these callers exist specifically to
+			// bypass the Android WebView CORS mismatch for the plugin API. Missing
+			// native HTTP support is a runtime/configuration error, not a case for
+			// silently re-enabling the broken transport path.
 			throw new Error("Native HTTP plugin is unavailable");
 		}
 
@@ -360,7 +364,14 @@ export default {
 		});
 
 		if (typeof response?.data === "string") {
-			return JSON.parse(response.data);
+			try {
+				return JSON.parse(response.data);
+			} catch (error) {
+				const bodyPreview = response.data.slice(0, 200);
+				throw new Error(
+					`Failed to parse JSON response from ${url}: ${bodyPreview}`,
+				);
+			}
 		}
 
 		return response?.data;

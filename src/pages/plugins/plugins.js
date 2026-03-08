@@ -351,7 +351,11 @@ export default function PluginsInclude(updates) {
       return plugins.map((plugin) => <Item {...plugin} />);
     } catch (error) {
       $list.all.setAttribute("empty-msg", strings["error"]);
-      window.log("error", error);
+      window.log(
+        "error",
+        `Remote plugin search failed for query "${query}" at URL "${searchUrl}"`,
+        error,
+      );
       return [];
     }
   }
