@@ -640,45 +640,65 @@ export default class TerminalComponent {
 				// In debug builds, refresh axs binary from assets before starting
 				await Terminal.refreshAxsBinary();
 				await Terminal.startAxs(false, () => {}, console.error);
+			}
 
-				// Wait for axs HTTP server to become reachable
-				const pollResult = await pollAxs(30);
-				if (!pollResult) {
-					// AXS failed to start — attempt auto-repair
-					toast("Repairing terminal environment...");
+			// Always wait for the HTTP endpoint, even if the PID is already alive.
+			// kill -0 only tells us the outer process exists; the embedded server may
+			// still be starting, especially after crash recovery on slower devices.
+			const initialPollRetries = axsRunning ? 10 : 30;
+			if (!(await pollAxs(initialPollRetries))) {
+				// AXS failed to become reachable — attempt auto-repair
+				toast("Repairing terminal environment...");
 
+				try {
+					await Terminal.stopAxs();
+				} catch (_) {
+					/* ignore */
+				}
+
+				// Re-run installing flow to repair packages / config
+				const repairOk = await Terminal.startAxs(
+					true,
+					console.log,
+					console.error,
+				);
+				if (repairOk) {
+					// Start AXS again after repair
+					await Terminal.startAxs(false, () => {}, console.error);
+				}
+
+				if (!(await pollAxs(30))) {
+					// Still broken — clear .configured so next open re-triggers install
 					try {
-						await Terminal.stopAxs();
+						await Terminal.resetConfigured();
 					} catch (_) {
 						/* ignore */
 					}
-
-					// Re-run installing flow to repair packages / config
-					const repairOk = await Terminal.startAxs(
-						true,
-						console.log,
-						console.error,
-					);
-					if (repairOk) {
-						// Start AXS again after repair
-						await Terminal.startAxs(false, () => {}, console.error);
-					}
-
-					if (!(await pollAxs(30))) {
-						// Still broken — clear .configured so next open re-triggers install
-						try {
-							await Terminal.resetConfigured();
-						} catch (_) {
-							/* ignore */
-						}
-						throw new Error("Failed to start AXS server after repair attempt");
-					}
+					throw new Error("Failed to start AXS server after repair attempt");
 				}
 			}
 
 			const requestBody = {
 				cols: this.terminal.cols,
 				rows: this.terminal.rows,
+			};
+
+			const parsePtyOpenError = (payload) => {
+				if (typeof payload !== "string") {
+					return null;
+				}
+
+				const trimmed = payload.trim();
+				if (!trimmed.startsWith("{")) {
+					return null;
+				}
+
+				try {
+					const parsed = JSON.parse(trimmed);
+					return typeof parsed?.error === "string" ? parsed.error : null;
+				} catch {
+					return null;
+				}
 			};
 
 			const response = await fetch(
@@ -697,9 +717,10 @@ export default class TerminalComponent {
 			}
 
 			const data = await response.text();
+			const ptyOpenError = parsePtyOpenError(data);
 
 			// Detect PTY errors from axs server (e.g. incompatible binary)
-			if (data.includes('"error"') && data.includes("Failed to open PTY")) {
+			if (ptyOpenError?.includes("Failed to open PTY")) {
 				const refreshed = await Terminal.refreshAxsBinary();
 				if (refreshed) {
 					// Kill old axs, restart with fresh binary, and retry once
@@ -719,7 +740,7 @@ export default class TerminalComponent {
 						);
 						if (retryResp.ok) {
 							const retryData = await retryResp.text();
-							if (!retryData.includes('"error"')) {
+								if (!parsePtyOpenError(retryData)) {
 								this.pid = retryData.trim();
 								return this.pid;
 							}

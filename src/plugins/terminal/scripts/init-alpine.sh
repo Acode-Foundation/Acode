@@ -270,8 +270,10 @@ chmod +x "$PREFIX/alpine/initrc"
 # even though axs is already listening, which triggers false repair/reinstall loops.
 # axs currently exposes only its default https://localhost policy or a global
 # allow-any-origin switch; it does not support an explicit origin allowlist yet.
-# Keep this until axs gains per-origin CORS configuration that can express the
-# WebView origin without breaking the localhost probe.
+# Tightening this inside the shell wrapper is not possible: Origin validation has
+# to happen inside axs itself, where the HTTP request is handled. Until axs gains
+# per-origin CORS or an equivalent auth gate, keep this stopgap so terminal
+# startup and localhost readiness probes remain functional.
 "$PREFIX/axs" --allow-any-origin -c "bash --rcfile /initrc -i"
 
 else
