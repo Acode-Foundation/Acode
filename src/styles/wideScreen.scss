@@ -221,24 +221,24 @@
       }
 
       .plugin-toggle-switch {
-        min-width: 140px;
-        padding: 0.75rem;
+        min-width: auto;
+        padding: 0;
 
         .plugin-toggle-track {
-          width: 52px;
-          height: 28px;
-          border-radius: 14px;
+          width: 2.8rem;
+          height: 1.65rem;
+          border-radius: 999px;
         }
 
         .plugin-toggle-thumb {
-          width: 24px;
-          height: 24px;
-          left: 2px;
-          top: 2px;
+          width: 1.25rem;
+          height: 1.25rem;
+          left: 0;
+          top: 0;
         }
 
         &[data-enabled="true"] .plugin-toggle-thumb {
-          left: 26px;
+          transform: translateX(1.12rem);
         }
       }
     }
