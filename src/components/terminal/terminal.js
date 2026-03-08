@@ -591,11 +591,43 @@ export default class TerminalComponent {
 			// Poll by hitting the actual HTTP endpoint, not just checking PID liveness.
 			// isAxsRunning() only does kill -0 on the PID file, which can return true
 			// while the HTTP server inside proot is still booting.
+			const fetchWithTimeout = async (url, options = {}, timeoutMs = 2000) => {
+				const hasAbortSignalTimeout =
+					typeof AbortSignal !== "undefined" &&
+					typeof AbortSignal.timeout === "function";
+
+				if (hasAbortSignalTimeout) {
+					return fetch(url, {
+						...options,
+						signal: AbortSignal.timeout(timeoutMs),
+					});
+				}
+
+				if (typeof AbortController === "undefined") {
+					return fetch(url, options);
+				}
+
+				const controller = new AbortController();
+				const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+				try {
+					return await fetch(url, {
+						...options,
+						signal: controller.signal,
+					});
+				} finally {
+					clearTimeout(timeoutId);
+				}
+			};
+
 			const pollAxs = async (maxRetries = 30, intervalMs = 1000) => {
 				for (let i = 0; i < maxRetries; i++) {
 					await new Promise((r) => setTimeout(r, intervalMs));
 					try {
-						const resp = await fetch(`http://localhost:${this.options.port}/`, { method: 'GET', signal: AbortSignal.timeout(2000) });
+						const resp = await fetchWithTimeout(
+							`http://localhost:${this.options.port}/`,
+							{ method: "GET" },
+							2000,
+						);
 						if (resp.ok || resp.status < 500) return true;
 					} catch (_) {
 						// HTTP not yet reachable
@@ -615,10 +647,18 @@ export default class TerminalComponent {
 					// AXS failed to start — attempt auto-repair
 					toast("Repairing terminal environment...");
 
-					try { await Terminal.stopAxs(); } catch (_) { /* ignore */ }
+					try {
+						await Terminal.stopAxs();
+					} catch (_) {
+						/* ignore */
+					}
 
 					// Re-run installing flow to repair packages / config
-					const repairOk = await Terminal.startAxs(true, console.log, console.error);
+					const repairOk = await Terminal.startAxs(
+						true,
+						console.log,
+						console.error,
+					);
 					if (repairOk) {
 						// Start AXS again after repair
 						await Terminal.startAxs(false, () => {}, console.error);
@@ -626,7 +666,11 @@ export default class TerminalComponent {
 
 					if (!(await pollAxs(30))) {
 						// Still broken — clear .configured so next open re-triggers install
-						try { await Terminal.resetConfigured(); } catch (_) { /* ignore */ }
+						try {
+							await Terminal.resetConfigured();
+						} catch (_) {
+							/* ignore */
+						}
 						throw new Error("Failed to start AXS server after repair attempt");
 					}
 				}
@@ -655,17 +699,23 @@ export default class TerminalComponent {
 			const data = await response.text();
 
 			// Detect PTY errors from axs server (e.g. incompatible binary)
-			if (data.includes('"error"') && data.includes('Failed to open PTY')) {
+			if (data.includes('"error"') && data.includes("Failed to open PTY")) {
 				const refreshed = await Terminal.refreshAxsBinary();
 				if (refreshed) {
 					// Kill old axs, restart with fresh binary, and retry once
-					try { await Terminal.stopAxs(); } catch (_) {}
+					try {
+						await Terminal.stopAxs();
+					} catch (_) {}
 					await Terminal.startAxs(false, () => {}, console.error);
 					const pollResult = await pollAxs(30);
 					if (pollResult) {
 						const retryResp = await fetch(
 							`http://localhost:${this.options.port}/terminals`,
-							{ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(requestBody) },
+							{
+								method: "POST",
+								headers: { "Content-Type": "application/json" },
+								body: JSON.stringify(requestBody),
+							},
 						);
 						if (retryResp.ok) {
 							const retryData = await retryResp.text();
@@ -676,7 +726,7 @@ export default class TerminalComponent {
 						}
 					}
 				}
-				throw new Error('Failed to open PTY even after refreshing AXS binary');
+				throw new Error("Failed to open PTY even after refreshing AXS binary");
 			}
 
 			this.pid = data.trim();
@@ -703,6 +753,11 @@ export default class TerminalComponent {
 		}
 
 		this.pid = pid;
+		this._relocationSniffDisabled = false;
+		clearTimeout(this._relocationSniffTimer);
+		this._relocationSniffTimer = setTimeout(() => {
+			this._relocationSniffDisabled = true;
+		}, 15000);
 
 		const wsUrl = `ws://localhost:${this.options.port}/terminals/${pid}`;
 
@@ -716,7 +771,9 @@ export default class TerminalComponent {
 			// Reassigning this.attachAddon does NOT auto-clean listeners bound by the old instance,
 			// which can cause duplicate socket handlers and leaks after reconnects.
 			if (this.attachAddon) {
-				try { this.attachAddon.dispose(); } catch (_) {}
+				try {
+					this.attachAddon.dispose();
+				} catch (_) {}
 				this.attachAddon = null;
 			}
 
@@ -748,19 +805,44 @@ export default class TerminalComponent {
 
 		// Also sniff the data to detect critical Alpine container corruption (e.g. bash/readline broken)
 		this.websocket.addEventListener("message", async (event) => {
+			if (this._relocationSniffDisabled) {
+				return;
+			}
+
+			const MAX_SNIFF_BYTES = 4096;
+
 			try {
 				let text = "";
 				if (typeof event.data === "string") {
-					text = event.data;
-				} else if (event.data instanceof ArrayBuffer || event.data instanceof Blob) {
-					text = await new Response(event.data).text();
+					text = event.data.slice(0, MAX_SNIFF_BYTES);
+				} else if (event.data instanceof ArrayBuffer) {
+					const byteLength = Math.min(event.data.byteLength, MAX_SNIFF_BYTES);
+					const view = new Uint8Array(event.data, 0, byteLength);
+					text = new TextDecoder("utf-8", { fatal: false }).decode(view);
+				} else if (event.data instanceof Blob) {
+					const slice =
+						event.data.size > MAX_SNIFF_BYTES
+							? event.data.slice(0, MAX_SNIFF_BYTES)
+							: event.data;
+					text = await new Response(slice).text();
 				}
-				
-				if (text.includes("Error relocating") && text.includes("symbol not found")) {
-					console.error("Detected critical Alpine libc corruption! Terminating and triggering reinstall.");
+
+				if (!text) {
+					return;
+				}
+
+				if (
+					text.includes("Error relocating") &&
+					text.includes("symbol not found")
+				) {
+					console.error(
+						"Detected critical Alpine libc corruption! Terminating and triggering reinstall.",
+					);
 					if (this.onCrashData) {
 						this.onCrashData("relocation_error");
 					}
+					this._relocationSniffDisabled = true;
+					clearTimeout(this._relocationSniffTimer);
 				}
 			} catch (err) {}
 		});
@@ -998,7 +1080,9 @@ export default class TerminalComponent {
 	 */
 	async loadTerminalFont() {
 		// Use original name without quotes for Acode fonts.get
-		const fontFamily = this.options.fontFamily.replace(/^"|"$/g, '').replace(/",\s*monospace$/, '');
+		const fontFamily = this.options.fontFamily
+			.replace(/^"|"$/g, "")
+			.replace(/",\s*monospace$/, "");
 		if (fontFamily && fonts.get(fontFamily)) {
 			try {
 				await fonts.loadFont(fontFamily);
@@ -1007,7 +1091,9 @@ export default class TerminalComponent {
 				if (this.terminal) {
 					this.terminal.options.fontFamily = `"${fontFamily}", monospace`;
 					if (this.webglAddon) {
-						try { this.webglAddon.clearTextureAtlas(); } catch (e) {}
+						try {
+							this.webglAddon.clearTextureAtlas();
+						} catch (e) {}
 					}
 					// Ensure terminal dimensions are updated after font load changes char size
 					setTimeout(() => this.fit(), 100);
@@ -1072,6 +1158,9 @@ export default class TerminalComponent {
 	 * Terminate terminal session
 	 */
 	async terminate() {
+		clearTimeout(this._relocationSniffTimer);
+		this._relocationSniffDisabled = true;
+
 		if (this.websocket) {
 			this.websocket.close();
 		}

@@ -385,21 +385,44 @@ public class System extends CordovaPlugin {
 
                 return true;
             case "copyAsset": {
-                String assetName = args.getString(0);
-                String destPath = args.getString(1);
-                try {
-                    java.io.InputStream in = cordova.getActivity().getAssets().open(assetName);
-                    java.io.FileOutputStream out = new java.io.FileOutputStream(destPath);
-                    byte[] buf = new byte[65536];
-                    int len;
-                    while ((len = in.read(buf)) != -1) out.write(buf, 0, len);
-                    out.close();
-                    in.close();
-                    new File(destPath).setExecutable(true);
-                    callbackContext.success();
-                } catch (Exception e) {
-                    callbackContext.error(e.getMessage());
-                }
+                final String assetName = args.getString(0);
+                final String destPath = args.getString(1);
+                cordova
+                    .getThreadPool()
+                    .execute(
+                        new Runnable() {
+                            @Override
+                            public void run() {
+                                File destFile = new File(destPath);
+                                File parentDir = destFile.getParentFile();
+                                if (parentDir != null && !parentDir.exists() && !parentDir.mkdirs()) {
+                                    callbackContext.error("Failed to create destination directory: " + parentDir.getAbsolutePath());
+                                    return;
+                                }
+
+                                try (java.io.InputStream in = cordova.getActivity().getAssets().open(assetName);
+                                     java.io.FileOutputStream out = new java.io.FileOutputStream(destFile)) {
+                                    byte[] buf = new byte[65536];
+                                    int len;
+                                    while ((len = in.read(buf)) != -1) {
+                                        out.write(buf, 0, len);
+                                    }
+                                } catch (Exception e) {
+                                    if (destFile.exists()) {
+                                        destFile.delete();
+                                    }
+                                    callbackContext.error(e.getMessage());
+                                    return;
+                                }
+
+                                if (!destFile.setExecutable(true)) {
+                                    callbackContext.error("Failed to set executable permission on: " + destFile.getAbsolutePath());
+                                    return;
+                                }
+
+                                callbackContext.success();
+                            }
+                        });
                 return true;
             }
             default:

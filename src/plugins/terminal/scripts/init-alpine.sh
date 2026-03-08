@@ -10,8 +10,12 @@ is_apk_installed() {
     [ -f /lib/apk/db/installed ] && grep -q "^P:${package_name}$" /lib/apk/db/installed
 }
 
+find_bash_path() {
+    command -v bash 2>/dev/null || true
+}
+
 missing_packages=""
-[ ! -f /usr/bin/bash ] && [ ! -f /bin/bash ] && missing_packages="$missing_packages bash"
+[ -z "$(find_bash_path)" ] && missing_packages="$missing_packages bash"
 [ ! -f /usr/share/zoneinfo/UTC ] && missing_packages="$missing_packages tzdata"
 [ ! -f /usr/bin/wget ] && missing_packages="$missing_packages wget"
 ! is_apk_installed command-not-found && missing_packages="$missing_packages command-not-found"
@@ -34,17 +38,20 @@ if [ -n "$missing_packages" ]; then
         mv /etc/apk/repositories.bak /etc/apk/repositories 2>/dev/null
     fi
 
-    # Post-install fixup: ensure bash is usable even if scripts failed
-    if [ -f /usr/bin/bash ] && [ ! -e /bin/bash ]; then
-        ln -sf /usr/bin/bash /bin/bash 2>/dev/null
+    bash_path="$(find_bash_path)"
+
+    # Post-install fixup: ensure /bin/bash exists if bash resolves elsewhere.
+    if [ -n "$bash_path" ] && [ ! -e /bin/bash ]; then
+        ln -sf "$bash_path" /bin/bash 2>/dev/null
     fi
+
     # Ensure /etc/shells has bash
-    if [ -f /usr/bin/bash ] && ! grep -q "/bin/bash" /etc/shells 2>/dev/null; then
+    if [ -n "$bash_path" ] && ! grep -q "/bin/bash" /etc/shells 2>/dev/null; then
         echo "/bin/bash" >> /etc/shells 2>/dev/null
     fi
 
     # Verify
-    [ ! -f /usr/bin/bash ] && [ ! -f /bin/bash ] && echo -e "\e[31;1m[!] \e[0mbash still missing\e[0m"
+    [ -z "$bash_path" ] && echo -e "\e[31;1m[!] \e[0mbash still missing\e[0m"
     [ ! -f /usr/bin/wget ] && echo -e "\e[31;1m[!] \e[0mwget still missing\e[0m"
 fi
 
@@ -261,6 +268,10 @@ chmod +x "$PREFIX/alpine/initrc"
 # Required for the WebView's HTTP probe and terminal requests to localhost:8767.
 # Without this CORS allowance, fetch() fails with "TypeError: Failed to fetch"
 # even though axs is already listening, which triggers false repair/reinstall loops.
+# axs currently exposes only its default https://localhost policy or a global
+# allow-any-origin switch; it does not support an explicit origin allowlist yet.
+# Keep this until axs gains per-origin CORS configuration that can express the
+# WebView origin without breaking the localhost probe.
 "$PREFIX/axs" --allow-any-origin -c "bash --rcfile /initrc -i"
 
 else

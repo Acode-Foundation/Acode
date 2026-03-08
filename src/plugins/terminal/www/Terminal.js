@@ -73,7 +73,7 @@ const Terminal = {
                             }
                         }
                     }).then(async (uuid) => {
-                        await Executor.write(uuid, `source ${filesDir}/init-sandbox.sh ${installing ? "--installing" : ""}; exit`);
+                        await Executor.write(uuid, `source "${filesDir}/init-sandbox.sh" ${installing ? "--installing" : ""}; exit`);
                     }).catch((error) => {
                         err_logger("Failed to start AXS:", error);
                         resolve(false);
@@ -99,7 +99,7 @@ const Terminal = {
                 }).then(async (uuid) => {
                     // Normal startup path: do not pass --installing.
                     // This avoids entering install-time setup when just launching AXS.
-                    await Executor.write(uuid, `source ${filesDir}/init-sandbox.sh; exit`);
+                    await Executor.write(uuid, `source "${filesDir}/init-sandbox.sh"; exit`);
                 }).catch((error) => {
                     err_logger("Failed to start AXS:", error);
                 });
@@ -316,13 +316,13 @@ const Terminal = {
                 const alpineDir = `${filesDir}/alpine`;
 
                 // Clean up partial extraction from previous failed attempt
-                await Executor.execute(`rm -rf ${alpineDir}`).catch(() => {});
+                await Executor.execute(`rm -rf "${alpineDir}"`).catch(() => {});
                 await new Promise((resolve, reject) => {
                     system.mkdirs(alpineDir, resolve, reject);
                 });
 
                 logger("📦  Extracting sandbox filesystem...");
-                await Executor.execute(`tar --no-same-owner -xf ${filesDir}/alpine.tar.gz -C ${alpineDir}`);
+                await Executor.execute(`tar --no-same-owner -xf "${filesDir}/alpine.tar.gz" -C "${alpineDir}"`);
 
                 logger("⚙️  Applying basic configuration...");
                 system.writeText(`${alpineDir}/etc/resolv.conf`, `nameserver 8.8.4.4\nnameserver 8.8.8.8`);
@@ -351,7 +351,7 @@ const Terminal = {
             err_logger("Installation failed:", e);
             console.error("Installation failed:", e);
             // Clean up everything so retry starts fresh (including potentially corrupted downloads)
-            await Executor.execute(`rm -rf ${filesDir}/.downloaded ${filesDir}/.extracted ${filesDir}/.configured ${filesDir}/alpine ${filesDir}/alpine.tar.gz ${filesDir}/alpine.tar ${filesDir}/.download-manifest`).catch(() => {});
+            await Executor.execute(`rm -rf "${filesDir}/.downloaded" "${filesDir}/.extracted" "${filesDir}/.configured" "${filesDir}/alpine" "${filesDir}/alpine.tar.gz" "${filesDir}/alpine.tar" "${filesDir}/.download-manifest"`).catch(() => {});
             if (!_retried) {
                 logger("🔄  Retrying installation from scratch...");
                 return this.install(logger, err_logger, true);

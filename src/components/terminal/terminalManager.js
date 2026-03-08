@@ -242,9 +242,12 @@ class TerminalManager {
 							// opening a separate "Terminal Installation" tab. Keeping it inside
 							// this init try/catch also reuses the same cleanup path on failure
 							// (dispose component + remove broken tab).
-							const installationResult = await this.checkAndInstallTerminal(false, {
-								component: terminalComponent,
-							});
+							const installationResult = await this.checkAndInstallTerminal(
+								false,
+								{
+									component: terminalComponent,
+								},
+							);
 							if (!installationResult.success) {
 								throw new Error(installationResult.error);
 							}
@@ -335,7 +338,10 @@ class TerminalManager {
 	 * early return and run a full reinstall.
 	 * @returns {Promise<{success: boolean, error?: string}>}
 	 */
-	async checkAndInstallTerminal(forceReinstall = false, progressTerminal = null) {
+	async checkAndInstallTerminal(
+		forceReinstall = false,
+		progressTerminal = null,
+	) {
 		try {
 			// Check if terminal is already installed
 			const isInstalled = await Terminal.isInstalled();
@@ -353,9 +359,12 @@ class TerminalManager {
 			}
 
 			// Create installation progress terminal (or reuse current one)
-			const installTerminal = progressTerminal || await this.createInstallationTerminal();
+			const installTerminal =
+				progressTerminal || (await this.createInstallationTerminal());
 			if (progressTerminal?.component) {
-				installTerminal.component.write("\x1b[33mInstalling terminal environment...\x1b[0m\r\n");
+				installTerminal.component.write(
+					"\x1b[33mInstalling terminal environment...\x1b[0m\r\n",
+				);
 			}
 
 			// Install terminal with progress logging
@@ -518,7 +527,7 @@ class TerminalManager {
 		terminalFile.onfocus = () => {
 			// Do NOT forcefully call fit() here, as the DOM might still be animating
 			// or transitioning from display:none.
-			// terminalFile._resizeObserver (ResizeObserver) already handles fitting 
+			// terminalFile._resizeObserver (ResizeObserver) already handles fitting
 			// securely when the container's true dimensions are realized.
 			terminalComponent.focus();
 		};
@@ -679,12 +688,19 @@ class TerminalManager {
 
 					// Write recovery status directly into the current terminal
 					terminalComponent.clear();
-					terminalComponent.write("\x1b[33m⚠ Detected terminal environment corruption (libc/readline).\x1b[0m\r\n");
-					terminalComponent.write("\x1b[33m  Starting automatic repair...\x1b[0m\r\n\r\n");
+					terminalComponent.write(
+						"\x1b[33m⚠ Detected terminal environment corruption (libc/readline).\x1b[0m\r\n",
+					);
+					terminalComponent.write(
+						"\x1b[33m  Starting automatic repair...\x1b[0m\r\n\r\n",
+					);
 
 					// Uninstall corrupted rootfs
 					terminalComponent.write("Removing corrupted rootfs...\r\n");
-					if (window.Terminal && typeof window.Terminal.uninstall === "function") {
+					if (
+						window.Terminal &&
+						typeof window.Terminal.uninstall === "function"
+					) {
 						await window.Terminal.uninstall();
 					}
 					terminalComponent.write("Rootfs removed. Reinstalling...\r\n\r\n");
@@ -695,17 +711,23 @@ class TerminalManager {
 					});
 
 					if (result.success) {
-						terminalComponent.write("\r\n\x1b[32m✔ Recovery complete. Reconnecting session...\x1b[0m\r\n");
+						terminalComponent.write(
+							"\r\n\x1b[32m✔ Recovery complete. Reconnecting session...\x1b[0m\r\n",
+						);
 						// Clear the terminal buffer so the new shell prompt starts clean
 						terminalComponent.clear();
 						// Reconnect a fresh session in the same terminal
 						await terminalComponent.connectToSession();
 					} else {
-						terminalComponent.write(`\r\n\x1b[31m✘ Recovery failed: ${result.error}\x1b[0m\r\n`);
+						terminalComponent.write(
+							`\r\n\x1b[31m✘ Recovery failed: ${result.error}\x1b[0m\r\n`,
+						);
 					}
 				} catch (e) {
 					console.error("In-place terminal recovery failed:", e);
-					terminalComponent.write(`\r\n\x1b[31m✘ Recovery error: ${e.message}\x1b[0m\r\n`);
+					terminalComponent.write(
+						`\r\n\x1b[31m✘ Recovery error: ${e.message}\x1b[0m\r\n`,
+					);
 				}
 			}
 		};

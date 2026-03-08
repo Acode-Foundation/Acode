@@ -31,7 +31,8 @@ export function getTerminalSettings() {
 	};
 
 	let spacing = Number.parseFloat(merged.letterSpacing);
-	if (!Number.isFinite(spacing)) spacing = DEFAULT_TERMINAL_SETTINGS.letterSpacing;
+	if (!Number.isFinite(spacing))
+		spacing = DEFAULT_TERMINAL_SETTINGS.letterSpacing;
 	merged.letterSpacing = Math.max(0, Math.min(2, spacing));
 
 	return merged;

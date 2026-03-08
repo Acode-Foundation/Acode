@@ -257,7 +257,8 @@ export default function terminalSettings() {
 			default:
 				if (key === "letterSpacing") {
 					value = Number.parseFloat(value);
-					if (!Number.isFinite(value)) value = DEFAULT_TERMINAL_SETTINGS.letterSpacing;
+					if (!Number.isFinite(value))
+						value = DEFAULT_TERMINAL_SETTINGS.letterSpacing;
 					value = Math.max(0, Math.min(2, value));
 				}
 
@@ -373,7 +374,9 @@ async function updateActiveTerminals(key, value) {
 					tab.terminalComponent.options.fontFamily = `"${value}", monospace`;
 					tab.terminalComponent.terminal.options.fontFamily = `"${value}", monospace`;
 					if (tab.terminalComponent.webglAddon) {
-						try { tab.terminalComponent.webglAddon.clearTextureAtlas(); } catch (e) {}
+						try {
+							tab.terminalComponent.webglAddon.clearTextureAtlas();
+						} catch (e) {}
 					}
 					tab.terminalComponent.terminal.refresh(
 						0,
@@ -405,7 +408,8 @@ async function updateActiveTerminals(key, value) {
 				case "letterSpacing":
 					{
 						let spacing = Number.parseFloat(value);
-						if (!Number.isFinite(spacing)) spacing = DEFAULT_TERMINAL_SETTINGS.letterSpacing;
+						if (!Number.isFinite(spacing))
+							spacing = DEFAULT_TERMINAL_SETTINGS.letterSpacing;
 						spacing = Math.max(0, Math.min(2, spacing));
 						tab.terminalComponent.terminal.options.letterSpacing = spacing;
 					}
