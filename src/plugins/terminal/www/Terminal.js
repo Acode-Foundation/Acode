@@ -1,5 +1,18 @@
 const Executor = require("./Executor");
 
+function formatAxsAssetError(error) {
+    if (!error) return "unknown error";
+    if (typeof error === "string") return error;
+    if (error instanceof Error) {
+        return error.stack || error.message || String(error);
+    }
+    try {
+        return JSON.stringify(error);
+    } catch (_) {
+        return String(error);
+    }
+}
+
 const Terminal = {
     /**
      * In debug builds, overwrite the axs binary from bundled assets to ensure
@@ -16,6 +29,7 @@ const Terminal = {
             });
             return true;
         } catch (e) {
+            console.warn("Failed to refresh bundled AXS from assets:", formatAxsAssetError(e));
             return false;
         }
     },
@@ -258,7 +272,7 @@ const Terminal = {
                             copiedFromAsset = true;
                             logger("✅  Bundled AXS copied from assets");
                         } catch (assetError) {
-                            logger("⚠️  Asset copy failed, will download instead");
+                            logger(`⚠️  Asset copy failed, will download instead: ${formatAxsAssetError(assetError)}`);
                         }
                     }
 

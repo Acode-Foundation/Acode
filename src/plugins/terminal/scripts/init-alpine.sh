@@ -278,7 +278,7 @@ chmod +x "$PREFIX/alpine/initrc"
 # to happen inside axs itself, where the HTTP request is handled. Until axs gains
 # per-origin CORS or an equivalent auth gate, keep this stopgap so terminal
 # startup and localhost readiness probes remain functional.
-"$PREFIX/axs" --allow-any-origin -c "bash --rcfile /initrc -i"
+"$PREFIX/axs" -c "bash --rcfile /initrc -i"
 
 else
     exec "$@"
