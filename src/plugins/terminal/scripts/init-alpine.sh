@@ -266,6 +266,9 @@ chmod +x "$PREFIX/alpine/initrc"
 #actual source
 #everytime a terminal is started initrc will run
 # Required for the WebView's HTTP probe and terminal requests to localhost:8767.
+# Upstream Cordova defaults to https://localhost, and axs already allows that
+# origin by default. However, this repo's build pipeline rewrites the Cordova
+# Scheme to http so the app can use ws://localhost terminal sockets.
 # Without this CORS allowance, fetch() fails with "TypeError: Failed to fetch"
 # even though axs is already listening, which triggers false repair/reinstall loops.
 # axs currently exposes only its default https://localhost policy or a global

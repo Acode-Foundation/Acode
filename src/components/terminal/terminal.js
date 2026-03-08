@@ -740,7 +740,7 @@ export default class TerminalComponent {
 						);
 						if (retryResp.ok) {
 							const retryData = await retryResp.text();
-								if (!parsePtyOpenError(retryData)) {
+							if (!parsePtyOpenError(retryData)) {
 								this.pid = retryData.trim();
 								return this.pid;
 							}
