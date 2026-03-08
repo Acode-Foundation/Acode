@@ -258,6 +258,7 @@ wc-page.detail-settings-page {
 			min-width: 0;
 			overflow: visible;
 			gap: 0.14rem;
+			padding-right: 0.35rem;
 
 			> .text {
 				display: flex;
@@ -290,7 +291,7 @@ wc-page.detail-settings-page {
 			flex-shrink: 0;
 			min-height: 1.65rem;
 			gap: 0.32rem;
-			margin-left: auto;
+			margin-left: 0.9rem;
 			align-self: center;
 		}
 	}
@@ -298,6 +299,7 @@ wc-page.detail-settings-page {
 	.detail-settings-list > .list-item.has-subtitle > .container,
 	.settings-section-card > .list-item.has-subtitle > .container {
 		padding-top: 0.12rem;
+		padding-right: 0.55rem;
 	}
 
 	.detail-settings-list > .list-item.compact > .container,

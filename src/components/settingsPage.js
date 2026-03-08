@@ -27,7 +27,7 @@ import searchBar from "./searchbar";
  * @property {string} [pageClassName] - Extra classes to apply to the page element
  * @property {string} [listClassName] - Extra classes to apply to the list element
  * @property {string} [defaultSearchGroup] - Default search result group label for this page
- * @property {boolean} [infoAsDescription] - Prefer item.info as subtitle instead of item.value
+ * @property {boolean} [infoAsDescription] - Override subtitle behavior; defaults to true when valueInTail is enabled
  * @property {boolean} [valueInTail] - Render item.value as a trailing control/value instead of subtitle
  * @property {boolean} [groupByDefault] - Wrap uncategorized settings in a grouped section shell
  * @property {"top"|"bottom"} [notePosition] - Render note before or after the settings list
@@ -237,6 +237,8 @@ function listItems($list, items, callback, options = {}) {
 	const renderedItems = [];
 	const $searchItems = [];
 	const $content = [];
+	const useInfoAsDescription =
+		options.infoAsDescription ?? Boolean(options.valueInTail);
 	/** @type {HTMLElement | null} */
 	let $currentSectionCard = null;
 	let currentCategory = null;
@@ -275,9 +277,9 @@ function listItems($list, items, callback, options = {}) {
 
 		let $checkbox, $valueText;
 		let $trailingValueText;
-		const subtitle = getSubtitleText(item, options);
+		const subtitle = getSubtitleText(item, useInfoAsDescription);
 		const showInfoAsSubtitle =
-			options.infoAsDescription || (item.value === undefined && item.info);
+			useInfoAsDescription || (item.value === undefined && item.info);
 		const searchGroup =
 			item.searchGroup || item.category || options.defaultSearchGroup;
 		const hasSubtitle =
@@ -476,8 +478,8 @@ function listItems($list, items, callback, options = {}) {
 	}
 }
 
-function getSubtitleText(item, options) {
-	if (options.infoAsDescription) {
+function getSubtitleText(item, useInfoAsDescription) {
+	if (useInfoAsDescription) {
 		return item.info;
 	}
 

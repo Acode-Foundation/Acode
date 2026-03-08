@@ -115,6 +115,48 @@ function formatInstallStatus(result) {
 	}
 }
 
+function formatStartupTimeoutValue(timeout) {
+	return typeof timeout === "number" ? `${timeout} ms` : "Default";
+}
+
+function sanitizeInstallMessage(message) {
+	const lines = String(message || "")
+		.split("\n")
+		.map((line) => line.trim())
+		.filter(Boolean)
+		.filter(
+			(line) =>
+				!/^proot warning:/i.test(line) &&
+				!line.includes(`"/proc/self/fd/0"`) &&
+				!line.includes(`"/proc/self/fd/1"`) &&
+				!line.includes(`"/proc/self/fd/2"`),
+		);
+
+	return lines.join(" ");
+}
+
+function formatInstallInfo(result) {
+	const cleanedMessage = sanitizeInstallMessage(result?.message);
+
+	switch (result?.status) {
+		case "present":
+			return result.version
+				? `Version ${result.version} is available.`
+				: "Language server is installed and ready.";
+		case "missing":
+			return "Language server is not installed in the terminal environment.";
+		case "failed":
+			return (
+				cleanedMessage || "Acode could not verify the installation status."
+			);
+		default:
+			return (
+				cleanedMessage ||
+				"Installation status could not be checked automatically."
+			);
+	}
+}
+
 function formatValue(value) {
 	if (value === undefined || value === null || value === "") return "";
 	let text = String(value);
@@ -154,9 +196,16 @@ function updateItemDisplay($list, itemsByKey, key, value, extras = {}) {
 	const $item = $list?.querySelector?.(`[data-key="${key}"]`);
 	if (!$item) return;
 
-	const $value = $item.querySelector(".value");
-	if ($value) {
-		$value.textContent = formatValue(item.value);
+	const $subtitle = $item.querySelector(".value");
+	if ($subtitle) {
+		$subtitle.textContent = $subtitle.classList.contains("setting-info")
+			? String(item.info || "")
+			: formatValue(item.value);
+	}
+
+	const $trailingValue = $item.querySelector(".setting-trailing-value");
+	if ($trailingValue) {
+		$trailingValue.textContent = formatValue(item.value);
 	}
 
 	const $checkbox = $item.querySelector(".input-checkbox");
@@ -200,38 +249,44 @@ function createItems(snapshot) {
 			text: "Enabled",
 			checkbox: snapshot.merged.enabled !== false,
 			info: "Enable or disable this language server",
+			category: "General",
 		},
 		{
 			key: "install_status",
 			text: "Installed",
 			value: formatInstallStatus(snapshot.installResult),
-			info:
-				snapshot.installResult.message ||
-				"Current installation state for this language server",
+			info: formatInstallInfo(snapshot.installResult),
+			category: "Installation",
+			chevron: true,
 		},
 		{
 			key: "install_server",
 			text: "Install / Repair",
 			info: "Install or repair this language server",
+			category: "Installation",
+			chevron: true,
 		},
 		{
 			key: "update_server",
 			text: "Update Server",
 			info: "Update this language server if an update flow exists",
+			category: "Installation",
+			chevron: true,
 		},
 		{
 			key: "uninstall_server",
 			text: "Uninstall Server",
 			info: "Remove installed packages or binaries for this server",
+			category: "Installation",
+			chevron: true,
 		},
 		{
 			key: "startup_timeout",
 			text: "Startup Timeout",
-			value:
-				typeof snapshot.merged.startupTimeout === "number"
-					? `${snapshot.merged.startupTimeout} ms`
-					: "Default (5000 ms)",
+			value: formatStartupTimeoutValue(snapshot.merged.startupTimeout),
 			info: "Configure how long Acode waits for the server to start",
+			category: "Advanced",
+			chevron: true,
 		},
 		{
 			key: "edit_init_options",
@@ -240,11 +295,15 @@ function createItems(snapshot) {
 				? "Configured"
 				: "Empty",
 			info: "Edit initialization options as JSON",
+			category: "Advanced",
+			chevron: true,
 		},
 		{
 			key: "view_init_options",
 			text: "View Initialization Options",
 			info: "View the effective initialization options as JSON",
+			category: "Advanced",
+			chevron: true,
 		},
 	];
 
@@ -254,6 +313,7 @@ function createItems(snapshot) {
 			text,
 			checkbox: snapshot.builtinExts[extKey] !== false,
 			info,
+			category: "Features",
 		});
 	});
 
@@ -275,9 +335,7 @@ async function refreshVisibleState($list, itemsByKey, serverId) {
 		"install_status",
 		formatInstallStatus(snapshot.installResult),
 		{
-			info:
-				snapshot.installResult.message ||
-				"Current installation state for this language server",
+			info: formatInstallInfo(snapshot.installResult),
 		},
 	);
 	updateItemDisplay($list, itemsByKey, "install_server", "");
@@ -287,9 +345,7 @@ async function refreshVisibleState($list, itemsByKey, serverId) {
 		$list,
 		itemsByKey,
 		"startup_timeout",
-		typeof snapshot.merged.startupTimeout === "number"
-			? `${snapshot.merged.startupTimeout} ms`
-			: "Default (5000 ms)",
+		formatStartupTimeoutValue(snapshot.merged.startupTimeout),
 	);
 	updateItemDisplay(
 		$list,
@@ -379,6 +435,9 @@ export default function lspServerDetail(serverId) {
 		undefined,
 		{
 			preserveOrder: true,
+			pageClassName: "detail-settings-page",
+			listClassName: "detail-settings-list",
+			valueInTail: true,
 		},
 	);
 
@@ -414,7 +473,8 @@ export default function lspServerDetail(serverId) {
 				const result = await checkServerInstallation(snapshot.merged);
 				const lines = [
 					`Status: ${formatInstallStatus(result)}`,
-					result.message ? `Details: ${result.message}` : null,
+					result.version ? `Version: ${result.version}` : null,
+					`Details: ${formatInstallInfo(result)}`,
 				].filter(Boolean);
 				alert("Installation Status", lines.join("<br>"));
 				break;

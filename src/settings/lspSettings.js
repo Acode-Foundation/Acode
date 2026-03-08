@@ -124,6 +124,7 @@ export default function lspSettings() {
 			text: "Add Custom Server",
 			info: "Register a user-defined language server with install, update, and launch commands",
 			index: 0,
+			chevron: true,
 		},
 	];
 
@@ -140,6 +141,7 @@ export default function lspSettings() {
 			key: `server:${server.id}`,
 			text: server.label,
 			info: languagesList || undefined,
+			chevron: true,
 		});
 	}
 
@@ -149,6 +151,9 @@ export default function lspSettings() {
 
 	return settingsPage(title, items, callback, undefined, {
 		preserveOrder: true,
+		pageClassName: "detail-settings-page",
+		listClassName: "detail-settings-list",
+		groupByDefault: true,
 	});
 
 	async function callback(key) {
