@@ -515,6 +515,7 @@ export default {
 
 		return {
 			uri: firstCreatedPath || firstTargetUri,
+			created: Boolean(firstCreatedPath),
 			type:
 				firstCreatedType || (isFile && parts.length === 1 ? "file" : "folder"),
 		};

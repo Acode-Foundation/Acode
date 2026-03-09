@@ -673,7 +673,7 @@ function execOperation(type, action, url, $target, name) {
 			} else {
 				newUrl = await helpers.createFileStructure(url, newName, false);
 			}
-			if (!newUrl) return;
+			if (!newUrl.created) return;
 
 			if (isNestedPath) {
 				openFolder.find(url)?.reload();
