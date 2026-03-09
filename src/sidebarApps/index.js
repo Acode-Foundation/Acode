@@ -56,7 +56,8 @@ function remove(id) {
 	app.remove();
 	apps.splice(apps.indexOf(app), 1);
 	if (wasActive && apps.length > 0) {
-		setActiveApp(apps[0].id);
+		const preferredApp = apps.find((app) => app.id === currentSection);
+		setActiveApp(preferredApp?.id || apps[0].id);
 		return;
 	}
 
