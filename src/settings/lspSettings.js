@@ -123,57 +123,87 @@ export default function lspSettings() {
 		customServers: strings["settings-category-custom-servers"],
 		servers: strings["settings-category-servers"],
 	};
-	const servers = serverRegistry.listServers();
+	let page = createPage();
 
-	const sortedServers = servers.sort((a, b) => {
-		const aEnabled = getServerOverride(a.id).enabled ?? a.enabled;
-		const bEnabled = getServerOverride(b.id).enabled ?? b.enabled;
-
-		if (aEnabled !== bEnabled) {
-			return bEnabled ? 1 : -1;
-		}
-		return a.label.localeCompare(b.label);
-	});
-
-	const items = [
-		{
-			key: "add_custom_server",
-			text: strings["lsp-add-custom-server"],
-			info: strings["settings-info-lsp-add-custom-server"],
-			category: categories.customServers,
-			index: 0,
-			chevron: true,
+	return {
+		show(goTo) {
+			page = createPage();
+			page.show(goTo);
 		},
-	];
+		hide() {
+			page.hide();
+		},
+		search(key) {
+			page = createPage();
+			return page.search(key);
+		},
+		restoreList() {
+			page.restoreList();
+		},
+		setTitle(nextTitle) {
+			page.setTitle(nextTitle);
+		},
+	};
 
-	for (const server of sortedServers) {
-		const source = server.launcher?.install?.source
-			? ` • ${server.launcher.install.source}`
-			: "";
-		const languagesList =
-			Array.isArray(server.languages) && server.languages.length
-				? `${server.languages.join(", ")}${source}`
-				: source.slice(3);
+	function createPage() {
+		const servers = serverRegistry.listServers();
+
+		const sortedServers = servers.sort((a, b) => {
+			const aEnabled = getServerOverride(a.id).enabled ?? a.enabled;
+			const bEnabled = getServerOverride(b.id).enabled ?? b.enabled;
+
+			if (aEnabled !== bEnabled) {
+				return bEnabled ? 1 : -1;
+			}
+			return a.label.localeCompare(b.label);
+		});
+
+		const items = [
+			{
+				key: "add_custom_server",
+				text: strings["lsp-add-custom-server"],
+				info: strings["settings-info-lsp-add-custom-server"],
+				category: categories.customServers,
+				index: 0,
+				chevron: true,
+			},
+		];
+
+		for (const server of sortedServers) {
+			const source = server.launcher?.install?.source
+				? ` • ${server.launcher.install.source}`
+				: "";
+			const languagesList =
+				Array.isArray(server.languages) && server.languages.length
+					? `${server.languages.join(", ")}${source}`
+					: source.slice(3);
+
+			items.push({
+				key: `server:${server.id}`,
+				text: server.label,
+				info: languagesList || undefined,
+				category: categories.servers,
+				chevron: true,
+			});
+		}
 
 		items.push({
-			key: `server:${server.id}`,
-			text: server.label,
-			info: languagesList || undefined,
-			category: categories.servers,
-			chevron: true,
+			note: strings["settings-note-lsp-settings"],
+		});
+
+		return settingsPage(title, items, callback, undefined, {
+			preserveOrder: true,
+			pageClassName: "detail-settings-page",
+			listClassName: "detail-settings-list",
+			groupByDefault: true,
 		});
 	}
 
-	items.push({
-		note: strings["settings-note-lsp-settings"],
-	});
-
-	return settingsPage(title, items, callback, undefined, {
-		preserveOrder: true,
-		pageClassName: "detail-settings-page",
-		listClassName: "detail-settings-list",
-		groupByDefault: true,
-	});
+	function refreshVisiblePage() {
+		page.hide();
+		page = createPage();
+		page.show();
+	}
 
 	async function callback(key) {
 		if (key === "add_custom_server") {
@@ -261,6 +291,7 @@ export default function lspSettings() {
 				});
 
 				toast(strings["lsp-custom-server-added"]);
+				refreshVisiblePage();
 				const detailPage = lspServerDetail(serverId);
 				detailPage?.show();
 			} catch (error) {
