@@ -129,12 +129,16 @@ function ensureActiveApp() {
 	if (activeApps.length === 1) return;
 
 	if (activeApps.length > 1) {
-		setActiveApp(activeApps[0].id);
+		const preferredActiveApp = activeApps.find(
+			(app) => app.id === currentSection,
+		);
+		setActiveApp(preferredActiveApp?.id || activeApps[0].id);
 		return;
 	}
 
 	if (apps.length > 0) {
-		setActiveApp(apps[0].id);
+		const preferredApp = apps.find((app) => app.id === currentSection);
+		setActiveApp(preferredApp?.id || apps[0].id);
 	}
 }
 
