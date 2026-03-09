@@ -1,7 +1,5 @@
-wc-page.main-settings-page {
-	background: var(--secondary-color);
-
-	.main-settings-list {
+@mixin settings-page-shell($list-selector) {
+	#{$list-selector} {
 		display: flex;
 		flex-direction: column;
 		gap: 1.2rem;
@@ -42,6 +40,21 @@ wc-page.main-settings-page {
 		overflow: hidden;
 		box-sizing: border-box;
 	}
+}
+
+@mixin settings-icon-reset {
+	.icon {
+		&:active,
+		&.active {
+			transform: none;
+			background-color: transparent !important;
+		}
+	}
+}
+
+wc-page.main-settings-page {
+	background: var(--secondary-color);
+	@include settings-page-shell(".main-settings-list");
 
 	.main-settings-list > .list-item,
 	.settings-section-card > .list-item {
@@ -372,59 +385,12 @@ wc-page.main-settings-page {
 		}
 	}
 
-	.icon {
-		&:active,
-		&.active {
-			transform: none;
-			background-color: transparent !important;
-		}
-	}
+	@include settings-icon-reset;
 }
 
 wc-page.detail-settings-page {
 	background: var(--secondary-color);
-
-	.detail-settings-list {
-		display: flex;
-		flex-direction: column;
-		gap: 1.2rem;
-		width: 100%;
-		max-width: 48rem;
-		margin: 0 auto;
-		padding: 0.5rem 0 5.5rem;
-		box-sizing: border-box;
-		background: var(--secondary-color);
-	}
-
-	.settings-section {
-		display: flex;
-		flex-direction: column;
-		gap: 0;
-		width: 100%;
-	}
-
-	.settings-search-summary {
-		padding: 0.2rem 1rem;
-		font-size: 0.84rem;
-		font-weight: 600;
-		line-height: 1.35;
-		color: var(--secondary-text-color);
-		color: color-mix(in srgb, var(--secondary-text-color), transparent 18%);
-	}
-
-	.settings-section-label {
-		padding: 0.5rem 1rem 0.45rem;
-		font-size: 0.84rem;
-		font-weight: 600;
-		line-height: 1.3;
-		color: color-mix(in srgb, var(--active-color), transparent 18%);
-	}
-
-	.settings-section-card {
-		width: 100%;
-		overflow: hidden;
-		box-sizing: border-box;
-	}
+	@include settings-page-shell(".detail-settings-list");
 
 	.detail-settings-list > .list-item,
 	.settings-section-card > .list-item {
@@ -794,13 +760,7 @@ wc-page.detail-settings-page {
 		);
 	}
 
-	.icon {
-		&:active,
-		&.active {
-			transform: none;
-			background-color: transparent !important;
-		}
-	}
+	@include settings-icon-reset;
 }
 
 wc-page.detail-settings-page.formatter-settings-page {
