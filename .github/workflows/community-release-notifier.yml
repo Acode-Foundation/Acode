@@ -75,7 +75,7 @@ jobs:
           } >> $GITHUB_OUTPUT
 
           # Plain (MD) Announcement for Discord
-          ANNOUNCE_PLAIN="📢 Acode [$TAG]($URL) was just Released 🎉${SUFFIX_PLAIN}!"
+          ANNOUNCE_PLAIN="📢 Acode [$TAG]($URL) was just Released 🎉${SUFFIXPLAIN}!"
           echo "announce_plain=$ANNOUNCE_PLAIN" >> $GITHUB_OUTPUT
           {
             echo "body_plain<<$DELIMITER"
