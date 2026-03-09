@@ -46,6 +46,10 @@ jobs:
         run: |
           TAG="$INPUT_TAG"
           URL="$INPUT_URL"
+          
+          # Generate a random delimiter (hex string, safe and collision-resistant)
+          DELIMITER=$(openssl rand -hex 16 || head -c 16 /dev/urandom | xxd -p -c 16)
+          
           # Escape problematic characters for MarkdownV2 (very conservative escaping)
           # We escape: _ * [ ] ( ) ~ ` > # + - = | { } . ! \
           BODY_SAFE=$(printf '%s' "$INPUT_BODY" | \
@@ -64,7 +68,11 @@ jobs:
           ANNOUNCE_SAFE="📢 Acode \[$TAG_SAFE\]($URL_SAFE) was just Released 🎉${SUFFIX}\\!"
 
           echo "announce=$ANNOUNCE_SAFE" >> $GITHUB_OUTPUT
-          echo "body_safe=$BODY_SAFE" >> $GITHUB_OUTPUT
+          {
+            echo "body_safe<<$DELIMITER"
+            printf '%s\n' "$BODY_SAFE"
+            echo "$DELIMITER"
+          } >> $GITHUB_OUTPUT
 
       # ────────────────────────────────────────────────
       # Truncate for Discord
