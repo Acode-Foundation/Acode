@@ -448,6 +448,8 @@ function listItems($list, items, callback, options = {}) {
 		const $valueText = $target.get(".value");
 		const $checkbox = $target.get(".input-checkbox");
 		const $trailingValueText = $target.get(".setting-trailing-value");
+		const shouldUpdateInlineValue =
+			$valueText && !$valueText.classList.contains("setting-info");
 		let res;
 		let shouldUpdateValue = false;
 
@@ -483,13 +485,58 @@ function listItems($list, items, callback, options = {}) {
 
 		if (shouldUpdateValue) {
 			item.value = res;
-			setValueText($valueText, res, valueText?.bind(item));
-			setValueText($trailingValueText, res, valueText?.bind(item));
+			if (options.valueInTail) {
+				setValueText($trailingValueText, res, valueText?.bind(item));
+			} else {
+				syncInlineValueDisplay($target, item, useInfoAsDescription);
+			}
 			setColor($target, res);
 		}
 
 		callback.call($target, key, item.value);
 	}
+}
+
+/**
+ * Keeps the inline subtitle/value block in sync when a setting value changes.
+ * @param {HTMLElement} $target
+ * @param {ListItem} item
+ * @param {boolean} useInfoAsDescription
+ */
+function syncInlineValueDisplay($target, item, useInfoAsDescription) {
+	const subtitle = getSubtitleText(item, useInfoAsDescription);
+	const showInfoAsSubtitle =
+		item.checkbox !== undefined ||
+		typeof item.value === "boolean" ||
+		useInfoAsDescription ||
+		(item.value === undefined && item.info);
+	const hasSubtitle =
+		subtitle !== undefined && subtitle !== null && subtitle !== "";
+	let $valueText = $target.get(".value");
+	const $container = $target.get(".container");
+
+	if (!$container) return;
+
+	if (!hasSubtitle) {
+		$valueText?.remove();
+		$target.classList.remove("has-subtitle");
+		$target.classList.add("compact");
+		return;
+	}
+
+	if (!$valueText) {
+		$valueText = <small className="value"></small>;
+		$container.append($valueText);
+	}
+
+	$valueText.classList.toggle("setting-info", showInfoAsSubtitle);
+	setValueText(
+		$valueText,
+		subtitle,
+		showInfoAsSubtitle ? null : item.valueText?.bind(item),
+	);
+	$target.classList.add("has-subtitle");
+	$target.classList.remove("compact");
 }
 
 function getSubtitleText(item, useInfoAsDescription) {
