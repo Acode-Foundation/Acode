@@ -123,6 +123,7 @@ export default function lspSettings() {
 			key: "add_custom_server",
 			text: "Add Custom Server",
 			info: "Register a user-defined language server with install, update, and launch commands",
+			category: "Custom servers",
 			index: 0,
 			chevron: true,
 		},
@@ -141,6 +142,7 @@ export default function lspSettings() {
 			key: `server:${server.id}`,
 			text: server.label,
 			info: languagesList || undefined,
+			category: "Servers",
 			chevron: true,
 		});
 	}

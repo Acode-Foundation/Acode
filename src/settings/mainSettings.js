@@ -32,7 +32,7 @@ export default function mainSettings() {
 			text: strings["app settings"],
 			icon: "tune",
 			info: "Language, behavior, and quick tools",
-			category: "Core",
+			category: "Core settings",
 			chevron: true,
 		},
 		{
@@ -40,7 +40,7 @@ export default function mainSettings() {
 			text: strings["editor settings"],
 			icon: "text_format",
 			info: "Font, tabs, autocomplete, and display",
-			category: "Core",
+			category: "Core settings",
 			chevron: true,
 		},
 		{
@@ -48,7 +48,7 @@ export default function mainSettings() {
 			text: `${strings["terminal settings"]}`,
 			icon: "licons terminal",
 			info: "Theme, fonts, shell, and scrollback",
-			category: "Core",
+			category: "Core settings",
 			chevron: true,
 		},
 		{
@@ -56,7 +56,7 @@ export default function mainSettings() {
 			text: strings["preview settings"],
 			icon: "public",
 			info: "Live preview, rendering, ports, and browser mode",
-			category: "Core",
+			category: "Core settings",
 			chevron: true,
 		},
 		{
@@ -64,7 +64,7 @@ export default function mainSettings() {
 			text: strings.formatter,
 			icon: "spellcheck",
 			info: "Per-language format tools",
-			category: "Appearance & Tools",
+			category: "Customization & tools",
 			chevron: true,
 		},
 		{
@@ -72,7 +72,7 @@ export default function mainSettings() {
 			text: strings.theme,
 			icon: "color_lenspalette",
 			info: "App theme, contrast, and custom colors",
-			category: "Appearance & Tools",
+			category: "Customization & tools",
 			chevron: true,
 		},
 		{
@@ -80,7 +80,7 @@ export default function mainSettings() {
 			text: strings["plugins"],
 			icon: "extension",
 			info: "Manage installed extensions and plugin actions",
-			category: "Appearance & Tools",
+			category: "Customization & tools",
 			chevron: true,
 		},
 		{
@@ -88,7 +88,7 @@ export default function mainSettings() {
 			text: strings?.lsp_settings || "Language servers",
 			icon: "licons zap",
 			info: "Configure language servers and code intelligence",
-			category: "Appearance & Tools",
+			category: "Customization & tools",
 			chevron: true,
 		},
 		{
@@ -96,7 +96,7 @@ export default function mainSettings() {
 			text: `${strings.backup.capitalize()} & ${strings.restore.capitalize()}`,
 			icon: "cached",
 			info: "Export or import your settings",
-			category: "Data",
+			category: "Maintenance",
 			chevron: true,
 		},
 		{
@@ -104,7 +104,7 @@ export default function mainSettings() {
 			text: `${strings["edit"]} settings.json`,
 			icon: "edit",
 			info: "Advanced raw configuration",
-			category: "Data",
+			category: "Maintenance",
 			chevron: true,
 		},
 		{
@@ -112,7 +112,7 @@ export default function mainSettings() {
 			text: strings["restore default settings"],
 			icon: "historyrestore",
 			info: "Reset the app back to its default configuration",
-			category: "Data",
+			category: "Maintenance",
 			chevron: true,
 		},
 		{
@@ -120,7 +120,7 @@ export default function mainSettings() {
 			text: strings.about,
 			icon: "info",
 			info: `Version ${BuildInfo.version}`,
-			category: "About",
+			category: "About Acode",
 			chevron: true,
 		},
 		{
@@ -128,7 +128,7 @@ export default function mainSettings() {
 			text: strings.sponsor,
 			icon: "favorite",
 			info: "Support Acode development",
-			category: "About",
+			category: "About Acode",
 			chevron: true,
 		},
 		{
@@ -136,7 +136,7 @@ export default function mainSettings() {
 			text: `${strings["changelog"]}`,
 			icon: "update",
 			info: "Recent updates and release notes",
-			category: "About",
+			category: "About Acode",
 			chevron: true,
 		},
 		{
@@ -144,7 +144,7 @@ export default function mainSettings() {
 			text: strings["rate acode"],
 			icon: "star_outline",
 			info: "Rate Acode on Google Play",
-			category: "About",
+			category: "About Acode",
 			chevron: true,
 		},
 	];
@@ -155,7 +155,7 @@ export default function mainSettings() {
 			text: "Earn ad-free time",
 			icon: "play_arrow",
 			info: "Watch ads to unlock temporary ad-free access",
-			category: "Support",
+			category: "Support Acode",
 			chevron: true,
 		});
 		items.push({
@@ -163,7 +163,7 @@ export default function mainSettings() {
 			text: strings["remove ads"],
 			icon: "block",
 			info: "Unlock permanent ad-free access",
-			category: "Support",
+			category: "Support Acode",
 			chevron: true,
 		});
 	}

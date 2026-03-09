@@ -150,7 +150,7 @@ export default function otherSettings() {
 			key: "fontManager",
 			text: strings["fonts"],
 			info: "Install or remove app fonts",
-			category: "Personalization",
+			category: "Fonts",
 			chevron: true,
 		},
 		{
@@ -158,21 +158,21 @@ export default function otherSettings() {
 			text: strings["remember opened files"],
 			checkbox: values.rememberFiles,
 			info: "Restore the files you had open last time",
-			category: "Workspace",
+			category: "Files & sessions",
 		},
 		{
 			key: "rememberFolders",
 			text: strings["remember opened folders"],
 			checkbox: values.rememberFolders,
 			info: "Restore folders from the previous session",
-			category: "Workspace",
+			category: "Files & sessions",
 		},
 		{
 			key: "retryRemoteFsAfterFail",
 			text: strings["retry ftp/sftp when fail"],
 			checkbox: values.retryRemoteFsAfterFail,
 			info: "Retry remote file operations after a failed transfer",
-			category: "Workspace",
+			category: "Files & sessions",
 		},
 		{
 			key: "excludeFolders",
@@ -188,7 +188,7 @@ export default function otherSettings() {
 				},
 			},
 			info: "Folders and patterns to skip while searching or scanning",
-			category: "Workspace",
+			category: "Files & sessions",
 		},
 		{
 			key: "defaultFileEncoding",
@@ -204,7 +204,7 @@ export default function otherSettings() {
 				}),
 			],
 			info: "Default encoding when opening or creating files",
-			category: "Workspace",
+			category: "Files & sessions",
 		},
 		{
 			key: "keybindings",

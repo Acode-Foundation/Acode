@@ -254,6 +254,8 @@ function listItems($list, items, callback, options = {}) {
 		const $setting = Ref();
 		const $settingName = Ref();
 		const $tail = Ref();
+		const isCheckboxItem =
+			item.checkbox !== undefined || typeof item.value === "boolean";
 		/**@type {HTMLDivElement} */
 		const $item = (
 			<div
@@ -277,9 +279,13 @@ function listItems($list, items, callback, options = {}) {
 
 		let $checkbox, $valueText;
 		let $trailingValueText;
-		const subtitle = getSubtitleText(item, useInfoAsDescription);
+		const subtitle = isCheckboxItem
+			? item.info
+			: getSubtitleText(item, useInfoAsDescription);
 		const showInfoAsSubtitle =
-			useInfoAsDescription || (item.value === undefined && item.info);
+			isCheckboxItem ||
+			useInfoAsDescription ||
+			(item.value === undefined && item.info);
 		const searchGroup =
 			item.searchGroup || item.category || options.defaultSearchGroup;
 		const hasSubtitle =
@@ -295,10 +301,12 @@ function listItems($list, items, callback, options = {}) {
 
 		let subtitleRendered = false;
 
-		if (item.checkbox !== undefined || typeof item.value === "boolean") {
+		if (isCheckboxItem) {
 			$checkbox = Checkbox("", item.checkbox || item.value);
 			$tail.el.appendChild($checkbox);
-		} else if (subtitle !== undefined) {
+		}
+
+		if (hasSubtitle) {
 			$valueText = <small className="value"></small>;
 			setValueText(
 				$valueText,

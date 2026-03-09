@@ -21,25 +21,21 @@ wc-page.main-settings-page {
 	}
 
 	.settings-search-summary {
-		padding: 0.15rem 1rem;
-		font-size: 0.82rem;
-		font-weight: 700;
-		line-height: 1.25;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
+		padding: 0.2rem 1rem;
+		font-size: 0.84rem;
+		font-weight: 600;
+		line-height: 1.35;
 		color: var(--secondary-text-color);
-		color: color-mix(in srgb, var(--secondary-text-color), transparent 24%);
+		color: color-mix(in srgb, var(--secondary-text-color), transparent 18%);
 	}
 
 	.settings-section-label {
-		padding: 0.5rem 1rem 0.55rem;
-		font-size: 0.78rem;
-		font-weight: 700;
-		line-height: 1.25;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		color: var(--active-color);
-		color: color-mix(in srgb, var(--active-color), transparent 30%);
+		padding: 0.5rem 1rem 0.45rem;
+		font-size: 0.84rem;
+		font-weight: 600;
+		line-height: 1.3;
+		color: var(--popup-text-color);
+		color: color-mix(in srgb, var(--popup-text-color), transparent 22%);
 	}
 
 	.settings-section-card {
@@ -184,25 +180,21 @@ wc-page.detail-settings-page {
 	}
 
 	.settings-search-summary {
-		padding: 0.15rem 1rem;
-		font-size: 0.82rem;
-		font-weight: 700;
-		line-height: 1.25;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
+		padding: 0.2rem 1rem;
+		font-size: 0.84rem;
+		font-weight: 600;
+		line-height: 1.35;
 		color: var(--secondary-text-color);
-		color: color-mix(in srgb, var(--secondary-text-color), transparent 24%);
+		color: color-mix(in srgb, var(--secondary-text-color), transparent 18%);
 	}
 
 	.settings-section-label {
-		padding: 0.5rem 1rem 0.55rem;
-		font-size: 0.78rem;
-		font-weight: 700;
-		line-height: 1.25;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-		color: var(--active-color);
-		color: color-mix(in srgb, var(--active-color), transparent 30%);
+		padding: 0.5rem 1rem 0.45rem;
+		font-size: 0.84rem;
+		font-weight: 600;
+		line-height: 1.3;
+		color: var(--popup-text-color);
+		color: color-mix(in srgb, var(--popup-text-color), transparent 22%);
 	}
 
 	.settings-section-card {
@@ -316,13 +308,13 @@ wc-page.detail-settings-page {
 		padding-right: 0.6rem;
 	}
 
-	.detail-settings-list > .list-item.has-subtitle.has-tail-value > .container,
-	.settings-section-card > .list-item.has-subtitle.has-tail-value > .container {
+	.detail-settings-list > .list-item.has-subtitle.has-tail-select > .container,
+	.settings-section-card > .list-item.has-subtitle.has-tail-select > .container {
 		padding-right: 0.95rem;
 	}
 
-	.detail-settings-list > .list-item.has-subtitle.has-tail-value > .setting-tail,
-	.settings-section-card > .list-item.has-subtitle.has-tail-value > .setting-tail {
+	.detail-settings-list > .list-item.has-subtitle.has-tail-select > .setting-tail,
+	.settings-section-card > .list-item.has-subtitle.has-tail-select > .setting-tail {
 		align-self: flex-start;
 		margin-top: 0.16rem;
 		margin-left: 1.3rem;
@@ -424,6 +416,7 @@ wc-page.detail-settings-page {
 		height: 1.2rem;
 		margin-left: 0.1rem;
 		font-size: 1.1rem;
+		line-height: 1;
 	}
 
 	.input-checkbox {
