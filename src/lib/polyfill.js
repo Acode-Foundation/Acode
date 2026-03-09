@@ -1,29 +1,46 @@
+// polyfill for Object.hasOwn
+
+(function () {
+	var oldHasOwn = Function.prototype.call.bind(Object.prototype.hasOwnProperty);
+	if (oldHasOwn(Object, "hasOwn")) return;
+	Object.defineProperty(Object, "hasOwn", {
+		configurable: true,
+		enumerable: false,
+		writable: true,
+		value: function hasOwn(obj, prop) {
+			return oldHasOwn(obj, prop);
+		},
+	});
+	Object.hasOwn.prototype = null;
+})();
+
 // polyfill for prepend
 
 (function (arr) {
 	arr.forEach(function (item) {
-		if (item.hasOwnProperty("prepend")) {
-			return;
-		}
+		if (Object.hasOwn(item, "prepend")) return;
 		Object.defineProperty(item, "prepend", {
 			configurable: true,
-			enumerable: true,
+			enumerable: false,
 			writable: true,
 			value: function prepend() {
-				var argArr = Array.prototype.slice.call(arguments),
-					docFrag = document.createDocumentFragment();
+				var ownerDocument = this.ownerDocument || this;
+				var docFrag = ownerDocument.createDocumentFragment();
 
-				argArr.forEach(function (argItem) {
-					var node =
+				var argLength = arguments.length;
+				for (var i = 0; i < argLength; i++) {
+					var argItem = arguments[i];
+					docFrag.appendChild(
 						argItem instanceof Node
 							? argItem
-							: document.createTextNode(String(argItem));
-					docFrag.appendChild(node);
-				});
+							: ownerDocument.createTextNode(argItem),
+					);
+				}
 
 				this.insertBefore(docFrag, this.firstChild);
 			},
 		});
+		item.prepend.prototype = null;
 	});
 })([Element.prototype, Document.prototype, DocumentFragment.prototype]);
 
@@ -31,12 +48,10 @@
 
 (function (arr) {
 	arr.forEach(function (item) {
-		if (item.hasOwnProperty("closest")) {
-			return;
-		}
+		if (Object.hasOwn(item, "closest")) return;
 		Object.defineProperty(item, "closest", {
 			configurable: true,
-			enumerable: true,
+			enumerable: false,
 			writable: true,
 			value: function closest(s) {
 				var matches = (this.document || this.ownerDocument).querySelectorAll(s),
@@ -49,6 +64,7 @@
 				return el;
 			},
 		});
+		item.closest.prototype = null;
 	});
 })([Element.prototype]);
 
@@ -56,61 +72,92 @@
 
 (function (arr) {
 	arr.forEach(function (item) {
-		if (item.hasOwnProperty("replaceWith")) {
-			return;
-		}
-		Object.defineProperty(item, "replaceWith", {
+		var className = item.name;
+		var proto = item.prototype;
+		if (Object.hasOwn(proto, "replaceWith")) return;
+		Object.defineProperty(proto, "replaceWith", {
 			configurable: true,
-			enumerable: true,
+			enumerable: false,
 			writable: true,
 			value: function replaceWith() {
-				var parent = this.parentNode,
-					i = arguments.length,
-					currentNode;
+				var parent = this.parentNode;
 				if (!parent) return;
-				if (!i)
-					// if there are no arguments
-					parent.removeChild(this);
-				while (i--) {
-					// i-- decrements i and returns the value of i before the decrement
-					currentNode = arguments[i];
-					if (typeof currentNode !== "object") {
-						currentNode = this.ownerDocument.createTextNode(currentNode);
-					} else if (currentNode.parentNode) {
-						currentNode.parentNode.removeChild(currentNode);
+				var viableNextSibling = this.nextSibling;
+				var argLength = arguments.length;
+				while (viableNextSibling) {
+					var inArgs = false;
+					for (var j = 0; j < argLength; j++) {
+						if (arguments[j] === viableNextSibling) {
+							inArgs = true;
+							break;
+						}
 					}
-					// the value of "i" below is after the decrement
-					if (!i)
-						// if currentNode is the first argument (currentNode === arguments[0])
-						parent.replaceChild(currentNode, this);
-					// if currentNode isn't the first
-					else parent.insertBefore(this.previousSibling, currentNode);
+					if (!inArgs) break;
+					viableNextSibling = viableNextSibling.nextSibling;
+				}
+				var ownerDocument = this.ownerDocument || this;
+				var docFrag = ownerDocument.createDocumentFragment();
+				var nodes = [];
+				for (var i = 0; i < argLength; i++) {
+					var currentNode = arguments[i];
+					if (!(currentNode instanceof Node)) {
+						nodes[i] = currentNode + "";
+						continue;
+					}
+					var ancestor = parent;
+					do {
+						if (ancestor !== currentNode) continue;
+						throw new DOMException(
+							"Failed to execute 'replaceWith' on '" +
+								className +
+								"': The new child element contains the parent.",
+							"HierarchyRequestError",
+						);
+					} while ((ancestor = ancestor.parentNode));
+					nodes[i] = currentNode;
+				}
+				var isItselfInFragment;
+				for (var i = 0; i < argLength; i++) {
+					var currentNode = nodes[i];
+					if (typeof currentNode === "string") {
+						currentNode = ownerDocument.createTextNode(currentNode);
+					} else if (currentNode === this) {
+						isItselfInFragment = true;
+					}
+					docFrag.appendChild(currentNode);
+				}
+				if (!isItselfInFragment) this.remove();
+				if (argLength >= 1) {
+					parent.insertBefore(docFrag, viableNextSibling);
 				}
 			},
 		});
+		proto.replaceWith.prototype = null;
 	});
-})([Element.prototype, CharacterData.prototype, DocumentType.prototype]);
+})([Element, CharacterData, DocumentType]);
 
 // polyfill for toggleAttribute
 
 (function (arr) {
 	arr.forEach(function (item) {
-		if (item.hasOwnProperty("toggleAttribute")) {
-			return;
-		}
+		if (Object.hasOwn(item, "toggleAttribute")) return;
 		Object.defineProperty(item, "toggleAttribute", {
 			configurable: true,
-			enumerable: true,
+			enumerable: false,
 			writable: true,
-			value: function toggleAttribute() {
-				var attr = arguments[0];
+			value: function toggleAttribute(attr, force) {
 				if (this.hasAttribute(attr)) {
+					if (force && force !== undefined) return true;
 					this.removeAttribute(attr);
+					return false;
 				} else {
-					this.setAttribute(attr, arguments[1] || "");
+					if (!force && force !== undefined) return false;
+					this.setAttribute(attr, "");
+					return true;
 				}
 			},
 		});
+		item.toggleAttribute.prototype = null;
 	});
 })([Element.prototype]);
 
@@ -140,3 +187,31 @@
 		};
 	}
 })();
+
+// polyfill for Promise.withResolvers
+
+if (!Object.hasOwn(Promise, "withResolvers")) {
+	Object.defineProperty(Promise, "withResolvers", {
+		configurable: true,
+		enumerable: false,
+		writable: true,
+		value: function withResolvers() {
+			var resolve, reject;
+			var promise = new this(function (_resolve, _reject) {
+				resolve = _resolve;
+				reject = _reject;
+			});
+			if (typeof resolve !== "function" || typeof reject !== "function") {
+				throw new TypeError(
+					"Promise resolve or reject function is not callable",
+				);
+			}
+			return {
+				promise: promise,
+				resolve: resolve,
+				reject: reject,
+			};
+		},
+	});
+	Promise.withResolvers.prototype = null;
+}
