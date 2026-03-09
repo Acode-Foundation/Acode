@@ -664,6 +664,7 @@ function execOperation(type, action, url, $target, name) {
 		newName = helpers.fixFilename(newName);
 		if (!newName) return;
 		startLoading();
+		const isNestedPath = newName.split("/").filter(Boolean).length > 1;
 		let newUrl;
 
 		if (action === "new file") {
@@ -672,6 +673,14 @@ function execOperation(type, action, url, $target, name) {
 			newUrl = await helpers.createFileStructure(url, newName, false);
 		}
 		if (!newUrl) return;
+
+		if (isNestedPath) {
+			openFolder.find(url)?.reload();
+			await FileList.refresh();
+			toast(strings.success);
+			return;
+		}
+
 		newName = Url.basename(newUrl.uri);
 		if ($target.unclasped) {
 			if (newUrl.type === "file") {
