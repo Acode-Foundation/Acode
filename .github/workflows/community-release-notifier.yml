@@ -39,13 +39,19 @@ jobs:
     steps:
       - name: Prepare release variables
         id: vars
+        env:
+          INPUT_TAG: ${{ github.event.release.tag_name || inputs.tag_name }}
+          INPUT_URL: ${{ github.event.release.url || inputs.url }}
+          INPUT_BODY: ${{ github.event.release.body || inputs.body }}
         run: |
-          TAG="${{ github.event.release.tag_name || inputs.tag_name }}"
-          URL="${{ github.event.release.url || inputs.url }}"
+          TAG="$INPUT_TAG"
+          URL="$INPUT_URL"
           # Escape problematic characters for MarkdownV2 (very conservative escaping)
           # We escape: _ * [ ] ( ) ~ ` > # + - = | { } . ! \
-          BODY_SAFE=$(printf '%s' "${{ github.event.release.body || inputs.body }}" | \
+          BODY_SAFE=$(printf '%s' "$INPUT_BODY" | \
             sed 's/[_*[\]()~`>#+-=|{}.!\\]/\\&/g')
+          TAG_SAFE=$(printf '%s' "$TAG" | sed 's/[_*[\]()~`>#+=|{}.!\\-]/\\&/g')
+          URL_SAFE=$(printf '%s' "$URL" | sed 's/[_*[\]()~`>#+=|{}.!\\-]/\\&/g')
 
           if [[ "$TAG" == *"-nightly"* ]]; then
             SUFFIX=" (Nightly Release)"
@@ -54,7 +60,7 @@ jobs:
           fi
 
           # Announcement line — also escape for safety
-          ANNOUNCE_SAFE="📢 Acode \[$TAG\]($URL) was just Released 🎉$SUFFIX!"
+          ANNOUNCE_SAFE="📢 Acode \[$TAG_SAFE\]($URL_SAFE) was just Released 🎉$SUFFIX!"
 
           echo "announce=$ANNOUNCE_SAFE" >> $GITHUB_OUTPUT
           echo "body_safe=$BODY_SAFE" >> $GITHUB_OUTPUT
