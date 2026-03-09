@@ -64,7 +64,7 @@ jobs:
           fi
 
           # Announcement line — also escape for safety
-          ANNOUNCE_SAFE="📢 Acode \[$TAG_SAFE\]($URL_SAFE) was just Released 🎉${SUFFIX}\\!"
+          ANNOUNCE_SAFE="📢 Acode [$TAG_SAFE]($URL) was just Released 🎉${SUFFIX}\\!"
 
           echo "announce=$ANNOUNCE_SAFE" >> $GITHUB_OUTPUT
           {
