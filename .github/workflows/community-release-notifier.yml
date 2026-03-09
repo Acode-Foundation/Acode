@@ -54,13 +54,14 @@ jobs:
           URL_SAFE=$(printf '%s' "$URL" | sed 's/[_*[\]()~`>#+=|{}.!\\-]/\\&/g')
 
           if [[ "$TAG" == *"-nightly"* ]]; then
-            SUFFIX=" (Nightly Release)"
+          if [[ "$TAG" == *"-nightly"* ]]; then
+            SUFFIX=" \\(Nightly Release\\)"
           else
             SUFFIX=""
           fi
 
           # Announcement line — also escape for safety
-          ANNOUNCE_SAFE="📢 Acode \[$TAG_SAFE\]($URL_SAFE) was just Released 🎉$SUFFIX!"
+          ANNOUNCE_SAFE="📢 Acode \[$TAG_SAFE\]($URL_SAFE) was just Released 🎉${SUFFIX}\\!"
 
           echo "announce=$ANNOUNCE_SAFE" >> $GITHUB_OUTPUT
           echo "body_safe=$BODY_SAFE" >> $GITHUB_OUTPUT
