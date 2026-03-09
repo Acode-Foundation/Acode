@@ -117,18 +117,33 @@ function searchBar($list, setHide, onhideCb, searchFunction) {
 	function buildSearchContent(result, val) {
 		if (!val || !result.length) return result;
 
-		const groups = new Map();
+		const groupedSections = [];
+		const sectionIndexByLabel = new Map();
 		let hasGroups = false;
 
 		result.forEach(($item) => {
 			const label = $item.dataset.searchGroup;
-			if (!label) return;
-			hasGroups = true;
-
-			if (!groups.has(label)) {
-				groups.set(label, []);
+			if (!label) {
+				groupedSections.push({
+					items: [$item],
+					type: "ungrouped",
+				});
+				return;
 			}
-			groups.get(label).push($item);
+
+			hasGroups = true;
+			const existingSectionIndex = sectionIndexByLabel.get(label);
+			if (existingSectionIndex !== undefined) {
+				groupedSections[existingSectionIndex].items.push($item);
+				return;
+			}
+
+			sectionIndexByLabel.set(label, groupedSections.length);
+			groupedSections.push({
+				items: [$item],
+				label,
+				type: "group",
+			});
 		});
 
 		if (!hasGroups) return result.map(cloneSearchItem);
@@ -142,12 +157,17 @@ function searchBar($list, setHide, onhideCb, searchFunction) {
 			<div className="settings-search-summary">{countLabel}</div>,
 		];
 
-		groups.forEach((items, label) => {
+		groupedSections.forEach((section) => {
+			if (section.type === "ungrouped") {
+				content.push(...section.items.map(cloneSearchItem));
+				return;
+			}
+
 			content.push(
 				<section className="settings-section settings-search-section">
-					<div className="settings-section-label">{label}</div>
+					<div className="settings-section-label">{section.label}</div>
 					<div className="settings-section-card">
-						{items.map(cloneSearchItem)}
+						{section.items.map(cloneSearchItem)}
 					</div>
 				</section>,
 			);
