@@ -3,6 +3,7 @@ import ajax from "@deadlyjack/ajax";
 import { resetKeyBindings } from "cm/commandRegistry";
 import settingsPage from "components/settingsPage";
 import loader from "dialogs/loader";
+import select from "dialogs/select";
 import actions from "handlers/quickTools";
 import actionStack from "lib/actionStack";
 import constants from "lib/constants";
@@ -215,14 +216,9 @@ export default function otherSettings() {
 		{
 			key: "keybindings",
 			text: strings["key bindings"],
-			value: "edit",
-			valueText: (value) => (value === "reset" ? strings.reset : strings.edit),
-			select: [
-				["edit", strings.edit],
-				["reset", strings.reset],
-			],
 			info: strings["settings-info-app-keybindings"],
 			category: categories.advanced,
+			chevron: true,
 		},
 		{
 			key: "confirmOnExit",
@@ -280,6 +276,12 @@ export default function otherSettings() {
 	async function callback(key, value) {
 		switch (key) {
 			case "keybindings": {
+				value = await select(strings["key bindings"], [
+					["edit", strings.edit],
+					["reset", strings.reset],
+				]);
+				if (!value) return;
+
 				if (value === "edit") {
 					actionStack.pop(2);
 					openFile(KEYBINDING_FILE);

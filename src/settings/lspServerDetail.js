@@ -63,7 +63,7 @@ function getFeatureItems() {
 
 function fillTemplate(template, replacements) {
 	return Object.entries(replacements).reduce(
-		(result, [key, value]) => result.replace(`{${key}}`, String(value)),
+		(result, [key, value]) => result.replaceAll(`{${key}}`, String(value)),
 		String(template || ""),
 	);
 }

@@ -133,7 +133,11 @@ function searchBar($list, setHide, onhideCb, searchFunction) {
 
 		if (!hasGroups) return result.map(cloneSearchItem);
 
-		const countLabel = `${result.length} ${result.length === 1 ? "RESULT" : "RESULTS"}`;
+		const countLabel = `${result.length} ${
+			result.length === 1
+				? strings["search result label singular"]
+				: strings["search result label plural"]
+		}`;
 		const content = [
 			<div className="settings-search-summary">{countLabel}</div>,
 		];

@@ -697,5 +697,7 @@
 	"settings-info-preview-use-current-file": "Prefer the current file when starting preview.",
 	"settings-info-terminal-convert-eol": "Convert line endings when pasting or rendering terminal output.",
 	"settings-note-formatter-settings": "Assign a formatter to each language. Install formatter plugins to unlock more options.",
-	"settings-note-lsp-settings": "Language servers add autocomplete, diagnostics, hover details, and more. You can install, update, or define custom servers here. Managed installers run inside the terminal/proot environment."
+	"settings-note-lsp-settings": "Language servers add autocomplete, diagnostics, hover details, and more. You can install, update, or define custom servers here. Managed installers run inside the terminal/proot environment.",
+	"search result label singular": "result",
+	"search result label plural": "results"
 }
