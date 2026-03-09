@@ -34,8 +34,7 @@ wc-page.main-settings-page {
 		font-size: 0.84rem;
 		font-weight: 600;
 		line-height: 1.3;
-		color: var(--popup-text-color);
-		color: color-mix(in srgb, var(--popup-text-color), transparent 22%);
+		color: color-mix(in srgb, var(--active-color), transparent 18%);
 	}
 
 	.settings-section-card {
@@ -193,8 +192,7 @@ wc-page.detail-settings-page {
 		font-size: 0.84rem;
 		font-weight: 600;
 		line-height: 1.3;
-		color: var(--popup-text-color);
-		color: color-mix(in srgb, var(--popup-text-color), transparent 22%);
+		color: color-mix(in srgb, var(--active-color), transparent 18%);
 	}
 
 	.settings-section-card {
