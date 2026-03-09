@@ -457,10 +457,7 @@ export default {
 			const existingEntry = entries.find((entry) => entry.name === name);
 
 			if (existingEntry) {
-				const actualType =
-					existingEntry.isDirectory || existingEntry.isFile === false
-						? "folder"
-						: "file";
+				const actualType = existingEntry.isDirectory ? "folder" : "file";
 				if (actualType !== expectedType) {
 					throw new Error(
 						`${name} already exists as a ${actualType}, expected ${expectedType}.`,
@@ -468,7 +465,7 @@ export default {
 				}
 
 				return {
-					url: existingEntry.url || targetUri,
+					url: existingEntry.url || existingEntry.uri || targetUri,
 					created: false,
 					type: expectedType,
 				};
