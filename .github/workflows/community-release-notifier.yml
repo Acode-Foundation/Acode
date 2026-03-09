@@ -29,8 +29,8 @@ on:
         description: 'Telegram Chat ID (group/channel/supergroup)'
         required: true
       TELEGRAM_MESSAGE_THREAD_ID:
-        description: 'Optional: Topic / message_thread_id for Telegram forum/topic'
-        required: false
+        description: 'Topic / message_thread_id for Telegram forum/topic'
+        required: true
 
 jobs:
   notify:
@@ -109,6 +109,7 @@ jobs:
       # Telegram notification — MarkdownV2 + no link preview
       # ────────────────────────────────────────────────
       - name: Send to Telegram
+        if: ${{ secrets.TELEGRAM_BOT_TOKEN != "" && secrets.TELEGRAM_CHAT_ID != "" && secrets.TELEGRAM_MESSAGE_THREAD_ID != "" }}
         uses: Salmansha08/telegram-github-action@17c9ce6b4210d2659dca29d34028b02fa29d70ad  # or newer tag if available
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
@@ -120,4 +121,5 @@ jobs:
           parse_mode:       MarkdownV2
           disable_web_page_preview: true
           # Only needed for topic-enabled supergroups/channels
-          message_thread_id: ${{ secrets.TELEGRAM_MESSAGE_THREAD_ID || "" }}
+          message_thread_id: ${{ secrets.TELEGRAM_MESSAGE_THREAD_ID }}
+        continue-on-error: true
