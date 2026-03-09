@@ -58,8 +58,10 @@ jobs:
 
           if [[ "$TAG" == *"-nightly"* ]]; then
             SUFFIX=" \\(Nightly Release\\)"
+            SUFFIXPLAIN=" (Nightly Release)"
           else
             SUFFIX=""
+            SUFFIXPLAIN=""
           fi
 
           # Announcement line — also escape for safety
@@ -72,6 +74,15 @@ jobs:
             echo "$DELIMITER"
           } >> $GITHUB_OUTPUT
 
+          # Plain (MD) Announcement for Discord
+          ANNOUNCE_PLAIN="📢 Acode [$TAG]($URL) was just Released 🎉${SUFFIX_PLAIN}!"
+          echo "announce_plain=$ANNOUNCE_PLAIN" >> $GITHUB_OUTPUT
+          {
+            echo "body_plain<<$DELIMITER"
+            printf '%s\n' "$INPUT_BODY"
+            echo "$DELIMITER"
+          } >> $GITHUB_OUTPUT
+
       # ────────────────────────────────────────────────
       # Truncate for Discord
       # ────────────────────────────────────────────────
@@ -81,9 +92,9 @@ jobs:
         with:
           maxLength: 2000
           stringToTruncate: |
-            ${{ steps.vars.outputs.announce }}
+            ${{ steps.vars.outputs.announce_plain }}
 
-            ${{ steps.vars.outputs.body_safe }}
+            ${{ steps.vars.outputs.body_plain }}
 
       # ────────────────────────────────────────────────
       # Discord notification
