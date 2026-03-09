@@ -49,7 +49,7 @@ jobs:
           # Escape problematic characters for MarkdownV2 (very conservative escaping)
           # We escape: _ * [ ] ( ) ~ ` > # + - = | { } . ! \
           BODY_SAFE=$(printf '%s' "$INPUT_BODY" | \
-            sed 's/[_*[\]()~`>#+-=|{}.!\\]/\\&/g')
+            sed 's/[_*[\]()~`>#+=|{}.!\\-]/\\&/g')
           TAG_SAFE=$(printf '%s' "$TAG" | sed 's/[_*[\]()~`>#+=|{}.!\\-]/\\&/g')
           URL_SAFE=$(printf '%s' "$URL" | sed 's/[_*[\]()~`>#+=|{}.!\\-]/\\&/g')
 
