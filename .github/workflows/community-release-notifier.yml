@@ -104,7 +104,6 @@ jobs:
         with:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK_RELEASE_NOTES }}
           content: ${{ steps.truncate-discord.outputs.string }}
-        continue-on-error: true
 
       # ────────────────────────────────────────────────
       # Telegram notification — MarkdownV2 + no link preview
@@ -122,4 +121,3 @@ jobs:
           disable_web_page_preview: true
           # Only needed for topic-enabled supergroups/channels
           message_thread_id: ${{ secrets.TELEGRAM_MESSAGE_THREAD_ID }}
-        continue-on-error: true
