@@ -58,7 +58,6 @@ jobs:
           URL_SAFE=$(printf '%s' "$URL" | sed 's/[_*[\]()~`>#+=|{}.!\\-]/\\&/g')
 
           if [[ "$TAG" == *"-nightly"* ]]; then
-          if [[ "$TAG" == *"-nightly"* ]]; then
             SUFFIX=" \\(Nightly Release\\)"
           else
             SUFFIX=""
