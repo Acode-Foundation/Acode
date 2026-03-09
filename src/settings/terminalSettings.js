@@ -16,6 +16,13 @@ import helpers from "utils/helpers";
 export default function terminalSettings() {
 	const title = strings["terminal settings"];
 	const values = appSettings.value;
+	const categories = {
+		permissions: strings["settings-category-permissions"],
+		display: strings["settings-category-display"],
+		cursor: strings["settings-category-cursor"],
+		session: strings["settings-category-session"],
+		maintenance: strings["settings-category-maintenance"],
+	};
 
 	// Initialize terminal settings with defaults if not present
 	if (!values.terminalSettings) {
@@ -33,7 +40,7 @@ export default function terminalSettings() {
 			key: "all_file_access",
 			text: strings["allFileAccess"],
 			info: strings["info-all_file_access"],
-			category: "Permissions",
+			category: categories.permissions,
 			chevron: true,
 		},
 		{
@@ -49,7 +56,7 @@ export default function terminalSettings() {
 				},
 			},
 			info: strings["info-fontSize"],
-			category: "Display",
+			category: categories.display,
 		},
 		{
 			key: "fontFamily",
@@ -59,7 +66,7 @@ export default function terminalSettings() {
 				return fonts.getNames();
 			},
 			info: strings["info-fontFamily"],
-			category: "Display",
+			category: categories.display,
 		},
 		{
 			key: "theme",
@@ -76,7 +83,7 @@ export default function terminalSettings() {
 				const option = this.select.find(([v]) => v === value);
 				return option ? option[1] : value;
 			},
-			category: "Display",
+			category: categories.display,
 		},
 		{
 			key: "fontWeight",
@@ -96,7 +103,7 @@ export default function terminalSettings() {
 				"900",
 			],
 			info: strings["info-fontWeight"],
-			category: "Display",
+			category: categories.display,
 		},
 		{
 			key: "letterSpacing",
@@ -105,14 +112,14 @@ export default function terminalSettings() {
 			prompt: strings["letter spacing"],
 			promptType: "number",
 			info: strings["info-letterSpacing"],
-			category: "Display",
+			category: categories.display,
 		},
 		{
 			key: "fontLigatures",
 			text: strings["font ligatures"],
 			checkbox: terminalValues.fontLigatures,
 			info: strings["info-fontLigatures"],
-			category: "Display",
+			category: categories.display,
 		},
 		{
 			key: "cursorStyle",
@@ -120,7 +127,7 @@ export default function terminalSettings() {
 			value: terminalValues.cursorStyle,
 			select: ["block", "underline", "bar"],
 			info: strings["info-cursorStyle"],
-			category: "Cursor",
+			category: categories.cursor,
 		},
 		{
 			key: "cursorInactiveStyle",
@@ -128,14 +135,14 @@ export default function terminalSettings() {
 			value: terminalValues.cursorInactiveStyle,
 			select: ["outline", "block", "bar", "underline", "none"],
 			info: strings["info-cursorInactiveStyle"],
-			category: "Cursor",
+			category: categories.cursor,
 		},
 		{
 			key: "cursorBlink",
 			text: strings["terminal:cursor blink"],
 			checkbox: terminalValues.cursorBlink,
 			info: strings["info-cursorBlink"],
-			category: "Cursor",
+			category: categories.cursor,
 		},
 		{
 			key: "scrollback",
@@ -150,7 +157,7 @@ export default function terminalSettings() {
 				},
 			},
 			info: strings["info-scrollback"],
-			category: "Session",
+			category: categories.session,
 		},
 		{
 			key: "tabStopWidth",
@@ -165,48 +172,48 @@ export default function terminalSettings() {
 				},
 			},
 			info: strings["info-tabStopWidth"],
-			category: "Session",
+			category: categories.session,
 		},
 		{
 			key: "convertEol",
 			text: strings["terminal:convert eol"],
 			checkbox: terminalValues.convertEol,
-			info: "Convert line endings when pasting or rendering output",
-			category: "Session",
+			info: strings["settings-info-terminal-convert-eol"],
+			category: categories.session,
 		},
 		{
 			key: "imageSupport",
 			text: strings["terminal:image support"],
 			checkbox: terminalValues.imageSupport,
 			info: strings["info-imageSupport"],
-			category: "Session",
+			category: categories.session,
 		},
 		{
 			key: "confirmTabClose",
 			text: strings["terminal:confirm tab close"],
 			checkbox: terminalValues.confirmTabClose !== false,
 			info: strings["info-confirmTabClose"],
-			category: "Session",
+			category: categories.session,
 		},
 		{
 			key: "backup",
 			text: strings.backup,
 			info: strings["info-backup"],
-			category: "Maintenance",
+			category: categories.maintenance,
 			chevron: true,
 		},
 		{
 			key: "restore",
 			text: strings.restore,
 			info: strings["info-restore"],
-			category: "Maintenance",
+			category: categories.maintenance,
 			chevron: true,
 		},
 		{
 			key: "uninstall",
 			text: strings.uninstall,
 			info: strings["info-uninstall"],
-			category: "Maintenance",
+			category: categories.maintenance,
 			chevron: true,
 		},
 	];
@@ -232,11 +239,11 @@ export default function terminalSettings() {
 						if (boolStr === "true") {
 							system.requestStorageManager(console.log, console.error);
 						} else {
-							alert("This feature is not available.");
+							alert(strings["feature not available"]);
 						}
 					}, alert);
 				} else {
-					alert("This feature is not available.");
+					alert(strings["feature not available"]);
 				}
 
 				return;

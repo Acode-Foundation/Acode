@@ -44,7 +44,7 @@ export default function formatterSettings(languageName) {
 		});
 
 	items.unshift({
-		note: "Assign a formatter to each language. Install formatter plugins to see more options.",
+		note: strings["settings-note-formatter-settings"],
 	});
 
 	const page = settingsPage(title, items, callback, "separate", {

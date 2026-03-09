@@ -17,7 +17,7 @@ function parseArgsInput(value) {
 
 	const parsed = JSON.parse(normalized);
 	if (!Array.isArray(parsed)) {
-		throw new Error("Arguments must be a JSON array");
+		throw new Error(strings["lsp-error-args-must-be-array"]);
 	}
 	return parsed.map((entry) => String(entry));
 }
@@ -29,23 +29,28 @@ function normalizePackages(value) {
 		.filter(Boolean);
 }
 
-const INSTALL_METHODS = [
-	{ value: "manual", text: "Manual binary" },
-	{ value: "apk", text: "APK package" },
-	{ value: "npm", text: "npm package" },
-	{ value: "pip", text: "pip package" },
-	{ value: "cargo", text: "cargo crate" },
-	{ value: "shell", text: "Custom shell" },
-];
+function getInstallMethods() {
+	return [
+		{ value: "manual", text: strings["lsp-install-method-manual"] },
+		{ value: "apk", text: strings["lsp-install-method-apk"] },
+		{ value: "npm", text: strings["lsp-install-method-npm"] },
+		{ value: "pip", text: strings["lsp-install-method-pip"] },
+		{ value: "cargo", text: strings["lsp-install-method-cargo"] },
+		{ value: "shell", text: strings["lsp-install-method-shell"] },
+	];
+}
 
 async function promptInstaller(binaryCommand) {
-	const method = await select("Install Method", INSTALL_METHODS);
+	const method = await select(
+		strings["lsp-install-method-title"],
+		getInstallMethods(),
+	);
 	if (!method) return null;
 
 	switch (method) {
 		case "manual": {
 			const binaryPath = await prompt(
-				"Binary Path (optional)",
+				strings["lsp-binary-path-optional"],
 				String(binaryCommand || "").includes("/") ? String(binaryCommand) : "",
 				"text",
 			);
@@ -62,14 +67,17 @@ async function promptInstaller(binaryCommand) {
 		case "pip":
 		case "cargo": {
 			const packagesInput = await prompt(
-				`${method.toUpperCase()} Packages (comma separated)`,
+				strings["lsp-packages-prompt"].replace(
+					"{method}",
+					method.toUpperCase(),
+				),
 				"",
 				"text",
 			);
 			if (packagesInput === null) return null;
 			const packages = normalizePackages(packagesInput);
 			if (!packages.length) {
-				throw new Error("At least one package is required");
+				throw new Error(strings["lsp-error-package-required"]);
 			}
 			return {
 				kind: method,
@@ -79,10 +87,14 @@ async function promptInstaller(binaryCommand) {
 			};
 		}
 		case "shell": {
-			const installCommand = await prompt("Install Command", "", "textarea");
+			const installCommand = await prompt(
+				strings["lsp-install-command"],
+				"",
+				"textarea",
+			);
 			if (installCommand === null) return null;
 			const updateCommand = await prompt(
-				"Update Command (optional)",
+				strings["lsp-update-command-optional"],
 				String(installCommand || ""),
 				"textarea",
 			);
@@ -105,7 +117,12 @@ async function promptInstaller(binaryCommand) {
  * @returns {object} Settings page interface
  */
 export default function lspSettings() {
-	const title = strings?.lsp_settings || "Language Servers";
+	const title =
+		strings?.lsp_settings || strings["language servers"] || "Language Servers";
+	const categories = {
+		customServers: strings["settings-category-custom-servers"],
+		servers: strings["settings-category-servers"],
+	};
 	const servers = serverRegistry.listServers();
 
 	const sortedServers = servers.sort((a, b) => {
@@ -121,9 +138,9 @@ export default function lspSettings() {
 	const items = [
 		{
 			key: "add_custom_server",
-			text: "Add Custom Server",
-			info: "Register a user-defined language server with install, update, and launch commands",
-			category: "Custom servers",
+			text: strings["lsp-add-custom-server"],
+			info: strings["settings-info-lsp-add-custom-server"],
+			category: categories.customServers,
 			index: 0,
 			chevron: true,
 		},
@@ -142,13 +159,13 @@ export default function lspSettings() {
 			key: `server:${server.id}`,
 			text: server.label,
 			info: languagesList || undefined,
-			category: "Servers",
+			category: categories.servers,
 			chevron: true,
 		});
 	}
 
 	items.push({
-		note: "Language servers provide IDE features like autocomplete, diagnostics, and hover information. You can now install, update, and define custom servers from these settings. Managed installers still run inside the terminal/proot environment.",
+		note: strings["settings-note-lsp-settings"],
 	});
 
 	return settingsPage(title, items, callback, undefined, {
@@ -161,39 +178,47 @@ export default function lspSettings() {
 	async function callback(key) {
 		if (key === "add_custom_server") {
 			try {
-				const idInput = await prompt("Server ID", "", "text");
+				const idInput = await prompt(strings["lsp-server-id"], "", "text");
 				if (idInput === null) return;
 
 				const serverId = normalizeServerId(idInput);
 				if (!serverId) {
-					toast("Server id is required");
+					toast(strings["lsp-error-server-id-required"]);
 					return;
 				}
 
-				const label = await prompt("Server Label", serverId, "text");
+				const label = await prompt(
+					strings["lsp-server-label"],
+					serverId,
+					"text",
+				);
 				if (label === null) return;
 
 				const languageInput = await prompt(
-					"Language IDs (comma separated)",
+					strings["lsp-language-ids"],
 					"",
 					"text",
 				);
 				if (languageInput === null) return;
 				const languages = normalizeLanguages(languageInput);
 				if (!languages.length) {
-					toast("At least one language id is required");
+					toast(strings["lsp-error-language-id-required"]);
 					return;
 				}
 
-				const binaryCommand = await prompt("Binary Command", "", "text");
+				const binaryCommand = await prompt(
+					strings["lsp-binary-command"],
+					"",
+					"text",
+				);
 				if (binaryCommand === null) return;
 				if (!String(binaryCommand).trim()) {
-					toast("Binary command is required");
+					toast(strings["lsp-error-binary-command-required"]);
 					return;
 				}
 
 				const argsInput = await prompt(
-					"Binary Args (JSON array)",
+					strings["lsp-binary-args"],
 					"[]",
 					"textarea",
 					{
@@ -213,7 +238,7 @@ export default function lspSettings() {
 				if (installer === null) return;
 
 				const checkCommand = await prompt(
-					"Check Command (optional override)",
+					strings["lsp-check-command-optional"],
 					"",
 					"text",
 				);
@@ -235,11 +260,15 @@ export default function lspSettings() {
 					enabled: true,
 				});
 
-				toast("Custom server added");
+				toast(strings["lsp-custom-server-added"]);
 				const detailPage = lspServerDetail(serverId);
 				detailPage?.show();
 			} catch (error) {
-				toast(error instanceof Error ? error.message : "Failed to add server");
+				toast(
+					error instanceof Error
+						? error.message
+						: strings["lsp-error-add-server-failed"],
+				);
 			}
 			return;
 		}

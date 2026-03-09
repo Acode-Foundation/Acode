@@ -4,6 +4,10 @@ import appSettings from "lib/settings";
 export default function previewSettings() {
 	const values = appSettings.value;
 	const title = strings["preview settings"];
+	const categories = {
+		server: strings["settings-category-server"],
+		preview: strings["settings-category-preview"],
+	};
 	const PORT_REGEX =
 		/^([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$/;
 	const items = [
@@ -18,8 +22,8 @@ export default function previewSettings() {
 					return PORT_REGEX.test(value);
 				},
 			},
-			info: "Port used by the live preview server",
-			category: "Server",
+			info: strings["settings-info-preview-preview-port"],
+			category: categories.server,
 		},
 		{
 			key: "serverPort",
@@ -32,8 +36,8 @@ export default function previewSettings() {
 					return PORT_REGEX.test(value);
 				},
 			},
-			info: "Port used by the internal app server",
-			category: "Server",
+			info: strings["settings-info-preview-server-port"],
+			category: categories.server,
 		},
 		{
 			key: "previewMode",
@@ -43,8 +47,8 @@ export default function previewSettings() {
 				[appSettings.PREVIEW_MODE_BROWSER, strings.browser],
 				[appSettings.PREVIEW_MODE_INAPP, strings.inapp],
 			],
-			info: "Where preview opens when you launch it",
-			category: "Server",
+			info: strings["settings-info-preview-mode"],
+			category: categories.server,
 		},
 		{
 			key: "host",
@@ -62,29 +66,29 @@ export default function previewSettings() {
 					}
 				},
 			},
-			info: "Hostname used when opening the preview URL",
-			category: "Server",
+			info: strings["settings-info-preview-host"],
+			category: categories.server,
 		},
 		{
 			key: "disableCache",
 			text: strings["disable in-app-browser caching"],
 			checkbox: values.disableCache,
-			info: "Always reload content in the in-app browser",
-			category: "Preview",
+			info: strings["settings-info-preview-disable-cache"],
+			category: categories.preview,
 		},
 		{
 			key: "useCurrentFileForPreview",
 			text: strings["should_use_current_file_for_preview"],
 			checkbox: !!values.useCurrentFileForPreview,
-			info: "Prefer the current file when starting preview",
-			category: "Preview",
+			info: strings["settings-info-preview-use-current-file"],
+			category: categories.preview,
 		},
 		{
 			key: "showConsoleToggler",
 			text: strings["show console toggler"],
 			checkbox: values.showConsoleToggler,
-			info: "Show the console button in preview",
-			category: "Preview",
+			info: strings["settings-info-preview-show-console-toggler"],
+			category: categories.preview,
 		},
 		{
 			note: strings["preview settings note"],
