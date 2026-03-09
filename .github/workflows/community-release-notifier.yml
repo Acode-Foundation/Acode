@@ -55,7 +55,6 @@ jobs:
           BODY_SAFE=$(printf '%s' "$INPUT_BODY" | \
             sed 's/[_*[\]()~`>#+=|{}.!\\-]/\\&/g')
           TAG_SAFE=$(printf '%s' "$TAG" | sed 's/[_*[\]()~`>#+=|{}.!\\-]/\\&/g')
-          URL_SAFE=$(printf '%s' "$URL" | sed 's/[_*[\]()~`>#+=|{}.!\\-]/\\&/g')
 
           if [[ "$TAG" == *"-nightly"* ]]; then
             SUFFIX=" \\(Nightly Release\\)"
