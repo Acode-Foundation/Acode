@@ -59,63 +59,13 @@ export default function settingsPage(
 
 	/**@type {HTMLDivElement} */
 	const $list = <div tabIndex={0} className="main list"></div>;
-	/**@type {ListItem} */
-	let note;
 
 	if (options.listClassName) {
 		$list.classList.add(...options.listClassName.split(" ").filter(Boolean));
 	}
 
-	settings = settings.filter((setting) => {
-		if ("note" in setting) {
-			note = setting.note;
-			return false;
-		}
-
-		if (!setting.info) {
-			Object.defineProperty(setting, "info", {
-				get() {
-					return strings[`info-${this.key.toLocaleLowerCase()}`];
-				},
-			});
-		}
-
-		return true;
-	});
-
-	if (type === "united" || (type === "separate" && settings.length > 5)) {
-		const $search = <span className="icon search" attr-action="search"></span>;
-		$search.onclick = () =>
-			searchBar(
-				$list,
-				(hide) => {
-					hideSearchBar = hide;
-				},
-				type === "united"
-					? () => {
-							Object.values(appSettings.uiSettings).forEach((page) => {
-								page.restoreList();
-							});
-						}
-					: null,
-				(key) => {
-					if (type === "united") {
-						const $items = [];
-						Object.values(appSettings.uiSettings).forEach((page) => {
-							$items.push(...page.search(key));
-						});
-						return $items;
-					}
-
-					return state.searchItems.filter((item) => {
-						const text = item.textContent.toLowerCase();
-						return text.match(key, "i");
-					});
-				},
-			);
-
-		$page.header.append($search);
-	}
+	const normalized = normalizeSettings(settings);
+	settings = normalized.settings;
 
 	/** DISCLAIMER: do not assign hideSearchBar directly because it can change  */
 	$page.ondisconnect = () => hideSearchBar();
@@ -133,16 +83,23 @@ export default function settingsPage(
 
 	const searchableItems = state.searchItems;
 
-	if (note) {
-		const $note = (
-			<div className="note">
-				<div className="note-title">
-					<span className="icon info_outline"></span>
-					<span>{strings.info}</span>
-				</div>
-				<p innerHTML={note}></p>
-			</div>
-		);
+	if (shouldEnableSearch(type, settings.length)) {
+		const $search = <span className="icon search" attr-action="search"></span>;
+		$search.onclick = () =>
+			searchBar(
+				$list,
+				(hide) => {
+					hideSearchBar = hide;
+				},
+				type === "united" ? restoreAllSettingsPages : null,
+				createSearchHandler(type, state.searchItems),
+			);
+
+		$page.header.append($search);
+	}
+
+	if (normalized.note) {
+		const $note = createNote(normalized.note);
 
 		if (options.notePosition === "top") {
 			children.unshift($note);
@@ -236,12 +193,9 @@ export default function settingsPage(
 function listItems($list, items, callback, options = {}) {
 	const renderedItems = [];
 	const $searchItems = [];
-	const $content = [];
 	const useInfoAsDescription =
 		options.infoAsDescription ?? Boolean(options.valueInTail);
-	/** @type {HTMLElement | null} */
-	let $currentSectionCard = null;
-	let currentCategory = null;
+	const itemByKey = new Map(items.map((item) => [item.key, item]));
 
 	// sort settings by text before rendering (unless preserveOrder is true)
 	if (!options.preserveOrder) {
@@ -251,168 +205,13 @@ function listItems($list, items, callback, options = {}) {
 		});
 	}
 	items.forEach((item) => {
-		const $setting = Ref();
-		const $settingName = Ref();
-		const $tail = Ref();
-		const isCheckboxItem =
-			item.checkbox !== undefined || typeof item.value === "boolean";
-		/**@type {HTMLDivElement} */
-		const $item = (
-			<div
-				tabIndex={1}
-				className={`list-item ${item.sake ? "sake" : ""} ${item.icon ? "" : "no-leading-icon"}`}
-				data-key={item.key}
-				data-action="list-item"
-			>
-				<span
-					className={`icon ${item.icon || "no-icon"}`}
-					style={{ color: item.iconColor }}
-				></span>
-				<div ref={$setting} className="container">
-					<div ref={$settingName} className="text">
-						{item.text?.capitalize?.(0) ?? item.text}
-					</div>
-				</div>
-				<div ref={$tail} className="setting-tail"></div>
-			</div>
-		);
-
-		let $checkbox, $valueText;
-		let $trailingValueText;
-		const subtitle = isCheckboxItem
-			? item.info
-			: getSubtitleText(item, useInfoAsDescription);
-		const showInfoAsSubtitle =
-			isCheckboxItem ||
-			useInfoAsDescription ||
-			(item.value === undefined && item.info);
-		const searchGroup =
-			item.searchGroup || item.category || options.defaultSearchGroup;
-		const hasSubtitle =
-			subtitle !== undefined && subtitle !== null && subtitle !== "";
-		const shouldShowTailChevron =
-			item.chevron ||
-			(!item.select &&
-				Boolean(item.prompt || item.file || item.folder || item.link));
-
-		if (searchGroup) {
-			$item.dataset.searchGroup = searchGroup;
-		}
-
-		let subtitleRendered = false;
-
-		if (isCheckboxItem) {
-			$checkbox = Checkbox("", item.checkbox || item.value);
-			$tail.el.appendChild($checkbox);
-		}
-
-		if (hasSubtitle) {
-			$valueText = <small className="value"></small>;
-			setValueText(
-				$valueText,
-				subtitle,
-				showInfoAsSubtitle ? null : item.valueText?.bind(item),
-			);
-			if (showInfoAsSubtitle) {
-				$valueText.classList.add("setting-info");
-			}
-			$setting.append($valueText);
-			subtitleRendered = true;
-			if (!showInfoAsSubtitle) {
-				setColor($item, item.value);
-			}
-		}
-
-		if (subtitleRendered) {
-			$item.classList.add("has-subtitle");
-		} else {
-			$item.classList.add("compact");
-		}
-
-		if (
-			options.valueInTail &&
-			item.value !== undefined &&
-			item.checkbox === undefined &&
-			typeof item.value !== "boolean"
-		) {
-			$item.classList.add("has-tail-value");
-
-			if (item.select) {
-				$item.classList.add("has-tail-select");
-			}
-
-			$trailingValueText = (
-				<small
-					className={`setting-trailing-value ${item.select ? "is-select" : ""}`}
-				></small>
-			);
-			setValueText($trailingValueText, item.value, item.valueText?.bind(item));
-
-			const $valueDisplay = (
-				<div
-					className={`setting-value-display ${item.select ? "is-select" : ""}`}
-				>
-					{$trailingValueText}
-					{item.select
-						? <span className="icon keyboard_arrow_down setting-value-icon"></span>
-						: null}
-				</div>
-			);
-			$tail.el.append($valueDisplay);
-		}
-
-		if (shouldShowTailChevron) {
-			$tail.el.append(
-				<span className="icon keyboard_arrow_right settings-chevron"></span>,
-			);
-		}
-
-		if (!$tail.el.children.length) {
-			$tail.el.remove();
-		}
-
-		if (Number.isInteger(item.index)) {
-			renderedItems.splice(item.index, 0, { item, $item });
-		} else {
-			renderedItems.push({ item, $item });
-		}
-
+		const $item = createListItemElement(item, options, useInfoAsDescription);
+		insertRenderedItem(renderedItems, item, $item);
 		$item.addEventListener("click", onclick);
 		$searchItems.push($item);
 	});
 
-	renderedItems.forEach(({ item, $item }) => {
-		const category =
-			item.category?.trim() || (options.groupByDefault ? "__default__" : "");
-
-		if (!category) {
-			currentCategory = null;
-			$currentSectionCard = null;
-			$content.push($item);
-			return;
-		}
-
-		if (currentCategory !== category || !$currentSectionCard) {
-			currentCategory = category;
-			const shouldShowLabel = category !== "__default__";
-			const $label = shouldShowLabel
-				? <div className="settings-section-label">{category}</div>
-				: null;
-			$currentSectionCard = <div className="settings-section-card"></div>;
-			$content.push(
-				<section className="settings-section">
-					{$label}
-					{$currentSectionCard}
-				</section>,
-			);
-		}
-
-		$currentSectionCard.append($item);
-	});
-
-	const topLevelChildren = $content.length
-		? $content
-		: renderedItems.map(({ $item }) => $item);
+	const topLevelChildren = buildListContent(renderedItems, options);
 
 	$list.content = topLevelChildren;
 
@@ -430,71 +229,415 @@ function listItems($list, items, callback, options = {}) {
 		const $target = e.currentTarget;
 		const { key } = $target.dataset;
 
-		const item = items.find((item) => item.key === key);
+		const item = itemByKey.get(key);
 		if (!item) return;
+		const result = await resolveItemInteraction(item, $target);
+		if (result.shouldCallCallback === false) return;
+		if (!result.shouldUpdateValue)
+			return callback.call($target, key, item.value);
 
-		const {
-			select: options,
-			prompt: promptText,
-			color: selectColor,
-			checkbox,
-			file,
-			folder,
-			link,
-		} = item;
-		const { text, value, valueText } = item;
-		const { promptType, promptOptions } = item;
-
-		const $valueText = $target.get(".value");
-		const $checkbox = $target.get(".input-checkbox");
-		const $trailingValueText = $target.get(".setting-trailing-value");
-		const shouldUpdateInlineValue =
-			$valueText && !$valueText.classList.contains("setting-info");
-		let res;
-		let shouldUpdateValue = false;
-
-		try {
-			if (options) {
-				res = await select(text, options, {
-					default: value,
-				});
-				shouldUpdateValue = res !== undefined;
-			} else if (checkbox !== undefined) {
-				$checkbox.toggle();
-				res = $checkbox.checked;
-				shouldUpdateValue = true;
-			} else if (promptText) {
-				res = await prompt(promptText, value, promptType, promptOptions);
-				if (res === null) return;
-				shouldUpdateValue = true;
-			} else if (file || folder) {
-				const mode = file ? "file" : "folder";
-				const { url } = await FileBrowser(mode);
-				res = url;
-				shouldUpdateValue = true;
-			} else if (selectColor) {
-				res = await colorPicker(value);
-				shouldUpdateValue = true;
-			} else if (link) {
-				system.openInBrowser(link);
-				return;
-			}
-		} catch (error) {
-			window.log("error", error);
-		}
-
-		if (shouldUpdateValue) {
-			item.value = res;
-			if (options.valueInTail) {
-				setValueText($trailingValueText, res, valueText?.bind(item));
-			} else {
-				syncInlineValueDisplay($target, item, useInfoAsDescription);
-			}
-			setColor($target, res);
-		}
+		item.value = result.value;
+		updateItemValueDisplay($target, item, options, useInfoAsDescription);
 
 		callback.call($target, key, item.value);
 	}
+}
+
+function normalizeSettings(settings) {
+	/** @type {string | undefined} */
+	let note;
+	const normalizedSettings = settings.filter((setting) => {
+		if ("note" in setting) {
+			note = setting.note;
+			return false;
+		}
+
+		ensureSettingInfo(setting);
+		return true;
+	});
+
+	return {
+		note,
+		settings: normalizedSettings,
+	};
+}
+
+function ensureSettingInfo(setting) {
+	if (setting.info) return;
+
+	Object.defineProperty(setting, "info", {
+		get() {
+			return strings[`info-${this.key.toLocaleLowerCase()}`];
+		},
+	});
+}
+
+function shouldEnableSearch(type, settingsCount) {
+	return type === "united" || (type === "separate" && settingsCount > 5);
+}
+
+function restoreAllSettingsPages() {
+	Object.values(appSettings.uiSettings).forEach((page) => {
+		page.restoreList();
+	});
+}
+
+function createSearchHandler(type, searchItems) {
+	return (key) => {
+		if (type === "united") {
+			const $items = [];
+			Object.values(appSettings.uiSettings).forEach((page) => {
+				$items.push(...page.search(key));
+			});
+			return $items;
+		}
+
+		return searchItems.filter((item) => {
+			const text = item.textContent.toLowerCase();
+			return text.match(key, "i");
+		});
+	};
+}
+
+function createNote(note) {
+	return (
+		<div className="note">
+			<div className="note-title">
+				<span className="icon info_outline"></span>
+				<span>{strings.info}</span>
+			</div>
+			<p innerHTML={note}></p>
+		</div>
+	);
+}
+
+function createListItemElement(item, options, useInfoAsDescription) {
+	const $setting = Ref();
+	const $tail = Ref();
+	const isCheckboxItem = isBooleanSetting(item);
+	const state = getItemDisplayState(item, useInfoAsDescription);
+	/**@type {HTMLDivElement} */
+	const $item = (
+		<div
+			tabIndex={1}
+			className={`list-item ${item.sake ? "sake" : ""} ${item.icon ? "" : "no-leading-icon"}`}
+			data-key={item.key}
+			data-action="list-item"
+		>
+			<span
+				className={`icon ${item.icon || "no-icon"}`}
+				style={{ color: item.iconColor }}
+			></span>
+			<div ref={$setting} className="container">
+				<div className="text">{item.text?.capitalize?.(0) ?? item.text}</div>
+			</div>
+			<div ref={$tail} className="setting-tail"></div>
+		</div>
+	);
+	const searchGroup =
+		item.searchGroup || item.category || options.defaultSearchGroup;
+
+	if (searchGroup) {
+		$item.dataset.searchGroup = searchGroup;
+	}
+
+	if (isCheckboxItem) {
+		const $checkbox = Checkbox("", item.checkbox || item.value);
+		$tail.el.appendChild($checkbox);
+	}
+
+	if (state.hasSubtitle) {
+		const $valueText = createSubtitleElement(item, state);
+		$setting.append($valueText);
+		$item.classList.add("has-subtitle");
+		if (!state.showInfoAsSubtitle) {
+			setColor($item, item.value);
+		}
+	} else {
+		$item.classList.add("compact");
+	}
+
+	if (shouldShowTrailingValue(item, options)) {
+		$item.classList.add("has-tail-value");
+		if (item.select) {
+			$item.classList.add("has-tail-select");
+		}
+		$tail.el.append(createTrailingValueDisplay(item));
+	}
+
+	if (shouldShowTailChevron(item)) {
+		$tail.el.append(
+			<span className="icon keyboard_arrow_right settings-chevron"></span>,
+		);
+	}
+
+	if (!$tail.el.children.length) {
+		$tail.el.remove();
+	}
+
+	return $item;
+}
+
+function isBooleanSetting(item) {
+	return item.checkbox !== undefined || typeof item.value === "boolean";
+}
+
+function getItemDisplayState(item, useInfoAsDescription) {
+	const isCheckboxItem = isBooleanSetting(item);
+	const subtitle = isCheckboxItem
+		? item.info
+		: getSubtitleText(item, useInfoAsDescription);
+	const showInfoAsSubtitle =
+		isCheckboxItem ||
+		useInfoAsDescription ||
+		(item.value === undefined && item.info);
+
+	return {
+		subtitle,
+		showInfoAsSubtitle,
+		hasSubtitle: subtitle !== undefined && subtitle !== null && subtitle !== "",
+	};
+}
+
+function createSubtitleElement(item, state) {
+	const $valueText = <small className="value"></small>;
+	setValueText(
+		$valueText,
+		state.subtitle,
+		state.showInfoAsSubtitle ? null : item.valueText?.bind(item),
+	);
+
+	if (state.showInfoAsSubtitle) {
+		$valueText.classList.add("setting-info");
+	}
+
+	return $valueText;
+}
+
+function shouldShowTrailingValue(item, options) {
+	return (
+		options.valueInTail &&
+		item.value !== undefined &&
+		item.checkbox === undefined &&
+		typeof item.value !== "boolean"
+	);
+}
+
+function createTrailingValueDisplay(item) {
+	const $trailingValueText = (
+		<small
+			className={`setting-trailing-value ${item.select ? "is-select" : ""}`}
+		></small>
+	);
+	setValueText($trailingValueText, item.value, item.valueText?.bind(item));
+
+	return (
+		<div className={`setting-value-display ${item.select ? "is-select" : ""}`}>
+			{$trailingValueText}
+			{item.select
+				? <span className="icon keyboard_arrow_down setting-value-icon"></span>
+				: null}
+		</div>
+	);
+}
+
+function shouldShowTailChevron(item) {
+	return (
+		item.chevron ||
+		(!item.select &&
+			Boolean(item.prompt || item.file || item.folder || item.link))
+	);
+}
+
+function insertRenderedItem(renderedItems, item, $item) {
+	if (Number.isInteger(item.index)) {
+		renderedItems.splice(item.index, 0, { item, $item });
+		return;
+	}
+
+	renderedItems.push({ item, $item });
+}
+
+function buildListContent(renderedItems, options) {
+	const $content = [];
+	/** @type {HTMLElement | null} */
+	let $currentSectionCard = null;
+	let currentCategory = null;
+
+	renderedItems.forEach(({ item, $item }) => {
+		const category =
+			item.category?.trim() || (options.groupByDefault ? "__default__" : "");
+
+		if (!category) {
+			currentCategory = null;
+			$currentSectionCard = null;
+			$content.push($item);
+			return;
+		}
+
+		if (currentCategory !== category || !$currentSectionCard) {
+			currentCategory = category;
+			const section = createSectionElements(category);
+			$currentSectionCard = section.$card;
+			$content.push(section.$section);
+		}
+
+		$currentSectionCard.append($item);
+	});
+
+	return $content.length ? $content : renderedItems.map(({ $item }) => $item);
+}
+
+function createSectionElements(category) {
+	const shouldShowLabel = category !== "__default__";
+	const $label = shouldShowLabel
+		? <div className="settings-section-label">{category}</div>
+		: null;
+	const $card = <div className="settings-section-card"></div>;
+	return {
+		$card,
+		$section: (
+			<section className="settings-section">
+				{$label}
+				{$card}
+			</section>
+		),
+	};
+}
+
+async function resolveItemInteraction(item, $target) {
+	const {
+		select: selectOptions,
+		prompt: promptText,
+		color: selectColor,
+		checkbox,
+		file,
+		folder,
+		link,
+		text,
+		value,
+		promptType,
+		promptOptions,
+	} = item;
+
+	try {
+		if (selectOptions) {
+			const selectedValue = await select(text, selectOptions, {
+				default: value,
+			});
+
+			return {
+				shouldUpdateValue: selectedValue !== undefined,
+				value: selectedValue,
+			};
+		}
+
+		if (checkbox !== undefined) {
+			const $checkbox = $target.get(".input-checkbox");
+			$checkbox.toggle();
+			return {
+				shouldUpdateValue: true,
+				value: $checkbox.checked,
+			};
+		}
+
+		if (promptText) {
+			const promptedValue = await prompt(
+				promptText,
+				value,
+				promptType,
+				promptOptions,
+			);
+			if (promptedValue === null) {
+				return {
+					shouldUpdateValue: false,
+					shouldCallCallback: false,
+				};
+			}
+
+			return {
+				shouldUpdateValue: true,
+				value: promptedValue,
+			};
+		}
+
+		if (file || folder) {
+			const mode = file ? "file" : "folder";
+			const { url } = await FileBrowser(mode);
+			return {
+				shouldUpdateValue: true,
+				value: url,
+			};
+		}
+
+		if (selectColor) {
+			const color = await colorPicker(value);
+			return {
+				shouldUpdateValue: true,
+				value: color,
+			};
+		}
+
+		if (link) {
+			system.openInBrowser(link);
+			return {
+				shouldUpdateValue: false,
+				shouldCallCallback: false,
+			};
+		}
+	} catch (error) {
+		window.log("error", error);
+	}
+
+	return {
+		shouldUpdateValue: false,
+		shouldCallCallback: true,
+	};
+}
+
+function updateItemValueDisplay($target, item, options, useInfoAsDescription) {
+	if (options.valueInTail) {
+		syncTrailingValueDisplay($target, item, options);
+	} else {
+		syncInlineValueDisplay($target, item, useInfoAsDescription);
+	}
+
+	setColor($target, item.value);
+}
+
+function syncTrailingValueDisplay($target, item, options) {
+	const shouldRenderTrailingValue = shouldShowTrailingValue(item, options);
+	let $tail = $target.get(".setting-tail");
+	let $valueDisplay = $target.get(".setting-value-display");
+
+	if (!shouldRenderTrailingValue) {
+		$valueDisplay?.remove();
+		$target.classList.remove("has-tail-value", "has-tail-select");
+		if ($tail && !$tail.children.length) {
+			$tail.remove();
+		}
+		return;
+	}
+
+	if (!$tail) {
+		$tail = <div className="setting-tail"></div>;
+		$target.append($tail);
+	}
+
+	if (!$valueDisplay) {
+		$valueDisplay = createTrailingValueDisplay(item);
+		const $chevron = $tail.get(".settings-chevron");
+		if ($chevron) {
+			$tail.insertBefore($valueDisplay, $chevron);
+		} else {
+			$tail.append($valueDisplay);
+		}
+	}
+
+	const $trailingValueText = $valueDisplay.get(".setting-trailing-value");
+	setValueText($trailingValueText, item.value, item.valueText?.bind(item));
+	$target.classList.add("has-tail-value");
+	$target.classList.toggle("has-tail-select", Boolean(item.select));
 }
 
 /**
@@ -504,20 +647,13 @@ function listItems($list, items, callback, options = {}) {
  * @param {boolean} useInfoAsDescription
  */
 function syncInlineValueDisplay($target, item, useInfoAsDescription) {
-	const subtitle = getSubtitleText(item, useInfoAsDescription);
-	const showInfoAsSubtitle =
-		item.checkbox !== undefined ||
-		typeof item.value === "boolean" ||
-		useInfoAsDescription ||
-		(item.value === undefined && item.info);
-	const hasSubtitle =
-		subtitle !== undefined && subtitle !== null && subtitle !== "";
+	const state = getItemDisplayState(item, useInfoAsDescription);
 	let $valueText = $target.get(".value");
 	const $container = $target.get(".container");
 
 	if (!$container) return;
 
-	if (!hasSubtitle) {
+	if (!state.hasSubtitle) {
 		$valueText?.remove();
 		$target.classList.remove("has-subtitle");
 		$target.classList.add("compact");
@@ -529,11 +665,11 @@ function syncInlineValueDisplay($target, item, useInfoAsDescription) {
 		$container.append($valueText);
 	}
 
-	$valueText.classList.toggle("setting-info", showInfoAsSubtitle);
+	$valueText.classList.toggle("setting-info", state.showInfoAsSubtitle);
 	setValueText(
 		$valueText,
-		subtitle,
-		showInfoAsSubtitle ? null : item.valueText?.bind(item),
+		state.subtitle,
+		state.showInfoAsSubtitle ? null : item.valueText?.bind(item),
 	);
 	$target.classList.add("has-subtitle");
 	$target.classList.remove("compact");
