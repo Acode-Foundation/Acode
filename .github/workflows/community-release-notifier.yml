@@ -86,7 +86,7 @@ jobs:
       # Telegram notification — MarkdownV2 + no link preview
       # ────────────────────────────────────────────────
       - name: Send to Telegram
-        uses: appleboy/telegram-action@v1.0.0   # or newer tag if available
+        uses: Salmansha08/telegram-github-action@17c9ce6b4210d2659dca29d34028b02fa29d70ad  # or newer tag if available
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
