@@ -1,6 +1,4 @@
 import purchaseListener from "handlers/purchase";
-import purchaseListener from "handlers/purchase";
-import { hideAd } from "./startAd.js";
 import { hideAd } from "./startAd.js";
 
 /**

@@ -13,11 +13,11 @@ import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
 import removeAds from "lib/removeAds";
 import appSettings from "lib/settings";
+import { hideAd } from "lib/startAd";
 import CustomTheme from "pages/customTheme";
 import ThemeBuilder from "theme/builder";
 import themes from "theme/list";
 import helpers from "utils/helpers";
-import { hideAd } from "lib/startAd";
 
 export default function () {
 	const $page = Page(strings.theme.capitalize());

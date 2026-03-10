@@ -6,11 +6,11 @@ import confirm from "dialogs/confirm";
 import select from "dialogs/select";
 import actionStack from "lib/actionStack";
 import settings from "lib/settings";
+import { hideAd } from "lib/startAd";
 import ThemeBuilder from "theme/builder";
 import themes from "theme/list";
 import { isValidColor } from "utils/color/regex";
 import helpers from "utils/helpers";
-import { hideAd } from "lib/startAd";
 
 export default function CustomThemeInclude() {
 	const theme = themes.get("custom");

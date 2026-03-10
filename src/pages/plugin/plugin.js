@@ -10,6 +10,7 @@ import constants from "lib/constants";
 import installPlugin from "lib/installPlugin";
 import InstallState from "lib/installState";
 import settings from "lib/settings";
+import { hideAd } from "lib/startAd";
 import markdownIt from "markdown-it";
 import anchor from "markdown-it-anchor";
 import markdownItFootnote from "markdown-it-footnote";
@@ -19,7 +20,6 @@ import { highlightCodeBlock, initHighlighting } from "utils/codeHighlight";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
 import view from "./plugin.view.js";
-import { hideAd } from "lib/startAd";
 
 let $lastPluginPage;
 

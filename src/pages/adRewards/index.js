@@ -5,8 +5,8 @@ import loader from "dialogs/loader";
 import actionStack from "lib/actionStack";
 import adRewards from "lib/adRewards";
 import removeAds from "lib/removeAds";
-import helpers from "utils/helpers";
 import { hideAd } from "lib/startAd";
+import helpers from "utils/helpers";
 
 let $rewardPage = null;
 

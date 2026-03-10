@@ -3,8 +3,8 @@ import { getLspDiagnostics } from "cm/lsp/diagnostics";
 import Page from "components/page";
 import actionStack from "lib/actionStack";
 import EditorFile from "lib/editorFile";
-import helpers from "utils/helpers";
 import { hideAd } from "lib/startAd";
+import helpers from "utils/helpers";
 
 export default function Problems() {
 	const $page = Page(strings["problems"]);

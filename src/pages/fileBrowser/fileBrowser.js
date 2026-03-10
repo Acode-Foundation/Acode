@@ -20,6 +20,7 @@ import projects from "lib/projects";
 import recents from "lib/recents";
 import remoteStorage from "lib/remoteStorage";
 import appSettings from "lib/settings";
+import { hideAd } from "lib/startAd";
 import mimeTypes from "mime-types";
 import mustache from "mustache";
 import filesSettings from "settings/filesSettings";
@@ -30,7 +31,6 @@ import _addMenu from "./add-menu.hbs";
 import _addMenuHome from "./add-menu-home.hbs";
 import _template from "./fileBrowser.hbs";
 import _list from "./list.hbs";
-import { hideAd } from "lib/startAd";
 import util from "./util";
 
 /**

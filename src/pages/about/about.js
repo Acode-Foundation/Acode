@@ -4,8 +4,8 @@ import Page from "components/page";
 import Reactive from "html-tag-js/reactive";
 import actionStack from "lib/actionStack";
 import constants from "lib/constants";
-import helpers from "utils/helpers";
 import { hideAd } from "lib/startAd";
+import helpers from "utils/helpers";
 export default function AboutInclude() {
 	const $page = Page(strings.about.capitalize());
 	const webviewVersionName = Reactive("N/A");
