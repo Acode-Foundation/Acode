@@ -5,13 +5,13 @@ import select from "dialogs/select";
 import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
 import appSettings from "lib/settings";
+import { hideAd } from "lib/startAd";
 import FileBrowser from "pages/fileBrowser";
 import { isValidColor } from "utils/color/regex";
 import helpers from "utils/helpers";
 import Checkbox from "./checkbox";
 import Page from "./page";
 import searchBar from "./searchbar";
-import { hideAd } from "lib/startAd";
 
 /**
  * @typedef {object} SettingsPage

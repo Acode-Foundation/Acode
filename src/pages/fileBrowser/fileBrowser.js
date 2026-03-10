@@ -30,8 +30,8 @@ import _addMenu from "./add-menu.hbs";
 import _addMenuHome from "./add-menu-home.hbs";
 import _template from "./fileBrowser.hbs";
 import _list from "./list.hbs";
-import util from "./util";
 import { hideAd } from "./startAd.js";
+import util from "./util";
 
 /**
  * @typedef {{url: String, name: String}} Location
