@@ -193,7 +193,7 @@ Many font editing software and web-based tools exist for this purpose. Some of t
 10. Add **Font** in the formats section, expand the **Font**, enter **code-editor-icon** as the font-family for `icons.ttf` file.
 11. Press the download button, and a zip file will be downloaded.
 
-### Adding the Unicode characters to style.css.
+### Adding the Unicode characters to style.css
 
 1. Open the `style.css` file present at https://github.com/Acode-Foundation/Acode/tree/main/src/res/icons
 2. Add a new class called `.icon.icon-name:before` e.g ```.icon.all_inclusive:before { content: "\ea18"; }```
