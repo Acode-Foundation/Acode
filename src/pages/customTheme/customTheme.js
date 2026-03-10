@@ -10,7 +10,7 @@ import ThemeBuilder from "theme/builder";
 import themes from "theme/list";
 import { isValidColor } from "utils/color/regex";
 import helpers from "utils/helpers";
-import { hideAd } from "./startAd.js";
+import { hideAd } from "lib/startAd";
 
 export default function CustomThemeInclude() {
 	const theme = themes.get("custom");

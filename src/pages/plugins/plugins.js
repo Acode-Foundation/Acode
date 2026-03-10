@@ -16,7 +16,7 @@ import actionStack from "lib/actionStack";
 import Contextmenu from "components/contextmenu";
 import settings from "lib/settings";
 import loadPlugin from "lib/loadPlugin";
-import { hideAd } from "./startAd.js";
+import { hideAd } from "lib/startAd";
 
 /**
  *

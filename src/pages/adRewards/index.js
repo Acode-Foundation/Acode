@@ -6,7 +6,7 @@ import actionStack from "lib/actionStack";
 import adRewards from "lib/adRewards";
 import removeAds from "lib/removeAds";
 import helpers from "utils/helpers";
-import { hideAd } from "./startAd.js";
+import { hideAd } from "lib/startAd";
 
 let $rewardPage = null;
 

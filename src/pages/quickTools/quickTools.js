@@ -4,7 +4,7 @@ import items, { description } from "components/quickTools/items";
 import actionStack from "lib/actionStack";
 import settings from "lib/settings";
 import helpers from "utils/helpers";
-import { hideAd } from "./startAd.js";
+import { hideAd } from "lib/startAd";
 
 export default function QuickTools() {
 	const $page = Page(strings["shortcut buttons"]);

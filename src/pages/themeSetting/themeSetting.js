@@ -17,7 +17,7 @@ import CustomTheme from "pages/customTheme";
 import ThemeBuilder from "theme/builder";
 import themes from "theme/list";
 import helpers from "utils/helpers";
-import { hideAd } from "./startAd.js";
+import { hideAd } from "lib/startAd";
 
 export default function () {
 	const $page = Page(strings.theme.capitalize());

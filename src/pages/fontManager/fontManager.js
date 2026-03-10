@@ -15,7 +15,7 @@ import appSettings from "lib/settings";
 import FileBrowser from "pages/fileBrowser";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
-import { hideAd } from "./startAd.js";
+import { hideAd } from "lib/startAd";
 
 export default function fontManager() {
 	const defaultFont = "Roboto Mono";

@@ -10,7 +10,7 @@ import markdownIt from "markdown-it";
 import markdownItFootnote from "markdown-it-footnote";
 import markdownItTaskLists from "markdown-it-task-lists";
 import helpers from "utils/helpers";
-import { hideAd } from "./startAd.js";
+import { hideAd } from "lib/startAd";
 
 export default async function Changelog() {
 	const GITHUB_API_URL =

@@ -19,7 +19,7 @@ import { highlightCodeBlock, initHighlighting } from "utils/codeHighlight";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
 import view from "./plugin.view.js";
-import { hideAd } from "./startAd.js";
+import { hideAd } from "lib/startAd";
 
 let $lastPluginPage;
 
