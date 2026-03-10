@@ -196,7 +196,7 @@ Many font editing software and web-based tools exist for this purpose. Some of t
 ### Adding the Unicode characters to style.css.
 
 1. Open `style.css` file present at https://github.com/Acode-Foundation/Acode/tree/main/src/res/icons
-2. Add new class called `.icon.icon-name::before` i.e ```.icon.all_inclusive:before { content: "\ea18"; }```
+2. Add new class called `.icon.icon-name:before` i.e ```.icon.all_inclusive:before { content: "\ea18"; }```
 3. `content` (i.e `ea18` -> `\ea18`) property's value is the Unicode Character copied after importing the icon in the font family.
 4. Save the file, extract the zip file (downloaded), from the fonts folder, rename `code-editor-icon.ttf` to `icons.ttf`, copy & paste the `icons.ttf` onto https://github.com/Acode-Foundation/Acode/tree/main/src/res/icons
 5. commit the changes <ins><b>ON A NEW branch</b></ins> (by following: [Commit Messages guide](#commit-messages))
