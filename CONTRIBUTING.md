@@ -176,8 +176,8 @@ Many font editing software and web-based tools exist for this purpose. Some of t
 
 | Name | Platform |
 |------|----------|
-| https://icomoon.io/ | Free (Web-Based, PWA-supported, Offline-supported |
-| https://fontforge.org/ | Open-Source (Linux, Mac, Windows)
+| https://icomoon.io/ | Free (Web-Based, PWA-supported, Offline-supported) |
+| https://fontforge.org/ | Open-Source (Linux, Mac, Windows) |
 
 ### Steps in Icomoon to add new Icons
 
