@@ -185,7 +185,7 @@ Many font editing software and web-based tools exist for this purpose. Some of t
 2. Go to https://icomoon.io/ > Start a new Project
 3. Import the `icons.ttf` downloaded (in step 1)
 4. All icons will be displayed after importing.
-4. Import the SVG icon created/downloaded to be added to the Font Family.
+5. Import the SVG icon created/downloaded to be added to the Font Family.
 5. On the right side, press **enable Show Characters** to view the Unicode character for that icon.
 6. Copy the newly added icon's Unicode character (required for later steps)
 7. Repeat Step 4 and Step 6 until all needed new icons are added.
