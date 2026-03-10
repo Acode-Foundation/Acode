@@ -59,18 +59,18 @@ export default async function startAd() {
 }
 
 /**
-	 * Hides the ad
-	 * @param {Boolean} [force=false]
-	 */
-	export function hideAd(force = false) {
-		const { ad } = window;
-		if (ad?.active) {
-			const $pages = tag.getAll(".page-replacement");
-			const hide = $pages.length === 1;
+ * Hides the ad
+ * @param {Boolean} [force=false]
+ */
+export function hideAd(force = false) {
+	const { ad } = window;
+	if (ad?.active) {
+		const $pages = tag.getAll(".page-replacement");
+		const hide = $pages.length === 1;
 
-			if (force || hide) {
-				ad.active = false;
-				ad.hide();
-			}
+		if (force || hide) {
+			ad.active = false;
+			ad.hide();
 		}
 	}
+}
