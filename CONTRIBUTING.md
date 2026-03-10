@@ -188,7 +188,7 @@ Many font editing software and web-based tools exist for this purpose. Some of t
 5. Import the SVG icon created/downloaded to be added to the Font Family.
 5. On the right side, press **enable Show Characters** to view the Unicode character for that icon.
 6. Copy the newly added icon's Unicode character (required for later steps)
-7. Repeat Step 4 and Step 6 until all needed new icons are added.
+7. Repeat Step 5 and Step 7 until all needed new icons are added.
 8. Press the export icon from the top left-hand side.
 9. Add **Font** in the formats section, expand the **Font**, enter **code-editor-icon** as the font-family for `icons.ttf` file.
 10. Press the download button, and a zip file will be downloaded.
