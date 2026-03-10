@@ -198,7 +198,11 @@ Many font editing software and web-based tools exist for this purpose. Some of t
 1. Open the `style.css` file present at https://github.com/Acode-Foundation/Acode/tree/main/src/res/icons
 2. Add a new class called `.icon.icon-name:before` e.g ```.icon.all_inclusive:before { content: "\ea18"; }```
 3. `content` (i.e., `ea18` -> `\ea18`) property's value is the Unicode Character copied after importing the icon in the font family.
-4. Save the file, extract the zip file (downloaded), from the fonts folder, rename `code-editor-icon.ttf` to `icons.ttf`, copy & paste the `icons.ttf` onto https://github.com/Acode-Foundation/Acode/tree/main/src/res/icons
+4. Save the `style.css` file.
+5. Extract the downloaded zip file; navigate to the `fonts` folder inside it.
+6. Rename `code-editor-icon.ttf` to `icons.ttf`.
+7. Copy & paste the renamed `icons.ttf` into https://github.com/Acode-Foundation/Acode/tree/main/src/res/icons
+8. Commit the changes **ON A NEW branch** (by following: [Commit Messages guide](#commit-messages))
 5. commit the changes **ON A NEW branch** (by following: [Commit Messages guide](#commit-messages))
 
 ## 🔌 Plugin Development
