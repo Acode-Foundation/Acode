@@ -11,7 +11,7 @@ import helpers from "utils/helpers";
 import Checkbox from "./checkbox";
 import Page from "./page";
 import searchBar from "./searchbar";
-import { hideAd } from "./startAd.js";
+import { hideAd } from "lib/startAd";
 
 /**
  * @typedef {object} SettingsPage
