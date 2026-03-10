@@ -1,39 +1,6 @@
 const Executor = require("./Executor");
 
-function formatAxsAssetError(error) {
-    if (!error) return "unknown error";
-    if (typeof error === "string") return error;
-    if (error instanceof Error) {
-        return error.stack || error.message || String(error);
-    }
-    try {
-        return JSON.stringify(error);
-    } catch (_) {
-        return String(error);
-    }
-}
-
 const Terminal = {
-    /**
-     * In debug builds, overwrite the axs binary from bundled assets to ensure
-     * the running version always matches the build. Returns true if replaced.
-     */
-    async refreshAxsBinary() {
-        if (typeof BuildInfo === 'undefined' || !BuildInfo.debug) return false;
-        const filesDir = await new Promise((resolve, reject) => {
-            system.getFilesDir(resolve, reject);
-        });
-        try {
-            await new Promise((resolve, reject) => {
-                system.copyAsset("axs", `${filesDir}/axs`, resolve, reject);
-            });
-            return true;
-        } catch (e) {
-            console.warn("Failed to refresh bundled AXS from assets:", formatAxsAssetError(e));
-            return false;
-        }
-    },
-
     /**
      * Starts the AXS environment by writing init scripts and executing the sandbox.
      * @param {boolean} [installing=false] - Whether AXS is being started during installation.
@@ -261,31 +228,14 @@ const Terminal = {
                 }
 
                 if (!hasAxs) {
-                    let copiedFromAsset = false;
-                    // Only use bundled axs in debug builds; release builds always download latest
-                    if (typeof BuildInfo !== 'undefined' && BuildInfo.debug) {
-                        try {
-                            logger("📦  Copying bundled axs from assets...");
-                            await new Promise((resolve, reject) => {
-                                system.copyAsset("axs", `${filesDir}/axs`, resolve, reject);
-                            });
-                            copiedFromAsset = true;
-                            logger("✅  Bundled AXS copied from assets");
-                        } catch (assetError) {
-                            logger(`⚠️  Asset copy failed, will download instead: ${formatAxsAssetError(assetError)}`);
-                        }
-                    }
-
-                    if (!copiedFromAsset) {
-                        logger("⬇️  Downloading axs...");
-                        await Executor.download(axsUrl, `${filesDir}/axs`, (p) => {
-                            const dl = formatBytes(p.downloaded);
-                            const total = p.total > 0 ? formatBytes(p.total) : "?";
-                            const speed = formatBytes(p.speed) + "/s";
-                            const eta = p.eta > 0 ? formatEta(p.eta) : "--";
-                            logger(`⬇️  ${dl} / ${total}  ${speed}  ETA ${eta}`);
-                        });
-                    }
+                    logger("⬇️  Downloading axs...");
+                    await Executor.download(axsUrl, `${filesDir}/axs`, (p) => {
+                        const dl = formatBytes(p.downloaded);
+                        const total = p.total > 0 ? formatBytes(p.total) : "?";
+                        const speed = formatBytes(p.speed) + "/s";
+                        const eta = p.eta > 0 ? formatEta(p.eta) : "--";
+                        logger(`⬇️  ${dl} / ${total}  ${speed}  ETA ${eta}`);
+                    });
                 } else {
                     logger("✅  AXS binary already downloaded");
                 }

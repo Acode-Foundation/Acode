@@ -637,8 +637,6 @@ export default class TerminalComponent {
 			};
 
 			if (!axsRunning) {
-				// In debug builds, refresh axs binary from assets before starting
-				await Terminal.refreshAxsBinary();
 				await Terminal.startAxs(false, () => {}, console.error);
 			}
 
@@ -719,35 +717,8 @@ export default class TerminalComponent {
 			const data = await response.text();
 			const ptyOpenError = parsePtyOpenError(data);
 
-			// Detect PTY errors from axs server (e.g. incompatible binary)
 			if (ptyOpenError?.includes("Failed to open PTY")) {
-				const refreshed = await Terminal.refreshAxsBinary();
-				if (refreshed) {
-					// Kill old axs, restart with fresh binary, and retry once
-					try {
-						await Terminal.stopAxs();
-					} catch (_) {}
-					await Terminal.startAxs(false, () => {}, console.error);
-					const pollResult = await pollAxs(30);
-					if (pollResult) {
-						const retryResp = await fetch(
-							`http://localhost:${this.options.port}/terminals`,
-							{
-								method: "POST",
-								headers: { "Content-Type": "application/json" },
-								body: JSON.stringify(requestBody),
-							},
-						);
-						if (retryResp.ok) {
-							const retryData = await retryResp.text();
-							if (!parsePtyOpenError(retryData)) {
-								this.pid = retryData.trim();
-								return this.pid;
-							}
-						}
-					}
-				}
-				throw new Error("Failed to open PTY even after refreshing AXS binary");
+				throw new Error("Failed to open PTY");
 			}
 
 			this.pid = data.trim();
