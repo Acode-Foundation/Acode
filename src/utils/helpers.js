@@ -418,73 +418,28 @@ export default {
 		const terminalBasePath = isAcodeTerminalPublicSafUri
 			? decodeURIComponent(treeSegment.split("::")[0] || "")
 			: "";
-
-		if (isExternalStorageUri) {
-			baseFolder = decodeURIComponent(currentUri.split("%3A")[1].split("/")[0]);
-		} else if (
-			!(isExternalStorageUri || isTermuxUri || isAcodeTerminalPublicSafUri)
-		) {
-			// Handle nested paths for regular file:// URIs
-			const pathParts = pathString.split("/").filter(Boolean);
-			let currentPath = uri;
-			let firstCreatedPath = null;
-			let firstCreatedType = null;
-
-			for (let i = 0; i < pathParts.length; i++) {
-				const isLastPart = i === pathParts.length - 1;
-				const partName = pathParts[i];
-				const newPath = Url.join(currentPath, partName);
-
-				if (isLastPart && isFile) {
-					// Create file if it's the last part and we're creating a file
-					if (!(await fsOperation(newPath).exists())) {
-						await fsOperation(currentPath).createFile(partName);
-						if (firstCreatedPath === null) {
-							firstCreatedPath = newPath;
-							firstCreatedType = "file";
-						}
-					}
-				} else {
-					// Create directory for intermediate parts or when creating a folder
-					if (!(await fsOperation(newPath).exists())) {
-						await fsOperation(currentPath).createDirectory(partName);
-						if (firstCreatedPath === null) {
-							firstCreatedPath = newPath;
-							firstCreatedType = "folder";
-						}
-					}
-				}
-				currentPath = newPath;
+		const getTargetUri = (baseUri, name, index) => {
+			if (
+				!(isExternalStorageUri || isTermuxUri || isAcodeTerminalPublicSafUri)
+			) {
+				return Url.join(baseUri, name);
 			}
 
-			return {
-				uri: firstCreatedPath || Url.join(uri, pathParts[0]),
-				type:
-					firstCreatedType ||
-					(isFile && pathParts.length === 1 ? "file" : "folder"),
-			};
-		}
-
-		for (let i = 0; i < parts.length; i++) {
-			const isLastElement = i === parts.length - 1;
-			const name = parts[i];
-			let fullUri = currentUri;
-
-			// Adjust URI for special cases
+			let fullUri = baseUri;
 			if (isExternalStorageUri) {
-				if (!isSpecialCase && i === 0) {
+				if (!isSpecialCase && index === 0) {
 					fullUri += `::primary:${baseFolder}/${name}`;
 				} else {
 					fullUri += `/${name}`;
 				}
 			} else if (isTermuxUri) {
-				if (!isSpecialCase && i === 0) {
+				if (!isSpecialCase && index === 0) {
 					fullUri += `::/data/data/com.termux/files/home/${name}`;
 				} else {
 					fullUri += `/${name}`;
 				}
 			} else if (isAcodeTerminalPublicSafUri) {
-				if (!isSpecialCase && i === 0) {
+				if (!isSpecialCase && index === 0) {
 					const sanitizedBase = terminalBasePath.endsWith("/")
 						? `${terminalBasePath}${name}`
 						: `${terminalBasePath}/${name}`;
@@ -493,41 +448,77 @@ export default {
 					fullUri += `/${name}`;
 				}
 			}
+			return fullUri;
+		};
+		const getExpectedType = (isLastPart) =>
+			isLastPart && isFile ? "file" : "folder";
+		const ensureEntry = async (baseUri, targetUri, name, expectedType) => {
+			const entries = await fsOperation(baseUri).lsDir();
+			const existingEntry = entries.find((entry) => entry.name === name);
 
-			if (isLastElement && isFile) {
-				// Create file if it's the last element and isFile is true
-				if (!(await fsOperation(fullUri).exists())) {
-					await fsOperation(currentUri).createFile(name);
-				} else {
-					return;
+			if (existingEntry) {
+				const actualType = existingEntry.isDirectory ? "folder" : "file";
+				if (actualType !== expectedType) {
+					throw new Error(
+						`${name} already exists as a ${actualType}, expected ${expectedType}.`,
+					);
 				}
-			} else {
-				// Create directory
-				if (!(await fsOperation(fullUri).exists())) {
-					await fsOperation(currentUri).createDirectory(name);
-				} else {
-					return;
-				}
+
+				return {
+					url: existingEntry.url || existingEntry.uri || targetUri,
+					created: false,
+					type: expectedType,
+				};
 			}
-			currentUri = fullUri;
+
+			const createdUrl =
+				expectedType === "file"
+					? await fsOperation(baseUri).createFile(name)
+					: await fsOperation(baseUri).createDirectory(name);
+
+			return {
+				url: createdUrl || targetUri,
+				created: true,
+				type: expectedType,
+			};
+		};
+		let firstCreatedPath = null;
+		let firstCreatedType = null;
+		let firstTargetUri = uri;
+
+		if (isExternalStorageUri) {
+			baseFolder = decodeURIComponent(currentUri.split("%3A")[1].split("/")[0]);
 		}
-		let tileType;
-		if (isFile && parts.length === 1) {
-			tileType = "file";
-		} else {
-			const urlParts = currentUri.split("/");
-			const pathParts = pathString.split("/");
-			const pathStartIndex = urlParts.findIndex(
-				(part) => part === pathParts[0],
+		if (parts[0]) {
+			firstTargetUri = getTargetUri(uri, parts[0], 0);
+		}
+
+		for (let i = 0; i < parts.length; i++) {
+			const isLastElement = i === parts.length - 1;
+			const name = parts[i];
+			const targetUri = getTargetUri(currentUri, name, i);
+			const expectedType = getExpectedType(isLastElement);
+			const entry = await ensureEntry(
+				currentUri,
+				targetUri,
+				name,
+				expectedType,
 			);
-			if (pathStartIndex !== -1) {
-				const pathEndIndex = pathStartIndex + pathParts.length;
-				urlParts.splice(pathStartIndex + 1, pathEndIndex - pathStartIndex - 1);
+
+			if (entry.created && firstCreatedPath === null) {
+				firstCreatedPath = entry.url;
+				firstCreatedType = expectedType;
 			}
-			currentUri = urlParts.join("/");
-			tileType = "folder";
+
+			currentUri = entry.url;
 		}
-		return { uri: currentUri, type: tileType };
+
+		return {
+			uri: firstCreatedPath || firstTargetUri,
+			created: Boolean(firstCreatedPath),
+			type:
+				firstCreatedType || (isFile && parts.length === 1 ? "file" : "folder"),
+		};
 	},
 	formatDownloadCount(downloadCount) {
 		const units = ["", "K", "M", "B", "T"];

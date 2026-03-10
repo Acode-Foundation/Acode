@@ -26,103 +26,155 @@ import terminalSettings from "./terminalSettings";
 
 export default function mainSettings() {
 	const title = strings.settings.capitalize();
+	const categories = {
+		core: strings["settings-category-core"],
+		customizationTools: strings["settings-category-customization-tools"],
+		maintenance: strings["settings-category-maintenance"],
+		aboutAcode: strings["settings-category-about-acode"],
+		supportAcode: strings["settings-category-support-acode"],
+	};
 	const items = [
 		{
-			key: "about",
-			text: strings.about,
-			icon: "acode",
-			index: 0,
-		},
-		{
-			key: "sponsors",
-			text: strings.sponsor,
-			icon: "favorite",
-			iconColor: "orangered",
-			index: 1,
+			key: "app-settings",
+			text: strings["app settings"],
+			icon: "tune",
+			info: strings["settings-info-main-app-settings"],
+			category: categories.core,
+			chevron: true,
 		},
 		{
 			key: "editor-settings",
 			text: strings["editor settings"],
 			icon: "text_format",
-			index: 3,
-		},
-		{
-			key: "app-settings",
-			text: strings["app settings"],
-			icon: "tune",
-			index: 2,
-		},
-		{
-			key: "formatter",
-			text: strings.formatter,
-			icon: "stars",
-		},
-		{
-			key: "theme",
-			text: strings.theme,
-			icon: "color_lenspalette",
-		},
-		{
-			key: "backup-restore",
-			text: strings.backup.capitalize() + "/" + strings.restore.capitalize(),
-			icon: "cached",
-		},
-		{
-			key: "rateapp",
-			text: strings["rate acode"],
-			icon: "googleplay",
-		},
-		{
-			key: "plugins",
-			text: strings["plugins"],
-			icon: "extension",
-		},
-		{
-			key: "reset",
-			text: strings["restore default settings"],
-			icon: "historyrestore",
-			index: 6,
-		},
-		{
-			key: "preview-settings",
-			text: strings["preview settings"],
-			icon: "play_arrow",
-			index: 4,
+			info: strings["settings-info-main-editor-settings"],
+			category: categories.core,
+			chevron: true,
 		},
 		{
 			key: "terminal-settings",
 			text: `${strings["terminal settings"]}`,
 			icon: "licons terminal",
-			index: 5,
+			info: strings["settings-info-main-terminal-settings"],
+			category: categories.core,
+			chevron: true,
+		},
+		{
+			key: "preview-settings",
+			text: strings["preview settings"],
+			icon: "public",
+			info: strings["settings-info-main-preview-settings"],
+			category: categories.core,
+			chevron: true,
+		},
+		{
+			key: "formatter",
+			text: strings.formatter,
+			icon: "spellcheck",
+			info: strings["settings-info-main-formatter"],
+			category: categories.customizationTools,
+			chevron: true,
+		},
+		{
+			key: "theme",
+			text: strings.theme,
+			icon: "color_lenspalette",
+			info: strings["settings-info-main-theme"],
+			category: categories.customizationTools,
+			chevron: true,
+		},
+		{
+			key: "plugins",
+			text: strings["plugins"],
+			icon: "extension",
+			info: strings["settings-info-main-plugins"],
+			category: categories.customizationTools,
+			chevron: true,
 		},
 		{
 			key: "lsp-settings",
-			text: strings?.lsp_settings || "Language servers",
+			text:
+				strings?.lsp_settings ||
+				strings["language servers"] ||
+				"Language servers",
 			icon: "licons zap",
-			index: 7,
+			info: strings["settings-info-main-lsp-settings"],
+			category: categories.customizationTools,
+			chevron: true,
+		},
+		{
+			key: "backup-restore",
+			text: `${strings.backup.capitalize()} & ${strings.restore.capitalize()}`,
+			icon: "cached",
+			info: strings["settings-info-main-backup-restore"],
+			category: categories.maintenance,
+			chevron: true,
 		},
 		{
 			key: "editSettings",
 			text: `${strings["edit"]} settings.json`,
 			icon: "edit",
+			info: strings["settings-info-main-edit-settings"],
+			category: categories.maintenance,
+			chevron: true,
+		},
+		{
+			key: "reset",
+			text: strings["restore default settings"],
+			icon: "historyrestore",
+			info: strings["settings-info-main-reset"],
+			category: categories.maintenance,
+			chevron: true,
+		},
+		{
+			key: "about",
+			text: strings.about,
+			icon: "info",
+			info: `Version ${BuildInfo.version}`,
+			category: categories.aboutAcode,
+			chevron: true,
+		},
+		{
+			key: "sponsors",
+			text: strings.sponsor,
+			icon: "favorite",
+			info: strings["settings-info-main-sponsors"],
+			category: categories.aboutAcode,
+			chevron: true,
 		},
 		{
 			key: "changeLog",
 			text: `${strings["changelog"]}`,
 			icon: "update",
+			info: strings["settings-info-main-changelog"],
+			category: categories.aboutAcode,
+			chevron: true,
+		},
+		{
+			key: "rateapp",
+			text: strings["rate acode"],
+			icon: "star_outline",
+			info: strings["settings-info-main-rateapp"],
+			category: categories.aboutAcode,
+			chevron: true,
 		},
 	];
 
 	if (IS_FREE_VERSION) {
 		items.push({
 			key: "adRewards",
-			text: "Earn ad-free time",
+			text: strings["earn ad-free time"],
 			icon: "play_arrow",
+			info: strings["settings-info-main-ad-rewards"],
+			category: categories.supportAcode,
+			chevron: true,
 		});
 		items.push({
 			key: "removeads",
 			text: strings["remove ads"],
-			icon: "cancel",
+			icon: "block",
+			info: strings["settings-info-main-remove-ads"],
+			category: categories.supportAcode,
+			chevron: true,
 		});
 	}
 
@@ -205,7 +257,11 @@ export default function mainSettings() {
 		}
 	}
 
-	const page = settingsPage(title, items, callback);
+	const page = settingsPage(title, items, callback, undefined, {
+		preserveOrder: true,
+		pageClassName: "main-settings-page",
+		listClassName: "main-settings-list",
+	});
 	page.show();
 
 	appSettings.uiSettings["main-settings"] = page;

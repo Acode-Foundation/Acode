@@ -22,6 +22,7 @@ export default function fontManager() {
 	const $search = <span attr-action="search" className="icon search"></span>;
 	const $addFont = <span attr-action="add-font" className="icon add"></span>;
 	const list = Ref();
+	$page.classList.add("font-manager-page");
 
 	actionStack.push({
 		id: "fontManager",
@@ -36,7 +37,7 @@ export default function fontManager() {
 		actionStack.remove("fontManager");
 	};
 
-	$page.body = <div ref={list} className="main list"></div>;
+	$page.body = <div ref={list} className="main list font-manager-list"></div>;
 
 	$page.querySelector("header").append($search, $addFont);
 
@@ -287,33 +288,49 @@ export default function fontManager() {
 	function FontItem({ name, isCurrent, onSelect, onDelete }) {
 		const defaultFonts = ["Fira Code", "Roboto Mono", "MesloLGS NF Regular"];
 		const isDefault = defaultFonts.includes(name);
+		const subtitle = isCurrent
+			? "Current editor font"
+			: isDefault
+				? "Built-in font"
+				: "Custom font";
 
 		const $item = (
 			<div
 				tabIndex={1}
-				className={`list-item ${isCurrent ? "current-font" : ""}`}
+				className={`list-item has-subtitle ${isCurrent ? "current-font" : ""}`}
 				data-key={name}
 				data-action="select-font"
 			>
 				<span className="icon text_format"></span>
 				<div className="container">
 					<div className="text">{name}</div>
+					<small className="value">{subtitle}</small>
 				</div>
-				<span
-					className={`icon delete ${isDefault ? "disabled" : ""}`}
-					data-action="delete"
-					title={isDefault ? "Cannot delete default font" : "Delete font"}
-				></span>
+				{isCurrent || !isDefault
+					? <div className="setting-tail">
+							{isCurrent
+								? <span className="font-manager-current">Current</span>
+								: null}
+							{!isDefault
+								? <span
+										className="icon delete font-manager-action"
+										data-action="delete"
+										title="Delete font"
+									></span>
+								: null}
+						</div>
+					: null}
 			</div>
 		);
 
 		$item.onclick = (e) => {
-			const action = e.target.dataset.action;
+			const $target = e.target;
+			const action = $target.dataset.action;
 			if (action === "delete" && !isDefault) {
 				e.stopPropagation();
 				onDelete();
 			} else if (
-				!e.target.classList.contains("icon") ||
+				!$target.classList.contains("font-manager-action") ||
 				action === "select-font"
 			) {
 				onSelect();

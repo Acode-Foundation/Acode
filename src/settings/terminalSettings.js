@@ -16,6 +16,13 @@ import helpers from "utils/helpers";
 export default function terminalSettings() {
 	const title = strings["terminal settings"];
 	const values = appSettings.value;
+	const categories = {
+		permissions: strings["settings-category-permissions"],
+		display: strings["settings-category-display"],
+		cursor: strings["settings-category-cursor"],
+		session: strings["settings-category-session"],
+		maintenance: strings["settings-category-maintenance"],
+	};
 
 	// Initialize terminal settings with defaults if not present
 	if (!values.terminalSettings) {
@@ -33,6 +40,8 @@ export default function terminalSettings() {
 			key: "all_file_access",
 			text: strings["allFileAccess"],
 			info: strings["info-all_file_access"],
+			category: categories.permissions,
+			chevron: true,
 		},
 		{
 			key: "fontSize",
@@ -47,6 +56,7 @@ export default function terminalSettings() {
 				},
 			},
 			info: strings["info-fontSize"],
+			category: categories.display,
 		},
 		{
 			key: "fontFamily",
@@ -56,6 +66,7 @@ export default function terminalSettings() {
 				return fonts.getNames();
 			},
 			info: strings["info-fontFamily"],
+			category: categories.display,
 		},
 		{
 			key: "theme",
@@ -72,20 +83,7 @@ export default function terminalSettings() {
 				const option = this.select.find(([v]) => v === value);
 				return option ? option[1] : value;
 			},
-		},
-		{
-			key: "cursorStyle",
-			text: strings["terminal:cursor style"],
-			value: terminalValues.cursorStyle,
-			select: ["block", "underline", "bar"],
-			info: strings["info-cursorStyle"],
-		},
-		{
-			key: "cursorInactiveStyle",
-			text: strings["terminal:cursor inactive style"],
-			value: terminalValues.cursorInactiveStyle,
-			select: ["outline", "block", "bar", "underline", "none"],
-			info: strings["info-cursorInactiveStyle"],
+			category: categories.display,
 		},
 		{
 			key: "fontWeight",
@@ -105,40 +103,7 @@ export default function terminalSettings() {
 				"900",
 			],
 			info: strings["info-fontWeight"],
-		},
-		{
-			key: "cursorBlink",
-			text: strings["terminal:cursor blink"],
-			checkbox: terminalValues.cursorBlink,
-			info: strings["info-cursorBlink"],
-		},
-		{
-			key: "scrollback",
-			text: strings["terminal:scrollback"],
-			value: terminalValues.scrollback,
-			prompt: strings["terminal:scrollback"],
-			promptType: "number",
-			promptOptions: {
-				test(value) {
-					value = Number.parseInt(value);
-					return value >= 100 && value <= 10000;
-				},
-			},
-			info: strings["info-scrollback"],
-		},
-		{
-			key: "tabStopWidth",
-			text: strings["terminal:tab stop width"],
-			value: terminalValues.tabStopWidth,
-			prompt: strings["terminal:tab stop width"],
-			promptType: "number",
-			promptOptions: {
-				test(value) {
-					value = Number.parseInt(value);
-					return value >= 1 && value <= 8;
-				},
-			},
-			info: strings["info-tabStopWidth"],
+			category: categories.display,
 		},
 		{
 			key: "letterSpacing",
@@ -153,49 +118,118 @@ export default function terminalSettings() {
 				},
 			},
 			info: strings["info-letterSpacing"],
-		},
-		{
-			key: "convertEol",
-			text: strings["terminal:convert eol"],
-			checkbox: terminalValues.convertEol,
-		},
-		{
-			key: "imageSupport",
-			text: strings["terminal:image support"],
-			checkbox: terminalValues.imageSupport,
-			info: strings["info-imageSupport"],
+			category: categories.display,
 		},
 		{
 			key: "fontLigatures",
 			text: strings["font ligatures"],
 			checkbox: terminalValues.fontLigatures,
 			info: strings["info-fontLigatures"],
+			category: categories.display,
+		},
+		{
+			key: "cursorStyle",
+			text: strings["terminal:cursor style"],
+			value: terminalValues.cursorStyle,
+			select: ["block", "underline", "bar"],
+			info: strings["info-cursorStyle"],
+			category: categories.cursor,
+		},
+		{
+			key: "cursorInactiveStyle",
+			text: strings["terminal:cursor inactive style"],
+			value: terminalValues.cursorInactiveStyle,
+			select: ["outline", "block", "bar", "underline", "none"],
+			info: strings["info-cursorInactiveStyle"],
+			category: categories.cursor,
+		},
+		{
+			key: "cursorBlink",
+			text: strings["terminal:cursor blink"],
+			checkbox: terminalValues.cursorBlink,
+			info: strings["info-cursorBlink"],
+			category: categories.cursor,
+		},
+		{
+			key: "scrollback",
+			text: strings["terminal:scrollback"],
+			value: terminalValues.scrollback,
+			prompt: strings["terminal:scrollback"],
+			promptType: "number",
+			promptOptions: {
+				test(value) {
+					value = Number.parseInt(value);
+					return value >= 100 && value <= 10000;
+				},
+			},
+			info: strings["info-scrollback"],
+			category: categories.session,
+		},
+		{
+			key: "tabStopWidth",
+			text: strings["terminal:tab stop width"],
+			value: terminalValues.tabStopWidth,
+			prompt: strings["terminal:tab stop width"],
+			promptType: "number",
+			promptOptions: {
+				test(value) {
+					value = Number.parseInt(value);
+					return value >= 1 && value <= 8;
+				},
+			},
+			info: strings["info-tabStopWidth"],
+			category: categories.session,
+		},
+		{
+			key: "convertEol",
+			text: strings["terminal:convert eol"],
+			checkbox: terminalValues.convertEol,
+			info: strings["settings-info-terminal-convert-eol"],
+			category: categories.session,
+		},
+		{
+			key: "imageSupport",
+			text: strings["terminal:image support"],
+			checkbox: terminalValues.imageSupport,
+			info: strings["info-imageSupport"],
+			category: categories.session,
 		},
 		{
 			key: "confirmTabClose",
 			text: strings["terminal:confirm tab close"],
 			checkbox: terminalValues.confirmTabClose !== false,
 			info: strings["info-confirmTabClose"],
+			category: categories.session,
 		},
 		{
 			key: "backup",
 			text: strings.backup,
 			info: strings["info-backup"],
+			category: categories.maintenance,
+			chevron: true,
 		},
 		{
 			key: "restore",
 			text: strings.restore,
 			info: strings["info-restore"],
+			category: categories.maintenance,
+			chevron: true,
 		},
 		{
 			key: "uninstall",
 			text: strings.uninstall,
 			info: strings["info-uninstall"],
+			category: categories.maintenance,
+			chevron: true,
 		},
 	];
 
 	return settingsPage(title, items, callback, undefined, {
 		preserveOrder: true,
+		pageClassName: "detail-settings-page",
+		listClassName: "detail-settings-list",
+		infoAsDescription: true,
+		valueInTail: true,
 	});
 
 	/**
@@ -211,11 +245,11 @@ export default function terminalSettings() {
 						if (boolStr === "true") {
 							system.requestStorageManager(console.log, console.error);
 						} else {
-							alert("This feature is not available.");
+							alert(strings["feature not available"]);
 						}
 					}, alert);
 				} else {
-					alert("This feature is not available.");
+					alert(strings["feature not available"]);
 				}
 
 				return;

@@ -19,7 +19,12 @@ export default function filesSettings() {
 		},
 	];
 
-	return settingsPage(title, items, callback);
+	return settingsPage(title, items, callback, undefined, {
+		preserveOrder: true,
+		pageClassName: "detail-settings-page",
+		listClassName: "detail-settings-list",
+		groupByDefault: true,
+	});
 
 	function callback(key, value) {
 		appSettings.value.fileBrowser[key] = value;

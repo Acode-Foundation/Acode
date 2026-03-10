@@ -1,44 +1,125 @@
 name: community-release-notifier
+
 on:
   release:
     types: [ released ]
   workflow_call:
     inputs:
-       tag_name:
-          required: true
-          description: "Release tag_name"
-          type: 'string' 
-       url: 
-          required: true
-          description: "release URL"
-          type: 'string'
-       body: 
-          required: true
-          description: "Release Body"
-          type: 'string'
-          default: ''
+      tag_name:
+        required: true
+        description: "Release tag_name"
+        type: 'string'
+      url:
+        required: true
+        description: "release URL"
+        type: 'string'
+      body:
+        required: true
+        description: "Release Body"
+        type: 'string'
+        default: ''
     secrets:
       DISCORD_WEBHOOK_RELEASE_NOTES:
         description: 'Discord Webhook for Notifying Releases to Discord'
         required: true
+      TELEGRAM_BOT_TOKEN:
+        description: 'Telegram Bot Token'
+        required: true
+      TELEGRAM_CHAT_ID:
+        description: 'Telegram Chat ID (group/channel/supergroup)'
+        required: true
+      TELEGRAM_MESSAGE_THREAD_ID:
+        description: 'Topic / message_thread_id for Telegram forum/topic'
+        required: true
 
 jobs:
-  discord-release:
+  notify:
     if: github.repository_owner == 'Acode-Foundation'
     runs-on: ubuntu-latest
     steps:
-    - name: Get Release Content
-      id: get-release-content
-      uses: 2428392/gh-truncate-string-action@b3ff790d21cf42af3ca7579146eedb93c8fb0757 # v1.4.1
-      with:
-        maxLength: 2000
-        stringToTruncate: |
-          📢 Acode [${{ github.event.release.tag_name || inputs.tag_name }}](<${{ github.event.release.url || inputs.url }}>) was just Released 🎉!
+      - name: Prepare release variables
+        id: vars
+        env:
+          INPUT_TAG: ${{ github.event.release.tag_name || inputs.tag_name }}
+          INPUT_URL: ${{ github.event.release.url || inputs.url }}
+          INPUT_BODY: ${{ github.event.release.body || inputs.body }}
+        run: |
+          TAG="$INPUT_TAG"
+          URL="$INPUT_URL"
           
-          ${{ github.event.release.body || inputs.body }}
+          # Generate a random delimiter (hex string, safe and collision-resistant)
+          DELIMITER=$(openssl rand -hex 16 || head -c 16 /dev/urandom | xxd -p -c 16)
+          
+          # Escape problematic characters for MarkdownV2 (very conservative escaping)
+          # We escape: _ * [ ] ( ) ~ ` > # + - = | { } . ! \
+          BODY_SAFE=$(printf '%s' "$INPUT_BODY" | \
+            sed 's/[_*[\]()~`>#+=|{}.!\\-]/\\&/g')
+          TAG_SAFE=$(printf '%s' "$TAG" | sed 's/[_*[\]()~`>#+=|{}.!\\-]/\\&/g')
 
-    - name: Discord Webhook Action (Publishing)
-      uses: tsickert/discord-webhook@c840d45a03a323fbc3f7507ac7769dbd91bfb164 # v5.3.0
-      with:
-        webhook-url: ${{ secrets.DISCORD_WEBHOOK_RELEASE_NOTES }}
-        content: ${{ steps.get-release-content.outputs.string }}
+          if [[ "$TAG" == *"-nightly"* ]]; then
+            SUFFIX=" \\(Nightly Release\\)"
+            SUFFIXPLAIN=" (Nightly Release)"
+          else
+            SUFFIX=""
+            SUFFIXPLAIN=""
+          fi
+
+          # Announcement line — also escape for safety
+          ANNOUNCE_SAFE="📢 Acode [$TAG_SAFE]($URL) was just Released 🎉${SUFFIX}\\!"
+
+          echo "announce=$ANNOUNCE_SAFE" >> $GITHUB_OUTPUT
+          {
+            echo "body_safe<<$DELIMITER"
+            printf '%s\n' "$BODY_SAFE"
+            echo "$DELIMITER"
+          } >> $GITHUB_OUTPUT
+
+          # Plain (MD) Announcement for Discord
+          ANNOUNCE_PLAIN="📢 Acode [$TAG]($URL) was just Released 🎉${SUFFIXPLAIN}!"
+          echo "announce_plain=$ANNOUNCE_PLAIN" >> $GITHUB_OUTPUT
+          {
+            echo "body_plain<<$DELIMITER"
+            printf '%s\n' "$INPUT_BODY"
+            echo "$DELIMITER"
+          } >> $GITHUB_OUTPUT
+
+      # ────────────────────────────────────────────────
+      # Truncate for Discord
+      # ────────────────────────────────────────────────
+      - name: Truncate message for Discord
+        id: truncate-discord
+        uses: 2428392/gh-truncate-string-action@b3ff790d21cf42af3ca7579146eedb93c8fb0757  # v1.4.1
+        with:
+          maxLength: 2000
+          stringToTruncate: |
+            ${{ steps.vars.outputs.announce_plain }}
+
+            ${{ steps.vars.outputs.body_plain }}
+
+      # ────────────────────────────────────────────────
+      # Discord notification
+      # ────────────────────────────────────────────────
+      - name: Discord Webhook (Publishing)
+        uses: tsickert/discord-webhook@c840d45a03a323fbc3f7507ac7769dbd91bfb164  # v5.3.0
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_RELEASE_NOTES }}
+          content: ${{ steps.truncate-discord.outputs.string }}
+
+      # ────────────────────────────────────────────────
+      # Telegram notification — MarkdownV2 + no link preview
+      # ────────────────────────────────────────────────
+      - name: Send to Telegram
+        #if: ${{ secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != '' && secrets.TELEGRAM_MESSAGE_THREAD_ID != '' }}
+        uses: Salmansha08/telegram-github-action@17c9ce6b4210d2659dca29d34028b02fa29d70ad  # or newer tag if available
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          message: |
+            ${{ steps.vars.outputs.announce }}
+
+            ${{ steps.vars.outputs.body_safe }}
+          parse_mode:       MarkdownV2
+          disable_web_page_preview: true
+          # Only needed for topic-enabled supergroups/channels
+          message_thread_id: ${{ secrets.TELEGRAM_MESSAGE_THREAD_ID }}
+        continue-on-error: true
