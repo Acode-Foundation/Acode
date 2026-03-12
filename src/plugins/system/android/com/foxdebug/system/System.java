@@ -107,6 +107,13 @@ import android.os.Build;
 import android.graphics.ImageDecoder;
 
 
+import org.apache.cordova.*;
+import org.json.JSONArray;
+import org.json.JSONException;
+
+import java.security.MessageDigest;
+
+
 
 public class System extends CordovaPlugin {
     private static final String TAG = "SystemPlugin";
@@ -560,6 +567,33 @@ public class System extends CordovaPlugin {
                                 break;
                             case "compare-texts":
                                 compareTexts(arg1, arg2, callbackContext);
+                                break;
+                            case "checksumText":
+                            
+                                cordova.getThreadPool().execute(() -> {
+                                    try {
+                                        
+                                        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+
+                                        byte[] hash = digest.digest(args.getString(0).getBytes("UTF-8"));
+
+                                        StringBuilder hexString = new StringBuilder();
+
+                                        for (byte b : hash) {
+                                            String hex = Integer.toHexString(0xff & b);
+
+                                            if (hex.length() == 1) hexString.append('0');
+
+                                            hexString.append(hex);
+                                        }
+
+
+                                        callbackContext.success(hexString.toString());
+                                    } catch (Exception e) {
+                                        callbackContext.error(e.getMessage());
+                                    }
+                                });
+
                                 break;
                             default:
                                 break;
