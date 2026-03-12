@@ -107,10 +107,7 @@ import android.os.Build;
 import android.graphics.ImageDecoder;
 
 
-import org.apache.cordova.*;
-import org.json.JSONArray;
-import org.json.JSONException;
-
+import java.security.MessageDigest;
 import java.security.MessageDigest;
 
 
