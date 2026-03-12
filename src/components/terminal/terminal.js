@@ -735,8 +735,6 @@ export default class TerminalComponent {
 			};
 
 			websocket.onerror = (error) => {
-				console.error("WebSocket error:", error);
-
 				if (!hasOpened) {
 					clearTimeout(connectionTimeout);
 					rejectInitialConnect(
@@ -746,6 +744,7 @@ export default class TerminalComponent {
 					return;
 				}
 
+				console.error("WebSocket error:", error);
 				this.onError?.(error);
 			};
 		});

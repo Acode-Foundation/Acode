@@ -51,30 +51,57 @@ class TerminalManager {
 	}
 
 	normalizePersistedSessions(stored) {
-		if (!Array.isArray(stored)) return [];
+		if (!Array.isArray(stored)) {
+			return {
+				sessions: [],
+				changed: stored != null,
+			};
+		}
 
-		const sessions = stored
-			.map((entry) => {
-				if (!entry) return null;
-				if (typeof entry === "string") {
-					return { pid: entry, name: `Terminal ${entry}` };
-				}
-				if (typeof entry === "object" && entry.pid) {
-					const pid = String(entry.pid);
-					return {
-						pid,
-						name: entry.name || `Terminal ${pid}`,
-					};
-				}
-				return null;
-			})
-			.filter(Boolean);
+		const sessions = [];
 		const uniqueSessions = [];
 		const seenPids = new Set();
+		let changed = false;
+
+		for (const entry of stored) {
+			if (!entry) {
+				changed = true;
+				continue;
+			}
+
+			if (typeof entry === "string") {
+				sessions.push({
+					pid: entry,
+					name: `Terminal ${entry}`,
+				});
+				changed = true;
+				continue;
+			}
+
+			if (typeof entry !== "object" || !entry.pid) {
+				changed = true;
+				continue;
+			}
+
+			const pid = String(entry.pid);
+			const name =
+				typeof entry.name === "string" && entry.name.trim()
+					? entry.name.trim()
+					: `Terminal ${pid}`;
+
+			if (entry.pid !== pid || entry.name !== name) {
+				changed = true;
+			}
+
+			sessions.push({ pid, name });
+		}
 
 		for (const session of sessions) {
 			const pid = String(session.pid);
-			if (seenPids.has(pid)) continue;
+			if (seenPids.has(pid)) {
+				changed = true;
+				continue;
+			}
 			seenPids.add(pid);
 			uniqueSessions.push({
 				pid,
@@ -85,7 +112,14 @@ class TerminalManager {
 			});
 		}
 
-		return uniqueSessions;
+		if (uniqueSessions.length !== stored.length) {
+			changed = true;
+		}
+
+		return {
+			sessions: uniqueSessions,
+			changed,
+		};
 	}
 
 	readPersistedSessions() {
@@ -95,14 +129,22 @@ class TerminalManager {
 			);
 		} catch (error) {
 			console.error("Failed to read persisted terminal sessions:", error);
-			return [];
+			return {
+				sessions: [],
+				changed: false,
+			};
 		}
 	}
 
 	async getPersistedSessions() {
 		try {
-			const sessions = this.readPersistedSessions();
-			if (!sessions.length) return [];
+			const { sessions, changed } = this.readPersistedSessions();
+			if (!sessions.length) {
+				if (changed) {
+					this.savePersistedSessions([]);
+				}
+				return [];
+			}
 
 			if (!(await Terminal.isAxsRunning())) {
 				// Once the backend is gone, previously persisted PIDs are invalid.
@@ -110,10 +152,7 @@ class TerminalManager {
 				return [];
 			}
 
-			const stored = helpers.parseJSON(
-				localStorage.getItem(TERMINAL_SESSION_STORAGE_KEY),
-			);
-			if (Array.isArray(stored) && sessions.length !== stored.length) {
+			if (changed) {
 				this.savePersistedSessions(sessions);
 			}
 
@@ -139,7 +178,7 @@ class TerminalManager {
 		if (!pid) return;
 
 		const pidStr = String(pid);
-		const sessions = this.readPersistedSessions();
+		const { sessions } = this.readPersistedSessions();
 		const existingIndex = sessions.findIndex(
 			(session) => session.pid === pidStr,
 		);
@@ -164,7 +203,7 @@ class TerminalManager {
 		if (!pid) return;
 
 		const pidStr = String(pid);
-		const sessions = this.readPersistedSessions();
+		const { sessions } = this.readPersistedSessions();
 		const nextSessions = sessions.filter((session) => session.pid !== pidStr);
 
 		if (nextSessions.length !== sessions.length) {
