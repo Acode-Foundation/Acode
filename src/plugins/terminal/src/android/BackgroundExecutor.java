@@ -42,6 +42,11 @@ public class BackgroundExecutor extends CordovaPlugin {
             case "loadLibrary":
                 loadLibrary(args.getString(0), callbackContext);
                 return true;
+            case "download":
+                String downloadUrl = args.getString(0);
+                String downloadDest = args.getString(1);
+                cordova.getThreadPool().execute(() -> DownloadHelper.download(downloadUrl, downloadDest, callbackContext));
+                return true;
             default:
                 callbackContext.error("Unknown action: " + action);
                 return false;
@@ -161,4 +166,5 @@ public class BackgroundExecutor extends CordovaPlugin {
         processInputs.remove(pid);
         processCallbacks.remove(pid);
     }
+
 }

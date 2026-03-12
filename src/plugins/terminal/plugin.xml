@@ -26,6 +26,7 @@
         <source-file src="src/android/ProcessManager.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
         <source-file src="src/android/ProcessUtils.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
         <source-file src="src/android/StreamHandler.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
+        <source-file src="src/android/DownloadHelper.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
 
         <source-file src="src/android/Executor.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
 

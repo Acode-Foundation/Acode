@@ -21,17 +21,59 @@ if (
 if (fs.existsSync(androidGradleFilePath)) fs.unlinkSync(androidGradleFilePath);
 fs.copyFileSync(gradleFilePath, androidGradleFilePath);
 
-deleteDirRecursively(resPath, [
-  path.join('values', 'strings.xml'),
-  path.join('values', 'colors.xml'),
-  path.join('values', 'styles.xml'),
-  'anim',
-  'xml',
-]);
-copyDirRecursively(localResPath, resPath);
+const preservedRes = collectPreservedAndroidRes(resPath);
+deleteDirRecursively(resPath, preservedRes);
+
+const localResSkip = collectLocalResourceSkipList(resPath);
+
+copyDirRecursively(localResPath, resPath, localResSkip);
 enableLegacyJni();
 enableStaticContext();
 patchTargetSdkVersion();
+
+
+function collectPreservedAndroidRes(androidResPath) {
+  const preserved = [
+    path.join('values', 'styles.xml'),
+    'anim',
+    'xml',
+  ];
+
+  const optionalEntries = [
+    path.join('values', 'strings.xml'),
+    path.join('values', 'colors.xml'),
+    path.join('values', 'themes.xml'),
+    path.join('values', 'cdv_strings.xml'),
+    path.join('values', 'cdv_colors.xml'),
+    path.join('values', 'cdv_themes.xml'),
+    'values-night',
+    'values-night-v34',
+    'values-v34',
+  ];
+
+  for (const entry of optionalEntries) {
+    if (fs.existsSync(path.join(androidResPath, entry))) {
+      preserved.push(entry);
+    }
+  }
+
+  return preserved;
+}
+
+function collectLocalResourceSkipList(androidResPath) {
+  const skip = [];
+
+  // Cordova Android 15+ provides splash/theme defaults in cdv_* resources.
+  // Keep using local colors/themes on older layouts where those files do not exist.
+  if (fs.existsSync(path.join(androidResPath, 'values', 'cdv_colors.xml'))) {
+    skip.push(path.join('values', 'colors.xml'));
+  }
+  if (fs.existsSync(path.join(androidResPath, 'values', 'cdv_themes.xml'))) {
+    skip.push(path.join('values', 'themes.xml'));
+  }
+
+  return skip;
+}
 
 
 function getTmpDir() {
