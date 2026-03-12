@@ -28,12 +28,15 @@
         <preference name="ShowTitle" value="true"/>
         <preference name="DisallowOverscroll" value="true" />
         <preference name="BackgroundColor" value="0xFF313131" />
+        <preference name="AndroidWindowSplashScreenBackground" value="@color/ic_splash_background" />
+        <preference name="AndroidWindowSplashScreenAnimatedIcon" value="res/android/drawable/ic_launcher_foreground.xml" />
+        <preference name="AndroidPostSplashScreenTheme" value="@style/Theme.App.Activity" />
         <preference name="AndroidPersistentFileLocation" value="Compatibility" />
         <preference name="AndroidLaunchMode" value="singleTask" />
         <preference name="prerendered-icon" value="false" />
         <preference name="androidxEnabled" value="true" />
         <preference name="GradlePluginKotlinEnabled" value="true" />
-        <preference name="android-targetSdkVersion" value="35" />
+        <preference name="android-targetSdkVersion" value="36" />
 
 
         <edit-config file="app/src/main/AndroidManifest.xml" mode="merge" target="/manifest/application">
@@ -71,6 +74,7 @@
             <uses-permission android:name="android.permission.VIBRATE" />
         </config-file>
 
+        <hook type="before_prepare" src="hooks/restore-cordova-resources.js" />
         <hook type="before_prepare" src="hooks/modify-java-files.js" />
         <hook type="after_prepare" src="hooks/post-process.js" />
     </platform>
