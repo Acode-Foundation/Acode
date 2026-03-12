@@ -50,31 +50,74 @@ class TerminalManager {
 		return nextNumber;
 	}
 
+	normalizePersistedSessions(stored) {
+		if (!Array.isArray(stored)) return [];
+
+		const sessions = stored
+			.map((entry) => {
+				if (!entry) return null;
+				if (typeof entry === "string") {
+					return { pid: entry, name: `Terminal ${entry}` };
+				}
+				if (typeof entry === "object" && entry.pid) {
+					const pid = String(entry.pid);
+					return {
+						pid,
+						name: entry.name || `Terminal ${pid}`,
+					};
+				}
+				return null;
+			})
+			.filter(Boolean);
+		const uniqueSessions = [];
+		const seenPids = new Set();
+
+		for (const session of sessions) {
+			const pid = String(session.pid);
+			if (seenPids.has(pid)) continue;
+			seenPids.add(pid);
+			uniqueSessions.push({
+				pid,
+				name:
+					typeof session.name === "string" && session.name.trim()
+						? session.name.trim()
+						: `Terminal ${pid}`,
+			});
+		}
+
+		return uniqueSessions;
+	}
+
+	readPersistedSessions() {
+		try {
+			return this.normalizePersistedSessions(
+				helpers.parseJSON(localStorage.getItem(TERMINAL_SESSION_STORAGE_KEY)),
+			);
+		} catch (error) {
+			console.error("Failed to read persisted terminal sessions:", error);
+			return [];
+		}
+	}
+
 	async getPersistedSessions() {
 		try {
+			const sessions = this.readPersistedSessions();
+			if (!sessions.length) return [];
+
+			if (!(await Terminal.isAxsRunning())) {
+				// Once the backend is gone, previously persisted PIDs are invalid.
+				this.savePersistedSessions([]);
+				return [];
+			}
+
 			const stored = helpers.parseJSON(
 				localStorage.getItem(TERMINAL_SESSION_STORAGE_KEY),
 			);
-			if (!Array.isArray(stored)) return [];
-			if (!(await Terminal.isAxsRunning())) {
-				return [];
+			if (Array.isArray(stored) && sessions.length !== stored.length) {
+				this.savePersistedSessions(sessions);
 			}
-			return stored
-				.map((entry) => {
-					if (!entry) return null;
-					if (typeof entry === "string") {
-						return { pid: entry, name: `Terminal ${entry}` };
-					}
-					if (typeof entry === "object" && entry.pid) {
-						const pid = String(entry.pid);
-						return {
-							pid,
-							name: entry.name || `Terminal ${pid}`,
-						};
-					}
-					return null;
-				})
-				.filter(Boolean);
+
+			return sessions;
 		} catch (error) {
 			console.error("Failed to read persisted terminal sessions:", error);
 			return [];
@@ -96,7 +139,7 @@ class TerminalManager {
 		if (!pid) return;
 
 		const pidStr = String(pid);
-		const sessions = await this.getPersistedSessions();
+		const sessions = this.readPersistedSessions();
 		const existingIndex = sessions.findIndex(
 			(session) => session.pid === pidStr,
 		);
@@ -121,7 +164,7 @@ class TerminalManager {
 		if (!pid) return;
 
 		const pidStr = String(pid);
-		const sessions = await this.getPersistedSessions();
+		const sessions = this.readPersistedSessions();
 		const nextSessions = sessions.filter((session) => session.pid !== pidStr);
 
 		if (nextSessions.length !== sessions.length) {
@@ -156,17 +199,17 @@ class TerminalManager {
 					error,
 				);
 				failedSessions.push(session.name || session.pid);
-				this.removePersistedSession(session.pid);
+				await this.removePersistedSession(session.pid);
 			}
 		}
 
-		// Show alert for failed sessions (don't await to not block UI)
+		// Stale session entries are expected after force-closes; keep startup quiet.
 		if (failedSessions.length > 0) {
 			const message =
 				failedSessions.length === 1
-					? `Failed to restore terminal: ${failedSessions[0]}`
-					: `Failed to restore ${failedSessions.length} terminals: ${failedSessions.join(", ")}`;
-			alert(strings["error"], message);
+					? `Skipped unavailable terminal: ${failedSessions[0]}`
+					: `Skipped ${failedSessions.length} unavailable terminals`;
+			toast(message);
 		}
 
 		if (activeFileId && manager?.getFile) {
@@ -184,9 +227,10 @@ class TerminalManager {
 	 */
 	async createTerminal(options = {}) {
 		try {
-			const { render, serverMode, ...terminalOptions } = options;
+			const { render, serverMode, reconnecting, ...terminalOptions } = options;
 			const shouldRender = render !== false;
 			const isServerMode = serverMode !== false;
+			const isReconnecting = reconnecting === true;
 
 			const terminalId = `terminal_${++this.terminalCounter}`;
 			const providedName =
@@ -305,11 +349,13 @@ class TerminalManager {
 						}
 
 						// Show alert for terminal creation failure
-						const errorMessage = error?.message || "Unknown error";
-						alert(
-							strings["error"],
-							`Failed to create terminal: ${errorMessage}`,
-						);
+						if (!isReconnecting) {
+							const errorMessage = error?.message || "Unknown error";
+							alert(
+								strings["error"],
+								`Failed to create terminal: ${errorMessage}`,
+							);
+						}
 
 						reject(error);
 					}
