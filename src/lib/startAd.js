@@ -1,3 +1,5 @@
+import tag from "html-tag-js";
+
 let adUnitIdBanner = "ca-app-pub-5911839694379275/9157899592"; // Production
 let adUnitIdInterstitial = "ca-app-pub-5911839694379275/9570937608"; // Production
 let adUnitIdRewarded = "ca-app-pub-5911839694379275/1633667633"; // Production
