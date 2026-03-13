@@ -86,7 +86,10 @@ export default class SidebarApp {
 
 	/**@param {boolean} value */
 	set active(value) {
-		this.#active = !!value;
+		const nextValue = !!value;
+		if (this.#active === nextValue) return;
+
+		this.#active = nextValue;
 		this.#icon.classList.toggle("active", this.#active);
 		if (this.#active) {
 			const oldContainer = getContainer(this.#container);

@@ -166,6 +166,45 @@ refactor: simplify file loading logic
    pnpm run lang update    # Update translations
    ```
 
+## ℹ️ Adding New Icons (to the existing font family)
+> [!NOTE]
+> Acode uses SVG and converts them into a font family, to be used inside the editor and generally for plugin devs.
+> 
+> **Plugin-specific icons SHOULD NOT be added into the editor. Only generally helpful icons SHOULD BE added**
+
+Many font editing software and web-based tools exist for this purpose. Some of them are listed below.
+
+| Name | Platform |
+|------|----------|
+| https://icomoon.io/ | Free (Web-Based, PWA-supported, Offline-supported) |
+| https://fontforge.org/ | Open-Source (Linux, Mac, Windows) |
+
+### Steps in Icomoon to add new Icons
+
+1. Download the `icons.ttf` file from https://github.com/Acode-Foundation/Acode/tree/main/src/res/icons
+2. Go to https://icomoon.io/ > Start a new Project
+3. Import the `icons.ttf` downloaded (in step 1)
+4. All icons will be displayed after importing.
+5. Import the SVG icon created/downloaded to be added to the Font Family.
+6. On the right side, press **enable Show Characters** to view the Unicode character for that icon.
+7. Copy the newly added icon's Unicode character (required for later steps)
+8. Repeat Step 5 and Step 7 until all needed new icons are added.
+9. Press the export icon from the top left-hand side.
+10. Add **Font** in the formats section, expand the **Font**, enter **code-editor-icon** as the font-family for `icons.ttf` file.
+11. Press the download button, and a zip file will be downloaded.
+
+### Adding the Unicode characters to style.css
+
+1. Open the `style.css` file present at https://github.com/Acode-Foundation/Acode/tree/main/src/res/icons
+2. Add a new class called `.icon.icon-name:before` e.g ```.icon.all_inclusive:before { content: "\ea18"; }```
+3. `content` (i.e., `ea18` -> `\ea18`) property's value is the Unicode Character copied after importing the icon in the font family.
+4. Save the `style.css` file.
+5. Extract the downloaded zip file; navigate to the `fonts` folder inside it.
+6. Rename `code-editor-icon.ttf` to `icons.ttf`.
+7. Copy & paste the renamed `icons.ttf` into https://github.com/Acode-Foundation/Acode/tree/main/src/res/icons
+8. Commit the changes **ON A NEW branch** (by following: [Commit Messages guide](#commit-messages))
+5. commit the changes **ON A NEW branch** (by following: [Commit Messages guide](#commit-messages))
+
 ## 🔌 Plugin Development
 
 To create plugins for Acode:

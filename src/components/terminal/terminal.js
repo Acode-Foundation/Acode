@@ -657,47 +657,97 @@ export default class TerminalComponent {
 
 		const wsUrl = `ws://localhost:${this.options.port}/terminals/${pid}`;
 
-		this.websocket = new WebSocket(wsUrl);
+		await new Promise((resolve, reject) => {
+			const websocket = new WebSocket(wsUrl);
+			const CONNECT_TIMEOUT = 5000;
+			let settled = false;
+			let hasOpened = false;
 
-		this.websocket.onopen = () => {
-			this.isConnected = true;
-			this.onConnect?.();
+			this.websocket = websocket;
 
-			// Load attach addon after connection
-			this.attachAddon = new AttachAddon(this.websocket);
-			this.terminal.loadAddon(this.attachAddon);
-			this.terminal.unicode.activeVersion = "11";
-
-			// Focus terminal and ensure it's ready
-			this.terminal.focus();
-			this.fit();
-		};
-
-		this.websocket.onmessage = (event) => {
-			// Handle text messages (exit events)
-			if (typeof event.data === "string") {
+			const rejectInitialConnect = (message, error) => {
+				if (settled || hasOpened) return;
+				settled = true;
+				this.isConnected = false;
 				try {
-					const message = JSON.parse(event.data);
-					if (message.type === "exit") {
-						this.onProcessExit?.(message.data);
-						return;
-					}
-				} catch (error) {
-					// Not a JSON message, let attachAddon handle it
+					websocket.close();
+				} catch {}
+				reject(error || new Error(message));
+			};
+
+			const connectionTimeout = setTimeout(() => {
+				rejectInitialConnect(
+					`Timed out while connecting to terminal session ${pid}`,
+				);
+			}, CONNECT_TIMEOUT);
+
+			websocket.onopen = () => {
+				clearTimeout(connectionTimeout);
+				hasOpened = true;
+				this.isConnected = true;
+				this.onConnect?.();
+
+				// Load attach addon after connection
+				this.attachAddon = new AttachAddon(websocket);
+				this.terminal.loadAddon(this.attachAddon);
+				this.terminal.unicode.activeVersion = "11";
+
+				// Focus terminal and ensure it's ready
+				this.terminal.focus();
+				this.fit();
+
+				if (!settled) {
+					settled = true;
+					resolve();
 				}
-			}
-			// For binary data or non-exit text messages, let attachAddon handle them
-		};
+			};
 
-		this.websocket.onclose = (event) => {
-			this.isConnected = false;
-			this.onDisconnect?.();
-		};
+			websocket.onmessage = (event) => {
+				// Handle text messages (exit events)
+				if (typeof event.data === "string") {
+					try {
+						const message = JSON.parse(event.data);
+						if (message.type === "exit") {
+							this.onProcessExit?.(message.data);
+							return;
+						}
+					} catch (error) {
+						// Not a JSON message, let attachAddon handle it
+					}
+				}
+				// For binary data or non-exit text messages, let attachAddon handle them
+			};
 
-		this.websocket.onerror = (error) => {
-			console.error("WebSocket error:", error);
-			this.onError?.(error);
-		};
+			websocket.onclose = (event) => {
+				clearTimeout(connectionTimeout);
+				this.isConnected = false;
+
+				if (!hasOpened) {
+					const code = event?.code ? ` (code ${event.code})` : "";
+					const reason = event?.reason ? `: ${event.reason}` : "";
+					rejectInitialConnect(
+						`Terminal session ${pid} is unavailable${code}${reason}`,
+					);
+					return;
+				}
+
+				this.onDisconnect?.();
+			};
+
+			websocket.onerror = (error) => {
+				if (!hasOpened) {
+					clearTimeout(connectionTimeout);
+					rejectInitialConnect(
+						`Failed to connect to terminal session ${pid}`,
+						new Error(`Failed to connect to terminal session ${pid}`),
+					);
+					return;
+				}
+
+				console.error("WebSocket error:", error);
+				this.onError?.(error);
+			};
+		});
 	}
 
 	/**

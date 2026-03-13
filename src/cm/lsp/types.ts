@@ -95,8 +95,34 @@ export interface BridgeConfig {
 	session?: string;
 }
 
+export type InstallerKind =
+	| "apk"
+	| "npm"
+	| "pip"
+	| "cargo"
+	| "github-release"
+	| "manual"
+	| "shell";
+
 export interface LauncherInstallConfig {
-	command: string;
+	kind?: InstallerKind;
+	command?: string;
+	updateCommand?: string;
+	uninstallCommand?: string;
+	label?: string;
+	source?: string;
+	executable?: string;
+	packages?: string[];
+	pipCommand?: string;
+	npmCommand?: string;
+	pythonCommand?: string;
+	global?: boolean;
+	breakSystemPackages?: boolean;
+	repo?: string;
+	assetNames?: Record<string, string>;
+	archiveType?: "zip" | "binary";
+	extractFile?: string;
+	binaryPath?: string;
 }
 
 export interface LauncherConfig {
@@ -104,6 +130,9 @@ export interface LauncherConfig {
 	args?: string[];
 	startCommand?: string | string[];
 	checkCommand?: string;
+	versionCommand?: string;
+	updateCommand?: string;
+	uninstallCommand?: string;
 	install?: LauncherInstallConfig;
 	bridge?: BridgeConfig;
 }
@@ -137,6 +166,54 @@ export interface LanguageResolverContext {
 	uri?: string;
 	file?: AcodeFile;
 }
+
+export interface LspServerManifest {
+	id?: string;
+	label?: string;
+	enabled?: boolean;
+	languages?: string[];
+	transport?: TransportDescriptor;
+	initializationOptions?: Record<string, unknown>;
+	clientConfig?: Record<string, unknown> | AcodeClientConfig;
+	startupTimeout?: number;
+	capabilityOverrides?: Record<string, unknown>;
+	rootUri?:
+		| ((uri: string, context: unknown) => string | null)
+		| ((uri: string, context: RootUriContext) => string | null)
+		| null;
+	resolveLanguageId?:
+		| ((context: LanguageResolverContext) => string | null)
+		| null;
+	launcher?: LauncherConfig;
+	useWorkspaceFolders?: boolean;
+}
+
+export interface LspServerBundle {
+	id: string;
+	label?: string;
+	getServers: () => LspServerManifest[];
+	getExecutable?: (
+		serverId: string,
+		manifest: LspServerManifest,
+	) => string | null | undefined;
+	checkInstallation?: (
+		serverId: string,
+		manifest: LspServerManifest,
+	) => Promise<InstallCheckResult | null | undefined>;
+	installServer?: (
+		serverId: string,
+		manifest: LspServerManifest,
+		mode: "install" | "update" | "reinstall",
+		options?: { promptConfirm?: boolean },
+	) => Promise<boolean>;
+	uninstallServer?: (
+		serverId: string,
+		manifest: LspServerManifest,
+		options?: { promptConfirm?: boolean },
+	) => Promise<boolean>;
+}
+
+export type LspServerProvider = LspServerBundle;
 
 export interface LspServerDefinition {
 	id: string;
@@ -239,6 +316,14 @@ export interface ManagedServerEntry {
 }
 
 export type InstallStatus = "present" | "declined" | "failed";
+
+export interface InstallCheckResult {
+	status: "present" | "missing" | "failed" | "unknown";
+	version?: string | null;
+	canInstall: boolean;
+	canUpdate: boolean;
+	message?: string;
+}
 
 /**
  * Port information from auto-port discovery

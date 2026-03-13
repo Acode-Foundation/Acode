@@ -1271,7 +1271,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				if (arg === "file") {
 					newUrl = await helpers.createFileStructure(url, entryName);
 				}
-				if (!newUrl) return;
+				if (!newUrl.created) return;
 				return newUrl.uri;
 			}
 

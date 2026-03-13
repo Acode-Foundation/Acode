@@ -3,7 +3,7 @@ import { javascript } from "@codemirror/lang-javascript";
 // For CodeMirror preview
 import { EditorState } from "@codemirror/state";
 import { oneDark } from "@codemirror/theme-one-dark";
-import { getThemeExtensions, getThemes } from "cm/themes";
+import { getThemeConfig, getThemeExtensions, getThemes } from "cm/themes";
 import { basicSetup, EditorView } from "codemirror";
 import Page from "components/page";
 import searchBar from "components/searchbar";
@@ -112,15 +112,16 @@ export default function () {
 
 		const currentTheme = appSettings.value.appTheme;
 		let $currentItem;
-		themes.list().forEach((theme) => {
+		themes.list().forEach((themeSummary) => {
+			const theme = themes.get(themeSummary.id);
 			const isCurrentTheme = theme.id === currentTheme;
 			const isPremium = theme.version === "paid" && IS_FREE_VERSION;
 			const $item = (
 				<Item
-					name={theme.name}
+					name={themeSummary.name}
 					isPremium={isPremium}
 					isCurrent={isCurrentTheme}
-					color={theme.primaryColor}
+					swatches={getAppThemeSwatches(theme)}
 					onclick={() => setAppTheme(theme, isPremium)}
 				/>
 			);
@@ -151,7 +152,7 @@ export default function () {
 				<Item
 					name={t.caption}
 					isCurrent={isCurrent}
-					isDark={t.isDark}
+					swatches={getEditorThemeSwatches(t.id)}
 					onclick={() => setEditorTheme({ caption: t.caption, theme: t.id })}
 				/>
 			);
@@ -246,19 +247,9 @@ export default function () {
 		list.get(`[theme="${theme}"]`)?.check();
 	}
 
-	function Item({ name, color, isDark, onclick, isCurrent, isPremium }) {
+	function Item({ name, swatches, onclick, isCurrent, isPremium }) {
 		const check = <span className="icon check"></span>;
 		const star = <span className="icon stars"></span>;
-		let style = {};
-		let className = "icon color";
-
-		if (color) {
-			style = { color };
-		} else if (isDark) {
-			className += " dark";
-		} else {
-			className += " light";
-		}
 
 		const $el = (
 			<div
@@ -267,7 +258,7 @@ export default function () {
 				className="list-item"
 				onclick={onclick}
 			>
-				<span style={style} className={className}></span>
+				{createSwatchPreview(swatches)}
 				<div className="container">
 					<span className="text">{name}</span>
 				</div>
@@ -285,5 +276,52 @@ export default function () {
 			$el.setAttribute("checked", true);
 		};
 		return $el;
+	}
+
+	function createSwatchPreview(swatches) {
+		const colors = [...new Set((swatches || []).filter(Boolean))].slice(0, 3);
+		while (colors.length < 3) {
+			colors.push(colors[colors.length - 1] || "var(--border-color)");
+		}
+
+		return (
+			<div className="theme-swatch-slot" aria-hidden="true">
+				<div className="theme-swatch-preview">
+					<span
+						className="theme-swatch theme-swatch-main"
+						style={{ backgroundColor: colors[0] }}
+					></span>
+					<span
+						className="theme-swatch"
+						style={{ backgroundColor: colors[1] }}
+					></span>
+					<span
+						className="theme-swatch"
+						style={{ backgroundColor: colors[2] }}
+					></span>
+				</div>
+			</div>
+		);
+	}
+
+	function getAppThemeSwatches(theme) {
+		if (!theme) {
+			return [
+				"var(--primary-color)",
+				"var(--secondary-color)",
+				"var(--active-color)",
+			];
+		}
+
+		return [theme.primaryColor, theme.secondaryColor, theme.activeColor];
+	}
+
+	function getEditorThemeSwatches(themeId) {
+		const config = getThemeConfig(themeId);
+		return [
+			config.background,
+			config.keyword || config.function || config.foreground,
+			config.string || config.variable || config.foreground,
+		];
 	}
 }

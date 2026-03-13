@@ -16,9 +16,9 @@ import {
 	removeExternalCommand,
 	executeCommand as runCommand,
 } from "cm/commandRegistry";
+import { default as lspApi } from "cm/lsp/api";
 import lspClientManager from "cm/lsp/clientManager";
 import { registerLspFormatter } from "cm/lsp/formatter";
-import serverRegistry from "cm/lsp/serverRegistry";
 import {
 	addMode,
 	getModeForPath,
@@ -231,14 +231,7 @@ export default class Acode {
 		};
 
 		const lspModule = {
-			registerServer: (definition, options) =>
-				serverRegistry.registerServer(definition, options),
-			unregisterServer: (id) => serverRegistry.unregisterServer(id),
-			updateServer: (id, updater) => serverRegistry.updateServer(id, updater),
-			getServer: (id) => serverRegistry.getServer(id),
-			listServers: () => serverRegistry.listServers(),
-			getServersForLanguage: (languageId, options) =>
-				serverRegistry.getServersForLanguage(languageId, options),
+			...lspApi,
 			clientManager: {
 				setOptions: (options) => lspClientManager.setOptions(options),
 				getActiveClients: () => lspClientManager.getActiveClients(),
@@ -677,6 +670,14 @@ export default class Acode {
 			id,
 			settings.list,
 			settings.cb,
+			undefined,
+			{
+				preserveOrder: true,
+				pageClassName: "detail-settings-page",
+				listClassName: "detail-settings-list",
+				valueInTail: true,
+				groupByDefault: true,
+			},
 		);
 	}
 
