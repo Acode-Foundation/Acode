@@ -1,36 +1,38 @@
 package com.foxdebug.system;
 
 import android.app.Activity;
-import android.graphics.Rect;
 import android.view.View;
 
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsAnimationCompat;
+
 public class SoftInputAssist {
-    private final View rootView;
-    private final View contentView;
-    private int baseline = -1;
 
     public SoftInputAssist(Activity activity) {
-        rootView = activity.getWindow().getDecorView();
-        contentView = activity.findViewById(android.R.id.content);
+        View contentView = activity.findViewById(android.R.id.content);
 
-        rootView.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
-            Rect r = new Rect();
-            rootView.getWindowVisibleDisplayFrame(r);
+        ViewCompat.setWindowInsetsAnimationCallback(
+            contentView,
+            new WindowInsetsAnimationCompat.Callback(
+                WindowInsetsAnimationCompat.Callback.DISPATCH_MODE_CONTINUE_ON_SUBTREE
+            ) {
+                @Override
+                public WindowInsetsCompat onProgress(
+                        WindowInsetsCompat insets,
+                        java.util.List<WindowInsetsAnimationCompat> runningAnimations) {
 
-            int heightDiff = rootView.getHeight() - (r.bottom - r.top);
+                    Insets ime = insets.getInsets(WindowInsetsCompat.Type.ime());
+                    Insets nav = insets.getInsets(WindowInsetsCompat.Type.systemBars());
 
-            // Save baseline (system bars only)
-            if (baseline == -1 || heightDiff < baseline) {
-                baseline = heightDiff;
+                    int keyboardHeight = Math.max(0, ime.bottom - nav.bottom);
+
+                    contentView.setPadding(0, 0, 0, keyboardHeight);
+
+                    return insets;
+                }
             }
-
-            int keyboardHeight = heightDiff - baseline;
-
-            if (keyboardHeight > 0) {
-                contentView.setPadding(0, 0, 0, keyboardHeight);
-            } else {
-                contentView.setPadding(0, 0, 0, 0);
-            }
-        });
+        );
     }
 }
