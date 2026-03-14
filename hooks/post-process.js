@@ -208,7 +208,7 @@ function enableKeyboardWorkaround() {
     // Add import
     if (!content.includes('import com.foxdebug.system.SoftInputAssist;')) {
       content = content.replace(
-        /import java.lang.ref.WeakReference;/,
+        /import java.lang.ref.WeakReference;|import org\.apache\.cordova\.\*;/,
         match =>
           match + '\nimport com.foxdebug.system.SoftInputAssist;'
       );
