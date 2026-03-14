@@ -20,7 +20,7 @@ public class SoftInputAssist {
             int heightDiff = rootView.getHeight() - (r.bottom - r.top);
 
             // Save baseline (system bars only)
-            if (baseline == -1) {
+            if (baseline == -1 || heightDiff < baseline) {
                 baseline = heightDiff;
             }
 
