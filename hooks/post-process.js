@@ -28,6 +28,7 @@ copyDirRecursively(localResPath, resPath);
 enableLegacyJni();
 enableStaticContext();
 patchTargetSdkVersion();
+enableKeyboardWorkaround();
 
 
 function getTmpDir() {
@@ -182,6 +183,57 @@ function enableStaticContext() {
     fs.writeFileSync(mainActivityPath, content, 'utf-8');
   } catch (err) {
     console.error('[Cordova Hook] ❌ Failed to patch MainActivity:', err.message);
+  }
+}
+
+function enableKeyboardWorkaround() {
+  try{
+    const prefix = execSync('npm prefix').toString().trim();
+    const mainActivityPath = path.join(
+      prefix,
+      'platforms/android/app/src/main/java/com/foxdebug/acode/MainActivity.java'
+    );
+
+    if (!fs.existsSync(mainActivityPath)) {
+      return;
+    }
+
+    let content = fs.readFileSync(mainActivityPath, 'utf-8');
+
+    // Skip if already patched
+    if (content.includes('SoftInputAssist')) {
+      return;
+    }
+
+    // Add import
+    if (!content.includes('import com.foxdebug.system.SoftInputAssist;')) {
+      content = content.replace(
+        /import java.lang.ref.WeakReference;|import org\.apache\.cordova\.\*;/,
+        match =>
+          match + '\nimport com.foxdebug.system.SoftInputAssist;'
+      );
+    }
+
+    // Declare field
+    if (!content.includes('private SoftInputAssist softInputAssist;')) {
+      content = content.replace(
+        /public class MainActivity extends CordovaActivity\s*\{/,
+        match =>
+          match +
+          `\n\n    private SoftInputAssist softInputAssist;\n`
+      );
+    }
+
+    // Initialize in onCreate
+    content = content.replace(
+      /loadUrl\(launchUrl\);/,
+      `loadUrl(launchUrl);\n\n        softInputAssist = new SoftInputAssist(this);`
+    );
+
+    fs.writeFileSync(mainActivityPath, content, 'utf-8');
+    console.log('[Cordova Hook] ✅ Enabled keyboard workaround');
+  } catch (err) {
+    console.error('[Cordova Hook] ❌ Failed to enable keyboard workaround:', err.message);
   }
 }
 
