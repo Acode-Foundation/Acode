@@ -56,7 +56,7 @@ public class SoftInputAssist {
 
                     int keyboardHeight = Math.max(0, ime.bottom - nav.bottom);
 
-                    contentView.setPadding(0, 0, 0, keyboardHeight);
+                    contentView.setPadding(contentView.getPaddingLeft(), contentView.getPaddingTop(), contentView.getPaddingRight(), keyboardHeight);
 
                     return insets;
                 }
