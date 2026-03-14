@@ -183,6 +183,7 @@ public class System extends CordovaPlugin {
         switch (action) {
             case "get-webkit-info":
             case "file-action":
+            case "checksumText":
             case "is-powersave-mode":
             case "get-app-info":
             case "add-shortcut":
