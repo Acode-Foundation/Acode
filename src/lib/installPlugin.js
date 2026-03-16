@@ -177,7 +177,7 @@ export default async function installPlugin(
 			const ignoredUnsafeEntries = new Set();
 
 			const files = Object.keys(zip.files);
-			const limit = 5;
+			const limit = 2;
 
 			async function processFile(file) {
 				try {
