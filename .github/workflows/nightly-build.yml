@@ -262,7 +262,7 @@
 
         - name: Update Last Comment by bot (If ran in PR)
           if: inputs.is_PR
-          uses: marocchino/sticky-pull-request-comment@v2
+          uses: marocchino/sticky-pull-request-comment@v3
           with:
              hide_and_recreate: true
              hide_classify: "OUTDATED"
