@@ -145,6 +145,7 @@ export interface BuiltinExtensionsConfig {
 	diagnostics?: boolean;
 	inlayHints?: boolean;
 	documentHighlights?: boolean;
+	formatting?: boolean;
 }
 
 export interface AcodeClientConfig {
