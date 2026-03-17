@@ -52,7 +52,7 @@ jobs:
           cache-dependency-path: '**/package-lock.json'
 
       - name: Detect Changed Files
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         id: file-changes
         with:
           list-files: shell
