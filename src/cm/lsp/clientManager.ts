@@ -18,6 +18,7 @@ import NotificationManager from "lib/notificationManager";
 import Uri from "utils/Uri";
 import { clearDiagnosticsEffect } from "./diagnostics";
 import { documentHighlightsExtension } from "./documentHighlights";
+import { supportsBuiltinFormatting } from "./formattingSupport";
 import { inlayHintsExtension } from "./inlayHints";
 import { acodeRenameKeymap } from "./rename";
 import { ensureServerRunning } from "./serverLauncher";
@@ -442,6 +443,7 @@ export class LspClientManager {
 						diagnostics: builtinConfig.diagnostics !== false,
 						inlayHints: builtinConfig.inlayHints !== false,
 						documentHighlights: builtinConfig.documentHighlights !== false,
+						formatting: builtinConfig.formatting !== false,
 					})
 				: { extensions: [], diagnosticsExtension: null };
 
@@ -915,10 +917,6 @@ function resolveIndentWidth(unit: string): number {
 		width += 1;
 	}
 	return width || 4;
-}
-
-function supportsBuiltinFormatting(server: LspServerDefinition): boolean {
-	return server.clientConfig?.builtinExtensions?.formatting !== false;
 }
 
 const defaultManager = new LspClientManager();

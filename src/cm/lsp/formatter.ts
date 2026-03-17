@@ -2,16 +2,13 @@ import type { EditorView } from "@codemirror/view";
 import { getModes } from "cm/modelist";
 import toast from "components/toast";
 import lspClientManager from "./clientManager";
+import { supportsBuiltinFormatting } from "./formattingSupport";
 import serverRegistry from "./serverRegistry";
-import type { AcodeApi, FileMetadata, LspServerDefinition } from "./types";
+import type { AcodeApi, FileMetadata } from "./types";
 
 interface Mode {
 	name?: string;
 	extensions?: string;
-}
-
-function supportsBuiltinFormatting(server: LspServerDefinition): boolean {
-	return server?.clientConfig?.builtinExtensions?.formatting !== false;
 }
 
 interface EditorManagerWithLsp {
