@@ -7,6 +7,7 @@ import anchor from "markdown-it-anchor";
 import MarkdownItGitHubAlerts from "markdown-it-github-alerts";
 import mimeType from "mime-types";
 import mustache from "mustache";
+import openMarkdownPreview from "pages/markdownPreview";
 import browser from "plugins/browser";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
@@ -31,6 +32,15 @@ async function run(
 	target = appSettings.value.previewMode,
 	runFile = false,
 ) {
+	/** @type {EditorFile} */
+	const activeFile = isConsole ? null : editorManager.activeFile;
+
+	if (!isConsole && Url.extname(activeFile?.filename || "") === ".md") {
+		if (!(await activeFile?.canRun())) return;
+		await openMarkdownPreview(activeFile);
+		return;
+	}
+
 	if (!isConsole && !runFile) {
 		const { serverPort, previewPort, previewMode, disableCache, host } =
 			appSettings.value;
@@ -46,8 +56,6 @@ async function run(
 		}
 	}
 
-	/** @type {EditorFile} */
-	const activeFile = isConsole ? null : editorManager.activeFile;
 	if (!isConsole && !(await activeFile?.canRun())) return;
 
 	if (!isConsole && !localStorage.__init_runPreview) {
