@@ -16,7 +16,10 @@ function slugify(text) {
 	return text
 		.trim()
 		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, "-");
+		.normalize("NFD")
+		.replace(/[\u0300-\u036f]/g, "")
+		.replace(/[^\p{L}\p{N}]+/gu, "-")
+		.replace(/^-+|-+$/g, "");
 }
 
 function escapeAttribute(value = "") {

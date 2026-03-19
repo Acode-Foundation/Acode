@@ -18,6 +18,7 @@ import {
 
 let previewController = null;
 let mermaidModulePromise = null;
+let mermaidThemeSignature = "";
 
 function getThemeColor(name, fallback) {
 	const value = getComputedStyle(document.documentElement)
@@ -63,12 +64,56 @@ function getTargetElement(container, targetId) {
 
 async function getMermaid() {
 	if (!mermaidModulePromise) {
-		mermaidModulePromise = import("mermaid").then(({ default: mermaid }) => {
-			return mermaid;
-		});
+		mermaidModulePromise = import("mermaid")
+			.then(({ default: mermaid }) => mermaid)
+			.catch((error) => {
+				mermaidModulePromise = null;
+				throw error;
+			});
 	}
 
 	return mermaidModulePromise;
+}
+
+function getMermaidThemeConfig() {
+	const backgroundColor = getThemeColor("--background-color", "#1e1e1e");
+	const panelColor = getThemeColor("--popup-background-color", "#2a2f3a");
+	const borderColor = getThemeColor("--border-color", "#4a4f5a");
+	const primaryTextColor = getThemeColor("--primary-text-color", "#f5f5f5");
+	const accentColor = getThemeColor("--link-text-color", "#4ba3ff");
+
+	return {
+		startOnLoad: false,
+		securityLevel: "strict",
+		theme: "base",
+		themeVariables: {
+			darkMode: isDarkColor(backgroundColor),
+			background: backgroundColor,
+			mainBkg: panelColor,
+			primaryColor: panelColor,
+			primaryTextColor,
+			primaryBorderColor: borderColor,
+			lineColor: primaryTextColor,
+			secondaryColor: accentColor,
+			secondaryBorderColor: borderColor,
+			secondaryTextColor: primaryTextColor,
+			tertiaryColor: backgroundColor,
+			tertiaryBorderColor: borderColor,
+			tertiaryTextColor: primaryTextColor,
+			clusterBkg: panelColor,
+			clusterBorder: borderColor,
+			nodeBorder: borderColor,
+			edgeLabelBackground: backgroundColor,
+		},
+	};
+}
+
+function initializeMermaid(mermaid) {
+	const config = getMermaidThemeConfig();
+	const signature = JSON.stringify(config);
+	if (signature === mermaidThemeSignature) return;
+	mermaid.initialize(config);
+	mermaidThemeSignature = signature;
 }
 
 async function copyText(text) {
@@ -302,7 +347,6 @@ function createMarkdownPreview(file) {
 
 		codeBlocks.forEach((pre) => {
 			if (pre.querySelector(".copy-button")) return;
-			if (pre.querySelector(".mermaid")) return;
 
 			pre.style.position = "relative";
 
@@ -341,35 +385,7 @@ function createMarkdownPreview(file) {
 
 		const mermaid = await getMermaid();
 		if (previewState.disposed || version !== previewState.renderVersion) return;
-		const backgroundColor = getThemeColor("--background-color", "#1e1e1e");
-		const panelColor = getThemeColor("--popup-background-color", "#2a2f3a");
-		const borderColor = getThemeColor("--border-color", "#4a4f5a");
-		const primaryTextColor = getThemeColor("--primary-text-color", "#f5f5f5");
-		const accentColor = getThemeColor("--link-text-color", "#4ba3ff");
-		mermaid.initialize({
-			startOnLoad: false,
-			securityLevel: "strict",
-			theme: "base",
-			themeVariables: {
-				darkMode: isDarkColor(backgroundColor),
-				background: backgroundColor,
-				mainBkg: panelColor,
-				primaryColor: panelColor,
-				primaryTextColor,
-				primaryBorderColor: borderColor,
-				lineColor: primaryTextColor,
-				secondaryColor: accentColor,
-				secondaryBorderColor: borderColor,
-				secondaryTextColor: primaryTextColor,
-				tertiaryColor: backgroundColor,
-				tertiaryBorderColor: borderColor,
-				tertiaryTextColor: primaryTextColor,
-				clusterBkg: panelColor,
-				clusterBorder: borderColor,
-				nodeBorder: borderColor,
-				edgeLabelBackground: backgroundColor,
-			},
-		});
+		initializeMermaid(mermaid);
 		let index = 0;
 		await Promise.all(
 			mermaidBlocks.map(async (block) => {
