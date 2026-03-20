@@ -1,16 +1,39 @@
-import katex from "katex";
 import markdownIt from "markdown-it";
 import anchor from "markdown-it-anchor";
 import { full as markdownItEmoji } from "markdown-it-emoji";
 import markdownItFootnote from "markdown-it-footnote";
 import MarkdownItGitHubAlerts from "markdown-it-github-alerts";
 import markdownItTaskLists from "markdown-it-task-lists";
-import markdownItTexmath from "markdown-it-texmath";
 import Url from "utils/Url";
 
 const EXTERNAL_LINK_PATTERN = /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i;
 const IMAGE_PLACEHOLDER =
 	"data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
+
+let katexModulePromise = null;
+let mdItTexmathModulePromise = null;
+
+async function getKatexAndTexmathModule() {
+	if (!katexModulePromise) {
+		katexModulePromise = import("katex")
+			.then(({ default: katex }) => katex)
+			.catch((error) => {
+				katexModulePromise = null;
+				throw error;
+			});
+	}
+
+	if (!mdItTexmathModulePromise) {
+		mdItTexmathModulePromise = import("markdown-it-texmath")
+			.then(({ default: markdownItTexmath }) => markdownItTexmath)
+			.catch((error) => {
+				mdItTexmathModulePromise = null;
+				throw error;
+			});
+	}
+
+	return { katexModulePromise, mdItTexmathModulePromise };
+}
 
 function slugify(text) {
 	return text
@@ -113,6 +136,9 @@ function collectTokens(tokens, callback) {
 }
 
 function createMarkdownIt() {
+
+	const { katexModulePromise: katex, mdItTexmathModulePromise: markdownItTexmath } = await getKatexAndTexmathModule();
+	
 	const md = markdownIt({
 		html: true,
 		linkify: true,
