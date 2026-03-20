@@ -431,7 +431,7 @@ function createMarkdownPreview(file) {
 
 		previewState.content.innerHTML = DOMPurify.sanitize(html, {
 			FORBID_TAGS: ["style"],
-			ADD_TAGS: ["eq", "eqn"]
+			ADD_TAGS: ["eq", "eqn"],
 		});
 
 		const objectUrls = await resolveRenderedImages(
