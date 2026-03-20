@@ -137,10 +137,10 @@ function collectTokens(tokens, callback) {
 
 function createMarkdownIt() {
 
-	const { 
+	const {
 		katexModulePromise: katex,
 		mdItTexmathModulePromise: markdownItTexmath,
-	} = getKatexAndTexmathModule().then(m => m);
+	} = getKatexAndTexmathModule().then((m) => m);
 	
 	const md = markdownIt({
 		html: true,
