@@ -402,7 +402,10 @@ function createMarkdownPreview(file) {
 						return;
 					}
 
-					block.innerHTML = svg;
+					const sanitizedSvg = DOMPurify.sanitize(svg, {
+						USE_PROFILES: { svg: true, svgFilters: true },
+					});
+					block.innerHTML = sanitizedSvg;
 					bindFunctions?.(block);
 				} catch (error) {
 					if (!block.isConnected) return;
