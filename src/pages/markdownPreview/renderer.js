@@ -9,31 +9,13 @@ import Url from "utils/Url";
 const EXTERNAL_LINK_PATTERN = /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i;
 const IMAGE_PLACEHOLDER =
 	"data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
+const BLOCK_MATH_PATTERN = /(^|[^\\])\$\$[\s\S]+?\$\$/m;
+const INLINE_MATH_PATTERN = /(^|[^\\])\$(?!\s)(?:\\.|[^$\\\n])+\$(?!\w)/m;
+const BEGIN_END_MATH_PATTERN =
+	/\\begin\{(?:equation|align|gather|multline|eqnarray)\*?\}[\s\S]*?\\end\{(?:equation|align|gather|multline|eqnarray)\*?\}/m;
 
-let katexModulePromise = null;
-let mdItTexmathModulePromise = null;
-
-async function getKatexAndTexmathModule() {
-	if (!katexModulePromise) {
-		katexModulePromise = import("katex")
-			.then(({ default: katex }) => katex)
-			.catch((error) => {
-				katexModulePromise = null;
-				throw error;
-			});
-	}
-
-	if (!mdItTexmathModulePromise) {
-		mdItTexmathModulePromise = import("markdown-it-texmath")
-			.then(({ default: markdownItTexmath }) => markdownItTexmath)
-			.catch((error) => {
-				mdItTexmathModulePromise = null;
-				throw error;
-			});
-	}
-
-	return { katexModulePromise, mdItTexmathModulePromise };
-}
+let mathModulesPromise = null;
+let mathMarkdownItPromise = null;
 
 function slugify(text) {
 	return text
@@ -135,12 +117,35 @@ function collectTokens(tokens, callback) {
 	}
 }
 
-function createMarkdownIt() {
-	const {
-		katexModulePromise: katex,
-		mdItTexmathModulePromise: markdownItTexmath,
-	} = getKatexAndTexmathModule().then((m) => m);
+export function hasMathContent(text = "") {
+	return (
+		BLOCK_MATH_PATTERN.test(text) ||
+		INLINE_MATH_PATTERN.test(text) ||
+		BEGIN_END_MATH_PATTERN.test(text)
+	);
+}
 
+async function getKatexAndTexmathModules() {
+	if (!mathModulesPromise) {
+		mathModulesPromise = Promise.all([
+			import("katex").then(({ default: katex }) => katex),
+			import("markdown-it-texmath").then(
+				({ default: markdownItTexmath }) => markdownItTexmath,
+			),
+		]).then(([katex, markdownItTexmath]) => ({
+			katex,
+			markdownItTexmath,
+		}));
+		mathModulesPromise = mathModulesPromise.catch((error) => {
+			mathModulesPromise = null;
+			throw error;
+		});
+	}
+
+	return mathModulesPromise;
+}
+
+function createMarkdownIt({ katex = null, markdownItTexmath = null } = {}) {
 	const md = markdownIt({
 		html: true,
 		linkify: true,
@@ -149,16 +154,20 @@ function createMarkdownIt() {
 	md.use(MarkdownItGitHubAlerts)
 		.use(anchor, { slugify })
 		.use(markdownItTaskLists)
-		.use(markdownItFootnote)
-		.use(markdownItTexmath, {
+		.use(markdownItFootnote);
+
+	if (katex && markdownItTexmath) {
+		md.use(markdownItTexmath, {
 			engine: katex,
 			delimiters: ["dollars", "beg_end"],
 			katexOptions: {
 				throwOnError: false,
 				strict: "ignore",
 			},
-		})
-		.use(markdownItEmoji);
+		});
+	}
+
+	md.use(markdownItEmoji);
 
 	md.renderer.rules.image = (tokens, idx, options, env, self) => {
 		const token = tokens[idx];
@@ -198,12 +207,33 @@ function createMarkdownIt() {
 	return md;
 }
 
-const md = createMarkdownIt();
+const baseMarkdownIt = createMarkdownIt();
+
+async function getMarkdownIt(text = "") {
+	if (!hasMathContent(text)) {
+		return baseMarkdownIt;
+	}
+
+	if (!mathMarkdownItPromise) {
+		mathMarkdownItPromise = getKatexAndTexmathModules()
+			.then(({ katex, markdownItTexmath }) =>
+				createMarkdownIt({ katex, markdownItTexmath }),
+			)
+			.catch((error) => {
+				mathMarkdownItPromise = null;
+				throw error;
+			});
+	}
+
+	return mathMarkdownItPromise;
+}
 
 export async function renderMarkdown(text, file) {
+	const markdownText = text || "";
+	const md = await getMarkdownIt(markdownText);
 	const env = {};
 	env.markdownBaseUri = getMarkdownBaseUri(file);
-	const tokens = md.parse(text || "", env);
+	const tokens = md.parse(markdownText, env);
 
 	collectTokens(tokens, (token) => {
 		if (token.type === "link_open") {

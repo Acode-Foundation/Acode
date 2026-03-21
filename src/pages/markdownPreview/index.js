@@ -1,5 +1,3 @@
-import "katex/dist/katex.min.css";
-import "markdown-it-texmath/css/texmath.css";
 import "./style.scss";
 
 import fsOperation from "fileSystem";
@@ -10,6 +8,7 @@ import openFile from "lib/openFile";
 import { highlightCodeBlock, initHighlighting } from "utils/codeHighlight";
 import {
 	getMarkdownBaseUri,
+	hasMathContent,
 	isExternalLink,
 	isMarkdownPath,
 	renderMarkdown,
@@ -19,6 +18,7 @@ import {
 let previewController = null;
 let mermaidModulePromise = null;
 let mermaidThemeSignature = "";
+let mathStylesPromise = null;
 
 function getThemeColor(name, fallback) {
 	const value = getComputedStyle(document.documentElement)
@@ -62,6 +62,18 @@ function getTargetElement(container, targetId) {
 	);
 }
 
+function getOffsetTopWithinContainer(target, container) {
+	let top = 0;
+	let element = target;
+
+	while (element && element !== container) {
+		top += element.offsetTop || 0;
+		element = element.offsetParent;
+	}
+
+	return top;
+}
+
 async function getMermaid() {
 	if (!mermaidModulePromise) {
 		mermaidModulePromise = import("mermaid")
@@ -75,22 +87,43 @@ async function getMermaid() {
 	return mermaidModulePromise;
 }
 
+async function ensureMathStyles() {
+	if (!mathStylesPromise) {
+		mathStylesPromise = Promise.all([
+			import("katex/dist/katex.min.css"),
+			import("markdown-it-texmath/css/texmath.css"),
+		]).catch((error) => {
+			mathStylesPromise = null;
+			throw error;
+		});
+	}
+
+	return mathStylesPromise;
+}
+
 function getMermaidThemeConfig() {
 	const backgroundColor = getThemeColor("--background-color", "#1e1e1e");
 	const panelColor = getThemeColor("--popup-background-color", "#2a2f3a");
 	const borderColor = getThemeColor("--border-color", "#4a4f5a");
 	const primaryTextColor = getThemeColor("--primary-text-color", "#f5f5f5");
 	const accentColor = getThemeColor("--link-text-color", "#4ba3ff");
+	const activeColor = getThemeColor("--active-color", accentColor);
 
 	return {
 		startOnLoad: false,
 		securityLevel: "strict",
+		htmlLabels: false,
 		theme: "base",
+		flowchart: {
+			htmlLabels: false,
+		},
 		themeVariables: {
 			darkMode: isDarkColor(backgroundColor),
 			background: backgroundColor,
 			mainBkg: panelColor,
 			primaryColor: panelColor,
+			mainContrastColor: primaryTextColor,
+			textColor: primaryTextColor,
 			primaryTextColor,
 			primaryBorderColor: borderColor,
 			lineColor: primaryTextColor,
@@ -103,7 +136,29 @@ function getMermaidThemeConfig() {
 			clusterBkg: panelColor,
 			clusterBorder: borderColor,
 			nodeBorder: borderColor,
+			nodeTextColor: primaryTextColor,
+			titleColor: primaryTextColor,
+			defaultLinkColor: activeColor,
+			actorTextColor: primaryTextColor,
+			labelTextColor: primaryTextColor,
+			loopTextColor: primaryTextColor,
+			noteTextColor: primaryTextColor,
+			sectionBkgColor: panelColor,
+			sectionBkgColor2: backgroundColor,
+			sectionTitleColor: primaryTextColor,
+			sequenceNumberColor: primaryTextColor,
+			signalTextColor: primaryTextColor,
+			taskTextColor: primaryTextColor,
+			taskTextDarkColor: primaryTextColor,
+			taskTextOutsideColor: primaryTextColor,
 			edgeLabelBackground: backgroundColor,
+			pieTitleTextColor: primaryTextColor,
+			pieLegendTextColor: primaryTextColor,
+			pieSectionTextColor: primaryTextColor,
+			git0: panelColor,
+			git1: backgroundColor,
+			git2: accentColor,
+			git3: activeColor,
 		},
 	};
 }
@@ -186,15 +241,6 @@ async function resolveRenderedImages(container, file) {
 		}),
 	);
 
-	container.querySelectorAll("a[href]").forEach((link) => {
-		const href = link.getAttribute("href");
-		if (!href || href.startsWith("#") || isExternalLink(href)) return;
-		link.setAttribute(
-			"data-resolved-href",
-			resolveMarkdownTarget(href, baseUri),
-		);
-	});
-
 	return objectUrls;
 }
 
@@ -259,7 +305,11 @@ function createMarkdownPreview(file) {
 
 		const originalHref = link.getAttribute("href") || "";
 		const resolvedHref =
-			link.getAttribute("data-resolved-href") || originalHref;
+			link.getAttribute("data-resolved-href") ||
+			resolveMarkdownTarget(
+				originalHref,
+				getMarkdownBaseUri(previewState.file),
+			);
 		event.preventDefault();
 		event.stopPropagation();
 
@@ -302,11 +352,9 @@ function createMarkdownPreview(file) {
 		const target = getTargetElement(previewState.content, targetId);
 		if (!target) return;
 
+		const topOffset = 12;
 		const top =
-			target.getBoundingClientRect().top -
-			previewState.content.getBoundingClientRect().top +
-			previewState.content.scrollTop -
-			12;
+			getOffsetTopWithinContainer(target, previewState.content) - topOffset;
 
 		previewState.content.scrollTo({
 			top: Math.max(0, top),
@@ -338,7 +386,10 @@ function createMarkdownPreview(file) {
 				}
 
 				if (highlighted && highlighted !== originalCode) {
-					codeElement.innerHTML = highlighted;
+					codeElement.innerHTML = DOMPurify.sanitize(highlighted, {
+						ALLOWED_TAGS: ["span"],
+						ALLOWED_ATTR: ["class"],
+					});
 				}
 			}),
 		);
@@ -404,6 +455,7 @@ function createMarkdownPreview(file) {
 
 					const sanitizedSvg = DOMPurify.sanitize(svg, {
 						USE_PROFILES: { svg: true, svgFilters: true },
+						ADD_TAGS: ["style"],
 					});
 					block.innerHTML = sanitizedSvg;
 					bindFunctions?.(block);
@@ -426,7 +478,13 @@ function createMarkdownPreview(file) {
 		previewState.objectUrls = [];
 
 		const markdownText = previewState.file.session?.doc?.toString?.() || "";
-		const { html } = await renderMarkdown(markdownText, previewState.file);
+		const pendingRenderTasks = [
+			renderMarkdown(markdownText, previewState.file),
+		];
+		if (hasMathContent(markdownText)) {
+			pendingRenderTasks.push(ensureMathStyles());
+		}
+		const [{ html }] = await Promise.all(pendingRenderTasks);
 
 		if (previewState.disposed || version !== previewState.renderVersion) {
 			return;
