@@ -36,6 +36,7 @@ import type {
 	ParsedUri,
 	RootUriContext,
 	TextEdit,
+	Transport,
 	TransportHandle,
 } from "./types";
 import AcodeWorkspace from "./workspace";
@@ -59,6 +60,79 @@ function pluginKey(
 
 function safeString(value: unknown): string {
 	return value != null ? String(value) : "";
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+	return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function resolveInitializationOptions(
+	server: LspServerDefinition,
+	clientConfig: Record<string, unknown>,
+): Record<string, unknown> | undefined {
+	const serverOptions = isPlainObject(server.initializationOptions)
+		? server.initializationOptions
+		: null;
+	const clientOptions = isPlainObject(clientConfig.initializationOptions)
+		? clientConfig.initializationOptions
+		: null;
+
+	if (serverOptions && clientOptions) {
+		return {
+			...serverOptions,
+			...clientOptions,
+		};
+	}
+
+	return serverOptions || clientOptions || undefined;
+}
+
+interface InternalLSPRequest<Result> {
+	promise: Promise<Result>;
+}
+
+type RequestInnerFn = <Params, Result>(
+	method: string,
+	params: Params,
+	mapped?: boolean,
+) => InternalLSPRequest<Result>;
+
+function connectClient(
+	client: ExtendedLSPClient,
+	transport: Transport,
+	initializationOptions?: Record<string, unknown>,
+): void {
+	if (!initializationOptions || !Object.keys(initializationOptions).length) {
+		client.connect(transport);
+		return;
+	}
+
+	const patchedClient = client as unknown as {
+		requestInner: RequestInnerFn;
+	};
+	const originalRequestInner = patchedClient.requestInner.bind(
+		patchedClient,
+	) as RequestInnerFn;
+
+	patchedClient.requestInner = function patchedRequestInner<Params, Result>(
+		method: string,
+		params: Params,
+		mapped?: boolean,
+	): InternalLSPRequest<Result> {
+		if (method === "initialize" && isPlainObject(params)) {
+			params = {
+				...params,
+				initializationOptions,
+			} as Params;
+		}
+		return originalRequestInner<Params, Result>(method, params, mapped);
+	};
+
+	try {
+		client.connect(transport);
+	} finally {
+		patchedClient.requestInner = originalRequestInner;
+	}
 }
 
 interface BuiltinExtensionsResult {
@@ -431,6 +505,10 @@ export class LspClientManager {
 		};
 
 		const clientConfig = { ...(server.clientConfig ?? {}) };
+		const initializationOptions = resolveInitializationOptions(
+			server,
+			clientConfig as Record<string, unknown>,
+		);
 		const builtinConfig = clientConfig.builtinExtensions ?? {};
 		const useDefaultExtensions = clientConfig.useDefaultExtensions !== false;
 		const { extensions: defaultExtensions, diagnosticsExtension } =
@@ -695,7 +773,7 @@ export class LspClientManager {
 			});
 			await transportHandle.ready;
 			client = new LSPClient(clientConfig) as ExtendedLSPClient;
-			client.connect(transportHandle.transport);
+			connectClient(client, transportHandle.transport, initializationOptions);
 			await client.initializing;
 			if (!client.__acodeLoggedInfo) {
 				// Log root URI info to console
@@ -709,6 +787,12 @@ export class LspClientManager {
 					}
 				} else if (originalRootUri) {
 					console.info(`[LSP:${server.id}] root ignored`, originalRootUri);
+				}
+				if (initializationOptions) {
+					console.info(
+						`[LSP:${server.id}] initializationOptions keys`,
+						Object.keys(initializationOptions),
+					);
 				}
 				console.info(`[LSP:${server.id}] initialized`);
 				client.__acodeLoggedInfo = true;
