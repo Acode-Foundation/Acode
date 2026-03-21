@@ -3,6 +3,7 @@ import Page from "components/page";
 import items, { description } from "components/quickTools/items";
 import actionStack from "lib/actionStack";
 import settings from "lib/settings";
+import { hideAd } from "lib/startAd";
 import helpers from "utils/helpers";
 
 export default function QuickTools() {
@@ -30,7 +31,7 @@ export default function QuickTools() {
 
 	$page.onhide = () => {
 		actionStack.remove("quicktools-settings");
-		helpers.hideAd();
+		hideAd();
 		// Cleanup manager
 		manager.destroy();
 	};

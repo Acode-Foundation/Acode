@@ -288,6 +288,7 @@ body.no-animation {
   input {
     color: rgb(255, 255, 255);
     color: var(--primary-text-color);
+    border: solid 1px var(--border-color);
     border: solid 1px color-mix(in srgb, var(--border-color) 70%, transparent);
     border-radius: 8px;
     height: 30px;
@@ -300,6 +301,7 @@ body.no-animation {
 
     &:focus {
       border-color: var(--border-color) !important;
+      background: var(--secondary-color);
       background: color-mix(in srgb, var(--secondary-color) 10%, transparent);
       box-shadow: 0 0 0 2px var(---box-shadow-color);
     }
@@ -365,6 +367,7 @@ body.no-animation {
       .badge {
         display: inline-flex;
         align-items: center;
+        background-color: var(--popup-background-color);
         background-color: color-mix(in srgb,
             var(--error-text-color) 20%,
             transparent);
@@ -379,6 +382,7 @@ body.no-animation {
 
     .user-menu-email {
       font-size: 12px;
+      color: var(--popup-text-color);
       color: color-mix(in srgb, var(--popup-text-color) 70%, transparent);
     }
   }

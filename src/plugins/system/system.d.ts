@@ -37,6 +37,24 @@ interface Intent {
   };
 }
 
+interface RewardStatus {
+  adFreeUntil: number;
+  lastExpiredRewardUntil: number;
+  isActive: boolean;
+  remainingMs: number;
+  redemptionsToday: number;
+  remainingRedemptions: number;
+  maxRedemptionsPerDay: number;
+  maxActivePassMs: number;
+  hasPendingExpiryNotice: boolean;
+  expiryNoticePendingUntil: number;
+  canRedeem: boolean;
+  redeemDisabledReason: string;
+  grantedDurationMs?: number;
+  appliedDurationMs?: number;
+  offerId?: string;
+}
+
 type FileAction = 'VIEW' | 'EDIT' | 'SEND' | 'RUN';
 type OnFail = (err: string) => void;
 type OnSuccessBool = (res: boolean) => void;
@@ -255,6 +273,15 @@ interface System {
    * @param onFail
    */
   getCordovaIntent(onSuccess: (intent: Intent) => void, onFail: OnFail): void;
+  getRewardStatus(
+    onSuccess: (status: RewardStatus | string) => void,
+    onFail: OnFail,
+  ): void;
+  redeemReward(
+    offerId: string,
+    onSuccess: (status: RewardStatus | string) => void,
+    onFail: OnFail,
+  ): void;
   /**
    * Enable/disable native WebView long-press context behavior.
    * Use this when rendering a custom editor context menu.

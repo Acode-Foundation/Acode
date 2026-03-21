@@ -34,7 +34,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           clean: false
           fetch-depth: 0
@@ -53,7 +53,7 @@ jobs:
            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Add comment to PR
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: marocchino/sticky-pull-request-comment@v3
         with:
           hide_and_recreate: true
           hide_classify: "OUTDATED"
@@ -92,7 +92,7 @@ jobs:
 #            fetch-depth: 0
 
         - name: Update Last Comment by bot (if Workflow Triggering failed)
-          uses: marocchino/sticky-pull-request-comment@v2
+          uses: marocchino/sticky-pull-request-comment@v3
           with:
              hide_and_recreate: true
              hide_classify: "OUTDATED"

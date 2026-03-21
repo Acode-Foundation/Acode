@@ -1,0 +1,122 @@
+.markdown-preview {
+  overflow: auto;
+  padding: 16px;
+  max-width: 960px;
+  margin: 0 auto;
+  user-select: text;
+
+  [id] {
+    scroll-margin-top: 12px;
+  }
+
+  pre {
+    margin: 16px 0;
+    border-radius: 8px;
+    overflow-x: auto;
+    max-width: 100%;
+  }
+
+  pre code {
+    display: block;
+    padding: 16px;
+    margin: 0;
+    background: transparent !important;
+    white-space: pre;
+    word-wrap: normal;
+    tab-size: 2;
+    user-select: text;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  code[class*="language-"] {
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  eq {
+    display: inline-block;
+    max-width: 100%;
+  }
+
+  eqn {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 8px 0;
+  }
+
+  section.eqno {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    overflow-x: auto;
+  }
+
+  section.eqno > eqn {
+    margin-left: 0;
+  }
+
+  section.eqno > span {
+    flex: 0 0 auto;
+    opacity: 0.7;
+  }
+
+  .katex-display {
+    margin: 1rem 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 4px;
+  }
+
+  .markdown-image {
+    display: block;
+    margin: 1rem auto;
+    max-width: 100%;
+    height: auto;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--primary-color) 8%, transparent);
+    box-shadow: 0 0 0 1px
+      color-mix(in srgb, var(--primary-color) 12%, transparent);
+  }
+
+  .mermaid {
+    display: flex;
+    justify-content: center;
+    overflow-x: auto;
+    padding: 12px 0;
+  }
+
+  .mermaid svg {
+    max-width: 100%;
+    height: auto;
+  }
+
+  .mermaid svg text,
+  .mermaid svg tspan,
+  .mermaid .label,
+  .mermaid .nodeLabel,
+  .mermaid .edgeLabel,
+  .mermaid .cluster-label,
+  .mermaid .flowchart-label {
+    fill: var(--primary-text-color) !important;
+    color: var(--primary-text-color) !important;
+  }
+
+  .mermaid svg foreignObject,
+  .mermaid svg foreignObject * {
+    color: var(--primary-text-color) !important;
+  }
+
+  .mermaid-error {
+    border: 1px solid var(--danger-color);
+    border-radius: 8px;
+    padding: 12px;
+    background: color-mix(in srgb, var(--danger-color) 10%, transparent);
+  }
+
+  .mermaid-error-message {
+    margin-top: 8px;
+    color: var(--danger-text-color);
+  }
+}

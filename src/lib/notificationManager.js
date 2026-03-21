@@ -1,4 +1,5 @@
 import sidebarApps from "sidebarApps";
+import DOMPurify from "dompurify";
 
 // Singleton instance
 let instance = null;
@@ -107,21 +108,24 @@ export default class NotificationManager {
 				data-id={notification.id}
 			></div>
 		);
+		const safeIcon = this.sanitizeIcon(this.parseIcon(notification.icon));
+		const safeTitle = this.sanitizeText(notification.title);
+		const safeMessage = this.sanitizeText(notification.message);
 		element.innerHTML = `
-						<div class="notification-icon">
-						${this.parseIcon(notification.icon)}
-			</div>
-			<div class="notification-content">
-				<div class="notification-title">
-					${notification.title}
-					<span class="notification-time">${this.formatTime(notification.time)}</span>
+							<div class="notification-icon">
+							${safeIcon}
 				</div>
-				<div class="notification-message">${notification.message}</div>
-				<div class="notification-actions">
-						<div class="action-button">Dismiss</div>
+				<div class="notification-content">
+					<div class="notification-title">
+						${safeTitle}
+						<span class="notification-time">${this.formatTime(notification.time)}</span>
+					</div>
+					<div class="notification-message">${safeMessage}</div>
+					<div class="notification-actions">
+							<div class="action-button">Dismiss</div>
+					</div>
 				</div>
-			</div>
-						`;
+							`;
 		if (notification.action) {
 			element.addEventListener("click", (e) => {
 				if (e.target.closest(".action-button")) {
@@ -140,16 +144,27 @@ export default class NotificationManager {
 				data-id={notification.id}
 			></div>
 		);
+		const safeIcon = this.sanitizeIcon(this.parseIcon(notification.icon));
+		const safeTitle = this.sanitizeText(notification.title);
+		const safeMessage = this.sanitizeText(notification.message);
 		element.innerHTML = `
-						<div class="notification-icon">${this.parseIcon(notification.icon)}</div>
-						<div class="notification-content">
-				<div class="notification-title">
-					${notification.title}
+							<div class="notification-icon">${safeIcon}</div>
+							<div class="notification-content">
+					<div class="notification-title">
+						${safeTitle}
+					</div>
+					<div class="notification-message">${safeMessage}</div>
 				</div>
-				<div class="notification-message">${notification.message}</div>
-			</div>
-			${notification.autoClose ? "" : `<span class="close-icon icon clearclose" onclick="event.stopPropagation(); this.closest('.notification-toast').remove();"></span>`}
-			`;
+				${notification.autoClose ? "" : `<span class="close-icon icon clearclose"></span>`}
+				`;
+
+		const closeIcon = element.querySelector(".close-icon");
+		if (closeIcon) {
+			closeIcon.addEventListener("click", (event) => {
+				event.stopPropagation();
+				element.remove();
+			});
+		}
 		if (notification.action) {
 			element.addEventListener("click", () =>
 				notification.action(notification),
@@ -202,11 +217,25 @@ export default class NotificationManager {
 	}
 
 	parseIcon(icon) {
-		if (!icon) return this.DEFAULT_ICON;
+		if (typeof icon !== "string" || !icon) return this.DEFAULT_ICON;
 		if (icon.startsWith("<svg")) return icon;
 		if (icon.startsWith("data:") || icon.startsWith("http"))
 			return `<img src="${icon}" alt="notification" width="16" height="16">`;
 		return `<i class="icon ${icon}"></i>`;
+	}
+
+	sanitizeText(text) {
+		return DOMPurify.sanitize(String(text ?? ""), {
+			ALLOWED_TAGS: [],
+			ALLOWED_ATTR: [],
+		});
+	}
+
+	sanitizeIcon(iconMarkup) {
+		return DOMPurify.sanitize(iconMarkup, {
+			USE_PROFILES: { html: true, svg: true },
+			ALLOW_DATA_ATTR: false,
+		});
 	}
 
 	formatTime(date) {

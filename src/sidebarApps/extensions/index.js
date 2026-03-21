@@ -864,7 +864,7 @@ function ListItem({ icon, name, id, version, downloads, installed, source }) {
 }
 
 async function loadAd(el) {
-	if (!IS_FREE_VERSION) return;
+	if (!helpers.canShowAds()) return;
 	try {
 		if (!(await window.iad?.isLoaded())) {
 			const oldText = el.textContent;
@@ -906,9 +906,7 @@ async function uninstall(id) {
 		}
 
 		// Show Ad If Its Free Version, interstitial Ad(iad) is loaded.
-		if (IS_FREE_VERSION && (await window.iad?.isLoaded())) {
-			window.iad.show();
-		}
+		await helpers.showInterstitialIfReady();
 	} catch (err) {
 		helpers.error(err);
 	}

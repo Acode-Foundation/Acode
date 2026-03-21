@@ -1,10 +1,139 @@
 /**
  * Touch Selection for Terminal
  */
+import select from "dialogs/select";
 import "./terminalTouchSelection.css";
 
+const DEFAULT_MORE_OPTION_ID = "__acode_terminal_select_all__";
+const terminalMoreOptions = new Map();
+let terminalMoreOptionCounter = 0;
+
+function ensureDefaultMoreOption() {
+	if (terminalMoreOptions.has(DEFAULT_MORE_OPTION_ID)) return;
+
+	terminalMoreOptions.set(DEFAULT_MORE_OPTION_ID, {
+		id: DEFAULT_MORE_OPTION_ID,
+		label: () => strings["select all"] || "Select all",
+		icon: "text_format",
+		action: ({ touchSelection }) => touchSelection.selectAllText(),
+	});
+}
+
+function normalizeMoreOption(option) {
+	if (!option || typeof option !== "object" || Array.isArray(option)) {
+		console.warn(
+			"[TerminalTouchSelection] addMoreOption expects an option object.",
+		);
+		return null;
+	}
+
+	const id =
+		option.id != null && option.id !== ""
+			? String(option.id)
+			: `terminal_more_option_${++terminalMoreOptionCounter}`;
+	const label = option.label ?? option.text ?? option.title;
+	const action = option.action || option.onselect || option.onclick;
+
+	if (!label) {
+		console.warn(
+			`[TerminalTouchSelection] More option '${id}' must provide a label/text/title.`,
+		);
+		return null;
+	}
+
+	if (typeof action !== "function") {
+		console.warn(
+			`[TerminalTouchSelection] More option '${id}' must provide an action function.`,
+		);
+		return null;
+	}
+
+	return {
+		id,
+		label,
+		icon: option.icon || null,
+		enabled: option.enabled,
+		action,
+	};
+}
+
+function resolveMoreOptionLabel(option, context) {
+	try {
+		const value =
+			typeof option.label === "function" ? option.label(context) : option.label;
+		return value == null ? "" : String(value);
+	} catch (error) {
+		console.warn(
+			`[TerminalTouchSelection] Failed to resolve label for option '${option.id}'.`,
+			error,
+		);
+		return "";
+	}
+}
+
+function isMoreOptionEnabled(option, context) {
+	try {
+		if (typeof option.enabled === "function") {
+			return option.enabled(context) !== false;
+		}
+		if (option.enabled === undefined) return true;
+		return option.enabled !== false;
+	} catch (error) {
+		console.warn(
+			`[TerminalTouchSelection] Failed to resolve enabled state for option '${option.id}'.`,
+			error,
+		);
+		return true;
+	}
+}
+
 export default class TerminalTouchSelection {
+	/**
+	 * Register an option for the "More" menu in touch selection.
+	 * @param {{
+	 *  id?: string,
+	 *  label?: string|function(object):string,
+	 *  text?: string,
+	 *  title?: string,
+	 *  icon?: string,
+	 *  enabled?: boolean|function(object):boolean,
+	 *  action?: function(object):void|Promise<void>,
+	 *  onselect?: function(object):void|Promise<void>,
+	 *  onclick?: function(object):void|Promise<void>
+	 * }} option
+	 * @returns {string|null}
+	 */
+	static addMoreOption(option) {
+		ensureDefaultMoreOption();
+		const normalized = normalizeMoreOption(option);
+		if (!normalized) return null;
+		terminalMoreOptions.set(normalized.id, normalized);
+		return normalized.id;
+	}
+
+	/**
+	 * Remove a registered "More" menu option by id.
+	 * @param {string} id
+	 * @returns {boolean}
+	 */
+	static removeMoreOption(id) {
+		ensureDefaultMoreOption();
+		if (id == null || id === "") return false;
+		return terminalMoreOptions.delete(String(id));
+	}
+
+	/**
+	 * List all registered "More" menu options.
+	 * @returns {Array<object>}
+	 */
+	static getMoreOptions() {
+		ensureDefaultMoreOption();
+		return [...terminalMoreOptions.values()].map((option) => ({ ...option }));
+	}
+
 	constructor(terminal, container, options = {}) {
+		ensureDefaultMoreOption();
+
 		this.terminal = terminal;
 		this.container = container;
 		this.options = {
@@ -30,6 +159,8 @@ export default class TerminalTouchSelection {
 		this.initialTouchPos = { x: 0, y: 0 };
 		this.tapHoldTimeout = null;
 		this.dragHandle = null;
+		this.isSelectionTouchActive = false;
+		this.pendingSelectionClearTouch = null;
 
 		// Zoom tracking
 		this.pinchStartDistance = 0;
@@ -58,6 +189,12 @@ export default class TerminalTouchSelection {
 		// Selection protection during keyboard events
 		this.selectionProtected = false;
 		this.protectionTimeout = null;
+
+		// Scroll tracking
+		this.scrollElement = null;
+		this.isTerminalScrolling = false;
+		this.scrollEndTimeout = null;
+		this.scrollEndDelay = 100;
 
 		this.init();
 	}
@@ -88,15 +225,15 @@ export default class TerminalTouchSelection {
 	createHandles() {
 		this.startHandle = this.createHandle("start");
 		this.startHandle.style.cssText += `
-      transform: rotate(180deg) translateX(87%);
       border-radius: 50% 50% 50% 0;
     `;
+		this.setHandleOrientation(this.startHandle, "start");
 
 		this.endHandle = this.createHandle("end");
 		this.endHandle.style.cssText += `
-      transform: rotate(90deg) translateY(-13%);
       border-radius: 50% 50% 50% 0;
     `;
+		this.setHandleOrientation(this.endHandle, "end");
 
 		this.selectionOverlay.appendChild(this.startHandle);
 		this.selectionOverlay.appendChild(this.endHandle);
@@ -189,15 +326,6 @@ export default class TerminalTouchSelection {
 		this.boundHandlers.selectionChange = this.onSelectionChange.bind(this);
 		this.terminal.onSelectionChange(this.boundHandlers.selectionChange);
 
-		// Click outside to clear selection - only within terminal area
-		this.boundHandlers.terminalAreaTouchStart =
-			this.onTerminalAreaTouchStart.bind(this);
-		this.terminal.element.addEventListener(
-			"touchstart",
-			this.boundHandlers.terminalAreaTouchStart,
-			{ passive: false },
-		);
-
 		// Orientation change
 		this.boundHandlers.orientationChange = this.onOrientationChange.bind(this);
 		window.addEventListener(
@@ -208,7 +336,10 @@ export default class TerminalTouchSelection {
 
 		// Terminal scroll listener
 		this.boundHandlers.terminalScroll = this.onTerminalScroll.bind(this);
-		this.terminal.element.addEventListener(
+		this.scrollElement =
+			this.terminal.element.querySelector(".xterm-viewport") ||
+			this.terminal.element;
+		this.scrollElement.addEventListener(
 			"scroll",
 			this.boundHandlers.terminalScroll,
 			{ passive: true },
@@ -237,6 +368,14 @@ export default class TerminalTouchSelection {
 
 		// If already selecting, don't start new selection
 		if (this.isSelecting) {
+			this.isSelectionTouchActive = false;
+			this.pendingSelectionClearTouch = {
+				x: touch.clientX,
+				y: touch.clientY,
+				moved: false,
+			};
+			// Hide menu while user scrolls or repositions, then restore on touch end.
+			this.hideContextMenu(true);
 			return;
 		}
 
@@ -251,6 +390,8 @@ export default class TerminalTouchSelection {
 		}
 
 		// Start tap-hold timer
+		this.pendingSelectionClearTouch = null;
+		this.isSelectionTouchActive = false;
 		this.tapHoldTimeout = setTimeout(() => {
 			if (!this.isSelecting && !this.isPinching) {
 				this.startSelection(touch);
@@ -275,6 +416,18 @@ export default class TerminalTouchSelection {
 		const deltaX = Math.abs(touch.clientX - this.touchStartPos.x);
 		const deltaY = Math.abs(touch.clientY - this.touchStartPos.y);
 		const horizontalDelta = touch.clientX - this.touchStartPos.x;
+		const clearTouch = this.pendingSelectionClearTouch;
+
+		if (clearTouch) {
+			const clearDeltaX = Math.abs(touch.clientX - clearTouch.x);
+			const clearDeltaY = Math.abs(touch.clientY - clearTouch.y);
+			if (
+				clearDeltaX > this.options.moveThreshold ||
+				clearDeltaY > this.options.moveThreshold
+			) {
+				clearTouch.moved = true;
+			}
+		}
 
 		// Check if this looks like a back gesture (started near edge and moving horizontally inward)
 		if (
@@ -301,7 +454,11 @@ export default class TerminalTouchSelection {
 			}
 
 			// If we're selecting, extend selection
-			if (this.isSelecting && !this.isHandleDragging) {
+			if (
+				this.isSelecting &&
+				!this.isHandleDragging &&
+				this.isSelectionTouchActive
+			) {
 				event.preventDefault();
 				this.extendSelection(touch);
 			}
@@ -320,8 +477,25 @@ export default class TerminalTouchSelection {
 			this.tapHoldTimeout = null;
 		}
 
+		const shouldClearSelectionByTap =
+			this.isSelecting &&
+			!this.isHandleDragging &&
+			this.pendingSelectionClearTouch &&
+			!this.pendingSelectionClearTouch.moved &&
+			!this.isTerminalScrolling &&
+			!this.selectionProtected;
+
+		this.pendingSelectionClearTouch = null;
+		this.isSelectionTouchActive = false;
+
+		if (shouldClearSelectionByTap) {
+			this.clearSelection();
+			return;
+		}
+
 		// If we were selecting and not dragging handles, finalize selection
 		if (this.isSelecting && !this.isHandleDragging) {
+			if (this.isTerminalScrolling) return;
 			this.finalizeSelection();
 		} else if (!this.isSelecting) {
 			// Only focus terminal on touch end if not selecting and terminal was already focused
@@ -365,6 +539,8 @@ export default class TerminalTouchSelection {
 
 		this.isHandleDragging = true;
 		this.dragHandle = handleType;
+		this.isSelectionTouchActive = false;
+		this.pendingSelectionClearTouch = null;
 
 		// Store the initial touch position for delta calculations
 		const touch = event.touches[0];
@@ -452,9 +628,6 @@ export default class TerminalTouchSelection {
 		event.preventDefault();
 		event.stopPropagation();
 
-		// Store the current drag handle before clearing
-		const currentDragHandle = this.dragHandle;
-
 		this.isHandleDragging = false;
 		this.dragHandle = null;
 
@@ -481,43 +654,6 @@ export default class TerminalTouchSelection {
 		}
 	}
 
-	onTerminalAreaTouchStart(event) {
-		// Clear selection if touching terminal area while selecting, except on handles or context menu
-		if (this.isSelecting) {
-			// Don't clear selection if it's protected (during keyboard events)
-			if (this.selectionProtected) {
-				return;
-			}
-
-			// Don't interfere with context menu at all
-			if (this.contextMenu && this.contextMenu.style.display === "flex") {
-				// Context menu is visible, check if touching it
-				const rect = this.contextMenu.getBoundingClientRect();
-				const touchX = event.touches[0].clientX;
-				const touchY = event.touches[0].clientY;
-
-				if (
-					touchX >= rect.left &&
-					touchX <= rect.right &&
-					touchY >= rect.top &&
-					touchY <= rect.bottom
-				) {
-					// Touching context menu area, don't clear selection
-					return;
-				}
-			}
-
-			const isHandleTouch =
-				this.startHandle.contains(event.target) ||
-				this.endHandle.contains(event.target);
-
-			// Only clear if touching within terminal but not on handles
-			if (!isHandleTouch && this.terminal.element.contains(event.target)) {
-				this.clearSelection();
-			}
-		}
-	}
-
 	onOrientationChange() {
 		// Update cell dimensions and handle positions after orientation change
 		setTimeout(() => {
@@ -529,13 +665,28 @@ export default class TerminalTouchSelection {
 	}
 
 	onTerminalScroll() {
-		// Update handle positions when terminal is scrolled
-		if (this.isSelecting) {
-			this.updateHandlePositions();
-			// Hide context menu if it's open during scroll
-			if (this.contextMenu && this.contextMenu.style.display === "flex") {
-				this.hideContextMenu();
-			}
+		if (!this.isSelecting || this.isHandleDragging) return;
+
+		this.isTerminalScrolling = true;
+		this.hideHandles();
+		this.hideContextMenu(true);
+
+		if (this.scrollEndTimeout) {
+			clearTimeout(this.scrollEndTimeout);
+		}
+		this.scrollEndTimeout = setTimeout(() => {
+			this.onTerminalScrollEnd();
+		}, this.scrollEndDelay);
+	}
+
+	onTerminalScrollEnd() {
+		this.scrollEndTimeout = null;
+		this.isTerminalScrolling = false;
+		if (!this.isSelecting || this.isHandleDragging) return;
+
+		this.updateHandlePositions();
+		if (this.contextMenuShouldStayVisible && this.options.showContextMenu) {
+			this.showContextMenu();
 		}
 	}
 
@@ -565,7 +716,7 @@ export default class TerminalTouchSelection {
 					this.updateHandlePositions();
 					// Temporarily hide context menu during resize but keep selection
 					if (this.contextMenu && this.contextMenu.style.display === "flex") {
-						this.hideContextMenu();
+						this.hideContextMenu(true);
 					}
 					// Re-show context menu after resize if selection is still active
 					setTimeout(() => {
@@ -596,6 +747,8 @@ export default class TerminalTouchSelection {
 		}, 1000);
 
 		this.isSelecting = true;
+		this.isSelectionTouchActive = true;
+		this.pendingSelectionClearTouch = null;
 
 		// Try to auto-select word at touch position
 		const wordBounds = this.getWordBoundsAt(coords);
@@ -713,6 +866,44 @@ export default class TerminalTouchSelection {
 		this.endHandle.style.display = "none";
 	}
 
+	getHandleBaseTransform(orientation) {
+		if (orientation === "start") {
+			return "rotate(180deg) translateX(87%)";
+		}
+		return "rotate(90deg) translateY(-13%)";
+	}
+
+	setHandleOrientation(handle, orientation) {
+		if (!handle) return;
+
+		const baseTransform = this.getHandleBaseTransform(orientation);
+		const hasScale = /\bscale\(/.test(handle.style.transform || "");
+		handle.dataset.orientation = orientation;
+		handle.style.transform = hasScale
+			? `${baseTransform} scale(1.2)`
+			: baseTransform;
+	}
+
+	updateHandleOrientationForViewportEdges() {
+		const overlayRect = this.selectionOverlay.getBoundingClientRect();
+
+		if (this.startHandle.style.display !== "none") {
+			this.setHandleOrientation(this.startHandle, "start");
+			const startRect = this.startHandle.getBoundingClientRect();
+			if (startRect.left < overlayRect.left) {
+				this.setHandleOrientation(this.startHandle, "end");
+			}
+		}
+
+		if (this.endHandle.style.display !== "none") {
+			this.setHandleOrientation(this.endHandle, "end");
+			const endRect = this.endHandle.getBoundingClientRect();
+			if (endRect.right > overlayRect.right) {
+				this.setHandleOrientation(this.endHandle, "start");
+			}
+		}
+	}
+
 	updateHandlePositions() {
 		if (!this.selectionStart || !this.selectionEnd) return;
 
@@ -749,6 +940,8 @@ export default class TerminalTouchSelection {
 		} else {
 			this.endHandle.style.display = "none";
 		}
+
+		this.updateHandleOrientationForViewportEdges();
 	}
 
 	showContextMenu() {
@@ -759,17 +952,27 @@ export default class TerminalTouchSelection {
 		// Mark that context menu should stay visible
 		this.contextMenuShouldStayVisible = true;
 
-		// Position context menu - center it on selection with viewport bounds checking
-		const startPos = this.terminalCoordsToPixels(this.selectionStart);
-		const endPos = this.terminalCoordsToPixels(this.selectionEnd);
+		// Position context menu - center it on selection (or fallback to center).
+		const startPos = this.selectionStart
+			? this.terminalCoordsToPixels(this.selectionStart)
+			: null;
+		const endPos = this.selectionEnd
+			? this.terminalCoordsToPixels(this.selectionEnd)
+			: null;
+
+		const menuWidth = this.contextMenu.offsetWidth || 200;
+		const menuHeight = this.contextMenu.offsetHeight || 50;
+		const containerRect = this.container.getBoundingClientRect();
+
+		let menuX;
+		let menuY;
 
 		if (startPos || endPos) {
-			// Use whichever position is available, or center between them
-			let centerX, baseY;
+			let centerX;
+			let baseY;
 
 			if (startPos && endPos) {
 				centerX = (startPos.x + endPos.x) / 2;
-				// Position below the lower of the two positions
 				baseY = Math.max(startPos.y, endPos.y);
 			} else if (startPos) {
 				centerX = startPos.x;
@@ -779,36 +982,32 @@ export default class TerminalTouchSelection {
 				baseY = endPos.y;
 			}
 
-			const menuWidth = this.contextMenu.offsetWidth || 200;
-			const menuHeight = this.contextMenu.offsetHeight || 50;
+			menuX = centerX - menuWidth / 2;
+			menuY = baseY + this.cellDimensions.height + 40;
 
-			const containerRect = this.container.getBoundingClientRect();
-
-			// Calculate initial position
-			let menuX = centerX - menuWidth / 2;
-			let menuY = baseY + this.cellDimensions.height + 40;
-
-			// Ensure menu stays within terminal bounds horizontally
-			const minX = 10; // padding from left edge
-			const maxX = containerRect.width - menuWidth - 10; // padding from right edge
-			menuX = Math.max(minX, Math.min(menuX, maxX));
-
-			// Ensure menu stays within terminal bounds vertically
-			const maxY = containerRect.height - menuHeight - 10; // padding from bottom
+			// If menu would overflow below, prefer placing it above selection.
+			const maxY = containerRect.height - menuHeight - 10;
 			if (menuY > maxY) {
-				// If menu would go below terminal, position it above the selection
 				const topY =
 					startPos && endPos ? Math.min(startPos.y, endPos.y) : baseY;
 				menuY = topY - menuHeight - 10;
 			}
-
-			// Final bounds check
-			menuY = Math.max(10, Math.min(menuY, maxY));
-
-			this.contextMenu.style.left = `${menuX}px`;
-			this.contextMenu.style.top = `${menuY}px`;
-			this.contextMenu.style.display = "flex";
+		} else {
+			menuX = (containerRect.width - menuWidth) / 2;
+			menuY = containerRect.height - menuHeight - 20;
 		}
+
+		const minX = 10;
+		const maxX = containerRect.width - menuWidth - 10;
+		menuX = Math.max(minX, Math.min(menuX, maxX));
+
+		const minY = 10;
+		const maxY = containerRect.height - menuHeight - 10;
+		menuY = Math.max(minY, Math.min(menuY, maxY));
+
+		this.contextMenu.style.left = `${menuX}px`;
+		this.contextMenu.style.top = `${menuY}px`;
+		this.contextMenu.style.display = "flex";
 	}
 
 	createContextMenu() {
@@ -819,7 +1018,10 @@ export default class TerminalTouchSelection {
 		const menuItems = [
 			{ label: strings["copy"], action: this.copySelection.bind(this) },
 			{ label: strings["paste"], action: this.pasteFromClipboard.bind(this) },
-			{ label: "More...", action: this.showMoreOptions.bind(this) },
+			{
+				label: `${strings["more"] || "More"}...`,
+				action: this.showMoreOptions.bind(this),
+			},
 		];
 
 		menuItems.forEach((item) => {
@@ -873,9 +1075,9 @@ export default class TerminalTouchSelection {
 		this.selectionOverlay.appendChild(this.contextMenu);
 	}
 
-	hideContextMenu() {
+	hideContextMenu(force = false) {
 		// Only hide if explicitly requested or if context menu should not stay visible
-		if (this.contextMenu && !this.contextMenuShouldStayVisible) {
+		if (this.contextMenu && (force || !this.contextMenuShouldStayVisible)) {
 			this.contextMenu.style.display = "none";
 		}
 	}
@@ -908,10 +1110,96 @@ export default class TerminalTouchSelection {
 		}
 	}
 
+	selectAllText() {
+		if (!this.terminal?.selectAll) return;
+		this.terminal.selectAll();
+		this.currentSelection = this.terminal.getSelection();
+		this.isSelecting = !!this.currentSelection;
+		this.selectionStart = null;
+		this.selectionEnd = null;
+		this.hideHandles();
+
+		if (this.options.showContextMenu && this.currentSelection) {
+			this.showContextMenu();
+		}
+	}
+
+	getMoreOptionsContext() {
+		return {
+			terminal: this.terminal,
+			touchSelection: this,
+			selection: this.currentSelection || this.terminal.getSelection(),
+			clearSelection: () => this.forceClearSelection(),
+			copySelection: () => this.copySelection(),
+			pasteFromClipboard: () => this.pasteFromClipboard(),
+			selectAll: () => this.selectAllText(),
+		};
+	}
+
+	getResolvedMoreOptions() {
+		ensureDefaultMoreOption();
+		const context = this.getMoreOptionsContext();
+
+		return [...terminalMoreOptions.values()]
+			.map((option) => {
+				const label = resolveMoreOptionLabel(option, context);
+				if (!label) return null;
+
+				return {
+					...option,
+					label,
+					disabled: !isMoreOptionEnabled(option, context),
+				};
+			})
+			.filter(Boolean);
+	}
+
+	async executeMoreOption(option) {
+		if (!option || typeof option.action !== "function" || option.disabled) {
+			if (this.isSelecting && this.options.showContextMenu) {
+				this.showContextMenu();
+			}
+			return;
+		}
+
+		try {
+			await option.action(this.getMoreOptionsContext());
+		} catch (error) {
+			console.error(
+				`[TerminalTouchSelection] Failed to execute more option '${option.id}'.`,
+				error,
+			);
+			window.toast?.("Failed to execute action.");
+		} finally {
+			if (this.isSelecting && this.options.showContextMenu) {
+				this.showContextMenu();
+			}
+		}
+	}
+
 	showMoreOptions() {
-		// Implement additional options if needed
-		window.toast("More options are not implemented yet.");
-		this.forceClearSelection();
+		const moreOptions = this.getResolvedMoreOptions();
+		if (!moreOptions.length) return;
+
+		const items = moreOptions.map((option) => ({
+			value: option.id,
+			text: option.label,
+			icon: option.icon,
+			disabled: option.disabled,
+		}));
+
+		this.hideContextMenu(true);
+
+		select(strings["more"] || "More", items, true)
+			.then((selectedId) => {
+				const option = moreOptions.find((entry) => entry.id === selectedId);
+				return this.executeMoreOption(option);
+			})
+			.catch(() => {
+				if (this.isSelecting && this.options.showContextMenu) {
+					this.showContextMenu();
+				}
+			});
 	}
 
 	clearSelection() {
@@ -930,6 +1218,9 @@ export default class TerminalTouchSelection {
 		this.selectionEnd = null;
 		this.currentSelection = null;
 		this.dragHandle = null;
+		this.pendingSelectionClearTouch = null;
+		this.isSelectionTouchActive = false;
+		this.isTerminalScrolling = false;
 
 		this.terminal.clearSelection();
 		this.hideHandles();
@@ -938,6 +1229,10 @@ export default class TerminalTouchSelection {
 		if (this.tapHoldTimeout) {
 			clearTimeout(this.tapHoldTimeout);
 			this.tapHoldTimeout = null;
+		}
+		if (this.scrollEndTimeout) {
+			clearTimeout(this.scrollEndTimeout);
+			this.scrollEndTimeout = null;
 		}
 
 		// Clear protection timeout
@@ -963,7 +1258,6 @@ export default class TerminalTouchSelection {
 
 	forceClearSelection() {
 		// Temporarily disable protection to force clear
-		const wasProtected = this.selectionProtected;
 		this.selectionProtected = false;
 		this.clearSelection();
 		// Don't restore protection state since we're clearing
@@ -1225,19 +1519,23 @@ export default class TerminalTouchSelection {
 			this.boundHandlers.handleTouchEnd,
 		);
 
-		this.terminal.element.removeEventListener(
-			"touchstart",
-			this.boundHandlers.terminalAreaTouchStart,
-		);
-		this.terminal.element.removeEventListener(
-			"scroll",
-			this.boundHandlers.terminalScroll,
-		);
+		if (this.scrollElement) {
+			this.scrollElement.removeEventListener(
+				"scroll",
+				this.boundHandlers.terminalScroll,
+			);
+			this.scrollElement = null;
+		}
 		window.removeEventListener(
 			"orientationchange",
 			this.boundHandlers.orientationChange,
 		);
 		window.removeEventListener("resize", this.boundHandlers.orientationChange);
+
+		if (this.scrollEndTimeout) {
+			clearTimeout(this.scrollEndTimeout);
+			this.scrollEndTimeout = null;
+		}
 
 		// Remove selection change listener
 		if (this.terminal.onSelectionChange) {

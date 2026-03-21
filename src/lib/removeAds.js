@@ -1,5 +1,5 @@
 import purchaseListener from "handlers/purchase";
-import helpers from "utils/helpers";
+import { hideAd } from "./startAd.js";
 
 /**
  * Remove ads after purchase
@@ -25,7 +25,7 @@ export default function removeAds() {
 
 		function onpurchase() {
 			resolve(null);
-			helpers.hideAd(true);
+			hideAd(true);
 			localStorage.setItem("acode_pro", "true");
 			window.IS_FREE_VERSION = false;
 			toast(strings["thank you :)"]);

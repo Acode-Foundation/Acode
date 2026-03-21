@@ -18,6 +18,7 @@ import NotificationManager from "lib/notificationManager";
 import Uri from "utils/Uri";
 import { clearDiagnosticsEffect } from "./diagnostics";
 import { documentHighlightsExtension } from "./documentHighlights";
+import { supportsBuiltinFormatting } from "./formattingSupport";
 import { inlayHintsExtension } from "./inlayHints";
 import { acodeRenameKeymap } from "./rename";
 import { ensureServerRunning } from "./serverLauncher";
@@ -60,13 +61,6 @@ function safeString(value: unknown): string {
 	return value != null ? String(value) : "";
 }
 
-const defaultKeymaps = keymap.of([
-	...formatKeymap,
-	...acodeRenameKeymap,
-	...jumpToDefinitionKeymap,
-	...findReferencesKeymap,
-]);
-
 interface BuiltinExtensionsResult {
 	extensions: Extension[];
 	diagnosticsExtension: Extension | LSPClientExtension | null;
@@ -83,6 +77,7 @@ function buildBuiltinExtensions(
 		diagnostics: includeDiagnostics = true,
 		inlayHints: includeInlayHints = true,
 		documentHighlights: includeDocumentHighlights = true,
+		formatting: includeFormatting = true,
 	} = config;
 
 	const extensions: Extension[] = [];
@@ -90,7 +85,17 @@ function buildBuiltinExtensions(
 
 	if (includeCompletion) extensions.push(serverCompletion());
 	if (includeHover) extensions.push(hoverTooltips());
-	if (includeKeymaps) extensions.push(defaultKeymaps);
+	if (includeKeymaps) {
+		const bindings = [
+			...(includeFormatting ? formatKeymap : []),
+			...acodeRenameKeymap,
+			...jumpToDefinitionKeymap,
+			...findReferencesKeymap,
+		];
+		if (bindings.length) {
+			extensions.push(keymap.of(bindings));
+		}
+	}
 	if (includeSignature) extensions.push(signatureHelp());
 	if (includeDiagnostics) {
 		const diagExt = serverDiagnostics();
@@ -263,6 +268,7 @@ export class LspClientManager {
 		if (!servers.length) return false;
 
 		for (const server of servers) {
+			if (!supportsBuiltinFormatting(server)) continue;
 			try {
 				const context: RootUriContext = {
 					uri: normalizedUri,
@@ -437,6 +443,7 @@ export class LspClientManager {
 						diagnostics: builtinConfig.diagnostics !== false,
 						inlayHints: builtinConfig.inlayHints !== false,
 						documentHighlights: builtinConfig.documentHighlights !== false,
+						formatting: builtinConfig.formatting !== false,
 					})
 				: { extensions: [], diagnosticsExtension: null };
 

@@ -3,6 +3,7 @@ import { getLspDiagnostics } from "cm/lsp/diagnostics";
 import Page from "components/page";
 import actionStack from "lib/actionStack";
 import EditorFile from "lib/editorFile";
+import { hideAd } from "lib/startAd";
 import helpers from "utils/helpers";
 
 export default function Problems() {
@@ -53,7 +54,7 @@ export default function Problems() {
 	helpers.showAd();
 
 	$page.onhide = function () {
-		helpers.hideAd();
+		hideAd();
 		actionStack.remove("problems");
 	};
 
@@ -129,13 +130,9 @@ export default function Problems() {
 		return diagnostics
 			.map((diagnostic) => {
 				const start = clampPosition(diagnostic.from, doc.length);
-				let row = 0;
-				let column = 0;
-				try {
-					const line = doc.lineAt(start);
-					row = Math.max(0, line.number - 1);
-					column = Math.max(0, start - line.from);
-				} catch (_) {}
+				const line = doc.lineAt(start);
+				const row = Math.max(0, line.number - 1);
+				const column = Math.max(0, start - line.from);
 
 				let message = diagnostic.message || "";
 				if (diagnostic.source) {

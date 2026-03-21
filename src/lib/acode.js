@@ -1,10 +1,14 @@
 import fsOperation from "fileSystem";
 import sidebarApps from "sidebarApps";
-import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
-import { Compartment, EditorState, Prec, StateEffect } from "@codemirror/state";
-import { EditorView } from "@codemirror/view";
+import * as cmAutocomplete from "@codemirror/autocomplete";
+import * as cmCommands from "@codemirror/commands";
+import * as cmLanguage from "@codemirror/language";
+import * as cmLint from "@codemirror/lint";
+import * as cmSearch from "@codemirror/search";
+import * as cmState from "@codemirror/state";
+import * as cmView from "@codemirror/view";
 import ajax from "@deadlyjack/ajax";
-import { tags } from "@lezer/highlight";
+import * as lezerHighlight from "@lezer/highlight";
 import {
 	getRegisteredCommands as listRegisteredCommands,
 	refreshCommandKeymap,
@@ -12,9 +16,9 @@ import {
 	removeExternalCommand,
 	executeCommand as runCommand,
 } from "cm/commandRegistry";
+import { default as lspApi } from "cm/lsp/api";
 import lspClientManager from "cm/lsp/clientManager";
 import { registerLspFormatter } from "cm/lsp/formatter";
-import serverRegistry from "cm/lsp/serverRegistry";
 import {
 	addMode,
 	getModeForPath,
@@ -150,7 +154,7 @@ export default class Acode {
 
 		const createHighlightStyle = (spec) => {
 			if (!spec) return null;
-			if (Array.isArray(spec)) return HighlightStyle.define(spec);
+			if (Array.isArray(spec)) return cmLanguage.HighlightStyle.define(spec);
 			return spec;
 		};
 
@@ -163,12 +167,12 @@ export default class Acode {
 			const ext = [];
 
 			if (styles && typeof styles === "object") {
-				ext.push(EditorView.theme(styles, { dark: !!dark }));
+				ext.push(cmView.EditorView.theme(styles, { dark: !!dark }));
 			}
 
 			const resolvedHighlight = createHighlightStyle(highlightStyle);
 			if (resolvedHighlight) {
-				ext.push(syntaxHighlighting(resolvedHighlight));
+				ext.push(cmLanguage.syntaxHighlighting(resolvedHighlight));
 			}
 
 			if (Array.isArray(extensions)) {
@@ -213,10 +217,10 @@ export default class Acode {
 			createTheme,
 			createHighlightStyle,
 			cm: {
-				EditorView,
-				HighlightStyle,
-				syntaxHighlighting,
-				tags,
+				EditorView: cmView.EditorView,
+				HighlightStyle: cmLanguage.HighlightStyle,
+				syntaxHighlighting: cmLanguage.syntaxHighlighting,
+				tags: lezerHighlight.tags,
 			},
 		};
 
@@ -227,14 +231,7 @@ export default class Acode {
 		};
 
 		const lspModule = {
-			registerServer: (definition, options) =>
-				serverRegistry.registerServer(definition, options),
-			unregisterServer: (id) => serverRegistry.unregisterServer(id),
-			updateServer: (id, updater) => serverRegistry.updateServer(id, updater),
-			getServer: (id) => serverRegistry.getServer(id),
-			listServers: () => serverRegistry.listServers(),
-			getServersForLanguage: (languageId, options) =>
-				serverRegistry.getServersForLanguage(languageId, options),
+			...lspApi,
 			clientManager: {
 				setOptions: (options) => lspClientManager.setOptions(options),
 				getActiveClients: () => lspClientManager.getActiveClients(),
@@ -282,6 +279,12 @@ export default class Acode {
 			removeHandler: removeIntentHandler,
 		};
 
+		const terminalTouchSelectionMoreOptions = {
+			add: (option) => TerminalManager.addTouchSelectionMoreOption(option),
+			remove: (id) => TerminalManager.removeTouchSelectionMoreOption(id),
+			list: () => TerminalManager.getTouchSelectionMoreOptions(),
+		};
+
 		const terminalModule = {
 			create: (options) => TerminalManager.createTerminal(options),
 			createLocal: (options) => TerminalManager.createLocalTerminal(options),
@@ -291,6 +294,10 @@ export default class Acode {
 			write: (id, data) => this.#secureTerminalWrite(id, data),
 			clear: (id) => TerminalManager.clearTerminal(id),
 			close: (id) => TerminalManager.closeTerminal(id),
+			moreOptions: terminalTouchSelectionMoreOptions,
+			touchSelection: {
+				moreOptions: terminalTouchSelectionMoreOptions,
+			},
 			themes: {
 				register: (name, theme, pluginId) =>
 					TerminalThemeManager.registerTheme(name, theme, pluginId),
@@ -303,6 +310,17 @@ export default class Acode {
 					TerminalThemeManager.createVariant(baseName, overrides),
 			},
 		};
+
+		const codemirrorModule = Object.freeze({
+			autocomplete: cmAutocomplete,
+			commands: cmCommands,
+			language: cmLanguage,
+			lezer: lezerHighlight,
+			lint: cmLint,
+			search: cmSearch,
+			state: cmState,
+			view: cmView,
+		});
 
 		this.define("Url", Url);
 		this.define("page", Page);
@@ -346,6 +364,15 @@ export default class Acode {
 		this.define("selectionMenu", selectionMenu);
 		this.define("sidebarApps", sidebarAppsModule);
 		this.define("terminal", terminalModule);
+		this.define("codemirror", codemirrorModule);
+		this.define("@codemirror/autocomplete", cmAutocomplete);
+		this.define("@codemirror/commands", cmCommands);
+		this.define("@codemirror/language", cmLanguage);
+		this.define("@codemirror/lint", cmLint);
+		this.define("@codemirror/search", cmSearch);
+		this.define("@codemirror/state", cmState);
+		this.define("@codemirror/view", cmView);
+		this.define("@lezer/highlight", lezerHighlight);
 		this.define("createKeyboardEvent", KeyboardEvent);
 		this.define("toInternalUrl", helpers.toInternalUri);
 		this.define("commands", this.#createCommandApi());
@@ -643,6 +670,14 @@ export default class Acode {
 			id,
 			settings.list,
 			settings.cb,
+			undefined,
+			{
+				preserveOrder: true,
+				pageClassName: "detail-settings-page",
+				listClassName: "detail-settings-list",
+				valueInTail: true,
+				groupByDefault: true,
+			},
 		);
 	}
 

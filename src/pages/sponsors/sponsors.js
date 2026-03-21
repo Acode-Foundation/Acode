@@ -128,7 +128,10 @@ export default function Sponsors() {
 
 		if (!sponsors.length && "cached_sponsors" in localStorage) {
 			try {
-				sponsors = JSON.parse(localStorage.getItem("cached_sponsors")) || [];
+				const cachedSponsors = helpers.parseJSON(
+					localStorage.getItem("cached_sponsors"),
+				);
+				sponsors = Array.isArray(cachedSponsors) ? cachedSponsors : [];
 			} catch (error) {
 				console.error("Failed to parse cached sponsors", error);
 			}

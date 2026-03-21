@@ -664,25 +664,40 @@ function execOperation(type, action, url, $target, name) {
 		newName = helpers.fixFilename(newName);
 		if (!newName) return;
 		startLoading();
-		let newUrl;
+		try {
+			const isNestedPath = newName.split("/").filter(Boolean).length > 1;
+			let newUrl;
 
-		if (action === "new file") {
-			newUrl = await helpers.createFileStructure(url, newName);
-		} else {
-			newUrl = await helpers.createFileStructure(url, newName, false);
-		}
-		if (!newUrl) return;
-		newName = Url.basename(newUrl.uri);
-		if ($target.unclasped) {
-			if (newUrl.type === "file") {
-				appendTile($target, createFileTile(newName, newUrl.uri));
-			} else if (newUrl.type === "folder") {
-				appendList($target, createFolderTile(newName, newUrl.uri));
+			if (action === "new file") {
+				newUrl = await helpers.createFileStructure(url, newName);
+			} else {
+				newUrl = await helpers.createFileStructure(url, newName, false);
 			}
-		}
+			if (!newUrl.created) return;
 
-		FileList.append(url, newUrl.uri);
-		toast(strings.success);
+			if (isNestedPath) {
+				openFolder.find(url)?.reload();
+				await FileList.refresh();
+				toast(strings.success);
+				return;
+			}
+
+			newName = Url.basename(newUrl.uri);
+			if ($target.unclasped) {
+				if (newUrl.type === "file") {
+					appendTile($target, createFileTile(newName, newUrl.uri));
+				} else if (newUrl.type === "folder") {
+					appendList($target, createFolderTile(newName, newUrl.uri));
+				}
+			}
+
+			FileList.append(url, newUrl.uri);
+			toast(strings.success);
+		} catch (error) {
+			helpers.error(error);
+		} finally {
+			stopLoading();
+		}
 	}
 
 	async function paste() {

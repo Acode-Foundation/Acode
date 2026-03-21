@@ -176,36 +176,35 @@ export default async function installPlugin(
 			// Track unsafe absolute entries to skip
 			const ignoredUnsafeEntries = new Set();
 
-			const promises = Object.keys(zip.files).map(async (file) => {
+			const files = Object.keys(zip.files);
+			const limit = 2;
+
+			async function processFile(file) {
 				try {
-					let correctFile = file;
-					if (/\\/.test(correctFile)) {
-						correctFile = correctFile.replace(/\\/g, "/");
-					}
+					const entry = zip.files[file];
 
-					// Determine if the zip entry is a directory from JSZip metadata
-					const isDirEntry = !!zip.files[file].dir || /\/$/.test(correctFile);
+					let correctFile = file.replace(/\\/g, "/");
+					const isDirEntry = entry.dir || correctFile.endsWith("/");
 
-					// If the original path is absolute or otherwise unsafe, skip it and warn later
 					if (isUnsafeAbsolutePath(file)) {
 						ignoredUnsafeEntries.add(file);
 						return;
 					}
 
-					// Sanitize path so it cannot escape pluginDir or start with '/'
 					correctFile = sanitizeZipPath(correctFile, isDirEntry);
-					if (!correctFile) return; // nothing to do
+					if (!correctFile) return;
+
 					const fileUrl = Url.join(pluginDir, correctFile);
 
-					// Always ensure directories exist for dir entries
+					// Handle directory entries
 					if (isDirEntry) {
 						await createFileRecursive(pluginDir, correctFile, true);
 						return;
 					}
 
-					// For files, ensure parent directory exists even if state claims it exists
+					// Ensure parent directory exists
 					const lastSlash = correctFile.lastIndexOf("/");
-					if (lastSlash >= 0) {
+					if (lastSlash !== -1) {
 						const parentRel = correctFile.slice(0, lastSlash + 1);
 						await createFileRecursive(pluginDir, parentRel, true);
 					}
@@ -214,23 +213,28 @@ export default async function installPlugin(
 						await createFileRecursive(pluginDir, correctFile, false);
 					}
 
-					let data = await zip.files[file].async("ArrayBuffer");
+					let data = await entry.async("ArrayBuffer");
 
 					if (file === "plugin.json") {
 						data = JSON.stringify(pluginJson);
 					}
 
 					if (!(await state.isUpdated(correctFile, data))) return;
+
 					await fsOperation(fileUrl).writeFile(data);
-					return;
 				} catch (error) {
 					console.error(`Error processing file ${file}:`, error);
 				}
-			});
+			}
 
-			// Wait for all files to be processed
-			await Promise.allSettled(promises);
+			// Process in batches
+			for (let i = 0; i < files.length; i += limit) {
+				const batch = files.slice(i, i + limit);
+				await Promise.allSettled(batch.map(processFile));
 
+				// Allow UI thread to breathe
+				await new Promise((r) => setTimeout(r, 0));
+			}
 			// Emit a non-blocking warning if any unsafe entries were skipped
 			if (!isDependency && ignoredUnsafeEntries.size) {
 				const sample = Array.from(ignoredUnsafeEntries).slice(0, 3).join(", ");

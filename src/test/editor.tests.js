@@ -9,6 +9,7 @@ import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import { EditorSelection, EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import createBaseExtensions from "cm/baseExtensions";
+import { getEdgeScrollDirections } from "cm/touchSelectionMenu";
 import { TestRunner } from "./tester";
 
 export async function runCodeMirrorTests(writeOutput) {
@@ -61,6 +62,53 @@ export async function runCodeMirrorTests(writeOutput) {
 		test.assert(
 			typeof EditorState.create === "function",
 			"EditorState.create should be a function",
+		);
+	});
+
+	runner.test("Acode exposes shared CodeMirror modules", async (test) => {
+		const codemirror = acode.require("codemirror");
+		const language = acode.require("@codemirror/language");
+		const lezer = acode.require("@lezer/highlight");
+		const state = acode.require("@codemirror/state");
+		const view = acode.require("@codemirror/view");
+
+		test.assert(codemirror != null, "codemirror namespace should exist");
+		test.assert(language != null, "@codemirror/language should exist");
+		test.assert(lezer != null, "@lezer/highlight should exist");
+		test.assert(state != null, "@codemirror/state should exist");
+		test.assert(view != null, "@codemirror/view should exist");
+		test.assert(
+			language.StreamLanguage != null,
+			"@codemirror/language should export StreamLanguage",
+		);
+		test.assert(lezer.tags != null, "@lezer/highlight should export tags");
+		test.assert(
+			state.EditorState != null,
+			"@codemirror/state should export EditorState",
+		);
+		test.assert(
+			view.EditorView != null,
+			"@codemirror/view should export EditorView",
+		);
+		test.assertEqual(
+			language.StreamLanguage,
+			codemirror.language.StreamLanguage,
+			"language exports should share the same singleton instance",
+		);
+		test.assertEqual(
+			lezer.tags,
+			codemirror.lezer.tags,
+			"lezer exports should share the same singleton instance",
+		);
+		test.assertEqual(
+			state.EditorState,
+			codemirror.state.EditorState,
+			"state exports should share the same singleton instance",
+		);
+		test.assertEqual(
+			view.EditorView,
+			codemirror.view.EditorView,
+			"view exports should share the same singleton instance",
 		);
 	});
 
@@ -698,6 +746,42 @@ export async function runCodeMirrorTests(writeOutput) {
 
 			test.assert(pos != null || pos === null, "posAtCoords should return");
 		});
+	});
+
+	runner.test("Edge scroll direction helper", async (test) => {
+		const rect = {
+			left: 100,
+			right: 300,
+			top: 200,
+			bottom: 400,
+		};
+
+		const leftTop = getEdgeScrollDirections({
+			x: 110,
+			y: 210,
+			rect,
+			allowHorizontal: true,
+		});
+		test.assertEqual(leftTop.horizontal, -1);
+		test.assertEqual(leftTop.vertical, -1);
+
+		const rightBottom = getEdgeScrollDirections({
+			x: 295,
+			y: 395,
+			rect,
+			allowHorizontal: true,
+		});
+		test.assertEqual(rightBottom.horizontal, 1);
+		test.assertEqual(rightBottom.vertical, 1);
+
+		const noHorizontal = getEdgeScrollDirections({
+			x: 110,
+			y: 395,
+			rect,
+			allowHorizontal: false,
+		});
+		test.assertEqual(noHorizontal.horizontal, 0);
+		test.assertEqual(noHorizontal.vertical, 1);
 	});
 
 	runner.test("lineBlockAt", async (test) => {

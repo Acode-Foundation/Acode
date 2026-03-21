@@ -1,6 +1,15 @@
 import escapeStringRegexp from "escape-string-regexp";
 import path from "./Path";
 
+function parseStorageList() {
+	try {
+		const storageList = JSON.parse(localStorage.storageList || "[]");
+		return Array.isArray(storageList) ? storageList : [];
+	} catch (_) {
+		return [];
+	}
+}
+
 export default {
 	/**
 	 * Parse content uri to rootUri and docID
@@ -81,7 +90,7 @@ export default {
 	 */
 	getVirtualAddress(url) {
 		try {
-			const storageList = JSON.parse(localStorage.storageList || "[]");
+			const storageList = parseStorageList();
 
 			const matches = [];
 			for (let storage of storageList) {

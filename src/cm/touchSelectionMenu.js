@@ -93,6 +93,33 @@ export function filterSelectionMenuItems(items, options) {
 	});
 }
 
+/**
+ * Detect which edge(s) should trigger drag auto-scroll.
+ * @param {{
+ *   x:number,
+ *   y:number,
+ *   rect:{left:number,right:number,top:number,bottom:number},
+ *   allowHorizontal?:boolean,
+ *   gap?:number,
+ * }} options
+ * @returns {{horizontal:number, vertical:number}}
+ */
+export function getEdgeScrollDirections(options) {
+	const { x, y, rect, allowHorizontal = true, gap = EDGE_SCROLL_GAP } = options;
+	let horizontal = 0;
+	let vertical = 0;
+
+	if (allowHorizontal) {
+		if (x < rect.left + gap) horizontal = -1;
+		else if (x > rect.right - gap) horizontal = 1;
+	}
+
+	if (y < rect.top + gap) vertical = -1;
+	else if (y > rect.bottom - gap) vertical = 1;
+
+	return { horizontal, vertical };
+}
+
 function clamp(value, min, max) {
 	return Math.max(min, Math.min(max, value));
 }
@@ -1014,7 +1041,8 @@ class TouchSelectionMenuController {
 			startX: x,
 			startY: y,
 			moved: false,
-			direction: 0,
+			scrollX: 0,
+			scrollY: 0,
 			fixedPos:
 				type === "start" ? range.to : type === "end" ? range.from : null,
 		};
@@ -1098,28 +1126,73 @@ class TouchSelectionMenuController {
 		this.#view.focus();
 	}
 
-	#startAutoScrollIfNeeded(x, y) {
-		const rect = this.#view.scrollDOM.getBoundingClientRect();
-		let direction = 0;
-		if (y < rect.top + EDGE_SCROLL_GAP) direction = -1;
-		if (y > rect.bottom - EDGE_SCROLL_GAP) direction = 1;
+	#getAutoScrollDelta(x, y) {
+		const scroller = this.#view.scrollDOM;
+		const rect = scroller.getBoundingClientRect();
+		const { horizontal, vertical } = getEdgeScrollDirections({
+			x,
+			y,
+			rect,
+			allowHorizontal: !this.#view.lineWrapping,
+		});
+		const maxScrollLeft = Math.max(
+			0,
+			scroller.scrollWidth - scroller.clientWidth,
+		);
+		const maxScrollTop = Math.max(
+			0,
+			scroller.scrollHeight - scroller.clientHeight,
+		);
+		let scrollX = horizontal * EDGE_SCROLL_STEP;
+		let scrollY = vertical * EDGE_SCROLL_STEP;
 
-		if (!direction) {
+		if (
+			(scrollX < 0 && scroller.scrollLeft <= 0) ||
+			(scrollX > 0 && scroller.scrollLeft >= maxScrollLeft)
+		) {
+			scrollX = 0;
+		}
+
+		if (
+			(scrollY < 0 && scroller.scrollTop <= 0) ||
+			(scrollY > 0 && scroller.scrollTop >= maxScrollTop)
+		) {
+			scrollY = 0;
+		}
+
+		return { scrollX, scrollY };
+	}
+
+	#startAutoScrollIfNeeded(x, y) {
+		const { scrollX, scrollY } = this.#getAutoScrollDelta(x, y);
+		if (this.#dragState) {
+			this.#dragState.scrollX = scrollX;
+			this.#dragState.scrollY = scrollY;
+		}
+
+		if (!scrollX && !scrollY) {
 			this.#stopAutoScroll();
 			return;
 		}
 
-		this.#dragState.direction = direction;
 		if (this.#autoScrollRaf) return;
 
 		const tick = () => {
-			if (!this.#dragState?.direction) {
+			if (!this.#dragState) {
 				this.#autoScrollRaf = 0;
 				return;
 			}
 
-			this.#view.scrollDOM.scrollTop +=
-				this.#dragState.direction * EDGE_SCROLL_STEP;
+			const delta = this.#getAutoScrollDelta(this.#pointer.x, this.#pointer.y);
+			this.#dragState.scrollX = delta.scrollX;
+			this.#dragState.scrollY = delta.scrollY;
+			if (!delta.scrollX && !delta.scrollY) {
+				this.#autoScrollRaf = 0;
+				return;
+			}
+
+			this.#view.scrollDOM.scrollLeft += delta.scrollX;
+			this.#view.scrollDOM.scrollTop += delta.scrollY;
 			this.#dragTo(this.#pointer.x, this.#pointer.y);
 			this.#autoScrollRaf = requestAnimationFrame(tick);
 		};
@@ -1131,7 +1204,8 @@ class TouchSelectionMenuController {
 		cancelAnimationFrame(this.#autoScrollRaf);
 		this.#autoScrollRaf = 0;
 		if (this.#dragState) {
-			this.#dragState.direction = 0;
+			this.#dragState.scrollX = 0;
+			this.#dragState.scrollY = 0;
 		}
 	}
 

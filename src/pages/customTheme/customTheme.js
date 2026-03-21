@@ -6,6 +6,7 @@ import confirm from "dialogs/confirm";
 import select from "dialogs/select";
 import actionStack from "lib/actionStack";
 import settings from "lib/settings";
+import { hideAd } from "lib/startAd";
 import ThemeBuilder from "theme/builder";
 import themes from "theme/list";
 import { isValidColor } from "utils/color/regex";
@@ -34,7 +35,7 @@ export default function CustomThemeInclude() {
 
 	$page.onhide = () => {
 		actionStack.remove("custom-theme");
-		helpers.hideAd();
+		hideAd();
 	};
 
 	$page.addEventListener("click", handleClick);
@@ -55,7 +56,9 @@ export default function CustomThemeInclude() {
 						["dark", strings["dark"]],
 					]);
 					applyTheme();
-				} catch (error) {}
+				} catch (error) {
+					console.warn("Unable to update custom theme type.", error);
+				}
 				return;
 			}
 

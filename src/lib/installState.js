@@ -159,6 +159,13 @@ async function checksum(data) {
  * @returns
  */
 async function checksumText(text) {
-	const textUint8 = new TextEncoder().encode(text);
-	return await checksum(textUint8);
+	return new Promise((resolve, reject) => {
+		cordova.exec(
+			(hash) => resolve(hash),
+			(error) => reject(error),
+			"System",
+			"checksumText",
+			[text],
+		);
+	});
 }

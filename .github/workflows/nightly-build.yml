@@ -95,7 +95,7 @@
             echo "should not skip tags, releases: ${{ ! inputs.skip_tagging_and_releases }}" >> $GITHUB_STEP_SUMMARY     
 
         - name: Checkout Repository
-          uses: actions/checkout@v4
+          uses: actions/checkout@v6
           with:
             fetch-depth: 0 # Required for tags
             # persists credentials locally if tagging and releases are not skipped.
@@ -103,16 +103,17 @@
             ref: ${{ (inputs.is_PR && inputs.PR_NUMBER) && github.event.pull_request.head.sha || '' }}
 
         - name: Set up Java 21
-          uses: actions/setup-java@v4
+          uses: actions/setup-java@v5
           with:
             distribution: 'temurin'
             java-version: '21'
             cache: ${{ (!(inputs.is_PR && inputs.PR_NUMBER) && github.ref == 'refs/heads/main' && 'gradle') || '' }}
 
         - name: Set up Node.js
-          uses: actions/setup-node@v4
+          uses: actions/setup-node@v6
           with:
             node-version: 'lts/*' # or '18.x' for latest stable
+            cache: ${{ (!(inputs.is_PR && inputs.PR_NUMBER) && github.ref == 'refs/heads/main' && 'npm') || '' }}
 
         - name: Add keystore and build.json from secrets
           run: |
@@ -175,7 +176,7 @@
              echo "VERSION: $UPDATED_VERSION" >> $GITHUB_STEP_SUMMARY
              
         - name: Upload APK Artifact
-          uses: actions/upload-artifact@v4
+          uses: actions/upload-artifact@v7
           with:
             name: app-debug-${{ env.GIT_COMMIT }}
             path: /tmp/app-debug-normal.apk
@@ -188,7 +189,7 @@
             mv platforms/android/app/build/outputs/apk/debug/app-debug.apk /tmp/app-debug-fdroid.apk
         
         - name: Upload APK Artifact
-          uses: actions/upload-artifact@v4
+          uses: actions/upload-artifact@v7
           if: ${{ !inputs.is_PR }}
           with:
             name: app-debug-fdroid-${{ env.GIT_COMMIT }}
@@ -261,7 +262,7 @@
 
         - name: Update Last Comment by bot (If ran in PR)
           if: inputs.is_PR
-          uses: marocchino/sticky-pull-request-comment@v2
+          uses: marocchino/sticky-pull-request-comment@v3
           with:
              hide_and_recreate: true
              hide_classify: "OUTDATED"
@@ -283,3 +284,6 @@
          body: ${{ needs.build.outputs.RELEASE_NOTES }}
       secrets:
         DISCORD_WEBHOOK_RELEASE_NOTES: ${{ secrets.DISCORD_WEBHOOK_RELEASE_NOTES }}
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        TELEGRAM_MESSAGE_THREAD_ID: ${{ secrets.TELEGRAM_MESSAGE_THREAD_ID }}

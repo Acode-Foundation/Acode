@@ -5,6 +5,7 @@
 
 import EditorFile from "lib/editorFile";
 import TerminalComponent from "./terminal";
+import TerminalTouchSelection from "./terminalTouchSelection";
 import "@xterm/xterm/css/xterm.css";
 import quickTools from "components/quickTools";
 import toast from "components/toast";
@@ -23,31 +24,139 @@ class TerminalManager {
 		this.terminalCounter = 0;
 	}
 
+	extractTerminalNumber(name) {
+		if (!name) return null;
+		const match = String(name).match(/^Terminal\s+(\d+)(?:\b| - )/i);
+		if (!match) return null;
+		const number = Number.parseInt(match[1], 10);
+		return Number.isInteger(number) && number > 0 ? number : null;
+	}
+
+	getNextAvailableTerminalNumber() {
+		const usedNumbers = new Set();
+
+		for (const terminal of this.terminals.values()) {
+			const number = terminal?.terminalNumber;
+			if (Number.isInteger(number) && number > 0) {
+				usedNumbers.add(number);
+			}
+		}
+
+		let nextNumber = 1;
+		while (usedNumbers.has(nextNumber)) {
+			nextNumber++;
+		}
+
+		return nextNumber;
+	}
+
+	normalizePersistedSessions(stored) {
+		if (!Array.isArray(stored)) {
+			return {
+				sessions: [],
+				changed: stored != null,
+			};
+		}
+
+		const sessions = [];
+		const uniqueSessions = [];
+		const seenPids = new Set();
+		let changed = false;
+
+		for (const entry of stored) {
+			if (!entry) {
+				changed = true;
+				continue;
+			}
+
+			if (typeof entry === "string") {
+				sessions.push({
+					pid: entry,
+					name: `Terminal ${entry}`,
+				});
+				changed = true;
+				continue;
+			}
+
+			if (typeof entry !== "object" || !entry.pid) {
+				changed = true;
+				continue;
+			}
+
+			const pid = String(entry.pid);
+			const name =
+				typeof entry.name === "string" && entry.name.trim()
+					? entry.name.trim()
+					: `Terminal ${pid}`;
+
+			if (entry.pid !== pid || entry.name !== name) {
+				changed = true;
+			}
+
+			sessions.push({ pid, name });
+		}
+
+		for (const session of sessions) {
+			const pid = String(session.pid);
+			if (seenPids.has(pid)) {
+				changed = true;
+				continue;
+			}
+			seenPids.add(pid);
+			uniqueSessions.push({
+				pid,
+				name:
+					typeof session.name === "string" && session.name.trim()
+						? session.name.trim()
+						: `Terminal ${pid}`,
+			});
+		}
+
+		if (uniqueSessions.length !== stored.length) {
+			changed = true;
+		}
+
+		return {
+			sessions: uniqueSessions,
+			changed,
+		};
+	}
+
+	readPersistedSessions() {
+		try {
+			return this.normalizePersistedSessions(
+				helpers.parseJSON(localStorage.getItem(TERMINAL_SESSION_STORAGE_KEY)),
+			);
+		} catch (error) {
+			console.error("Failed to read persisted terminal sessions:", error);
+			return {
+				sessions: [],
+				changed: false,
+			};
+		}
+	}
+
 	async getPersistedSessions() {
 		try {
-			const stored = helpers.parseJSON(
-				localStorage.getItem(TERMINAL_SESSION_STORAGE_KEY),
-			);
-			if (!Array.isArray(stored)) return [];
-			if (!(await Terminal.isAxsRunning())) {
+			const { sessions, changed } = this.readPersistedSessions();
+			if (!sessions.length) {
+				if (changed) {
+					this.savePersistedSessions([]);
+				}
 				return [];
 			}
-			return stored
-				.map((entry) => {
-					if (!entry) return null;
-					if (typeof entry === "string") {
-						return { pid: entry, name: `Terminal ${entry}` };
-					}
-					if (typeof entry === "object" && entry.pid) {
-						const pid = String(entry.pid);
-						return {
-							pid,
-							name: entry.name || `Terminal ${pid}`,
-						};
-					}
-					return null;
-				})
-				.filter(Boolean);
+
+			if (!(await Terminal.isAxsRunning())) {
+				// Once the backend is gone, previously persisted PIDs are invalid.
+				this.savePersistedSessions([]);
+				return [];
+			}
+
+			if (changed) {
+				this.savePersistedSessions(sessions);
+			}
+
+			return sessions;
 		} catch (error) {
 			console.error("Failed to read persisted terminal sessions:", error);
 			return [];
@@ -69,7 +178,7 @@ class TerminalManager {
 		if (!pid) return;
 
 		const pidStr = String(pid);
-		const sessions = await this.getPersistedSessions();
+		const { sessions } = this.readPersistedSessions();
 		const existingIndex = sessions.findIndex(
 			(session) => session.pid === pidStr,
 		);
@@ -94,7 +203,7 @@ class TerminalManager {
 		if (!pid) return;
 
 		const pidStr = String(pid);
-		const sessions = await this.getPersistedSessions();
+		const { sessions } = this.readPersistedSessions();
 		const nextSessions = sessions.filter((session) => session.pid !== pidStr);
 
 		if (nextSessions.length !== sessions.length) {
@@ -129,17 +238,17 @@ class TerminalManager {
 					error,
 				);
 				failedSessions.push(session.name || session.pid);
-				this.removePersistedSession(session.pid);
+				await this.removePersistedSession(session.pid);
 			}
 		}
 
-		// Show alert for failed sessions (don't await to not block UI)
+		// Stale session entries are expected after force-closes; keep startup quiet.
 		if (failedSessions.length > 0) {
 			const message =
 				failedSessions.length === 1
-					? `Failed to restore terminal: ${failedSessions[0]}`
-					: `Failed to restore ${failedSessions.length} terminals: ${failedSessions.join(", ")}`;
-			alert(strings["error"], message);
+					? `Skipped unavailable terminal: ${failedSessions[0]}`
+					: `Skipped ${failedSessions.length} unavailable terminals`;
+			toast(message);
 		}
 
 		if (activeFileId && manager?.getFile) {
@@ -157,12 +266,21 @@ class TerminalManager {
 	 */
 	async createTerminal(options = {}) {
 		try {
-			const { render, serverMode, ...terminalOptions } = options;
+			const { render, serverMode, reconnecting, ...terminalOptions } = options;
 			const shouldRender = render !== false;
 			const isServerMode = serverMode !== false;
+			const isReconnecting = reconnecting === true;
 
 			const terminalId = `terminal_${++this.terminalCounter}`;
-			const terminalName = options.name || `Terminal ${this.terminalCounter}`;
+			const providedName =
+				typeof options.name === "string" ? options.name.trim() : "";
+			const terminalNumber = providedName
+				? this.extractTerminalNumber(providedName)
+				: this.getNextAvailableTerminalNumber();
+			const terminalName = providedName || `Terminal ${terminalNumber}`;
+			const titlePrefix = terminalNumber
+				? `Terminal ${terminalNumber}`
+				: terminalName;
 
 			// Check if terminal is installed before proceeding
 			if (isServerMode) {
@@ -227,11 +345,13 @@ class TerminalManager {
 							terminalFile,
 							terminalComponent,
 							uniqueId,
+							titlePrefix,
 						);
 
 						const instance = {
 							id: uniqueId,
 							name: terminalName,
+							terminalNumber,
 							component: terminalComponent,
 							file: terminalFile,
 							container: terminalContainer,
@@ -268,11 +388,13 @@ class TerminalManager {
 						}
 
 						// Show alert for terminal creation failure
-						const errorMessage = error?.message || "Unknown error";
-						alert(
-							strings["error"],
-							`Failed to create terminal: ${errorMessage}`,
-						);
+						if (!isReconnecting) {
+							const errorMessage = error?.message || "Unknown error";
+							alert(
+								strings["error"],
+								`Failed to create terminal: ${errorMessage}`,
+							);
+						}
 
 						reject(error);
 					}
@@ -429,7 +551,12 @@ class TerminalManager {
 	 * @param {TerminalComponent} terminalComponent - Terminal component
 	 * @param {string} terminalId - Terminal ID
 	 */
-	async setupTerminalHandlers(terminalFile, terminalComponent, terminalId) {
+	async setupTerminalHandlers(
+		terminalFile,
+		terminalComponent,
+		terminalId,
+		titlePrefix = terminalId,
+	) {
 		const textarea = terminalComponent.terminal?.textarea;
 		if (textarea) {
 			const onFocus = () => {
@@ -582,8 +709,8 @@ class TerminalManager {
 
 		terminalComponent.onTitleChange = async (title) => {
 			if (title) {
-				// Format terminal title as "Terminal ! - title"
-				const formattedTitle = `Terminal ${this.terminalCounter} - ${title}`;
+				// Keep the tab prefix stable for this terminal instance.
+				const formattedTitle = `${titlePrefix} - ${title}`;
 				terminalFile.filename = formattedTitle;
 
 				if (terminalComponent.serverMode && terminalComponent.pid) {
@@ -727,6 +854,32 @@ class TerminalManager {
 	 */
 	getAllTerminals() {
 		return this.terminals;
+	}
+
+	/**
+	 * Register a touch-selection "More" menu option.
+	 * @param {object} option
+	 * @returns {string|null}
+	 */
+	addTouchSelectionMoreOption(option) {
+		return TerminalTouchSelection.addMoreOption(option);
+	}
+
+	/**
+	 * Remove a touch-selection "More" menu option.
+	 * @param {string} id
+	 * @returns {boolean}
+	 */
+	removeTouchSelectionMoreOption(id) {
+		return TerminalTouchSelection.removeMoreOption(id);
+	}
+
+	/**
+	 * List touch-selection "More" menu options.
+	 * @returns {Array<object>}
+	 */
+	getTouchSelectionMoreOptions() {
+		return TerminalTouchSelection.getMoreOptions();
 	}
 
 	/**

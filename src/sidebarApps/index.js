@@ -1,3 +1,4 @@
+import appSettings from "lib/settings";
 import Sponsors from "pages/sponsors";
 import SidebarApp from "./sidebarApp";
 
@@ -11,6 +12,8 @@ let $sidebar;
 let currentSection = localStorage.getItem(SIDEBAR_APPS_LAST_SECTION);
 /**@type {SidebarApp[]} */
 const apps = [];
+/**@type {HTMLSpanElement | null} */
+let $sponsorIcon = null;
 
 /**
  * @param {string} icon icon of the app
@@ -32,12 +35,13 @@ function add(
 ) {
 	currentSection ??= id;
 
-	const active = currentSection === id;
 	const app = new SidebarApp(icon, id, title, initFunction, onSelected);
-
-	app.active = active;
-	app.install(prepend);
 	apps.push(app);
+	app.install(prepend);
+
+	if (currentSection === id) {
+		setActiveApp(id);
+	}
 }
 
 /**
@@ -52,10 +56,14 @@ function remove(id) {
 	app.remove();
 	apps.splice(apps.indexOf(app), 1);
 	if (wasActive && apps.length > 0) {
-		const firstApp = apps[0];
-		firstApp.active = true;
-		currentSection = firstApp.id;
-		localStorage.setItem(SIDEBAR_APPS_LAST_SECTION, firstApp.id);
+		const preferredApp = apps.find((app) => app.id === currentSection);
+		setActiveApp(preferredApp?.id || apps[0].id);
+		return;
+	}
+
+	if (!apps.length) {
+		currentSection = null;
+		localStorage.removeItem(SIDEBAR_APPS_LAST_SECTION);
 	}
 }
 
@@ -68,6 +76,10 @@ function init($el) {
 	$apps = $sidebar.get(".app-icons-container");
 	$apps.addEventListener("click", onclick);
 	SidebarApp.init($el, $apps);
+	appSettings.on(
+		"update:showSponsorSidebarApp",
+		setSponsorSidebarAppVisibility,
+	);
 }
 
 /**
@@ -78,7 +90,33 @@ async function loadApps() {
 	add(...(await import("./searchInFiles")).default);
 	add(...(await import("./extensions")).default);
 	add(...(await import("./notification")).default);
-	$apps.append(<span className="icon favorite" onclick={Sponsors} />);
+	setSponsorSidebarAppVisibility(appSettings.value.showSponsorSidebarApp);
+}
+
+/**
+ * Adds or removes the sponsor icon in sidebar based on settings.
+ * @param {boolean} visible
+ */
+function setSponsorSidebarAppVisibility(visible) {
+	if (!$apps) return;
+
+	if (visible) {
+		if ($sponsorIcon?.isConnected) return;
+		$sponsorIcon = (
+			<span
+				className="icon favorite"
+				title={strings.sponsor}
+				onclick={Sponsors}
+			/>
+		);
+		$apps.append($sponsorIcon);
+		return;
+	}
+
+	if ($sponsorIcon) {
+		$sponsorIcon.remove();
+		$sponsorIcon = null;
+	}
 }
 
 /**
@@ -88,12 +126,20 @@ async function loadApps() {
  * @returns {void}
  */
 function ensureActiveApp() {
-	const hasActiveApp = apps.some((app) => app.active);
-	if (!hasActiveApp && apps.length > 0) {
-		const firstApp = apps[0];
-		firstApp.active = true;
-		currentSection = firstApp.id;
-		localStorage.setItem(SIDEBAR_APPS_LAST_SECTION, firstApp.id);
+	const activeApps = apps.filter((app) => app.active);
+	if (activeApps.length === 1) return;
+
+	if (activeApps.length > 1) {
+		const preferredActiveApp = activeApps.find(
+			(app) => app.id === currentSection,
+		);
+		setActiveApp(preferredActiveApp?.id || activeApps[0].id);
+		return;
+	}
+
+	if (apps.length > 0) {
+		const preferredApp = apps.find((app) => app.id === currentSection);
+		setActiveApp(preferredApp?.id || apps[0].id);
 	}
 }
 
@@ -117,11 +163,24 @@ function onclick(e) {
 
 	if (action !== "sidebar-app") return;
 
-	localStorage.setItem(SIDEBAR_APPS_LAST_SECTION, id);
-	const activeApp = apps.find((app) => app.active);
+	setActiveApp(id);
+}
+
+/**
+ * Activates the given sidebar app and deactivates all others.
+ * @param {string} id
+ * @returns {void}
+ */
+function setActiveApp(id) {
 	const app = apps.find((app) => app.id === id);
-	if (activeApp) activeApp.active = false;
-	if (app) app.active = true;
+	if (!app) return;
+
+	currentSection = id;
+	localStorage.setItem(SIDEBAR_APPS_LAST_SECTION, id);
+
+	for (const currentApp of apps) {
+		currentApp.active = currentApp.id === id;
+	}
 }
 
 export default {

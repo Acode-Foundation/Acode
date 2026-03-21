@@ -10,6 +10,7 @@ import constants from "lib/constants";
 import installPlugin from "lib/installPlugin";
 import InstallState from "lib/installState";
 import settings from "lib/settings";
+import { hideAd } from "lib/startAd";
 import markdownIt from "markdown-it";
 import anchor from "markdown-it-anchor";
 import markdownItFootnote from "markdown-it-footnote";
@@ -61,7 +62,7 @@ export default async function PluginInclude(
 	});
 
 	$page.onhide = function () {
-		helpers.hideAd();
+		hideAd();
 		actionStack.remove("plugin");
 		loader.removeTitleLoader();
 		cancelled = true;
@@ -205,8 +206,8 @@ export default async function PluginInclude(
 			if (onInstall) onInstall(plugin);
 			installed = true;
 			update = false;
-			if (!plugin.price && IS_FREE_VERSION && (await window.iad?.isLoaded())) {
-				window.iad.show();
+			if (!plugin.price) {
+				await helpers.showInterstitialIfReady();
 			}
 			render();
 		} catch (err) {
@@ -228,8 +229,8 @@ export default async function PluginInclude(
 			if (onUninstall) onUninstall(plugin.id);
 			installed = false;
 			update = false;
-			if (!plugin.price && IS_FREE_VERSION && (await window.iad?.isLoaded())) {
-				window.iad.show();
+			if (!plugin.price) {
+				await helpers.showInterstitialIfReady();
 			}
 			render();
 		} catch (err) {
@@ -473,7 +474,7 @@ export default async function PluginInclude(
 	}
 
 	async function loadAd(el) {
-		if (!IS_FREE_VERSION) return;
+		if (!helpers.canShowAds()) return;
 		try {
 			if (!(await window.iad?.isLoaded())) {
 				const oldText = el.textContent;
@@ -481,7 +482,9 @@ export default async function PluginInclude(
 				await window.iad.load();
 				el.textContent = oldText;
 			}
-		} catch (error) {}
+		} catch (error) {
+			console.warn("Failed to load plugin page ad.", error);
+		}
 	}
 
 	async function getPurchase(sku) {

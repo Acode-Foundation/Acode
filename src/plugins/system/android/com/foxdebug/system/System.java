@@ -107,8 +107,13 @@ import android.os.Build;
 import android.graphics.ImageDecoder;
 
 
+import java.security.MessageDigest;
+import java.security.MessageDigest;
+
+
 
 public class System extends CordovaPlugin {
+    private static final String TAG = "SystemPlugin";
 
     private CallbackContext requestPermissionCallback;
     private Activity activity;
@@ -120,12 +125,14 @@ public class System extends CordovaPlugin {
     private CallbackContext intentHandler;
     private CordovaWebView webView;
     private String fileProviderAuthority;
+    private RewardPassManager rewardPassManager;
 
     public void initialize(CordovaInterface cordova, CordovaWebView webView) {
         super.initialize(cordova, webView);
         this.context = cordova.getContext();
         this.activity = cordova.getActivity();
         this.webView = webView;
+        this.rewardPassManager = new RewardPassManager(this.context);
         this.activity.runOnUiThread(
             new Runnable() {
                 @Override
@@ -176,6 +183,7 @@ public class System extends CordovaPlugin {
         switch (action) {
             case "get-webkit-info":
             case "file-action":
+            case "checksumText":
             case "is-powersave-mode":
             case "get-app-info":
             case "add-shortcut":
@@ -256,6 +264,12 @@ public class System extends CordovaPlugin {
 
             case "getFilesDir":
                 callbackContext.success(getFilesDir());
+                return true;
+            case "getRewardStatus":
+                callbackContext.success(rewardPassManager.getRewardStatus());
+                return true;
+            case "redeemReward":
+                callbackContext.success(rewardPassManager.redeemReward(args.getString(0)));
                 return true;
 
             case "getParentPath":
@@ -552,6 +566,33 @@ public class System extends CordovaPlugin {
                             case "compare-texts":
                                 compareTexts(arg1, arg2, callbackContext);
                                 break;
+                            case "checksumText":
+                            
+                                cordova.getThreadPool().execute(() -> {
+                                    try {
+                                        
+                                        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+
+                                        byte[] hash = digest.digest(args.getString(0).getBytes("UTF-8"));
+
+                                        StringBuilder hexString = new StringBuilder();
+
+                                        for (byte b : hash) {
+                                            String hex = Integer.toHexString(0xff & b);
+
+                                            if (hex.length() == 1) hexString.append('0');
+
+                                            hexString.append(hex);
+                                        }
+
+
+                                        callbackContext.success(hexString.toString());
+                                    } catch (Exception e) {
+                                        callbackContext.error(e.getMessage());
+                                    }
+                                });
+
+                                break;
                             default:
                                 break;
                         }
@@ -765,7 +806,9 @@ public class System extends CordovaPlugin {
                     if (inputStream != null) {
                         try {
                             inputStream.close();
-                        } catch (IOException ignored) {}
+                        } catch (IOException closeError) {
+                            Log.w(TAG, "Failed to close input stream while reading file.", closeError);
+                        }
                     }
                 }
             } else {
@@ -1013,13 +1056,15 @@ public class System extends CordovaPlugin {
         for (int i = 0; i < arr.length(); i++) {
             try {
                 String permission = arr.getString(i);
-                if (permission != null || !permission.equals("")) {
+                if (permission == null || permission.equals("")) {
                     throw new Exception("Permission cannot be null or empty");
                 }
                 if (!cordova.hasPermission(permission)) {
                     list.add(permission);
                 }
-            } catch (JSONException e) {}
+            } catch (JSONException e) {
+                Log.w(TAG, "Invalid permission entry at index " + i, e);
+            }
         }
 
         String[] res = new String[list.size()];
@@ -1990,7 +2035,9 @@ public class System extends CordovaPlugin {
                     }
                 }
             }
-        } catch (PackageManager.NameNotFoundException ignored) {}
+        } catch (PackageManager.NameNotFoundException error) {
+            Log.w(TAG, "Unable to inspect package providers for FileProvider authority.", error);
+        }
 
         if (fileProviderAuthority == null || fileProviderAuthority.isEmpty()) {
             fileProviderAuthority = context.getPackageName() + ".provider";

@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - name: Checkout Actions Repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Check spelling
         uses: crate-ci/typos@master
@@ -26,7 +26,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Setup Biome
         uses: biomejs/setup-biome@v2
@@ -44,15 +44,15 @@ jobs:
     if: github.event_name == 'pull_request'
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Use Node.js
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v6
         with:
           cache: npm
           cache-dependency-path: '**/package-lock.json'
 
       - name: Detect Changed Files
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         id: file-changes
         with:
           list-files: shell

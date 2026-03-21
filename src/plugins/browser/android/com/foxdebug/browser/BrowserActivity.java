@@ -85,8 +85,14 @@ public class BrowserActivity extends Activity {
             controller.setSystemBarsAppearance(0, appearance);
           }
         }
-      } catch (IllegalArgumentException ignore) {} catch (Exception ignore) {}
-    } catch (Exception e) {}
+      } catch (IllegalArgumentException error) {
+        Log.w("BrowserActivity", "Invalid system bar color or appearance input.", error);
+      } catch (Exception error) {
+        Log.w("BrowserActivity", "Failed applying system bar theme values.", error);
+      }
+    } catch (Exception e) {
+      Log.e("BrowserActivity", "Failed to apply system theme.", e);
+    }
   }
 
   private void setStatusBarStyle(final Window window) {

@@ -2,6 +2,7 @@ import type { EditorView } from "@codemirror/view";
 import { getModes } from "cm/modelist";
 import toast from "components/toast";
 import lspClientManager from "./clientManager";
+import { supportsBuiltinFormatting } from "./formattingSupport";
 import serverRegistry from "./serverRegistry";
 import type { AcodeApi, FileMetadata } from "./types";
 
@@ -32,6 +33,7 @@ function getActiveMetadata(
 export function registerLspFormatter(acode: AcodeApi): void {
 	const languages = new Set<string>();
 	serverRegistry.listServers().forEach((server) => {
+		if (!supportsBuiltinFormatting(server)) return;
 		(server.languages || []).forEach((lang) => {
 			if (lang) languages.add(String(lang));
 		});
@@ -56,7 +58,9 @@ export function registerLspFormatter(acode: AcodeApi): void {
 				toast("Unknown language for LSP formatting");
 				return false;
 			}
-			const servers = serverRegistry.getServersForLanguage(languageId);
+			const servers = serverRegistry
+				.getServersForLanguage(languageId)
+				.filter(supportsBuiltinFormatting);
 			if (!servers.length) {
 				toast("No LSP formatter available");
 				return false;

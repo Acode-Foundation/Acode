@@ -35,6 +35,7 @@ import quickToolsInit from "handlers/quickToolsInit";
 import windowResize from "handlers/windowResize";
 import Acode from "lib/acode";
 import actionStack from "lib/actionStack";
+import adRewards from "lib/adRewards";
 import applySettings from "lib/applySettings";
 import checkFiles from "lib/checkFiles";
 import checkPluginsUpdate from "lib/checkPluginsUpdate";
@@ -237,6 +238,7 @@ async function onDeviceReady() {
 		return true;
 	})();
 	window.acode = new Acode();
+	await adRewards.init();
 	ensureAceCompatApi();
 
 	system.requestPermission("android.permission.READ_EXTERNAL_STORAGE");
@@ -814,6 +816,7 @@ function pauseHandler() {
 }
 
 function resumeHandler() {
+	adRewards.handleResume();
 	if (!settings.value.checkFiles) return;
 	checkFiles();
 }

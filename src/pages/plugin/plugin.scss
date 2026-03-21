@@ -66,6 +66,7 @@
         display: flex;
         gap: 16px;
         flex-wrap: wrap;
+        color: var(--secondary-text-color);
         color: color-mix(in srgb, var(--primary-text-color) 60%, transparent);
         font-size: 14px;
         margin-bottom: 12px;
@@ -97,6 +98,7 @@
         display: flex;
         flex-wrap: wrap;
         gap: 16px;
+        color: var(--secondary-text-color);
         color: color-mix(in srgb, var(--primary-text-color) 60%, transparent);
         font-size: 14px;
 
@@ -141,6 +143,7 @@
         position: relative;
 
         .keyword {
+          background: var(--popup-background-color);
           background: color-mix(in srgb,
               var(--link-text-color) 10%,
               transparent);
@@ -149,6 +152,7 @@
           border-radius: 12px;
           font-size: 13px;
           transition: all 0.2s;
+          border: 1px solid var(--link-text-color);
           border: 1px solid color-mix(in srgb, var(--link-text-color) 25%, transparent);
         }
       }
@@ -226,6 +230,7 @@
       border-bottom: 1px solid var(--border-color);
 
       .tab {
+        color: var(--secondary-text-color);
         color: color-mix(in srgb, var(--primary-text-color) 60%, transparent);
       }
 
@@ -317,6 +322,7 @@
 
         .contributor-role {
           font-size: 13px;
+          color: var(--secondary-text-color);
           color: color-mix(in srgb, var(--primary-text-color) 60%, transparent);
         }
       }
@@ -326,6 +332,7 @@
       .no-changelog {
         text-align: center;
         padding: 2rem;
+        color: var(--secondary-text-color);
         color: color-mix(in srgb, var(--primary-text-color) 60%, transparent);
 
         i {

@@ -3,8 +3,17 @@ import toast from "components/toast";
 import alert from "dialogs/alert";
 import confirm from "dialogs/confirm";
 import loader from "dialogs/loader";
+import { buildShellArchCase } from "./installerUtils";
+import {
+	formatCommand,
+	quoteArg,
+	runForegroundCommand,
+	runQuickCommand,
+} from "./installRuntime";
+import { getServerBundle } from "./serverCatalog";
 import type {
 	BridgeConfig,
+	InstallCheckResult,
 	InstallStatus,
 	LauncherConfig,
 	LspServerDefinition,
@@ -54,38 +63,11 @@ function getBackgroundExecutor(): Executor {
 }
 
 function joinCommand(command: string, args: string[] = []): string {
-	if (!Array.isArray(args)) return command;
-	return [command, ...args].join(" ");
+	if (!Array.isArray(args) || !args.length) return quoteArg(command);
+	return [quoteArg(command), ...args.map((arg) => quoteArg(arg))].join(" ");
 }
 
-function wrapShellCommand(command: string): string {
-	const script = command.trim();
-	const escaped = script.replace(/"/g, '\\"');
-	return `sh -lc "set -e; ${escaped}"`;
-}
-
-/**
- * Run a quick shell command using the background executor.
- */
-async function runQuickCommand(command: string): Promise<string> {
-	const wrapped = wrapShellCommand(command);
-	return getBackgroundExecutor().execute(wrapped, true);
-}
-
-/**
- * Run a shell command using the foreground executor
- */
-async function runForegroundCommand(command: string): Promise<string> {
-	const wrapped = wrapShellCommand(command);
-	return getExecutor().execute(wrapped, true);
-}
-
-function quoteArg(value: unknown): string {
-	const str = String(value ?? "");
-	if (!str.length) return "''";
-	if (/^[A-Za-z0-9_@%+=:,./-]+$/.test(str)) return str;
-	return `'${str.replace(/'/g, "'\\''")}'`;
-}
+export { formatCommand } from "./installRuntime";
 
 // ============================================================================
 // Auto-Port Discovery
@@ -304,7 +286,11 @@ export async function canReuseExistingServer(
 	session: string,
 ): Promise<number | null> {
 	const bridge = server.launcher?.bridge;
-	const serverName = bridge?.command || server.launcher?.command || server.id;
+	const serverName =
+		resolveServerExecutable(server) ||
+		bridge?.command ||
+		server.launcher?.command ||
+		server.id;
 
 	const portInfo = await getLspPort(serverName, session);
 	if (!portInfo) {
@@ -329,15 +315,17 @@ export async function canReuseExistingServer(
 
 function buildAxsBridgeCommand(
 	bridge: BridgeConfig | undefined,
+	commandOverride?: string | null,
 	session?: string,
 ): string | null {
 	if (!bridge || bridge.kind !== "axs") return null;
 
-	const binary = bridge.command
-		? String(bridge.command)
-		: (() => {
-				throw new Error("Bridge requires a command to execute");
-			})();
+	const binary =
+		commandOverride || bridge.command
+			? String(commandOverride || bridge.command)
+			: (() => {
+					throw new Error("Bridge requires a command to execute");
+				})();
 	const args: string[] = Array.isArray(bridge.args)
 		? bridge.args.map((arg) => String(arg))
 		: [];
@@ -374,30 +362,397 @@ function resolveStartCommand(
 ): string | null {
 	const launcher = server.launcher;
 	if (!launcher) return null;
+	const executable = resolveServerExecutable(server);
 
 	if (launcher.startCommand) {
-		return Array.isArray(launcher.startCommand)
-			? launcher.startCommand.join(" ")
-			: String(launcher.startCommand);
+		return formatCommand(launcher.startCommand);
 	}
 	if (launcher.command) {
-		return joinCommand(launcher.command, launcher.args);
+		return joinCommand(executable || launcher.command, launcher.args);
 	}
 	if (launcher.bridge) {
-		return buildAxsBridgeCommand(launcher.bridge, session);
+		return buildAxsBridgeCommand(launcher.bridge, executable, session);
 	}
 	return null;
 }
 
+export function getStartCommand(server: LspServerDefinition): string | null {
+	return resolveStartCommand(server);
+}
+
+function getInstallCacheKey(server: LspServerDefinition): string | null {
+	const checkCommand =
+		server.launcher?.checkCommand || buildDerivedCheckCommand(server);
+	if (!checkCommand) return null;
+	return `${server.id}:${checkCommand}`;
+}
+
+function normalizeInstallSpec(server: LspServerDefinition) {
+	const install = server.launcher?.install;
+	if (!install) return null;
+
+	const packages = Array.isArray(install.packages)
+		? install.packages
+				.map((entry) => String(entry || "").trim())
+				.filter(Boolean)
+		: [];
+	const kind =
+		install.kind ||
+		(install.binaryPath ? "manual" : null) ||
+		(install.source === "apk" ? "apk" : null) ||
+		(install.source === "npm" ? "npm" : null) ||
+		(install.source === "pip" ? "pip" : null) ||
+		(install.source === "cargo" ? "cargo" : null) ||
+		(install.command ? "shell" : null) ||
+		"shell";
+
+	return {
+		...install,
+		kind,
+		packages,
+		command:
+			typeof install.command === "string" && install.command.trim()
+				? install.command.trim()
+				: undefined,
+		updateCommand:
+			typeof install.updateCommand === "string" && install.updateCommand.trim()
+				? install.updateCommand.trim()
+				: undefined,
+		source:
+			install.source ||
+			(kind === "shell" ? "custom" : kind === "manual" ? "manual" : kind),
+		executable:
+			typeof install.executable === "string" && install.executable.trim()
+				? install.executable.trim()
+				: undefined,
+		binaryPath:
+			typeof install.binaryPath === "string" && install.binaryPath.trim()
+				? install.binaryPath.trim()
+				: undefined,
+		repo:
+			typeof install.repo === "string" && install.repo.trim()
+				? install.repo.trim()
+				: undefined,
+		assetNames:
+			install.assetNames && typeof install.assetNames === "object"
+				? Object.fromEntries(
+						Object.entries(install.assetNames)
+							.map(([key, value]) => [String(key), String(value || "").trim()])
+							.filter(([, value]) => Boolean(value)),
+					)
+				: {},
+		archiveType: install.archiveType === "binary" ? "binary" : "zip",
+		extractFile:
+			typeof install.extractFile === "string" && install.extractFile.trim()
+				? install.extractFile.trim()
+				: undefined,
+		npmCommand:
+			typeof install.npmCommand === "string" && install.npmCommand.trim()
+				? install.npmCommand.trim()
+				: "npm",
+		pipCommand:
+			typeof install.pipCommand === "string" && install.pipCommand.trim()
+				? install.pipCommand.trim()
+				: "pip",
+		pythonCommand:
+			typeof install.pythonCommand === "string" && install.pythonCommand.trim()
+				? install.pythonCommand.trim()
+				: "python3",
+		global: install.global !== false,
+		breakSystemPackages: install.breakSystemPackages !== false,
+	};
+}
+
+function getInstallerExecutable(server: LspServerDefinition): string | null {
+	const install = normalizeInstallSpec(server);
+	if (!install) return null;
+	return install.binaryPath || install.executable || null;
+}
+
+function getProviderExecutable(server: LspServerDefinition): string | null {
+	const bundle = getServerBundle(server.id);
+	if (!bundle?.getExecutable) return null;
+	try {
+		return bundle.getExecutable(server.id, server) || null;
+	} catch (error) {
+		console.warn(`Failed to resolve bundle executable for ${server.id}`, error);
+		return null;
+	}
+}
+
+function resolveServerExecutable(server: LspServerDefinition): string | null {
+	return (
+		getProviderExecutable(server) ||
+		getInstallerExecutable(server) ||
+		server.launcher?.bridge?.command ||
+		server.launcher?.command ||
+		null
+	);
+}
+
+function getInstallLabel(server: LspServerDefinition): string {
+	return (
+		normalizeInstallSpec(server)?.label ||
+		server.launcher?.install?.label ||
+		server.label ||
+		server.id
+	).trim();
+}
+
+function buildUninstallCommand(server: LspServerDefinition): string | null {
+	const spec = normalizeInstallSpec(server);
+	if (!spec) return null;
+
+	if (spec.uninstallCommand) {
+		return spec.uninstallCommand;
+	}
+	if (server.launcher?.uninstallCommand) {
+		return server.launcher.uninstallCommand;
+	}
+
+	switch (spec.kind) {
+		case "apk":
+			return spec.packages.length
+				? `apk del ${spec.packages.map((entry) => quoteArg(entry)).join(" ")}`
+				: null;
+		case "npm": {
+			if (!spec.packages.length) return null;
+			const npmCommand = spec.npmCommand || "npm";
+			const uninstallFlags =
+				spec.global !== false ? "uninstall -g" : "uninstall";
+			return `${npmCommand} ${uninstallFlags} ${spec.packages.map((entry) => quoteArg(entry)).join(" ")}`;
+		}
+		case "pip":
+			return spec.packages.length
+				? `${spec.pipCommand || "pip"} uninstall -y ${spec.packages.map((entry) => quoteArg(entry)).join(" ")}`
+				: null;
+		case "cargo":
+			return spec.packages.length
+				? spec.packages
+						.map((entry) => `cargo uninstall ${quoteArg(entry)}`)
+						.join(" && ")
+				: null;
+		case "github-release":
+		case "manual":
+			return spec.binaryPath ? `rm -f ${quoteArg(spec.binaryPath)}` : null;
+		default:
+			return null;
+	}
+}
+
+function buildInstallCommand(
+	server: LspServerDefinition,
+	mode: "install" | "update" = "install",
+): string | null {
+	const spec = normalizeInstallSpec(server);
+	if (!spec) return null;
+
+	if (mode === "update" && spec.updateCommand) {
+		return spec.updateCommand;
+	}
+
+	switch (spec.kind) {
+		case "apk":
+			return spec.packages.length
+				? `apk add --no-cache ${spec.packages.map((entry) => quoteArg(entry)).join(" ")}`
+				: null;
+		case "npm": {
+			if (!spec.packages.length) return null;
+			const npmCommand = spec.npmCommand || "npm";
+			const installFlags = spec.global !== false ? "install -g" : "install";
+			return `apk add --no-cache nodejs npm && ${npmCommand} ${installFlags} ${spec.packages.map((entry) => quoteArg(entry)).join(" ")}`;
+		}
+		case "pip": {
+			if (!spec.packages.length) return null;
+			const pipCommand = spec.pipCommand || "pip";
+			const breakPackages =
+				spec.breakSystemPackages !== false
+					? "PIP_BREAK_SYSTEM_PACKAGES=1 "
+					: "";
+			return `apk add --no-cache python3 py3-pip && ${breakPackages}${pipCommand} install ${spec.packages.map((entry) => quoteArg(entry)).join(" ")}`;
+		}
+		case "cargo":
+			return spec.packages.length
+				? `apk add --no-cache rust cargo && cargo install ${spec.packages.map((entry) => quoteArg(entry)).join(" ")}`
+				: null;
+		case "github-release": {
+			if (!spec.repo || !spec.binaryPath) return null;
+			const caseLines = buildShellArchCase(spec.assetNames, quoteArg);
+			if (!caseLines) return null;
+			const archivePath = '"$TMP_DIR/$ASSET"';
+			const extractedFile = quoteArg(spec.extractFile || "luau-lsp");
+			const installTarget = quoteArg(spec.binaryPath);
+			const downloadUrl = `https://github.com/${spec.repo}/releases/latest/download/$ASSET`;
+
+			if (spec.archiveType === "binary") {
+				return `apk add --no-cache curl && ARCH="$(uname -m)" && case "$ARCH" in\n${caseLines}\n\t*) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;;\nesac && TMP_DIR="$(mktemp -d)" && cleanup() { rm -rf "$TMP_DIR"; } && trap cleanup EXIT && curl -fsSL "${downloadUrl}" -o ${archivePath} && install -Dm755 ${archivePath} ${installTarget}`;
+			}
+
+			return `apk add --no-cache curl unzip && ARCH="$(uname -m)" && case "$ARCH" in\n${caseLines}\n\t*) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;;\nesac && TMP_DIR="$(mktemp -d)" && cleanup() { rm -rf "$TMP_DIR"; } && trap cleanup EXIT && curl -fsSL "${downloadUrl}" -o ${archivePath} && unzip -oq ${archivePath} -d "$TMP_DIR" && install -Dm755 "$TMP_DIR"/${extractedFile} ${installTarget}`;
+		}
+		case "manual":
+			return null;
+		default:
+			return spec.command || null;
+	}
+}
+
+function buildDerivedCheckCommand(server: LspServerDefinition): string | null {
+	const binary = resolveServerExecutable(server)?.trim() || "";
+	const install = normalizeInstallSpec(server);
+
+	if (install?.kind === "manual" && install.binaryPath) {
+		return `test -x ${quoteArg(install.binaryPath)}`;
+	}
+
+	if (binary.includes("/")) {
+		return `test -x ${quoteArg(binary)}`;
+	}
+
+	if (binary) {
+		return `which ${quoteArg(binary)}`;
+	}
+
+	return null;
+}
+
+function getUpdateCommand(server: LspServerDefinition): string | null {
+	const launcher = server.launcher;
+	if (!launcher) return null;
+	if (
+		typeof launcher.updateCommand === "string" &&
+		launcher.updateCommand.trim()
+	) {
+		return launcher.updateCommand.trim();
+	}
+	return buildInstallCommand(server, "update");
+}
+
+async function readServerVersion(
+	server: LspServerDefinition,
+): Promise<string | null> {
+	const command = server.launcher?.versionCommand;
+	if (!command) return null;
+
+	try {
+		const output = await runQuickCommand(command);
+		const version = String(output || "")
+			.split("\n")
+			.map((line) => line.trim())
+			.find(Boolean);
+		return version || null;
+	} catch {
+		return null;
+	}
+}
+
+export function getInstallCommand(
+	server: LspServerDefinition,
+	mode: "install" | "update" = "install",
+): string | null {
+	if (mode === "update") {
+		return getUpdateCommand(server);
+	}
+	return buildInstallCommand(server, "install");
+}
+
+export function getInstallSource(server: LspServerDefinition): string | null {
+	return normalizeInstallSpec(server)?.source || null;
+}
+
+export function getUninstallCommand(
+	server: LspServerDefinition,
+): string | null {
+	return buildUninstallCommand(server);
+}
+
+export async function checkServerInstallation(
+	server: LspServerDefinition,
+): Promise<InstallCheckResult> {
+	const bundle = getServerBundle(server.id);
+	if (bundle?.checkInstallation) {
+		try {
+			const result = await bundle.checkInstallation(server.id, server);
+			if (result) return result;
+		} catch (error) {
+			return {
+				status: "failed",
+				version: null,
+				canInstall: Boolean(getInstallCommand(server, "install")),
+				canUpdate: Boolean(getInstallCommand(server, "update")),
+				message: error instanceof Error ? error.message : String(error),
+			};
+		}
+	}
+
+	const launcher = server.launcher;
+	const installCommand = getInstallCommand(server, "install");
+	const updateCommand = getInstallCommand(server, "update");
+	const checkCommand =
+		launcher?.checkCommand || buildDerivedCheckCommand(server);
+
+	if (!checkCommand) {
+		return {
+			status: "unknown",
+			version: await readServerVersion(server),
+			canInstall: Boolean(installCommand),
+			canUpdate: Boolean(updateCommand),
+			message: "No install check configured for this server.",
+		};
+	}
+
+	try {
+		await runQuickCommand(checkCommand);
+		return {
+			status: "present",
+			version: await readServerVersion(server),
+			canInstall: Boolean(installCommand),
+			canUpdate: Boolean(updateCommand),
+		};
+	} catch (error) {
+		return {
+			status: installCommand ? "missing" : "failed",
+			version: null,
+			canInstall: Boolean(installCommand),
+			canUpdate: Boolean(updateCommand),
+			message: error instanceof Error ? error.message : String(error),
+		};
+	}
+}
+
+export function resetInstallState(serverId?: string): void {
+	if (!serverId) {
+		checkedCommands.clear();
+		return;
+	}
+
+	const prefix = `${serverId}:`;
+	for (const key of Array.from(checkedCommands.keys())) {
+		if (key.startsWith(prefix)) {
+			checkedCommands.delete(key);
+		}
+	}
+}
+
 async function ensureInstalled(server: LspServerDefinition): Promise<boolean> {
 	const launcher = server.launcher;
-	if (!launcher?.checkCommand) return true;
+	const checkCommand =
+		launcher?.checkCommand || buildDerivedCheckCommand(server);
+	if (!checkCommand) return true;
 
-	const cacheKey = `${server.id}:${launcher.checkCommand}`;
+	const cacheKey = getInstallCacheKey(server);
+	if (!cacheKey) return true;
 
 	// Return cached result if already checked
 	if (checkedCommands.has(cacheKey)) {
-		return checkedCommands.get(cacheKey) === STATUS_PRESENT;
+		const status = checkedCommands.get(cacheKey);
+		if (status === STATUS_PRESENT) {
+			return true;
+		}
+		if (status === STATUS_DECLINED) {
+			return false;
+		}
+		checkedCommands.delete(cacheKey);
 	}
 
 	// If there's already a pending check for this server, wait for it
@@ -422,19 +777,146 @@ interface LoaderDialog {
 	destroy: () => void;
 }
 
+type InstallActionMode = "install" | "update" | "reinstall";
+
+export async function installServer(
+	server: LspServerDefinition,
+	mode: InstallActionMode = "install",
+	options: { promptConfirm?: boolean } = {},
+): Promise<boolean> {
+	const bundle = getServerBundle(server.id);
+	if (bundle?.installServer) {
+		return bundle.installServer(server.id, server, mode, options);
+	}
+
+	const { promptConfirm = true } = options;
+	const cacheKey = getInstallCacheKey(server);
+	const displayLabel = getInstallLabel(server);
+	const isUpdate = mode === "update";
+	const actionLabel = isUpdate ? "Update" : "Install";
+	const command =
+		mode === "install"
+			? getInstallCommand(server, "install")
+			: getUpdateCommand(server);
+
+	if (!command) {
+		throw new Error(
+			`${displayLabel} has no ${actionLabel.toLowerCase()} command.`,
+		);
+	}
+
+	if (promptConfirm) {
+		const shouldContinue = await confirm(
+			displayLabel,
+			`${actionLabel} ${displayLabel} language server?`,
+		);
+		if (!shouldContinue) {
+			if (cacheKey) {
+				checkedCommands.set(cacheKey, STATUS_DECLINED);
+			}
+			return false;
+		}
+	}
+
+	let loadingDialog: LoaderDialog | null = null;
+	try {
+		loadingDialog = loader.create(
+			displayLabel,
+			`${actionLabel}ing ${displayLabel}...`,
+		);
+		loadingDialog.show();
+		await runForegroundCommand(command);
+		resetInstallState(server.id);
+
+		const result = await checkServerInstallation(server);
+		if (cacheKey && result.status === "present") {
+			checkedCommands.set(cacheKey, STATUS_PRESENT);
+		}
+
+		toast(
+			result.status === "present"
+				? `${displayLabel} ${isUpdate ? "updated" : "installed"}`
+				: `${displayLabel} ${actionLabel.toLowerCase()} finished`,
+		);
+		return true;
+	} catch (error) {
+		console.error(`Failed to ${actionLabel.toLowerCase()} ${server.id}`, error);
+		if (cacheKey) {
+			checkedCommands.set(cacheKey, STATUS_FAILED);
+		}
+		toast(strings?.error ?? "Error");
+		throw error;
+	} finally {
+		loadingDialog?.destroy?.();
+	}
+}
+
+export async function uninstallServer(
+	server: LspServerDefinition,
+	options: { promptConfirm?: boolean } = {},
+): Promise<boolean> {
+	const bundle = getServerBundle(server.id);
+	if (bundle?.uninstallServer) {
+		return bundle.uninstallServer(server.id, server, options);
+	}
+
+	const { promptConfirm = true } = options;
+	const cacheKey = getInstallCacheKey(server);
+	const displayLabel = getInstallLabel(server);
+	const command = getUninstallCommand(server);
+
+	if (!command) {
+		throw new Error(`${displayLabel} has no uninstall command.`);
+	}
+
+	if (promptConfirm) {
+		const shouldContinue = await confirm(
+			displayLabel,
+			`Uninstall ${displayLabel} language server?`,
+		);
+		if (!shouldContinue) {
+			return false;
+		}
+	}
+
+	let loadingDialog: LoaderDialog | null = null;
+	try {
+		loadingDialog = loader.create(
+			displayLabel,
+			`Uninstalling ${displayLabel}...`,
+		);
+		loadingDialog.show();
+		await runForegroundCommand(command);
+		if (cacheKey) {
+			checkedCommands.delete(cacheKey);
+		}
+		resetInstallState(server.id);
+		stopManagedServer(server.id);
+		return true;
+	} catch (error) {
+		console.error(`Failed to uninstall ${server.id}`, error);
+		toast(strings?.error ?? "Error");
+		throw error;
+	} finally {
+		loadingDialog?.destroy();
+	}
+}
+
 async function performInstallCheck(
 	server: LspServerDefinition,
-	launcher: LauncherConfig,
+	launcher: LauncherConfig | undefined,
 	cacheKey: string,
 ): Promise<boolean> {
 	try {
-		if (launcher.checkCommand) {
-			await runQuickCommand(launcher.checkCommand);
+		const checkCommand =
+			launcher?.checkCommand || buildDerivedCheckCommand(server);
+		if (checkCommand) {
+			await runQuickCommand(checkCommand);
 		}
 		checkedCommands.set(cacheKey, STATUS_PRESENT);
 		return true;
 	} catch (error) {
-		if (!launcher.install) {
+		if (!getInstallCommand(server, "install")) {
 			checkedCommands.set(cacheKey, STATUS_FAILED);
 			console.warn(
 				`LSP server ${server.id} is missing check command result and has no installer.`,
@@ -443,42 +925,15 @@ async function performInstallCheck(
 			throw error;
 		}
 
-		const install = launcher.install;
-		const displayLabel = (
-			server.label ||
-			server.id ||
-			"Language server"
-		).trim();
-		const promptMessage = `Install ${displayLabel} language server?`;
-		const shouldInstall = await confirm(
-			server.label || displayLabel,
-			promptMessage,
-		);
-
-		if (!shouldInstall) {
+		const installed = await installServer(server, "install", {
+			promptConfirm: true,
+		});
+		if (!installed) {
 			checkedCommands.set(cacheKey, STATUS_DECLINED);
 			return false;
 		}
-
-		let loadingDialog: LoaderDialog | null = null;
-		try {
-			loadingDialog = loader.create(
-				server.label,
-				`Installing ${server.label}...`,
-			);
-			loadingDialog.show();
-			await runForegroundCommand(install.command);
-			toast(`${server.label} installed`);
-			checkedCommands.set(cacheKey, STATUS_PRESENT);
-			return true;
-		} catch (installError) {
-			console.error(`Failed to install ${server.id}`, installError);
-			toast(strings?.error ?? "Error");
-			checkedCommands.set(cacheKey, STATUS_FAILED);
-			throw installError;
-		} finally {
-			loadingDialog?.destroy?.();
-		}
+		checkedCommands.set(cacheKey, STATUS_PRESENT);
+		return true;
 	}
 }
 
@@ -594,7 +1049,11 @@ export async function ensureServerRunning(
 
 	// Check if server is already running via port file (dead client detection)
 	const bridge = launcher.bridge;
-	const serverName = bridge?.command || launcher.command || server.id;
+	const serverName =
+		resolveServerExecutable(server) ||
+		bridge?.command ||
+		launcher.command ||
+		server.id;
 
 	try {
 		const existingPort = await canReuseExistingServer(server, effectiveSession);

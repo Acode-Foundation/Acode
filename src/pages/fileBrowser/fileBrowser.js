@@ -20,6 +20,7 @@ import projects from "lib/projects";
 import recents from "lib/recents";
 import remoteStorage from "lib/remoteStorage";
 import appSettings from "lib/settings";
+import { hideAd } from "lib/startAd";
 import mimeTypes from "mime-types";
 import mustache from "mustache";
 import filesSettings from "settings/filesSettings";
@@ -62,7 +63,8 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 	const state = [];
 	/**@type {Array<Storage>} */
 	const allStorages = [];
-	let storageList = JSON.parse(localStorage.storageList || "[]");
+	let storageList = helpers.parseJSON(localStorage.storageList);
+	if (!Array.isArray(storageList)) storageList = [];
 
 	let isSelectionMode = false;
 	let selectedItems = new Set();
@@ -185,10 +187,6 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				disabled: true,
 				onclick() {
 					$page.hide();
-
-					if (IS_FREE_VERSION && window.iad?.isLoaded()) {
-						window.iad.show();
-					}
 
 					resolve({
 						type: "folder",
@@ -514,7 +512,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 		$page.onhide = function () {
 			hideSearchBar();
-			helpers.hideAd();
+			hideAd();
 			actionStack.clearFromMark();
 			actionStack.remove("filebrowser");
 			$content.removeEventListener("click", handleClick);
@@ -1088,7 +1086,9 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 						storageType: "sd",
 					});
 				});
-			} catch (err) {}
+			} catch (err) {
+				console.warn("Unable to list external storages.", err);
+			}
 
 			storageList.forEach((storage) => {
 				let url = storage.url || /**@deprecated */ storage["uri"];
@@ -1271,7 +1271,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				if (arg === "file") {
 					newUrl = await helpers.createFileStructure(url, entryName);
 				}
-				if (!newUrl) return;
+				if (!newUrl.created) return;
 				return newUrl.uri;
 			}
 

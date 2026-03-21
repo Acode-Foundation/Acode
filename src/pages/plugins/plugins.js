@@ -16,6 +16,7 @@ import actionStack from "lib/actionStack";
 import Contextmenu from "components/contextmenu";
 import settings from "lib/settings";
 import loadPlugin from "lib/loadPlugin";
+import { hideAd } from "lib/startAd";
 
 /**
  *
@@ -206,7 +207,7 @@ export default function PluginsInclude(updates) {
   });
 
   $page.onhide = function () {
-    helpers.hideAd();
+    hideAd();
     actionStack.remove("plugins");
   };
 
