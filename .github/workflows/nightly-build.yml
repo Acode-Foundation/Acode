@@ -176,7 +176,7 @@
              echo "VERSION: $UPDATED_VERSION" >> $GITHUB_STEP_SUMMARY
              
         - name: Upload APK Artifact
-          uses: actions/upload-artifact@v6
+          uses: actions/upload-artifact@v7
           with:
             name: app-debug-${{ env.GIT_COMMIT }}
             path: /tmp/app-debug-normal.apk
@@ -189,7 +189,7 @@
             mv platforms/android/app/build/outputs/apk/debug/app-debug.apk /tmp/app-debug-fdroid.apk
         
         - name: Upload APK Artifact
-          uses: actions/upload-artifact@v6
+          uses: actions/upload-artifact@v7
           if: ${{ !inputs.is_PR }}
           with:
             name: app-debug-fdroid-${{ env.GIT_COMMIT }}
