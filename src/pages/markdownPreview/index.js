@@ -370,7 +370,9 @@ function createMarkdownPreview(file) {
 				const codeElement = pre.querySelector("code");
 				if (!codeElement || codeElement.closest(".mermaid-error")) return;
 
-				const language = codeElement.className.match(/language-(\w+)/)?.[1];
+				const language =
+					codeElement.dataset.language ||
+					codeElement.className.match(/language-(\S+)/)?.[1];
 				if (!language) return;
 
 				const originalCode = codeElement.textContent || "";
@@ -456,6 +458,7 @@ function createMarkdownPreview(file) {
 					const sanitizedSvg = DOMPurify.sanitize(svg, {
 						USE_PROFILES: { svg: true, svgFilters: true },
 						ADD_TAGS: ["style"],
+						ADD_ATTR: ["data-et", "data-id", "data-node", "data-zoom", "class"],
 					});
 					block.innerHTML = sanitizedSvg;
 					bindFunctions?.(block);

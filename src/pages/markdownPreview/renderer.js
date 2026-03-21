@@ -10,7 +10,8 @@ const EXTERNAL_LINK_PATTERN = /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i;
 const IMAGE_PLACEHOLDER =
 	"data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
 const BLOCK_MATH_PATTERN = /(^|[^\\])\$\$[\s\S]+?\$\$/m;
-const INLINE_MATH_PATTERN = /(^|[^\\])\$(?!\s)(?:\\.|[^$\\\n])+\$(?!\w)/m;
+const INLINE_MATH_PATTERN =
+	/(^|[^\\])\$(?!\s)(?:\\.|[^$\\\n])*(?:\\[{^_(]|[{^_])(?:\\.|[^$\\\n])*\$(?!\w)/m;
 const BEGIN_END_MATH_PATTERN =
 	/\\begin\{(?:equation|align|gather|multline|eqnarray)\*?\}[\s\S]*?\\end\{(?:equation|align|gather|multline|eqnarray)\*?\}/m;
 
