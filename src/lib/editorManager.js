@@ -26,7 +26,6 @@ import {
 	wrapWithAbbreviation,
 } from "@emmetio/codemirror6-plugin";
 import createBaseExtensions from "cm/baseExtensions";
-import createMainEditorExtensions from "cm/mainEditorExtensions";
 import {
 	setKeyBindings as applyKeyBindings,
 	executeCommand,
@@ -45,6 +44,7 @@ import {
 	lspDiagnosticsUiExtension,
 } from "cm/lsp/diagnostics";
 import { stopManagedServer } from "cm/lsp/serverLauncher";
+import createMainEditorExtensions from "cm/mainEditorExtensions";
 // CodeMirror mode management
 import {
 	getModeForPath,
@@ -771,9 +771,7 @@ async function EditorManager($header, $body) {
 			touchSelectionUpdateExtension,
 			searchExtension: search(),
 			// Ensure read-only can be toggled later via compartment
-			readOnlyExtension: readOnlyCompartment.of(
-				EditorState.readOnly.of(false),
-			),
+			readOnlyExtension: readOnlyCompartment.of(EditorState.readOnly.of(false)),
 			// Editor options driven by settings via compartments
 			optionExtensions: getBaseExtensionsFromOptions(),
 		}),
