@@ -233,7 +233,6 @@ async function EditorManager($header, $body) {
 				update.selectionSet ||
 				update.docChanged ||
 				update.geometryChanged ||
-				update.viewportChanged ||
 				pointerTriggered
 			) {
 				cancelAnimationFrame(touchSelectionSyncRaf);
@@ -1771,13 +1770,21 @@ async function EditorManager($header, $body) {
 		let checkTimeout = null;
 		let autosaveTimeout;
 		let scrollTimeout;
+		let scrollSyncRaf = 0;
 		const scroller = editor.scrollDOM;
 
-		function handleEditorScroll() {
-			if (!scroller) return;
+		function syncScrollUi() {
+			scrollSyncRaf = 0;
 			onscrolltop();
 			onscrollleft();
 			touchSelectionController?.onScroll();
+		}
+
+		function handleEditorScroll() {
+			if (!scroller) return;
+			if (!scrollSyncRaf) {
+				scrollSyncRaf = requestAnimationFrame(syncScrollUi);
+			}
 			clearTimeout(scrollTimeout);
 			isScrolling = true;
 			scrollTimeout = setTimeout(() => {

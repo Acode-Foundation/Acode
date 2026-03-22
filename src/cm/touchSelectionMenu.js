@@ -149,6 +149,8 @@ class TouchSelectionMenuController {
 	#selectionActive = false;
 	#menuActive = false;
 	#enabled = true;
+	#touchListenersAttached = false;
+	#touchMovePassive = true;
 	#handlingMenuAction = false;
 	#pendingPointerTriggered = false;
 	#pendingSelectionChanged = false;
@@ -494,7 +496,7 @@ class TouchSelectionMenuController {
 			longPressFired: false,
 		};
 
-		this.#addTouchListeners();
+		this.#addTouchListeners({ passiveMove: true });
 		this.#clearLongPress();
 		this.#longPressTimer = setTimeout(() => {
 			if (!this.#touchSession || this.#touchSession.moved) return;
@@ -627,18 +629,32 @@ class TouchSelectionMenuController {
 		this.#showCursorHandle();
 	};
 
-	#addTouchListeners() {
+	#addTouchListeners({ passiveMove = true } = {}) {
+		if (
+			this.#touchListenersAttached &&
+			this.#touchMovePassive === passiveMove
+		) {
+			return;
+		}
+		if (this.#touchListenersAttached) {
+			this.#removeTouchListeners();
+		}
+		this.#touchMovePassive = passiveMove;
 		document.addEventListener("touchmove", this.#onTouchMove, {
-			passive: false,
+			passive: passiveMove,
 		});
 		document.addEventListener("touchend", this.#onTouchEnd, {
 			passive: false,
 		});
+		this.#touchListenersAttached = true;
 	}
 
 	#removeTouchListeners() {
+		if (!this.#touchListenersAttached) return;
 		document.removeEventListener("touchmove", this.#onTouchMove);
 		document.removeEventListener("touchend", this.#onTouchEnd);
+		this.#touchListenersAttached = false;
+		this.#touchMovePassive = true;
 	}
 
 	#clearLongPress() {
@@ -1047,7 +1063,7 @@ class TouchSelectionMenuController {
 		};
 		this.#pointer.x = x;
 		this.#pointer.y = y;
-		this.#addTouchListeners();
+		this.#addTouchListeners({ passiveMove: false });
 	}
 
 	#dragTo(x, y) {
