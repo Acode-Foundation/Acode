@@ -621,12 +621,6 @@ class TouchSelectionMenuController {
 			return;
 		}
 
-		const moved = this.#moveCursorToCoords(clientX, clientY);
-		if (moved != null) {
-			event.preventDefault();
-			event.stopPropagation();
-			this.#view.focus();
-		}
 		this.#selectionActive = false;
 		this.#hideMenu();
 		this.#removeSelectionHandles();
