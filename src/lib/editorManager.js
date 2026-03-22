@@ -16,7 +16,6 @@ import {
 	highlightWhitespace,
 	keymap,
 	lineNumbers,
-	scrollPastEnd,
 } from "@codemirror/view";
 import {
 	abbreviationTracker,
@@ -27,6 +26,7 @@ import {
 	wrapWithAbbreviation,
 } from "@emmetio/codemirror6-plugin";
 import createBaseExtensions from "cm/baseExtensions";
+import createMainEditorExtensions from "cm/mainEditorExtensions";
 import {
 	setKeyBindings as applyKeyBindings,
 	executeCommand,
@@ -161,12 +161,6 @@ async function EditorManager($header, $body) {
 		onclick() {
 			acode.exec("open", "problems");
 		},
-	});
-
-	// Make CodeMirror fill the container height and manage scrolling internally
-	const fixedHeightTheme = EditorView.theme({
-		"&": { height: "100%" },
-		".cm-scroller": { height: "100%", overflow: "auto" },
 	});
 
 	const pointerCursorVisibilityExtension = EditorView.updateListener.of(
@@ -764,24 +758,25 @@ async function EditorManager($header, $body) {
 	// Create minimal CodeMirror editor
 	const editorState = EditorState.create({
 		doc: "",
-		extensions: [
+		extensions: createMainEditorExtensions({
 			// Emmet needs highest precedence so place before default keymaps
-			...createEmmetExtensionSet({ syntax: EmmetKnownSyntax.html }),
-			...createBaseExtensions(),
-			getCommandKeymapExtension(),
-			// Default theme
-			themeCompartment.of(oneDark),
-			fixedHeightTheme,
-			scrollPastEnd(),
+			emmetExtensions: createEmmetExtensionSet({
+				syntax: EmmetKnownSyntax.html,
+			}),
+			baseExtensions: createBaseExtensions(),
+			commandKeymapExtension: getCommandKeymapExtension(),
+			themeExtension: themeCompartment.of(oneDark),
 			pointerCursorVisibilityExtension,
 			shiftClickSelectionExtension,
 			touchSelectionUpdateExtension,
-			search(),
+			searchExtension: search(),
 			// Ensure read-only can be toggled later via compartment
-			readOnlyCompartment.of(EditorState.readOnly.of(false)),
+			readOnlyExtension: readOnlyCompartment.of(
+				EditorState.readOnly.of(false),
+			),
 			// Editor options driven by settings via compartments
-			...getBaseExtensionsFromOptions(),
-		],
+			optionExtensions: getBaseExtensionsFromOptions(),
+		}),
 	});
 
 	const editor = new EditorView({
@@ -1128,22 +1123,20 @@ async function EditorManager($header, $body) {
 	function applyFileToEditor(file) {
 		if (!file || file.type !== "editor") return;
 		const syntax = getEmmetSyntaxForFile(file);
-		const baseExtensions = [
+		const baseExtensions = createMainEditorExtensions({
 			// Emmet needs to precede default keymaps so tracker Tab wins over indent
-			...createEmmetExtensionSet({ syntax }),
-			...createBaseExtensions(),
-			getCommandKeymapExtension(),
+			emmetExtensions: createEmmetExtensionSet({ syntax }),
+			baseExtensions: createBaseExtensions(),
+			commandKeymapExtension: getCommandKeymapExtension(),
 			// keep compartment in the state to allow dynamic theme changes later
-			themeCompartment.of(oneDark),
-			fixedHeightTheme,
-			scrollPastEnd(),
+			themeExtension: themeCompartment.of(oneDark),
 			pointerCursorVisibilityExtension,
 			shiftClickSelectionExtension,
 			touchSelectionUpdateExtension,
-			search(),
+			searchExtension: search(),
 			// Keep dynamic compartments across state swaps
-			...getBaseExtensionsFromOptions(),
-		];
+			optionExtensions: getBaseExtensionsFromOptions(),
+		});
 		const exts = [...baseExtensions];
 		maybeAttachEmmetCompletions(exts, syntax);
 		try {

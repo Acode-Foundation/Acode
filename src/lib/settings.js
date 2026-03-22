@@ -179,6 +179,7 @@ class Settings {
 			showSponsorSidebarApp: true,
 			showAnnotations: false,
 			lintGutter: true,
+			indentGuides: true,
 			rainbowBrackets: true,
 			pluginsDisabled: {}, // pluginId: true/false
 			lsp: {
