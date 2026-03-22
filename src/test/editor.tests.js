@@ -420,15 +420,22 @@ export async function runCodeMirrorTests(writeOutput) {
 
 	runner.test("Indent guides render as indentation spans", async (test) => {
 		const doc = "function x() {\n  if (true) {\n    return 1;\n  }\n}";
-		await withEditor(test, async (view) => {
-			const guideLine = view.dom.querySelector(".cm-indent-guides");
-			const legacyWidget = view.dom.querySelector(".cm-indent-guides-wrapper");
-			test.assert(guideLine != null, "Indent guide span should exist");
-			test.assert(
-				legacyWidget == null,
-				"Indent guides should not create widget wrapper DOM",
-			);
-		}, doc, [indentGuides()]);
+		await withEditor(
+			test,
+			async (view) => {
+				const guideLine = view.dom.querySelector(".cm-indent-guides");
+				const legacyWidget = view.dom.querySelector(
+					".cm-indent-guides-wrapper",
+				);
+				test.assert(guideLine != null, "Indent guide span should exist");
+				test.assert(
+					legacyWidget == null,
+					"Indent guides should not create widget wrapper DOM",
+				);
+			},
+			doc,
+			[indentGuides()],
+		);
 	});
 
 	runner.test("Focus and blur", async (test) => {
