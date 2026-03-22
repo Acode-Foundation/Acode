@@ -3,13 +3,11 @@ import type { LSPClientExtension } from "@codemirror/lsp-client";
 import {
 	findReferencesKeymap,
 	formatKeymap,
-	hoverTooltips,
 	jumpToDefinitionKeymap,
 	LSPClient,
 	LSPPlugin,
 	serverCompletion,
 	serverDiagnostics,
-	signatureHelp,
 } from "@codemirror/lsp-client";
 import { EditorState, Extension, MapMode } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
@@ -23,6 +21,7 @@ import { inlayHintsExtension } from "./inlayHints";
 import { acodeRenameKeymap } from "./rename";
 import { ensureServerRunning } from "./serverLauncher";
 import serverRegistry from "./serverRegistry";
+import { hoverTooltips, signatureHelp } from "./tooltipExtensions";
 import { createTransport } from "./transport";
 import type {
 	BuiltinExtensionsConfig,
@@ -149,7 +148,7 @@ function buildBuiltinExtensions(
 		signature: includeSignature = true,
 		keymaps: includeKeymaps = true,
 		diagnostics: includeDiagnostics = true,
-		inlayHints: includeInlayHints = true,
+		inlayHints: includeInlayHints = false,
 		documentHighlights: includeDocumentHighlights = true,
 		formatting: includeFormatting = true,
 	} = config;
@@ -519,7 +518,7 @@ export class LspClientManager {
 						signature: builtinConfig.signature !== false,
 						keymaps: builtinConfig.keymaps !== false,
 						diagnostics: builtinConfig.diagnostics !== false,
-						inlayHints: builtinConfig.inlayHints !== false,
+						inlayHints: builtinConfig.inlayHints === true,
 						documentHighlights: builtinConfig.documentHighlights !== false,
 						formatting: builtinConfig.formatting !== false,
 					})
