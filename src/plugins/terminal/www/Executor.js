@@ -12,6 +12,22 @@ class Executor {
   constructor(BackgroundExecutor = false) {
     this.ExecutorType = BackgroundExecutor ? "BackgroundExecutor" : "Executor";
   }
+
+  spawnStream(cmd, callback){
+
+    exec((port)=>{
+      const ws = new WebSocket(`ws://127.0.0.1:${port}`);
+      ws.binaryType = "arraybuffer";
+
+      ws.onopen = ()=>{
+        callback(ws);
+      };
+
+    }, null, "Executor", "spawn", [cmd]);
+
+  }
+
+
   /**
    * Starts a shell process and enables real-time streaming of stdout, stderr, and exit status.
    *
@@ -150,6 +166,8 @@ class Executor {
    *
    * @returns {Promise<string>} Resolves when the service has been stopped.
    *
+   * Note: This does not gurantee that all running processes have been killed, but the service will no longer be active. Use with caution.
+   * 
    * @example
    * executor.stopService();
    */

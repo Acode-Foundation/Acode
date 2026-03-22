@@ -29,6 +29,9 @@ import androidx.core.content.ContextCompat;
 import android.app.Activity;
 import com.foxdebug.acode.rk.exec.terminal.*;
 
+import java.net.ServerSocket;
+import java.io.IOException;
+
 public class Executor extends CordovaPlugin {
 
     private Messenger serviceMessenger;
@@ -41,6 +44,7 @@ public class Executor extends CordovaPlugin {
     private final java.util.Map<String, CallbackContext> callbackContextMap = new java.util.concurrent.ConcurrentHashMap<>();
 
     private static final int REQUEST_POST_NOTIFICATIONS = 1001;
+    private static int nextPort = 9000;
     
     private void askNotificationPermission(Activity context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -284,9 +288,50 @@ public class Executor extends CordovaPlugin {
                 callbackContextMap.put(pidCheck, callbackContext);
                 isProcessRunning(pidCheck);
                 return true;
+            case "spawn":
+                JSONArray cmdArr = args.getJSONArray(0);
+
+                String[] cmd = new String[cmdArr.length()];
+                for(int i=0;i<cmdArr.length();i++){
+                    cmd[i] = cmdArr.getString(i);
+                }
+
+                int port = findFreePort(nextPort++);
+
+                ProcessServer server = new ProcessServer(port, cmd);
+                server.start();
+
+                callbackContext.success(port);
+                return true;
             default:
                 callbackContext.error("Unknown action: " + action);
                 return false;
+        }
+    }
+
+    private int findFreePort(int preferredPort) {
+
+        // try preferred port first
+        if (isPortFree(preferredPort)) {
+            return preferredPort;
+        }
+
+        // fallback to random ports
+        while (true) {
+            int port = 10000 + (int)(Math.random() * 50000);
+
+            if (isPortFree(port)) {
+                return port;
+            }
+        }
+    }
+
+    private boolean isPortFree(int port) {
+        try (ServerSocket socket = new ServerSocket(port)) {
+            socket.setReuseAddress(true);
+            return true;
+        } catch (IOException e) {
+            return false;
         }
     }
 
