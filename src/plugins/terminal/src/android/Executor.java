@@ -45,7 +45,8 @@ public class Executor extends CordovaPlugin {
     private final java.util.Map<String, CallbackContext> callbackContextMap = new java.util.concurrent.ConcurrentHashMap<>();
 
     private static final int REQUEST_POST_NOTIFICATIONS = 1001;
-    private static int nextPort = 9000;
+    private static final int REQUEST_POST_NOTIFICATIONS = 1001;
+    
     
     private void askNotificationPermission(Activity context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
