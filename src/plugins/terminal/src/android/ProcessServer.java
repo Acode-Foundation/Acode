@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -15,9 +16,6 @@ class ProcessServer extends WebSocketServer {
 
     private final String[] cmd;
     private final CountDownLatch readyLatch = new CountDownLatch(1);
-
-    // Holds a bind-time exception if onError fires before onStart.
-    // AtomicReference because onError and startAndAwait run on different threads.
     private final AtomicReference<Exception> startError = new AtomicReference<>();
 
     private static final class ConnState {
@@ -35,35 +33,27 @@ class ProcessServer extends WebSocketServer {
         this.cmd = cmd;
     }
 
-    /**
-     * Starts the server and blocks until it is listening.
-     * Throws if the server fails to bind so the caller can report the error
-     * instead of hanging indefinitely.
-     */
     void startAndAwait() throws Exception {
         start();
         readyLatch.await();
-
-        // Re-throw any bind-time error captured in onError
         Exception err = startError.get();
         if (err != null) throw err;
     }
 
     @Override
     public void onStart() {
-        readyLatch.countDown(); // server is listening — unblock startAndAwait()
+        readyLatch.countDown();
     }
 
     @Override
     public void onError(WebSocket conn, Exception ex) {
         if (conn == null) {
-            // Startup/bind failure — record it and unblock startAndAwait()
-            // so it can throw rather than hang.
+            // Bind/startup failure — unblock startAndAwait() so it can throw.
             startError.set(ex);
             readyLatch.countDown();
-        } else {
-            stopProcess(conn);
         }
+        // Per-connection errors: do nothing. onClose fires immediately after
+        // for the same connection, which is the single place cleanup happens.
     }
 
     @Override
@@ -83,9 +73,12 @@ class ProcessServer extends WebSocketServer {
                         conn.send(ByteBuffer.wrap(buf, 0, len));
                     }
                 } catch (Exception ignored) {}
+                conn.close(1000, "process exited");
             }).start();
 
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            conn.close(1011, "Failed to start process: " + e.getMessage());
+        }
     }
 
     @Override
@@ -97,13 +90,19 @@ class ProcessServer extends WebSocketServer {
         } catch (Exception ignored) {}
     }
 
+    @Override
+    public void onMessage(WebSocket conn, String message) {
+        try {
+            ConnState state = conn.getAttachment();
+            state.stdin.write(message.getBytes(StandardCharsets.UTF_8));
+            state.stdin.flush();
+        } catch (Exception ignored) {}
+    }
 
     @Override
     public void onClose(WebSocket conn, int code, String reason, boolean remote) {
-        stopProcess(conn);
-    }
-
-    private void stopProcess(WebSocket conn) {
+        // Single point of cleanup for every connection lifecycle ending —
+        // whether closed cleanly, after an error, or by the process exiting.
         try {
             ConnState state = conn.getAttachment();
             if (state != null) state.process.destroy();
