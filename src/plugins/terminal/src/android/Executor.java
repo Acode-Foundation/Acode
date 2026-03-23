@@ -256,6 +256,30 @@ public class Executor extends CordovaPlugin {
             return true;
         }
 
+        if(actions.equals("spawn")){
+            try{
+                JSONArray cmdArr = args.getJSONArray(0);
+                String[] cmd = new String[cmdArr.length()];
+                for (int i = 0; i < cmdArr.length(); i++) {
+                    cmd[i] = cmdArr.getString(i);
+                }
+
+                ServerSocket socket = findFreePort();
+                int port = socket.getLocalPort();
+
+                ProcessServer server = new ProcessServer(socket, cmd);
+                server.start();
+
+                callbackContext.success(port);
+            }catch(Exception e){
+                e.printStackTrace();
+                callbackContext.error("Failed to spawn process: " + e.getMessage());
+            }
+            
+            return true;
+        }
+
+
         // For all other actions, ensure service is bound first
         if (!ensureServiceBound(callbackContext)) {
             // Error already sent by ensureServiceBound
@@ -288,51 +312,16 @@ public class Executor extends CordovaPlugin {
                 callbackContextMap.put(pidCheck, callbackContext);
                 isProcessRunning(pidCheck);
                 return true;
-            case "spawn":
-                JSONArray cmdArr = args.getJSONArray(0);
-
-                String[] cmd = new String[cmdArr.length()];
-                for(int i=0;i<cmdArr.length();i++){
-                    cmd[i] = cmdArr.getString(i);
-                }
-
-                int port = findFreePort(nextPort++);
-
-                ProcessServer server = new ProcessServer(port, cmd);
-                server.start();
-
-                callbackContext.success(port);
-                return true;
             default:
                 callbackContext.error("Unknown action: " + action);
                 return false;
         }
     }
 
-    private int findFreePort(int preferredPort) {
-
-        // try preferred port first
-        if (isPortFree(preferredPort)) {
-            return preferredPort;
-        }
-
-        // fallback to random ports
-        while (true) {
-            int port = 10000 + (int)(Math.random() * 50000);
-
-            if (isPortFree(port)) {
-                return port;
-            }
-        }
-    }
-
-    private boolean isPortFree(int port) {
-        try (ServerSocket socket = new ServerSocket(port)) {
-            socket.setReuseAddress(true);
-            return true;
-        } catch (IOException e) {
-            return false;
-        }
+    private ServerSocket findFreePort() throws IOException {
+        ServerSocket socket = new ServerSocket(0);
+        socket.setReuseAddress(true);
+        return socket;
     }
 
     private void stopServiceNow() {
