@@ -13,6 +13,13 @@ class Executor {
     this.ExecutorType = BackgroundExecutor ? "BackgroundExecutor" : "Executor";
   }
 
+  /**
+   * Spawns a process and exposes it as a raw WebSocket stream.
+   *
+   * @param {string[]} cmd - Command and arguments to execute (e.g. `["sh", "-c", "echo hi"]`).
+   * @param {(ws: WebSocket) => void} callback - Called with the connected WebSocket once the
+   *   process is ready. Use `ws.send()` to write to stdin and `ws.onmessage` to read stdout.
+   */
   spawnStream(cmd, callback){
 
     exec((port)=>{
