@@ -101,12 +101,18 @@ class ProcessServer extends WebSocketServer {
 
     @Override
     public void onClose(WebSocket conn, int code, String reason, boolean remote) {
-        // Single point of cleanup for every connection lifecycle ending —
-        // whether closed cleanly, after an error, or by the process exiting.
         try {
             ConnState state = conn.getAttachment();
             if (state != null) state.process.destroy();
-            stop();
         } catch (Exception ignored) {}
+
+        // stop() calls w.join() on every worker thread. If called directly from
+        // onClose (which runs on a WebSocketWorker thread), it deadlocks waiting
+        // for itself to finish. A separate thread sidesteps that entirely.
+        new Thread(() -> {
+            try {
+                stop();
+            } catch (Exception ignored) {}
+        }).start();
     }
 }
