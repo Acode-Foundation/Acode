@@ -507,7 +507,7 @@
 	"save file before home shortcut": "Simpak berkas sebelum menambahkannya ke layar beranda.",
 	"terminal_required_message_for_lsp": "Terminal tidak terpasang. Mohon pasang Terminal terlebih dahulu untuk menggunakan server LSP.",
 	"shift click selection": "Pemilihan Shift + tekan/klik",
-	"earn ad-free lsp-error-binary-command-requiredtime": "Ambil waktu bebas iklan",
+	"earn ad-free time": "Ambil waktu bebas iklan",
 	"indent guides": "Panduan indentasi",
 	"language servers": "Server bahasa",
 	"lint gutter": "Tampilkan gutter lint",
