@@ -31,7 +31,7 @@ import com.foxdebug.acode.rk.exec.terminal.*;
 
 import java.net.ServerSocket;
 import java.io.IOException;
-import java.net.InetSocketAddress;
+
 
 public class Executor extends CordovaPlugin {
 
@@ -272,7 +272,7 @@ public class Executor extends CordovaPlugin {
                 }
 
                 ProcessServer server = new ProcessServer(port, cmd);
-                server.start();
+                server.startAndAwait(); // blocks until onStart() fires — server is listening before port is returned
 
                 callbackContext.success(port);
             } catch (Exception e) {

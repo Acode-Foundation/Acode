@@ -6,13 +6,15 @@ import org.java_websocket.server.WebSocketServer;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.nio.ByteBuffer;
-import java.net.InetSocketAddress;
+import java.util.concurrent.CountDownLatch;
 
 class ProcessServer extends WebSocketServer {
 
     private final String[] cmd;
+    private final CountDownLatch readyLatch = new CountDownLatch(1);
 
     private static final class ConnState {
         final Process process;
@@ -24,9 +26,20 @@ class ProcessServer extends WebSocketServer {
         }
     }
 
-       ProcessServer(int port, String[] cmd) {
-        super(new InetSocketAddress(port));
+    ProcessServer(int port, String[] cmd) {
+        super(new InetSocketAddress("127.0.0.1", port)); // loopback only
         this.cmd = cmd;
+    }
+
+    /** Blocks the calling thread until onStart() fires. */
+    void startAndAwait() throws InterruptedException {
+        start();
+        readyLatch.await(); // returns as soon as the server socket is open
+    }
+
+    @Override
+    public void onStart() {
+        readyLatch.countDown(); // unblocks startAndAwait()
     }
 
     @Override
@@ -78,9 +91,6 @@ class ProcessServer extends WebSocketServer {
     public void onError(WebSocket conn, Exception ex) {
         if (conn != null) stopProcess(conn);
     }
-
-    @Override
-    public void onStart() {}
 
     private void stopProcess(WebSocket conn) {
         try {
