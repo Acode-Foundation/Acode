@@ -4,6 +4,7 @@ import "./style.scss";
  * @typedef {Object} HintObj
  * @property {string} value
  * @property {string} text
+ * @property {boolean} [active]
  */
 
 /**
@@ -139,7 +140,7 @@ export default function inputhints($input, hints, onSelect) {
 	function oninput() {
 		const { value: toTest } = this;
 		const matched = [];
-		const regexp = new RegExp(toTest, "i");
+		const regexp = new RegExp(escapeRegExp(toTest), "i");
 		hints.forEach((hint) => {
 			const { value, text } = hint;
 			if (regexp.test(value) || regexp.test(text)) {
@@ -351,6 +352,7 @@ export default function inputhints($input, hints, onSelect) {
 function Hint({ hint }) {
 	let value = "";
 	let text = "";
+	let active = false;
 
 	if (typeof hint === "string") {
 		value = hint;
@@ -358,9 +360,17 @@ function Hint({ hint }) {
 	} else {
 		value = hint.value;
 		text = hint.text;
+		active = !!hint.active;
 	}
 
-	return <li attr-action="hint" attr-value={value} innerHTML={text}></li>;
+	return (
+		<li
+			className={active ? "active" : ""}
+			attr-action="hint"
+			attr-value={value}
+			innerHTML={text}
+		></li>
+	);
 }
 
 /**
@@ -377,4 +387,8 @@ function Ul({ hints = [] }) {
 			))}
 		</ul>
 	);
+}
+
+function escapeRegExp(value) {
+	return String(value ?? "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
