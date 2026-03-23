@@ -31,6 +31,7 @@ import com.foxdebug.acode.rk.exec.terminal.*;
 
 import java.net.ServerSocket;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 
 public class Executor extends CordovaPlugin {
 
@@ -256,26 +257,29 @@ public class Executor extends CordovaPlugin {
             return true;
         }
 
-        if(actions.equals("spawn")){
-            try{
+        if (action.equals("spawn")) {
+            try {
                 JSONArray cmdArr = args.getJSONArray(0);
                 String[] cmd = new String[cmdArr.length()];
                 for (int i = 0; i < cmdArr.length(); i++) {
                     cmd[i] = cmdArr.getString(i);
                 }
 
-                ServerSocket socket = findFreePort();
-                int port = socket.getLocalPort();
+                int port;
+                try (ServerSocket socket = new ServerSocket(0)) {
+                    socket.setReuseAddress(true);
+                    port = socket.getLocalPort();
+                }
 
-                ProcessServer server = new ProcessServer(socket, cmd);
+                ProcessServer server = new ProcessServer(port, cmd);
                 server.start();
 
                 callbackContext.success(port);
-            }catch(Exception e){
+            } catch (Exception e) {
                 e.printStackTrace();
                 callbackContext.error("Failed to spawn process: " + e.getMessage());
             }
-            
+
             return true;
         }
 
@@ -316,12 +320,6 @@ public class Executor extends CordovaPlugin {
                 callbackContext.error("Unknown action: " + action);
                 return false;
         }
-    }
-
-    private ServerSocket findFreePort() throws IOException {
-        ServerSocket socket = new ServerSocket(0);
-        socket.setReuseAddress(true);
-        return socket;
     }
 
     private void stopServiceNow() {

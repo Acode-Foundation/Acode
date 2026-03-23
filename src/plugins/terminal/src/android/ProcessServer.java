@@ -6,17 +6,26 @@ import org.java_websocket.server.WebSocketServer;
 
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.InetSocketAddress;
+import java.net.ServerSocket;
 import java.nio.ByteBuffer;
+import java.net.InetSocketAddress;
 
 class ProcessServer extends WebSocketServer {
 
     private final String[] cmd;
 
-    private record ConnState(Process process, OutputStream stdin) {}
+    private static final class ConnState {
+        final Process process;
+        final OutputStream stdin;
 
-    ProcessServer(ServerSocket socket, String[] cmd) {
-        super(socket);
+        ConnState(Process process, OutputStream stdin) {
+            this.process = process;
+            this.stdin   = stdin;
+        }
+    }
+
+       ProcessServer(int port, String[] cmd) {
+        super(new InetSocketAddress(port));
         this.cmd = cmd;
     }
 
@@ -46,8 +55,8 @@ class ProcessServer extends WebSocketServer {
     public void onMessage(WebSocket conn, ByteBuffer msg) {
         try {
             ConnState state = conn.getAttachment();
-            state.stdin().write(msg.array(), msg.position(), msg.remaining());
-            state.stdin().flush();
+            state.stdin.write(msg.array(), msg.position(), msg.remaining());
+            state.stdin.flush();
         } catch (Exception ignored) {}
     }
 
@@ -55,8 +64,8 @@ class ProcessServer extends WebSocketServer {
     public void onMessage(WebSocket conn, String message) {
         try {
             ConnState state = conn.getAttachment();
-            state.stdin().write(message.getBytes());
-            state.stdin().flush();
+            state.stdin.write(message.getBytes());
+            state.stdin.flush();
         } catch (Exception ignored) {}
     }
 
@@ -76,7 +85,7 @@ class ProcessServer extends WebSocketServer {
     private void stopProcess(WebSocket conn) {
         try {
             ConnState state = conn.getAttachment();
-            if (state != null) state.process().destroy();
+            if (state != null) state.process.destroy();
             stop();
         } catch (Exception ignored) {}
     }
