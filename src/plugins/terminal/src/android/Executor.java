@@ -30,7 +30,7 @@ import android.app.Activity;
 import com.foxdebug.acode.rk.exec.terminal.*;
 
 import java.net.ServerSocket;
-import java.net.ServerSocket;
+
 
 
 public class Executor extends CordovaPlugin {
