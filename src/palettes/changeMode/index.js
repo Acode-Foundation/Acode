@@ -8,15 +8,31 @@ export default function changeMode() {
 }
 
 function generateHints() {
-	const modes = getModes();
+	const modes = [...getModes()].sort((a, b) =>
+		a.caption.localeCompare(b.caption),
+	);
+	const activeMode = editorManager.activeFile?.currentMode || "";
+	const activeIndex = modes.findIndex(({ mode }) => mode === activeMode);
 
-	return modes.map(({ caption, mode, extensions }) => {
+	if (activeIndex > 0) {
+		const [activeEntry] = modes.splice(activeIndex, 1);
+		modes.unshift(activeEntry);
+	}
+
+	return modes.map(({ aliases = [], caption, extensions, mode }) => {
+		const searchTerms = [caption, mode, extensions, ...aliases]
+			.filter(Boolean)
+			.join(" ");
+		const title =
+			caption.toLowerCase() === mode ? caption : `${caption} (${mode})`;
+
 		return {
+			active: mode === activeMode,
 			value: mode,
 			text: `<div style="display: flex; flex-direction: column;">
-      <strong style="font-size: 1rem;">${caption}</strong>
-      <span style="font-size: 0.8rem; opacity: 0.8;">${mode}</span>
-    <div><span hidden>${extensions}</span>`,
+      <strong style="font-size: 1rem;">${title}</strong>
+      <span hidden>${searchTerms}</span>
+    </div>`,
 		};
 	});
 }
