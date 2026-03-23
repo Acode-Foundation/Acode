@@ -97,11 +97,6 @@ class ProcessServer extends WebSocketServer {
         } catch (Exception ignored) {}
     }
 
-            state.stdin.write(message.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            state.stdin.write(message.getBytes());
-            state.stdin.flush();
-        } catch (Exception ignored) {}
-    }
 
     @Override
     public void onClose(WebSocket conn, int code, String reason, boolean remote) {
