@@ -20,18 +20,20 @@ class Executor {
    * @param {(ws: WebSocket) => void} callback - Called with the connected WebSocket once the
    *   process is ready. Use `ws.send()` to write to stdin and `ws.onmessage` to read stdout.
    */
-  spawnStream(cmd, callback){
-
-    exec((port)=>{
+  spawnStream(cmd, callback, onError) {
+    exec((port) => {
       const ws = new WebSocket(`ws://127.0.0.1:${port}`);
       ws.binaryType = "arraybuffer";
 
-      ws.onopen = ()=>{
+      ws.onopen = () => {
         callback(ws);
       };
 
-    }, null, "Executor", "spawn", [cmd]);
+      ws.onerror = (e) => {
+        if (onError) onError(e);
+      };
 
+    }, (err) => { if (onError) onError(err); }, "Executor", "spawn", [cmd]);
   }
 
 

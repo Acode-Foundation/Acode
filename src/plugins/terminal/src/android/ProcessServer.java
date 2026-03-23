@@ -7,17 +7,18 @@ import org.java_websocket.server.WebSocketServer;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 
 class ProcessServer extends WebSocketServer {
 
     private final String[] cmd;
     private final CountDownLatch readyLatch = new CountDownLatch(1);
+
+    // Holds a bind-time exception if onError fires before onStart.
+    // AtomicReference because onError and startAndAwait run on different threads.
+    private final AtomicReference<Exception> startError = new AtomicReference<>();
 
     private static final class ConnState {
         final Process process;
@@ -30,19 +31,39 @@ class ProcessServer extends WebSocketServer {
     }
 
     ProcessServer(int port, String[] cmd) {
-        super(new InetSocketAddress("127.0.0.1", port)); // loopback only
+        super(new InetSocketAddress("127.0.0.1", port));
         this.cmd = cmd;
     }
 
-    /** Blocks the calling thread until onStart() fires. */
-    void startAndAwait() throws InterruptedException {
+    /**
+     * Starts the server and blocks until it is listening.
+     * Throws if the server fails to bind so the caller can report the error
+     * instead of hanging indefinitely.
+     */
+    void startAndAwait() throws Exception {
         start();
-        readyLatch.await(); // returns as soon as the server socket is open
+        readyLatch.await();
+
+        // Re-throw any bind-time error captured in onError
+        Exception err = startError.get();
+        if (err != null) throw err;
     }
 
     @Override
     public void onStart() {
-        readyLatch.countDown(); // unblocks startAndAwait()
+        readyLatch.countDown(); // server is listening — unblock startAndAwait()
+    }
+
+    @Override
+    public void onError(WebSocket conn, Exception ex) {
+        if (conn == null) {
+            // Startup/bind failure — record it and unblock startAndAwait()
+            // so it can throw rather than hang.
+            startError.set(ex);
+            readyLatch.countDown();
+        } else {
+            stopProcess(conn);
+        }
     }
 
     @Override
@@ -85,11 +106,6 @@ class ProcessServer extends WebSocketServer {
     @Override
     public void onClose(WebSocket conn, int code, String reason, boolean remote) {
         stopProcess(conn);
-    }
-
-    @Override
-    public void onError(WebSocket conn, Exception ex) {
-        if (conn != null) stopProcess(conn);
     }
 
     private void stopProcess(WebSocket conn) {
