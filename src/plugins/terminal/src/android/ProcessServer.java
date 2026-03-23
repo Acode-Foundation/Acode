@@ -76,10 +76,7 @@ class ProcessServer extends WebSocketServer {
         } catch (Exception ignored) {}
     }
 
-    @Override
-    public void onMessage(WebSocket conn, String message) {
-        try {
-            ConnState state = conn.getAttachment();
+            state.stdin.write(message.getBytes(java.nio.charset.StandardCharsets.UTF_8));
             state.stdin.write(message.getBytes());
             state.stdin.flush();
         } catch (Exception ignored) {}
