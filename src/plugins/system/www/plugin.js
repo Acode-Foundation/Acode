@@ -165,9 +165,8 @@ module.exports = {
   },
   setUiTheme: function (systemBarColor, theme, onSuccess, onFail) {
     cordova.exec((out)=>{
-      cordova.exec(null, null, "SystemBarPlugin", "updateSystemBars", []);
       window.statusbar.setBackgroundColor(systemBarColor);
-      onSuccess(out)
+      onSuccess(out);
     }, onFail, 'System', 'set-ui-theme', [systemBarColor, theme]);
   },
   setIntentHandler: function (handler, onerror) {
