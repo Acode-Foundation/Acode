@@ -164,16 +164,19 @@ module.exports = {
     return myInAppBrowser;
   },
   setUiTheme: function (systemBarColor, theme, onSuccess, onFail) {
-   const color = systemBarColor.toLowerCase();
+    const color = systemBarColor.toLowerCase();
 
     if (color === '#ffffff' || color === '#ffffffff') {
       systemBarColor = '#fffffe';
     }
 
-    
-    cordova.exec((out)=>{
+    cordova.exec((out) => {
       window.statusbar.setBackgroundColor(systemBarColor);
-      onSuccess(out);
+
+      if (typeof onSuccess === "function") {
+        onSuccess(out);
+      }
+
     }, onFail, 'System', 'set-ui-theme', [systemBarColor, theme]);
   },
   setIntentHandler: function (handler, onerror) {
