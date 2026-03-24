@@ -1691,9 +1691,11 @@ public class System extends CordovaPlugin {
         final CallbackContext callback
     ) {
         this.systemBarColor = Color.parseColor(systemBarColor);
+        preferences.set("BackgroundColor", String.format("0x%08X", this.systemBarColor));
         this.theme = new Theme(scheme);
 
         final Window window = activity.getWindow();
+        
         // Method and constants not available on all SDKs but we want to be able to compile this code with any SDK
         window.clearFlags(0x04000000); // SDK 19: WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
         window.addFlags(0x80000000); // SDK 21: WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
@@ -1728,6 +1730,7 @@ public class System extends CordovaPlugin {
                     controller.setSystemBarsAppearance(0, appearance);
                 }
             }
+
             callback.success("OK");
         } catch (IllegalArgumentException error) {
             callback.error(error.toString());

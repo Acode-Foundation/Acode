@@ -164,7 +164,11 @@ module.exports = {
     return myInAppBrowser;
   },
   setUiTheme: function (systemBarColor, theme, onSuccess, onFail) {
-    cordova.exec(onSuccess, onFail, 'System', 'set-ui-theme', [systemBarColor, theme]);
+    cordova.exec((out)=>{
+      cordova.exec(null, null, "SystemBarPlugin", "updateSystemBars", []);
+      window.statusbar.setBackgroundColor(systemBarColor);
+      onSuccess(out)
+    }, onFail, 'System', 'set-ui-theme', [systemBarColor, theme]);
   },
   setIntentHandler: function (handler, onerror) {
     cordova.exec(handler, onerror, 'System', 'set-intent-handler', []);
