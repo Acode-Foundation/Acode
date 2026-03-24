@@ -1694,7 +1694,7 @@ public class System extends CordovaPlugin {
             this.systemBarColor = Color.parseColor(systemBarColor);
             this.theme = new Theme(scheme);
         
-            preferences.set("BackgroundColor", String.format("0x%08X", this.systemBarColor));
+            preferences.set("BackgroundColor", this.systemBarColor);
 
             webView.getPluginManager().postMessage("updateSystemBars", null);
 

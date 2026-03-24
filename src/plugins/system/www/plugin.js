@@ -164,6 +164,13 @@ module.exports = {
     return myInAppBrowser;
   },
   setUiTheme: function (systemBarColor, theme, onSuccess, onFail) {
+   const color = systemBarColor.toLowerCase();
+
+    if (color === '#ffffff' || color === '#ffffffff') {
+      systemBarColor = '#fffffe';
+    }
+
+    
     cordova.exec((out)=>{
       window.statusbar.setBackgroundColor(systemBarColor);
       onSuccess(out);
