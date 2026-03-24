@@ -1686,53 +1686,21 @@ public class System extends CordovaPlugin {
     }
 
     private void setUiTheme(
-        final String systemBarColor,
-        final JSONObject scheme,
-        final CallbackContext callback
+            final String systemBarColor,
+            final JSONObject scheme,
+            final CallbackContext callback
     ) {
-        this.systemBarColor = Color.parseColor(systemBarColor);
-        this.theme = new Theme(scheme);
-
-        final Window window = activity.getWindow();
-        // Method and constants not available on all SDKs but we want to be able to compile this code with any SDK
-        window.clearFlags(0x04000000); // SDK 19: WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
-        window.addFlags(0x80000000); // SDK 21: WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
         try {
-            // Using reflection makes sure any 5.0+ device will work without having to compile with SDK level 21
+            this.systemBarColor = Color.parseColor(systemBarColor);
+            this.theme = new Theme(scheme);
+        
+            preferences.set("BackgroundColor", this.systemBarColor);
 
-            window
-                .getClass()
-                .getMethod("setNavigationBarColor", int.class)
-                .invoke(window, this.systemBarColor);
+            webView.getPluginManager().postMessage("updateSystemBars", null);
 
-            window
-                .getClass()
-                .getMethod("setStatusBarColor", int.class)
-                .invoke(window, this.systemBarColor);
-
-            window.getDecorView().setBackgroundColor(this.systemBarColor);
-
-            if (Build.VERSION.SDK_INT < 30) {
-                setStatusBarStyle(window);
-                setNavigationBarStyle(window);
-            } else {
-                String themeType = theme.getType();
-                WindowInsetsController controller = window.getInsetsController();
-                int appearance =
-                    WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS |
-                    WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
-
-                if (themeType.equals("light")) {
-                    controller.setSystemBarsAppearance(appearance, appearance);
-                } else {
-                    controller.setSystemBarsAppearance(0, appearance);
-                }
-            }
-            callback.success("OK");
-        } catch (IllegalArgumentException error) {
-            callback.error(error.toString());
-        } catch (Exception error) {
-            callback.error(error.toString());
+            callback.success();
+        } catch (IllegalArgumentException e) {
+            callback.error("Invalid color: " + systemBarColor);
         }
     }
 

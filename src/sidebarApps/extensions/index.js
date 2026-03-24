@@ -218,7 +218,7 @@ async function searchPlugin() {
 		$searchResult.onscroll = null;
 
 		$searchResult.content = "";
-		const status = helpers.checkAPIStatus();
+		const status = await helpers.checkAPIStatus();
 		if (!status) {
 			$searchResult.content = (
 				<span className="error">{strings.api_error}</span>
@@ -409,7 +409,7 @@ async function loadInstalled() {
 async function loadExplore() {
 	if (this.collapsed) return;
 
-	const status = helpers.checkAPIStatus();
+	const status = await helpers.checkAPIStatus();
 	if (!status) {
 		$explore.$ul.content = <span className="error">{strings.api_error}</span>;
 		return;
@@ -436,6 +436,7 @@ async function loadExplore() {
 		currentPage++;
 		updateHeight($explore);
 	} catch (error) {
+		console.error("Failed to load plugins in sidebar explore:", error);
 		$explore.$ul.content = <span className="error">{strings.error}</span>;
 	} finally {
 		stopLoading($explore);
@@ -446,15 +447,36 @@ async function listInstalledPlugins() {
 	const plugins = await Promise.all(
 		(await fsOperation(PLUGIN_DIR).lsDir()).map(async (item) => {
 			const id = Url.basename(item.url);
-			const url = Url.join(item.url, "plugin.json");
-			const plugin = await fsOperation(url).readFile("json");
-			const iconUrl = getLocalRes(id, plugin.icon);
-			plugin.icon = await helpers.toInternalUri(iconUrl);
-			plugin.installed = true;
-			return plugin;
+
+			try {
+				const url = Url.join(item.url, "plugin.json");
+				const plugin = await fsOperation(url).readFile("json");
+
+				if (plugin.icon) {
+					const iconUrl = getLocalRes(id, plugin.icon);
+					try {
+						plugin.icon = await helpers.toInternalUri(iconUrl);
+					} catch (error) {
+						console.warn(
+							`Failed to resolve plugin icon for "${id}" in sidebar.`,
+							error,
+						);
+					}
+				}
+
+				plugin.installed = true;
+				return plugin;
+			} catch (error) {
+				console.warn(
+					`Skipping unreadable installed plugin "${id}" in sidebar.`,
+					error,
+				);
+				return null;
+			}
 		}),
 	);
-	return plugins;
+
+	return plugins.filter(Boolean);
 }
 
 async function getFilteredPlugins(filterState) {
