@@ -172,7 +172,7 @@
     "mermaid": "^11.13.0",
     "mime-types": "^3.0.1",
     "mustache": "^4.2.0",
-    "picomatch": "^4.0.3",
+    "picomatch": "^4.0.4",
     "url-parse": "^1.5.10",
     "vanilla-picker": "^2.12.3",
     "yargs": "^18.0.0"
