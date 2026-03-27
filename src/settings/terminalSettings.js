@@ -325,8 +325,7 @@ export default function terminalSettings() {
 	 */
 	async function terminalRestore() {
 		try {
-			await Executor.execute("rm -rf $PREFIX/aterm_backup.tar");
-			await Executor.execute("rm -rf $PREFIX/aterm_backup.bin");
+			await Executor.execute("rm -rf $PREFIX/aterm_backup.*");
 
 			sdcard.openDocumentFile(
 				async (data) => {
@@ -343,11 +342,9 @@ export default function terminalSettings() {
 					// Restore
 					await Terminal.restore();
 
-					// Clean up
-					const backupFilename = "aterm_backup.tar";
-					const tempBackupPath = cordova.file.dataDirectory + backupFilename;
-					const tempFS = fsOperation(tempBackupPath);
-					await tempFS.delete();
+					//Cleanup restore file
+					await Executor.execute("rm -rf $PREFIX/aterm_backup.*");
+
 					loader.removeTitleLoader();
 					alert(
 						strings.success.toUpperCase(),
