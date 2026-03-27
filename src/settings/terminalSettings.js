@@ -325,6 +325,9 @@ export default function terminalSettings() {
 	 */
 	async function terminalRestore() {
 		try {
+			await Executor.execute("rm -rf $PREFIX/aterm_backup.tar");
+			await Executor.execute("rm -rf $PREFIX/aterm_backup.bin");
+
 			sdcard.openDocumentFile(
 				async (data) => {
 					loader.showTitleLoader();
@@ -352,7 +355,7 @@ export default function terminalSettings() {
 					);
 				},
 				toast,
-				"application/octet-stream",
+				"application/x-tar",
 			);
 		} catch (error) {
 			loader.removeTitleLoader();

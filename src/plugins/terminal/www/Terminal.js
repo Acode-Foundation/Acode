@@ -382,7 +382,7 @@ const Terminal = {
                 rm -rf -- "$item"
             done
 
-            tar -xf "$PREFIX/aterm_backup.tar" -C "$PREFIX"
+            tar -xf "$PREFIX/aterm_backup.*" -C "$PREFIX"
             echo "ok"
             `;
 
