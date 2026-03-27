@@ -777,7 +777,7 @@ export default class EditorFile {
 	}
 
 	setPinnedState(value, options = {}) {
-		const { reorder = true, emit = true } = options;
+		const { reorder = false, emit = true } = options;
 		value = !!value;
 		if (this.#pinned === value) return value;
 
@@ -1529,7 +1529,10 @@ export default class EditorFile {
 
 		return tag("span", {
 			className: "licons pin",
-			title: strings["pinned tab"] || "Pinned tab",
+			title: strings["unpin tab"] || "Unpin tab",
+			dataset: {
+				action: "toggle-pin",
+			},
 		});
 	}
 
@@ -1579,6 +1582,10 @@ function tabOnclick(e) {
 	const { action } = e.target.dataset;
 	if (action === "close-file") {
 		this.remove();
+		return;
+	}
+	if (action === "toggle-pin") {
+		this.togglePinned();
 		return;
 	}
 	this.makeActive();

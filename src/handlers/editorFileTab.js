@@ -310,11 +310,10 @@ function updateFileList($parent) {
 
 		if (nextPinnedState !== undefined) {
 			draggedFile.setPinnedState(nextPinnedState, { reorder: false });
+			if (typeof editorManager.normalizePinnedTabOrder === "function") {
+				editorManager.normalizePinnedTabOrder(editorManager.files);
+			}
 		}
-	}
-
-	if (typeof editorManager.normalizePinnedTabOrder === "function") {
-		editorManager.normalizePinnedTabOrder(editorManager.files);
 	}
 }
 

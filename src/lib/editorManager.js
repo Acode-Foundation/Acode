@@ -1792,16 +1792,7 @@ async function EditorManager($header, $body) {
 	}
 
 	function moveFileByPinnedState(file) {
-		const currentIndex = manager.files.indexOf(file);
-		if (currentIndex === -1) return;
-
-		const targetIndex = file.pinned ? 0 : getPinnedInsertIndex(file);
-		if (currentIndex !== targetIndex) {
-			manager.files.splice(currentIndex, 1);
-			manager.files.splice(targetIndex, 0, file);
-		}
-
-		syncOpenFileList();
+		if (!manager.files.includes(file)) return;
 		if (manager.activeFile?.id === file.id) {
 			file.tab.scrollIntoView();
 		}
