@@ -757,6 +757,10 @@ function createFileMenu({ top, bottom, toggler }) {
 			const hasSelection = !!cmEditor && !cmEditor.state.selection.main.empty;
 			return mustache.render($_fileMenu, {
 				...strings,
+				toggle_pin_tab_text: file.pinned
+					? strings["unpin tab"] || "Unpin tab"
+					: strings["pin tab"] || "Pin tab",
+				toggle_pin_tab_icon: file.pinned ? "licons pin-off" : "licons pin",
 				// Use CodeMirror mode stored on EditorFile (set in setMode)
 				file_mode: isEditorFile ? file.currentMode || "" : "",
 				file_encoding: isEditorFile ? encoding : "",

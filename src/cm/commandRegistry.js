@@ -212,6 +212,16 @@ function registerCoreCommands() {
 		},
 	});
 	addCommand({
+		name: "togglePinnedTab",
+		description: "Pin or unpin current tab",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("toggle-pin-tab");
+			return true;
+		},
+	});
+	addCommand({
 		name: "newFile",
 		description: "Create new file",
 		readOnly: true,

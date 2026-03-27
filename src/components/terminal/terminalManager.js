@@ -73,6 +73,7 @@ class TerminalManager {
 				sessions.push({
 					pid: entry,
 					name: `Terminal ${entry}`,
+					pinned: false,
 				});
 				changed = true;
 				continue;
@@ -88,12 +89,13 @@ class TerminalManager {
 				typeof entry.name === "string" && entry.name.trim()
 					? entry.name.trim()
 					: `Terminal ${pid}`;
+			const pinned = entry.pinned === true;
 
-			if (entry.pid !== pid || entry.name !== name) {
+			if (entry.pid !== pid || entry.name !== name || entry.pinned !== pinned) {
 				changed = true;
 			}
 
-			sessions.push({ pid, name });
+			sessions.push({ pid, name, pinned });
 		}
 
 		for (const session of sessions) {
@@ -109,6 +111,7 @@ class TerminalManager {
 					typeof session.name === "string" && session.name.trim()
 						? session.name.trim()
 						: `Terminal ${pid}`,
+				pinned: session.pinned === true,
 			});
 		}
 
@@ -174,7 +177,7 @@ class TerminalManager {
 		}
 	}
 
-	async persistTerminalSession(pid, name) {
+	async persistTerminalSession(pid, name, pinned = false) {
 		if (!pid) return;
 
 		const pidStr = String(pid);
@@ -185,6 +188,7 @@ class TerminalManager {
 		const sessionData = {
 			pid: pidStr,
 			name: name || `Terminal ${pidStr}`,
+			pinned: pinned === true,
 		};
 
 		if (existingIndex >= 0) {
@@ -228,6 +232,7 @@ class TerminalManager {
 				const instance = await this.createServerTerminal({
 					pid: session.pid,
 					name: session.name,
+					pinned: session.pinned === true,
 					reconnecting: true,
 					render: false,
 				});
@@ -266,7 +271,8 @@ class TerminalManager {
 	 */
 	async createTerminal(options = {}) {
 		try {
-			const { render, serverMode, reconnecting, ...terminalOptions } = options;
+			const { render, serverMode, reconnecting, pinned, ...terminalOptions } =
+				options;
 			const shouldRender = render !== false;
 			const isServerMode = serverMode !== false;
 			const isReconnecting = reconnecting === true;
@@ -317,6 +323,7 @@ class TerminalManager {
 				type: "terminal",
 				content: terminalContainer,
 				tabIcon: "licons terminal",
+				pinned,
 				render: shouldRender,
 			});
 
@@ -363,6 +370,7 @@ class TerminalManager {
 							await this.persistTerminalSession(
 								terminalComponent.pid,
 								terminalName,
+								terminalFile.pinned,
 							);
 						}
 						resolve(instance);
@@ -382,7 +390,7 @@ class TerminalManager {
 						try {
 							// Force remove the tab without confirmation
 							terminalFile._skipTerminalCloseConfirm = true;
-							terminalFile.remove(true);
+							terminalFile.remove(true, { ignorePinned: true });
 						} catch (removeError) {
 							console.error("Error removing terminal tab:", removeError);
 						}
@@ -613,10 +621,22 @@ class TerminalManager {
 		terminalFile.onclose = () => {
 			this.closeTerminal(terminalId);
 		};
+		terminalFile.onpinstatechange = (pinned) => {
+			if (!terminalComponent.serverMode || !terminalComponent.pid) return;
+			void this.persistTerminalSession(
+				terminalComponent.pid,
+				terminalFile.filename,
+				pinned,
+			);
+		};
 
 		terminalFile._skipTerminalCloseConfirm = false;
 		const originalRemove = terminalFile.remove.bind(terminalFile);
-		terminalFile.remove = async (force = false) => {
+		terminalFile.remove = async (force = false, options = {}) => {
+			if (terminalFile.pinned && !options?.ignorePinned) {
+				return originalRemove(force, options);
+			}
+
 			if (
 				!terminalFile._skipTerminalCloseConfirm &&
 				this.shouldConfirmTerminalClose()
@@ -627,7 +647,7 @@ class TerminalManager {
 			}
 
 			terminalFile._skipTerminalCloseConfirm = false;
-			return originalRemove(force);
+			return originalRemove(force, options);
 		};
 
 		// Enhanced resize handling with debouncing
@@ -717,6 +737,7 @@ class TerminalManager {
 					await this.persistTerminalSession(
 						terminalComponent.pid,
 						formattedTitle,
+						terminalFile.pinned,
 					);
 				}
 
@@ -744,7 +765,7 @@ class TerminalManager {
 
 			this.closeTerminal(terminalId);
 			terminalFile._skipTerminalCloseConfirm = true;
-			terminalFile.remove(true);
+			terminalFile.remove(true, { ignorePinned: true });
 			toast(message);
 		};
 
@@ -823,7 +844,7 @@ class TerminalManager {
 			if (removeTab && terminal.file) {
 				try {
 					terminal.file._skipTerminalCloseConfirm = true;
-					terminal.file.remove(true);
+					terminal.file.remove(true, { ignorePinned: true });
 				} catch (removeError) {
 					console.error("Error removing terminal tab:", removeError);
 				}

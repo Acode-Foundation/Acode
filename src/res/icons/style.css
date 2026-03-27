@@ -43,6 +43,14 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+.licons.pin-off:before {
+  content: "\f007";
+}
+
+.licons.pin:before {
+  content: "\f008";
+}
+
 .licons.lightbulb:before {
   content: "\f004";
 }

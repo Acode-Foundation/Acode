@@ -1335,6 +1335,9 @@ async function EditorManager($header, $body) {
 		readOnlyCompartment,
 		getFile,
 		switchFile,
+		moveFileByPinnedState,
+		normalizePinnedTabOrder,
+		syncOpenFileList,
 		hasUnsavedFiles,
 		getEditorHeight,
 		getEditorWidth,
@@ -1765,10 +1768,61 @@ async function EditorManager($header, $body) {
 	 */
 	function addFile(file) {
 		if (manager.files.includes(file)) return;
-		manager.files.push(file);
-		manager.openFileList.append(file.tab);
+		const insertAt = file.pinned
+			? getPinnedInsertIndex()
+			: manager.files.length;
+		manager.files.splice(insertAt, 0, file);
+		syncOpenFileList();
 		$header.text = file.name;
 		toggleProblemButton();
+	}
+
+	function getPinnedInsertIndex(skipFile = null) {
+		return manager.files.reduce((count, file) => {
+			if (file === skipFile) return count;
+			return count + (file.pinned ? 1 : 0);
+		}, 0);
+	}
+
+	function syncOpenFileList() {
+		const $list = manager.openFileList;
+		manager.files.forEach((file) => {
+			$list.append(file.tab);
+		});
+	}
+
+	function moveFileByPinnedState(file) {
+		const currentIndex = manager.files.indexOf(file);
+		if (currentIndex === -1) return;
+
+		const targetIndex = file.pinned ? 0 : getPinnedInsertIndex(file);
+		if (currentIndex !== targetIndex) {
+			manager.files.splice(currentIndex, 1);
+			manager.files.splice(targetIndex, 0, file);
+		}
+
+		syncOpenFileList();
+		if (manager.activeFile?.id === file.id) {
+			file.tab.scrollIntoView();
+		}
+	}
+
+	function normalizePinnedTabOrder(nextFiles = manager.files) {
+		const pinnedFiles = [];
+		const regularFiles = [];
+
+		nextFiles.forEach((file) => {
+			if (file.pinned) {
+				pinnedFiles.push(file);
+				return;
+			}
+			regularFiles.push(file);
+		});
+
+		manager.files = [...pinnedFiles, ...regularFiles];
+		syncOpenFileList();
+
+		return manager.files;
 	}
 
 	/**
