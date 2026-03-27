@@ -29,6 +29,10 @@ import androidx.core.content.ContextCompat;
 import android.app.Activity;
 import com.foxdebug.acode.rk.exec.terminal.*;
 
+import java.net.ServerSocket;
+
+
+
 public class Executor extends CordovaPlugin {
 
     private Messenger serviceMessenger;
@@ -41,6 +45,8 @@ public class Executor extends CordovaPlugin {
     private final java.util.Map<String, CallbackContext> callbackContextMap = new java.util.concurrent.ConcurrentHashMap<>();
 
     private static final int REQUEST_POST_NOTIFICATIONS = 1001;
+    
+    
     
     private void askNotificationPermission(Activity context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -251,6 +257,32 @@ public class Executor extends CordovaPlugin {
             callbackContext.success("Service moved to foreground mode");
             return true;
         }
+
+        if (action.equals("spawn")) {
+            try {
+                JSONArray cmdArr = args.getJSONArray(0);
+                String[] cmd = new String[cmdArr.length()];
+                for (int i = 0; i < cmdArr.length(); i++) {
+                    cmd[i] = cmdArr.getString(i);
+                }
+
+                int port;
+                try (ServerSocket socket = new ServerSocket(0)) {
+                    port = socket.getLocalPort();
+                }
+
+                ProcessServer server = new ProcessServer(port, cmd);
+                server.startAndAwait(); // blocks until onStart() fires — server is listening before port is returned
+
+                callbackContext.success(port);
+            } catch (Exception e) {
+                e.printStackTrace();
+                callbackContext.error("Failed to spawn process: " + e.getMessage());
+            }
+
+            return true;
+        }
+
 
         // For all other actions, ensure service is bound first
         if (!ensureServiceBound(callbackContext)) {
