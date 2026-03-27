@@ -700,5 +700,9 @@
 	"settings-note-formatter-settings": "為每種語言分配格式化器。安裝格式化插件可解鎖更多選項。",
 	"settings-note-lsp-settings": "語言服務器提供補全、診斷、懸停等功能。你可以在此安裝、更新或定義自定義服務器。託管安裝程序在終端/proot 環境中運行。",
 	"search result label singular": "條結果",
-	"search result label plural": "條結果"
+	"search result label plural": "條結果",
+	"pin tab": "Pin tab",
+	"unpin tab": "Unpin tab",
+	"pinned tab": "Pinned tab",
+	"unpin tab before closing": "Unpin the tab before closing it."
 }

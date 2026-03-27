@@ -699,5 +699,9 @@
 	"settings-note-formatter-settings": "Assign a formatter to each language. Install formatter plugins to unlock more options.",
 	"settings-note-lsp-settings": "Language servers add autocomplete, diagnostics, hover details, and more. You can install, update, or define custom servers here. Managed installers run inside the terminal/proot environment.",
 	"search result label singular": "result",
-	"search result label plural": "results"
+	"search result label plural": "results",
+	"pin tab": "Pin tab",
+	"unpin tab": "Unpin tab",
+	"pinned tab": "Pinned tab",
+	"unpin tab before closing": "Unpin the tab before closing it."
 }

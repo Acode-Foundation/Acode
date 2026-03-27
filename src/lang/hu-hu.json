@@ -700,5 +700,9 @@
 	"settings-note-formatter-settings": "Rendeljen formázót minden nyelvhez. További lehetőségek feloldásához telepítsen formázó bővítményeket.",
 	"settings-note-lsp-settings": "A nyelvi kiszolgálók automatikus kiegészítést, diagnosztikát, felugró részleteket és egyebeket nyújtanak. Itt telepíthet, frissíthet vagy definiálhat egyéni kiszolgálókat. A felügyelt telepítők a terminál/proot környezetben futnak.",
 	"search result label singular": "találat",
-	"search result label plural": "találat"
+	"search result label plural": "találat",
+	"pin tab": "Pin tab",
+	"unpin tab": "Unpin tab",
+	"pinned tab": "Pinned tab",
+	"unpin tab before closing": "Unpin the tab before closing it."
 }
