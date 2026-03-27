@@ -332,7 +332,7 @@ export default function terminalSettings() {
 					await system.copyToUri(
 						data.uri,
 						cordova.file.dataDirectory,
-						"aterm_backup",
+						"aterm_backup.tar",
 						console.log,
 						console.error,
 					);
@@ -341,7 +341,7 @@ export default function terminalSettings() {
 					await Terminal.restore();
 
 					// Clean up
-					const backupFilename = "aterm_backup.bin";
+					const backupFilename = "aterm_backup.tar";
 					const tempBackupPath = cordova.file.dataDirectory + backupFilename;
 					const tempFS = fsOperation(tempBackupPath);
 					await tempFS.delete();
@@ -352,7 +352,7 @@ export default function terminalSettings() {
 					);
 				},
 				toast,
-				"application/x-tar",
+				"application/octet-stream",
 			);
 		} catch (error) {
 			loader.removeTitleLoader();
