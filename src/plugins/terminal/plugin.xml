@@ -12,6 +12,9 @@
     </js-module>
 
     <platform name="android">
+
+        <framework src="org.java-websocket:Java-WebSocket:1.6.0" />
+
         <config-file parent="/*" target="res/xml/config.xml">
             <feature name="Executor">
                 <param name="android-package" value="com.foxdebug.acode.rk.exec.terminal.Executor" />
@@ -28,6 +31,7 @@
         <source-file src="src/android/StreamHandler.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
 
         <source-file src="src/android/Executor.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
+        <source-file src="src/android/ProcessServer.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
 
         <source-file src="src/android/TerminalService.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
         
