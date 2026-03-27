@@ -47,6 +47,7 @@ import {
 import { stopManagedServer } from "cm/lsp/serverLauncher";
 // CodeMirror mode management
 import {
+	getMode,
 	getModeForPath,
 	getModes,
 	getModesByName,
@@ -631,7 +632,11 @@ async function EditorManager($header, $body) {
 	function getFileLanguageId(file) {
 		if (!file) return "plaintext";
 		const mode = file.currentMode || file.mode;
-		if (mode) return String(mode).toLowerCase();
+		if (mode) {
+			const modeInfo = getMode(String(mode));
+			if (modeInfo?.name) return String(modeInfo.name).toLowerCase();
+			return String(mode).toLowerCase();
+		}
 		try {
 			const guess = getModeForPath(file.filename || file.name || "");
 			if (guess?.name) return String(guess.name).toLowerCase();

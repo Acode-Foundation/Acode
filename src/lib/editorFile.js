@@ -7,7 +7,7 @@ import {
 	restoreSelection,
 	setScrollPosition,
 } from "cm/editorUtils";
-import { getModeForPath } from "cm/modelist";
+import { getMode, getModeForPath } from "cm/modelist";
 import Sidebar from "components/sidebar";
 import tile from "components/tile";
 import confirm from "dialogs/confirm";
@@ -1030,17 +1030,18 @@ export default class EditorFile {
 			const modes = helpers.parseJSON(localStorage.modeassoc);
 			if (modes?.[ext]) {
 				mode = modes[ext];
-			} else {
-				const modeInfo = getModeForPath(this.filename);
-				mode = modeInfo?.name || "text";
 			}
 		}
 
+		let modeInfo = mode ? getMode(mode) : null;
+		if (!modeInfo) {
+			modeInfo = getModeForPath(this.filename);
+		}
+		mode = modeInfo?.name || String(mode || "text").toLowerCase();
+
 		// Store mode info for later use when creating editor view
 		this.currentMode = mode;
-		this.currentLanguageExtension = getModeForPath(
-			this.filename,
-		)?.getExtension();
+		this.currentLanguageExtension = modeInfo?.getExtension() || null;
 
 		// sets file icon
 		this.#tab.lead(
