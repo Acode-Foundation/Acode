@@ -701,8 +701,8 @@
 	"settings-note-lsp-settings": "A nyelvi kiszolgálók automatikus kiegészítést, diagnosztikát, felugró részleteket és egyebeket nyújtanak. Itt telepíthet, frissíthet vagy definiálhat egyéni kiszolgálókat. A felügyelt telepítők a terminál/proot környezetben futnak.",
 	"search result label singular": "találat",
 	"search result label plural": "találat",
-	"pin tab": "Pin tab",
-	"unpin tab": "Unpin tab",
-	"pinned tab": "Pinned tab",
-	"unpin tab before closing": "Unpin the tab before closing it."
+	"pin tab": "Lap rögzítése",
+	"unpin tab": "Lap rögzítésének megszüntetése",
+	"pinned tab": "Rögzített lap",
+	"unpin tab before closing": "Lap rögzítésének feloldása bezárás előtt."
 }
