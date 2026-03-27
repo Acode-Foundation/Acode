@@ -183,22 +183,6 @@ export default function editorSettings() {
 			category: categories.guidesIndicators,
 		},
 		{
-			key: "teardropSize",
-			text: strings["cursor controller size"],
-			value: values.teardropSize,
-			valueText(value) {
-				return this.select.find(([v]) => v === value)[1];
-			},
-			select: [
-				[0, strings.none],
-				[20, strings.small],
-				[30, strings.medium],
-				[60, strings.large],
-			],
-			info: strings["settings-info-editor-teardrop-size"],
-			category: categories.cursorSelection,
-		},
-		{
 			key: "shiftClickSelection",
 			text: strings["shift click selection"],
 			checkbox: values.shiftClickSelection,

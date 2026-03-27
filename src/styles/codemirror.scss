@@ -2,17 +2,6 @@
   position: relative;
 }
 
-.cm-editor,
-.cm-editor * {
-  -webkit-touch-callout: none;
-}
-
-.editor-container > .cursor {
-  pointer-events: auto;
-  touch-action: none;
-  z-index: 600;
-}
-
 .editor-container > .cursor-menu {
   z-index: 600;
 }

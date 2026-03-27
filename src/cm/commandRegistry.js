@@ -70,9 +70,6 @@ import {
 	jumpToDefinition as lspJumpToDefinition,
 	jumpToImplementation as lspJumpToImplementation,
 	jumpToTypeDefinition as lspJumpToTypeDefinition,
-	nextSignature as lspNextSignature,
-	prevSignature as lspPrevSignature,
-	showSignatureHelp as lspShowSignatureHelp,
 } from "@codemirror/lsp-client";
 import { Compartment, EditorSelection } from "@codemirror/state";
 import { keymap } from "@codemirror/view";
@@ -80,6 +77,9 @@ import {
 	renameSymbol as acodeRenameSymbol,
 	clearDiagnosticsEffect,
 	clientManager,
+	nextSignature as lspNextSignature,
+	prevSignature as lspPrevSignature,
+	showSignatureHelp as lspShowSignatureHelp,
 } from "cm/lsp";
 import {
 	closeReferencesPanel as acodeCloseReferencesPanel,

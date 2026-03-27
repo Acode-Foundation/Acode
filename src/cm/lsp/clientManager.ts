@@ -3,13 +3,11 @@ import type { LSPClientExtension } from "@codemirror/lsp-client";
 import {
 	findReferencesKeymap,
 	formatKeymap,
-	hoverTooltips,
 	jumpToDefinitionKeymap,
 	LSPClient,
 	LSPPlugin,
 	serverCompletion,
 	serverDiagnostics,
-	signatureHelp,
 } from "@codemirror/lsp-client";
 import { EditorState, Extension, MapMode } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
@@ -23,6 +21,7 @@ import { inlayHintsExtension } from "./inlayHints";
 import { acodeRenameKeymap } from "./rename";
 import { ensureServerRunning } from "./serverLauncher";
 import serverRegistry from "./serverRegistry";
+import { hoverTooltips, signatureHelp } from "./tooltipExtensions";
 import { createTransport } from "./transport";
 import type {
 	BuiltinExtensionsConfig,
@@ -36,6 +35,7 @@ import type {
 	ParsedUri,
 	RootUriContext,
 	TextEdit,
+	Transport,
 	TransportHandle,
 } from "./types";
 import AcodeWorkspace from "./workspace";
@@ -61,6 +61,90 @@ function safeString(value: unknown): string {
 	return value != null ? String(value) : "";
 }
 
+function isVerboseLspLoggingEnabled(): boolean {
+	const buildInfo = (globalThis as { BuildInfo?: { debug?: boolean } })
+		.BuildInfo;
+	return !!buildInfo?.debug;
+}
+
+function logLspInfo(...args: unknown[]): void {
+	if (!isVerboseLspLoggingEnabled()) return;
+	console.info(...args);
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+	return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function resolveInitializationOptions(
+	server: LspServerDefinition,
+	clientConfig: Record<string, unknown>,
+): Record<string, unknown> | undefined {
+	const serverOptions = isPlainObject(server.initializationOptions)
+		? server.initializationOptions
+		: null;
+	const clientOptions = isPlainObject(clientConfig.initializationOptions)
+		? clientConfig.initializationOptions
+		: null;
+
+	if (serverOptions && clientOptions) {
+		return {
+			...serverOptions,
+			...clientOptions,
+		};
+	}
+
+	return serverOptions || clientOptions || undefined;
+}
+
+interface InternalLSPRequest<Result> {
+	promise: Promise<Result>;
+}
+
+type RequestInnerFn = <Params, Result>(
+	method: string,
+	params: Params,
+	mapped?: boolean,
+) => InternalLSPRequest<Result>;
+
+function connectClient(
+	client: ExtendedLSPClient,
+	transport: Transport,
+	initializationOptions?: Record<string, unknown>,
+): void {
+	if (!initializationOptions || !Object.keys(initializationOptions).length) {
+		client.connect(transport);
+		return;
+	}
+
+	const patchedClient = client as unknown as {
+		requestInner: RequestInnerFn;
+	};
+	const originalRequestInner = patchedClient.requestInner.bind(
+		patchedClient,
+	) as RequestInnerFn;
+
+	patchedClient.requestInner = function patchedRequestInner<Params, Result>(
+		method: string,
+		params: Params,
+		mapped?: boolean,
+	): InternalLSPRequest<Result> {
+		if (method === "initialize" && isPlainObject(params)) {
+			params = {
+				...params,
+				initializationOptions,
+			} as Params;
+		}
+		return originalRequestInner<Params, Result>(method, params, mapped);
+	};
+
+	try {
+		client.connect(transport);
+	} finally {
+		patchedClient.requestInner = originalRequestInner;
+	}
+}
+
 interface BuiltinExtensionsResult {
 	extensions: Extension[];
 	diagnosticsExtension: Extension | LSPClientExtension | null;
@@ -75,7 +159,7 @@ function buildBuiltinExtensions(
 		signature: includeSignature = true,
 		keymaps: includeKeymaps = true,
 		diagnostics: includeDiagnostics = true,
-		inlayHints: includeInlayHints = true,
+		inlayHints: includeInlayHints = false,
 		documentHighlights: includeDocumentHighlights = true,
 		formatting: includeFormatting = true,
 	} = config;
@@ -431,6 +515,10 @@ export class LspClientManager {
 		};
 
 		const clientConfig = { ...(server.clientConfig ?? {}) };
+		const initializationOptions = resolveInitializationOptions(
+			server,
+			clientConfig as Record<string, unknown>,
+		);
 		const builtinConfig = clientConfig.builtinExtensions ?? {};
 		const useDefaultExtensions = clientConfig.useDefaultExtensions !== false;
 		const { extensions: defaultExtensions, diagnosticsExtension } =
@@ -441,7 +529,7 @@ export class LspClientManager {
 						signature: builtinConfig.signature !== false,
 						keymaps: builtinConfig.keymaps !== false,
 						diagnostics: builtinConfig.diagnostics !== false,
-						inlayHints: builtinConfig.inlayHints !== false,
+						inlayHints: builtinConfig.inlayHints === true,
 						documentHighlights: builtinConfig.documentHighlights !== false,
 						formatting: builtinConfig.formatting !== false,
 					})
@@ -549,8 +637,7 @@ export class LspClientManager {
 						icon: type === 1 ? "error" : "warningreport_problem",
 						type: type === 1 ? "error" : "warning",
 					});
-					// Log full message to console for debugging
-					console.info(`[LSP:${server.id}] ${message}`);
+					logLspInfo(`[LSP:${server.id}] ${message}`);
 					return true;
 				}
 
@@ -562,7 +649,7 @@ export class LspClientManager {
 					icon: type === 4 ? "autorenew" : "info",
 					duration: 5000,
 				});
-				console.info(`[LSP:${server.id}] ${message}`);
+				logLspInfo(`[LSP:${server.id}] ${message}`);
 				return true;
 			},
 			"$/progress": (_client: LSPClient, params: unknown): boolean => {
@@ -607,7 +694,7 @@ export class LspClientManager {
 					lspStatusBar.hideById(statusId);
 				}
 
-				console.info(
+				logLspInfo(
 					`[LSP:${server.id}] Progress: ${kind} - ${message || title || ""} ${typeof percentage === "number" ? `(${percentage}%)` : ""}`,
 				);
 				return true;
@@ -622,7 +709,7 @@ export class LspClientManager {
 
 				const serverLabel = server.label || server.id;
 				const source = versionParams.source || "bundled";
-				console.info(
+				logLspInfo(
 					`[LSP:${server.id}] TypeScript ${versionParams.version} (${source})`,
 				);
 
@@ -652,7 +739,7 @@ export class LspClientManager {
 				method: string,
 				params: unknown,
 			) => {
-				console.info(
+				logLspInfo(
 					`[LSP:${server.id}] Unhandled notification: ${method}`,
 					params,
 				);
@@ -695,22 +782,28 @@ export class LspClientManager {
 			});
 			await transportHandle.ready;
 			client = new LSPClient(clientConfig) as ExtendedLSPClient;
-			client.connect(transportHandle.transport);
+			connectClient(client, transportHandle.transport, initializationOptions);
 			await client.initializing;
 			if (!client.__acodeLoggedInfo) {
 				// Log root URI info to console
 				if (normalizedRootUri) {
 					if (originalRootUri && originalRootUri !== normalizedRootUri) {
-						console.info(
+						logLspInfo(
 							`[LSP:${server.id}] root ${normalizedRootUri} (from ${originalRootUri})`,
 						);
 					} else {
-						console.info(`[LSP:${server.id}] root`, normalizedRootUri);
+						logLspInfo(`[LSP:${server.id}] root`, normalizedRootUri);
 					}
 				} else if (originalRootUri) {
-					console.info(`[LSP:${server.id}] root ignored`, originalRootUri);
+					logLspInfo(`[LSP:${server.id}] root ignored`, originalRootUri);
 				}
-				console.info(`[LSP:${server.id}] initialized`);
+				if (initializationOptions) {
+					logLspInfo(
+						`[LSP:${server.id}] initializationOptions keys`,
+						Object.keys(initializationOptions),
+					);
+				}
+				logLspInfo(`[LSP:${server.id}] initialized`);
 				client.__acodeLoggedInfo = true;
 			}
 		} catch (error) {
@@ -755,7 +848,7 @@ export class LspClientManager {
 			existing.add(view);
 			fileRefs.set(uri, existing);
 			const suffix = effectiveRoot ? ` (root ${effectiveRoot})` : "";
-			console.info(`[LSP:${server.id}] attached to ${uri}${suffix}`);
+			logLspInfo(`[LSP:${server.id}] attached to ${uri}${suffix}`);
 		};
 
 		const detach = (uri: string, view?: EditorView): void => {

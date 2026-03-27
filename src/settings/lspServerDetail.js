@@ -330,7 +330,7 @@ function createItems(snapshot) {
 		items.push({
 			key,
 			text,
-			checkbox: snapshot.builtinExts[extKey] !== false,
+			checkbox: isBuiltinFeatureEnabled(snapshot.builtinExts, extKey),
 			info,
 			category: categories.features,
 		});
@@ -377,9 +377,16 @@ async function refreshVisibleState($list, itemsByKey, serverId) {
 
 	getFeatureItems().forEach(([key, extKey]) => {
 		updateItemDisplay($list, itemsByKey, key, undefined, {
-			checkbox: snapshot.builtinExts[extKey] !== false,
+			checkbox: isBuiltinFeatureEnabled(snapshot.builtinExts, extKey),
 		});
 	});
+}
+
+function isBuiltinFeatureEnabled(builtinExts, extKey) {
+	if (extKey === "inlayHints") {
+		return builtinExts?.[extKey] === true;
+	}
+	return builtinExts?.[extKey] !== false;
 }
 
 async function persistEnabled(serverId, value) {

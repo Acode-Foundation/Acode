@@ -1,4 +1,4 @@
-import { syntaxTree } from "@codemirror/language";
+import { getIndentUnit, syntaxTree } from "@codemirror/language";
 import type { Extension } from "@codemirror/state";
 import { EditorState, RangeSetBuilder } from "@codemirror/state";
 import {
@@ -7,7 +7,6 @@ import {
 	EditorView,
 	ViewPlugin,
 	type ViewUpdate,
-	WidgetType,
 } from "@codemirror/view";
 import type { SyntaxNode } from "@lezer/common";
 
@@ -26,11 +25,23 @@ const defaultConfig: Required<IndentGuidesConfig> = {
 	hideOnBlankLines: false,
 };
 
+const GUIDE_MARK_CLASS = "cm-indent-guides";
+
 /**
  * Get the tab size from editor state
  */
 function getTabSize(state: EditorState): number {
-	return state.facet(EditorState.tabSize);
+	const tabSize = state.facet(EditorState.tabSize);
+	return Number.isFinite(tabSize) && tabSize > 0 ? tabSize : 4;
+}
+
+/**
+ * Resolve the indentation width used for guide spacing.
+ */
+function getIndentUnitColumns(state: EditorState): number {
+	const width = getIndentUnit(state);
+	if (Number.isFinite(width) && width > 0) return width;
+	return getTabSize(state);
 }
 
 /**
@@ -55,6 +66,21 @@ function getLineIndentation(line: string, tabSize: number): number {
  */
 function isBlankLine(line: string): boolean {
 	return /^\s*$/.test(line);
+}
+
+/**
+ * Count the leading indentation characters of a line.
+ */
+function getLeadingWhitespaceLength(line: string): number {
+	let count = 0;
+	for (const ch of line) {
+		if (ch === " " || ch === "\t") {
+			count++;
+			continue;
+		}
+		break;
+	}
+	return count;
 }
 
 /**
@@ -83,7 +109,6 @@ const SCOPE_NODE_TYPES = new Set([
 	"Element",
 	"SelfClosingTag",
 	"RuleSet",
-	"Block",
 	"DeclarationList",
 	"Body",
 	"Suite",
@@ -114,15 +139,12 @@ function getActiveScope(
 
 	const tree = syntaxTree(state);
 	if (!tree || tree.length === 0) {
-		// No syntax tree available, fall back to indentation-based
 		return getActiveScopeByIndentation(state, indentUnit);
 	}
 
-	// Find the innermost scope node containing the cursor
 	let scopeNode: SyntaxNode | null = null;
 	let node: SyntaxNode | null = tree.resolveInner(cursorPos, 0);
 
-	// Walk up the tree to find a scope-defining node
 	while (node) {
 		if (SCOPE_NODE_TYPES.has(node.name)) {
 			scopeNode = node;
@@ -135,12 +157,8 @@ function getActiveScope(
 		return null;
 	}
 
-	// Get the line range of this scope
 	const startLine = state.doc.lineAt(scopeNode.from);
 	const endLine = state.doc.lineAt(scopeNode.to);
-
-	// Calculate indent level from the first line of the scope's content
-	// (usually the line after the opening bracket)
 	let contentStartLine = startLine.number;
 	if (startLine.number < endLine.number) {
 		contentStartLine = startLine.number + 1;
@@ -149,7 +167,6 @@ function getActiveScope(
 	const tabSize = getTabSize(state);
 	let level = 0;
 
-	// Find the first non-blank line inside the scope to determine indent level
 	for (let ln = contentStartLine; ln <= endLine.number; ln++) {
 		const line = state.doc.line(ln);
 		if (!isBlankLine(line.text)) {
@@ -228,56 +245,31 @@ function getActiveScopeByIndentation(
 	return { level: cursorLevel, startLine, endLine };
 }
 
-/**
- * Widget that renders indent guide lines
- */
-class IndentGuidesWidget extends WidgetType {
-	constructor(
-		readonly levels: number,
-		readonly indentUnit: number,
-		readonly activeGuideIndex: number,
-		readonly lineHeight: number,
-	) {
-		super();
+function buildGuideStyle(
+	levels: number,
+	guideStepPx: number,
+	activeGuideIndex: number,
+): string {
+	const images = [];
+	const positions = [];
+	const sizes = [];
+
+	for (let i = 0; i < levels; i++) {
+		const color =
+			i === activeGuideIndex
+				? "var(--indent-guide-active-color)"
+				: "var(--indent-guide-color)";
+		images.push(`linear-gradient(${color}, ${color})`);
+		positions.push(`${i * guideStepPx}px 0`);
+		sizes.push("1px 100%");
 	}
 
-	eq(other: IndentGuidesWidget): boolean {
-		return (
-			other.levels === this.levels &&
-			other.indentUnit === this.indentUnit &&
-			other.activeGuideIndex === this.activeGuideIndex &&
-			other.lineHeight === this.lineHeight
-		);
-	}
-
-	toDOM(): HTMLElement {
-		const container = document.createElement("span");
-		container.className = "cm-indent-guides-wrapper";
-		container.setAttribute("aria-hidden", "true");
-
-		const guidesContainer = document.createElement("span");
-		guidesContainer.className = "cm-indent-guides";
-
-		for (let i = 0; i < this.levels; i++) {
-			const guide = document.createElement("span");
-			guide.className = "cm-indent-guide";
-			guide.style.left = `${i * this.indentUnit}ch`;
-			guide.style.height = `${this.lineHeight}px`;
-
-			if (i === this.activeGuideIndex) {
-				guide.classList.add("cm-indent-guide-active");
-			}
-
-			guidesContainer.appendChild(guide);
-		}
-
-		container.appendChild(guidesContainer);
-		return container;
-	}
-
-	ignoreEvent(): boolean {
-		return true;
-	}
+	return [
+		`background-image:${images.join(",")}`,
+		"background-repeat:no-repeat",
+		`background-position:${positions.join(",")}`,
+		`background-size:${sizes.join(",")}`,
+	].join(";");
 }
 
 /**
@@ -290,16 +282,13 @@ function buildDecorations(
 	const builder = new RangeSetBuilder<Decoration>();
 	const { state } = view;
 	const tabSize = getTabSize(state);
-	const indentUnit = tabSize;
+	const indentUnit = getIndentUnitColumns(state);
+	const guideStepPx = Math.max(view.defaultCharacterWidth * indentUnit, 1);
 
-	// Get active scope using syntax tree (or fallback to indentation)
 	const activeScope = config.highlightActiveGuide
 		? getActiveScope(view, indentUnit)
 		: null;
 
-	const lineHeight = view.defaultLineHeight;
-
-	// Only process visible lines for performance
 	for (const { from: blockFrom, to: blockTo } of view.visibleRanges) {
 		const startLine = state.doc.lineAt(blockFrom);
 		const endLine = state.doc.lineAt(blockTo);
@@ -314,34 +303,30 @@ function buildDecorations(
 
 			const indentColumns = getLineIndentation(lineText, tabSize);
 			const levels = Math.floor(indentColumns / indentUnit);
+			if (levels <= 0) continue;
+			const leadingWhitespaceLength = getLeadingWhitespaceLength(lineText);
+			if (leadingWhitespaceLength <= 0) continue;
 
-			if (levels > 0) {
-				let activeGuideIndex = -1;
-
-				// Check if this line is in the active scope
-				if (
-					activeScope &&
-					lineNum >= activeScope.startLine &&
-					lineNum <= activeScope.endLine &&
-					levels >= activeScope.level
-				) {
-					activeGuideIndex = activeScope.level - 1;
-				}
-
-				const widget = new IndentGuidesWidget(
-					levels,
-					indentUnit,
-					activeGuideIndex,
-					lineHeight,
-				);
-
-				const deco = Decoration.widget({
-					widget,
-					side: -1,
-				});
-
-				builder.add(line.from, line.from, deco);
+			let activeGuideIndex = -1;
+			if (
+				activeScope &&
+				lineNum >= activeScope.startLine &&
+				lineNum <= activeScope.endLine &&
+				levels >= activeScope.level
+			) {
+				activeGuideIndex = activeScope.level - 1;
 			}
+
+			builder.add(
+				line.from,
+				line.from + leadingWhitespaceLength,
+				Decoration.mark({
+					attributes: {
+						class: GUIDE_MARK_CLASS,
+						style: buildGuideStyle(levels, guideStepPx, activeGuideIndex),
+					},
+				}),
+			);
 		}
 	}
 
@@ -360,21 +345,45 @@ function createIndentGuidesPlugin(
 	return ViewPlugin.fromClass(
 		class {
 			decorations: DecorationSet;
+			raf = 0;
+			pendingView: EditorView | null = null;
 
 			constructor(view: EditorView) {
 				this.decorations = buildDecorations(view, config);
 			}
 
 			update(update: ViewUpdate): void {
-				// Only rebuild when necessary
 				if (
-					update.docChanged ||
-					update.viewportChanged ||
-					update.geometryChanged ||
-					(config.highlightActiveGuide && update.selectionSet)
+					!update.docChanged &&
+					!update.viewportChanged &&
+					!update.geometryChanged &&
+					!(config.highlightActiveGuide && update.selectionSet)
 				) {
-					this.decorations = buildDecorations(update.view, config);
+					return;
 				}
+				this.scheduleBuild(update.view);
+			}
+
+			scheduleBuild(view: EditorView): void {
+				this.pendingView = view;
+				if (this.raf) return;
+				// Guide rebuilding is cosmetic and can be expensive on large
+				// viewports, so we intentionally collapse bursts into one frame.
+				this.raf = requestAnimationFrame(() => {
+					this.raf = 0;
+					const pendingView = this.pendingView;
+					this.pendingView = null;
+					if (!pendingView) return;
+					this.decorations = buildDecorations(pendingView, config);
+				});
+			}
+
+			destroy(): void {
+				if (this.raf) {
+					cancelAnimationFrame(this.raf);
+					this.raf = 0;
+				}
+				this.pendingView = null;
 			}
 		},
 		{
@@ -384,34 +393,13 @@ function createIndentGuidesPlugin(
 }
 
 /**
- * Theme for indent guides with subtle animation
+ * Theme for indent guides.
+ * Uses a single span around leading indentation instead of per-guide widgets.
  */
 const indentGuidesTheme = EditorView.baseTheme({
-	".cm-indent-guides-wrapper": {
-		display: "inline",
-		position: "relative",
-		width: "0",
-		height: "0",
-		overflow: "visible",
-		verticalAlign: "top",
-	},
 	".cm-indent-guides": {
-		position: "absolute",
-		top: "0",
-		left: "0",
-		height: "100%",
-		pointerEvents: "none",
-		zIndex: "0",
-	},
-	".cm-indent-guide": {
-		position: "absolute",
-		top: "0",
-		width: "1px",
-		background: "var(--indent-guide-color)",
-		transition: "background 0.15s ease, opacity 0.15s ease",
-	},
-	".cm-indent-guide-active": {
-		background: "var(--indent-guide-active-color)",
+		display: "inline-block",
+		verticalAlign: "top",
 	},
 	"&": {
 		"--indent-guide-color": "rgba(128, 128, 128, 0.25)",
