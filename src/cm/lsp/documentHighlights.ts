@@ -105,6 +105,8 @@ function buildDecos(
 		: [view.viewport];
 	const decos: Range<Decoration>[] = [];
 	let rangeIndex = 0;
+	// process() keeps highlights sorted so visible range culling can advance
+	// with a single cursor instead of rescanning visibleRanges for every mark.
 	for (const h of highlights) {
 		if (h.from < 0 || h.to > docLen || h.from >= h.to) continue;
 		while (

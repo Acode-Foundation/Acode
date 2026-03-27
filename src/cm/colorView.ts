@@ -213,6 +213,8 @@ class ColorViewPlugin {
 	scheduleDecorations(view: EditorView): void {
 		this.pendingView = view;
 		if (this.raf) return;
+		// Color chips are decorative, so batch rapid viewport/doc changes into
+		// one animation frame instead of rebuilding on every intermediate update.
 		this.raf = requestAnimationFrame(() => {
 			this.raf = 0;
 			const pendingView = this.pendingView;

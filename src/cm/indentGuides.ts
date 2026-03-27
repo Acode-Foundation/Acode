@@ -367,6 +367,8 @@ function createIndentGuidesPlugin(
 			scheduleBuild(view: EditorView): void {
 				this.pendingView = view;
 				if (this.raf) return;
+				// Guide rebuilding is cosmetic and can be expensive on large
+				// viewports, so we intentionally collapse bursts into one frame.
 				this.raf = requestAnimationFrame(() => {
 					this.raf = 0;
 					const pendingView = this.pendingView;

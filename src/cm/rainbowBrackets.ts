@@ -40,6 +40,8 @@ const rainbowBracketsPlugin = ViewPlugin.fromClass(
 		scheduleBuild(view: EditorView): void {
 			this.pendingView = view;
 			if (this.raf) return;
+			// Rainbow bracket colors are purely visual, so batch rebuilds to the
+			// next frame instead of recomputing on every transient update.
 			this.raf = requestAnimationFrame(() => {
 				this.raf = 0;
 				const pendingView = this.pendingView;

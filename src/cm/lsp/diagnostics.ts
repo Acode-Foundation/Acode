@@ -8,7 +8,7 @@ import {
 	StateEffect,
 	StateField,
 } from "@codemirror/state";
-import type { EditorView } from "@codemirror/view";
+import { type EditorView, ViewPlugin } from "@codemirror/view";
 import type {
 	LSPClientWithWorkspace,
 	LSPPluginAPI,
@@ -18,7 +18,8 @@ import type {
 } from "./types";
 
 const setPublishedDiagnostics = StateEffect.define<LspDiagnostic[]>();
-let diagnosticsEventTimer = 0;
+let diagnosticsEventTimer: ReturnType<typeof setTimeout> | null = null;
+let diagnosticsViewCount = 0;
 
 export const LSP_DIAGNOSTICS_EVENT = "acode:lsp-diagnostics-updated";
 
@@ -65,6 +66,12 @@ function emitDiagnosticsUpdated(): void {
 	}
 
 	document.dispatchEvent(event);
+}
+
+function clearScheduledDiagnosticsUpdated(): void {
+	if (diagnosticsEventTimer == null) return;
+	clearTimeout(diagnosticsEventTimer);
+	diagnosticsEventTimer = null;
 }
 
 const lspPublishedDiagnostics = StateField.define<LspDiagnostic[]>({
@@ -164,12 +171,29 @@ function sameDiagnostics(
 }
 
 function scheduleDiagnosticsUpdated(): void {
-	if (diagnosticsEventTimer) return;
-	diagnosticsEventTimer = window.setTimeout(() => {
-		diagnosticsEventTimer = 0;
-		emitDiagnosticsUpdated();
+	if (diagnosticsEventTimer != null) return;
+	diagnosticsEventTimer = setTimeout(() => {
+		diagnosticsEventTimer = null;
+		if (diagnosticsViewCount > 0) {
+			emitDiagnosticsUpdated();
+		}
 	}, 32);
 }
+
+const diagnosticsLifecyclePlugin = ViewPlugin.fromClass(
+	class {
+		constructor() {
+			diagnosticsViewCount++;
+		}
+
+		destroy(): void {
+			diagnosticsViewCount = Math.max(0, diagnosticsViewCount - 1);
+			if (!diagnosticsViewCount) {
+				clearScheduledDiagnosticsUpdated();
+			}
+		}
+	},
+);
 
 function mapDiagnostics(
 	plugin: LSPPluginAPI,
@@ -262,6 +286,7 @@ export function lspDiagnosticsUiExtension(includeGutter = true): Extension[] {
 		? () => []
 		: undefined;
 	const extensions: Extension[] = [
+		diagnosticsLifecyclePlugin,
 		lspPublishedDiagnostics,
 		linter(lspLinterSource, {
 			needsRefresh(update) {
