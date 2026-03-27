@@ -139,8 +139,7 @@ export default {
 		showFileInfo(url);
 	},
 	async goto() {
-		const { editor } = editorManager;
-		const lastLine = editor?.state?.doc?.lines;
+		const lastLine = editorManager.editor?.state?.doc?.lines;
 		const message = lastLine
 			? `${strings["enter line number"]} (1..${lastLine})`
 			: strings["enter line number"];
@@ -150,7 +149,7 @@ export default {
 
 		if (!res) return;
 		const [lineStr, colStr] = String(res).split(".");
-		editor.gotoLine(lineStr, colStr);
+		editorManager.editor.gotoLine(lineStr, colStr);
 	},
 	async "new-file"() {
 		let filename = await prompt(strings["enter file name"], "", "filename", {
