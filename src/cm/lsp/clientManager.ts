@@ -61,6 +61,17 @@ function safeString(value: unknown): string {
 	return value != null ? String(value) : "";
 }
 
+function isVerboseLspLoggingEnabled(): boolean {
+	const buildInfo = (globalThis as { BuildInfo?: { debug?: boolean } })
+		.BuildInfo;
+	return !!buildInfo?.debug;
+}
+
+function logLspInfo(...args: unknown[]): void {
+	if (!isVerboseLspLoggingEnabled()) return;
+	console.info(...args);
+}
+
 function isPlainObject(value: unknown): value is Record<string, unknown> {
 	return !!value && typeof value === "object" && !Array.isArray(value);
 }
@@ -626,8 +637,7 @@ export class LspClientManager {
 						icon: type === 1 ? "error" : "warningreport_problem",
 						type: type === 1 ? "error" : "warning",
 					});
-					// Log full message to console for debugging
-					console.info(`[LSP:${server.id}] ${message}`);
+					logLspInfo(`[LSP:${server.id}] ${message}`);
 					return true;
 				}
 
@@ -639,7 +649,7 @@ export class LspClientManager {
 					icon: type === 4 ? "autorenew" : "info",
 					duration: 5000,
 				});
-				console.info(`[LSP:${server.id}] ${message}`);
+				logLspInfo(`[LSP:${server.id}] ${message}`);
 				return true;
 			},
 			"$/progress": (_client: LSPClient, params: unknown): boolean => {
@@ -684,7 +694,7 @@ export class LspClientManager {
 					lspStatusBar.hideById(statusId);
 				}
 
-				console.info(
+				logLspInfo(
 					`[LSP:${server.id}] Progress: ${kind} - ${message || title || ""} ${typeof percentage === "number" ? `(${percentage}%)` : ""}`,
 				);
 				return true;
@@ -699,7 +709,7 @@ export class LspClientManager {
 
 				const serverLabel = server.label || server.id;
 				const source = versionParams.source || "bundled";
-				console.info(
+				logLspInfo(
 					`[LSP:${server.id}] TypeScript ${versionParams.version} (${source})`,
 				);
 
@@ -729,7 +739,7 @@ export class LspClientManager {
 				method: string,
 				params: unknown,
 			) => {
-				console.info(
+				logLspInfo(
 					`[LSP:${server.id}] Unhandled notification: ${method}`,
 					params,
 				);
@@ -778,22 +788,22 @@ export class LspClientManager {
 				// Log root URI info to console
 				if (normalizedRootUri) {
 					if (originalRootUri && originalRootUri !== normalizedRootUri) {
-						console.info(
+						logLspInfo(
 							`[LSP:${server.id}] root ${normalizedRootUri} (from ${originalRootUri})`,
 						);
 					} else {
-						console.info(`[LSP:${server.id}] root`, normalizedRootUri);
+						logLspInfo(`[LSP:${server.id}] root`, normalizedRootUri);
 					}
 				} else if (originalRootUri) {
-					console.info(`[LSP:${server.id}] root ignored`, originalRootUri);
+					logLspInfo(`[LSP:${server.id}] root ignored`, originalRootUri);
 				}
 				if (initializationOptions) {
-					console.info(
+					logLspInfo(
 						`[LSP:${server.id}] initializationOptions keys`,
 						Object.keys(initializationOptions),
 					);
 				}
-				console.info(`[LSP:${server.id}] initialized`);
+				logLspInfo(`[LSP:${server.id}] initialized`);
 				client.__acodeLoggedInfo = true;
 			}
 		} catch (error) {
@@ -838,7 +848,7 @@ export class LspClientManager {
 			existing.add(view);
 			fileRefs.set(uri, existing);
 			const suffix = effectiveRoot ? ` (root ${effectiveRoot})` : "";
-			console.info(`[LSP:${server.id}] attached to ${uri}${suffix}`);
+			logLspInfo(`[LSP:${server.id}] attached to ${uri}${suffix}`);
 		};
 
 		const detach = (uri: string, view?: EditorView): void => {

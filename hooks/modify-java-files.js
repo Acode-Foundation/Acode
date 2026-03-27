@@ -5,9 +5,13 @@ const prettier = require('prettier');
 main();
 
 async function main() {
+  const patchVersion = '2';
   const flagFile = path.resolve(__dirname, '../platforms/android/.flag_done');
   if (fs.existsSync(flagFile)) {
-    return;
+    const appliedVersion = fs.readFileSync(flagFile, 'utf8').trim();
+    if (appliedVersion === patchVersion) {
+      return;
+    }
   }
 
   const base = path.resolve(__dirname, `../platforms/android/CordovaLib/src/org/apache/cordova`);
@@ -31,6 +35,18 @@ async function main() {
     ],
   };
 
+  const nativeContextMenuInterfaceMethod = {
+    name: 'setNativeContextMenuDisabled',
+    modifier: 'public',
+    returnType: 'void',
+    params: [
+      {
+        type: 'boolean',
+        name: 'disabled',
+      }
+    ],
+  };
+
   const setInputTypeMethod = {
     name: 'setInputType',
     modifier: 'public',
@@ -44,12 +60,31 @@ async function main() {
     body: ['webView.setInputType(type);'],
   };
 
+  const setNativeContextMenuDisabledMethod = {
+    name: 'setNativeContextMenuDisabled',
+    modifier: 'public',
+    returnType: 'void',
+    params: [
+      {
+        type: 'boolean',
+        name: 'disabled',
+      }
+    ],
+    body: ['webView.setNativeContextMenuDisabled(disabled);'],
+  };
+
   const contentToAdd = {
     'SystemWebView.java': {
       'import': [
+        'android.graphics.Rect',
+        'android.os.Build',
         'android.text.InputType',
+        'android.view.ActionMode',
         'android.view.inputmethod.InputConnection',
         'android.view.inputmethod.EditorInfo',
+        'android.view.Menu',
+        'android.view.MenuItem',
+        'android.view.View',
       ],
       'fields': [
         {
@@ -70,11 +105,29 @@ async function main() {
           modifier: 'private',
           value: '1',
         },
+        {
+          type: 'boolean',
+          name: 'nativeContextMenuDisabled',
+          modifier: 'private',
+          value: 'false',
+        },
       ],
       methods: [
         {
           ...setInputTypeMethod,
           body: [`this.type = type;`]
+        },
+        {
+          name: 'setNativeContextMenuDisabled',
+          modifier: 'public',
+          returnType: 'void',
+          params: [
+            {
+              type: 'boolean',
+              name: 'disabled',
+            }
+          ],
+          body: [`this.nativeContextMenuDisabled = disabled;`],
         },
         {
           name: 'onCreateInputConnection',
@@ -102,21 +155,204 @@ async function main() {
           ],
           notation: '@Override',
         },
+        {
+          name: 'startActionMode',
+          modifier: 'public',
+          returnType: 'ActionMode',
+          params: [
+            {
+              type: 'ActionMode.Callback',
+              name: 'callback',
+            }
+          ],
+          body: [
+            `return suppressActionMode(super.startActionMode(wrapActionModeCallback(callback)));`,
+          ],
+          notation: '@Override',
+        },
+        {
+          name: 'startActionMode',
+          modifier: 'public',
+          returnType: 'ActionMode',
+          params: [
+            {
+              type: 'ActionMode.Callback',
+              name: 'callback',
+            },
+            {
+              type: 'int',
+              name: 'type',
+            }
+          ],
+          body: [
+            `return suppressActionMode(super.startActionMode(wrapActionModeCallback(callback), type));`,
+          ],
+          notation: '@Override',
+        },
+        {
+          name: 'startActionModeForChild',
+          modifier: 'public',
+          returnType: 'ActionMode',
+          params: [
+            {
+              type: 'View',
+              name: 'originalView',
+            },
+            {
+              type: 'ActionMode.Callback',
+              name: 'callback',
+            }
+          ],
+          body: [
+            `return suppressActionMode(super.startActionModeForChild(originalView, wrapActionModeCallback(callback)));`,
+          ],
+          notation: '@Override',
+        },
+        {
+          name: 'startActionModeForChild',
+          modifier: 'public',
+          returnType: 'ActionMode',
+          params: [
+            {
+              type: 'View',
+              name: 'originalView',
+            },
+            {
+              type: 'ActionMode.Callback',
+              name: 'callback',
+            },
+            {
+              type: 'int',
+              name: 'type',
+            }
+          ],
+          body: [
+            `return suppressActionMode(super.startActionModeForChild(originalView, wrapActionModeCallback(callback), type));`,
+          ],
+          notation: '@Override',
+        },
+        {
+          name: 'wrapActionModeCallback',
+          modifier: 'private',
+          returnType: 'ActionMode.Callback',
+          params: [
+            {
+              type: 'ActionMode.Callback',
+              name: 'callback',
+            }
+          ],
+          body: [
+            `if (!nativeContextMenuDisabled || callback == null) {
+              return callback;
+            }
+            return new ActionMode.Callback2() {
+              @Override
+              public boolean onCreateActionMode(ActionMode mode, Menu menu) {
+                boolean created = callback.onCreateActionMode(mode, menu);
+                if (created) {
+                  suppressActionModeUi(mode, menu);
+                }
+                return created;
+              }
+
+              @Override
+              public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
+                boolean prepared = callback.onPrepareActionMode(mode, menu);
+                suppressActionModeUi(mode, menu);
+                return prepared;
+              }
+
+              @Override
+              public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
+                return callback.onActionItemClicked(mode, item);
+              }
+
+              @Override
+              public void onDestroyActionMode(ActionMode mode) {
+                callback.onDestroyActionMode(mode);
+              }
+
+              @Override
+              public void onGetContentRect(ActionMode mode, View view, Rect outRect) {
+                if (callback instanceof ActionMode.Callback2) {
+                  ((ActionMode.Callback2) callback).onGetContentRect(mode, view, outRect);
+                  return;
+                }
+                super.onGetContentRect(mode, view, outRect);
+              }
+            };`,
+          ],
+        },
+        {
+          name: 'suppressActionMode',
+          modifier: 'private',
+          returnType: 'ActionMode',
+          params: [
+            {
+              type: 'ActionMode',
+              name: 'mode',
+            }
+          ],
+          body: [
+            `if (mode == null || !nativeContextMenuDisabled) {
+              return mode;
+            }
+            suppressActionModeUi(mode, mode.getMenu());
+            return mode;`,
+          ],
+        },
+        {
+          name: 'suppressActionModeUi',
+          modifier: 'private',
+          returnType: 'void',
+          params: [
+            {
+              type: 'ActionMode',
+              name: 'mode',
+            },
+            {
+              type: 'Menu',
+              name: 'menu',
+            }
+          ],
+          body: [
+            `if (mode == null || !nativeContextMenuDisabled || menu == null) {
+              return;
+            }
+            menu.clear();
+            mode.setTitle(null);
+            mode.setSubtitle(null);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+              post(() -> {
+                if (!nativeContextMenuDisabled) {
+                  return;
+                }
+                try {
+                  mode.hide(0);
+                } catch (Throwable ignored) {
+                }
+              });
+            }`,
+          ],
+        },
       ]
     },
     'SystemWebViewEngine.java': {
       methods: [
-        setInputTypeMethod
+        setInputTypeMethod,
+        setNativeContextMenuDisabledMethod,
       ]
     },
     'CordovaWebViewEngine.java': {
       methods: [
-        interfaceMethod
+        interfaceMethod,
+        nativeContextMenuInterfaceMethod,
       ]
     },
     'CordovaWebView.java': {
       methods: [
-        interfaceMethod
+        interfaceMethod,
+        nativeContextMenuInterfaceMethod,
       ]
     },
     'CordovaWebViewImpl.java': {
@@ -124,6 +360,10 @@ async function main() {
         {
           ...setInputTypeMethod,
           body: [`engine.setInputType(type);`]
+        },
+        {
+          ...setNativeContextMenuDisabledMethod,
+          body: [`engine.setNativeContextMenuDisabled(disabled);`]
         }
       ]
     }
@@ -198,7 +438,7 @@ async function main() {
     });
   }
 
-  fs.writeFile(flagFile, '', err => {
+  fs.writeFile(flagFile, patchVersion, err => {
     if (err) {
       console.log(err);
       process.exit(1);

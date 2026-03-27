@@ -158,8 +158,6 @@ class Settings {
 			rememberFolders: true,
 			diagonalScrolling: false,
 			reverseScrolling: false,
-			teardropTimeout: 3000,
-			teardropSize: 30,
 			scrollSpeed: constants.SCROLL_SPEED_NORMAL,
 			customTheme: this.#customTheme,
 			relativeLineNumbers: false,

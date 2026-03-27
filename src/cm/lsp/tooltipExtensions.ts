@@ -43,6 +43,9 @@ interface LspClientInternals {
 	hasCapability?: (name: string) => boolean;
 }
 
+const SIGNATURE_TRIGGER_DELAY = 120;
+const SIGNATURE_RETRIGGER_DELAY = 250;
+
 function fromPosition(
 	doc: EditorView["state"]["doc"],
 	position: { line: number; character: number },
@@ -122,6 +125,25 @@ function renderTooltipContent(
 	return plugin.docToHTML(value);
 }
 
+function isPointerOrTouchSelection(update: ViewUpdate): boolean {
+	return (
+		update.selectionSet &&
+		update.transactions.some(
+			(tr) =>
+				tr.isUserEvent("pointer") ||
+				tr.isUserEvent("select.pointer") ||
+				tr.isUserEvent("touch") ||
+				tr.isUserEvent("select.touch"),
+		)
+	);
+}
+
+function closeHoverIfNeeded(view: EditorView): void {
+	if (hasHoverTooltips(view.state)) {
+		view.dispatch({ effects: closeHoverTooltips });
+	}
+}
+
 function hoverRequest(plugin: LSPPlugin, pos: number) {
 	const client = plugin.client as typeof plugin.client & LspClientInternals;
 	if (client.hasCapability?.("hoverProvider") === false) {
@@ -164,16 +186,23 @@ function lspTooltipSource(
 	});
 }
 
-const closeHoverOnScroll = ViewPlugin.fromClass(
+const closeHoverOnInteraction = ViewPlugin.fromClass(
 	class {
 		constructor(readonly view: EditorView) {}
 	},
 	{
 		eventObservers: {
+			pointerdown() {
+				closeHoverIfNeeded(this.view);
+			},
+			touchstart() {
+				closeHoverIfNeeded(this.view);
+			},
+			wheel() {
+				closeHoverIfNeeded(this.view);
+			},
 			scroll() {
-				if (hasHoverTooltips(this.view.state)) {
-					this.view.dispatch({ effects: closeHoverTooltips });
-				}
+				closeHoverIfNeeded(this.view);
 			},
 		},
 	},
@@ -355,6 +384,8 @@ const signaturePlugin = ViewPlugin.fromClass(
 		constructor(readonly view: EditorView) {}
 
 		update(update: ViewUpdate) {
+			const pointerOrTouchSelection = isPointerOrTouchSelection(update);
+
 			if (this.activeRequest) {
 				if (update.selectionSet) {
 					this.activeRequest.drop = true;
@@ -396,22 +427,41 @@ const signaturePlugin = ViewPlugin.fromClass(
 			}
 
 			if (triggerCharacter) {
-				this.startRequest(plugin, {
-					triggerKind: 2,
-					isRetrigger: !!sigState,
-					triggerCharacter,
-					activeSignatureHelp: sigState?.data,
-				});
-			} else if (sigState && update.selectionSet) {
-				if (this.delayedRequest) clearTimeout(this.delayedRequest);
-				this.delayedRequest = window.setTimeout(() => {
-					this.startRequest(plugin, {
+				this.scheduleRequest(
+					plugin,
+					{
+						triggerKind: 2,
+						isRetrigger: !!sigState,
+						triggerCharacter,
+						activeSignatureHelp: sigState?.data,
+					},
+					SIGNATURE_TRIGGER_DELAY,
+				);
+			} else if (sigState && update.selectionSet && !pointerOrTouchSelection) {
+				this.scheduleRequest(
+					plugin,
+					{
 						triggerKind: 3,
 						isRetrigger: true,
 						activeSignatureHelp: sigState.data,
-					});
-				}, 250);
+					},
+					SIGNATURE_RETRIGGER_DELAY,
+				);
 			}
+		}
+
+		scheduleRequest(
+			plugin: LSPPlugin,
+			context: SignatureHelpContext,
+			delay: number,
+		) {
+			if (this.delayedRequest) {
+				clearTimeout(this.delayedRequest);
+			}
+			this.delayedRequest = window.setTimeout(() => {
+				this.delayedRequest = 0;
+				this.startRequest(plugin, context);
+			}, delay);
 		}
 
 		startRequest(plugin: LSPPlugin, context: SignatureHelpContext) {
@@ -477,6 +527,15 @@ const signaturePlugin = ViewPlugin.fromClass(
 	},
 	{
 		eventObservers: {
+			pointerdown() {
+				this.close();
+			},
+			touchstart() {
+				this.close();
+			},
+			wheel() {
+				this.close();
+			},
 			scroll() {
 				this.close();
 			},
@@ -546,10 +605,10 @@ export const signatureKeymap: readonly KeyBinding[] = [
 export function hoverTooltips(config: { hoverTime?: number } = {}): Extension {
 	return [
 		hoverTooltip(lspTooltipSource, {
-			hideOn: (tr) => tr.docChanged,
+			hideOnChange: true,
 			hoverTime: config.hoverTime,
 		}),
-		closeHoverOnScroll,
+		closeHoverOnInteraction,
 	];
 }
 

@@ -10,7 +10,9 @@ import {
 } from "@codemirror/state";
 import { oneDark } from "@codemirror/theme-one-dark";
 import {
+	closeHoverTooltips,
 	EditorView,
+	hasHoverTooltips,
 	highlightActiveLineGutter,
 	highlightTrailingWhitespace,
 	highlightWhitespace,
@@ -115,6 +117,22 @@ async function EditorManager($header, $body) {
 			recoverableWarningKeys.add(key);
 		}
 		console.warn(message, error);
+	}
+
+	function isCoarsePointerDevice() {
+		if (typeof window !== "undefined") {
+			try {
+				if (window.matchMedia?.("(pointer: coarse)").matches) {
+					return true;
+				}
+			} catch (_) {
+				// Ignore matchMedia capability errors and fall through.
+			}
+		}
+		return (
+			typeof navigator !== "undefined" &&
+			Number(navigator.maxTouchPoints || 0) > 0
+		);
 	}
 
 	const setNativeContextMenuDisabled = (disabled) => {
@@ -224,12 +242,7 @@ async function EditorManager($header, $body) {
 					tr.isUserEvent("touch") ||
 					tr.isUserEvent("select.touch"),
 			);
-			if (
-				update.selectionSet ||
-				update.docChanged ||
-				update.geometryChanged ||
-				pointerTriggered
-			) {
+			if (update.selectionSet || pointerTriggered) {
 				cancelAnimationFrame(touchSelectionSyncRaf);
 				touchSelectionSyncRaf = requestAnimationFrame(() => {
 					touchSelectionController?.onStateChanged({
@@ -463,7 +476,10 @@ async function EditorManager($header, $body) {
 			compartments: [completionCompartment],
 			build() {
 				const live = !!appSettings?.value?.liveAutoCompletion;
-				return autocompletion({ activateOnTyping: live });
+				return autocompletion({
+					activateOnTyping: live,
+					activateOnTypingDelay: isCoarsePointerDevice() ? 220 : 100,
+				});
 			},
 		},
 	];
@@ -1383,12 +1399,17 @@ async function EditorManager($header, $body) {
 		if (typeof existing === "function") {
 			document.removeEventListener(LSP_DIAGNOSTICS_EVENT, existing);
 		}
+		let diagnosticsButtonSyncRaf = 0;
 		const listener = () => {
-			const active = manager.activeFile;
-			if (active?.type === "editor") {
-				active.session = editor.state;
-			}
-			toggleProblemButton();
+			cancelAnimationFrame(diagnosticsButtonSyncRaf);
+			diagnosticsButtonSyncRaf = requestAnimationFrame(() => {
+				diagnosticsButtonSyncRaf = 0;
+				const active = manager.activeFile;
+				if (active?.type === "editor") {
+					active.session = editor.state;
+				}
+				toggleProblemButton();
+			});
 		};
 		document.addEventListener(LSP_DIAGNOSTICS_EVENT, listener);
 		if (globalTarget) {
@@ -1773,23 +1794,29 @@ async function EditorManager($header, $body) {
 			scrollSyncRaf = 0;
 			onscrolltop();
 			onscrollleft();
-			touchSelectionController?.onScroll();
 		}
 
 		function handleEditorScroll() {
 			if (!scroller) return;
+			if (!isScrolling) {
+				isScrolling = true;
+				if (hasHoverTooltips(editor.state)) {
+					editor.dispatch({ effects: closeHoverTooltips });
+				}
+				touchSelectionController?.onScrollStart();
+			}
 			if (!scrollSyncRaf) {
 				scrollSyncRaf = requestAnimationFrame(syncScrollUi);
 			}
 			clearTimeout(scrollTimeout);
-			isScrolling = true;
 			scrollTimeout = setTimeout(() => {
 				isScrolling = false;
+				touchSelectionController?.onScrollEnd();
 			}, 100);
 		}
 
 		scroller?.addEventListener("scroll", handleEditorScroll, { passive: true });
-		handleEditorScroll();
+		syncScrollUi();
 
 		keyboardHandler.on("keyboardShowStart", () => {
 			requestAnimationFrame(() => {
@@ -1870,7 +1897,7 @@ async function EditorManager($header, $body) {
 		const relativeTop = caret.top - scrollerRect.top + scroller.scrollTop;
 		const relativeBottom = caret.bottom - scrollerRect.top + scroller.scrollTop;
 		const topMargin = 16;
-		const bottomMargin = (appSettings.value?.teardropSize || 24) + 12;
+		const bottomMargin = 24;
 
 		const scrollTop = scroller.scrollTop;
 		const visibleTop = scrollTop + topMargin;

@@ -137,7 +137,7 @@ public class System extends CordovaPlugin {
             new Runnable() {
                 @Override
                 public void run() {
-                    setNativeContextMenuDisabled(true);
+                    setNativeContextMenuDisabled(false);
                 }
             }
         );
@@ -2051,28 +2051,9 @@ public class System extends CordovaPlugin {
     }
 
     private void setNativeContextMenuDisabled(boolean disabled) {
-        View webViewView = webView == null ? null : webView.getView();
-        if (webViewView == null) {
+        if (webView == null) {
             return;
         }
-
-        webViewView.setLongClickable(!disabled);
-        webViewView.setHapticFeedbackEnabled(!disabled);
-        if (disabled) {
-            webViewView.setOnLongClickListener(v -> true);
-        } else {
-            webViewView.setOnLongClickListener(null);
-        }
-
-        try {
-            Method method = webViewView
-                .getClass()
-                .getMethod("setNativeContextMenuDisabled", boolean.class);
-            method.invoke(webViewView, disabled);
-        } catch (NoSuchMethodException ignored) {
-            // Fallback above keeps long-press context disabled even without CordovaLib patch.
-        } catch (IllegalAccessException | InvocationTargetException e) {
-            Log.w("System", "Failed to toggle native context menu state", e);
-        }
+        webView.setNativeContextMenuDisabled(disabled);
     }
 }

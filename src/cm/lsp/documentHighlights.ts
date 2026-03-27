@@ -93,22 +93,34 @@ function getMarkForKind(
 }
 
 function buildDecos(
+	view: EditorView,
 	highlights: ProcessedHighlight[],
-	docLen: number,
 	distinguishReadWrite: boolean,
 ): DecorationSet {
 	if (!highlights.length) return Decoration.none;
 
+	const docLen = view.state.doc.length;
+	const visibleRanges = view.visibleRanges.length
+		? view.visibleRanges
+		: [view.viewport];
 	const decos: Range<Decoration>[] = [];
+	let rangeIndex = 0;
 	for (const h of highlights) {
 		if (h.from < 0 || h.to > docLen || h.from >= h.to) continue;
+		while (
+			rangeIndex < visibleRanges.length &&
+			visibleRanges[rangeIndex].to <= h.from
+		) {
+			rangeIndex++;
+		}
+		if (rangeIndex >= visibleRanges.length) break;
+		const visible = visibleRanges[rangeIndex];
+		if (h.to <= visible.from) continue;
 		decos.push(
 			getMarkForKind(h.kind, distinguishReadWrite).range(h.from, h.to),
 		);
 	}
-	// Sort by position for RangeSet
-	decos.sort((a, b) => a.from - b.from || a.to - b.to);
-	return RangeSet.of(decos);
+	return decos.length ? RangeSet.of(decos) : Decoration.none;
 }
 
 function createPlugin(config: DocumentHighlightsConfig) {
@@ -122,18 +134,26 @@ function createPlugin(config: DocumentHighlightsConfig) {
 			reqId = 0;
 			lastPos = -1;
 
-			constructor(private view: EditorView) {}
+			constructor(private view: EditorView) {
+				this.decorations = buildDecos(
+					view,
+					view.state.field(highlightsField, false) ?? [],
+					distinguishReadWrite,
+				);
+			}
 
 			update(update: ViewUpdate): void {
 				// Rebuild decorations if highlights changed
 				if (
 					update.transactions.some((t) =>
 						t.effects.some((e) => e.is(setHighlights)),
-					)
+					) ||
+					update.viewportChanged ||
+					update.geometryChanged
 				) {
 					this.decorations = buildDecos(
+						update.view,
 						update.state.field(highlightsField, false) ?? [],
-						update.state.doc.length,
 						distinguishReadWrite,
 					);
 				}

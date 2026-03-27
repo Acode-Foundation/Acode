@@ -1,19 +1,13 @@
-import { EditorSelection } from "@codemirror/state";
-import constants from "lib/constants";
 import selectionMenu from "lib/selectionMenu";
-import appSettings from "lib/settings";
-import { getColorRange } from "utils/color/regex";
 
 const TAP_MAX_DELAY = 500;
 const TAP_MAX_DISTANCE = 20;
-const LONG_PRESS_DELAY = 450;
 const EDGE_SCROLL_GAP = 40;
-const EDGE_SCROLL_STEP = 16;
 const MENU_MARGIN = 10;
-const DRAG_FINGER_OFFSET_FACTOR = 1.8;
-const HANDLE_HIT_SLOP = 8;
-const CURSOR_HANDLE_HIT_SLOP = 2;
-const CURSOR_HANDLE_GUARD_MS = 320;
+const MENU_SHOW_DELAY = 120;
+const MENU_CARET_GAP = 10;
+const MENU_SELECTION_GAP = 12;
+const MENU_HANDLE_CLEARANCE = 28;
 const TAP_MAX_COLUMN_DELTA = 2;
 const TAP_MAX_POS_DELTA = 2;
 
@@ -124,11 +118,6 @@ function clamp(value, min, max) {
 	return Math.max(min, Math.min(max, value));
 }
 
-function getElementRect($el) {
-	if (!$el?.isConnected) return null;
-	return $el.getBoundingClientRect();
-}
-
 export default function createTouchSelectionMenu(view, options = {}) {
 	return new TouchSelectionMenuController(view, options);
 }
@@ -137,571 +126,196 @@ class TouchSelectionMenuController {
 	#view;
 	#container;
 	#getActiveFile;
-	#tap = null;
-	#touchSession = null;
-	#dragState = null;
-	#longPressTimer = null;
-	#cursorHideTimer = null;
-	#scrollTimeout = null;
-	#autoScrollRaf = 0;
 	#stateSyncRaf = 0;
 	#isScrolling = false;
-	#selectionActive = false;
+	#isPointerInteracting = false;
 	#menuActive = false;
+	#menuRequested = false;
 	#enabled = true;
-	#touchListenersAttached = false;
-	#touchMovePassive = true;
 	#handlingMenuAction = false;
-	#pendingPointerTriggered = false;
-	#pendingSelectionChanged = false;
-	#cursorHandleGuardUntil = 0;
-	#pointer = { x: 0, y: 0 };
-	#mouseSelecting = false;
+	#menuShowTimer = null;
 
 	constructor(view, options = {}) {
 		this.#view = view;
 		this.#container =
 			options.container || view.dom.closest(".editor-container") || view.dom;
 		this.#getActiveFile = options.getActiveFile || (() => null);
-
-		this.config = {
-			teardropSize: appSettings.value.teardropSize,
-			teardropTimeout: appSettings.value.teardropTimeout,
-			touchMoveThreshold: appSettings.value.touchMoveThreshold,
-		};
-
-		this.$start = this.#createHandle("start");
-		this.$end = this.#createHandle("end");
-		this.$cursor = this.#createHandle("single");
 		this.$menu = document.createElement("menu");
 		this.$menu.className = "cursor-menu";
-		this.$start.addEventListener("touchstart", this.#onStartHandleTouchStart, {
-			passive: false,
-		});
-		this.$end.addEventListener("touchstart", this.#onEndHandleTouchStart, {
-			passive: false,
-		});
-		this.$cursor.addEventListener(
-			"touchstart",
-			this.#onCursorHandleTouchStart,
-			{
-				passive: false,
-			},
-		);
-
 		this.#bindEvents();
-		this.#syncHandleSize();
-	}
-
-	#createHandle(type) {
-		const $handle = document.createElement("span");
-		$handle.className = `cursor ${type}`;
-		$handle.dataset.size = String(this.config.teardropSize);
-		return $handle;
 	}
 
 	#bindEvents() {
 		const root = this.#view.dom;
-		root.addEventListener("touchstart", this.#onTouchStart, {
-			passive: false,
-			capture: true,
-		});
-		root.addEventListener("mousedown", this.#onMouseDown, true);
 		root.addEventListener("contextmenu", this.#onContextMenu, true);
-		document.addEventListener("mouseup", this.#onMouseUp, true);
-		document.addEventListener("mousedown", this.#onGlobalPointerDown, true);
-		document.addEventListener("touchstart", this.#onGlobalPointerDown, true);
-
-		appSettings.on("update:teardropSize", this.#onTeardropSizeUpdate);
-		appSettings.on("update:teardropTimeout", this.#onTeardropTimeoutUpdate);
-		appSettings.on(
-			"update:touchMoveThreshold",
-			this.#onTouchMoveThresholdUpdate,
-		);
+		document.addEventListener("pointerdown", this.#onGlobalPointerDown, true);
+		document.addEventListener("pointerup", this.#onGlobalPointerUp, true);
+		document.addEventListener("pointercancel", this.#onGlobalPointerUp, true);
 	}
 
 	destroy() {
 		const root = this.#view.dom;
-		root.removeEventListener("touchstart", this.#onTouchStart, true);
-		root.removeEventListener("mousedown", this.#onMouseDown, true);
 		root.removeEventListener("contextmenu", this.#onContextMenu, true);
-		document.removeEventListener("mouseup", this.#onMouseUp, true);
-		document.removeEventListener("mousedown", this.#onGlobalPointerDown, true);
-		document.removeEventListener("touchstart", this.#onGlobalPointerDown, true);
-		this.#removeTouchListeners();
-		this.#stopAutoScroll();
-		this.#clearScrollTimeout();
+		document.removeEventListener(
+			"pointerdown",
+			this.#onGlobalPointerDown,
+			true,
+		);
+		document.removeEventListener("pointerup", this.#onGlobalPointerUp, true);
+		document.removeEventListener(
+			"pointercancel",
+			this.#onGlobalPointerUp,
+			true,
+		);
+		this.#clearMenuShowTimer();
 		cancelAnimationFrame(this.#stateSyncRaf);
 		this.#stateSyncRaf = 0;
-		this.#pendingPointerTriggered = false;
-		this.#pendingSelectionChanged = false;
-		this.#clearLongPress();
-		this.#clearCursorHideTimer();
-		this.#clearSelectionUi();
 		this.#hideMenu(true);
-		this.$start.removeEventListener(
-			"touchstart",
-			this.#onStartHandleTouchStart,
-		);
-		this.$end.removeEventListener("touchstart", this.#onEndHandleTouchStart);
-		this.$cursor.removeEventListener(
-			"touchstart",
-			this.#onCursorHandleTouchStart,
-		);
-		appSettings.off("update:teardropSize", this.#onTeardropSizeUpdate);
-		appSettings.off("update:teardropTimeout", this.#onTeardropTimeoutUpdate);
-		appSettings.off(
-			"update:touchMoveThreshold",
-			this.#onTouchMoveThresholdUpdate,
-		);
 	}
 
 	setEnabled(enabled) {
 		this.#enabled = !!enabled;
-		if (!this.#enabled) {
-			this.#touchSession = null;
-			this.#dragState = null;
-			this.#removeTouchListeners();
-			this.#stopAutoScroll();
-			this.#clearScrollTimeout();
-			cancelAnimationFrame(this.#stateSyncRaf);
-			this.#stateSyncRaf = 0;
-			this.#pendingPointerTriggered = false;
-			this.#pendingSelectionChanged = false;
-			this.#clearLongPress();
-			this.#clearCursorHideTimer();
-			this.#clearSelectionUi();
-			this.#hideMenu(true);
-		}
+		if (this.#enabled) return;
+		this.#menuRequested = false;
+		this.#isPointerInteracting = false;
+		this.#isScrolling = false;
+		this.#clearMenuShowTimer();
+		cancelAnimationFrame(this.#stateSyncRaf);
+		this.#stateSyncRaf = 0;
+		this.#hideMenu(true);
 	}
 
 	setSelection(value) {
-		this.#selectionActive = !!value;
 		if (!this.#enabled) return;
-		if (value && !this.#hasSelection()) {
-			this.#selectWordAtCursor();
+		if (value) {
+			this.#menuRequested = true;
 		}
-		this.onStateChanged({ selectionChanged: true, pointerTriggered: !!value });
+		this.onStateChanged({
+			pointerTriggered: !!value,
+			selectionChanged: true,
+		});
 	}
 
 	setMenu(value) {
-		this.#menuActive = !!value;
+		this.#menuRequested = !!value;
 		if (!this.#enabled) return;
 		if (!value) {
+			this.#clearMenuShowTimer();
 			this.#hideMenu();
 			return;
 		}
-		const triggerType = this.#hasSelection() ? "end" : "cursor";
-		if (triggerType === "end") {
-			this.#selectionActive = true;
-			this.#showSelectionHandles();
-		} else {
-			this.#showCursorHandle();
-		}
-		this.#showMenuDeferred(triggerType);
+		this.#scheduleMenuShow(MENU_SHOW_DELAY);
 	}
 
-	onScroll() {
+	isMenuVisible() {
+		return this.#menuActive && this.$menu.isConnected;
+	}
+
+	onScrollStart() {
 		if (!this.#enabled) return;
-		if (this.#dragState) return;
-		this.#clearScrollTimeout();
+		if (this.#isScrolling) return;
+		this.#clearMenuShowTimer();
 		this.#isScrolling = true;
-		cancelAnimationFrame(this.#stateSyncRaf);
-		this.#stateSyncRaf = 0;
-		this.#clearSelectionUi();
-		this.#hideMenu(false, false);
-		this.#scrollTimeout = setTimeout(() => {
-			this.#onScrollEnd();
-		}, 100);
+		this.#hideMenu();
 	}
 
-	#onScrollEnd() {
-		this.#scrollTimeout = null;
-		if (!this.#enabled) return;
-		if (!this.#isScrolling) return;
+	onScrollEnd() {
+		if (!this.#enabled || !this.#isScrolling) return;
 		this.#isScrolling = false;
-		if (this.#dragState) return;
-
-		if (this.#selectionActive && this.#hasSelection()) {
-			this.#showSelectionHandles();
-		} else {
-			this.#showCursorHandle();
-		}
-
-		if (this.#menuActive) {
-			const triggerType =
-				this.#selectionActive && this.#hasSelection() ? "end" : "cursor";
-			this.#showMenuDeferred(triggerType);
-		}
-
-		if (this.#pendingPointerTriggered || this.#pendingSelectionChanged) {
-			this.onStateChanged();
-		}
+		if (this.#shouldShowMenu()) this.#scheduleMenuShow(MENU_SHOW_DELAY);
 	}
 
 	onStateChanged(meta = {}) {
 		if (!this.#enabled) return;
 		if (this.#handlingMenuAction) return;
-		if (meta.pointerTriggered) this.#pendingPointerTriggered = true;
-		if (meta.selectionChanged) this.#pendingSelectionChanged = true;
-		if (this.#isScrolling) return;
-		cancelAnimationFrame(this.#stateSyncRaf);
-		this.#stateSyncRaf = requestAnimationFrame(() => {
-			this.#stateSyncRaf = 0;
-			this.#applyStateChange();
-		});
+		if (meta.selectionChanged && this.#menuActive) {
+			this.#hideMenu();
+		}
+		if (!this.#shouldShowMenu()) {
+			if (!this.#hasSelection()) {
+				this.#menuRequested = false;
+			}
+			this.#clearMenuShowTimer();
+			this.#hideMenu();
+			return;
+		}
+		const delay =
+			meta.pointerTriggered || meta.selectionChanged ? MENU_SHOW_DELAY : 0;
+		this.#scheduleMenuShow(delay);
 	}
 
 	onSessionChanged() {
 		if (!this.#enabled) return;
-		this.#clearSelectionUi();
+		this.#menuRequested = false;
+		this.#isPointerInteracting = false;
+		this.#isScrolling = false;
+		this.#clearMenuShowTimer();
 		this.#hideMenu(true);
-		this.#selectionActive = this.#hasSelection();
-		this.onStateChanged({
-			selectionChanged: true,
-			pointerTriggered: this.#selectionActive,
-		});
 	}
-
-	#onTeardropSizeUpdate = (value) => {
-		this.config.teardropSize = value;
-		this.#syncHandleSize();
-		if (!this.#enabled) return;
-		this.onStateChanged({ selectionChanged: true });
-	};
-
-	#onTeardropTimeoutUpdate = (value) => {
-		this.config.teardropTimeout = value;
-	};
-
-	#onTouchMoveThresholdUpdate = (value) => {
-		this.config.touchMoveThreshold = value;
-	};
-
-	#onGlobalPointerDown = (event) => {
-		if (!this.#menuActive || !this.$menu.isConnected) return;
-		const target = event.target;
-		if (
-			this.$menu.contains(target) ||
-			this.$start.contains(target) ||
-			this.$end.contains(target) ||
-			this.$cursor.contains(target)
-		) {
-			return;
-		}
-		if (this.#isIgnoredPointerTarget(target)) {
-			return;
-		}
-		if (
-			event.type === "touchstart" &&
-			target instanceof Node &&
-			this.#view.dom.contains(target)
-		) {
-			this.#hideMenu(false, false);
-			return;
-		}
-		this.#hideMenu();
-	};
 
 	#onContextMenu = (event) => {
 		if (!this.#enabled) return;
 		if (this.#isIgnoredPointerTarget(event.target)) return;
 		event.preventDefault();
 		event.stopPropagation();
-
-		const { clientX, clientY } = event;
-		const moved = this.#moveCursorToCoords(clientX, clientY);
-		if (moved == null) return;
-
-		if (!this.#hasSelection()) {
-			this.#selectWordAtCursor();
-		}
-
-		this.#selectionActive = this.#hasSelection();
-		if (this.#selectionActive) {
-			this.#showSelectionHandles();
-			this.#showMenuDeferred("end");
-			return;
-		}
-		this.#showCursorHandle();
-		this.#showMenuDeferred("cursor");
+		this.#menuRequested = true;
+		this.#scheduleMenuShow(MENU_SHOW_DELAY);
 	};
 
-	#onMouseDown = (event) => {
-		if (!this.#enabled) return;
-		if (event.button !== 0) return;
-		if (this.#isIgnoredPointerTarget(event.target)) return;
-		this.#mouseSelecting = true;
-	};
-
-	#onMouseUp = (event) => {
-		if (!this.#enabled) return;
-		if (event.button !== 0) return;
-		if (!this.#mouseSelecting) return;
-		this.#mouseSelecting = false;
-		requestAnimationFrame(() => {
-			if (!this.#enabled || !this.#hasSelection()) return;
-			this.#selectionActive = true;
-			this.onStateChanged({
-				pointerTriggered: true,
-				selectionChanged: true,
-			});
-		});
-	};
-
-	#onTouchStart = (event) => {
-		if (!this.#enabled || event.touches.length !== 1) return;
-		if (this.#isIgnoredPointerTarget(event.target)) {
-			this.#touchSession = null;
-			this.#clearLongPress();
+	#onGlobalPointerDown = (event) => {
+		const target = event.target;
+		if (this.$menu.contains(target)) return;
+		if (this.#isIgnoredPointerTarget(target)) return;
+		if (target instanceof Node && this.#view.dom.contains(target)) {
+			this.#isPointerInteracting = true;
+			this.#clearMenuShowTimer();
+			this.#hideMenu();
 			return;
 		}
-		const touch = event.touches[0];
-		const { clientX, clientY } = touch;
-		const now = performance.now();
-		this.#pointer.x = clientX;
-		this.#pointer.y = clientY;
-
-		if (this.#isInHandle(this.$start, clientX, clientY)) {
-			event.preventDefault();
-			this.#startDrag("start", clientX, clientY);
-			return;
-		}
-
-		if (this.#isInHandle(this.$end, clientX, clientY)) {
-			event.preventDefault();
-			this.#startDrag("end", clientX, clientY);
-			return;
-		}
-
-		if (
-			now >= this.#cursorHandleGuardUntil &&
-			this.#isInHandle(this.$cursor, clientX, clientY, CURSOR_HANDLE_HIT_SLOP)
-		) {
-			event.preventDefault();
-			this.#startDrag("cursor", clientX, clientY);
-			return;
-		}
-
-		if (this.#isEdgeGestureStart(clientX)) {
-			event.stopPropagation();
-			event.stopImmediatePropagation?.();
-			return;
-		}
-
-		this.#touchSession = {
-			startX: clientX,
-			startY: clientY,
-			moved: false,
-			longPressFired: false,
-		};
-
-		this.#addTouchListeners({ passiveMove: true });
-		this.#clearLongPress();
-		this.#longPressTimer = setTimeout(() => {
-			if (!this.#touchSession || this.#touchSession.moved) return;
-			this.#touchSession.longPressFired = true;
-			this.#moveCursorToCoords(clientX, clientY);
-			this.#selectWordAtCursor();
-			this.#selectionActive = true;
-			this.#showSelectionHandles();
-			this.#showMenuDeferred("end");
-			this.#vibrate();
-		}, LONG_PRESS_DELAY);
-	};
-
-	#onStartHandleTouchStart = (event) => {
-		if (!this.#enabled || event.touches.length !== 1) return;
-		const touch = event.touches[0];
-		event.preventDefault();
-		event.stopPropagation();
-		this.#startDrag("start", touch.clientX, touch.clientY);
-	};
-
-	#onEndHandleTouchStart = (event) => {
-		if (!this.#enabled || event.touches.length !== 1) return;
-		const touch = event.touches[0];
-		event.preventDefault();
-		event.stopPropagation();
-		this.#startDrag("end", touch.clientX, touch.clientY);
-	};
-
-	#onCursorHandleTouchStart = (event) => {
-		if (!this.#enabled || event.touches.length !== 1) return;
-		const touch = event.touches[0];
-		event.preventDefault();
-		event.stopPropagation();
-		this.#startDrag("cursor", touch.clientX, touch.clientY);
-	};
-
-	#onTouchMove = (event) => {
-		if (event.touches.length !== 1) return;
-		const touch = event.touches[0];
-		const { clientX, clientY } = touch;
-		this.#pointer.x = clientX;
-		this.#pointer.y = clientY;
-
-		if (this.#dragState) {
-			event.preventDefault();
-			this.#dragTo(clientX, clientY);
-			return;
-		}
-
-		if (!this.#touchSession) return;
-		const dx = Math.abs(clientX - this.#touchSession.startX);
-		const dy = Math.abs(clientY - this.#touchSession.startY);
-		if (
-			dx >= this.config.touchMoveThreshold ||
-			dy >= this.config.touchMoveThreshold
-		) {
-			this.#clearLongPress();
-		}
-		if (dx >= TAP_MAX_DISTANCE || dy >= TAP_MAX_DISTANCE) {
-			this.#touchSession.moved = true;
-		}
-	};
-
-	#onTouchEnd = (event) => {
-		if (this.#dragState) {
-			event.preventDefault();
-			this.#finishDrag();
-			return;
-		}
-
-		const session = this.#touchSession;
-		this.#touchSession = null;
-		this.#removeTouchListeners();
-		this.#clearLongPress();
-		if (!session) return;
-		if (session.longPressFired || session.moved) return;
-
-		const changedTouch = event.changedTouches?.[0];
-		if (!changedTouch) return;
-		const { clientX, clientY } = changedTouch;
-		const tapMeta = this.#getTapMeta(clientX, clientY);
-		const previousTap = this.#tap;
-
-		let tap = classifyTap(previousTap, {
-			x: clientX,
-			y: clientY,
-			time: performance.now(),
-			pos: tapMeta.pos,
-			line: tapMeta.line,
-			column: tapMeta.column,
-		});
-		if (
-			tap.count > 1 &&
-			previousTap?.line != null &&
-			tapMeta.line != null &&
-			(tapMeta.line !== previousTap.line ||
-				Math.abs(tapMeta.column - previousTap.column) > TAP_MAX_COLUMN_DELTA)
-		) {
-			tap = { ...tap, count: 1 };
-		}
-		this.#tap = tap;
-
-		const tapPos = tapMeta.pos ?? this.#coordsToPos(clientX, clientY);
-		if (tapPos == null) return;
-
-		if (tap.count >= 3) {
-			event.preventDefault();
-			this.#selectLineAtPos(tapPos);
-			this.#selectionActive = true;
-			this.#showSelectionHandles();
-			this.#showMenuDeferred("end");
-			this.#vibrate();
-			return;
-		}
-
-		if (tap.count === 2) {
-			event.preventDefault();
-			this.#selectWordAtPos(tapPos);
-			this.#selectionActive = true;
-			this.#showSelectionHandles();
-			this.#showMenuDeferred("end");
-			this.#vibrate();
-			return;
-		}
-
-		this.#selectionActive = false;
+		this.#isPointerInteracting = false;
+		this.#menuRequested = false;
 		this.#hideMenu();
-		this.#removeSelectionHandles();
-		this.#showCursorHandle();
 	};
 
-	#addTouchListeners({ passiveMove = true } = {}) {
-		if (
-			this.#touchListenersAttached &&
-			this.#touchMovePassive === passiveMove
-		) {
+	#onGlobalPointerUp = () => {
+		if (!this.#isPointerInteracting) return;
+		this.#isPointerInteracting = false;
+		if (!this.#enabled) return;
+		if (this.#shouldShowMenu()) {
+			this.#scheduleMenuShow(MENU_SHOW_DELAY);
 			return;
 		}
-		if (this.#touchListenersAttached) {
-			this.#removeTouchListeners();
+		if (!this.#hasSelection()) {
+			this.#menuRequested = false;
 		}
-		this.#touchMovePassive = passiveMove;
-		document.addEventListener("touchmove", this.#onTouchMove, {
-			passive: passiveMove,
-		});
-		document.addEventListener("touchend", this.#onTouchEnd, {
-			passive: false,
-		});
-		this.#touchListenersAttached = true;
+		this.#hideMenu();
+	};
+
+	#shouldShowMenu() {
+		if (this.#isScrolling || this.#isPointerInteracting || !this.#view.hasFocus)
+			return false;
+		return this.#hasSelection() || this.#menuRequested;
 	}
 
-	#removeTouchListeners() {
-		if (!this.#touchListenersAttached) return;
-		document.removeEventListener("touchmove", this.#onTouchMove);
-		document.removeEventListener("touchend", this.#onTouchEnd);
-		this.#touchListenersAttached = false;
-		this.#touchMovePassive = true;
-	}
-
-	#clearLongPress() {
-		clearTimeout(this.#longPressTimer);
-		this.#longPressTimer = null;
-	}
-
-	#getTapMeta(x, y) {
-		const pos = this.#coordsToPos(x, y);
-		if (pos == null) {
-			return { pos: null, line: null, column: null };
-		}
-		const lineInfo = this.#view.state.doc.lineAt(pos);
-		return {
-			pos,
-			line: lineInfo.number,
-			column: pos - lineInfo.from,
-		};
-	}
-
-	#vibrate() {
-		if (!appSettings.value.vibrateOnTap) return;
-		navigator.vibrate?.(constants.VIBRATION_TIME);
-	}
-
-	#syncHandleSize() {
-		const size = this.config.teardropSize;
-		this.$start.dataset.size = size;
-		this.$end.dataset.size = size;
-		this.$cursor.dataset.size = size;
-	}
-
-	#isEdgeGestureStart(x) {
-		const edge = constants.SIDEBAR_SLIDE_START_THRESHOLD_PX;
-		const width = window.innerWidth || 0;
-		return x <= edge || x >= width - edge;
-	}
-
-	#isInHandle($el, x, y, hitSlop = HANDLE_HIT_SLOP) {
-		const rect = getElementRect($el);
-		if (!rect) return false;
-		return (
-			x >= rect.left - hitSlop &&
-			x <= rect.right + hitSlop &&
-			y >= rect.top - hitSlop &&
-			y <= rect.bottom + hitSlop
-		);
+	#scheduleMenuShow(delay = 0) {
+		this.#clearMenuShowTimer();
+		if (!this.#enabled || this.#isScrolling) return;
+		this.#menuShowTimer = setTimeout(() => {
+			this.#menuShowTimer = null;
+			if (!this.#enabled || this.#isScrolling) return;
+			if (!this.#shouldShowMenu()) {
+				if (!this.#hasSelection()) {
+					this.#menuRequested = false;
+				}
+				this.#hideMenu();
+				return;
+			}
+			cancelAnimationFrame(this.#stateSyncRaf);
+			this.#stateSyncRaf = requestAnimationFrame(() => {
+				this.#stateSyncRaf = 0;
+				this.#showMenuDeferred();
+			});
+		}, delay);
 	}
 
 	#safeCoordsAtPos(view, pos) {
@@ -712,130 +326,33 @@ class TouchSelectionMenuController {
 		}
 	}
 
-	#applyStateChange() {
-		const pointerTriggered = this.#pendingPointerTriggered;
-		const selectionChanged = this.#pendingSelectionChanged;
-		this.#pendingPointerTriggered = false;
-		this.#pendingSelectionChanged = false;
-
-		if (this.#hasSelection()) {
-			if (pointerTriggered || selectionChanged) {
-				this.#selectionActive = true;
-			}
-			if (this.#selectionActive) {
-				this.#showSelectionHandles();
-				this.$cursor.remove();
-				if (pointerTriggered && !this.#dragState && !this.#mouseSelecting) {
-					this.#showMenuDeferred("end");
-				}
-			}
-		} else {
-			this.#removeSelectionHandles();
-			this.#selectionActive = false;
-			this.#showCursorHandle();
+	#getMenuAnchor(selection = this.#hasSelection()) {
+		const range = this.#view.state.selection.main;
+		if (!selection) {
+			const caret = this.#safeCoordsAtPos(this.#view, range.head);
+			if (!caret) return null;
+			return {
+				x: (caret.left + caret.right) / 2,
+				top: caret.top,
+				bottom: caret.bottom,
+				hasSelection: false,
+			};
 		}
 
-		if (this.#menuActive && !this.#dragState && !this.#hasSelection()) {
-			this.#hideMenu();
-		}
+		const start = this.#safeCoordsAtPos(this.#view, range.from);
+		const end = this.#safeCoordsAtPos(this.#view, range.to);
+		const primary = start || end;
+		if (!primary) return null;
+		const secondary = end || start || primary;
+		return {
+			x: ((start?.left ?? primary.left) + (end?.left ?? secondary.left)) / 2,
+			top: Math.min(primary.top, secondary.top),
+			bottom: Math.max(primary.bottom, secondary.bottom),
+			hasSelection: true,
+		};
 	}
 
-	#showSelectionHandles() {
-		if (!this.config.teardropSize || !this.#hasSelection()) {
-			this.#removeSelectionHandles();
-			return;
-		}
-
-		this.#clearCursorHideTimer();
-		this.$cursor.remove();
-		this.#view.requestMeasure({
-			read: (view) => {
-				const range = view.state.selection.main;
-				const startCoords = this.#safeCoordsAtPos(view, range.from);
-				const endCoords = this.#safeCoordsAtPos(view, range.to);
-				if (!startCoords || !endCoords) return null;
-				const containerRect = this.#container.getBoundingClientRect();
-				return {
-					startLeft:
-						startCoords.left - containerRect.left - this.config.teardropSize,
-					startTop: startCoords.bottom - containerRect.top,
-					endLeft: endCoords.left - containerRect.left,
-					endTop: endCoords.bottom - containerRect.top,
-				};
-			},
-			write: (data) => {
-				if (!data || !this.#selectionActive || !this.#hasSelection()) {
-					this.#removeSelectionHandles();
-					return;
-				}
-
-				this.$start.style.left = `${data.startLeft}px`;
-				this.$start.style.top = `${data.startTop}px`;
-				this.$end.style.left = `${data.endLeft}px`;
-				this.$end.style.top = `${data.endTop}px`;
-
-				if (!this.$start.isConnected) this.#container.append(this.$start);
-				if (!this.$end.isConnected) this.#container.append(this.$end);
-			},
-		});
-	}
-
-	#removeSelectionHandles() {
-		this.$start.remove();
-		this.$end.remove();
-	}
-
-	#showCursorHandle() {
-		if (
-			!this.config.teardropSize ||
-			!this.#view.hasFocus ||
-			this.#selectionActive
-		) {
-			this.$cursor.remove();
-			return;
-		}
-
-		this.#view.requestMeasure({
-			read: (view) => {
-				const head = view.state.selection.main.head;
-				const caret = this.#safeCoordsAtPos(view, head);
-				if (!caret) return null;
-				const containerRect = this.#container.getBoundingClientRect();
-				return {
-					left: caret.left - containerRect.left,
-					top: caret.bottom - containerRect.top,
-				};
-			},
-			write: (data) => {
-				if (!data || this.#selectionActive) {
-					this.$cursor.remove();
-					return;
-				}
-				this.$cursor.style.left = `${data.left}px`;
-				this.$cursor.style.top = `${data.top}px`;
-				if (!this.$cursor.isConnected) this.#container.append(this.$cursor);
-				this.#cursorHandleGuardUntil =
-					performance.now() + CURSOR_HANDLE_GUARD_MS;
-				this.#clearCursorHideTimer();
-				this.#cursorHideTimer = setTimeout(() => {
-					this.$cursor.remove();
-				}, this.config.teardropTimeout);
-			},
-		});
-	}
-
-	#clearCursorHideTimer() {
-		clearTimeout(this.#cursorHideTimer);
-		this.#cursorHideTimer = null;
-	}
-
-	#clearScrollTimeout() {
-		clearTimeout(this.#scrollTimeout);
-		this.#scrollTimeout = null;
-		this.#isScrolling = false;
-	}
-
-	#showMenu($trigger) {
+	#showMenu(anchor) {
 		const hasSelection = this.#hasSelection();
 		const items = filterSelectionMenuItems(selectionMenu(), {
 			readOnly: this.#isReadOnly(),
@@ -844,6 +361,7 @@ class TouchSelectionMenuController {
 
 		this.$menu.innerHTML = "";
 		if (!items.length) {
+			this.#menuRequested = false;
 			this.#hideMenu(true);
 			return;
 		}
@@ -866,6 +384,7 @@ class TouchSelectionMenuController {
 					onclick?.();
 				} finally {
 					this.#handlingMenuAction = false;
+					this.#menuRequested = false;
 					this.#hideMenu();
 					this.#view.focus();
 				}
@@ -879,23 +398,28 @@ class TouchSelectionMenuController {
 			this.#container.append(this.$menu);
 		}
 
-		const triggerRect = getElementRect($trigger);
-		if (!triggerRect) {
-			this.#hideMenu(true);
-			return;
-		}
-
 		const containerRect = this.#container.getBoundingClientRect();
-		const initialLeft = triggerRect.left;
-		const initialTop = triggerRect.bottom;
-		this.$menu.style.left = `${initialLeft - containerRect.left}px`;
-		this.$menu.style.top = `${initialTop - containerRect.top}px`;
+		this.$menu.style.left = "0px";
+		this.$menu.style.top = "0px";
+		this.$menu.style.visibility = "hidden";
 
 		const menuRect = this.$menu.getBoundingClientRect();
+		const preferredLeft = anchor.x - menuRect.width / 2;
+		const aboveGap = anchor.hasSelection ? MENU_SELECTION_GAP : MENU_CARET_GAP;
+		const belowGap = anchor.hasSelection
+			? MENU_HANDLE_CLEARANCE
+			: MENU_CARET_GAP;
+		const topAbove = anchor.top - menuRect.height - aboveGap;
+		const topBelow = anchor.bottom + belowGap;
+		const minTop = containerRect.top + MENU_MARGIN;
+		const maxTop =
+			containerRect.top + containerRect.height - menuRect.height - MENU_MARGIN;
+		const fitsAbove = topAbove >= minTop;
+		const fitsBelow = topBelow <= maxTop;
 		const clamped = clampMenuPosition(
 			{
-				left: menuRect.left,
-				top: menuRect.top,
+				left: preferredLeft,
+				top: fitsAbove || !fitsBelow ? topAbove : topBelow,
 				width: menuRect.width,
 				height: menuRect.height,
 			},
@@ -909,319 +433,41 @@ class TouchSelectionMenuController {
 
 		this.$menu.style.left = `${clamped.left - containerRect.left}px`;
 		this.$menu.style.top = `${clamped.top - containerRect.top}px`;
+		this.$menu.style.visibility = "";
 		this.#menuActive = true;
+		this.#menuRequested = false;
 	}
 
-	#showMenuDeferred(triggerType = "auto") {
-		requestAnimationFrame(() => {
-			if (!this.#enabled) return;
-			let $trigger = null;
-			const normalized =
-				triggerType === "auto"
-					? this.#hasSelection()
-						? "end"
-						: "cursor"
-					: triggerType;
-
-			if (normalized === "cursor") {
-				$trigger = this.$cursor;
-				if (!$trigger.isConnected) {
-					this.#showCursorHandle();
-					requestAnimationFrame(() => {
-						if (!this.#enabled || !this.$cursor.isConnected) return;
-						this.#showMenu(this.$cursor);
-					});
+	#showMenuDeferred() {
+		if (!this.#enabled || this.#isScrolling || !this.#shouldShowMenu()) return;
+		const useSelectionAnchor = this.#hasSelection();
+		this.#view.requestMeasure({
+			read: () => this.#getMenuAnchor(useSelectionAnchor),
+			write: (anchor) => {
+				if (!this.#enabled || this.#isScrolling || !this.#shouldShowMenu()) {
+					this.#hideMenu();
 					return;
 				}
-				this.#showMenu($trigger);
-				return;
-			}
-
-			$trigger = normalized === "start" ? this.$start : this.$end;
-			if (!$trigger.isConnected) {
-				this.#showSelectionHandles();
-				requestAnimationFrame(() => {
-					if (!this.#enabled || !this.#hasSelection()) return;
-					const $retryTrigger =
-						normalized === "start"
-							? this.$start
-							: this.$end.isConnected
-								? this.$end
-								: this.$start;
-					if (!$retryTrigger?.isConnected) return;
-					this.#showMenu($retryTrigger);
-				});
-				return;
-			}
-			this.#showMenu($trigger);
+				if (!anchor) {
+					this.#hideMenu(true);
+					return;
+				}
+				this.#showMenu(anchor);
+			},
 		});
 	}
 
-	#hideMenu(force = false, clearActive = true) {
+	#hideMenu(force = false) {
 		if (!force && !this.#menuActive && !this.$menu.isConnected) return;
 		if (this.$menu.isConnected) {
 			this.$menu.remove();
 		}
-		if (clearActive) {
-			this.#menuActive = false;
-		}
+		this.#menuActive = false;
 	}
 
-	#moveCursorToCoords(x, y) {
-		const pos = this.#coordsToPos(x, y);
-		if (pos == null) return null;
-		this.#view.dispatch({
-			selection: EditorSelection.cursor(pos),
-			scrollIntoView: true,
-			userEvent: "select.pointer",
-		});
-		return pos;
-	}
-
-	#coordsToPos(x, y) {
-		let pos;
-		try {
-			pos = this.#view.posAtCoords({ x, y });
-		} catch {
-			return null;
-		}
-		if (pos != null) return pos;
-
-		const rect = this.#view.scrollDOM.getBoundingClientRect();
-		const cx = clamp(x, rect.left + 1, rect.right - 1);
-		const cy = clamp(y, rect.top + 1, rect.bottom - 1);
-		try {
-			return this.#view.posAtCoords({ x: cx, y: cy });
-		} catch {
-			return null;
-		}
-	}
-
-	#selectWordAtCursor() {
-		const state = this.#view.state;
-		const head = state.selection.main.head;
-		this.#selectWordAtPos(head);
-	}
-
-	#selectWordAtPos(pos) {
-		const state = this.#view.state;
-		const colorRange = getColorRange();
-		if (colorRange) {
-			this.#view.dispatch({
-				selection: EditorSelection.range(colorRange.from, colorRange.to),
-				scrollIntoView: true,
-				userEvent: "select.pointer",
-			});
-			return;
-		}
-
-		const word = state.wordAt(pos);
-		if (word) {
-			this.#view.dispatch({
-				selection: EditorSelection.range(word.from, word.to),
-				scrollIntoView: true,
-				userEvent: "select.pointer",
-			});
-			return;
-		}
-
-		const line = state.doc.lineAt(pos);
-		this.#view.dispatch({
-			selection: EditorSelection.range(line.from, line.to),
-			scrollIntoView: true,
-			userEvent: "select.pointer",
-		});
-	}
-
-	#selectLineAtCursor() {
-		const head = this.#view.state.selection.main.head;
-		this.#selectLineAtPos(head);
-	}
-
-	#selectLineAtPos(pos) {
-		const line = this.#view.state.doc.lineAt(pos);
-		this.#view.dispatch({
-			selection: EditorSelection.range(line.from, line.to),
-			scrollIntoView: true,
-			userEvent: "select.pointer",
-		});
-	}
-
-	#startDrag(type, x, y) {
-		this.#clearCursorHideTimer();
-		this.#hideMenu();
-		const range = this.#view.state.selection.main;
-		this.#dragState = {
-			type,
-			startX: x,
-			startY: y,
-			moved: false,
-			scrollX: 0,
-			scrollY: 0,
-			fixedPos:
-				type === "start" ? range.to : type === "end" ? range.from : null,
-		};
-		this.#pointer.x = x;
-		this.#pointer.y = y;
-		this.#addTouchListeners({ passiveMove: false });
-	}
-
-	#dragTo(x, y) {
-		const state = this.#view.state;
-		const range = state.selection.main;
-		const lineHeight = this.#view.defaultLineHeight || 20;
-		const offsetY = y - lineHeight * DRAG_FINGER_OFFSET_FACTOR;
-		let effectiveX = x;
-		if (this.#dragState.type === "start") {
-			effectiveX += this.config.teardropSize;
-		}
-		const pos = this.#coordsToPos(effectiveX, offsetY);
-		if (pos == null) return;
-		const dragDistance = Math.hypot(
-			x - this.#dragState.startX,
-			y - this.#dragState.startY,
-		);
-		if (
-			!this.#dragState.moved &&
-			dragDistance < this.config.touchMoveThreshold
-		) {
-			return;
-		}
-		if (!this.#dragState.moved) {
-			this.#dragState.moved = true;
-		}
-
-		if (this.#dragState.type === "cursor") {
-			this.#view.dispatch({
-				selection: EditorSelection.cursor(pos),
-				scrollIntoView: true,
-				userEvent: "select.pointer",
-			});
-			this.#showCursorHandle();
-			return;
-		}
-
-		let from = range.from;
-		let to = range.to;
-		if (this.#dragState.type === "start") {
-			to = this.#dragState.fixedPos ?? to;
-			const maxFrom = Math.max(0, to - 1);
-			from = clamp(pos, 0, maxFrom);
-		} else {
-			from = this.#dragState.fixedPos ?? from;
-			const minTo = Math.min(state.doc.length, from + 1);
-			to = clamp(pos, minTo, state.doc.length);
-		}
-
-		this.#view.dispatch({
-			selection: EditorSelection.range(from, to),
-			scrollIntoView: true,
-			userEvent: "select.pointer",
-		});
-		this.#selectionActive = true;
-		this.#showSelectionHandles();
-		this.#startAutoScrollIfNeeded(x, y);
-	}
-
-	#finishDrag() {
-		this.#removeTouchListeners();
-		this.#stopAutoScroll();
-		const dragType = this.#dragState?.type;
-		const moved = !!this.#dragState?.moved;
-		this.#dragState = null;
-		if (dragType === "cursor") {
-			this.#showCursorHandle();
-			this.#showMenuDeferred("cursor");
-		} else {
-			this.#showSelectionHandles();
-			if (moved || this.#hasSelection()) {
-				this.#showMenuDeferred(dragType === "start" ? "start" : "end");
-			}
-		}
-		this.#view.focus();
-	}
-
-	#getAutoScrollDelta(x, y) {
-		const scroller = this.#view.scrollDOM;
-		const rect = scroller.getBoundingClientRect();
-		const { horizontal, vertical } = getEdgeScrollDirections({
-			x,
-			y,
-			rect,
-			allowHorizontal: !this.#view.lineWrapping,
-		});
-		const maxScrollLeft = Math.max(
-			0,
-			scroller.scrollWidth - scroller.clientWidth,
-		);
-		const maxScrollTop = Math.max(
-			0,
-			scroller.scrollHeight - scroller.clientHeight,
-		);
-		let scrollX = horizontal * EDGE_SCROLL_STEP;
-		let scrollY = vertical * EDGE_SCROLL_STEP;
-
-		if (
-			(scrollX < 0 && scroller.scrollLeft <= 0) ||
-			(scrollX > 0 && scroller.scrollLeft >= maxScrollLeft)
-		) {
-			scrollX = 0;
-		}
-
-		if (
-			(scrollY < 0 && scroller.scrollTop <= 0) ||
-			(scrollY > 0 && scroller.scrollTop >= maxScrollTop)
-		) {
-			scrollY = 0;
-		}
-
-		return { scrollX, scrollY };
-	}
-
-	#startAutoScrollIfNeeded(x, y) {
-		const { scrollX, scrollY } = this.#getAutoScrollDelta(x, y);
-		if (this.#dragState) {
-			this.#dragState.scrollX = scrollX;
-			this.#dragState.scrollY = scrollY;
-		}
-
-		if (!scrollX && !scrollY) {
-			this.#stopAutoScroll();
-			return;
-		}
-
-		if (this.#autoScrollRaf) return;
-
-		const tick = () => {
-			if (!this.#dragState) {
-				this.#autoScrollRaf = 0;
-				return;
-			}
-
-			const delta = this.#getAutoScrollDelta(this.#pointer.x, this.#pointer.y);
-			this.#dragState.scrollX = delta.scrollX;
-			this.#dragState.scrollY = delta.scrollY;
-			if (!delta.scrollX && !delta.scrollY) {
-				this.#autoScrollRaf = 0;
-				return;
-			}
-
-			this.#view.scrollDOM.scrollLeft += delta.scrollX;
-			this.#view.scrollDOM.scrollTop += delta.scrollY;
-			this.#dragTo(this.#pointer.x, this.#pointer.y);
-			this.#autoScrollRaf = requestAnimationFrame(tick);
-		};
-
-		this.#autoScrollRaf = requestAnimationFrame(tick);
-	}
-
-	#stopAutoScroll() {
-		cancelAnimationFrame(this.#autoScrollRaf);
-		this.#autoScrollRaf = 0;
-		if (this.#dragState) {
-			this.#dragState.scrollX = 0;
-			this.#dragState.scrollY = 0;
-		}
+	#clearMenuShowTimer() {
+		clearTimeout(this.#menuShowTimer);
+		this.#menuShowTimer = null;
 	}
 
 	#isReadOnly() {
@@ -1241,7 +487,6 @@ class TouchSelectionMenuController {
 		}
 		if (!element) return false;
 		if (element.closest(".cm-tooltip, .cm-panel")) return true;
-		// CodeMirror editor surface is contenteditable; do not ignore it.
 		const editorContent = element.closest(".cm-content");
 		if (editorContent && this.#view.dom.contains(editorContent)) {
 			return false;
@@ -1259,10 +504,5 @@ class TouchSelectionMenuController {
 	#hasSelection() {
 		const selection = this.#view.state.selection.main;
 		return selection.from !== selection.to;
-	}
-
-	#clearSelectionUi() {
-		this.$cursor.remove();
-		this.#removeSelectionHandles();
 	}
 }

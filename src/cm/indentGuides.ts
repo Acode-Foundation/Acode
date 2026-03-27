@@ -345,6 +345,8 @@ function createIndentGuidesPlugin(
 	return ViewPlugin.fromClass(
 		class {
 			decorations: DecorationSet;
+			raf = 0;
+			pendingView: EditorView | null = null;
 
 			constructor(view: EditorView) {
 				this.decorations = buildDecorations(view, config);
@@ -352,13 +354,34 @@ function createIndentGuidesPlugin(
 
 			update(update: ViewUpdate): void {
 				if (
-					update.docChanged ||
-					update.viewportChanged ||
-					update.geometryChanged ||
-					(config.highlightActiveGuide && update.selectionSet)
+					!update.docChanged &&
+					!update.viewportChanged &&
+					!update.geometryChanged &&
+					!(config.highlightActiveGuide && update.selectionSet)
 				) {
-					this.decorations = buildDecorations(update.view, config);
+					return;
 				}
+				this.scheduleBuild(update.view);
+			}
+
+			scheduleBuild(view: EditorView): void {
+				this.pendingView = view;
+				if (this.raf) return;
+				this.raf = requestAnimationFrame(() => {
+					this.raf = 0;
+					const pendingView = this.pendingView;
+					this.pendingView = null;
+					if (!pendingView) return;
+					this.decorations = buildDecorations(pendingView, config);
+				});
+			}
+
+			destroy(): void {
+				if (this.raf) {
+					cancelAnimationFrame(this.raf);
+					this.raf = 0;
+				}
+				this.pendingView = null;
 			}
 		},
 		{
