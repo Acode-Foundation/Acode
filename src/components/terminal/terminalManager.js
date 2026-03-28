@@ -322,7 +322,7 @@ class TerminalManager {
 			const terminalFile = new EditorFile(terminalName, {
 				type: "terminal",
 				content: terminalContainer,
-				tabIcon: "licons terminal",
+				tabIcon: "icon square-terminal",
 				pinned,
 				render: shouldRender,
 			});

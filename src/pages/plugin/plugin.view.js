@@ -109,7 +109,7 @@ export default (props) => {
 					</div>
 					<div className="plugin-meta">
 						<span className="meta-item">
-							<i className="licons tag" style={{ fontSize: "12px" }}></i>
+							<i className="icon tag" style={{ fontSize: "12px" }}></i>
 							<Version
 								{...props}
 								packageUpdatedAt={packageUpdatedAt}
@@ -126,17 +126,14 @@ export default (props) => {
 									on:click={() => {
 										toast(strings["verified publisher"]);
 									}}
-									className="licons verified verified-tick"
+									className="icon verified verified-tick"
 								></i>
 							) : (
 								""
 							)}
 						</span>
 						<span className="meta-item">
-							<span
-								className="licons scale"
-								style={{ fontSize: "12px" }}
-							></span>
+							<span className="icon scale" style={{ fontSize: "12px" }}></span>
 							{license || "Unknown"}
 						</span>
 					</div>
@@ -335,7 +332,7 @@ function Buttons({
 	if (isPaid && !purchased && price) {
 		return (
 			<button data-type="buy" className="btn btn-install" onclick={buy}>
-				<i className="licons cart"></i>
+				<i className="icon cart"></i>
 				{price}
 			</button>
 		);

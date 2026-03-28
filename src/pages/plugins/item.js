@@ -71,7 +71,7 @@ export default function Item({
                 {authorName}
                 {author_verified ? (
                   <i
-                    className="licons verified"
+                    className="icon verified"
                     style={{ color: "#3b82f6" }}
                   ></i>
                 ) : (
@@ -81,7 +81,7 @@ export default function Item({
               <span className="plugin-meta-dot"></span>
               <div className="plugin-stats">
                 <span
-                  className="licons scale"
+                  className="icon scale"
                   style={{ fontSize: "12px" }}
                 ></span>
                 {license || "Unknown"}

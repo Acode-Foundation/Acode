@@ -356,7 +356,7 @@ async function handleContextmenu(type, url, name, $target) {
 			const OPEN_IN_TERMINAL = [
 				"open-in-terminal",
 				strings["open in terminal"] || "Open in Terminal",
-				"licons terminal",
+				"terminal",
 			];
 			options.push(OPEN_IN_TERMINAL);
 		}
@@ -373,7 +373,7 @@ async function handleContextmenu(type, url, name, $target) {
 			const OPEN_IN_TERMINAL = [
 				"open-in-terminal",
 				strings["open in terminal"] || "Open in Terminal",
-				"licons terminal",
+				"terminal",
 			];
 			options.push(OPEN_IN_TERMINAL);
 		}

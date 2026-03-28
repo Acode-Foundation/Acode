@@ -39,11 +39,11 @@ const CODE_ACTION_ICONS: Record<string, string> = {
 };
 
 function getCodeActionIcon(kind?: CodeActionKind): string {
-	if (!kind) return "licons zap";
+	if (!kind) return "icon zap";
 	for (const [prefix, icon] of Object.entries(CODE_ACTION_ICONS)) {
 		if (kind.startsWith(prefix)) return icon;
 	}
-	return "licons zap";
+	return "icon zap";
 }
 
 function formatCodeActionKind(kind?: CodeActionKind): string {

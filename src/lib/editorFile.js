@@ -1528,7 +1528,7 @@ export default class EditorFile {
 		}
 
 		return tag("span", {
-			className: "licons pin",
+			className: "icon pin",
 			title: strings["unpin tab"] || "Unpin tab",
 			dataset: {
 				action: "toggle-pin",
