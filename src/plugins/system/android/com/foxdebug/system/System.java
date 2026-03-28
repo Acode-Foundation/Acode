@@ -546,7 +546,7 @@ public class System extends CordovaPlugin {
                                 openInBrowser(arg1, callbackContext);
                                 break;
                             case "launch-app":
-                                launchApp(arg1, arg2, arg3, callbackContext);
+                                launchApp(arg1, arg2, args.optJSONObject(2), callbackContext);
                                 break;
                             case "get-global-setting":
                                 getGlobalSetting(arg1, callbackContext);
