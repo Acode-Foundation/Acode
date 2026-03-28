@@ -641,7 +641,7 @@
 .icon.menu:before {
   content: "\e9b0";
 }
-.icon.e9b1:before {
+.icon.keyboard_control:before {
   content: "\e9b1";
 }
 .icon.more_vert:before {
