@@ -330,7 +330,7 @@ export default function terminalSettings() {
 			sdcard.openDocumentFile(
 				async (data) => {
 					loader.showTitleLoader();
-					//this will create a file at $PREFIX/atem_backup.bin
+					//this will create a file at $PREFIX/atem_backup.tar.tar
 					await system.copyToUri(
 						data.uri,
 						cordova.file.dataDirectory,
