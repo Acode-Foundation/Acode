@@ -226,19 +226,20 @@ interface System {
    */
   openInBrowser(src: string): void;
   /**
-   * Launches and app
-   * @param app the package name of the app
-   * @param className the full class name of the activity
-   * @param data Data to pass to the app
-   * @param onSuccess
-   * @param onFail
+   * Launch an Android application activity.
+   *
+   * @param app Package name of the application (e.g. `com.example.app`)
+   * @param className Fully qualified activity class name (e.g. `com.example.app.MainActivity`)
+   * @param extras Optional key-value pairs passed as Android Intent extras
+   * @param onSuccess Called when the activity launches successfully
+   * @param onFail Called if launching the activity fails
    */
   launchApp(
     app: string,
     className: string,
-    data: string,
-    onSuccess: OnSuccessBool,
-    onFail: OnFail,
+    extras?: Record<string, string | number | boolean>,
+    onSuccess?: OnSuccessBool,
+    onFail?: OnFail,
   ): void;
 
   /**
