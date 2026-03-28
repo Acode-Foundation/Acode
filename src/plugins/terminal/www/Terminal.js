@@ -260,47 +260,39 @@ const Terminal = {
      * Checks if alpine is already installed.
      * @returns {Promise<boolean>} - Returns true if all required files and directories exist.
      */
-   isInstalled() {
-    return new Promise(async (resolve, reject) => {
-        const filesDir = await new Promise((resolve, reject) => {
-            system.getFilesDir(resolve, reject);
+    isInstalled() {
+        return new Promise(async (resolve, reject) => {
+            const filesDir = await new Promise((resolve, reject) => {
+                system.getFilesDir(resolve, reject);
+            });
+
+            const alpineExists = await new Promise((resolve, reject) => {
+                system.fileExists(`${filesDir}/alpine`, false, (result) => {
+                    resolve(result == 1);
+                }, reject);
+            });
+
+            const downloaded = alpineExists && await new Promise((resolve, reject) => {
+                system.fileExists(`${filesDir}/.downloaded`, false, (result) => {
+                    resolve(result == 1);
+                }, reject);
+            });
+
+            const extracted = alpineExists && await new Promise((resolve, reject) => {
+                system.fileExists(`${filesDir}/.extracted`, false, (result) => {
+                    resolve(result == 1);
+                }, reject);
+            });
+
+            const configured = alpineExists && await new Promise((resolve, reject) => {
+                system.fileExists(`${filesDir}/.configured`, false, (result) => {
+                    resolve(result == 1);
+                }, reject);
+            });
+
+            resolve(alpineExists && downloaded && extracted && configured);
         });
-
-       console.log("[isInstalled] filesDir:", filesDir);
-
-        const alpineExists = await new Promise((resolve, reject) => {
-            system.fileExists(`${filesDir}/alpine`, false, (result) => {
-                resolve(result == 1);
-            }, reject);
-        });
-       console.log("[isInstalled] alpineExists:", alpineExists);
-
-        const downloaded = alpineExists && await new Promise((resolve, reject) => {
-            system.fileExists(`${filesDir}/.downloaded`, false, (result) => {
-                resolve(result == 1);
-            }, reject);
-        });
-       console.log("[isInstalled] downloaded:", downloaded);
-
-        const extracted = alpineExists && await new Promise((resolve, reject) => {
-            system.fileExists(`${filesDir}/.extracted`, false, (result) => {
-                resolve(result == 1);
-            }, reject);
-        });
-       console.log("[isInstalled] extracted:", extracted);
-
-        const configured = alpineExists && await new Promise((resolve, reject) => {
-            system.fileExists(`${filesDir}/.configured`, false, (result) => {
-                resolve(result == 1);
-            }, reject);
-        });
-       console.log("[isInstalled] configured:", configured);
-
-        const result = alpineExists && downloaded && extracted && configured;
-       console.log("[isInstalled] final result:", result);
-        resolve(result);
-    });
-},
+    },
 
     /**
      * Checks if the current device architecture is supported.
