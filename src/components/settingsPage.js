@@ -253,7 +253,6 @@ function normalizeSettings(settings) {
 			return false;
 		}
 
-		ensureSettingInfo(setting);
 		return true;
 	});
 
@@ -261,16 +260,6 @@ function normalizeSettings(settings) {
 		note,
 		settings: normalizedSettings,
 	};
-}
-
-function ensureSettingInfo(setting) {
-	if (setting.info) return;
-
-	Object.defineProperty(setting, "info", {
-		get() {
-			return strings[`info-${this.key.toLocaleLowerCase()}`];
-		},
-	});
 }
 
 function shouldEnableSearch(type, settingsCount) {
