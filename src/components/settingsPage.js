@@ -435,9 +435,9 @@ function createTrailingValueDisplay(item) {
 	return (
 		<div className={`setting-value-display ${item.select ? "is-select" : ""}`}>
 			{$trailingValueText}
-			{item.select
-				? <span className="icon keyboard_arrow_down setting-value-icon"></span>
-				: null}
+			{item.select ? (
+				<span className="icon keyboard_arrow_down setting-value-icon"></span>
+			) : null}
 		</div>
 	);
 }
@@ -491,9 +491,9 @@ function buildListContent(renderedItems, options) {
 
 function createSectionElements(category) {
 	const shouldShowLabel = category !== "__default__";
-	const $label = shouldShowLabel
-		? <div className="settings-section-label">{category}</div>
-		: null;
+	const $label = shouldShowLabel ? (
+		<div className="settings-section-label">{category}</div>
+	) : null;
 	const $card = <div className="settings-section-card"></div>;
 	return {
 		$card,

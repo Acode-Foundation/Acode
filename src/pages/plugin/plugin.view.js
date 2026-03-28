@@ -100,12 +100,12 @@ export default (props) => {
 				<div className="plugin-info">
 					<div className="title-wrapper">
 						<h1 className="plugin-name">{name}</h1>
-						{repository
-							? <a href={repository} className="source-indicator">
-									<i className="icon github"></i>
-									<span>{strings.open_source}</span>
-								</a>
-							: null}
+						{repository ? (
+							<a href={repository} className="source-indicator">
+								<i className="icon github"></i>
+								<span>{strings.open_source}</span>
+							</a>
+						) : null}
 					</div>
 					<div className="plugin-meta">
 						<span className="meta-item">
@@ -121,14 +121,16 @@ export default (props) => {
 							<a href={`https://github.com/${authorGithub}`} className="">
 								{author}
 							</a>
-							{authorVerified
-								? <i
-										on:click={() => {
-											toast(strings["verified publisher"]);
-										}}
-										className="licons verified verified-tick"
-									></i>
-								: ""}
+							{authorVerified ? (
+								<i
+									on:click={() => {
+										toast(strings["verified publisher"]);
+									}}
+									className="licons verified verified-tick"
+								></i>
+							) : (
+								""
+							)}
 						</span>
 						<span className="meta-item">
 							<span
@@ -138,44 +140,44 @@ export default (props) => {
 							{license || "Unknown"}
 						</span>
 					</div>
-					{votesUp !== undefined
-						? <div className="metrics-row">
-								<div className="metric">
-									<span className="icon save_alt"></span>
-									<span className="metric-value">
-										{helpers.formatDownloadCount(
-											typeof downloads === "string"
-												? Number.parseInt(downloads)
-												: downloads,
-										)}
-									</span>
-									<span>{strings.downloads}</span>
-								</div>
-								<div className="metric">
-									<i className="icon favorite"></i>
-									<span
-										className={`rating-value ${rating === "unrated" ? "" : rating.replace("%", "") >= 80 ? "rating-high" : rating.replace("%", "") >= 50 ? "rating-medium" : "rating-low"}`}
-									>
-										{rating}
-									</span>
-								</div>
-								<div
-									className="metric"
-									onclick={showReviews.bind(null, id, author)}
+					{votesUp !== undefined ? (
+						<div className="metrics-row">
+							<div className="metric">
+								<span className="icon save_alt"></span>
+								<span className="metric-value">
+									{helpers.formatDownloadCount(
+										typeof downloads === "string"
+											? Number.parseInt(downloads)
+											: downloads,
+									)}
+								</span>
+								<span>{strings.downloads}</span>
+							</div>
+							<div className="metric">
+								<i className="icon favorite"></i>
+								<span
+									className={`rating-value ${rating === "unrated" ? "" : rating.replace("%", "") >= 80 ? "rating-high" : rating.replace("%", "") >= 50 ? "rating-medium" : "rating-low"}`}
 								>
-									<i className="icon chat_bubble"></i>
-									<span className="metric-value">{commentCount}</span>
-									<span>{strings.reviews}</span>
-								</div>
+									{rating}
+								</span>
 							</div>
-						: null}
-					{Array.isArray(keywords) && keywords.length
-						? <div className="keywords">
-								{keywords.map((keyword) => (
-									<span className="keyword">{keyword}</span>
-								))}
+							<div
+								className="metric"
+								onclick={showReviews.bind(null, id, author)}
+							>
+								<i className="icon chat_bubble"></i>
+								<span className="metric-value">{commentCount}</span>
+								<span>{strings.reviews}</span>
 							</div>
-						: null}
+						</div>
+					) : null}
+					{Array.isArray(keywords) && keywords.length ? (
+						<div className="keywords">
+							{keywords.map((keyword) => (
+								<span className="keyword">{keyword}</span>
+							))}
+						</div>
+					) : null}
 				</div>
 				<div className="action-buttons">
 					<Buttons {...props} />

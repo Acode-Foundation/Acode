@@ -307,20 +307,20 @@ export default function fontManager() {
 					<div className="text">{name}</div>
 					<small className="value">{subtitle}</small>
 				</div>
-				{isCurrent || !isDefault
-					? <div className="setting-tail">
-							{isCurrent
-								? <span className="font-manager-current">Current</span>
-								: null}
-							{!isDefault
-								? <span
-										className="icon delete font-manager-action"
-										data-action="delete"
-										title="Delete font"
-									></span>
-								: null}
-						</div>
-					: null}
+				{isCurrent || !isDefault ? (
+					<div className="setting-tail">
+						{isCurrent ? (
+							<span className="font-manager-current">Current</span>
+						) : null}
+						{!isDefault ? (
+							<span
+								className="icon delete font-manager-action"
+								data-action="delete"
+								title="Delete font"
+							></span>
+						) : null}
+					</div>
+				) : null}
 			</div>
 		);
 

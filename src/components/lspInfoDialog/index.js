@@ -634,22 +634,24 @@ function showLspInfoDialog() {
 					</div>
 				</div>
 				<div className="lsp-logs-container">
-					{logs.length === 0
-						? <div className="lsp-logs-empty">No logs yet</div>
-						: logs.slice(-50).map((log) => {
-								const time = log.timestamp.toLocaleTimeString("en-US", {
-									hour12: false,
-									hour: "2-digit",
-									minute: "2-digit",
-									second: "2-digit",
-								});
-								return (
-									<div className={`lsp-log ${log.level}`}>
-										<span className="lsp-log-time">{time}</span>
-										<span className="lsp-log-text">{log.message}</span>
-									</div>
-								);
-							})}
+					{logs.length === 0 ? (
+						<div className="lsp-logs-empty">No logs yet</div>
+					) : (
+						logs.slice(-50).map((log) => {
+							const time = log.timestamp.toLocaleTimeString("en-US", {
+								hour12: false,
+								hour: "2-digit",
+								minute: "2-digit",
+								second: "2-digit",
+							});
+							return (
+								<div className={`lsp-log ${log.level}`}>
+									<span className="lsp-log-time">{time}</span>
+									<span className="lsp-log-text">{log.message}</span>
+								</div>
+							);
+						})
+					)}
 				</div>
 			</div>
 		);
