@@ -71,11 +71,18 @@
         font-size: 14px;
         margin-bottom: 12px;
 
-        .author-name {
+        .meta-item {
           display: inline-flex;
           align-items: center;
           gap: 4px;
+          vertical-align: middle;
 
+          .icon {
+            flex-shrink: 0;
+          }
+        }
+
+        .author-name {
           a {
             text-decoration: none;
             color: inherit;

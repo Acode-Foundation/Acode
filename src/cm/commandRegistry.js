@@ -70,9 +70,6 @@ import {
 	jumpToDefinition as lspJumpToDefinition,
 	jumpToImplementation as lspJumpToImplementation,
 	jumpToTypeDefinition as lspJumpToTypeDefinition,
-	nextSignature as lspNextSignature,
-	prevSignature as lspPrevSignature,
-	showSignatureHelp as lspShowSignatureHelp,
 } from "@codemirror/lsp-client";
 import { Compartment, EditorSelection } from "@codemirror/state";
 import { keymap } from "@codemirror/view";
@@ -80,6 +77,9 @@ import {
 	renameSymbol as acodeRenameSymbol,
 	clearDiagnosticsEffect,
 	clientManager,
+	nextSignature as lspNextSignature,
+	prevSignature as lspPrevSignature,
+	showSignatureHelp as lspShowSignatureHelp,
 } from "cm/lsp";
 import {
 	closeReferencesPanel as acodeCloseReferencesPanel,
@@ -208,6 +208,16 @@ function registerCoreCommands() {
 		requiresView: false,
 		run() {
 			acode.exec("close-all-tabs");
+			return true;
+		},
+	});
+	addCommand({
+		name: "togglePinnedTab",
+		description: "Pin or unpin current tab",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("toggle-pin-tab");
 			return true;
 		},
 	});

@@ -9,6 +9,7 @@ import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import { EditorSelection, EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import createBaseExtensions from "cm/baseExtensions";
+import indentGuides from "cm/indentGuides";
 import { getEdgeScrollDirections } from "cm/touchSelectionMenu";
 import { TestRunner } from "./tester";
 
@@ -415,6 +416,26 @@ export async function runCodeMirrorTests(writeOutput) {
 			test.assert(view.scrollDOM != null, "view.scrollDOM should exist");
 			test.assert(view.contentDOM != null, "view.contentDOM should exist");
 		});
+	});
+
+	runner.test("Indent guides render as indentation spans", async (test) => {
+		const doc = "function x() {\n  if (true) {\n    return 1;\n  }\n}";
+		await withEditor(
+			test,
+			async (view) => {
+				const guideLine = view.dom.querySelector(".cm-indent-guides");
+				const legacyWidget = view.dom.querySelector(
+					".cm-indent-guides-wrapper",
+				);
+				test.assert(guideLine != null, "Indent guide span should exist");
+				test.assert(
+					legacyWidget == null,
+					"Indent guides should not create widget wrapper DOM",
+				);
+			},
+			doc,
+			[indentGuides()],
+		);
 	});
 
 	runner.test("Focus and blur", async (test) => {

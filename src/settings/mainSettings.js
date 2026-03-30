@@ -53,7 +53,7 @@ export default function mainSettings() {
 		{
 			key: "terminal-settings",
 			text: `${strings["terminal settings"]}`,
-			icon: "licons terminal",
+			icon: "terminal",
 			info: strings["settings-info-main-terminal-settings"],
 			category: categories.core,
 			chevron: true,
@@ -96,7 +96,7 @@ export default function mainSettings() {
 				strings?.lsp_settings ||
 				strings["language servers"] ||
 				"Language servers",
-			icon: "licons zap",
+			icon: "zap",
 			info: strings["settings-info-main-lsp-settings"],
 			category: categories.customizationTools,
 			chevron: true,

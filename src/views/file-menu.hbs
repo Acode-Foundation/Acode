@@ -45,7 +45,7 @@
 {{#has_lsp_servers}}
 <li action="lsp-info">
   <span class="text">LSP Info</span>
-  <span class="licons zap"></span>
+  <span class="icon zap"></span>
 </li>
 {{/has_lsp_servers}}
 {{/is_editor}}
@@ -68,6 +68,11 @@
   <span class="icon home"></span>
 </li>
 {{/file_on_disk}}
+
+<li action="toggle-pin-tab">
+  <span class="text">{{toggle_pin_tab_text}}</span>
+  <span class="{{toggle_pin_tab_icon}}"></span>
+</li>
 
 {{#is_editor}}
 <hr>

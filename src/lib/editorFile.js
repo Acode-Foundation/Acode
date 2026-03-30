@@ -10,6 +10,7 @@ import {
 import { getMode, getModeForPath } from "cm/modelist";
 import Sidebar from "components/sidebar";
 import tile from "components/tile";
+import toast from "components/toast";
 import confirm from "dialogs/confirm";
 import DOMPurify from "dompurify";
 import startDrag from "handlers/editorFileTab";
@@ -227,6 +228,7 @@ function createSessionProxy(state, file) {
  * @property {number} [scrollLeft] scroll left
  * @property {number} [scrollTop] scroll top
  * @property {Array<Fold>} [folds] folds
+ * @property {boolean} [pinned] pin the tab to prevent accidental closing
  */
 
 export default class EditorFile {
@@ -333,6 +335,11 @@ export default class EditorFile {
 	 */
 	#editable = true;
 	/**
+	 * Prevents the tab from being closed until it is unpinned.
+	 * @type {boolean}
+	 */
+	#pinned = false;
+	/**
 	 * contains information about cursor position, scroll left, scroll top, folds.
 	 */
 	#loadOptions;
@@ -378,6 +385,7 @@ export default class EditorFile {
 	onchangemode;
 	onrun;
 	oncanrun;
+	onpinstatechange;
 
 	/**
 	 *
@@ -524,6 +532,7 @@ export default class EditorFile {
 		this.#onFilePosChange();
 		this.#tab.addEventListener("click", tabOnclick.bind(this));
 		appSettings.on("update:openFileListPos", this.#onFilePosChange);
+		this.pinned = !!options?.pinned;
 
 		addFile(this);
 		editorManager.emit("new-file", this);
@@ -759,6 +768,39 @@ export default class EditorFile {
 		this.#updateTab();
 	}
 
+	get pinned() {
+		return this.#pinned;
+	}
+
+	set pinned(value) {
+		this.setPinnedState(value);
+	}
+
+	setPinnedState(value, options = {}) {
+		const { reorder = false, emit = true } = options;
+		value = !!value;
+		if (this.#pinned === value) return value;
+
+		this.#pinned = value;
+		this.#updateTab();
+		this.onpinstatechange?.(value);
+
+		if (editorManager.files.includes(this) && reorder) {
+			editorManager.moveFileByPinnedState?.(this);
+		}
+
+		if (emit) {
+			editorManager.onupdate("pin-tab");
+			editorManager.emit("update", "pin-tab", this);
+		}
+
+		return value;
+	}
+
+	togglePinned() {
+		return this.setPinnedState(!this.pinned);
+	}
+
 	/**
 	 * DON'T remove, plugin need this property to get filename.
 	 */
@@ -938,18 +980,29 @@ export default class EditorFile {
 	 * Remove and closes the file.
 	 * @param {boolean} force if true, will prompt to save the file
 	 */
-	async remove(force = false) {
+	async remove(force = false, options = {}) {
+		const { ignorePinned = false, silentPinned = false } = options || {};
+
 		if (
 			this.id === constants.DEFAULT_FILE_SESSION &&
 			!editorManager.files.length
 		)
-			return;
+			return false;
+		if (this.pinned && !ignorePinned) {
+			if (!silentPinned) {
+				toast(
+					strings["unpin tab before closing"] ||
+						"Unpin the tab before closing it.",
+				);
+			}
+			return false;
+		}
 		if (!force && this.isUnsaved) {
 			const confirmation = await confirm(
 				strings.warning.toUpperCase(),
 				strings["unsaved file"],
 			);
-			if (!confirmation) return;
+			if (!confirmation) return false;
 		}
 
 		this.#destroy();
@@ -970,6 +1023,7 @@ export default class EditorFile {
 		}
 		editorManager.onupdate("remove-file");
 		editorManager.emit("remove-file", this);
+		return true;
 	}
 
 	/**
@@ -1380,7 +1434,7 @@ export default class EditorFile {
 			}, 0);
 		} catch (error) {
 			this.#emit("loaderror", createFileEvent(this));
-			this.remove();
+			this.remove(false, { ignorePinned: true });
 			toast(`Unable to load: ${this.filename}`);
 			window.log("error", "Unable to load: " + this.filename);
 			window.log("error", error);
@@ -1418,11 +1472,16 @@ export default class EditorFile {
 	}
 
 	#updateTab() {
+		if (!this.#tab) return;
+
 		if (this.#isUnsaved) {
 			this.tab.classList.add("notice");
 		} else {
 			this.tab.classList.remove("notice");
 		}
+
+		this.tab.classList.toggle("pinned", this.#pinned);
+		this.#tab.tail(this.#createTabTail());
 	}
 
 	/**
@@ -1456,6 +1515,25 @@ export default class EditorFile {
 
 	#showNoAppError() {
 		toast(strings["no app found to handle this file"]);
+	}
+
+	#createTabTail() {
+		if (!this.#pinned) {
+			return tag("span", {
+				className: "icon cancel",
+				dataset: {
+					action: "close-file",
+				},
+			});
+		}
+
+		return tag("span", {
+			className: "icon pin",
+			title: strings["unpin tab"] || "Unpin tab",
+			dataset: {
+				action: "toggle-pin",
+			},
+		});
 	}
 
 	#getTitle() {
@@ -1504,6 +1582,10 @@ function tabOnclick(e) {
 	const { action } = e.target.dataset;
 	if (action === "close-file") {
 		this.remove();
+		return;
+	}
+	if (action === "toggle-pin") {
+		this.togglePinned();
 		return;
 	}
 	this.makeActive();

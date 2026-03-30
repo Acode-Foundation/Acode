@@ -455,49 +455,6 @@ textarea {
   }
 }
 
-.cursor {
-  position: absolute;
-  top: 0;
-  left: 0;
-  display: block;
-  border-radius: 50%;
-  background-color: white;
-  background-color: var(--primary-text-color);
-  border: solid 1px #666;
-  box-sizing: border-box;
-  transform-origin: left top;
-  z-index: 4;
-  pointer-events: none;
-
-  &[data-size="60"] {
-    width: 60px;
-    height: 60px;
-  }
-
-  &[data-size="30"] {
-    width: 30px;
-    height: 30px;
-  }
-
-  &[data-size="20"] {
-    width: 20px;
-    height: 20px;
-  }
-
-  &.end {
-    border-radius: 0% 50% 50% 50%;
-  }
-
-  &.start {
-    border-radius: 50% 0 50% 50%;
-  }
-
-  &.single {
-    transform: rotate(45deg);
-    border-radius: 0 50% 50% 50%;
-  }
-}
-
 .cursor-menu {
   position: absolute;
   top: 0;

@@ -701,5 +701,9 @@
 	"settings-note-formatter-settings": "Tetapkan pemformat untuk setiap bahasa. Pasang plugin pemformat untuk membuka lebih banyak opsi.",
 	"settings-note-lsp-settings": "Server bahasa menambahkan fitur pelengkapan otomatis, diagnostik, detail saat kursor diarahkan ke teks, dan banyak lagi. Anda dapat memasang, memperbarui, atau menentukan server khusus di sini. Penginstal terkelola berjalan di dalam lingkungan terminal/proot.",
 	"search result label singular": "hasil",
-	"search result label plural": "hasil"
+	"search result label plural": "hasil",
+	"pin tab": "Pin tab",
+	"unpin tab": "Unpin tab",
+	"pinned tab": "Pinned tab",
+	"unpin tab before closing": "Unpin the tab before closing it."
 }

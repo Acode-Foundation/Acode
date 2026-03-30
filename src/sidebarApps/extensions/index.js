@@ -726,20 +726,22 @@ function ListItem({ icon, name, id, version, downloads, installed, source }) {
 			>
 				{name}
 			</span>
-			{installed
-				? <>
-						{source
-							? <span className="icon replay" data-action="rebuild-plugin" />
-							: null}
-						<span className="icon more_vert" data-action="more-plugin-action" />
-					</>
-				: <button
-						type="button"
-						className="install-btn"
-						data-action="install-plugin"
-					>
-						<span className="icon file_downloadget_app" />
-					</button>}
+			{installed ? (
+				<>
+					{source ? (
+						<span className="icon replay" data-action="rebuild-plugin" />
+					) : null}
+					<span className="icon more_vert" data-action="more-plugin-action" />
+				</>
+			) : (
+				<button
+					type="button"
+					className="install-btn"
+					data-action="install-plugin"
+				>
+					<span className="icon file_downloadget_app" />
+				</button>
+			)}
 		</div>
 	);
 

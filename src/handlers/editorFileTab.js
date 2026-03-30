@@ -283,6 +283,7 @@ function getClientPos(e) {
  * @param {HTMLElement} $parent
  */
 function updateFileList($parent) {
+	const pinnedCount = editorManager.files.filter((file) => file.pinned).length;
 	const children = [...$parent.children];
 	const newFileList = [];
 	for (let el of children) {
@@ -295,6 +296,25 @@ function updateFileList($parent) {
 	}
 
 	editorManager.files = newFileList;
+
+	const draggedFile = newFileList.find((file) => file.tab === $tab);
+	if (draggedFile) {
+		const draggedIndex = newFileList.indexOf(draggedFile);
+		let nextPinnedState;
+
+		if (!draggedFile.pinned && draggedIndex < pinnedCount) {
+			nextPinnedState = true;
+		} else if (draggedFile.pinned && draggedIndex >= pinnedCount) {
+			nextPinnedState = false;
+		}
+
+		if (nextPinnedState !== undefined) {
+			draggedFile.setPinnedState(nextPinnedState, { reorder: false });
+			if (typeof editorManager.normalizePinnedTabOrder === "function") {
+				editorManager.normalizePinnedTabOrder(editorManager.files);
+			}
+		}
+	}
 }
 
 /**

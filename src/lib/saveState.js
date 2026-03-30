@@ -54,6 +54,7 @@ export default () => {
 			uri: file.uri,
 			type: file.type,
 			filename: file.filename,
+			pinned: file.pinned,
 			isUnsaved: file.isUnsaved,
 			readOnly: file.readOnly,
 			SAFMode: file.SAFMode,

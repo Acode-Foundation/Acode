@@ -10,13 +10,14 @@ import {
 } from "@codemirror/state";
 import { oneDark } from "@codemirror/theme-one-dark";
 import {
+	closeHoverTooltips,
 	EditorView,
+	hasHoverTooltips,
 	highlightActiveLineGutter,
 	highlightTrailingWhitespace,
 	highlightWhitespace,
 	keymap,
 	lineNumbers,
-	scrollPastEnd,
 } from "@codemirror/view";
 import {
 	abbreviationTracker,
@@ -45,6 +46,7 @@ import {
 	lspDiagnosticsUiExtension,
 } from "cm/lsp/diagnostics";
 import { stopManagedServer } from "cm/lsp/serverLauncher";
+import createMainEditorExtensions from "cm/mainEditorExtensions";
 // CodeMirror mode management
 import {
 	getMode,
@@ -117,6 +119,22 @@ async function EditorManager($header, $body) {
 		console.warn(message, error);
 	}
 
+	function isCoarsePointerDevice() {
+		if (typeof window !== "undefined") {
+			try {
+				if (window.matchMedia?.("(pointer: coarse)").matches) {
+					return true;
+				}
+			} catch (_) {
+				// Ignore matchMedia capability errors and fall through.
+			}
+		}
+		return (
+			typeof navigator !== "undefined" &&
+			Number(navigator.maxTouchPoints || 0) > 0
+		);
+	}
+
 	const setNativeContextMenuDisabled = (disabled) => {
 		const value = !!disabled;
 		if (nativeContextMenuDisabled === value) return;
@@ -162,12 +180,6 @@ async function EditorManager($header, $body) {
 		onclick() {
 			acode.exec("open", "problems");
 		},
-	});
-
-	// Make CodeMirror fill the container height and manage scrolling internally
-	const fixedHeightTheme = EditorView.theme({
-		"&": { height: "100%" },
-		".cm-scroller": { height: "100%", overflow: "auto" },
 	});
 
 	const pointerCursorVisibilityExtension = EditorView.updateListener.of(
@@ -230,13 +242,7 @@ async function EditorManager($header, $body) {
 					tr.isUserEvent("touch") ||
 					tr.isUserEvent("select.touch"),
 			);
-			if (
-				update.selectionSet ||
-				update.docChanged ||
-				update.geometryChanged ||
-				update.viewportChanged ||
-				pointerTriggered
-			) {
+			if (update.selectionSet || pointerTriggered) {
 				cancelAnimationFrame(touchSelectionSyncRaf);
 				touchSelectionSyncRaf = requestAnimationFrame(() => {
 					touchSelectionController?.onStateChanged({
@@ -470,7 +476,10 @@ async function EditorManager($header, $body) {
 			compartments: [completionCompartment],
 			build() {
 				const live = !!appSettings?.value?.liveAutoCompletion;
-				return autocompletion({ activateOnTyping: live });
+				return autocompletion({
+					activateOnTyping: live,
+					activateOnTypingDelay: isCoarsePointerDevice() ? 220 : 100,
+				});
 			},
 		},
 	];
@@ -770,24 +779,23 @@ async function EditorManager($header, $body) {
 	// Create minimal CodeMirror editor
 	const editorState = EditorState.create({
 		doc: "",
-		extensions: [
+		extensions: createMainEditorExtensions({
 			// Emmet needs highest precedence so place before default keymaps
-			...createEmmetExtensionSet({ syntax: EmmetKnownSyntax.html }),
-			...createBaseExtensions(),
-			getCommandKeymapExtension(),
-			// Default theme
-			themeCompartment.of(oneDark),
-			fixedHeightTheme,
-			scrollPastEnd(),
+			emmetExtensions: createEmmetExtensionSet({
+				syntax: EmmetKnownSyntax.html,
+			}),
+			baseExtensions: createBaseExtensions(),
+			commandKeymapExtension: getCommandKeymapExtension(),
+			themeExtension: themeCompartment.of(oneDark),
 			pointerCursorVisibilityExtension,
 			shiftClickSelectionExtension,
 			touchSelectionUpdateExtension,
-			search(),
+			searchExtension: search(),
 			// Ensure read-only can be toggled later via compartment
-			readOnlyCompartment.of(EditorState.readOnly.of(false)),
+			readOnlyExtension: readOnlyCompartment.of(EditorState.readOnly.of(false)),
 			// Editor options driven by settings via compartments
-			...getBaseExtensionsFromOptions(),
-		],
+			optionExtensions: getBaseExtensionsFromOptions(),
+		}),
 	});
 
 	const editor = new EditorView({
@@ -1134,22 +1142,20 @@ async function EditorManager($header, $body) {
 	function applyFileToEditor(file) {
 		if (!file || file.type !== "editor") return;
 		const syntax = getEmmetSyntaxForFile(file);
-		const baseExtensions = [
+		const baseExtensions = createMainEditorExtensions({
 			// Emmet needs to precede default keymaps so tracker Tab wins over indent
-			...createEmmetExtensionSet({ syntax }),
-			...createBaseExtensions(),
-			getCommandKeymapExtension(),
+			emmetExtensions: createEmmetExtensionSet({ syntax }),
+			baseExtensions: createBaseExtensions(),
+			commandKeymapExtension: getCommandKeymapExtension(),
 			// keep compartment in the state to allow dynamic theme changes later
-			themeCompartment.of(oneDark),
-			fixedHeightTheme,
-			scrollPastEnd(),
+			themeExtension: themeCompartment.of(oneDark),
 			pointerCursorVisibilityExtension,
 			shiftClickSelectionExtension,
 			touchSelectionUpdateExtension,
-			search(),
+			searchExtension: search(),
 			// Keep dynamic compartments across state swaps
-			...getBaseExtensionsFromOptions(),
-		];
+			optionExtensions: getBaseExtensionsFromOptions(),
+		});
 		const exts = [...baseExtensions];
 		maybeAttachEmmetCompletions(exts, syntax);
 		try {
@@ -1329,6 +1335,9 @@ async function EditorManager($header, $body) {
 		readOnlyCompartment,
 		getFile,
 		switchFile,
+		moveFileByPinnedState,
+		normalizePinnedTabOrder,
+		syncOpenFileList,
 		hasUnsavedFiles,
 		getEditorHeight,
 		getEditorWidth,
@@ -1393,12 +1402,17 @@ async function EditorManager($header, $body) {
 		if (typeof existing === "function") {
 			document.removeEventListener(LSP_DIAGNOSTICS_EVENT, existing);
 		}
+		let diagnosticsButtonSyncRaf = 0;
 		const listener = () => {
-			const active = manager.activeFile;
-			if (active?.type === "editor") {
-				active.session = editor.state;
-			}
-			toggleProblemButton();
+			cancelAnimationFrame(diagnosticsButtonSyncRaf);
+			diagnosticsButtonSyncRaf = requestAnimationFrame(() => {
+				diagnosticsButtonSyncRaf = 0;
+				const active = manager.activeFile;
+				if (active?.type === "editor") {
+					active.session = editor.state;
+				}
+				toggleProblemButton();
+			});
 		};
 		document.addEventListener(LSP_DIAGNOSTICS_EVENT, listener);
 		if (globalTarget) {
@@ -1754,10 +1768,52 @@ async function EditorManager($header, $body) {
 	 */
 	function addFile(file) {
 		if (manager.files.includes(file)) return;
-		manager.files.push(file);
-		manager.openFileList.append(file.tab);
+		const insertAt = file.pinned
+			? getPinnedInsertIndex()
+			: manager.files.length;
+		manager.files.splice(insertAt, 0, file);
+		syncOpenFileList();
 		$header.text = file.name;
 		toggleProblemButton();
+	}
+
+	function getPinnedInsertIndex(skipFile = null) {
+		return manager.files.reduce((count, file) => {
+			if (file === skipFile) return count;
+			return count + (file.pinned ? 1 : 0);
+		}, 0);
+	}
+
+	function syncOpenFileList() {
+		const $list = manager.openFileList;
+		manager.files.forEach((file) => {
+			$list.append(file.tab);
+		});
+	}
+
+	function moveFileByPinnedState(file) {
+		if (!manager.files.includes(file)) return;
+		if (manager.activeFile?.id === file.id) {
+			file.tab.scrollIntoView();
+		}
+	}
+
+	function normalizePinnedTabOrder(nextFiles = manager.files) {
+		const pinnedFiles = [];
+		const regularFiles = [];
+
+		nextFiles.forEach((file) => {
+			if (file.pinned) {
+				pinnedFiles.push(file);
+				return;
+			}
+			regularFiles.push(file);
+		});
+
+		manager.files = [...pinnedFiles, ...regularFiles];
+		syncOpenFileList();
+
+		return manager.files;
 	}
 
 	/**
@@ -1776,22 +1832,36 @@ async function EditorManager($header, $body) {
 		let checkTimeout = null;
 		let autosaveTimeout;
 		let scrollTimeout;
+		let scrollSyncRaf = 0;
 		const scroller = editor.scrollDOM;
+
+		function syncScrollUi() {
+			scrollSyncRaf = 0;
+			onscrolltop();
+			onscrollleft();
+		}
 
 		function handleEditorScroll() {
 			if (!scroller) return;
-			onscrolltop();
-			onscrollleft();
-			touchSelectionController?.onScroll();
+			if (!isScrolling) {
+				isScrolling = true;
+				if (hasHoverTooltips(editor.state)) {
+					editor.dispatch({ effects: closeHoverTooltips });
+				}
+				touchSelectionController?.onScrollStart();
+			}
+			if (!scrollSyncRaf) {
+				scrollSyncRaf = requestAnimationFrame(syncScrollUi);
+			}
 			clearTimeout(scrollTimeout);
-			isScrolling = true;
 			scrollTimeout = setTimeout(() => {
 				isScrolling = false;
+				touchSelectionController?.onScrollEnd();
 			}, 100);
 		}
 
 		scroller?.addEventListener("scroll", handleEditorScroll, { passive: true });
-		handleEditorScroll();
+		syncScrollUi();
 
 		keyboardHandler.on("keyboardShowStart", () => {
 			requestAnimationFrame(() => {
@@ -1872,7 +1942,7 @@ async function EditorManager($header, $body) {
 		const relativeTop = caret.top - scrollerRect.top + scroller.scrollTop;
 		const relativeBottom = caret.bottom - scrollerRect.top + scroller.scrollTop;
 		const topMargin = 16;
-		const bottomMargin = (appSettings.value?.teardropSize || 24) + 12;
+		const bottomMargin = 24;
 
 		const scrollTop = scroller.scrollTop;
 		const visibleTop = scrollTop + topMargin;

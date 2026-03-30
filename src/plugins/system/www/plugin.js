@@ -126,8 +126,30 @@ module.exports = {
   openInBrowser: function (src) {
     cordova.exec(null, null, 'System', 'open-in-browser', [src]);
   },
-  launchApp: function (app, className, data, onSuccess, onFail) {
-    cordova.exec(onSuccess, onFail, 'System', 'launch-app', [app, className, data]);
+  /**
+   * Launch an Android application activity.
+   *
+   * @param {string} app - Package name of the application (e.g. `com.example.app`).
+   * @param {string} className - Fully qualified activity class name (e.g. `com.example.app.MainActivity`).
+   * @param {Object<string, (string|number|boolean)>} [extras] - Optional key-value pairs passed as Intent extras.
+   * @param {(message: string) => void} [onSuccess] - Callback invoked when the activity launches successfully.
+   * @param {(error: any) => void} [onFail] - Callback invoked if launching the activity fails.
+   *
+   * @example
+   * System.launchApp(
+   *   "com.example.app",
+   *   "com.example.app.MainActivity",
+   *   {
+   *     user: "example",
+   *     age: 20,
+   *     premium: true
+   *   },
+   *   (msg) => console.log(msg),
+   *   (err) => console.error(err)
+   * );
+   */
+  launchApp: function (app, className, extras, onSuccess, onFail) {
+    cordova.exec(onSuccess, onFail, 'System', 'launch-app', [app, className, extras]);
   },
   inAppBrowser: function (url, title, showButtons, disableCache) {
     var myInAppBrowser = {

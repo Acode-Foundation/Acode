@@ -1,4 +1,4 @@
-import { Diagnostic, forceLinting, linter, lintGutter } from "@codemirror/lint";
+import { Diagnostic, linter, lintGutter } from "@codemirror/lint";
 import type { LSPClient } from "@codemirror/lsp-client";
 import { LSPPlugin } from "@codemirror/lsp-client";
 import type { Extension } from "@codemirror/state";
@@ -8,7 +8,7 @@ import {
 	StateEffect,
 	StateField,
 } from "@codemirror/state";
-import type { EditorView } from "@codemirror/view";
+import { type EditorView, ViewPlugin } from "@codemirror/view";
 import type {
 	LSPClientWithWorkspace,
 	LSPPluginAPI,
@@ -18,8 +18,27 @@ import type {
 } from "./types";
 
 const setPublishedDiagnostics = StateEffect.define<LspDiagnostic[]>();
+let diagnosticsEventTimer: ReturnType<typeof setTimeout> | null = null;
+let diagnosticsViewCount = 0;
 
 export const LSP_DIAGNOSTICS_EVENT = "acode:lsp-diagnostics-updated";
+
+function isCoarsePointerDevice(): boolean {
+	if (typeof window !== "undefined") {
+		try {
+			if (window.matchMedia?.("(pointer: coarse)").matches) {
+				return true;
+			}
+		} catch (_) {
+			// Ignore matchMedia failures and fall back to maxTouchPoints.
+		}
+	}
+
+	return (
+		typeof navigator !== "undefined" &&
+		Number(navigator.maxTouchPoints || 0) > 0
+	);
+}
 
 function emitDiagnosticsUpdated(): void {
 	if (
@@ -49,6 +68,12 @@ function emitDiagnosticsUpdated(): void {
 	document.dispatchEvent(event);
 }
 
+function clearScheduledDiagnosticsUpdated(): void {
+	if (diagnosticsEventTimer == null) return;
+	clearTimeout(diagnosticsEventTimer);
+	diagnosticsEventTimer = null;
+}
+
 const lspPublishedDiagnostics = StateField.define<LspDiagnostic[]>({
 	create(): LspDiagnostic[] {
 		return [];
@@ -72,10 +97,10 @@ const severities: DiagnosticSeverity[] = [
 	"hint",
 ];
 
-function storeLspDiagnostics(
+function collectLspDiagnostics(
 	plugin: LSPPluginAPI,
 	diagnostics: RawDiagnostic[],
-): StateEffect<LspDiagnostic[]> {
+): LspDiagnostic[] {
 	const items: LspDiagnostic[] = [];
 	const { syncedDoc } = plugin;
 
@@ -115,14 +140,65 @@ function storeLspDiagnostics(
 		});
 	}
 
+	return items;
+}
+
+function storeLspDiagnostics(
+	items: LspDiagnostic[],
+): StateEffect<LspDiagnostic[]> {
 	return setPublishedDiagnostics.of(items);
 }
+
+function sameDiagnostics(
+	current: readonly LspDiagnostic[],
+	next: readonly LspDiagnostic[],
+): boolean {
+	if (current.length !== next.length) return false;
+	for (let index = 0; index < current.length; index++) {
+		const left = current[index];
+		const right = next[index];
+		if (
+			left.from !== right.from ||
+			left.to !== right.to ||
+			left.severity !== right.severity ||
+			left.message !== right.message ||
+			left.source !== right.source
+		) {
+			return false;
+		}
+	}
+	return true;
+}
+
+function scheduleDiagnosticsUpdated(): void {
+	if (diagnosticsEventTimer != null) return;
+	diagnosticsEventTimer = setTimeout(() => {
+		diagnosticsEventTimer = null;
+		if (diagnosticsViewCount > 0) {
+			emitDiagnosticsUpdated();
+		}
+	}, 32);
+}
+
+const diagnosticsLifecyclePlugin = ViewPlugin.fromClass(
+	class {
+		constructor() {
+			diagnosticsViewCount++;
+		}
+
+		destroy(): void {
+			diagnosticsViewCount = Math.max(0, diagnosticsViewCount - 1);
+			if (!diagnosticsViewCount) {
+				clearScheduledDiagnosticsUpdated();
+			}
+		}
+	},
+);
 
 function mapDiagnostics(
 	plugin: LSPPluginAPI,
 	state: EditorState,
 ): Diagnostic[] {
-	plugin.client.sync();
 	const stored = state.field(lspPublishedDiagnostics);
 	const changes = plugin.unsyncedChanges;
 	const mapped: Diagnostic[] = [];
@@ -179,18 +255,23 @@ export function lspDiagnosticsClientExtension(): {
 					!file ||
 					(params.version != null && params.version !== file.version)
 				) {
-					return false;
+					return true;
 				}
 				const view = file.getView();
-				if (!view) return false;
+				if (!view) return true;
 				const plugin = LSPPlugin.get(view) as LSPPluginAPI | null;
-				if (!plugin) return false;
+				if (!plugin) return true;
+
+				const diagnostics = collectLspDiagnostics(plugin, params.diagnostics);
+				const current = view.state.field(lspPublishedDiagnostics, false) ?? [];
+				if (sameDiagnostics(current, diagnostics)) {
+					return true;
+				}
 
 				view.dispatch({
-					effects: storeLspDiagnostics(plugin, params.diagnostics),
+					effects: storeLspDiagnostics(diagnostics),
 				});
-				forceLinting(view);
-				emitDiagnosticsUpdated();
+				scheduleDiagnosticsUpdated();
 				return true;
 			},
 		},
@@ -198,7 +279,14 @@ export function lspDiagnosticsClientExtension(): {
 }
 
 export function lspDiagnosticsUiExtension(includeGutter = true): Extension[] {
+	const diagnosticsMarkerFilter = isCoarsePointerDevice()
+		? () => []
+		: undefined;
+	const diagnosticsTooltipFilter = isCoarsePointerDevice()
+		? () => []
+		: undefined;
 	const extensions: Extension[] = [
+		diagnosticsLifecyclePlugin,
 		lspPublishedDiagnostics,
 		linter(lspLinterSource, {
 			needsRefresh(update) {
@@ -206,12 +294,20 @@ export function lspDiagnosticsUiExtension(includeGutter = true): Extension[] {
 					tr.effects.some((effect) => effect.is(setPublishedDiagnostics)),
 				);
 			},
+			markerFilter: diagnosticsMarkerFilter,
+			tooltipFilter: diagnosticsTooltipFilter,
 			// keep panel closed by default
 			autoPanel: false,
 		}),
 	];
 	if (includeGutter) {
-		extensions.splice(1, 0, lintGutter());
+		extensions.splice(
+			1,
+			0,
+			lintGutter({
+				tooltipFilter: diagnosticsTooltipFilter,
+			}),
+		);
 	}
 	return extensions;
 }

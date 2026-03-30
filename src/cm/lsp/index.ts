@@ -72,6 +72,11 @@ export {
 	stopManagedServer,
 } from "./serverLauncher";
 export { default as serverRegistry } from "./serverRegistry";
+export {
+	nextSignature,
+	prevSignature,
+	showSignatureHelp,
+} from "./tooltipExtensions";
 export { createTransport } from "./transport";
 
 export type {

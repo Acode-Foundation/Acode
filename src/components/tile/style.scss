@@ -36,6 +36,15 @@ header {
     font-size: 0.8em;
     z-index: 9999;
 
+    .file,
+    .icon {
+      height: 24px;
+      width: 24px;
+      font-size: 1em;
+      background-size: 22px;
+      flex-shrink: 0;
+    }
+
     .file {
       padding: 0 !important;
     }

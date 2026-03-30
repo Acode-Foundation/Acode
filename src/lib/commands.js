@@ -40,10 +40,11 @@ export default {
 		await runAllTests();
 	},
 	async "close-all-tabs"() {
+		const closableFiles = editorManager.files.filter((file) => !file.pinned);
+		if (!closableFiles.length) return;
+
 		let save = false;
-		const unsavedFiles = editorManager.files.filter(
-			(file) => file.isUnsaved,
-		).length;
+		const unsavedFiles = closableFiles.filter((file) => file.isUnsaved).length;
 		if (unsavedFiles) {
 			const confirmation = await confirm(
 				strings["warning"],
@@ -73,15 +74,15 @@ export default {
 			}
 		}
 
-		editorManager.files.forEach(async (file) => {
+		for (const file of [...closableFiles]) {
 			if (save) {
 				await file.save();
-				file.remove();
-				return;
+				await file.remove(true, { silentPinned: true });
+				continue;
 			}
 
-			file.remove(true);
-		});
+			await file.remove(true, { silentPinned: true });
+		}
 	},
 	async "save-all-changes"() {
 		const doSave = await confirm(
@@ -96,6 +97,9 @@ export default {
 	},
 	"close-current-tab"() {
 		editorManager.activeFile.remove();
+	},
+	"toggle-pin-tab"() {
+		editorManager.activeFile?.togglePinned?.();
 	},
 	console() {
 		run(true, "inapp");
@@ -139,14 +143,17 @@ export default {
 		showFileInfo(url);
 	},
 	async goto() {
-		const res = await prompt(strings["enter line number"], "", "number", {
+		const lastLine = editorManager.editor?.state?.doc?.lines;
+		const message = lastLine
+			? `${strings["enter line number"]} (1..${lastLine})`
+			: strings["enter line number"];
+		const res = await prompt(message, "", "number", {
 			placeholder: "line.column",
 		});
 
 		if (!res) return;
 		const [lineStr, colStr] = String(res).split(".");
-		const { editor } = editorManager;
-		editor.gotoLine(lineStr, colStr);
+		editorManager.editor.gotoLine(lineStr, colStr);
 	},
 	async "new-file"() {
 		let filename = await prompt(strings["enter file name"], "", "filename", {

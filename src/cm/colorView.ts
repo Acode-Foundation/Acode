@@ -193,6 +193,8 @@ function colorDecorations(view: EditorView): DecorationSet {
 
 class ColorViewPlugin {
 	decorations: DecorationSet;
+	raf = 0;
+	pendingView: EditorView | null = null;
 
 	constructor(view: EditorView) {
 		this.decorations = colorDecorations(view);
@@ -200,12 +202,26 @@ class ColorViewPlugin {
 
 	update(update: ViewUpdate): void {
 		if (update.docChanged || update.viewportChanged) {
-			this.decorations = colorDecorations(update.view);
+			this.scheduleDecorations(update.view);
 		}
 		const readOnly = update.view.contentDOM.ariaReadOnly === "true";
 		const editable = update.view.contentDOM.contentEditable === "true";
 		const canBeEdited = readOnly === false && editable;
 		this.changePicker(update.view, canBeEdited);
+	}
+
+	scheduleDecorations(view: EditorView): void {
+		this.pendingView = view;
+		if (this.raf) return;
+		// Color chips are decorative, so batch rapid viewport/doc changes into
+		// one animation frame instead of rebuilding on every intermediate update.
+		this.raf = requestAnimationFrame(() => {
+			this.raf = 0;
+			const pendingView = this.pendingView;
+			this.pendingView = null;
+			if (!pendingView) return;
+			this.decorations = colorDecorations(pendingView);
+		});
 	}
 
 	changePicker(view: EditorView, canBeEdited: boolean): void {
@@ -218,6 +234,14 @@ class ColorViewPlugin {
 				input.setAttribute("disabled", "");
 			}
 		});
+	}
+
+	destroy(): void {
+		if (this.raf) {
+			cancelAnimationFrame(this.raf);
+			this.raf = 0;
+		}
+		this.pendingView = null;
 	}
 }
 

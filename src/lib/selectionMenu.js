@@ -49,7 +49,7 @@ export default function selectionMenu() {
 		),
 		item(
 			() => showCodeActions(),
-			<span className="licons lightbulb" title="Code Actions"></span>,
+			<span className="icon lightbulb" title="Code Actions"></span>,
 			"all",
 			true,
 		),

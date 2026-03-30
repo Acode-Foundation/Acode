@@ -25,15 +25,30 @@ interface BracketInfo {
 const rainbowBracketsPlugin = ViewPlugin.fromClass(
 	class {
 		decorations: DecorationSet;
+		raf = 0;
+		pendingView: EditorView | null = null;
 
 		constructor(view: EditorView) {
 			this.decorations = this.buildDecorations(view);
 		}
 
 		update(update: ViewUpdate) {
-			if (update.docChanged || update.viewportChanged) {
-				this.decorations = this.buildDecorations(update.view);
-			}
+			if (!update.docChanged && !update.viewportChanged) return;
+			this.scheduleBuild(update.view);
+		}
+
+		scheduleBuild(view: EditorView): void {
+			this.pendingView = view;
+			if (this.raf) return;
+			// Rainbow bracket colors are purely visual, so batch rebuilds to the
+			// next frame instead of recomputing on every transient update.
+			this.raf = requestAnimationFrame(() => {
+				this.raf = 0;
+				const pendingView = this.pendingView;
+				this.pendingView = null;
+				if (!pendingView) return;
+				this.decorations = this.buildDecorations(pendingView);
+			});
 		}
 
 		buildDecorations(view: EditorView): DecorationSet {
@@ -153,6 +168,14 @@ const rainbowBracketsPlugin = ViewPlugin.fromClass(
 				default:
 					return null;
 			}
+		}
+
+		destroy(): void {
+			if (this.raf) {
+				cancelAnimationFrame(this.raf);
+				this.raf = 0;
+			}
+			this.pendingView = null;
 		}
 	},
 	{
