@@ -11,6 +11,9 @@ const customFontNames = new Set();
 const CUSTOM_FONTS_KEY = "custom_fonts";
 const FONT_FACE_STYLE_ID = "font-face-style";
 const EDITOR_STYLE_ID = "editor-font-style";
+const APP_STYLE_ID = "app-font-style";
+const DEFAULT_EDITOR_FONT = "Roboto Mono";
+const DEFAULT_APP_FONT_STACK = `"Roboto", sans-serif`;
 
 add(
 	"Fira Code",
@@ -187,7 +190,11 @@ function has(name) {
 	return fonts.has(name);
 }
 
-async function setFont(name) {
+function isCustom(name) {
+	return customFontNames.has(name);
+}
+
+async function setEditorFont(name) {
 	loader.showTitleLoader();
 	try {
 		await loadFont(name);
@@ -200,9 +207,32 @@ async function setFont(name) {
   }`;
 	} catch (error) {
 		toast(`${name} font not found`, "error");
-		setFont("Roboto Mono");
+		setEditorFont(DEFAULT_EDITOR_FONT);
 	} finally {
 		loader.removeTitleLoader();
+	}
+}
+
+async function setAppFont(name) {
+	const $style = ensureStyleElement(APP_STYLE_ID);
+
+	if (!name) {
+		$style.textContent = `:root {
+  --app-font-family: ${DEFAULT_APP_FONT_STACK};
+}`;
+		return;
+	}
+
+	try {
+		await loadFont(name);
+		$style.textContent = `:root {
+  --app-font-family: "${name}", ${DEFAULT_APP_FONT_STACK};
+}`;
+	} catch (error) {
+		toast(`${name} font not found`, "error");
+		$style.textContent = `:root {
+  --app-font-family: ${DEFAULT_APP_FONT_STACK};
+}`;
 	}
 }
 
@@ -268,6 +298,9 @@ export default {
 	getNames,
 	remove,
 	has,
-	setFont,
+	isCustom,
+	setFont: setEditorFont,
+	setEditorFont,
+	setAppFont,
 	loadFont,
 };

@@ -367,7 +367,7 @@ export default function terminalSettings() {
  * @param {string} key
  * @param {any} value
  */
-async function updateActiveTerminals(key, value) {
+export async function updateActiveTerminals(key, value) {
 	// Find all terminal tabs and update their settings
 	const terminalTabs = editorManager.files.filter(
 		(file) => file.type === "terminal",

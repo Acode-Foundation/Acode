@@ -40,7 +40,7 @@ c-console {
   background-color: #313131;
   z-index: 99998;
   color: #eeeeee;
-  font-family: "Roboto", sans-serif;
+  font-family: var(--app-font-family);
 }
 
 c-console[title] {

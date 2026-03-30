@@ -8,6 +8,7 @@
 
 :root {
   --scrollbar-width: 4px;
+  --app-font-family: "Roboto", sans-serif;
 }
 
 * {
@@ -32,7 +33,7 @@ body {
 
 body {
   user-select: none;
-  font-family: "Roboto", sans-serif;
+  font-family: var(--app-font-family);
   -webkit-tap-highlight-color: transparent;
   background-color: #9999ff;
   background-color: var(--primary-color);

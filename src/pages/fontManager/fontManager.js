@@ -2,23 +2,33 @@ import "./style.scss";
 import fsOperation from "fileSystem";
 import Page from "components/page";
 import searchBar from "components/searchbar";
+import { DEFAULT_TERMINAL_SETTINGS } from "components/terminal";
 import toast from "components/toast";
-import alert from "dialogs/alert";
 import box from "dialogs/box";
 import confirm from "dialogs/confirm";
 import loader from "dialogs/loader";
 import prompt from "dialogs/prompt";
+import select from "dialogs/select";
 import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
 import fonts from "lib/fonts";
 import appSettings from "lib/settings";
 import { hideAd } from "lib/startAd";
 import FileBrowser from "pages/fileBrowser";
+import { updateActiveTerminals } from "settings/terminalSettings";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
 
 export default function fontManager() {
-	const defaultFont = "Roboto Mono";
+	const defaultEditorFont = "Roboto Mono";
+	const defaultTerminalFont = DEFAULT_TERMINAL_SETTINGS.fontFamily;
+	const defaultAppFontLabel = strings.default || "Default";
+	const targetLabels = {
+		app: "App",
+		editor: "Editor",
+		terminal: "Terminal",
+		all: "All",
+	};
 	const $page = Page(strings.fonts?.capitalize());
 	const $search = <span attr-action="search" className="icon search"></span>;
 	const $addFont = <span attr-action="add-font" className="icon add"></span>;
@@ -50,21 +60,34 @@ export default function fontManager() {
 
 	function renderFonts() {
 		const fontNames = fonts.getNames();
-		const currentFont = appSettings.value.editorFont || "Roboto Mono";
 		let $currentItem;
+		const content = [];
 
-		const content = fontNames.map((fontName) => {
-			const isCurrent = fontName === currentFont;
+		const $defaultItem = (
+			<FontItem
+				name={defaultAppFontLabel}
+				appliedTargets={getAppliedTargets("")}
+				subtitle="System default app font"
+				deletable={false}
+				onSelect={() => chooseApplyTarget("")}
+			/>
+		);
+		if (getAppliedTargets("").length) $currentItem = $defaultItem;
+		content.push($defaultItem);
+
+		fontNames.forEach((fontName) => {
+			const appliedTargets = getAppliedTargets(fontName);
 			const $item = (
 				<FontItem
 					name={fontName}
-					isCurrent={isCurrent}
-					onSelect={() => selectFont(fontName)}
+					appliedTargets={appliedTargets}
+					deletable={fonts.isCustom(fontName)}
+					onSelect={() => chooseApplyTarget(fontName)}
 					onDelete={() => deleteFont(fontName)}
 				/>
 			);
-			if (isCurrent) $currentItem = $item;
-			return $item;
+			if (!$currentItem && appliedTargets.length) $currentItem = $item;
+			content.push($item);
 		});
 
 		list.el.content = content;
@@ -206,21 +229,117 @@ export default function fontManager() {
 		});
 	}
 
-	async function selectFont(fontName) {
+	function getAppliedTargets(fontName) {
+		const appFont = appSettings.value.appFont || "";
+		const editorFont = appSettings.value.editorFont || defaultEditorFont;
+		const terminalFont =
+			appSettings.value.terminalSettings?.fontFamily || defaultTerminalFont;
+		const appliedTargets = [];
+
+		if (fontName) {
+			if (appFont === fontName) appliedTargets.push("app");
+			if (editorFont === fontName) appliedTargets.push("editor");
+			if (terminalFont === fontName) appliedTargets.push("terminal");
+			return appliedTargets;
+		}
+
+		if (!appFont) appliedTargets.push("app");
+		return appliedTargets;
+	}
+
+	function getTargetOptionText(fontName, target) {
+		const action = fontName ? "Apply" : "Reset";
+		return `${action} to ${targetLabels[target]}`;
+	}
+
+	async function chooseApplyTarget(fontName) {
+		const title = fontName
+			? `Apply "${fontName}"`
+			: `${defaultAppFontLabel} font`;
+
+		const target = await select(
+			title,
+			[
+				["app", getTargetOptionText(fontName, "app")],
+				["editor", getTargetOptionText(fontName, "editor")],
+				["terminal", getTargetOptionText(fontName, "terminal")],
+				["all", getTargetOptionText(fontName, "all")],
+			],
+			true,
+		).catch(() => null);
+
+		if (!target) return;
+
+		await applyFontToTarget(fontName, target);
+	}
+
+	async function applyFontToTarget(fontName, target) {
 		try {
-			await fonts.setFont(fontName);
-			appSettings.update({ editorFont: fontName }, false);
-			toast(`Font changed to "${fontName}"`);
-			renderFonts(); // Refresh to update current selection
+			const nextEditorFont = fontName || defaultEditorFont;
+			const nextTerminalFont = fontName || defaultTerminalFont;
+			const nextTerminalSettings = {
+				...(appSettings.value.terminalSettings || DEFAULT_TERMINAL_SETTINGS),
+			};
+			const nextSettings = {};
+
+			switch (target) {
+				case "app":
+					await fonts.setAppFont(fontName);
+					nextSettings.appFont = fontName;
+					break;
+
+				case "editor":
+					await fonts.setEditorFont(nextEditorFont);
+					nextSettings.editorFont = nextEditorFont;
+					break;
+
+				case "terminal":
+					nextTerminalSettings.fontFamily = nextTerminalFont;
+					nextSettings.terminalSettings = nextTerminalSettings;
+					await updateActiveTerminals("fontFamily", nextTerminalFont);
+					break;
+
+				case "all":
+					await fonts.setAppFont(fontName);
+					await fonts.setEditorFont(nextEditorFont);
+					nextTerminalSettings.fontFamily = nextTerminalFont;
+					await updateActiveTerminals("fontFamily", nextTerminalFont);
+					nextSettings.appFont = fontName;
+					nextSettings.editorFont = nextEditorFont;
+					nextSettings.terminalSettings = nextTerminalSettings;
+					break;
+
+				default:
+					return;
+			}
+
+			await appSettings.update(nextSettings, false);
+			toast(getApplyToast(fontName, target));
+			renderFonts();
 		} catch (error) {
-			toast("Failed to set font: " + error.message);
+			toast("Failed to apply font: " + error.message);
+		}
+	}
+
+	function getApplyToast(fontName, target) {
+		const label = fontName ? `"${fontName}"` : "default font";
+		switch (target) {
+			case "app":
+				return `${label} applied to app`;
+			case "editor":
+				return `${label} applied to editor`;
+			case "terminal":
+				return `${label} applied to terminal`;
+			case "all":
+				return `${label} applied to app, editor, and terminal`;
+			default:
+				return "Font applied";
 		}
 	}
 
 	async function deleteFont(fontName) {
 		// Don't allow deleting default fonts
-		const defaultFonts = ["Fira Code", "Roboto Mono", "MesloLGS NF Regular"];
-		if (defaultFonts.includes(fontName)) {
+		if (!fonts.isCustom(fontName)) {
 			toast("Cannot delete default fonts");
 			return;
 		}
@@ -232,9 +351,14 @@ export default function fontManager() {
 
 		if (shouldDelete) {
 			try {
-				// Check if we're deleting the currently active font
-				const currentFont = appSettings.value.editorFont || "Roboto Mono";
-				const isCurrentFont = fontName === currentFont;
+				const currentEditorFont =
+					appSettings.value.editorFont || defaultEditorFont;
+				const currentAppFont = appSettings.value.appFont || "";
+				const currentTerminalFont =
+					appSettings.value.terminalSettings?.fontFamily || defaultTerminalFont;
+				const isCurrentEditorFont = fontName === currentEditorFont;
+				const isCurrentAppFont = fontName === currentAppFont;
+				const isCurrentTerminalFont = fontName === currentTerminalFont;
 
 				// Remove from fonts collection
 				fonts.remove(fontName);
@@ -249,11 +373,46 @@ export default function fontManager() {
 					await fs.delete();
 				}
 
-				// If we deleted the current font, switch to default font (Roboto Mono)
-				if (isCurrentFont) {
-					await fonts.setFont(defaultFont);
-					appSettings.update({ editorFont: defaultFont }, false);
-					toast(`Font "${fontName}" deleted, switched to ${defaultFont}`);
+				if (isCurrentAppFont) {
+					await fonts.setAppFont("");
+				}
+
+				if (isCurrentEditorFont) {
+					await fonts.setEditorFont(defaultEditorFont);
+				}
+
+				if (isCurrentTerminalFont) {
+					await updateActiveTerminals("fontFamily", defaultTerminalFont);
+				}
+
+				if (isCurrentAppFont || isCurrentEditorFont || isCurrentTerminalFont) {
+					await appSettings.update(
+						{
+							...(isCurrentAppFont ? { appFont: "" } : {}),
+							...(isCurrentEditorFont ? { editorFont: defaultEditorFont } : {}),
+							...(isCurrentTerminalFont
+								? {
+										terminalSettings: {
+											...(appSettings.value.terminalSettings ||
+												DEFAULT_TERMINAL_SETTINGS),
+											fontFamily: defaultTerminalFont,
+										},
+									}
+								: {}),
+						},
+						false,
+					);
+				}
+
+				if (isCurrentAppFont || isCurrentEditorFont || isCurrentTerminalFont) {
+					const restoredTargets = [
+						isCurrentAppFont ? "app" : null,
+						isCurrentEditorFont ? "editor" : null,
+						isCurrentTerminalFont ? "terminal" : null,
+					].filter(Boolean);
+					toast(
+						`Font "${fontName}" deleted, restored ${restoredTargets.join(", ")} font defaults`,
+					);
 				} else {
 					toast(`Font "${fontName}" deleted`);
 				}
@@ -261,20 +420,48 @@ export default function fontManager() {
 				renderFonts();
 			} catch (error) {
 				// Font removed from collection even if file deletion fails
-				const currentFont = appSettings.value.editorFont || "Roboto Mono";
-				const isCurrentFont = fontName === currentFont;
+				const currentEditorFont =
+					appSettings.value.editorFont || defaultEditorFont;
+				const currentAppFont = appSettings.value.appFont || "";
+				const currentTerminalFont =
+					appSettings.value.terminalSettings?.fontFamily || defaultTerminalFont;
+				const isCurrentEditorFont = fontName === currentEditorFont;
+				const isCurrentAppFont = fontName === currentAppFont;
+				const isCurrentTerminalFont = fontName === currentTerminalFont;
 
-				// If we deleted the current font, switch to default font (Roboto Mono)
-				if (isCurrentFont) {
+				if (isCurrentAppFont || isCurrentEditorFont || isCurrentTerminalFont) {
 					try {
-						await fonts.setFont(defaultFont);
-						appSettings.update({ editorFont: defaultFont }, false);
-						toast(
-							`Font "${fontName}" deleted, switched to ${defaultFont} (file cleanup may have failed)`,
+						if (isCurrentAppFont) {
+							await fonts.setAppFont("");
+						}
+						if (isCurrentEditorFont) {
+							await fonts.setEditorFont(defaultEditorFont);
+						}
+						if (isCurrentTerminalFont) {
+							await updateActiveTerminals("fontFamily", defaultTerminalFont);
+						}
+						await appSettings.update(
+							{
+								...(isCurrentAppFont ? { appFont: "" } : {}),
+								...(isCurrentEditorFont
+									? { editorFont: defaultEditorFont }
+									: {}),
+								...(isCurrentTerminalFont
+									? {
+											terminalSettings: {
+												...(appSettings.value.terminalSettings ||
+													DEFAULT_TERMINAL_SETTINGS),
+												fontFamily: defaultTerminalFont,
+											},
+										}
+									: {}),
+							},
+							false,
 						);
+						toast(`Font "${fontName}" deleted (file cleanup may have failed)`);
 					} catch (setFontError) {
 						toast(
-							`Font "${fontName}" deleted, but failed to switch to ${defaultFont}`,
+							`Font "${fontName}" deleted, but failed to restore a fallback font`,
 						);
 					}
 				} else {
@@ -286,33 +473,47 @@ export default function fontManager() {
 		}
 	}
 
-	function FontItem({ name, isCurrent, onSelect, onDelete }) {
-		const defaultFonts = ["Fira Code", "Roboto Mono", "MesloLGS NF Regular"];
-		const isDefault = defaultFonts.includes(name);
-		const subtitle = isCurrent
-			? "Current editor font"
-			: isDefault
-				? "Built-in font"
-				: "Custom font";
+	function FontItem({
+		name,
+		appliedTargets,
+		subtitle,
+		deletable = true,
+		onSelect,
+		onDelete,
+	}) {
+		const isBuiltIn = name !== defaultAppFontLabel && !fonts.isCustom(name);
+		const isApplied = appliedTargets.length > 0;
+		const resolvedSubtitle =
+			subtitle ||
+			(isApplied
+				? "Applied font"
+				: isBuiltIn
+					? "Built-in font"
+					: "Custom font");
 
 		const $item = (
 			<div
 				tabIndex={1}
-				className={`list-item has-subtitle ${isCurrent ? "current-font" : ""}`}
+				className={`list-item has-subtitle ${isApplied ? "current-font" : ""}`}
 				data-key={name}
 				data-action="select-font"
 			>
 				<span className="icon text_format"></span>
 				<div className="container">
 					<div className="text">{name}</div>
-					<small className="value">{subtitle}</small>
+					<small className="value">{resolvedSubtitle}</small>
 				</div>
-				{isCurrent || !isDefault ? (
+				{appliedTargets.length || deletable ? (
 					<div className="setting-tail">
-						{isCurrent ? (
-							<span className="font-manager-current">Current</span>
-						) : null}
-						{!isDefault ? (
+						{appliedTargets.map((target) => (
+							<span
+								key={`${name}-${target}`}
+								className={`font-manager-badge font-manager-badge-${target}`}
+							>
+								{targetLabels[target]}
+							</span>
+						))}
+						{deletable ? (
 							<span
 								className="icon delete font-manager-action"
 								data-action="delete"
@@ -327,7 +528,7 @@ export default function fontManager() {
 		$item.onclick = (e) => {
 			const $target = e.target;
 			const action = $target.dataset.action;
-			if (action === "delete" && !isDefault) {
+			if (action === "delete" && deletable) {
 				e.stopPropagation();
 				onDelete();
 			} else if (

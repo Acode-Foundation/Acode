@@ -33,7 +33,8 @@ export default {
 		}
 
 		actions("set-height", settings.quickTools);
-		fonts.setFont(settings.editorFont);
+		fonts.setAppFont(settings.appFont);
+		fonts.setEditorFont(settings.editorFont);
 		if (!themes.applied) {
 			themes.apply("dark");
 		}
