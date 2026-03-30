@@ -62,17 +62,18 @@ export default function fontManager() {
 		const fontNames = fonts.getNames();
 		let $currentItem;
 		const content = [];
+		const defaultAppliedTargets = getAppliedTargets("");
 
 		const $defaultItem = (
 			<FontItem
 				name={defaultAppFontLabel}
-				appliedTargets={getAppliedTargets("")}
+				appliedTargets={defaultAppliedTargets}
 				subtitle="System default app font"
 				deletable={false}
 				onSelect={() => chooseApplyTarget("")}
 			/>
 		);
-		if (getAppliedTargets("").length) $currentItem = $defaultItem;
+		if (defaultAppliedTargets.length) $currentItem = $defaultItem;
 		content.push($defaultItem);
 
 		fontNames.forEach((fontName) => {
@@ -248,8 +249,22 @@ export default function fontManager() {
 	}
 
 	function getTargetOptionText(fontName, target) {
-		const action = fontName ? "Apply" : "Reset";
-		return `${action} to ${targetLabels[target]}`;
+		if (fontName) {
+			return `Apply to ${targetLabels[target]}`;
+		}
+
+		switch (target) {
+			case "app":
+				return "Reset App font";
+			case "editor":
+				return "Reset Editor font";
+			case "terminal":
+				return "Reset Terminal font";
+			case "all":
+				return "Reset all fonts";
+			default:
+				return "Reset font";
+		}
 	}
 
 	async function chooseApplyTarget(fontName) {
