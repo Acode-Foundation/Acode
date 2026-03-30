@@ -23,7 +23,7 @@ export default function otherSettings() {
 	const appFontText = strings["app font"] || "App font";
 	const appFontInfo =
 		strings["settings-info-app-font-family"] ||
-		"Choose the typeface used across the app interface.";
+		"Choose the font used across the app interface.";
 	const defaultFontLabel = strings.default || "Default";
 	const categories = {
 		interface: strings["settings-category-interface"],
