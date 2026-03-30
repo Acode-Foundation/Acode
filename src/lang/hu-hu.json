@@ -705,6 +705,6 @@
 	"unpin tab": "Lap rögzítésének megszüntetése",
 	"pinned tab": "Rögzített lap",
 	"unpin tab before closing": "Lap rögzítésének megszüntetése bezárás előtt.",
-	"app font": "App font",
-	"settings-info-app-font-family": "Choose the font used across the app interface."
+	"app font": "Alkalmazás betűtípusa",
+	"settings-info-app-font-family": "Válassza ki az alkalmazás egész felületén használandó betűtípust."
 }
