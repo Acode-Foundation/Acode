@@ -1,3 +1,4 @@
+import { quoteArg } from "cm/lsp/installRuntime";
 import serverRegistry from "cm/lsp/serverRegistry";
 import settingsPage from "components/settingsPage";
 import toast from "components/toast";
@@ -80,12 +81,12 @@ function buildDefaultCheckCommand(binaryCommand, installer) {
 	).trim();
 	if (!executable) return "";
 	if (installer?.kind === "manual" && installer?.binaryPath) {
-		return `test -x ${installer.binaryPath}`;
+		return `test -x ${quoteArg(installer.binaryPath)}`;
 	}
 	if (executable.includes("/")) {
-		return `test -x ${executable}`;
+		return `test -x ${quoteArg(executable)}`;
 	}
-	return `which ${executable}`;
+	return `which ${quoteArg(executable)}`;
 }
 
 async function promptInstaller(binaryCommand) {
