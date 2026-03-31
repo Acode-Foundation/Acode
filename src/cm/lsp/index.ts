@@ -78,6 +78,7 @@ export type {
 	ClientManagerOptions,
 	ClientState,
 	DiagnosticRelatedInformation,
+	DocumentUriContext,
 	FileMetadata,
 	FormattingOptions,
 	LSPClientWithWorkspace,

@@ -294,6 +294,10 @@ function sanitizeDefinition(
 		capabilityOverrides: clone(definition.capabilityOverrides),
 		rootUri:
 			typeof definition.rootUri === "function" ? definition.rootUri : null,
+		documentUri:
+			typeof definition.documentUri === "function"
+				? definition.documentUri
+				: null,
 		resolveLanguageId:
 			typeof definition.resolveLanguageId === "function"
 				? definition.resolveLanguageId

@@ -27,6 +27,7 @@ export interface ManagedServerOptions {
 	clientConfig?: LspServerManifest["clientConfig"];
 	resolveLanguageId?: LspServerManifest["resolveLanguageId"];
 	rootUri?: LspServerManifest["rootUri"];
+	documentUri?: LspServerManifest["documentUri"];
 	capabilityOverrides?: Record<string, unknown>;
 }
 
@@ -83,6 +84,7 @@ export function defineServer(options: ManagedServerOptions): LspServerManifest {
 		clientConfig,
 		resolveLanguageId,
 		rootUri,
+		documentUri,
 		capabilityOverrides,
 	} = options;
 
@@ -118,6 +120,7 @@ export function defineServer(options: ManagedServerOptions): LspServerManifest {
 		clientConfig,
 		resolveLanguageId,
 		rootUri,
+		documentUri,
 		capabilityOverrides,
 	};
 }
