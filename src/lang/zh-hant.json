@@ -534,8 +534,6 @@
 	"lsp-feature-completion-info": "啟用來自服務器的自動補全建議。",
 	"lsp-feature-diagnostics": "診斷",
 	"lsp-feature-diagnostics-info": "顯示語言服務器返回的錯誤和警告。",
-	"lsp-feature-document-highlights": "文檔高亮",
-	"lsp-feature-document-highlights-info": "高亮顯示光標下單詞的所有出現位置。",
 	"lsp-feature-formatting": "格式化",
 	"lsp-feature-formatting-info": "啟用語言服務器提供的代碼格式化。",
 	"lsp-feature-hover": "懸停信息",

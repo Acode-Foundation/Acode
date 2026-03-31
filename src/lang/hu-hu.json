@@ -534,8 +534,6 @@
 	"lsp-feature-completion-info": "Automatikus kiegészítési javaslatok engedélyezése a kiszolgálótól.",
 	"lsp-feature-diagnostics": "Diagnosztika",
 	"lsp-feature-diagnostics-info": "Hibák és figyelmeztetések megjelenítése a nyelvi kiszolgálótól.",
-	"lsp-feature-document-highlights": "Dokumentum-kiemelések",
-	"lsp-feature-document-highlights-info": "Kurzor alatti szó összes előfordulásának kiemelése.",
 	"lsp-feature-formatting": "Formázás",
 	"lsp-feature-formatting-info": "Kódformázás engedélyezése a nyelvi kiszolgálótól.",
 	"lsp-feature-hover": "Felugró információk",

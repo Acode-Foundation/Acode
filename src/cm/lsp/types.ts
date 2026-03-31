@@ -144,7 +144,6 @@ export interface BuiltinExtensionsConfig {
 	keymaps?: boolean;
 	diagnostics?: boolean;
 	inlayHints?: boolean;
-	documentHighlights?: boolean;
 	formatting?: boolean;
 }
 

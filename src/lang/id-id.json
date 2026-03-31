@@ -535,8 +535,6 @@
 	"lsp-feature-completion-info": "Aktifkan saran penyelesaian otomatis dari server.",
 	"lsp-feature-diagnostics": "Diagnostik",
 	"lsp-feature-diagnostics-info": "Tampilkan kesalahan dan peringatan dari server bahasa.",
-	"lsp-feature-document-highlights": "Penyorotan dokumen",
-	"lsp-feature-document-highlights-info": "Sorot semua kemunculan kata di bawah kursor.",
 	"lsp-feature-formatting": "Pemformatan",
 	"lsp-feature-formatting-info": "Aktifkan pemformatan kode dari server.",
 	"lsp-feature-hover": "Informasi saat kursor diarahkan",

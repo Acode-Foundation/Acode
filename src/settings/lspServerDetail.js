@@ -53,12 +53,6 @@ function getFeatureItems() {
 			strings["lsp-feature-inlay-hints-info"],
 		],
 		[
-			"ext_documentHighlights",
-			"documentHighlights",
-			strings["lsp-feature-document-highlights"],
-			strings["lsp-feature-document-highlights-info"],
-		],
-		[
 			"ext_formatting",
 			"formatting",
 			strings["lsp-feature-formatting"],
@@ -703,7 +697,6 @@ export default function lspServerDetail(serverId) {
 			case "ext_signature":
 			case "ext_diagnostics":
 			case "ext_inlayHints":
-			case "ext_documentHighlights":
 			case "ext_formatting": {
 				const extKey = key.replace("ext_", "");
 				const feature = getFeatureItems().find(

@@ -15,7 +15,6 @@ export const webServers: LspServerManifest[] = [
 		}),
 		clientConfig: {
 			builtinExtensions: {
-				documentHighlights: false,
 				keymaps: false,
 			},
 		},
@@ -34,7 +33,6 @@ export const webServers: LspServerManifest[] = [
 		}),
 		clientConfig: {
 			builtinExtensions: {
-				documentHighlights: false,
 				keymaps: false,
 			},
 		},
@@ -53,7 +51,6 @@ export const webServers: LspServerManifest[] = [
 		}),
 		clientConfig: {
 			builtinExtensions: {
-				documentHighlights: false,
 				keymaps: false,
 			},
 		},

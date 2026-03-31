@@ -533,8 +533,6 @@
 	"lsp-feature-completion-info": "Enable autocomplete suggestions from the server.",
 	"lsp-feature-diagnostics": "Diagnostics",
 	"lsp-feature-diagnostics-info": "Show errors and warnings from the language server.",
-	"lsp-feature-document-highlights": "Document highlights",
-	"lsp-feature-document-highlights-info": "Highlight all occurrences of the word under the cursor.",
 	"lsp-feature-formatting": "Formatting",
 	"lsp-feature-formatting-info": "Enable code formatting from the language server.",
 	"lsp-feature-hover": "Hover information",
