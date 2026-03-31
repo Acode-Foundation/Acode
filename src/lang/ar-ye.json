@@ -705,5 +705,15 @@
 	"pinned tab": "Pinned tab",
 	"unpin tab before closing": "Unpin the tab before closing it.",
 	"app font": "App font",
-	"settings-info-app-font-family": "Choose the font used across the app interface."
+	"settings-info-app-font-family": "Choose the font used across the app interface.",
+	"lsp-transport-method-stdio": "STDIO (launch a binary command)",
+	"lsp-transport-method-websocket": "WebSocket (connect to a ws/wss URL)",
+	"lsp-websocket-url": "WebSocket URL",
+	"lsp-websocket-server-managed-externally": "This server is managed externally over WebSocket.",
+	"lsp-error-websocket-url-invalid": "WebSocket URL must start with ws:// or wss://",
+	"lsp-error-websocket-url-required": "WebSocket URL is required",
+	"lsp-remove-custom-server": "Remove custom server",
+	"lsp-remove-custom-server-confirm": "Remove custom language server {server}?",
+	"lsp-custom-server-removed": "Custom server removed",
+	"settings-info-lsp-remove-custom-server": "Remove this custom language server from Acode."
 }

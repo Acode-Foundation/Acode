@@ -344,7 +344,10 @@ function createStdioTransport(
 			`LSP server ${server.id} is missing transport configuration`,
 		);
 	}
-	if (!server.transport.url) {
+	if (
+		!server.transport.url &&
+		!(context.dynamicPort && context.dynamicPort > 0)
+	) {
 		throw new Error(
 			`STDIO transport for ${server.id} is missing a websocket bridge url`,
 		);

@@ -84,14 +84,21 @@ export async function upsertCustomServer(serverId, config) {
 	const current = cloneLspSettings();
 	current.servers = current.servers || {};
 	const existing = current.servers[key] || {};
+	const hasTransport = Object.prototype.hasOwnProperty.call(
+		config,
+		"transport",
+	);
+	const hasLauncher = Object.prototype.hasOwnProperty.call(config, "launcher");
 	const nextConfig = {
 		...existing,
 		...config,
 		custom: true,
 		label: config.label || existing.label || key,
 		languages,
-		transport: config.transport || existing.transport || { kind: "websocket" },
-		launcher: config.launcher || existing.launcher,
+		transport: hasTransport
+			? config.transport
+			: existing.transport || { kind: "websocket" },
+		launcher: hasLauncher ? config.launcher : existing.launcher,
 		enabled: config.enabled !== false,
 	};
 
