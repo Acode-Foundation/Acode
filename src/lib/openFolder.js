@@ -52,7 +52,9 @@ const convertToProotPath = (url = "") => {
 	if (isAcodeTerminalPublicSafUri(url)) {
 		try {
 			const { docId } = Uri.parse(url);
-			const cleanDocId = decodeURIComponent(docId || "");
+			const cleanDocId = /::/.test(url)
+				? decodeURIComponent(docId || "")
+				: docId || "";
 			if (!cleanDocId) return "/public";
 			if (cleanDocId.startsWith(publicDir)) {
 				return cleanDocId.replace(publicDir, "/public") || "/public";
@@ -64,7 +66,9 @@ const convertToProotPath = (url = "") => {
 				const relativePath = cleanDocId.slice("public:".length);
 				return relativePath ? Path.join("/public", relativePath) : "/public";
 			}
-			const relativePath = cleanDocId.replace(/^\/+/, "");
+			const relativePath = cleanDocId
+				.replace(/^\/+/, "")
+				.replace(/^public\//, "");
 			return relativePath ? Path.join("/public", relativePath) : "/public";
 		} catch (error) {
 			console.warn(
