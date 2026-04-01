@@ -1730,7 +1730,7 @@ public class System extends CordovaPlugin {
         // Keep Cordova's BackgroundColor flow for API 36+, but also apply the
         // window colors directly so OEM variants do not leave stale system-bar
         // colors behind after a theme switch.
-        window.clearFlags(0x04000000); // FLAG_TRANSLUCENT_STATUS
+        window.clearFlags(0x04000000 | 0x08000000); // FLAG_TRANSLUCENT_STATUS | FLAG_TRANSLUCENT_NAVIGATION
         window.addFlags(0x80000000); // FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
