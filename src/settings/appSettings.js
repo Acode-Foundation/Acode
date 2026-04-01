@@ -7,6 +7,7 @@ import select from "dialogs/select";
 import actions from "handlers/quickTools";
 import actionStack from "lib/actionStack";
 import constants from "lib/constants";
+import fonts from "lib/fonts";
 import lang from "lib/lang";
 import openFile from "lib/openFile";
 import appSettings from "lib/settings";
@@ -19,6 +20,11 @@ import Url from "utils/Url";
 export default function otherSettings() {
 	const values = appSettings.value;
 	const title = strings["app settings"].capitalize();
+	const appFontText = strings["app font"] || "App font";
+	const appFontInfo =
+		strings["settings-info-app-font-family"] ||
+		"Choose the font used across the app interface.";
+	const defaultFontLabel = strings.default || "Default";
 	const categories = {
 		interface: strings["settings-category-interface"],
 		fonts: strings["settings-category-fonts"],
@@ -152,6 +158,17 @@ export default function otherSettings() {
 			},
 			info: strings["settings-info-app-touch-move-threshold"],
 			category: categories.interface,
+		},
+		{
+			key: "appFont",
+			text: appFontText,
+			value: values.appFont || "",
+			valueText: (value) => value || defaultFontLabel,
+			get select() {
+				return [["", defaultFontLabel], ...fonts.getNames()];
+			},
+			info: appFontInfo,
+			category: categories.fonts,
 		},
 		{
 			key: "fontManager",
@@ -298,6 +315,10 @@ export default function otherSettings() {
 			case "fontManager":
 				FontManager();
 				return;
+
+			case "appFont":
+				await fonts.setAppFont(value);
+				break;
 
 			case "console": {
 				if (value !== "eruda") {

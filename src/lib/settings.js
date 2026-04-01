@@ -137,6 +137,7 @@ class Settings {
 			openFileListPos: this.OPEN_FILE_LIST_POS_HEADER,
 			quickTools: this.#IS_TABLET ? 0 : 1,
 			quickToolsTriggerMode: this.QUICKTOOLS_TRIGGER_MODE_TOUCH,
+			appFont: "",
 			editorFont: "Roboto Mono",
 			vibrateOnTap: true,
 			fullscreen: false,

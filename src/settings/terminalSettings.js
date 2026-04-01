@@ -325,14 +325,16 @@ export default function terminalSettings() {
 	 */
 	async function terminalRestore() {
 		try {
+			await Executor.execute("rm -rf $PREFIX/aterm_backup.*");
+
 			sdcard.openDocumentFile(
 				async (data) => {
 					loader.showTitleLoader();
-					//this will create a file at $PREFIX/atem_backup.bin
+					//this will create a file at $PREFIX/atem_backup.tar.tar
 					await system.copyToUri(
 						data.uri,
 						cordova.file.dataDirectory,
-						"aterm_backup",
+						"aterm_backup.tar",
 						console.log,
 						console.error,
 					);
@@ -340,11 +342,9 @@ export default function terminalSettings() {
 					// Restore
 					await Terminal.restore();
 
-					// Clean up
-					const backupFilename = "aterm_backup.bin";
-					const tempBackupPath = cordova.file.dataDirectory + backupFilename;
-					const tempFS = fsOperation(tempBackupPath);
-					await tempFS.delete();
+					//Cleanup restore file
+					await Executor.execute("rm -rf $PREFIX/aterm_backup.*");
+
 					loader.removeTitleLoader();
 					alert(
 						strings.success.toUpperCase(),
@@ -367,7 +367,7 @@ export default function terminalSettings() {
  * @param {string} key
  * @param {any} value
  */
-async function updateActiveTerminals(key, value) {
+export async function updateActiveTerminals(key, value) {
 	// Find all terminal tabs and update their settings
 	const terminalTabs = editorManager.files.filter(
 		(file) => file.type === "terminal",

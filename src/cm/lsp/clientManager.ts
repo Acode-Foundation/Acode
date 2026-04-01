@@ -15,7 +15,6 @@ import lspStatusBar from "components/lspStatusBar";
 import NotificationManager from "lib/notificationManager";
 import Uri from "utils/Uri";
 import { clearDiagnosticsEffect } from "./diagnostics";
-import { documentHighlightsExtension } from "./documentHighlights";
 import { supportsBuiltinFormatting } from "./formattingSupport";
 import { inlayHintsExtension } from "./inlayHints";
 import { acodeRenameKeymap } from "./rename";
@@ -27,7 +26,7 @@ import type {
 	BuiltinExtensionsConfig,
 	ClientManagerOptions,
 	ClientState,
-	EnsureServerResult,
+	DocumentUriContext,
 	FileMetadata,
 	FormattingOptions,
 	LspServerDefinition,
@@ -160,7 +159,6 @@ function buildBuiltinExtensions(
 		keymaps: includeKeymaps = true,
 		diagnostics: includeDiagnostics = true,
 		inlayHints: includeInlayHints = false,
-		documentHighlights: includeDocumentHighlights = true,
 		formatting: includeFormatting = true,
 	} = config;
 
@@ -189,10 +187,6 @@ function buildBuiltinExtensions(
 	if (includeInlayHints) {
 		const hintsExt = inlayHintsExtension();
 		extensions.push(hintsExt as LSPClientExtension as Extension);
-	}
-	if (includeDocumentHighlights) {
-		const highlightsExt = documentHighlightsExtension();
-		extensions.push(highlightsExt as LSPClientExtension as Extension);
 	}
 
 	return { extensions, diagnosticsExtension };
@@ -248,30 +242,23 @@ export class LspClientManager {
 		const servers = serverRegistry.getServersForLanguage(effectiveLang);
 		if (!servers.length) return [];
 
-		// Normalize the document URI for LSP (convert content:// to file://)
-		let normalizedUri = normalizeDocumentUri(originalUri);
-		if (!normalizedUri) {
-			// Fall back to cache file path for unrecognized URIs
-			// This allows LSP to work with any file system provider using the local cache
-			const cacheFile = file?.cacheFile;
-			if (cacheFile && typeof cacheFile === "string") {
-				normalizedUri = buildFileUri(cacheFile.replace(/^file:\/\//, ""));
-				if (normalizedUri) {
-					console.info(
-						`LSP using cache path for unrecognized URI: ${originalUri} -> ${normalizedUri}`,
-					);
-				}
-			}
-			if (!normalizedUri) {
-				console.warn(`Cannot normalize document URI for LSP: ${originalUri}`);
-				return [];
-			}
-		}
-
 		const lspExtensions: Extension[] = [];
 		const diagnosticsUiExtension = this.options.diagnosticsUiExtension;
 
 		for (const server of servers) {
+			const normalizedUri = await this.#resolveDocumentUri(server, {
+				uri: originalUri,
+				file,
+				view,
+				languageId: effectiveLang,
+				rootUri,
+			});
+			if (!normalizedUri) {
+				console.warn(
+					`Cannot resolve document URI for LSP server ${server.id}: ${originalUri}`,
+				);
+				continue;
+			}
 			let targetLanguageId = effectiveLang;
 			if (server.resolveLanguageId) {
 				try {
@@ -302,7 +289,9 @@ export class LspClientManager {
 					normalizedUri,
 					targetLanguageId,
 				);
-				clientState.attach(normalizedUri, view as EditorView);
+				const aliases =
+					originalUri && originalUri !== normalizedUri ? [originalUri] : [];
+				clientState.attach(normalizedUri, view as EditorView, aliases);
 				lspExtensions.push(plugin);
 			} catch (error) {
 				const lspError = error as LSPError;
@@ -334,26 +323,25 @@ export class LspClientManager {
 		const effectiveLang = safeString(languageId ?? languageName).toLowerCase();
 		if (!effectiveLang || !view) return false;
 
-		let normalizedUri = normalizeDocumentUri(originalUri);
-		if (!normalizedUri) {
-			const cacheFile = file?.cacheFile;
-			if (cacheFile && typeof cacheFile === "string") {
-				normalizedUri = buildFileUri(cacheFile.replace(/^file:\/\//, ""));
-			}
-			if (!normalizedUri) {
-				console.warn(
-					`Cannot normalize document URI for formatting: ${originalUri}`,
-				);
-				return false;
-			}
-		}
-
 		const servers = serverRegistry.getServersForLanguage(effectiveLang);
 		if (!servers.length) return false;
 
 		for (const server of servers) {
 			if (!supportsBuiltinFormatting(server)) continue;
 			try {
+				const normalizedUri = await this.#resolveDocumentUri(server, {
+					uri: originalUri,
+					file,
+					view,
+					languageId: effectiveLang,
+					rootUri: metadata.rootUri,
+				});
+				if (!normalizedUri) {
+					console.warn(
+						`Cannot resolve document URI for formatting with ${server.id}: ${originalUri}`,
+					);
+					continue;
+				}
 				const context: RootUriContext = {
 					uri: normalizedUri,
 					languageId: effectiveLang,
@@ -530,7 +518,6 @@ export class LspClientManager {
 						keymaps: builtinConfig.keymaps !== false,
 						diagnostics: builtinConfig.diagnostics !== false,
 						inlayHints: builtinConfig.inlayHints === true,
-						documentHighlights: builtinConfig.documentHighlights !== false,
 						formatting: builtinConfig.formatting !== false,
 					})
 				: { extensions: [], diagnosticsExtension: null };
@@ -841,28 +828,44 @@ export class LspClientManager {
 			originalRootUri,
 		} = params;
 		const fileRefs = new Map<string, Set<EditorView>>();
+		const uriAliases = new Map<string, string>();
 		const effectiveRoot = normalizedRootUri ?? originalRootUri ?? null;
 
-		const attach = (uri: string, view: EditorView): void => {
+		const attach = (
+			uri: string,
+			view: EditorView,
+			aliases: string[] = [],
+		): void => {
 			const existing = fileRefs.get(uri) ?? new Set();
 			existing.add(view);
 			fileRefs.set(uri, existing);
+			uriAliases.set(uri, uri);
+			for (const alias of aliases) {
+				if (!alias || alias === uri) continue;
+				uriAliases.set(alias, uri);
+			}
 			const suffix = effectiveRoot ? ` (root ${effectiveRoot})` : "";
 			logLspInfo(`[LSP:${server.id}] attached to ${uri}${suffix}`);
 		};
 
 		const detach = (uri: string, view?: EditorView): void => {
-			const existing = fileRefs.get(uri);
+			const actualUri = uriAliases.get(uri) ?? uri;
+			const existing = fileRefs.get(actualUri);
 			if (!existing) return;
 			if (view) existing.delete(view);
 			if (!view || !existing.size) {
-				fileRefs.delete(uri);
+				fileRefs.delete(actualUri);
+				for (const [alias, target] of uriAliases.entries()) {
+					if (target === actualUri) {
+						uriAliases.delete(alias);
+					}
+				}
 				try {
 					// Only pass uri to closeFile - view is not needed for closing
 					// and passing it may cause issues if the view is already disposed
-					(client.workspace as AcodeWorkspace)?.closeFile?.(uri);
+					(client.workspace as AcodeWorkspace)?.closeFile?.(actualUri);
 				} catch (error) {
-					console.warn(`Failed to close LSP file ${uri}`, error);
+					console.warn(`Failed to close LSP file ${actualUri}`, error);
 				}
 			}
 
@@ -904,8 +907,6 @@ export class LspClientManager {
 		server: LspServerDefinition,
 		context: RootUriContext,
 	): Promise<string | null> {
-		if (context?.rootUri) return context.rootUri;
-
 		if (typeof server.rootUri === "function") {
 			try {
 				const value = await server.rootUri(context?.uri ?? "", context);
@@ -914,6 +915,8 @@ export class LspClientManager {
 				console.warn(`Server root resolver failed for ${server.id}`, error);
 			}
 		}
+
+		if (context?.rootUri) return safeString(context.rootUri);
 
 		if (typeof this.options.resolveRoot === "function") {
 			try {
@@ -925,6 +928,45 @@ export class LspClientManager {
 		}
 
 		return null;
+	}
+
+	async #resolveDocumentUri(
+		server: LspServerDefinition,
+		context: RootUriContext,
+	): Promise<string | null> {
+		const originalUri = context?.uri;
+		if (!originalUri) return null;
+
+		let normalizedUri = normalizeDocumentUri(originalUri);
+		if (!normalizedUri) {
+			// Fall back to cache file path for providers that do not expose a file:// URI.
+			const cacheFile = context.file?.cacheFile;
+			if (cacheFile && typeof cacheFile === "string") {
+				normalizedUri = buildFileUri(cacheFile.replace(/^file:\/\//, ""));
+				if (normalizedUri) {
+					console.info(
+						`LSP using cache path for unrecognized URI: ${originalUri} -> ${normalizedUri}`,
+					);
+				}
+			}
+		}
+
+		if (typeof server.documentUri === "function") {
+			try {
+				const value = await server.documentUri(originalUri, {
+					...context,
+					normalizedUri,
+				} as DocumentUriContext);
+				if (value) return safeString(value);
+			} catch (error) {
+				console.warn(
+					`Server document URI resolver failed for ${server.id}`,
+					error,
+				);
+			}
+		}
+
+		return normalizedUri;
 	}
 }
 

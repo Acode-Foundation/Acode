@@ -7,6 +7,11 @@ export const systemsServers: LspServerManifest[] = [
 		label: "C / C++ (clangd)",
 		languages: ["c", "cpp"],
 		command: "clangd",
+		args: [
+			"--background-index=0",
+			"--clang-tidy=0",
+			"--header-insertion=never",
+		],
 		checkCommand: "which clangd",
 		installer: installers.apk({
 			executable: "clangd",

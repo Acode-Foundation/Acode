@@ -12,7 +12,13 @@ import toast from "components/toast";
 import alert from "dialogs/alert";
 import confirm from "dialogs/confirm";
 import prompt from "dialogs/prompt";
-import { getServerOverride, updateServerConfig } from "./lspConfigUtils";
+import appSettings from "lib/settings";
+import {
+	getServerOverride,
+	isCustomServer,
+	removeCustomServer,
+	updateServerConfig,
+} from "./lspConfigUtils";
 
 function getFeatureItems() {
 	return [
@@ -45,12 +51,6 @@ function getFeatureItems() {
 			"inlayHints",
 			strings["lsp-feature-inlay-hints"],
 			strings["lsp-feature-inlay-hints-info"],
-		],
-		[
-			"ext_documentHighlights",
-			"documentHighlights",
-			strings["lsp-feature-document-highlights"],
-			strings["lsp-feature-document-highlights-info"],
 		],
 		[
 			"ext_formatting",
@@ -87,6 +87,10 @@ function mergeLauncher(base, patch) {
 			...(patch?.install || {}),
 		},
 	};
+}
+
+function isDirectWebSocketServer(server) {
+	return server?.transport?.kind === "websocket" && !server?.launcher?.bridge;
 }
 
 function getMergedConfig(server) {
@@ -232,20 +236,29 @@ async function buildSnapshot(serverId) {
 
 	const merged = getMergedConfig(liveServer);
 	const override = getServerOverride(serverId);
-	const installResult = await checkServerInstallation(merged).catch(
-		(error) => ({
-			status: "failed",
-			version: null,
-			canInstall: true,
-			canUpdate: true,
-			message: error instanceof Error ? error.message : String(error),
-		}),
-	);
+	const directWebSocket = isDirectWebSocketServer(merged);
+	const installResult = directWebSocket
+		? {
+				status: "unknown",
+				version: null,
+				canInstall: false,
+				canUpdate: false,
+				message: strings["lsp-websocket-server-managed-externally"],
+			}
+		: await checkServerInstallation(merged).catch((error) => ({
+				status: "failed",
+				version: null,
+				canInstall: true,
+				canUpdate: true,
+				message: error instanceof Error ? error.message : String(error),
+			}));
 
 	return {
 		liveServer,
 		merged,
 		override,
+		directWebSocket,
+		isCustom: isCustomServer(serverId),
 		installResult,
 		builtinExts: merged.clientConfig?.builtinExtensions || {},
 		installCommand: getInstallCommand(merged, "install"),
@@ -270,35 +283,17 @@ function createItems(snapshot) {
 			info: strings["settings-info-lsp-server-enabled"],
 			category: categories.general,
 		},
-		{
-			key: "install_status",
-			text: strings["lsp-installed"],
-			value: formatInstallStatus(snapshot.installResult),
-			info: formatInstallInfo(snapshot.installResult),
-			category: categories.installation,
-			chevron: true,
-		},
-		{
-			key: "install_server",
-			text: strings["lsp-install-repair"],
-			info: strings["settings-info-lsp-install-server"],
-			category: categories.installation,
-			chevron: true,
-		},
-		{
-			key: "update_server",
-			text: strings["lsp-update-server"],
-			info: strings["settings-info-lsp-update-server"],
-			category: categories.installation,
-			chevron: true,
-		},
-		{
-			key: "uninstall_server",
-			text: strings["lsp-uninstall-server"],
-			info: strings["settings-info-lsp-uninstall-server"],
-			category: categories.installation,
-			chevron: true,
-		},
+		...(snapshot.isCustom
+			? [
+					{
+						key: "remove_custom_server",
+						text: strings["lsp-remove-custom-server"],
+						info: strings["settings-info-lsp-remove-custom-server"],
+						category: categories.general,
+						chevron: true,
+					},
+				]
+			: []),
 		{
 			key: "startup_timeout",
 			text: strings["lsp-startup-timeout"],
@@ -325,6 +320,42 @@ function createItems(snapshot) {
 			chevron: true,
 		},
 	];
+
+	if (!snapshot.directWebSocket) {
+		items.splice(
+			1,
+			0,
+			{
+				key: "install_status",
+				text: strings["lsp-installed"],
+				value: formatInstallStatus(snapshot.installResult),
+				info: formatInstallInfo(snapshot.installResult),
+				category: categories.installation,
+				chevron: true,
+			},
+			{
+				key: "install_server",
+				text: strings["lsp-install-repair"],
+				info: strings["settings-info-lsp-install-server"],
+				category: categories.installation,
+				chevron: true,
+			},
+			{
+				key: "update_server",
+				text: strings["lsp-update-server"],
+				info: strings["settings-info-lsp-update-server"],
+				category: categories.installation,
+				chevron: true,
+			},
+			{
+				key: "uninstall_server",
+				text: strings["lsp-uninstall-server"],
+				info: strings["settings-info-lsp-uninstall-server"],
+				category: categories.installation,
+				chevron: true,
+			},
+		);
+	}
 
 	featureItems.forEach(([key, extKey, text, info]) => {
 		items.push({
@@ -435,13 +466,23 @@ export default function lspServerDetail(serverId) {
 		liveServer: initialServer,
 		merged: getMergedConfig(initialServer),
 		override: getServerOverride(serverId),
-		installResult: {
-			status: "unknown",
-			version: null,
-			canInstall: true,
-			canUpdate: true,
-			message: strings["lsp-checking-installation-status"],
-		},
+		directWebSocket: isDirectWebSocketServer(getMergedConfig(initialServer)),
+		isCustom: isCustomServer(serverId),
+		installResult: isDirectWebSocketServer(getMergedConfig(initialServer))
+			? {
+					status: "unknown",
+					version: null,
+					canInstall: false,
+					canUpdate: false,
+					message: strings["lsp-websocket-server-managed-externally"],
+				}
+			: {
+					status: "unknown",
+					version: null,
+					canInstall: true,
+					canUpdate: true,
+					message: strings["lsp-checking-installation-status"],
+				},
 		builtinExts:
 			getMergedConfig(initialServer).clientConfig?.builtinExtensions || {},
 		installCommand: getInstallCommand(
@@ -498,6 +539,24 @@ export default function lspServerDetail(serverId) {
 						: strings["lsp-server-disabled-toast"],
 				);
 				break;
+
+			case "remove_custom_server":
+				if (
+					!(await confirm(
+						strings["lsp-remove-custom-server"],
+						fillTemplate(strings["lsp-remove-custom-server-confirm"], {
+							server: snapshot.liveServer.label || serverId,
+						}),
+					))
+				) {
+					break;
+				}
+				stopManagedServer(serverId);
+				await removeCustomServer(serverId);
+				toast(strings["lsp-custom-server-removed"]);
+				page.hide();
+				appSettings.uiSettings["lsp-settings"]?.show();
+				return;
 
 			case "install_status": {
 				const result = await checkServerInstallation(snapshot.merged);
@@ -638,7 +697,6 @@ export default function lspServerDetail(serverId) {
 			case "ext_signature":
 			case "ext_diagnostics":
 			case "ext_inlayHints":
-			case "ext_documentHighlights":
 			case "ext_formatting": {
 				const extKey = key.replace("ext_", "");
 				const feature = getFeatureItems().find(

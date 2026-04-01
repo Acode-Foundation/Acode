@@ -74,7 +74,7 @@
 
     .icon.lang {
       padding-right: 5px;
-      font-family: "Roboto", sans-serif;
+      font-family: var(--app-font-family);
       font-weight: bolder;
       color: rgb(37, 37, 37);
       color: var(--secondary-text-color);

@@ -42,6 +42,7 @@ export interface WorkspaceFileUpdate {
 // ============================================================================
 
 export type TransportKind = "websocket" | "stdio" | "external";
+type MaybePromise<T> = T | Promise<T>;
 
 export interface WebSocketTransportOptions {
 	binary?: boolean;
@@ -144,7 +145,6 @@ export interface BuiltinExtensionsConfig {
 	keymaps?: boolean;
 	diagnostics?: boolean;
 	inlayHints?: boolean;
-	documentHighlights?: boolean;
 	formatting?: boolean;
 }
 
@@ -168,6 +168,10 @@ export interface LanguageResolverContext {
 	file?: AcodeFile;
 }
 
+export interface DocumentUriContext extends RootUriContext {
+	normalizedUri?: string | null;
+}
+
 export interface LspServerManifest {
 	id?: string;
 	label?: string;
@@ -179,8 +183,14 @@ export interface LspServerManifest {
 	startupTimeout?: number;
 	capabilityOverrides?: Record<string, unknown>;
 	rootUri?:
-		| ((uri: string, context: unknown) => string | null)
-		| ((uri: string, context: RootUriContext) => string | null)
+		| ((uri: string, context: unknown) => MaybePromise<string | null>)
+		| ((uri: string, context: RootUriContext) => MaybePromise<string | null>)
+		| null;
+	documentUri?:
+		| ((
+				uri: string,
+				context: DocumentUriContext,
+		  ) => MaybePromise<string | null | undefined>)
 		| null;
 	resolveLanguageId?:
 		| ((context: LanguageResolverContext) => string | null)
@@ -226,7 +236,15 @@ export interface LspServerDefinition {
 	clientConfig?: AcodeClientConfig;
 	startupTimeout?: number;
 	capabilityOverrides?: Record<string, unknown>;
-	rootUri?: ((uri: string, context: RootUriContext) => string | null) | null;
+	rootUri?:
+		| ((uri: string, context: RootUriContext) => MaybePromise<string | null>)
+		| null;
+	documentUri?:
+		| ((
+				uri: string,
+				context: DocumentUriContext,
+		  ) => MaybePromise<string | null | undefined>)
+		| null;
 	resolveLanguageId?:
 		| ((context: LanguageResolverContext) => string | null)
 		| null;
@@ -294,7 +312,7 @@ export interface ClientState {
 	client: LSPClient;
 	transport: TransportHandle;
 	rootUri: string | null;
-	attach: (uri: string, view: EditorView) => void;
+	attach: (uri: string, view: EditorView, aliases?: string[]) => void;
 	detach: (uri: string, view?: EditorView) => void;
 	dispose: () => Promise<void>;
 }

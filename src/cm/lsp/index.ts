@@ -28,12 +28,6 @@ export {
 	lspDiagnosticsExtension,
 	lspDiagnosticsUiExtension,
 } from "./diagnostics";
-export type { DocumentHighlightsConfig } from "./documentHighlights";
-export {
-	documentHighlightsClientExtension,
-	documentHighlightsEditorExtension,
-	documentHighlightsExtension,
-} from "./documentHighlights";
 export type {
 	DocumentSymbolsResult,
 	FlatSymbol,
@@ -84,6 +78,7 @@ export type {
 	ClientManagerOptions,
 	ClientState,
 	DiagnosticRelatedInformation,
+	DocumentUriContext,
 	FileMetadata,
 	FormattingOptions,
 	LSPClientWithWorkspace,

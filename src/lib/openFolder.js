@@ -14,6 +14,7 @@ import escapeStringRegexp from "escape-string-regexp";
 import FileBrowser from "pages/fileBrowser";
 import helpers from "utils/helpers";
 import Path from "utils/Path";
+import Uri from "utils/Uri";
 import Url from "utils/Url";
 import constants from "./constants";
 import * as FileList from "./fileList";
@@ -49,7 +50,32 @@ const isTerminalAccessiblePath = (url = "") => {
 const convertToProotPath = (url = "") => {
 	const { alpineRoot, publicDir } = getTerminalPaths();
 	if (isAcodeTerminalPublicSafUri(url)) {
-		return "/public";
+		try {
+			const { docId } = Uri.parse(url);
+			const cleanDocId = /::/.test(url)
+				? decodeURIComponent(docId || "")
+				: docId || "";
+			if (!cleanDocId) return "/public";
+			if (cleanDocId.startsWith(publicDir)) {
+				return cleanDocId.replace(publicDir, "/public") || "/public";
+			}
+			if (cleanDocId.startsWith("/public")) {
+				return cleanDocId;
+			}
+			if (cleanDocId.startsWith("public:")) {
+				const relativePath = cleanDocId.slice("public:".length);
+				return relativePath ? Path.join("/public", relativePath) : "/public";
+			}
+			const relativePath = cleanDocId
+				.replace(/^\/+/, "")
+				.replace(/^public\//, "");
+			return relativePath ? Path.join("/public", relativePath) : "/public";
+		} catch (error) {
+			console.warn(
+				`Failed to parse public SAF URI for terminal conversion: ${url}`,
+			);
+			return "/public";
+		}
 	}
 	const cleanUrl = url.replace(/^file:\/\//, "");
 	if (cleanUrl.startsWith(publicDir)) {

@@ -534,8 +534,6 @@
 	"lsp-feature-completion-info": "Automatikus kiegészítési javaslatok engedélyezése a kiszolgálótól.",
 	"lsp-feature-diagnostics": "Diagnosztika",
 	"lsp-feature-diagnostics-info": "Hibák és figyelmeztetések megjelenítése a nyelvi kiszolgálótól.",
-	"lsp-feature-document-highlights": "Dokumentum-kiemelések",
-	"lsp-feature-document-highlights-info": "Kurzor alatti szó összes előfordulásának kiemelése.",
 	"lsp-feature-formatting": "Formázás",
 	"lsp-feature-formatting-info": "Kódformázás engedélyezése a nyelvi kiszolgálótól.",
 	"lsp-feature-hover": "Felugró információk",
@@ -704,5 +702,17 @@
 	"pin tab": "Lap rögzítése",
 	"unpin tab": "Lap rögzítésének megszüntetése",
 	"pinned tab": "Rögzített lap",
-	"unpin tab before closing": "Lap rögzítésének megszüntetése bezárás előtt."
+	"unpin tab before closing": "Lap rögzítésének megszüntetése bezárás előtt.",
+	"app font": "Alkalmazás betűtípusa",
+	"settings-info-app-font-family": "Válassza ki az alkalmazás egész felületén használandó betűtípust.",
+	"lsp-transport-method-stdio": "STDIO (bináris parancs futtatása)",
+	"lsp-transport-method-websocket": "WebSocket (kapcsolódás ws/wss webcímhez)",
+	"lsp-websocket-url": "WebSocket webcím",
+	"lsp-websocket-server-managed-externally": "Ezt a kiszolgálót külsőleg kezelik WebSocketen keresztül.",
+	"lsp-error-websocket-url-invalid": "A WebSocket webcímnek ws:// vagy wss:// előtaggal kell kezdődnie",
+	"lsp-error-websocket-url-required": "A WebSocket webcím megadása kötelező",
+	"lsp-remove-custom-server": "Egyéni kiszolgáló eltávolítása",
+	"lsp-remove-custom-server-confirm": "Eltávolítja a(z) {server} egyéni nyelvi kiszolgálót?",
+	"lsp-custom-server-removed": "Egyéni kiszolgáló eltávolítva",
+	"settings-info-lsp-remove-custom-server": "Eltávolítja ezt az egyéni nyelvi kiszolgálót az Acode alkalmazásból."
 }

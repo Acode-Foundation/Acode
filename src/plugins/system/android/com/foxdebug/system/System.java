@@ -1710,15 +1710,48 @@ public class System extends CordovaPlugin {
         try {
             this.systemBarColor = Color.parseColor(systemBarColor);
             this.theme = new Theme(scheme);
-        
-            preferences.set("BackgroundColor", this.systemBarColor);
 
+            preferences.set("BackgroundColor", this.systemBarColor);
             webView.getPluginManager().postMessage("updateSystemBars", null);
+            applySystemBarTheme();
 
             callback.success();
         } catch (IllegalArgumentException e) {
             callback.error("Invalid color: " + systemBarColor);
+        } catch (Exception e) {
+            callback.error(e.toString());
         }
+    }
+
+    private void applySystemBarTheme() {
+        final Window window = activity.getWindow();
+        final View decorView = window.getDecorView();
+
+        // Keep Cordova's BackgroundColor flow for API 36+, but also apply the
+        // window colors directly so OEM variants do not leave stale system-bar
+        // colors behind after a theme switch.
+        window.clearFlags(0x04000000 | 0x08000000); // FLAG_TRANSLUCENT_STATUS | FLAG_TRANSLUCENT_NAVIGATION
+        window.addFlags(0x80000000); // FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.setNavigationBarContrastEnforced(false);
+            window.setStatusBarContrastEnforced(false);
+        }
+
+        decorView.setBackgroundColor(this.systemBarColor);
+
+        View rootView = activity.findViewById(android.R.id.content);
+        if (rootView != null) {
+            rootView.setBackgroundColor(this.systemBarColor);
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            window.setStatusBarColor(this.systemBarColor);
+            window.setNavigationBarColor(this.systemBarColor);
+        }
+
+        setStatusBarStyle(window);
+        setNavigationBarStyle(window);
     }
 
     private void setStatusBarStyle(final Window window) {
@@ -1754,22 +1787,22 @@ public class System extends CordovaPlugin {
         String themeType = theme.getType();
         View decorView = window.getDecorView();
         int uiOptions;
+        int lightNavigationBar;
 
         if (SDK_INT <= 30) {
             uiOptions = getDeprecatedSystemUiVisibility(decorView);
-            // 0x80000000 FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS
-            // 0x00000010 SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+            lightNavigationBar = View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
 
             if (themeType.equals("light")) {
-                setDeprecatedSystemUiVisibility(decorView, uiOptions | 0x80000000 | 0x00000010);
+                setDeprecatedSystemUiVisibility(decorView, uiOptions | lightNavigationBar);
                 return;
             }
-            setDeprecatedSystemUiVisibility(decorView, uiOptions | (0x80000000 & ~0x00000010));
+            setDeprecatedSystemUiVisibility(decorView, uiOptions & ~lightNavigationBar);
             return;
         }
 
         uiOptions = Objects.requireNonNull(decorView.getWindowInsetsController()).getSystemBarsAppearance();
-        int lightNavigationBar = WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+        lightNavigationBar = WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
 
         if (themeType.equals("light")) {
             decorView.getWindowInsetsController().setSystemBarsAppearance(uiOptions | lightNavigationBar, lightNavigationBar);

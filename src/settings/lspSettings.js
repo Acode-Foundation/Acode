@@ -1,3 +1,4 @@
+import { quoteArg } from "cm/lsp/installRuntime";
 import serverRegistry from "cm/lsp/serverRegistry";
 import settingsPage from "components/settingsPage";
 import toast from "components/toast";
@@ -38,6 +39,54 @@ function getInstallMethods() {
 		{ value: "cargo", text: strings["lsp-install-method-cargo"] },
 		{ value: "shell", text: strings["lsp-install-method-shell"] },
 	];
+}
+
+function getTransportMethods() {
+	return [
+		{
+			value: "stdio",
+			text:
+				strings["lsp-transport-method-stdio"] ||
+				"STDIO (launch a binary command)",
+		},
+		{
+			value: "websocket",
+			text:
+				strings["lsp-transport-method-websocket"] ||
+				"WebSocket (connect to a ws/wss URL)",
+		},
+	];
+}
+
+function parseWebSocketUrl(value) {
+	const normalized = String(value || "").trim();
+	if (!normalized) {
+		throw new Error(
+			strings["lsp-error-websocket-url-required"] ||
+				"WebSocket URL is required",
+		);
+	}
+	if (!/^wss?:\/\//i.test(normalized)) {
+		throw new Error(
+			strings["lsp-error-websocket-url-invalid"] ||
+				"WebSocket URL must start with ws:// or wss://",
+		);
+	}
+	return normalized;
+}
+
+function buildDefaultCheckCommand(binaryCommand, installer) {
+	const executable = String(
+		installer?.binaryPath || installer?.executable || binaryCommand || "",
+	).trim();
+	if (!executable) return "";
+	if (installer?.kind === "manual" && installer?.binaryPath) {
+		return `test -x ${quoteArg(installer.binaryPath)}`;
+	}
+	if (executable.includes("/")) {
+		return `test -x ${quoteArg(executable)}`;
+	}
+	return `which ${quoteArg(executable)}`;
 }
 
 async function promptInstaller(binaryCommand) {
@@ -236,57 +285,105 @@ export default function lspSettings() {
 					return;
 				}
 
-				const binaryCommand = await prompt(
-					strings["lsp-binary-command"],
-					"",
-					"text",
+				const transportKind = await select(
+					strings.type || "Type",
+					getTransportMethods(),
 				);
-				if (binaryCommand === null) return;
-				if (!String(binaryCommand).trim()) {
-					toast(strings["lsp-error-binary-command-required"]);
-					return;
-				}
+				if (!transportKind) return;
 
-				const argsInput = await prompt(
-					strings["lsp-binary-args"],
-					"[]",
-					"textarea",
-					{
-						test: (value) => {
-							try {
-								parseArgsInput(value);
-								return true;
-							} catch {
-								return false;
-							}
+				let transport;
+				let launcher;
+
+				if (transportKind === "websocket") {
+					const websocketUrlInput = await prompt(
+						strings["lsp-websocket-url"] || "WebSocket URL",
+						"ws://127.0.0.1:3000/",
+						"text",
+						{
+							test: (value) => {
+								try {
+									parseWebSocketUrl(value);
+									return true;
+								} catch {
+									return false;
+								}
+							},
 						},
-					},
-				);
-				if (argsInput === null) return;
+					);
+					if (websocketUrlInput === null) return;
 
-				const installer = await promptInstaller(binaryCommand);
-				if (installer === null) return;
+					transport = {
+						kind: "websocket",
+						url: parseWebSocketUrl(websocketUrlInput),
+					};
+				} else {
+					const binaryCommand = await prompt(
+						strings["lsp-binary-command"],
+						"",
+						"text",
+					);
+					if (binaryCommand === null) return;
+					if (!String(binaryCommand).trim()) {
+						toast(strings["lsp-error-binary-command-required"]);
+						return;
+					}
 
-				const checkCommand = await prompt(
-					strings["lsp-check-command-optional"],
-					"",
-					"text",
-				);
-				if (checkCommand === null) return;
+					const argsInput = await prompt(
+						strings["lsp-binary-args"],
+						"[]",
+						"textarea",
+						{
+							test: (value) => {
+								try {
+									parseArgsInput(value);
+									return true;
+								} catch {
+									return false;
+								}
+							},
+						},
+					);
+					if (argsInput === null) return;
+
+					const parsedArgs = parseArgsInput(argsInput);
+					const installer = await promptInstaller(binaryCommand);
+					if (installer === null) return;
+					const defaultCheckCommand = buildDefaultCheckCommand(
+						binaryCommand,
+						installer,
+					);
+
+					const checkCommand = await prompt(
+						strings["lsp-check-command-optional"],
+						defaultCheckCommand,
+						"text",
+						{
+							placeholder: defaultCheckCommand || "which my-language-server",
+						},
+					);
+					if (checkCommand === null) return;
+
+					transport = {
+						kind: "stdio",
+						command: String(binaryCommand).trim(),
+						args: parsedArgs,
+					};
+					launcher = {
+						bridge: {
+							kind: "axs",
+							command: String(binaryCommand).trim(),
+							args: parsedArgs,
+						},
+						checkCommand: String(checkCommand || "").trim() || undefined,
+						install: installer,
+					};
+				}
 
 				await upsertCustomServer(serverId, {
 					label: String(label || "").trim() || serverId,
 					languages,
-					transport: { kind: "websocket" },
-					launcher: {
-						bridge: {
-							kind: "axs",
-							command: String(binaryCommand).trim(),
-							args: parseArgsInput(argsInput),
-						},
-						checkCommand: String(checkCommand || "").trim() || undefined,
-						install: installer,
-					},
+					transport,
+					launcher,
 					enabled: true,
 				});
 

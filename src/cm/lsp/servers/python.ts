@@ -3,6 +3,19 @@ import type { LspServerBundle, LspServerManifest } from "../types";
 
 export const pythonServers: LspServerManifest[] = [
 	defineServer({
+		id: "ty",
+		label: "Python (ty)",
+		languages: ["python"],
+		command: "ty",
+		args: ["server"],
+		checkCommand: "which ty",
+		installer: installers.pip({
+			executable: "ty",
+			packages: ["ty"],
+		}),
+		enabled: true,
+	}),
+	defineServer({
 		id: "python",
 		label: "Python (pylsp)",
 		languages: ["python"],
@@ -21,7 +34,7 @@ export const pythonServers: LspServerManifest[] = [
 				},
 			},
 		},
-		enabled: true,
+		enabled: false,
 	}),
 ];
 
