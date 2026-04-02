@@ -360,12 +360,20 @@ const Terminal = {
                     excludePaths.splice(excludePaths.indexOf("alpine/data"), 1);
                 }
                 if (opts.home) {
-                    includeFiles.push("public");
+                    const checkCmd = `test -e "$PREFIX/public" && echo "exists" || echo "not"`;
+                    const checkResult = await Executor.execute(checkCmd);
+                    if (checkResult === "exists") {
+                        includeFiles.push("public");
+                    }
                 }
             } else {
                 // If alpineBase is disabled, only include public if home is enabled
                 if (opts.home) {
-                    includeFiles.push("public");
+                    const checkCmd = `test -e "$PREFIX/public" && echo "exists" || echo "not"`;
+                    const checkResult = await Executor.execute(checkCmd);
+                    if (checkResult === "exists") {
+                        includeFiles.push("public");
+                    }
                 }
             }
 
@@ -392,7 +400,7 @@ const Terminal = {
 
             const result = await Executor.execute(cmd);
             if (result === "ok") {
-                resolve(cordova.file.dataDirectory + "aterm_backup.tar");
+                resolve(cordova.file.dataDirectory + "usr/aterm_backup.tar");
             } else {
                 reject(result);
             }
