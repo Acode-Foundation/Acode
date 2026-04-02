@@ -1,8 +1,8 @@
 import settingsPage from "components/settingsPage";
-import FileBrowser from "pages/fileBrowser";
-import loader from "dialogs/loader";
-import alert from "dialogs/alert";
 import toast from "components/toast";
+import alert from "dialogs/alert";
+import loader from "dialogs/loader";
+import FileBrowser from "pages/fileBrowser";
 import helpers from "utils/helpers";
 
 export default function TerminalBackup(onclose) {

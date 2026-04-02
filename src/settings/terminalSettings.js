@@ -11,8 +11,8 @@ import loader from "dialogs/loader";
 import fonts from "lib/fonts";
 import appSettings from "lib/settings";
 import FileBrowser from "pages/fileBrowser";
-import helpers from "utils/helpers";
 import TerminalBackup from "pages/terminalBackup";
+import helpers from "utils/helpers";
 
 export default function terminalSettings() {
 	const title = strings["terminal settings"];
