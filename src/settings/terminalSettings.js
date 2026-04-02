@@ -12,6 +12,7 @@ import fonts from "lib/fonts";
 import appSettings from "lib/settings";
 import FileBrowser from "pages/fileBrowser";
 import helpers from "utils/helpers";
+import TerminalBackup from "pages/terminalBackup";
 
 export default function terminalSettings() {
 	const title = strings["terminal settings"];
@@ -248,7 +249,7 @@ export default function terminalSettings() {
 
 				return;
 			case "backup":
-				terminalBackup();
+				TerminalBackup(() => console.log("Backup page closed"));
 				return;
 
 			case "restore":
@@ -291,74 +292,43 @@ export default function terminalSettings() {
 				break;
 		}
 	}
+}
 
-	/**
-	 * Creates a backup of the terminal installation
-	 */
-	async function terminalBackup() {
-		try {
-			// Ask user to select backup location
-			const { url } = await FileBrowser("folder", strings["select folder"]);
+/**
+ * Restores terminal installation
+ */
+async function terminalRestore() {
+	try {
+		await Executor.execute("rm -rf $PREFIX/aterm_backup.*");
 
-			loader.showTitleLoader();
+		sdcard.openDocumentFile(
+			async (data) => {
+				loader.showTitleLoader();
+				//this will create a file at $PREFIX/atem_backup.tar.tar
+				await system.copyToUri(
+					data.uri,
+					cordova.file.dataDirectory,
+					"aterm_backup.tar",
+					console.log,
+					console.error,
+				);
 
-			// Create backup
-			const backupPath = await Terminal.backup();
-			await system.copyToUri(
-				backupPath,
-				url,
-				"aterm_backup.tar",
-				console.log,
-				console.error,
-			);
-			loader.removeTitleLoader();
-			alert(strings.success.toUpperCase(), `${strings["backup successful"]}.`);
-		} catch (error) {
-			loader.removeTitleLoader();
-			console.error("Terminal backup failed:", error);
-			toast(error.toString());
-		}
-	}
+				// Restore
+				await Terminal.restore();
 
-	/**
-	 * Restores terminal installation
-	 */
-	async function terminalRestore() {
-		try {
-			await Executor.execute("rm -rf $PREFIX/aterm_backup.*");
+				//Cleanup restore file
+				await Executor.execute("rm -rf $PREFIX/aterm_backup.*");
 
-			sdcard.openDocumentFile(
-				async (data) => {
-					loader.showTitleLoader();
-					//this will create a file at $PREFIX/atem_backup.tar.tar
-					await system.copyToUri(
-						data.uri,
-						cordova.file.dataDirectory,
-						"aterm_backup.tar",
-						console.log,
-						console.error,
-					);
-
-					// Restore
-					await Terminal.restore();
-
-					//Cleanup restore file
-					await Executor.execute("rm -rf $PREFIX/aterm_backup.*");
-
-					loader.removeTitleLoader();
-					alert(
-						strings.success.toUpperCase(),
-						"Terminal restored successfully",
-					);
-				},
-				toast,
-				"application/x-tar",
-			);
-		} catch (error) {
-			loader.removeTitleLoader();
-			console.error("Terminal restore failed:", error);
-			toast(error.toString());
-		}
+				loader.removeTitleLoader();
+				alert(strings.success.toUpperCase(), "Terminal restored successfully");
+			},
+			toast,
+			"application/x-tar",
+		);
+	} catch (error) {
+		loader.removeTitleLoader();
+		console.error("Terminal restore failed:", error);
+		toast(error.toString());
 	}
 }
 
