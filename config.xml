@@ -41,6 +41,7 @@
 
         <edit-config file="AndroidManifest.xml" mode="merge" target="/manifest/application">
             <application 
+android:usesCleartextTraffic="true"
                 android:networkSecurityConfig="@xml/network_security_config"
                 android:hardwareAccelerated="true"
                 android:largeHeap="true"
