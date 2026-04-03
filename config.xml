@@ -45,6 +45,7 @@
             <application android:hardwareAccelerated="true" />
             <application android:largeHeap="true" />
             <application android:requestLegacyExternalStorage="true"/>
+            <application android:enableOnBackInvokedCallback="false" />
         </edit-config>
 
         <edit-config file="app/src/main/AndroidManifest.xml" mode="merge" target="/manifest/application/activity[@android:name='MainActivity']">
