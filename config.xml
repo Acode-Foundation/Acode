@@ -39,19 +39,17 @@
         <preference name="android-targetSdkVersion" value="36" />
 
 
-        <edit-config file="AndroidManifest.xml" mode="merge" target="/manifest/application">
-            <application 
-                android:networkSecurityConfig="@xml/network_security_config"
-                android:hardwareAccelerated="true"
-                android:largeHeap="true"
-                android:requestLegacyExternalStorage="true"
-                android:enableOnBackInvokedCallback="false" />
+        <edit-config file="app/src/main/AndroidManifest.xml" mode="merge" target="/manifest/application">
+            <application android:networkSecurityConfig="@xml/network_security_config" />
+            <application android:usesCleartextTraffic="true" />
+            <application android:hardwareAccelerated="true" />
+            <application android:largeHeap="true" />
+            <application android:requestLegacyExternalStorage="true"/>
         </edit-config>
 
         <edit-config file="app/src/main/AndroidManifest.xml" mode="merge" target="/manifest/application/activity[@android:name='MainActivity']">
             <activity android:resizeableActivity="true" />
         </edit-config>
-
 
         <config-file parent="./application/activity" target="AndroidManifest.xml">
             <intent-filter>
