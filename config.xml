@@ -38,7 +38,18 @@
         <preference name="GradlePluginKotlinEnabled" value="true" />
         <preference name="android-targetSdkVersion" value="36" />
 
+        <!-- Cordova does not merge this unless both of these are present -->
+        <edit-config file="AndroidManifest.xml" mode="merge" target="/manifest/application">
+            <application 
+                android:usesCleartextTraffic="true"
+                android:networkSecurityConfig="@xml/network_security_config"
+                android:hardwareAccelerated="true"
+                android:largeHeap="true"
+                android:requestLegacyExternalStorage="true"
+                android:enableOnBackInvokedCallback="false" />
+        </edit-config>
 
+        <!-- Cordova does not merge this unless both of these are present -->
         <edit-config file="app/src/main/AndroidManifest.xml" mode="merge" target="/manifest/application">
             <application android:networkSecurityConfig="@xml/network_security_config" />
             <application android:usesCleartextTraffic="true" />
