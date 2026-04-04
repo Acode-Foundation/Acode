@@ -321,25 +321,86 @@ const Terminal = {
      *   console.error(`Backup failed: ${error}`);
      * }
      */
-    backup() {
+    backup(options = {}) {
         return new Promise(async (resolve, reject) => {
             if (!await this.isInstalled()) {
                 reject("Alpine is not installed.");
                 return;
             }
+
+            const opts = {
+                alpineBase: true,
+                packages: false,
+                home: false,
+                ...options,
+            };
+
+            const includeFiles = [];
+            const excludePaths = [
+                "alpine/system",
+                "alpine/vendor",
+                "alpine/sdcard",
+                "alpine/storage",
+                "alpine/apex",
+                "alpine/odm",
+                "alpine/product",
+                "alpine/system_ext",
+                "alpine/linkerconfig",
+                "alpine/proc",
+                "alpine/sys",
+                "alpine/dev",
+                "alpine/run",
+                "alpine/tmp",
+            ];
+
+            if (opts.alpineBase) {
+                includeFiles.push("alpine", ".downloaded", ".extracted", ".configured", "axs");
+                if (opts.packages) {
+                    includeFiles.push("alpine/data");
+                    excludePaths.splice(excludePaths.indexOf("alpine/data"), 1);
+                }
+                if (opts.home) {
+                    const checkCmd = `test -e "$PREFIX/public" && echo "exists" || echo "not"`;
+                    const checkResult = await Executor.execute(checkCmd);
+                    if (checkResult === "exists") {
+                        includeFiles.push("public");
+                    }
+                }
+            } else {
+                // If alpineBase is disabled, only include public if home is enabled
+                if (opts.home) {
+                    const checkCmd = `test -e "$PREFIX/public" && echo "exists" || echo "not"`;
+                    const checkResult = await Executor.execute(checkCmd);
+                    if (checkResult === "exists") {
+                        includeFiles.push("public");
+                    }
+                }
+            }
+
+            if (!includeFiles.length) {
+                reject("No components selected for backup.");
+                return;
+            }
+
+            let excludeCmd = "";
+            excludePaths.forEach((path) => {
+                excludeCmd += ` --exclude=${path}`;
+            });
+
+            const includeStr = includeFiles.join(" ");
             const cmd = `
             set -e
-            INCLUDE_FILES="alpine .downloaded .extracted .configured axs"
+            INCLUDE_FILES="${includeStr}"
             if [ "$FDROID" = "true" ]; then
                 INCLUDE_FILES="$INCLUDE_FILES libtalloc.so.2 libproot-xed.so"
             fi
-            EXCLUDE="--exclude=alpine/data --exclude=alpine/system --exclude=alpine/vendor --exclude=alpine/sdcard --exclude=alpine/storage --exclude=alpine/public --exclude=alpine/apex --exclude=alpine/odm --exclude=alpine/product --exclude=alpine/system_ext --exclude=alpine/linkerconfig --exclude=alpine/proc --exclude=alpine/sys --exclude=alpine/dev --exclude=alpine/run --exclude=alpine/tmp"
-            tar -cf "$PREFIX/aterm_backup.tar" -C "$PREFIX" $EXCLUDE $INCLUDE_FILES
+            tar -cf "$PREFIX/aterm_backup.tar" -C "$PREFIX"${excludeCmd} $INCLUDE_FILES
             echo "ok"
             `;
+
             const result = await Executor.execute(cmd);
             if (result === "ok") {
-                resolve(cordova.file.dataDirectory + "aterm_backup.tar");
+                resolve(cordova.file.dataDirectory + "usr/aterm_backup.tar");
             } else {
                 reject(result);
             }
