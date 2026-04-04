@@ -174,6 +174,7 @@ class Settings {
 			colorPreview: true,
 			maxRetryCount: 3,
 			showRetryToast: false,
+			sidebarWidth: 280,
 			showSideButtons: true,
 			showSponsorSidebarApp: true,
 			showAnnotations: false,
