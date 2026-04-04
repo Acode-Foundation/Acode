@@ -1,13 +1,7 @@
 import sidebarApps from "sidebarApps";
 import { indentUnit } from "@codemirror/language";
 import { search } from "@codemirror/search";
-import {
-	Compartment,
-	EditorSelection,
-	EditorState,
-	Prec,
-	StateEffect,
-} from "@codemirror/state";
+import { Compartment, EditorState, Prec, StateEffect } from "@codemirror/state";
 import { oneDark } from "@codemirror/theme-one-dark";
 import {
 	closeHoverTooltips,
@@ -200,37 +194,10 @@ async function EditorManager($header, $body) {
 		},
 	);
 
-	let shiftClickSelectionExtension;
-	{
-		const pointerIdMap = new Map();
-		shiftClickSelectionExtension = EditorView.domEventHandlers({
-			pointerup(event, view) {
-				if (!appSettings.value.shiftClickSelection) return;
-				if (!(event.isTrusted && event.isPrimary)) return;
-				if (!event.shiftKey && quickTools.$footer.dataset.shift == null) return;
-				const { pointerId } = event;
-				const tid = setTimeout(() => pointerIdMap.delete(pointerId), 1001);
-				pointerIdMap.set(pointerId, [view.state.selection.main.anchor, tid]);
-			},
-			click(event, view) {
-				const { pointerId } = event;
-				if (!pointerIdMap.has(pointerId)) return false;
-				const [anchor, tid] = pointerIdMap.get(pointerId);
-				clearTimeout(tid);
-				pointerIdMap.delete(pointerId);
-				view.dispatch({
-					selection: EditorSelection.range(
-						anchor,
-						view.state.selection.main.anchor,
-					),
-					userEvent: "select.extend",
-				});
-				event.preventDefault();
-				return true;
-			},
-		});
-	}
-
+	const isShiftSelectionActive = (event) => {
+		if (!appSettings.value.shiftClickSelection) return false;
+		return !!event?.shiftKey || quickTools?.$footer?.dataset?.shift != null;
+	};
 	const touchSelectionUpdateExtension = EditorView.updateListener.of(
 		(update) => {
 			if (!touchSelectionController) return;
@@ -788,7 +755,6 @@ async function EditorManager($header, $body) {
 			commandKeymapExtension: getCommandKeymapExtension(),
 			themeExtension: themeCompartment.of(oneDark),
 			pointerCursorVisibilityExtension,
-			shiftClickSelectionExtension,
 			touchSelectionUpdateExtension,
 			searchExtension: search(),
 			// Ensure read-only can be toggled later via compartment
@@ -844,6 +810,7 @@ async function EditorManager($header, $body) {
 	touchSelectionController = createTouchSelectionMenu(editor, {
 		container: $container,
 		getActiveFile: () => manager?.activeFile || null,
+		isShiftSelectionActive,
 	});
 
 	// Provide minimal Ace-like API compatibility used by plugins
@@ -1150,7 +1117,6 @@ async function EditorManager($header, $body) {
 			// keep compartment in the state to allow dynamic theme changes later
 			themeExtension: themeCompartment.of(oneDark),
 			pointerCursorVisibilityExtension,
-			shiftClickSelectionExtension,
 			touchSelectionUpdateExtension,
 			searchExtension: search(),
 			// Keep dynamic compartments across state swaps

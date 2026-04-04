@@ -1,3 +1,4 @@
+import { EditorSelection } from "@codemirror/state";
 import selectionMenu from "lib/selectionMenu";
 
 const TAP_MAX_DELAY = 500;
@@ -126,9 +127,11 @@ class TouchSelectionMenuController {
 	#view;
 	#container;
 	#getActiveFile;
+	#isShiftSelectionActive;
 	#stateSyncRaf = 0;
 	#isScrolling = false;
 	#isPointerInteracting = false;
+	#shiftSelectionSession = null;
 	#menuActive = false;
 	#menuRequested = false;
 	#enabled = true;
@@ -140,6 +143,8 @@ class TouchSelectionMenuController {
 		this.#container =
 			options.container || view.dom.closest(".editor-container") || view.dom;
 		this.#getActiveFile = options.getActiveFile || (() => null);
+		this.#isShiftSelectionActive =
+			options.isShiftSelectionActive || (() => false);
 		this.$menu = document.createElement("menu");
 		this.$menu.className = "cursor-menu";
 		this.#bindEvents();
@@ -170,12 +175,14 @@ class TouchSelectionMenuController {
 		this.#clearMenuShowTimer();
 		cancelAnimationFrame(this.#stateSyncRaf);
 		this.#stateSyncRaf = 0;
+		this.#shiftSelectionSession = null;
 		this.#hideMenu(true);
 	}
 
 	setEnabled(enabled) {
 		this.#enabled = !!enabled;
 		if (this.#enabled) return;
+		this.#shiftSelectionSession = null;
 		this.#menuRequested = false;
 		this.#isPointerInteracting = false;
 		this.#isScrolling = false;
@@ -246,6 +253,7 @@ class TouchSelectionMenuController {
 
 	onSessionChanged() {
 		if (!this.#enabled) return;
+		this.#shiftSelectionSession = null;
 		this.#menuRequested = false;
 		this.#isPointerInteracting = false;
 		this.#isScrolling = false;
@@ -265,19 +273,29 @@ class TouchSelectionMenuController {
 	#onGlobalPointerDown = (event) => {
 		const target = event.target;
 		if (this.$menu.contains(target)) return;
-		if (this.#isIgnoredPointerTarget(target)) return;
+		if (this.#isIgnoredPointerTarget(target)) {
+			this.#shiftSelectionSession = null;
+			return;
+		}
 		if (target instanceof Node && this.#view.dom.contains(target)) {
+			this.#captureShiftSelection(event);
 			this.#isPointerInteracting = true;
 			this.#clearMenuShowTimer();
 			this.#hideMenu();
 			return;
 		}
+		this.#shiftSelectionSession = null;
 		this.#isPointerInteracting = false;
 		this.#menuRequested = false;
 		this.#hideMenu();
 	};
 
-	#onGlobalPointerUp = () => {
+	#onGlobalPointerUp = (event) => {
+		if (event.type === "pointerup") {
+			this.#commitShiftSelection(event);
+		} else {
+			this.#shiftSelectionSession = null;
+		}
 		if (!this.#isPointerInteracting) return;
 		this.#isPointerInteracting = false;
 		if (!this.#enabled) return;
@@ -290,6 +308,56 @@ class TouchSelectionMenuController {
 		}
 		this.#hideMenu();
 	};
+
+	#captureShiftSelection(event) {
+		if (!this.#canExtendSelection(event)) {
+			this.#shiftSelectionSession = null;
+			return;
+		}
+
+		this.#shiftSelectionSession = {
+			pointerId: event.pointerId,
+			anchor: this.#view.state.selection.main.anchor,
+			x: event.clientX,
+			y: event.clientY,
+		};
+	}
+
+	#commitShiftSelection(event) {
+		const session = this.#shiftSelectionSession;
+		this.#shiftSelectionSession = null;
+		if (!session) return;
+		if (!this.#canExtendSelection(event)) return;
+		if (event.pointerId !== session.pointerId) return;
+		if (
+			Math.hypot(event.clientX - session.x, event.clientY - session.y) >
+			TAP_MAX_DISTANCE
+		) {
+			return;
+		}
+		const target = event.target;
+		if (!(target instanceof Node) || !this.#view.dom.contains(target)) return;
+		if (this.#isIgnoredPointerTarget(target)) return;
+
+		// Rely on pointer coordinates instead of click events so touch selection
+		// keeps working when the browser/native path owns the actual tap.
+		const head = this.#view.posAtCoords(
+			{ x: event.clientX, y: event.clientY },
+			false,
+		);
+		this.#view.dispatch({
+			selection: EditorSelection.range(session.anchor, head),
+			userEvent: "select.extend",
+		});
+		event.preventDefault();
+	}
+
+	#canExtendSelection(event) {
+		if (!this.#enabled) return false;
+		if (!(event.isTrusted && event.isPrimary)) return false;
+		if (typeof event.button === "number" && event.button !== 0) return false;
+		return !!this.#isShiftSelectionActive(event);
+	}
 
 	#shouldShowMenu() {
 		if (this.#isScrolling || this.#isPointerInteracting || !this.#view.hasFocus)
