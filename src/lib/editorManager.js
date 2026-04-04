@@ -66,8 +66,8 @@ import {
 	setScrollPosition,
 } from "cm/editorUtils";
 import indentGuides from "cm/indentGuides";
-import rainbowBrackets from "cm/rainbowBrackets";
-import { getThemeExtensions } from "cm/themes";
+import rainbowBrackets, { getRainbowBracketColors } from "cm/rainbowBrackets";
+import { getThemeConfig, getThemeExtensions } from "cm/themes";
 import list from "components/collapsableList";
 import quickTools from "components/quickTools";
 import ScrollBar from "components/scrollbar";
@@ -349,6 +349,16 @@ async function EditorManager($header, $body) {
 		};
 	}
 
+	function makeRainbowBracketExtension() {
+		const enabled = appSettings?.value?.rainbowBrackets ?? true;
+		if (!enabled) return [];
+
+		const themeId = appSettings?.value?.editorTheme || "one_dark";
+		return rainbowBrackets({
+			colors: getRainbowBracketColors(getThemeConfig(themeId)),
+		});
+	}
+
 	function makeWhitespaceTheme() {
 		return EditorView.theme({
 			".cm-highlightSpace": {
@@ -388,9 +398,7 @@ async function EditorManager($header, $body) {
 			keys: ["rainbowBrackets"],
 			compartments: [rainbowCompartment],
 			build() {
-				const enabled = appSettings?.value?.rainbowBrackets ?? true;
-				if (!enabled) return [];
-				return rainbowBrackets();
+				return makeRainbowBracketExtension();
 			},
 		},
 		{
@@ -1602,6 +1610,12 @@ async function EditorManager($header, $body) {
 
 	appSettings.on("update:relativeLineNumbers", function () {
 		updateEditorLineNumbersFromSettings();
+	});
+
+	appSettings.on("update:editorTheme", function () {
+		const desiredTheme = appSettings?.value?.editorTheme || "one_dark";
+		editor.setTheme(desiredTheme);
+		applyOptions(["rainbowBrackets"]);
 	});
 
 	appSettings.on("update:lintGutter", function (value) {
