@@ -48,7 +48,11 @@ const $header = (
 				<button type="button" className="icon-button" onclick={filterPlugins}>
 					<span className="icon tune" />
 				</button>
-				<button type="button" className="icon-button" onclick={addSource}>
+				<button
+					type="button"
+					className="icon-button"
+					onclick={() => addSource()}
+				>
 					<span className="icon add" />
 				</button>
 			</div>
@@ -362,17 +366,19 @@ async function filterPlugins() {
 	}
 }
 
-async function addSource() {
-	const sourceOption = [
-		["remote", strings.remote],
-		["local", strings.local],
-	];
-	const sourceType = await select("Select Source", sourceOption);
+async function addSource(sourceType, value = "https://") {
+	if (!sourceType) {
+		const sourceOption = [
+			["remote", strings.remote],
+			["local", strings.local],
+		];
+		sourceType = await select("Select Source", sourceOption);
+	}
 
 	if (!sourceType) return;
 	let source;
 	if (sourceType === "remote") {
-		source = await prompt("Enter plugin source", "https://", "url");
+		source = await prompt("Enter plugin source", value, "url");
 	} else {
 		source = (await FileBrowser("file", "Select plugin source")).url;
 	}
