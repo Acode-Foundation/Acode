@@ -83,7 +83,7 @@ interface BlockCacheEntry {
 function normalizeHexColor(value: unknown): string | null {
 	if (typeof value !== "string") return null;
 	const color = value.trim().toLowerCase();
-	if (/^#([\da-f]{3}|[\da-f]{6})$/i.test(color)) return color;
+	if (/^#([\da-f]{3}|[\da-f]{6})$/.test(color)) return color;
 	return null;
 }
 
@@ -298,7 +298,7 @@ export function getRainbowBracketColors(
 
 export function rainbowBrackets(options: RainbowBracketsOptions = {}) {
 	const colors =
-		options.colors?.length != null && options.colors.length > 0
+		options.colors != null && options.colors.length > 0
 			? [...options.colors]
 			: getRainbowBracketColors();
 	const exactScanLimit = Math.max(
@@ -315,6 +315,8 @@ export function rainbowBrackets(options: RainbowBracketsOptions = {}) {
 		class {
 			decorations: DecorationSet;
 			blockCache = new Map<string, BlockCacheEntry>();
+			raf = 0;
+			pendingView: EditorView | null = null;
 
 			constructor(view: EditorView) {
 				this.decorations = this.buildDecorations(view);
@@ -322,7 +324,21 @@ export function rainbowBrackets(options: RainbowBracketsOptions = {}) {
 
 			update(update: ViewUpdate) {
 				if (!update.docChanged && !update.viewportChanged) return;
-				this.decorations = this.buildDecorations(update.view);
+				this.scheduleBuild(update.view);
+			}
+
+			scheduleBuild(view: EditorView): void {
+				this.pendingView = view;
+				if (this.raf) return;
+				// Bracket recoloring is cosmetic. Collapse bursts of edits/scroll
+				// events into a single frame so large pastes don't block repeatedly.
+				this.raf = requestAnimationFrame(() => {
+					this.raf = 0;
+					const pendingView = this.pendingView;
+					this.pendingView = null;
+					if (!pendingView) return;
+					this.decorations = this.buildDecorations(pendingView);
+				});
 			}
 
 			buildDecorations(view: EditorView): DecorationSet {
@@ -424,6 +440,11 @@ export function rainbowBrackets(options: RainbowBracketsOptions = {}) {
 			}
 
 			destroy(): void {
+				if (this.raf) {
+					cancelAnimationFrame(this.raf);
+					this.raf = 0;
+				}
+				this.pendingView = null;
 				this.blockCache.clear();
 			}
 		},
