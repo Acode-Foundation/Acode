@@ -198,6 +198,15 @@ async function EditorManager($header, $body) {
 		if (!appSettings.value.shiftClickSelection) return false;
 		return !!event?.shiftKey || quickTools?.$footer?.dataset?.shift != null;
 	};
+	const shiftClickSelectionExtension = EditorView.domEventHandlers({
+		click(event) {
+			if (!touchSelectionController?.consumePendingShiftSelectionClick(event)) {
+				return false;
+			}
+			event.preventDefault();
+			return true;
+		},
+	});
 	const touchSelectionUpdateExtension = EditorView.updateListener.of(
 		(update) => {
 			if (!touchSelectionController) return;
@@ -755,6 +764,7 @@ async function EditorManager($header, $body) {
 			commandKeymapExtension: getCommandKeymapExtension(),
 			themeExtension: themeCompartment.of(oneDark),
 			pointerCursorVisibilityExtension,
+			shiftClickSelectionExtension,
 			touchSelectionUpdateExtension,
 			searchExtension: search(),
 			// Ensure read-only can be toggled later via compartment
@@ -1117,6 +1127,7 @@ async function EditorManager($header, $body) {
 			// keep compartment in the state to allow dynamic theme changes later
 			themeExtension: themeCompartment.of(oneDark),
 			pointerCursorVisibilityExtension,
+			shiftClickSelectionExtension,
 			touchSelectionUpdateExtension,
 			searchExtension: search(),
 			// Keep dynamic compartments across state swaps

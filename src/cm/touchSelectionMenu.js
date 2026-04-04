@@ -132,6 +132,7 @@ class TouchSelectionMenuController {
 	#isScrolling = false;
 	#isPointerInteracting = false;
 	#shiftSelectionSession = null;
+	#pendingShiftSelectionClick = null;
 	#menuActive = false;
 	#menuRequested = false;
 	#enabled = true;
@@ -176,6 +177,7 @@ class TouchSelectionMenuController {
 		cancelAnimationFrame(this.#stateSyncRaf);
 		this.#stateSyncRaf = 0;
 		this.#shiftSelectionSession = null;
+		this.#pendingShiftSelectionClick = null;
 		this.#hideMenu(true);
 	}
 
@@ -183,6 +185,7 @@ class TouchSelectionMenuController {
 		this.#enabled = !!enabled;
 		if (this.#enabled) return;
 		this.#shiftSelectionSession = null;
+		this.#pendingShiftSelectionClick = null;
 		this.#menuRequested = false;
 		this.#isPointerInteracting = false;
 		this.#isScrolling = false;
@@ -254,6 +257,7 @@ class TouchSelectionMenuController {
 	onSessionChanged() {
 		if (!this.#enabled) return;
 		this.#shiftSelectionSession = null;
+		this.#pendingShiftSelectionClick = null;
 		this.#menuRequested = false;
 		this.#isPointerInteracting = false;
 		this.#isScrolling = false;
@@ -349,6 +353,11 @@ class TouchSelectionMenuController {
 			selection: EditorSelection.range(session.anchor, head),
 			userEvent: "select.extend",
 		});
+		this.#pendingShiftSelectionClick = {
+			x: event.clientX,
+			y: event.clientY,
+			timeStamp: event.timeStamp,
+		};
 		event.preventDefault();
 	}
 
@@ -357,6 +366,24 @@ class TouchSelectionMenuController {
 		if (!(event.isTrusted && event.isPrimary)) return false;
 		if (typeof event.button === "number" && event.button !== 0) return false;
 		return !!this.#isShiftSelectionActive(event);
+	}
+
+	consumePendingShiftSelectionClick(event) {
+		const pending = this.#pendingShiftSelectionClick;
+		this.#pendingShiftSelectionClick = null;
+		if (!pending || !this.#enabled) return false;
+		if (event.timeStamp - pending.timeStamp > TAP_MAX_DELAY) return false;
+		if (
+			Math.hypot(event.clientX - pending.x, event.clientY - pending.y) >
+			TAP_MAX_DISTANCE
+		) {
+			return false;
+		}
+		const target = event.target;
+		if (!(target instanceof Node) || !this.#view.dom.contains(target))
+			return false;
+		if (this.#isIgnoredPointerTarget(target)) return false;
+		return true;
 	}
 
 	#shouldShowMenu() {
