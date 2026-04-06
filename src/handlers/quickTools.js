@@ -729,34 +729,25 @@ function getActiveTerminalInput() {
 	return getActiveTerminalComponent()?.terminal?.textarea || null;
 }
 
-function getInsertValue(value) {
-	const text = String(value ?? "");
-	if (
-		text.length === 1 &&
-		state.shift &&
-		!state.ctrl &&
-		!state.alt &&
-		!state.meta
-	) {
-		return shiftKeyMapping(text);
-	}
-
-	return text;
-}
-
 function insertText(value) {
-	const text = getInsertValue(value);
+	const text = String(value ?? "");
 	if (!text) return false;
 
 	const terminalComponent = getActiveTerminalComponent();
 	if (terminalComponent?.terminal) {
 		if (typeof terminalComponent.terminal.paste === "function") {
 			terminalComponent.terminal.paste(text);
-		} else {
-			terminalComponent.write(text);
+			terminalComponent.focus();
+			return true;
 		}
-		terminalComponent.focus();
-		return true;
+
+		if (terminalComponent.serverMode && terminalComponent.isConnected) {
+			terminalComponent.write(text);
+			terminalComponent.focus();
+			return true;
+		}
+
+		return false;
 	}
 
 	const { editor } = editorManager;
