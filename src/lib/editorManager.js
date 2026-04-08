@@ -1,13 +1,7 @@
 import sidebarApps from "sidebarApps";
 import { indentUnit } from "@codemirror/language";
 import { search } from "@codemirror/search";
-import {
-	Compartment,
-	EditorSelection,
-	EditorState,
-	Prec,
-	StateEffect,
-} from "@codemirror/state";
+import { Compartment, EditorState, Prec, StateEffect } from "@codemirror/state";
 import { oneDark } from "@codemirror/theme-one-dark";
 import {
 	closeHoverTooltips,
@@ -66,8 +60,8 @@ import {
 	setScrollPosition,
 } from "cm/editorUtils";
 import indentGuides from "cm/indentGuides";
-import rainbowBrackets from "cm/rainbowBrackets";
-import { getThemeExtensions } from "cm/themes";
+import rainbowBrackets, { getRainbowBracketColors } from "cm/rainbowBrackets";
+import { getThemeConfig, getThemeExtensions } from "cm/themes";
 import list from "components/collapsableList";
 import quickTools from "components/quickTools";
 import ScrollBar from "components/scrollbar";
@@ -200,37 +194,19 @@ async function EditorManager($header, $body) {
 		},
 	);
 
-	let shiftClickSelectionExtension;
-	{
-		const pointerIdMap = new Map();
-		shiftClickSelectionExtension = EditorView.domEventHandlers({
-			pointerup(event, view) {
-				if (!appSettings.value.shiftClickSelection) return;
-				if (!(event.isTrusted && event.isPrimary)) return;
-				if (!event.shiftKey && quickTools.$footer.dataset.shift == null) return;
-				const { pointerId } = event;
-				const tid = setTimeout(() => pointerIdMap.delete(pointerId), 1001);
-				pointerIdMap.set(pointerId, [view.state.selection.main.anchor, tid]);
-			},
-			click(event, view) {
-				const { pointerId } = event;
-				if (!pointerIdMap.has(pointerId)) return false;
-				const [anchor, tid] = pointerIdMap.get(pointerId);
-				clearTimeout(tid);
-				pointerIdMap.delete(pointerId);
-				view.dispatch({
-					selection: EditorSelection.range(
-						anchor,
-						view.state.selection.main.anchor,
-					),
-					userEvent: "select.extend",
-				});
-				event.preventDefault();
-				return true;
-			},
-		});
-	}
-
+	const isShiftSelectionActive = (event) => {
+		if (!appSettings.value.shiftClickSelection) return false;
+		return !!event?.shiftKey || quickTools?.$footer?.dataset?.shift != null;
+	};
+	const shiftClickSelectionExtension = EditorView.domEventHandlers({
+		click(event) {
+			if (!touchSelectionController?.consumePendingShiftSelectionClick(event)) {
+				return false;
+			}
+			event.preventDefault();
+			return true;
+		},
+	});
 	const touchSelectionUpdateExtension = EditorView.updateListener.of(
 		(update) => {
 			if (!touchSelectionController) return;
@@ -349,6 +325,16 @@ async function EditorManager($header, $body) {
 		};
 	}
 
+	function makeRainbowBracketExtension() {
+		const enabled = appSettings?.value?.rainbowBrackets ?? true;
+		if (!enabled) return [];
+
+		const themeId = appSettings?.value?.editorTheme || "one_dark";
+		return rainbowBrackets({
+			colors: getRainbowBracketColors(getThemeConfig(themeId)),
+		});
+	}
+
 	function makeWhitespaceTheme() {
 		return EditorView.theme({
 			".cm-highlightSpace": {
@@ -388,9 +374,7 @@ async function EditorManager($header, $body) {
 			keys: ["rainbowBrackets"],
 			compartments: [rainbowCompartment],
 			build() {
-				const enabled = appSettings?.value?.rainbowBrackets ?? true;
-				if (!enabled) return [];
-				return rainbowBrackets();
+				return makeRainbowBracketExtension();
 			},
 		},
 		{
@@ -844,6 +828,7 @@ async function EditorManager($header, $body) {
 	touchSelectionController = createTouchSelectionMenu(editor, {
 		container: $container,
 		getActiveFile: () => manager?.activeFile || null,
+		isShiftSelectionActive,
 	});
 
 	// Provide minimal Ace-like API compatibility used by plugins
@@ -1602,6 +1587,12 @@ async function EditorManager($header, $body) {
 
 	appSettings.on("update:relativeLineNumbers", function () {
 		updateEditorLineNumbersFromSettings();
+	});
+
+	appSettings.on("update:editorTheme", function () {
+		const desiredTheme = appSettings?.value?.editorTheme || "one_dark";
+		editor.setTheme(desiredTheme);
+		applyOptions(["rainbowBrackets"]);
 	});
 
 	appSettings.on("update:lintGutter", function (value) {

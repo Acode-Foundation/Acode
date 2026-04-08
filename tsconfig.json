@@ -15,9 +15,8 @@
     "declaration": false,
     "allowJs": true,
     "checkJs": false,
-    "baseUrl": "./src",
     "paths": {
-      "*": ["*"]
+      "*": ["./src/*"]
     },
     "jsx": "preserve",
     "types": ["node"]

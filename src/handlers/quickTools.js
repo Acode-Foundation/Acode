@@ -125,9 +125,14 @@ quickTools.$input.addEventListener("input", (e) => {
 	if (!key || key.length > 1) return;
 	const keyCombination = getKeys({ key });
 
-	if (keyCombination.shiftKey && !keyCombination.ctrlKey) {
+	if (
+		keyCombination.shiftKey &&
+		!keyCombination.ctrlKey &&
+		!keyCombination.altKey &&
+		!keyCombination.metaKey
+	) {
 		resetKeys();
-		editorManager.editor.insert(shiftKeyMapping(key));
+		insertText(shiftKeyMapping(key));
 		return;
 	}
 
@@ -296,8 +301,7 @@ export default function actions(action, value) {
 
 	switch (action) {
 		case "insert":
-			editor.insert(value);
-			return true;
+			return insertText(value);
 
 		case "command": {
 			const commandName =
@@ -393,6 +397,12 @@ export default function actions(action, value) {
 }
 
 function setInput() {
+	const terminalInput = getActiveTerminalInput();
+	if (terminalInput) {
+		input = terminalInput;
+		return;
+	}
+
 	const { activeElement } = document;
 	if (
 		!activeElement ||
@@ -666,7 +676,16 @@ function getFooterHeight() {
 
 function focusEditor() {
 	const { editor, activeFile } = editorManager;
-	if (activeFile.focused) {
+	if (!activeFile?.focused) {
+		return;
+	}
+
+	if (activeFile.type === "terminal" && activeFile.terminalComponent) {
+		activeFile.terminalComponent.focus();
+		return;
+	}
+
+	if (editor) {
 		editor.focus();
 	}
 }
@@ -680,7 +699,7 @@ function resetKeys() {
 	events.ctrl.forEach((cb) => cb(false));
 	state.meta = false;
 	events.meta.forEach((cb) => cb(false));
-	input.focus();
+	input?.focus?.();
 }
 
 /**
@@ -698,6 +717,41 @@ export function getKeys(key = {}) {
 		ctrlKey: state.ctrl,
 		metaKey: state.meta,
 	};
+}
+
+function getActiveTerminalComponent() {
+	const { activeFile } = editorManager;
+	if (activeFile?.type !== "terminal") return null;
+	return activeFile.terminalComponent || null;
+}
+
+function getActiveTerminalInput() {
+	return getActiveTerminalComponent()?.terminal?.textarea || null;
+}
+
+function insertText(value) {
+	const text = String(value ?? "");
+	if (!text) return false;
+
+	const terminalComponent = getActiveTerminalComponent();
+	if (terminalComponent?.terminal) {
+		if (typeof terminalComponent.terminal.paste === "function") {
+			terminalComponent.terminal.paste(text);
+			terminalComponent.focus();
+			return true;
+		}
+
+		if (terminalComponent.serverMode && terminalComponent.isConnected) {
+			terminalComponent.write(text);
+			terminalComponent.focus();
+			return true;
+		}
+
+		return false;
+	}
+
+	const { editor } = editorManager;
+	return editor ? editor.insert(text) : false;
 }
 
 function shiftKeyMapping(char) {
