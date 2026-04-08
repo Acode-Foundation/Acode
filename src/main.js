@@ -661,6 +661,9 @@ async function loadApp() {
 			if (settings.value.rememberFiles && activeFile) {
 				localStorage.setItem("lastfile", activeFile.id);
 			}
+			if (saveState && sessionStorage.getItem("isfilesRestored") === "true") {
+				acode.exec("save-state");
+			}
 			return;
 		}
 
