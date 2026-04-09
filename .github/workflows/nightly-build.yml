@@ -50,8 +50,6 @@
     BUILD_JSON_PATH: build.json
     VERSION_LABEL: ${{ (inputs.is_PR && 'pr') || 'nightly' }}
     DISCORD_RELEASE_NOTIFIER_ENABLED: "true"
-    NORMAL_APK_PATH: /tmp/acode-debug-normal-${{ env.UPDATED_VERSION }}.apk
-    FDROID_APK_PATH: /tmp/acode-debug-fdroid-${{ env.UPDATED_VERSION }}.apk
   jobs:
     build:
       timeout-minutes: 60
@@ -161,7 +159,9 @@
             echo "Updated version in config.xml"
             # Output the updated version
             echo "UPDATED_VERSION=$UPDATED_VERSION" >> $GITHUB_ENV
-            echo "UPDATED_VERSION=$UPDATED_VERSION" >> $GITHUB_OUTPUT 
+            echo "UPDATED_VERSION=$UPDATED_VERSION" >> $GITHUB_OUTPUT
+            echo "NORMAL_APK_PATH=/tmp/acode-debug-normal-${UPDATED_VERSION}.apk" >> $GITHUB_ENV
+            echo "FDROID_APK_PATH=/tmp/acode-debug-fdroid-${UPDATED_VERSION}.apk" >> $GITHUB_ENV
 
         - name: Install Node.js Packages
           run: npm install
