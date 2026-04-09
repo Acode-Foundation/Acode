@@ -56,7 +56,7 @@ export default function keyboardHandler(e) {
 	const $target = e.target;
 	const { key, ctrlKey, shiftKey, altKey, metaKey } = e;
 
-	if ($target instanceof HTMLTextAreaElement) {
+	if (shouldIgnoreEditorShortcutTarget($target)) {
 		keydownState.esc = key === "Escape";
 		return;
 	}
@@ -79,6 +79,24 @@ export default function keyboardHandler(e) {
 		metaKey,
 	});
 	target?.dispatchEvent?.(event);
+}
+
+/**
+ * Returns true when a keyboard event target should keep the shortcut local
+ * instead of forwarding it into the editor.
+ * @param {EventTarget | null} target
+ * @returns {boolean}
+ */
+function shouldIgnoreEditorShortcutTarget(target) {
+	if (!(target instanceof Element)) return false;
+
+	return (
+		target instanceof HTMLInputElement ||
+		target instanceof HTMLTextAreaElement ||
+		target instanceof HTMLSelectElement ||
+		target.isContentEditable ||
+		!!target.closest(".prompt, #palette")
+	);
 }
 
 document.addEventListener("admob.banner.size", async (event) => {
