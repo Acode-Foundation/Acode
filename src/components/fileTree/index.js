@@ -219,12 +219,11 @@ export default class FileTree {
 			queueMicrotask(() => toggle());
 		}
 
-		const defineCollapsibleAccessors = ($el) => {
-			Object.defineProperties($el, {
+		const defineCollapsibleAccessors = ($el, { includeTitle = true } = {}) => {
+			const properties = {
 				collapsed: { get: () => $wrapper.classList.contains("hidden") },
 				expanded: { get: () => !$wrapper.classList.contains("hidden") },
 				unclasped: { get: () => !$wrapper.classList.contains("hidden") }, // Legacy compatibility
-				$title: { get: () => $title },
 				$ul: { get: () => $content },
 				fileTree: { get: () => childTree },
 				refresh: {
@@ -236,12 +235,18 @@ export default class FileTree {
 				collapse: {
 					value: () => $wrapper.classList.contains("hidden") || toggle(),
 				},
-			});
+			};
+
+			if (includeTitle) {
+				properties.$title = { get: () => $title };
+			}
+
+			Object.defineProperties($el, properties);
 		};
 
 		// Keep nested folders compatible with the legacy collapsableList API.
 		defineCollapsibleAccessors($wrapper);
-		defineCollapsibleAccessors($title);
+		defineCollapsibleAccessors($title, { includeTitle: false });
 
 		return $wrapper;
 	}
@@ -293,11 +298,7 @@ export default class FileTree {
 	 * Clear all rendered content
 	 */
 	clear() {
-		// Destroy all child trees
-		for (const childTree of this.childTrees.values()) {
-			childTree.destroy();
-		}
-		this.childTrees.clear();
+		this.destroyChildTrees();
 
 		if (this.virtualList) {
 			this.virtualList.destroy();
@@ -335,6 +336,16 @@ export default class FileTree {
 	}
 
 	/**
+	 * Destroy all expanded child trees and clear their references.
+	 */
+	destroyChildTrees() {
+		for (const childTree of this.childTrees.values()) {
+			childTree.destroy();
+		}
+		this.childTrees.clear();
+	}
+
+	/**
 	 * Append a new entry to the tree
 	 * @param {string} name
 	 * @param {string} url
@@ -368,6 +379,7 @@ export default class FileTree {
 			this.virtualList.setItems(this.entries);
 		} else {
 			// Fragment mode: re-render
+			this.destroyChildTrees();
 			this.container.innerHTML = "";
 			this.renderWithFragment();
 		}
