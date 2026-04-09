@@ -606,15 +606,17 @@ async function loadApp() {
 	if (Array.isArray(files) && files.length) {
 		try {
 			await restoreFiles(files);
-			// save state to handle file loading gracefully
-			sessionStorage.setItem("isfilesRestored", true);
-			// Process any pending intents that were queued before files were restored
-			await processPendingIntents();
 		} catch (error) {
 			window.log("error", "File loading failed!");
 			window.log("error", error);
 			toast("File loading failed!");
+		} finally {
+			// Mark restoration complete even after a partial failure so
+			// switch-file persistence and queued intents are not blocked.
+			sessionStorage.setItem("isfilesRestored", true);
 		}
+		// Process any pending intents that were queued before files were restored
+		await processPendingIntents();
 	} else {
 		// Even when no files need to be restored, mark as restored and process pending intents
 		sessionStorage.setItem("isfilesRestored", true);
@@ -660,6 +662,9 @@ async function loadApp() {
 		if (mode === "switch-file") {
 			if (settings.value.rememberFiles && activeFile) {
 				localStorage.setItem("lastfile", activeFile.id);
+			}
+			if (saveState && sessionStorage.getItem("isfilesRestored") === "true") {
+				acode.exec("save-state");
 			}
 			return;
 		}

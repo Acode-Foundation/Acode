@@ -10,7 +10,7 @@ export default async function restoreFiles(files) {
 
 	await Promise.all(
 		files.map(async (file, i) => {
-			rendered = file.render;
+			rendered ||= !!file.render;
 
 			if (i === files.length - 1 && !rendered) {
 				file.render = true;
