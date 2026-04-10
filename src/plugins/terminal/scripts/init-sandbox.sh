@@ -62,7 +62,10 @@ ARGS="$ARGS -b /dev/urandom:/dev/random"
 ARGS="$ARGS -b /proc"
 ARGS="$ARGS -b /sys"
 ARGS="$ARGS -b $PREFIX"
+#keeping /public for backward compatibility, as some users might be using it for storing files
 ARGS="$ARGS -b $PREFIX/public:/public"
+ARGS="$ARGS -b $PREFIX/public:/home"
+ARGS="$ARGS -b $PREFIX/public:/root"
 ARGS="$ARGS -b $PREFIX/alpine/tmp:/dev/shm"
 
 
