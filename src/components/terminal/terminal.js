@@ -11,7 +11,10 @@ import { Unicode11Addon } from "@xterm/addon-unicode11";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { WebglAddon } from "@xterm/addon-webgl";
 import { Terminal as Xterm } from "@xterm/xterm";
-import { getResolvedKeyBindings } from "cm/commandRegistry";
+import {
+	getResolvedKeyBindings,
+	getResolvedKeyBindingsVersion,
+} from "cm/commandRegistry";
 import toast from "components/toast";
 import confirm from "dialogs/confirm";
 import fonts from "lib/fonts";
@@ -61,6 +64,8 @@ export default class TerminalComponent {
 		this.isConnected = false;
 		this.serverMode = options.serverMode !== false; // Default true
 		this.touchSelection = null;
+		this.parsedAppKeybindings = [];
+		this.parsedAppKeybindingsVersion = -1;
 
 		this.init();
 	}
@@ -335,6 +340,11 @@ export default class TerminalComponent {
 	 * Parse app keybindings into a format usable by the keyboard handler
 	 */
 	parseAppKeybindings() {
+		const version = getResolvedKeyBindingsVersion();
+		if (this.parsedAppKeybindingsVersion === version) {
+			return this.parsedAppKeybindings;
+		}
+
 		const parsedBindings = [];
 
 		Object.values(getResolvedKeyBindings()).forEach((binding) => {
@@ -378,7 +388,10 @@ export default class TerminalComponent {
 			});
 		});
 
-		return parsedBindings;
+		this.parsedAppKeybindings = parsedBindings;
+		this.parsedAppKeybindingsVersion = version;
+
+		return this.parsedAppKeybindings;
 	}
 
 	/**

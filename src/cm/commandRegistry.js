@@ -119,6 +119,11 @@ const commandMap = new Map();
 /** @type {Record<string, any>} */
 let resolvedKeyBindings = keyBindings;
 
+/** @type {Record<string, any>} */
+let cachedResolvedKeyBindings = {};
+
+let resolvedKeyBindingsVersion = 0;
+
 /** @type {import("@codemirror/view").KeyBinding[]} */
 let cachedKeymap = [];
 
@@ -1336,6 +1341,19 @@ function resolveBindingInfo(name) {
 	return baseBinding ? { ...baseBinding, ...override } : override;
 }
 
+function buildResolvedKeyBindingsSnapshot() {
+	const bindingNames = new Set([
+		...Object.keys(keyBindings),
+		...Object.keys(resolvedKeyBindings ?? {}),
+	]);
+
+	return Object.fromEntries(
+		Array.from(bindingNames, (name) => [name, resolveBindingInfo(name)]).filter(
+			([, binding]) => binding,
+		),
+	);
+}
+
 function toCodeMirrorKey(combo) {
 	if (!combo) return null;
 	const parts = combo
@@ -1377,6 +1395,7 @@ function toCodeMirrorKey(combo) {
 
 function rebuildKeymap() {
 	const bindings = [];
+	cachedResolvedKeyBindings = buildResolvedKeyBindingsSnapshot();
 	commandMap.forEach((command, name) => {
 		const bindingInfo = resolveBindingInfo(name);
 		command.description =
@@ -1398,6 +1417,7 @@ function rebuildKeymap() {
 		});
 	});
 	cachedKeymap = bindings;
+	resolvedKeyBindingsVersion += 1;
 	return bindings;
 }
 
@@ -1436,16 +1456,11 @@ export function getRegisteredCommands() {
 }
 
 export function getResolvedKeyBindings() {
-	const bindingNames = new Set([
-		...Object.keys(keyBindings),
-		...Object.keys(resolvedKeyBindings ?? {}),
-	]);
+	return cachedResolvedKeyBindings;
+}
 
-	return Object.fromEntries(
-		Array.from(bindingNames, (name) => [name, resolveBindingInfo(name)]).filter(
-			([, binding]) => binding,
-		),
-	);
+export function getResolvedKeyBindingsVersion() {
+	return resolvedKeyBindingsVersion;
 }
 
 export function getCommandKeymapExtension() {
