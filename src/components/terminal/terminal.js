@@ -11,10 +11,10 @@ import { Unicode11Addon } from "@xterm/addon-unicode11";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { WebglAddon } from "@xterm/addon-webgl";
 import { Terminal as Xterm } from "@xterm/xterm";
+import { getResolvedKeyBindings } from "cm/commandRegistry";
 import toast from "components/toast";
 import confirm from "dialogs/confirm";
 import fonts from "lib/fonts";
-import keyBindings from "lib/keyBindings";
 import appSettings from "lib/settings";
 import LigaturesAddon from "./ligatures";
 import { getTerminalSettings } from "./terminalDefaults";
@@ -337,7 +337,7 @@ export default class TerminalComponent {
 	parseAppKeybindings() {
 		const parsedBindings = [];
 
-		Object.values(keyBindings).forEach((binding) => {
+		Object.values(getResolvedKeyBindings()).forEach((binding) => {
 			if (!binding.key) return;
 
 			// Skip editor-only keybindings in terminal
@@ -368,7 +368,7 @@ export default class TerminalComponent {
 						parsed.meta = true;
 					} else {
 						// This is the actual key
-						parsed.key = part;
+						parsed.key = part.toLowerCase();
 					}
 				});
 
@@ -432,7 +432,7 @@ export default class TerminalComponent {
 						binding.shift === event.shiftKey &&
 						binding.alt === event.altKey &&
 						binding.meta === event.metaKey &&
-						binding.key === event.key,
+						binding.key === event.key.toLowerCase(),
 				);
 
 				if (isAppKeybinding) {
