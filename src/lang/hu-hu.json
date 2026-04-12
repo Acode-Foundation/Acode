@@ -714,5 +714,13 @@
 	"lsp-remove-custom-server": "Egyéni kiszolgáló eltávolítása",
 	"lsp-remove-custom-server-confirm": "Eltávolítja a(z) {server} egyéni nyelvi kiszolgálót?",
 	"lsp-custom-server-removed": "Egyéni kiszolgáló eltávolítva",
-	"settings-info-lsp-remove-custom-server": "Eltávolítja ezt az egyéni nyelvi kiszolgálót az Acode alkalmazásból."
+	"settings-info-lsp-remove-custom-server": "Eltávolítja ezt az egyéni nyelvi kiszolgálót az Acode alkalmazásból.",
+	"unsaved selected tabs warning": "Some selected tabs are not saved. Choose what to do.",
+	"save selected tabs": "Save selected tabs",
+	"close selected tabs": "Close selected tabs",
+	"save selected tabs warning": "Are you sure you want to save and close the selected tabs?",
+	"close selected tabs warning": "Are you sure you want to close the selected tabs? You will lose the unsaved changes and this action cannot be reversed.",
+	"close tabs to right": "Close Right",
+	"close tabs to left": "Close Left",
+	"close other tabs": "Close Others"
 }

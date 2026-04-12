@@ -715,5 +715,13 @@
 	"lsp-remove-custom-server": "Hapus server kostum",
 	"lsp-remove-custom-server-confirm": "Hapus server bahasa kostum {server}?",
 	"lsp-custom-server-removed": "Server kostum dihapus",
-	"settings-info-lsp-remove-custom-server": "Hapus server bahasa kostum ini dari Acode."
+	"settings-info-lsp-remove-custom-server": "Hapus server bahasa kostum ini dari Acode.",
+	"unsaved selected tabs warning": "Some selected tabs are not saved. Choose what to do.",
+	"save selected tabs": "Save selected tabs",
+	"close selected tabs": "Close selected tabs",
+	"save selected tabs warning": "Are you sure you want to save and close the selected tabs?",
+	"close selected tabs warning": "Are you sure you want to close the selected tabs? You will lose the unsaved changes and this action cannot be reversed.",
+	"close tabs to right": "Close Right",
+	"close tabs to left": "Close Left",
+	"close other tabs": "Close Others"
 }

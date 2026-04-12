@@ -713,5 +713,13 @@
 	"lsp-remove-custom-server": "Remove custom server",
 	"lsp-remove-custom-server-confirm": "Remove custom language server {server}?",
 	"lsp-custom-server-removed": "Custom server removed",
-	"settings-info-lsp-remove-custom-server": "Remove this custom language server from Acode."
+	"settings-info-lsp-remove-custom-server": "Remove this custom language server from Acode.",
+	"unsaved selected tabs warning": "Some selected tabs are not saved. Choose what to do.",
+	"save selected tabs": "Save selected tabs",
+	"close selected tabs": "Close selected tabs",
+	"save selected tabs warning": "Are you sure you want to save and close the selected tabs?",
+	"close selected tabs warning": "Are you sure you want to close the selected tabs? You will lose the unsaved changes and this action cannot be reversed.",
+	"close tabs to right": "Close Right",
+	"close tabs to left": "Close Left",
+	"close other tabs": "Close Others"
 }
