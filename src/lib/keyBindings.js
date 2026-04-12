@@ -44,6 +44,27 @@ const APP_BINDING_CONFIG = [
 		readOnly: false,
 	},
 	{
+		name: "closeTabsToRight",
+		description: "Close tabs to the right.",
+		key: null,
+		action: "close-tabs-to-right",
+		readOnly: false,
+	},
+	{
+		name: "closeTabsToLeft",
+		description: "Close tabs to the left.",
+		key: null,
+		action: "close-tabs-to-left",
+		readOnly: false,
+	},
+	{
+		name: "closeOtherTabs",
+		description: "Close other tabs.",
+		key: null,
+		action: "close-other-tabs",
+		readOnly: false,
+	},
+	{
 		name: "newFile",
 		description: "Create new file",
 		key: "Ctrl-N",
