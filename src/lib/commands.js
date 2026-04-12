@@ -51,9 +51,24 @@ function getTabCloseSelectionOptions() {
 	};
 }
 
-function getTabsRelativeToActive(side) {
-	const { files, activeFile } = editorManager;
-	const activeIndex = files.indexOf(activeFile);
+function resolveReferenceFile(referenceFile) {
+	const { activeFile, getFile } = editorManager;
+
+	if (!referenceFile) return activeFile;
+	if (typeof referenceFile === "string") {
+		return getFile(referenceFile, "id") || activeFile;
+	}
+	if (referenceFile?.id) {
+		return getFile(referenceFile.id, "id") || referenceFile;
+	}
+
+	return referenceFile;
+}
+
+function getTabsRelativeToFile(side, referenceFile) {
+	const { files } = editorManager;
+	const file = resolveReferenceFile(referenceFile);
+	const activeIndex = files.indexOf(file);
 
 	if (activeIndex === -1) return [];
 
@@ -122,21 +137,21 @@ export default {
 	async "close-all-tabs"() {
 		await closeTabs(editorManager.files);
 	},
-	async "close-tabs-to-left"() {
+	async "close-tabs-to-left"(referenceFile) {
 		await closeTabs(
-			getTabsRelativeToActive("left"),
+			getTabsRelativeToFile("left", referenceFile),
 			getTabCloseSelectionOptions(),
 		);
 	},
-	async "close-tabs-to-right"() {
+	async "close-tabs-to-right"(referenceFile) {
 		await closeTabs(
-			getTabsRelativeToActive("right"),
+			getTabsRelativeToFile("right", referenceFile),
 			getTabCloseSelectionOptions(),
 		);
 	},
-	async "close-other-tabs"() {
+	async "close-other-tabs"(referenceFile) {
 		await closeTabs(
-			getTabsRelativeToActive("others"),
+			getTabsRelativeToFile("others", referenceFile),
 			getTabCloseSelectionOptions(),
 		);
 	},
@@ -154,8 +169,8 @@ export default {
 	"close-current-tab"() {
 		editorManager.activeFile.remove();
 	},
-	"toggle-pin-tab"() {
-		editorManager.activeFile?.togglePinned?.();
+	"toggle-pin-tab"(referenceFile) {
+		resolveReferenceFile(referenceFile)?.togglePinned?.();
 	},
 	console() {
 		run(true, "inapp");
