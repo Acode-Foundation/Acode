@@ -579,7 +579,7 @@ function execOperation(type, action, url, $target, name) {
 	async function deleteFile() {
 		const msg = strings["delete entry"].replace("{name}", name);
 		const confirmation = await confirm(strings.warning, msg);
-  let $parent;
+        let $parent;
 		if (!confirmation) return;
 		startLoading();
 		if (!(await fsOperation(url).exists())) return;
@@ -587,7 +587,7 @@ function execOperation(type, action, url, $target, name) {
 		recents.removeFile(url);
 		if (helpers.isFile(type)) {
 			await fsOperation(url).delete();
-   $parent = $target.parentElement;
+            $parent = $target.parentElement;
 			$target.remove();
 			const file = editorManager.getFile(url, "uri");
 			if (file) file.uri = null;
@@ -619,7 +619,7 @@ function execOperation(type, action, url, $target, name) {
 			}
 			recents.removeFolder(url);
 			helpers.updateUriOfAllActiveFiles(url, null);
-   $parent = $target.parentElement?.parentElement;
+            $parent = $target.parentElement?.parentElement;
 			$target.parentElement.remove();
 			editorManager.onupdate("delete-folder");
 			editorManager.emit("update", "delete-folder");
@@ -1066,11 +1066,6 @@ async function removeEntryFromFileTree(url, $parent){
                 return;
         }
 }
-
-}
-
-/**
- * Create a folder tile
 
 /**
  * Create a folder tile
