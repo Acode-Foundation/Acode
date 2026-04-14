@@ -167,6 +167,7 @@ export default class FileTree {
 
 		// Child file tree for nested folders
 		let childTree = null;
+		$content._fileTree = null;
 
 		const toggle = async () => {
 			const isExpanded = !$wrapper.classList.contains("hidden");
@@ -179,6 +180,7 @@ export default class FileTree {
 					childTree.destroy();
 					this.childTrees.delete(url);
 					childTree = null;
+					$content._fileTree = null;
 				}
 				this.options.onExpandedChange?.(url, false);
 			} else {
@@ -192,6 +194,7 @@ export default class FileTree {
 					_depth: this.depth + 1,
 				});
 				this.childTrees.set(url, childTree);
+				$content._fileTree = childTree;
 				try {
 					await childTree.load(url);
 				} finally {
@@ -216,20 +219,34 @@ export default class FileTree {
 			queueMicrotask(() => toggle());
 		}
 
-		// Add properties for external access (keep unclasped for collapsableList compatibility)
-		Object.defineProperties($wrapper, {
-			collapsed: { get: () => $wrapper.classList.contains("hidden") },
-			expanded: { get: () => !$wrapper.classList.contains("hidden") },
-			unclasped: { get: () => !$wrapper.classList.contains("hidden") }, // Legacy compatibility
-			$title: { get: () => $title },
-			$ul: { get: () => $content },
-			expand: {
-				value: () => !$wrapper.classList.contains("hidden") || toggle(),
-			},
-			collapse: {
-				value: () => $wrapper.classList.contains("hidden") || toggle(),
-			},
-		});
+		const defineCollapsibleAccessors = ($el, { includeTitle = true } = {}) => {
+			const properties = {
+				collapsed: { get: () => $wrapper.classList.contains("hidden") },
+				expanded: { get: () => !$wrapper.classList.contains("hidden") },
+				unclasped: { get: () => !$wrapper.classList.contains("hidden") }, // Legacy compatibility
+				$ul: { get: () => $content },
+				fileTree: { get: () => childTree },
+				refresh: {
+					value: () => childTree?.refresh(),
+				},
+				expand: {
+					value: () => !$wrapper.classList.contains("hidden") || toggle(),
+				},
+				collapse: {
+					value: () => $wrapper.classList.contains("hidden") || toggle(),
+				},
+			};
+
+			if (includeTitle) {
+				properties.$title = { get: () => $title };
+			}
+
+			Object.defineProperties($el, properties);
+		};
+
+		// Keep nested folders compatible with the legacy collapsableList API.
+		defineCollapsibleAccessors($wrapper);
+		defineCollapsibleAccessors($title, { includeTitle: false });
 
 		return $wrapper;
 	}
@@ -281,11 +298,7 @@ export default class FileTree {
 	 * Clear all rendered content
 	 */
 	clear() {
-		// Destroy all child trees
-		for (const childTree of this.childTrees.values()) {
-			childTree.destroy();
-		}
-		this.childTrees.clear();
+		this.destroyChildTrees();
 
 		if (this.virtualList) {
 			this.virtualList.destroy();
@@ -323,6 +336,16 @@ export default class FileTree {
 	}
 
 	/**
+	 * Destroy all expanded child trees and clear their references.
+	 */
+	destroyChildTrees() {
+		for (const childTree of this.childTrees.values()) {
+			childTree.destroy();
+		}
+		this.childTrees.clear();
+	}
+
+	/**
 	 * Append a new entry to the tree
 	 * @param {string} name
 	 * @param {string} url
@@ -356,6 +379,7 @@ export default class FileTree {
 			this.virtualList.setItems(this.entries);
 		} else {
 			// Fragment mode: re-render
+			this.destroyChildTrees();
 			this.container.innerHTML = "";
 			this.renderWithFragment();
 		}

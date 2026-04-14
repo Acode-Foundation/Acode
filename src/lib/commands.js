@@ -35,54 +35,125 @@ import saveState from "./saveState";
 import appSettings from "./settings";
 import showFileInfo from "./showFileInfo";
 
+function getTabCloseSelectionOptions() {
+	return {
+		unsavedWarning:
+			strings["unsaved selected tabs warning"] ||
+			"Some selected tabs are not saved. Choose what to do.",
+		saveLabel: strings["save selected tabs"] || "Save selected tabs",
+		closeLabel: strings["close selected tabs"] || "Close selected tabs",
+		saveWarning:
+			strings["save selected tabs warning"] ||
+			"Are you sure you want to save and close the selected tabs?",
+		closeWarning:
+			strings["close selected tabs warning"] ||
+			"Are you sure you want to close the selected tabs? You will lose the unsaved changes and this action cannot be reversed.",
+	};
+}
+
+function resolveReferenceFile(referenceFile) {
+	const { activeFile, getFile } = editorManager;
+
+	if (!referenceFile) return activeFile;
+	if (typeof referenceFile === "string") {
+		return getFile(referenceFile, "id") || activeFile;
+	}
+	if (referenceFile?.id) {
+		return getFile(referenceFile.id, "id") || referenceFile;
+	}
+
+	return referenceFile;
+}
+
+function getTabsRelativeToFile(side, referenceFile) {
+	const { files } = editorManager;
+	const file = resolveReferenceFile(referenceFile);
+	const activeIndex = files.indexOf(file);
+
+	if (activeIndex === -1) return [];
+
+	switch (side) {
+		case "left":
+			return files.slice(0, activeIndex);
+		case "right":
+			return files.slice(activeIndex + 1);
+		case "others":
+			return files.filter((_, index) => index !== activeIndex);
+		default:
+			return [];
+	}
+}
+
+async function closeTabs(files, options = {}) {
+	const closableFiles = files.filter((file) => file && !file.pinned);
+	if (!closableFiles.length) return false;
+
+	const {
+		unsavedWarning = strings["unsaved files warning"],
+		saveLabel = strings["save all"],
+		closeLabel = strings["close all"],
+		saveWarning = strings["save all warning"],
+		closeWarning = strings["close all warning"],
+	} = options;
+
+	let save = false;
+	const unsavedFiles = closableFiles.filter((file) => file.isUnsaved).length;
+	if (unsavedFiles) {
+		const confirmation = await confirm(strings["warning"], unsavedWarning);
+		if (!confirmation) return false;
+
+		const option = await select(strings["select"], [
+			["save", saveLabel],
+			["close", closeLabel],
+			["cancel", strings["cancel"]],
+		]);
+		if (option === "cancel") return false;
+
+		if (option === "save") {
+			const doSave = await confirm(strings["warning"], saveWarning);
+			if (!doSave) return false;
+			save = true;
+		} else {
+			const doClose = await confirm(strings["warning"], closeWarning);
+			if (!doClose) return false;
+		}
+	}
+
+	for (const file of [...closableFiles]) {
+		if (save) {
+			await file.save();
+		}
+
+		await file.remove(true, { silentPinned: true });
+	}
+
+	return true;
+}
+
 export default {
 	async "run-tests"() {
 		await runAllTests();
 	},
 	async "close-all-tabs"() {
-		const closableFiles = editorManager.files.filter((file) => !file.pinned);
-		if (!closableFiles.length) return;
-
-		let save = false;
-		const unsavedFiles = closableFiles.filter((file) => file.isUnsaved).length;
-		if (unsavedFiles) {
-			const confirmation = await confirm(
-				strings["warning"],
-				strings["unsaved files warning"],
-			);
-			if (!confirmation) return;
-			const option = await select(strings["select"], [
-				["save", strings["save all"]],
-				["close", strings["close all"]],
-				["cancel", strings["cancel"]],
-			]);
-			if (option === "cancel") return;
-
-			if (option === "save") {
-				const doSave = await confirm(
-					strings["warning"],
-					strings["save all warning"],
-				);
-				if (!doSave) return;
-				save = true;
-			} else {
-				const doClose = await confirm(
-					strings["warning"],
-					strings["close all warning"],
-				);
-				if (!doClose) return;
-			}
-		}
-
-		for (const file of [...closableFiles]) {
-			if (save) {
-				await file.save();
-				await file.remove(true, { silentPinned: true });
-				continue;
-			}
-
-			await file.remove(true, { silentPinned: true });
-		}
+		await closeTabs(editorManager.files);
+	},
+	async "close-tabs-to-left"(referenceFile) {
+		await closeTabs(
+			getTabsRelativeToFile("left", referenceFile),
+			getTabCloseSelectionOptions(),
+		);
+	},
+	async "close-tabs-to-right"(referenceFile) {
+		await closeTabs(
+			getTabsRelativeToFile("right", referenceFile),
+			getTabCloseSelectionOptions(),
+		);
+	},
+	async "close-other-tabs"(referenceFile) {
+		await closeTabs(
+			getTabsRelativeToFile("others", referenceFile),
+			getTabCloseSelectionOptions(),
+		);
 	},
 	async "save-all-changes"() {
 		const doSave = await confirm(
@@ -98,8 +169,8 @@ export default {
 	"close-current-tab"() {
 		editorManager.activeFile.remove();
 	},
-	"toggle-pin-tab"() {
-		editorManager.activeFile?.togglePinned?.();
+	"toggle-pin-tab"(referenceFile) {
+		resolveReferenceFile(referenceFile)?.togglePinned?.();
 	},
 	console() {
 		run(true, "inapp");

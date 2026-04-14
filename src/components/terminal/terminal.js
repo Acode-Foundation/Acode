@@ -11,10 +11,13 @@ import { Unicode11Addon } from "@xterm/addon-unicode11";
 import { WebLinksAddon } from "@xterm/addon-web-links";
 import { WebglAddon } from "@xterm/addon-webgl";
 import { Terminal as Xterm } from "@xterm/xterm";
+import {
+	getResolvedKeyBindings,
+	getResolvedKeyBindingsVersion,
+} from "cm/commandRegistry";
 import toast from "components/toast";
 import confirm from "dialogs/confirm";
 import fonts from "lib/fonts";
-import keyBindings from "lib/keyBindings";
 import appSettings from "lib/settings";
 import LigaturesAddon from "./ligatures";
 import { getTerminalSettings } from "./terminalDefaults";
@@ -61,6 +64,8 @@ export default class TerminalComponent {
 		this.isConnected = false;
 		this.serverMode = options.serverMode !== false; // Default true
 		this.touchSelection = null;
+		this.parsedAppKeybindings = [];
+		this.parsedAppKeybindingsVersion = -1;
 
 		this.init();
 	}
@@ -335,9 +340,14 @@ export default class TerminalComponent {
 	 * Parse app keybindings into a format usable by the keyboard handler
 	 */
 	parseAppKeybindings() {
+		const version = getResolvedKeyBindingsVersion();
+		if (this.parsedAppKeybindingsVersion === version) {
+			return this.parsedAppKeybindings;
+		}
+
 		const parsedBindings = [];
 
-		Object.values(keyBindings).forEach((binding) => {
+		Object.values(getResolvedKeyBindings()).forEach((binding) => {
 			if (!binding.key) return;
 
 			// Skip editor-only keybindings in terminal
@@ -368,7 +378,7 @@ export default class TerminalComponent {
 						parsed.meta = true;
 					} else {
 						// This is the actual key
-						parsed.key = part;
+						parsed.key = part.toLowerCase();
 					}
 				});
 
@@ -378,7 +388,10 @@ export default class TerminalComponent {
 			});
 		});
 
-		return parsedBindings;
+		this.parsedAppKeybindings = parsedBindings;
+		this.parsedAppKeybindingsVersion = version;
+
+		return this.parsedAppKeybindings;
 	}
 
 	/**
@@ -432,7 +445,7 @@ export default class TerminalComponent {
 						binding.shift === event.shiftKey &&
 						binding.alt === event.altKey &&
 						binding.meta === event.metaKey &&
-						binding.key === event.key,
+						binding.key === event.key.toLowerCase(),
 				);
 
 				if (isAppKeybinding) {

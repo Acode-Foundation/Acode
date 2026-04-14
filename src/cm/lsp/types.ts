@@ -21,14 +21,14 @@ export type {
 	LSPClient,
 	LSPClientConfig,
 	LSPClientExtension,
+	LSPDiagnostic,
+	LSPFormattingOptions,
+	Position,
+	Range,
+	TextEdit,
 	Transport,
 	Workspace,
 	WorkspaceFile,
-	TextEdit,
-	LSPFormattingOptions,
-	LSPDiagnostic,
-	Range,
-	Position,
 };
 
 export interface WorkspaceFileUpdate {

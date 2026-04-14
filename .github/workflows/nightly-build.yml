@@ -87,6 +87,8 @@
             echo "env: VERSION_LABEL: ${{ env. VERSION_LABEL }}"
             echo "github sha: ${{ github.sha }}" 
             echo "should not skip tags, releases: ${{ ! inputs.skip_tagging_and_releases }} " 
+            echo "🤐 env: NORMAL_APK_PATH: ${{ env.NORMAL_APK_PATH }}"
+            echo "🤐 env: FDROID_APK_PATH: ${{ env.FDROID_APK_PATH }}"            
             echo "::endgroup::" 
             
             echo "## 🚀 Build Type: ${{ env.VERSION_LABEL }}" >> $GITHUB_STEP_SUMMARY
@@ -117,8 +119,8 @@
 
         - name: Add keystore and build.json from secrets
           run: |
-            echo "${{ secrets.KEYSTORE_CONTENT }}" | base64 -d > $STORE_FILE_PATH
-            echo "${{ secrets.BUILD_JSON_CONTENT }}" | base64 -d > $BUILD_JSON_PATH
+            echo "${{ secrets.KEYSTORE_CONTENT }}" | base64 -d > ${{ env.STORE_FILE_PATH }}
+            echo "${{ secrets.BUILD_JSON_CONTENT }}" | base64 -d > ${{ env.BUILD_JSON_PATH }}
             echo "Keystore and build.json added successfully."
 
         - name: Export Commit Hash & prev tag
@@ -157,7 +159,9 @@
             echo "Updated version in config.xml"
             # Output the updated version
             echo "UPDATED_VERSION=$UPDATED_VERSION" >> $GITHUB_ENV
-            echo "UPDATED_VERSION=$UPDATED_VERSION" >> $GITHUB_OUTPUT 
+            echo "UPDATED_VERSION=$UPDATED_VERSION" >> $GITHUB_OUTPUT
+            echo "NORMAL_APK_PATH=/tmp/acode-debug-normal-${UPDATED_VERSION}.apk" >> $GITHUB_ENV
+            echo "FDROID_APK_PATH=/tmp/acode-debug-fdroid-${UPDATED_VERSION}.apk" >> $GITHUB_ENV
 
         - name: Install Node.js Packages
           run: npm install
@@ -172,28 +176,28 @@
           run: |
              node utils/storage_manager.mjs y
              npm run build paid dev apk
-             mv platforms/android/app/build/outputs/apk/debug/app-debug.apk /tmp/acode-debug-normal-$UPDATED_VERSION.apk
+             mv platforms/android/app/build/outputs/apk/debug/app-debug.apk ${{ env.NORMAL_APK_PATH }}
              echo "VERSION: $UPDATED_VERSION" >> $GITHUB_STEP_SUMMARY
              
         - name: Upload APK Artifact
           uses: actions/upload-artifact@v7
           with:
             name: app-debug-${{ env.GIT_COMMIT }}
-            path: /tmp/acode-debug-normal-${{ env.UPDATED_VERSION }}.apk
+            path: ${{ env.NORMAL_APK_PATH }}
         
         - name: Run npm build paid dev apk fdroid (for F-Droid)
           if: ${{ !inputs.is_PR }}
           run: |
             node utils/storage_manager.mjs y
             npm run build paid dev apk fdroid
-            mv platforms/android/app/build/outputs/apk/debug/app-debug.apk /tmp/acode-debug-fdroid-$UPDATED_VERSION.apk
+            mv platforms/android/app/build/outputs/apk/debug/app-debug.apk ${{ env.FDROID_APK_PATH }}
         
         - name: Upload APK Artifact
           uses: actions/upload-artifact@v7
           if: ${{ !inputs.is_PR }}
           with:
             name: app-debug-fdroid-${{ env.GIT_COMMIT }}
-            path: /tmp/acode-debug-fdroid-${{ env.UPDATED_VERSION }}.apk
+            path: ${{ env.FDROID_APK_PATH }}
 
         - name: remove keystore and build.json
           run: |
@@ -246,13 +250,15 @@
           id: release
           if: ${{ ! inputs.skip_tagging_and_releases && steps.check-nightly-tag-force-update.outcome == 'success' && env.releaseRequired == 'true' && !inputs.is_PR }}
           uses: softprops/action-gh-release@v2
+          env:
+            FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
           with:
             prerelease: true
             name: ${{ env.UPDATED_VERSION }}
             tag_name: ${{ env.UPDATED_VERSION }} 
             files: |
-              /tmp/acode-debug-normal-$UPDATED_VERSION.apk
-              /tmp/acode-debug-fdroid-$UPDATED_VERSION.apk
+              ${{ env.NORMAL_APK_PATH }}
+              ${{ env.FDROID_APK_PATH }}
             body: |
               Automated Nightly (pre-release) Releases for Today
               

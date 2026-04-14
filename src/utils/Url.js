@@ -76,7 +76,7 @@ export default {
 				if (pathnames[1].startsWith("/")) pathnames[1] = pathnames[1].slice(1);
 				const contentUri = Uri.parse(url);
 				let [root, pathname] = contentUri.docId.split(":");
-				const newDocId = path.join(pathname, ...pathnames.slice(1));
+				let newDocId = path.join(pathname, ...pathnames.slice(1));
 				if (/^content:\/\/com.termux/.test(url)) {
 					const rootCondition = root.endsWith("/");
 					const newDocIdCondition = newDocId.startsWith("/");
@@ -86,6 +86,21 @@ export default {
 						root += "/";
 					}
 					return `${contentUri.rootUri}::${root}${newDocId}${query}`;
+				}
+
+				// if pathname is undefined, meaning a docId/volume (e.g :primary:)
+				// has not been detected, so no newDocId's ":" will be added.
+				if (!pathname) {
+					// Ensure proper path separator between root and newDocId
+					let separator = "";
+					if (root.endsWith("/") && newDocId.startsWith("/")) {
+						// Both have separator, strip one from newDocId
+						newDocId = newDocId.slice(1);
+					} else if (!root.endsWith("/") && !newDocId.startsWith("/")) {
+						// Neither has separator, add one
+						separator = "/";
+					}
+					return `${contentUri.rootUri}::${root}${separator}${newDocId}${query}`;
 				}
 				return `${contentUri.rootUri}::${root}:${newDocId}${query}`;
 			} catch (error) {

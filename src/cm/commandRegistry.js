@@ -108,6 +108,7 @@ const commandKeymapCompartment = new Compartment();
  *  run: (view?: EditorView | null) => boolean | void;
  *  requiresView?: boolean;
  *  defaultDescription?: string;
+ *  defaultKey?: string | null;
  *  key?: string | null;
  * }} CommandEntry
  */
@@ -117,6 +118,11 @@ const commandMap = new Map();
 
 /** @type {Record<string, any>} */
 let resolvedKeyBindings = keyBindings;
+
+/** @type {Record<string, any>} */
+let cachedResolvedKeyBindings = {};
+
+let resolvedKeyBindingsVersion = 0;
 
 /** @type {import("@codemirror/view").KeyBinding[]} */
 let cachedKeymap = [];
@@ -1177,6 +1183,7 @@ function addCommand(entry) {
 	const command = {
 		...entry,
 		defaultDescription: entry.description || entry.name,
+		defaultKey: entry.key ?? null,
 		key: entry.key ?? null,
 	};
 	commandMap.set(entry.name, command);
@@ -1314,6 +1321,39 @@ function parseKeyString(keyString) {
 		.filter(Boolean);
 }
 
+function hasOwnBindingOverride(name) {
+	return Object.prototype.hasOwnProperty.call(resolvedKeyBindings ?? {}, name);
+}
+
+function resolveBindingInfo(name) {
+	const baseBinding = keyBindings[name] ?? null;
+	if (!hasOwnBindingOverride(name)) return baseBinding;
+
+	const override = resolvedKeyBindings?.[name];
+	if (override === null) {
+		return baseBinding ? { ...baseBinding, key: null } : { key: null };
+	}
+
+	if (!override || typeof override !== "object") {
+		return baseBinding;
+	}
+
+	return baseBinding ? { ...baseBinding, ...override } : override;
+}
+
+function buildResolvedKeyBindingsSnapshot() {
+	const bindingNames = new Set([
+		...Object.keys(keyBindings),
+		...Object.keys(resolvedKeyBindings ?? {}),
+	]);
+
+	return Object.fromEntries(
+		Array.from(bindingNames, (name) => [name, resolveBindingInfo(name)]).filter(
+			([, binding]) => binding,
+		),
+	);
+}
+
 function toCodeMirrorKey(combo) {
 	if (!combo) return null;
 	const parts = combo
@@ -1355,11 +1395,15 @@ function toCodeMirrorKey(combo) {
 
 function rebuildKeymap() {
 	const bindings = [];
+	cachedResolvedKeyBindings = buildResolvedKeyBindingsSnapshot();
 	commandMap.forEach((command, name) => {
-		const bindingInfo = resolvedKeyBindings?.[name];
+		const bindingInfo = resolveBindingInfo(name);
 		command.description =
 			bindingInfo?.description || command.defaultDescription;
-		const keySource = bindingInfo?.key ?? command.key ?? null;
+		const keySource =
+			bindingInfo && Object.prototype.hasOwnProperty.call(bindingInfo, "key")
+				? bindingInfo.key
+				: (command.defaultKey ?? null);
 		command.key = keySource;
 		const combos = parseKeyString(keySource);
 		combos.forEach((combo) => {
@@ -1373,6 +1417,7 @@ function rebuildKeymap() {
 		});
 	});
 	cachedKeymap = bindings;
+	resolvedKeyBindingsVersion += 1;
 	return bindings;
 }
 
@@ -1408,6 +1453,14 @@ export function getRegisteredCommands() {
 		description: command.description || command.defaultDescription,
 		key: command.key || null,
 	}));
+}
+
+export function getResolvedKeyBindings() {
+	return cachedResolvedKeyBindings;
+}
+
+export function getResolvedKeyBindingsVersion() {
+	return resolvedKeyBindingsVersion;
 }
 
 export function getCommandKeymapExtension() {

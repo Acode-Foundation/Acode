@@ -89,6 +89,9 @@ jobs:
       - name: Truncate message for Discord
         id: truncate-discord
         uses: 2428392/gh-truncate-string-action@b3ff790d21cf42af3ca7579146eedb93c8fb0757  # v1.4.1
+        env: 
+          # https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
         with:
           maxLength: 2000
           stringToTruncate: |
@@ -101,6 +104,9 @@ jobs:
       # ────────────────────────────────────────────────
       - name: Discord Webhook (Publishing)
         uses: tsickert/discord-webhook@b217a69502f52803de774ded2b1ab7c282e99645  # v7.0.0
+        env:
+          # https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
         with:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK_RELEASE_NOTES }}
           content: ${{ steps.truncate-discord.outputs.string }}

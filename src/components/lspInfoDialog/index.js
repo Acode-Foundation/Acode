@@ -704,5 +704,5 @@ function hasConnectedServers() {
 	return relevantServers.length > 0;
 }
 
-export { showLspInfoDialog, hasConnectedServers, addLspLog, getLspLogs };
+export { addLspLog, getLspLogs, hasConnectedServers, showLspInfoDialog };
 export default showLspInfoDialog;

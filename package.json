@@ -63,7 +63,7 @@
     "@babel/preset-typescript": "^7.28.5",
     "@babel/runtime": "^7.28.4",
     "@babel/runtime-corejs3": "^7.28.4",
-    "@biomejs/biome": "2.4.6",
+    "@biomejs/biome": "2.4.11",
     "@rspack/cli": "^1.7.0",
     "@rspack/core": "^1.7.0",
     "@types/ace": "^0.0.52",
@@ -102,9 +102,7 @@
     "terminal": "^0.1.4",
     "ts-loader": "^9.5.4",
     "typescript": "^5.9.3",
-    "vscode-languageserver-types": "^3.17.5",
-    "webpack": "^5.105.0",
-    "webpack-cli": "^6.0.1"
+    "vscode-languageserver-types": "^3.17.5"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.1",

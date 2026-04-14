@@ -1011,14 +1011,15 @@ export default class EditorFile {
 			(file) => file.id !== this.id,
 		);
 		const { files, activeFile } = editorManager;
-		if (activeFile.id === this.id) {
+		const wasActive = activeFile?.id === this.id;
+		if (wasActive) {
 			editorManager.activeFile = null;
 		}
 		if (!files.length) {
 			Sidebar.hide();
 			editorManager.activeFile = null;
 			new EditorFile();
-		} else {
+		} else if (wasActive) {
 			files[files.length - 1].makeActive();
 		}
 		editorManager.onupdate("remove-file");

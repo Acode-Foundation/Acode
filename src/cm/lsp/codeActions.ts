@@ -415,4 +415,4 @@ export async function performQuickFix(view: EditorView): Promise<boolean> {
 	return showCodeActionsMenu(view);
 }
 
-export { CODE_ACTION_KINDS, getCodeActionIcon, formatCodeActionKind };
+export { CODE_ACTION_KINDS, formatCodeActionKind, getCodeActionIcon };
