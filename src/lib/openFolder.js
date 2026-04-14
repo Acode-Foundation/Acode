@@ -624,7 +624,7 @@ function execOperation(type, action, url, $target, name) {
 
 		toast(strings.success);
 		FileList.remove(url);
-  await removeEntryFromFileTree(url);
+		await removeEntryFromFileTree(url);
 	}
 
 	async function renameFile() {
