@@ -557,7 +557,7 @@
 	"lsp-install-method-cargo": "Cargo crate",
 	"lsp-install-method-manual": "Manual binary",
 	"lsp-install-method-npm": "npm пакет",
-	"lsp-install-method-pip": "пакет pip",
+	"lsp-install-method-pip": "pip пакет",
 	"lsp-install-method-shell": "Користувацька оболонка",
 	"lsp-install-method-title": "Install method",
 	"lsp-install-repair": "Install / repair",
