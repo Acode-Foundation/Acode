@@ -1058,7 +1058,12 @@ async function refreshOpenFolder(folderUrl) {
 
 async function removeEntryFromFileTree(url){
         const filesApp = sidebarApps.get("files");
-        const $els = filesApp.getAll(`[data-url="${folderUrl}"]`);
+async function removeEntryFromFileTree(url, $parent){
+        const fileTree = $parent?._fileTree;
+        if (fileTree) {
+                await fileTree.removeEntry(url);
+        }
+}
 
         await Promise.all(
                 Array.from($els).map(async ($el) => {
