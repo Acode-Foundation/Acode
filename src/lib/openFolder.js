@@ -1067,19 +1067,10 @@ async function removeEntryFromFileTree(url, $parent){
         }
 }
 
-        await Promise.all(
-                Array.from($els).map(async ($el) => {
-                        if (!(helpers.isDir($el.dataset.type) || $el.dataset.type === "root")) {
-                                return;
-                        }
-
-                        const fileTree = getLoadedFileTree($el);
-                        if (fileTree) {
-                                await fileTree.removeEntry(url);
-                        }
-                }),
-        );
 }
+
+/**
+ * Create a folder tile
 
 /**
  * Create a folder tile
