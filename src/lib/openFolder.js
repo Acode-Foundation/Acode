@@ -1007,7 +1007,9 @@ function getLoadedFileTree($el) {
  */
 function removeEntryFromOpenFolder(entryUrl) {
 	const filesApp = sidebarApps.get("files");
-	const $els = Array.from(filesApp.getAll(`[data-url="${entryUrl}"]`));
+	const $els = Array.from(
+		filesApp.getAll(`[data-url="${CSS.escape(entryUrl)}"]`),
+	);
 
 	$els.forEach(($el) => {
 		const ownerTree =
