@@ -579,6 +579,7 @@ function execOperation(type, action, url, $target, name) {
 	async function deleteFile() {
 		const msg = strings["delete entry"].replace("{name}", name);
 		const confirmation = await confirm(strings.warning, msg);
+  let $parent;
 		if (!confirmation) return;
 		startLoading();
 		if (!(await fsOperation(url).exists())) return;
@@ -586,6 +587,7 @@ function execOperation(type, action, url, $target, name) {
 		recents.removeFile(url);
 		if (helpers.isFile(type)) {
 			await fsOperation(url).delete();
+   $parent = $target.parentElement;
 			$target.remove();
 			const file = editorManager.getFile(url, "uri");
 			if (file) file.uri = null;
@@ -617,6 +619,7 @@ function execOperation(type, action, url, $target, name) {
 			}
 			recents.removeFolder(url);
 			helpers.updateUriOfAllActiveFiles(url, null);
+   $parent = $target.parentElement?.parentElement;
 			$target.parentElement.remove();
 			editorManager.onupdate("delete-folder");
 			editorManager.emit("update", "delete-folder");
@@ -624,7 +627,7 @@ function execOperation(type, action, url, $target, name) {
 
 		toast(strings.success);
 		FileList.remove(url);
-		await removeEntryFromFileTree(url);
+		await removeEntryFromFileTree(url, $parent);
 	}
 
 	async function renameFile() {
@@ -1056,12 +1059,11 @@ async function refreshOpenFolder(folderUrl) {
 	);
 }
 
-async function removeEntryFromFileTree(url){
-        const filesApp = sidebarApps.get("files");
 async function removeEntryFromFileTree(url, $parent){
         const fileTree = $parent?._fileTree;
         if (fileTree) {
                 await fileTree.removeEntry(url);
+                return;
         }
 }
 
