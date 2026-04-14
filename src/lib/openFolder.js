@@ -624,6 +624,7 @@ function execOperation(type, action, url, $target, name) {
 
 		toast(strings.success);
 		FileList.remove(url);
+  removeEntryFromFileTree(url);
 	}
 
 	async function renameFile() {
@@ -1053,6 +1054,24 @@ async function refreshOpenFolder(folderUrl) {
 			}
 		}),
 	);
+}
+
+async function removeEntryFromFileTree(url){
+        const filesApp = sidebarApps.get("files");
+        const $els = filesApp.getAll(`[data-url="${folderUrl}"]`);
+
+        await Promise.all(
+                Array.from($els).map(async ($el) => {
+                        if (!(helpers.isDir($el.dataset.type) || $el.dataset.type === "root")) {
+                                return;
+                        }
+
+                        const fileTree = getLoadedFileTree($el);
+                        if (fileTree) {
+                                await fileTree.removeEntity(url);
+                        }
+                }),
+        );
 }
 
 /**
