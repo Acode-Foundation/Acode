@@ -1068,7 +1068,7 @@ async function removeEntryFromFileTree(url){
 
                         const fileTree = getLoadedFileTree($el);
                         if (fileTree) {
-                                await fileTree.removeEntity(url);
+                                await fileTree.removeEntry(url);
                         }
                 }),
         );
