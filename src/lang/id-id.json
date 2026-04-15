@@ -719,9 +719,9 @@
 	"unsaved selected tabs warning": "Beberapa tab terpilih tidak disimpan. Pilih apa yang harus dilakukan.",
 	"save selected tabs": "Simpan tab terpilih",
 	"close selected tabs": "Tutup tab terpilih",
-	"save selected tabs warning": "Apakah anda yakin ingin simpan dan tutup tab terpilih?",
-	"close selected tabs warning": "Apakah anda yakin ingin tutup tab terpilih? Anda akan kehilangan perubahan yang belum disimpan dan aksi ini tidak dapat dibatalkan.",
+	"save selected tabs warning": "Apakah Anda yakin ingin menyimpan dan menutup tab terpilih?",
+	"close selected tabs warning": "Apakah Anda yakin ingin menutup tab terpilih? Anda akan kehilangan perubahan yang belum disimpan dan aksi ini tidak dapat dibatalkan.",
 	"close tabs to right": "Tutup Kanan",
 	"close tabs to left": "Tutup Kiri",
-	"close other tabs": "Tutup lainnya"
+	"close other tabs": "Tutup Lainnya"
 }
