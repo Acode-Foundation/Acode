@@ -10,7 +10,6 @@ import java.net.URL;
 import java.util.Scanner;
 
 public class Authenticator extends CordovaPlugin {
-    // Standard practice: use a TAG for easy filtering in Logcat
     private static final String TAG = "AcodeAuth"; 
     private static final String PREFS_FILENAME = "acode_auth_secure";
     private static final String KEY_TOKEN = "auth_token";
@@ -41,6 +40,22 @@ public class Authenticator extends CordovaPlugin {
                 Log.d(TAG, "Saving new token...");
                 prefManager.setString(KEY_TOKEN, token);
                 callbackContext.success();
+                return true;
+            case "retrieveFilteredPlugins":
+                try {
+                    JSONObject filterState = args.length() > 0 ? args.getJSONObject(0) : null;
+                    final JSONObject finalFilterState = filterState;
+                    cordova.getThreadPool().execute(() -> {
+                        try {
+                            PluginRetriever.retrieveFilteredPlugins(prefManager.getString(KEY_TOKEN, null), finalFilterState, callbackContext);
+                        } catch (Exception e) {
+                            Log.e(TAG, "retrieveFilteredPlugins error: " + e.getMessage(), e);
+                            callbackContext.error("Error: " + e.getMessage());
+                        }
+                    });
+                } catch (JSONException e) {
+                    callbackContext.error("Invalid filter JSON: " + e.getMessage());
+                }
                 return true;
             default:
                 Log.w(TAG, "Attempted to call unknown action: " + action);
@@ -114,7 +129,7 @@ public class Authenticator extends CordovaPlugin {
         HttpURLConnection conn = null;
         try {
             Log.d(TAG, "Network Request: Connecting to https://acode.app/api/login");
-            URL url = new URL("https://acode.app/api/login");  // Changed from /api to /api/login
+            URL url = new URL("https://acode.app/api/login");
             conn = (HttpURLConnection) url.openConnection();
             conn.setRequestProperty("x-auth-token", token);
             conn.setRequestMethod("GET");

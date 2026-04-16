@@ -13,6 +13,7 @@
         <framework src="androidx.security:security-crypto:1.1.0" />
 
         <source-file src="src/android/Authenticator.java" target-dir="src/com/foxdebug/acode/rk/auth" />
+        <source-file src="src/android/PluginRetriever.java" target-dir="src/com/foxdebug/acode/rk/auth" />
         <source-file src="src/android/EncryptedPreferenceManager.java" target-dir="src/com/foxdebug/acode/rk/auth" />
         
            
