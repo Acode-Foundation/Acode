@@ -8,6 +8,7 @@ import org.json.JSONException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Scanner;
+import org.json.JSONObject;
 
 public class Authenticator extends CordovaPlugin {
     private static final String TAG = "AcodeAuth"; 
@@ -134,7 +135,7 @@ public class Authenticator extends CordovaPlugin {
             conn.setRequestProperty("x-auth-token", token);
             conn.setRequestMethod("GET");
             conn.setConnectTimeout(5000);
-            conn.setReadTimeout(5000);  // Add read timeout too
+            conn.setReadTimeout(5000);
             
             int code = conn.getResponseCode();
             Log.d(TAG, "Server responded with status code: " + code);

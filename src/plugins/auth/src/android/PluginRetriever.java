@@ -37,7 +37,7 @@ public class PluginRetriever {
                 url = API_BASE + "/plugin?orderBy=" + value + "&page=" + page + "&limit=" + LIMIT;
             }
 
-            JSONArray items = fetchJsonArray(token,url);
+            JSONArray items = fetchJsonArray(url,token);
             if (items == null) items = new JSONArray();
 
             filterState.put("nextPage", page + 1);
@@ -74,7 +74,7 @@ public class PluginRetriever {
             if (!hasMoreSource) break;
 
             String url = API_BASE + "/plugins?page=" + nextPage + "&limit=" + LIMIT;
-            JSONArray data = fetchJsonArray(token,url);
+            JSONArray data = fetchJsonArray(url,token);
             nextPage++;
             filterState.put("nextPage", nextPage);
 
