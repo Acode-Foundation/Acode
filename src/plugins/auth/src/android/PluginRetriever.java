@@ -69,6 +69,7 @@ public class PluginRetriever {
             filterState.put("nextPage", page + 1);
             result.put("items", items);
             result.put("hasMore", items.length() == LIMIT);
+            result.put("filterState", filterState);
             callbackContext.success(result);
             return;
         }
