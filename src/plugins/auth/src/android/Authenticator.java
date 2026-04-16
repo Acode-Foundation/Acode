@@ -42,6 +42,16 @@ public class Authenticator extends CordovaPlugin {
                 prefManager.setString(KEY_TOKEN, token);
                 callbackContext.success();
                 return true;
+            case "getAllPlugins":
+                cordova.getThreadPool().execute(() -> {
+                        try {
+                            PluginRetriever.getAllPlugins(prefManager.getString(KEY_TOKEN, null), args.getInt(0), callbackContext);
+                        } catch (Exception e) {
+                            Log.e(TAG, "getAllPlugins error: " + e.getMessage(), e);
+                            callbackContext.error("Error: " + e.getMessage());
+                        }
+                    });
+                return true;
             case "retrieveFilteredPlugins":
                 try {
                     JSONObject filterState = args.length() > 0 ? args.getJSONObject(0) : null;
