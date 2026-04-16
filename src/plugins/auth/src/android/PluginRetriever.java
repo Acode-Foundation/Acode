@@ -168,6 +168,7 @@ public class PluginRetriever {
 
             Scanner s = new Scanner(conn.getInputStream(), "UTF-8").useDelimiter("\\A");
             String body = s.hasNext() ? s.next() : "[]";
+            s.close();
             return new JSONArray(body);
         } catch (Exception e) {
             Log.e(TAG, "fetchJsonArray error: " + e.getMessage(), e);
