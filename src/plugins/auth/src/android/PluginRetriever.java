@@ -126,7 +126,7 @@ public class PluginRetriever {
             
             // Add auth header if token is present
             if (token != null && !token.isEmpty()) {
-                conn.setRequestProperty("x-auth-token", token);
+                conn.setRequestProperty("Authorization", "Bearer " + token);
             }
 
             int code = conn.getResponseCode();
