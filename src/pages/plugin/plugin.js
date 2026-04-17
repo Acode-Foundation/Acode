@@ -171,6 +171,8 @@ export default async function PluginInclude(
 							purchased = !!purchase || remotePlugin.owned;
 							price = product.price;
 							purchaseToken = purchase?.purchaseToken;
+						} else if (remotePlugin.owned) {
+							purchased = true;
 						}
 					} catch (error) {
 						helpers.error(error);
