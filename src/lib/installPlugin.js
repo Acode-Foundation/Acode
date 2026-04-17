@@ -82,23 +82,23 @@ export default async function installPlugin(
 				},
 			);
 		} else {
-			// cordova http plugin for others
-			plugin = await new Promise((resolve, reject) => {
-				cordova.plugin.http.sendRequest(
+			const tempPath = cordova.file.cacheDirectory + "plugin_download.zip";
+
+			await new Promise((resolve, reject) => {
+				cordova.exec(resolve, reject, "Authenticator", "downloadPlugin", [
 					pluginUrl,
-					{
-						method: "GET",
-						responseType: "arraybuffer",
-					},
-					(response) => {
-						resolve(response.data);
-						loaderDialog.setMessage(`${strings.loading} 100%`);
-					},
-					(error) => {
-						reject(error);
-					},
-				);
+					tempPath,
+				]);
 			});
+
+			plugin = await fsOperation(tempPath).readFile(
+				undefined,
+				(loaded, total) => {
+					loaderDialog.setMessage(
+						`${strings.loading} ${((loaded / total) * 100).toFixed(2)}%`,
+					);
+				},
+			);
 		}
 
 		if (plugin) {

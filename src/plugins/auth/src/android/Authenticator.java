@@ -42,31 +42,32 @@ public class Authenticator extends CordovaPlugin {
                 prefManager.setString(KEY_TOKEN, token);
                 callbackContext.success();
                 return true;
-            case "getAllPlugins":
+            case "downloadPlugin":
                 cordova.getThreadPool().execute(() -> {
-                        try {
-                            PluginRetriever.getAllPlugins(args.getInt(0), callbackContext);
-                        } catch (Exception e) {
-                            Log.e(TAG, "getAllPlugins error: " + e.getMessage(), e);
-                            callbackContext.error("Error: " + e.getMessage());
-                        }
-                    });
+                    try {
+                        PluginRetriever.downloadPlugin(
+                            prefManager.getString(KEY_TOKEN, null),
+                            args.getString(0),
+                            args.getString(1),
+                            callbackContext
+                        );
+                    } catch (Exception e) {
+                        Log.e(TAG, "downloadPlugin error: " + e.getMessage(), e);
+                        callbackContext.error("Error: " + e.getMessage());
+                    }
+                });
                 return true;
-            case "retrieveFilteredPlugins":
-                try {
-                    JSONObject filterState = args.length() > 0 ? args.getJSONObject(0) : null;
-                    final JSONObject finalFilterState = filterState;
-                    cordova.getThreadPool().execute(() -> {
-                        try {
-                            PluginRetriever.retrieveFilteredPlugins(prefManager.getString(KEY_TOKEN, null), finalFilterState, callbackContext);
-                        } catch (Exception e) {
-                            Log.e(TAG, "retrieveFilteredPlugins error: " + e.getMessage(), e);
-                            callbackContext.error("Error: " + e.getMessage());
-                        }
-                    });
-                } catch (JSONException e) {
-                    callbackContext.error("Invalid filter JSON: " + e.getMessage());
-                }
+            case "fetchPlugins":
+                cordova.getThreadPool().execute(() -> {
+                    try {
+                        String url = args.getString(0);
+                        JSONArray items = PluginRetriever.fetchJsonArray(url, prefManager.getString(KEY_TOKEN, null));
+                        callbackContext.success(items != null ? items : new JSONArray());
+                    } catch (Exception e) {
+                        Log.e(TAG, "fetchPlugins error: " + e.getMessage(), e);
+                        callbackContext.error("Error: " + e.getMessage());
+                    }
+                });
                 return true;
             default:
                 Log.w(TAG, "Attempted to call unknown action: " + action);

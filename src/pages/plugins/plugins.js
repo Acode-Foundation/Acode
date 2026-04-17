@@ -416,95 +416,82 @@ export default function PluginsInclude(updates) {
     }
   }
 
-  async function retrieveFilteredPlugins(filterState) {
+  //fetch plugins with the auth token
+  function fetchPlugins(url) {
+    return new Promise((resolve, reject) => {
+        cordova.exec(
+            (items) => resolve(items),
+            (err) => reject(new Error(err)),
+            "Authenticator",
+            "fetchPlugins",
+            [url]
+        );
+    });
+}
+  
+async function retrieveFilteredPlugins(filterState) {
     if (!filterState) return { items: [], hasMore: false };
 
     if (filterState.type === "orderBy") {
-      const page = filterState.nextPage || 1;
-      try {
-        let response;
-        if (filterState.value === "top_rated") {
-          response = await fetch(
-            withSupportedEditor(
-              `${constants.API_BASE}/plugins?explore=random&page=${page}&limit=${LIMIT}`,
-            ),
-          );
-        } else {
-          response = await fetch(
-            withSupportedEditor(
-              `${constants.API_BASE}/plugin?orderBy=${filterState.value}&page=${page}&limit=${LIMIT}`,
-            ),
-          );
+        const page = filterState.nextPage || 1;
+        try {
+            let url;
+            if (filterState.value === "top_rated") {
+                url = withSupportedEditor(`${constants.API_BASE}/plugins?explore=random&page=${page}&limit=${LIMIT}`);
+            } else {
+                url = withSupportedEditor(`${constants.API_BASE}/plugin?orderBy=${filterState.value}&page=${page}&limit=${LIMIT}`);
+            }
+
+            const items = await fetchPlugins(url);
+            filterState.nextPage = page + 1;
+            return { items, hasMore: items.length === LIMIT };
+        } catch (error) {
+            console.error("Failed to fetch ordered plugins:", error);
+            return { items: [], hasMore: false };
         }
-        const items = await response.json();
-        if (!Array.isArray(items)) {
-          return { items: [], hasMore: false };
-        }
-        filterState.nextPage = page + 1;
-        const hasMoreResults = items.length === LIMIT;
-        return { items, hasMore: hasMoreResults };
-      } catch (error) {
-        console.error("Failed to fetch ordered plugins:", error);
-        return { items: [], hasMore: false };
-      }
     }
 
-    if (!Array.isArray(filterState.buffer)) {
-      filterState.buffer = [];
-    }
-    if (filterState.hasMoreSource === undefined) {
-      filterState.hasMoreSource = true;
-    }
-    if (!filterState.nextPage) {
-      filterState.nextPage = 1;
-    }
+    if (!Array.isArray(filterState.buffer)) filterState.buffer = [];
+    if (filterState.hasMoreSource === undefined) filterState.hasMoreSource = true;
+    if (!filterState.nextPage) filterState.nextPage = 1;
 
     const items = [];
 
     while (items.length < LIMIT) {
-      if (filterState.buffer.length) {
-        items.push(filterState.buffer.shift());
-        continue;
-      }
-
-      if (filterState.hasMoreSource === false) break;
-
-      try {
-        const page = filterState.nextPage;
-        const response = await fetch(
-          withSupportedEditor(`${constants.API_BASE}/plugins?page=${page}&limit=${LIMIT}`),
-        );
-        const data = await response.json();
-        filterState.nextPage = page + 1;
-
-        if (!Array.isArray(data) || !data.length) {
-          filterState.hasMoreSource = false;
-          break;
+        if (filterState.buffer.length) {
+            items.push(filterState.buffer.shift());
+            continue;
         }
 
-        if (data.length < LIMIT) {
-          filterState.hasMoreSource = false;
-        }
+        if (filterState.hasMoreSource === false) break;
 
-        const matched = data.filter((plugin) => matchesFilter(plugin, filterState));
-        filterState.buffer.push(...matched);
-      } catch (error) {
-        console.error("Failed to fetch filtered plugins:", error);
-        filterState.hasMoreSource = false;
-        break;
-      }
+        try {
+            const url = withSupportedEditor(`${constants.API_BASE}/plugins?page=${filterState.nextPage}&limit=${LIMIT}`);
+            const data = await fetchPlugins(url); // <-- java call
+            filterState.nextPage++;
+
+            if (!Array.isArray(data) || !data.length) {
+                filterState.hasMoreSource = false;
+                break;
+            }
+
+            if (data.length < LIMIT) filterState.hasMoreSource = false;
+
+            filterState.buffer.push(...data.filter(plugin => matchesFilter(plugin, filterState)));
+        } catch (error) {
+            console.error("Failed to fetch filtered plugins:", error);
+            filterState.hasMoreSource = false;
+            break;
+        }
     }
 
     while (items.length < LIMIT && filterState.buffer.length) {
-      items.push(filterState.buffer.shift());
+        items.push(filterState.buffer.shift());
     }
 
-    const hasMoreResults =
-      (filterState.hasMoreSource !== false && filterState.nextPage) ||
-      filterState.buffer.length > 0;
-
+    const hasMoreResults = (filterState.hasMoreSource !== false && filterState.nextPage) || filterState.buffer.length > 0;
     return { items, hasMore: Boolean(hasMoreResults) };
-  }
+}
 
   function matchesFilter(plugin, filterState) {
     if (!plugin) return false;
@@ -559,6 +546,7 @@ export default function PluginsInclude(updates) {
     return [];
   }
 
+  //auth token is not needed here as this endpoint only returns public plugins and the server handles the filtering based on supported editor
   async function getAllPlugins() {
     if (currentFilter) return;
     if (isLoading || !hasMore) return;
@@ -632,26 +620,76 @@ export default function PluginsInclude(updates) {
     $list.installed.setAttribute("empty-msg", strings["no plugins found"]);
   }
 
-  async function getOwned() {
-    $list.owned.setAttribute("empty-msg", strings["loading..."]);
-    const purchases = await helpers.promisify(iap.getPurchases);
-    const disabledMap = settings.value.pluginsDisabled || {};
+async function getOwned() {
+  $list.owned.setAttribute("empty-msg", strings["loading..."]);
 
-    purchases.forEach(async ({ productIds }) => {
+  const purchases = await helpers.promisify(iap.getPurchases);
+  const disabledMap = settings.value.pluginsDisabled || {};
+
+  // Prevent duplicates
+  const addedIds = new Set();
+
+  // Play Store / IAP purchases
+  await Promise.all(
+    purchases.map(async ({ productIds }) => {
       const [sku] = productIds;
-      const url = Url.join(constants.API_BASE, "plugin/owned", sku);
-      const plugin = await fsOperation(url).readFile("json");
-      const isInstalled = plugins.installed.find(({ id }) => id === plugin.id);
-      plugin.installed = !!isInstalled;
 
-      if (plugin.installed) {
-        plugin.enabled = disabledMap[plugin.id] !== true;
-        plugin.onToggleEnabled = onToggleEnabled;
+      try {
+        const url = Url.join(constants.API_BASE, "plugin/owned", sku);
+        const plugin = await fsOperation(url).readFile("json");
+
+        if (!plugin || addedIds.has(plugin.id)) return;
+
+        const isInstalled = plugins.installed.find(
+          ({ id }) => id === plugin.id
+        );
+
+        plugin.installed = !!isInstalled;
+
+        if (plugin.installed) {
+          plugin.enabled = disabledMap[plugin.id] !== true;
+          plugin.onToggleEnabled = onToggleEnabled;
+        }
+
+        addedIds.add(plugin.id);
+        plugins.owned.push(plugin);
+        $list.owned.append(<Item {...plugin} updates={updates} />);
+      } catch (err) {
+        console.error("Failed to load owned IAP plugin:", err);
       }
+    })
+  );
 
-      plugins.owned.push(plugin);
-      $list.owned.append(<Item {...plugin} updates={updates} />);
-    });
+  // Razorpay / external purchases
+  try {
+      const url = withSupportedEditor(
+        `${constants.API_BASE}/plugins?owned=true`
+      );
+
+      const ownedPlugins = await fetchPlugins(url);
+
+      ownedPlugins.forEach((plugin) => {
+        if (!plugin || addedIds.has(plugin.id)) return;
+
+        const isInstalled = plugins.installed.find(
+          ({ id }) => id === plugin.id
+        );
+
+        plugin.installed = !!isInstalled;
+
+        if (plugin.installed) {
+          plugin.enabled = disabledMap[plugin.id] !== true;
+          plugin.onToggleEnabled = onToggleEnabled;
+        }
+
+        addedIds.add(plugin.id);
+        plugins.owned.push(plugin);
+        $list.owned.append(<Item {...plugin} updates={updates} />);
+      });
+    } catch (err) {
+      console.error("Failed to fetch owned plugins:", err);
+    }
+
     $list.owned.setAttribute("empty-msg", strings["no plugins found"]);
   }
 
