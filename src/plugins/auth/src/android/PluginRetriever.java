@@ -9,6 +9,9 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Scanner;
 import android.content.Context;
+import java.io.File;
+import java.io.InputStream;
+import java.io.FileOutputStream;
 
 public class PluginRetriever {
     private static final String TAG = "AcodePluginRetriever";
@@ -68,7 +71,7 @@ public class PluginRetriever {
     }
 
 
-    private static JSONArray fetchJsonArray(String urlString, String token) {
+    public static JSONArray fetchJsonArray(String urlString, String token) {
         HttpURLConnection conn = null;
         try {
             Log.d(TAG, "Fetching: " + urlString);
@@ -80,7 +83,7 @@ public class PluginRetriever {
 
             if (token != null && !token.isEmpty()) {
                 if (url.getHost().endsWith("acode.app")) {
-                    connection.setRequestProperty("x-auth-token", token);
+                    conn.setRequestProperty("x-auth-token", token);
                 } else {
                     Log.w(TAG, "Not adding auth token for untrusted URL: " + url);
                 }
