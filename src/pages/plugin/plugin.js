@@ -168,7 +168,7 @@ export default async function PluginInclude(
 						]);
 						if (product) {
 							const purchase = await getPurchase(product.productId);
-							purchased = !!purchase;
+							purchased = !!purchase || remotePlugin.owned;
 							price = product.price;
 							purchaseToken = purchase?.purchaseToken;
 						}

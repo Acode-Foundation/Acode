@@ -15,8 +15,6 @@ import java.io.FileOutputStream;
 
 public class PluginRetriever {
     private static final String TAG = "AcodePluginRetriever";
-    private static final int LIMIT = 50;
-    private static final String API_BASE = "https://acode.app/api";
     private static final String SUPPORTED_EDITOR = "cm";
 
     
