@@ -26,6 +26,8 @@ public class PluginRetriever {
 
 
     public static void downloadPlugin(String token, String pluginUrl, String destFile, CallbackContext callbackContext) {
+        HttpURLConnection connection = null;
+
         try {
             // Strip file:// prefix if present
             if (destFile.startsWith("file://")) {
@@ -33,8 +35,10 @@ public class PluginRetriever {
             }
 
             URL url = new URL(pluginUrl);
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");
+            connection.setConnectTimeout(15000);
+            connection.setReadTimeout(30000);
 
             if (token != null && !token.isEmpty()) {
                 if (url.getHost().endsWith("acode.app")) {
@@ -46,16 +50,21 @@ public class PluginRetriever {
 
             connection.connect();
 
-            if (connection.getResponseCode() != HttpURLConnection.HTTP_OK) {
-                callbackContext.error("HTTP error: " + connection.getResponseCode());
+            int responseCode = connection.getResponseCode();
+            if (responseCode != HttpURLConnection.HTTP_OK) {
+                callbackContext.error("HTTP error: " + responseCode);
                 return;
             }
 
             File tempFile = new File(destFile);
-            try (InputStream inputStream = connection.getInputStream();
-                FileOutputStream outputStream = new FileOutputStream(tempFile)) {
+
+            try (
+                InputStream inputStream = connection.getInputStream();
+                FileOutputStream outputStream = new FileOutputStream(tempFile)
+            ) {
                 byte[] buffer = new byte[4096];
                 int bytesRead;
+
                 while ((bytesRead = inputStream.read(buffer)) != -1) {
                     outputStream.write(buffer, 0, bytesRead);
                 }
@@ -65,6 +74,11 @@ public class PluginRetriever {
 
         } catch (Exception e) {
             callbackContext.error("Download failed: " + e.getMessage());
+
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
         }
     }
 
