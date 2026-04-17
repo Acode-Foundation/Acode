@@ -15,16 +15,16 @@ public class PluginRetriever {
     private static final String API_BASE = "https://acode.app/api";
     private static final String SUPPORTED_EDITOR = "cm";
 
-    // Appends supported_editor param — mirrors JS withSupportedEditor()
+    
     private static String withSupportedEditor(String url) {
         String separator = url.contains("?") ? "&" : "?";
         return url + separator + "supported_editor=" + SUPPORTED_EDITOR;
     }
 
 
-    public static void getAllPlugins(String token, int page, CallbackContext callbackContext) {
+    public static void getAllPlugins(int page, CallbackContext callbackContext) {
         String url = withSupportedEditor(API_BASE + "/plugins?page=" + page + "&limit=" + LIMIT);
-        JSONArray plugins = fetchJsonArray(url, token);
+        JSONArray plugins = fetchJsonArray(url, null);
 
         try {
             JSONObject result = new JSONObject();
@@ -62,6 +62,21 @@ public class PluginRetriever {
             } else {
                 url = withSupportedEditor(API_BASE + "/plugin?orderBy=" + value + "&page=" + page + "&limit=" + LIMIT);
             }
+
+            JSONArray items = fetchJsonArray(url, token);
+            if (items == null) items = new JSONArray();
+
+            filterState.put("nextPage", page + 1);
+            result.put("items", items);
+            result.put("hasMore", items.length() == LIMIT);
+            result.put("filterState", filterState);
+            callbackContext.success(result);
+            return;
+        }
+
+        if ("owned".equals(type)) {
+            int page = filterState.optInt("nextPage", 1);
+            String url = withSupportedEditor(API_BASE + "/plugins?owned=true&page=" + page + "&limit=" + LIMIT);
 
             JSONArray items = fetchJsonArray(url, token);
             if (items == null) items = new JSONArray();
