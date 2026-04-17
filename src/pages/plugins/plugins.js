@@ -619,80 +619,85 @@ async function retrieveFilteredPlugins(filterState) {
     );
     $list.installed.setAttribute("empty-msg", strings["no plugins found"]);
   }
-
 async function getOwned() {
   $list.owned.setAttribute("empty-msg", strings["loading..."]);
 
-  const purchases = await helpers.promisify(iap.getPurchases);
   const disabledMap = settings.value.pluginsDisabled || {};
-
-  // Prevent duplicates
   const addedIds = new Set();
 
-  // Play Store / IAP purchases
-  await Promise.all(
-    purchases.map(async ({ productIds }) => {
-      const [sku] = productIds;
-
-      try {
-        const url = Url.join(constants.API_BASE, "plugin/owned", sku);
-        const plugin = await fsOperation(url).readFile("json");
-
-        if (!plugin || addedIds.has(plugin.id)) return;
-
-        const isInstalled = plugins.installed.find(
-          ({ id }) => id === plugin.id
-        );
-
-        plugin.installed = !!isInstalled;
-
-        if (plugin.installed) {
-          plugin.enabled = disabledMap[plugin.id] !== true;
-          plugin.onToggleEnabled = onToggleEnabled;
-        }
-
-        addedIds.add(plugin.id);
-        plugins.owned.push(plugin);
-        $list.owned.append(<Item {...plugin} updates={updates} />);
-      } catch (err) {
-        console.error("Failed to load owned IAP plugin:", err);
-      }
-    })
-  );
-
-  // Razorpay / external purchases
+  // -------------------
+  // Google Play / IAP
+  // -------------------
   try {
-      const url = withSupportedEditor(
-        `${constants.API_BASE}/plugins?owned=true`
-      );
+    const purchases = await helpers.promisify(iap.getPurchases);
 
-      const ownedPlugins = await fetchPlugins(url);
+    await Promise.all(
+      purchases.map(async ({ productIds }) => {
+        const [sku] = productIds;
 
-      ownedPlugins.forEach((plugin) => {
-        if (!plugin || addedIds.has(plugin.id)) return;
+        try {
+          const url = Url.join(constants.API_BASE, "plugin/owned", sku);
+          const plugin = await fsOperation(url).readFile("json");
 
-        const isInstalled = plugins.installed.find(
-          ({ id }) => id === plugin.id
-        );
+          if (!plugin || addedIds.has(plugin.id)) return;
 
-        plugin.installed = !!isInstalled;
+          const isInstalled = plugins.installed.find(
+            ({ id }) => id === plugin.id
+          );
 
-        if (plugin.installed) {
-          plugin.enabled = disabledMap[plugin.id] !== true;
-          plugin.onToggleEnabled = onToggleEnabled;
+          plugin.installed = !!isInstalled;
+
+          if (plugin.installed) {
+            plugin.enabled = disabledMap[plugin.id] !== true;
+            plugin.onToggleEnabled = onToggleEnabled;
+          }
+
+          addedIds.add(plugin.id);
+          plugins.owned.push(plugin);
+          $list.owned.append(<Item {...plugin} updates={updates} />);
+        } catch (err) {
+          console.error("Failed to load owned IAP plugin:", err);
         }
-
-        addedIds.add(plugin.id);
-        plugins.owned.push(plugin);
-        $list.owned.append(<Item {...plugin} updates={updates} />);
-      });
-    } catch (err) {
-      console.error("Failed to fetch owned plugins:", err);
-    }
-
-    $list.owned.setAttribute("empty-msg", strings["no plugins found"]);
+      })
+    );
+  } catch (err) {
+    console.warn("IAP unavailable, continuing with Razorpay:", err);
   }
 
+  // -------------------
+  // Razorpay purchases
+  // -------------------
+  try {
+    const url = withSupportedEditor(
+      `${constants.API_BASE}/plugins?owned=true`
+    );
+
+    const ownedPlugins = await fetchPlugins(url);
+
+    ownedPlugins.forEach((plugin) => {
+      if (!plugin || addedIds.has(plugin.id)) return;
+
+      const isInstalled = plugins.installed.find(
+        ({ id }) => id === plugin.id
+      );
+
+      plugin.installed = !!isInstalled;
+
+      if (plugin.installed) {
+        plugin.enabled = disabledMap[plugin.id] !== true;
+        plugin.onToggleEnabled = onToggleEnabled;
+      }
+
+      addedIds.add(plugin.id);
+      plugins.owned.push(plugin);
+      $list.owned.append(<Item {...plugin} updates={updates} />);
+    });
+  } catch (err) {
+    console.error("Failed to fetch owned plugins:", err);
+  }
+
+  $list.owned.setAttribute("empty-msg", strings["no plugins found"]);
+}
   function onInstall(plugin) {
     if (updates) return;
 
