@@ -661,7 +661,7 @@ async function getOwned() {
       })
     );
   } catch (err) {
-    console.warn("IAP unavailable, continuing with Razorpay:", err);
+    console.warn("IAP unavailable", err);
   }
 
   // -------------------
