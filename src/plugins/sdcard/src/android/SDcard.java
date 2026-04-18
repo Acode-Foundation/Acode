@@ -227,7 +227,6 @@ public class SDcard extends CordovaPlugin {
     if (mimeType == null) mimeType = "image/*";
 
     intent.addCategory(Intent.CATEGORY_OPENABLE);
-    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
     intent.setType(mimeType);
     activityResultCallback = callback;
     cordova.startActivityForResult(this, intent, this.PICK_FROM_GALLERY);
