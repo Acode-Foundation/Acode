@@ -249,7 +249,7 @@
 #          Only run this step, if not called from another workflow. And a previous step is successful with releasedRequired=true
           id: release
           if: ${{ ! inputs.skip_tagging_and_releases && steps.check-nightly-tag-force-update.outcome == 'success' && env.releaseRequired == 'true' && !inputs.is_PR }}
-          uses: softprops/action-gh-release@v2
+          uses: softprops/action-gh-release@v3
           env:
             FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
           with:
