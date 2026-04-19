@@ -41,10 +41,13 @@ public class PluginRetriever {
             connection.setReadTimeout(30000);
 
             if (token != null && !token.isEmpty()) {
-                if (url.getHost().endsWith("acode.app")) {
+                String host = url.getHost();
+
+                if (host != null &&
+                    (host.equals("acode.app") || host.endsWith(".acode.app"))) {
                     connection.setRequestProperty("x-auth-token", token);
-                } else {
-                    Log.w(TAG, "Not adding auth token for untrusted URL: " + pluginUrl);
+                }else {
+                    Log.w(TAG, "Not adding auth token for untrusted URL: " + url);
                 }
             }
 
@@ -94,9 +97,12 @@ public class PluginRetriever {
             conn.setReadTimeout(5000);
 
             if (token != null && !token.isEmpty()) {
-                if (url.getHost().endsWith("acode.app")) {
+               String host = url.getHost();
+
+                if (host != null &&
+                    (host.equals("acode.app") || host.endsWith(".acode.app"))) {
                     conn.setRequestProperty("x-auth-token", token);
-                } else {
+                }else {
                     Log.w(TAG, "Not adding auth token for untrusted URL: " + url);
                 }
             }
