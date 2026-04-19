@@ -1073,22 +1073,22 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				console.error("Error checking Terminal installation:", error);
 			}
 
-			try{
+			try {
 				const terminalPublicUrl = cordova.file.dataDirectory + "public";
 
 				// Check if this storage is not already in the list
-						const terminalPublicStorageExists = allStorages.find(
-							(storage) =>
-								storage.uuid === "terminal-public" ||
-								storage.url === terminalPublicUrl,
-						);
+				const terminalPublicStorageExists = allStorages.find(
+					(storage) =>
+						storage.uuid === "terminal-public" ||
+						storage.url === terminalPublicUrl,
+				);
 
-						if (!terminalPublicStorageExists) {
-							util.pushFolder(allStorages, "Terminal Public", terminalPublicUrl, {
-								uuid: "terminal-public",
-							});
-						}
-			}catch(err){
+				if (!terminalPublicStorageExists) {
+					util.pushFolder(allStorages, "Terminal Public", terminalPublicUrl, {
+						uuid: "terminal-public",
+					});
+				}
+			} catch (err) {
 				console.error("Error while adding public directory", err);
 			}
 
