@@ -129,7 +129,7 @@ export default function editorSettings() {
 		{
 			key: "autoCloseTags",
 			text: strings["auto close tags"],
-			checkbox: values.autoCloseTags ?? true,
+			checkbox: values.autoCloseTags,
 			info: strings["settings-info-editor-auto-close-tags"],
 			category: categories.assistance,
 		},
