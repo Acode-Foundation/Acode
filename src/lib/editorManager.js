@@ -1575,6 +1575,11 @@ async function EditorManager($header, $body) {
 		applyOptions(["liveAutoCompletion"]);
 	});
 
+	appSettings.on("update:autoCloseTags", function () {
+		const file = manager.activeFile;
+		if (file?.type === "editor") applyFileToEditor(file);
+	});
+
 	appSettings.on("update:linenumbers", function () {
 		updateMargin(true);
 		updateEditorLineNumbersFromSettings();

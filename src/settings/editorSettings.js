@@ -127,6 +127,13 @@ export default function editorSettings() {
 			category: categories.assistance,
 		},
 		{
+			key: "autoCloseTags",
+			text: strings["auto close tags"],
+			checkbox: values.autoCloseTags ?? true,
+			info: strings["settings-info-editor-auto-close-tags"],
+			category: categories.assistance,
+		},
+		{
 			key: "colorPreview",
 			text: strings["color preview"],
 			checkbox: values.colorPreview,
