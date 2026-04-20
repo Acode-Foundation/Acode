@@ -722,5 +722,7 @@
 	"close selected tabs warning": "Biztosan bezárja a kiválasztott lapokat? A nem mentett módosítások elvesznek, és ez a művelet nem vonható vissza.",
 	"close tabs to right": "Jobbra lévő lapok bezárása",
 	"close tabs to left": "Balra lévő lapok bezárása",
-	"close other tabs": "Többi lap bezárása"
+	"close other tabs": "Többi lap bezárása",
+	"auto close tags": "Auto close tags",
+	"settings-info-editor-auto-close-tags": "Automatically insert closing tags in HTML, XML, Vue, Angular, and PHP template files."
 }

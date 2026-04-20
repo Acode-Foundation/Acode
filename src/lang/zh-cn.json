@@ -722,5 +722,7 @@
 	"close selected tabs warning": "确定要关闭选中的标签页吗？未保存的更改将丢失且无法恢复。",
 	"close tabs to right": "关闭右侧标签页",
 	"close tabs to left": "关闭左侧标签页",
-	"close other tabs": "关闭其他标签页"
+	"close other tabs": "关闭其他标签页",
+	"auto close tags": "Auto close tags",
+	"settings-info-editor-auto-close-tags": "Automatically insert closing tags in HTML, XML, Vue, Angular, and PHP template files."
 }

@@ -723,5 +723,7 @@
 	"close selected tabs warning": "Apakah Anda yakin ingin menutup tab terpilih? Anda akan kehilangan perubahan yang belum disimpan dan aksi ini tidak dapat dibatalkan.",
 	"close tabs to right": "Tutup Kanan",
 	"close tabs to left": "Tutup Kiri",
-	"close other tabs": "Tutup Lainnya"
+	"close other tabs": "Tutup Lainnya",
+	"auto close tags": "Auto close tags",
+	"settings-info-editor-auto-close-tags": "Automatically insert closing tags in HTML, XML, Vue, Angular, and PHP template files."
 }
