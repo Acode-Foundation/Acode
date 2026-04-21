@@ -724,6 +724,6 @@
 	"close tabs to right": "Tutup Kanan",
 	"close tabs to left": "Tutup Kiri",
 	"close other tabs": "Tutup Lainnya",
-	"auto close tags": "Auto close tags",
-	"settings-info-editor-auto-close-tags": "Automatically insert closing tags in HTML, XML, Vue, Angular, and PHP template files."
+	"auto close tags": "Penutup tag otomatis",
+	"settings-info-editor-auto-close-tags": "Menyisipkan tag penutup di berkas HTML, XML, Vue, Angular, dan templat PHP secara otomatis."
 }
