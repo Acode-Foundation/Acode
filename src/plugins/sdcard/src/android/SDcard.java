@@ -226,6 +226,7 @@ public class SDcard extends CordovaPlugin {
     Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
     if (mimeType == null) mimeType = "image/*";
 
+    intent.addCategory(Intent.CATEGORY_OPENABLE);
     intent.setType(mimeType);
     activityResultCallback = callback;
     cordova.startActivityForResult(this, intent, this.PICK_FROM_GALLERY);
@@ -314,8 +315,6 @@ public class SDcard extends CordovaPlugin {
       return;
     }
 
-    if (data == null) return;
-
     if (resultCode == Activity.RESULT_CANCELED) {
       activityResultCallback.error("Operation cancelled");
       return;
@@ -323,20 +322,24 @@ public class SDcard extends CordovaPlugin {
 
     if (requestCode == PICK_FROM_GALLERY) {
       if (resultCode == Activity.RESULT_OK) {
+        if (data == null) {
+          activityResultCallback.error("No result returned from picker");
+          return;
+        }
+
         Uri uri = data.getData();
+
+        if (uri == null && data.getClipData() != null) {
+          if (data.getClipData().getItemCount() > 0) {
+            uri = data.getClipData().getItemAt(0).getUri();
+          }
+        }
+
         if (uri == null) {
           activityResultCallback.error("No file selected");
         } else {
-          try {
-            takePermission(uri);
-            activityResultCallback.success(uri.toString());
-          } catch (Exception e) {
-            activityResultCallback.error(
-              "Error taking permission: " + e.getMessage()
-            );
-          }
+          activityResultCallback.success(uri.toString());
         }
-        //activityResultCallback.success(uri.toString());
       } else {
         activityResultCallback.error("Operation cancelled");
       }
@@ -346,6 +349,11 @@ public class SDcard extends CordovaPlugin {
     if (requestCode == OPEN_DOCUMENT) {
       if (resultCode == Activity.RESULT_OK) {
         try {
+          if (data == null) {
+            activityResultCallback.error("No result returned from picker");
+            return;
+          }
+
           Uri uri = data.getData();
 
           if (uri == null) {
@@ -380,6 +388,11 @@ public class SDcard extends CordovaPlugin {
       }
 
       try {
+        if (data == null) {
+          activityResultCallback.error("No result returned from picker");
+          return;
+        }
+
         Uri uri = data.getData();
         if (uri == null) {
           activityResultCallback.error("Empty uri");

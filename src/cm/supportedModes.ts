@@ -57,6 +57,72 @@ function escapeRegExp(value: string): string {
 	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+async function shouldAutoCloseTags(): Promise<boolean> {
+	const { default: appSettings } = await import("lib/settings");
+	return appSettings.value.autoCloseTags !== false;
+}
+
+function createLanguageLoader(name: string, lang: LanguageDescription) {
+	const normalizedName = normalizeModeKey(name);
+
+	switch (normalizedName) {
+		case "html":
+			return async () => {
+				const { html } = await import("@codemirror/lang-html");
+				return html({ autoCloseTags: await shouldAutoCloseTags() });
+			};
+
+		case "xml":
+			return async () => {
+				const { xml } = await import("@codemirror/lang-xml");
+				return xml({ autoCloseTags: await shouldAutoCloseTags() });
+			};
+
+		case "vue":
+			return async () => {
+				const [{ vue }, { html }] = await Promise.all([
+					import("@codemirror/lang-vue"),
+					import("@codemirror/lang-html"),
+				]);
+				return vue({
+					base: html({ autoCloseTags: await shouldAutoCloseTags() }),
+				});
+			};
+
+		case "angular":
+			return async () => {
+				const [{ angular }, { html }] = await Promise.all([
+					import("@codemirror/lang-angular"),
+					import("@codemirror/lang-html"),
+				]);
+				return angular({
+					base: html({
+						autoCloseTags: await shouldAutoCloseTags(),
+						selfClosingTags: true,
+					}),
+				});
+			};
+
+		case "php":
+			return async () => {
+				const [{ php }, { html }] = await Promise.all([
+					import("@codemirror/lang-php"),
+					import("@codemirror/lang-html"),
+				]);
+				const htmlSupport = html({
+					autoCloseTags: await shouldAutoCloseTags(),
+					matchClosingTags: false,
+				});
+				return [
+					php({ baseLanguage: htmlSupport.language }),
+					htmlSupport.support,
+				];
+			};
+	}
+
+	return typeof lang.load === "function" ? () => lang.load!() : null;
+}
+
 // 1) Always register a plain text fallback
 addMode("Text", "txt|text|log|plain", "Plain Text", () => []);
 
@@ -106,7 +172,7 @@ for (const lang of languages as readonly LanguageDescription[]) {
 
 		// Wrap language-data loader as our modelist language provider
 		// lang.load() returns a Promise<Extension>; we let the editor handle async loading
-		const loader = typeof lang.load === "function" ? () => lang.load!() : null;
+		const loader = createLanguageLoader(name, lang);
 
 		addMode(modeId, pattern, name, loader, {
 			aliases,

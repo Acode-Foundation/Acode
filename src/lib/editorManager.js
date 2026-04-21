@@ -31,6 +31,7 @@ import {
 	registerExternalCommand,
 	removeExternalCommand,
 } from "cm/commandRegistry";
+import { handleLineNumberClick } from "cm/lineNumberSelection";
 import lspApi from "cm/lsp/api";
 import lspClientManager from "cm/lsp/clientManager";
 import {
@@ -289,6 +290,13 @@ async function EditorManager($header, $body) {
 	function makeLineNumberExtension() {
 		const { linenumbers = true, relativeLineNumbers = false } =
 			appSettings?.value || {};
+		const lineNumberConfig = {
+			domEventHandlers: {
+				click(view, line, event) {
+					return handleLineNumberClick(view, line, event);
+				},
+			},
+		};
 		if (!linenumbers)
 			return EditorView.theme({
 				".cm-gutter": {
@@ -299,9 +307,13 @@ async function EditorManager($header, $body) {
 				},
 			});
 		if (!relativeLineNumbers)
-			return Prec.highest([lineNumbers(), highlightActiveLineGutter()]);
+			return Prec.highest([
+				lineNumbers(lineNumberConfig),
+				highlightActiveLineGutter(),
+			]);
 		return Prec.highest([
 			lineNumbers({
+				...lineNumberConfig,
 				formatNumber: (lineNo, state) => {
 					try {
 						const cur = state.doc.lineAt(state.selection.main.head).number;
@@ -1573,6 +1585,11 @@ async function EditorManager($header, $body) {
 	// Live autocompletion (activateOnTyping)
 	appSettings.on("update:liveAutoCompletion", function () {
 		applyOptions(["liveAutoCompletion"]);
+	});
+
+	appSettings.on("update:autoCloseTags", function () {
+		const file = manager.activeFile;
+		if (file?.type === "editor") applyFileToEditor(file);
 	});
 
 	appSettings.on("update:linenumbers", function () {

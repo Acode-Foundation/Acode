@@ -4,6 +4,26 @@ mkdir -p "$PREFIX/tmp"
 mkdir -p "$PREFIX/alpine/tmp"
 mkdir -p "$PREFIX/public"
 
+SRC1="$PREFIX/alpine/home"
+SRC2="$PREFIX/alpine/root"
+DEST="$PREFIX/public"
+
+mkdir -p "$DEST"
+
+move_all() {
+    SRC="$1"
+
+    [ -d "$SRC" ] || return 0
+
+    # Only continue if directory is not empty
+    [ "$(find "$SRC" -mindepth 1 -maxdepth 1 | head -n 1)" ] || return 0
+
+    find "$SRC" -mindepth 1 -maxdepth 1 -exec mv -f {} "$DEST"/ \;
+}
+
+move_all "$SRC1"
+move_all "$SRC2"
+
 export PROOT_TMP_DIR=$PREFIX/tmp
 
 if [ "$FDROID" = "true" ]; then
@@ -63,6 +83,8 @@ ARGS="$ARGS -b /proc"
 ARGS="$ARGS -b /sys"
 ARGS="$ARGS -b $PREFIX"
 ARGS="$ARGS -b $PREFIX/public:/public"
+ARGS="$ARGS -b $PREFIX/public:/home"
+ARGS="$ARGS -b $PREFIX/public:/root"
 ARGS="$ARGS -b $PREFIX/alpine/tmp:/dev/shm"
 
 

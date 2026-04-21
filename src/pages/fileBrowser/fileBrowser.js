@@ -1046,31 +1046,23 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				);
 			}
 
-			// Check for Terminal Home Directory storage
 			try {
-				const isTerminalInstalled = await Terminal.isInstalled();
-				if (typeof Terminal !== "undefined" && isTerminalInstalled) {
-					const isTerminalSupported = await Terminal.isSupported();
+				const terminalPublicUrl = cordova.file.dataDirectory + "public";
 
-					if (isTerminalSupported && isTerminalInstalled) {
-						const terminalHomeUrl = cordova.file.dataDirectory + "alpine/home";
+				// Check if this storage is not already in the list
+				const terminalPublicStorageExists = allStorages.find(
+					(storage) =>
+						storage.uuid === "terminal-public" ||
+						storage.url === terminalPublicUrl,
+				);
 
-						// Check if this storage is not already in the list
-						const terminalStorageExists = allStorages.find(
-							(storage) =>
-								storage.uuid === "terminal-home" ||
-								storage.url === terminalHomeUrl,
-						);
-
-						if (!terminalStorageExists) {
-							util.pushFolder(allStorages, "Terminal Home", terminalHomeUrl, {
-								uuid: "terminal-home",
-							});
-						}
-					}
+				if (!terminalPublicStorageExists) {
+					util.pushFolder(allStorages, "Terminal Public", terminalPublicUrl, {
+						uuid: "terminal-public",
+					});
 				}
-			} catch (error) {
-				console.error("Error checking Terminal installation:", error);
+			} catch (err) {
+				console.error("Error while adding public directory", err);
 			}
 
 			try {

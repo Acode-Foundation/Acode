@@ -721,5 +721,7 @@
 	"close selected tabs warning": "Are you sure you want to close the selected tabs? You will lose the unsaved changes and this action cannot be reversed.",
 	"close tabs to right": "Close Right",
 	"close tabs to left": "Close Left",
-	"close other tabs": "Close Others"
+	"close other tabs": "Close Others",
+	"auto close tags": "Auto close tags",
+	"settings-info-editor-auto-close-tags": "Automatically insert closing tags in HTML, XML, Vue, Angular, and PHP template files."
 }

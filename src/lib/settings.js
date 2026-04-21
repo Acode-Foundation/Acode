@@ -143,6 +143,7 @@ class Settings {
 			fullscreen: false,
 			floatingButton: !this.#IS_TABLET,
 			liveAutoCompletion: true,
+			autoCloseTags: true,
 			showPrintMargin: false,
 			printMargin: 80,
 			scrollbarSize: 20,

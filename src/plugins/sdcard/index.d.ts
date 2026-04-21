@@ -183,12 +183,14 @@ interface SDcard {
   ): void;
   /**
    * Opens gallery to select image
-   * @param onSuccess Callback function on success returns url of selected file
+   * Returns a temporary URI grant for the selected image.
+   * Use read/stats on the returned URI if you need to inspect or preview it.
+   * @param onSuccess Callback function on success returns URI of selected image
    * @param onFail Callback function on error returns error object
    * @param mimeType MimeType of file to be selected
    */
   getImage(
-    onSuccess: (url: DocumentFile) => void,
+    onSuccess: (url: string) => void,
     onFail: (err: any) => void,
     mimeType: string,
   ): void;
