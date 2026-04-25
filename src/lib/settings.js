@@ -408,6 +408,17 @@ class Settings {
 	applyUiZoomSetting() {
 		const zoom = Number(this.value.uiZoom) || 100;
 		const clamped = Math.min(160, Math.max(70, zoom));
+		if (clamped === 100) {
+			document.documentElement.style.fontSize = "";
+			document.body.style.fontSize = "";
+			if (window.root) {
+				window.root.style.zoom = "";
+				window.root.style.width = "";
+				window.root.style.height = "";
+			}
+			return;
+		}
+
 		const rootFontSize =
 			this.#uiZoomBaseFontSize.root ||
 			Number.parseFloat(getComputedStyle(document.documentElement).fontSize) ||
