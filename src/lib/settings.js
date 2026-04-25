@@ -124,6 +124,7 @@ class Settings {
 			host: "localhost",
 			search: this.#searchSettings,
 			lang: "en-us",
+			uiZoom: 100,
 			fontSize: "12px",
 			editorTheme: "one_dark",
 			textWrap: true,
@@ -179,7 +180,7 @@ class Settings {
 			showSponsorSidebarApp: true,
 			showAnnotations: false,
 			lintGutter: true,
-			indentGuides: true,
+			indentGuides: false,
 			rainbowBrackets: true,
 			pluginsDisabled: {}, // pluginId: true/false
 			lsp: {
@@ -370,6 +371,10 @@ class Settings {
 				this.applyAnimationSetting();
 				break;
 
+			case "uiZoom":
+				this.applyUiZoomSetting();
+				break;
+
 			case "lang":
 				this.applyLangSetting();
 				break;
@@ -393,6 +398,19 @@ class Settings {
 			app.classList.remove("no-animation");
 		} else if (value === "no") {
 			app.classList.add("no-animation");
+		}
+	}
+
+	applyUiZoomSetting() {
+		const zoom = Number(this.value.uiZoom) || 100;
+		const clamped = Math.min(160, Math.max(70, zoom));
+		const size = `${(14 * clamped) / 100}px`;
+		document.documentElement.style.fontSize = size;
+		document.body.style.fontSize = size;
+		if (window.root) {
+			window.root.style.zoom = "";
+			window.root.style.width = "";
+			window.root.style.height = "";
 		}
 	}
 

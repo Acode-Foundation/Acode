@@ -171,7 +171,7 @@ export default function editorSettings() {
 		{
 			key: "indentGuides",
 			text: strings["indent guides"] || "Indent guides",
-			checkbox: values.indentGuides ?? true,
+			checkbox: values.indentGuides ?? false,
 			info: strings["settings-info-editor-indent-guides"],
 			category: categories.guidesIndicators,
 		},

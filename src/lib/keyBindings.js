@@ -269,6 +269,18 @@ const APP_BINDING_CONFIG = [
 		readOnly: true,
 	},
 	{
+		name: "increaseFontSize",
+		description: "Increase editor font size",
+		key: "Ctrl-+|Ctrl-=",
+		readOnly: true,
+	},
+	{
+		name: "decreaseFontSize",
+		description: "Decrease editor font size",
+		key: "Ctrl--",
+		readOnly: true,
+	},
+	{
 		name: "openPluginsPage",
 		description: "Open plugins page",
 		key: null,
@@ -651,7 +663,10 @@ function parseKeyParts(combo) {
 	const modifiers = new Set();
 	let baseKey = "";
 	if (!combo) return { modifiers, baseKey };
-	for (const rawPart of combo.split("-")) {
+	const parts = combo.endsWith("-")
+		? [...combo.slice(0, -1).split("-").filter(Boolean), "-"]
+		: combo.split("-");
+	for (const rawPart of parts) {
 		const part = rawPart.trim();
 		if (!part) continue;
 		const normalized = part.charAt(0).toUpperCase() + part.slice(1);

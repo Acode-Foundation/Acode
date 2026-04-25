@@ -62,6 +62,24 @@ export default function otherSettings() {
 			category: categories.interface,
 		},
 		{
+			key: "uiZoom",
+			text: strings["ui zoom"] || "UI zoom",
+			value: values.uiZoom,
+			valueText: (value) => `${value}%`,
+			prompt: strings["ui zoom"] || "UI zoom",
+			promptType: "number",
+			promptOptions: {
+				test(value) {
+					value = Number.parseInt(value, 10);
+					return value >= 70 && value <= 160;
+				},
+			},
+			info:
+				strings["settings-info-app-ui-zoom"] ||
+				"Scale text across the Acode interface.",
+			category: categories.interface,
+		},
+		{
 			key: "keyboardMode",
 			text: strings["keyboard mode"],
 			value: values.keyboardMode,
