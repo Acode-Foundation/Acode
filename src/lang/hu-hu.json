@@ -725,6 +725,6 @@
 	"close other tabs": "Többi lap bezárása",
 	"auto close tags": "Címkék automatikus lezárása",
 	"settings-info-editor-auto-close-tags": "HTML, XML, Vue, Angular és PHP-sablonfájlokban a záró címkék automatikus beillesztése.",
-	"ui zoom": "UI zoom",
-	"settings-info-app-ui-zoom": "Scale text across the Acode interface."
+	"ui zoom": "Felhasználói felület nagyítása",
+	"settings-info-app-ui-zoom": "Szövegek méretetezése az Acode teljes felületén."
 }
