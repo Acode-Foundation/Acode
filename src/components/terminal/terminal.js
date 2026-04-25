@@ -418,6 +418,31 @@ export default class TerminalComponent {
 				return false;
 			}
 
+			// Keep terminal font zoom local. Shift variants are handled by app keybindings below.
+			if (
+				event.ctrlKey &&
+				!event.shiftKey &&
+				!event.altKey &&
+				!event.metaKey &&
+				(event.key === "+" || event.key === "=")
+			) {
+				event.preventDefault();
+				this.increaseFontSize();
+				return false;
+			}
+
+			if (
+				event.ctrlKey &&
+				!event.shiftKey &&
+				!event.altKey &&
+				!event.metaKey &&
+				event.key === "-"
+			) {
+				event.preventDefault();
+				this.decreaseFontSize();
+				return false;
+			}
+
 			if (event.ctrlKey || event.altKey || event.metaKey) {
 				if (["Control", "Alt", "Meta", "Shift"].includes(event.key)) {
 					return true;
@@ -437,20 +462,6 @@ export default class TerminalComponent {
 				if (binding && executeCommand(binding.name)) {
 					return false;
 				}
-			}
-
-			// Check for Ctrl+= or Ctrl++ (increase font size)
-			if (event.ctrlKey && (event.key === "+" || event.key === "=")) {
-				event.preventDefault();
-				this.increaseFontSize();
-				return false;
-			}
-
-			// Check for Ctrl+- (decrease font size)
-			if (event.ctrlKey && event.key === "-") {
-				event.preventDefault();
-				this.decreaseFontSize();
-				return false;
 			}
 
 			if (event.ctrlKey || event.altKey || event.metaKey) return true;

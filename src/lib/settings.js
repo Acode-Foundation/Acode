@@ -26,6 +26,10 @@ class Settings {
 	#defaultSettings;
 	#oldSettings;
 	#initialized = false;
+	#uiZoomBaseFontSize = {
+		root: null,
+		body: null,
+	};
 	#on = {
 		update: [],
 		"update:after": [],
@@ -404,9 +408,19 @@ class Settings {
 	applyUiZoomSetting() {
 		const zoom = Number(this.value.uiZoom) || 100;
 		const clamped = Math.min(160, Math.max(70, zoom));
-		const size = `${(14 * clamped) / 100}px`;
-		document.documentElement.style.fontSize = size;
-		document.body.style.fontSize = size;
+		const rootFontSize =
+			this.#uiZoomBaseFontSize.root ||
+			Number.parseFloat(getComputedStyle(document.documentElement).fontSize) ||
+			14;
+		const bodyFontSize =
+			this.#uiZoomBaseFontSize.body ||
+			Number.parseFloat(getComputedStyle(document.body).fontSize) ||
+			rootFontSize;
+
+		this.#uiZoomBaseFontSize.root = rootFontSize;
+		this.#uiZoomBaseFontSize.body = bodyFontSize;
+		document.documentElement.style.fontSize = `${(rootFontSize * clamped) / 100}px`;
+		document.body.style.fontSize = `${(bodyFontSize * clamped) / 100}px`;
 		if (window.root) {
 			window.root.style.zoom = "";
 			window.root.style.width = "";

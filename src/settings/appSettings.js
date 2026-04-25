@@ -70,8 +70,9 @@ export default function otherSettings() {
 			promptType: "number",
 			promptOptions: {
 				test(value) {
-					value = Number.parseInt(value, 10);
-					return value >= 70 && value <= 160;
+					if (!/^\d+$/.test(String(value).trim())) return false;
+					const zoom = Number(value);
+					return zoom >= 70 && zoom <= 160;
 				},
 			},
 			info:
@@ -429,6 +430,12 @@ export default function otherSettings() {
 
 			case "keyboardMode":
 				system.setInputType(value);
+				break;
+
+			case "uiZoom":
+				value = Number(value);
+				if (!Number.isInteger(value)) return;
+				value = Math.min(160, Math.max(70, value));
 				break;
 
 			case "fullscreen":
