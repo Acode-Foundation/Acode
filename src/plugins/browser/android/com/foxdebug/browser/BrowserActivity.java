@@ -4,14 +4,15 @@ import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Color;
 import android.os.Build;
-import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.view.Window;
+import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.webkit.WebChromeClient;
 import com.foxdebug.system.Ui;
 import org.json.JSONObject;
+import android.os.Bundle;
 
 public class BrowserActivity extends Activity {
 
@@ -37,6 +38,19 @@ public class BrowserActivity extends Activity {
     browser = new Browser(this, theme, onlyConsole);
     browser.setUrl(url);
     setContentView(browser);
+
+    if (Build.VERSION.SDK_INT >= 30) {
+      getWindow().setDecorFitsSystemWindows(false);
+    }
+
+    browser.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+      @Override
+      public WindowInsets onApplyWindowInsets(View v, WindowInsets insets) {
+        v.setPadding(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(), insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom());
+        return insets.consumeSystemWindowInsets();
+      }
+    });
+
     setSystemTheme(theme.get("primaryColor"));
   }
 
@@ -62,12 +76,12 @@ public class BrowserActivity extends Activity {
         window
           .getClass()
           .getMethod("setNavigationBarColor", int.class)
-          .invoke(window, systemBarColor);
+          .invoke(window, Color.TRANSPARENT);
 
         window
           .getClass()
           .getMethod("setStatusBarColor", int.class)
-          .invoke(window, systemBarColor);
+          .invoke(window, Color.TRANSPARENT);
 
         if (Build.VERSION.SDK_INT < 30) {
           setStatusBarStyle(window);
