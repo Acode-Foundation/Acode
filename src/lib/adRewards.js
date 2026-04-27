@@ -179,9 +179,7 @@ function scheduleExpiryCheck() {
 
 async function getRewardIdentity() {
 	try {
-		const user = await auth.getLoggedInUser();
-		const userId = user.id || "Guest";
-		return String(userId);
+		const userId = user?.id || "Guest";
 	} catch (error) {
 		console.warn("Failed to resolve rewarded ad user identity.", error);
 		return String(device?.uuid || "guest");
