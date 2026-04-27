@@ -3,7 +3,7 @@ import ajax from "@deadlyjack/ajax";
 import loader from "dialogs/loader";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
-import constants from "./constants";
+import config from "./config";
 
 let erudaInstance = null;
 let isInitialized = false;
@@ -51,7 +51,7 @@ const devTools = {
 
 				try {
 					const erudaScript = await ajax({
-						url: constants.ERUDA_CDN,
+						url: config.ERUDA_CDN,
 						responseType: "text",
 						contentType: "application/x-www-form-urlencoded",
 					});

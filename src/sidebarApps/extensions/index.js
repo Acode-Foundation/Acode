@@ -8,7 +8,7 @@ import alert from "dialogs/alert";
 import prompt from "dialogs/prompt";
 import select from "dialogs/select";
 import purchaseListener from "handlers/purchase";
-import constants from "lib/constants";
+import config from "lib/config";
 import InstallState from "lib/installState";
 import loadPlugin from "lib/loadPlugin";
 import settings from "lib/settings";
@@ -33,11 +33,10 @@ let isLoading = false;
 let currentFilter = null;
 let filterHasMore = true;
 let isFilterLoading = false;
-const SUPPORTED_EDITOR = "cm";
 
 function withSupportedEditor(url) {
 	const separator = url.includes("?") ? "&" : "?";
-	return `${url}${separator}supported_editor=${SUPPORTED_EDITOR}`;
+	return `${url}${separator}supported_editor=${config.SUPPORTED_EDITOR}`;
 }
 
 const $header = (
@@ -151,7 +150,7 @@ async function loadMorePlugins() {
 
 		const response = await fetch(
 			withSupportedEditor(
-				`${constants.API_BASE}/plugins?page=${currentPage}&limit=${LIMIT}`,
+				`${config.API_BASE}/plugins?page=${currentPage}&limit=${LIMIT}`,
 			),
 		);
 		const newPlugins = await response.json();
@@ -236,9 +235,7 @@ async function searchPlugin() {
 		try {
 			$searchResult.classList.add("loading");
 			const plugins = await fsOperation(
-				withSupportedEditor(
-					Url.join(constants.API_BASE, `plugins?name=${query}`),
-				),
+				withSupportedEditor(Url.join(config.API_BASE, `plugins?name=${query}`)),
 			).readFile("json");
 
 			installedPlugins = await listInstalledPlugins();
@@ -428,7 +425,7 @@ async function loadExplore() {
 
 		const response = await fetch(
 			withSupportedEditor(
-				`${constants.API_BASE}/plugins?page=${currentPage}&limit=${LIMIT}`,
+				`${config.API_BASE}/plugins?page=${currentPage}&limit=${LIMIT}`,
 			),
 		);
 		const plugins = await response.json();
@@ -495,13 +492,13 @@ async function getFilteredPlugins(filterState) {
 			if (filterState.value === "top_rated") {
 				response = await fetch(
 					withSupportedEditor(
-						`${constants.API_BASE}/plugins?explore=random&page=${page}&limit=${LIMIT}`,
+						`${config.API_BASE}/plugins?explore=random&page=${page}&limit=${LIMIT}`,
 					),
 				);
 			} else {
 				response = await fetch(
 					withSupportedEditor(
-						`${constants.API_BASE}/plugin?orderBy=${filterState.value}&page=${page}&limit=${LIMIT}`,
+						`${config.API_BASE}/plugin?orderBy=${filterState.value}&page=${page}&limit=${LIMIT}`,
 					),
 				);
 			}
@@ -542,7 +539,7 @@ async function getFilteredPlugins(filterState) {
 			const page = filterState.nextPage;
 			const response = await fetch(
 				withSupportedEditor(
-					`${constants.API_BASE}/plugins?page=${page}&limit=${LIMIT}`,
+					`${config.API_BASE}/plugins?page=${page}&limit=${LIMIT}`,
 				),
 			);
 			const data = await response.json();
@@ -769,7 +766,7 @@ function ListItem({ icon, name, id, version, downloads, installed, source }) {
 			try {
 				let purchaseToken;
 				let product;
-				const pluginUrl = Url.join(constants.API_BASE, `plugin/${id}`);
+				const pluginUrl = Url.join(config.API_BASE, `plugin/${id}`);
 				const remotePlugin = await fsOperation(pluginUrl)
 					.readFile("json")
 					.catch(() => {
@@ -803,7 +800,7 @@ function ListItem({ icon, name, id, version, downloads, installed, source }) {
 
 					async function onpurchase(e) {
 						const purchase = await getPurchase(product.productId);
-						await ajax.post(Url.join(constants.API_BASE, "plugin/order"), {
+						await ajax.post(Url.join(config.API_BASE, "plugin/order"), {
 							data: {
 								id: remotePlugin.id,
 								token: purchase?.purchaseToken,

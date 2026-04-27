@@ -4,7 +4,7 @@ import { getModeForPath as getCMModeForPath } from "cm/modelist";
 import alert from "dialogs/alert";
 import escapeStringRegexp from "escape-string-regexp";
 import adRewards from "lib/adRewards";
-import constants from "lib/constants";
+import config from "lib/config";
 import path from "./Path";
 import Uri from "./Uri";
 import Url from "./Url";
@@ -289,7 +289,7 @@ export default {
 		editorManager.emit("update", "file-delete");
 	},
 	canShowAds() {
-		return Boolean(IS_FREE_VERSION && adRewards.canShowAds());
+		return Boolean(!config.HAS_PRO && adRewards.canShowAds());
 	},
 	async showInterstitialIfReady() {
 		if (!this.canShowAds()) return false;
@@ -330,7 +330,7 @@ export default {
 	},
 	async checkAPIStatus() {
 		try {
-			const { status } = await ajax.get(Url.join(constants.API_BASE, "status"));
+			const { status } = await ajax.get(Url.join(config.API_BASE, "status"));
 			return status === "ok";
 		} catch (error) {
 			window.log("error", error);

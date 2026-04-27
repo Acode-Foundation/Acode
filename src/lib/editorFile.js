@@ -20,7 +20,7 @@ import mimeTypes from "mime-types";
 import helpers from "utils/helpers";
 import Path from "utils/Path";
 import Url from "utils/Url";
-import constants from "./constants";
+import config from "./config";
 import openFolder from "./openFolder";
 import run from "./run";
 import saveFile from "./saveFile";
@@ -312,7 +312,7 @@ export default class EditorFile {
 	 * Name of the file
 	 * @type {string}
 	 */
-	#name = constants.DEFAULT_FILE_NAME;
+	#name = config.DEFAULT_FILE_NAME;
 	/**
 	 * Location of the file
 	 * @type {string}
@@ -322,7 +322,7 @@ export default class EditorFile {
 	 * Unique ID of the file, changed when file is renamed or location/uri is changed.
 	 * @type {string}
 	 */
-	#id = constants.DEFAULT_FILE_SESSION;
+	#id = config.DEFAULT_FILE_SESSION;
 	/**
 	 * Associated tile for the file, that is append in the open file list,
 	 * when clicked make the file active.
@@ -407,7 +407,7 @@ export default class EditorFile {
 			} else this.#id = options.id;
 		} else if (!options) {
 			// if options aren't passed, that means default file is being created
-			this.#id = constants.DEFAULT_FILE_SESSION;
+			this.#id = config.DEFAULT_FILE_SESSION;
 		}
 
 		if (options?.type) {
@@ -500,7 +500,7 @@ export default class EditorFile {
 		// if options contains text property then there is no need to load
 		// set loaded true
 
-		if (this.#id !== constants.DEFAULT_FILE_SESSION) {
+		if (this.#id !== config.DEFAULT_FILE_SESSION) {
 			this.loaded = options?.text !== undefined;
 		}
 
@@ -623,7 +623,7 @@ export default class EditorFile {
 		if (event.defaultPrevented) return;
 
 		(async () => {
-			if (this.id === constants.DEFAULT_FILE_SESSION) {
+			if (this.id === config.DEFAULT_FILE_SESSION) {
 				this.id = helpers.uuid();
 			}
 
@@ -862,7 +862,7 @@ export default class EditorFile {
 		// here readonly means file has uri but has no write permission.
 		if (!this.uri || this.readOnly) {
 			// if file is default file and text is changed
-			if (this.id === constants.DEFAULT_FILE_SESSION) {
+			if (this.id === config.DEFAULT_FILE_SESSION) {
 				// change id when text is changed
 				this.id = helpers.uuid();
 			}
@@ -983,10 +983,7 @@ export default class EditorFile {
 	async remove(force = false, options = {}) {
 		const { ignorePinned = false, silentPinned = false } = options || {};
 
-		if (
-			this.id === constants.DEFAULT_FILE_SESSION &&
-			!editorManager.files.length
-		)
+		if (this.id === config.DEFAULT_FILE_SESSION && !editorManager.files.length)
 			return false;
 		if (this.pinned && !ignorePinned) {
 			if (!silentPinned) {
@@ -1207,9 +1204,9 @@ export default class EditorFile {
 	render() {
 		this.makeActive();
 
-		if (this.id !== constants.DEFAULT_FILE_SESSION) {
+		if (this.id !== config.DEFAULT_FILE_SESSION) {
 			const defaultFile = editorManager.getFile(
-				constants.DEFAULT_FILE_SESSION,
+				config.DEFAULT_FILE_SESSION,
 				"id",
 			);
 			defaultFile?.remove();

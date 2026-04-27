@@ -23,6 +23,7 @@ import previewSettings from "./previewSettings";
 import scrollSettings from "./scrollSettings";
 import searchSettings from "./searchSettings";
 import terminalSettings from "./terminalSettings";
+import config from "lib/config";
 
 export default function mainSettings() {
 	const title = strings.settings.capitalize();
@@ -159,7 +160,7 @@ export default function mainSettings() {
 		},
 	];
 
-	if (IS_FREE_VERSION) {
+	if (!config.HAS_PRO) {
 		items.push({
 			key: "adRewards",
 			text: strings["earn ad-free time"],

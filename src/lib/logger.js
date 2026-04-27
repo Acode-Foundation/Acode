@@ -1,6 +1,6 @@
 import fsOperation from "fileSystem";
 import Url from "utils/Url";
-import constants from "./constants";
+import config from "./config";
 
 /*
 /**
@@ -33,7 +33,7 @@ class Logger {
 		this.#logBuffer = new Map();
 		this.#maxBufferSize = maxBufferSize;
 		this.#logLevel = logLevel;
-		this.#logFileName = constants.LOG_FILE_NAME;
+		this.#logFileName = config.LOG_FILE_NAME;
 		this.#flushInterval = flushInterval;
 		this.#maxFileSize = maxFileSize;
 		this.#startAutoFlush(); // Automatically flush logs at intervals
@@ -76,10 +76,10 @@ class Logger {
 
 	#writeLogToFile = async (logContent) => {
 		try {
-			const logFilePath = Url.join(DATA_STORAGE, constants.LOG_FILE_NAME);
+			const logFilePath = Url.join(DATA_STORAGE, config.LOG_FILE_NAME);
 			if (!(await fsOperation(logFilePath).exists())) {
 				await fsOperation(window.DATA_STORAGE).createFile(
-					constants.LOG_FILE_NAME,
+					config.LOG_FILE_NAME,
 					logContent,
 				);
 			} else {

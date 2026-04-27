@@ -5,6 +5,7 @@ import { isDeviceDarkTheme } from "lib/systemConfiguration";
 import themes from "theme/list";
 import { updateSystemTheme } from "theme/preInstalled";
 import changeEditorTheme from "../changeEditorTheme";
+import config from "lib/config";
 
 export default function changeTheme(type = "editor") {
 	if (type === "editor") return changeEditorTheme();
@@ -22,7 +23,7 @@ function generateHints(type) {
 	const currentTheme = appSettings.value.appTheme;
 	const availableThemes = themes
 		.list()
-		.filter((theme) => !(theme.version === "paid" && IS_FREE_VERSION));
+		.filter((theme) => !(theme.version === "paid" && !config.HAS_PRO));
 
 	return availableThemes.map((theme) => {
 		const isCurrent = theme.id === currentTheme;

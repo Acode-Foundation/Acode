@@ -22,56 +22,60 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-'use strict';
+"use strict";
 
-const path = require('path'),
-      fs = require('fs');
+const path = require("path"),
+	fs = require("fs");
 
 function uninstallWindows(context, windowsPath) {
-    const targetPath = path.join(windowsPath, 'CordovaApp.projitems');
-    let projitems = fs.readFileSync(targetPath).toString();
-    let changed = false;
+	const targetPath = path.join(windowsPath, "CordovaApp.projitems");
+	let projitems = fs.readFileSync(targetPath).toString();
+	let changed = false;
 
-    // Replace <PRIResource Include="strings\buildinfo.resjson"> to <Content Include="strings\buildinfo.resjson">
-    if (projitems.match(/<ItemGroup>[\s]*?<PRIResource +.*?Include="strings\/buildinfo.resjson".+/m)) {
+	// Replace <PRIResource Include="strings\buildinfo.resjson"> to <Content Include="strings\buildinfo.resjson">
+	if (
+		projitems.match(
+			/<ItemGroup>[\s]*?<PRIResource +.*?Include="strings\/buildinfo.resjson".+/m,
+		)
+	) {
+		const search =
+			/<ItemGroup>[\s]*?<PRIResource +.*?Include="strings\/buildinfo.resjson"[\s\S]*?<\/ItemGroup>/m;
 
-        const search = /<ItemGroup>[\s]*?<PRIResource +.*?Include="strings\/buildinfo.resjson"[\s\S]*?<\/ItemGroup>/m;
+		const replace =
+			"<ItemGroup>\r\n" +
+			'        <Content Include="strings\/buildinfo.resjson" />\r\n' +
+			"    </ItemGroup>";
 
-        const replace
-            = "<ItemGroup>\r\n"
-            + "        <Content Include=\"strings\/buildinfo.resjson\" />\r\n"
-            + "    </ItemGroup>";
+		projitems = projitems.replace(search, replace);
+		changed = true;
+	}
 
-        projitems = projitems.replace(search, replace);
-        changed = true;
-    }
+	// Remove <Target Name="BuildInfo_Timestamp" BeforeTargets=BeforeBuild">
+	if (projitems.match(/<Target +.*Name="BuildInfo_Timestamp".*/)) {
+		const search =
+			/[\r\n ]*<Target +.*Name="BuildInfo_Timestamp"[\s\S]*?<\/Target>/gm;
 
-    // Remove <Target Name="BuildInfo_Timestamp" BeforeTargets=BeforeBuild">
-    if (projitems.match(/<Target +.*Name="BuildInfo_Timestamp".*/)) {
+		projitems = projitems.replace(search, "");
+		changed = true;
+	}
 
-        const search = /[\r\n ]*<Target +.*Name="BuildInfo_Timestamp"[\s\S]*?<\/Target>/gm;
-
-        projitems = projitems.replace(search, '');
-        changed = true;
-    }
-    
-    // if variable "changed" is true, write to file.
-    if (changed) {
-        fs.writeFileSync(targetPath, projitems);
-    }
+	// if variable "changed" is true, write to file.
+	if (changed) {
+		fs.writeFileSync(targetPath, projitems);
+	}
 }
 
 module.exports = function (context) {
-    const opts = context.opts || {};
-    const projectRoot = opts.projectRoot;
+	const opts = context.opts || {};
+	const projectRoot = opts.projectRoot;
 
-    if ('string' != typeof projectRoot) {
-        return;
-    }
+	if ("string" != typeof projectRoot) {
+		return;
+	}
 
-    // Exists platform/windows
-    const windowsPath = path.join(projectRoot, 'platforms', 'windows');
-    if (context.opts.plugin.platform == 'windows' && fs.existsSync(windowsPath)) {
-        uninstallWindows(context, windowsPath);
-    }
+	// Exists platform/windows
+	const windowsPath = path.join(projectRoot, "platforms", "windows");
+	if (context.opts.plugin.platform == "windows" && fs.existsSync(windowsPath)) {
+		uninstallWindows(context, windowsPath);
+	}
 };

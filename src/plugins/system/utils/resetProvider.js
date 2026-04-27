@@ -1,5 +1,3 @@
-const {
-  changeProvider
-} = require("./changeProvider");
+const { changeProvider } = require("./changeProvider");
 
 changeProvider(true);

@@ -1,6 +1,7 @@
 import themes from "theme/list";
 import Color from "utils/color";
 import appSettings from "./settings";
+import config from "./config";
 
 let count = 0;
 
@@ -19,7 +20,7 @@ export default function restoreTheme(darken = false) {
 	let themeName = DOES_SUPPORT_THEME ? appSettings.value.appTheme : "default";
 	let theme = themes.get(themeName);
 
-	if (theme?.version !== "free" && IS_FREE_VERSION) {
+	if (theme?.version !== "free" && !config.HAS_PRO) {
 		themeName = "default";
 		theme = themes.get(themeName);
 		appSettings.value.appTheme = themeName;

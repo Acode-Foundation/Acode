@@ -1,13 +1,11 @@
 {
   "editor.formatOnSave": true,
-  "autoimport.doubleQuotes": false,
-  "java.configuration.updateBuildConfiguration": "disabled",
   "prettier.requireConfig": true,
-  "javascript.format.enable": true,
+  "js/ts.format.enabled": true,
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "prettier.tabWidth": 2,
   "prettier.useTabs": false,
-  "javascript.format.semicolons": "insert",
+  "js/ts.format.semicolons": "insert",
   "[scss]": {
     "editor.defaultFormatter": "vscode.css-language-features"
   },
@@ -27,6 +25,10 @@
       "attr_quotes": "single"
     }
   },
+  "[javascript]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "biome.lsp.bin": "./node_modules/.bin/biome",
   "cSpell.words": [
     "abap",
     "Acode",
@@ -126,6 +128,7 @@
     "flac",
     "Flix",
     "floobits",
+    "FOXBIZ",
     "Foxdebug",
     "freemarker",
     "gamemaker",
@@ -372,8 +375,5 @@
     "wxss",
     "xquery",
     "Zeek"
-  ],
-  "[javascript]": {
-    "editor.defaultFormatter": "biomejs.biome"
-  }
+  ]
 }

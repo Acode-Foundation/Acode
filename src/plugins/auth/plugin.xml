@@ -7,6 +7,7 @@
        <config-file parent="/*" target="res/xml/config.xml">
             <feature name="Authenticator">
                 <param name="android-package" value="com.foxdebug.acode.rk.auth.Authenticator" />
+                <param name="onload" value="true" />
             </feature>
         </config-file>
 

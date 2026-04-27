@@ -6,7 +6,7 @@ import loader from "dialogs/loader";
 import select from "dialogs/select";
 import actions from "handlers/quickTools";
 import actionStack from "lib/actionStack";
-import constants from "lib/constants";
+import config from "lib/config";
 import fonts from "lib/fonts";
 import lang from "lib/lang";
 import openFile from "lib/openFile";
@@ -355,7 +355,7 @@ export default function otherSettings() {
 				);
 				try {
 					const erudaScript = await ajax({
-						url: constants.ERUDA_CDN,
+						url: config.ERUDA_CDN,
 						responseType: "text",
 						contentType: "application/x-www-form-urlencoded",
 					});

@@ -64,6 +64,7 @@ import Url from "utils/Url";
 import $_fileMenu from "views/file-menu.hbs";
 import $_menu from "views/menu.hbs";
 import auth, { loginEvents } from "./lib/auth";
+import config from "lib/config";
 
 const previousVersionCode = Number.parseInt(localStorage.versionCode, 10);
 
@@ -169,8 +170,9 @@ async function onDeviceReady() {
 	window.CACHE_STORAGE = externalCacheDirectory || cacheDirectory;
 	window.PLUGIN_DIR = Url.join(DATA_STORAGE, "plugins");
 	window.KEYBINDING_FILE = Url.join(DATA_STORAGE, ".key-bindings.json");
-	window.IS_FREE_VERSION = isFreePackage;
 	window.log = logger.log.bind(logger);
+
+	config.HAS_PRO = !isFreePackage;
 
 	// Capture synchronous errors
 	window.addEventListener("error", (event) => {
@@ -194,7 +196,7 @@ async function onDeviceReady() {
 		});
 
 		if (localStorage.acode_pro === "true") {
-			window.IS_FREE_VERSION = false;
+			config.HAS_PRO = true;
 		}
 
 		if (navigator.onLine) {
@@ -203,9 +205,9 @@ async function onDeviceReady() {
 				p.productIds.includes("acode_pro_new"),
 			);
 			if (isPro) {
-				window.IS_FREE_VERSION = false;
+				config.HAS_PRO = true;
 			} else {
-				window.IS_FREE_VERSION = isFreePackage;
+				config.HAS_PRO = !isFreePackage;
 			}
 		}
 	} catch (error) {
@@ -332,8 +334,11 @@ async function onDeviceReady() {
 
 			// Check login status before emitting events
 			try {
-				const isLoggedIn = await auth.isLoggedIn();
-				if (isLoggedIn) {
+				const user = await auth.getLoggedInUser();
+				if (user) {
+					if (Boolean(user.acode_pro)) {
+						config.HAS_PRO = true;
+					}
 					loginEvents.emit();
 				}
 			} catch (error) {
