@@ -114,26 +114,42 @@ function create($container, $toggler) {
 					() => {},
 				);
 			} else {
-				toggleUserMenu();
+				const menu = userContextMenu.el;
+				const isActive = menu.classList.toggle("active");
+
+				if (isActive) {
+					const menuName = userContextMenu.el.querySelector(".user-menu-name");
+					const menuEmail =
+						userContextMenu.el.querySelector(".user-menu-email");
+
+					if (menuName) {
+						menuName.content = (
+							<div style={{ display: "flex" }}>
+								{Boolean(userInfo.verified) && (
+									<span className="icon verified"></span>
+								)}
+								{userInfo.name}
+								{Boolean(userInfo.acode_pro) && (
+									<span className="badge">Pro</span>
+								)}
+							</div>
+						);
+					}
+
+					if (menuEmail) {
+						menuEmail.textContent = userInfo.email || "";
+					}
+
+					setTimeout(() => {
+						document.addEventListener("click", handleClickOutside);
+					}, 10);
+				} else {
+					document.removeEventListener("click", handleClickOutside);
+				}
 			}
 		} catch (error) {
 			console.error("Error checking login status:", error);
 			toast("Error checking login status", 3000);
-		}
-	}
-
-	function toggleUserMenu() {
-		const menu = userContextMenu.el;
-		const isActive = menu.classList.toggle("active");
-
-		if (isActive) {
-			updateUserMenuInfo();
-
-			setTimeout(() => {
-				document.addEventListener("click", handleClickOutside);
-			}, 10);
-		} else {
-			document.removeEventListener("click", handleClickOutside);
 		}
 	}
 
@@ -145,26 +161,6 @@ function create($container, $toggler) {
 		) {
 			userContextMenu.el.classList.remove("active");
 			document.removeEventListener("click", handleClickOutside);
-		}
-	}
-
-	async function updateUserMenuInfo() {
-		try {
-			const userInfo = await auth.getLoggedInUser();
-			const menuName = userContextMenu.el.querySelector(".user-menu-name");
-			const menuEmail = userContextMenu.el.querySelector(".user-menu-email");
-			menuName.content = (
-				<div style={{ display: "flex" }}>
-					{Boolean(userInfo.verified) && (
-						<span className="icon verified"></span>
-					)}
-					{userInfo.name}
-					{Boolean(userInfo.acode_pro) && <span className="badge">Pro</span>}
-				</div>
-			);
-			menuEmail.textContent = userInfo.email || "";
-		} catch (error) {
-			console.error("Error fetching user info:", error);
 		}
 	}
 
