@@ -80,7 +80,7 @@ module.exports = {
 		cordova.exec(onSuccess, onFail, "SDcard", "stats", [filename]);
 	},
 	watchFile: function (filename, listener, onFail) {
-		var id = parseInt(Date.now() + Math.random() * 1000000) + "";
+		var id = Number.parseInt(Date.now() + Math.random() * 1000000) + "";
 		cordova.exec(listener, onFail, "SDcard", "watch file", [filename, id]);
 		return {
 			unwatch: function () {

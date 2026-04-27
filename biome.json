@@ -41,6 +41,7 @@
 		"includes": [
 			"src/**/*.js",
 			"utils/**/*.js",
+			"!src/plugins/**/*.js",
 			"!www/**/*",
 			"!plugins/**/*",
 			"!hooks/**/*",

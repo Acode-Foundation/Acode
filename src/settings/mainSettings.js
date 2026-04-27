@@ -2,6 +2,7 @@ import settingsPage from "components/settingsPage";
 import confirm from "dialogs/confirm";
 import rateBox from "dialogs/rateBox";
 import actionStack from "lib/actionStack";
+import config from "lib/config";
 import openFile from "lib/openFile";
 import removeAds from "lib/removeAds";
 import appSettings from "lib/settings";
@@ -23,7 +24,6 @@ import previewSettings from "./previewSettings";
 import scrollSettings from "./scrollSettings";
 import searchSettings from "./searchSettings";
 import terminalSettings from "./terminalSettings";
-import config from "lib/config";
 
 export default function mainSettings() {
 	const title = strings.settings.capitalize();

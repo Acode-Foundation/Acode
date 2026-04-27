@@ -15,7 +15,7 @@ const PluginContext = (function () {
 
 		[Symbol.toPrimitive](hint) {
 			if (hint === "number") {
-				return NaN; // prevent numeric coercion
+				return Number.NaN; // prevent numeric coercion
 			}
 			return this.uuid;
 		}

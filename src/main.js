@@ -39,6 +39,7 @@ import adRewards from "lib/adRewards";
 import applySettings from "lib/applySettings";
 import checkFiles from "lib/checkFiles";
 import checkPluginsUpdate from "lib/checkPluginsUpdate";
+import config from "lib/config";
 import EditorFile from "lib/editorFile";
 import EditorManager from "lib/editorManager";
 import { initFileList } from "lib/fileList";
@@ -64,7 +65,6 @@ import Url from "utils/Url";
 import $_fileMenu from "views/file-menu.hbs";
 import $_menu from "views/menu.hbs";
 import auth, { loginEvents } from "./lib/auth";
-import config from "lib/config";
 
 const previousVersionCode = Number.parseInt(localStorage.versionCode, 10);
 

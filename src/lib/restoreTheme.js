@@ -1,7 +1,7 @@
 import themes from "theme/list";
 import Color from "utils/color";
-import appSettings from "./settings";
 import config from "./config";
+import appSettings from "./settings";
 
 let count = 0;
 

@@ -1,22 +1,22 @@
 import "./plugins.scss";
 
-import Item from "./item";
-import Url from "utils/Url";
-import Plugin from "pages/plugin";
-import Page from "components/page";
-import helpers from "utils/helpers";
 import fsOperation from "fileSystem";
-import config from "lib/config";
-import TabView from "components/tabView";
+import Contextmenu from "components/contextmenu";
+import Page from "components/page";
 import searchBar from "components/searchbar";
-import FileBrowser from "pages/fileBrowser";
-import installPlugin from "lib/installPlugin";
+import TabView from "components/tabView";
 import prompt from "dialogs/prompt";
 import actionStack from "lib/actionStack";
-import Contextmenu from "components/contextmenu";
-import settings from "lib/settings";
+import config from "lib/config";
+import installPlugin from "lib/installPlugin";
 import loadPlugin from "lib/loadPlugin";
+import settings from "lib/settings";
 import { hideAd } from "lib/startAd";
+import FileBrowser from "pages/fileBrowser";
+import Plugin from "pages/plugin";
+import helpers from "utils/helpers";
+import Url from "utils/Url";
+import Item from "./item";
 
 /**
  *

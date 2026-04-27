@@ -1,11 +1,11 @@
 import "./style.scss";
 import palette from "components/palette";
+import config from "lib/config";
 import appSettings from "lib/settings";
 import { isDeviceDarkTheme } from "lib/systemConfiguration";
 import themes from "theme/list";
 import { updateSystemTheme } from "theme/preInstalled";
 import changeEditorTheme from "../changeEditorTheme";
-import config from "lib/config";
 
 export default function changeTheme(type = "editor") {
 	if (type === "editor") return changeEditorTheme();

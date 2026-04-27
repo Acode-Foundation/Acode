@@ -1,6 +1,6 @@
 import purchaseListener from "handlers/purchase";
-import { hideAd } from "./startAd.js";
 import config from "./config.js";
+import { hideAd } from "./startAd.js";
 
 /**
  * Remove ads after purchase
