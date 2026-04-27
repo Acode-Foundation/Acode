@@ -41,15 +41,15 @@ public class BrowserActivity extends Activity {
 
     if (Build.VERSION.SDK_INT >= 30) {
       getWindow().setDecorFitsSystemWindows(false);
-    }
 
-    browser.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
-      @Override
-      public WindowInsets onApplyWindowInsets(View v, WindowInsets insets) {
-        v.setPadding(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(), insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom());
-        return insets.consumeSystemWindowInsets();
-      }
-    });
+      browser.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+        @Override
+        public WindowInsets onApplyWindowInsets(View v, WindowInsets insets) {
+          v.setPadding(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(), insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom());
+          return insets.consumeSystemWindowInsets();
+        }
+      });
+    }
 
     setSystemTheme(theme.get("primaryColor"));
   }
@@ -76,12 +76,12 @@ public class BrowserActivity extends Activity {
         window
           .getClass()
           .getMethod("setNavigationBarColor", int.class)
-          .invoke(window, Color.TRANSPARENT);
+          .invoke(window, systemBarColor);
 
         window
           .getClass()
           .getMethod("setStatusBarColor", int.class)
-          .invoke(window, Color.TRANSPARENT);
+          .invoke(window, systemBarColor);
 
         if (Build.VERSION.SDK_INT < 30) {
           setStatusBarStyle(window);
