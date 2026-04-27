@@ -79,12 +79,7 @@ class AuthService {
 			const res = await fetch(`${config.API_BASE}/login`, {
 				method: "DELETE",
 			});
-			if (res.ok) {
-				userContextMenu.el.classList.remove("active");
-				document.removeEventListener("click", handleClickOutside);
-				toast("Logged out successfully");
-				updateSidebarAvatar();
-			} else {
+			if (!res.ok) {
 				throw new Error("Unable to logout.");
 			}
 		} catch (error) {
