@@ -55,7 +55,6 @@ export default async function PluginInclude(
 	let purchaseToken;
 	let $settingsIcon;
 	let minVersionCode = -1;
-	let isExternalPurchase;
 	let isSupported = true;
 
 	actionStack.push({
@@ -166,7 +165,6 @@ export default async function PluginInclude(
 					isPaid = remotePlugin.price > 0;
 					purchased = remotePlugin.owned;
 					price = `₹ ${remotePlugin.price}`;
-					isExternalPurchase = remotePlugin.owned;
 					isSupported = ["all", config.SUPPORTED_EDITOR].includes(
 						remotePlugin.supported_editor,
 					);
