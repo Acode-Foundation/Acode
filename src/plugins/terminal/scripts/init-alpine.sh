@@ -159,7 +159,7 @@ fi
 # Environment setup
 export PATH=$PATH:/bin:/sbin:/usr/bin:/usr/sbin:/usr/share/bin:/usr/share/sbin:/usr/local/bin:/usr/local/sbin
 
-export HOME=/home 
+export HOME=/public
 export TERM=xterm-256color 
 SHELL=/bin/bash
 export PIP_BREAK_SYSTEM_PACKAGES=1
