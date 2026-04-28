@@ -11,6 +11,7 @@ import TabView from "components/tabView";
 import alert from "dialogs/alert";
 import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
+import config from "lib/config";
 import removeAds from "lib/removeAds";
 import appSettings from "lib/settings";
 import { hideAd } from "lib/startAd";
@@ -115,7 +116,7 @@ export default function () {
 		themes.list().forEach((themeSummary) => {
 			const theme = themes.get(themeSummary.id);
 			const isCurrentTheme = theme.id === currentTheme;
-			const isPremium = theme.version === "paid" && IS_FREE_VERSION;
+			const isPremium = theme.version === "paid" && !config.HAS_PRO;
 			const $item = (
 				<Item
 					name={themeSummary.name}

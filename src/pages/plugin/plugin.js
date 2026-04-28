@@ -1,12 +1,11 @@
 import "./plugin.scss";
 import fsOperation from "fileSystem";
-import ajax from "@deadlyjack/ajax";
 import Page from "components/page";
 import alert from "dialogs/alert";
 import loader from "dialogs/loader";
 import purchaseListener from "handlers/purchase";
 import actionStack from "lib/actionStack";
-import constants from "lib/constants";
+import config from "lib/config";
 import installPlugin from "lib/installPlugin";
 import InstallState from "lib/installState";
 import settings from "lib/settings";
@@ -55,6 +54,7 @@ export default async function PluginInclude(
 	let purchaseToken;
 	let $settingsIcon;
 	let minVersionCode = -1;
+	let isSupported = true;
 
 	actionStack.push({
 		id: "plugin",
@@ -138,9 +138,9 @@ export default async function PluginInclude(
 		await (async () => {
 			try {
 				loader.showTitleLoader();
-				if ((await helpers.checkAPIStatus()) && isValidSource(plugin.source)) {
+				if (isValidSource(plugin.source)) {
 					const remotePlugin = await fsOperation(
-						constants.API_BASE,
+						config.API_BASE,
 						`plugin/${id}`,
 					)
 						.readFile("json")
@@ -162,18 +162,26 @@ export default async function PluginInclude(
 					if (!Number.parseFloat(remotePlugin.price)) return;
 
 					isPaid = remotePlugin.price > 0;
-					try {
-						[product] = await helpers.promisify(iap.getProducts, [
-							remotePlugin.sku,
-						]);
-						if (product) {
-							const purchase = await getPurchase(product.productId);
-							purchased = !!purchase;
-							price = product.price;
-							purchaseToken = purchase?.purchaseToken;
+					purchased = remotePlugin.owned;
+					price = `₹ ${remotePlugin.price}`;
+					isSupported = ["all", config.SUPPORTED_EDITOR].includes(
+						remotePlugin.supported_editor,
+					);
+
+					if (!purchased && (await helpers.checkAPIStatus())) {
+						try {
+							[product] = await helpers.promisify(iap.getProducts, [
+								remotePlugin.sku,
+							]);
+							if (product) {
+								const purchase = await getPurchase(product.productId);
+								purchased = !!purchase;
+								price = product.price;
+								purchaseToken = purchase?.purchaseToken;
+							}
+						} catch (error) {
+							helpers.error(error);
 						}
-					} catch (error) {
-						helpers.error(error);
 					}
 				}
 			} catch (error) {
@@ -258,12 +266,13 @@ export default async function PluginInclude(
 
 			async function onpurchase(e) {
 				const purchase = await getPurchase(product.productId);
-				await ajax.post(Url.join(constants.API_BASE, "plugin/order"), {
-					data: {
+				await fetch(Url.join(config.API_BASE, "plugin/order"), {
+					method: "POST",
+					body: JSON.stringify({
 						id: plugin.id,
 						token: purchase?.purchaseToken,
 						package: BuildInfo.packageName,
-					},
+					}),
 				});
 				purchaseToken = purchase?.purchaseToken;
 				purchased = !!purchase;
@@ -289,16 +298,20 @@ export default async function PluginInclude(
 		try {
 			if (!product) throw new Error("Product not found");
 			$button.textContent = strings["loading..."];
-			const { refer, refunded, error } = await ajax.post(
-				Url.join(constants.API_BASE, "plugin/refund"),
-				{
-					data: {
-						id: plugin.id,
-						package: BuildInfo.packageName,
-						token: purchaseToken,
-					},
-				},
-			);
+			const res = await fetch(Url.join(config.API_BASE, "plugin/refund"), {
+				method: "POST",
+				body: JSON.stringify({
+					id: plugin.id,
+					package: BuildInfo.packageName,
+					token: purchaseToken,
+				}),
+			});
+
+			if (!res.ok) {
+				throw new Error("Failed to fetch refund");
+			}
+
+			const { refer, refunded, error } = await res.json();
 			if (refer) {
 				system.openInBrowser(refer);
 				return;
@@ -364,6 +377,7 @@ export default async function PluginInclude(
 			uninstall,
 			currentVersion,
 			minVersionCode,
+			isSupported,
 		});
 
 		// Handle anchor links
@@ -495,7 +509,5 @@ export default async function PluginInclude(
 }
 
 function isValidSource(source) {
-	return source
-		? source.startsWith(Url.join(constants.API_BASE, "plugin"))
-		: true;
+	return source ? source.startsWith(Url.join(config.API_BASE, "plugin")) : true;
 }

@@ -1,9 +1,8 @@
 import fsOperation from "fileSystem";
-import ajax from "@deadlyjack/ajax";
 import loader from "dialogs/loader";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
-import constants from "./constants";
+import config from "./config";
 
 let erudaInstance = null;
 let isInitialized = false;
@@ -50,11 +49,9 @@ const devTools = {
 				}
 
 				try {
-					const erudaScript = await ajax({
-						url: constants.ERUDA_CDN,
-						responseType: "text",
-						contentType: "application/x-www-form-urlencoded",
-					});
+					const erudaScript = await fsOperation(config.ERUDA_CDN).readFile(
+						"utf-8",
+					);
 					await fsOperation(DATA_STORAGE).createFile("eruda.js", erudaScript);
 				} finally {
 					if (showLoader) loader.destroy();

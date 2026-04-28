@@ -1,12 +1,11 @@
 import fsOperation from "fileSystem";
-import ajax from "@deadlyjack/ajax";
 import { resetKeyBindings } from "cm/commandRegistry";
 import settingsPage from "components/settingsPage";
 import loader from "dialogs/loader";
 import select from "dialogs/select";
 import actions from "handlers/quickTools";
 import actionStack from "lib/actionStack";
-import constants from "lib/constants";
+import config from "lib/config";
 import fonts from "lib/fonts";
 import lang from "lib/lang";
 import openFile from "lib/openFile";
@@ -354,11 +353,9 @@ export default function otherSettings() {
 					strings["downloading..."],
 				);
 				try {
-					const erudaScript = await ajax({
-						url: constants.ERUDA_CDN,
-						responseType: "text",
-						contentType: "application/x-www-form-urlencoded",
-					});
+					const erudaScript = await fsOperation(config.ERUDA_CDN).readFile(
+						"utf-8",
+					);
 					await fsOperation(DATA_STORAGE).createFile("eruda.js", erudaScript);
 					loader.destroy();
 				} catch (error) {

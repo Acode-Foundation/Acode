@@ -13,7 +13,6 @@ import "components/WebComponents";
 
 import fsOperation from "fileSystem";
 import sidebarApps from "sidebarApps";
-import ajax from "@deadlyjack/ajax";
 import { setKeyBindings } from "cm/commandRegistry";
 import {
 	getModeForPath,
@@ -36,9 +35,11 @@ import windowResize from "handlers/windowResize";
 import Acode from "lib/acode";
 import actionStack from "lib/actionStack";
 import adRewards from "lib/adRewards";
+import ajax from "lib/ajax";
 import applySettings from "lib/applySettings";
 import checkFiles from "lib/checkFiles";
 import checkPluginsUpdate from "lib/checkPluginsUpdate";
+import config from "lib/config";
 import EditorFile from "lib/editorFile";
 import EditorManager from "lib/editorManager";
 import { initFileList } from "lib/fileList";
@@ -130,6 +131,12 @@ async function Main() {
 		return xhr.response;
 	};
 
+	ajax.configure = (xhr, url) => {
+		if (url.includes("acode.app/api")) {
+			xhr.withCredentials = true;
+		}
+	};
+
 	loadPolyFill.apply(window);
 
 	TouchEvent.prototype.preventDefault = function () {
@@ -169,8 +176,9 @@ async function onDeviceReady() {
 	window.CACHE_STORAGE = externalCacheDirectory || cacheDirectory;
 	window.PLUGIN_DIR = Url.join(DATA_STORAGE, "plugins");
 	window.KEYBINDING_FILE = Url.join(DATA_STORAGE, ".key-bindings.json");
-	window.IS_FREE_VERSION = isFreePackage;
 	window.log = logger.log.bind(logger);
+
+	config.HAS_PRO = !isFreePackage;
 
 	// Capture synchronous errors
 	window.addEventListener("error", (event) => {
@@ -194,7 +202,7 @@ async function onDeviceReady() {
 		});
 
 		if (localStorage.acode_pro === "true") {
-			window.IS_FREE_VERSION = false;
+			config.HAS_PRO = true;
 		}
 
 		if (navigator.onLine) {
@@ -203,9 +211,9 @@ async function onDeviceReady() {
 				p.productIds.includes("acode_pro_new"),
 			);
 			if (isPro) {
-				window.IS_FREE_VERSION = false;
+				config.HAS_PRO = true;
 			} else {
-				window.IS_FREE_VERSION = isFreePackage;
+				config.HAS_PRO = !isFreePackage;
 			}
 		}
 	} catch (error) {
@@ -332,8 +340,11 @@ async function onDeviceReady() {
 
 			// Check login status before emitting events
 			try {
-				const isLoggedIn = await auth.isLoggedIn();
-				if (isLoggedIn) {
+				const user = await auth.getLoggedInUser();
+				if (user) {
+					if (Boolean(user.acode_pro)) {
+						config.HAS_PRO = true;
+					}
 					loginEvents.emit();
 				}
 			} catch (error) {

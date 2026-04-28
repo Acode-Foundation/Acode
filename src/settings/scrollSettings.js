@@ -1,5 +1,5 @@
 import settingsPage from "components/settingsPage";
-import constants from "lib/constants";
+import config from "lib/config";
 import appSettings from "lib/settings";
 
 export default function scrollSettings() {
@@ -56,13 +56,13 @@ export default function scrollSettings() {
 
 function getScrollSpeedString(speed) {
 	switch (speed) {
-		case constants.SCROLL_SPEED_FAST:
+		case config.SCROLL_SPEED_FAST:
 			return strings.fast;
-		case constants.SCROLL_SPEED_SLOW:
+		case config.SCROLL_SPEED_SLOW:
 			return strings.slow;
-		case constants.SCROLL_SPEED_FAST_X2:
+		case config.SCROLL_SPEED_FAST_X2:
 			return `${strings.fast} x2`;
-		case constants.SCROLL_SPEED_NORMAL:
+		case config.SCROLL_SPEED_NORMAL:
 			return strings.normal;
 		default:
 			return strings.normal;

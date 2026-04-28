@@ -1,6 +1,5 @@
 import "./style.scss";
 import fsOperation from "fileSystem";
-import ajax from "@deadlyjack/ajax";
 import Logo from "components/logo";
 import Page from "components/page";
 import alert from "dialogs/alert";
@@ -8,7 +7,7 @@ import box from "dialogs/box";
 import loader from "dialogs/loader";
 import multiPrompt from "dialogs/multiPrompt";
 import actionStack from "lib/actionStack";
-import constants from "lib/constants";
+import config from "lib/config";
 import helpers from "utils/helpers";
 
 //TODO: fix (-1 means, user is not logged in to any google account)
@@ -68,14 +67,18 @@ export default function Sponsor(onclose) {
 						msg += `Error: ${rejectedPromise.reason}\n`;
 						msg += `Code: ${rejectedPromise.value.resCode}`;
 					} else {
-						const blob = await ajax({
+						const res = await fetch({
 							url: BASE_URL + "6.jpeg",
 							responseType: "blob",
 						}).catch((err) => {
 							helpers.error(err);
 						});
-						const url = URL.createObjectURL(blob);
-						msg = `<img src="${url}" class="donate-image" />`;
+
+						if (res.ok) {
+							const url = URL.createObjectURL(await res.blob());
+							msg = `<img src="${url}" class="donate-image" />`;
+						}
+
 						msg += "<br><p>Thank you for supporting Acode!</p>";
 					}
 
@@ -86,13 +89,14 @@ export default function Sponsor(onclose) {
 					);
 
 					try {
-						const res = await ajax.post(`${constants.API_BASE}/sponsor`, {
-							data: {
+						const res = await fetch(`${config.API_BASE}/sponsor`, {
+							method: "POST",
+							body: JSON.stringify({
 								...sponsorDetails,
 								tier: productId,
 								packageName: BuildInfo.packageName,
 								purchaseToken: order.purchaseToken,
-							},
+							}),
 						});
 						if (res.error) {
 							helpers.error(res.error);
@@ -130,7 +134,7 @@ export default function Sponsor(onclose) {
 	async function render() {
 		let products = await new Promise((resolve, reject) => {
 			iap.getProducts(
-				constants.SKU_LIST,
+				config.SKU_LIST,
 				(products) => {
 					resolve(products);
 				},

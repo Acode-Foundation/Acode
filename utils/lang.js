@@ -83,7 +83,7 @@ function addToAllFiles() {
 		}
 
 		strings[key] = val;
-		const newText = JSON.stringify(strings, undefined, 2);
+		const newText = JSON.stringify(strings, undefined, "\t");
 		fs.writeFileSync(file, newText, "utf8");
 		console.log(`${lang}: Added ✓`);
 		addedCount++;
@@ -161,7 +161,7 @@ function bulkAddStrings() {
 		}
 
 		if (addedCount > 0) {
-			const newText = JSON.stringify(strings, undefined, 2);
+			const newText = JSON.stringify(strings, undefined, "\t");
 			fs.writeFileSync(file, newText, "utf8");
 		}
 
@@ -257,7 +257,7 @@ async function update() {
 					if (flagError) {
 						if (fix) {
 							total += 1;
-							const langJSONData = JSON.stringify(langData, undefined, 2);
+							const langJSONData = JSON.stringify(langData, undefined, "\t");
 							fs.writeFile(langFile, langJSONData, (err) => {
 								if (err) {
 									console.error(err);
@@ -353,7 +353,7 @@ async function update() {
 			const text = fs.readFileSync(file, "utf8");
 			const strings = modify(JSON.parse(text));
 			if (strings) {
-				const newText = JSON.stringify(strings, undefined, 2);
+				const newText = JSON.stringify(strings, undefined, "\t");
 				fs.writeFile(file, newText, "utf8", (err) => {
 					if (err) {
 						console.error(err);

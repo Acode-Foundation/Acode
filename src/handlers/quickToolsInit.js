@@ -1,5 +1,5 @@
 import quickTools from "components/quickTools";
-import constants from "lib/constants";
+import config from "lib/config";
 import appSettings from "lib/settings";
 import actions, { key } from "./quickTools";
 
@@ -300,7 +300,7 @@ function oncontextmenu(e) {
 	const { editor, activeFile } = editorManager;
 
 	if (isClickMode && appSettings.value.vibrateOnTap) {
-		navigator.vibrate(constants.VIBRATION_TIME_LONG);
+		navigator.vibrate(config.VIBRATION_TIME_LONG);
 		$el.classList.add("active");
 	}
 

@@ -7,7 +7,6 @@ import * as cmLint from "@codemirror/lint";
 import * as cmSearch from "@codemirror/search";
 import * as cmState from "@codemirror/state";
 import * as cmView from "@codemirror/view";
-import ajax from "@deadlyjack/ajax";
 import * as lezerHighlight from "@lezer/highlight";
 import {
 	getRegisteredCommands as listRegisteredCommands,
@@ -74,7 +73,7 @@ import encodings, { decode, encode } from "utils/encodings";
 import helpers from "utils/helpers";
 import KeyboardEvent from "utils/keyboardEvent";
 import Url from "utils/Url";
-import constants from "./constants";
+import config from "./config";
 
 export default class Acode {
 	#modules = {};
@@ -522,10 +521,7 @@ export default class Acode {
 
 						let purchaseToken;
 						let product;
-						const pluginUrl = Url.join(
-							constants.API_BASE,
-							`plugin/${pluginId}`,
-						);
+						const pluginUrl = Url.join(config.API_BASE, `plugin/${pluginId}`);
 						fsOperation(pluginUrl)
 							.readFile("json")
 							.catch(() => {
@@ -581,16 +577,14 @@ export default class Acode {
 
 									async function onpurchase(e) {
 										const purchase = await getPurchase(product.productId);
-										await ajax.post(
-											Url.join(constants.API_BASE, "plugin/order"),
-											{
-												data: {
-													id: remotePlugin.id,
-													token: purchase?.purchaseToken,
-													package: BuildInfo.packageName,
-												},
-											},
-										);
+										await fetch(Url.join(config.API_BASE, "plugin/order"), {
+											method: "POST",
+											body: JSON.stringify({
+												id: remotePlugin.id,
+												token: purchase?.purchaseToken,
+												package: BuildInfo.packageName,
+											}),
+										});
 										purchaseToken = purchase?.purchaseToken;
 									}
 

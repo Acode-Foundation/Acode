@@ -1,7 +1,7 @@
 import actions from "../handlers/quickTools";
 import appSettings from "../lib/settings";
 import themes from "../theme/list";
-import constants from "./constants";
+import config from "./config";
 import fonts from "./fonts";
 
 export default {
@@ -18,7 +18,7 @@ export default {
 		app.addEventListener("click", function (e) {
 			const $target = e.target;
 			if ($target.hasAttribute("vibrate") && appSettings.value.vibrateOnTap) {
-				navigator.vibrate(constants.VIBRATION_TIME);
+				navigator.vibrate(config.VIBRATION_TIME);
 			}
 		});
 
