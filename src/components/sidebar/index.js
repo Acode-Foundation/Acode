@@ -125,23 +125,17 @@ function create($container, $toggler) {
 					if (menuName) {
 						menuName.content = (
 							<div style={{ display: "flex" }}>
-				if (menuName) {
-					menuName.content = (
-						<div style={{ display: "flex" }}>
-							{Boolean(user.verified) && (
-								<span className="icon verified"></span>
-							)}
-							{user.name}
-							{Boolean(user.acode_pro) && (
-								<span className="badge">Pro</span>
-							)}
-						</div>
-					);
-				}
+								{Boolean(user.verified) && (
+									<span className="icon verified"></span>
+								)}
+								{user.name}
+								{Boolean(user.acode_pro) && <span className="badge">Pro</span>}
+							</div>
+						);
+					}
 
-				if (menuEmail) {
-					menuEmail.textContent = user.email || "";
-				}
+					if (menuEmail) {
+						menuEmail.textContent = user.email || "";
 					}
 
 					setTimeout(() => {

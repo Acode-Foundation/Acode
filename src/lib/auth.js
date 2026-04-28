@@ -86,6 +86,9 @@ class AuthService {
 			console.error("Error during logout:", error);
 		}
 
+		loggedInUser = null;
+		localStorage.removeItem(CACHE_USER_KEY);
+
 		try {
 			await this.#exec("logout");
 			return true;
