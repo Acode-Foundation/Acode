@@ -1,4 +1,4 @@
-const BASE_URL = "https://dev.acode.app";
+const BASE_URL = "https://acode.app";
 let hasPro = false;
 
 export default {

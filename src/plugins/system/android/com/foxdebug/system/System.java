@@ -138,6 +138,7 @@ public class System extends CordovaPlugin {
                 @Override
                 public void run() {
                     setNativeContextMenuDisabled(false);
+                    new SoftInputAssist(activity);
                 }
             }
         );

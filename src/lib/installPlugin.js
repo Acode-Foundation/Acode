@@ -72,7 +72,14 @@ export default async function installPlugin(
 			pluginUrl.startsWith("content:")
 		) {
 			// Use fsOperation for Acode registry URL
-			plugin = await fsOperation(pluginUrl).readFile();
+			plugin = await fsOperation(pluginUrl).readFile(
+				undefined,
+				(loaded, total) => {
+					loaderDialog.setMessage(
+						`${strings.loading} ${((loaded / total) * 100).toFixed(2)}%`,
+					);
+				},
+			);
 		} else {
 			// cordova http plugin for others
 			plugin = await new Promise((resolve, reject) => {

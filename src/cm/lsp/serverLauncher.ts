@@ -1087,6 +1087,8 @@ export async function ensureServerRunning(
 		if (!alreadyInformed){
 			alreadyInformed = true;
 			alert(strings?.error, message);
+		}else{
+			toast(message);
 		}
 
 		const unavailable: LspError = new Error(message);
