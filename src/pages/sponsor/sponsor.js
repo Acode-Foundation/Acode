@@ -8,7 +8,7 @@ import box from "dialogs/box";
 import loader from "dialogs/loader";
 import multiPrompt from "dialogs/multiPrompt";
 import actionStack from "lib/actionStack";
-import constants from "lib/constants";
+import config from "lib/config";
 import helpers from "utils/helpers";
 
 //TODO: fix (-1 means, user is not logged in to any google account)
@@ -86,7 +86,7 @@ export default function Sponsor(onclose) {
 					);
 
 					try {
-						const res = await ajax.post(`${constants.API_BASE}/sponsor`, {
+						const res = await ajax.post(`${config.API_BASE}/sponsor`, {
 							data: {
 								...sponsorDetails,
 								tier: productId,
@@ -130,7 +130,7 @@ export default function Sponsor(onclose) {
 	async function render() {
 		let products = await new Promise((resolve, reject) => {
 			iap.getProducts(
-				constants.SKU_LIST,
+				config.SKU_LIST,
 				(products) => {
 					resolve(products);
 				},

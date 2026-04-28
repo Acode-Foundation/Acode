@@ -7,7 +7,7 @@ import purchaseListener from "handlers/purchase";
 import JSZip from "jszip";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
-import constants from "./constants";
+import config from "./config";
 import InstallState from "./installState";
 import loadPlugin from "./loadPlugin";
 
@@ -50,7 +50,7 @@ export default async function installPlugin(
 
 	if (!/^(https?|file|content):/.test(id)) {
 		pluginUrl = Url.join(
-			constants.API_BASE,
+			config.API_BASE,
 			"plugin/download/",
 			`${id}?device=${device.uuid}`,
 		);
@@ -68,19 +68,12 @@ export default async function installPlugin(
 
 		let plugin;
 		if (
-			pluginUrl.includes(constants.API_BASE) ||
+			pluginUrl.includes(config.API_BASE) ||
 			pluginUrl.startsWith("file:") ||
 			pluginUrl.startsWith("content:")
 		) {
 			// Use fsOperation for Acode registry URL
-			plugin = await fsOperation(pluginUrl).readFile(
-				undefined,
-				(loaded, total) => {
-					loaderDialog.setMessage(
-						`${strings.loading} ${((loaded / total) * 100).toFixed(2)}%`,
-					);
-				},
-			);
+			plugin = await fsOperation(pluginUrl).readFile();
 		} else {
 			// cordova http plugin for others
 			plugin = await new Promise((resolve, reject) => {
@@ -397,7 +390,7 @@ async function resolveDepsManifest(deps) {
 	const resolved = [];
 	for (const dependency of deps) {
 		const remoteDependency = await fsOperation(
-			constants.API_BASE,
+			config.API_BASE,
 			`plugin/${dependency}`,
 		)
 			.readFile("json")
@@ -467,7 +460,7 @@ async function resolveDep(manifest) {
 
 		async function onpurchase(e) {
 			const purchase = await getPurchase(product.productId);
-			await ajax.post(Url.join(constants.API_BASE, "plugin/order"), {
+			await ajax.post(Url.join(config.API_BASE, "plugin/order"), {
 				data: {
 					id: manifest.id,
 					token: purchase?.purchaseToken,

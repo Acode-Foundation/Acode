@@ -26,7 +26,7 @@ import { getColorRange } from "utils/color/regex";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
 import checkFiles from "./checkFiles";
-import constants from "./constants";
+import config from "./config";
 import EditorFile from "./editorFile";
 import openFile from "./openFile";
 import openFolder from "./openFolder";
@@ -228,7 +228,7 @@ export default {
 	},
 	async "new-file"() {
 		let filename = await prompt(strings["enter file name"], "", "filename", {
-			match: constants.FILE_NAME_REGEX,
+			match: config.FILE_NAME_REGEX,
 			required: true,
 		});
 
@@ -494,7 +494,7 @@ export default {
 		}
 
 		let newname = await prompt(strings.rename, file.filename, "filename", {
-			match: constants.FILE_NAME_REGEX,
+			match: config.FILE_NAME_REGEX,
 			capitalize: false,
 		});
 
@@ -548,7 +548,7 @@ export default {
 		editorManager.activeFile.eol = eol;
 	},
 	"open-log-file"() {
-		openFile(Url.join(DATA_STORAGE, constants.LOG_FILE_NAME));
+		openFile(Url.join(DATA_STORAGE, config.LOG_FILE_NAME));
 	},
 	"copy-device-info"() {
 		let webviewInfo = {};

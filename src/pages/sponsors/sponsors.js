@@ -4,7 +4,7 @@ import Page from "components/page";
 import toast from "components/toast";
 import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
-import constants from "lib/constants";
+import config from "lib/config";
 import Sponsor from "pages/sponsor";
 import helpers from "utils/helpers";
 
@@ -113,7 +113,7 @@ export default function Sponsors() {
 	async function render() {
 		let sponsors = [];
 		try {
-			const res = await ajax.get(`${constants.API_BASE}/sponsors`);
+			const res = await ajax.get(`${config.API_BASE}/sponsors`);
 			if (res.error) {
 				toast("Unable to load sponsors...");
 				console.error("Error loading sponsors:", res.error);
