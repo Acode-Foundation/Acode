@@ -17,7 +17,6 @@ import helpers from "utils/helpers";
  * @param {() => void} onclose
  */
 export default function Sponsor(onclose) {
-	const BASE_URL = "https://acode.app/res/";
 	const $page = Page(strings.sponsor);
 	let cancel = false;
 
@@ -67,12 +66,7 @@ export default function Sponsor(onclose) {
 						msg += `Error: ${rejectedPromise.reason}\n`;
 						msg += `Code: ${rejectedPromise.value.resCode}`;
 					} else {
-						const res = await fetch({
-							url: BASE_URL + "6.jpeg",
-							responseType: "blob",
-						}).catch((err) => {
-							helpers.error(err);
-						});
+						const res = await fetch(`${config.BASE_URL}/res/6.jpeg`);
 
 						if (res.ok) {
 							const url = URL.createObjectURL(await res.blob());
