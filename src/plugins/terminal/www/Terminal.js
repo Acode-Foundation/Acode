@@ -34,7 +34,7 @@ const Terminal = {
                     logger(`${type} ${data}`);
 
                     if (type === "stderr" && data) {
-                        lastError = data;
+                        lastError = lastError ? `${lastError}\n${data}` : data;
                     }
 
                     // Check for exit code during installation
@@ -401,7 +401,9 @@ const Terminal = {
                 reject(result);
             }
         });
-    }
+    },
+
+    formatError
 };
 
 

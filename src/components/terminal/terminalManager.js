@@ -478,28 +478,8 @@ class TerminalManager {
 	formatInstallLog(value) {
 		const values = Array.isArray(value) ? value : [value];
 		const message = values
-			.map((entry) => {
-				if (entry == null) return "";
-				if (entry instanceof Error) return entry.message || String(entry);
-				if (typeof entry === "string") return entry;
-				if (typeof entry === "object") {
-					const details = [];
-					if (entry.status != null) details.push(`status ${entry.status}`);
-					if (entry.error) details.push(String(entry.error));
-					if (entry.message) details.push(String(entry.message));
-					if (entry.exception) details.push(String(entry.exception));
-					if (entry.url) details.push(`URL: ${entry.url}`);
-					if (details.length) return details.join(" - ");
-
-					try {
-						return JSON.stringify(entry);
-					} catch (error) {
-						return String(entry);
-					}
-				}
-
-				return String(entry);
-			})
+			.filter((entry) => entry != null)
+			.map((entry) => Terminal.formatError(entry))
 			.filter(Boolean)
 			.join(" ");
 
