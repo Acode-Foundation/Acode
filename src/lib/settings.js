@@ -191,6 +191,10 @@ class Settings {
 				servers: {},
 			},
 			developerMode: false,
+			snippets: {
+				enabled: true,
+				user: {},
+			},
 			shiftClickSelection: false,
 		};
 		this.value = structuredClone(this.#defaultSettings);

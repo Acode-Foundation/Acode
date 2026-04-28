@@ -68,6 +68,10 @@ import quickTools from "components/quickTools";
 import ScrollBar from "components/scrollbar";
 import SideButton, { sideButtonContainer } from "components/sideButton";
 import keyboardHandler, { keydownState } from "handlers/keyboard";
+import {
+	createSnippetCompletionSource,
+	expandSnippetShortcut,
+} from "lib/snippets";
 import EditorFile from "./editorFile";
 import openFile from "./openFile";
 import { addedFolder } from "./openFolder";
@@ -1155,6 +1159,24 @@ async function EditorManager($header, $body) {
 		});
 		const exts = [...baseExtensions];
 		maybeAttachEmmetCompletions(exts, syntax);
+		const snippetLanguageId = getFileLanguageId(file);
+		exts.push(
+			EditorState.languageData.of(() => [
+				{
+					autocomplete: createSnippetCompletionSource(snippetLanguageId),
+				},
+			]),
+		);
+		exts.push(
+			Prec.high(
+				keymap.of([
+					{
+						key: "Tab",
+						run: (view) => expandSnippetShortcut(view, snippetLanguageId),
+					},
+				]),
+			),
+		);
 		try {
 			const langExtFn = file.currentLanguageExtension;
 			let initialLang = [];
