@@ -442,12 +442,12 @@ class TerminalManager {
 			const installResult = await Terminal.install(
 				(message) => {
 					// Remove stdout/stderr prefix for
-					const cleanMessage = message.replace(/^(stdout|stderr)\s+/, "");
+					const cleanMessage = this.formatInstallLog(message);
 					installTerminal.component.write(`${cleanMessage}\r\n`);
 				},
-				(error) => {
+				(...errorParts) => {
 					// Remove stdout/stderr prefix
-					const cleanError = error.replace(/^(stdout|stderr)\s+/, "");
+					const cleanError = this.formatInstallLog(errorParts);
 					installTerminal.component.write(
 						`\x1b[31mError: ${cleanError}\x1b[0m\r\n`,
 					);
@@ -458,19 +458,52 @@ class TerminalManager {
 			if (installResult === true) {
 				return { success: true };
 			} else {
+				const error =
+					Terminal.lastInstallError ||
+					"Terminal installation failed - process did not exit with code 0";
 				return {
 					success: false,
-					error:
-						"Terminal installation failed - process did not exit with code 0",
+					error,
 				};
 			}
 		} catch (error) {
 			console.error("Terminal installation failed:", error);
 			return {
 				success: false,
-				error: `Terminal installation failed: ${error.message}`,
+				error: `Terminal installation failed: ${this.formatInstallLog(error)}`,
 			};
 		}
+	}
+
+	formatInstallLog(value) {
+		const values = Array.isArray(value) ? value : [value];
+		const message = values
+			.map((entry) => {
+				if (entry == null) return "";
+				if (entry instanceof Error) return entry.message || String(entry);
+				if (typeof entry === "string") return entry;
+				if (typeof entry === "object") {
+					const details = [];
+					if (entry.status != null) details.push(`status ${entry.status}`);
+					if (entry.error) details.push(String(entry.error));
+					if (entry.message) details.push(String(entry.message));
+					if (entry.exception) details.push(String(entry.exception));
+					if (entry.url) details.push(`URL: ${entry.url}`);
+					if (details.length) return details.join(" - ");
+
+					try {
+						return JSON.stringify(entry);
+					} catch (error) {
+						return String(entry);
+					}
+				}
+
+				return String(entry);
+			})
+			.filter(Boolean)
+			.join(" ");
+
+		return message.replace(/^(stdout|stderr)\s+/, "") || "Unknown error";
 	}
 
 	/**
