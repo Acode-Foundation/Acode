@@ -504,16 +504,30 @@ function registerCoreCommands() {
 		},
 	});
 	addCommand({
+		name: "increaseUiZoom",
+		description: "Increase UI zoom",
+		readOnly: true,
+		requiresView: false,
+		run: () => adjustUiZoom(10),
+	});
+	addCommand({
+		name: "decreaseUiZoom",
+		description: "Decrease UI zoom",
+		readOnly: true,
+		requiresView: false,
+		run: () => adjustUiZoom(-10),
+	});
+	addCommand({
 		name: "increaseFontSize",
-		description: "Increase font size",
-		readOnly: false,
+		description: "Increase editor font size",
+		readOnly: true,
 		requiresView: false,
 		run: () => adjustFontSize(1),
 	});
 	addCommand({
 		name: "decreaseFontSize",
-		description: "Decrease font size",
-		readOnly: false,
+		description: "Decrease editor font size",
+		readOnly: true,
 		requiresView: false,
 		run: () => adjustFontSize(-1),
 	});
@@ -1307,8 +1321,16 @@ async function openInAppBrowserCommand() {
 function adjustFontSize(delta) {
 	const current = settings?.value?.fontSize || "12px";
 	const numeric = Number.parseInt(current, 10) || 12;
-	const next = Math.max(1, numeric + delta);
+	const next = Math.min(72, Math.max(6, numeric + delta));
 	settings.value.fontSize = `${next}px`;
+	settings.update(false);
+	return true;
+}
+
+function adjustUiZoom(delta) {
+	const current = Number(settings?.value?.uiZoom) || 100;
+	const next = Math.min(160, Math.max(70, current + delta));
+	settings.value.uiZoom = next;
 	settings.update(false);
 	return true;
 }
@@ -1356,10 +1378,12 @@ function buildResolvedKeyBindingsSnapshot() {
 
 function toCodeMirrorKey(combo) {
 	if (!combo) return null;
-	const parts = combo
-		.split("-")
-		.map((part) => part.trim())
-		.filter(Boolean);
+	const parts = combo.endsWith("-")
+		? [...combo.slice(0, -1).split("-").filter(Boolean), "-"]
+		: combo
+				.split("-")
+				.map((part) => part.trim())
+				.filter(Boolean);
 	const modifiers = [];
 	let key = null;
 

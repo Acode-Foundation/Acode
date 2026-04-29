@@ -23,6 +23,7 @@ export default {
 		});
 
 		system.setInputType(appSettings.value.keyboardMode);
+		appSettings.applyUiZoomSetting();
 		// Keep native context menu enabled globally; editor manager scopes disabling to CodeMirror focus.
 		system.setNativeContextMenuDisabled(false);
 	},

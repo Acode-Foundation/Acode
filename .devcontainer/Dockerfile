@@ -7,8 +7,8 @@
 
 FROM mcr.microsoft.com/devcontainers/java:1-21-bullseye
 
-ARG ANDROID_PLATFORM=35
-ARG ANDROID_BUILD_TOOLS=35.0.0
+ARG ANDROID_PLATFORM=36
+ARG ANDROID_BUILD_TOOLS=36.0.0
 ARG CMDLINE_TOOLS_VERSION=11076708
 ARG NODE_VERSION=22
 ARG GRADLE_VERSION=8.11
@@ -18,9 +18,13 @@ ENV ANDROID_SDK_ROOT=/opt/android-sdk
 ENV GRADLE_HOME=/opt/gradle
 ENV PATH="${PATH}:${ANDROID_HOME}/cmdline-tools/latest/bin:${ANDROID_HOME}/platform-tools:${GRADLE_HOME}/bin"
 
+# removes broken yarn repo present in base image
+RUN rm -f /etc/apt/sources.list.d/yarn.list
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     unzip \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Gradle
@@ -30,15 +34,16 @@ RUN wget -q "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-
     && ln -s /opt/gradle-${GRADLE_VERSION} ${GRADLE_HOME}
 
 # Install fnm and Node.js
-ENV FNM_DIR=/usr/local/fnm
-ENV PATH="${FNM_DIR}:${PATH}"
-RUN curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir "${FNM_DIR}" --skip-shell \
-    && eval "$(${FNM_DIR}/fnm env)" \
-    && fnm install ${NODE_VERSION} \
-    && fnm default ${NODE_VERSION} \
-    && npm install -g pnpm
+# Not required, mostly. When dev containers are used. 
+# ENV FNM_DIR=/usr/local/fnm
+# ENV PATH="${FNM_DIR}:${PATH}"
+# RUN curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir "${FNM_DIR}" --skip-shell \
+#    && eval "$(${FNM_DIR}/fnm env)" \
+#    && fnm install ${NODE_VERSION} \
+#    && fnm default ${NODE_VERSION} \
+#    && npm install -g pnpm
 
-ENV PATH="${FNM_DIR}/aliases/default/bin:${PATH}"
+# ENV PATH="${FNM_DIR}/aliases/default/bin:${PATH}"
 
 # Install Android SDK
 RUN mkdir -p ${ANDROID_HOME}/cmdline-tools \

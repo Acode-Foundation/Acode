@@ -13,55 +13,54 @@ const Terminal = {
             system.getFilesDir(resolve, reject);
         });
 
+        const [initAlpine, rmWrapper, initSandbox] = await Promise.all([
+            readAsset("init-alpine.sh"),
+            readAsset("rm-wrapper.sh"),
+            readAsset("init-sandbox.sh"),
+        ]);
+
+        await writeText(`${filesDir}/init-alpine.sh`, initAlpine);
+        await writeText(`${filesDir}/init-sandbox.sh`, initSandbox);
+
+        await deleteFile(`${filesDir}/alpine/bin/rm`).catch(() => {});
+        await writeText(`${filesDir}/alpine/bin/rm`, rmWrapper);
+        await setExec(`${filesDir}/alpine/bin/rm`, true);
+
         if (installing) {
             return new Promise((resolve, reject) => {
-                readAsset("init-alpine.sh", async (content) => {
-                    system.writeText(`${filesDir}/init-alpine.sh`, content, logger, err_logger);
-                });
-
-                readAsset("rm-wrapper.sh", async (content) => {
-                    system.deleteFile(`${filesDir}/alpine/bin/rm`, logger, err_logger);
-                    system.writeText(`${filesDir}/alpine/bin/rm`, content, logger, err_logger);
-                    system.setExec(`${filesDir}/alpine/bin/rm`, true, logger, err_logger);
-                });
-
-                readAsset("init-sandbox.sh", (content) => {
-                    system.writeText(`${filesDir}/init-sandbox.sh`, content, logger, err_logger);
-
-                    Executor.start("sh", (type, data) => {
-                        logger(`${type} ${data}`);
-
-                        // Check for exit code during installation
-                        if (type === "exit") {
-                            resolve(data === "0");
-                        }
-                    }).then(async (uuid) => {
-                        await Executor.write(uuid, `source ${filesDir}/init-sandbox.sh ${installing ? "--installing" : ""}; exit`);
-                    }).catch((error) => {
-                        err_logger("Failed to start AXS:", error);
-                        resolve(false);
-                    });
-                });
-            });
-        } else {
-            readAsset("rm-wrapper.sh", async (content) => {
-                system.deleteFile(`${filesDir}/alpine/bin/rm`, logger, err_logger);
-                system.writeText(`${filesDir}/alpine/bin/rm`, content, logger, err_logger);
-                system.setExec(`${filesDir}/alpine/bin/rm`, true, logger, err_logger);
-            });
-
-            readAsset("init-alpine.sh", async (content) => {
-                system.writeText(`${filesDir}/init-alpine.sh`, content, logger, err_logger);
-            });
-
-            readAsset("init-sandbox.sh", (content) => {
-                system.writeText(`${filesDir}/init-sandbox.sh`, content, logger, err_logger);
+                let lastError = "";
 
                 Executor.start("sh", (type, data) => {
                     logger(`${type} ${data}`);
+
+                    if (type === "stderr" && data) {
+                        lastError = lastError ? `${lastError}\n${data}` : data;
+                    }
+
+                    // Check for exit code during installation
+                    if (type === "exit") {
+                        const success = data === "0";
+                        if (!success) {
+                            this.lastInstallError = lastError
+                                ? `Sandbox configuration failed with exit code ${data}: ${lastError}`
+                                : `Sandbox configuration failed with exit code ${data}`;
+                        }
+                        resolve(success);
+                    }
                 }).then(async (uuid) => {
                     await Executor.write(uuid, `source ${filesDir}/init-sandbox.sh ${installing ? "--installing" : ""}; exit`);
+                }).catch((error) => {
+                    const message = `Failed to start AXS: ${formatError(error)}`;
+                    this.lastInstallError = message;
+                    err_logger(message);
+                    resolve(false);
                 });
+            });
+        } else {
+            Executor.start("sh", (type, data) => {
+                logger(`${type} ${data}`);
+            }).then(async (uuid) => {
+                await Executor.write(uuid, `source ${filesDir}/init-sandbox.sh ${installing ? "--installing" : ""}; exit`);
             });
         }
     },
@@ -104,6 +103,7 @@ const Terminal = {
      */
     async install(logger = console.log, err_logger = console.error) {
         if (!(await this.isSupported())) return false;
+        this.lastInstallError = "";
 
         try {
             //cleanup before insatll
@@ -154,62 +154,26 @@ const Terminal = {
 
 
             logger("⬇️  Downloading sandbox filesystem...");
-            await new Promise((resolve, reject) => {
-                cordova.plugin.http.downloadFile(
-                    alpineUrl, {}, {},
-                    cordova.file.dataDirectory + "alpine.tar.gz",
-                    resolve, reject
-                );
-            });
+            await downloadFile(alpineUrl, cordova.file.dataDirectory + "alpine.tar.gz", "Sandbox filesystem");
 
             logger("⬇️  Downloading axs...");
-            await new Promise((resolve, reject) => {
-                cordova.plugin.http.downloadFile(
-                    axsUrl, {}, {},
-                    cordova.file.dataDirectory + "axs",
-                    resolve, reject
-                );
-            });
+            await downloadFile(axsUrl, cordova.file.dataDirectory + "axs", "AXS");
 
             const isFdroid = await Executor.execute("echo $FDROID");
             if (isFdroid === "true") {
                 logger("🐧  F-Droid flavor detected, downloading additional files...");
                 logger("⬇️  Downloading compatibility layer...");
-                await new Promise((resolve, reject) => {
-                    cordova.plugin.http.downloadFile(
-                        prootUrl, {}, {},
-                        cordova.file.dataDirectory + "libproot-xed.so",
-                        resolve, reject
-                    );
-                });
+                await downloadFile(prootUrl, cordova.file.dataDirectory + "libproot-xed.so", "Compatibility layer");
 
                 logger("⬇️  Downloading supporting library...");
-                await new Promise((resolve, reject) => {
-                    cordova.plugin.http.downloadFile(
-                        libTalloc, {}, {},
-                        cordova.file.dataDirectory + "libtalloc.so.2",
-                        resolve, reject
-                    );
-                });
+                await downloadFile(libTalloc, cordova.file.dataDirectory + "libtalloc.so.2", "Supporting library");
 
                 if (libproot != null) {
-                    await new Promise((resolve, reject) => {
-                        cordova.plugin.http.downloadFile(
-                            libproot, {}, {},
-                            cordova.file.dataDirectory + "libproot.so",
-                            resolve, reject
-                        );
-                    });
+                    await downloadFile(libproot, cordova.file.dataDirectory + "libproot.so", "proot loader");
                 }
 
                 if (libproot32 != null) {
-                    await new Promise((resolve, reject) => {
-                        cordova.plugin.http.downloadFile(
-                            libproot32, {}, {},
-                            cordova.file.dataDirectory + "libproot32.so",
-                            resolve, reject
-                        );
-                    });
+                    await downloadFile(libproot32, cordova.file.dataDirectory + "libproot32.so", "32-bit proot loader");
                 }
 
             }
@@ -218,39 +182,37 @@ const Terminal = {
 
             logger("📁  Setting up directories...");
 
-            await new Promise((resolve, reject) => {
-                system.mkdirs(`${filesDir}/.downloaded`, resolve, reject);
-            });
+            await ensureDir(`${filesDir}/.downloaded`);
 
             const alpineDir = `${filesDir}/alpine`;
 
-            await new Promise((resolve, reject) => {
-                system.mkdirs(alpineDir, resolve, reject);
-            });
+            await ensureDir(alpineDir);
 
             logger("📦  Extracting sandbox filesystem...");
             await Executor.execute(`tar --no-same-owner -xf ${filesDir}/alpine.tar.gz -C ${alpineDir}`);
 
             logger("⚙️  Applying basic configuration...");
-            system.writeText(`${alpineDir}/etc/resolv.conf`, `nameserver 8.8.4.4 \nnameserver 8.8.8.8`);
+            await writeText(`${alpineDir}/etc/resolv.conf`, `nameserver 8.8.4.4 \nnameserver 8.8.8.8`);
 
-            readAsset("rm-wrapper.sh", async (content) => {
-                system.deleteFile(`${alpineDir}/bin/rm`, logger, err_logger);
-                system.writeText(`${alpineDir}/bin/rm`, content, logger, err_logger);
-                system.setExec(`${alpineDir}/bin/rm`, true, logger, err_logger);
-            });
+            const rmWrapper = await readAsset("rm-wrapper.sh");
+            await deleteFile(`${alpineDir}/bin/rm`).catch(() => {});
+            await writeText(`${alpineDir}/bin/rm`, rmWrapper);
+            await setExec(`${alpineDir}/bin/rm`, true);
 
             logger("✅  Extraction complete");
-            await new Promise((resolve, reject) => {
-                system.mkdirs(`${filesDir}/.extracted`, resolve, reject);
-            });
+            await ensureDir(`${filesDir}/.extracted`);
 
             logger("⚙️  Updating sandbox enviroment...");
             const installResult = await this.startAxs(true, logger, err_logger);
+            if (!installResult) {
+                throw new Error(this.lastInstallError || "Sandbox configuration failed.");
+            }
             return installResult;
 
         } catch (e) {
-            err_logger("Installation failed:", e);
+            const message = formatError(e);
+            this.lastInstallError = message;
+            err_logger(`Installation failed: ${message}`);
             console.error("Installation failed:", e);
             return false;
         }
@@ -439,20 +401,99 @@ const Terminal = {
                 reject(result);
             }
         });
-    }
+    },
+
+    formatError
 };
 
 
 function readAsset(assetPath, callback) {
     const assetUrl = "file:///android_asset/" + assetPath;
 
-    window.resolveLocalFileSystemURL(assetUrl, fileEntry => {
-        fileEntry.file(file => {
-            const reader = new FileReader();
-            reader.onloadend = () => callback(reader.result);
-            reader.readAsText(file);
-        }, console.error);
-    }, console.error);
+    const promise = new Promise((resolve, reject) => {
+        window.resolveLocalFileSystemURL(assetUrl, fileEntry => {
+            fileEntry.file(file => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.onerror = () => reject(reader.error || new Error(`Failed to read ${assetPath}`));
+                reader.readAsText(file);
+            }, reject);
+        }, reject);
+    });
+
+    if (callback) {
+        promise.then(callback).catch(console.error);
+    }
+
+    return promise;
+}
+
+function fileExists(path) {
+    return new Promise((resolve, reject) => {
+        system.fileExists(path, false, (result) => {
+            resolve(result == 1);
+        }, reject);
+    });
+}
+
+async function ensureDir(path) {
+    if (await fileExists(path)) return;
+
+    await new Promise((resolve, reject) => {
+        system.mkdirs(path, resolve, reject);
+    });
+}
+
+function writeText(path, content) {
+    return new Promise((resolve, reject) => {
+        system.writeText(path, content, resolve, reject);
+    });
+}
+
+function deleteFile(path) {
+    return new Promise((resolve, reject) => {
+        system.deleteFile(path, resolve, reject);
+    });
+}
+
+function setExec(path, executable) {
+    return new Promise((resolve, reject) => {
+        system.setExec(path, executable, resolve, reject);
+    });
+}
+
+function downloadFile(url, destination, label) {
+    return new Promise((resolve, reject) => {
+        cordova.plugin.http.downloadFile(
+            url, {}, {},
+            destination,
+            resolve,
+            (error) => reject(new Error(`${label} download failed: ${formatError(error)}`))
+        );
+    });
+}
+
+function formatError(error) {
+    if (error == null) return "Unknown error";
+    if (error instanceof Error) return error.message || String(error);
+    if (typeof error === "string") return error || "Unknown error";
+    if (typeof error === "object") {
+        const parts = [];
+        if (error.status != null) parts.push(`status ${error.status}`);
+        if (error.error) parts.push(String(error.error));
+        if (error.message) parts.push(String(error.message));
+        if (error.exception) parts.push(String(error.exception));
+        if (error.url) parts.push(`URL: ${error.url}`);
+        if (parts.length) return parts.join(" - ");
+
+        try {
+            return JSON.stringify(error);
+        } catch (jsonError) {
+            return String(error);
+        }
+    }
+
+    return String(error);
 }
 
 module.exports = Terminal;

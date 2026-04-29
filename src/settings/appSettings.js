@@ -62,6 +62,25 @@ export default function otherSettings() {
 			category: categories.interface,
 		},
 		{
+			key: "uiZoom",
+			text: strings["ui zoom"] || "UI zoom",
+			value: values.uiZoom,
+			valueText: (value) => `${value}%`,
+			prompt: strings["ui zoom"] || "UI zoom",
+			promptType: "number",
+			promptOptions: {
+				test(value) {
+					if (!/^\d+$/.test(String(value).trim())) return false;
+					const zoom = Number(value);
+					return zoom >= 70 && zoom <= 160;
+				},
+			},
+			info:
+				strings["settings-info-app-ui-zoom"] ||
+				"Scale text across the Acode interface.",
+			category: categories.interface,
+		},
+		{
 			key: "keyboardMode",
 			text: strings["keyboard mode"],
 			value: values.keyboardMode,
@@ -411,6 +430,12 @@ export default function otherSettings() {
 
 			case "keyboardMode":
 				system.setInputType(value);
+				break;
+
+			case "uiZoom":
+				value = Number(value);
+				if (!Number.isInteger(value)) return;
+				value = Math.min(160, Math.max(70, value));
 				break;
 
 			case "fullscreen":

@@ -77,12 +77,13 @@ export { formatCommand } from "./installRuntime";
 let cachedFilesDir: string | null = null;
 
 /**
- * Get the terminal home directory from system.getFilesDir().
- * This is where axs stores port files.
+ * Get candidate Terminal data directories from system.getFilesDir().
+ * Newer Terminal builds keep shared runtime state in public. Older builds used
+ * alpine/home, and some installs keep it as a symlink for shell compatibility.
  */
-async function getTerminalHomeDir(): Promise<string> {
+async function getTerminalDataDirs(): Promise<string[]> {
 	if (cachedFilesDir) {
-		return `${cachedFilesDir}/alpine/home`;
+		return [`${cachedFilesDir}/public`, `${cachedFilesDir}/alpine/home`];
 	}
 
 	const system = (
@@ -104,7 +105,7 @@ async function getTerminalHomeDir(): Promise<string> {
 		system.getFilesDir(
 			(filesDir: string) => {
 				cachedFilesDir = filesDir;
-				resolve(`${filesDir}/alpine/home`);
+				resolve([`${filesDir}/public`, `${filesDir}/alpine/home`]);
 			},
 			(error: string) => reject(new Error(error)),
 		);
@@ -115,14 +116,16 @@ async function getTerminalHomeDir(): Promise<string> {
  * Get the port file path for a given server and session.
  * Port file format: ~/.axs/lsp_ports/{serverName}_{session}
  */
-async function getPortFilePath(
+async function getPortFilePaths(
 	serverName: string,
 	session: string,
-): Promise<string> {
-	const homeDir = await getTerminalHomeDir();
+): Promise<string[]> {
+	const dataDirs = await getTerminalDataDirs();
 	// Use just the binary name (not full path), mirroring axs behavior
 	const baseName = serverName.split("/").pop() || serverName;
-	return `file://${homeDir}/.axs/lsp_ports/${baseName}_${session}`;
+	return dataDirs.map(
+		(dataDir) => `file://${dataDir}/.axs/lsp_ports/${baseName}_${session}`,
+	);
 }
 
 /**
@@ -166,14 +169,16 @@ export async function getLspPort(
 	session: string,
 ): Promise<PortInfo | null> {
 	try {
-		const filePath = await getPortFilePath(serverName, session);
-		const port = await readPortFromFile(filePath);
+		const filePaths = await getPortFilePaths(serverName, session);
 
-		if (port === null) {
-			return null;
+		for (const filePath of filePaths) {
+			const port = await readPortFromFile(filePath);
+			if (port !== null) {
+				return { port, filePath, session };
+			}
 		}
 
-		return { port, filePath, session };
+		return null;
 	} catch {
 		return null;
 	}
@@ -1094,6 +1099,18 @@ export async function ensureServerRunning(
 	const key = server.id;
 	if (managedServers.has(key)) {
 		const existing = managedServers.get(key);
+		if (bridge && !bridge.port) {
+			if (existing?.port) {
+				return { uuid: existing.uuid, discoveredPort: existing.port };
+			}
+			const portInfo = await getLspPort(serverName, effectiveSession);
+			if (portInfo) {
+				if (existing) {
+					existing.port = portInfo.port;
+				}
+				return { uuid: existing?.uuid ?? null, discoveredPort: portInfo.port };
+			}
+		}
 		return { uuid: existing?.uuid ?? null };
 	}
 
@@ -1125,6 +1142,11 @@ export async function ensureServerRunning(
 				if (entry) {
 					entry.port = discoveredPort;
 				}
+			}
+			if (!discoveredPort) {
+				throw new Error(
+					`Could not discover websocket bridge port for ${server.id}`,
+				);
 			}
 		} else if (
 			server.transport?.url &&

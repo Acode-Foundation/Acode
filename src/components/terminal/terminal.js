@@ -12,6 +12,7 @@ import { WebLinksAddon } from "@xterm/addon-web-links";
 import { WebglAddon } from "@xterm/addon-webgl";
 import { Terminal as Xterm } from "@xterm/xterm";
 import {
+	executeCommand,
 	getResolvedKeyBindings,
 	getResolvedKeyBindingsVersion,
 } from "cm/commandRegistry";
@@ -347,7 +348,7 @@ export default class TerminalComponent {
 
 		const parsedBindings = [];
 
-		Object.values(getResolvedKeyBindings()).forEach((binding) => {
+		Object.entries(getResolvedKeyBindings()).forEach(([name, binding]) => {
 			if (!binding.key) return;
 
 			// Skip editor-only keybindings in terminal
@@ -357,8 +358,11 @@ export default class TerminalComponent {
 			const keys = binding.key.split("|");
 
 			keys.forEach((keyCombo) => {
-				const parts = keyCombo.split("-");
+				const parts = keyCombo.endsWith("-")
+					? [...keyCombo.slice(0, -1).split("-").filter(Boolean), "-"]
+					: keyCombo.split("-");
 				const parsed = {
+					name,
 					ctrl: false,
 					shift: false,
 					alt: false,
@@ -414,61 +418,53 @@ export default class TerminalComponent {
 				return false;
 			}
 
-			// Check for Ctrl+= or Ctrl++ (increase font size)
-			if (event.ctrlKey && (event.key === "+" || event.key === "=")) {
+			// Keep terminal font zoom local. Shift variants are handled by app keybindings below.
+			if (
+				event.ctrlKey &&
+				!event.shiftKey &&
+				!event.altKey &&
+				!event.metaKey &&
+				(event.key === "+" || event.key === "=")
+			) {
 				event.preventDefault();
 				this.increaseFontSize();
 				return false;
 			}
 
-			// Check for Ctrl+- (decrease font size)
-			if (event.ctrlKey && event.key === "-") {
+			if (
+				event.ctrlKey &&
+				!event.shiftKey &&
+				!event.altKey &&
+				!event.metaKey &&
+				event.key === "-"
+			) {
 				event.preventDefault();
 				this.decreaseFontSize();
 				return false;
 			}
 
-			// Only intercept specific app-wide keybindings, let terminal handle the rest
 			if (event.ctrlKey || event.altKey || event.metaKey) {
-				// Skip modifier-only keys
 				if (["Control", "Alt", "Meta", "Shift"].includes(event.key)) {
 					return true;
 				}
 
-				// Get parsed app keybindings
 				const appKeybindings = this.parseAppKeybindings();
-
-				// Check if this is an app-specific keybinding
-				const isAppKeybinding = appKeybindings.some(
+				const eventKey = event.key === "_" ? "-" : event.key.toLowerCase();
+				const binding = appKeybindings.find(
 					(binding) =>
 						binding.ctrl === event.ctrlKey &&
 						binding.shift === event.shiftKey &&
 						binding.alt === event.altKey &&
 						binding.meta === event.metaKey &&
-						binding.key === event.key.toLowerCase(),
+						binding.key === eventKey,
 				);
 
-				if (isAppKeybinding) {
-					const appEvent = new KeyboardEvent("keydown", {
-						key: event.key,
-						ctrlKey: event.ctrlKey,
-						shiftKey: event.shiftKey,
-						altKey: event.altKey,
-						metaKey: event.metaKey,
-						bubbles: true,
-						cancelable: true,
-					});
-
-					// Dispatch to document so it gets picked up by the app's keyboard handler
-					document.dispatchEvent(appEvent);
-
-					// Return false to prevent terminal from processing this key
+				if (binding && executeCommand(binding.name)) {
 					return false;
 				}
-
-				// For all other modifier combinations, let the terminal handle them
-				return true;
 			}
+
+			if (event.ctrlKey || event.altKey || event.metaKey) return true;
 
 			// Return true to allow normal processing for other keys
 			return true;
