@@ -22,7 +22,7 @@ export default {
 
 	//changing url here is not enough, also change in src/plugins/auth/src/android/Authenticator.java
 	BASE_URL: "https://acode.app",
-	API_BASE: `${this.BASE_URL}/api`,
+	API_BASE: "https://acode.app/api",
 	// API_BASE: 'https://192.168.0.102:3001/api', // test api
 	SKU_LIST: ["crystal", "bronze", "silver", "gold", "platinum", "titanium"],
 	LOG_FILE_NAME: "Acode.log",
