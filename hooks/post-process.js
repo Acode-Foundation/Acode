@@ -32,8 +32,12 @@ enableKeyboardWorkaround();
 
 function getPackageName() {
   const configPath = path.resolve(__dirname, '../config.xml');
+  if (!fs.existsSync(configPath)) {
+    console.warn('[Cordova Hook] ⚠️ config.xml not found at', configPath);
+    throw new Error(`config.xml is missing at ${configPath}`);
+  }
   const content = fs.readFileSync(configPath, 'utf-8');
-  const match = content.match(/<widget[^>]*\sid="([^"]+)"/);
+  const match = content.match(/id="([^"]+)"/);
   const packageName = match ? match[1] : 'com.foxdebug.acode';
   return packageName;
 }
