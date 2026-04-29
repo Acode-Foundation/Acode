@@ -33,7 +33,7 @@ enableKeyboardWorkaround();
 function getPackageName() {
   const configPath = path.resolve(__dirname, '../config.xml');
   const content = fs.readFileSync(configPath, 'utf-8');
-  const match = content.match(/id="([^"]+)"/);
+  const match = content.match(/<widget[^>]*\sid="([^"]+)"/);
   const packageName = match ? match[1] : 'com.foxdebug.acode';
   return packageName;
 }
