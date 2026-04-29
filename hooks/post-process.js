@@ -30,6 +30,14 @@ enableStaticContext();
 patchTargetSdkVersion();
 enableKeyboardWorkaround();
 
+function getPackageName() {
+  const configPath = path.resolve(__dirname, '../config.xml');
+  const content = fs.readFileSync(configPath, 'utf-8');
+  const match = content.match(/id="([^"]+)"/);
+  const packageName = match ? match[1] : 'com.foxdebug.acode';
+  return packageName;
+}
+
 
 function getTmpDir() {
   const tmpdirEnv = process.env.TMPDIR;
@@ -107,11 +115,17 @@ function enableLegacyJni() {
   const prefix = execSync('npm prefix').toString().trim();
   const gradleFile = path.join(prefix, 'platforms/android/app/build.gradle');
 
-  if (!fs.existsSync(gradleFile)) return;
+  if (!fs.existsSync(gradleFile)){
+    console.warn('[Cordova Hook] ⚠️ build.gradle not found');
+     return
+  };
 
   let content = fs.readFileSync(gradleFile, 'utf-8');
   // Check for correct block to avoid duplicate insertion
-  if (content.includes('useLegacyPackaging = true')) return;
+  if (content.includes('useLegacyPackaging = true')){
+    console.log('[Cordova Hook] ✅ Legacy JNI packaging already enabled, skipping');
+    return
+  };
 
   // Inject under android block with correct Groovy syntax
   content = content.replace(/android\s*{/, match => {
@@ -133,12 +147,16 @@ function enableLegacyJni() {
 function enableStaticContext() {
   try {
     const prefix = execSync('npm prefix').toString().trim();
+    const packageName = getPackageName();
     const mainActivityPath = path.join(
       prefix,
-      'platforms/android/app/src/main/java/com/foxdebug/acode/MainActivity.java'
+      'platforms/android/app/src/main/java',
+      packageName.replace(/\./g, '/'),
+      'MainActivity.java'
     );
 
     if (!fs.existsSync(mainActivityPath)) {
+      console.warn('[Cordova Hook] ⚠️ MainActivity.java not found at', mainActivityPath);
       return;
     }
 
@@ -150,6 +168,7 @@ function enableStaticContext() {
       content.includes('public static Context getContext()') &&
       content.includes('weakContext = new WeakReference<>(this);')
     ) {
+      console.log('[Cordova Hook] ✅ Static context already enabled, skipping');
       return;
     }
 
@@ -181,6 +200,7 @@ function enableStaticContext() {
     );
 
     fs.writeFileSync(mainActivityPath, content, 'utf-8');
+    console.log('[Cordova Hook] ✅ Enabled static context');
   } catch (err) {
     console.error('[Cordova Hook] ❌ Failed to patch MainActivity:', err.message);
   }
@@ -189,12 +209,16 @@ function enableStaticContext() {
 function enableKeyboardWorkaround() {
   try{
     const prefix = execSync('npm prefix').toString().trim();
+    const packageName = getPackageName();
     const mainActivityPath = path.join(
       prefix,
-      'platforms/android/app/src/main/java/com/foxdebug/acode/MainActivity.java'
+      'platforms/android/app/src/main/java',
+      packageName.replace(/\./g, '/'),
+      'MainActivity.java'
     );
 
     if (!fs.existsSync(mainActivityPath)) {
+      console.warn('[Cordova Hook] ⚠️ MainActivity.java not found at', mainActivityPath);
       return;
     }
 
@@ -202,6 +226,7 @@ function enableKeyboardWorkaround() {
 
     // Skip if already patched
     if (content.includes('SoftInputAssist')) {
+      console.log('[Cordova Hook] ✅ Keyboard workaround already enabled, skipping');
       return;
     }
 
