@@ -1,5 +1,6 @@
 import toast from "components/toast";
 import { addIntentHandler } from "handlers/intent";
+import constants from "./constants";
 
 const loginEvents = {
 	listeners: new Set(),
@@ -50,7 +51,7 @@ class AuthService {
 	}
 
 	async openLoginUrl() {
-		const url = "https://dev.acode.app/login?redirect=app";
+		const url = `${constants.BASE_URL}/login?redirect=app`
 
 		try {
 			await new Promise((resolve, reject) => {

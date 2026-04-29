@@ -14,6 +14,7 @@ public class Authenticator extends CordovaPlugin {
     private static final String TAG = "AcodeAuth"; 
     private static final String PREFS_FILENAME = "acode_auth_secure";
     private static final String KEY_TOKEN = "auth_token";
+    private static final String API_BASE = "https://acode.app/api";
     private EncryptedPreferenceManager prefManager;
 
     @Override
@@ -162,8 +163,7 @@ public class Authenticator extends CordovaPlugin {
     private String validateToken(String token) {
         HttpURLConnection conn = null;
         try {
-            Log.d(TAG, "Network Request: Connecting to https://dev.acode.app/api/login");
-            URL url = new URL("https://dev.acode.app/api/login");
+            URL url = new URL(API_BASE + "/login");
             conn = (HttpURLConnection) url.openConnection();
             conn.setRequestProperty("x-auth-token", token);
             conn.setRequestMethod("GET");
