@@ -726,6 +726,6 @@
 	"close other tabs": "Tutup Lainnya",
 	"auto close tags": "Penutup tag otomatis",
 	"settings-info-editor-auto-close-tags": "Menyisipkan tag penutup di berkas HTML, XML, Vue, Angular, dan templat PHP secara otomatis.",
-	"ui zoom": "UI zoom",
-	"settings-info-app-ui-zoom": "Scale text across the Acode interface."
+	"ui zoom": "Perbesar UI",
+	"settings-info-app-ui-zoom": "Besarkan teks di seluruh antarmuka Acode."
 }
