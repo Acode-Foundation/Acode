@@ -50,7 +50,7 @@ class AuthService {
 	}
 
 	async openLoginUrl() {
-		const url = "https://acode.app/login?redirect=app";
+		const url = "https://dev.acode.app/login?redirect=app";
 
 		try {
 			await new Promise((resolve, reject) => {

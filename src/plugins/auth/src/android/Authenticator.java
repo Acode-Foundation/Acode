@@ -42,6 +42,28 @@ public class Authenticator extends CordovaPlugin {
                 prefManager.setString(KEY_TOKEN, token);
                 callbackContext.success();
                 return true;
+            case "fetchWithToken":
+                cordova.getThreadPool().execute(() -> {
+                    try {
+                        String url = args.getString(0);
+
+                        String result = PluginRetriever.fetchWithToken(
+                            url,
+                            prefManager.getString(KEY_TOKEN, null)
+                        );
+
+                        if (result != null) {
+                            callbackContext.success(result);
+                        } else {
+                            callbackContext.error("Request failed");
+                        }
+
+                    } catch (Exception e) {
+                        Log.e(TAG, "fetchWithToken error: " + e.getMessage(), e);
+                        callbackContext.error(e.getMessage());
+                    }
+                });
+                return true;
             case "downloadPlugin":
                 cordova.getThreadPool().execute(() -> {
                     try {
@@ -140,8 +162,8 @@ public class Authenticator extends CordovaPlugin {
     private String validateToken(String token) {
         HttpURLConnection conn = null;
         try {
-            Log.d(TAG, "Network Request: Connecting to https://acode.app/api/login");
-            URL url = new URL("https://acode.app/api/login");
+            Log.d(TAG, "Network Request: Connecting to https://dev.acode.app/api/login");
+            URL url = new URL("https://dev.acode.app/api/login");
             conn = (HttpURLConnection) url.openConnection();
             conn.setRequestProperty("x-auth-token", token);
             conn.setRequestMethod("GET");

@@ -72,8 +72,18 @@ export default async function installPlugin(
 			pluginUrl.startsWith("file:") ||
 			pluginUrl.startsWith("content:")
 		) {
-			// Use fsOperation for Acode registry URL
-			plugin = await fsOperation(pluginUrl).readFile(
+			// Use native downloader for Acode registry URLs (includes auth token)
+			const tempPath = cordova.file.cacheDirectory + "plugin_download.zip";
+			console.log("downloadPluginUrl", pluginUrl, "to", tempPath);
+			
+			await new Promise((resolve, reject) => {
+				cordova.exec(resolve, reject, "Authenticator", "downloadPlugin", [
+					pluginUrl,
+					tempPath,
+				]);
+			});
+
+			plugin = await fsOperation(tempPath).readFile(
 				undefined,
 				(loaded, total) => {
 					loaderDialog.setMessage(
@@ -84,6 +94,7 @@ export default async function installPlugin(
 		} else {
 			const tempPath = cordova.file.cacheDirectory + "plugin_download.zip";
 
+			console.log("downloadPluginUrl", pluginUrl, "to", tempPath);
 			await new Promise((resolve, reject) => {
 				cordova.exec(resolve, reject, "Authenticator", "downloadPlugin", [
 					pluginUrl,

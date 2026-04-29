@@ -24,6 +24,59 @@ public class PluginRetriever {
     }
 
 
+    public static String fetchWithToken(String urlString, String token) {
+        HttpURLConnection conn = null;
+
+        try {
+            URL url = new URL(urlString);
+            conn = (HttpURLConnection) url.openConnection();
+
+            conn.setRequestMethod("GET");
+            conn.setConnectTimeout(10000);
+            conn.setReadTimeout(10000);
+
+            if (token != null && !token.isEmpty()) {
+                String host = url.getHost();
+
+                // Only send token to trusted domains
+                if (host != null &&
+                    (host.equals("acode.app") ||
+                    host.endsWith(".acode.app"))) {
+
+                    conn.setRequestProperty("x-auth-token", token);
+                } else {
+                    Log.w(TAG, "Skipping token for untrusted host: " + host);
+                }
+            }
+
+            int code = conn.getResponseCode();
+
+            if (code != HttpURLConnection.HTTP_OK) {
+                Log.w(TAG, "HTTP " + code + " for " + urlString);
+                return null;
+            }
+
+            Scanner scanner =
+                new Scanner(conn.getInputStream(), "UTF-8")
+                    .useDelimiter("\\A");
+
+            String body = scanner.hasNext()
+                ? scanner.next()
+                : "";
+
+            scanner.close();
+
+            return body;
+
+        } catch (Exception e) {
+            Log.e(TAG, "fetchWithToken error: " + e.getMessage(), e);
+            return null;
+
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+    }
+
 
     public static void downloadPlugin(String token, String pluginUrl, String destFile, CallbackContext callbackContext) {
         HttpURLConnection connection = null;

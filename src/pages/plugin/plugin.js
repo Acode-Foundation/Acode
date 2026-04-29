@@ -139,12 +139,31 @@ export default async function PluginInclude(
 			try {
 				loader.showTitleLoader();
 				if ((await helpers.checkAPIStatus()) && isValidSource(plugin.source)) {
-					const remotePlugin = await fsOperation(
-						constants.API_BASE,
-						`plugin/${id}`,
-					)
-						.readFile("json")
-						.catch(() => null);
+
+
+					const remotePlugin = await new Promise((resolve) => {
+						cordova.exec(
+							(result) => {
+								if (!result) return resolve(null);
+								if (typeof result === "string") {
+									try {
+										return resolve(JSON.parse(result));
+									} catch (err) {
+										console.warn("[Plugin Debug] fetchWithToken invalid JSON:", result.slice(0, 120));
+										return resolve(null);
+									}
+								}
+								resolve(result);
+							},
+							(err) => {
+								console.warn("[Plugin Debug] fetchWithToken native error:", err);
+								resolve(null);
+							},
+							"Authenticator",
+							"fetchWithToken",
+							[Url.join(constants.API_BASE, "plugin", id)],
+						);
+					}).catch(() => null);
 
 					if (cancelled || !remotePlugin) return;
 
@@ -159,24 +178,40 @@ export default async function PluginInclude(
 
 					plugin = Object.assign({}, remotePlugin);
 
-					if (!Number.parseFloat(remotePlugin.price)) return;
+				if (!Number.parseFloat(remotePlugin.price) && !remotePlugin.owned) return;
 
 					isPaid = remotePlugin.price > 0;
+					console.log(`[Plugin Debug] Fetched remotePlugin - id: ${remotePlugin.id}, owned: ${remotePlugin.owned}, price: ${remotePlugin.price}, sku: ${remotePlugin.sku}, isPaid: ${isPaid}`);
+					
 					try {
 						[product] = await helpers.promisify(iap.getProducts, [
 							remotePlugin.sku,
 						]);
+						console.log(`[Plugin Debug] IAP getProducts result - product:`, product);
+						
 						if (product) {
 							const purchase = await getPurchase(product.productId);
 							purchased = !!purchase || remotePlugin.owned;
 							price = product.price;
 							purchaseToken = purchase?.purchaseToken;
+							console.log(`[Plugin Debug] IAP path - purchase found: ${!!purchase}, purchased: ${purchased}, price: ${price}`);
 						} else if (remotePlugin.owned) {
 							purchased = true;
+							price = remotePlugin.price;
+							console.log(`[Plugin Debug] No IAP product but owned=true - purchased: ${purchased}, price: ${price}`);
 						}
 					} catch (error) {
+						console.log(`[Plugin Debug] IAP error:`, error.message);
 						helpers.error(error);
+						// If IAP fails but plugin is owned via Razorpay, mark as purchased
+						if (remotePlugin.owned) {
+							purchased = true;
+							price = remotePlugin.price;
+							console.log(`[Plugin Debug] IAP failed but owned=true - purchased: ${purchased}, price: ${price}`);
+						}
 					}
+					
+					console.log(`[Plugin Debug] Final state before render - isPaid: ${isPaid}, purchased: ${purchased}, price: ${price}, installed: ${installed}`);
 				}
 			} catch (error) {
 				console.error(error);
@@ -323,6 +358,8 @@ export default async function PluginInclude(
 	}
 
 	async function render() {
+		console.log(`[Plugin Render Debug] Values being rendered - isPaid: ${isPaid}, purchased: ${purchased}, price: ${price}, installed: ${installed}, id: ${plugin.id}`);
+		
 		const pluginSettings = settings.uiSettings[`plugin-${plugin.id}`];
 		$page.body = view({
 			...plugin,
