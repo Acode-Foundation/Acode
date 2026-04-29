@@ -75,7 +75,7 @@ export default async function installPlugin(
 			// Use native downloader for Acode registry URLs (includes auth token)
 			const tempPath = cordova.file.cacheDirectory + "plugin_download.zip";
 			console.log("downloadPluginUrl", pluginUrl, "to", tempPath);
-			
+
 			await new Promise((resolve, reject) => {
 				cordova.exec(resolve, reject, "Authenticator", "downloadPlugin", [
 					pluginUrl,

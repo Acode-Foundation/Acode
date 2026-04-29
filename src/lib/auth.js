@@ -51,7 +51,7 @@ class AuthService {
 	}
 
 	async openLoginUrl() {
-		const url = `${constants.BASE_URL}/login?redirect=app`
+		const url = `${constants.BASE_URL}/login?redirect=app`;
 
 		try {
 			await new Promise((resolve, reject) => {

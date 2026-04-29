@@ -281,8 +281,8 @@ function Buttons({
 	buy,
 	minVersionCode,
 }) {
-	console.log(`[Buttons Debug] isPaid: ${isPaid}, installed: ${installed}, update: ${update}, purchased: ${purchased}, price: ${price}, minVersionCode: ${minVersionCode}`);
-	
+	//console.log(`[Buttons Debug] isPaid: ${isPaid}, installed: ${installed}, update: ${update}, purchased: ${purchased}, price: ${price}, minVersionCode: ${minVersionCode}`);
+
 	if (
 		typeof minVersionCode === "number" &&
 		minVersionCode > BuildInfo.versionCode
@@ -332,7 +332,7 @@ function Buttons({
 	}
 
 	if (isPaid && !purchased && price) {
-		console.log(`[Buttons] Showing BUY button - isPaid: true, !purchased: true, price: ${price}`);
+		//console.log(`[Buttons] Showing BUY button - isPaid: true, !purchased: true, price: ${price}`);
 		return (
 			<button data-type="buy" className="btn btn-install" onclick={buy}>
 				<i className="icon cart"></i>
@@ -342,7 +342,7 @@ function Buttons({
 	}
 
 	if (isPaid && !purchased && !price) {
-		console.log(`[Buttons] Showing PRODUCT NOT AVAILABLE - isPaid: true, !purchased: true, !price: true`);
+		//console.log(`[Buttons] Showing PRODUCT NOT AVAILABLE - isPaid: true, !purchased: true, !price: true`);
 		return (
 			<div style={{ margin: "auto" }} className="flex-center">
 				<span
@@ -354,7 +354,7 @@ function Buttons({
 		);
 	}
 
-	console.log(`[Buttons] Showing INSTALL button - falling through to default`);
+	//console.log(`[Buttons] Showing INSTALL button - falling through to default`);
 	return (
 		<button data-type="install" className="btn btn-install" onclick={install}>
 			<i className="icon save_alt"></i>
