@@ -723,8 +723,8 @@
 	"close tabs to right": "關閉右側標籤頁",
 	"close tabs to left": "關閉左側標籤頁",
 	"close other tabs": "關閉其他標籤頁",
-	"auto close tags": "Auto close tags",
-	"settings-info-editor-auto-close-tags": "Automatically insert closing tags in HTML, XML, Vue, Angular, and PHP template files.",
-	"ui zoom": "UI zoom",
-	"settings-info-app-ui-zoom": "Scale text across the Acode interface."
+	"auto close tags": "自動補全閉合標籤",
+	"settings-info-editor-auto-close-tags": "在 HTML、XML、Vue、Angular 和 PHP 模板文件中自動插入閉合標籤。",
+	"ui zoom": "UI 縮放",
+	"settings-info-app-ui-zoom": "縮放所有 Acode 介面文字。"
 }
