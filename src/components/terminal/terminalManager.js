@@ -442,12 +442,12 @@ class TerminalManager {
 			const installResult = await Terminal.install(
 				(message) => {
 					// Remove stdout/stderr prefix for
-					const cleanMessage = message.replace(/^(stdout|stderr)\s+/, "");
+					const cleanMessage = this.formatInstallLog(message);
 					installTerminal.component.write(`${cleanMessage}\r\n`);
 				},
-				(error) => {
+				(...errorParts) => {
 					// Remove stdout/stderr prefix
-					const cleanError = error.replace(/^(stdout|stderr)\s+/, "");
+					const cleanError = this.formatInstallLog(errorParts);
 					installTerminal.component.write(
 						`\x1b[31mError: ${cleanError}\x1b[0m\r\n`,
 					);
@@ -458,19 +458,32 @@ class TerminalManager {
 			if (installResult === true) {
 				return { success: true };
 			} else {
+				const error =
+					Terminal.lastInstallError ||
+					"Terminal installation failed - process did not exit with code 0";
 				return {
 					success: false,
-					error:
-						"Terminal installation failed - process did not exit with code 0",
+					error,
 				};
 			}
 		} catch (error) {
 			console.error("Terminal installation failed:", error);
 			return {
 				success: false,
-				error: `Terminal installation failed: ${error.message}`,
+				error: `Terminal installation failed: ${this.formatInstallLog(error)}`,
 			};
 		}
+	}
+
+	formatInstallLog(value) {
+		const values = Array.isArray(value) ? value : [value];
+		const message = values
+			.filter((entry) => entry != null)
+			.map((entry) => Terminal.formatError(entry))
+			.filter(Boolean)
+			.join(" ");
+
+		return message.replace(/^(stdout|stderr)\s+/, "") || "Unknown error";
 	}
 
 	/**

@@ -6,7 +6,7 @@ Thank you for your interest in contributing to Acode! This guide will help you g
 
 ### Option 1: DevContainer (Recommended)
 
-1. Install the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) in VS Code or other editors that support DevContainers.
+1. Install the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) in VS Code or other editors that support [DevContainers](https://containers.dev/).
 
 2. Clone and open the repository:
    ```bash
@@ -28,6 +28,9 @@ Thank you for your interest in contributing to Acode! This guide will help you g
 
 ### Option 2: Docker CLI (For Any Editor)
 
+> [!NOTE]
+> If you try to use Podman, Kindly note that it would not work properly until https://github.com/containers/buildah/pull/5845 is merged/implemented in Podman.
+
 If your editor doesn't support DevContainers, you can use Docker directly:
 
 ```bash
@@ -36,7 +39,7 @@ git clone https://github.com/Acode-Foundation/Acode.git
 cd Acode
 
 # Build the Docker image from our Dockerfile
-docker build -t acode-dev .devcontainer/
+docker build --target standalone -t acode-dev .devcontainer/
 
 # Run the container with your code mounted
 docker run -it --rm \
