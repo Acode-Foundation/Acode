@@ -48,7 +48,7 @@ public class BrowserActivity extends Activity {
         public WindowInsets onApplyWindowInsets(View v, WindowInsets insets) {
           Insets systemBarsInsets = insets.getInsets(WindowInsets.Type.systemBars());
           v.setPadding(systemBarsInsets.left, systemBarsInsets.top, systemBarsInsets.right, systemBarsInsets.bottom);
-          return insets.consumeSystemWindowInsets();
+          return WindowInsets.CONSUMED;
         }
       });
     }
