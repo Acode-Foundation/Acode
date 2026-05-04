@@ -3,7 +3,9 @@ package com.foxdebug.browser;
 import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.Insets;
 import android.os.Build;
+import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.view.Window;
@@ -12,7 +14,6 @@ import android.view.WindowInsetsController;
 import android.webkit.WebChromeClient;
 import com.foxdebug.system.Ui;
 import org.json.JSONObject;
-import android.os.Bundle;
 
 public class BrowserActivity extends Activity {
 
@@ -45,7 +46,8 @@ public class BrowserActivity extends Activity {
       browser.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
         @Override
         public WindowInsets onApplyWindowInsets(View v, WindowInsets insets) {
-          v.setPadding(insets.getSystemWindowInsetLeft(), insets.getSystemWindowInsetTop(), insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom());
+          Insets systemBarsInsets = insets.getInsets(WindowInsets.Type.systemBars());
+          v.setPadding(systemBarsInsets.left, systemBarsInsets.top, systemBarsInsets.right, systemBarsInsets.bottom);
           return insets.consumeSystemWindowInsets();
         }
       });
