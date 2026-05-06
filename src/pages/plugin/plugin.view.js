@@ -9,6 +9,7 @@ import alert from "dialogs/alert";
 import DOMPurify from "dompurify";
 import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
+import auth from "lib/auth";
 import config from "lib/config";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
@@ -271,6 +272,7 @@ function handleTabClick(e) {
 }
 
 function Buttons({
+	id,
 	name,
 	isPaid,
 	installed,
@@ -283,6 +285,25 @@ function Buttons({
 	minVersionCode,
 	isSupported = true,
 }) {
+	async function openPluginWebsite() {
+		const user = await auth.getLoggedInUser();
+		if (!user) {
+			CustomTabs.open(
+				`${config.BASE_URL}/login?redirect=app`,
+				{ showTitle: true },
+				() => {},
+				() => {},
+			);
+			return;
+		}
+
+		CustomTabs.open(
+			`${config.BASE_URL}/plugin/${id}`,
+			{ showTitle: true },
+			() => {},
+			() => {},
+		);
+	}
 	if (!isSupported) {
 		return (
 			<div
@@ -342,6 +363,19 @@ function Buttons({
 			>
 				<i className="icon delete_outline"></i>
 				{strings.uninstall}
+			</button>
+		);
+	}
+
+	if (!config.IAP_AVAILABLE && isPaid && !purchased && price) {
+		return (
+			<button
+				data-type="buy"
+				className="btn btn-install"
+				onclick={openPluginWebsite}
+			>
+				<i className="icon open_in_browser"></i>
+				{price}
 			</button>
 		);
 	}

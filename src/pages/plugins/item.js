@@ -46,6 +46,7 @@ export default function Item({
 			className="list-item"
 			data-action="open"
 			data-installed={(!!installed).toString()}
+			data-paid={(price > 0).toString()}
 			style={enabled === false ? { opacity: 0.6 } : {}}
 		>
 			<div className="plugin-header">

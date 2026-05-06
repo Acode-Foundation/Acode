@@ -5,6 +5,7 @@ import alert from "dialogs/alert";
 import loader from "dialogs/loader";
 import purchaseListener from "handlers/purchase";
 import actionStack from "lib/actionStack";
+import auth from "lib/auth";
 import config from "lib/config";
 import installPlugin from "lib/installPlugin";
 import InstallState from "lib/installState";
@@ -252,6 +253,27 @@ export default async function PluginInclude(
 		const oldText = $button.textContent;
 
 		try {
+			if (!config.IAP_AVAILABLE) {
+				const user = await auth.getLoggedInUser();
+				if (!user) {
+					CustomTabs.open(
+						`${config.BASE_URL}/login?redirect=app`,
+						{ showTitle: true },
+						() => {},
+						() => {},
+					);
+					return;
+				}
+
+				CustomTabs.open(
+					`${config.BASE_URL}/plugin/${plugin.id}`,
+					{ showTitle: true },
+					() => {},
+					() => {},
+				);
+				return;
+			}
+
 			if (!product) throw new Error("Product not found");
 			const apiStatus = await helpers.checkAPIStatus();
 

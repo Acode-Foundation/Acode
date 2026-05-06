@@ -6,6 +6,7 @@ import alert from "dialogs/alert";
 import prompt from "dialogs/prompt";
 import select from "dialogs/select";
 import purchaseListener from "handlers/purchase";
+import auth from "lib/auth";
 import config from "lib/config";
 import InstallState from "lib/installState";
 import loadPlugin from "lib/loadPlugin";
@@ -772,6 +773,27 @@ function ListItem({ icon, name, id, version, downloads, installed, source }) {
 					});
 
 				const isPaid = remotePlugin.price > 0;
+				if (isPaid && !config.IAP_AVAILABLE) {
+					const user = await auth.getLoggedInUser();
+					if (!user) {
+						CustomTabs.open(
+							`${config.BASE_URL}/login?redirect=app`,
+							{ showTitle: true },
+							() => {},
+							() => {},
+						);
+						return;
+					}
+
+					CustomTabs.open(
+						`${config.BASE_URL}/plugin/${remotePlugin.id}`,
+						{ showTitle: true },
+						() => {},
+						() => {},
+					);
+					return;
+				}
+
 				if (isPaid) {
 					[product] = await helpers.promisify(iap.getProducts, [
 						remotePlugin.sku,
@@ -781,7 +803,6 @@ function ListItem({ icon, name, id, version, downloads, installed, source }) {
 						purchaseToken = purchase?.purchaseToken;
 					}
 				}
-
 				if (isPaid && !purchaseToken) {
 					if (!product) throw new Error("Product not found");
 					const apiStatus = await helpers.checkAPIStatus();
