@@ -48,6 +48,10 @@ if [ "$fdroidFlag" = "fdroid" ]; then
   if [ -d "plugins/com.foxdebug.acode.rk.exec.proot" ]; then
     cordova plugin remove com.foxdebug.acode.rk.exec.proot
   fi
+
+  if [ -d "plugins/cordova-plugin-iap" ]; then
+    cordova plugin remove cordova-plugin-iap
+  fi
 else
   if [ -n "$tmpdir" ]; then
     echo "false" > "$tmpdir/fdroid.bool"
@@ -56,6 +60,10 @@ else
   # Add only if the src exists and not already installed
   if [ -d "src/plugins/proot" ] && [ ! -d "plugins/com.foxdebug.acode.rk.exec.proot" ]; then
     cordova plugin add src/plugins/proot/
+  fi
+
+  if [ -d "src/plugins/iap" ] && [ ! -d "plugins/cordova-plugin-iap" ]; then
+    cordova plugin add src/plugins/iap/
   fi
 fi
 

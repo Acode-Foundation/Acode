@@ -36,6 +36,7 @@ export default {
 	TWITTER_URL: "https://x.com/foxbiz_io",
 	INSTAGRAM_URL: "https://www.instagram.com/foxbiz.io/",
 	FOXBIZ_URL: "https://foxbiz.io",
+	IAP_AVAILABLE: typeof iap !== "undefined",
 
 	get HAS_PRO() {
 		return hasPro;

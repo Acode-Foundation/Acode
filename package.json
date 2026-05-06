@@ -29,7 +29,6 @@
       "cordova-plugin-server": {},
       "cordova-plugin-ftp": {},
       "cordova-plugin-sdcard": {},
-      "cordova-plugin-iap": {},
       "cordova-plugin-advanced-http": {
         "ANDROIDBLACKLISTSECURESOCKETPROTOCOLS": "SSLv3,TLSv1"
       },
@@ -37,12 +36,13 @@
       "cordova-plugin-buildinfo": {},
       "cordova-plugin-browser": {},
       "cordova-plugin-sftp": {},
-      "com.foxdebug.acode.rk.exec.proot": {},
       "com.foxdebug.acode.rk.exec.terminal": {},
       "com.foxdebug.acode.rk.customtabs": {},
       "com.foxdebug.acode.rk.plugin.plugincontext": {},
       "cordova-plugin-system": {},
-      "com.foxdebug.acode.rk.auth": {}
+      "com.foxdebug.acode.rk.auth": {},
+      "com.foxdebug.acode.rk.exec.proot": {},
+      "cordova-plugin-iap": {}
     },
     "platforms": [
       "android"
