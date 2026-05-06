@@ -321,7 +321,7 @@ export default class Acode {
 			view: cmView,
 		});
 
-		this.define("config",config);
+		this.define("config", config);
 		this.define("Url", Url);
 		this.define("page", Page);
 		this.define("Color", Color);

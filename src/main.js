@@ -206,11 +206,7 @@ async function onDeviceReady() {
 		}
 
 		if (navigator.onLine) {
-			const purchases = await helpers.promisify(iap.getPurchases).catch((e) => {
-				console.log("error", "purchase retrieval error");
-				console.log("error", e);
-				return [];
-			});
+			const purchases = await helpers.promisify(iap.getPurchases);
 			const isPro = purchases.find((p) =>
 				p.productIds.includes("acode_pro_new"),
 			);
