@@ -253,7 +253,6 @@ export default async function PluginInclude(
 		const oldText = $button.textContent;
 
 		try {
-
 			if (!product) throw new Error("Product not found");
 			const apiStatus = await helpers.checkAPIStatus();
 

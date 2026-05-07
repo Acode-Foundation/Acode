@@ -286,23 +286,27 @@ function Buttons({
 	isSupported = true,
 }) {
 	async function openPluginWebsite() {
-		const user = await auth.getLoggedInUser();
-		if (!user) {
+		try {
+			const user = await auth.getLoggedInUser();
+			if (!user) {
+				CustomTabs.open(
+					`${config.BASE_URL}/login?redirect=app`,
+					{ showTitle: true },
+					() => {},
+					() => {},
+				);
+				return;
+			}
+
 			CustomTabs.open(
-				`${config.BASE_URL}/login?redirect=app`,
+				`${config.BASE_URL}/plugin/${id}`,
 				{ showTitle: true },
 				() => {},
 				() => {},
 			);
-			return;
+		} catch (e) {
+			console.error(e);
 		}
-
-		CustomTabs.open(
-			`${config.BASE_URL}/plugin/${id}`,
-			{ showTitle: true },
-			() => {},
-			() => {},
-		);
 	}
 	if (!isSupported) {
 		return (
