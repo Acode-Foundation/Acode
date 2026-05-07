@@ -773,7 +773,7 @@ function ListItem({ icon, name, id, version, downloads, installed, source }) {
 					});
 
 				const isPaid = remotePlugin.price > 0;
-				if (isPaid && !config.IAP_AVAILABLE) {
+				if (isPaid && !config.IAP_AVAILABLE && !remotePlugin.owned) {
 					const user = await auth.getLoggedInUser();
 					if (!user) {
 						CustomTabs.open(
