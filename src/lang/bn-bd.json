@@ -209,6 +209,7 @@
 	"app settings": "অ্যাপ সেটিংস",
 	"disable in-app-browser caching": "ইন-অ্যাপ ব্রাউজারের ক্যাশ বন্ধ করুন",
 	"copied to clipboard": "ক্লিপবোর্ডে কপি করা হয়েছে",
+	"clipboard not available": "Clipboard is not available.",
 	"remember opened files": "খোলা ফাইলগুলো মনে রাখুন",
 	"remember opened folders": "খোলা ফোল্ডারগুলো মনে রাখুন",
 	"no suggestions": "কোনো পরামর্শ নেই",

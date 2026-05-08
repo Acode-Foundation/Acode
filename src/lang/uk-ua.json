@@ -209,6 +209,7 @@
 	"app settings": "Налаштування програми",
 	"disable in-app-browser caching": "Вимкнути кешування в оглядачі програми",
 	"copied to clipboard": "Скопійовано до буфера обміну",
+	"clipboard not available": "Clipboard is not available.",
 	"remember opened files": "Памʼятати відкриті файли",
 	"remember opened folders": "Памʼятати відкриті теки",
 	"no suggestions": "Без пропозицій",

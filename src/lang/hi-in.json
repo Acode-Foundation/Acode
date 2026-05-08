@@ -210,6 +210,7 @@
 	"app settings": "एप्लिकेशन सेटिंग",
 	"disable in-app-browser caching": "इन-ऐप-ब्राउज़र कैशिंग बंद करें",
 	"copied to clipboard": "क्लिपबोर्ड पर कॉपी किया गया",
+	"clipboard not available": "Clipboard is not available.",
 	"remember opened files": "खोली गई फ़ाइलें याद रखें",
 	"remember opened folders": "खोले गए फोल्डर याद रखें",
 	"no suggestions": "कोई सुझाव नहीं",

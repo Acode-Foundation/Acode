@@ -209,6 +209,7 @@
 	"app settings": "إعدادات التطبيق",
 	"disable in-app-browser caching": "تعطيل التخزين المؤقت للمتصفح الداخلي",
 	"copied to clipboard": "تم النسخ إلى الحافظة",
+	"clipboard not available": "Clipboard is not available.",
 	"remember opened files": "تذكر الملفات المفتوحة",
 	"remember opened folders": "تذكر المجلدات المفتوحة",
 	"no suggestions": "بدون اقتراحات",

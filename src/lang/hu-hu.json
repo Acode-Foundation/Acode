@@ -209,6 +209,7 @@
 	"app settings": "Alkalmazás-beállítások",
 	"disable in-app-browser caching": "Az alkalmazáson belüli böngésző gyorsítótárazásának letiltása",
 	"copied to clipboard": "Vágólapra másolva",
+	"clipboard not available": "Clipboard is not available.",
 	"remember opened files": "Megnyitott fájlok megjegyzése",
 	"remember opened folders": "Megnyitott mappák megjegyzése",
 	"no suggestions": "Javaslatok nélkül",

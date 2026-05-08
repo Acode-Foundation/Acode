@@ -209,6 +209,7 @@
 	"app settings": "アプリ設定",
 	"disable in-app-browser caching": "アプリ内ブラウザのキャッシュを無効",
 	"copied to clipboard": "クリップボードにコピーしました",
+	"clipboard not available": "Clipboard is not available.",
 	"remember opened files": "開いたファイルを記憶する",
 	"remember opened folders": "開いたフォルダを記憶する",
 	"no suggestions": "候補を表示しない",

@@ -91,15 +91,30 @@
           return match ? Number(match[1]) : 0;
         }
 
+        var pendingStartupMessage = "";
+        var hasPendingStartupMessageListener = false;
+
+        function isStartupLoading() {
+          return !document.body || document.body.classList.contains("loading");
+        }
+
+        function applyStartupMessage() {
+          hasPendingStartupMessageListener = false;
+          if (document.body && isStartupLoading()) {
+            document.body.setAttribute("data-small-msg", pendingStartupMessage);
+          }
+        }
+
         function setStartupMessage(message) {
-          var applyMessage = function () {
-            document.body.setAttribute("data-small-msg", message);
-          };
+          pendingStartupMessage = message;
 
           if (document.body) {
-            applyMessage();
-          } else {
-            document.addEventListener("DOMContentLoaded", applyMessage);
+            applyStartupMessage();
+          } else if (!hasPendingStartupMessageListener) {
+            hasPendingStartupMessageListener = true;
+            document.addEventListener("DOMContentLoaded", applyStartupMessage, {
+              once: true,
+            });
           }
         }
 
@@ -115,15 +130,17 @@
           );
         }
 
-        window.addEventListener("error", function (event) {
+        function handleStartupError(event) {
+          if (!isStartupLoading()) return;
           var message = event && event.message ? event.message : "Startup error";
           setStartupMessage(
             "Acode failed to start. Update Android System WebView or Chrome. " +
               message,
           );
-        });
+        }
 
-        window.addEventListener("unhandledrejection", function (event) {
+        function handleStartupRejection(event) {
+          if (!isStartupLoading()) return;
           var reason = event && event.reason;
           var message =
             reason && reason.message ? reason.message : "Startup promise failed";
@@ -131,7 +148,10 @@
             "Acode failed to start. Update Android System WebView or Chrome. " +
               message,
           );
-        });
+        }
+
+        window.addEventListener("error", handleStartupError);
+        window.addEventListener("unhandledrejection", handleStartupRejection);
       })();
     </script>
 

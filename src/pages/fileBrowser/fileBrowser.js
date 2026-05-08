@@ -835,7 +835,11 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 						} else if (navigator.clipboard?.writeText) {
 							await navigator.clipboard.writeText(url);
 						} else {
-							alert(strings.error, "Clipboard is not available.");
+							alert(
+								strings.error,
+								strings["clipboard not available"] ||
+									"Clipboard is not available.",
+							);
 							break;
 						}
 						alert(strings.success, strings["copied to clipboard"]);

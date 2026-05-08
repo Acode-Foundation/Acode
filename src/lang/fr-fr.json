@@ -209,6 +209,7 @@
 	"app settings": "Paramètres de l'application",
 	"disable in-app-browser caching": "Désactiver la mise en cache dans le navigateur de l'application",
 	"copied to clipboard": "Copié dans le presse-papiers",
+	"clipboard not available": "Clipboard is not available.",
 	"remember opened files": "Mémoriser les fichiers ouverts",
 	"remember opened folders": "Mémoriser les dossiers ouverts",
 	"no suggestions": "Aucune suggestion",
