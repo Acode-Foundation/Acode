@@ -176,106 +176,88 @@ async function update() {
 	let key;
 
 	if (command === "check") {
-		let total = 0;
-		let done = 0;
+		let error = false;
+		const fix = arg === "fix";
+		const enLangData = JSON.parse(fs.readFileSync(enLang, "utf8"));
+		const enKeys = Object.keys(enLangData);
 
-		fs.readFile(enLang, "utf-8", (err, data) => {
-			if (err) {
-				console.error(err);
-				process.exit(0);
-				return;
-			}
+		for (const file of list) {
+			if (file === "en-us.json") continue;
 
-			let error = false;
+			let flagError = false;
+			const langFile = path.join(dir, file);
+			const langData = JSON.parse(fs.readFileSync(langFile, "utf8"));
 
-			const fix = arg === "fix";
-			const enLangData = JSON.parse(data);
+			const langError = () => {
+				if (!flagError) {
+					error = true;
+					flagError = true;
+					console.log(`-------------- ${file}`);
+				}
+			};
 
-			list.forEach((file, i) => {
-				if (file === "en-us.json") return;
-
-				let flagError = false;
-				let langFile = path.join(dir, file);
-				const exit = (i, len) => {
-					if (i + 1 === len) {
-						if (!error) {
-							console.log("\nGOOD NEWS! No Error Found\n");
-						}
-						process.exit(0);
-					}
-				};
-
-				fs.readFile(langFile, "utf-8", (err, data) => {
-					if (err) {
-						console.error(err);
-						process.exit(1);
-						return;
-					}
-
-					let langError = () => {
-						if (!flagError) {
-							error = true;
-							flagError = true;
-							console.log(`-------------- ${file}`);
-						}
-					};
-					const langData = JSON.parse(data);
-					flagError = false;
-
-					for (let enKey in enLangData) {
-						const key = Object.keys(langData).find((k) => {
-							try {
-								if (new RegExp(`^${escapeRegExp(k)}$`, "i").test(enKey)) {
-									return true;
-								}
-								return false;
-							} catch (e) {
-								console.log({ e, k });
-								return false;
-							}
-						});
-
-						if (!key) {
-							langError();
-							if (fix) {
-								langData[enKey] = enLangData[enKey];
-							}
-
-							console.log(`Missing: ${enKey} ${fix ? "✔" : ""}`);
-						} else if (key !== enKey) {
-							langError();
-							console.log(`Fix: "${key} --> ${enKey}" ${fix ? "✔" : ""}`);
-
-							if (fix) {
-								const val = langData[key];
-								delete langData[key];
-								langData[enKey] = val;
-							}
-						}
-					}
-
-					if (flagError) {
-						if (fix) {
-							total += 1;
-							const langJSONData = JSON.stringify(langData, undefined, 2);
-							fs.writeFile(langFile, langJSONData, (err) => {
-								if (err) {
-									console.error(err);
-									process.exit(1);
-								}
-								done += 1;
-								exit(done, total);
-							});
-						}
-						console.log("\n");
-					}
-
-					if (!fix) {
-						exit(i, len);
+			for (const enKey of enKeys) {
+				const key = Object.keys(langData).find((k) => {
+					try {
+						return new RegExp(`^${escapeRegExp(k)}$`, "i").test(enKey);
+					} catch (e) {
+						console.log({ e, k });
+						return false;
 					}
 				});
-			});
-		});
+
+				if (!key) {
+					langError();
+					if (fix) {
+						langData[enKey] = enLangData[enKey];
+					}
+
+					console.log(`Missing: ${enKey} ${fix ? "✔" : ""}`);
+				} else if (key !== enKey) {
+					langError();
+					console.log(`Fix: "${key} --> ${enKey}" ${fix ? "✔" : ""}`);
+
+					if (fix) {
+						const val = langData[key];
+						delete langData[key];
+						langData[enKey] = val;
+					}
+				}
+			}
+
+			for (const key in langData) {
+				const enKey = enKeys.find((k) => {
+					try {
+						return new RegExp(`^${escapeRegExp(k)}$`, "i").test(key);
+					} catch (e) {
+						console.log({ e, k });
+						return false;
+					}
+				});
+
+				if (!enKey) {
+					langError();
+					if (fix) {
+						delete langData[key];
+					}
+
+					console.log(`Stale: ${key} ${fix ? "✔" : ""}`);
+				}
+			}
+
+			if (flagError) {
+				if (fix) {
+					const langJSONData = JSON.stringify(langData, undefined, 2);
+					fs.writeFileSync(langFile, langJSONData);
+				}
+				console.log("\n");
+			}
+		}
+
+		if (!error) {
+			console.log("\nGOOD NEWS! No Error Found\n");
+		}
+		process.exit(error && !fix ? 1 : 0);
 		return;
 	}
 
