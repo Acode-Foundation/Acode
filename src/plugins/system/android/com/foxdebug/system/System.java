@@ -110,6 +110,10 @@ import android.graphics.ImageDecoder;
 import java.security.MessageDigest;
 import java.security.MessageDigest;
 
+import android.content.pm.InstallSourceInfo;
+import android.content.pm.PackageManager;
+import android.os.Build;
+
 
 
 public class System extends CordovaPlugin {
@@ -200,6 +204,7 @@ public class System extends CordovaPlugin {
             case "decode":
             case "encode":
             case "copyToUri":
+            case "getInstaller":
             case "compare-file-text":
             case "compare-texts":
             case "pin-file-shortcut":
@@ -399,6 +404,29 @@ public class System extends CordovaPlugin {
                 new Runnable() {
                     public void run() {
                         switch (action) {
+                            case "getInstaller":
+                                try {
+                                    PackageManager pm = context.getPackageManager();
+
+                                    String installer;
+
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                        InstallSourceInfo info =
+                                            pm.getInstallSourceInfo(context.getPackageName());
+
+                                        installer = info.getInstallingPackageName();
+                                    } else {
+                                        installer = pm.getInstallerPackageName(
+                                            context.getPackageName()
+                                        );
+                                    }
+
+                                    callbackContext.success(installer);
+
+                                } catch (Exception e) {
+                                    callbackContext.error(e.getMessage());
+                                }
+                                break;
                             case "copyToUri":
                                 try {
                                     //srcUri is a file

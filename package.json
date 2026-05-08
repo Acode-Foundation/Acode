@@ -40,7 +40,9 @@
       "com.foxdebug.acode.rk.customtabs": {},
       "com.foxdebug.acode.rk.plugin.plugincontext": {},
       "cordova-plugin-system": {},
-      "com.foxdebug.acode.rk.auth": {}
+      "com.foxdebug.acode.rk.auth": {},
+      "cordova-plugin-iap": {},
+      "com.foxdebug.acode.rk.exec.proot": {}
     },
     "platforms": [
       "android"
@@ -70,6 +72,7 @@
     "babel-loader": "^10.0.0",
     "com.foxdebug.acode.rk.auth": "file:src/plugins/auth",
     "com.foxdebug.acode.rk.customtabs": "file:src/plugins/custom-tabs",
+    "com.foxdebug.acode.rk.exec.proot": "file:src/plugins/proot",
     "com.foxdebug.acode.rk.exec.terminal": "file:src/plugins/terminal",
     "com.foxdebug.acode.rk.plugin.plugincontext": "file:src/plugins/pluginContext",
     "cordova-android": "^15.0.0",
@@ -80,6 +83,7 @@
     "cordova-plugin-device": "^2.1.0",
     "cordova-plugin-file": "^8.1.3",
     "cordova-plugin-ftp": "file:src/plugins/ftp",
+    "cordova-plugin-iap": "file:src/plugins/iap",
     "cordova-plugin-sdcard": "file:src/plugins/sdcard",
     "cordova-plugin-server": "file:src/plugins/server",
     "cordova-plugin-sftp": "file:src/plugins/sftp",
