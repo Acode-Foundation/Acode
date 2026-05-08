@@ -500,6 +500,7 @@
 	"info-developermode": "تمكين أدوات المطور (Eruda) لتصحيح الإضافات ومعاينة حالة التطبيق. سيتم تفعيل المستكشف عند بدء التشغيل.",
 	"developer mode enabled": "تم تفعيل وضع المطور. استخدم لوحة الأوامر لتبديل المستكشف (Ctrl+Shift+I).",
 	"developer mode disabled": "تم تعطيل وضع المطور",
+	"copy relative path": "Copy Relative Path",
 	"shortcut request sent": "Shortcut request opened. Tap Add to finish.",
 	"add to home screen": "Add to home screen",
 	"pin shortcuts not supported": "Home screen shortcuts are not supported on this device.",
