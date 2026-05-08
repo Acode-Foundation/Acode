@@ -1,7 +1,7 @@
 const BASE_URL = "https://acode.app";
 let hasPro = false;
 
-export default {
+const config = {
 	BASE_URL,
 	SUPPORTED_EDITOR: "cm",
 	FILE_NAME_REGEX: /^((?![:<>"\\\|\?\*]).)*$/,
@@ -21,9 +21,11 @@ export default {
 	CUSTOM_THEME: 'body[theme="custom"]',
 	FEEDBACK_EMAIL: "acode@foxdebug.com",
 	ERUDA_CDN: "https://cdn.jsdelivr.net/npm/eruda",
+
 	get PLAY_STORE_URL() {
 		return `https://play.google.com/store/apps/details?id=${BuildInfo.packageName}`;
 	},
+
 	API_BASE: `${BASE_URL}/api`,
 	SKU_LIST: ["crystal", "bronze", "silver", "gold", "platinum", "titanium"],
 	LOG_FILE_NAME: "Acode.log",
@@ -36,12 +38,29 @@ export default {
 	TWITTER_URL: "https://x.com/foxbiz_io",
 	INSTAGRAM_URL: "https://www.instagram.com/foxbiz.io/",
 	FOXBIZ_URL: "https://foxbiz.io",
-	IAP_AVAILABLE: typeof iap !== "undefined",
+
+	//assume playstore build until proven otherwise
+	IAP_AVAILABLE: true,
 
 	get HAS_PRO() {
 		return hasPro;
 	},
+
 	set HAS_PRO(value) {
 		hasPro = value;
 	},
 };
+
+system.getInstaller(
+	(installer) => {
+		config.IAP_AVAILABLE =
+			typeof iap !== "undefined" && installer != null && installer !== "null" &&
+			installer === "com.android.vending";
+	},
+	(error) => {
+			console.error(error);
+			config.IAP_AVAILABLE = true;
+	}
+)
+
+export default config;
