@@ -416,11 +416,17 @@ async function setDebugInfo() {
 	// Extract Chrome/WebView version
 	const chromeMatch = userAgent.match(/Chrome\/([0-9.]+)/);
 	const webviewVersion = chromeMatch ? chromeMatch[1] : "Unknown";
+	const webviewMajor = Number.parseInt(webviewVersion, 10);
+	const minWebviewMajor = window.__ACODE_MIN_WEBVIEW_MAJOR__ || 84;
+	const webviewStatus =
+		Number.isFinite(webviewMajor) && webviewMajor < minWebviewMajor
+			? ` (minimum supported: ${minWebviewMajor})`
+			: "";
 
 	const info = [
 		`App: v${version} (${versionCode})`,
 		`Android: ${androidVersion}`,
-		`WebView: ${webviewVersion}`,
+		`WebView: ${webviewVersion}${webviewStatus}`,
 		`Language: ${language}`,
 	].join("\n");
 
