@@ -283,7 +283,6 @@ export default function editorSettings() {
 			toast(`${enabled ? "Enabled" : "Disabled"} snippets.`);
 			return;
 		}
-
 		if (action === "language") {
 			let language = null;
 			try {
