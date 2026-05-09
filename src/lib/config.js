@@ -54,13 +54,15 @@ const config = {
 system.getInstaller(
 	(installer) => {
 		config.IAP_AVAILABLE =
-			typeof iap !== "undefined" && installer != null && installer !== "null" &&
+			typeof iap !== "undefined" &&
+			installer != null &&
+			installer !== "null" &&
 			installer === "com.android.vending";
 	},
 	(error) => {
-			console.error(error);
-			config.IAP_AVAILABLE = true;
-	}
-)
+		console.error(error);
+		config.IAP_AVAILABLE = true;
+	},
+);
 
 export default config;
