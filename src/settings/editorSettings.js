@@ -245,6 +245,11 @@ export default function editorSettings() {
 
 			case "editorFont":
 				fonts.setFont(value);
+				return;
+
+			case "snippet-manager":
+				openSnippetManager();
+				return;
 
 			default:
 				appSettings.update({
@@ -276,6 +281,8 @@ export default function editorSettings() {
 			const enabled = !getSnippetSettings().enabled;
 			setSnippetSystemEnabled(enabled);
 			toast(`${enabled ? "Enabled" : "Disabled"} snippets.`);
+			return;
+		}
 		if (action === "language") {
 			let language = null;
 			try {
@@ -290,6 +297,11 @@ export default function editorSettings() {
 				return;
 			}
 			if (!language) return;
+			const current = getUserSnippetsForLanguage(language);
+			const initial = JSON.stringify(current, null, 2);
+			const result = await prompt(
+				`Edit snippets for ${language} as JSON array [{prefix, body, description}]`,
+				initial,
 				"textarea",
 				{ capitalize: false },
 			);
