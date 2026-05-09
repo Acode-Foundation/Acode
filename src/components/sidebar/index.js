@@ -2,6 +2,7 @@ import "./style.scss";
 import toast from "components/toast";
 import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
+import appSettings from "lib/settings";
 import auth, { loginEvents } from "lib/auth";
 import constants from "lib/constants";
 
@@ -33,14 +34,14 @@ function create($container, $toggler) {
 
 	const START_THRESHOLD = constants.SIDEBAR_SLIDE_START_THRESHOLD_PX; //Point where to start swipe
 	const MIN_WIDTH = 200; //Min width of the side bar
-	const MAX_WIDTH = () => innerWidth * 0.7; //Max width of the side bar
+	const MAX_WIDTH = () => innerWidth - 40; //Max width of the side bar
 	const resizeBar = Ref();
 	const userAvatar = Ref();
 	const userContextMenu = Ref();
 
 	$container = $container || app;
 	let mode = innerWidth > 600 ? "tab" : "phone";
-	let width = +(localStorage.sideBarWidth || MIN_WIDTH);
+	let width = Math.min(appSettings.value.sidebarWidth || MIN_WIDTH, MAX_WIDTH());
 
 	const eventOptions = { passive: false };
 	const $el = (
@@ -92,6 +93,11 @@ function create($container, $toggler) {
 	$toggler?.addEventListener("click", toggle);
 	$container.addEventListener("touchstart", ontouchstart, eventOptions);
 	window.addEventListener("resize", onWindowResize);
+	
+	appSettings.on("update:sidebarWidth", () => {
+		width = Math.min(appSettings.value.sidebarWidth || MIN_WIDTH, MAX_WIDTH());
+		setWidth(width);
+	});
 
 	if (mode === "tab" && localStorage.sidebarShown === "1") {
 		show();
@@ -226,6 +232,8 @@ function create($container, $toggler) {
 		localStorage.sidebarShown = 1;
 		$el.activated = true;
 		$el.onclick = null;
+		
+		setWidth(width);
 
 		if (mode === "phone") {
 			resizeBar.style.display = "none";
@@ -239,7 +247,6 @@ function create($container, $toggler) {
 				action: hideMaster,
 			});
 		} else {
-			setWidth(width);
 			resizeBar.style.display = "block";
 			app.append($el);
 			$el.onclick = () => {
@@ -349,7 +356,8 @@ function create($container, $toggler) {
 			if (newWidth <= MIN_WIDTH) width = MIN_WIDTH;
 			else if (newWidth >= MAX_WIDTH()) width = MAX_WIDTH();
 			else width = newWidth;
-			localStorage.sideBarWidth = width;
+			appSettings.value.sidebarWidth = width;
+			appSettings.update(false);
 			document.removeEventListener("touchmove", onMove, eventOptions);
 			document.removeEventListener("mousemove", onMove, eventOptions);
 			document.removeEventListener("touchend", onEnd, eventOptions);
@@ -468,9 +476,12 @@ function create($container, $toggler) {
 	 */
 	function setWidth(width) {
 		$el.style.transition = "none";
+		$el.style.width = width + "px";
 		$el.style.maxWidth = width + "px";
-		root.style.marginLeft = width + "px";
-		root.style.width = `calc(100% - ${width}px)`;
+		if (mode === "tab") {
+			root.style.marginLeft = width + "px";
+			root.style.width = `calc(100% - ${width}px)`;
+		}
 		clearTimeout(setWidthTimeout);
 		setWidthTimeout = setTimeout(() => {
 			editorManager?.editor?.resize(true);
@@ -492,8 +503,8 @@ function create($container, $toggler) {
 	$el.toggle = toggle;
 	$el.onshow = () => {};
 	$el.getWidth = function () {
-		const width = innerWidth * 0.7;
-		return mode === "phone" ? (width >= 350 ? 350 : width) : MIN_WIDTH;
+		const configuredWidth = appSettings.value.sidebarWidth || MIN_WIDTH;
+		return mode === "phone" ? Math.min(configuredWidth, MAX_WIDTH()) : width;
 	};
 
 	return $el;

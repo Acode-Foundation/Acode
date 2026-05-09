@@ -113,6 +113,21 @@ export default function otherSettings() {
 			category: categories.interface,
 		},
 		{
+			key: "sidebarWidth",
+			text: strings["sidebar width"] || "Sidebar width",
+			value: values.sidebarWidth,
+			prompt: strings["sidebar width"] || "Sidebar width (pixels)",
+			promptType: "number",
+			promptOptions: {
+				test(value) {
+					value = Number.parseInt(value);
+					return value >= 200 && value <= 1500;
+				},
+			},
+			info: "Adjust the width of the sidebar (min 200px).",
+			category: categories.interface,
+		},
+		{
 			key: "showSideButtons",
 			text: strings["show side buttons"],
 			checkbox: values.showSideButtons,

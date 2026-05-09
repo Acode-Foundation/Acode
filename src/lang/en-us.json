@@ -497,6 +497,7 @@
 	"change theme": "Change Theme",
 	"documentation": "Documentation",
 	"open in terminal": "Open in Terminal",
+	"sidebar width": "Sidebar width",
 	"developer mode": "Developer Mode",
 	"info-developermode": "Enable developer tools (Eruda) for debugging plugins and inspecting app state. Inspector will be initialized on app start.",
 	"developer mode enabled": "Developer mode enabled. Use command palette to toggle inspector (Ctrl+Shift+I).",
