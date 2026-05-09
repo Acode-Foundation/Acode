@@ -794,7 +794,7 @@ function ListItem({ icon, name, id, version, downloads, installed, source }) {
 					return;
 				}
 
-				if (isPaid) {
+				if (isPaid && config.IAP_AVAILABLE) {
 					[product] = await helpers.promisify(iap.getProducts, [
 						remotePlugin.sku,
 					]);
@@ -803,7 +803,7 @@ function ListItem({ icon, name, id, version, downloads, installed, source }) {
 						purchaseToken = purchase?.purchaseToken;
 					}
 				}
-				if (isPaid && !purchaseToken) {
+				if (isPaid && config.IAP_AVAILABLE && !purchaseToken) {
 					if (!product) throw new Error("Product not found");
 					const apiStatus = await helpers.checkAPIStatus();
 
