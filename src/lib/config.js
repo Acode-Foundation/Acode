@@ -61,7 +61,7 @@ system.getInstaller(
 	},
 	(error) => {
 		console.error(error);
-		config.IAP_AVAILABLE = true;
+		config.IAP_AVAILABLE = typeof iap !== "undefined";
 	},
 );
 
