@@ -1,7 +1,19 @@
 import settingsPage from "components/settingsPage";
+import toast from "components/toast";
+import prompt from "dialogs/prompt";
+import select from "dialogs/select";
 import constants from "lib/constants";
 import fonts from "lib/fonts";
 import appSettings from "lib/settings";
+import {
+	exportUserSnippetsAsJson,
+	getSnippetSettings,
+	getSupportedSnippetLanguages,
+	getUserSnippetsForLanguage,
+	importUserSnippetsFromJson,
+	setSnippetSystemEnabled,
+	setUserSnippetsForLanguage,
+} from "lib/snippets";
 import scrollSettings from "./scrollSettings";
 
 export default function editorSettings() {
@@ -127,6 +139,13 @@ export default function editorSettings() {
 			category: categories.assistance,
 		},
 		{
+			key: "snippet-manager",
+			text: "Snippet manager",
+			info: "Create, edit, import, and export snippets in JSON.",
+			category: categories.assistance,
+			chevron: true,
+		},
+		{
 			key: "autoCloseTags",
 			text: strings["auto close tags"],
 			checkbox: values.autoCloseTags,
@@ -226,12 +245,100 @@ export default function editorSettings() {
 
 			case "editorFont":
 				fonts.setFont(value);
+				return;
+
+			case "snippet-manager":
+				openSnippetManager();
+				return;
 
 			default:
 				appSettings.update({
 					[key]: value,
 				});
 				break;
+		}
+	}
+
+	async function openSnippetManager() {
+		const menuItems = [
+			{
+				value: "toggle",
+				text: `Snippet system: ${getSnippetSettings().enabled ? "On" : "Off"}`,
+			},
+			{ value: "language", text: "Edit snippets by language" },
+			{ value: "import", text: "Import snippets JSON" },
+			{ value: "export", text: "Export snippets JSON" },
+		];
+		let action = null;
+		try {
+			action = await select("Snippet manager", menuItems);
+		} catch (_) {
+			return;
+		}
+		if (!action) return;
+
+		if (action === "toggle") {
+			const enabled = !getSnippetSettings().enabled;
+			setSnippetSystemEnabled(enabled);
+			toast(`${enabled ? "Enabled" : "Disabled"} snippets.`);
+			return;
+		}
+		if (action === "language") {
+			let language = null;
+			try {
+				language = await select(
+					"Choose language",
+					getSupportedSnippetLanguages().map((lang) => ({
+						value: lang,
+						text: lang,
+					})),
+				);
+			} catch (_) {
+				return;
+			}
+			if (!language) return;
+			const current = getUserSnippetsForLanguage(language);
+			const initial = JSON.stringify(current, null, 2);
+			const result = await prompt(
+				`Edit snippets for ${language} as JSON array [{prefix, body, description}]`,
+				initial,
+				"textarea",
+				{ capitalize: false },
+			);
+			if (result === null) return;
+			try {
+				const parsed = JSON.parse(result);
+				if (!Array.isArray(parsed)) throw new Error("Expected array");
+				setUserSnippetsForLanguage(language, parsed);
+				toast(`Saved ${language} snippets.`);
+			} catch (error) {
+				toast(error?.message || "Invalid JSON");
+			}
+			return;
+		}
+
+		if (action === "import") {
+			const input = await prompt(
+				'Paste snippets JSON: {\n  "languages": { ... }\n}',
+				"",
+				"textarea",
+				{ capitalize: false },
+			);
+			if (input === null) return;
+			try {
+				importUserSnippetsFromJson(input);
+				toast("Snippets imported.");
+			} catch (error) {
+				toast(error?.message || "Invalid JSON");
+			}
+			return;
+		}
+
+		if (action === "export") {
+			const output = exportUserSnippetsAsJson();
+			await prompt("Copy your snippets JSON", output, "textarea", {
+				capitalize: false,
+			});
 		}
 	}
 }
