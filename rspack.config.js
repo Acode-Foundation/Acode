@@ -129,7 +129,7 @@ module.exports = (env, options) => {
       rules,
       parser: {
         javascript: {
-          exportsPresence: 'auto',
+          exportsPresence: 'error',
           requireAlias: false,
         },
       },
