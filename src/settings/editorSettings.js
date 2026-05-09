@@ -276,23 +276,20 @@ export default function editorSettings() {
 			const enabled = !getSnippetSettings().enabled;
 			setSnippetSystemEnabled(enabled);
 			toast(`${enabled ? "Enabled" : "Disabled"} snippets.`);
-			return;
-		}
-
 		if (action === "language") {
-			const language = await select(
-				"Choose language",
-				getSupportedSnippetLanguages().map((lang) => ({
-					value: lang,
-					text: lang,
-				})),
-			);
+			let language = null;
+			try {
+				language = await select(
+					"Choose language",
+					getSupportedSnippetLanguages().map((lang) => ({
+						value: lang,
+						text: lang,
+					})),
+				);
+			} catch (_) {
+				return;
+			}
 			if (!language) return;
-			const current = getUserSnippetsForLanguage(language);
-			const initial = JSON.stringify(current, null, 2);
-			const result = await prompt(
-				`Edit snippets for ${language} as JSON array [{prefix, body, description}]`,
-				initial,
 				"textarea",
 				{ capitalize: false },
 			);
