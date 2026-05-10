@@ -9,6 +9,8 @@
 
   &.collapsible {
     &.hidden {
+      display: block;
+
       ul {
         display: none;
       }
