@@ -41,8 +41,8 @@
       "com.foxdebug.acode.rk.plugin.plugincontext": {},
       "cordova-plugin-system": {},
       "com.foxdebug.acode.rk.auth": {},
-      "com.foxdebug.acode.rk.exec.proot": {},
-      "cordova-plugin-iap": {}
+      "cordova-plugin-iap": {},
+      "com.foxdebug.acode.rk.exec.proot": {}
     },
     "platforms": [
       "android"

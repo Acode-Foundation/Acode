@@ -5,6 +5,7 @@ import alert from "dialogs/alert";
 import loader from "dialogs/loader";
 import purchaseListener from "handlers/purchase";
 import actionStack from "lib/actionStack";
+import auth from "lib/auth";
 import config from "lib/config";
 import installPlugin from "lib/installPlugin";
 import InstallState from "lib/installState";
