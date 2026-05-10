@@ -51,8 +51,8 @@ const config = {
 	},
 };
 
-system.getInstaller(
-	(installer) => {
+
+cordova.exec((installer) => {
 		config.IAP_AVAILABLE =
 			typeof iap !== "undefined" &&
 			installer != null &&
@@ -62,7 +62,6 @@ system.getInstaller(
 	(error) => {
 		console.error(error);
 		config.IAP_AVAILABLE = typeof iap !== "undefined";
-	},
-);
+	}, 'System', 'getInstaller', []);
 
 export default config;
