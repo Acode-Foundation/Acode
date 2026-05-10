@@ -39,9 +39,6 @@ const config = {
 	INSTAGRAM_URL: "https://www.instagram.com/foxbiz.io/",
 	FOXBIZ_URL: "https://foxbiz.io",
 
-	//assume playstore build until proven otherwise
-	IAP_AVAILABLE: true,
-
 	get HAS_PRO() {
 		return hasPro;
 	},
@@ -50,18 +47,5 @@ const config = {
 		hasPro = value;
 	},
 };
-
-
-cordova.exec((installer) => {
-		config.IAP_AVAILABLE =
-			typeof iap !== "undefined" &&
-			installer != null &&
-			installer !== "null" &&
-			installer === "com.android.vending";
-	},
-	(error) => {
-		console.error(error);
-		config.IAP_AVAILABLE = typeof iap !== "undefined";
-	}, 'System', 'getInstaller', []);
 
 export default config;

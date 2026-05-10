@@ -9,7 +9,7 @@ import alert from "dialogs/alert";
 import DOMPurify from "dompurify";
 import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
-import auth from "lib/auth";
+import auth, { loginEvents } from "lib/auth";
 import config from "lib/config";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
@@ -42,6 +42,8 @@ dayjs.updateLocale("en", {
 		yy: "%dy",
 	},
 });
+
+export const cleanups = [];
 
 export default (props) => {
 	const {
@@ -271,43 +273,24 @@ function handleTabClick(e) {
 	document.getElementById(tabId).classList.add("active");
 }
 
-function Buttons({
-	id,
-	name,
-	isPaid,
-	installed,
-	update,
-	install,
-	uninstall,
-	purchased,
-	price,
-	buy,
-	minVersionCode,
-	isSupported = true,
-}) {
-	async function openPluginWebsite() {
-		try {
-			const user = await auth.getLoggedInUser();
-			if (!user) {
-				CustomTabs.open(
-					`${config.BASE_URL}/login?redirect=app`,
-					{ showTitle: true },
-					() => {},
-					() => {},
-				);
-				return;
-			}
+async function Buttons(props) {
+	const {
+		id,
+		name,
+		isPaid,
+		installed,
+		update,
+		install,
+		uninstall,
+		purchased,
+		price,
+		buy,
+		minVersionCode,
+		isSupported = true,
+	} = props;
 
-			CustomTabs.open(
-				`${config.BASE_URL}/plugin/${id}`,
-				{ showTitle: true },
-				() => {},
-				() => {},
-			);
-		} catch (e) {
-			console.error(e);
-		}
-	}
+	console.log("buttons", { installed });
+
 	if (!isSupported) {
 		return (
 			<div
@@ -371,15 +354,34 @@ function Buttons({
 		);
 	}
 
-	if (!config.IAP_AVAILABLE && isPaid && !purchased && price) {
+	const user = await auth.getLoggedInUser();
+	if (isPaid && helpers.shouldAllowExternalPurchase() && !user) {
+		const buttonRef = Ref();
 		return (
 			<button
-				data-type="buy"
+				ref={buttonRef}
+				data-type="info"
 				className="btn btn-install"
-				onclick={openPluginWebsite}
+				onclick={() => {
+					CustomTabs.open(
+						`${config.BASE_URL}/login?redirect=app`,
+						{ showTitle: true },
+						() => {},
+						() => {},
+					);
+
+					const onLogin = async () => {
+						loginEvents.off(onLogin);
+
+						const newButton = await Buttons(props);
+						buttonRef.el.replaceWith(newButton);
+					};
+					loginEvents.on(onLogin);
+					cleanups.push(() => loginEvents.off(onLogin));
+				}}
 			>
-				<i className="icon open_in_browser"></i>
-				{price}
+				<i className="icon user-round"></i>
+				{strings.login}
 			</button>
 		);
 	}

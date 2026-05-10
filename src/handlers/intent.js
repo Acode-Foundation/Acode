@@ -35,8 +35,13 @@ export default async function HandleIntent(intent = {}) {
 
 			if (defaultPrevented) return;
 
-			if (module === "plugin") {
+			if (module === "plugin" && action === "install") {
 				const { default: Plugin } = await import("pages/plugin");
+
+				if (!value || !/^([a-z0-9\.]+)$/.test(value)) {
+					return;
+				}
+
 				const installed = await fsOperation(PLUGIN_DIR, value).exists();
 				Plugin({ id: value, installed, install: action === "install" });
 			}

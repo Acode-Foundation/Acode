@@ -41,8 +41,8 @@
       "com.foxdebug.acode.rk.plugin.plugincontext": {},
       "cordova-plugin-system": {},
       "com.foxdebug.acode.rk.auth": {},
-      "cordova-plugin-iap": {},
-      "com.foxdebug.acode.rk.exec.proot": {}
+      "com.foxdebug.acode.rk.exec.proot": {},
+      "cordova-plugin-iap": {}
     },
     "platforms": [
       "android"
@@ -151,7 +151,6 @@
     "acorn": "^8.15.0",
     "autosize": "^6.0.1",
     "codemirror": "^6.0.2",
-    "cordova": "13.0.0",
     "core-js": "^3.47.0",
     "dayjs": "^1.11.19",
     "dompurify": "^3.4.0",

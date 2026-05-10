@@ -3,9 +3,10 @@ import fsOperation from "fileSystem";
 import Page from "components/page";
 import alert from "dialogs/alert";
 import loader from "dialogs/loader";
+import { addIntentHandler, removeIntentHandler } from "handlers/intent";
 import purchaseListener from "handlers/purchase";
 import actionStack from "lib/actionStack";
-import auth from "lib/auth";
+import auth, { loginEvents } from "lib/auth";
 import config from "lib/config";
 import installPlugin from "lib/installPlugin";
 import InstallState from "lib/installState";
@@ -19,21 +20,19 @@ import markdownItTaskLists from "markdown-it-task-lists";
 import { highlightCodeBlock, initHighlighting } from "utils/codeHighlight";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
-import view from "./plugin.view.js";
+import view, { cleanups } from "./plugin.view.js";
 
 let $lastPluginPage;
 
 /**
  * Plugin page
  * @param {string} id
- * @param {boolean} installed
  * @param {() => void} [onInstall]
  * @param {() => void} [onUninstall]
  * @param {boolean} [installOnRender]
  */
 export default async function PluginInclude(
 	id,
-	installed,
 	onInstall,
 	onUninstall,
 	installOnRender,
@@ -42,8 +41,8 @@ export default async function PluginInclude(
 		$lastPluginPage.hide();
 	}
 
-	installed = typeof installed !== "boolean" ? installed === "true" : installed;
 	const $page = Page(strings["plugin"]);
+	let installed = await fsOperation(PLUGIN_DIR, id).exists();
 	let plugin = {};
 	let currentVersion = "";
 	let purchased = false;
@@ -56,6 +55,8 @@ export default async function PluginInclude(
 	let $settingsIcon;
 	let minVersionCode = -1;
 	let isSupported = true;
+	let refundHandlerSet = false;
+	let purchaseHandlerSet = false;
 
 	actionStack.push({
 		id: "plugin",
@@ -68,6 +69,11 @@ export default async function PluginInclude(
 		loader.removeTitleLoader();
 		cancelled = true;
 		$lastPluginPage = null;
+		cleanups.forEach((cleanup) => {
+			try {
+				cleanup();
+			} catch {}
+		});
 	};
 
 	$lastPluginPage = $page;
@@ -169,7 +175,11 @@ export default async function PluginInclude(
 						remotePlugin.supported_editor,
 					);
 
-					if (!purchased && (await helpers.checkAPIStatus())) {
+					if (
+						iap.isIapAvailable() &&
+						!purchased &&
+						(await helpers.checkAPIStatus())
+					) {
 						try {
 							[product] = await helpers.promisify(iap.getProducts, [
 								remotePlugin.sku,
@@ -253,6 +263,45 @@ export default async function PluginInclude(
 		const oldText = $button.textContent;
 
 		try {
+			if (helpers.shouldAllowExternalPurchase()) {
+				CustomTabs.open(
+					`${config.BASE_URL}/plugin/${id}?callback=app`,
+					{ showTitle: true },
+					() => {},
+					() => {},
+				);
+				if (!purchaseHandlerSet) {
+					purchaseHandlerSet = true;
+					const handler = async ({ module, action, value }) => {
+						if (module === "plugin" && action === "purchased" && value === id) {
+							loader.show();
+
+							try {
+								const pluginData = await fsOperation(
+									config.API_BASE,
+									`plugin/${id}`,
+								).readFile("json");
+
+								purchased = pluginData.owned;
+								render();
+							} catch (error) {
+								window.log(error);
+								helpers.error(error);
+							}
+
+							loader.hide();
+							purchaseHandlerSet = false;
+							removeIntentHandler(handler);
+						}
+					};
+					addIntentHandler(handler);
+					cleanups.push(() => removeIntentHandler(handler));
+				}
+				return;
+			}
+		} catch (error) {}
+
+		try {
 			if (!product) throw new Error("Product not found");
 			const apiStatus = await helpers.checkAPIStatus();
 
@@ -296,6 +345,38 @@ export default async function PluginInclude(
 	async function refund(e) {
 		const $button = e.target;
 		const oldText = $button.textContent;
+
+		if (helpers.shouldAllowExternalPurchase()) {
+			CustomTabs.open(
+				`${config.BASE_URL}/plugin/${id}?callback=app`,
+				{ showTitle: true },
+				() => {},
+				() => {},
+			);
+
+			if (!refundHandlerSet) {
+				refundHandlerSet = true;
+				const handler = ({ module, action, value }) => {
+					if (module === "plugin" && action === "uninstall" && value === id) {
+						purchased = false;
+
+						if (installed) {
+							uninstall();
+						} else {
+							render();
+						}
+
+						refundHandlerSet = false;
+						removeIntentHandler(handler);
+					}
+				};
+
+				addIntentHandler(handler);
+				cleanups.push(() => removeIntentHandler(handler));
+			}
+			return;
+		}
+
 		try {
 			if (!product) throw new Error("Product not found");
 			$button.textContent = strings["loading..."];

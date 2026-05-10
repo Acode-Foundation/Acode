@@ -66,6 +66,7 @@ import $_fileMenu from "views/file-menu.hbs";
 import $_menu from "views/menu.hbs";
 import auth, { loginEvents } from "./lib/auth";
 
+const INSTALL_SOURCE_PLAY = "com.android.vending";
 const previousVersionCode = Number.parseInt(localStorage.versionCode, 10);
 
 window.onload = Main;
@@ -194,6 +195,25 @@ async function onDeviceReady() {
 	});
 
 	startAd();
+
+	let installSource = INSTALL_SOURCE_PLAY;
+
+	try {
+		installSource = await helpers.promisify(system.getInstaller);
+	} catch (error) {
+		console.error(error);
+	}
+
+	Object.defineProperty(window, "appInstallSource", {
+		get() {
+			return installSource;
+		},
+		set() {
+			console.warn("appInstallSource is readonly");
+		},
+		configurable: false,
+		enumerable: false,
+	});
 
 	try {
 		await helpers.promisify(iap.startConnection).catch((e) => {

@@ -708,7 +708,16 @@ function getLocalRes(id, name) {
 	return Url.join(PLUGIN_DIR, id, name);
 }
 
-function ListItem({ icon, name, id, version, downloads, installed, source }) {
+function ListItem({
+	icon,
+	name,
+	id,
+	version,
+	downloads,
+	installed,
+	source,
+	price,
+}) {
 	if (installed === undefined) {
 		installed = !!installedPlugins.find(({ id: _id }) => _id === id);
 	}
@@ -730,19 +739,21 @@ function ListItem({ icon, name, id, version, downloads, installed, source }) {
 			</span>
 			{installed ? (
 				<>
-					{source ? (
+					{source && (
 						<span className="icon replay" data-action="rebuild-plugin" />
-					) : null}
+					)}
 					<span className="icon more_vert" data-action="more-plugin-action" />
 				</>
 			) : (
-				<button
-					type="button"
-					className="install-btn"
-					data-action="install-plugin"
-				>
-					<span className="icon file_downloadget_app" />
-				</button>
+				!price && (
+					<button
+						type="button"
+						className="install-btn"
+						data-action="install-plugin"
+					>
+						<span className="icon file_downloadget_app" />
+					</button>
+				)
 			)}
 		</div>
 	);
@@ -771,69 +782,6 @@ function ListItem({ icon, name, id, version, downloads, installed, source }) {
 					.catch(() => {
 						throw new Error("Failed to fetch plugin details");
 					});
-
-				const isPaid = remotePlugin.price > 0;
-				if (isPaid && !config.IAP_AVAILABLE && !remotePlugin.owned) {
-					const user = await auth.getLoggedInUser();
-					if (!user) {
-						CustomTabs.open(
-							`${config.BASE_URL}/login?redirect=app`,
-							{ showTitle: true },
-							() => {},
-							() => {},
-						);
-						return;
-					}
-
-					CustomTabs.open(
-						`${config.BASE_URL}/plugin/${remotePlugin.id}`,
-						{ showTitle: true },
-						() => {},
-						() => {},
-					);
-					return;
-				}
-
-				if (isPaid && config.IAP_AVAILABLE) {
-					[product] = await helpers.promisify(iap.getProducts, [
-						remotePlugin.sku,
-					]);
-					if (product) {
-						const purchase = await getPurchase(product.productId);
-						purchaseToken = purchase?.purchaseToken;
-					}
-				}
-				if (isPaid && config.IAP_AVAILABLE && !purchaseToken) {
-					if (!product) throw new Error("Product not found");
-					const apiStatus = await helpers.checkAPIStatus();
-
-					if (!apiStatus) {
-						alert(strings.error, strings.api_error);
-						return;
-					}
-
-					iap.setPurchaseUpdatedListener(
-						...purchaseListener(onpurchase, onerror),
-					);
-					await helpers.promisify(iap.purchase, product.productId);
-
-					async function onpurchase(e) {
-						const purchase = await getPurchase(product.productId);
-						await fetch(Url.join(config.API_BASE, "plugin/order"), {
-							method: "POST",
-							body: JSON.stringify({
-								id: remotePlugin.id,
-								token: purchase?.purchaseToken,
-								package: BuildInfo.packageName,
-							}),
-						});
-						purchaseToken = purchase?.purchaseToken;
-					}
-
-					async function onerror(error) {
-						throw error;
-					}
-				}
 
 				const { default: installPlugin } = await import("lib/installPlugin");
 				await installPlugin(
@@ -887,7 +835,7 @@ function ListItem({ icon, name, id, version, downloads, installed, source }) {
 		}
 
 		plugin(
-			{ id, installed },
+			{ id },
 			() => {
 				if (!$explore.collapsed) {
 					$explore.ontoggle();

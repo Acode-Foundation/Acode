@@ -100,7 +100,7 @@ class AuthService {
 
 	/**
 	 *
-	 * @returns {User}
+	 * @returns {Promise<User>}
 	 */
 	async getLoggedInUser() {
 		if (loggedInUser) return loggedInUser;

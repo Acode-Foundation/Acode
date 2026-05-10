@@ -572,4 +572,10 @@ export default {
 		}
 		return false;
 	},
+
+	shouldAllowExternalPurchase() {
+		return (
+			!iap.isIapAvailable() && window.appInstallSource !== "com.android.vending"
+		);
+	},
 };
