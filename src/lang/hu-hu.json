@@ -728,7 +728,7 @@
 	"settings-info-editor-auto-close-tags": "HTML, XML, Vue, Angular és PHP-sablonfájlokban a záró címkék automatikus beillesztése.",
 	"ui zoom": "Felhasználói felület nagyítása",
 	"settings-info-app-ui-zoom": "Szövegek méretezése az Acode teljes felületén.",
-	"plugin-not-supported": "Plugin not supported",
-	"plugin-not-supported-info": "The plugin was created for older version of Acode.",
-	"login-to-view": "Please login to view this..."
+	"plugin-not-supported": "A bővítmény nem támogatott",
+	"plugin-not-supported-info": "A bővítmény az Acode egy régebbi verziójához készült.",
+	"login-to-view": "Jelentkezzen be a megtekintéséhez…"
 }
