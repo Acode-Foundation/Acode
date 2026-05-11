@@ -729,5 +729,6 @@
 	"ui zoom": "Pembesaran UI",
 	"settings-info-app-ui-zoom": "Skalakan teks di seluruh antarmuka Acode.",
 	"plugin-not-supported": "Plugin not supported",
-	"plugin-not-supported-info": "The plugin was created for older version of Acode."
+	"plugin-not-supported-info": "The plugin was created for older version of Acode.",
+	"login-to-view": "Please login to view this..."
 }

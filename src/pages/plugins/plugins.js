@@ -5,8 +5,10 @@ import Contextmenu from "components/contextmenu";
 import Page from "components/page";
 import searchBar from "components/searchbar";
 import TabView from "components/tabView";
+import tutorial from "components/tutorial";
 import prompt from "dialogs/prompt";
 import actionStack from "lib/actionStack";
+import auth from "lib/auth";
 import config from "lib/config";
 import installPlugin from "lib/installPlugin";
 import loadPlugin from "lib/loadPlugin";
@@ -657,24 +659,24 @@ export default function PluginsInclude(updates) {
 
 	async function getOwned() {
 		$list.owned.setAttribute("empty-msg", strings["loading..."]);
-		const purchases = await helpers.promisify(iap.getPurchases);
-		const disabledMap = settings.value.pluginsDisabled || {};
 
-		purchases.forEach(async ({ productIds }) => {
-			const [sku] = productIds;
-			const url = Url.join(config.API_BASE, "plugin/owned", sku);
-			const plugin = await fsOperation(url).readFile("json");
-			const isInstalled = plugins.installed.find(({ id }) => id === plugin.id);
-			plugin.installed = !!isInstalled;
+		let iapPurchases = [];
+		if (iap.isIapAvailable()) {
+			iapPurchases = await helpers.promisify(iap.getPurchases);
+			const disabledMap = settings.value.pluginsDisabled || {};
 
-			if (plugin.installed) {
-				plugin.enabled = disabledMap[plugin.id] !== true;
-				plugin.onToggleEnabled = onToggleEnabled;
-			}
+			iapPurchases.forEach(async ({ productIds }) => {
+				const [sku] = productIds;
+				const url = Url.join(config.API_BASE, "plugin/owned", sku);
+				const plugin = await fsOperation(url).readFile("json");
 
-			plugins.owned.push(plugin);
-			$list.owned.append(<Item {...plugin} updates={updates} />);
-		});
+				plugins.owned.push(plugin);
+			});
+		} else if (!(await auth.getLoggedInUser())) {
+			console.log("Not logged in");
+			$list.owned.setAttribute("empty-msg", strings["login-to-view"]);
+			return;
+		}
 
 		try {
 			const res = await fetch(`${config.API_BASE}/plugins?owned=true`);
@@ -683,17 +685,29 @@ export default function PluginsInclude(updates) {
 				if (Array.isArray(ownedPlugins)) {
 					ownedPlugins.forEach((plugin) => {
 						if (
-							!purchases.find(({ productIds }) =>
+							!iapPurchases.find(({ productIds }) =>
 								productIds.includes(plugin.sku),
 							)
 						) {
 							plugins.owned.push(plugin);
-							$list.owned.append(<Item {...plugin} updates={updates} />);
 						}
 					});
 				}
 			}
 		} catch (error) {}
+
+		for (const plugin of plugins.owned) {
+			plugin.installed = Boolean(
+				plugins.installed.find(({ id }) => id === plugin.id),
+			);
+
+			if (plugin.installed) {
+				plugin.enabled = disabledMap[plugin.id] !== true;
+				plugin.onToggleEnabled = onToggleEnabled;
+			}
+
+			$list.owned.append(<Item {...plugin} updates={updates} />);
+		}
 
 		$list.owned.setAttribute("empty-msg", strings["no plugins found"]);
 	}
