@@ -729,5 +729,6 @@
 	"close tabs to left": "Close Left",
 	"close other tabs": "Close Others",
 	"plugin-not-supported": "Plugin not supported",
-	"plugin-not-supported-info": "The plugin was created for older version of Acode."
+	"plugin-not-supported-info": "The plugin was created for older version of Acode.",
+	"login-to-view": "Please login to view this..."
 }
