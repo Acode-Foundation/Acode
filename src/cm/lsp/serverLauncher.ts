@@ -35,6 +35,8 @@ const STATUS_FAILED: InstallStatus = "failed";
 
 const AXS_BINARY = "$PREFIX/axs";
 
+let alreadyInformed = false;
+
 function getTerminalRequiredMessage(): string {
 	return (
 		strings?.terminal_required_message_for_lsp ??
@@ -1081,7 +1083,14 @@ export async function ensureServerRunning(
 	} catch {}
 	if (!isTerminalInstalled) {
 		const message = getTerminalRequiredMessage();
-		alert(strings?.error, message);
+		
+		if (!alreadyInformed){
+			alreadyInformed = true;
+			alert(strings?.error, message);
+		}else{
+			toast(message);
+		}
+
 		const unavailable: LspError = new Error(message);
 		unavailable.code = "LSP_SERVER_UNAVAILABLE";
 		throw unavailable;

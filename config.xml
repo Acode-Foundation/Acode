@@ -1,5 +1,5 @@
-<?xml version='1.0' encoding='utf-8' ?>
-<widget id="com.foxdebug.acode" android-versionCode="967" version="1.11.8"
+<?xml version='1.0' encoding='utf-8'?>
+<widget id="com.foxdebug.acode" android-versionCode="1000" version="1.12.0"
     xmlns="http://www.w3.org/ns/widgets"
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:cdv="http://cordova.apache.org/ns/1.0">
@@ -8,7 +8,7 @@
         Light weight code editor and web IDE for android.
     </description>
     <author email="ajit@foxdebug.com" href="https://foxdebug.com">
-       Foxdebug
+        Foxdebug
     </author>
     <content src="index.html" />
     <access launch-external="yes" origin="*" />
@@ -23,13 +23,14 @@
 
     <platform name="android">
         <allow-intent href="market:*" />
-        <preference name="fullscreen" value="false"/>
-        <preference name="SplashScreen" value="none"/>
-        <preference name="ShowTitle" value="true"/>
+        <preference name="fullscreen" value="false" />
+        <preference name="SplashScreen" value="none" />
+        <preference name="ShowTitle" value="true" />
         <preference name="DisallowOverscroll" value="true" />
         <preference name="BackgroundColor" value="0xFF313131" />
         <preference name="AndroidWindowSplashScreenBackground" value="@color/ic_splash_background" />
-        <preference name="AndroidWindowSplashScreenAnimatedIcon" value="res/android/drawable/ic_launcher_foreground.xml" />
+        <preference name="AndroidWindowSplashScreenAnimatedIcon"
+            value="res/android/drawable/ic_launcher_foreground.xml" />
         <preference name="AndroidPostSplashScreenTheme" value="@style/Theme.App.Activity" />
         <preference name="AndroidPersistentFileLocation" value="Compatibility" />
         <preference name="AndroidLaunchMode" value="singleTask" />
@@ -38,8 +39,9 @@
         <preference name="GradlePluginKotlinEnabled" value="true" />
         <preference name="android-targetSdkVersion" value="36" />
 
-        
-        <edit-config file="app/src/main/AndroidManifest.xml" mode="merge" target="/manifest/application">
+
+        <edit-config file="app/src/main/AndroidManifest.xml" mode="merge"
+            target="/manifest/application">
             <application
                 android:networkSecurityConfig="@xml/network_security_config"
                 android:hardwareAccelerated="true"
@@ -49,7 +51,8 @@
                 android:enableOnBackInvokedCallback="false" />
         </edit-config>
 
-        <edit-config file="app/src/main/AndroidManifest.xml" mode="merge" target="/manifest/application/activity[@android:name='MainActivity']">
+        <edit-config file="app/src/main/AndroidManifest.xml" mode="merge"
+            target="/manifest/application/activity[@android:name='MainActivity']">
             <activity android:resizeableActivity="true" />
         </edit-config>
 

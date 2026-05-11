@@ -9,7 +9,8 @@ import alert from "dialogs/alert";
 import DOMPurify from "dompurify";
 import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
-import constants from "lib/constants";
+import auth, { loginEvents } from "lib/auth";
+import config from "lib/config";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
 
@@ -42,6 +43,8 @@ dayjs.updateLocale("en", {
 	},
 });
 
+export const cleanups = [];
+
 export default (props) => {
 	const {
 		id,
@@ -53,6 +56,7 @@ export default (props) => {
 		license,
 		changelogs,
 		repository,
+		isSupported = true,
 		keywords: keywordsRaw,
 		contributors: contributorsRaw,
 		votes_up: votesUp,
@@ -209,7 +213,7 @@ export default (props) => {
 								: [{ name: author, role: "Developer", github: authorGithub }];
 
 							return contributorsList.map(({ name, role, github }) => {
-								let dp = Url.join(constants.API_BASE, `../user.png`);
+								let dp = Url.join(config.API_BASE, `../user.png`);
 								if (github) {
 									dp = `https://avatars.githubusercontent.com/${github}`;
 								}
@@ -269,18 +273,39 @@ function handleTabClick(e) {
 	document.getElementById(tabId).classList.add("active");
 }
 
-function Buttons({
-	name,
-	isPaid,
-	installed,
-	update,
-	install,
-	uninstall,
-	purchased,
-	price,
-	buy,
-	minVersionCode,
-}) {
+async function Buttons(props) {
+	const {
+		id,
+		name,
+		isPaid,
+		installed,
+		update,
+		install,
+		uninstall,
+		purchased,
+		price,
+		buy,
+		minVersionCode,
+		isSupported = true,
+	} = props;
+
+	console.log("buttons", { installed });
+
+	if (!isSupported) {
+		return (
+			<div
+				className="error"
+				style={{ display: "flex", flexDirection: "column" }}
+			>
+				<p style={{ display: "flex" }}>
+					<span className="icon info"></span>
+					{strings["plugin-not-supported"]}
+				</p>
+				<small>{strings["plugin-not-supported-info"]}</small>
+			</div>
+		);
+	}
+
 	if (
 		typeof minVersionCode === "number" &&
 		minVersionCode > BuildInfo.versionCode
@@ -288,7 +313,7 @@ function Buttons({
 		return (
 			<div className="error">
 				<span className="icon info"></span>
-				<a href={constants.PLAY_STORE_URL} className="text">
+				<a href={config.PLAY_STORE_URL} className="text">
 					{strings["plugin min version"]
 						.replace("{name}", name)
 						.replace("{v-code}", minVersionCode)}
@@ -325,6 +350,38 @@ function Buttons({
 			>
 				<i className="icon delete_outline"></i>
 				{strings.uninstall}
+			</button>
+		);
+	}
+
+	const user = await auth.getLoggedInUser();
+	if (isPaid && helpers.shouldAllowExternalPurchase() && !user) {
+		const buttonRef = Ref();
+		return (
+			<button
+				ref={buttonRef}
+				data-type="info"
+				className="btn btn-install"
+				onclick={() => {
+					CustomTabs.open(
+						`${config.BASE_URL}/login?redirect=app`,
+						{ showTitle: true },
+						() => {},
+						() => {},
+					);
+
+					const onLogin = async () => {
+						loginEvents.off(onLogin);
+
+						const newButton = await Buttons(props);
+						buttonRef.el.replaceWith(newButton);
+					};
+					loginEvents.on(onLogin);
+					cleanups.push(() => loginEvents.off(onLogin));
+				}}
+			>
+				<i className="icon user-round"></i>
+				{strings.login}
 			</button>
 		);
 	}
@@ -412,7 +469,7 @@ async function showReviews(pluginId, author) {
 			<div className="write-review">
 				<a
 					style={{ textDecoration: "none", display: "flex" }}
-					href={Url.join(constants.API_BASE, `../plugin/${pluginId}/comments`)}
+					href={Url.join(config.API_BASE, `../plugin/${pluginId}/comments`)}
 				>
 					<span className="icon edit"></span>
 					<span className="title">Review</span>
@@ -424,7 +481,7 @@ async function showReviews(pluginId, author) {
 
 	try {
 		const reviews = await fsOperation(
-			constants.API_BASE,
+			config.API_BASE,
 			`/comments/${pluginId}`,
 		).readFile("json");
 		if (!reviews.length) {
@@ -499,7 +556,7 @@ function Review({
 	author,
 	author_reply: authorReply,
 }) {
-	let dp = Url.join(constants.API_BASE, `../user.png`);
+	let dp = Url.join(config.API_BASE, `../user.png`);
 	let voteImage = Ref();
 	let review = Ref();
 
@@ -508,9 +565,9 @@ function Review({
 	}
 
 	if (vote === 1) {
-		voteImage.style.backgroundImage = `url(${Url.join(constants.API_BASE, `../thumbs-up.gif`)})`;
+		voteImage.style.backgroundImage = `url(${Url.join(config.API_BASE, `../thumbs-up.gif`)})`;
 	} else if (vote === -1) {
-		voteImage.style.backgroundImage = `url(${Url.join(constants.API_BASE, `../thumbs-down.gif`)})`;
+		voteImage.style.backgroundImage = `url(${Url.join(config.API_BASE, `../thumbs-down.gif`)})`;
 	}
 
 	if (authorReply) {

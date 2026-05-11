@@ -39,18 +39,15 @@
 	},
 	"files": {
 		"includes": [
-			"**/src/**/*",
-			"**/utils/**/*.js",
-			"!**/www/build/**/*",
-			"**/www/res/**/*.css",
-			"**/src/plugins/terminal/**",
-			"!**/ace-builds",
-			"!**/src/plugins/**/*",
-			"!**/plugins/**/*",
-			"!**/hooks/**/*",
-			"!**/fastlane/**/*",
-			"!**/res/**/*",
-			"!**/platforms/**/*"
+			"src/**/*.js",
+			"utils/**/*.js",
+			"src/lang/**/*.json",
+			"!src/plugins/**/*.js",
+			"!www/**/*",
+			"!plugins/**/*",
+			"!hooks/**/*",
+			"!fastlane/**/*",
+			"!platforms/**/*"
 		]
 	}
 }

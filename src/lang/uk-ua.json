@@ -724,8 +724,11 @@
 	"close tabs to right": "Закрити праворуч",
 	"close tabs to left": "Закрити ліворуч",
 	"close other tabs": "Закрити інші",
+	"plugin-not-supported": "Плагін не підтримується",
+	"plugin-not-supported-info": "Плагін було створено для старішої версії Acode.",
 	"auto close tags": "Автоматичне закриття тегів",
 	"settings-info-editor-auto-close-tags": "Автоматично вставляти закриваючі теги у файли шаблонів HTML, XML, Vue, Angular та PHP.",
 	"ui zoom": "Масштабування інтерфейсу користувача",
-	"settings-info-app-ui-zoom": "Масштабування тексту в інтерфейсі Acode."
+	"settings-info-app-ui-zoom": "Масштабування тексту в інтерфейсі Acode.",
+	"login-to-view": "Будь ласка, увійдіть для перегляду цього..."
 }

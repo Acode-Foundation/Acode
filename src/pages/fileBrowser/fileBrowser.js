@@ -14,7 +14,7 @@ import select from "dialogs/select";
 import JSZip from "jszip";
 import actionStack from "lib/actionStack";
 import checkFiles from "lib/checkFiles";
-import constants from "lib/constants";
+import config from "lib/config";
 import openFolder from "lib/openFolder";
 import projects from "lib/projects";
 import recents from "lib/recents";
@@ -762,7 +762,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 			async function contextMenuHandler() {
 				if (appSettings.value.vibrateOnTap) {
-					navigator.vibrate(constants.VIBRATION_TIME);
+					navigator.vibrate(config.VIBRATION_TIME);
 				}
 				if ($el.getAttribute("open-doc") === "true") return;
 
@@ -804,7 +804,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 					case "rename": {
 						let newname = await prompt(strings.rename, name, "text", {
-							match: constants.FILE_NAME_REGEX,
+							match: config.FILE_NAME_REGEX,
 						});
 
 						newname = helpers.fixFilename(newname);
@@ -1261,7 +1261,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				}
 
 				let entryName = await prompt(title, "", "filename", {
-					match: constants.FILE_NAME_REGEX,
+					match: config.FILE_NAME_REGEX,
 					required: true,
 				});
 
@@ -1290,7 +1290,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				loader.destroy();
 				projectName = await prompt(strings["project name"], project, "text", {
 					required: true,
-					match: constants.FILE_NAME_REGEX,
+					match: config.FILE_NAME_REGEX,
 				});
 
 				if (!projectName) return;

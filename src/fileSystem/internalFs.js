@@ -1,5 +1,5 @@
 import fsOperation from "fileSystem";
-import ajax from "@deadlyjack/ajax";
+import ajax from "lib/ajax";
 import { decode, encode } from "utils/encodings";
 import helpers from "utils/helpers";
 import Url from "utils/Url";

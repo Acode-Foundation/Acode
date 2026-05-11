@@ -1,4 +1,9 @@
-export default {
+const BASE_URL = "https://acode.app";
+let hasPro = false;
+
+const config = {
+	BASE_URL,
+	SUPPORTED_EDITOR: "cm",
 	FILE_NAME_REGEX: /^((?![:<>"\\\|\?\*]).)*$/,
 	FONT_SIZE: /^[0-9\.]{1,3}(px|rem|em|pt|mm|pc|in)$/,
 	DEFAULT_FILE_SESSION: "default-session",
@@ -16,21 +21,31 @@ export default {
 	CUSTOM_THEME: 'body[theme="custom"]',
 	FEEDBACK_EMAIL: "acode@foxdebug.com",
 	ERUDA_CDN: "https://cdn.jsdelivr.net/npm/eruda",
+
 	get PLAY_STORE_URL() {
 		return `https://play.google.com/store/apps/details?id=${BuildInfo.packageName}`;
 	},
-	API_BASE: "https://acode.app/api",
-	// API_BASE: 'https://192.168.0.102:3001/api', // test api
+
+	API_BASE: `${BASE_URL}/api`,
 	SKU_LIST: ["crystal", "bronze", "silver", "gold", "platinum", "titanium"],
 	LOG_FILE_NAME: "Acode.log",
 
 	// Social Links
 	DOCS_URL: "https://docs.acode.app",
-	WEBSITE_URL: "https://acode.app",
 	GITHUB_URL: "https://github.com/Acode-Foundation/Acode",
 	TELEGRAM_URL: "https://t.me/foxdebug_acode",
 	DISCORD_URL: "https://discord.gg/nDqZsh7Rqz",
 	TWITTER_URL: "https://x.com/foxbiz_io",
 	INSTAGRAM_URL: "https://www.instagram.com/foxbiz.io/",
 	FOXBIZ_URL: "https://foxbiz.io",
+
+	get HAS_PRO() {
+		return hasPro;
+	},
+
+	set HAS_PRO(value) {
+		hasPro = value;
+	},
 };
+
+export default config;
