@@ -209,6 +209,7 @@
 	"app settings": "Mga settings sa app",
 	"disable in-app-browser caching": "I-disable ang in-app-browser caching",
 	"copied to clipboard": "Kinopya sa clipboard",
+	"clipboard not available": "Clipboard is not available.",
 	"remember opened files": "Tandaan ang mga nabuksan na file",
 	"remember opened folders": "Tandaan ang mga nabuksan na folder",
 	"no suggestions": "Walang suggestions",

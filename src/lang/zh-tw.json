@@ -209,6 +209,7 @@
 	"app settings": "應用程式設定",
 	"disable in-app-browser caching": "關閉內建瀏覽器快取",
 	"copied to clipboard": "已複製到剪貼簿",
+	"clipboard not available": "Clipboard is not available.",
 	"remember opened files": "記住開啟過的檔案",
 	"remember opened folders": "記住開啟過的資料夾",
 	"no suggestions": "不顯示建議",

@@ -209,6 +209,7 @@
 	"app settings": "Настройки приложения",
 	"disable in-app-browser caching": "Отключить кэширование во встроенном браузере",
 	"copied to clipboard": "Скопировано в буфер обмена",
+	"clipboard not available": "Clipboard is not available.",
 	"remember opened files": "Запоминать открытые файлы",
 	"remember opened folders": "Запоминать открытые папки",
 	"no suggestions": "Откл. подсказок",

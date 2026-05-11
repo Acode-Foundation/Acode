@@ -209,6 +209,7 @@
 	"app settings": "Nastavení aplikace",
 	"disable in-app-browser caching": "Zakázat ukládání do mezipaměti v prohlížeči aplikace",
 	"copied to clipboard": "Zkopírováno do schránky",
+	"clipboard not available": "Clipboard is not available.",
 	"remember opened files": "Zapamatovat si otevřené soubory",
 	"remember opened folders": "Zapamatovat si otevřené složky",
 	"no suggestions": "Žádné návrhy",

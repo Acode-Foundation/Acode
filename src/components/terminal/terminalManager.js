@@ -670,7 +670,7 @@ class TerminalManager {
 
 		let lastWidth = 0;
 		let lastHeight = 0;
-		const resizeObserver = new ResizeObserver((entries) => {
+		const handleResize = (entries) => {
 			const now = Date.now();
 			const entry = entries && entries[0];
 			const cr = entry?.contentRect;
@@ -706,15 +706,30 @@ class TerminalManager {
 					console.error(`Resize error for terminal ${terminalId}:`, error);
 				}
 			}, RESIZE_DEBOUNCE);
-		});
+		};
+
+		const resizeObserver =
+			typeof ResizeObserver === "function"
+				? new ResizeObserver(handleResize)
+				: null;
+		let resizeFallbackInterval = null;
 
 		// Wait for the terminal container to be available, then observe it
 		setTimeout(() => {
 			const containerElement = terminalFile.content;
 			if (containerElement && containerElement instanceof Element) {
-				resizeObserver.observe(containerElement);
-				// store observer so we can disconnect on close
-				terminalFile._resizeObserver = resizeObserver;
+				if (resizeObserver) {
+					resizeObserver.observe(containerElement);
+					// store observer so we can disconnect on close
+					terminalFile._resizeObserver = resizeObserver;
+				} else {
+					resizeFallbackInterval = setInterval(() => handleResize(), 500);
+					terminalFile._resizeObserver = {
+						disconnect() {
+							clearInterval(resizeFallbackInterval);
+						},
+					};
+				}
 			} else {
 				console.warn("Terminal container not available for ResizeObserver");
 			}

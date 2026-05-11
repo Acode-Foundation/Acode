@@ -209,6 +209,7 @@
 	"app settings": "App-Einstellungen",
 	"disable in-app-browser caching": "In-App-Browser-Cache abschalten",
 	"copied to clipboard": "In die Zwischenablage kopiert",
+	"clipboard not available": "Clipboard is not available.",
 	"remember opened files": "Geöffnete Dateien merken",
 	"remember opened folders": "Geöffnete Ordner merken",
 	"no suggestions": "Keine Vorschläge",

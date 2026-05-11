@@ -830,7 +830,18 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 						break;
 
 					case "copyuri":
-						navigator.clipboard.writeText(url);
+						if (typeof cordova !== "undefined" && cordova?.plugins?.clipboard) {
+							cordova.plugins.clipboard.copy(url);
+						} else if (navigator.clipboard?.writeText) {
+							await navigator.clipboard.writeText(url);
+						} else {
+							alert(
+								strings.error,
+								strings["clipboard not available"] ||
+									"Clipboard is not available.",
+							);
+							break;
+						}
 						alert(strings.success, strings["copied to clipboard"]);
 						break;
 

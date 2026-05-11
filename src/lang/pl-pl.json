@@ -209,6 +209,7 @@
 	"app settings": "Ustawienia aplikacji",
 	"disable in-app-browser caching": "Wyłącz cache w wbudowanej przeglądarce",
 	"copied to clipboard": "Skopiowano do schowka",
+	"clipboard not available": "Clipboard is not available.",
 	"remember opened files": "Zapamiętaj otwarte pliki",
 	"remember opened folders": "Zapamiętaj otwarte foldery",
 	"no suggestions": "Bez sugestii",
