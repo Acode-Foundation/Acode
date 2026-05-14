@@ -728,7 +728,7 @@
 	"settings-info-editor-auto-close-tags": "在 HTML、XML、Vue、Angular 和 PHP 模板文件中自動插入閉合標籤。",
 	"ui zoom": "UI 縮放",
 	"settings-info-app-ui-zoom": "縮放所有 Acode 介面文字。",
-	"plugin-not-supported": "Plugin not supported",
-	"plugin-not-supported-info": "The plugin was created for older version of Acode.",
-	"login-to-view": "Please login to view this..."
+	"plugin-not-supported": "不支持該插件",
+	"plugin-not-supported-info": "該插件僅適用於舊版本的 Acode。",
+	"login-to-view": "請先登錄以查看此內容……"
 }
