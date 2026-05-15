@@ -245,15 +245,22 @@ public class System extends CordovaPlugin {
             case "shareText":
                 String text = args.getString(0);
 
-                Intent shareIntent = new Intent(Intent.ACTION_SEND);
-                shareIntent.setType("text/plain");
-                shareIntent.putExtra(Intent.EXTRA_TEXT, text);
+                cordova.getActivity().runOnUiThread(() -> {
+                    try {
+                        Intent shareIntent = new Intent(Intent.ACTION_SEND);
+                        shareIntent.setType("text/plain");
+                        shareIntent.putExtra(Intent.EXTRA_TEXT, text);
 
-                cordova.getActivity().startActivity(
-                    Intent.createChooser(shareIntent, "Share")
-                );
+                        cordova.getActivity().startActivity(
+                            Intent.createChooser(shareIntent, "Share")
+                        );
 
-                callbackContext.success();
+                        callbackContext.success();
+
+                    } catch (Exception e) {
+                        callbackContext.error(e.getMessage());
+                    }
+                });
                 return true;
             case "set-ui-theme":
                 this.cordova.getActivity()
