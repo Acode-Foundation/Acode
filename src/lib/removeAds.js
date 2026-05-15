@@ -1,4 +1,5 @@
 import purchaseListener from "handlers/purchase";
+import config from "./config.js";
 import { hideAd } from "./startAd.js";
 
 /**
@@ -27,7 +28,7 @@ export default function removeAds() {
 			resolve(null);
 			hideAd(true);
 			localStorage.setItem("acode_pro", "true");
-			window.IS_FREE_VERSION = false;
+			config.HAS_PRO = true;
 			toast(strings["thank you :)"]);
 		}
 	});

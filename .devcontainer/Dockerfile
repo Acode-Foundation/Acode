@@ -1,11 +1,11 @@
-# Acode Development Container - Standalone Docker Build
-# 
-# This Dockerfile is for MANUAL Docker builds (docker build/run).
-# Usage:
-#   docker build -t acode-dev .devcontainer/
+# Acode Development Container
+#
+# Devcontainer usage: automatic via devcontainer.json
+# Standalone usage:
+#   docker build --target standalone -t acode-dev .devcontainer/
 #   docker run -it -v $(pwd):/workspaces/acode acode-dev
 
-FROM mcr.microsoft.com/devcontainers/java:1-21-bullseye
+FROM mcr.microsoft.com/devcontainers/java:1-21-bullseye AS base
 
 ARG ANDROID_PLATFORM=36
 ARG ANDROID_BUILD_TOOLS=36.0.0
@@ -13,10 +13,7 @@ ARG CMDLINE_TOOLS_VERSION=11076708
 ARG NODE_VERSION=22
 ARG GRADLE_VERSION=8.11
 
-ENV ANDROID_HOME=/opt/android-sdk
-ENV ANDROID_SDK_ROOT=/opt/android-sdk
 ENV GRADLE_HOME=/opt/gradle
-ENV PATH="${PATH}:${ANDROID_HOME}/cmdline-tools/latest/bin:${ANDROID_HOME}/platform-tools:${GRADLE_HOME}/bin"
 
 # removes broken yarn repo present in base image
 RUN rm -f /etc/apt/sources.list.d/yarn.list
@@ -33,17 +30,26 @@ RUN wget -q "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-
     && rm /tmp/gradle.zip \
     && ln -s /opt/gradle-${GRADLE_VERSION} ${GRADLE_HOME}
 
-# Install fnm and Node.js
-# Not required, mostly. When dev containers are used. 
-# ENV FNM_DIR=/usr/local/fnm
-# ENV PATH="${FNM_DIR}:${PATH}"
-# RUN curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir "${FNM_DIR}" --skip-shell \
-#    && eval "$(${FNM_DIR}/fnm env)" \
-#    && fnm install ${NODE_VERSION} \
-#    && fnm default ${NODE_VERSION} \
-#    && npm install -g pnpm
+ENV PATH="${PATH}:${GRADLE_HOME}/bin"
 
-# ENV PATH="${FNM_DIR}/aliases/default/bin:${PATH}"
+WORKDIR /workspaces/acode
+
+LABEL org.opencontainers.image.authors="Acode Foundation <https://github.com/Acode-Foundation/Acode>"
+LABEL description="Development environment for building Acode - Code Editor for Android"
+
+
+# Devcontainer stage
+# Android SDK and Node handled by devcontainer features.
+FROM base AS devcontainer
+
+
+# Standalone stage 
+# Includes Android SDK and Node/pnpm for plain docker build/run usage.
+FROM base AS standalone
+
+ENV ANDROID_HOME=/usr/local/lib/android
+ENV ANDROID_SDK_ROOT=/usr/local/lib/android
+ENV PATH="${PATH}:${ANDROID_HOME}/cmdline-tools/latest/bin:${ANDROID_HOME}/platform-tools:${ANDROID_HOME}/build-tools/${ANDROID_BUILD_TOOLS}"
 
 # Install Android SDK
 RUN mkdir -p ${ANDROID_HOME}/cmdline-tools \
@@ -59,7 +65,12 @@ RUN mkdir -p ${ANDROID_HOME}/cmdline-tools \
         "platforms;android-${ANDROID_PLATFORM}" \
         "build-tools;${ANDROID_BUILD_TOOLS}"
 
-WORKDIR /workspaces/acode
+# Install fnm and Node.js
+ENV FNM_DIR=/usr/local/fnm
+RUN curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir "${FNM_DIR}" --skip-shell \
+    && eval "$(${FNM_DIR}/fnm env)" \
+    && fnm install ${NODE_VERSION} \
+    && fnm default ${NODE_VERSION} \
+    && npm install -g pnpm
 
-LABEL maintainer="Acode Foundation"
-LABEL description="Development environment for building Acode - Code Editor for Android"
+ENV PATH="${FNM_DIR}/aliases/default/bin:${PATH}"

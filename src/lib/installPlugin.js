@@ -1,5 +1,4 @@
 import fsOperation from "fileSystem";
-import ajax from "@deadlyjack/ajax";
 import alert from "dialogs/alert";
 import confirm from "dialogs/confirm";
 import loader from "dialogs/loader";
@@ -7,7 +6,7 @@ import purchaseListener from "handlers/purchase";
 import JSZip from "jszip";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
-import constants from "./constants";
+import config from "./config";
 import InstallState from "./installState";
 import loadPlugin from "./loadPlugin";
 
@@ -50,7 +49,7 @@ export default async function installPlugin(
 
 	if (!/^(https?|file|content):/.test(id)) {
 		pluginUrl = Url.join(
-			constants.API_BASE,
+			config.API_BASE,
 			"plugin/download/",
 			`${id}?device=${device.uuid}`,
 		);
@@ -68,7 +67,7 @@ export default async function installPlugin(
 
 		let plugin;
 		if (
-			pluginUrl.includes(constants.API_BASE) ||
+			pluginUrl.includes(config.API_BASE) ||
 			pluginUrl.startsWith("file:") ||
 			pluginUrl.startsWith("content:")
 		) {
@@ -397,7 +396,7 @@ async function resolveDepsManifest(deps) {
 	const resolved = [];
 	for (const dependency of deps) {
 		const remoteDependency = await fsOperation(
-			constants.API_BASE,
+			config.API_BASE,
 			`plugin/${dependency}`,
 		)
 			.readFile("json")
@@ -467,12 +466,13 @@ async function resolveDep(manifest) {
 
 		async function onpurchase(e) {
 			const purchase = await getPurchase(product.productId);
-			await ajax.post(Url.join(constants.API_BASE, "plugin/order"), {
-				data: {
+			await fetch(Url.join(config.API_BASE, "plugin/order"), {
+				method: "POST",
+				body: JSON.stringify({
 					id: manifest.id,
 					token: purchase?.purchaseToken,
 					package: BuildInfo.packageName,
-				},
+				}),
 			});
 			purchaseToken = purchase?.purchaseToken;
 		}

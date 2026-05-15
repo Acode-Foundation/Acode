@@ -209,6 +209,7 @@
 	"app settings": "Alkalmazás-beállítások",
 	"disable in-app-browser caching": "Az alkalmazáson belüli böngésző gyorsítótárazásának letiltása",
 	"copied to clipboard": "Vágólapra másolva",
+	"clipboard not available": "A vágólap nem érhető el.",
 	"remember opened files": "Megnyitott fájlok megjegyzése",
 	"remember opened folders": "Megnyitott mappák megjegyzése",
 	"no suggestions": "Javaslatok nélkül",
@@ -726,5 +727,8 @@
 	"auto close tags": "Címkék automatikus lezárása",
 	"settings-info-editor-auto-close-tags": "HTML, XML, Vue, Angular és PHP-sablonfájlokban a záró címkék automatikus beillesztése.",
 	"ui zoom": "Felhasználói felület nagyítása",
-	"settings-info-app-ui-zoom": "Szövegek méretezése az Acode teljes felületén."
+	"settings-info-app-ui-zoom": "Szövegek méretezése az Acode teljes felületén.",
+	"plugin-not-supported": "A bővítmény nem támogatott",
+	"plugin-not-supported-info": "A bővítmény az Acode egy régebbi verziójához készült.",
+	"login-to-view": "Jelentkezzen be a megtekintéséhez…"
 }

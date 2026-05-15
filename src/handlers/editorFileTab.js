@@ -1,4 +1,4 @@
-import constants from "lib/constants";
+import config from "lib/config";
 import settings from "lib/settings";
 
 const opts = { passive: false };
@@ -82,7 +82,7 @@ export default function startDrag(e) {
 	}
 
 	if (settings.value.vibrateOnTap) {
-		navigator.vibrate(constants.VIBRATION_TIME);
+		navigator.vibrate(config.VIBRATION_TIME);
 	}
 
 	$tab = e.target;

@@ -11,8 +11,37 @@ const { execSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 const PLATFORM_FILES = [".DS_Store"];
+const PACKAGE_MANAGERS = new Set(["bun", "npm", "pnpm", "yarn"]);
 
-execSync("npm install", { stdio: "inherit" });
+function getPackageManager() {
+	const userAgent = process.env.npm_config_user_agent;
+	const packageManager = userAgent?.split("/")[0];
+
+	if (PACKAGE_MANAGERS.has(packageManager)) {
+		return packageManager;
+	}
+
+	return "npm";
+}
+
+function installDependencies() {
+	const packageManager = getPackageManager();
+
+	try {
+		execSync(`${packageManager} install`, { stdio: "inherit" });
+	} catch (error) {
+		if (packageManager === "npm") {
+			throw error;
+		}
+
+		console.warn(
+			`Failed to install dependencies with ${packageManager}. Falling back to npm.`,
+		);
+		execSync("npm install", { stdio: "inherit" });
+	}
+}
+
+installDependencies();
 try {
 	execSync("cordova platform add android", { stdio: "inherit" });
 } catch (error) {

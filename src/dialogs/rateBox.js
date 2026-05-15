@@ -1,4 +1,4 @@
-import constants from "lib/constants";
+import config from "lib/config";
 import template from "views/rating.hbs";
 import box from "./box";
 
@@ -34,7 +34,7 @@ function rateBox() {
 				const stars = getStars(val);
 				const subject = "feedback - Acode editor";
 				const textBody = stars + "</br>%0A" + getFeedbackBody("</br>%0A");
-				const email = constants.FEEDBACK_EMAIL;
+				const email = config.FEEDBACK_EMAIL;
 				system.openInBrowser(
 					`mailto:${email}?subject=${subject}&body=${textBody}`,
 				);

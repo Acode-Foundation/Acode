@@ -5,7 +5,6 @@ declare const DATA_STORAGE: string;
 declare const CACHE_STORAGE: string;
 declare const PLUGIN_DIR: string;
 declare const KEYBINDING_FILE: string;
-declare const IS_FREE_VERSION: string;
 declare const ANDROID_SDK_INT: number;
 declare const DOES_SUPPORT_THEME: boolean;
 declare const acode: object;
@@ -16,7 +15,6 @@ interface Window {
 	CACHE_STORAGE: string;
 	PLUGIN_DIR: string;
 	KEYBINDING_FILE: string;
-	IS_FREE_VERSION: string;
 	ANDROID_SDK_INT: number;
 	DOES_SUPPORT_THEME: boolean;
 	acode: object;

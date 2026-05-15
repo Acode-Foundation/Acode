@@ -16,7 +16,7 @@ import helpers from "utils/helpers";
 import Path from "utils/Path";
 import Uri from "utils/Uri";
 import Url from "utils/Url";
-import constants from "./constants";
+import config from "./config";
 import * as FileList from "./fileList";
 import openFile from "./openFile";
 import recents from "./recents";
@@ -331,7 +331,7 @@ function handleItems(e) {
  */
 async function handleContextmenu(type, url, name, $target) {
 	if (appSettings.value.vibrateOnTap) {
-		navigator.vibrate(constants.VIBRATION_TIME);
+		navigator.vibrate(config.VIBRATION_TIME);
 	}
 	const { clipBoard, $node } = openFolder.find(url);
 	const cancel = `${strings.cancel}${clipBoard ? ` (${strings[clipBoard.action]})` : ""}`;
@@ -632,7 +632,7 @@ function execOperation(type, action, url, $target, name) {
 			return;
 		}
 		let newName = await prompt(strings.rename, name, "text", {
-			match: constants.FILE_NAME_REGEX,
+			match: config.FILE_NAME_REGEX,
 			required: true,
 		});
 
@@ -683,7 +683,7 @@ function execOperation(type, action, url, $target, name) {
 				: strings["enter folder name"];
 
 		let newName = await prompt(msg, "", "text", {
-			match: constants.FILE_NAME_REGEX,
+			match: config.FILE_NAME_REGEX,
 			required: true,
 		});
 

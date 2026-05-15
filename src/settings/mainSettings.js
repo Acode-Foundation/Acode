@@ -2,6 +2,7 @@ import settingsPage from "components/settingsPage";
 import confirm from "dialogs/confirm";
 import rateBox from "dialogs/rateBox";
 import actionStack from "lib/actionStack";
+import config from "lib/config";
 import openFile from "lib/openFile";
 import removeAds from "lib/removeAds";
 import appSettings from "lib/settings";
@@ -159,7 +160,7 @@ export default function mainSettings() {
 		},
 	];
 
-	if (IS_FREE_VERSION) {
+	if (!config.HAS_PRO) {
 		items.push({
 			key: "adRewards",
 			text: strings["earn ad-free time"],

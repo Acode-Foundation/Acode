@@ -1,6 +1,7 @@
 name: Bug Report
 description: |
   Use this template for bug reports.
+type: Bug
 labels: []
 body:
   - type: checkboxes

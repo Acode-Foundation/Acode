@@ -27,6 +27,9 @@ module.exports = {
   setExec: function (path, executable, success, error) {
     cordova.exec(success, error, 'System', 'setExec', [path, String(executable)]);
   },
+  getInstaller: function (success, error) {
+    cordova.exec(success, error, 'System', 'getInstaller', []);
+  },
 
 
   getNativeLibraryPath: function (success, error) {

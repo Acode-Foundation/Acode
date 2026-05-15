@@ -13,7 +13,7 @@ import helpers from "utils/helpers";
 import Url from "utils/Url";
 import $_console from "views/console.hbs";
 import $_markdown from "views/markdown.hbs";
-import constants from "./constants";
+import config from "./config";
 import EditorFile from "./editorFile";
 import openFolder from "./openFolder";
 import appSettings from "./settings";
@@ -142,7 +142,7 @@ async function run(
 		target = "inapp";
 		filename = "console.html";
 		pathName = `${ASSETS_DIRECTORY}www/`;
-		port = constants.CONSOLE_PORT;
+		port = config.CONSOLE_PORT;
 	}
 
 	function start() {

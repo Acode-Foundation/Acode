@@ -31,6 +31,10 @@
       #splash {
         display: none;
         position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
         inset: 0;
         z-index: 999999;
 
@@ -74,12 +78,80 @@
     <!-- Set theme color BEFORE UI renders -->
     <script>
       (function () {
+        var MIN_WEBVIEW_MAJOR = 84;
         var color = localStorage.getItem("__primary_color");
         var bg = color || "#20202c";
 
         document.documentElement.style.setProperty("--bg-color", bg);
         document.documentElement.style.backgroundColor = bg;
         document.body && (document.body.style.backgroundColor = bg);
+
+        function getWebViewMajor() {
+          var match = navigator.userAgent.match(/(?:Chrome|CriOS)\/(\d+)/);
+          return match ? Number(match[1]) : 0;
+        }
+
+        var pendingStartupMessage = "";
+        var hasPendingStartupMessageListener = false;
+
+        function isStartupLoading() {
+          return !document.body || document.body.classList.contains("loading");
+        }
+
+        function applyStartupMessage() {
+          hasPendingStartupMessageListener = false;
+          if (document.body && isStartupLoading()) {
+            document.body.setAttribute("data-small-msg", pendingStartupMessage);
+          }
+        }
+
+        function setStartupMessage(message) {
+          pendingStartupMessage = message;
+
+          if (document.body) {
+            applyStartupMessage();
+          } else if (!hasPendingStartupMessageListener) {
+            hasPendingStartupMessageListener = true;
+            document.addEventListener("DOMContentLoaded", applyStartupMessage, {
+              once: true,
+            });
+          }
+        }
+
+        window.__ACODE_WEBVIEW_MAJOR__ = getWebViewMajor();
+        window.__ACODE_MIN_WEBVIEW_MAJOR__ = MIN_WEBVIEW_MAJOR;
+
+        if (
+          window.__ACODE_WEBVIEW_MAJOR__ &&
+          window.__ACODE_WEBVIEW_MAJOR__ < MIN_WEBVIEW_MAJOR
+        ) {
+          setStartupMessage(
+            "Your Android System WebView is old. Update Android System WebView or Chrome if Acode stays on this screen.",
+          );
+        }
+
+        function handleStartupError(event) {
+          if (!isStartupLoading()) return;
+          var message = event && event.message ? event.message : "Startup error";
+          setStartupMessage(
+            "Acode failed to start. Update Android System WebView or Chrome. " +
+              message,
+          );
+        }
+
+        function handleStartupRejection(event) {
+          if (!isStartupLoading()) return;
+          var reason = event && event.reason;
+          var message =
+            reason && reason.message ? reason.message : "Startup promise failed";
+          setStartupMessage(
+            "Acode failed to start. Update Android System WebView or Chrome. " +
+              message,
+          );
+        }
+
+        window.addEventListener("error", handleStartupError);
+        window.addEventListener("unhandledrejection", handleStartupRejection);
       })();
     </script>
 

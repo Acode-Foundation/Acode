@@ -208,8 +208,8 @@
 	"normal": "Звычайны",
 	"app settings": "Налады праграмы",
 	"disable in-app-browser caching": "Адключыць кэшаванне ў праграмным сродку агляду",
-	"Should use Current File For preview instead of default (index.html)": "Для папярэдняга прагляду варта выкарыстоўваць бягучы файл замест прадвызначанага (index.html)",
 	"copied to clipboard": "Скапіявана ў буфер абмену",
+	"clipboard not available": "Clipboard is not available.",
 	"remember opened files": "Запамінаць адкрытыя файлы",
 	"remember opened folders": "Запамінаць адкрытыя каталогі",
 	"no suggestions": "Няма прапаноў",
@@ -727,5 +727,8 @@
 	"auto close tags": "Auto close tags",
 	"settings-info-editor-auto-close-tags": "Automatically insert closing tags in HTML, XML, Vue, Angular, and PHP template files.",
 	"ui zoom": "UI zoom",
-	"settings-info-app-ui-zoom": "Scale text across the Acode interface."
+	"settings-info-app-ui-zoom": "Scale text across the Acode interface.",
+	"plugin-not-supported": "Plugin not supported",
+	"plugin-not-supported-info": "The plugin was created for older version of Acode.",
+	"login-to-view": "Please login to view this..."
 }

@@ -209,6 +209,7 @@
 	"app settings": "應用設置",
 	"disable in-app-browser caching": "關閉內置瀏覽器緩存",
 	"copied to clipboard": "復製到剪貼板",
+	"clipboard not available": "Clipboard is not available.",
 	"remember opened files": "記住打開過的文件",
 	"remember opened folders": "記住打開過的文件夾",
 	"no suggestions": "不顯示建議",
@@ -723,8 +724,11 @@
 	"close tabs to right": "關閉右側標籤頁",
 	"close tabs to left": "關閉左側標籤頁",
 	"close other tabs": "關閉其他標籤頁",
-	"auto close tags": "Auto close tags",
-	"settings-info-editor-auto-close-tags": "Automatically insert closing tags in HTML, XML, Vue, Angular, and PHP template files.",
-	"ui zoom": "UI zoom",
-	"settings-info-app-ui-zoom": "Scale text across the Acode interface."
+	"auto close tags": "自動補全閉合標籤",
+	"settings-info-editor-auto-close-tags": "在 HTML、XML、Vue、Angular 和 PHP 模板文件中自動插入閉合標籤。",
+	"ui zoom": "UI 縮放",
+	"settings-info-app-ui-zoom": "縮放所有 Acode 介面文字。",
+	"plugin-not-supported": "不支持該插件",
+	"plugin-not-supported-info": "該插件僅適用於舊版本的 Acode。",
+	"login-to-view": "請先登錄以查看此內容……"
 }

@@ -1,5 +1,5 @@
 import settingsPage from "components/settingsPage";
-import constants from "lib/constants";
+import config from "lib/config";
 import fonts from "lib/fonts";
 import appSettings from "lib/settings";
 import scrollSettings from "./scrollSettings";
@@ -40,7 +40,7 @@ export default function editorSettings() {
 			prompt: strings["font size"],
 			promptOptions: {
 				required: true,
-				match: constants.FONT_SIZE,
+				match: config.FONT_SIZE,
 			},
 			info: strings["settings-info-editor-font-size"],
 			category: categories.textLayout,

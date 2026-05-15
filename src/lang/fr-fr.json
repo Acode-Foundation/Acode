@@ -209,6 +209,7 @@
 	"app settings": "Paramètres de l'application",
 	"disable in-app-browser caching": "Désactiver la mise en cache dans le navigateur de l'application",
 	"copied to clipboard": "Copié dans le presse-papiers",
+	"clipboard not available": "Clipboard is not available.",
 	"remember opened files": "Mémoriser les fichiers ouverts",
 	"remember opened folders": "Mémoriser les dossiers ouverts",
 	"no suggestions": "Aucune suggestion",
@@ -726,5 +727,8 @@
 	"auto close tags": "Auto close tags",
 	"settings-info-editor-auto-close-tags": "Automatically insert closing tags in HTML, XML, Vue, Angular, and PHP template files.",
 	"ui zoom": "UI zoom",
-	"settings-info-app-ui-zoom": "Scale text across the Acode interface."
+	"settings-info-app-ui-zoom": "Scale text across the Acode interface.",
+	"plugin-not-supported": "Plugin not supported",
+	"plugin-not-supported-info": "The plugin was created for older version of Acode.",
+	"login-to-view": "Please login to view this..."
 }

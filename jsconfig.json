@@ -1,9 +1,8 @@
 {
   "exclude": ["**/node_modules", "**/platforms", "**/www", "www/js/ace/**/*"],
   "compilerOptions": {
-    "baseUrl": "./src",
     "paths": {
-      "*": ["*"]
+      "*": ["./src/*"]
     }
   },
   "include": ["src/**/*"],

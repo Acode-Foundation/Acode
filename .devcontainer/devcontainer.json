@@ -1,14 +1,17 @@
 {
   "name": "Acode Development",
   "build": {
-    "dockerfile": "Dockerfile"
+    "dockerfile": "Dockerfile",
+    "target": "devcontainer"
   },
 
   "containerEnv": {
     "JAVA_HOME": "/usr/local/openjdk-21"
   },
   "remoteEnv": {
-    "JAVA_HOME": "/usr/local/openjdk-21"
+    "JAVA_HOME": "/usr/local/openjdk-21",
+    "ANDROID_SDK_ROOT": "${containerEnv:ANDROID_HOME}",
+    "PATH": "${containerEnv:PATH}:${containerEnv:ANDROID_HOME}/build-tools/36.0.0"
   },
 
   "features": {
@@ -16,7 +19,7 @@
       "platform": "36",
       "build_tools": "36.0.0"
     },
-    "ghcr.io/devcontainers/features/node:1": {
+    "ghcr.io/devcontainers/features/node:2.0": {
       "nodeGypDependencies": false,
       "installYarnUsingApt": false,
       "version": "lts",
