@@ -436,6 +436,14 @@ function registerCoreCommands() {
 		requiresView: true,
 		run: pasteCommand,
 	});
+
+	addCommand({
+		name: "share",
+		description: "Share",
+		readOnly: false,
+		requiresView: true,
+		run: shareCommand,
+	});
 	addCommand({
 		name: "problems",
 		description: "Show errors and warnings",
@@ -1290,6 +1298,29 @@ function pasteCommand(view) {
 			})),
 		);
 	});
+	return true;
+}
+
+function shareCommand(view) {
+	const resolvedView = resolveView(view);
+	if (!resolvedView) return false;
+	const { state } = resolvedView;
+	const ranges = state.selection.ranges;
+	const segments = [];
+	let changes = [];
+	ranges.forEach((range) => {
+		if (range.empty) {
+			const line = state.doc.lineAt(range.head);
+			segments.push(state.doc.sliceString(line.from, line.to));
+			changes.push({ from: line.from, to: line.to, insert: "" });
+			return;
+		}
+		segments.push(state.doc.sliceString(range.from, range.to));
+		changes.push({ from: range.from, to: range.to, insert: "" });
+	});
+	const textToShare = segments.join("\n");
+	system.shareText(textToShare,console.log,console.error);
+	console.log("Sharing text:", textToShare);
 	return true;
 }
 
