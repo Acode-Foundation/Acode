@@ -633,14 +633,14 @@ public class System extends CordovaPlugin {
 
     private void sendLogToJavaScript(String level, String message) {
         final String js =
-            "window.log('" + level + "', " + JSONObject.quote(message) + ");";
+            "window.log(" + JSONObject.quote(level) + ", " + JSONObject.quote(message) + ");";
         cordova
             .getActivity()
             .runOnUiThread(
                 new Runnable() {
                     @Override
                     public void run() {
-                        webView.loadUrl("javascript:" + js);
+                        webView.evaluateJavascript(js, null);
                     }
                 }
             );
