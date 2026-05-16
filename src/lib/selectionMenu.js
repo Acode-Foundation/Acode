@@ -43,6 +43,12 @@ export default function selectionMenu() {
 			true,
 		),
 		item(
+			() => exec("share"),
+			<span className="icon share"></span>,
+			"selected",
+			true,
+		),
+		item(
 			(color) => acode.exec("insert-color", color),
 			<span className="icon color_lenspalette"></span>,
 			"all",

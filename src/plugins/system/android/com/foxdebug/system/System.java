@@ -114,6 +114,13 @@ import android.content.pm.InstallSourceInfo;
 import android.content.pm.PackageManager;
 import android.os.Build;
 
+import android.content.Intent;
+
+import org.apache.cordova.CallbackContext;
+import org.apache.cordova.CordovaPlugin;
+
+import org.json.JSONArray;
+import org.json.JSONException;
 
 
 public class System extends CordovaPlugin {
@@ -233,6 +240,27 @@ public class System extends CordovaPlugin {
                 return true;
             case "set-intent-handler":
                 setIntentHandler(callbackContext);
+                return true;
+
+            case "shareText":
+                String text = args.getString(0);
+
+                cordova.getActivity().runOnUiThread(() -> {
+                    try {
+                        Intent shareIntent = new Intent(Intent.ACTION_SEND);
+                        shareIntent.setType("text/plain");
+                        shareIntent.putExtra(Intent.EXTRA_TEXT, text);
+
+                        cordova.getActivity().startActivity(
+                            Intent.createChooser(shareIntent, "Share")
+                        );
+
+                        callbackContext.success();
+
+                    } catch (Exception e) {
+                        callbackContext.error(e.getMessage());
+                    }
+                });
                 return true;
             case "set-ui-theme":
                 this.cordova.getActivity()

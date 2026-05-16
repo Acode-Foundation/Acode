@@ -436,6 +436,14 @@ function registerCoreCommands() {
 		requiresView: true,
 		run: pasteCommand,
 	});
+
+	addCommand({
+		name: "share",
+		description: "Share",
+		readOnly: true,
+		requiresView: true,
+		run: shareCommand,
+	});
 	addCommand({
 		name: "problems",
 		description: "Show errors and warnings",
@@ -1290,6 +1298,31 @@ function pasteCommand(view) {
 			})),
 		);
 	});
+	return true;
+}
+
+function shareCommand(view) {
+	const resolvedView = resolveView(view);
+	if (!resolvedView) return false;
+
+	const { state } = resolvedView;
+	const ranges = state.selection.ranges;
+	const segments = [];
+
+	ranges.forEach((range) => {
+		if (range.empty) {
+			const line = state.doc.lineAt(range.head);
+			segments.push(state.doc.sliceString(line.from, line.to));
+			return;
+		}
+
+		segments.push(state.doc.sliceString(range.from, range.to));
+	});
+
+	const textToShare = segments.join("\n");
+
+	system.shareText(textToShare, console.log, console.error);
+
 	return true;
 }
 

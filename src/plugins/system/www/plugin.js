@@ -30,6 +30,9 @@ module.exports = {
   getInstaller: function (success, error) {
     cordova.exec(success, error, 'System', 'getInstaller', []);
   },
+  shareText: function (text, success, error) {
+    cordova.exec(success, error, 'System', 'shareText', [text]);
+  },
 
 
   getNativeLibraryPath: function (success, error) {
