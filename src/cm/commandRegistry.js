@@ -1321,11 +1321,7 @@ function shareCommand(view) {
 
 	const textToShare = segments.join("\n");
 
-	system.shareText(
-		textToShare,
-		console.log,
-		console.error
-	);
+	system.shareText(textToShare, console.log, console.error);
 
 	return true;
 }
