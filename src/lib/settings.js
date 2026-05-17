@@ -192,6 +192,7 @@ class Settings {
 			},
 			developerMode: false,
 			shiftClickSelection: false,
+			showShareButton: true,
 		};
 		this.value = structuredClone(this.#defaultSettings);
 	}

@@ -730,5 +730,7 @@
 	"settings-info-editor-auto-close-tags": "Автоматично вставляти закриваючі теги у файли шаблонів HTML, XML, Vue, Angular та PHP.",
 	"ui zoom": "Масштабування інтерфейсу користувача",
 	"settings-info-app-ui-zoom": "Масштабування тексту в інтерфейсі Acode.",
-	"login-to-view": "Будь ласка, увійдіть для перегляду цього..."
+	"login-to-view": "Будь ласка, увійдіть для перегляду цього...",
+	"show share button": "Show share button",
+	"settings-info-editor-show-share-button": "Show share button in selection menu."
 }

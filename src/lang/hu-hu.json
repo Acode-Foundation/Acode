@@ -730,5 +730,7 @@
 	"settings-info-app-ui-zoom": "Szövegek méretezése az Acode teljes felületén.",
 	"plugin-not-supported": "A bővítmény nem támogatott",
 	"plugin-not-supported-info": "A bővítmény az Acode egy régebbi verziójához készült.",
-	"login-to-view": "Jelentkezzen be a megtekintéséhez…"
+	"login-to-view": "Jelentkezzen be a megtekintéséhez…",
+	"show share button": "Show share button",
+	"settings-info-editor-show-share-button": "Show share button in selection menu."
 }

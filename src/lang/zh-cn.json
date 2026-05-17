@@ -730,5 +730,7 @@
 	"settings-info-app-ui-zoom": "缩放所有 Acode 界面文字。",
 	"plugin-not-supported": "不支持该插件",
 	"plugin-not-supported-info": "该插件仅适用于旧版本的 Acode。",
-	"login-to-view": "请先登录以查看此内容……"
+	"login-to-view": "请先登录以查看此内容……",
+	"show share button": "Show share button",
+	"settings-info-editor-show-share-button": "Show share button in selection menu."
 }
