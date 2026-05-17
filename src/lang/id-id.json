@@ -728,7 +728,7 @@
 	"settings-info-editor-auto-close-tags": "Menyisipkan tag penutup di berkas HTML, XML, Vue, Angular, dan templat PHP secara otomatis.",
 	"ui zoom": "Pembesaran UI",
 	"settings-info-app-ui-zoom": "Skalakan teks di seluruh antarmuka Acode.",
-	"plugin-not-supported": "Plugin not supported",
-	"plugin-not-supported-info": "The plugin was created for older version of Acode.",
-	"login-to-view": "Please login to view this..."
+	"plugin-not-supported": "Plugin tidak didukung",
+	"plugin-not-supported-info": "Plugin dibuat untuk versi lama dari Acode.",
+	"login-to-view": "Mohon login untuk melihat ini..."
 }
