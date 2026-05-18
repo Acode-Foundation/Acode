@@ -732,5 +732,8 @@
 	"plugin-not-supported-info": "The plugin was created for older version of Acode.",
 	"login-to-view": "Please login to view this...",
 	"show share button": "Show share button",
-	"settings-info-editor-show-share-button": "Show share button in selection menu."
+	"settings-info-editor-show-share-button": "Show share button in selection menu.",
+	"iap-plugin-purchase-warning": "Les plugins achetés ne sont pas synchronisés avec votre compte Acode. Utilisez le même compte Google dans le Play Store pour restaurer votre achat.",
+	"iap-pro-purchase-warning": "Cet achat ne sera pas synchronisé avec votre compte Acode. Utilisez le même compte Google dans le Play Store pour restaurer votre achat.",
+	"confirm-login": "Vous n'êtes pas connecté à Acode, vous connecter maintenant ?"
 }

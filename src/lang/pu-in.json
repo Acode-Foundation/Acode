@@ -732,5 +732,8 @@
 	"plugin-not-supported-info": "The plugin was created for older version of Acode.",
 	"login-to-view": "Please login to view this...",
 	"show share button": "Show share button",
-	"settings-info-editor-show-share-button": "Show share button in selection menu."
+	"settings-info-editor-show-share-button": "Show share button in selection menu.",
+	"iap-plugin-purchase-warning": "ਖਰੀਦੇ ਗਏ ਪਲੱਗਇਨ ਤੁਹਾਡੇ Acode ਖਾਤੇ ਨਾਲ ਸਿੰਕ ਨਹੀਂ ਹੁੰਦੇ। ਆਪਣੀ ਖਰੀਦ ਨੂੰ ਬਹਾਲ ਕਰਨ ਲਈ Play Store ਵਿੱਚ ਉਹੀ Google ਖਾਤਾ ਵਰਤੋ।",
+	"iap-pro-purchase-warning": "ਇਹ ਖਰੀਦ ਤੁਹਾਡੇ Acode ਖਾਤੇ ਨਾਲ ਸਿੰਕ ਨਹੀਂ ਹੋਵੇਗੀ। ਆਪਣੀ ਖਰੀਦ ਨੂੰ ਬਹਾਲ ਕਰਨ ਲਈ Play Store ਵਿੱਚ ਉਹੀ Google ਖਾਤਾ ਵਰਤੋ।",
+	"confirm-login": "ਤੁਸੀਂ Acode ਵਿੱਚ ਸਾਈਨ ਇਨ ਨਹੀਂ ਹੋ, ਹੁਣੇ ਸਾਈਨ ਇਨ ਕਰੋ?"
 }

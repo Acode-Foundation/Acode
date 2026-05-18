@@ -84,9 +84,16 @@ const exec = promisify(require("node:child_process").exec);
 							await exec(
 								`cordova plugin add cordova-plugin-consent@2.4.0 --save`,
 							);
-							await exec(
-								`cordova plugin add admob-plus-cordova@2.0.0-alpha.19 --save --variable APP_ID_ANDROID="${AD_APP_ID}" --variable PLAY_SERVICES_VERSION="23.2.0"`,
-							);
+
+							if (
+								!fs.existsSync(path.join(__dirname, "src/plugins/admob/lib"))
+							) {
+								await exec(
+									"cd src/plugins/admob && npm install && npm run build",
+								);
+							}
+
+							await exec("cordova plugin add src/plugins/admob");
 							console.log("DONE! Installing admob-plus-cordova");
 						} else {
 							console.log(`|--- Removing Admob ---|`);

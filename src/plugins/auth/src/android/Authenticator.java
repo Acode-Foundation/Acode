@@ -12,6 +12,7 @@ public class Authenticator extends CordovaPlugin {
     private static final String TAG = "AcodeAuth";
     private static final String PREFS_FILENAME = "acode_auth_secure";
     private static final String KEY_TOKEN = "auth_token";
+    private static final String PRO_PURCHASED = "pro_purchased";
     private static final String[] API_ORIGINS = {
         "https://acode.app",
         "https://dev.acode.app"

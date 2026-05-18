@@ -8,6 +8,7 @@ import purchaseListener from "handlers/purchase";
 import actionStack from "lib/actionStack";
 import auth, { loginEvents } from "lib/auth";
 import config from "lib/config";
+import customTab from "lib/customTab";
 import installPlugin from "lib/installPlugin";
 import InstallState from "lib/installState";
 import settings from "lib/settings";
@@ -264,12 +265,7 @@ export default async function PluginInclude(
 
 		try {
 			if (helpers.shouldAllowExternalPurchase()) {
-				CustomTabs.open(
-					`${config.BASE_URL}/plugin/${id}?callback=app`,
-					{ showTitle: true },
-					() => {},
-					() => {},
-				);
+				await customTab(`${config.BASE_URL}/plugin/${id}?callback=app`);
 				if (!purchaseHandlerSet) {
 					purchaseHandlerSet = true;
 					const handler = async ({ module, action, value }) => {
@@ -347,12 +343,7 @@ export default async function PluginInclude(
 		const oldText = $button.textContent;
 
 		if (helpers.shouldAllowExternalPurchase()) {
-			CustomTabs.open(
-				`${config.BASE_URL}/plugin/${id}?callback=app`,
-				{ showTitle: true },
-				() => {},
-				() => {},
-			);
+			await customTab(`${config.BASE_URL}/plugin/${id}?callback=app`);
 
 			if (!refundHandlerSet) {
 				refundHandlerSet = true;

@@ -1,7 +1,7 @@
 import fsOperation from "fileSystem";
 import tutorial from "components/tutorial";
 import alert from "dialogs/alert";
-import box from "dialogs/box";
+import dialog from "dialogs/dialog";
 import markdownIt from "markdown-it";
 import anchor from "markdown-it-anchor";
 import MarkdownItGitHubAlerts from "markdown-it-github-alerts";
@@ -92,7 +92,7 @@ async function run(
 				type: mimeType.lookup(extension),
 			});
 
-			box(filename, `<img src='${URL.createObjectURL(blob)}'>`);
+			dialog(filename, `<img src='${URL.createObjectURL(blob)}'>`);
 		} catch (err) {
 			helpers.error(err);
 		}

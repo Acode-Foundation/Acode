@@ -1,5 +1,5 @@
 import fsOperation from "fileSystem";
-import box from "dialogs/box";
+import dialog from "dialogs/dialog";
 import { filesize } from "filesize";
 import mustache from "mustache";
 import helpers from "utils/helpers";
@@ -51,7 +51,7 @@ export default async function showFileInfo(url) {
 			}
 		}
 
-		box("", mustache.render($_fileInfo, options), true).onclick((e) => {
+		dialog("", mustache.render($_fileInfo, options), true).onclick((e) => {
 			const $target = e.target;
 			if ($target instanceof HTMLElement) {
 				const action = $target.getAttribute("action");

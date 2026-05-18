@@ -732,5 +732,8 @@
 	"settings-info-app-ui-zoom": "Масштабування тексту в інтерфейсі Acode.",
 	"login-to-view": "Будь ласка, увійдіть для перегляду цього...",
 	"show share button": "Show share button",
-	"settings-info-editor-show-share-button": "Show share button in selection menu."
+	"settings-info-editor-show-share-button": "Show share button in selection menu.",
+	"iap-plugin-purchase-warning": "Придбані плагіни не синхронізуються з вашим обліковим записом Acode. Використовуйте той самий обліковий запис Google у Play Store для відновлення покупки.",
+	"iap-pro-purchase-warning": "Ця покупка не буде синхронізована з вашим обліковим записом Acode. Використовуйте той самий обліковий запис Google у Play Store для відновлення покупки.",
+	"confirm-login": "Ви не ввійшли в Acode, увійти зараз?"
 }

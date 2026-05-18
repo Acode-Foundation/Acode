@@ -12,7 +12,8 @@ export default async function startAd() {
 	if (!initialized) {
 		initialized = true;
 
-		if (BuildInfo.type === "debug") {
+		if (BuildInfo.buildType === "debug") {
+			console.info("!!! Using test ads");
 			adUnitIdBanner = "ca-app-pub-3940256099942544/6300978111"; // Test
 			adUnitIdInterstitial = "ca-app-pub-3940256099942544/1033173712"; // Test
 			adUnitIdRewarded = "ca-app-pub-3940256099942544/5224354917"; // Test

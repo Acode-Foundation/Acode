@@ -732,5 +732,8 @@
 	"plugin-not-supported-info": "The plugin was created for older version of Acode.",
 	"login-to-view": "Please login to view this...",
 	"show share button": "Show share button",
-	"settings-info-editor-show-share-button": "Show share button in selection menu."
+	"settings-info-editor-show-share-button": "Show share button in selection menu.",
+	"iap-plugin-purchase-warning": "Набытыя плагіны не сінхранізуюцца з вашым уліковым запісам Acode. Выкарыстоўвайце той жа ўліковы запіс Google у Play Store для аднаўлення пакупкі.",
+	"iap-pro-purchase-warning": "Гэтая пакупка не будзе сінхранізавана з вашым уліковым запісам Acode. Выкарыстоўвайце той жа ўліковы запіс Google у Play Store для аднаўлення пакупкі.",
+	"confirm-login": "Вы не ўвайшлі ў Acode, увайсці зараз?"
 }

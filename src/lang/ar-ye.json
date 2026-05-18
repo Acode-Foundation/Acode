@@ -732,5 +732,8 @@
 	"plugin-not-supported-info": "The plugin was created for older version of Acode.",
 	"login-to-view": "Please login to view this...",
 	"show share button": "Show share button",
-	"settings-info-editor-show-share-button": "Show share button in selection menu."
+	"settings-info-editor-show-share-button": "Show share button in selection menu.",
+	"iap-plugin-purchase-warning": "لا تتم مزامنة الإضافات المشتراة مع حساب Acode الخاص بك. استخدم نفس حساب Google في متجر Play لاستعادة عملية الشراء.",
+	"iap-pro-purchase-warning": "لن تتم مزامنة عملية الشراء هذه مع حساب Acode الخاص بك. استخدم نفس حساب Google في متجر Play لاستعادة عملية الشراء.",
+	"confirm-login": "لم تقم بتسجيل الدخول إلى Acode، هل تريد تسجيل الدخول الآن؟"
 }

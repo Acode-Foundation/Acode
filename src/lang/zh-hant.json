@@ -732,5 +732,8 @@
 	"plugin-not-supported-info": "該插件僅適用於舊版本的 Acode。",
 	"login-to-view": "請先登錄以查看此內容……",
 	"show share button": "Show share button",
-	"settings-info-editor-show-share-button": "Show share button in selection menu."
+	"settings-info-editor-show-share-button": "Show share button in selection menu.",
+	"iap-plugin-purchase-warning": "購買的插件不會同步到您的 Acode 帳戶。請在 Play 商店中使用相同的 Google 帳戶來恢復您的購買。",
+	"iap-pro-purchase-warning": "此購買不會同步到您的 Acode 帳戶。請在 Play 商店中使用相同的 Google 帳戶來恢復您的購買。",
+	"confirm-login": "您尚未登入 Acode，立即登入？"
 }
