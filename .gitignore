@@ -13,3 +13,4 @@ pnpm-lock.yaml
 .idea
 ace-builds
 fdroid.bool
+tsconfig.tsbuildinfo
