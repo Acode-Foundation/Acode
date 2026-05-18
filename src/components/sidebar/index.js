@@ -190,7 +190,7 @@ function create($container, $toggler) {
 				toast("Logged out successfully");
 
 				try {
-					const avatarFile = await getUserAvatar(user);
+					const avatarFile = await getUserAvatar(user, false);
 					if (avatarFile) {
 						await fsOperation(avatarFile).delete();
 					}
@@ -226,7 +226,7 @@ function create($container, $toggler) {
 		img.onload = () => defaultAvatar.replaceWith(img);
 	}
 
-	async function getUserAvatar(user) {
+	async function getUserAvatar(user, download = true) {
 		let avatarUrl = user.avatar_url;
 
 		if (!avatarUrl) {
@@ -241,6 +241,10 @@ function create($container, $toggler) {
 		const cacheFile = Url.join(CACHE_STORAGE, cacheFileName);
 
 		if (!(await fsOperation(cacheFile).exists())) {
+			if (!download) {
+				return null;
+			}
+
 			const blob = await helpers.promisify(
 				cordova.plugin.http.sendRequest,
 				avatarUrl,

@@ -267,6 +267,10 @@ export default function mainSettings() {
 
 								const user = await auth.getLoggedInUser();
 
+								if (!user) {
+									throw new Error("Unable to fetch user");
+								}
+
 								if (user.acode_pro) {
 									document.querySelector('[data-key="removeads"]')?.remove();
 									return;
