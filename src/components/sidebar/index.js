@@ -1,9 +1,14 @@
 import "./style.scss";
+import fsOperation from "fileSystem";
 import toast from "components/toast";
+import confirm from "dialogs/confirm";
+import loader from "dialogs/loader";
 import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
 import auth, { loginEvents } from "lib/auth";
 import config from "lib/config";
+import helpers from "utils/helpers";
+import Url from "utils/Url";
 
 /**
  * @typedef {object} SideBar
@@ -98,56 +103,66 @@ function create($container, $toggler) {
 		show();
 	}
 
-	loginEvents.on(() => {
-		updateSidebarAvatar();
-	});
+	loginEvents.addListener(updateSidebarAvatar);
 
 	async function handleUserIconClick(e) {
 		try {
-			const user = await auth.getLoggedInUser();
+			loader.create(strings["login"], strings["loading..."]);
+			let user = await auth.getLoggedInUser();
 
 			if (!user) {
-				CustomTabs.open(
-					`${config.BASE_URL}/login?redirect=app`,
-					{ showTitle: true },
-					() => {},
-					() => {},
+				const confirmation = await confirm(
+					strings.confirm,
+					strings["confirm-login"],
 				);
-			} else {
-				const menu = userContextMenu.el;
-				const isActive = menu.classList.toggle("active");
 
-				if (isActive) {
-					const menuName = userContextMenu.el.querySelector(".user-menu-name");
-					const menuEmail =
-						userContextMenu.el.querySelector(".user-menu-email");
-
-					if (menuName) {
-						menuName.content = (
-							<div style={{ display: "flex" }}>
-								{Boolean(user.verified) && (
-									<span className="icon verified"></span>
-								)}
-								{user.name}
-								{Boolean(user.acode_pro) && <span className="badge">Pro</span>}
-							</div>
-						);
-					}
-
-					if (menuEmail) {
-						menuEmail.textContent = user.email || "";
-					}
-
-					setTimeout(() => {
-						document.addEventListener("click", handleClickOutside);
-					}, 10);
-				} else {
-					document.removeEventListener("click", handleClickOutside);
+				if (!confirmation) {
+					return;
 				}
+
+				loader.show();
+
+				await auth.login();
+				user = await auth.getLoggedInUser();
+				if (!user) {
+					return;
+				}
+			}
+
+			const menu = userContextMenu.el;
+			const isActive = menu.classList.toggle("active");
+
+			if (isActive) {
+				const menuName = userContextMenu.el.querySelector(".user-menu-name");
+				const menuEmail = userContextMenu.el.querySelector(".user-menu-email");
+
+				if (menuName) {
+					menuName.content = (
+						<div style={{ display: "flex" }}>
+							{user.name}
+							{Boolean(user.verified) && (
+								<span className="icon verified badge"></span>
+							)}
+							{Boolean(user.acode_pro) && <span className="badge">Pro</span>}
+						</div>
+					);
+				}
+
+				if (menuEmail) {
+					menuEmail.textContent = user.email || "";
+				}
+
+				setTimeout(() => {
+					document.addEventListener("click", handleClickOutside);
+				}, 10);
+			} else {
+				document.removeEventListener("click", handleClickOutside);
 			}
 		} catch (error) {
 			console.error("Error checking login status:", error);
 			toast("Error checking login status", 3000);
+		} finally {
+			loader.destroy();
 		}
 	}
 
@@ -163,47 +178,80 @@ function create($container, $toggler) {
 	}
 
 	async function handleLogout() {
+		loader.create(strings["logout"], strings["loading..."]);
+		loader.show();
 		try {
+			const user = await auth.getLoggedInUser();
 			const success = await auth.logout();
 			if (success) {
 				userContextMenu.el.classList.remove("active");
 				document.removeEventListener("click", handleClickOutside);
-				toast("Logged out successfully");
 				updateSidebarAvatar();
+				toast("Logged out successfully");
+
+				try {
+					const avatarFile = await getUserAvatar(user);
+					if (avatarFile) {
+						await fsOperation(avatarFile).delete();
+					}
+				} catch {}
 			} else {
 				toast("Failed to logout");
 			}
 		} catch (error) {
 			console.error("Error during logout:", error);
+		} finally {
+			loader.destroy();
 		}
 	}
 
 	async function updateSidebarAvatar() {
-		const existingIcon = userAvatar.el.querySelector(".icon");
-		const existingAvatar = userAvatar.el.querySelector(".avatar");
-
-		if (existingIcon) {
-			existingIcon.remove();
-		}
-		if (existingAvatar) {
-			existingAvatar.remove();
-		}
-
+		const defaultAvatar = <span className="icon account_circle" />;
 		const user = await auth.getLoggedInUser();
 
-		if (user) {
-			const avatarUrl = user.github
-				? `https://avatars.githubusercontent.com/${user.github}`
-				: generateInitialsAvatar(user.name);
-			const avatarImg = document.createElement("img");
-			avatarImg.className = "avatar";
-			avatarImg.src = avatarUrl;
-			userAvatar.append(avatarImg);
-		} else {
-			const defaultIcon = document.createElement("span");
-			defaultIcon.className = "icon account_circle";
-			userAvatar.append(defaultIcon);
+		userAvatar.content = defaultAvatar;
+
+		if (!user) {
+			return;
 		}
+
+		defaultAvatar.classList.add("loading");
+
+		const img = <img alt="User avatar" className="avatar" />;
+		const avatarFile = await getUserAvatar(user);
+
+		img.src = avatarFile
+			? await helpers.toInternalUri(avatarFile)
+			: generateInitialsAvatar(user.name);
+		img.onload = () => defaultAvatar.replaceWith(img);
+	}
+
+	async function getUserAvatar(user) {
+		let avatarUrl = user.avatar_url;
+
+		if (!avatarUrl) {
+			if (!user.github) {
+				return null;
+			}
+			avatarUrl = `https://avatars.githubusercontent.com/${user.github}`;
+		}
+
+		const hash = avatarUrl.hashCode();
+		const cacheFileName = `user_avatar_${hash}`;
+		const cacheFile = Url.join(CACHE_STORAGE, cacheFileName);
+
+		if (!(await fsOperation(cacheFile).exists())) {
+			const blob = await helpers.promisify(
+				cordova.plugin.http.sendRequest,
+				avatarUrl,
+				{
+					responseType: "blob",
+				},
+			);
+			await fsOperation(CACHE_STORAGE).createFile(cacheFileName, blob.data);
+		}
+
+		return cacheFile;
 	}
 
 	function generateInitialsAvatar(name) {

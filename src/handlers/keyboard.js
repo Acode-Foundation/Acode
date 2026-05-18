@@ -99,54 +99,57 @@ function shouldIgnoreEditorShortcutTarget(target) {
 	);
 }
 
-document.addEventListener("admob.banner.size", async (event) => {
-	const { height } = event.size;
-	MIN_KEYBOARD_HEIGHT = height + 10;
-});
+document.addEventListener("deviceready", () => {
+	document.addEventListener("admob.banner.size", async (event) => {
+		const { height } = event.size;
+		MIN_KEYBOARD_HEIGHT = height + 10;
+	});
 
-windowResize.on("resizeStart", async () => {
-	const { keyboardHeight, hardKeyboardHidden } = await getSystemConfiguration();
-	const externalKeyboard = hardKeyboardHidden === HARDKEYBOARDHIDDEN_NO;
+	windowResize.on("resizeStart", async () => {
+		const { keyboardHeight, hardKeyboardHidden } =
+			await getSystemConfiguration();
+		const externalKeyboard = hardKeyboardHidden === HARDKEYBOARDHIDDEN_NO;
 
-	if (currentWindowHeight > window.innerHeight) {
-		// height decreasing
-		softKeyboardHeight =
-			keyboardHeight > MIN_KEYBOARD_HEIGHT ? keyboardHeight : 0;
-		if (!externalKeyboard && softKeyboardHeight) {
-			emit("keyboardShowStart");
+		if (currentWindowHeight > window.innerHeight) {
+			// height decreasing
+			softKeyboardHeight =
+				keyboardHeight > MIN_KEYBOARD_HEIGHT ? keyboardHeight : 0;
+			if (!externalKeyboard && softKeyboardHeight) {
+				emit("keyboardShowStart");
+			}
+		} else if (currentWindowHeight < window.innerHeight) {
+			// height increasing
+			if (!externalKeyboard && softKeyboardHeight) {
+				emit("keyboardHideStart");
+			}
 		}
-	} else if (currentWindowHeight < window.innerHeight) {
-		// height increasing
-		if (!externalKeyboard && softKeyboardHeight) {
-			emit("keyboardHideStart");
+
+		currentWindowHeight = window.innerHeight;
+	});
+
+	windowResize.on("resize", async () => {
+		currentWindowHeight = window.innerHeight;
+
+		if (currentWindowHeight > windowHeight) {
+			windowHeight = currentWindowHeight;
 		}
-	}
 
-	currentWindowHeight = window.innerHeight;
-});
+		const { hardKeyboardHidden } = await getSystemConfiguration();
+		const externalKeyboard = hardKeyboardHidden === HARDKEYBOARDHIDDEN_NO;
 
-windowResize.on("resize", async () => {
-	currentWindowHeight = window.innerHeight;
+		if (externalKeyboard || !softKeyboardHeight) return;
 
-	if (currentWindowHeight > windowHeight) {
-		windowHeight = currentWindowHeight;
-	}
+		const keyboardHiddenYes = windowHeight <= window.innerHeight;
 
-	const { hardKeyboardHidden } = await getSystemConfiguration();
-	const externalKeyboard = hardKeyboardHidden === HARDKEYBOARDHIDDEN_NO;
+		if (keyboardHiddenYes) {
+			emit("keyboardHide");
+		} else {
+			emit("keyboardShow");
+		}
 
-	if (externalKeyboard || !softKeyboardHeight) return;
-
-	const keyboardHiddenYes = windowHeight <= window.innerHeight;
-
-	if (keyboardHiddenYes) {
-		emit("keyboardHide");
-	} else {
-		emit("keyboardShow");
-	}
-
-	focusBlurEditor(keyboardHiddenYes);
-	showHideAd(keyboardHiddenYes);
+		focusBlurEditor(keyboardHiddenYes);
+		showHideAd(keyboardHiddenYes);
+	});
 });
 
 /**

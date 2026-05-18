@@ -3,7 +3,7 @@ import fsOperation from "fileSystem";
 import Logo from "components/logo";
 import Page from "components/page";
 import alert from "dialogs/alert";
-import box from "dialogs/box";
+import dialog from "dialogs/dialog";
 import loader from "dialogs/loader";
 import multiPrompt from "dialogs/multiPrompt";
 import actionStack from "lib/actionStack";
@@ -95,7 +95,7 @@ export default function Sponsor(onclose) {
 						if (res.error) {
 							helpers.error(res.error);
 						} else {
-							box(strings.info.toUpperCase(), msg);
+							dialog(strings.info.toUpperCase(), msg);
 							localStorage.removeItem(`sponsor_${productId}`);
 							$page.hide();
 						}

@@ -730,5 +730,8 @@
 	"close other tabs": "Close Others",
 	"plugin-not-supported": "Plugin not supported",
 	"plugin-not-supported-info": "The plugin was created for older version of Acode.",
-	"login-to-view": "Please login to view this..."
+	"login-to-view": "Please login to view this...",
+	"iap-plugin-purchase-warning": "Purchased plugin are not synced to your Acode account. Use same Google account in play store to restore your purchase.",
+	"iap-pro-purchase-warning": "This purchase will not be synced to your Acode account. Use same Google account in play store to restore your purchase.",
+	"confirm-login": "You are not singed in to Acode, sign in now?"
 }

@@ -730,5 +730,8 @@
 	"settings-info-app-ui-zoom": "Scale text across the Acode interface.",
 	"plugin-not-supported": "Plugin not supported",
 	"plugin-not-supported-info": "The plugin was created for older version of Acode.",
-	"login-to-view": "Please login to view this..."
+	"login-to-view": "Please login to view this...",
+	"iap-plugin-purchase-warning": "Gekaufte Plugins werden nicht mit Ihrem Acode-Konto synchronisiert. Verwenden Sie dasselbe Google-Konto im Play Store, um Ihren Kauf wiederherzustellen.",
+	"iap-pro-purchase-warning": "Dieser Kauf wird nicht mit Ihrem Acode-Konto synchronisiert. Verwenden Sie dasselbe Google-Konto im Play Store, um Ihren Kauf wiederherzustellen.",
+	"confirm-login": "Sie sind nicht bei Acode angemeldet, jetzt anmelden?"
 }

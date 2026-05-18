@@ -730,5 +730,8 @@
 	"settings-info-app-ui-zoom": "缩放所有 Acode 界面文字。",
 	"plugin-not-supported": "不支持该插件",
 	"plugin-not-supported-info": "该插件仅适用于旧版本的 Acode。",
-	"login-to-view": "请先登录以查看此内容……"
+	"login-to-view": "请先登录以查看此内容……",
+	"iap-plugin-purchase-warning": "购买的插件不会同步到您的 Acode 账户。请在 Play 商店中使用相同的 Google 账户来恢复您的购买。",
+	"iap-pro-purchase-warning": "此购买不会同步到您的 Acode 账户。请在 Play 商店中使用相同的 Google 账户来恢复您的购买。",
+	"confirm-login": "您尚未登录 Acode，立即登录？"
 }

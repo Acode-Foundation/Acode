@@ -4,14 +4,14 @@ import actionStack from "lib/actionStack";
 import restoreTheme from "lib/restoreTheme";
 
 /**
- * Confirm dialog box
+ * Dialog box
  * @param {string} titleText Title text
  * @param {string} html HTML string
  * @param {string} [hideButtonText] Text for hide button
  * @param {string} [cancelButtonText] Text for cancel button
  * @returns {PromiseLike}
  */
-function box(titleText, html, hideButtonText, cancelButtonText) {
+function dialog(titleText, html, hideButtonText, cancelButtonText) {
 	let waitFor = 0,
 		strOK = hideButtonText || strings.ok,
 		_onclick = () => {},
@@ -197,4 +197,4 @@ function box(titleText, html, hideButtonText, cancelButtonText) {
 	return promiseLike;
 }
 
-export default box;
+export default dialog;

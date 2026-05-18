@@ -169,6 +169,7 @@
       display: flex;
       gap: 8px;
 
+      .info:not(.icon),
       .error {
         display: flex;
         color: rgb(255, 185, 92);
@@ -179,6 +180,14 @@
           color: inherit;
           text-decoration: none;
         }
+      }
+
+      .info:not(.icon) {
+        color: inherit;
+        align-items: start;
+        text-align: left;
+        gap: 5px;
+        opacity: 0.8;
       }
 
       .btn {

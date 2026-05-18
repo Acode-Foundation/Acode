@@ -1,8 +1,11 @@
 import settingsPage from "components/settingsPage";
 import confirm from "dialogs/confirm";
+import loader from "dialogs/loader";
 import rateBox from "dialogs/rateBox";
 import actionStack from "lib/actionStack";
+import auth from "lib/auth";
 import config from "lib/config";
+import customTab from "lib/customTab";
 import openFile from "lib/openFile";
 import removeAds from "lib/removeAds";
 import appSettings from "lib/settings";
@@ -173,7 +176,7 @@ export default function mainSettings() {
 			key: "removeads",
 			text: strings["remove ads"],
 			icon: "block",
-			info: strings["settings-info-main-remove-ads"],
+			info: `${strings["settings-info-main-remove-ads"]}${!helpers.shouldAllowExternalPurchase() ? ` ${strings["iap-pro-purchase-warning"]}` : ""}`,
 			category: categories.supportAcode,
 			chevron: true,
 		});
@@ -242,8 +245,42 @@ export default function mainSettings() {
 
 			case "removeads":
 				try {
-					await removeAds();
-					this.remove();
+					if (!helpers.shouldAllowExternalPurchase()) {
+						await removeAds();
+						this.remove();
+					} else {
+						loader.create(strings.login, strings["loading..."]);
+
+						try {
+							if (!(await auth.getLoggedInUser())) {
+								const confirmation = await confirm(
+									strings.confirm,
+									strings["confirm-login"],
+								);
+
+								if (!confirmation) {
+									return;
+								}
+
+								loader.show();
+								await auth.login();
+
+								const user = await auth.getLoggedInUser();
+
+								if (user.acode_pro) {
+									document.querySelector('[data-key="removeads"]')?.remove();
+									return;
+								}
+							}
+						} catch (error) {
+							helpers.error(error);
+							return;
+						} finally {
+							loader.destroy();
+						}
+
+						customTab(`${config.BASE_URL}/pro`).catch(helpers.error);
+					}
 				} catch (error) {
 					helpers.error(error);
 				}

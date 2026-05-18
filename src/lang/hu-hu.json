@@ -730,5 +730,8 @@
 	"settings-info-app-ui-zoom": "Szövegek méretezése az Acode teljes felületén.",
 	"plugin-not-supported": "A bővítmény nem támogatott",
 	"plugin-not-supported-info": "A bővítmény az Acode egy régebbi verziójához készült.",
-	"login-to-view": "Jelentkezzen be a megtekintéséhez…"
+	"login-to-view": "Jelentkezzen be a megtekintéséhez…",
+	"iap-plugin-purchase-warning": "A megvásárolt bővítmények nem szinkronizálódnak az Acode-fiókjával. Használja ugyanazt a Google-fiókot a Play Áruházban a vásárlás visszaállításához.",
+	"iap-pro-purchase-warning": "Ez a vásárlás nem lesz szinkronizálva az Acode-fiókjával. Használja ugyanazt a Google-fiókot a Play Áruházban a vásárlás visszaállításához.",
+	"confirm-login": "Nincs bejelentkezve az Acode-ba, bejelentkezik most?"
 }
