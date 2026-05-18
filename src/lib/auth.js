@@ -59,6 +59,7 @@ class AuthService {
 			this.#loginCallbacks.clear();
 		});
 		document.addEventListener("resume", () => {
+			clearTimeout(this.#loginTimeout);
 			this.#loginTimeout = setTimeout(() => {
 				for (const callback of this.#loginCallbacks) {
 					callback.reject("Login timed out");
@@ -122,11 +123,11 @@ class AuthService {
 	}
 
 	/**
-	 *
+	 * @param {boolean} forceFetch
 	 * @returns {Promise<User>}
 	 */
-	async getLoggedInUser() {
-		if (loggedInUser) return loggedInUser;
+	async getLoggedInUser(forceFetch = false) {
+		if (loggedInUser && !forceFetch) return loggedInUser;
 
 		try {
 			const res = await fetch(`${config.API_BASE}/login`);

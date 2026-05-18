@@ -248,43 +248,45 @@ export default function mainSettings() {
 					if (!helpers.shouldAllowExternalPurchase()) {
 						await removeAds();
 						this.remove();
-					} else {
-						loader.create(strings.login, strings["loading..."]);
+						break;
+					}
 
-						try {
-							if (!(await auth.getLoggedInUser())) {
-								const confirmation = await confirm(
-									strings.confirm,
-									strings["confirm-login"],
-								);
+					loader.create(strings.login, strings["loading..."]);
 
-								if (!confirmation) {
-									return;
-								}
+					try {
+						let user = await auth.getLoggedInUser();
+						if (!user) {
+							const confirmation = await confirm(
+								strings.confirm,
+								strings["confirm-login"],
+							);
 
-								loader.show();
-								await auth.login();
-
-								const user = await auth.getLoggedInUser();
-
-								if (!user) {
-									throw new Error("Unable to fetch user");
-								}
-
-								if (user.acode_pro) {
-									document.querySelector('[data-key="removeads"]')?.remove();
-									return;
-								}
+							if (!confirmation) {
+								return;
 							}
-						} catch (error) {
-							helpers.error(error);
-							return;
-						} finally {
-							loader.destroy();
+
+							loader.show();
+							await auth.login();
+
+							user = await auth.getLoggedInUser();
 						}
 
-						customTab(`${config.BASE_URL}/pro`).catch(helpers.error);
+						if (!user) {
+							throw new Error("Unable to fetch user");
+						}
+
+						if (user.acode_pro) {
+							this.remove();
+							return;
+						}
+					} catch (error) {
+						helpers.error(error);
+						return;
+					} finally {
+						loader.destroy();
 					}
+
+					customTab(`${config.BASE_URL}/pro?redirect=app`).catch(helpers.error);
 				} catch (error) {
 					helpers.error(error);
 				}
