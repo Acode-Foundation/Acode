@@ -631,23 +631,20 @@ public class System extends CordovaPlugin {
     }
 
     private void sendLogToJavaScript(String level, String message) {
-        
-            final String js =
-                "if (typeof window.log === 'function')" +
-                "  window.log(" + JSONObject.quote(level) + ", " + JSONObject.quote(message) + ");" +
-                "else" +
-                "  console.log(" + JSONObject.quote(level) + ", " + JSONObject.quote(message) + ");";
-        
-            cordova.getActivity().runOnUiThread(() ->
-                try{
-                    ((android.webkit.WebView) webView.getEngine().getView())
-                        .evaluateJavascript(js, null)
-                }catch(Exception e){
-                    Log.e(TAG, "Failed to send log to JavaScript: " + e.getMessage());
-                    return;
-                }
-            );
-        
+        final String js =
+            "if (typeof window.log === 'function')" +
+            "  window.log(" + JSONObject.quote(level) + ", " + JSONObject.quote(message) + ");" +
+            "else" +
+            "  console.log(" + JSONObject.quote(level) + ", " + JSONObject.quote(message) + ");";
+
+        cordova.getActivity().runOnUiThread(() -> {
+            try {
+                ((android.webkit.WebView) webView.getEngine().getView())
+                    .evaluateJavascript(js, null);
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to send log to JavaScript: " + e.getMessage());
+            }
+        });
     }
     
     // Helper method to determine MIME type using Android's built-in MimeTypeMap
