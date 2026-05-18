@@ -115,7 +115,6 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 
 
-
 public class System extends CordovaPlugin {
     private static final String TAG = "SystemPlugin";
 
@@ -633,19 +632,17 @@ public class System extends CordovaPlugin {
 
     private void sendLogToJavaScript(String level, String message) {
         final String js =
-            "window.log(" + JSONObject.quote(level) + ", " + JSONObject.quote(message) + ");";
-        cordova
-            .getActivity()
-            .runOnUiThread(
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        webView.evaluateJavascript(js, null);
-                    }
-                }
-            );
+            "if (typeof window.log === 'function')" +
+            "  window.log(" + JSONObject.quote(level) + ", " + JSONObject.quote(message) + ");" +
+            "else" +
+            "  console.log(" + JSONObject.quote(level) + ", " + JSONObject.quote(message) + ");";
+        
+        cordova.getActivity().runOnUiThread(() ->
+            ((android.webkit.WebView) webView.getEngine().getView())
+                .evaluateJavascript(js, null)
+        );
     }
-
+    
     // Helper method to determine MIME type using Android's built-in MimeTypeMap
     private String getMimeTypeFromExtension(String fileName) {
         String extension = "";
