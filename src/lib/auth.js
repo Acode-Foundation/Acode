@@ -52,7 +52,7 @@ class AuthService {
 	constructor() {
 		addIntentHandler(this.onIntentReceiver.bind(this));
 		loginEvents.addListener(() => {
-			clearImmediate(this.#loginTimeout);
+			clearTimeout(this.#loginTimeout);
 			for (const callback of this.#loginCallbacks) {
 				callback.resolve();
 			}
