@@ -729,7 +729,7 @@
 	"ui zoom": "Pembesaran UI",
 	"settings-info-app-ui-zoom": "Skalakan teks di seluruh antarmuka Acode.",
 	"show share button": "Show share button",
-	"settings-info-editor-show-share-button": "Show share button in selection menu."
+	"settings-info-editor-show-share-button": "Show share button in selection menu.",
 	"plugin-not-supported": "Plugin tidak didukung",
 	"plugin-not-supported-info": "Plugin dibuat untuk versi lama dari Acode.",
 	"login-to-view": "Mohon login untuk melihat ini..."
