@@ -171,7 +171,7 @@ export default async function PluginInclude(
 
 					isPaid = remotePlugin.price > 0;
 					purchased = remotePlugin.owned;
-					price = `₹ ${remotePlugin.price}`;
+					price = `${remotePlugin.currencySymbol}${remotePlugin.price}`;
 					isSupported = ["all", config.SUPPORTED_EDITOR].includes(
 						remotePlugin.supported_editor,
 					);

@@ -22,6 +22,7 @@ export default function Item({
 	license,
 	author,
 	price,
+	currencySymbol,
 	author_verified,
 	downloads,
 	installed,
@@ -95,7 +96,10 @@ export default function Item({
 						</div>
 					</div>
 					{price !== null && price !== undefined && price !== 0 ? (
-						<span className="plugin-price">₹{price}</span>
+						<span className="plugin-price">
+							{currencySymbol}
+							{price}
+						</span>
 					) : null}
 					{installed && !updates ? (
 						<span
