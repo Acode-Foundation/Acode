@@ -12,6 +12,7 @@ import pluginIcon from "./plugin-icon.png";
  * @param {boolean} [param0.installed]
  * @param {boolean} [param0.enabled]
  * @param {function} [param0.onToggleEnabled]
+ * @param {string} [param0.currencySymbol]
  * @returns
  */
 export default function Item({
