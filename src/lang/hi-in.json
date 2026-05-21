@@ -732,7 +732,7 @@
 	"plugin-not-supported-info": "यह प्लगइन Acode के पुराने वर्जन के लिए बनाया गया था।",
 	"login-to-view": "इसे देखने के लिए कृपया लॉगिन करें...",
 	"show share button": "शेयर बटन दिखाएं",
-	"settings-info-editor-show-share-button": "सेलेक्शन मेनू में शेयर बटन दिखाएं",
+	"settings-info-editor-show-share-button": "सेलेक्शन मेनू में शेयर बटन दिखाएं।",
 	"iap-plugin-purchase-warning": "खरीदे गए प्लगइन आपके Acode खाते से सिंक नहीं होते हैं। अपनी खरीदारी पुनर्स्थापित करने के लिए Play Store में उसी Google खाते का उपयोग करें।",
 	"iap-pro-purchase-warning": "यह खरीदारी आपके Acode खाते से सिंक नहीं होगी। अपनी खरीदारी पुनर्स्थापित करने के लिए Play Store में उसी Google खाते का उपयोग करें।",
 	"confirm-login": "आप Acode में साइन इन नहीं हैं, अभी साइन इन करें?"
