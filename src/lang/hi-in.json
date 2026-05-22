@@ -526,7 +526,7 @@
 	"lsp-empty": "खाली",
 	"lsp-enabled": "सक्षम",
 	"lsp-error-add-server-failed": "सर्वर जोड़ने में विफल",
-	"lsp-error-args-must-be-array": "आर्ग्युमेंट्स एक JSON araay होने चाहिए",
+	"lsp-error-args-must-be-array": "आर्ग्युमेंट्स एक JSON array होने चाहिए",
 	"lsp-error-binary-command-required": "बाइनरी कमांड आवश्यक है",
 	"lsp-error-language-id-required": "कम से कम एक लैंग्वेज आईडी आवश्यक है",
 	"lsp-error-package-required": "कम से कम एक पैकेज आवश्यक है",
