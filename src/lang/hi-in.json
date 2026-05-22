@@ -586,7 +586,7 @@
 	"lsp-status-not-installed": "इंस्टॉल नहीं हुआ",
 	"lsp-status-unknown": "अज्ञात",
 	"lsp-timeout-ms": "{timeout} ms",
-	"lsp-uninstall-command-unavailable": "अनइंस्टॉल कमांड उपलब्ध नहीं है”",
+	"lsp-uninstall-command-unavailable": "अनइंस्टॉल कमांड उपलब्ध नहीं है",
 	"lsp-uninstall-server": "सर्वर अनइंस्टॉल करें",
 	"lsp-update-command-optional": "अपडेट कमांड (वैकल्पिक)",
 	"lsp-update-command-unavailable": "अपडेट करने की कमांड उपलब्ध नहीं है",
