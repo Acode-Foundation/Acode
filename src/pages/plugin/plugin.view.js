@@ -182,6 +182,12 @@ export default (props) => {
 				</div>
 				<div className="action-buttons">
 					<Buttons {...props} />
+					{!helpers.shouldAllowExternalPurchase() && (
+						<small className="info">
+							<span className="icon info" />
+							{strings["iap-plugin-purchase-warning"]}
+						</small>
+					)}
 				</div>
 				<MoreInfo {...props} />
 			</div>
@@ -289,8 +295,6 @@ async function Buttons(props) {
 		isSupported = true,
 	} = props;
 
-	console.log("buttons", { installed });
-
 	if (!isSupported) {
 		return (
 			<div
@@ -362,22 +366,14 @@ async function Buttons(props) {
 				ref={buttonRef}
 				data-type="info"
 				className="btn btn-install"
-				onclick={() => {
-					CustomTabs.open(
-						`${config.BASE_URL}/login?redirect=app`,
-						{ showTitle: true },
-						() => {},
-						() => {},
-					);
-
-					const onLogin = async () => {
-						loginEvents.off(onLogin);
-
+				onclick={async () => {
+					try {
+						await auth.login();
 						const newButton = await Buttons(props);
 						buttonRef.el.replaceWith(newButton);
-					};
-					loginEvents.on(onLogin);
-					cleanups.push(() => loginEvents.off(onLogin));
+					} catch (error) {
+						helpers.error(error);
+					}
 				}}
 			>
 				<i className="icon user-round"></i>

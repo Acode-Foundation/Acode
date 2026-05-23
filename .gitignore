@@ -1,4 +1,4 @@
-/node_modules
+node_modules
 /build.json
 /www/build
 /plugins
@@ -13,3 +13,4 @@ pnpm-lock.yaml
 .idea
 ace-builds
 fdroid.bool
+tsconfig.tsbuildinfo

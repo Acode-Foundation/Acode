@@ -730,5 +730,10 @@
 	"settings-info-app-ui-zoom": "Scale text across the Acode interface.",
 	"plugin-not-supported": "Plugin not supported",
 	"plugin-not-supported-info": "The plugin was created for older version of Acode.",
-	"login-to-view": "Please login to view this..."
+	"login-to-view": "Please login to view this...",
+	"show share button": "Show share button",
+	"settings-info-editor-show-share-button": "Show share button in selection menu.",
+	"iap-plugin-purchase-warning": "Ang mga biniling plugin ay hindi naka-sync sa iyong Acode account. Gamitin ang parehong Google account sa Play Store upang maibalik ang iyong pagbili.",
+	"iap-pro-purchase-warning": "Ang pagbiling ito ay hindi masi-sync sa iyong Acode account. Gamitin ang parehong Google account sa Play Store upang maibalik ang iyong pagbili.",
+	"confirm-login": "Hindi ka naka-sign in sa Acode, mag-sign in ngayon?"
 }

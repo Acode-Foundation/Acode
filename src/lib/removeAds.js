@@ -27,6 +27,7 @@ export default function removeAds() {
 		function onpurchase() {
 			resolve(null);
 			hideAd(true);
+			// For caching, later verified so no need to worry about
 			localStorage.setItem("acode_pro", "true");
 			config.HAS_PRO = true;
 			toast(strings["thank you :)"]);

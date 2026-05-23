@@ -81,6 +81,7 @@
 	"settings saved": "Settings saved",
 	"show line numbers": "Show line numbers",
 	"show hidden files": "Show hidden files",
+	"show share button": "Show share button",
 	"show spaces": "Show spaces",
 	"soft tab": "Soft tab",
 	"sort by name": "Sort by name",
@@ -672,6 +673,7 @@
 	"settings-info-editor-rtl-text": "Switch right-to-left behavior per line.",
 	"settings-info-editor-scroll-settings": "Adjust scrollbar size, speed, and gesture behavior.",
 	"settings-info-editor-shift-click-selection": "Extend selection with Shift + tap or click.",
+	"settings-info-editor-show-share-button": "Show share button in selection menu.",
 	"settings-info-editor-show-spaces": "Display visible whitespace markers.",
 	"settings-info-editor-soft-tab": "Insert spaces instead of tab characters.",
 	"settings-info-editor-tab-size": "Set how many spaces each tab step uses.",
@@ -730,5 +732,8 @@
 	"close other tabs": "Close Others",
 	"plugin-not-supported": "Plugin not supported",
 	"plugin-not-supported-info": "The plugin was created for older version of Acode.",
-	"login-to-view": "Please login to view this..."
+	"login-to-view": "Please login to view this...",
+	"iap-plugin-purchase-warning": "Purchased plugin are not synced to your Acode account. Use same Google account in play store to restore your purchase.",
+	"iap-pro-purchase-warning": "This purchase will not be synced to your Acode account. Use same Google account in play store to restore your purchase.",
+	"confirm-login": "You are not singed in to Acode, sign in now?"
 }

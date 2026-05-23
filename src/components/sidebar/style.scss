@@ -114,7 +114,7 @@ body.no-animation {
         height: 40px;
         width: 40px;
         color: currentColor;
-        font-size: 1.4em;
+        font-size: 2.8em;
         border-radius: 10px;
         opacity: 0.6;
         transition: all 0.2s ease;
@@ -376,7 +376,13 @@ body.no-animation {
         border-radius: 4px;
         font-size: 12px;
         font-weight: 500;
-        margin-left: 8px;
+        margin-left: 4px;
+
+        &.verified {
+          color: var(--active-color);
+          background-color: transparent;
+          padding: 0;
+        }
       }
     }
 

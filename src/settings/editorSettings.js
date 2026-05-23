@@ -197,6 +197,13 @@ export default function editorSettings() {
 			category: categories.cursorSelection,
 		},
 		{
+			key: "showShareButton",
+			text: strings["show share button"],
+			checkbox: values.showShareButton ?? true,
+			info: strings["settings-info-editor-show-share-button"],
+			category: categories.cursorSelection,
+		},
+		{
 			key: "rtlText",
 			text: strings["line based rtl switching"],
 			checkbox: values.rtlText,

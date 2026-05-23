@@ -1,6 +1,7 @@
 import toast from "components/toast";
 import { addIntentHandler } from "handlers/intent";
 import config from "./config";
+import customTab from "./customTab";
 
 /**
  * @typedef {object} User
@@ -13,6 +14,9 @@ import config from "./config";
  * @property {number} verified
  * @property {number} threshold
  * @property {number} acode_pro
+ * @property {number} github_id
+ * @property {number} google_id
+ * @property {string} avatar_url
  * @property {string} pro_purchased_at
  * @property {string} created_at
  * @property {string} updated_at
@@ -33,17 +37,37 @@ const loginEvents = {
 			listener(data);
 		}
 	},
-	on(callback) {
+	addListener(callback) {
 		this.listeners.add(callback);
 	},
-	off(callback) {
+	removeListener(callback) {
 		this.listeners.delete(callback);
 	},
 };
 
 class AuthService {
+	#loginCallbacks = new Set();
+	#loginTimeout = null;
+
 	constructor() {
 		addIntentHandler(this.onIntentReceiver.bind(this));
+		loginEvents.addListener(() => {
+			clearTimeout(this.#loginTimeout);
+			for (const callback of this.#loginCallbacks) {
+				callback.resolve();
+			}
+			this.#loginCallbacks.clear();
+		});
+		document.addEventListener("resume", () => {
+			clearTimeout(this.#loginTimeout);
+			this.#loginTimeout = setTimeout(() => {
+				for (const callback of this.#loginCallbacks) {
+					callback.reject("Login timed out");
+				}
+
+				this.#loginCallbacks.clear();
+			}, 1000);
+		});
 	}
 
 	async onIntentReceiver(event) {
@@ -99,11 +123,11 @@ class AuthService {
 	}
 
 	/**
-	 *
+	 * @param {boolean} forceFetch
 	 * @returns {Promise<User>}
 	 */
-	async getLoggedInUser() {
-		if (loggedInUser) return loggedInUser;
+	async getLoggedInUser(forceFetch = false) {
+		if (loggedInUser && !forceFetch) return loggedInUser;
 
 		try {
 			const res = await fetch(`${config.API_BASE}/login`);
@@ -131,6 +155,17 @@ class AuthService {
 			toast("Unable to fetch user info");
 			throw error;
 		}
+	}
+
+	async login() {
+		return new Promise((resolve, reject) => {
+			customTab(`${config.BASE_URL}/login?redirect=app`).catch((err) => {
+				console.error("Custom tab error", err);
+				reject("Failed to open browser");
+			});
+
+			this.#loginCallbacks.add({ resolve, reject });
+		});
 	}
 }
 

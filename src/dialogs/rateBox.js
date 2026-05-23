@@ -1,11 +1,13 @@
 import config from "lib/config";
 import template from "views/rating.hbs";
-import box from "./box";
+import dialog from "./dialog";
 
 function rateBox() {
-	const $box = box("Did you like the app?", template, strings.cancel).onclick(
-		onInteract,
-	);
+	const $box = dialog(
+		"Did you like the app?",
+		template,
+		strings.cancel,
+	).onclick(onInteract);
 
 	function onInteract(e) {
 		/**

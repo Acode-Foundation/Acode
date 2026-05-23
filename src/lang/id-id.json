@@ -728,7 +728,12 @@
 	"settings-info-editor-auto-close-tags": "Menyisipkan tag penutup di berkas HTML, XML, Vue, Angular, dan templat PHP secara otomatis.",
 	"ui zoom": "Pembesaran UI",
 	"settings-info-app-ui-zoom": "Skalakan teks di seluruh antarmuka Acode.",
-	"plugin-not-supported": "Plugin not supported",
-	"plugin-not-supported-info": "The plugin was created for older version of Acode.",
-	"login-to-view": "Please login to view this..."
+	"show share button": "Show share button",
+	"settings-info-editor-show-share-button": "Show share button in selection menu.",
+	"plugin-not-supported": "Plugin tidak didukung",
+	"plugin-not-supported-info": "Plugin dibuat untuk versi lama dari Acode.",
+	"login-to-view": "Mohon login untuk melihat ini...",
+	"iap-plugin-purchase-warning": "Plugin yang dibeli tidak disinkronkan ke akun Acode Anda. Gunakan akun Google yang sama di Play Store untuk memulihkan pembelian Anda.",
+	"iap-pro-purchase-warning": "Pembelian ini tidak akan disinkronkan ke akun Acode Anda. Gunakan akun Google yang sama di Play Store untuk memulihkan pembelian Anda.",
+	"confirm-login": "Anda belum masuk ke Acode, masuk sekarang?"
 }
