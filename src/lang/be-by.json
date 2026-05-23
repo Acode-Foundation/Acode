@@ -735,5 +735,7 @@
 	"settings-info-editor-show-share-button": "Show share button in selection menu.",
 	"iap-plugin-purchase-warning": "Набытыя плагіны не сінхранізуюцца з вашым уліковым запісам Acode. Выкарыстоўвайце той жа ўліковы запіс Google у Play Store для аднаўлення пакупкі.",
 	"iap-pro-purchase-warning": "Гэтая пакупка не будзе сінхранізавана з вашым уліковым запісам Acode. Выкарыстоўвайце той жа ўліковы запіс Google у Play Store для аднаўлення пакупкі.",
-	"confirm-login": "Вы не ўвайшлі ў Acode, увайсці зараз?"
+	"confirm-login": "Вы не ўвайшлі ў Acode, увайсці зараз?",
+	"local word completion": "Local word completion",
+	"settings-info-editor-local-word-completion": "Suggest words from the current file."
 }

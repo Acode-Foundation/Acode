@@ -84,6 +84,7 @@ declare type LangStrings = {
   "settings saved": string;
   "show line numbers": string;
   "show hidden files": string;
+  "show share button": string;
   "show spaces": string;
   "soft tab": string;
   "sort by name": string;
@@ -134,6 +135,7 @@ declare type LangStrings = {
   "invalid backup file": string;
   "add path": string;
   "live autocompletion": string;
+  "local word completion": string;
   "auto close tags": string;
   "file properties": string;
   "path": string;
@@ -669,12 +671,14 @@ declare type LangStrings = {
   "settings-info-editor-line-numbers": string;
   "settings-info-editor-lint-gutter": string;
   "settings-info-editor-live-autocomplete": string;
+  "settings-info-editor-local-word-completion": string;
   "settings-info-editor-auto-close-tags": string;
   "settings-info-editor-rainbow-brackets": string;
   "settings-info-editor-relative-line-numbers": string;
   "settings-info-editor-rtl-text": string;
   "settings-info-editor-scroll-settings": string;
   "settings-info-editor-shift-click-selection": string;
+  "settings-info-editor-show-share-button": string;
   "settings-info-editor-show-spaces": string;
   "settings-info-editor-soft-tab": string;
   "settings-info-editor-tab-size": string;

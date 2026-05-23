@@ -735,5 +735,7 @@
 	"settings-info-editor-show-share-button": "Show share button in selection menu.",
 	"iap-plugin-purchase-warning": "ဝယ္ယူထားေသာ ပလပ္အင္မ်ားသည္ သင့္ Acode အေကာင့္ႏွင့္ ထပ္တူျပဳ၍မရပါ။ သင့္ဝယ္ယူမႈကို ျပန္လည္ရယူရန္ Play Store တြင္ တူညီေသာ Google အေကာင့္ကို အသုံးျပဳပါ။",
 	"iap-pro-purchase-warning": "ဤဝယ္ယူမႈသည္ သင့္ Acode အေကာင့္ႏွင့္ ထပ္တူျပဳမည္မဟုတ္ပါ။ သင့္ဝယ္ယူမႈကို ျပန္လည္ရယူရန္ Play Store တြင္ တူညီေသာ Google အေကာင့္ကို အသုံးျပဳပါ။",
-	"confirm-login": "သင္သည္ Acode သို႔ အေကာင့္ဝင္ထားျခင္းမရွိပါ၊ ယခု အေကာင့္ဝင္မလား။"
+	"confirm-login": "သင္သည္ Acode သို႔ အေကာင့္ဝင္ထားျခင္းမရွိပါ၊ ယခု အေကာင့္ဝင္မလား။",
+	"local word completion": "Local word completion",
+	"settings-info-editor-local-word-completion": "Suggest words from the current file."
 }

@@ -735,5 +735,7 @@
 	"settings-info-editor-show-share-button": "Show share button in selection menu.",
 	"iap-plugin-purchase-warning": "Sotib olingan plaginlar Acode hisobingiz bilan sinxronlanmaydi. Xaridingizni tiklash uchun Play Store'da xuddi shu Google hisobidan foydalaning.",
 	"iap-pro-purchase-warning": "Ushbu xarid Acode hisobingiz bilan sinxronlanmaydi. Xaridingizni tiklash uchun Play Store'da xuddi shu Google hisobidan foydalaning.",
-	"confirm-login": "Siz Acode'ga kirmagansiz, hozir kirasizmi?"
+	"confirm-login": "Siz Acode'ga kirmagansiz, hozir kirasizmi?",
+	"local word completion": "Local word completion",
+	"settings-info-editor-local-word-completion": "Suggest words from the current file."
 }

@@ -735,5 +735,7 @@
 	"settings-info-editor-show-share-button": "Show share button in selection menu.",
 	"iap-plugin-purchase-warning": "תוספים שנרכשו אינם מסונכרנים עם חשבון Acode שלך. השתמש באותו חשבון Google בחנות Play כדי לשחזר את הרכישה שלך.",
 	"iap-pro-purchase-warning": "רכישה זו לא תסונכרן עם חשבון Acode שלך. השתמש באותו חשבון Google בחנות Play כדי לשחזר את הרכישה שלך.",
-	"confirm-login": "אינך מחובר ל-Acode, להתחבר עכשיו?"
+	"confirm-login": "אינך מחובר ל-Acode, להתחבר עכשיו?",
+	"local word completion": "Local word completion",
+	"settings-info-editor-local-word-completion": "Suggest words from the current file."
 }
