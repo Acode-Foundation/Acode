@@ -21,7 +21,6 @@ import {
 	rectangularSelection,
 	tooltips,
 } from "@codemirror/view";
-import localWordCompletions from "cm/localWordCompletions";
 
 /**
  * Base extensions roughly matching the useful parts of CodeMirror's basicSetup
@@ -43,7 +42,6 @@ export default function createBaseExtensions(): Extension[] {
 		crosshairCursor(),
 		highlightActiveLine(),
 		highlightSelectionMatches(),
-		localWordCompletions(),
 		keymap.of([...completionKeymap, ...defaultKeymap, ...historyKeymap]),
 		// This prevents tooltips from being going out of the editor area
 		tooltips({

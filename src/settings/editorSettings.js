@@ -127,6 +127,15 @@ export default function editorSettings() {
 			category: categories.assistance,
 		},
 		{
+			key: "localWordCompletion",
+			text: strings["local word completion"] || "Local word completion",
+			checkbox: values.localWordCompletion ?? true,
+			info:
+				strings["settings-info-editor-local-word-completion"] ||
+				"Suggest words from the current file.",
+			category: categories.assistance,
+		},
+		{
 			key: "autoCloseTags",
 			text: strings["auto close tags"],
 			checkbox: values.autoCloseTags,
