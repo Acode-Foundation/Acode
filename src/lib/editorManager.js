@@ -485,9 +485,8 @@ async function EditorManager($header, $body) {
 			keys: ["localWordCompletion"],
 			compartments: [localWordCompletionCompartment],
 			build() {
-				return appSettings?.value?.localWordCompletion === false
-					? []
-					: localWordCompletions();
+				const enabled = !!appSettings?.value?.localWordCompletion;
+				return enabled ? localWordCompletions() : [];
 			},
 		},
 	];

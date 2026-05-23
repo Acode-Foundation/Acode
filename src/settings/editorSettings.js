@@ -128,11 +128,9 @@ export default function editorSettings() {
 		},
 		{
 			key: "localWordCompletion",
-			text: strings["local word completion"] || "Local word completion",
-			checkbox: values.localWordCompletion ?? true,
-			info:
-				strings["settings-info-editor-local-word-completion"] ||
-				"Suggest words from the current file.",
+			text: strings["local word completion"],
+			checkbox: values.localWordCompletion,
+			info: strings["settings-info-editor-local-word-completion"],
 			category: categories.assistance,
 		},
 		{
