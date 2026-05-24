@@ -735,5 +735,7 @@
 	"settings-info-editor-show-share-button": "Show share button in selection menu.",
 	"iap-plugin-purchase-warning": "Ang mga biniling plugin ay hindi naka-sync sa iyong Acode account. Gamitin ang parehong Google account sa Play Store upang maibalik ang iyong pagbili.",
 	"iap-pro-purchase-warning": "Ang pagbiling ito ay hindi masi-sync sa iyong Acode account. Gamitin ang parehong Google account sa Play Store upang maibalik ang iyong pagbili.",
-	"confirm-login": "Hindi ka naka-sign in sa Acode, mag-sign in ngayon?"
+	"confirm-login": "Hindi ka naka-sign in sa Acode, mag-sign in ngayon?",
+	"local word completion": "Local word completion",
+	"settings-info-editor-local-word-completion": "Suggest words from the current file."
 }

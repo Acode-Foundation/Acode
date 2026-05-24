@@ -735,5 +735,7 @@
 	"settings-info-editor-show-share-button": "Show share button in selection menu.",
 	"iap-plugin-purchase-warning": "افزونه‌های خریداری شده با حساب Acode شما همگام‌سازی نمی‌شوند. برای بازیابی خرید خود از همان حساب Google در فروشگاه Play استفاده کنید.",
 	"iap-pro-purchase-warning": "این خرید با حساب Acode شما همگام‌سازی نخواهد شد. برای بازیابی خرید خود از همان حساب Google در فروشگاه Play استفاده کنید.",
-	"confirm-login": "شما وارد Acode نشده‌اید، اکنون وارد شوید؟"
+	"confirm-login": "شما وارد Acode نشده‌اید، اکنون وارد شوید؟",
+	"local word completion": "Local word completion",
+	"settings-info-editor-local-word-completion": "Suggest words from the current file."
 }
