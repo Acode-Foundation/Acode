@@ -1,0 +1,14 @@
+{
+  "features": {
+    "ghcr.io/devcontainers/features/node:2.0": {
+      "version": "2.0.0",
+      "resolved": "ghcr.io/devcontainers/features/node@sha256:fedd4c11f7adfb64283b578dddc7da906728daa25fa293351c9d913231acf12f",
+      "integrity": "sha256:fedd4c11f7adfb64283b578dddc7da906728daa25fa293351c9d913231acf12f"
+    },
+    "ghcr.io/nordcominc/devcontainer-features/android-sdk:1": {
+      "version": "1.2.0",
+      "resolved": "ghcr.io/nordcominc/devcontainer-features/android-sdk@sha256:c3e0c7e1b12fce18a257e163ade8515e534e58a7edad10dfb6d1fb1a250a307e",
+      "integrity": "sha256:c3e0c7e1b12fce18a257e163ade8515e534e58a7edad10dfb6d1fb1a250a307e"
+    }
+  }
+}
