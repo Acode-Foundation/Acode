@@ -100,13 +100,13 @@ module.exports = (env, options) => {
     // Regular CSS/SCSS files
     {
       test: /(?<!\.m)\.(sa|sc|c)ss$/,
+      type: 'javascript/auto',
       use: [
         rspack.CssExtractRspackPlugin.loader,
         'css-loader',
         'postcss-loader',
         'sass-loader',
       ],
-      type: 'javascript/auto',
     },
   ];
 
@@ -127,6 +127,12 @@ module.exports = (env, options) => {
     },
     module: {
       rules,
+      parser: {
+        javascript: {
+          exportsPresence: 'error',
+          requireAlias: false,
+        },
+      },
     },
     resolve: {
       extensions: ['.ts', '.tsx', '.js', '.mjs', '.json'],
@@ -135,6 +141,7 @@ module.exports = (env, options) => {
         crypto: false,
       },
       modules: ['node_modules', 'src'],
+      roots: [],
     },
     plugins: [
       new rspack.CssExtractRspackPlugin({

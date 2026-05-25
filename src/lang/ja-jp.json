@@ -209,6 +209,7 @@
 	"app settings": "アプリ設定",
 	"disable in-app-browser caching": "アプリ内ブラウザのキャッシュを無効",
 	"copied to clipboard": "クリップボードにコピーしました",
+	"clipboard not available": "Clipboard is not available.",
 	"remember opened files": "開いたファイルを記憶する",
 	"remember opened folders": "開いたフォルダを記憶する",
 	"no suggestions": "候補を表示しない",
@@ -726,5 +727,15 @@
 	"auto close tags": "Auto close tags",
 	"settings-info-editor-auto-close-tags": "Automatically insert closing tags in HTML, XML, Vue, Angular, and PHP template files.",
 	"ui zoom": "UI zoom",
-	"settings-info-app-ui-zoom": "Scale text across the Acode interface."
+	"settings-info-app-ui-zoom": "Scale text across the Acode interface.",
+	"plugin-not-supported": "Plugin not supported",
+	"plugin-not-supported-info": "The plugin was created for older version of Acode.",
+	"login-to-view": "Please login to view this...",
+	"show share button": "Show share button",
+	"settings-info-editor-show-share-button": "Show share button in selection menu.",
+	"iap-plugin-purchase-warning": "購入したプラグインはAcodeアカウントと同期されません。購入を復元するには、Playストアで同じGoogleアカウントを使用してください。",
+	"iap-pro-purchase-warning": "この購入はAcodeアカウントと同期されません。購入を復元するには、Playストアで同じGoogleアカウントを使用してください。",
+	"confirm-login": "Acodeにサインインしていません。今すぐサインインしますか？",
+	"local word completion": "Local word completion",
+	"settings-info-editor-local-word-completion": "Suggest words from the current file."
 }

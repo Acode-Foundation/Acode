@@ -36,6 +36,18 @@ export default function loadPolyFill() {
 		};
 	}
 
+	if (!window.queueMicrotask) {
+		window.queueMicrotask = function (callback) {
+			Promise.resolve()
+				.then(callback)
+				.catch((error) =>
+					setTimeout(() => {
+						throw error;
+					}),
+				);
+		};
+	}
+
 	if (!HTMLElement.prototype.getParent) {
 		HTMLElement.prototype.getParent = function (queryString) {
 			const $$ = [...document.querySelectorAll(queryString)];

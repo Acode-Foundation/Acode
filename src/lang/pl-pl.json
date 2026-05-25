@@ -209,6 +209,7 @@
 	"app settings": "Ustawienia aplikacji",
 	"disable in-app-browser caching": "Wyłącz cache w wbudowanej przeglądarce",
 	"copied to clipboard": "Skopiowano do schowka",
+	"clipboard not available": "Clipboard is not available.",
 	"remember opened files": "Zapamiętaj otwarte pliki",
 	"remember opened folders": "Zapamiętaj otwarte foldery",
 	"no suggestions": "Bez sugestii",
@@ -726,5 +727,15 @@
 	"auto close tags": "Auto close tags",
 	"settings-info-editor-auto-close-tags": "Automatically insert closing tags in HTML, XML, Vue, Angular, and PHP template files.",
 	"ui zoom": "UI zoom",
-	"settings-info-app-ui-zoom": "Scale text across the Acode interface."
+	"settings-info-app-ui-zoom": "Scale text across the Acode interface.",
+	"plugin-not-supported": "Plugin not supported",
+	"plugin-not-supported-info": "The plugin was created for older version of Acode.",
+	"login-to-view": "Please login to view this...",
+	"show share button": "Show share button",
+	"settings-info-editor-show-share-button": "Show share button in selection menu.",
+	"iap-plugin-purchase-warning": "Zakupione wtyczki nie są synchronizowane z Twoim kontem Acode. Użyj tego samego konta Google w Sklepie Play, aby przywrócić zakup.",
+	"iap-pro-purchase-warning": "Ten zakup nie zostanie zsynchronizowany z Twoim kontem Acode. Użyj tego samego konta Google w Sklepie Play, aby przywrócić zakup.",
+	"confirm-login": "Nie jesteś zalogowany do Acode, zalogować się teraz?",
+	"local word completion": "Local word completion",
+	"settings-info-editor-local-word-completion": "Suggest words from the current file."
 }

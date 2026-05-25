@@ -1,5 +1,5 @@
 import settingsPage from "components/settingsPage";
-import constants from "lib/constants";
+import config from "lib/config";
 
 export default function help() {
 	const title = strings.help;
@@ -7,25 +7,25 @@ export default function help() {
 		{
 			key: "docs",
 			text: strings.documentation,
-			link: constants.DOCS_URL,
+			link: config.DOCS_URL,
 			chevron: true,
 		},
 		{
 			key: "help",
 			text: strings.help,
-			link: constants.TELEGRAM_URL,
+			link: config.TELEGRAM_URL,
 			chevron: true,
 		},
 		{
 			key: "faqs",
 			text: strings.faqs,
-			link: `${constants.WEBSITE_URL}/faqs`,
+			link: `${config.BASE_URL}/faqs`,
 			chevron: true,
 		},
 		{
 			key: "bug_report",
 			text: strings.bug_report,
-			link: `${constants.GITHUB_URL}/issues`,
+			link: `${config.GITHUB_URL}/issues`,
 			chevron: true,
 		},
 	];

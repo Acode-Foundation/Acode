@@ -5,7 +5,7 @@ import recents from "lib/recents";
 import FileBrowser from "pages/fileBrowser";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
-import constants from "./constants";
+import config from "./config";
 import EditorFile from "./editorFile";
 import openFolder from "./openFolder";
 import appSettings from "./settings";
@@ -165,7 +165,7 @@ async function saveFile(file, isSaveAs = false) {
 			name || "",
 			strings["new file"],
 			{
-				match: constants.FILE_NAME_REGEX,
+				match: config.FILE_NAME_REGEX,
 				required: true,
 			},
 		);

@@ -7,7 +7,6 @@ import * as cmLint from "@codemirror/lint";
 import * as cmSearch from "@codemirror/search";
 import * as cmState from "@codemirror/state";
 import * as cmView from "@codemirror/view";
-import ajax from "@deadlyjack/ajax";
 import * as lezerHighlight from "@lezer/highlight";
 import {
 	getRegisteredCommands as listRegisteredCommands,
@@ -37,9 +36,9 @@ import { TerminalManager, TerminalThemeManager } from "components/terminal";
 import toast from "components/toast";
 import tutorial from "components/tutorial";
 import alert from "dialogs/alert";
-import box from "dialogs/box";
 import colorPicker from "dialogs/color";
 import confirm from "dialogs/confirm";
+import dialog from "dialogs/dialog";
 import loader from "dialogs/loader";
 import multiPrompt from "dialogs/multiPrompt";
 import prompt from "dialogs/prompt";
@@ -74,7 +73,7 @@ import encodings, { decode, encode } from "utils/encodings";
 import helpers from "utils/helpers";
 import KeyboardEvent from "utils/keyboardEvent";
 import Url from "utils/Url";
-import constants from "./constants";
+import config from "./config";
 
 export default class Acode {
 	#modules = {};
@@ -322,6 +321,7 @@ export default class Acode {
 			view: cmView,
 		});
 
+		this.define("config", config);
 		this.define("Url", Url);
 		this.define("page", Page);
 		this.define("Color", Color);
@@ -330,7 +330,7 @@ export default class Acode {
 		this.define("alert", alert);
 		this.define("select", select);
 		this.define("loader", loader);
-		this.define("dialogBox", box);
+		this.define("dialogBox", dialog);
 		this.define("prompt", prompt);
 		this.define("intent", intent);
 		this.define("fileList", files);
@@ -522,10 +522,7 @@ export default class Acode {
 
 						let purchaseToken;
 						let product;
-						const pluginUrl = Url.join(
-							constants.API_BASE,
-							`plugin/${pluginId}`,
-						);
+						const pluginUrl = Url.join(config.API_BASE, `plugin/${pluginId}`);
 						fsOperation(pluginUrl)
 							.readFile("json")
 							.catch(() => {
@@ -581,16 +578,14 @@ export default class Acode {
 
 									async function onpurchase(e) {
 										const purchase = await getPurchase(product.productId);
-										await ajax.post(
-											Url.join(constants.API_BASE, "plugin/order"),
-											{
-												data: {
-													id: remotePlugin.id,
-													token: purchase?.purchaseToken,
-													package: BuildInfo.packageName,
-												},
-											},
-										);
+										await fetch(Url.join(config.API_BASE, "plugin/order"), {
+											method: "POST",
+											body: JSON.stringify({
+												id: remotePlugin.id,
+												token: purchase?.purchaseToken,
+												package: BuildInfo.packageName,
+											}),
+										});
 										purchaseToken = purchase?.purchaseToken;
 									}
 

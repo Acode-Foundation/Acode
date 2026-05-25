@@ -208,8 +208,8 @@
 	"normal": "רגיל",
 	"app settings": "הגדרות האפליקציה",
 	"disable in-app-browser caching": "השבתת אחסון במטמון בדפדפן בתוך האפליקציה",
-	"Should use Current File For preview instead of default (index.html)": "יש להשתמש בקובץ הנוכחי לתצוגה מקדימה במקום ברירת המחדל (index.html)",
 	"copied to clipboard": "הועתק",
+	"clipboard not available": "Clipboard is not available.",
 	"remember opened files": "זכור קבצים שנפתחו",
 	"remember opened folders": "זכור תקיות שנפתחו",
 	"no suggestions": "אין הצעות",
@@ -727,5 +727,15 @@
 	"auto close tags": "Auto close tags",
 	"settings-info-editor-auto-close-tags": "Automatically insert closing tags in HTML, XML, Vue, Angular, and PHP template files.",
 	"ui zoom": "UI zoom",
-	"settings-info-app-ui-zoom": "Scale text across the Acode interface."
+	"settings-info-app-ui-zoom": "Scale text across the Acode interface.",
+	"plugin-not-supported": "Plugin not supported",
+	"plugin-not-supported-info": "The plugin was created for older version of Acode.",
+	"login-to-view": "Please login to view this...",
+	"show share button": "Show share button",
+	"settings-info-editor-show-share-button": "Show share button in selection menu.",
+	"iap-plugin-purchase-warning": "תוספים שנרכשו אינם מסונכרנים עם חשבון Acode שלך. השתמש באותו חשבון Google בחנות Play כדי לשחזר את הרכישה שלך.",
+	"iap-pro-purchase-warning": "רכישה זו לא תסונכרן עם חשבון Acode שלך. השתמש באותו חשבון Google בחנות Play כדי לשחזר את הרכישה שלך.",
+	"confirm-login": "אינך מחובר ל-Acode, להתחבר עכשיו?",
+	"local word completion": "Local word completion",
+	"settings-info-editor-local-word-completion": "Suggest words from the current file."
 }

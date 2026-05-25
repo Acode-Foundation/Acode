@@ -1,7 +1,11 @@
 import settingsPage from "components/settingsPage";
 import confirm from "dialogs/confirm";
+import loader from "dialogs/loader";
 import rateBox from "dialogs/rateBox";
 import actionStack from "lib/actionStack";
+import auth from "lib/auth";
+import config from "lib/config";
+import customTab from "lib/customTab";
 import openFile from "lib/openFile";
 import removeAds from "lib/removeAds";
 import appSettings from "lib/settings";
@@ -159,7 +163,7 @@ export default function mainSettings() {
 		},
 	];
 
-	if (IS_FREE_VERSION) {
+	if (!config.HAS_PRO) {
 		items.push({
 			key: "adRewards",
 			text: strings["earn ad-free time"],
@@ -172,7 +176,7 @@ export default function mainSettings() {
 			key: "removeads",
 			text: strings["remove ads"],
 			icon: "block",
-			info: strings["settings-info-main-remove-ads"],
+			info: `${strings["settings-info-main-remove-ads"]}${!helpers.shouldAllowExternalPurchase() ? ` ${strings["iap-pro-purchase-warning"]}` : ""}`,
 			category: categories.supportAcode,
 			chevron: true,
 		});
@@ -241,8 +245,48 @@ export default function mainSettings() {
 
 			case "removeads":
 				try {
-					await removeAds();
-					this.remove();
+					if (!helpers.shouldAllowExternalPurchase()) {
+						await removeAds();
+						this.remove();
+						break;
+					}
+
+					loader.create(strings.login, strings["loading..."]);
+
+					try {
+						let user = await auth.getLoggedInUser();
+						if (!user) {
+							const confirmation = await confirm(
+								strings.confirm,
+								strings["confirm-login"],
+							);
+
+							if (!confirmation) {
+								return;
+							}
+
+							loader.show();
+							await auth.login();
+
+							user = await auth.getLoggedInUser();
+						}
+
+						if (!user) {
+							throw new Error("Unable to fetch user");
+						}
+
+						if (user.acode_pro) {
+							this.remove();
+							return;
+						}
+					} catch (error) {
+						helpers.error(error);
+						return;
+					} finally {
+						loader.destroy();
+					}
+
+					customTab(`${config.BASE_URL}/pro?redirect=app`).catch(helpers.error);
 				} catch (error) {
 					helpers.error(error);
 				}

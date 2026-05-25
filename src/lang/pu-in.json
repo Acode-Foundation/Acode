@@ -209,6 +209,7 @@
 	"app settings": "ਐਪ ਸੈਟਿੰਗਾਂ",
 	"disable in-app-browser caching": "ਇਨ-ਐਪ-ਬ੍ਰਾਊਜ਼ਰ ਕੈਚਿੰਗ ਨੂੰ ਅਸਮਰੱਥ ਬਣਾਓ",
 	"copied to clipboard": "ਕਲਿੱਪਬੋਰਡ 'ਤੇ ਕਾਪੀ ਕੀਤਾ ਗਿਆ",
+	"clipboard not available": "Clipboard is not available.",
 	"remember opened files": "ਖੋਲ੍ਹੀਆਂ ਫਾਈਲਾਂ ਨੂੰ ਯਾਦ ਰੱਖੋ",
 	"remember opened folders": "ਖੋਲ੍ਹੇ ਫੋਲਡਰਾਂ ਨੂੰ ਯਾਦ ਰੱਖੋ",
 	"no suggestions": "ਕੋਈ ਸੁਝਾਅ ਨਹੀਂ",
@@ -726,5 +727,15 @@
 	"auto close tags": "Auto close tags",
 	"settings-info-editor-auto-close-tags": "Automatically insert closing tags in HTML, XML, Vue, Angular, and PHP template files.",
 	"ui zoom": "UI zoom",
-	"settings-info-app-ui-zoom": "Scale text across the Acode interface."
+	"settings-info-app-ui-zoom": "Scale text across the Acode interface.",
+	"plugin-not-supported": "Plugin not supported",
+	"plugin-not-supported-info": "The plugin was created for older version of Acode.",
+	"login-to-view": "Please login to view this...",
+	"show share button": "Show share button",
+	"settings-info-editor-show-share-button": "Show share button in selection menu.",
+	"iap-plugin-purchase-warning": "ਖਰੀਦੇ ਗਏ ਪਲੱਗਇਨ ਤੁਹਾਡੇ Acode ਖਾਤੇ ਨਾਲ ਸਿੰਕ ਨਹੀਂ ਹੁੰਦੇ। ਆਪਣੀ ਖਰੀਦ ਨੂੰ ਬਹਾਲ ਕਰਨ ਲਈ Play Store ਵਿੱਚ ਉਹੀ Google ਖਾਤਾ ਵਰਤੋ।",
+	"iap-pro-purchase-warning": "ਇਹ ਖਰੀਦ ਤੁਹਾਡੇ Acode ਖਾਤੇ ਨਾਲ ਸਿੰਕ ਨਹੀਂ ਹੋਵੇਗੀ। ਆਪਣੀ ਖਰੀਦ ਨੂੰ ਬਹਾਲ ਕਰਨ ਲਈ Play Store ਵਿੱਚ ਉਹੀ Google ਖਾਤਾ ਵਰਤੋ।",
+	"confirm-login": "ਤੁਸੀਂ Acode ਵਿੱਚ ਸਾਈਨ ਇਨ ਨਹੀਂ ਹੋ, ਹੁਣੇ ਸਾਈਨ ਇਨ ਕਰੋ?",
+	"local word completion": "Local word completion",
+	"settings-info-editor-local-word-completion": "Suggest words from the current file."
 }

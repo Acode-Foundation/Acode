@@ -110,7 +110,17 @@ import android.graphics.ImageDecoder;
 import java.security.MessageDigest;
 import java.security.MessageDigest;
 
+import android.content.pm.InstallSourceInfo;
+import android.content.pm.PackageManager;
+import android.os.Build;
 
+import android.content.Intent;
+
+import org.apache.cordova.CallbackContext;
+import org.apache.cordova.CordovaPlugin;
+
+import org.json.JSONArray;
+import org.json.JSONException;
 
 public class System extends CordovaPlugin {
     private static final String TAG = "SystemPlugin";
@@ -200,6 +210,7 @@ public class System extends CordovaPlugin {
             case "decode":
             case "encode":
             case "copyToUri":
+            case "getInstaller":
             case "compare-file-text":
             case "compare-texts":
             case "pin-file-shortcut":
@@ -228,6 +239,27 @@ public class System extends CordovaPlugin {
                 return true;
             case "set-intent-handler":
                 setIntentHandler(callbackContext);
+                return true;
+
+            case "shareText":
+                String text = args.getString(0);
+
+                cordova.getActivity().runOnUiThread(() -> {
+                    try {
+                        Intent shareIntent = new Intent(Intent.ACTION_SEND);
+                        shareIntent.setType("text/plain");
+                        shareIntent.putExtra(Intent.EXTRA_TEXT, text);
+
+                        cordova.getActivity().startActivity(
+                            Intent.createChooser(shareIntent, "Share")
+                        );
+
+                        callbackContext.success();
+
+                    } catch (Exception e) {
+                        callbackContext.error(e.getMessage());
+                    }
+                });
                 return true;
             case "set-ui-theme":
                 this.cordova.getActivity()
@@ -399,6 +431,29 @@ public class System extends CordovaPlugin {
                 new Runnable() {
                     public void run() {
                         switch (action) {
+                            case "getInstaller":
+                                try {
+                                    PackageManager pm = context.getPackageManager();
+
+                                    String installer;
+
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                        InstallSourceInfo info =
+                                            pm.getInstallSourceInfo(context.getPackageName());
+
+                                        installer = info.getInstallingPackageName();
+                                    } else {
+                                        installer = pm.getInstallerPackageName(
+                                            context.getPackageName()
+                                        );
+                                    }
+
+                                    callbackContext.success(installer);
+
+                                } catch (Exception e) {
+                                    callbackContext.error(e.getMessage());
+                                }
+                                break;
                             case "copyToUri":
                                 try {
                                     //srcUri is a file
@@ -605,19 +660,21 @@ public class System extends CordovaPlugin {
 
     private void sendLogToJavaScript(String level, String message) {
         final String js =
-            "window.log('" + level + "', " + JSONObject.quote(message) + ");";
-        cordova
-            .getActivity()
-            .runOnUiThread(
-                new Runnable() {
-                    @Override
-                    public void run() {
-                        webView.loadUrl("javascript:" + js);
-                    }
-                }
-            );
-    }
+            "if (typeof window.log === 'function')" +
+            "  window.log(" + JSONObject.quote(level) + ", " + JSONObject.quote(message) + ");" +
+            "else" +
+            "  console.log(" + JSONObject.quote(level) + ", " + JSONObject.quote(message) + ");";
 
+        cordova.getActivity().runOnUiThread(() -> {
+            try {
+                ((android.webkit.WebView) webView.getEngine().getView())
+                    .evaluateJavascript(js, null);
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to send log to JavaScript: " + e.getMessage());
+            }
+        });
+    }
+    
     // Helper method to determine MIME type using Android's built-in MimeTypeMap
     private String getMimeTypeFromExtension(String fileName) {
         String extension = "";

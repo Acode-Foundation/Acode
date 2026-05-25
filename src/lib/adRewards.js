@@ -1,5 +1,6 @@
 import toast from "components/toast";
 import auth from "./auth";
+import config from "./config";
 import secureAdRewardState from "./secureAdRewardState";
 
 const ONE_HOUR = 60 * 60 * 1000;
@@ -178,15 +179,7 @@ function scheduleExpiryCheck() {
 
 async function getRewardIdentity() {
 	try {
-		const user = await auth.getUserInfo();
-		const userId =
-			user?.id ||
-			user?._id ||
-			user?.github ||
-			user?.username ||
-			device?.uuid ||
-			"guest";
-		return String(userId);
+		return String(user?.id || "Guest");
 	} catch (error) {
 		console.warn("Failed to resolve rewarded ad user identity.", error);
 		return String(device?.uuid || "guest");
@@ -323,18 +316,18 @@ export default {
 		return Boolean(state.isActive && state.adFreeUntil > Date.now());
 	},
 	canShowAds() {
-		return Boolean(window.IS_FREE_VERSION && !this.isAdFreeActive());
+		return Boolean(!config.HAS_PRO && !this.isAdFreeActive());
 	},
 	isRewardedSupported() {
-		return Boolean(
-			window.IS_FREE_VERSION && admob?.RewardedAd && getRewardedUnitId(),
-		);
+		return Boolean(!config.HAS_PRO && admob?.RewardedAd && getRewardedUnitId());
 	},
 	getRewardedUnavailableReason() {
-		if (!window.IS_FREE_VERSION)
+		if (config.HAS_PRO) {
 			return "Ads are already disabled on this build.";
-		if (!admob?.RewardedAd)
+		}
+		if (!admob?.RewardedAd) {
 			return "Rewarded ads are unavailable on this device.";
+		}
 		if (!getRewardedUnitId()) {
 			return "Rewarded ads are not configured for production yet.";
 		}

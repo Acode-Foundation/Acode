@@ -1,13 +1,11 @@
 {
   "editor.formatOnSave": true,
-  "autoimport.doubleQuotes": false,
-  "java.configuration.updateBuildConfiguration": "disabled",
   "prettier.requireConfig": true,
-  "javascript.format.enable": true,
+  "js/ts.format.enabled": true,
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "prettier.tabWidth": 2,
   "prettier.useTabs": false,
-  "javascript.format.semicolons": "insert",
+  "js/ts.format.semicolons": "insert",
   "[scss]": {
     "editor.defaultFormatter": "vscode.css-language-features"
   },
@@ -26,6 +24,13 @@
     "jsx": {
       "attr_quotes": "single"
     }
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "editor.codeActionsOnSave": {
+    "quickFix.biome": "explicit",
+    "source.organizeImports.biome": "explicit"
   },
   "cSpell.words": [
     "abap",
@@ -126,6 +131,7 @@
     "flac",
     "Flix",
     "floobits",
+    "FOXBIZ",
     "Foxdebug",
     "freemarker",
     "gamemaker",
@@ -167,6 +173,7 @@
     "intoview",
     "Invisibles",
     "irid",
+    "isfiles",
     "jbuilder",
     "JEXL",
     "jsbeautify",
@@ -243,6 +250,7 @@
     "onscrollleft",
     "onscrolltop",
     "onsearch",
+    "onwillconnect",
     "onwilldisconnect",
     "onwriteend",
     "opencl",
@@ -364,16 +372,17 @@
     "watchmanconfig",
     "webp",
     "wercker",
+    "willconnect",
+    "willdisconnect",
     "Wollok",
     "wpgm",
     "wpml",
     "wtest",
     "wxml",
     "wxss",
+    "xhrs",
+    "XMLHTTP",
     "xquery",
     "Zeek"
-  ],
-  "[javascript]": {
-    "editor.defaultFormatter": "biomejs.biome"
-  }
+  ]
 }

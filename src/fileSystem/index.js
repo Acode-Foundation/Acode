@@ -1,4 +1,4 @@
-import ajax from "@deadlyjack/ajax";
+import ajax from "lib/ajax";
 import { decode } from "utils/encodings";
 import Url from "utils/Url";
 import externalFs from "./externalFs";

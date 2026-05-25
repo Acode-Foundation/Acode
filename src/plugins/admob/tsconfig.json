@@ -1,0 +1,9 @@
+{
+  "extends": "cordova-plus/plugin",
+  "compilerOptions": {
+    "composite": true,
+    "outDir": "www",
+    "rootDir": "src/www"
+  },
+  "include": ["./src/www/cordova.d.ts", "./src/www/**/*"]
+}

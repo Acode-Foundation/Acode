@@ -4,7 +4,7 @@ import themes from "theme/list";
 import { getSystemEditorTheme } from "theme/preInstalled";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
-import constants from "./constants";
+import config from "./config";
 import lang from "./lang";
 import { isDeviceDarkTheme } from "./systemConfiguration";
 
@@ -119,8 +119,8 @@ class Settings {
 			formatter: {},
 			prettier: {},
 			maxFileSize: 12,
-			serverPort: constants.SERVER_PORT,
-			previewPort: constants.PREVIEW_PORT,
+			serverPort: config.SERVER_PORT,
+			previewPort: config.PREVIEW_PORT,
 			showConsoleToggler: true,
 			previewMode: this.PREVIEW_MODE_INAPP,
 			disableCache: false,
@@ -148,6 +148,7 @@ class Settings {
 			fullscreen: false,
 			floatingButton: !this.#IS_TABLET,
 			liveAutoCompletion: true,
+			localWordCompletion: true,
 			autoCloseTags: true,
 			showPrintMargin: false,
 			printMargin: 80,
@@ -165,7 +166,7 @@ class Settings {
 			rememberFolders: true,
 			diagonalScrolling: false,
 			reverseScrolling: false,
-			scrollSpeed: constants.SCROLL_SPEED_NORMAL,
+			scrollSpeed: config.SCROLL_SPEED_NORMAL,
 			customTheme: this.#customTheme,
 			relativeLineNumbers: false,
 			elasticTabstops: false,
@@ -192,6 +193,7 @@ class Settings {
 			},
 			developerMode: false,
 			shiftClickSelection: false,
+			showShareButton: true,
 		};
 		this.value = structuredClone(this.#defaultSettings);
 	}

@@ -208,8 +208,8 @@
 	"normal": "Normal",
 	"app settings": "Pengaturan Aplikasi",
 	"disable in-app-browser caching": "Nonaktifkan caching peramban-dalam-aplikasi",
-	"Should use Current File For preview instead of default (index.html)": "Harus menggunakan berkas saat ini untuk pratinjau alih-alih default (index.html)",
 	"copied to clipboard": "Disalin ke clipboard",
+	"clipboard not available": "Clipboard is not available.",
 	"remember opened files": "Ingat berkas yang dibuka",
 	"remember opened folders": "Ingat folder yang dibuka",
 	"no suggestions": "Tidak ada saran",
@@ -727,5 +727,15 @@
 	"auto close tags": "Penutup tag otomatis",
 	"settings-info-editor-auto-close-tags": "Menyisipkan tag penutup di berkas HTML, XML, Vue, Angular, dan templat PHP secara otomatis.",
 	"ui zoom": "Pembesaran UI",
-	"settings-info-app-ui-zoom": "Skalakan teks di seluruh antarmuka Acode."
+	"settings-info-app-ui-zoom": "Skalakan teks di seluruh antarmuka Acode.",
+	"show share button": "Tampilkan tombol bagikan",
+	"settings-info-editor-show-share-button": "Tampilkan tombol bagikan di menu pemilihan.",
+	"plugin-not-supported": "Plugin tidak didukung",
+	"plugin-not-supported-info": "Plugin dibuat untuk versi lama dari Acode.",
+	"login-to-view": "Mohon login untuk melihat ini...",
+	"iap-plugin-purchase-warning": "Plugin yang dibeli tidak disinkronkan ke akun Acode Anda. Gunakan akun Google yang sama di Play Store untuk memulihkan pembelian Anda.",
+	"iap-pro-purchase-warning": "Pembelian ini tidak akan disinkronkan ke akun Acode Anda. Gunakan akun Google yang sama di Play Store untuk memulihkan pembelian Anda.",
+	"confirm-login": "Anda belum masuk ke Acode, masuk sekarang?",
+	"local word completion": "Local word completion",
+	"settings-info-editor-local-word-completion": "Suggest words from the current file."
 }

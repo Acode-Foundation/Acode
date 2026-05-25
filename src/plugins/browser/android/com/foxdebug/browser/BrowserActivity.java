@@ -3,11 +3,13 @@ package com.foxdebug.browser;
 import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.Insets;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.view.Window;
+import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.webkit.WebChromeClient;
 import com.foxdebug.system.Ui;
@@ -37,6 +39,20 @@ public class BrowserActivity extends Activity {
     browser = new Browser(this, theme, onlyConsole);
     browser.setUrl(url);
     setContentView(browser);
+
+    if (Build.VERSION.SDK_INT >= 30) {
+      getWindow().setDecorFitsSystemWindows(false);
+
+      browser.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+        @Override
+        public WindowInsets onApplyWindowInsets(View v, WindowInsets insets) {
+          Insets systemBarsInsets = insets.getInsets(WindowInsets.Type.systemBars());
+          v.setPadding(systemBarsInsets.left, systemBarsInsets.top, systemBarsInsets.right, systemBarsInsets.bottom);
+          return WindowInsets.CONSUMED;
+        }
+      });
+    }
+
     setSystemTheme(theme.get("primaryColor"));
   }
 

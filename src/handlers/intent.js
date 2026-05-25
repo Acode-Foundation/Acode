@@ -1,5 +1,8 @@
 import fsOperation from "fileSystem";
+import auth from "lib/auth";
+import config from "lib/config";
 import openFile from "lib/openFile";
+import { hideAd } from "lib/startAd";
 import helpers from "utils/helpers";
 
 const handlers = [];
@@ -35,10 +38,31 @@ export default async function HandleIntent(intent = {}) {
 
 			if (defaultPrevented) return;
 
-			if (module === "plugin") {
+			if (module === "plugin" && action === "install") {
 				const { default: Plugin } = await import("pages/plugin");
+
+				if (!value || !/^([a-z0-9\.]+)$/.test(value)) {
+					return;
+				}
+
 				const installed = await fsOperation(PLUGIN_DIR, value).exists();
 				Plugin({ id: value, installed, install: action === "install" });
+			}
+
+			if (module === "pro") {
+				try {
+					const user = await auth.getLoggedInUser(true);
+					if (user.acode_pro) {
+						hideAd();
+						config.HAS_PRO = true;
+						const settings = document.querySelector(
+							'[data-action="list-item"][data-key="removeads"',
+						);
+						if (settings) {
+							settings.remove();
+						}
+					}
+				} catch (error) {}
 			}
 
 			return;

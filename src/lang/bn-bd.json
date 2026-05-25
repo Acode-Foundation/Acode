@@ -209,6 +209,7 @@
 	"app settings": "অ্যাপ সেটিংস",
 	"disable in-app-browser caching": "ইন-অ্যাপ ব্রাউজারের ক্যাশ বন্ধ করুন",
 	"copied to clipboard": "ক্লিপবোর্ডে কপি করা হয়েছে",
+	"clipboard not available": "Clipboard is not available.",
 	"remember opened files": "খোলা ফাইলগুলো মনে রাখুন",
 	"remember opened folders": "খোলা ফোল্ডারগুলো মনে রাখুন",
 	"no suggestions": "কোনো পরামর্শ নেই",
@@ -726,5 +727,15 @@
 	"auto close tags": "Auto close tags",
 	"settings-info-editor-auto-close-tags": "Automatically insert closing tags in HTML, XML, Vue, Angular, and PHP template files.",
 	"ui zoom": "UI zoom",
-	"settings-info-app-ui-zoom": "Scale text across the Acode interface."
+	"settings-info-app-ui-zoom": "Scale text across the Acode interface.",
+	"plugin-not-supported": "Plugin not supported",
+	"plugin-not-supported-info": "The plugin was created for older version of Acode.",
+	"login-to-view": "Please login to view this...",
+	"show share button": "Show share button",
+	"settings-info-editor-show-share-button": "Show share button in selection menu.",
+	"iap-plugin-purchase-warning": "ক্রয়কৃত প্লাগইনগুলি আপনার Acode অ্যাকাউন্টের সাথে সিঙ্ক হয় না। আপনার ক্রয় পুনরুদ্ধার করতে প্লে স্টোরে একই Google অ্যাকাউন্ট ব্যবহার করুন।",
+	"iap-pro-purchase-warning": "এই ক্রয়টি আপনার Acode অ্যাকাউন্টের সাথে সিঙ্ক হবে না। আপনার ক্রয় পুনরুদ্ধার করতে প্লে স্টোরে একই Google অ্যাকাউন্ট ব্যবহার করুন।",
+	"confirm-login": "আপনি Acode-এ সাইন ইন করেননি, এখন সাইন ইন করবেন?",
+	"local word completion": "Local word completion",
+	"settings-info-editor-local-word-completion": "Suggest words from the current file."
 }

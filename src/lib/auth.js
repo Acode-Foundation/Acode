@@ -1,5 +1,34 @@
 import toast from "components/toast";
 import { addIntentHandler } from "handlers/intent";
+import config from "./config";
+import customTab from "./customTab";
+
+/**
+ * @typedef {object} User
+ * @property {number} id
+ * @property {string} name
+ * @property {string} role
+ * @property {string} email
+ * @property {string} github
+ * @property {string} website
+ * @property {number} verified
+ * @property {number} threshold
+ * @property {number} acode_pro
+ * @property {number} github_id
+ * @property {number} google_id
+ * @property {string} avatar_url
+ * @property {string} pro_purchased_at
+ * @property {string} created_at
+ * @property {string} updated_at
+ * @property {boolean} isAdmin
+ */
+
+/**@type {User|null} */
+let loggedInUser = null;
+/**@type {number} */
+let cacheTimeout = null;
+
+const CACHE_USER_KEY = "cached-logged-in-user";
 
 const loginEvents = {
 	listeners: new Set(),
@@ -8,24 +37,44 @@ const loginEvents = {
 			listener(data);
 		}
 	},
-	on(callback) {
+	addListener(callback) {
 		this.listeners.add(callback);
 	},
-	off(callback) {
+	removeListener(callback) {
 		this.listeners.delete(callback);
 	},
 };
 
 class AuthService {
+	#loginCallbacks = new Set();
+	#loginTimeout = null;
+
 	constructor() {
 		addIntentHandler(this.onIntentReceiver.bind(this));
+		loginEvents.addListener(() => {
+			clearTimeout(this.#loginTimeout);
+			for (const callback of this.#loginCallbacks) {
+				callback.resolve();
+			}
+			this.#loginCallbacks.clear();
+		});
+		document.addEventListener("resume", () => {
+			clearTimeout(this.#loginTimeout);
+			this.#loginTimeout = setTimeout(() => {
+				for (const callback of this.#loginCallbacks) {
+					callback.reject("Login timed out");
+				}
+
+				this.#loginCallbacks.clear();
+			}, 1000);
+		});
 	}
 
 	async onIntentReceiver(event) {
 		try {
 			if (event?.module === "user" && event?.action === "login") {
 				if (event?.value) {
-					this._exec("saveToken", [event.value]);
+					this.#exec("saveToken", [event.value]);
 					toast("Logged in successfully");
 
 					setTimeout(() => {
@@ -43,28 +92,29 @@ class AuthService {
 	/**
 	 * Helper to wrap cordova.exec in a Promise
 	 */
-	_exec(action, args = []) {
+	#exec(action, args = []) {
 		return new Promise((resolve, reject) => {
 			cordova.exec(resolve, reject, "Authenticator", action, args);
 		});
 	}
 
-	async openLoginUrl() {
-		const url = "https://acode.app/login?redirect=app";
-
-		try {
-			await new Promise((resolve, reject) => {
-				CustomTabs.open(url, { showTitle: true }, resolve, reject);
-			});
-		} catch (error) {
-			console.error("CustomTabs failed, opening system browser.", error);
-			system.openInBrowser(url);
-		}
-	}
-
 	async logout() {
 		try {
-			await this._exec("logout");
+			const res = await fetch(`${config.API_BASE}/login`, {
+				method: "DELETE",
+			});
+			if (!res.ok) {
+				throw new Error("Unable to logout.");
+			}
+		} catch (error) {
+			console.error("Error during logout:", error);
+		}
+
+		loggedInUser = null;
+		localStorage.removeItem(CACHE_USER_KEY);
+
+		try {
+			await this.#exec("logout");
 			return true;
 		} catch (error) {
 			console.error("Failed to logout.", error);
@@ -72,82 +122,50 @@ class AuthService {
 		}
 	}
 
-	async isLoggedIn() {
-		try {
-			// Native checks EncryptedPrefs and validates with API internally
-			await this._exec("isLoggedIn");
-			return true;
-		} catch (error) {
-			console.error(error);
-			// error is typically the status code (0 if no token, 401 if invalid)
-			return false;
-		}
-	}
+	/**
+	 * @param {boolean} forceFetch
+	 * @returns {Promise<User>}
+	 */
+	async getLoggedInUser(forceFetch = false) {
+		if (loggedInUser && !forceFetch) return loggedInUser;
 
-	async getUserInfo() {
 		try {
-			const data = await this._exec("getUserInfo");
-			return typeof data === "string" ? JSON.parse(data) : data;
-		} catch (error) {
-			console.error("Failed to fetch user data.", error);
-			return null;
-		}
-	}
+			const res = await fetch(`${config.API_BASE}/login`);
 
-	async getAvatar() {
-		try {
-			const userData = await this.getUserInfo();
-			if (!userData) return null;
-
-			if (userData.github) {
-				return `https://avatars.githubusercontent.com/${userData.github}`;
+			if (res.ok) {
+				loggedInUser = await res.json();
+				localStorage.setItem(CACHE_USER_KEY, JSON.stringify(loggedInUser));
+				clearTimeout(cacheTimeout);
+				cacheTimeout = setTimeout(() => (loggedInUser = null), 600_000);
+				return loggedInUser;
 			}
 
-			if (userData.name) {
-				return this._generateInitialsAvatar(userData.name);
+			if (res.status === 401) {
+				localStorage.removeItem(CACHE_USER_KEY);
+				return null;
 			}
 
-			return null;
+			throw new Error("Unable to fetch user Info");
 		} catch (error) {
-			console.error("Failed to get avatar", error);
-			return null;
+			if (CACHE_USER_KEY in localStorage) {
+				try {
+					return JSON.parse(localStorage.getItem(CACHE_USER_KEY));
+				} catch {}
+			}
+			toast("Unable to fetch user info");
+			throw error;
 		}
 	}
 
-	_generateInitialsAvatar(name) {
-		const nameParts = name.split(" ");
-		const initials =
-			nameParts.length >= 2
-				? `${nameParts[0][0]}${nameParts[1][0]}`.toUpperCase()
-				: nameParts[0][0].toUpperCase();
+	async login() {
+		return new Promise((resolve, reject) => {
+			customTab(`${config.BASE_URL}/login?redirect=app`).catch((err) => {
+				console.error("Custom tab error", err);
+				reject("Failed to open browser");
+			});
 
-		const canvas = document.createElement("canvas");
-		canvas.width = 100;
-		canvas.height = 100;
-		const ctx = canvas.getContext("2d");
-
-		const colors = [
-			"#2196F3",
-			"#9C27B0",
-			"#E91E63",
-			"#009688",
-			"#4CAF50",
-			"#FF9800",
-		];
-		ctx.fillStyle =
-			colors[
-				name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0) %
-					colors.length
-			];
-		ctx.fillRect(0, 0, 100, 100);
-
-		ctx.fillStyle = "#ffffff";
-		ctx.font = "bold 40px Arial";
-		ctx.textAlign = "center";
-		ctx.textBaseline = "middle";
-		ctx.fillText(initials, 50, 50);
-
-		return canvas.toDataURL();
+			this.#loginCallbacks.add({ resolve, reject });
+		});
 	}
 }
 

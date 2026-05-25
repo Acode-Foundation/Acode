@@ -1,7 +1,7 @@
 import fsOperation from "fileSystem";
 import tutorial from "components/tutorial";
 import alert from "dialogs/alert";
-import box from "dialogs/box";
+import dialog from "dialogs/dialog";
 import markdownIt from "markdown-it";
 import anchor from "markdown-it-anchor";
 import MarkdownItGitHubAlerts from "markdown-it-github-alerts";
@@ -13,7 +13,7 @@ import helpers from "utils/helpers";
 import Url from "utils/Url";
 import $_console from "views/console.hbs";
 import $_markdown from "views/markdown.hbs";
-import constants from "./constants";
+import config from "./config";
 import EditorFile from "./editorFile";
 import openFolder from "./openFolder";
 import appSettings from "./settings";
@@ -92,7 +92,7 @@ async function run(
 				type: mimeType.lookup(extension),
 			});
 
-			box(filename, `<img src='${URL.createObjectURL(blob)}'>`);
+			dialog(filename, `<img src='${URL.createObjectURL(blob)}'>`);
 		} catch (err) {
 			helpers.error(err);
 		}
@@ -142,7 +142,7 @@ async function run(
 		target = "inapp";
 		filename = "console.html";
 		pathName = `${ASSETS_DIRECTORY}www/`;
-		port = constants.CONSOLE_PORT;
+		port = config.CONSOLE_PORT;
 	}
 
 	function start() {

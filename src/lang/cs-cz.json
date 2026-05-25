@@ -209,6 +209,7 @@
 	"app settings": "Nastavení aplikace",
 	"disable in-app-browser caching": "Zakázat ukládání do mezipaměti v prohlížeči aplikace",
 	"copied to clipboard": "Zkopírováno do schránky",
+	"clipboard not available": "Clipboard is not available.",
 	"remember opened files": "Zapamatovat si otevřené soubory",
 	"remember opened folders": "Zapamatovat si otevřené složky",
 	"no suggestions": "Žádné návrhy",
@@ -726,5 +727,15 @@
 	"auto close tags": "Auto close tags",
 	"settings-info-editor-auto-close-tags": "Automatically insert closing tags in HTML, XML, Vue, Angular, and PHP template files.",
 	"ui zoom": "UI zoom",
-	"settings-info-app-ui-zoom": "Scale text across the Acode interface."
+	"settings-info-app-ui-zoom": "Scale text across the Acode interface.",
+	"plugin-not-supported": "Plugin not supported",
+	"plugin-not-supported-info": "The plugin was created for older version of Acode.",
+	"login-to-view": "Please login to view this...",
+	"show share button": "Show share button",
+	"settings-info-editor-show-share-button": "Show share button in selection menu.",
+	"iap-plugin-purchase-warning": "Zakoupené pluginy nejsou synchronizovány s vaším účtem Acode. Pro obnovení nákupu použijte stejný účet Google v Obchodě Play.",
+	"iap-pro-purchase-warning": "Tento nákup nebude synchronizován s vaším účtem Acode. Pro obnovení nákupu použijte stejný účet Google v Obchodě Play.",
+	"confirm-login": "Nejste přihlášeni do Acode, přihlásit se nyní?",
+	"local word completion": "Local word completion",
+	"settings-info-editor-local-word-completion": "Suggest words from the current file."
 }

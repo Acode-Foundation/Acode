@@ -209,6 +209,7 @@
 	"app settings": "應用設置",
 	"disable in-app-browser caching": "關閉內置瀏覽器緩存",
 	"copied to clipboard": "復製到剪貼板",
+	"clipboard not available": "Clipboard is not available.",
 	"remember opened files": "記住打開過的文件",
 	"remember opened folders": "記住打開過的文件夾",
 	"no suggestions": "不顯示建議",
@@ -726,5 +727,15 @@
 	"auto close tags": "自動補全閉合標籤",
 	"settings-info-editor-auto-close-tags": "在 HTML、XML、Vue、Angular 和 PHP 模板文件中自動插入閉合標籤。",
 	"ui zoom": "UI 縮放",
-	"settings-info-app-ui-zoom": "縮放所有 Acode 介面文字。"
+	"settings-info-app-ui-zoom": "縮放所有 Acode 介面文字。",
+	"plugin-not-supported": "不支持該插件",
+	"plugin-not-supported-info": "該插件僅適用於舊版本的 Acode。",
+	"login-to-view": "請先登錄以查看此內容……",
+	"show share button": "Show share button",
+	"settings-info-editor-show-share-button": "Show share button in selection menu.",
+	"iap-plugin-purchase-warning": "購買的插件不會同步到您的 Acode 帳戶。請在 Play 商店中使用相同的 Google 帳戶來恢復您的購買。",
+	"iap-pro-purchase-warning": "此購買不會同步到您的 Acode 帳戶。請在 Play 商店中使用相同的 Google 帳戶來恢復您的購買。",
+	"confirm-login": "您尚未登入 Acode，立即登入？",
+	"local word completion": "Local word completion",
+	"settings-info-editor-local-word-completion": "Suggest words from the current file."
 }

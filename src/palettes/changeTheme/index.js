@@ -1,5 +1,6 @@
 import "./style.scss";
 import palette from "components/palette";
+import config from "lib/config";
 import appSettings from "lib/settings";
 import { isDeviceDarkTheme } from "lib/systemConfiguration";
 import themes from "theme/list";
@@ -22,7 +23,7 @@ function generateHints(type) {
 	const currentTheme = appSettings.value.appTheme;
 	const availableThemes = themes
 		.list()
-		.filter((theme) => !(theme.version === "paid" && IS_FREE_VERSION));
+		.filter((theme) => !(theme.version === "paid" && !config.HAS_PRO));
 
 	return availableThemes.map((theme) => {
 		const isCurrent = theme.id === currentTheme;

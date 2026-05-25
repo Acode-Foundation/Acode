@@ -103,6 +103,10 @@
     z-index: 111;
     background-color: rgb(0, 0, 0);
     opacity: 0.4;
+
+    ~.mask {
+      opacity: 0;
+    }
   }
 
   &.hide {

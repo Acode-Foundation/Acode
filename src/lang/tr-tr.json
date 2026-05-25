@@ -209,6 +209,7 @@
 	"app settings": "App settings",
 	"disable in-app-browser caching": "Disable in-app-browser caching",
 	"copied to clipboard": "Copied to clipboard",
+	"clipboard not available": "Clipboard is not available.",
 	"remember opened files": "Remember opened files",
 	"remember opened folders": "Remember opened folders",
 	"no suggestions": "No suggestions",
@@ -726,5 +727,15 @@
 	"auto close tags": "Auto close tags",
 	"settings-info-editor-auto-close-tags": "Automatically insert closing tags in HTML, XML, Vue, Angular, and PHP template files.",
 	"ui zoom": "UI zoom",
-	"settings-info-app-ui-zoom": "Scale text across the Acode interface."
+	"settings-info-app-ui-zoom": "Scale text across the Acode interface.",
+	"plugin-not-supported": "Plugin not supported",
+	"plugin-not-supported-info": "The plugin was created for older version of Acode.",
+	"login-to-view": "Please login to view this...",
+	"show share button": "Show share button",
+	"settings-info-editor-show-share-button": "Show share button in selection menu.",
+	"iap-plugin-purchase-warning": "Satın alınan eklentiler Acode hesabınızla senkronize edilmez. Satın alımınızı geri yüklemek için Play Store'da aynı Google hesabını kullanın.",
+	"iap-pro-purchase-warning": "Bu satın alım Acode hesabınızla senkronize edilmeyecektir. Satın alımınızı geri yüklemek için Play Store'da aynı Google hesabını kullanın.",
+	"confirm-login": "Acode'a giriş yapmadınız, şimdi giriş yapmak ister misiniz?",
+	"local word completion": "Local word completion",
+	"settings-info-editor-local-word-completion": "Suggest words from the current file."
 }

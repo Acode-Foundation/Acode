@@ -1,5 +1,5 @@
 import { getAllFolds, getScrollPosition, getSelection } from "cm/editorUtils";
-import constants from "./constants";
+import config from "./config";
 import { addedFolder } from "./openFolder";
 import appSettings from "./settings";
 
@@ -13,7 +13,7 @@ export default () => {
 
 	files.forEach((file) => {
 		if (file.type !== "editor") return;
-		if (file.id === constants.DEFAULT_FILE_SESSION) return;
+		if (file.id === config.DEFAULT_FILE_SESSION) return;
 		if (file.SAFMode === "single") return;
 
 		// Selection per file:

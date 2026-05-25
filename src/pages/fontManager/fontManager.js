@@ -4,8 +4,8 @@ import Page from "components/page";
 import searchBar from "components/searchbar";
 import { DEFAULT_TERMINAL_SETTINGS } from "components/terminal";
 import toast from "components/toast";
-import box from "dialogs/box";
 import confirm from "dialogs/confirm";
+import dialog from "dialogs/dialog";
 import loader from "dialogs/loader";
 import prompt from "dialogs/prompt";
 import select from "dialogs/select";
@@ -204,7 +204,7 @@ export default function fontManager() {
 				>${css}</textarea>
 			`;
 
-			const dialog = box(
+			const dialog = dialog(
 				`Edit CSS - ${fontName}`,
 				htmlContent,
 				"Save",

@@ -1,3 +1,5 @@
+import appSettings from "lib/settings";
+
 const exec = (command) => {
 	const { editor } = editorManager;
 	editor.execCommand(command);
@@ -42,6 +44,13 @@ export default function selectionMenu() {
 			"all",
 			true,
 		),
+		appSettings.get("showShareButton") &&
+			item(
+				() => exec("share"),
+				<span className="icon share"></span>,
+				"selected",
+				true,
+			),
 		item(
 			(color) => acode.exec("insert-color", color),
 			<span className="icon color_lenspalette"></span>,
@@ -54,7 +63,7 @@ export default function selectionMenu() {
 			true,
 		),
 		...items,
-	];
+	].filter(Boolean);
 }
 
 /**

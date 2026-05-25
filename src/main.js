@@ -13,7 +13,6 @@ import "components/WebComponents";
 
 import fsOperation from "fileSystem";
 import sidebarApps from "sidebarApps";
-import ajax from "@deadlyjack/ajax";
 import { setKeyBindings } from "cm/commandRegistry";
 import {
 	getModeForPath,
@@ -36,9 +35,11 @@ import windowResize from "handlers/windowResize";
 import Acode from "lib/acode";
 import actionStack from "lib/actionStack";
 import adRewards from "lib/adRewards";
+import ajax from "lib/ajax";
 import applySettings from "lib/applySettings";
 import checkFiles from "lib/checkFiles";
 import checkPluginsUpdate from "lib/checkPluginsUpdate";
+import config from "lib/config";
 import EditorFile from "lib/editorFile";
 import EditorManager from "lib/editorManager";
 import { initFileList } from "lib/fileList";
@@ -50,7 +51,7 @@ import openFolder, { addedFolder } from "lib/openFolder";
 import { registerPrettierFormatter } from "lib/prettierFormatter";
 import restoreFiles from "lib/restoreFiles";
 import settings from "lib/settings";
-import startAd from "lib/startAd";
+import startAd, { hideAd } from "lib/startAd";
 import mustache from "mustache";
 import plugins from "pages/plugins";
 import openWelcomeTab from "pages/welcome";
@@ -65,87 +66,36 @@ import $_fileMenu from "views/file-menu.hbs";
 import $_menu from "views/menu.hbs";
 import auth, { loginEvents } from "./lib/auth";
 
+const INSTALL_SOURCE_PLAY = "com.android.vending";
+const oldPreventDefault = TouchEvent.prototype.preventDefault;
 const previousVersionCode = Number.parseInt(localStorage.versionCode, 10);
-
-window.onload = Main;
 const logger = new Logger();
 
-function createAceModelistCompatModule() {
-	const toAceMode = (mode) => {
-		const resolved = mode || getModeForPath("");
-		if (!resolved) return null;
-		const name = resolved.name || "text";
-		const rawMode = String(resolved.mode || name);
-		const modePath = rawMode.startsWith("ace/mode/")
-			? rawMode
-			: `ace/mode/${rawMode}`;
-		return {
-			...resolved,
-			name,
-			caption: resolved.caption || name,
-			mode: modePath,
-		};
-	};
+ajax.response = (xhr) => {
+	return xhr.response;
+};
 
-	return {
-		get modes() {
-			return getModes()
-				.map((mode) => toAceMode(mode))
-				.filter(Boolean);
-		},
-		get modesByName() {
-			const source = getModesByName();
-			const result = {};
-			Object.keys(source).forEach((name) => {
-				result[name] = toAceMode(source[name]);
-			});
-			return result;
-		},
-		getModeForPath(path) {
-			return toAceMode(getModeForPath(String(path || "")));
-		},
-	};
-}
+ajax.configure = (xhr, url) => {
+	if (url.includes("acode.app/api")) {
+		xhr.withCredentials = true;
+	}
+};
 
-function ensureAceCompatApi() {
-	const ace = window.ace || {};
-	const modelistModule = createAceModelistCompatModule();
-	const originalRequire =
-		typeof ace.require === "function" ? ace.require.bind(ace) : null;
+TouchEvent.prototype.preventDefault = function () {
+	if (this.cancelable) {
+		oldPreventDefault.bind(this)();
+	}
+};
 
-	ace.require = (moduleId) => {
-		if (moduleId === "ace/ext/modelist" || moduleId === "ace/ext/modelist.js") {
-			return modelistModule;
-		}
-		return originalRequire?.(moduleId);
-	};
-
-	window.ace = ace;
-}
-
-async function Main() {
-	const oldPreventDefault = TouchEvent.prototype.preventDefault;
-
-	ajax.response = (xhr) => {
-		return xhr.response;
-	};
-
-	loadPolyFill.apply(window);
-
-	TouchEvent.prototype.preventDefault = function () {
-		if (this.cancelable) {
-			oldPreventDefault.bind(this)();
-		}
-	};
-
-	window.addEventListener("resize", windowResize);
-	document.addEventListener("pause", pauseHandler);
-	document.addEventListener("resume", resumeHandler);
-	document.addEventListener("keydown", keyboardHandler);
-	document.addEventListener("deviceready", onDeviceReady);
-	document.addEventListener("backbutton", backButtonHandler);
-	document.addEventListener("menubutton", menuButtonHandler);
-}
+loadPolyFill.apply(window);
+loginEvents.addListener(onLogin);
+window.addEventListener("resize", windowResize);
+document.addEventListener("pause", pauseHandler);
+document.addEventListener("resume", resumeHandler);
+document.addEventListener("keydown", keyboardHandler);
+document.addEventListener("deviceready", onDeviceReady);
+document.addEventListener("backbutton", backButtonHandler);
+document.addEventListener("menubutton", menuButtonHandler);
 
 async function onDeviceReady() {
 	await initEncodings(); // important to load encodings before anything else
@@ -169,8 +119,9 @@ async function onDeviceReady() {
 	window.CACHE_STORAGE = externalCacheDirectory || cacheDirectory;
 	window.PLUGIN_DIR = Url.join(DATA_STORAGE, "plugins");
 	window.KEYBINDING_FILE = Url.join(DATA_STORAGE, ".key-bindings.json");
-	window.IS_FREE_VERSION = isFreePackage;
 	window.log = logger.log.bind(logger);
+
+	config.HAS_PRO = !isFreePackage;
 
 	// Capture synchronous errors
 	window.addEventListener("error", (event) => {
@@ -187,6 +138,25 @@ async function onDeviceReady() {
 
 	startAd();
 
+	let installSource = INSTALL_SOURCE_PLAY;
+
+	try {
+		installSource = await helpers.promisify(system.getInstaller);
+	} catch (error) {
+		console.error(error);
+	}
+
+	Object.defineProperty(window, "appInstallSource", {
+		get() {
+			return installSource;
+		},
+		set() {
+			console.warn("appInstallSource is readonly");
+		},
+		configurable: false,
+		enumerable: false,
+	});
+
 	try {
 		await helpers.promisify(iap.startConnection).catch((e) => {
 			window.log("error", "connection error");
@@ -194,7 +164,7 @@ async function onDeviceReady() {
 		});
 
 		if (localStorage.acode_pro === "true") {
-			window.IS_FREE_VERSION = false;
+			config.HAS_PRO = true;
 		}
 
 		if (navigator.onLine) {
@@ -203,9 +173,9 @@ async function onDeviceReady() {
 				p.productIds.includes("acode_pro_new"),
 			);
 			if (isPro) {
-				window.IS_FREE_VERSION = false;
+				config.HAS_PRO = true;
 			} else {
-				window.IS_FREE_VERSION = isFreePackage;
+				config.HAS_PRO = !isFreePackage;
 			}
 		}
 	} catch (error) {
@@ -332,8 +302,11 @@ async function onDeviceReady() {
 
 			// Check login status before emitting events
 			try {
-				const isLoggedIn = await auth.isLoggedIn();
-				if (isLoggedIn) {
+				const user = await auth.getLoggedInUser();
+				if (user) {
+					if (Boolean(user.acode_pro)) {
+						config.HAS_PRO = true;
+					}
 					loginEvents.emit();
 				}
 			} catch (error) {
@@ -403,6 +376,19 @@ async function onDeviceReady() {
 		.catch(console.error);
 }
 
+async function onLogin() {
+	try {
+		const user = await auth.getLoggedInUser();
+		if (!user) return;
+		config.HAS_PRO = Boolean(user.acode_pro);
+		if (config.HAS_PRO) {
+			hideAd(true);
+		}
+	} catch (error) {
+		console.error(error);
+	}
+}
+
 async function setDebugInfo() {
 	const { version, versionCode } = BuildInfo;
 
@@ -416,11 +402,17 @@ async function setDebugInfo() {
 	// Extract Chrome/WebView version
 	const chromeMatch = userAgent.match(/Chrome\/([0-9.]+)/);
 	const webviewVersion = chromeMatch ? chromeMatch[1] : "Unknown";
+	const webviewMajor = Number.parseInt(webviewVersion, 10);
+	const minWebviewMajor = window.__ACODE_MIN_WEBVIEW_MAJOR__ || 84;
+	const webviewStatus =
+		Number.isFinite(webviewMajor) && webviewMajor < minWebviewMajor
+			? ` (minimum supported: ${minWebviewMajor})`
+			: "";
 
 	const info = [
 		`App: v${version} (${versionCode})`,
 		`Android: ${androidVersion}`,
-		`WebView: ${webviewVersion}`,
+		`WebView: ${webviewVersion}${webviewStatus}`,
 		`Language: ${language}`,
 	].join("\n");
 
@@ -833,4 +825,57 @@ function resumeHandler() {
 	adRewards.handleResume();
 	if (!settings.value.checkFiles) return;
 	checkFiles();
+}
+
+function createAceModelistCompatModule() {
+	const toAceMode = (mode) => {
+		const resolved = mode || getModeForPath("");
+		if (!resolved) return null;
+		const name = resolved.name || "text";
+		const rawMode = String(resolved.mode || name);
+		const modePath = rawMode.startsWith("ace/mode/")
+			? rawMode
+			: `ace/mode/${rawMode}`;
+		return {
+			...resolved,
+			name,
+			caption: resolved.caption || name,
+			mode: modePath,
+		};
+	};
+
+	return {
+		get modes() {
+			return getModes()
+				.map((mode) => toAceMode(mode))
+				.filter(Boolean);
+		},
+		get modesByName() {
+			const source = getModesByName();
+			const result = {};
+			Object.keys(source).forEach((name) => {
+				result[name] = toAceMode(source[name]);
+			});
+			return result;
+		},
+		getModeForPath(path) {
+			return toAceMode(getModeForPath(String(path || "")));
+		},
+	};
+}
+
+function ensureAceCompatApi() {
+	const ace = window.ace || {};
+	const modelistModule = createAceModelistCompatModule();
+	const originalRequire =
+		typeof ace.require === "function" ? ace.require.bind(ace) : null;
+
+	ace.require = (moduleId) => {
+		if (moduleId === "ace/ext/modelist" || moduleId === "ace/ext/modelist.js") {
+			return modelistModule;
+		}
+		return originalRequire?.(moduleId);
+	};
+
+	window.ace = ace;
 }
