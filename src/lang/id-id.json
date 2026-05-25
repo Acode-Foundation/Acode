@@ -735,5 +735,7 @@
 	"login-to-view": "Mohon login untuk melihat ini...",
 	"iap-plugin-purchase-warning": "Plugin yang dibeli tidak disinkronkan ke akun Acode Anda. Gunakan akun Google yang sama di Play Store untuk memulihkan pembelian Anda.",
 	"iap-pro-purchase-warning": "Pembelian ini tidak akan disinkronkan ke akun Acode Anda. Gunakan akun Google yang sama di Play Store untuk memulihkan pembelian Anda.",
-	"confirm-login": "Anda belum masuk ke Acode, masuk sekarang?"
+	"confirm-login": "Anda belum masuk ke Acode, masuk sekarang?",
+	"local word completion": "Local word completion",
+	"settings-info-editor-local-word-completion": "Suggest words from the current file."
 }

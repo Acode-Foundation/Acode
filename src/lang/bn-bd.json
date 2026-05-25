@@ -735,5 +735,7 @@
 	"settings-info-editor-show-share-button": "Show share button in selection menu.",
 	"iap-plugin-purchase-warning": "ক্রয়কৃত প্লাগইনগুলি আপনার Acode অ্যাকাউন্টের সাথে সিঙ্ক হয় না। আপনার ক্রয় পুনরুদ্ধার করতে প্লে স্টোরে একই Google অ্যাকাউন্ট ব্যবহার করুন।",
 	"iap-pro-purchase-warning": "এই ক্রয়টি আপনার Acode অ্যাকাউন্টের সাথে সিঙ্ক হবে না। আপনার ক্রয় পুনরুদ্ধার করতে প্লে স্টোরে একই Google অ্যাকাউন্ট ব্যবহার করুন।",
-	"confirm-login": "আপনি Acode-এ সাইন ইন করেননি, এখন সাইন ইন করবেন?"
+	"confirm-login": "আপনি Acode-এ সাইন ইন করেননি, এখন সাইন ইন করবেন?",
+	"local word completion": "Local word completion",
+	"settings-info-editor-local-word-completion": "Suggest words from the current file."
 }

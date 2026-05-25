@@ -735,5 +735,7 @@
 	"settings-info-editor-show-share-button": "Show share button in selection menu.",
 	"iap-plugin-purchase-warning": "I plugin acquistati non vengono sincronizzati con il tuo account Acode. Usa lo stesso account Google nel Play Store per ripristinare l'acquisto.",
 	"iap-pro-purchase-warning": "Questo acquisto non verrà sincronizzato con il tuo account Acode. Usa lo stesso account Google nel Play Store per ripristinare l'acquisto.",
-	"confirm-login": "Non hai effettuato l'accesso ad Acode, accedere ora?"
+	"confirm-login": "Non hai effettuato l'accesso ad Acode, accedere ora?",
+	"local word completion": "Local word completion",
+	"settings-info-editor-local-word-completion": "Suggest words from the current file."
 }

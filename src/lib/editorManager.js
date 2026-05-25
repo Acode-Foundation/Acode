@@ -32,6 +32,7 @@ import {
 	removeExternalCommand,
 } from "cm/commandRegistry";
 import { handleLineNumberClick } from "cm/lineNumberSelection";
+import localWordCompletions from "cm/localWordCompletions";
 import lspApi from "cm/lsp/api";
 import lspClientManager from "cm/lsp/clientManager";
 import {
@@ -249,6 +250,8 @@ async function EditorManager($header, $body) {
 	const foldThemeCompartment = new Compartment();
 	// Compartment for autocompletion behavior
 	const completionCompartment = new Compartment();
+	// Compartment for local document word completions
+	const localWordCompletionCompartment = new Compartment();
 	// Compartment for rainbow bracket colorizer
 	const rainbowCompartment = new Compartment();
 	// Compartment for indent guides
@@ -476,6 +479,14 @@ async function EditorManager($header, $body) {
 					activateOnTyping: live,
 					activateOnTypingDelay: isCoarsePointerDevice() ? 220 : 100,
 				});
+			},
+		},
+		{
+			keys: ["localWordCompletion"],
+			compartments: [localWordCompletionCompartment],
+			build() {
+				const enabled = !!appSettings?.value?.localWordCompletion;
+				return enabled ? localWordCompletions() : [];
 			},
 		},
 	];
@@ -1585,6 +1596,10 @@ async function EditorManager($header, $body) {
 	// Live autocompletion (activateOnTyping)
 	appSettings.on("update:liveAutoCompletion", function () {
 		applyOptions(["liveAutoCompletion"]);
+	});
+
+	appSettings.on("update:localWordCompletion", function () {
+		applyOptions(["localWordCompletion"]);
 	});
 
 	appSettings.on("update:autoCloseTags", function () {
