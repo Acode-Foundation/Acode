@@ -13,3 +13,6 @@ pnpm-lock.yaml
 .idea
 ace-builds
 fdroid.bool
+CLAUDE.md
+graphify-out/
+.graphify_python
