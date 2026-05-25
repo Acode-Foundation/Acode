@@ -154,6 +154,7 @@ class Settings {
 			printMargin: 80,
 			scrollbarSize: 20,
 			showSpaces: false,
+			showLineBreakMarker: false,
 			confirmOnExit: true,
 			lineHeight: 2,
 			leftMargin: 50,

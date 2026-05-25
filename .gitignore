@@ -16,3 +16,5 @@ fdroid.bool
 CLAUDE.md
 graphify-out/
 .graphify_python
+.gradle/
+/local.properties

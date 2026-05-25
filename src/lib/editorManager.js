@@ -61,6 +61,7 @@ import {
 	restoreSelection,
 	setScrollPosition,
 } from "cm/editorUtils";
+import { lineBreakMarker } from "cm/lineBreakMarker";
 import indentGuides from "cm/indentGuides";
 import rainbowBrackets, { getRainbowBracketColors } from "cm/rainbowBrackets";
 import { getThemeConfig, getThemeExtensions } from "cm/themes";
@@ -256,6 +257,8 @@ async function EditorManager($header, $body) {
 	const rainbowCompartment = new Compartment();
 	// Compartment for indent guides
 	const indentGuidesCompartment = new Compartment();
+	// Compartment for line break marker
+	const lineBreakMarkerCompartment = new Compartment();
 	// Compartment for read-only toggling
 	const readOnlyCompartment = new Compartment();
 	// Compartment for language mode (allows async loading/reconfigure)
@@ -448,6 +451,15 @@ async function EditorManager($header, $body) {
 							makeWhitespaceTheme(),
 						]
 					: [];
+			},
+		},
+		{
+			keys: ["showLineBreakMarker", "textWrap"],
+			compartments: [lineBreakMarkerCompartment],
+			build() {
+				const showMarker = !!appSettings?.value?.showLineBreakMarker;
+				const textWrap = !!appSettings?.value?.textWrap;
+				return showMarker && textWrap ? lineBreakMarker : [];
 			},
 		},
 		{
@@ -1555,6 +1567,10 @@ async function EditorManager($header, $body) {
 	// Show spaces/tabs and trailing whitespace
 	appSettings.on("update:showSpaces", function () {
 		applyOptions(["showSpaces"]);
+	});
+
+	appSettings.on("update:showLineBreakMarker", function () {
+		applyOptions(["showLineBreakMarker"]);
 	});
 
 	// Font size update for CodeMirror
