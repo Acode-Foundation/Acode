@@ -194,6 +194,7 @@ declare type LangStrings = {
   "help": string;
   "file has been deleted": string;
   "feature not available": string;
+  "feature available in paid version": string;
   "deleted file": string;
   "line height": string;
   "preview info": string;
