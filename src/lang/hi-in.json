@@ -567,7 +567,7 @@
 	"lsp-invalid-timeout": "टाइमआउट वैल्यू अमान्य है",
 	"lsp-language-ids": "लैंग्वेज IDs (कॉमा से अलग करें)",
 	"lsp-packages-prompt": "{method} पैकेज (कॉमा लगाकर अलग करें)",
-	"lsp-remove-installed-files": "{server} के इंस्टॉल किए गए फ़ाइलें हटाएं?",
+	"lsp-remove-installed-files": "{server} के इंस्टॉल की गईं फ़ाइलें हटाएं?",
 	"lsp-server-disabled-toast": "सर्वर निष्क्रिय किया गया",
 	"lsp-server-enabled-toast": "सर्वर सक्रिय किया गया",
 	"lsp-server-id": "सर्वर ID",
