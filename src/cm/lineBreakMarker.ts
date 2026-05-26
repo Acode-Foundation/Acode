@@ -27,7 +27,7 @@ export const lineBreakMarkerPlugin = ViewPlugin.fromClass(
 		}
 
 		getDecorations(view: EditorView): DecorationSet {
-			let widgets: any[] = [];
+			let widgets: import("@codemirror/state").Range<Decoration>[] = [];
 			for (let { from, to } of view.visibleRanges) {
 				for (let pos = from; pos <= to; ) {
 					let line = view.state.doc.lineAt(pos);
