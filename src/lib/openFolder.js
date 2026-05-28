@@ -1139,11 +1139,7 @@ function migrateOpenFolderStateUrls(oldUrl, newUrl) {
 
 		matchingEntries.forEach(([folderUrl, isExpanded]) => {
 			deleteEntry(listState, folderUrl);
-			setEntry(
-				listState,
-				newUrl + folderUrl.slice(oldUrl.length),
-				isExpanded,
-			);
+			setEntry(listState, newUrl + folderUrl.slice(oldUrl.length), isExpanded);
 		});
 	});
 }
@@ -1162,7 +1158,10 @@ async function refreshRenamedEntryInOpenFolders(
 ) {
 	if (!oldUrl || !newUrl || oldUrl === newUrl) return;
 
-	migrateOpenFolderStateUrls(normalizeFolderUrl(oldUrl), normalizeFolderUrl(newUrl));
+	migrateOpenFolderStateUrls(
+		normalizeFolderUrl(oldUrl),
+		normalizeFolderUrl(newUrl),
+	);
 
 	const isAncestorOrSame = (ancestor, descendant) => {
 		if (ancestor === descendant) return true;
@@ -1175,9 +1174,7 @@ async function refreshRenamedEntryInOpenFolders(
 		.filter(Boolean)
 		.filter((parentUrl, index, allParentUrls) => {
 			return !allParentUrls.some((otherUrl, otherIndex) => {
-				return (
-					otherIndex !== index && isAncestorOrSame(otherUrl, parentUrl)
-				);
+				return otherIndex !== index && isAncestorOrSame(otherUrl, parentUrl);
 			});
 		});
 
@@ -1231,7 +1228,7 @@ openFolder.add = async (url, type) => {
 	appendEntryToOpenFolder(parent, url, type);
 };
 
-openFolder.renameItem = (oldFile, newFile) => {
+openFolder.renameItem = (oldFile, newFile, newFilename) => {
 	FileList.rename(oldFile, newFile);
 	helpers.updateUriOfAllActiveFiles(oldFile, newFile);
 	refreshRenamedEntryInOpenFolders(oldFile, newFile).catch(helpers.error);
