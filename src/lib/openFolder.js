@@ -429,6 +429,7 @@ async function handleContextmenu(type, url, name, $target) {
  */
 function execOperation(type, action, url, $target, name) {
 	const { clipBoard, $node, remove, url: rootUrl } = openFolder.find(url);
+	const parentUrl = normalizeFolderUrl(Url.dirname(url));
 	const startLoading = () => $node.$title.classList.add("loading");
 	const stopLoading = () => $node.$title.classList.remove("loading");
 
@@ -441,7 +442,7 @@ function execOperation(type, action, url, $target, name) {
 			return deleteFile();
 
 		case "rename":
-			return renameFile();
+			return renameFile(parentUrl);
 
 		case "paste":
 			return paste();
@@ -626,7 +627,7 @@ function execOperation(type, action, url, $target, name) {
 		FileList.remove(url);
 	}
 
-	async function renameFile() {
+	async function renameFile(parentUrl) {
 		if (isTermuxSafUri(url) && !helpers.isFile(type)) {
 			alert(strings.warning, strings["rename not supported"]);
 			return;
@@ -666,7 +667,12 @@ function execOperation(type, action, url, $target, name) {
 		}
 
 		FileList.rename(url, newUrl);
-		await refreshRenamedEntryInOpenFolders(url, newUrl);
+		await refreshRenamedEntryInOpenFolders(
+			url,
+			newUrl,
+			parentUrl,
+			normalizeFolderUrl(Url.dirname(newUrl)),
+		);
 		toast(strings.success);
 	}
 
@@ -1058,10 +1064,26 @@ function appendEntryToOpenFolder(parentUrl, entryUrl, type) {
 }
 
 /**
+ * Normalize folder URLs for DOM/state lookup.
+ * Keeps roots intact while removing a trailing slash from non-root folders.
+ * @param {string} url
+ * @returns {string}
+ */
+function normalizeFolderUrl(url) {
+	if (!url) return url;
+	const { url: parsedUrl, query } = Url.parse(url);
+	if (parsedUrl.endsWith("/") && Url.pathname(parsedUrl) !== "/") {
+		return parsedUrl.slice(0, -1) + query;
+	}
+	return parsedUrl + query;
+}
+
+/**
  * Refresh matching expanded folder views.
  * @param {string} folderUrl
  */
 async function refreshOpenFolder(folderUrl) {
+	folderUrl = normalizeFolderUrl(folderUrl);
 	const filesApp = sidebarApps.get("files");
 	const $els = filesApp.getAll(`[data-url="${folderUrl}"]`);
 
@@ -1127,17 +1149,39 @@ function migrateOpenFolderStateUrls(oldUrl, newUrl) {
 }
 
 /**
- * Refresh the affected parent folders after a rename so FileTree state stays in sync with the filesystem.
+ * Refresh the minimal set of affected parent folders after a rename/move so FileTree state stays in sync with the filesystem.
+ * If an ancestor folder is already being refreshed, descendant folders are skipped because they will be rebuilt with the ancestor.
  * @param {string} oldUrl
  * @param {string} newUrl
  */
-async function refreshRenamedEntryInOpenFolders(oldUrl, newUrl) {
+async function refreshRenamedEntryInOpenFolders(
+	oldUrl,
+	newUrl,
+	oldParentUrl = normalizeFolderUrl(Url.dirname(oldUrl)),
+	newParentUrl = normalizeFolderUrl(Url.dirname(newUrl)),
+) {
 	if (!oldUrl || !newUrl || oldUrl === newUrl) return;
 
 	migrateOpenFolderStateUrls(oldUrl, newUrl);
 
-	const parentUrls = new Set([Url.dirname(oldUrl), Url.dirname(newUrl)]);
-	await Promise.all(Array.from(parentUrls).map(refreshOpenFolder));
+	const isAncestorOrSame = (ancestor, descendant) => {
+		if (ancestor === descendant) return true;
+		return descendant.startsWith(`${ancestor}/`);
+	};
+
+	const parentUrls = Array.from(
+		new Set([oldParentUrl, newParentUrl].map(normalizeFolderUrl)),
+	)
+		.filter(Boolean)
+		.filter((parentUrl, index, allParentUrls) => {
+			return !allParentUrls.some((otherUrl, otherIndex) => {
+				return (
+					otherIndex !== index && isAncestorOrSame(otherUrl, parentUrl)
+				);
+			});
+		});
+
+	await Promise.all(parentUrls.map(refreshOpenFolder));
 }
 
 /**
