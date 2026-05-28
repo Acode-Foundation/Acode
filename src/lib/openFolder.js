@@ -1162,7 +1162,7 @@ async function refreshRenamedEntryInOpenFolders(
 ) {
 	if (!oldUrl || !newUrl || oldUrl === newUrl) return;
 
-	migrateOpenFolderStateUrls(oldUrl, newUrl);
+	migrateOpenFolderStateUrls(normalizeFolderUrl(oldUrl), normalizeFolderUrl(newUrl));
 
 	const isAncestorOrSame = (ancestor, descendant) => {
 		if (ancestor === descendant) return true;
