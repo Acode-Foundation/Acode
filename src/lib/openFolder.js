@@ -655,12 +655,7 @@ function execOperation(type, action, url, $target, name) {
 		}
 
 		newName = Url.basename(newUrl);
-		$target.querySelector(":scope>.text").textContent = newName;
-		$target.dataset.url = newUrl;
-		$target.dataset.name = newName;
 		if (helpers.isFile(type)) {
-			$target.querySelector(":scope>span").className =
-				helpers.getIconForFile(newName);
 			let file = editorManager.getFile(url, "uri");
 			if (file) {
 				file.uri = newUrl;
@@ -668,12 +663,11 @@ function execOperation(type, action, url, $target, name) {
 			}
 		} else {
 			helpers.updateUriOfAllActiveFiles(url, newUrl);
-			//Reloading the folder by collapsing and expanding the folder
-			$target.click(); //collapse
-			$target.click(); //expand
 		}
-		toast(strings.success);
+
 		FileList.rename(url, newUrl);
+		await refreshRenamedEntryInOpenFolders(url, newUrl);
+		toast(strings.success);
 	}
 
 	async function createNew() {
@@ -1086,6 +1080,67 @@ async function refreshOpenFolder(folderUrl) {
 }
 
 /**
+ * Move saved expanded-state keys after a rename.
+ * Supports both exact folder matches and expanded descendants.
+ * @param {string} oldUrl
+ * @param {string} newUrl
+ */
+function migrateOpenFolderStateUrls(oldUrl, newUrl) {
+	if (!oldUrl || !newUrl || oldUrl === newUrl) return;
+
+	const getEntries = (listState) => {
+		if (!listState) return [];
+		if (listState instanceof Map) return Array.from(listState.entries());
+		return Object.entries(listState);
+	};
+	const setEntry = (listState, key, value) => {
+		if (listState instanceof Map) {
+			listState.set(key, value);
+			return;
+		}
+		listState[key] = value;
+	};
+	const deleteEntry = (listState, key) => {
+		if (listState instanceof Map) {
+			listState.delete(key);
+			return;
+		}
+		delete listState[key];
+	};
+
+	addedFolder.forEach(({ listState }) => {
+		const matchingEntries = getEntries(listState).filter(([folderUrl]) => {
+			return folderUrl === oldUrl || folderUrl.startsWith(`${oldUrl}/`);
+		});
+
+		if (!matchingEntries.length) return;
+
+		matchingEntries.forEach(([folderUrl, isExpanded]) => {
+			deleteEntry(listState, folderUrl);
+			setEntry(
+				listState,
+				newUrl + folderUrl.slice(oldUrl.length),
+				isExpanded,
+			);
+		});
+	});
+}
+
+/**
+ * Refresh the affected parent folders after a rename so FileTree state stays in sync with the filesystem.
+ * @param {string} oldUrl
+ * @param {string} newUrl
+ */
+async function refreshRenamedEntryInOpenFolders(oldUrl, newUrl) {
+	if (!oldUrl || !newUrl || oldUrl === newUrl) return;
+
+	migrateOpenFolderStateUrls(oldUrl, newUrl);
+
+	const parentUrls = new Set([Url.dirname(oldUrl), Url.dirname(newUrl)]);
+	await Promise.all(Array.from(parentUrls).map(refreshOpenFolder));
+}
+
+/**
  * Create a folder tile
  * @param {string} name
  * @param {string} url
@@ -1132,29 +1187,10 @@ openFolder.add = async (url, type) => {
 	appendEntryToOpenFolder(parent, url, type);
 };
 
-openFolder.renameItem = (oldFile, newFile, newFilename) => {
+openFolder.renameItem = (oldFile, newFile) => {
 	FileList.rename(oldFile, newFile);
-
 	helpers.updateUriOfAllActiveFiles(oldFile, newFile);
-
-	const filesApp = sidebarApps.get("files");
-	const $els = filesApp.getAll(`[data-url="${oldFile}"]`);
-	Array.from($els).forEach(($el) => {
-		if ($el.dataset.type === "dir") {
-			$el = $el.$title;
-			setTimeout(() => {
-				$el.collapse();
-				$el.expand();
-			}, 0);
-		} else {
-			$el.querySelector(":scope>span").className =
-				helpers.getIconForFile(newFilename);
-		}
-
-		$el.dataset.url = newFile;
-		$el.dataset.name = newFilename;
-		$el.querySelector(":scope>.text").textContent = newFilename;
-	});
+	refreshRenamedEntryInOpenFolders(oldFile, newFile).catch(helpers.error);
 };
 
 openFolder.removeItem = (url) => {
