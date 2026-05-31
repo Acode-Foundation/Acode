@@ -738,5 +738,4 @@
 	"iap-pro-purchase-warning": "Cet achat ne sera pas synchronisé avec votre compte Acode. Utilisez le même compte Google dans le Play Store pour restaurer votre achat.",
 	"confirm-login": "Vous n'êtes pas connecté à Acode, vous connecter maintenant ?",
 	"local word completion": "Local word completion",
-	"settings-info-editor-local-word-completion": "Suggest words from the current file.",
-}
+	"settings-info-editor-local-word-completion": "Suggest words from the current file."}

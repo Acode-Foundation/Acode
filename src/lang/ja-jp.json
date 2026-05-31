@@ -738,5 +738,4 @@
 	"iap-pro-purchase-warning": "この購入はAcodeアカウントと同期されません。購入を復元するには、Playストアで同じGoogleアカウントを使用してください。",
 	"confirm-login": "Acodeにサインインしていません。今すぐサインインしますか？",
 	"local word completion": "Local word completion",
-	"settings-info-editor-local-word-completion": "Suggest words from the current file.",
-}
+	"settings-info-editor-local-word-completion": "Suggest words from the current file."}

@@ -738,5 +738,4 @@
 	"iap-pro-purchase-warning": "이 구매는 Acode 계정과 동기화되지 않습니다. 구매를 복원하려면 Play 스토어에서 동일한 Google 계정을 사용하세요.",
 	"confirm-login": "Acode에 로그인되어 있지 않습니다. 지금 로그인하시겠습니까?",
 	"local word completion": "Local word completion",
-	"settings-info-editor-local-word-completion": "Suggest words from the current file.",
-}
+	"settings-info-editor-local-word-completion": "Suggest words from the current file."}

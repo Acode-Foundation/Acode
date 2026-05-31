@@ -738,5 +738,4 @@
 	"iap-pro-purchase-warning": "此购买不会同步到您的 Acode 账户。请在 Play 商店中使用相同的 Google 账户来恢复您的购买。",
 	"confirm-login": "您尚未登录 Acode，立即登录？",
 	"local word completion": "Local word completion",
-	"settings-info-editor-local-word-completion": "Suggest words from the current file.",
-}
+	"settings-info-editor-local-word-completion": "Suggest words from the current file."}

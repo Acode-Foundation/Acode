@@ -738,5 +738,4 @@
 	"iap-pro-purchase-warning": "لن تتم مزامنة عملية الشراء هذه مع حساب Acode الخاص بك. استخدم نفس حساب Google في متجر Play لاستعادة عملية الشراء.",
 	"confirm-login": "لم تقم بتسجيل الدخول إلى Acode، هل تريد تسجيل الدخول الآن؟",
 	"local word completion": "Local word completion",
-	"settings-info-editor-local-word-completion": "Suggest words from the current file.",
-}
+	"settings-info-editor-local-word-completion": "Suggest words from the current file."}
