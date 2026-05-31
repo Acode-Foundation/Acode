@@ -1035,10 +1035,6 @@ function appendUrlPathSuffix(url, suffix) {
 	return parsedUrl + suffix + query;
 }
 
-function getOpenFolderUrl(url) {
-	return openFolder.find(url)?.url || url;
-}
-
 function getListStateEntries(listState) {
 	if (!listState) return [];
 	if (listState instanceof Map) return Array.from(listState.entries());
@@ -1093,7 +1089,7 @@ function migrateOpenFolderStateUrls(oldUrl, newUrl) {
 }
 
 function getParentUrl(url) {
-	return getOpenFolderUrl(Url.dirname(url));
+	return Url.dirname(url);
 }
 
 /**
