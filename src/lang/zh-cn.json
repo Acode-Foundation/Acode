@@ -739,6 +739,4 @@
 	"confirm-login": "您尚未登录 Acode，立即登录？",
 	"local word completion": "Local word completion",
 	"settings-info-editor-local-word-completion": "Suggest words from the current file.",
-	"settings-info-editor-show-line-break-marker": "Displays a visual marker (¬) for true line breaks when text wrapping is enabled",
-	"show line break marker": "Show line break marker"
 }

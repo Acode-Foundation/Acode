@@ -739,6 +739,4 @@
 	"confirm-login": "Nincs bejelentkezve az Acode-ba, bejelentkezik most?",
 	"local word completion": "Szókiegészítés a helyi fájlból",
 	"settings-info-editor-local-word-completion": "Szavak ajánlása a jelenleg megnyitott fájlból.",
-	"settings-info-editor-show-line-break-marker": "Displays a visual marker (¬) for true line breaks when text wrapping is enabled",
-	"show line break marker": "Show line break marker"
 }

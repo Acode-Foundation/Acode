@@ -739,6 +739,4 @@
 	"confirm-login": "Anda belum masuk ke Acode, masuk sekarang?",
 	"local word completion": "Penyelesaian kata lokal",
 	"settings-info-editor-local-word-completion": "Sarankan kata dari berkas saat ini.",
-	"settings-info-editor-show-line-break-marker": "Displays a visual marker (¬) for true line breaks when text wrapping is enabled",
-	"show line break marker": "Show line break marker"
 }
