@@ -738,4 +738,5 @@
 	"iap-pro-purchase-warning": "Ez a vásárlás nem lesz szinkronizálva az Acode-fiókjával. Használja ugyanazt a Google-fiókot a Play Áruházban a vásárlás visszaállításához.",
 	"confirm-login": "Nincs bejelentkezve az Acode-ba, bejelentkezik most?",
 	"local word completion": "Szókiegészítés a helyi fájlból",
-	"settings-info-editor-local-word-completion": "Szavak ajánlása a jelenleg megnyitott fájlból."}
+	"settings-info-editor-local-word-completion": "Szavak ajánlása a jelenleg megnyitott fájlból."
+}

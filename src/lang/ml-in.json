@@ -738,4 +738,5 @@
 	"iap-pro-purchase-warning": "ഈ വാങ്ങൽ നിങ്ങളുടെ Acode അക്കൗണ്ടുമായി സമന്വയിപ്പിക്കില്ല. നിങ്ങളുടെ വാങ്ങൽ പുനഃസ്ഥാപിക്കാൻ Play Store-ൽ അതേ Google അക്കൗണ്ട് ഉപയോഗിക്കുക.",
 	"confirm-login": "നിങ്ങൾ Acode-ൽ സൈൻ ഇൻ ചെയ്തിട്ടില്ല, ഇപ്പോൾ സൈൻ ഇൻ ചെയ്യണോ?",
 	"local word completion": "Local word completion",
-	"settings-info-editor-local-word-completion": "Suggest words from the current file."}
+	"settings-info-editor-local-word-completion": "Suggest words from the current file."
+}

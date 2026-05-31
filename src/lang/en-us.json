@@ -738,4 +738,5 @@
 	"login-to-view": "Please login to view this...",
 	"iap-plugin-purchase-warning": "Purchased plugin are not synced to your Acode account. Use same Google account in play store to restore your purchase.",
 	"iap-pro-purchase-warning": "This purchase will not be synced to your Acode account. Use same Google account in play store to restore your purchase.",
-	"confirm-login": "You are not singed in to Acode, sign in now?"}
+	"confirm-login": "You are not singed in to Acode, sign in now?"
+}
