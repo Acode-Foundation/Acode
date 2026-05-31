@@ -336,6 +336,27 @@ export default class FileTree {
 	}
 
 	/**
+	 * Refresh a loaded folder in this tree or one of its expanded child trees.
+	 * @param {string} url
+	 * @param {(a: string, b: string) => boolean} [isSameUrl]
+	 * @returns {Promise<boolean>}
+	 */
+	async refreshFolder(url, isSameUrl = (a, b) => a === b) {
+		if (this.currentUrl && isSameUrl(this.currentUrl, url)) {
+			await this.refresh();
+			return true;
+		}
+
+		for (const childTree of this.childTrees.values()) {
+			if (await childTree.refreshFolder(url, isSameUrl)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
 	 * Destroy all expanded child trees and clear their references.
 	 */
 	destroyChildTrees() {

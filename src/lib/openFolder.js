@@ -655,12 +655,7 @@ function execOperation(type, action, url, $target, name) {
 		}
 
 		newName = Url.basename(newUrl);
-		$target.querySelector(":scope>.text").textContent = newName;
-		$target.dataset.url = newUrl;
-		$target.dataset.name = newName;
 		if (helpers.isFile(type)) {
-			$target.querySelector(":scope>span").className =
-				helpers.getIconForFile(newName);
 			let file = editorManager.getFile(url, "uri");
 			if (file) {
 				file.uri = newUrl;
@@ -668,12 +663,10 @@ function execOperation(type, action, url, $target, name) {
 			}
 		} else {
 			helpers.updateUriOfAllActiveFiles(url, newUrl);
-			//Reloading the folder by collapsing and expanding the folder
-			$target.click(); //collapse
-			$target.click(); //expand
 		}
-		toast(strings.success);
 		FileList.rename(url, newUrl);
+		await refreshRenamedEntryInOpenFolders(url, newUrl);
+		toast(strings.success);
 	}
 
 	async function createNew() {
@@ -1000,6 +993,109 @@ function getLoadedFileTree($el) {
 	);
 }
 
+function normalizeUrlPathKey(url) {
+	if (!url) return url;
+	const { url: parsedUrl } = Url.parse(url);
+
+	if (Url.getProtocol(parsedUrl) === "content:") {
+		try {
+			const { rootUri, docId } = Uri.parse(parsedUrl);
+			const normalizedDocId = docId.endsWith("/") ? docId.slice(0, -1) : docId;
+			return `${rootUri}::${normalizedDocId}`;
+		} catch (error) {
+			return parsedUrl;
+		}
+	}
+
+	if (parsedUrl.endsWith("/") && Url.pathname(parsedUrl) !== "/") {
+		return parsedUrl.slice(0, -1);
+	}
+
+	return parsedUrl;
+}
+
+function areSameOpenFolderUrl(leftUrl, rightUrl) {
+	return normalizeUrlPathKey(leftUrl) === normalizeUrlPathKey(rightUrl);
+}
+
+function isInsideOpenFolder(url, folderUrl) {
+	const urlKey = normalizeUrlPathKey(url);
+	const folderKey = normalizeUrlPathKey(folderUrl);
+	if (!urlKey || !folderKey) return false;
+
+	return urlKey === folderKey || urlKey.startsWith(`${folderKey}/`);
+}
+
+function appendUrlPathSuffix(url, suffix) {
+	if (!suffix) return url;
+	const { url: parsedUrl, query } = Url.parse(url);
+	if (parsedUrl.endsWith("/") && suffix.startsWith("/")) {
+		return parsedUrl.slice(0, -1) + suffix + query;
+	}
+	return parsedUrl + suffix + query;
+}
+
+function getOpenFolderUrl(url) {
+	return openFolder.find(url)?.url || url;
+}
+
+function getListStateEntries(listState) {
+	if (!listState) return [];
+	if (listState instanceof Map) return Array.from(listState.entries());
+	return Object.entries(listState);
+}
+
+function setListStateEntry(listState, key, value) {
+	if (listState instanceof Map) {
+		listState.set(key, value);
+		return;
+	}
+
+	listState[key] = value;
+}
+
+function deleteListStateEntry(listState, key) {
+	if (listState instanceof Map) {
+		listState.delete(key);
+		return;
+	}
+
+	delete listState[key];
+}
+
+/**
+ * Move saved expanded-state keys after a folder rename.
+ * @param {string} oldUrl
+ * @param {string} newUrl
+ */
+function migrateOpenFolderStateUrls(oldUrl, newUrl) {
+	if (!oldUrl || !newUrl || areSameOpenFolderUrl(oldUrl, newUrl)) return;
+
+	const oldKey = normalizeUrlPathKey(oldUrl);
+
+	addedFolder.forEach(({ listState }) => {
+		const matchingEntries = getListStateEntries(listState).filter(
+			([folderUrl]) => {
+				return isInsideOpenFolder(folderUrl, oldUrl);
+			},
+		);
+
+		matchingEntries.forEach(([folderUrl, isExpanded]) => {
+			const suffix = normalizeUrlPathKey(folderUrl).slice(oldKey.length);
+			deleteListStateEntry(listState, folderUrl);
+			setListStateEntry(
+				listState,
+				appendUrlPathSuffix(newUrl, suffix),
+				isExpanded,
+			);
+		});
+	});
+}
+
+function getParentUrl(url) {
+	return getOpenFolderUrl(Url.dirname(url));
+}
+
 /**
  * Remove matching rendered entries from expanded folder views.
  * This keeps FileTree's in-memory state aligned with the rendered tree.
@@ -1068,21 +1164,38 @@ function appendEntryToOpenFolder(parentUrl, entryUrl, type) {
  * @param {string} folderUrl
  */
 async function refreshOpenFolder(folderUrl) {
-	const filesApp = sidebarApps.get("files");
-	const $els = filesApp.getAll(`[data-url="${folderUrl}"]`);
+	const folder = openFolder.find(folderUrl);
+	if (!folder) return;
 
-	await Promise.all(
-		Array.from($els).map(async ($el) => {
-			if (!(helpers.isDir($el.dataset.type) || $el.dataset.type === "root")) {
-				return;
-			}
+	const fileTree = getLoadedFileTree(folder.$node.$title);
+	if (!fileTree) return;
 
-			const fileTree = getLoadedFileTree($el);
-			if (fileTree) {
-				await fileTree.refresh();
-			}
-		}),
-	);
+	await fileTree.refreshFolder(folderUrl, areSameOpenFolderUrl);
+}
+
+/**
+ * Refresh affected folder trees after a rename/move.
+ * @param {string} oldUrl
+ * @param {string} newUrl
+ */
+async function refreshRenamedEntryInOpenFolders(
+	oldUrl,
+	newUrl,
+	oldParentUrl = getParentUrl(oldUrl),
+	newParentUrl = getParentUrl(newUrl),
+) {
+	if (!oldUrl || !newUrl || areSameOpenFolderUrl(oldUrl, newUrl)) return;
+
+	migrateOpenFolderStateUrls(oldUrl, newUrl);
+
+	const parentUrls = [oldParentUrl, newParentUrl].filter(Boolean);
+	const refreshUrls = parentUrls.filter((parentUrl, index) => {
+		return !parentUrls.some((otherUrl, otherIndex) => {
+			return otherIndex < index && areSameOpenFolderUrl(otherUrl, parentUrl);
+		});
+	});
+
+	await Promise.all(refreshUrls.map(refreshOpenFolder));
 }
 
 /**
@@ -1132,29 +1245,11 @@ openFolder.add = async (url, type) => {
 	appendEntryToOpenFolder(parent, url, type);
 };
 
-openFolder.renameItem = (oldFile, newFile, newFilename) => {
+openFolder.renameItem = (oldFile, newFile) => {
 	FileList.rename(oldFile, newFile);
 
 	helpers.updateUriOfAllActiveFiles(oldFile, newFile);
-
-	const filesApp = sidebarApps.get("files");
-	const $els = filesApp.getAll(`[data-url="${oldFile}"]`);
-	Array.from($els).forEach(($el) => {
-		if ($el.dataset.type === "dir") {
-			$el = $el.$title;
-			setTimeout(() => {
-				$el.collapse();
-				$el.expand();
-			}, 0);
-		} else {
-			$el.querySelector(":scope>span").className =
-				helpers.getIconForFile(newFilename);
-		}
-
-		$el.dataset.url = newFile;
-		$el.dataset.name = newFilename;
-		$el.querySelector(":scope>.text").textContent = newFilename;
-	});
+	refreshRenamedEntryInOpenFolders(oldFile, newFile).catch(helpers.error);
 };
 
 openFolder.removeItem = (url) => {
@@ -1185,13 +1280,11 @@ openFolder.removeFolders = (url) => {
  * @returns {Folder}
  */
 openFolder.find = (url) => {
-	const found = addedFolder.find((folder) => folder.url === url);
+	const found = addedFolder.find((folder) =>
+		areSameOpenFolderUrl(folder.url, url),
+	);
 	if (found) return found;
-	return addedFolder.find((folder) => {
-		const { url: furl } = Url.parse(folder.url);
-		const regex = new RegExp("^" + escapeStringRegexp(furl));
-		return regex.test(url);
-	});
+	return addedFolder.find((folder) => isInsideOpenFolder(url, folder.url));
 };
 
 export default openFolder;
