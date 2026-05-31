@@ -1569,8 +1569,6 @@ async function EditorManager($header, $body) {
 		applyOptions(["showSpaces"]);
 	});
 
-
-
 	// Font size update for CodeMirror
 	appSettings.on("update:fontSize", function () {
 		updateEditorStyleFromSettings();
