@@ -1796,7 +1796,9 @@ async function EditorManager($header, $body) {
 			: manager.files.length;
 		manager.files.splice(insertAt, 0, file);
 		syncOpenFileList();
-		$header.text = file.name;
+		if (!manager.activeFile) {
+			$header.text = file.name;
+		}
 		toggleProblemButton();
 	}
 
