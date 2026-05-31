@@ -740,8 +740,5 @@
 	"iap-plugin-purchase-warning": "Purchased plugin are not synced to your Acode account. Use same Google account in play store to restore your purchase.",
 	"iap-pro-purchase-warning": "This purchase will not be synced to your Acode account. Use same Google account in play store to restore your purchase.",
 	"confirm-login": "You are not singed in to Acode, sign in now?",
-	"settings-info-editor-show-line-break-marker": "Displays a visual marker (¬) for true line breaks when text wrapping is enabled",
-	"code actions": "Code actions",
-	"new name": "New name",
-	"enter new name": "Enter new name"
+	"settings-info-editor-show-line-break-marker": "Displays a visual marker (¬) for true line breaks when text wrapping is enabled"
 }
