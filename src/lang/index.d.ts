@@ -742,9 +742,6 @@ declare type LangStrings = {
   "iap-plugin-purchase-warning": string;
   "iap-pro-purchase-warning": string;
   "confirm-login": string;
-  "code actions": string;
-  "new name": string;
-  "enter new name": string;
 };
 
 declare var strings: LangStrings;
