@@ -1035,6 +1035,16 @@ function appendUrlPathSuffix(url, suffix) {
 	return parsedUrl + suffix + query;
 }
 
+function preserveTrailingSlashShape(url, sourceUrl) {
+	const { url: sourcePath } = Url.parse(sourceUrl);
+	if (!sourcePath.endsWith("/")) return url;
+
+	const { url: targetPath, query } = Url.parse(url);
+	if (targetPath.endsWith("/")) return url;
+
+	return `${targetPath}/${query}`;
+}
+
 function getListStateEntries(listState) {
 	if (!listState) return [];
 	if (listState instanceof Map) return Array.from(listState.entries());
@@ -1078,12 +1088,12 @@ function migrateOpenFolderStateUrls(oldUrl, newUrl) {
 
 		matchingEntries.forEach(([folderUrl, isExpanded]) => {
 			const suffix = normalizeUrlPathKey(folderUrl).slice(oldKey.length);
-			deleteListStateEntry(listState, folderUrl);
-			setListStateEntry(
-				listState,
+			const migratedUrl = preserveTrailingSlashShape(
 				appendUrlPathSuffix(newUrl, suffix),
-				isExpanded,
+				folderUrl,
 			);
+			deleteListStateEntry(listState, folderUrl);
+			setListStateEntry(listState, migratedUrl, isExpanded);
 		});
 	});
 }
