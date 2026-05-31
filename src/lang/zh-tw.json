@@ -186,7 +186,8 @@
 	"files": "檔案",
 	"help": "說明",
 	"file has been deleted": "{file} 已被刪除！",
-	"feature not available": "此功能僅在付費版中可用。",
+	"feature not available": "此功能無法使用。",
+	"feature available in paid version": "此功能僅在付費版中可用。",
 	"deleted file": "已刪除的檔案",
 	"line height": "行高",
 	"preview info": "如果想要執行開啟的檔案，長按 ▶ 圖示",
@@ -737,5 +738,7 @@
 	"iap-pro-purchase-warning": "此購買不會同步到您的 Acode 帳戶。請在 Play 商店中使用相同的 Google 帳戶來恢復您的購買。",
 	"confirm-login": "您尚未登入 Acode，立即登入？",
 	"local word completion": "Local word completion",
-	"settings-info-editor-local-word-completion": "Suggest words from the current file."
+	"settings-info-editor-local-word-completion": "Suggest words from the current file.",
+	"settings-info-editor-show-line-break-marker": "Displays a visual marker (¬) for true line breaks when text wrapping is enabled",
+	"show line break marker": "Show line break marker"
 }

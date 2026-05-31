@@ -186,7 +186,8 @@
 	"files": "ファイル一覧",
 	"help": "ヘルプ",
 	"file has been deleted": "{file}は既に削除されています",
-	"feature not available": "この機能は有料版でのみ使用できます",
+	"feature not available": "この機能は利用できません。",
+	"feature available in paid version": "この機能は有料版でのみ使用できます",
 	"deleted file": "ファイルを削除しました",
 	"line height": "行の高さ",
 	"preview info": "アクティブファイルを実行するには実行アイコンを長押しして下さい",
@@ -737,5 +738,7 @@
 	"iap-pro-purchase-warning": "この購入はAcodeアカウントと同期されません。購入を復元するには、Playストアで同じGoogleアカウントを使用してください。",
 	"confirm-login": "Acodeにサインインしていません。今すぐサインインしますか？",
 	"local word completion": "Local word completion",
-	"settings-info-editor-local-word-completion": "Suggest words from the current file."
+	"settings-info-editor-local-word-completion": "Suggest words from the current file.",
+	"settings-info-editor-show-line-break-marker": "Displays a visual marker (¬) for true line breaks when text wrapping is enabled",
+	"show line break marker": "Show line break marker"
 }

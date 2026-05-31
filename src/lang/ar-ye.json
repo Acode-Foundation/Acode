@@ -186,7 +186,8 @@
 	"files": "الملفات",
 	"help": "مساعدة",
 	"file has been deleted": "تم حذف الملف {file}!",
-	"feature not available": "هذه الميزة متاحة فقط في النسخة المدفوعة.",
+	"feature not available": "هذه الميزة غير متاحة.",
+	"feature available in paid version": "هذه الميزة متاحة فقط في النسخة المدفوعة.",
 	"deleted file": "ملف محذوف",
 	"line height": "ارتفاع السطر",
 	"preview info": "لتشغيل الملف النشط، انقر مطولاً على أيقونة التشغيل.",
@@ -737,5 +738,7 @@
 	"iap-pro-purchase-warning": "لن تتم مزامنة عملية الشراء هذه مع حساب Acode الخاص بك. استخدم نفس حساب Google في متجر Play لاستعادة عملية الشراء.",
 	"confirm-login": "لم تقم بتسجيل الدخول إلى Acode، هل تريد تسجيل الدخول الآن؟",
 	"local word completion": "Local word completion",
-	"settings-info-editor-local-word-completion": "Suggest words from the current file."
+	"settings-info-editor-local-word-completion": "Suggest words from the current file.",
+	"settings-info-editor-show-line-break-marker": "Displays a visual marker (¬) for true line breaks when text wrapping is enabled",
+	"show line break marker": "Show line break marker"
 }

@@ -186,7 +186,8 @@
 	"files": "Archivos",
 	"help": "Ayuda",
 	"file has been deleted": "{file} ha sido eliminado!",
-	"feature not available": "Esta función solo está disponible en la versión de pago de la aplicación.",
+	"feature not available": "Esta función no está disponible.",
+	"feature available in paid version": "Esta función solo está disponible en la versión de pago de la aplicación.",
 	"deleted file": "Archivo eliminado",
 	"line height": "Altura de la línea",
 	"preview info": "Si desea ejecutar el archivo activo, toque y mantenga presionado el ícono de reproducción.",
@@ -737,5 +738,7 @@
 	"iap-pro-purchase-warning": "Esta compra no se sincronizará con tu cuenta de Acode. Usa la misma cuenta de Google en Play Store para restaurar tu compra.",
 	"confirm-login": "No has iniciado sesión en Acode, ¿iniciar sesión ahora?",
 	"local word completion": "Local word completion",
-	"settings-info-editor-local-word-completion": "Suggest words from the current file."
+	"settings-info-editor-local-word-completion": "Suggest words from the current file.",
+	"settings-info-editor-show-line-break-marker": "Displays a visual marker (¬) for true line breaks when text wrapping is enabled",
+	"show line break marker": "Show line break marker"
 }

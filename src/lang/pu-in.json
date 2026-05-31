@@ -186,7 +186,8 @@
 	"files": "ਫਾਈਲਾਂ",
 	"help": "ਮਦਦ",
 	"file has been deleted": "{file} ਮਿਟਾ ਦਿੱਤਾ ਗਿਆ ਹੈ!",
-	"feature not available": "ਇਹ ਵਿਸ਼ੇਸ਼ਤਾ ਐਪ ਦੇ ਭੁਗਤਾਨ ਕੀਤੇ ਸੰਸਕਰਣ ਵਿੱਚ ਹੀ ਉਪਲਬਧ ਹੈ।",
+	"feature not available": "ਇਹ ਵਿਸ਼ੇਸ਼ਤਾ ਉਪਲਬਧ ਨਹੀਂ ਹੈ।",
+	"feature available in paid version": "ਇਹ ਵਿਸ਼ੇਸ਼ਤਾ ਐਪ ਦੇ ਭੁਗਤਾਨ ਕੀਤੇ ਸੰਸਕਰਣ ਵਿੱਚ ਹੀ ਉਪਲਬਧ ਹੈ।",
 	"deleted file": "ਮਿਟਾਈ ਗਈ ਫਾਈਲ",
 	"line height": "ਲਾਈਨ ਦੀ ਉਚਾਈ",
 	"preview info": "ਜੇਕਰ ਤੁਸੀਂ ਐਕਟਿਵ ਫਾਈਲ ਨੂੰ ਚਲਾਉਣਾ ਚਾਹੁੰਦੇ ਹੋ, ਤਾਂ ਪਲੇ ਆਈਕਨ 'ਤੇ ਟੈਪ ਕਰੋ ਅਤੇ ਹੋਲਡ ਕਰੋ।",
@@ -737,5 +738,7 @@
 	"iap-pro-purchase-warning": "ਇਹ ਖਰੀਦ ਤੁਹਾਡੇ Acode ਖਾਤੇ ਨਾਲ ਸਿੰਕ ਨਹੀਂ ਹੋਵੇਗੀ। ਆਪਣੀ ਖਰੀਦ ਨੂੰ ਬਹਾਲ ਕਰਨ ਲਈ Play Store ਵਿੱਚ ਉਹੀ Google ਖਾਤਾ ਵਰਤੋ।",
 	"confirm-login": "ਤੁਸੀਂ Acode ਵਿੱਚ ਸਾਈਨ ਇਨ ਨਹੀਂ ਹੋ, ਹੁਣੇ ਸਾਈਨ ਇਨ ਕਰੋ?",
 	"local word completion": "Local word completion",
-	"settings-info-editor-local-word-completion": "Suggest words from the current file."
+	"settings-info-editor-local-word-completion": "Suggest words from the current file.",
+	"settings-info-editor-show-line-break-marker": "Displays a visual marker (¬) for true line breaks when text wrapping is enabled",
+	"show line break marker": "Show line break marker"
 }

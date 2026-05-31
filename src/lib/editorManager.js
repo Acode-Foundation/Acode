@@ -61,8 +61,8 @@ import {
 	restoreSelection,
 	setScrollPosition,
 } from "cm/editorUtils";
-import { lineBreakMarker } from "cm/lineBreakMarker";
 import indentGuides from "cm/indentGuides";
+import { lineBreakMarker } from "cm/lineBreakMarker";
 import rainbowBrackets, { getRainbowBracketColors } from "cm/rainbowBrackets";
 import { getThemeConfig, getThemeExtensions } from "cm/themes";
 import list from "components/collapsableList";

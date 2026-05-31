@@ -186,7 +186,8 @@
 	"files": "קבצים",
 	"help": "עזרה",
 	"file has been deleted": "{file} נמחק!",
-	"feature not available": "תכונה זו זמינה רק בגרסה בתשלום של האפליקציה.",
+	"feature not available": "תכונה זו אינה זמינה.",
+	"feature available in paid version": "תכונה זו זמינה רק בגרסה בתשלום של האפליקציה.",
 	"deleted file": "קובץ מחוק",
 	"line height": "Line height",
 	"preview info": "אם ברצונך להפעיל את הקובץ הפעיל, לחץ והחזק את סמל ההפעלה.",
@@ -737,5 +738,7 @@
 	"iap-pro-purchase-warning": "רכישה זו לא תסונכרן עם חשבון Acode שלך. השתמש באותו חשבון Google בחנות Play כדי לשחזר את הרכישה שלך.",
 	"confirm-login": "אינך מחובר ל-Acode, להתחבר עכשיו?",
 	"local word completion": "Local word completion",
-	"settings-info-editor-local-word-completion": "Suggest words from the current file."
+	"settings-info-editor-local-word-completion": "Suggest words from the current file.",
+	"settings-info-editor-show-line-break-marker": "Displays a visual marker (¬) for true line breaks when text wrapping is enabled",
+	"show line break marker": "Show line break marker"
 }

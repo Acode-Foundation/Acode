@@ -191,7 +191,8 @@
 	"files": "Files",
 	"help": "Help",
 	"file has been deleted": "{file} has been deleted!",
-	"feature not available": "This feature is only available in paid version of the app.",
+	"feature not available": "This feature is not available.",
+	"feature available in paid version": "This feature is only available in paid version of the app.",
 	"deleted file": "Deleted file",
 	"line height": "Line height",
 	"preview info": "If you want run the active file, tap and hold on play icon.",
@@ -738,5 +739,6 @@
 	"login-to-view": "Please login to view this...",
 	"iap-plugin-purchase-warning": "Purchased plugin are not synced to your Acode account. Use same Google account in play store to restore your purchase.",
 	"iap-pro-purchase-warning": "This purchase will not be synced to your Acode account. Use same Google account in play store to restore your purchase.",
-	"confirm-login": "You are not singed in to Acode, sign in now?"
+	"confirm-login": "You are not singed in to Acode, sign in now?",
+	"settings-info-editor-show-line-break-marker": "Displays a visual marker (¬) for true line breaks when text wrapping is enabled"
 }

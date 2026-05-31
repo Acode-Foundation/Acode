@@ -186,7 +186,8 @@
 	"files": "Fájlok",
 	"help": "Súgó",
 	"file has been deleted": "A(z) {file} fájl törölve lett!",
-	"feature not available": "Ez a funkció csak az alkalmazás fizetős verziójában érhető el.",
+	"feature not available": "Ez a funkció nem érhető el.",
+	"feature available in paid version": "Ez a funkció csak az alkalmazás fizetős verziójában érhető el.",
 	"deleted file": "Törölt fájl",
 	"line height": "Sormagasság",
 	"preview info": "Ha az aktív fájlt szeretné futtatni, koppintson és tartsa lenyomva a lejátszás ikont.",
@@ -736,6 +737,8 @@
 	"iap-plugin-purchase-warning": "A megvásárolt bővítmények nem szinkronizálódnak az Acode-fiókjával. Használja ugyanazt a Google-fiókot a Play Áruházban a vásárlás visszaállításához.",
 	"iap-pro-purchase-warning": "Ez a vásárlás nem lesz szinkronizálva az Acode-fiókjával. Használja ugyanazt a Google-fiókot a Play Áruházban a vásárlás visszaállításához.",
 	"confirm-login": "Nincs bejelentkezve az Acode-ba, bejelentkezik most?",
-	"local word completion": "Local word completion",
-	"settings-info-editor-local-word-completion": "Suggest words from the current file."
+	"local word completion": "Szókiegészítés a helyi fájlból",
+	"settings-info-editor-local-word-completion": "Szavak ajánlása a jelenleg megnyitott fájlból."
+	"settings-info-editor-show-line-break-marker": "Displays a visual marker (¬) for true line breaks when text wrapping is enabled",
+	"show line break marker": "Show line break marker"
 }

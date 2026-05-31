@@ -186,7 +186,8 @@
 	"files": "Файлы",
 	"help": "Даведка",
 	"file has been deleted": "{file} выдалены!",
-	"feature not available": "Гэтая функцыя даступная толькі для ў платнай версіі праграмы.",
+	"feature not available": "Гэта функцыя недаступная.",
+	"feature available in paid version": "Гэтая функцыя даступная толькі для ў платнай версіі праграмы.",
 	"deleted file": "Выдалены файл",
 	"line height": "Вышыня радка",
 	"preview info": "Калі вы хочаце запусціць актыўны файл, націсніце і ўтрымлівайце значок прайгравання.",
@@ -737,5 +738,7 @@
 	"iap-pro-purchase-warning": "Гэтая пакупка не будзе сінхранізавана з вашым уліковым запісам Acode. Выкарыстоўвайце той жа ўліковы запіс Google у Play Store для аднаўлення пакупкі.",
 	"confirm-login": "Вы не ўвайшлі ў Acode, увайсці зараз?",
 	"local word completion": "Local word completion",
-	"settings-info-editor-local-word-completion": "Suggest words from the current file."
+	"settings-info-editor-local-word-completion": "Suggest words from the current file.",
+	"settings-info-editor-show-line-break-marker": "Displays a visual marker (¬) for true line breaks when text wrapping is enabled",
+	"show line break marker": "Show line break marker"
 }

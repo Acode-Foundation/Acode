@@ -186,7 +186,8 @@
 	"files": "Mga file",
 	"help": "Tulong",
 	"file has been deleted": "{file} ay nabura na!",
-	"feature not available": "Ang feature na ito ay available lamang sa paid version ng app.",
+	"feature not available": "Hindi available ang feature na ito.",
+	"feature available in paid version": "Ang feature na ito ay available lamang sa paid version ng app.",
 	"deleted file": "Deleted na file",
 	"line height": "Line height",
 	"preview info": "Kung gusto mong i-run ang active file, i-tap at i-hold ang play icon.",
@@ -737,5 +738,7 @@
 	"iap-pro-purchase-warning": "Ang pagbiling ito ay hindi masi-sync sa iyong Acode account. Gamitin ang parehong Google account sa Play Store upang maibalik ang iyong pagbili.",
 	"confirm-login": "Hindi ka naka-sign in sa Acode, mag-sign in ngayon?",
 	"local word completion": "Local word completion",
-	"settings-info-editor-local-word-completion": "Suggest words from the current file."
+	"settings-info-editor-local-word-completion": "Suggest words from the current file.",
+	"settings-info-editor-show-line-break-marker": "Displays a visual marker (¬) for true line breaks when text wrapping is enabled",
+	"show line break marker": "Show line break marker"
 }

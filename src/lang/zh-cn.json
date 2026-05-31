@@ -186,7 +186,8 @@
 	"files": "打开文件",
 	"help": "帮助",
 	"file has been deleted": "{file} 已被删除!",
-	"feature not available": "此功能仅在付费版中可用。",
+	"feature not available": "此功能不可用。",
+	"feature available in paid version": "此功能仅在付费版中可用。",
 	"deleted file": "删除的文件",
 	"line height": "行高",
 	"preview info": "如果想要运行打开的文件，长按 ▶ 图标",
@@ -737,5 +738,7 @@
 	"iap-pro-purchase-warning": "此购买不会同步到您的 Acode 账户。请在 Play 商店中使用相同的 Google 账户来恢复您的购买。",
 	"confirm-login": "您尚未登录 Acode，立即登录？",
 	"local word completion": "Local word completion",
-	"settings-info-editor-local-word-completion": "Suggest words from the current file."
+	"settings-info-editor-local-word-completion": "Suggest words from the current file.",
+	"settings-info-editor-show-line-break-marker": "Displays a visual marker (¬) for true line breaks when text wrapping is enabled",
+	"show line break marker": "Show line break marker"
 }

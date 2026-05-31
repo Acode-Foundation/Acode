@@ -179,7 +179,9 @@ export default function editorSettings() {
 			key: "showLineBreakMarker",
 			text: strings["show line break marker"] || "Show line break marker",
 			checkbox: values.showLineBreakMarker ?? false,
-			info: strings["settings-info-editor-show-line-break-marker"] || "Displays a visual marker (¬) for true line breaks when text wrapping is enabled",
+			info:
+				strings["settings-info-editor-show-line-break-marker"] ||
+				"Displays a visual marker (¬) for true line breaks when text wrapping is enabled",
 			category: categories.guidesIndicators,
 		},
 		{

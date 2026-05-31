@@ -186,7 +186,8 @@
 	"files": "Berkas",
 	"help": "Bantuan",
 	"file has been deleted": "{file} telah dihapus!",
-	"feature not available": "Fitur ini hanya tersedia dalam versi berbayar dari aplikasi.",
+	"feature not available": "Fitur ini tidak tersedia.",
+	"feature available in paid version": "Fitur ini hanya tersedia dalam versi berbayar dari aplikasi.",
 	"deleted file": "Berkas yang dihapus",
 	"line height": "Tinggi baris",
 	"preview info": "Jika Anda ingin menjalankan berkas aktif, ketuk dan tahan ikon Putar.",
@@ -736,6 +737,8 @@
 	"iap-plugin-purchase-warning": "Plugin yang dibeli tidak disinkronkan ke akun Acode Anda. Gunakan akun Google yang sama di Play Store untuk memulihkan pembelian Anda.",
 	"iap-pro-purchase-warning": "Pembelian ini tidak akan disinkronkan ke akun Acode Anda. Gunakan akun Google yang sama di Play Store untuk memulihkan pembelian Anda.",
 	"confirm-login": "Anda belum masuk ke Acode, masuk sekarang?",
-	"local word completion": "Local word completion",
-	"settings-info-editor-local-word-completion": "Suggest words from the current file."
+	"local word completion": "Penyelesaian kata lokal",
+	"settings-info-editor-local-word-completion": "Sarankan kata dari berkas saat ini.",
+	"settings-info-editor-show-line-break-marker": "Displays a visual marker (¬) for true line breaks when text wrapping is enabled",
+	"show line break marker": "Show line break marker"
 }

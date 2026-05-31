@@ -86,6 +86,7 @@ declare type LangStrings = {
   "show hidden files": string;
   "show share button": string;
   "show spaces": string;
+  "show line break marker": string;
   "soft tab": string;
   "sort by name": string;
   "success": string;
@@ -194,6 +195,7 @@ declare type LangStrings = {
   "help": string;
   "file has been deleted": string;
   "feature not available": string;
+  "feature available in paid version": string;
   "deleted file": string;
   "line height": string;
   "preview info": string;
@@ -741,6 +743,7 @@ declare type LangStrings = {
   "iap-plugin-purchase-warning": string;
   "iap-pro-purchase-warning": string;
   "confirm-login": string;
+  "settings-info-editor-show-line-break-marker": string;
 };
 
 declare var strings: LangStrings;

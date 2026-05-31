@@ -186,7 +186,8 @@
 	"files": "Tệp",
 	"help": "Trợ giúp",
 	"file has been deleted": "{file} đã bị xoá!",
-	"feature not available": "Tính năng này chỉ có ở phiên bản trả phí của ứng dụng.",
+	"feature not available": "Tính năng này không khả dụng.",
+	"feature available in paid version": "Tính năng này chỉ có ở phiên bản trả phí của ứng dụng.",
 	"deleted file": "Đã xoá tệp",
 	"line height": "Chiều cao dòng",
 	"preview info": "Nếu muốn chạy tệp đang hoạt động, hãy chạm giữ vào nút phát.",
@@ -737,5 +738,7 @@
 	"iap-pro-purchase-warning": "Giao dịch mua này sẽ không được đồng bộ hóa với tài khoản Acode của bạn. Sử dụng cùng một tài khoản Google trên Play Store để khôi phục giao dịch mua của bạn.",
 	"confirm-login": "Bạn chưa đăng nhập vào Acode, đăng nhập ngay bây giờ?",
 	"local word completion": "Local word completion",
-	"settings-info-editor-local-word-completion": "Suggest words from the current file."
+	"settings-info-editor-local-word-completion": "Suggest words from the current file.",
+	"settings-info-editor-show-line-break-marker": "Displays a visual marker (¬) for true line breaks when text wrapping is enabled",
+	"show line break marker": "Show line break marker"
 }
