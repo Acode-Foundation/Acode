@@ -678,7 +678,7 @@
 	"settings-info-editor-scroll-settings": "Adjust scrollbar size, speed, and gesture behavior.",
 	"settings-info-editor-shift-click-selection": "Extend selection with Shift + tap or click.",
 	"settings-info-editor-show-share-button": "Show share button in selection menu.",
-	"settings-info-editor-show-spaces": "Display visible whitespace markers.",
+	"settings-info-editor-show-spaces": "Display visible whitespace and line break markers.",
 	"settings-info-editor-soft-tab": "Insert spaces instead of tab characters.",
 	"settings-info-editor-tab-size": "Set how many spaces each tab step uses.",
 	"settings-info-editor-teardrop-size": "Set the cursor handle size for touch editing.",
@@ -740,5 +740,8 @@
 	"iap-plugin-purchase-warning": "Purchased plugin are not synced to your Acode account. Use same Google account in play store to restore your purchase.",
 	"iap-pro-purchase-warning": "This purchase will not be synced to your Acode account. Use same Google account in play store to restore your purchase.",
 	"confirm-login": "You are not singed in to Acode, sign in now?",
-	"settings-info-editor-show-line-break-marker": "Displays a visual marker (¬) for true line breaks when text wrapping is enabled"
+	"settings-info-editor-show-line-break-marker": "Displays a visual marker (¬) for true line breaks when text wrapping is enabled",
+	"code actions": "Code actions",
+	"new name": "New name",
+	"enter new name": "Enter new name"
 }

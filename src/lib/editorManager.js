@@ -454,12 +454,12 @@ async function EditorManager($header, $body) {
 			},
 		},
 		{
-			keys: ["showLineBreakMarker", "textWrap"],
+			keys: ["showSpaces", "textWrap"],
 			compartments: [lineBreakMarkerCompartment],
 			build() {
-				const showMarker = !!appSettings?.value?.showLineBreakMarker;
+				const showSpaces = !!appSettings?.value?.showSpaces;
 				const textWrap = !!appSettings?.value?.textWrap;
-				return showMarker && textWrap ? lineBreakMarker : [];
+				return showSpaces && textWrap ? lineBreakMarker : [];
 			},
 		},
 		{
@@ -1569,9 +1569,7 @@ async function EditorManager($header, $body) {
 		applyOptions(["showSpaces"]);
 	});
 
-	appSettings.on("update:showLineBreakMarker", function () {
-		applyOptions(["showLineBreakMarker"]);
-	});
+
 
 	// Font size update for CodeMirror
 	appSettings.on("update:fontSize", function () {

@@ -744,6 +744,9 @@ declare type LangStrings = {
   "iap-pro-purchase-warning": string;
   "confirm-login": string;
   "settings-info-editor-show-line-break-marker": string;
+  "code actions": string;
+  "new name": string;
+  "enter new name": string;
 };
 
 declare var strings: LangStrings;
