@@ -738,5 +738,7 @@
 	"iap-pro-purchase-warning": "Гэтая пакупка не будзе сінхранізавана з вашым уліковым запісам Acode. Выкарыстоўвайце той жа ўліковы запіс Google у Play Store для аднаўлення пакупкі.",
 	"confirm-login": "Вы не ўвайшлі ў Acode, увайсці зараз?",
 	"local word completion": "Local word completion",
-	"settings-info-editor-local-word-completion": "Suggest words from the current file."
+	"settings-info-editor-local-word-completion": "Suggest words from the current file.",
+	"terminal:failsafe": "FailSafe mode",
+	"terminal:failsafe-info": "Start terminal with system shell"
 }

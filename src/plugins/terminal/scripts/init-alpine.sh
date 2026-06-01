@@ -3,6 +3,29 @@ export PS1="\[\e[38;5;46m\]\u\[\033[39m\]@localhost \[\033[39m\]\w \[\033[0m\]\\
 export HOME=/public
 export TERM=xterm-256color
 
+INSTALLING=false
+FAILSAFE=false
+
+# Parse internal flags
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --installing)
+            INSTALLING=true
+            shift
+            ;;
+        --failsafe)
+            FAILSAFE=true
+            shift
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            break
+            ;;
+    esac
+done
 
 required_packages="bash command-not-found tzdata wget"
 missing_packages=""
@@ -30,7 +53,7 @@ if [ ! -f /linkerconfig/ld.config.txt ]; then
 fi
 
 
-if [ "$1" = "--installing" ]; then
+if [ "$INSTALLING" = true ]; then
     echo "Configuring timezone..."
     
     if [ -n "$ANDROID_TZ" ] && [ -f "/usr/share/zoneinfo/$ANDROID_TZ" ]; then
@@ -47,7 +70,7 @@ if [ "$1" = "--installing" ]; then
 fi
 
 
-if [ "$#" -eq 0 ]; then
+
     echo "$$" > "$PREFIX/pid"
     chmod +x "$PREFIX/axs"
 
@@ -243,10 +266,9 @@ fi
 
 chmod +x "$PREFIX/alpine/initrc"
 
-#actual source
-#everytime a terminal is started initrc will run
-"$PREFIX/axs" -c "bash --rcfile /initrc -i"
 
-else
-    exec "$@"
+if [ "$FAILSAFE" != true ]; then
+    #actual source
+    #everytime a terminal is started initrc will run
+    "$PREFIX/axs" -c "bash --rcfile /initrc -i"
 fi

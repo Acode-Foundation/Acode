@@ -13,6 +13,11 @@ const Terminal = {
             system.getFilesDir(resolve, reject);
         });
 
+        const terminalSettings = window.acode?.settings?.value?.terminalSettings || {};
+        //terminalSettings.failsafeMode;
+        const failsafe = true
+        const failsafeArg = failsafe ? "--failsafe" : "";
+
         const [initAlpine, rmWrapper, initSandbox] = await Promise.all([
             readAsset("init-alpine.sh"),
             readAsset("rm-wrapper.sh"),
@@ -31,6 +36,7 @@ const Terminal = {
                 let lastError = "";
 
                 Executor.start("sh", (type, data) => {
+                    console.log(`[AXS] ${type}: ${data}`);
                     logger(`${type} ${data}`);
 
                     if (type === "stderr" && data) {
@@ -48,7 +54,7 @@ const Terminal = {
                         resolve(success);
                     }
                 }).then(async (uuid) => {
-                    await Executor.write(uuid, `source ${filesDir}/init-sandbox.sh ${installing ? "--installing" : ""}; exit`);
+                    await Executor.write(uuid, `source ${filesDir}/init-sandbox.sh ${installing ? "--installing" : ""} ${failsafeArg}; exit`);
                 }).catch((error) => {
                     const message = `Failed to start AXS: ${formatError(error)}`;
                     this.lastInstallError = message;
@@ -58,9 +64,10 @@ const Terminal = {
             });
         } else {
             Executor.start("sh", (type, data) => {
+                console.log(`[AXS] ${type}: ${data}`);
                 logger(`${type} ${data}`);
             }).then(async (uuid) => {
-                await Executor.write(uuid, `source ${filesDir}/init-sandbox.sh ${installing ? "--installing" : ""}; exit`);
+                await Executor.write(uuid, `source ${filesDir}/init-sandbox.sh ${installing ? "--installing" : ""} ${failsafeArg}; exit`);
             });
         }
     },

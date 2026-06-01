@@ -15,6 +15,7 @@ export const DEFAULT_TERMINAL_SETTINGS = {
 	imageSupport: false,
 	fontLigatures: false,
 	confirmTabClose: true,
+	failsafeMode: false,
 	// Touch selection settings
 	touchSelectionTapHoldDuration: 600,
 	touchSelectionMoveThreshold: 8,

@@ -738,5 +738,7 @@
 	"iap-pro-purchase-warning": "Dieser Kauf wird nicht mit Ihrem Acode-Konto synchronisiert. Verwenden Sie dasselbe Google-Konto im Play Store, um Ihren Kauf wiederherzustellen.",
 	"confirm-login": "Sie sind nicht bei Acode angemeldet, jetzt anmelden?",
 	"local word completion": "Local word completion",
-	"settings-info-editor-local-word-completion": "Suggest words from the current file."
+	"settings-info-editor-local-word-completion": "Suggest words from the current file.",
+	"terminal:failsafe": "FailSafe mode",
+	"terminal:failsafe-info": "Start terminal with system shell"
 }

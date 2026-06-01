@@ -738,5 +738,7 @@
 	"iap-pro-purchase-warning": "Ushbu xarid Acode hisobingiz bilan sinxronlanmaydi. Xaridingizni tiklash uchun Play Store'da xuddi shu Google hisobidan foydalaning.",
 	"confirm-login": "Siz Acode'ga kirmagansiz, hozir kirasizmi?",
 	"local word completion": "Local word completion",
-	"settings-info-editor-local-word-completion": "Suggest words from the current file."
+	"settings-info-editor-local-word-completion": "Suggest words from the current file.",
+	"terminal:failsafe": "FailSafe mode",
+	"terminal:failsafe-info": "Start terminal with system shell"
 }
