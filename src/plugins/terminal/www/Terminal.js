@@ -8,14 +8,11 @@ const Terminal = {
      * @param {Function} [err_logger=console.error] - Function to log errors.
      * @returns {Promise<boolean>} - Returns true if installation completes with exit code 0, void if not installing
      */
-    async startAxs(installing = false, logger = console.log, err_logger = console.error) {
+    async startAxs(installing = false, logger = console.log, err_logger = console.error,failsafe = false) {
         const filesDir = await new Promise((resolve, reject) => {
             system.getFilesDir(resolve, reject);
         });
 
-        const terminalSettings = window.acode?.settings?.value?.terminalSettings || {};
-        //terminalSettings.failsafeMode;
-        const failsafe = true
         const failsafeArg = failsafe ? "--failsafe" : "";
 
         const [initAlpine, rmWrapper, initSandbox] = await Promise.all([
@@ -140,20 +137,20 @@ const Terminal = {
                 libproot32 = "https://raw.githubusercontent.com/Acode-Foundation/Acode/main/src/plugins/proot/libs/arm64/libproot32.so";
                 libTalloc = "https://raw.githubusercontent.com/Acode-Foundation/Acode/main/src/plugins/proot/libs/arm64/libtalloc.so";
                 prootUrl = "https://raw.githubusercontent.com/Acode-Foundation/Acode/main/src/plugins/proot/libs/arm64/libproot-xed.so";
-                axsUrl = `https://github.com/bajrangCoder/acodex_server/releases/latest/download/axs-musl-android-arm64`;
+                axsUrl = `https://github.com/bajrangCoder/acodex_server/releases/latest/download/axs-pie-android-arm64`;
                 alpineUrl = "https://dl-cdn.alpinelinux.org/alpine/v3.21/releases/aarch64/alpine-minirootfs-3.21.0-aarch64.tar.gz";
             } else if (arch === "armeabi-v7a") {
                 libproot = "https://raw.githubusercontent.com/Acode-Foundation/Acode/main/src/plugins/proot/libs/arm32/libproot.so";
                 libTalloc = "https://raw.githubusercontent.com/Acode-Foundation/Acode/main/src/plugins/proot/libs/arm32/libtalloc.so";
                 prootUrl = "https://raw.githubusercontent.com/Acode-Foundation/Acode/main/src/plugins/proot/libs/arm32/libproot-xed.so";
-                axsUrl = `https://github.com/bajrangCoder/acodex_server/releases/latest/download/axs-musl-android-armv7`;
+                axsUrl = `https://github.com/bajrangCoder/acodex_server/releases/latest/download/axs-pie-android-armv7`;
                 alpineUrl = "https://dl-cdn.alpinelinux.org/alpine/v3.21/releases/armhf/alpine-minirootfs-3.21.0-armhf.tar.gz";
             } else if (arch === "x86_64") {
                 libproot = "https://raw.githubusercontent.com/Acode-Foundation/Acode/main/src/plugins/proot/libs/x64/libproot.so";
                 libproot32 = "https://raw.githubusercontent.com/Acode-Foundation/Acode/main/src/plugins/proot/libs/x64/libproot32.so";
                 libTalloc = "https://raw.githubusercontent.com/Acode-Foundation/Acode/main/src/plugins/proot/libs/x64/libtalloc.so";
                 prootUrl = "https://raw.githubusercontent.com/Acode-Foundation/Acode/main/src/plugins/proot/libs/x64/libproot-xed.so";
-                axsUrl = `https://github.com/bajrangCoder/acodex_server/releases/latest/download/axs-musl-android-x86_64`;
+                axsUrl = `https://github.com/bajrangCoder/acodex_server/releases/latest/download/axs-pie-android-x86_64`;
                 alpineUrl = "https://dl-cdn.alpinelinux.org/alpine/v3.21/releases/x86_64/alpine-minirootfs-3.21.0-x86_64.tar.gz";
             } else {
                 throw new Error(`Unsupported architecture: ${arch}`);
