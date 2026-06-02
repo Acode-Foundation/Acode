@@ -946,15 +946,17 @@ export default class EditorFile {
 		this.isUnsaved = this.hasUnsavedChanges();
 	}
 
-	markSaved({ mtime } = {}) {
+	markSaved({ mtime, savedDoc, savedVersion } = {}) {
 		const normalizedMtime = helpers.normalizeMtime(mtime);
-		this.savedVersion = this.docVersion;
+		this.savedVersion = Number.isFinite(savedVersion)
+			? savedVersion
+			: this.docVersion;
 		this.savedMtime = normalizedMtime;
 		this.diskMtime = normalizedMtime;
 		this.hasDiskConflict = false;
 		this.#hasVersionMetadata = true;
-		this.#savedDoc = this.#rawSession?.doc || null;
-		this.isUnsaved = false;
+		this.#savedDoc = savedDoc || this.#rawSession?.doc || null;
+		this.isUnsaved = this.hasUnsavedChanges();
 	}
 
 	markDiskChanged({ mtime, deleted = false } = {}) {

@@ -72,16 +72,21 @@ export default async function checkFiles() {
 				return;
 			}
 
-			const stat = await fs.stat().catch(() => null);
-			const mtime = helpers.getStatMtime(stat);
-			if (file.hasVersionMetadata && file.savedMtime != null && mtime != null) {
-				if (mtime === file.savedMtime) return;
-				file.markDiskChanged({ mtime });
-				if (file.isUnsaved) {
-					editorManager.onupdate("file-changed");
-					editorManager.emit("update", "file-changed");
-					console.warn(`File changed on disk while unsaved: ${file.filename}`);
-					return;
+			let mtime = null;
+			if (file.hasVersionMetadata && file.savedMtime != null) {
+				const stat = await fs.stat().catch(() => null);
+				mtime = helpers.getStatMtime(stat);
+				if (mtime != null) {
+					if (mtime === file.savedMtime) return;
+					file.markDiskChanged({ mtime });
+					if (file.isUnsaved) {
+						editorManager.onupdate("file-changed");
+						editorManager.emit("update", "file-changed");
+						console.warn(
+							`File changed on disk while unsaved: ${file.filename}`,
+						);
+						return;
+					}
 				}
 			}
 
