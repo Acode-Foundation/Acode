@@ -86,7 +86,9 @@ async function saveFile(file, isSaveAs = false) {
 		}
 
 		// in case if user cancels the dialog
-		if (!filename) return;
+		if (!filename) {
+			return;
+		}
 	}
 
 	if (filename !== file.filename) {
@@ -122,9 +124,12 @@ async function saveFile(file, isSaveAs = false) {
 		if (appSettings.value.formatOnSave) {
 			editorManager.activeFile.markChanged = false;
 			acode.exec("format", false);
+			editorManager.activeFile.markChanged = true;
 		}
 
 		await fileOnDevice.writeFile(data, encoding);
+		const stat = await fileOnDevice.stat().catch(() => null);
+		file.markSaved({ mtime: helpers.getStatMtime(stat) });
 
 		if (file.location) {
 			recents.addFolder(file.location);
@@ -133,7 +138,6 @@ async function saveFile(file, isSaveAs = false) {
 		clearTimeout(saveTimeout);
 		saveTimeout = setTimeout(() => {
 			file.isSaving = false;
-			file.isUnsaved = false;
 			if (newUrl) recents.addFile(file.uri);
 			editorManager.onupdate("save-file");
 			editorManager.emit("update", "save-file");

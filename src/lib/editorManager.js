@@ -1226,7 +1226,7 @@ async function EditorManager($header, $body) {
 		// Preserve previous state for restoring selection/folds after swap
 		const prevState = file.session || null;
 
-		const doc = prevState ? prevState.doc.toString() : "";
+		const doc = prevState ? prevState.doc : "";
 		const state = EditorState.create({ doc, extensions: exts });
 		file.session = state;
 		editor.setState(state);
@@ -1399,6 +1399,13 @@ async function EditorManager($header, $body) {
 			if (activeFile?.type === "editor") {
 				void configureLspForFile(activeFile);
 			}
+		},
+		flushCacheWrites() {
+			return Promise.all(
+				manager.files
+					.filter((file) => file?.type === "editor")
+					.map((file) => file.flushCacheWrite?.()),
+			);
 		},
 	};
 
@@ -1694,15 +1701,19 @@ async function EditorManager($header, $body) {
 			// Mirror latest state only on doc changes to avoid clobbering async loads
 			file.session = update.state;
 
+			if (file.markChanged === false) {
+				return;
+			}
+
+			file.markEdited();
+
 			// Debounced change handling (unsaved flag, cache, autosave)
 			if (checkTimeout) clearTimeout(checkTimeout);
 			if (autosaveTimeout) clearTimeout(autosaveTimeout);
 
 			checkTimeout = setTimeout(async () => {
-				const changed = await file.isChanged();
-				file.isUnsaved = changed;
 				try {
-					await file.writeToCache();
+					file.scheduleCacheWrite();
 				} catch (error) {
 					warnRecoverable(
 						`Failed to write cache for ${file.filename || file.uri}`,
@@ -1717,7 +1728,7 @@ async function EditorManager($header, $body) {
 				toggleProblemButton();
 
 				const { autosave } = appSettings.value;
-				if (file.uri && changed && autosave) {
+				if (file.uri && file.isUnsaved && autosave) {
 					autosaveTimeout = setTimeout(() => {
 						acode.exec("save", false);
 					}, autosave);
@@ -2307,6 +2318,13 @@ async function EditorManager($header, $body) {
 			prev.session = editor.state;
 			prev.lastScrollTop = editor.scrollDOM?.scrollTop || 0;
 			prev.lastScrollLeft = editor.scrollDOM?.scrollLeft || 0;
+			prev.flushCacheWrite?.().catch((error) => {
+				warnRecoverable(
+					`Failed to flush cache for ${prev.filename || prev.uri}`,
+					error,
+					`cache-flush-${prev.id}`,
+				);
+			});
 		}
 
 		manager.activeFile = file;

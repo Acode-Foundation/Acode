@@ -518,6 +518,16 @@ export default {
 
 		return `${trimmedCountStr}${units[index]}`;
 	},
+	normalizeMtime(value) {
+		if (value == null) return null;
+		const time = value instanceof Date ? value.getTime() : Number(value);
+		return Number.isFinite(time) ? time : null;
+	},
+	getStatMtime(stat) {
+		return this.normalizeMtime(
+			stat?.modifiedDate ?? stat?.lastModified ?? stat?.mtime,
+		);
+	},
 	isBinary(file) {
 		// binary file extensions
 		const binaryExtensions = [
