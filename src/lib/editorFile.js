@@ -826,12 +826,12 @@ export default class EditorFile {
 
 	set isUnsaved(value) {
 		value = !!value;
+		if (this.#isUnsaved === value) return;
 		if (!value && this.#hasVersionMetadata) {
 			this.savedVersion = this.docVersion;
 			this.hasDiskConflict = false;
 			this.#savedDoc = this.#rawSession?.doc || this.#savedDoc;
 		}
-		if (this.#isUnsaved === value) return;
 		this.#isUnsaved = value;
 
 		this.#updateTab();

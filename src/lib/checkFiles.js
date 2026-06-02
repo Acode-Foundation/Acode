@@ -78,13 +78,24 @@ export default async function checkFiles() {
 				mtime = helpers.getStatMtime(stat);
 				if (mtime != null) {
 					if (mtime === file.savedMtime) return;
+					const alreadyWarnedConflict =
+						file.hasDiskConflict && file.diskMtime === mtime;
 					file.markDiskChanged({ mtime });
-					if (file.isUnsaved) {
+					if (file.hasDiskConflict) {
 						editorManager.onupdate("file-changed");
 						editorManager.emit("update", "file-changed");
 						console.warn(
 							`File changed on disk while unsaved: ${file.filename}`,
 						);
+						if (!alreadyWarnedConflict) {
+							await new Promise((resolve) => {
+								alert(
+									strings.warning.toUpperCase(),
+									`${file.filename} changed on disk while you have unsaved edits. Saving now may overwrite the external changes.`,
+									resolve,
+								);
+							});
+						}
 						return;
 					}
 				}
