@@ -533,7 +533,9 @@ export default class EditorFile {
 				: this.docVersion;
 		this.cacheVersion = Number.isFinite(options?.cacheVersion)
 			? options.cacheVersion
-			: this.savedVersion;
+			: options?.isUnsaved
+				? this.docVersion
+				: this.savedVersion;
 		this.savedMtime = helpers.normalizeMtime(options?.savedMtime);
 		this.diskMtime = helpers.normalizeMtime(
 			options?.diskMtime ?? options?.savedMtime,
@@ -925,7 +927,7 @@ export default class EditorFile {
 		const normalizedMtime = helpers.normalizeMtime(mtime);
 		this.docVersion = isUnsaved ? 1 : 0;
 		this.savedVersion = isUnsaved ? 0 : this.docVersion;
-		this.cacheVersion = this.savedVersion;
+		this.cacheVersion = isUnsaved ? this.docVersion : this.savedVersion;
 		this.savedMtime = normalizedMtime;
 		this.diskMtime = normalizedMtime;
 		this.hasDiskConflict = false;
@@ -995,28 +997,43 @@ export default class EditorFile {
 		if (this.#cacheWriteTimer) {
 			clearTimeout(this.#cacheWriteTimer);
 			this.#cacheWriteTimer = null;
+			if (!this.#cacheWritePromise) {
+				this.#cacheWritePromise = this.writeToCache().finally(() => {
+					this.#cacheWritePromise = null;
+				});
+			}
+		}
+		if (this.#cacheWritePromise) await this.#cacheWritePromise;
+		if (this.cacheVersion !== this.docVersion) {
+			if (this.#cacheWriteTimer) {
+				clearTimeout(this.#cacheWriteTimer);
+				this.#cacheWriteTimer = null;
+			}
 			this.#cacheWritePromise = this.writeToCache().finally(() => {
 				this.#cacheWritePromise = null;
 			});
+			await this.#cacheWritePromise;
 		}
-		if (this.#cacheWritePromise) await this.#cacheWritePromise;
 	}
 
 	async writeToCache() {
+		const writeVersion = this.docVersion;
 		const text = this.session.doc.toString();
 		const fs = fsOperation(this.cacheFile);
 
 		try {
 			if (!(await fs.exists())) {
 				await fsOperation(CACHE_STORAGE).createFile(this.id, text);
-				this.cacheVersion = this.docVersion;
+				this.cacheVersion = writeVersion;
 				this.#hasVersionMetadata = true;
+				if (this.docVersion !== writeVersion) this.scheduleCacheWrite();
 				return;
 			}
 
 			await fs.writeFile(text);
-			this.cacheVersion = this.docVersion;
+			this.cacheVersion = writeVersion;
 			this.#hasVersionMetadata = true;
+			if (this.docVersion !== writeVersion) this.scheduleCacheWrite();
 		} catch (error) {
 			window.log("error", "Writing to cache failed:");
 			window.log("error", error);
@@ -1644,7 +1661,7 @@ export default class EditorFile {
 		this.#emit("save", event);
 
 		if (event.defaultPrevented) return Promise.resolve(false);
-		return Promise.all([this.writeToCache(), saveFile(this, as)]);
+		return Promise.all([this.flushCacheWrite(), saveFile(this, as)]);
 	}
 
 	#run(file) {
