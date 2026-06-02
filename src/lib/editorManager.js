@@ -454,12 +454,11 @@ async function EditorManager($header, $body) {
 			},
 		},
 		{
-			keys: ["showSpaces", "textWrap"],
+			keys: ["showSpaces"],
 			compartments: [lineBreakMarkerCompartment],
 			build() {
 				const showSpaces = !!appSettings?.value?.showSpaces;
-				const textWrap = !!appSettings?.value?.textWrap;
-				return showSpaces && textWrap ? lineBreakMarker : [];
+				return showSpaces ? lineBreakMarker : [];
 			},
 		},
 		{
