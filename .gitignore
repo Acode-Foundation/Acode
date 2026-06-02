@@ -1,4 +1,4 @@
-node_modules
+/node_modules
 /build.json
 /www/build
 /plugins
@@ -13,4 +13,9 @@ pnpm-lock.yaml
 .idea
 ace-builds
 fdroid.bool
+CLAUDE.md
+graphify-out/
+.graphify_python
+.gradle/
+local.properties
 tsconfig.tsbuildinfo

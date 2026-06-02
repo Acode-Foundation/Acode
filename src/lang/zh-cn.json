@@ -660,7 +660,7 @@
 	"settings-info-editor-rtl-text": "按行切换从右到左文本行为。",
 	"settings-info-editor-scroll-settings": "调整滚动条大小、速度和手势行为。",
 	"settings-info-editor-shift-click-selection": "使用 Shift + 点击扩展选区。",
-	"settings-info-editor-show-spaces": "显示空白字符标记。",
+	"settings-info-editor-show-spaces": "显示可见的空白字符和换行标记。",
 	"settings-info-editor-soft-tab": "使用空格代替 Tab 字符。",
 	"settings-info-editor-tab-size": "设置 Tab 等效空格数。",
 	"settings-info-editor-teardrop-size": "设置触控编辑的光标拖动手柄大小。",

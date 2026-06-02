@@ -62,6 +62,7 @@ import {
 	setScrollPosition,
 } from "cm/editorUtils";
 import indentGuides from "cm/indentGuides";
+import { lineBreakMarker } from "cm/lineBreakMarker";
 import rainbowBrackets, { getRainbowBracketColors } from "cm/rainbowBrackets";
 import { getThemeConfig, getThemeExtensions } from "cm/themes";
 import list from "components/collapsableList";
@@ -256,6 +257,8 @@ async function EditorManager($header, $body) {
 	const rainbowCompartment = new Compartment();
 	// Compartment for indent guides
 	const indentGuidesCompartment = new Compartment();
+	// Compartment for line break marker
+	const lineBreakMarkerCompartment = new Compartment();
 	// Compartment for read-only toggling
 	const readOnlyCompartment = new Compartment();
 	// Compartment for language mode (allows async loading/reconfigure)
@@ -448,6 +451,14 @@ async function EditorManager($header, $body) {
 							makeWhitespaceTheme(),
 						]
 					: [];
+			},
+		},
+		{
+			keys: ["showSpaces"],
+			compartments: [lineBreakMarkerCompartment],
+			build() {
+				const showSpaces = !!appSettings?.value?.showSpaces;
+				return showSpaces ? lineBreakMarker : [];
 			},
 		},
 		{

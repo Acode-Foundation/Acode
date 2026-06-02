@@ -660,7 +660,7 @@
 	"settings-info-editor-rtl-text": "Jobbról balra haladó viselkedés váltása soronként.",
 	"settings-info-editor-scroll-settings": "Görgetősáv méretének, sebességének és az ujjmozdulatok viselkedésének beállítása.",
 	"settings-info-editor-shift-click-selection": "Kijelölés kiterjesztése a Shift + érintés vagy kattintás használatával.",
-	"settings-info-editor-show-spaces": "Látható szóközjelölők megjelenítése.",
+	"settings-info-editor-show-spaces": "Látható szóköz- és sortörésjelölők megjelenítése.",
 	"settings-info-editor-soft-tab": "Szóközök beszúrása tabulátorkarakterek helyett.",
 	"settings-info-editor-tab-size": "Állítsa be, hány szóközt használjon egy tabulátorlépés.",
 	"settings-info-editor-teardrop-size": "Kurzorfogantyú méretének beállítása az érintéses szerkesztéshez.",

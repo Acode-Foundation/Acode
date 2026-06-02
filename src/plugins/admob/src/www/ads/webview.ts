@@ -107,7 +107,7 @@ export class WebViewAd extends MobileAd<WebViewAdOptions> {
     return false;
   }
 
-  private nodeScriptReplace(node) {
+  private nodeScriptReplace(node: any) {
     if (this.isNodeScript(node) === true) {
       node.parentNode.replaceChild(this.nodeScriptClone(node), node);
     } else {
@@ -119,7 +119,7 @@ export class WebViewAd extends MobileAd<WebViewAdOptions> {
     return node;
   }
 
-  private nodeScriptClone(node) {
+  private nodeScriptClone(node: any) {
     const script = document.createElement("script");
     script.text = node.innerHTML;
     const attrs = node.attributes;
@@ -129,7 +129,7 @@ export class WebViewAd extends MobileAd<WebViewAdOptions> {
     return script;
   }
 
-  private isNodeScript(node) {
+  private isNodeScript(node: any) {
     return node.tagName === "SCRIPT";
   }
 
@@ -142,7 +142,7 @@ export class WebViewAd extends MobileAd<WebViewAdOptions> {
     }
   }
 
-  private historySetPage(page: string, parameters = {}) {
+  private historySetPage(page: string, parameters: Record<string, any> = {}) {
     const _parameters: string[] = [];
     for (const name in parameters) {
       _parameters.push(`${name}=${encodeURI(parameters[name])}`);
