@@ -130,6 +130,7 @@ class Settings {
 			lang: "en-us",
 			uiZoom: 100,
 			fontSize: "12px",
+			cursorWidth: 2,
 			editorTheme: "one_dark",
 			textWrap: true,
 			softTab: true,

@@ -259,6 +259,8 @@ async function EditorManager($header, $body) {
 	const indentGuidesCompartment = new Compartment();
 	// Compartment for line break marker
 	const lineBreakMarkerCompartment = new Compartment();
+	// Compartment for cursor appearance
+	const cursorThemeCompartment = new Compartment();
 	// Compartment for read-only toggling
 	const readOnlyCompartment = new Compartment();
 	// Compartment for language mode (allows async loading/reconfigure)
@@ -286,6 +288,17 @@ async function EditorManager($header, $body) {
 			".cm-content": { fontFamily },
 			".cm-gutter": { fontFamily },
 			".cm-tooltip, .cm-tooltip *": { fontFamily },
+		});
+	}
+
+	function makeCursorTheme() {
+		const width = Number(appSettings?.value?.cursorWidth);
+		const cursorWidth =
+			Number.isFinite(width) && width > 0 ? Math.min(width, 10) : 2;
+		return EditorView.theme({
+			".cm-cursor": {
+				borderLeftWidth: `${cursorWidth}px`,
+			},
 		});
 	}
 
@@ -412,6 +425,13 @@ async function EditorManager($header, $body) {
 			compartments: [fontStyleCompartment],
 			build() {
 				return makeFontTheme();
+			},
+		},
+		{
+			keys: ["cursorWidth"],
+			compartments: [cursorThemeCompartment],
+			build() {
+				return makeCursorTheme();
 			},
 		},
 		{
@@ -1633,6 +1653,10 @@ async function EditorManager($header, $body) {
 	// Line height update for CodeMirror
 	appSettings.on("update:lineHeight", function () {
 		updateEditorStyleFromSettings();
+	});
+
+	appSettings.on("update:cursorWidth", function () {
+		applyOptions(["cursorWidth"]);
 	});
 
 	appSettings.on("update:relativeLineNumbers", function () {
