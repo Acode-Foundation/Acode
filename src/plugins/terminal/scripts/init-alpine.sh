@@ -42,6 +42,11 @@ if [ "$1" = "--installing" ]; then
     fi
 
     mkdir -p "$PREFIX/.configured"
+
+    if [ ! -f "$HOME/.bashrc" ]; then
+       touch "$HOME/.bashrc" && chmod 644 "$HOME/.bashrc"
+    fi
+
     echo "Installation completed."
     exit 0
 fi
