@@ -118,8 +118,11 @@ async function saveFile(file, isSaveAs = false) {
 
 		if (appSettings.value.formatOnSave) {
 			editorManager.activeFile.markChanged = false;
-			acode.exec("format", false);
-			editorManager.activeFile.markChanged = true;
+			try {
+				acode.exec("format", false);
+			} finally {
+				editorManager.activeFile.markChanged = true;
+			}
 		}
 
 		const savedDoc = file.session?.doc || null;
