@@ -127,7 +127,15 @@ for arg in "$@"; do
 done
 
 if [ "$FAILSAFE" = true ] && [ "$INSTALLING" != true ]; then
-    /system/bin/linker64 "$PREFIX/axs" -c "sh"
+    echo "$$" > "$PREFIX/pid"
+
+    LINKER="/system/bin/linker64"
+    ARCH="$(uname -m)"
+    if [ "$ARCH" != "aarch64" ] && [ "$ARCH" != "x86_64" ]; then
+        LINKER="/system/bin/linker"
+    fi
+
+    exec "$LINKER" "$PREFIX/axs" -c "sh"
 else
     exec "$PROOT" $ARGS /bin/sh "$PREFIX/init-alpine.sh" "$@"
 fi
