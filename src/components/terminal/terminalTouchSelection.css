@@ -13,6 +13,15 @@
 	overflow: hidden;
 }
 
+.terminal-native-selection-disabled,
+.terminal-native-selection-disabled .xterm,
+.terminal-native-selection-disabled .xterm-screen,
+.terminal-native-selection-disabled .xterm-helper-textarea {
+	-webkit-touch-callout: none;
+	-webkit-user-select: none;
+	user-select: none;
+}
+
 .terminal-selection-handle {
 	position: absolute;
 	background: #2196f3;

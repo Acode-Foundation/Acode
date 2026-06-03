@@ -67,6 +67,7 @@ export default class TerminalComponent {
 		this.touchSelection = null;
 		this.parsedAppKeybindings = [];
 		this.parsedAppKeybindingsVersion = -1;
+		this.boundNativeSelectionMenuHandler = null;
 
 		this.init();
 	}
@@ -508,6 +509,7 @@ export default class TerminalComponent {
       overflow: hidden;
       box-sizing: border-box;
     `;
+		this.disableNativeSelectionMenu(this.container);
 
 		return this.container;
 	}
@@ -525,6 +527,7 @@ export default class TerminalComponent {
 
 		// Apply terminal background color to container to match theme
 		this.container.style.background = this.options.theme.background;
+		this.disableNativeSelectionMenu(this.container);
 
 		try {
 			// Open first to ensure a stable renderer is attached
@@ -575,6 +578,36 @@ export default class TerminalComponent {
 		}
 
 		return container;
+	}
+
+	/**
+	 * Disable the platform/browser text-selection menu in terminal views.
+	 * Terminal selection is handled by TerminalTouchSelection and xterm APIs.
+	 */
+	disableNativeSelectionMenu(container) {
+		if (!container) return;
+
+		container.classList.add("terminal-native-selection-disabled");
+
+		if (this.boundNativeSelectionMenuHandler) {
+			container.removeEventListener(
+				"contextmenu",
+				this.boundNativeSelectionMenuHandler,
+				true,
+			);
+		}
+
+		this.boundNativeSelectionMenuHandler = (event) => {
+			if (event.target?.closest?.(".terminal-context-menu")) return;
+			event.preventDefault();
+			event.stopPropagation();
+		};
+
+		container.addEventListener(
+			"contextmenu",
+			this.boundNativeSelectionMenuHandler,
+			true,
+		);
 	}
 
 	/**
@@ -1081,6 +1114,15 @@ export default class TerminalComponent {
 
 		if (this.terminal) {
 			this.terminal.dispose();
+		}
+
+		if (this.container && this.boundNativeSelectionMenuHandler) {
+			this.container.removeEventListener(
+				"contextmenu",
+				this.boundNativeSelectionMenuHandler,
+				true,
+			);
+			this.boundNativeSelectionMenuHandler = null;
 		}
 
 		if (this.container) {
