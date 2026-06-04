@@ -74,6 +74,10 @@ function createSessionProxy(state, file) {
 
 	return new Proxy(state, {
 		get(target, prop) {
+			if (prop === "__rawState") {
+				return target;
+			}
+
 			// Ace-compatible method: getValue()
 			if (prop === "getValue") {
 				return () => target.doc.toString();
