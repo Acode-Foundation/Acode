@@ -418,7 +418,7 @@ async function EditorManager($header, $body) {
 				const enabled = appSettings?.value?.indentGuides ?? false;
 				if (!enabled) return [];
 				return indentGuides({
-					highlightActiveGuide: true,
+					highlightActiveGuide: false,
 					hideOnBlankLines: false,
 				});
 			},
