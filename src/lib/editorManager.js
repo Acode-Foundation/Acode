@@ -64,6 +64,7 @@ import {
 import indentGuides from "cm/indentGuides";
 import { lineBreakMarker } from "cm/lineBreakMarker";
 import rainbowBrackets, { getRainbowBracketColors } from "cm/rainbowBrackets";
+import tagAutoRename from "cm/tagAutoRename";
 import { getThemeConfig, getThemeExtensions } from "cm/themes";
 import list from "components/collapsableList";
 import quickTools from "components/quickTools";
@@ -259,6 +260,8 @@ async function EditorManager($header, $body) {
 	const indentGuidesCompartment = new Compartment();
 	// Compartment for line break marker
 	const lineBreakMarkerCompartment = new Compartment();
+	// Compartment for HTML-like tag auto rename
+	const tagAutoRenameCompartment = new Compartment();
 	// Compartment for read-only toggling
 	const readOnlyCompartment = new Compartment();
 	// Compartment for language mode (allows async loading/reconfigure)
@@ -498,6 +501,14 @@ async function EditorManager($header, $body) {
 			build() {
 				const enabled = !!appSettings?.value?.localWordCompletion;
 				return enabled ? localWordCompletions() : [];
+			},
+		},
+		{
+			keys: ["autoRenameTags"],
+			compartments: [tagAutoRenameCompartment],
+			build() {
+				const enabled = appSettings?.value?.autoRenameTags !== false;
+				return enabled ? tagAutoRename() : [];
 			},
 		},
 	];
@@ -1611,6 +1622,10 @@ async function EditorManager($header, $body) {
 
 	appSettings.on("update:localWordCompletion", function () {
 		applyOptions(["localWordCompletion"]);
+	});
+
+	appSettings.on("update:autoRenameTags", function () {
+		applyOptions(["autoRenameTags"]);
 	});
 
 	appSettings.on("update:autoCloseTags", function () {

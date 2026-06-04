@@ -21,7 +21,6 @@ import {
 	rectangularSelection,
 	tooltips,
 } from "@codemirror/view";
-import tagAutoRename from "./tagAutoRename";
 
 /**
  * Base extensions roughly matching the useful parts of CodeMirror's basicSetup
@@ -39,7 +38,6 @@ export default function createBaseExtensions(): Extension[] {
 		syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
 		bracketMatching(),
 		closeBrackets(),
-		tagAutoRename(),
 		rectangularSelection(),
 		crosshairCursor(),
 		highlightActiveLine(),

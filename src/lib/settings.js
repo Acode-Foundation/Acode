@@ -150,6 +150,7 @@ class Settings {
 			liveAutoCompletion: true,
 			localWordCompletion: true,
 			autoCloseTags: true,
+			autoRenameTags: true,
 			showPrintMargin: false,
 			printMargin: 80,
 			scrollbarSize: 20,

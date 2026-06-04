@@ -141,6 +141,15 @@ export default function editorSettings() {
 			category: categories.assistance,
 		},
 		{
+			key: "autoRenameTags",
+			text: strings["auto rename tags"] || "Auto rename tags",
+			checkbox: values.autoRenameTags ?? true,
+			info:
+				strings["settings-info-editor-auto-rename-tags"] ||
+				"Rename the matching opening or closing tag while editing HTML-like tags.",
+			category: categories.assistance,
+		},
+		{
 			key: "colorPreview",
 			text: strings["color preview"],
 			checkbox: values.colorPreview,
