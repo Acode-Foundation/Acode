@@ -137,6 +137,7 @@ declare type LangStrings = {
   "live autocompletion": string;
   "local word completion": string;
   "auto close tags": string;
+  "auto rename tags": string;
   "file properties": string;
   "path": string;
   "type": string;
@@ -674,6 +675,7 @@ declare type LangStrings = {
   "settings-info-editor-live-autocomplete": string;
   "settings-info-editor-local-word-completion": string;
   "settings-info-editor-auto-close-tags": string;
+  "settings-info-editor-auto-rename-tags": string;
   "settings-info-editor-rainbow-brackets": string;
   "settings-info-editor-relative-line-numbers": string;
   "settings-info-editor-rtl-text": string;
@@ -742,6 +744,8 @@ declare type LangStrings = {
   "iap-plugin-purchase-warning": string;
   "iap-pro-purchase-warning": string;
   "confirm-login": string;
+  "terminal:failsafe": string;
+  "terminal:failsafe-info": string;
 };
 
 declare var strings: LangStrings;

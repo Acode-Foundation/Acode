@@ -738,5 +738,9 @@
 	"iap-pro-purchase-warning": "यह खरीदारी आपके Acode खाते से सिंक नहीं होगी। अपनी खरीदारी पुनर्स्थापित करने के लिए Play Store में उसी Google खाते का उपयोग करें।",
 	"confirm-login": "आप Acode में साइन इन नहीं हैं, अभी साइन इन करें?",
 	"local word completion": "Local word completion",
-	"settings-info-editor-local-word-completion": "Suggest words from the current file."
+	"settings-info-editor-local-word-completion": "Suggest words from the current file.",
+	"terminal:failsafe": "FailSafe mode",
+	"terminal:failsafe-info": "Start terminal with system shell",
+	"auto rename tags": "Auto rename tags",
+	"settings-info-editor-auto-rename-tags": "Rename the matching opening or closing tag while editing HTML-like tags."
 }

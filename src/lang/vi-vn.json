@@ -738,5 +738,9 @@
 	"iap-pro-purchase-warning": "Giao dịch mua này sẽ không được đồng bộ hóa với tài khoản Acode của bạn. Sử dụng cùng một tài khoản Google trên Play Store để khôi phục giao dịch mua của bạn.",
 	"confirm-login": "Bạn chưa đăng nhập vào Acode, đăng nhập ngay bây giờ?",
 	"local word completion": "Local word completion",
-	"settings-info-editor-local-word-completion": "Suggest words from the current file."
+	"settings-info-editor-local-word-completion": "Suggest words from the current file.",
+	"terminal:failsafe": "FailSafe mode",
+	"terminal:failsafe-info": "Start terminal with system shell",
+	"auto rename tags": "Auto rename tags",
+	"settings-info-editor-auto-rename-tags": "Rename the matching opening or closing tag while editing HTML-like tags."
 }

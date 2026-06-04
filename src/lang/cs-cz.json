@@ -738,5 +738,9 @@
 	"iap-pro-purchase-warning": "Tento nákup nebude synchronizován s vaším účtem Acode. Pro obnovení nákupu použijte stejný účet Google v Obchodě Play.",
 	"confirm-login": "Nejste přihlášeni do Acode, přihlásit se nyní?",
 	"local word completion": "Local word completion",
-	"settings-info-editor-local-word-completion": "Suggest words from the current file."
+	"settings-info-editor-local-word-completion": "Suggest words from the current file.",
+	"terminal:failsafe": "FailSafe mode",
+	"terminal:failsafe-info": "Start terminal with system shell",
+	"auto rename tags": "Auto rename tags",
+	"settings-info-editor-auto-rename-tags": "Rename the matching opening or closing tag while editing HTML-like tags."
 }

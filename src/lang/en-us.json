@@ -134,6 +134,7 @@
 	"live autocompletion": "Live autocompletion",
 	"local word completion": "Local word completion",
 	"auto close tags": "Auto close tags",
+	"auto rename tags": "Auto rename tags",
 	"file properties": "File properties",
 	"path": "Path",
 	"type": "Type",
@@ -671,6 +672,7 @@
 	"settings-info-editor-live-autocomplete": "Show suggestions while you type.",
 	"settings-info-editor-local-word-completion": "Suggest words from the current file.",
 	"settings-info-editor-auto-close-tags": "Automatically insert closing tags in HTML, XML, Vue, Angular, and PHP template files.",
+	"settings-info-editor-auto-rename-tags": "Rename the matching opening or closing tag while editing HTML-like tags.",
 	"settings-info-editor-rainbow-brackets": "Color matching brackets by nesting depth.",
 	"settings-info-editor-relative-line-numbers": "Show distance from the current line.",
 	"settings-info-editor-rtl-text": "Switch right-to-left behavior per line.",
@@ -738,5 +740,7 @@
 	"login-to-view": "Please login to view this...",
 	"iap-plugin-purchase-warning": "Purchased plugin are not synced to your Acode account. Use same Google account in play store to restore your purchase.",
 	"iap-pro-purchase-warning": "This purchase will not be synced to your Acode account. Use same Google account in play store to restore your purchase.",
-	"confirm-login": "You are not singed in to Acode, sign in now?"
+	"confirm-login": "You are not singed in to Acode, sign in now?",
+	"terminal:failsafe": "FailSafe mode",
+	"terminal:failsafe-info": "Start terminal with system shell"
 }

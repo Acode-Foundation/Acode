@@ -738,5 +738,9 @@
 	"iap-pro-purchase-warning": "এই ক্রয়টি আপনার Acode অ্যাকাউন্টের সাথে সিঙ্ক হবে না। আপনার ক্রয় পুনরুদ্ধার করতে প্লে স্টোরে একই Google অ্যাকাউন্ট ব্যবহার করুন।",
 	"confirm-login": "আপনি Acode-এ সাইন ইন করেননি, এখন সাইন ইন করবেন?",
 	"local word completion": "Local word completion",
-	"settings-info-editor-local-word-completion": "Suggest words from the current file."
+	"settings-info-editor-local-word-completion": "Suggest words from the current file.",
+	"terminal:failsafe": "FailSafe mode",
+	"terminal:failsafe-info": "Start terminal with system shell",
+	"auto rename tags": "Auto rename tags",
+	"settings-info-editor-auto-rename-tags": "Rename the matching opening or closing tag while editing HTML-like tags."
 }

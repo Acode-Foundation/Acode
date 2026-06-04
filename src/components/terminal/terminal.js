@@ -631,7 +631,25 @@ export default class TerminalComponent {
 
 			// Start AXS if not running
 			if (!(await Terminal.isAxsRunning())) {
-				await Terminal.startAxs(false, () => {}, console.error);
+				const values = appSettings.value;
+				// Initialize terminal settings with defaults if not present
+				if (!values.terminalSettings) {
+					values.terminalSettings = {
+						...DEFAULT_TERMINAL_SETTINGS,
+						fontFamily:
+							DEFAULT_TERMINAL_SETTINGS.fontFamily ||
+							appSettings.value.fontFamily,
+					};
+				}
+
+				const terminalValues = values.terminalSettings;
+
+				await Terminal.startAxs(
+					false,
+					() => {},
+					console.error,
+					terminalValues.failsafeMode,
+				);
 
 				// Check if AXS started with interval polling
 				const maxRetries = 10;

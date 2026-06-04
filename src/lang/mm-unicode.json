@@ -738,5 +738,9 @@
 	"iap-pro-purchase-warning": "ဤဝယ်ယူမှုသည် သင့် Acode အကောင့်နှင့် ထပ်တူပြုမည်မဟုတ်ပါ။ သင့်ဝယ်ယူမှုကို ပြန်လည်ရယူရန် Play Store တွင် တူညီသော Google အကောင့်ကို အသုံးပြုပါ။",
 	"confirm-login": "သင်သည် Acode သို့ အကောင့်ဝင်ထားခြင်းမရှိပါ၊ ယခု အကောင့်ဝင်မလား။",
 	"local word completion": "Local word completion",
-	"settings-info-editor-local-word-completion": "Suggest words from the current file."
+	"settings-info-editor-local-word-completion": "Suggest words from the current file.",
+	"terminal:failsafe": "FailSafe mode",
+	"terminal:failsafe-info": "Start terminal with system shell",
+	"auto rename tags": "Auto rename tags",
+	"settings-info-editor-auto-rename-tags": "Rename the matching opening or closing tag while editing HTML-like tags."
 }
