@@ -740,7 +740,7 @@
 	"local word completion": "Szókiegészítés a helyi fájlból",
 	"settings-info-editor-local-word-completion": "Szavak ajánlása a jelenleg megnyitott fájlból.",
 	"terminal:failsafe": "Vészhelyzeti mód",
-	"terminal:failsafe-info": "A terminál indítása a rendszerhéjjal",
+	"terminal:failsafe-info": "Terminál indítása a rendszerhéjjal",
 	"auto rename tags": "Címkék automatikus átnevezése",
 	"settings-info-editor-auto-rename-tags": "A páros nyitó vagy záró címke automatikus átnevezése HTML-szerű címkék szerkesztése közben."
 }
