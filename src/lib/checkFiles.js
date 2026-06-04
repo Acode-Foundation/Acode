@@ -126,7 +126,7 @@ export default async function checkFiles() {
 					} finally {
 						file.markChanged = true;
 					}
-					await file.scheduleCacheWrite(0);
+					await file.writeToCache();
 					editor.gotoLine(cursorPos.row, cursorPos.column);
 				} catch (error) {
 					// ignore
