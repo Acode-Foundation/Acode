@@ -240,6 +240,60 @@ if [ -s /etc/acode_motd ]; then
     cat /etc/acode_motd
 fi
 
+check_binary_execution() {
+    local cmd="$1"
+    local cmd_path=""
+
+    # Ignore shell builtins, keywords, etc.
+    [[ -z "$cmd" ]] && return
+
+    # If user executed a path directly (./foo, /path/foo)
+    if [[ "$cmd" == */* ]]; then
+        cmd_path="$(realpath "$cmd" 2>/dev/null)"
+    else
+        cmd_path="$(command -v "$cmd" 2>/dev/null)"
+
+        # Resolve symlinks/relative paths
+        if [[ -n "$cmd_path" ]]; then
+            cmd_path="$(realpath "$cmd_path" 2>/dev/null)"
+        fi
+    fi
+
+    [[ -z "$cmd_path" ]] && return
+    [[ ! -f "$cmd_path" ]] && return
+
+    if [[ "$cmd_path" == /storage/* ]] || \
+       [[ "$cmd_path" == /sdcard/* ]]; then
+        echo -e "\e[1;31m[!] ATTENTION REQUIRED\e[0m
+
+\e[1;31mThe binary is located in:\e[0m
+  \e[36m$cmd_path\e[0m
+
+\e[1;31mBinaries cannot be executed reliably from /sdcard or /storage.\e[0m
+These locations are backed by Android's external storage layer and do not support normal Linux executable permissions.
+
+Move your project or binary to a directory under:
+  \e[1;32m/home/\e[0m
+
+Example:
+  \e[1;32mmv myproject ~/myproject\e[0m
+  \e[1;32mcd ~/myproject\e[0m
+
+Then run the binary again.
+" >&2
+    fi
+}
+
+preexec() {
+    # Skip commands executed by the trap itself
+    [[ "$BASH_COMMAND" == trap* ]] && return
+
+    local cmd="${BASH_COMMAND%% *}"
+    check_binary_execution "$cmd"
+}
+
+trap 'preexec' DEBUG
+
 # Command-not-found handler
 command_not_found_handle() {
     cmd="$1"
