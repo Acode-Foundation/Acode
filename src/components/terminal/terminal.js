@@ -21,7 +21,10 @@ import confirm from "dialogs/confirm";
 import fonts from "lib/fonts";
 import appSettings from "lib/settings";
 import LigaturesAddon from "./ligatures";
-import { DEFAULT_TERMINAL_SETTINGS, getTerminalSettings } from "./terminalDefaults";
+import {
+	DEFAULT_TERMINAL_SETTINGS,
+	getTerminalSettings,
+} from "./terminalDefaults";
 import TerminalThemeManager from "./terminalThemeManager";
 import TerminalTouchSelection from "./terminalTouchSelection";
 
