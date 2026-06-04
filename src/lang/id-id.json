@@ -740,5 +740,7 @@
 	"local word completion": "Penyelesaian kata lokal",
 	"settings-info-editor-local-word-completion": "Sarankan kata dari berkas saat ini.",
 	"terminal:failsafe": "FailSafe mode",
-	"terminal:failsafe-info": "Start terminal with system shell"
+	"terminal:failsafe-info": "Start terminal with system shell",
+	"auto rename tags": "Auto rename tags",
+	"settings-info-editor-auto-rename-tags": "Rename the matching opening or closing tag while editing HTML-like tags."
 }
