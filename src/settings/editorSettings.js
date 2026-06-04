@@ -142,11 +142,9 @@ export default function editorSettings() {
 		},
 		{
 			key: "autoRenameTags",
-			text: strings["auto rename tags"] || "Auto rename tags",
+			text: strings["auto rename tags"],
 			checkbox: values.autoRenameTags ?? true,
-			info:
-				strings["settings-info-editor-auto-rename-tags"] ||
-				"Rename the matching opening or closing tag while editing HTML-like tags.",
+			info: strings["settings-info-editor-auto-rename-tags"],
 			category: categories.assistance,
 		},
 		{

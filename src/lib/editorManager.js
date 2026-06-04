@@ -507,6 +507,7 @@ async function EditorManager($header, $body) {
 			keys: ["autoRenameTags"],
 			compartments: [tagAutoRenameCompartment],
 			build() {
+				// Default-on for older settings files that do not have this key yet.
 				const enabled = appSettings?.value?.autoRenameTags !== false;
 				return enabled ? tagAutoRename() : [];
 			},
