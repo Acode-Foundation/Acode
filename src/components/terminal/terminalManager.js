@@ -670,7 +670,7 @@ class TerminalManager {
 
 		let lastWidth = null;
 		let lastHeight = null;
-		
+
 		const handleResize = (entries) => {
 			const now = Date.now();
 			const entry = entries && entries[0];
@@ -689,7 +689,7 @@ class TerminalManager {
 			if (lastWidth === null || lastHeight === null) {
 				lastWidth = width;
 				lastHeight = height;
-				
+
 				return;
 			}
 
