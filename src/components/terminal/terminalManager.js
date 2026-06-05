@@ -668,14 +668,30 @@ class TerminalManager {
 		const RESIZE_DEBOUNCE = 200;
 		let lastResizeTime = 0;
 
-		let lastWidth = 0;
-		let lastHeight = 0;
+		let lastWidth = null;
+		let lastHeight = null;
+		let isObserving = false;
 		const handleResize = (entries) => {
 			const now = Date.now();
 			const entry = entries && entries[0];
 			const cr = entry?.contentRect;
 			const width = cr?.width ?? terminalFile.content?.clientWidth ?? 0;
 			const height = cr?.height ?? terminalFile.content?.clientHeight ?? 0;
+
+			// Skip resize events when container is hidden
+			const isHidden =
+				terminalFile.content?.style.display === "none" ||
+				terminalFile.content?.offsetHeight === 0;
+			if (isHidden) {
+				return;
+			}
+
+			if (lastWidth === null || lastHeight === null) {
+				lastWidth = width;
+				lastHeight = height;
+				isObserving = true;
+				return;
+			}
 
 			// Clear any pending resize
 			if (resizeTimeout) {
