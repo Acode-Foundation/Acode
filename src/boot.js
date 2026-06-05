@@ -39,9 +39,7 @@
 			var ws;
 
 			try {
-				ws = new WebSocket(
-					"".concat(wsProto, "://", DEV_HOST, ":", DEV_PORT),
-				);
+				ws = new WebSocket("".concat(wsProto, "://", DEV_HOST, ":", DEV_PORT));
 			} catch (_e) {
 				setTimeout(connectWS, 1000);
 				return;

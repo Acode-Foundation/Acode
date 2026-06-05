@@ -27,12 +27,7 @@ const os = require("node:os");
 const ROOT = path.resolve(__dirname, "../..");
 const WWW = path.join(ROOT, "www");
 const PLUGINS = path.join(ROOT, "src", "plugins");
-const PLATFORM_WWW = path.join(
-	ROOT,
-	"platforms",
-	"android",
-	"platform_www",
-);
+const PLATFORM_WWW = path.join(ROOT, "platforms", "android", "platform_www");
 const MIME = {
 	".html": "text/html",
 	".js": "application/javascript",
@@ -173,7 +168,13 @@ async function createServer(port) {
 		ws.on("error", () => {});
 	});
 
-	return { server, wss, broadcast: (msg) => broadcast(wss, msg), isHttps: !!tls, protocol: tls ? "https" : "http" };
+	return {
+		server,
+		wss,
+		broadcast: (msg) => broadcast(wss, msg),
+		isHttps: !!tls,
+		protocol: tls ? "https" : "http",
+	};
 }
 
 function handleRequest(req, res) {
@@ -404,10 +405,7 @@ async function applyPluginUpdates() {
 
 	// Restart the app after plugin changes (native changes need full restart)
 	try {
-		const configXml = fs.readFileSync(
-			path.join(ROOT, "config.xml"),
-			"utf8",
-		);
+		const configXml = fs.readFileSync(path.join(ROOT, "config.xml"), "utf8");
 		const pkgMatch = /id="([^"]+)"/.exec(configXml);
 		const pkg = pkgMatch?.[1];
 		if (pkg) {
@@ -430,8 +428,10 @@ async function applyPluginUpdates() {
 
 async function main() {
 	const args = process.argv.slice(2);
-	const platform = args.find((a) => /^(android|ios|browser)$/i.test(a)) || "android";
-	const target = args.find((a) => a.startsWith("--target="))?.split("=")[1] || null;
+	const platform =
+		args.find((a) => /^(android|ios|browser)$/i.test(a)) || "android";
+	const target =
+		args.find((a) => a.startsWith("--target="))?.split("=")[1] || null;
 	const emulator = args.includes("--emulator") || args.includes("-e");
 
 	console.log("\n  ⚡ Acode Dev Mode\n");
