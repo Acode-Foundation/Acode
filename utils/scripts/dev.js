@@ -182,7 +182,7 @@ function handleRequest(req, res) {
 	if (urlPath === "/") urlPath = "/index.html";
 	const relative = path.normalize(urlPath).replace(/^\/+/, "");
 	const filePath = path.join(WWW, relative);
-
+	if (!filePath.startsWith(WWW + path.sep) && filePath !== WWW) {
 	if (!filePath.startsWith(WWW)) {
 		res.writeHead(403);
 		res.end("Forbidden");
