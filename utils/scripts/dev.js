@@ -289,7 +289,7 @@ function startRspackWatch(host, port, proto, onCompiled) {
 	proc.stdout.on("data", (chunk) => {
 		const text = chunk.toString();
 		process.stdout.write(text);
-
+		if (text.includes("compiled successfully")) {
 		if (text.includes("compiled successfully") || text.includes("compiled")) {
 			if (firstCompile) {
 				firstCompile = false;
