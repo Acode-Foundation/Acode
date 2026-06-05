@@ -288,10 +288,10 @@ async function launchApp(target, platform, emulator) {
 		if (emulator) args.push("--emulator");
 		if (target) args.push("--target", target);
 		const useLocalCordova = fs.existsSync(CORDOVA_BIN);
-		const proc = useLocalCordova
-			? spawn(process.execPath, [CORDOVA_BIN, ...args], {
+			: spawn(resolveSpawnCommand("cordova"), args, {
 					cwd: ROOT,
 					stdio: "inherit",
+				});
 				})
 			: spawn(resolveSpawnCommand("cordova"), args, {
 					cwd: ROOT,
