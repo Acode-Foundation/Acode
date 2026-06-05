@@ -254,6 +254,23 @@ async function downloadFont(name, link) {
 	return FONT_FILE;
 }
 
+function injectFontFace(name) {
+	const $style = ensureStyleElement(FONT_FACE_STYLE_ID);
+	const css = get(name);
+
+	if (!css) return;
+
+	// Inject CSS if not already present (skip remote URL downloads - loadFont handles those)
+	if (!$style.textContent.includes(`font-family: '${name}'`)) {
+		$style.textContent = `${$style.textContent}\n${css}`;
+	}
+
+	// Kick off browser font loading without blocking
+	if (document.fonts?.load) {
+		document.fonts.load(`12px '${name}'`).catch(() => {});
+	}
+}
+
 async function loadFont(name) {
 	const $style = ensureStyleElement(FONT_FACE_STYLE_ID);
 	let css = get(name);
@@ -277,6 +294,15 @@ async function loadFont(name) {
 	// Add font face to document if not already present
 	if (!$style.textContent.includes(`font-family: '${name}'`)) {
 		$style.textContent = `${$style.textContent}\n${css}`;
+	}
+
+	// Ensure the browser has actually parsed and loaded the font
+	if (document.fonts?.load) {
+		try {
+			await document.fonts.load(`12px '${name}'`);
+		} catch {
+			// document.fonts.load may reject if font is unavailable
+		}
 	}
 
 	return css;
@@ -303,4 +329,5 @@ export default {
 	setEditorFont,
 	setAppFont,
 	loadFont,
+	injectFontFace,
 };

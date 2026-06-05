@@ -43,6 +43,7 @@ import config from "lib/config";
 import EditorFile from "lib/editorFile";
 import EditorManager from "lib/editorManager";
 import { initFileList } from "lib/fileList";
+import fonts from "lib/fonts";
 import lang from "lib/lang";
 import loadPlugins from "lib/loadPlugins";
 import Logger from "lib/logger";
@@ -253,6 +254,9 @@ async function onDeviceReady() {
 	await settings.init();
 	themes.init();
 	initHighlighting();
+
+	// Inject default terminal font face early so browser preloads it
+	fonts.injectFontFace("MesloLGS NF Regular");
 
 	registerPrettierFormatter();
 
