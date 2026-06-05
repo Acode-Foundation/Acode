@@ -258,7 +258,8 @@ async function launchApp(target, platform, emulator) {
 
 		proc.on("close", (code) => {
 			if (code === 0) resolve();
-			else reject(new Error(`cordova run ${platform} exited with code ${code}`));
+			else
+				reject(new Error(`cordova run ${platform} exited with code ${code}`));
 		});
 
 		proc.on("error", reject);
