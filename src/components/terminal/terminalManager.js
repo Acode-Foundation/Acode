@@ -670,7 +670,7 @@ class TerminalManager {
 
 		let lastWidth = null;
 		let lastHeight = null;
-		let isObserving = false;
+		
 		const handleResize = (entries) => {
 			const now = Date.now();
 			const entry = entries && entries[0];
@@ -678,9 +678,9 @@ class TerminalManager {
 			const width = cr?.width ?? terminalFile.content?.clientWidth ?? 0;
 			const height = cr?.height ?? terminalFile.content?.clientHeight ?? 0;
 
-			// Skip resize events when container is hidden
+			// Skip resize events when container is hidden (via any method: inline style, CSS class, etc.)
 			const isHidden =
-				terminalFile.content?.style.display === "none" ||
+				getComputedStyle(terminalFile.content).display === "none" ||
 				terminalFile.content?.offsetHeight === 0;
 			if (isHidden) {
 				return;
@@ -689,7 +689,7 @@ class TerminalManager {
 			if (lastWidth === null || lastHeight === null) {
 				lastWidth = width;
 				lastHeight = height;
-				isObserving = true;
+				
 				return;
 			}
 
