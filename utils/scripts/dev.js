@@ -183,7 +183,6 @@ function handleRequest(req, res) {
 	const relative = path.normalize(urlPath).replace(/^\/+/, "");
 	const filePath = path.join(WWW, relative);
 	if (!filePath.startsWith(WWW + path.sep) && filePath !== WWW) {
-	if (!filePath.startsWith(WWW)) {
 		res.writeHead(403);
 		res.end("Forbidden");
 		return;
@@ -241,7 +240,7 @@ function ensureCordovaFiles() {
 	log("ok", "Copied cordova platform files to www/");
 }
 
-async function launchApp(target) {
+async function launchApp(target, platform, emulator) {
 	if (target) {
 		log("info", `Launching app on ${target}...`);
 	} else {
@@ -249,7 +248,8 @@ async function launchApp(target) {
 	}
 
 	return new Promise((resolve, reject) => {
-		const args = ["run", "android"];
+		const args = ["run", platform];
+		if (emulator) args.push("--emulator");
 		if (target) args.push("--target", target);
 		const proc = spawn("cordova", args, {
 			cwd: ROOT,
@@ -258,7 +258,7 @@ async function launchApp(target) {
 
 		proc.on("close", (code) => {
 			if (code === 0) resolve();
-			else reject(new Error(`cordova run android exited with code ${code}`));
+			else reject(new Error(`cordova run ${platform} exited with code ${code}`));
 		});
 
 		proc.on("error", reject);
@@ -289,7 +289,6 @@ function startRspackWatch(host, port, proto, onCompiled) {
 	proc.stdout.on("data", (chunk) => {
 		const text = chunk.toString();
 		process.stdout.write(text);
-		if (text.includes("compiled successfully")) {
 		if (text.includes("compiled successfully") || text.includes("compiled")) {
 			if (firstCompile) {
 				firstCompile = false;
@@ -463,7 +462,7 @@ async function main() {
 			appLaunched = true;
 			setTimeout(async () => {
 				try {
-					await launchApp(target);
+					await launchApp(target, platform, emulator);
 				} catch (err) {
 					log("warn", `Launch failed: ${err.message}`);
 				}
