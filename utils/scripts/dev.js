@@ -28,7 +28,13 @@ const ROOT = path.resolve(__dirname, "../..");
 const WWW = path.join(ROOT, "www");
 const PLUGINS = path.join(ROOT, "src", "plugins");
 const PLATFORM_WWW = path.join(ROOT, "platforms", "android", "platform_www");
-const CORDOVA_BIN = path.join(ROOT, "node_modules", "cordova", "bin", "cordova");
+const CORDOVA_BIN = path.join(
+	ROOT,
+	"node_modules",
+	"cordova",
+	"bin",
+	"cordova",
+);
 const MIME = {
 	".html": "text/html",
 	".js": "application/javascript",
@@ -125,8 +131,7 @@ function spawnAsync(command, args, options) {
 			...options,
 			env: options?.env ? buildSpawnEnv(options.env) : options?.env,
 		};
-		const useLocalCordova =
-			command === "cordova" && fs.existsSync(CORDOVA_BIN);
+		const useLocalCordova = command === "cordova" && fs.existsSync(CORDOVA_BIN);
 		const proc = useLocalCordova
 			? spawn(process.execPath, [CORDOVA_BIN, ...args], mergedOptions)
 			: spawn(resolveSpawnCommand(command), args, mergedOptions);
@@ -289,9 +294,9 @@ async function launchApp(target, platform, emulator) {
 					stdio: "inherit",
 				})
 			: spawn(resolveSpawnCommand("cordova"), args, {
-			cwd: ROOT,
-			stdio: "inherit",
-			});
+					cwd: ROOT,
+					stdio: "inherit",
+				});
 
 		proc.on("close", (code) => {
 			if (code === 0) resolve();
@@ -323,11 +328,15 @@ function startRspackWatch(host, port, proto, onCompiled) {
 		"rspack.js",
 	);
 
-	const proc = spawn(process.execPath, [rspackBin, "--watch", "--mode", "development"], {
-		cwd: ROOT,
-		env,
-		stdio: "pipe",
-	});
+	const proc = spawn(
+		process.execPath,
+		[rspackBin, "--watch", "--mode", "development"],
+		{
+			cwd: ROOT,
+			env,
+			stdio: "pipe",
+		},
+	);
 
 	let firstCompile = true;
 
