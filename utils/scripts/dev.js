@@ -319,8 +319,10 @@ function startRspackWatch(host, port, proto, onCompiled) {
 
 let pluginUpdateTimer = null;
 const pluginUpdates = new Set();
+let pluginPlatform = "android";
 
-function startPluginWatcher() {
+function startPluginWatcher(platform) {
+	pluginPlatform = platform;
 	let chokidar;
 	try {
 		chokidar = require("chokidar");
@@ -411,11 +413,13 @@ async function applyPluginUpdates() {
 		if (pkg) {
 			log("info", "Restarting app after plugin update...");
 			// Need to rebuild APK since native plugin code changed
-			await spawnAsync("cordova", ["build", "android"], {
+			await spawnAsync("cordova", ["build", pluginPlatform], {
 				cwd: ROOT,
 			});
-			await spawnAsync("adb", ["uninstall", pkg], { stdio: "ignore" });
-			await spawnAsync("cordova", ["run", "android"], {
+			if (pluginPlatform === "android") {
+				await spawnAsync("adb", ["uninstall", pkg], { stdio: "ignore" });
+			}
+			await spawnAsync("cordova", ["run", pluginPlatform], {
 				cwd: ROOT,
 			});
 		}
@@ -472,7 +476,7 @@ async function main() {
 	});
 
 	// 4. Start plugin file watcher
-	startPluginWatcher();
+	startPluginWatcher(platform);
 
 	// Graceful shutdown
 	process.on("SIGINT", () => {
