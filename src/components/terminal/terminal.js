@@ -583,13 +583,17 @@ export default class TerminalComponent {
 			// uses correct metrics even if font wasn't ready for first paint
 			if (typeof requestAnimationFrame === "function") {
 				requestAnimationFrame(() => {
-					this.terminal.options.fontFamily = this.options.fontFamily;
-					this.terminal.refresh(0, this.terminal.rows - 1);
+					if (this.terminal) {
+						this.terminal.options.fontFamily = this.options.fontFamily;
+						this.terminal.refresh(0, this.terminal.rows - 1);
+					}
 				});
 			} else {
 				setTimeout(() => {
-					this.terminal.options.fontFamily = this.options.fontFamily;
-					this.terminal.refresh(0, this.terminal.rows - 1);
+					if (this.terminal) {
+						this.terminal.options.fontFamily = this.options.fontFamily;
+						this.terminal.refresh(0, this.terminal.rows - 1);
+					}
 				}, 16);
 			}
 		} catch (error) {
