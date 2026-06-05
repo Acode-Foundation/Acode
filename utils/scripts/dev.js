@@ -328,15 +328,26 @@ function startRspackWatch(host, port, proto, onCompiled) {
 		"rspack.js",
 	);
 
-	const proc = spawn(
-		process.execPath,
-		[rspackBin, "--watch", "--mode", "development"],
-		{
-			cwd: ROOT,
-			env,
-			stdio: "pipe",
-		},
-	);
+	const useLocalRspack = fs.existsSync(rspackBin);
+	if (!useLocalRspack) {
+		log("warn", "Local rspack CLI not found, falling back to npx rspack");
+	}
+
+	const proc = useLocalRspack
+		? spawn(process.execPath, [rspackBin, "--watch", "--mode", "development"], {
+				cwd: ROOT,
+				env,
+				stdio: "pipe",
+			})
+		: spawn(
+				resolveSpawnCommand("npx"),
+				["rspack", "--watch", "--mode", "development"],
+				{
+					cwd: ROOT,
+					env,
+					stdio: "pipe",
+				},
+			);
 
 	let firstCompile = true;
 
@@ -357,6 +368,8 @@ function startRspackWatch(host, port, proto, onCompiled) {
 
 	proc.on("error", (err) => {
 		log("warn", `rspack error: ${err.message}`);
+		log("warn", "rspack watcher failed to start; exiting dev mode");
+		process.exit(1);
 	});
 
 	proc.on("close", (code) => {
