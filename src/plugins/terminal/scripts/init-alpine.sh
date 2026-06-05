@@ -284,7 +284,7 @@ Then run the binary again.
     fi
 }
 
-preexec() {
+_acode_preexec() {
     # Skip commands executed by the trap itself
     [[ "$BASH_COMMAND" == trap* ]] && return
 
@@ -292,7 +292,24 @@ preexec() {
     check_binary_execution "$cmd"
 }
 
-trap 'preexec' DEBUG
+# Preserve any existing DEBUG trap and append our handler instead of overwriting it.
+# This avoids clobbering user-installed preexec hooks (starship, fzf, bash-preexec, etc.).
+__acode_existing_debug_trap="$(trap -p DEBUG 2>/dev/null)"
+if [[ -n "${__acode_existing_debug_trap}" ]]; then
+    __acode_existing_cmd="$(printf "%s" "${__acode_existing_debug_trap}" | sed -E "s/.*'((.*)?)'.*/\1/")"
+else
+    __acode_existing_cmd=""
+fi
+
+# Only add our handler if it's not already present
+if [[ "${__acode_existing_cmd}" != *"_acode_preexec"* ]]; then
+    if [[ -n "${__acode_existing_cmd}" ]]; then
+        trap "${__acode_existing_cmd}; _acode_preexec" DEBUG
+    else
+        trap '_acode_preexec' DEBUG
+    fi
+fi
+unset __acode_existing_debug_trap __acode_existing_cmd
 
 # Command-not-found handler
 command_not_found_handle() {
