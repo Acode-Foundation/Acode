@@ -19,3 +19,5 @@ graphify-out/
 .gradle/
 local.properties
 tsconfig.tsbuildinfo
+.dev-cert.pem
+.dev-key.pem

@@ -7,6 +7,8 @@
     "lang": "node ./utils/lang.js",
     "build": "sh utils/scripts/build.sh",
     "start": "sh utils/scripts/start.sh",
+    "dev": "node utils/scripts/dev.js",
+    "dev:android": "node utils/scripts/dev.js android",
     "clean": "sh utils/scripts/clean.sh android android",
     "plugin": "sh utils/scripts/plugin.sh",
     "setup": "node ./utils/setup.js",
@@ -74,6 +76,7 @@
     "@types/url-parse": "^1.4.11",
     "autoprefixer": "^10.5.0",
     "babel-loader": "^10.1.1",
+    "chokidar": "^4.0.3",
     "com.foxdebug.acode.rk.auth": "file:src/plugins/auth",
     "com.foxdebug.acode.rk.customtabs": "file:src/plugins/custom-tabs",
     "com.foxdebug.acode.rk.exec.proot": "file:src/plugins/proot",
@@ -106,7 +109,8 @@
     "terminal": "^0.1.4",
     "ts-loader": "^9.5.7",
     "typescript": "^5.9.3",
-    "vscode-languageserver-types": "^3.17.5"
+    "vscode-languageserver-types": "^3.17.5",
+    "ws": "^8.21.0"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.2",
