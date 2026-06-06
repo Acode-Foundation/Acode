@@ -33,6 +33,7 @@ declare type LangStrings = {
   "failed": string;
   "file already exists": string;
   "file already exists force": string;
+  "file already exists force named": string;
   "file changed": string;
   "file deleted": string;
   "file is not supported": string;

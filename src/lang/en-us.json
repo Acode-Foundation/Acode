@@ -30,6 +30,7 @@
 	"failed": "Failed",
 	"file already exists": "File already exists",
 	"file already exists force": "File already exists. Overwrite?",
+	"file already exists force named": "'{name}' already exists. Overwrite?",
 	"file changed": " has been changed, reload file?",
 	"file deleted": "File deleted",
 	"file is not supported": "File is not supported",

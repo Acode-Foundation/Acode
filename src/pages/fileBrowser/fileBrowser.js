@@ -67,6 +67,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 	if (!Array.isArray(storageList)) storageList = [];
 
 	let isSelectionMode = false;
+	let isPasting = false;
 	let selectedItems = new Set();
 	let copiedItems = [];
 
@@ -564,13 +565,19 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 		function updatePasteToggler() {
 			$pasteToggler.style.display =
-				copiedItems.length && currentDir.url !== "/" && !isSelectionMode
+				copiedItems.length &&
+				currentDir.url !== "/" &&
+				!isSelectionMode &&
+				!isPasting
 					? ""
 					: "none";
 		}
 
 		async function pasteCopiedItems() {
-			if (!copiedItems.length || currentDir.url === "/") return;
+			if (isPasting || !copiedItems.length || currentDir.url === "/") return;
+
+			isPasting = true;
+			updatePasteToggler();
 
 			const loadingDialog = loader.create(
 				strings.loading,
@@ -613,8 +620,11 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 						const confirmation = await confirm(
 							strings.warning,
-							strings["file already exists force"]
-								? strings["file already exists force"].replace("{name}", name)
+							strings["file already exists force named"]
+								? strings["file already exists force named"].replace(
+										"{name}",
+										name,
+									)
 								: `"${name}" already exists in this location.`,
 						);
 						if (!confirmation) continue;
@@ -633,6 +643,8 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					reload();
 				}
 				loadingDialog.destroy();
+				isPasting = false;
+				updatePasteToggler();
 			}
 		}
 

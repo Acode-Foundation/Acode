@@ -745,5 +745,6 @@
 	"settings-info-editor-auto-rename-tags": "A páros nyitó vagy záró címke automatikus átnevezése HTML-szerű címkék szerkesztése közben.",
 	"copying items": "Copying {count} items...",
 	"cannot paste folder into itself": "Cannot paste a folder into itself",
-	"folder already exists": "Folder already exists"
+	"folder already exists": "Folder already exists",
+	"file already exists force named": "'{name}' already exists. Overwrite?"
 }
