@@ -32,11 +32,13 @@ export const onPluginsLoadCompleteCallback = Symbol(
 
 export const LOADED_PLUGINS = new Set();
 export const BROKEN_PLUGINS = new Map();
+const AUTO_DISABLED_PLUGINS = new Set();
+const PLUGIN_LOAD_TIMEOUT = 15000;
+const PLUGIN_DISABLE_TIMEOUT = 60000;
 
 export default async function loadPlugins(loadOnlyTheme = false) {
 	const plugins = await fsOperation(PLUGIN_DIR).lsDir();
 	const results = [];
-	const failedPlugins = [];
 
 	if (plugins.length > 0) {
 		toast(strings["loading plugins"]);
@@ -71,8 +73,6 @@ export default async function loadPlugins(loadOnlyTheme = false) {
 		});
 	}
 
-	// Load plugins concurrently
-	const LOAD_TIMEOUT = 15000; // ms per plugin
 	const loadPromises = pluginsToLoad.map(async (pluginDir) => {
 		const pluginId = Url.basename(pluginDir.url);
 
@@ -88,31 +88,37 @@ export default async function loadPlugins(loadOnlyTheme = false) {
 			}
 		}
 
+		const pluginState = { settled: false };
+
 		try {
-			// ensure loadPlugin doesn't hang: timeout wrapper
+			const pluginLoadPromise = loadPlugin(pluginId)
+				.then(() => {
+					pluginState.settled = true;
+					return markPluginLoaded(pluginId);
+				})
+				.catch(async (error) => {
+					pluginState.settled = true;
+					await markPluginBroken(pluginId, error);
+					throw error;
+				});
+
+			// Let app startup continue if a plugin is slow, but keep loading it in
+			// the background so good plugins on slower devices can still recover.
 			await Promise.race([
-				loadPlugin(pluginId),
+				pluginLoadPromise,
 				new Promise((_, rej) =>
-					setTimeout(() => rej(new Error("Plugin load timeout")), LOAD_TIMEOUT),
+					setTimeout(
+						() => rej(new Error("Plugin load timeout")),
+						PLUGIN_LOAD_TIMEOUT,
+					),
 				),
 			]);
-			LOADED_PLUGINS.add(pluginId);
-
-			acode[onPluginLoadCallback](pluginId);
-
 			results.push(true);
-			// clear broken mark if present
-			if (BROKEN_PLUGINS.has(pluginId)) {
-				BROKEN_PLUGINS.delete(pluginId);
-			}
 		} catch (error) {
 			console.error(`Error loading plugin ${pluginId}:`, error);
-			// mark plugin as broken to avoid repeated attempts until user intervenes
-			BROKEN_PLUGINS.set(pluginId, {
-				error: String(error.message || error),
-				timestamp: Date.now(),
-			});
-			failedPlugins.push(pluginId);
+			if (String(error.message || error) === "Plugin load timeout") {
+				markPluginTimedOut(pluginId, pluginState);
+			}
 			results.push(false);
 		}
 	});
@@ -120,15 +126,51 @@ export default async function loadPlugins(loadOnlyTheme = false) {
 	await Promise.allSettled(loadPromises);
 
 	acode[onPluginsLoadCompleteCallback]();
-
-	if (failedPlugins.length > 0) {
-		setTimeout(() => {
-			cleanupFailedPlugins(failedPlugins).catch((error) => {
-				console.error("Failed to cleanup plugins:", error);
-			});
-		}, 1000);
-	}
 	return results.filter(Boolean).length;
+}
+
+async function markPluginLoaded(pluginId) {
+	LOADED_PLUGINS.add(pluginId);
+	acode[onPluginLoadCallback](pluginId);
+
+	// clear broken mark if present
+	if (BROKEN_PLUGINS.has(pluginId)) {
+		BROKEN_PLUGINS.delete(pluginId);
+	}
+
+	if (AUTO_DISABLED_PLUGINS.has(pluginId)) {
+		AUTO_DISABLED_PLUGINS.delete(pluginId);
+		const disabledMap = { ...(settings.value.pluginsDisabled || {}) };
+		delete disabledMap[pluginId];
+		await settings.update({ pluginsDisabled: disabledMap }, false);
+	}
+}
+
+async function markPluginBroken(pluginId, error) {
+	// mark plugin as broken to avoid repeated attempts until user intervenes
+	BROKEN_PLUGINS.set(pluginId, {
+		error: String(error.message || error),
+		timestamp: Date.now(),
+	});
+
+	const disabledMap = { ...(settings.value.pluginsDisabled || {}) };
+	if (disabledMap[pluginId] === true) return;
+
+	disabledMap[pluginId] = true;
+	AUTO_DISABLED_PLUGINS.add(pluginId);
+	await settings.update({ pluginsDisabled: disabledMap }, false);
+}
+
+function markPluginTimedOut(pluginId, pluginState) {
+	BROKEN_PLUGINS.set(pluginId, {
+		error: "Plugin load timeout",
+		timestamp: Date.now(),
+	});
+
+	setTimeout(async () => {
+		if (pluginState.settled || LOADED_PLUGINS.has(pluginId)) return;
+		await markPluginBroken(pluginId, new Error("Plugin load timeout"));
+	}, PLUGIN_DISABLE_TIMEOUT - PLUGIN_LOAD_TIMEOUT);
 }
 
 function isThemePlugin(pluginId) {
@@ -136,17 +178,4 @@ function isThemePlugin(pluginId) {
 	const id = pluginId.toLowerCase();
 	// Check if any theme identifier is present in the plugin ID
 	return Array.from(THEME_IDENTIFIERS).some((theme) => id.includes(theme));
-}
-
-async function cleanupFailedPlugins(pluginIds) {
-	for (const pluginId of pluginIds) {
-		try {
-			const pluginDir = Url.join(PLUGIN_DIR, pluginId);
-			if (await fsOperation(pluginDir).exists()) {
-				await fsOperation(pluginDir).delete();
-			}
-		} catch (error) {
-			console.error(`Failed to cleanup plugin ${pluginId}:`, error);
-		}
-	}
 }
