@@ -616,14 +616,13 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					await copyEntry(url, currentDir.url, name, stat);
 					copiedCount++;
 				}
-
+			} catch (err) {
+				helpers.error(err);
+			} finally {
 				if (copiedCount) {
 					toast(strings.success);
 					reload();
 				}
-			} catch (err) {
-				helpers.error(err);
-			} finally {
 				loadingDialog.destroy();
 			}
 		}
