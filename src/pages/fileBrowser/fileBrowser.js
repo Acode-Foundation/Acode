@@ -602,6 +602,15 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 							continue;
 						}
 
+						const targetStat = await fsOperation(possibleConflictUrl).stat();
+						if (stat.isDirectory || targetStat.isDirectory) {
+							alert(
+								strings.warning,
+								strings["folder already exists"] || "Folder already exists",
+							);
+							continue;
+						}
+
 						const confirmation = await confirm(
 							strings.warning,
 							strings["file already exists force"]

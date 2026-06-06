@@ -412,6 +412,7 @@
 	"copy uri": "Copy Uri",
 	"copying items": "Copying {count} items...",
 	"cannot paste folder into itself": "Cannot paste a folder into itself",
+	"folder already exists": "Folder already exists",
 	"delete entries": "Are you sure you want to delete {count} items?",
 	"deleting items": "Deleting {count} items...",
 	"import project zip": "Import Project(zip)",

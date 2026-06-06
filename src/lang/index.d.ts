@@ -415,6 +415,7 @@ declare type LangStrings = {
   "copy uri": string;
   "copying items": string;
   "cannot paste folder into itself": string;
+  "folder already exists": string;
   "delete entries": string;
   "deleting items": string;
   "import project zip": string;
