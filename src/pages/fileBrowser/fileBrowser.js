@@ -576,7 +576,6 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				strings.loading,
 				strings["copying items"]?.replace("{count}", copiedItems.length) ||
 					`Copying ${copiedItems.length} items...`,
-				{ timeout: 3000 },
 			);
 
 			let copiedCount = 0;
@@ -586,22 +585,32 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					const fs = fsOperation(url);
 					const stat = await fs.stat();
 					const name = stat.name || Url.basename(url);
+					const possibleConflictUrl = Url.join(currentDir.url, name);
 
 					if (stat.isDirectory && isInsideDirectory(url, currentDir.url)) {
-						alert(strings.warning, "Cannot paste a folder into itself");
+						alert(
+							strings.warning,
+							strings["cannot paste folder into itself"] ||
+								"Cannot paste a folder into itself",
+						);
 						continue;
 					}
 
-					const possibleConflictUrl = Url.join(currentDir.url, name);
 					const doesExist = await fsOperation(possibleConflictUrl).exists();
 					if (doesExist) {
+						if (Url.areSame(url, possibleConflictUrl)) {
+							continue;
+						}
+
 						const confirmation = await confirm(
 							strings.warning,
-							strings["already exists"]
-								? strings["already exists"].replace("{name}", name)
+							strings["file already exists force"]
+								? strings["file already exists force"].replace("{name}", name)
 								: `"${name}" already exists in this location.`,
 						);
 						if (!confirmation) continue;
+
+						await fsOperation(possibleConflictUrl).delete();
 					}
 
 					await copyEntry(url, currentDir.url, name, stat);

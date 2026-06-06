@@ -413,6 +413,8 @@ declare type LangStrings = {
   "rename not supported": string;
   "compress": string;
   "copy uri": string;
+  "copying items": string;
+  "cannot paste folder into itself": string;
   "delete entries": string;
   "deleting items": string;
   "import project zip": string;
