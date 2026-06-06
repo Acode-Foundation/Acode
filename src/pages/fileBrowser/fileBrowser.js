@@ -579,6 +579,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			isPasting = true;
 			updatePasteToggler();
 
+			const targetDirUrl = currentDir.url;
 			const loadingDialog = loader.create(
 				strings.loading,
 				strings["copying items"]?.replace("{count}", copiedItems.length) ||
@@ -592,9 +593,9 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					const fs = fsOperation(url);
 					const stat = await fs.stat();
 					const name = stat.name || Url.basename(url);
-					const possibleConflictUrl = Url.join(currentDir.url, name);
+					const possibleConflictUrl = Url.join(targetDirUrl, name);
 
-					if (stat.isDirectory && isInsideDirectory(url, currentDir.url)) {
+					if (stat.isDirectory && isInsideDirectory(url, targetDirUrl)) {
 						alert(
 							strings.warning,
 							strings["cannot paste folder into itself"] ||
@@ -632,7 +633,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 						await fsOperation(possibleConflictUrl).delete();
 					}
 
-					await copyEntry(url, currentDir.url, name, stat);
+					await copyEntry(url, targetDirUrl, name, stat);
 					copiedCount++;
 				}
 			} catch (err) {
