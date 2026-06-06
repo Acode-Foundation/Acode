@@ -241,7 +241,7 @@ async function run(
 				}
 			}
 
-			if (activeFile.mode === "single") {
+			if (activeFile.SAFMode === "single") {
 				if (filename === reqPath) {
 					sendText(
 						activeFile.session?.doc?.toString(),

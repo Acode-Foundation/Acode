@@ -488,7 +488,7 @@ export default {
 	async rename(file) {
 		file = file || editorManager.activeFile;
 
-		if (file.mode === "single") {
+		if (file.SAFMode === "single") {
 			alert(strings.info.toUpperCase(), strings["unable to rename"]);
 			return;
 		}
