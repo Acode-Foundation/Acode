@@ -742,5 +742,7 @@
 	"terminal:failsafe": "Vészhelyzeti mód",
 	"terminal:failsafe-info": "Terminál indítása a rendszerhéjjal",
 	"auto rename tags": "Címkék automatikus átnevezése",
-	"settings-info-editor-auto-rename-tags": "A páros nyitó vagy záró címke automatikus átnevezése HTML-szerű címkék szerkesztése közben."
+	"settings-info-editor-auto-rename-tags": "A páros nyitó vagy záró címke automatikus átnevezése HTML-szerű címkék szerkesztése közben.",
+	"copying items": "Copying {count} items...",
+	"cannot paste folder into itself": "Cannot paste a folder into itself"
 }

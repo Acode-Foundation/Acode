@@ -410,6 +410,8 @@
 	"rename not supported": "Rename on termux dir isn't supported",
 	"compress": "Compress",
 	"copy uri": "Copy Uri",
+	"copying items": "Copying {count} items...",
+	"cannot paste folder into itself": "Cannot paste a folder into itself",
 	"delete entries": "Are you sure you want to delete {count} items?",
 	"deleting items": "Deleting {count} items...",
 	"import project zip": "Import Project(zip)",
