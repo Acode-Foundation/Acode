@@ -35,6 +35,14 @@ export const BROKEN_PLUGINS = new Map();
 const AUTO_DISABLED_PLUGINS = new Set();
 const PLUGIN_LOAD_TIMEOUT = 15000;
 const PLUGIN_DISABLE_TIMEOUT = 60000;
+let pluginDisabledUpdateQueue = Promise.resolve();
+
+class PluginLoadTimeoutError extends Error {
+	constructor() {
+		super("Plugin load timeout");
+		this.name = "PluginLoadTimeoutError";
+	}
+}
 
 export default async function loadPlugins(loadOnlyTheme = false) {
 	const plugins = await fsOperation(PLUGIN_DIR).lsDir();
@@ -56,6 +64,7 @@ export default async function loadPlugins(loadOnlyTheme = false) {
 			return (
 				isThemePlugin(pluginId) &&
 				!LOADED_PLUGINS.has(pluginId) &&
+				enabledMap[pluginId] !== true &&
 				!BROKEN_PLUGINS.has(pluginId)
 			);
 		});
@@ -108,7 +117,7 @@ export default async function loadPlugins(loadOnlyTheme = false) {
 				pluginLoadPromise,
 				new Promise((_, rej) =>
 					setTimeout(
-						() => rej(new Error("Plugin load timeout")),
+						() => rej(new PluginLoadTimeoutError()),
 						PLUGIN_LOAD_TIMEOUT,
 					),
 				),
@@ -116,7 +125,7 @@ export default async function loadPlugins(loadOnlyTheme = false) {
 			results.push(true);
 		} catch (error) {
 			console.error(`Error loading plugin ${pluginId}:`, error);
-			if (String(error.message || error) === "Plugin load timeout") {
+			if (error instanceof PluginLoadTimeoutError) {
 				markPluginTimedOut(pluginId, pluginState);
 			}
 			results.push(false);
@@ -140,9 +149,7 @@ async function markPluginLoaded(pluginId) {
 
 	if (AUTO_DISABLED_PLUGINS.has(pluginId)) {
 		AUTO_DISABLED_PLUGINS.delete(pluginId);
-		const disabledMap = { ...(settings.value.pluginsDisabled || {}) };
-		delete disabledMap[pluginId];
-		await settings.update({ pluginsDisabled: disabledMap }, false);
+		await updatePluginDisabled(pluginId, false);
 	}
 }
 
@@ -153,12 +160,8 @@ async function markPluginBroken(pluginId, error) {
 		timestamp: Date.now(),
 	});
 
-	const disabledMap = { ...(settings.value.pluginsDisabled || {}) };
-	if (disabledMap[pluginId] === true) return;
-
-	disabledMap[pluginId] = true;
 	AUTO_DISABLED_PLUGINS.add(pluginId);
-	await settings.update({ pluginsDisabled: disabledMap }, false);
+	await updatePluginDisabled(pluginId, true);
 }
 
 function markPluginTimedOut(pluginId, pluginState) {
@@ -171,6 +174,29 @@ function markPluginTimedOut(pluginId, pluginState) {
 		if (pluginState.settled || LOADED_PLUGINS.has(pluginId)) return;
 		await markPluginBroken(pluginId, new Error("Plugin load timeout"));
 	}, PLUGIN_DISABLE_TIMEOUT - PLUGIN_LOAD_TIMEOUT);
+}
+
+function updatePluginDisabled(pluginId, disabled) {
+	const updatePromise = pluginDisabledUpdateQueue
+		.catch(() => {})
+		.then(async () => {
+			const disabledMap = { ...(settings.value.pluginsDisabled || {}) };
+			if (disabledMap[pluginId] === disabled) return;
+
+			if (disabled) {
+				disabledMap[pluginId] = true;
+			} else {
+				delete disabledMap[pluginId];
+			}
+
+			await settings.update({ pluginsDisabled: disabledMap }, false);
+		});
+
+	pluginDisabledUpdateQueue = updatePromise.catch((error) => {
+		console.error("Failed to update plugin disabled state:", error);
+	});
+
+	return updatePromise;
 }
 
 function isThemePlugin(pluginId) {
