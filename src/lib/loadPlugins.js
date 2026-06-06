@@ -101,14 +101,14 @@ export default async function loadPlugins(loadOnlyTheme = false) {
 
 		try {
 			const pluginLoadPromise = loadPlugin(pluginId)
-				.then(() => {
-					pluginState.settled = true;
-					return markPluginLoaded(pluginId);
-				})
 				.catch(async (error) => {
 					pluginState.settled = true;
 					await markPluginBroken(pluginId, error);
 					throw error;
+				})
+				.then(async () => {
+					pluginState.settled = true;
+					await markPluginLoaded(pluginId);
 				});
 
 			// Let app startup continue if a plugin is slow, but keep loading it in
@@ -171,8 +171,12 @@ function markPluginTimedOut(pluginId, pluginState) {
 	});
 
 	setTimeout(async () => {
-		if (pluginState.settled || LOADED_PLUGINS.has(pluginId)) return;
-		await markPluginBroken(pluginId, new Error("Plugin load timeout"));
+		try {
+			if (pluginState.settled || LOADED_PLUGINS.has(pluginId)) return;
+			await markPluginBroken(pluginId, new Error("Plugin load timeout"));
+		} catch (error) {
+			console.error(`Failed to disable timed out plugin ${pluginId}:`, error);
+		}
 	}, PLUGIN_DISABLE_TIMEOUT - PLUGIN_LOAD_TIMEOUT);
 }
 
