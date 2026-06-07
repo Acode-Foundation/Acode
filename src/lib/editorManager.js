@@ -62,7 +62,9 @@ import {
 	setScrollPosition,
 } from "cm/editorUtils";
 import indentGuides from "cm/indentGuides";
+import { lineBreakMarker } from "cm/lineBreakMarker";
 import rainbowBrackets, { getRainbowBracketColors } from "cm/rainbowBrackets";
+import tagAutoRename from "cm/tagAutoRename";
 import { getThemeConfig, getThemeExtensions } from "cm/themes";
 import list from "components/collapsableList";
 import quickTools from "components/quickTools";
@@ -256,6 +258,12 @@ async function EditorManager($header, $body) {
 	const rainbowCompartment = new Compartment();
 	// Compartment for indent guides
 	const indentGuidesCompartment = new Compartment();
+	// Compartment for line break marker
+	const lineBreakMarkerCompartment = new Compartment();
+	// Compartment for cursor appearance
+	const cursorThemeCompartment = new Compartment();
+	// Compartment for HTML-like tag auto rename
+	const tagAutoRenameCompartment = new Compartment();
 	// Compartment for read-only toggling
 	const readOnlyCompartment = new Compartment();
 	// Compartment for language mode (allows async loading/reconfigure)
@@ -283,6 +291,17 @@ async function EditorManager($header, $body) {
 			".cm-content": { fontFamily },
 			".cm-gutter": { fontFamily },
 			".cm-tooltip, .cm-tooltip *": { fontFamily },
+		});
+	}
+
+	function makeCursorTheme() {
+		const width = Number(appSettings?.value?.cursorWidth);
+		const cursorWidth =
+			Number.isFinite(width) && width > 0 ? Math.min(width, 10) : 2;
+		return EditorView.theme({
+			".cm-cursor": {
+				borderLeftWidth: `${cursorWidth}px`,
+			},
 		});
 	}
 
@@ -399,7 +418,7 @@ async function EditorManager($header, $body) {
 				const enabled = appSettings?.value?.indentGuides ?? false;
 				if (!enabled) return [];
 				return indentGuides({
-					highlightActiveGuide: true,
+					highlightActiveGuide: false,
 					hideOnBlankLines: false,
 				});
 			},
@@ -409,6 +428,13 @@ async function EditorManager($header, $body) {
 			compartments: [fontStyleCompartment],
 			build() {
 				return makeFontTheme();
+			},
+		},
+		{
+			keys: ["cursorWidth"],
+			compartments: [cursorThemeCompartment],
+			build() {
+				return makeCursorTheme();
 			},
 		},
 		{
@@ -451,6 +477,14 @@ async function EditorManager($header, $body) {
 			},
 		},
 		{
+			keys: ["showSpaces"],
+			compartments: [lineBreakMarkerCompartment],
+			build() {
+				const showSpaces = !!appSettings?.value?.showSpaces;
+				return showSpaces ? lineBreakMarker : [];
+			},
+		},
+		{
 			keys: ["fadeFoldWidgets"],
 			compartments: [foldThemeCompartment],
 			build() {
@@ -487,6 +521,15 @@ async function EditorManager($header, $body) {
 			build() {
 				const enabled = !!appSettings?.value?.localWordCompletion;
 				return enabled ? localWordCompletions() : [];
+			},
+		},
+		{
+			keys: ["autoRenameTags"],
+			compartments: [tagAutoRenameCompartment],
+			build() {
+				// Default-on for older settings files that do not have this key yet.
+				const enabled = appSettings?.value?.autoRenameTags !== false;
+				return enabled ? tagAutoRename() : [];
 			},
 		},
 	];
@@ -1146,9 +1189,76 @@ async function EditorManager($header, $body) {
 		touchSelectionController?.setMenu(!!value);
 	};
 
+	function getEditorExtensionSignature(file) {
+		return JSON.stringify({
+			syntax: getEmmetSyntaxForFile(file),
+			colorPreview: !!appSettings.value.colorPreview,
+			autoCloseTags: appSettings.value.autoCloseTags !== false,
+		});
+	}
+
+	function getRawEditorState(state) {
+		return state?.__rawState || state || null;
+	}
+
+	function isReusableEditorState(file, signature) {
+		const session = getRawEditorState(file?.session);
+		return (
+			!!session &&
+			!!file.__cmSessionReady &&
+			file.__cmExtensionSignature === signature &&
+			!!session.doc &&
+			typeof session.update === "function" &&
+			typeof session.facet === "function"
+		);
+	}
+
+	function scheduleLspForFile(file) {
+		const fileId = file?.id;
+		window.setTimeout(() => {
+			if (!fileId || manager.activeFile?.id !== fileId) return;
+			void configureLspForFile(file);
+		}, 80);
+	}
+
+	function applyCurrentEditorOptions(file) {
+		touchSelectionController?.onSessionChanged();
+		const desiredTheme = appSettings?.value?.editorTheme;
+		if (desiredTheme) editor.setTheme(desiredTheme);
+		applyOptions();
+		try {
+			const ro = !file.editable || !!file.loading;
+			editor.dispatch({
+				effects: readOnlyCompartment.reconfigure(EditorState.readOnly.of(ro)),
+			});
+		} catch (error) {
+			warnRecoverable(
+				"Failed to apply read-only compartment update.",
+				error,
+				"readonly-reconfigure",
+			);
+		}
+	}
+
 	// Helper: apply a file's content and language to the editor view
-	function applyFileToEditor(file) {
+	function applyFileToEditor(file, options = {}) {
 		if (!file || file.type !== "editor") return;
+		const { forceRecreate = false } = options;
+		const extensionSignature = getEditorExtensionSignature(file);
+
+		if (!forceRecreate && isReusableEditorState(file, extensionSignature)) {
+			editor.setState(getRawEditorState(file.session));
+			applyCurrentEditorOptions(file);
+			if (
+				typeof file.lastScrollTop === "number" ||
+				typeof file.lastScrollLeft === "number"
+			) {
+				setScrollPosition(editor, file.lastScrollTop, file.lastScrollLeft);
+			}
+			scheduleLspForFile(file);
+			return;
+		}
+
 		const syntax = getEmmetSyntaxForFile(file);
 		const baseExtensions = createMainEditorExtensions({
 			// Emmet needs to precede default keymaps so tracker Tab wins over indent
@@ -1179,8 +1289,16 @@ async function EditorManager($header, $body) {
 				// If the loader returns a Promise, reconfigure when it resolves
 				if (result && typeof result.then === "function") {
 					initialLang = [];
+					const fileId = file.id;
+					const expectedSignature = extensionSignature;
 					result
 						.then((ext) => {
+							if (
+								manager.activeFile?.id !== fileId ||
+								file.__cmExtensionSignature !== expectedSignature
+							) {
+								return;
+							}
 							try {
 								editor.dispatch({
 									effects: languageCompartment.reconfigure(ext || []),
@@ -1224,19 +1342,15 @@ async function EditorManager($header, $body) {
 		exts.push(lspCompartment.of([]));
 
 		// Preserve previous state for restoring selection/folds after swap
-		const prevState = file.session || null;
+		const prevState = getRawEditorState(file.session);
 
-		const doc = prevState ? prevState.doc.toString() : "";
+		const doc = prevState ? prevState.doc : "";
 		const state = EditorState.create({ doc, extensions: exts });
 		file.session = state;
+		file.__cmSessionReady = true;
+		file.__cmExtensionSignature = extensionSignature;
 		editor.setState(state);
-		touchSelectionController?.onSessionChanged();
-		// Re-apply selected theme after state replacement
-		const desiredTheme = appSettings?.value?.editorTheme;
-		if (desiredTheme) editor.setTheme(desiredTheme);
-
-		// Ensure dynamic compartments reflect current settings
-		applyOptions();
+		applyCurrentEditorOptions(file);
 
 		// Restore selection from previous state if available
 		try {
@@ -1276,7 +1390,7 @@ async function EditorManager($header, $body) {
 			setScrollPosition(editor, file.lastScrollTop, file.lastScrollLeft);
 		}
 
-		void configureLspForFile(file);
+		scheduleLspForFile(file);
 	}
 
 	function getEmmetSyntaxForFile(file) {
@@ -1399,6 +1513,13 @@ async function EditorManager($header, $body) {
 			if (activeFile?.type === "editor") {
 				void configureLspForFile(activeFile);
 			}
+		},
+		flushCacheWrites() {
+			return Promise.all(
+				manager.files
+					.filter((file) => file?.type === "editor")
+					.map((file) => file.flushCacheWrite?.()),
+			);
 		},
 	};
 
@@ -1602,9 +1723,14 @@ async function EditorManager($header, $body) {
 		applyOptions(["localWordCompletion"]);
 	});
 
+	appSettings.on("update:autoRenameTags", function () {
+		applyOptions(["autoRenameTags"]);
+	});
+
 	appSettings.on("update:autoCloseTags", function () {
 		const file = manager.activeFile;
-		if (file?.type === "editor") applyFileToEditor(file);
+		if (file?.type === "editor")
+			applyFileToEditor(file, { forceRecreate: true });
 	});
 
 	appSettings.on("update:linenumbers", function () {
@@ -1615,6 +1741,10 @@ async function EditorManager($header, $body) {
 	// Line height update for CodeMirror
 	appSettings.on("update:lineHeight", function () {
 		updateEditorStyleFromSettings();
+	});
+
+	appSettings.on("update:cursorWidth", function () {
+		applyOptions(["cursorWidth"]);
 	});
 
 	appSettings.on("update:relativeLineNumbers", function () {
@@ -1655,7 +1785,8 @@ async function EditorManager($header, $body) {
 
 	appSettings.on("update:colorPreview", function () {
 		const file = manager.activeFile;
-		if (file?.type === "editor") applyFileToEditor(file);
+		if (file?.type === "editor")
+			applyFileToEditor(file, { forceRecreate: true });
 	});
 
 	appSettings.on("update:showSideButtons", function () {
@@ -1694,15 +1825,19 @@ async function EditorManager($header, $body) {
 			// Mirror latest state only on doc changes to avoid clobbering async loads
 			file.session = update.state;
 
+			if (file.markChanged === false) {
+				return;
+			}
+
+			file.markEdited();
+
 			// Debounced change handling (unsaved flag, cache, autosave)
 			if (checkTimeout) clearTimeout(checkTimeout);
 			if (autosaveTimeout) clearTimeout(autosaveTimeout);
 
 			checkTimeout = setTimeout(async () => {
-				const changed = await file.isChanged();
-				file.isUnsaved = changed;
 				try {
-					await file.writeToCache();
+					file.scheduleCacheWrite();
 				} catch (error) {
 					warnRecoverable(
 						`Failed to write cache for ${file.filename || file.uri}`,
@@ -1717,7 +1852,7 @@ async function EditorManager($header, $body) {
 				toggleProblemButton();
 
 				const { autosave } = appSettings.value;
-				if (file.uri && changed && autosave) {
+				if (file.uri && file.isUnsaved && autosave) {
 					autosaveTimeout = setTimeout(() => {
 						acode.exec("save", false);
 					}, autosave);
@@ -1752,7 +1887,7 @@ async function EditorManager($header, $body) {
 				"readonly-reconfigure",
 			);
 			// Fallback: full re-apply
-			applyFileToEditor(file);
+			applyFileToEditor(file, { forceRecreate: true });
 		}
 	});
 
@@ -1765,8 +1900,7 @@ async function EditorManager($header, $body) {
 		if (file?.type !== "editor") return;
 		if (manager.activeFile?.id === file.id) {
 			// Re-apply file to editor to update language/syntax highlighting
-			applyFileToEditor(file);
-			void configureLspForFile(file);
+			applyFileToEditor(file, { forceRecreate: true });
 		}
 	});
 
@@ -1796,7 +1930,9 @@ async function EditorManager($header, $body) {
 			: manager.files.length;
 		manager.files.splice(insertAt, 0, file);
 		syncOpenFileList();
-		$header.text = file.name;
+		if (!manager.activeFile) {
+			$header.text = file.name;
+		}
 		toggleProblemButton();
 	}
 
@@ -2302,9 +2438,18 @@ async function EditorManager($header, $body) {
 		// Persist the previous editor's state before switching away
 		const prev = manager.activeFile;
 		if (prev?.type === "editor") {
-			prev.session = editor.state;
+			prev.session = getRawEditorState(editor.state);
 			prev.lastScrollTop = editor.scrollDOM?.scrollTop || 0;
 			prev.lastScrollLeft = editor.scrollDOM?.scrollLeft || 0;
+			window.setTimeout(() => {
+				prev.flushCacheWrite?.().catch((error) => {
+					warnRecoverable(
+						`Failed to flush cache for ${prev.filename || prev.uri}`,
+						error,
+						`cache-flush-${prev.id}`,
+					);
+				});
+			}, 250);
 		}
 
 		manager.activeFile = file;

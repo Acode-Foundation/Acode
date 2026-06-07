@@ -1,6 +1,8 @@
 import fsOperation from "fileSystem";
+import { Text } from "@codemirror/state";
 import alert from "dialogs/alert";
 import confirm from "dialogs/confirm";
+import helpers from "utils/helpers";
 
 let checkFileEnabled = true;
 
@@ -49,8 +51,7 @@ export default async function checkFiles() {
 	 * @returns {Promise<void>}
 	 */
 	async function checkFile(file) {
-		if (file === undefined || file.isUnsaved || !file.loaded || file.loading)
-			return;
+		if (file === undefined || !file.loaded || file.loading) return;
 
 		if (file.uri) {
 			const fs = fsOperation(file.uri);
@@ -71,10 +72,42 @@ export default async function checkFiles() {
 				return;
 			}
 
-			const text = await fs.readFile(file.encoding);
-			const loadedText = file.session.doc.toString();
+			let mtime = null;
+			if (file.hasVersionMetadata && file.savedMtime != null) {
+				const stat = await fs.stat().catch(() => null);
+				mtime = helpers.getStatMtime(stat);
+				if (mtime != null) {
+					if (mtime === file.savedMtime) return;
+					const alreadyWarnedConflict =
+						file.hasDiskConflict && file.diskMtime === mtime;
+					file.markDiskChanged({ mtime });
+					if (file.hasDiskConflict) {
+						editorManager.onupdate("file-changed");
+						editorManager.emit("update", "file-changed");
+						console.warn(
+							`File changed on disk while unsaved: ${file.filename}`,
+						);
+						if (!alreadyWarnedConflict) {
+							await new Promise((resolve) => {
+								alert(
+									strings.warning.toUpperCase(),
+									`${file.filename} changed on disk while you have unsaved edits. Saving now may overwrite the external changes.`,
+									resolve,
+								);
+							});
+						}
+						return;
+					}
+				}
+			}
 
-			if (text !== loadedText) {
+			if (file.isUnsaved) return;
+
+			const text = await fs.readFile(file.encoding);
+			const diskDoc = Text.of(String(text ?? "").split("\n"));
+			const currentDoc = file.session?.doc;
+
+			if (!currentDoc?.eq?.(diskDoc)) {
 				try {
 					const confirmation = await confirm(
 						strings.warning.toUpperCase(),
@@ -87,11 +120,19 @@ export default async function checkFiles() {
 					editorManager.getFile(file.id, "id")?.makeActive();
 
 					file.markChanged = false;
-					file.session.setValue(text);
+					try {
+						file.session.setValue(text);
+						file.markLoaded({ mtime });
+					} finally {
+						file.markChanged = true;
+					}
+					await file.writeToCache();
 					editor.gotoLine(cursorPos.row, cursorPos.column);
 				} catch (error) {
 					// ignore
 				}
+			} else if (mtime != null && file.hasVersionMetadata) {
+				file.markLoaded({ mtime });
 			}
 		}
 	}

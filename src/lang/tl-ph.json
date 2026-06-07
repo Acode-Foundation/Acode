@@ -186,7 +186,8 @@
 	"files": "Mga file",
 	"help": "Tulong",
 	"file has been deleted": "{file} ay nabura na!",
-	"feature not available": "Ang feature na ito ay available lamang sa paid version ng app.",
+	"feature not available": "Hindi available ang feature na ito.",
+	"feature available in paid version": "Ang feature na ito ay available lamang sa paid version ng app.",
 	"deleted file": "Deleted na file",
 	"line height": "Line height",
 	"preview info": "Kung gusto mong i-run ang active file, i-tap at i-hold ang play icon.",
@@ -659,7 +660,7 @@
 	"settings-info-editor-rtl-text": "Switch right-to-left behavior per line.",
 	"settings-info-editor-scroll-settings": "Adjust scrollbar size, speed, and gesture behavior.",
 	"settings-info-editor-shift-click-selection": "Extend selection with Shift + tap or click.",
-	"settings-info-editor-show-spaces": "Display visible whitespace markers.",
+	"settings-info-editor-show-spaces": "Ipakita ang mga nakikitang marka ng espasyo at pagputol ng linya.",
 	"settings-info-editor-soft-tab": "Insert spaces instead of tab characters.",
 	"settings-info-editor-tab-size": "Set how many spaces each tab step uses.",
 	"settings-info-editor-teardrop-size": "Set the cursor handle size for touch editing.",
@@ -737,5 +738,13 @@
 	"iap-pro-purchase-warning": "Ang pagbiling ito ay hindi masi-sync sa iyong Acode account. Gamitin ang parehong Google account sa Play Store upang maibalik ang iyong pagbili.",
 	"confirm-login": "Hindi ka naka-sign in sa Acode, mag-sign in ngayon?",
 	"local word completion": "Local word completion",
-	"settings-info-editor-local-word-completion": "Suggest words from the current file."
+	"settings-info-editor-local-word-completion": "Suggest words from the current file.",
+	"terminal:failsafe": "FailSafe mode",
+	"terminal:failsafe-info": "Start terminal with system shell",
+	"auto rename tags": "Auto rename tags",
+	"settings-info-editor-auto-rename-tags": "Rename the matching opening or closing tag while editing HTML-like tags.",
+	"copying items": "Copying {count} items...",
+	"cannot paste folder into itself": "Cannot paste a folder into itself",
+	"folder already exists": "Folder already exists",
+	"file already exists force named": "'{name}' already exists. Overwrite?"
 }

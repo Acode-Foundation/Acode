@@ -816,8 +816,9 @@ function menuButtonHandler() {
 	acode?.exec("toggle-sidebar");
 }
 
-function pauseHandler() {
+async function pauseHandler() {
 	const { acode } = window;
+	await window.editorManager?.flushCacheWrites?.();
 	acode?.exec("save-state");
 }
 

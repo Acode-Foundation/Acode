@@ -186,7 +186,8 @@
 	"files": "Soubory",
 	"help": "Nápověda",
 	"file has been deleted": "Soubor {file} byl smazán!",
-	"feature not available": "Tato funkce je k dispozici pouze v placené verzi aplikace.",
+	"feature not available": "Tato funkce není dostupná.",
+	"feature available in paid version": "Tato funkce je k dispozici pouze v placené verzi aplikace.",
 	"deleted file": "Smazaný soubor",
 	"line height": "Výška řádku",
 	"preview info": "Pokud chcete spustit aktivní soubor, klepněte na a podržte ikonu přehrávání.",
@@ -659,7 +660,7 @@
 	"settings-info-editor-rtl-text": "Switch right-to-left behavior per line.",
 	"settings-info-editor-scroll-settings": "Adjust scrollbar size, speed, and gesture behavior.",
 	"settings-info-editor-shift-click-selection": "Extend selection with Shift + tap or click.",
-	"settings-info-editor-show-spaces": "Display visible whitespace markers.",
+	"settings-info-editor-show-spaces": "Zobrazit viditelné značky mezer a zalomení řádků.",
 	"settings-info-editor-soft-tab": "Insert spaces instead of tab characters.",
 	"settings-info-editor-tab-size": "Set how many spaces each tab step uses.",
 	"settings-info-editor-teardrop-size": "Set the cursor handle size for touch editing.",
@@ -737,5 +738,13 @@
 	"iap-pro-purchase-warning": "Tento nákup nebude synchronizován s vaším účtem Acode. Pro obnovení nákupu použijte stejný účet Google v Obchodě Play.",
 	"confirm-login": "Nejste přihlášeni do Acode, přihlásit se nyní?",
 	"local word completion": "Local word completion",
-	"settings-info-editor-local-word-completion": "Suggest words from the current file."
+	"settings-info-editor-local-word-completion": "Suggest words from the current file.",
+	"terminal:failsafe": "FailSafe mode",
+	"terminal:failsafe-info": "Start terminal with system shell",
+	"auto rename tags": "Auto rename tags",
+	"settings-info-editor-auto-rename-tags": "Rename the matching opening or closing tag while editing HTML-like tags.",
+	"copying items": "Copying {count} items...",
+	"cannot paste folder into itself": "Cannot paste a folder into itself",
+	"folder already exists": "Folder already exists",
+	"file already exists force named": "'{name}' already exists. Overwrite?"
 }

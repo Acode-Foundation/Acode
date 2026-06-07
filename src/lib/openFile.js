@@ -1,4 +1,5 @@
 import fsOperation from "fileSystem";
+import { Text } from "@codemirror/state";
 import AudioPlayer from "components/audioPlayer";
 import alert from "dialogs/alert";
 import confirm from "dialogs/confirm";
@@ -39,7 +40,8 @@ export default async function openFile(file, options = {}) {
 
 		if (existingFile) {
 			// If file is already opened and new text is provided
-			const existingText = existingFile.session.doc.toString() ?? "";
+			const incomingDoc =
+				text != null ? Text.of(String(text).split("\n")) : null;
 
 			// If file is already opened
 			existingFile.makeActive();
@@ -50,7 +52,7 @@ export default async function openFile(file, options = {}) {
 				existingFile.onsave = onsave;
 			}
 
-			if (text && existingText !== text) {
+			if (incomingDoc && !existingFile.session?.doc?.eq?.(incomingDoc)) {
 				// let confirmation = true;
 				// if (existingFile.isUnsaved) {
 				//   const message = strings['reopen file'].replace('{file}', existingFile.filename);
@@ -105,6 +107,8 @@ export default async function openFile(file, options = {}) {
 				readOnly,
 				encoding: detectedEncoding || encoding,
 				SAFMode: mode,
+				savedMtime: helpers.getStatMtime(fileInfo),
+				diskMtime: helpers.getStatMtime(fileInfo),
 			});
 		};
 

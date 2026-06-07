@@ -1,6 +1,6 @@
 import fsOperation from "fileSystem";
 // CodeMirror imports for document state management
-import { EditorState, Text } from "@codemirror/state";
+import { EditorState } from "@codemirror/state";
 import {
 	clearSelection,
 	restoreFolds,
@@ -63,8 +63,21 @@ function createSessionProxy(state, file) {
 		}
 	}
 
+	function recordInactiveEdit() {
+		if (file.markChanged === false) return;
+		file.markEdited();
+		file.scheduleCacheWrite();
+		editorManager.emit("file-content-changed", file);
+		editorManager.onupdate("file-changed");
+		editorManager.emit("update", "file-changed");
+	}
+
 	return new Proxy(state, {
 		get(target, prop) {
+			if (prop === "__rawState") {
+				return target;
+			}
+
 			// Ace-compatible method: getValue()
 			if (prop === "getValue") {
 				return () => target.doc.toString();
@@ -91,6 +104,7 @@ function createSessionProxy(state, file) {
 								changes: { from: 0, to: target.doc.length, insert: newText },
 							}).state,
 						);
+						recordInactiveEdit();
 					}
 				};
 			}
@@ -140,6 +154,7 @@ function createSessionProxy(state, file) {
 								changes: { from: offset, insert: String(text ?? "") },
 							}).state,
 						);
+						recordInactiveEdit();
 					}
 				};
 			}
@@ -158,6 +173,7 @@ function createSessionProxy(state, file) {
 						file._setRawSession(
 							target.update({ changes: { from, to, insert: "" } }).state,
 						);
+						recordInactiveEdit();
 					}
 					return removed;
 				};
@@ -180,6 +196,7 @@ function createSessionProxy(state, file) {
 								changes: { from, to, insert: String(text ?? "") },
 							}).state,
 						);
+						recordInactiveEdit();
 					}
 				};
 			}
@@ -229,6 +246,12 @@ function createSessionProxy(state, file) {
  * @property {number} [scrollTop] scroll top
  * @property {Array<Fold>} [folds] folds
  * @property {boolean} [pinned] pin the tab to prevent accidental closing
+ * @property {number} [docVersion] current document version for dirty tracking
+ * @property {number} [savedVersion] document version last saved or loaded from disk
+ * @property {number} [cacheVersion] document version last written to crash cache
+ * @property {number} [savedMtime] file mtime last saved or loaded from disk
+ * @property {number} [diskMtime] latest known file mtime on disk
+ * @property {boolean} [hasDiskConflict] whether editor and disk both changed
  */
 
 export default class EditorFile {
@@ -348,6 +371,10 @@ export default class EditorFile {
 	 * @type {boolean}
 	 */
 	#isUnsaved = false;
+	#hasVersionMetadata = false;
+	#cacheWriteTimer = null;
+	#cacheWritePromise = null;
+	#savedDoc = null;
 	/**
 	 * Whether to show run button or not
 	 */
@@ -386,6 +413,13 @@ export default class EditorFile {
 	onrun;
 	oncanrun;
 	onpinstatechange;
+
+	docVersion = 0;
+	savedVersion = 0;
+	cacheVersion = 0;
+	savedMtime = null;
+	diskMtime = null;
+	hasDiskConflict = false;
 
 	/**
 	 *
@@ -491,7 +525,33 @@ export default class EditorFile {
 		const editable = options?.editable ?? true;
 
 		this.#SAFMode = options?.SAFMode;
-		this.isUnsaved = options?.isUnsaved ?? false;
+		this.docVersion = Number.isFinite(options?.docVersion)
+			? options.docVersion
+			: options?.isUnsaved
+				? 1
+				: 0;
+		this.savedVersion = Number.isFinite(options?.savedVersion)
+			? options.savedVersion
+			: options?.isUnsaved
+				? 0
+				: this.docVersion;
+		this.cacheVersion = Number.isFinite(options?.cacheVersion)
+			? options.cacheVersion
+			: options?.isUnsaved
+				? this.docVersion
+				: this.savedVersion;
+		this.savedMtime = helpers.normalizeMtime(options?.savedMtime);
+		this.diskMtime = helpers.normalizeMtime(
+			options?.diskMtime ?? options?.savedMtime,
+		);
+		this.hasDiskConflict = !!options?.hasDiskConflict;
+		this.#hasVersionMetadata =
+			options?.docVersion !== undefined ||
+			options?.savedVersion !== undefined ||
+			options?.text !== undefined ||
+			options?.isUnsaved !== undefined ||
+			this.#id === config.DEFAULT_FILE_SESSION;
+		this.isUnsaved = options?.isUnsaved ?? this.hasUnsavedChanges();
 
 		if (options?.encoding) {
 			this.encoding = options.encoding;
@@ -541,6 +601,9 @@ export default class EditorFile {
 			this.#rawSession = EditorState.create({
 				doc: options?.text || "",
 			});
+			if (!this.#isUnsaved) {
+				this.#savedDoc = this.#rawSession.doc;
+			}
 			this.setMode();
 			this.#setupSession();
 		}
@@ -716,7 +779,11 @@ export default class EditorFile {
 	 * End of line
 	 */
 	get eol() {
-		return /\r/.test(this.session.doc.toString()) ? "windows" : "unix";
+		const { doc } = this.session;
+		for (let lineNumber = 1; lineNumber <= doc.lines; lineNumber++) {
+			if (doc.line(lineNumber).text.includes("\r")) return "windows";
+		}
+		return "unix";
 	}
 
 	/**
@@ -762,7 +829,13 @@ export default class EditorFile {
 	}
 
 	set isUnsaved(value) {
+		value = !!value;
 		if (this.#isUnsaved === value) return;
+		if (!value && this.#hasVersionMetadata) {
+			this.savedVersion = this.docVersion;
+			this.hasDiskConflict = false;
+			this.#savedDoc = this.#rawSession?.doc || this.#savedDoc;
+		}
 		this.#isUnsaved = value;
 
 		this.#updateTab();
@@ -833,17 +906,140 @@ export default class EditorFile {
 		return this.#SAFMode;
 	}
 
+	get hasVersionMetadata() {
+		return this.#hasVersionMetadata;
+	}
+
+	hasUnsavedChanges() {
+		if (this.type !== "editor") return false;
+		const currentDoc = this.#rawSession?.doc;
+		if (currentDoc && this.#savedDoc) {
+			return (
+				this.hasDiskConflict ||
+				this.deletedFile ||
+				!currentDoc.eq(this.#savedDoc)
+			);
+		}
+		return (
+			this.hasDiskConflict ||
+			this.deletedFile ||
+			this.docVersion !== this.savedVersion
+		);
+	}
+
+	markLoaded({ mtime, isUnsaved = false } = {}) {
+		const normalizedMtime = helpers.normalizeMtime(mtime);
+		this.docVersion = isUnsaved ? 1 : 0;
+		this.savedVersion = isUnsaved ? 0 : this.docVersion;
+		this.cacheVersion = isUnsaved ? this.docVersion : this.savedVersion;
+		this.savedMtime = normalizedMtime;
+		this.diskMtime = normalizedMtime;
+		this.hasDiskConflict = false;
+		this.#hasVersionMetadata = true;
+		this.#savedDoc = isUnsaved ? null : this.#rawSession?.doc || null;
+		this.isUnsaved = isUnsaved || this.hasUnsavedChanges();
+	}
+
+	markEdited() {
+		if (this.type !== "editor") return;
+		if (this.id === config.DEFAULT_FILE_SESSION) {
+			this.id = helpers.uuid();
+		}
+		this.docVersion += 1;
+		this.#hasVersionMetadata = true;
+		this.isUnsaved = this.hasUnsavedChanges();
+	}
+
+	markSaved({ mtime, savedDoc, savedVersion } = {}) {
+		const normalizedMtime = helpers.normalizeMtime(mtime);
+		this.savedVersion = Number.isFinite(savedVersion)
+			? savedVersion
+			: this.docVersion;
+		this.savedMtime = normalizedMtime;
+		this.diskMtime = normalizedMtime;
+		this.hasDiskConflict = false;
+		this.#hasVersionMetadata = true;
+		this.#savedDoc = savedDoc || this.#rawSession?.doc || null;
+		this.isUnsaved = this.hasUnsavedChanges();
+	}
+
+	markDiskChanged({ mtime, deleted = false } = {}) {
+		this.diskMtime = helpers.normalizeMtime(mtime);
+		this.#hasVersionMetadata = true;
+		if (deleted) {
+			this.deletedFile = true;
+			this.isUnsaved = true;
+			return;
+		}
+		this.hasDiskConflict =
+			this.docVersion !== this.savedVersion &&
+			this.diskMtime !== this.savedMtime;
+		this.isUnsaved = this.hasUnsavedChanges();
+	}
+
+	scheduleCacheWrite(delay = 1500) {
+		if (this.type !== "editor") return Promise.resolve();
+		if (this.cacheVersion === this.docVersion && this.#hasVersionMetadata) {
+			return this.#cacheWritePromise || Promise.resolve();
+		}
+		if (this.#cacheWriteTimer) clearTimeout(this.#cacheWriteTimer);
+		if (delay <= 0) {
+			this.#cacheWriteTimer = null;
+			this.#cacheWritePromise = this.writeToCache().finally(() => {
+				this.#cacheWritePromise = null;
+			});
+			return this.#cacheWritePromise;
+		}
+		this.#cacheWriteTimer = setTimeout(() => {
+			this.#cacheWriteTimer = null;
+			this.#cacheWritePromise = this.writeToCache().finally(() => {
+				this.#cacheWritePromise = null;
+			});
+		}, delay);
+		return Promise.resolve();
+	}
+
+	async flushCacheWrite() {
+		if (this.#cacheWriteTimer) {
+			clearTimeout(this.#cacheWriteTimer);
+			this.#cacheWriteTimer = null;
+			if (!this.#cacheWritePromise) {
+				this.#cacheWritePromise = this.writeToCache().finally(() => {
+					this.#cacheWritePromise = null;
+				});
+			}
+		}
+		if (this.#cacheWritePromise) await this.#cacheWritePromise;
+		if (this.cacheVersion !== this.docVersion) {
+			if (this.#cacheWriteTimer) {
+				clearTimeout(this.#cacheWriteTimer);
+				this.#cacheWriteTimer = null;
+			}
+			this.#cacheWritePromise = this.writeToCache().finally(() => {
+				this.#cacheWritePromise = null;
+			});
+			await this.#cacheWritePromise;
+		}
+	}
+
 	async writeToCache() {
+		const writeVersion = this.docVersion;
 		const text = this.session.doc.toString();
 		const fs = fsOperation(this.cacheFile);
 
 		try {
 			if (!(await fs.exists())) {
 				await fsOperation(CACHE_STORAGE).createFile(this.id, text);
+				this.cacheVersion = writeVersion;
+				this.#hasVersionMetadata = true;
+				if (this.docVersion !== writeVersion) this.scheduleCacheWrite();
 				return;
 			}
 
 			await fs.writeFile(text);
+			this.cacheVersion = writeVersion;
+			this.#hasVersionMetadata = true;
+			if (this.docVersion !== writeVersion) this.scheduleCacheWrite();
 		} catch (error) {
 			window.log("error", "Writing to cache failed:");
 			window.log("error", error);
@@ -855,6 +1051,9 @@ export default class EditorFile {
 		// if file is not loaded or is loading then it is not changed.
 		if (!this.loaded || this.loading) {
 			return false;
+		}
+		if (this.#hasVersionMetadata) {
+			return this.hasUnsavedChanges();
 		}
 		// is changed is called when session text is changed
 		// if file has no uri or is readonly that means file is change
@@ -1389,6 +1588,7 @@ export default class EditorFile {
 		try {
 			const cacheFs = fsOperation(this.cacheFile);
 			const cacheExists = await cacheFs.exists();
+			let loadedMtime = this.savedMtime;
 
 			if (cacheExists) {
 				value = await cacheFs.readFile(this.encoding);
@@ -1401,15 +1601,23 @@ export default class EditorFile {
 					this.deletedFile = true;
 					this.isUnsaved = true;
 				} else if (!cacheExists && fileExists) {
+					const stat = await file.stat().catch(() => null);
+					loadedMtime = helpers.getStatMtime(stat);
 					value = await file.readFile(this.encoding);
+				} else if (fileExists) {
+					const stat = await file.stat().catch(() => null);
+					loadedMtime = helpers.getStatMtime(stat);
 				} else if (!cacheExists && !fileExists) {
 					window.log("error", "unable to load file");
 					throw new Error("Unable to load file");
 				}
 			}
 
+			const isUnsaved = this.isUnsaved;
 			this.markChanged = false;
 			this.session.setValue(value);
+			this.markLoaded({ mtime: loadedMtime, isUnsaved });
+			this.markChanged = true;
 			this.loaded = true;
 			this.loading = false;
 
@@ -1459,7 +1667,7 @@ export default class EditorFile {
 		this.#emit("save", event);
 
 		if (event.defaultPrevented) return Promise.resolve(false);
-		return Promise.all([this.writeToCache(), saveFile(this, as)]);
+		return Promise.all([this.flushCacheWrite(), saveFile(this, as)]);
 	}
 
 	#run(file) {
@@ -1499,6 +1707,12 @@ export default class EditorFile {
 	#destroy() {
 		this.#emit("close", createFileEvent(this));
 		appSettings.off("update:openFileListPos", this.#onFilePosChange);
+		if (this.#cacheWriteTimer) {
+			clearTimeout(this.#cacheWriteTimer);
+			this.#cacheWriteTimer = null;
+		}
+		this.#cacheWritePromise = null;
+		this.#savedDoc = null;
 		if (this.type === "editor") {
 			this.#removeCache();
 			// CodeMirror EditorState doesn't need explicit cleanup

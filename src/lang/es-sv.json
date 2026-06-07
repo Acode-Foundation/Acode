@@ -186,7 +186,8 @@
 	"files": "Archivos",
 	"help": "Ayuda",
 	"file has been deleted": "{file} ha sido eliminado!",
-	"feature not available": "Esta función solo está disponible en la versión de pago de la aplicación.",
+	"feature not available": "Esta función no está disponible.",
+	"feature available in paid version": "Esta función solo está disponible en la versión de pago de la aplicación.",
 	"deleted file": "Archivo eliminado",
 	"line height": "Altura de la línea",
 	"preview info": "Si desea ejecutar el archivo activo, toque y mantenga presionado el ícono de reproducción.",
@@ -659,7 +660,7 @@
 	"settings-info-editor-rtl-text": "Switch right-to-left behavior per line.",
 	"settings-info-editor-scroll-settings": "Adjust scrollbar size, speed, and gesture behavior.",
 	"settings-info-editor-shift-click-selection": "Extend selection with Shift + tap or click.",
-	"settings-info-editor-show-spaces": "Display visible whitespace markers.",
+	"settings-info-editor-show-spaces": "Mostrar marcadores visibles de espacios en blanco y saltos de línea.",
 	"settings-info-editor-soft-tab": "Insert spaces instead of tab characters.",
 	"settings-info-editor-tab-size": "Set how many spaces each tab step uses.",
 	"settings-info-editor-teardrop-size": "Set the cursor handle size for touch editing.",
@@ -737,5 +738,13 @@
 	"iap-pro-purchase-warning": "Esta compra no se sincronizará con tu cuenta de Acode. Usa la misma cuenta de Google en Play Store para restaurar tu compra.",
 	"confirm-login": "No has iniciado sesión en Acode, ¿iniciar sesión ahora?",
 	"local word completion": "Local word completion",
-	"settings-info-editor-local-word-completion": "Suggest words from the current file."
+	"settings-info-editor-local-word-completion": "Suggest words from the current file.",
+	"terminal:failsafe": "FailSafe mode",
+	"terminal:failsafe-info": "Start terminal with system shell",
+	"auto rename tags": "Auto rename tags",
+	"settings-info-editor-auto-rename-tags": "Rename the matching opening or closing tag while editing HTML-like tags.",
+	"copying items": "Copying {count} items...",
+	"cannot paste folder into itself": "Cannot paste a folder into itself",
+	"folder already exists": "Folder already exists",
+	"file already exists force named": "'{name}' already exists. Overwrite?"
 }

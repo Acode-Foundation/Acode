@@ -186,7 +186,8 @@
 	"files": "ফাইলসমূহ",
 	"help": "সাহায্য",
 	"file has been deleted": "{file} ডিলিট করা হয়েছে!",
-	"feature not available": "এই বৈশিষ্ট্যটি শুধুমাত্র অ্যাপটির অর্থপ্রদত্ত সংস্করণে উপলব্ধ।",
+	"feature not available": "এই বৈশিষ্ট্যটি উপলব্ধ নয়।",
+	"feature available in paid version": "এই বৈশিষ্ট্যটি শুধুমাত্র অ্যাপটির অর্থপ্রদত্ত সংস্করণে উপলব্ধ।",
 	"deleted file": "ডিলিট করা ফাইল",
 	"line height": "লাইনের উচ্চতা",
 	"preview info": "আপনি যদি সক্রিয় ফাইলটি চালাতে চান, তাহলে প্লে আইকনে আলতো চাপুন",
@@ -659,7 +660,7 @@
 	"settings-info-editor-rtl-text": "Switch right-to-left behavior per line.",
 	"settings-info-editor-scroll-settings": "Adjust scrollbar size, speed, and gesture behavior.",
 	"settings-info-editor-shift-click-selection": "Extend selection with Shift + tap or click.",
-	"settings-info-editor-show-spaces": "Display visible whitespace markers.",
+	"settings-info-editor-show-spaces": "দৃশ্যমান ফাঁকা স্থান ও লাইন ব্রেকের চিহ্ন দেখান।",
 	"settings-info-editor-soft-tab": "Insert spaces instead of tab characters.",
 	"settings-info-editor-tab-size": "Set how many spaces each tab step uses.",
 	"settings-info-editor-teardrop-size": "Set the cursor handle size for touch editing.",
@@ -737,5 +738,13 @@
 	"iap-pro-purchase-warning": "এই ক্রয়টি আপনার Acode অ্যাকাউন্টের সাথে সিঙ্ক হবে না। আপনার ক্রয় পুনরুদ্ধার করতে প্লে স্টোরে একই Google অ্যাকাউন্ট ব্যবহার করুন।",
 	"confirm-login": "আপনি Acode-এ সাইন ইন করেননি, এখন সাইন ইন করবেন?",
 	"local word completion": "Local word completion",
-	"settings-info-editor-local-word-completion": "Suggest words from the current file."
+	"settings-info-editor-local-word-completion": "Suggest words from the current file.",
+	"terminal:failsafe": "FailSafe mode",
+	"terminal:failsafe-info": "Start terminal with system shell",
+	"auto rename tags": "Auto rename tags",
+	"settings-info-editor-auto-rename-tags": "Rename the matching opening or closing tag while editing HTML-like tags.",
+	"copying items": "Copying {count} items...",
+	"cannot paste folder into itself": "Cannot paste a folder into itself",
+	"folder already exists": "Folder already exists",
+	"file already exists force named": "'{name}' already exists. Overwrite?"
 }

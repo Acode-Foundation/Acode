@@ -8,7 +8,7 @@ import helpers from "utils/helpers";
 import Url from "utils/Url";
 import config from "./config";
 import InstallState from "./installState";
-import loadPlugin from "./loadPlugin";
+import { loadPluginWithTimeout } from "./loadPlugins";
 
 /** @type {import("dialogs/loader").Loader} */
 let loaderDialog;
@@ -250,13 +250,13 @@ export default async function installPlugin(
 
 			if (isDependency) {
 				depsLoaders.push(async () => {
-					await loadPlugin(id, true);
+					await loadPluginWithTimeout(id, true);
 				});
 			} else {
 				for (const loader of depsLoaders) {
 					await loader();
 				}
-				await loadPlugin(id, true);
+				await loadPluginWithTimeout(id, true);
 			}
 
 			await state.save();

@@ -292,7 +292,11 @@ export default {
 	},
 	async showInterstitialIfReady() {
 		if (!this.canShowAds()) return false;
-		if (await window.iad?.isLoaded()) {
+		if (
+			typeof window.iad?.isLoaded === "function" &&
+			typeof window.iad?.show === "function" &&
+			(await window.iad.isLoaded())
+		) {
 			window.iad.show();
 			return true;
 		}
@@ -303,7 +307,11 @@ export default {
 	 */
 	showAd() {
 		const { ad } = window;
-		if (this.canShowAds() && innerHeight * devicePixelRatio > 600 && ad) {
+		if (
+			this.canShowAds() &&
+			innerHeight * devicePixelRatio > 600 &&
+			typeof ad?.show === "function"
+		) {
 			const $page = tag.getAll("wc-page:not(#root)").pop();
 			if ($page) {
 				ad.active = true;
@@ -518,6 +526,16 @@ export default {
 
 		return `${trimmedCountStr}${units[index]}`;
 	},
+	normalizeMtime(value) {
+		if (value == null) return null;
+		const time = value instanceof Date ? value.getTime() : Number(value);
+		return Number.isFinite(time) ? time : null;
+	},
+	getStatMtime(stat) {
+		return this.normalizeMtime(
+			stat?.modifiedDate ?? stat?.lastModified ?? stat?.mtime,
+		);
+	},
 	isBinary(file) {
 		// binary file extensions
 		const binaryExtensions = [
@@ -573,9 +591,18 @@ export default {
 		return false;
 	},
 
+	isIapAvailable() {
+		return (
+			typeof iap !== "undefined" &&
+			typeof iap.isIapAvailable === "function" &&
+			iap.isIapAvailable()
+		);
+	},
+
 	shouldAllowExternalPurchase() {
 		return (
-			!iap.isIapAvailable() && window.appInstallSource !== "com.android.vending"
+			!this.isIapAvailable() &&
+			window.appInstallSource !== "com.android.vending"
 		);
 	},
 };

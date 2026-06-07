@@ -33,6 +33,7 @@ declare type LangStrings = {
   "failed": string;
   "file already exists": string;
   "file already exists force": string;
+  "file already exists force named": string;
   "file changed": string;
   "file deleted": string;
   "file is not supported": string;
@@ -137,6 +138,7 @@ declare type LangStrings = {
   "live autocompletion": string;
   "local word completion": string;
   "auto close tags": string;
+  "auto rename tags": string;
   "file properties": string;
   "path": string;
   "type": string;
@@ -194,6 +196,7 @@ declare type LangStrings = {
   "help": string;
   "file has been deleted": string;
   "feature not available": string;
+  "feature available in paid version": string;
   "deleted file": string;
   "line height": string;
   "preview info": string;
@@ -411,6 +414,9 @@ declare type LangStrings = {
   "rename not supported": string;
   "compress": string;
   "copy uri": string;
+  "copying items": string;
+  "cannot paste folder into itself": string;
+  "folder already exists": string;
   "delete entries": string;
   "deleting items": string;
   "import project zip": string;
@@ -673,6 +679,7 @@ declare type LangStrings = {
   "settings-info-editor-live-autocomplete": string;
   "settings-info-editor-local-word-completion": string;
   "settings-info-editor-auto-close-tags": string;
+  "settings-info-editor-auto-rename-tags": string;
   "settings-info-editor-rainbow-brackets": string;
   "settings-info-editor-relative-line-numbers": string;
   "settings-info-editor-rtl-text": string;
@@ -741,6 +748,8 @@ declare type LangStrings = {
   "iap-plugin-purchase-warning": string;
   "iap-pro-purchase-warning": string;
   "confirm-login": string;
+  "terminal:failsafe": string;
+  "terminal:failsafe-info": string;
 };
 
 declare var strings: LangStrings;

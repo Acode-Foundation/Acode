@@ -4,6 +4,7 @@
   .tier-icon {
     display: inline-block;
     width: 24px;
+    min-width: 24px;
     height: 24px;
     margin-right: 8px;
     border-radius: 50%;
@@ -67,6 +68,8 @@
 
   .tier-header {
     display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
     align-items: center;
     justify-content: space-between;
     margin-bottom: 10px;
@@ -82,6 +85,7 @@
   .tier-icon {
     width: 24px;
     height: 24px;
+    min-width: 24px;
     border-radius: 50%;
     margin-right: 10px;
     display: flex;

@@ -141,6 +141,13 @@ export default function editorSettings() {
 			category: categories.assistance,
 		},
 		{
+			key: "autoRenameTags",
+			text: strings["auto rename tags"],
+			checkbox: values.autoRenameTags ?? true,
+			info: strings["settings-info-editor-auto-rename-tags"],
+			category: categories.assistance,
+		},
+		{
 			key: "colorPreview",
 			text: strings["color preview"],
 			checkbox: values.colorPreview,

@@ -7,6 +7,8 @@ import "./terminalTouchSelection.css";
 const DEFAULT_MORE_OPTION_ID = "__acode_terminal_select_all__";
 const terminalMoreOptions = new Map();
 let terminalMoreOptionCounter = 0;
+const HANDLE_EDGE_FLIP_MARGIN = 4;
+const HANDLE_EDGE_RESTORE_MARGIN = 12;
 
 function ensureDefaultMoreOption() {
 	if (terminalMoreOptions.has(DEFAULT_MORE_OPTION_ID)) return;
@@ -550,6 +552,8 @@ export default class TerminalTouchSelection {
 		const targetHandle =
 			handleType === "start" ? this.startHandle : this.endHandle;
 		targetHandle.style.cursor = "grabbing";
+		this.startHandle.style.transition = "none";
+		this.endHandle.style.transition = "none";
 		if (!targetHandle.style.transform.includes("scale")) {
 			targetHandle.style.transform += " scale(1.2)";
 		}
@@ -635,6 +639,7 @@ export default class TerminalTouchSelection {
 		const handles = [this.startHandle, this.endHandle];
 		handles.forEach((handle) => {
 			handle.style.cursor = "grab";
+			handle.style.transition = "";
 			// More robust transform cleanup
 			handle.style.transform = handle.style.transform
 				.replace(/\s*scale\([^)]*\)/g, "")
@@ -875,6 +880,7 @@ export default class TerminalTouchSelection {
 
 	setHandleOrientation(handle, orientation) {
 		if (!handle) return;
+		if (handle.dataset.orientation === orientation) return;
 
 		const baseTransform = this.getHandleBaseTransform(orientation);
 		const hasScale = /\bscale\(/.test(handle.style.transform || "");
@@ -884,22 +890,45 @@ export default class TerminalTouchSelection {
 			: baseTransform;
 	}
 
+	getHandleAnchorX(handle) {
+		const left = Number.parseFloat(handle.style.left || "0");
+		return Number.isFinite(left) ? left : 0;
+	}
+
 	updateHandleOrientationForViewportEdges() {
-		const overlayRect = this.selectionOverlay.getBoundingClientRect();
+		const overlayWidth =
+			this.selectionOverlay.clientWidth || this.container.clientWidth;
+		const handleSize = this.options.handleSize;
 
 		if (this.startHandle.style.display !== "none") {
-			this.setHandleOrientation(this.startHandle, "start");
-			const startRect = this.startHandle.getBoundingClientRect();
-			if (startRect.left < overlayRect.left) {
+			const anchorX = this.getHandleAnchorX(this.startHandle);
+			const orientation = this.startHandle.dataset.orientation || "start";
+			if (
+				orientation === "start" &&
+				anchorX < handleSize + HANDLE_EDGE_FLIP_MARGIN
+			) {
 				this.setHandleOrientation(this.startHandle, "end");
+			} else if (
+				orientation === "end" &&
+				anchorX > handleSize + HANDLE_EDGE_RESTORE_MARGIN
+			) {
+				this.setHandleOrientation(this.startHandle, "start");
 			}
 		}
 
 		if (this.endHandle.style.display !== "none") {
-			this.setHandleOrientation(this.endHandle, "end");
-			const endRect = this.endHandle.getBoundingClientRect();
-			if (endRect.right > overlayRect.right) {
+			const anchorX = this.getHandleAnchorX(this.endHandle);
+			const orientation = this.endHandle.dataset.orientation || "end";
+			if (
+				orientation === "end" &&
+				anchorX > overlayWidth - handleSize - HANDLE_EDGE_FLIP_MARGIN
+			) {
 				this.setHandleOrientation(this.endHandle, "start");
+			} else if (
+				orientation === "start" &&
+				anchorX < overlayWidth - handleSize - HANDLE_EDGE_RESTORE_MARGIN
+			) {
+				this.setHandleOrientation(this.endHandle, "end");
 			}
 		}
 	}

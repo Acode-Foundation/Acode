@@ -186,7 +186,8 @@
 	"files": "קבצים",
 	"help": "עזרה",
 	"file has been deleted": "{file} נמחק!",
-	"feature not available": "תכונה זו זמינה רק בגרסה בתשלום של האפליקציה.",
+	"feature not available": "תכונה זו אינה זמינה.",
+	"feature available in paid version": "תכונה זו זמינה רק בגרסה בתשלום של האפליקציה.",
 	"deleted file": "קובץ מחוק",
 	"line height": "Line height",
 	"preview info": "אם ברצונך להפעיל את הקובץ הפעיל, לחץ והחזק את סמל ההפעלה.",
@@ -659,7 +660,7 @@
 	"settings-info-editor-rtl-text": "Switch right-to-left behavior per line.",
 	"settings-info-editor-scroll-settings": "Adjust scrollbar size, speed, and gesture behavior.",
 	"settings-info-editor-shift-click-selection": "Extend selection with Shift + tap or click.",
-	"settings-info-editor-show-spaces": "Display visible whitespace markers.",
+	"settings-info-editor-show-spaces": "הצג סימונים גלויים של רווחים ומעברי שורה.",
 	"settings-info-editor-soft-tab": "Insert spaces instead of tab characters.",
 	"settings-info-editor-tab-size": "Set how many spaces each tab step uses.",
 	"settings-info-editor-teardrop-size": "Set the cursor handle size for touch editing.",
@@ -737,5 +738,13 @@
 	"iap-pro-purchase-warning": "רכישה זו לא תסונכרן עם חשבון Acode שלך. השתמש באותו חשבון Google בחנות Play כדי לשחזר את הרכישה שלך.",
 	"confirm-login": "אינך מחובר ל-Acode, להתחבר עכשיו?",
 	"local word completion": "Local word completion",
-	"settings-info-editor-local-word-completion": "Suggest words from the current file."
+	"settings-info-editor-local-word-completion": "Suggest words from the current file.",
+	"terminal:failsafe": "FailSafe mode",
+	"terminal:failsafe-info": "Start terminal with system shell",
+	"auto rename tags": "Auto rename tags",
+	"settings-info-editor-auto-rename-tags": "Rename the matching opening or closing tag while editing HTML-like tags.",
+	"copying items": "Copying {count} items...",
+	"cannot paste folder into itself": "Cannot paste a folder into itself",
+	"folder already exists": "Folder already exists",
+	"file already exists force named": "'{name}' already exists. Overwrite?"
 }

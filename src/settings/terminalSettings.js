@@ -196,6 +196,13 @@ export default function terminalSettings() {
 			category: categories.session,
 		},
 		{
+			key: "failsafeMode",
+			text: strings["terminal:failsafe"],
+			checkbox: terminalValues.failsafeMode,
+			info: strings["terminal:failsafe-info"],
+			category: categories.maintenance,
+		},
+		{
 			key: "backup",
 			text: strings.backup,
 			info: strings["info-backup"],

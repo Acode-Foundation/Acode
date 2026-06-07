@@ -186,7 +186,8 @@
 	"files": "ഫയൽസ് ",
 	"help": "ഹെല്പ് ",
 	"file has been deleted": "{file} ഡിലീറ്റ് ആയി !",
-	"feature not available": "ഈ ഫീചർ പൈഡ് ആപ്പിൽ മാത്രമേ ലഫ്യമാകു .",
+	"feature not available": "ഈ സവിശേഷത ലഭ്യമല്ല.",
+	"feature available in paid version": "ഈ ഫീചർ പൈഡ് ആപ്പിൽ മാത്രമേ ലഫ്യമാകു .",
 	"deleted file": "ഡെലീറ്റഡ് ഫയൽ ",
 	"line height": "ലൈൻ ഹൈറ് ",
 	"preview info": "ആക്റ്റീവ് ഫയൽ റൺ ചെയ്യാൻ റൺ ബട്ടനിൽ ടാപ് ആൻഡ് ഹോൾഡ് ചെയുക .",
@@ -659,7 +660,7 @@
 	"settings-info-editor-rtl-text": "Switch right-to-left behavior per line.",
 	"settings-info-editor-scroll-settings": "Adjust scrollbar size, speed, and gesture behavior.",
 	"settings-info-editor-shift-click-selection": "Extend selection with Shift + tap or click.",
-	"settings-info-editor-show-spaces": "Display visible whitespace markers.",
+	"settings-info-editor-show-spaces": "ദൃശ്യമാകുന്ന ശൂന്യസ്ഥലവും വരിമുറിയൽ അടയാളങ്ങളും കാണിക്കുക.",
 	"settings-info-editor-soft-tab": "Insert spaces instead of tab characters.",
 	"settings-info-editor-tab-size": "Set how many spaces each tab step uses.",
 	"settings-info-editor-teardrop-size": "Set the cursor handle size for touch editing.",
@@ -737,5 +738,13 @@
 	"iap-pro-purchase-warning": "ഈ വാങ്ങൽ നിങ്ങളുടെ Acode അക്കൗണ്ടുമായി സമന്വയിപ്പിക്കില്ല. നിങ്ങളുടെ വാങ്ങൽ പുനഃസ്ഥാപിക്കാൻ Play Store-ൽ അതേ Google അക്കൗണ്ട് ഉപയോഗിക്കുക.",
 	"confirm-login": "നിങ്ങൾ Acode-ൽ സൈൻ ഇൻ ചെയ്തിട്ടില്ല, ഇപ്പോൾ സൈൻ ഇൻ ചെയ്യണോ?",
 	"local word completion": "Local word completion",
-	"settings-info-editor-local-word-completion": "Suggest words from the current file."
+	"settings-info-editor-local-word-completion": "Suggest words from the current file.",
+	"terminal:failsafe": "FailSafe mode",
+	"terminal:failsafe-info": "Start terminal with system shell",
+	"auto rename tags": "Auto rename tags",
+	"settings-info-editor-auto-rename-tags": "Rename the matching opening or closing tag while editing HTML-like tags.",
+	"copying items": "Copying {count} items...",
+	"cannot paste folder into itself": "Cannot paste a folder into itself",
+	"folder already exists": "Folder already exists",
+	"file already exists force named": "'{name}' already exists. Overwrite?"
 }

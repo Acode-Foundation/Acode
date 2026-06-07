@@ -112,4 +112,30 @@ ARGS="$ARGS --sysvipc"
 ARGS="$ARGS -L"
 
 
-$PROOT $ARGS /bin/sh $PREFIX/init-alpine.sh "$@"
+FAILSAFE=false
+INSTALLING=false
+
+for arg in "$@"; do
+    case "$arg" in
+        --failsafe)
+            FAILSAFE=true
+            ;;
+        --installing)
+            INSTALLING=true
+            ;;
+    esac
+done
+
+if [ "$FAILSAFE" = true ] && [ "$INSTALLING" != true ]; then
+    echo "$$" > "$PREFIX/pid"
+
+    LINKER="/system/bin/linker64"
+    ARCH="$(uname -m)"
+    if [ "$ARCH" != "aarch64" ] && [ "$ARCH" != "x86_64" ]; then
+        LINKER="/system/bin/linker"
+    fi
+
+    exec "$LINKER" "$PREFIX/axs" -c "sh"
+else
+    exec "$PROOT" $ARGS /bin/sh "$PREFIX/init-alpine.sh" "$@"
+fi

@@ -186,7 +186,8 @@
 	"files": "Файли",
 	"help": "Довідка",
 	"file has been deleted": "{file} видалено!",
-	"feature not available": "Ця функція доступна лише в платній версії програми.",
+	"feature not available": "Ця функція недоступна.",
+	"feature available in paid version": "Ця функція доступна лише в платній версії програми.",
 	"deleted file": "Видалений файл",
 	"line height": "Висота рядка",
 	"preview info": "Якщо ви хочете запустити активний файл, натисніть й утримуйте піктограму відтворення.",
@@ -659,7 +660,7 @@
 	"settings-info-editor-rtl-text": "Switch right-to-left behavior per line.",
 	"settings-info-editor-scroll-settings": "Adjust scrollbar size, speed, and gesture behavior.",
 	"settings-info-editor-shift-click-selection": "Extend selection with Shift + tap or click.",
-	"settings-info-editor-show-spaces": "Display visible whitespace markers.",
+	"settings-info-editor-show-spaces": "Показувати видимі позначки пробілів і розривів рядків.",
 	"settings-info-editor-soft-tab": "Insert spaces instead of tab characters.",
 	"settings-info-editor-tab-size": "Set how many spaces each tab step uses.",
 	"settings-info-editor-teardrop-size": "Set the cursor handle size for touch editing.",
@@ -737,5 +738,13 @@
 	"iap-pro-purchase-warning": "Ця покупка не буде синхронізована з вашим обліковим записом Acode. Використовуйте той самий обліковий запис Google у Play Store для відновлення покупки.",
 	"confirm-login": "Ви не ввійшли в Acode, увійти зараз?",
 	"local word completion": "Local word completion",
-	"settings-info-editor-local-word-completion": "Suggest words from the current file."
+	"settings-info-editor-local-word-completion": "Suggest words from the current file.",
+	"terminal:failsafe": "FailSafe mode",
+	"terminal:failsafe-info": "Start terminal with system shell",
+	"auto rename tags": "Auto rename tags",
+	"settings-info-editor-auto-rename-tags": "Rename the matching opening or closing tag while editing HTML-like tags.",
+	"copying items": "Copying {count} items...",
+	"cannot paste folder into itself": "Cannot paste a folder into itself",
+	"folder already exists": "Folder already exists",
+	"file already exists force named": "'{name}' already exists. Overwrite?"
 }

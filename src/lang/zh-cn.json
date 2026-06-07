@@ -186,7 +186,8 @@
 	"files": "打开文件",
 	"help": "帮助",
 	"file has been deleted": "{file} 已被删除!",
-	"feature not available": "此功能仅在付费版中可用。",
+	"feature not available": "此功能不可用。",
+	"feature available in paid version": "此功能仅在付费版中可用。",
 	"deleted file": "删除的文件",
 	"line height": "行高",
 	"preview info": "如果想要运行打开的文件，长按 ▶ 图标",
@@ -659,7 +660,7 @@
 	"settings-info-editor-rtl-text": "按行切换从右到左文本行为。",
 	"settings-info-editor-scroll-settings": "调整滚动条大小、速度和手势行为。",
 	"settings-info-editor-shift-click-selection": "使用 Shift + 点击扩展选区。",
-	"settings-info-editor-show-spaces": "显示空白字符标记。",
+	"settings-info-editor-show-spaces": "显示可见的空白字符和换行标记。",
 	"settings-info-editor-soft-tab": "使用空格代替 Tab 字符。",
 	"settings-info-editor-tab-size": "设置 Tab 等效空格数。",
 	"settings-info-editor-teardrop-size": "设置触控编辑的光标拖动手柄大小。",
@@ -737,5 +738,13 @@
 	"iap-pro-purchase-warning": "此购买不会同步到您的 Acode 账户。请在 Play 商店中使用相同的 Google 账户来恢复您的购买。",
 	"confirm-login": "您尚未登录 Acode，立即登录？",
 	"local word completion": "Local word completion",
-	"settings-info-editor-local-word-completion": "Suggest words from the current file."
+	"settings-info-editor-local-word-completion": "Suggest words from the current file.",
+	"terminal:failsafe": "FailSafe mode",
+	"terminal:failsafe-info": "Start terminal with system shell",
+	"auto rename tags": "Auto rename tags",
+	"settings-info-editor-auto-rename-tags": "Rename the matching opening or closing tag while editing HTML-like tags.",
+	"copying items": "Copying {count} items...",
+	"cannot paste folder into itself": "Cannot paste a folder into itself",
+	"folder already exists": "Folder already exists",
+	"file already exists force named": "'{name}' already exists. Overwrite?"
 }
