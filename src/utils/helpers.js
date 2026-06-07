@@ -292,7 +292,11 @@ export default {
 	},
 	async showInterstitialIfReady() {
 		if (!this.canShowAds()) return false;
-		if (await window.iad?.isLoaded()) {
+		if (
+			typeof window.iad?.isLoaded === "function" &&
+			typeof window.iad?.show === "function" &&
+			(await window.iad.isLoaded())
+		) {
 			window.iad.show();
 			return true;
 		}
@@ -303,7 +307,11 @@ export default {
 	 */
 	showAd() {
 		const { ad } = window;
-		if (this.canShowAds() && innerHeight * devicePixelRatio > 600 && ad) {
+		if (
+			this.canShowAds() &&
+			innerHeight * devicePixelRatio > 600 &&
+			typeof ad?.show === "function"
+		) {
 			const $page = tag.getAll("wc-page:not(#root)").pop();
 			if ($page) {
 				ad.active = true;

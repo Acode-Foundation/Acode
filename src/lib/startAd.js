@@ -7,7 +7,7 @@ let adUnitIdRewarded = "ca-app-pub-5911839694379275/1633667633"; // Production
 let initialized = false;
 
 export default async function startAd() {
-	if (config.HAS_PRO || !admob) return;
+	if (config.HAS_PRO || typeof admob === "undefined") return;
 
 	if (!initialized) {
 		initialized = true;
@@ -68,7 +68,7 @@ export default async function startAd() {
  */
 export function hideAd(force = false) {
 	const { ad } = window;
-	if (ad?.active) {
+	if (ad?.active && typeof ad.hide === "function") {
 		const $pages = tag.getAll(".page-replacement");
 		const hide = $pages.length === 1;
 

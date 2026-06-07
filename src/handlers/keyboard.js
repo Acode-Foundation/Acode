@@ -202,9 +202,13 @@ function focusBlurEditor(keyboardHidden) {
 function showHideAd(keyboardHidden) {
 	const bannerIsActive = !!window.ad?.active;
 
-	if (!keyboardHidden && bannerIsActive) {
-		window.ad?.hide();
-	} else if (bannerIsActive) {
-		window.ad?.show();
+	if (
+		!keyboardHidden &&
+		bannerIsActive &&
+		typeof window.ad?.hide === "function"
+	) {
+		window.ad.hide();
+	} else if (bannerIsActive && typeof window.ad?.show === "function") {
+		window.ad.show();
 	}
 }
