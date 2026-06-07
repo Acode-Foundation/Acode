@@ -121,7 +121,7 @@ export async function loadPluginWithTimeout(pluginId, justInstalled = false) {
 		})
 		.then(async () => {
 			pluginState.settled = true;
-			await markPluginLoaded(pluginId);
+			await markPluginLoaded(pluginId, justInstalled);
 		});
 
 	try {
@@ -147,7 +147,7 @@ export async function loadPluginWithTimeout(pluginId, justInstalled = false) {
 	}
 }
 
-async function markPluginLoaded(pluginId) {
+async function markPluginLoaded(pluginId, justInstalled = false) {
 	LOADED_PLUGINS.add(pluginId);
 	acode[onPluginLoadCallback](pluginId);
 
@@ -156,7 +156,7 @@ async function markPluginLoaded(pluginId) {
 		BROKEN_PLUGINS.delete(pluginId);
 	}
 
-	if (AUTO_DISABLED_PLUGINS.has(pluginId)) {
+	if (justInstalled || AUTO_DISABLED_PLUGINS.has(pluginId)) {
 		AUTO_DISABLED_PLUGINS.delete(pluginId);
 		await updatePluginDisabled(pluginId, false);
 	}
