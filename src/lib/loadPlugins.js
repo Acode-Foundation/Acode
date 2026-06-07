@@ -194,6 +194,7 @@ function updatePluginDisabled(pluginId, disabled) {
 		.catch(() => {})
 		.then(async () => {
 			const disabledMap = { ...(settings.value.pluginsDisabled || {}) };
+			if (!disabled && !(pluginId in disabledMap)) return;
 			if (disabledMap[pluginId] === disabled) return;
 
 			if (disabled) {
