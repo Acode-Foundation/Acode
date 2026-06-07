@@ -97,37 +97,10 @@ export default async function loadPlugins(loadOnlyTheme = false) {
 			}
 		}
 
-		const pluginState = { settled: false };
-
 		try {
-			const pluginLoadPromise = loadPlugin(pluginId)
-				.catch(async (error) => {
-					pluginState.settled = true;
-					await markPluginBroken(pluginId, error);
-					throw error;
-				})
-				.then(async () => {
-					pluginState.settled = true;
-					await markPluginLoaded(pluginId);
-				});
-
-			// Let app startup continue if a plugin is slow, but keep loading it in
-			// the background so good plugins on slower devices can still recover.
-			await Promise.race([
-				pluginLoadPromise,
-				new Promise((_, rej) =>
-					setTimeout(
-						() => rej(new PluginLoadTimeoutError()),
-						PLUGIN_LOAD_TIMEOUT,
-					),
-				),
-			]);
-			results.push(true);
+			results.push(await loadPluginWithTimeout(pluginId));
 		} catch (error) {
 			console.error(`Error loading plugin ${pluginId}:`, error);
-			if (error instanceof PluginLoadTimeoutError) {
-				markPluginTimedOut(pluginId, pluginState);
-			}
 			results.push(false);
 		}
 	});
@@ -136,6 +109,42 @@ export default async function loadPlugins(loadOnlyTheme = false) {
 
 	acode[onPluginsLoadCompleteCallback]();
 	return results.filter(Boolean).length;
+}
+
+export async function loadPluginWithTimeout(pluginId, justInstalled = false) {
+	const pluginState = { settled: false };
+	const pluginLoadPromise = loadPlugin(pluginId, justInstalled)
+		.catch(async (error) => {
+			pluginState.settled = true;
+			await markPluginBroken(pluginId, error);
+			throw error;
+		})
+		.then(async () => {
+			pluginState.settled = true;
+			await markPluginLoaded(pluginId);
+		});
+
+	try {
+		// Let app startup continue if a plugin is slow, but keep loading it in
+		// the background so good plugins on slower devices can still recover.
+		await Promise.race([
+			pluginLoadPromise,
+			new Promise((_, rej) =>
+				setTimeout(
+					() => rej(new PluginLoadTimeoutError()),
+					PLUGIN_LOAD_TIMEOUT,
+				),
+			),
+		]);
+		return true;
+	} catch (error) {
+		if (error instanceof PluginLoadTimeoutError) {
+			markPluginTimedOut(pluginId, pluginState);
+			return false;
+		}
+
+		throw error;
+	}
 }
 
 async function markPluginLoaded(pluginId) {
