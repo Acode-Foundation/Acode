@@ -583,9 +583,18 @@ export default {
 		return false;
 	},
 
+	isIapAvailable() {
+		return (
+			typeof iap !== "undefined" &&
+			typeof iap.isIapAvailable === "function" &&
+			iap.isIapAvailable()
+		);
+	},
+
 	shouldAllowExternalPurchase() {
 		return (
-			!iap.isIapAvailable() && window.appInstallSource !== "com.android.vending"
+			!this.isIapAvailable() &&
+			window.appInstallSource !== "com.android.vending"
 		);
 	},
 };

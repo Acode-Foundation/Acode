@@ -661,7 +661,7 @@ export default function PluginsInclude(updates) {
 		$list.owned.setAttribute("empty-msg", strings["loading..."]);
 
 		let iapPurchases = [];
-		if (iap.isIapAvailable()) {
+		if (helpers.isIapAvailable()) {
 			iapPurchases = await helpers.promisify(iap.getPurchases);
 			const disabledMap = settings.value.pluginsDisabled || {};
 
