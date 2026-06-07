@@ -676,8 +676,11 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		}
 
 		function isInsideDirectory(sourceUrl, targetUrl) {
-			const source = Url.parse(sourceUrl).url;
-			const target = Url.parse(targetUrl).url;
+			let source = Url.parse(sourceUrl).url;
+			let target = Url.parse(targetUrl).url;
+
+			if (source.endsWith("/")) source = source.slice(0, -1);
+			if (target.endsWith("/")) target = target.slice(0, -1);
 
 			return (
 				source === target ||
