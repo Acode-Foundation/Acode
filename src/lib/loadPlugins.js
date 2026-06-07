@@ -185,6 +185,8 @@ function markPluginTimedOut(pluginId, pluginState) {
 			await markPluginBroken(pluginId, new Error("Plugin load timeout"));
 		} catch (error) {
 			console.error(`Failed to disable timed out plugin ${pluginId}:`, error);
+			window.log("error", `Failed to disable timed out plugin ${pluginId}:`)
+			window.log("error", error)
 		}
 	}, PLUGIN_DISABLE_TIMEOUT - PLUGIN_LOAD_TIMEOUT);
 }
@@ -208,6 +210,8 @@ function updatePluginDisabled(pluginId, disabled) {
 
 	pluginDisabledUpdateQueue = updatePromise.catch((error) => {
 		console.error("Failed to update plugin disabled state:", error);
+		window.log("error", `Failed to update plugin (ID: ${pluginId}) disabled state:`)
+		window.log("error", error)
 	});
 
 	return updatePromise;
