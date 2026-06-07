@@ -743,8 +743,8 @@
 	"terminal:failsafe-info": "Terminál indítása a rendszerhéjjal",
 	"auto rename tags": "Címkék automatikus átnevezése",
 	"settings-info-editor-auto-rename-tags": "A páros nyitó vagy záró címke automatikus átnevezése HTML-szerű címkék szerkesztése közben.",
-	"copying items": "Copying {count} items...",
-	"cannot paste folder into itself": "Cannot paste a folder into itself",
-	"folder already exists": "Folder already exists",
-	"file already exists force named": "'{name}' already exists. Overwrite?"
+	"copying items": "{count} elem másolása…",
+	"cannot paste folder into itself": "A mappa nem másolható önmagába",
+	"folder already exists": "A mappa már létezik",
+	"file already exists force named": "A(z) „{name}” nevű fájl már létezik. Felülírja?"
 }
