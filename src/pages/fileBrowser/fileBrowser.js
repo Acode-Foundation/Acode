@@ -67,7 +67,9 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 	if (!Array.isArray(storageList)) storageList = [];
 
 	let isSelectionMode = false;
+	let isPasting = false;
 	let selectedItems = new Set();
+	let copiedItems = [];
 
 	if (!info) {
 		if (mode !== "both") {
@@ -96,6 +98,9 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				className="icon text_format"
 				data-action="toggle-selection-mode"
 			></span>
+		);
+		const $pasteToggler = (
+			<span className="icon paste" data-action="paste-selection"></span>
 		);
 
 		const $search = <span className="icon search" data-action="search"></span>;
@@ -130,6 +135,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		const $selectionMenu = Contextmenu({
 			innerHTML: () => {
 				return `
+        <li action="copy">${strings.copy.capitalize(0)}</li>
         <li action="compress">${strings.compress.capitalize(0)}</li>
         <li action="delete">${strings.delete.capitalize(0)}</li>
         `;
@@ -150,6 +156,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		});
 
 		$selectionMenuToggler.style.display = "none";
+		$pasteToggler.style.display = "none";
 		const progress = {};
 		let cachedDir = {};
 		let currentDir = {
@@ -171,6 +178,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		$page.body = $content;
 		$page.header.append(
 			$search,
+			$pasteToggler,
 			$selectionModeToggler,
 			$addMenuToggler,
 			$menuToggler,
@@ -210,6 +218,8 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			isSelectionMode = !isSelectionMode;
 			toggleSelectionMode(isSelectionMode);
 		};
+
+		$pasteToggler.onclick = pasteCopiedItems;
 
 		$fbMenu.onclick = function (e) {
 			$fbMenu.hide();
@@ -353,6 +363,18 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			if (!action) return;
 
 			switch (action) {
+				case "copy":
+					if (currentDir.url === "/" || !selectedItems.size) {
+						break;
+					}
+
+					copiedItems = Array.from(selectedItems);
+					toast(strings.success);
+					isSelectionMode = false;
+					toggleSelectionMode(false);
+					updatePasteToggler();
+					break;
+
 				case "compress":
 					if (currentDir.url === "/") {
 						break;
@@ -541,6 +563,132 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			}
 		}
 
+		function updatePasteToggler() {
+			$pasteToggler.style.display =
+				copiedItems.length &&
+				currentDir.url !== "/" &&
+				!isSelectionMode &&
+				!isPasting
+					? ""
+					: "none";
+		}
+
+		async function pasteCopiedItems() {
+			if (isPasting || !copiedItems.length || currentDir.url === "/") return;
+
+			isPasting = true;
+			updatePasteToggler();
+
+			const targetDirUrl = currentDir.url;
+			const loadingDialog = loader.create(
+				strings.loading,
+				strings["copying items"]?.replace("{count}", copiedItems.length) ||
+					`Copying ${copiedItems.length} items...`,
+			);
+
+			let copiedCount = 0;
+
+			try {
+				for (const url of copiedItems) {
+					const fs = fsOperation(url);
+					const stat = await fs.stat();
+					const name = stat.name || Url.basename(url);
+					const possibleConflictUrl = Url.join(targetDirUrl, name);
+
+					if (stat.isDirectory && isInsideDirectory(url, targetDirUrl)) {
+						alert(
+							strings.warning,
+							strings["cannot paste folder into itself"] ||
+								"Cannot paste a folder into itself",
+						);
+						continue;
+					}
+
+					const doesExist = await fsOperation(possibleConflictUrl).exists();
+					if (doesExist) {
+						if (Url.areSame(url, possibleConflictUrl)) {
+							continue;
+						}
+
+						const targetStat = await fsOperation(possibleConflictUrl).stat();
+						if (stat.isDirectory || targetStat.isDirectory) {
+							alert(
+								strings.warning,
+								strings["folder already exists"] || "Folder already exists",
+							);
+							continue;
+						}
+
+						const confirmation = await confirm(
+							strings.warning,
+							strings["file already exists force named"]
+								? strings["file already exists force named"].replace(
+										"{name}",
+										name,
+									)
+								: `"${name}" already exists in this location.`,
+						);
+						if (!confirmation) continue;
+
+						await fsOperation(possibleConflictUrl).delete();
+					}
+
+					await copyEntry(url, targetDirUrl, name, stat);
+					copiedCount++;
+				}
+			} catch (err) {
+				helpers.error(err);
+			} finally {
+				if (copiedCount) {
+					toast(strings.success);
+					reload();
+				}
+				loadingDialog.destroy();
+				isPasting = false;
+				updatePasteToggler();
+			}
+		}
+
+		async function copyEntry(sourceUrl, targetDirUrl, name, sourceStat) {
+			const fs = fsOperation(sourceUrl);
+			const stat = sourceStat || (await fs.stat());
+			const entryName = name || stat.name || Url.basename(sourceUrl);
+
+			if (stat.isDirectory) {
+				const newDirUrl =
+					await fsOperation(targetDirUrl).createDirectory(entryName);
+				const entries = await fs.lsDir();
+
+				for (const entry of entries) {
+					await copyEntry(
+						entry.url,
+						newDirUrl,
+						entry.name || Url.basename(entry.url),
+						entry,
+					);
+				}
+
+				return newDirUrl;
+			}
+
+			const content = await fs.readFile();
+			return fsOperation(targetDirUrl).createFile(entryName, content);
+		}
+
+		function isInsideDirectory(sourceUrl, targetUrl) {
+			let source = Url.parse(sourceUrl).url;
+			let target = Url.parse(targetUrl).url;
+
+			if (source.endsWith("/")) source = source.slice(0, -1);
+			if (target.endsWith("/")) target = target.slice(0, -1);
+
+			return (
+				source === target ||
+				target.startsWith(source + "/") ||
+				target.startsWith(source + "\\")
+			);
+		}
+
 		function toggleSelectionMode(active) {
 			const $list = $content.get("#list");
 			if (active) {
@@ -597,6 +745,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				$addMenuToggler.style.display = "none";
 				$menuToggler.style.display = "none";
 				$selectionMenuToggler.style.display = "";
+				updatePasteToggler();
 
 				// Disable floating button in selection mode
 				if ($openFolder) {
@@ -611,6 +760,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				$addMenuToggler.style.display = "";
 				$menuToggler.style.display = "";
 				$selectionMenuToggler.style.display = "none";
+				updatePasteToggler();
 
 				// Re-enable floating button when exiting selection mode
 				if ($openFolder) {
@@ -1473,6 +1623,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 			currentDir = dir;
 			cachedDir[dir.url] = dir;
+			updatePasteToggler();
 		}
 
 		function reload() {

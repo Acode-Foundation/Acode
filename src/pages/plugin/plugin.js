@@ -177,7 +177,7 @@ export default async function PluginInclude(
 					);
 
 					if (
-						iap.isIapAvailable() &&
+						helpers.isIapAvailable() &&
 						!purchased &&
 						(await helpers.checkAPIStatus())
 					) {
