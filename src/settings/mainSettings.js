@@ -189,7 +189,7 @@ export default function mainSettings() {
 	if (Array.isArray(cachedPromotions) && cachedPromotions.length) {
 		categories.promotions = strings["settings-category-discover-apps"];
 		cachedPromotions.forEach((promo) => {
-			if (!promo.url || !promo.label) return;
+			if (!promo.url || !promo.label || !/^https?:\/\//.test(promo.url)) return;
 			items.push({
 				key: `promo-${encodeURIComponent(promo.url)}`,
 				text: promo.label,

@@ -408,7 +408,7 @@ async function fetchPromotions() {
 		const res = await fetch(`${config.API_BASE}/promotions`);
 		if (res.ok) {
 			const data = await res.json();
-			if (Array.isArray(data) && data.length) {
+			if (Array.isArray(data)) {
 				localStorage.setItem("cached_promotions", JSON.stringify(data));
 			}
 		}
