@@ -595,7 +595,7 @@
 	"lsp-version-line": "版本：{version}",
 	"lsp-view-initialization-options": "查看初始化選項",
 	"settings-category-about-acode": "關於 Acode",
-  "settings-category-discover-apps": "發現更多應用程式",
+	"settings-category-discover-apps": "發現更多應用程式",
 	"settings-category-advanced": "高級",
 	"settings-category-assistance": "輔助",
 	"settings-category-core": "核心設置",
