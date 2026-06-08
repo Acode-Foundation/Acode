@@ -295,7 +295,10 @@ async function loadFont(name) {
 	// with the locally-cached version, or append if not yet present
 	if ($style.textContent.includes(`font-family: '${name}'`)) {
 		$style.textContent = $style.textContent.replace(
-			new RegExp(`@font-face\\s*\\{[^}]*font-family:\\s*'${name}'[^}]*\\}`, "g"),
+			new RegExp(
+				`@font-face\\s*\\{[^}]*font-family:\\s*'${name}'[^}]*\\}`,
+				"g",
+			),
 			css,
 		);
 	} else {
