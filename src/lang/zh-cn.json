@@ -595,6 +595,7 @@
 	"lsp-version-line": "版本：{version}",
 	"lsp-view-initialization-options": "查看初始化选项",
 	"settings-category-about-acode": "关于 Acode",
+  "settings-category-discover-apps": "发现更多应用",
 	"settings-category-advanced": "高级",
 	"settings-category-assistance": "辅助",
 	"settings-category-core": "核心设置",

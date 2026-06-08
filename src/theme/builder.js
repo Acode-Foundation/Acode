@@ -12,6 +12,7 @@ export default class ThemeBuilder {
 		"--button-background-color": "rgb(51, 153, 255)",
 		"--button-text-color": "rgb(255, 255, 255)",
 		"--error-text-color": "rgb(255, 185, 92)",
+		"--success-text-color": "rgb(22, 152, 44)",
 		"--primary-color": "rgb(153, 153, 255)",
 		"--primary-text-color": "rgb(255, 255, 255)",
 		"--secondary-color": "rgb(255, 255, 255)",
@@ -122,6 +123,14 @@ export default class ThemeBuilder {
 
 	set errorTextColor(value) {
 		this.#theme["--error-text-color"] = value;
+	}
+
+	get successTextColor() {
+		return this.#theme["--success-text-color"];
+	}
+
+	set successTextColor(value) {
+		this.#theme["--success-text-color"] = value;
 	}
 
 	get primaryColor() {

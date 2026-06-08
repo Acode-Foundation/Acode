@@ -1,11 +1,13 @@
 @font-face {
   font-family: "code-editor-icon";
-  src: url("icons.ttf?v2") format("truetype");
+  src: url("icons.ttf?v3") format("truetype");
   font-weight: normal;
   font-style: normal;
   font-display: block;
 }
-.icon {
+.icon,
+[class^="icon-"],
+[class*=" icon-"] {
   /* Use !important to prevent extensions from overriding this font. */
   font-family: "code-editor-icon" !important;
   font-style: normal;
@@ -17,6 +19,12 @@
   /* Better Font Rendering =========== */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+.icon.like:before {
+  content: "\f2df";
+}
+.icon.like-solid:before {
+  content: "\f576";
 }
 .icon.text-search:before {
   content: "\f02a";
@@ -224,116 +232,90 @@
 }
 .icon.android:before {
   content: "\e92e";
-  color: #a4c639;
 }
 .icon.angular:before {
   content: "\e92f";
-  color: #dd0031;
 }
 .icon.css3:before {
   content: "\e930";
-  color: #1572b6;
 }
 .icon.dev-dot-to:before {
   content: "\e931";
 }
 .icon.facebook:before {
   content: "\e932";
-  color: #4172b8;
 }
 .icon.git:before {
   content: "\e933";
-  color: #f05032;
 }
 .icon.github:before {
   content: "\e934";
 }
 .icon.gmail:before {
   content: "\e935";
-  color: #d14836;
 }
 .icon.googlechrome:before {
   content: "\e936";
-  color: #4285f4;
 }
 .icon.googledrive:before {
   content: "\e937";
-  color: #4285f4;
 }
 .icon.googleplay:before {
   content: "\e938";
-  color: #607d8b;
 }
 .icon.html5:before {
   content: "\e939";
-  color: #e34f26;
 }
 .icon.instagram:before {
   content: "\e93a";
-  color: #e4405f;
 }
 .icon.ionic:before {
   content: "\e93b";
-  color: #3880ff;
 }
 .icon.javascript:before {
   content: "\e93c";
-  color: #f7df1e;
 }
 .icon.jekyll:before {
   content: "\e93d";
-  color: #c00;
 }
 .icon.linkedin:before {
   content: "\e93e";
-  color: #0077b5;
 }
 .icon.markdown:before {
   content: "\e93f";
 }
 .icon.npm:before {
   content: "\e940";
-  color: #cb3837;
 }
 .icon.python:before {
   content: "\e941";
-  color: #3776ab;
 }
 .icon.react:before {
   content: "\e942";
-  color: #61dafb;
 }
 .icon.stackexchange:before {
   content: "\e943";
-  color: #1e5397;
 }
 .icon.stackoverflow:before {
   content: "\e944";
-  color: #fe7a16;
 }
 .icon.telegram:before {
   content: "\e945";
-  color: #2ca5e0;
 }
 .icon.twitter:before {
   content: "\e946";
-  color: #1da1f2;
 }
 .icon.visualstudiocode:before {
   content: "\e947";
-  color: #007acc;
 }
 .icon.webpack:before {
   content: "\e948";
-  color: #8dd6f9;
 }
 .icon.yarn:before {
   content: "\e949";
-  color: #2c8ebb;
 }
 .icon.youtube:before {
   content: "\e94a";
-  color: #f00;
 }
 .icon.error:before {
   content: "\e94b";
@@ -874,11 +856,9 @@
 }
 .icon.vue:before {
   content: "\e9fe";
-  color: #4fc08d;
 }
 .icon.angularuniversal:before {
   content: "\e9ff";
-  color: #00acc1;
 }
 .icon.linkinsert_link:before {
   content: "\ea00";
@@ -921,19 +901,15 @@
 }
 .icon.acode:before {
   content: "\ea0d";
-  color: #3499fe;
 }
 .icon.patreon:before {
   content: "\ea0f";
-  color: #f96854;
 }
 .icon.paypal:before {
   content: "\ea10";
-  color: #00457c;
 }
 .icon.ruby:before {
   content: "\ea11";
-  color: #cc342d;
 }
 .icon.font_download:before {
   content: "\ea12";

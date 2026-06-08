@@ -595,6 +595,7 @@
 	"lsp-version-line": "Versi: {version}",
 	"lsp-view-initialization-options": "Lihat opsi inisiasi",
 	"settings-category-about-acode": "Tentang Acode",
+  "settings-category-discover-apps": "Temukan lebih banyak aplikasi",
 	"settings-category-advanced": "Lanjutan",
 	"settings-category-assistance": "Asisten",
 	"settings-category-core": "Pengaturan inti",

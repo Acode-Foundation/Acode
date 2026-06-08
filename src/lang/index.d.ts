@@ -617,6 +617,7 @@ declare type LangStrings = {
   "lsp-view-initialization-options": string;
   "settings-category-about-acode": string;
   "settings-category-advanced": string;
+  "settings-category-discover-apps": string;
   "settings-category-assistance": string;
   "settings-category-core": string;
   "settings-category-cursor": string;

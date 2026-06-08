@@ -182,6 +182,25 @@ export default function mainSettings() {
 		});
 	}
 
+	// Add promotion items from cached data
+	const cachedPromotions = helpers.parseJSON(
+		localStorage.getItem("cached_promotions"),
+	);
+	if (Array.isArray(cachedPromotions) && cachedPromotions.length) {
+		categories.promotions = strings["settings-category-discover-apps"];
+		cachedPromotions.forEach((promo) => {
+			if (!promo.url || !promo.label) return;
+			items.push({
+				key: `promo-${encodeURIComponent(promo.url)}`,
+				text: promo.label,
+				image: typeof promo.icon === "string" ? promo.icon : null,
+				info: typeof promo.link_text === "string" ? promo.link_text : "",
+				link: promo.url,
+				category: categories.promotions,
+			});
+		});
+	}
+
 	/**
 	 * Callback for settings page for handling click event
 	 * @this {HTMLElement}

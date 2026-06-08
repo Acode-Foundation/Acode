@@ -317,6 +317,8 @@ async function onDeviceReady() {
 				console.error("Error checking login status:", error);
 				toast("Error checking login status");
 			}
+
+			fetchPromotions();
 		}, 500);
 	}
 
@@ -339,9 +341,17 @@ async function onDeviceReady() {
 					.map(Number);
 				const currentVersion = BuildInfo.version.split(".").map(Number);
 
-				const hasUpdate = latestVersion.some(
-					(num, i) => num > currentVersion[i],
-				);
+				let hasUpdate = false;
+				for (let i = 0; i < latestVersion.length; i++) {
+					const latest = latestVersion[i];
+					const current = currentVersion[i] || 0;
+					if (latest > current) {
+						hasUpdate = true;
+						break;
+					} else if (latest < current) {
+						break;
+					}
+				}
 
 				if (hasUpdate) {
 					acode.pushNotification(
@@ -390,6 +400,20 @@ async function onLogin() {
 		}
 	} catch (error) {
 		console.error(error);
+	}
+}
+
+async function fetchPromotions() {
+	try {
+		const res = await fetch(`${config.API_BASE}/promotions`);
+		if (res.ok) {
+			const data = await res.json();
+			if (Array.isArray(data) && data.length) {
+				localStorage.setItem("cached_promotions", JSON.stringify(data));
+			}
+		}
+	} catch (err) {
+		console.debug("Failed to fetch promotions:", err);
 	}
 }
 

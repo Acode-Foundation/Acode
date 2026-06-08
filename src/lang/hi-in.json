@@ -595,6 +595,7 @@
 	"lsp-version-line": "वर्ज़न: {version}",
 	"lsp-view-initialization-options": "इनिशियलाइज़ेशन विकल्प देखें",
 	"settings-category-about-acode": "Acode के बारे में",
+  "settings-category-discover-apps": "और ऐप्स खोजें",
 	"settings-category-advanced": "एडवांस्ड",
 	"settings-category-assistance": "सहायता",
 	"settings-category-core": "मुख्य सेटिंग्स",

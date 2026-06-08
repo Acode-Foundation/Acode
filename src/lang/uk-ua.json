@@ -595,6 +595,7 @@
 	"lsp-version-line": "Версія: {version}",
 	"lsp-view-initialization-options": "View initialization options",
 	"settings-category-about-acode": "Про Acode",
+  "settings-category-discover-apps": "Відкрийте більше застосунків",
 	"settings-category-advanced": "Розширений",
 	"settings-category-assistance": "Assistance",
 	"settings-category-core": "Core settings",

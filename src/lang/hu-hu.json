@@ -595,6 +595,7 @@
 	"lsp-version-line": "Verzió: {version}",
 	"lsp-view-initialization-options": "Előkészítési beállítások megtekintése",
 	"settings-category-about-acode": "Az Acode névjegye",
+  "settings-category-discover-apps": "Fedezz fel további alkalmazásokat",
 	"settings-category-advanced": "Speciális",
 	"settings-category-assistance": "Segítségnyújtás",
 	"settings-category-core": "Alapvető beállítások",

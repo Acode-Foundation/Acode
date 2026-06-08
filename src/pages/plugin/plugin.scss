@@ -120,24 +120,16 @@
           }
 
           .rating-value {
-            padding: 2px 8px;
             border-radius: 12px;
             font-weight: 600;
           }
 
           .rating-high {
-            background: var(--link-text-color);
-            color: #0a3600;
-          }
-
-          .rating-medium {
-            background: #f0a500;
-            color: #3d2800;
+            color: var(--success-text-color);
           }
 
           .rating-low {
-            background: var(--error-text-color);
-            color: #fff;
+            color: var(--danger-color);
           }
         }
       }
