@@ -567,12 +567,14 @@ export default class TerminalComponent {
 			// First render pass: schedule a fit + focus once the frame is ready
 			if (typeof requestAnimationFrame === "function") {
 				requestAnimationFrame(() => {
+					if (!this.terminal) return;
 					this.fitAddon.fit();
 					this.terminal.focus();
 					this.setupTouchSelection();
 				});
 			} else {
 				setTimeout(() => {
+					if (!this.terminal) return;
 					this.fitAddon.fit();
 					this.terminal.focus();
 					this.setupTouchSelection();

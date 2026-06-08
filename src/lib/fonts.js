@@ -291,8 +291,14 @@ async function loadFont(name) {
 		css = css.replace(url, internalUrl);
 	}
 
-	// Add font face to document if not already present
-	if (!$style.textContent.includes(`font-family: '${name}'`)) {
+	// Replace any pre-injected @font-face block (from injectFontFace)
+	// with the locally-cached version, or append if not yet present
+	if ($style.textContent.includes(`font-family: '${name}'`)) {
+		$style.textContent = $style.textContent.replace(
+			new RegExp(`@font-face\\s*\\{[^}]*font-family:\\s*'${name}'[^}]*\\}`, "g"),
+			css,
+		);
+	} else {
 		$style.textContent = `${$style.textContent}\n${css}`;
 	}
 
