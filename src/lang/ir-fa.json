@@ -443,6 +443,8 @@
 	"terminal:confirm tab close": "Confirm terminal tab close",
 	"terminal:image support": "Image support",
 	"terminal": "Terminal",
+	"terminal not installed prompt": "ترمینال نصب نشده است. آیا می‌خواهید آن را راه‌اندازی کنید؟",
+	"terminal first launch prompt": "محیط ترمینال نصب نشده است. امکان اجرای دستورات، SSH و اسکریپت را فراهم می‌کند. اکنون نصب شود؟",
 	"allFileAccess": "All file access",
 	"fonts": "Fonts",
 	"sponsor": "حامی مالی",

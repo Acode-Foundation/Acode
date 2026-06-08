@@ -443,6 +443,8 @@
 	"terminal:confirm tab close": "確認關閉終端分頁",
 	"terminal:image support": "圖像支持",
 	"terminal": "終端機",
+	"terminal not installed prompt": "終端未安裝。是否立即初始化？",
+	"terminal first launch prompt": "終端環境未安裝。它可用於運行命令、SSH 和腳本。立即安裝？",
 	"allFileAccess": "所有文件讀寫權限",
 	"fonts": "字體",
 	"sponsor": "贊助",

@@ -443,6 +443,8 @@
 	"terminal:confirm tab close": "تأكيد إغلاق تبويب الطرفية",
 	"terminal:image support": "دعم الصور",
 	"terminal": "الطرفية",
+	"terminal not installed prompt": "الطرفية غير مثبتة. هل تريد تهيئتها الآن؟",
+	"terminal first launch prompt": "بيئة الطرفية غير مثبتة. تتيح تشغيل الأوامر و SSH والبرمجة النصية. تثبيت الآن؟",
 	"allFileAccess": "الوصول لجميع الملفات",
 	"fonts": "الخطوط",
 	"sponsor": "دعم التطبيق",

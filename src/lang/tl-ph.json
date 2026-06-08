@@ -443,6 +443,8 @@
 	"terminal:confirm tab close": "Confirm terminal tab close",
 	"terminal:image support": "Image support",
 	"terminal": "Terminal",
+	"terminal not installed prompt": "Hindi naka-install ang terminal. Gusto mo ba itong simulan ngayon?",
+	"terminal first launch prompt": "Ang terminal environment ay hindi naka-install. Ito ay nagbibigay-daan sa pagpapatakbo ng mga command, SSH, at scripting. I-install ngayon?",
 	"allFileAccess": "All file access",
 	"fonts": "Fonts",
 	"sponsor": "Sponsor",

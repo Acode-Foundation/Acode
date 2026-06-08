@@ -443,6 +443,8 @@
 	"terminal:confirm tab close": "Potvrzení zavření karty terminálu",
 	"terminal:image support": "Podpora obrázků",
 	"terminal": "Terminál",
+	"terminal not installed prompt": "Terminál není nainstalován. Chcete jej nyní inicializovat?",
+	"terminal first launch prompt": "Prostředí terminálu není nainstalováno. Umožňuje spouštět příkazy, SSH a skripty. Nainstalovat nyní?",
 	"allFileAccess": "Přístup ke všem souborům",
 	"fonts": "Fonty",
 	"sponsor": "Sponzor",

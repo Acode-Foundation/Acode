@@ -443,6 +443,8 @@
 	"terminal:confirm tab close": "Confirm terminal tab close",
 	"terminal:image support": "Image support",
 	"terminal": "Терминал",
+	"terminal not installed prompt": "Терминал не установлен. Хотите инициализировать его сейчас?",
+	"terminal first launch prompt": "Среда терминала не установлена. Она позволяет выполнять команды, SSH и скрипты. Установить сейчас?",
 	"allFileAccess": "Доступ ко всем файлам",
 	"fonts": "Шрифты",
 	"sponsor": "Спонсор",

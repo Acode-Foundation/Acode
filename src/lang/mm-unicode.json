@@ -443,6 +443,8 @@
 	"terminal:confirm tab close": "Confirm terminal tab close",
 	"terminal:image support": "Image support",
 	"terminal": "Terminal",
+	"terminal not installed prompt": "Terminal ထည့်သွင်းမထားပါ။ ယခုစတင်လိုပါသလား။",
+	"terminal first launch prompt": "Terminal ပတ်ဝန်းကျင် ထည့်သွင်းမထားပါ။ ၎င်းသည် command များ၊ SSH နှင့် scripting လုပ်ဆောင်နိုင်စေပါသည်။ ယခုထည့်သွင်းမလား။",
 	"allFileAccess": "All file access",
 	"fonts": "Fonts",
 	"sponsor": "စပွန်ဆာ",

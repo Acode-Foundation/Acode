@@ -443,6 +443,8 @@
 	"terminal:confirm tab close": "Confirm terminal tab close",
 	"terminal:image support": "Image support",
 	"terminal": "Terminal",
+	"terminal not installed prompt": "Le terminal n'est pas installé. Voulez-vous l'initialiser maintenant ?",
+	"terminal first launch prompt": "L'environnement du terminal n'est pas installé. Il permet d'exécuter des commandes, SSH et des scripts. Installer maintenant ?",
 	"allFileAccess": "All file access",
 	"fonts": "Fonts",
 	"sponsor": "Parrainer",

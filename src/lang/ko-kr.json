@@ -443,6 +443,8 @@
 	"terminal:confirm tab close": "Confirm terminal tab close",
 	"terminal:image support": "Image support",
 	"terminal": "Terminal",
+	"terminal not installed prompt": "터미널이 설치되지 않았습니다. 지금 초기화하시겠습니까?",
+	"terminal first launch prompt": "터미널 환경이 설치되지 않았습니다. 명령, SSH, 스크립팅을 실행할 수 있습니다. 지금 설치하시겠습니까?",
 	"allFileAccess": "All file access",
 	"fonts": "Fonts",
 	"sponsor": "스폰서",

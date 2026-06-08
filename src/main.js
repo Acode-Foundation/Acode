@@ -137,8 +137,6 @@ async function onDeviceReady() {
 		);
 	});
 
-	startAd();
-
 	let installSource = INSTALL_SOURCE_PLAY;
 
 	try {
@@ -218,7 +216,10 @@ async function onDeviceReady() {
 
 	const { versionCode } = BuildInfo;
 
-	if (previousVersionCode !== versionCode) {
+	if (
+		!Number.isNaN(previousVersionCode) &&
+		previousVersionCode !== versionCode
+	) {
 		system.clearCache();
 	}
 
@@ -319,6 +320,7 @@ async function onDeviceReady() {
 			}
 
 			fetchPromotions();
+			startAd();
 		}, 500);
 	}
 
@@ -388,6 +390,9 @@ async function onDeviceReady() {
 			);
 		})
 		.catch(console.error);
+
+	// Prompt to initialize terminal if not installed and not already asked
+	promptTerminalInstall();
 }
 
 async function onLogin() {
@@ -456,14 +461,48 @@ async function promptUpdateCheckConsent() {
 			return;
 		}
 
-		const message = strings["prompt update check consent message"];
-		const shouldEnable = await confirm(strings?.confirm, message);
-		localStorage.setItem("checkForUpdatesPrompted", "true");
-		if (shouldEnable) {
+		const isPlayStore = window.appInstallSource === "com.android.vending";
+
+		if (!isPlayStore) {
+			const message = strings["prompt update check consent message"];
+			const shouldEnable = await confirm(strings?.confirm, message);
+
+			localStorage.setItem("checkForUpdatesPrompted", "true");
+			if (shouldEnable) {
+				await settings.update({ checkForAppUpdates: true }, false);
+			}
+		} else {
+			localStorage.setItem("checkForUpdatesPrompted", "true");
 			await settings.update({ checkForAppUpdates: true }, false);
 		}
 	} catch (error) {
 		console.error("Failed to prompt for update check consent", error);
+	}
+}
+
+async function promptTerminalInstall() {
+	try {
+		if (localStorage.getItem("terminalInstallPrompted")) return;
+		const isInstalled = await Terminal.isInstalled();
+		if (isInstalled) return;
+
+		const isSupported = await Terminal.isSupported();
+		if (!isSupported) return;
+
+		const shouldInstall = await confirm(
+			strings.terminal,
+			strings["terminal first launch prompt"],
+		);
+
+		localStorage.setItem("terminalInstallPrompted", "true");
+		if (shouldInstall) {
+			const { default: terminalManager } = await import(
+				"components/terminal/terminalManager"
+			);
+			terminalManager.checkAndInstallTerminal().catch(console.error);
+		}
+	} catch (e) {
+		console.warn("Terminal check failed:", e);
 	}
 }
 

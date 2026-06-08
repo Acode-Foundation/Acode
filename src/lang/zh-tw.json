@@ -443,6 +443,8 @@
 	"terminal:confirm tab close": "Confirm terminal tab close",
 	"terminal:image support": "Image support",
 	"terminal": "Terminal",
+	"terminal not installed prompt": "終端未安裝。是否立即初始化？",
+	"terminal first launch prompt": "終端環境未安裝。它可用於運行命令、SSH 和腳本。立即安裝？",
 	"allFileAccess": "All file access",
 	"fonts": "Fonts",
 	"sponsor": "贊助",

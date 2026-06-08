@@ -443,6 +443,8 @@
 	"terminal:confirm tab close": "Confirm terminal tab close",
 	"terminal:image support": "Image support",
 	"terminal": "Terminal",
+	"terminal not installed prompt": "הטרמינל לא מותקן. האם ברצונך לאתחל אותו כעת?",
+	"terminal first launch prompt": "סביבת הטרמינל לא מותקנת. היא מאפשרת הרצת פקודות, SSH וסקריפטים. להתקין כעת?",
 	"allFileAccess": "All file access",
 	"fonts": "Fonts",
 	"sponsor": "לָתֵת חָסוּת",

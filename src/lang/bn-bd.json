@@ -443,6 +443,8 @@
 	"terminal:confirm tab close": "Confirm terminal tab close",
 	"terminal:image support": "Image support",
 	"terminal": "টার্মিনাল",
+	"terminal not installed prompt": "টার্মিনাল ইনস্টল করা নেই। এখন এটি আরম্ভ করতে চান?",
+	"terminal first launch prompt": "টার্মিনাল পরিবেশ ইনস্টল করা নেই। এটি কমান্ড, SSH এবং স্ক্রিপ্টিং চালাতে সক্ষম করে। এখন ইনস্টল করবেন?",
 	"allFileAccess": "সকল ফাইল অ্যাক্সেস",
 	"fonts": "ফন্ট",
 	"sponsor": "স্পন্সর",

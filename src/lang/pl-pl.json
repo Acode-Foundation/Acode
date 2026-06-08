@@ -443,6 +443,8 @@
 	"terminal:confirm tab close": "Potwierdź zamknięcie karty terminala",
 	"terminal:image support": "Obsługa obrazów",
 	"terminal": "Terminal",
+	"terminal not installed prompt": "Terminal nie jest zainstalowany. Czy chcesz go teraz zainicjować?",
+	"terminal first launch prompt": "Środowisko terminala nie jest zainstalowane. Umożliwia uruchamianie poleceń, SSH i skryptów. Zainstalować teraz?",
 	"allFileAccess": "Dostęp do wszystkich plików",
 	"fonts": "Czcionki",
 	"sponsor": "Sponsor",

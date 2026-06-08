@@ -443,6 +443,8 @@
 	"terminal:confirm tab close": "Confirm terminal tab close",
 	"terminal:image support": "Image support",
 	"terminal": "Terminal",
+	"terminal not installed prompt": "Terminal o'rnatilmagan. Uni hozir ishga tushirishni xohlaysizmi?",
+	"terminal first launch prompt": "Terminal muhiti o'rnatilmagan. Bu buyruqlar, SSH va skriptlarni ishga tushirish imkonini beradi. Hozir o'rnatilsinmi?",
 	"allFileAccess": "All file access",
 	"fonts": "Fonts",
 	"sponsor": "Homiy",

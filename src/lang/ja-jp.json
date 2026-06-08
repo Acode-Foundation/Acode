@@ -443,6 +443,8 @@
 	"terminal:confirm tab close": "Confirm terminal tab close",
 	"terminal:image support": "Image support",
 	"terminal": "Terminal",
+	"terminal not installed prompt": "ターミナルがインストールされていません。今すぐ初期化しますか？",
+	"terminal first launch prompt": "ターミナル環境がインストールされていません。コマンド、SSH、スクリプトを実行できます。今すぐインストールしますか？",
 	"allFileAccess": "All file access",
 	"fonts": "Fonts",
 	"sponsor": "スポンサー",

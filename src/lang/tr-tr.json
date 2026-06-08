@@ -443,6 +443,8 @@
 	"terminal:confirm tab close": "Confirm terminal tab close",
 	"terminal:image support": "Image support",
 	"terminal": "Terminal",
+	"terminal not installed prompt": "Terminal kurulu değil. Şimdi başlatmak ister misiniz?",
+	"terminal first launch prompt": "Terminal ortamı kurulu değil. Komut çalıştırma, SSH ve betik yazmayı sağlar. Şimdi kur?",
 	"allFileAccess": "All file access",
 	"fonts": "Fonts",
 	"sponsor": "Sponsor",

@@ -443,6 +443,8 @@
 	"terminal:confirm tab close": "Konfirmasi penutupan tab terminal",
 	"terminal:image support": "Dukungan gambar",
 	"terminal": "Terminal",
+	"terminal not installed prompt": "Terminal belum terpasang. Ingin menginisialisasinya sekarang?",
+	"terminal first launch prompt": "Lingkungan terminal belum terpasang. Ini memungkinkan menjalankan perintah, SSH, dan skrip. Pasang sekarang?",
 	"allFileAccess": "Semua akses berkas",
 	"fonts": "Huruf",
 	"sponsor": "Sponsor",
