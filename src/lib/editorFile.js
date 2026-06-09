@@ -927,7 +927,7 @@ export default class EditorFile {
 		);
 	}
 
-	markLoaded({ mtime, isUnsaved = false } = {}) {
+	markLoaded({ mtime, isUnsaved = false, savedDoc = null } = {}) {
 		const normalizedMtime = helpers.normalizeMtime(mtime);
 		this.docVersion = isUnsaved ? 1 : 0;
 		this.savedVersion = isUnsaved ? 0 : this.docVersion;
@@ -936,7 +936,8 @@ export default class EditorFile {
 		this.diskMtime = normalizedMtime;
 		this.hasDiskConflict = false;
 		this.#hasVersionMetadata = true;
-		this.#savedDoc = isUnsaved ? null : this.#rawSession?.doc || null;
+		this.#savedDoc =
+			savedDoc || (isUnsaved ? null : this.#rawSession?.doc || null);
 		this.isUnsaved = isUnsaved || this.hasUnsavedChanges();
 	}
 
@@ -1573,9 +1574,9 @@ export default class EditorFile {
 		this.loading = true;
 		this.markChanged = false;
 		this.#emit("loadstart", createFileEvent(this));
-		this.session.setValue(strings["loading..."]);
 
-		// Immediately reflect "loading..." in the visible editor if this tab is active
+		// Immediately apply the loading read-only state without inserting placeholder
+		// text into the real document or undo history.
 		try {
 			const { activeFile, emit } = editorManager;
 			if (activeFile?.id === this.id) {
@@ -1589,6 +1590,7 @@ export default class EditorFile {
 			const cacheFs = fsOperation(this.cacheFile);
 			const cacheExists = await cacheFs.exists();
 			let loadedMtime = this.savedMtime;
+			let savedDoc = null;
 
 			if (cacheExists) {
 				value = await cacheFs.readFile(this.encoding);
@@ -1600,13 +1602,14 @@ export default class EditorFile {
 				if (!fileExists && cacheExists) {
 					this.deletedFile = true;
 					this.isUnsaved = true;
-				} else if (!cacheExists && fileExists) {
-					const stat = await file.stat().catch(() => null);
-					loadedMtime = helpers.getStatMtime(stat);
-					value = await file.readFile(this.encoding);
 				} else if (fileExists) {
 					const stat = await file.stat().catch(() => null);
 					loadedMtime = helpers.getStatMtime(stat);
+					const diskValue = await file.readFile(this.encoding);
+					savedDoc = EditorState.create({ doc: diskValue }).doc;
+					if (!cacheExists) {
+						value = diskValue;
+					}
 				} else if (!cacheExists && !fileExists) {
 					window.log("error", "unable to load file");
 					throw new Error("Unable to load file");
@@ -1615,27 +1618,27 @@ export default class EditorFile {
 
 			const isUnsaved = this.isUnsaved;
 			this.markChanged = false;
-			this.session.setValue(value);
-			this.markLoaded({ mtime: loadedMtime, isUnsaved });
+			this.session = EditorState.create({ doc: value });
+			this.__cmSessionReady = false;
+			this.markLoaded({ mtime: loadedMtime, isUnsaved, savedDoc });
 			this.markChanged = true;
 			this.loaded = true;
 			this.loading = false;
 
 			const { activeFile, emit } = editorManager;
-			if (activeFile.id === this.id) {
-				this.setReadOnly(false);
+			if (activeFile?.id === this.id) {
+				this.setReadOnly(editable === false);
+				emit("file-loaded", this);
 			}
 
 			setTimeout(() => {
 				this.#emit("load", createFileEvent(this));
-				emit("file-loaded", this);
 				if (cursorPos) {
 					restoreSelection(editor, cursorPos);
 				}
 				if (scrollTop || scrollLeft) {
 					setScrollPosition(editor, scrollTop, scrollLeft);
 				}
-				if (editable !== undefined) this.editable = editable;
 				restoreFolds(editor, folds);
 			}, 0);
 		} catch (error) {
