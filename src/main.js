@@ -499,7 +499,12 @@ async function promptTerminalInstall() {
 			const { default: terminalManager } = await import(
 				"components/terminal/terminalManager"
 			);
-			terminalManager.checkAndInstallTerminal().catch(console.error);
+			const result = await terminalManager.checkAndInstallTerminal();
+			if (!result.success || result.error) {
+				helpers.error(
+					new Error(result.error || "Terminal installation failed"),
+				);
+			}
 		}
 	} catch (e) {
 		console.warn("Terminal check failed:", e);

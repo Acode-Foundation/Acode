@@ -863,16 +863,13 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					break;
 			}
 
-			function folder() {
+			async function folder() {
 				if (home) {
 					navigateToHome();
 					return;
 				}
-				checkAndNavigate(url, name);
-			}
 
-			async function checkAndNavigate(dirUrl, dirName) {
-				if (dirUrl === `${cordova.file.dataDirectory}public`) {
+				if (url === `${cordova.file.dataDirectory}public`) {
 					try {
 						const isInstalled = await Terminal.isInstalled();
 						if (!isInstalled) {
@@ -893,6 +890,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 									}
 								} catch (error) {
 									helpers.error(error);
+									return;
 								} finally {
 									loaderInstance.destroy();
 								}
@@ -902,11 +900,11 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 						}
 					} catch (e) {
 						console.error("Terminal check failed:", e);
-						helpers.error(e, dirUrl);
+						helpers.error(e, url);
 						return;
 					}
 				}
-				navigate(dirUrl, dirName);
+				navigate(url, name);
 			}
 
 			function navigateToHome() {
