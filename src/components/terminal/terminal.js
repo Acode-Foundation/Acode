@@ -702,23 +702,25 @@ export default class TerminalComponent {
 				rows: this.terminal.rows,
 			};
 
-			const response = await fetch(
-				`http://localhost:${this.options.port}/terminals`,
-				{
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
+			const response = await new Promise((resolve, reject) => {
+				cordova.plugin.http.sendRequest(
+					`http://localhost:${this.options.port}/terminals`,
+					{
+						method: "POST",
+						responseType: "text",
+						serializer: "json",
+						data: requestBody,
 					},
-					body: JSON.stringify(requestBody),
-				},
-			);
+					(res) => resolve(res),
+					(err) => reject(new Error(err.error || `HTTP error!`)),
+				);
+			});
 
-			if (!response.ok) {
+			if (response.status < 200 || response.status >= 300) {
 				throw new Error(`HTTP error! status: ${response.status}`);
 			}
 
-			const data = await response.text();
-			this.pid = data.trim();
+			this.pid = response.data.trim();
 			return this.pid;
 		} catch (error) {
 			console.error("Failed to create terminal session:", error);
@@ -847,16 +849,18 @@ export default class TerminalComponent {
 		if (!this.pid || !this.serverMode) return;
 
 		try {
-			await fetch(
-				`http://localhost:${this.options.port}/terminals/${this.pid}/resize`,
-				{
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
+			await new Promise((resolve, reject) => {
+				cordova.plugin.http.sendRequest(
+					`http://localhost:${this.options.port}/terminals/${this.pid}/resize`,
+					{
+						method: "POST",
+						serializer: "json",
+						data: { cols, rows },
 					},
-					body: JSON.stringify({ cols, rows }),
-				},
-			);
+					(res) => resolve(res),
+					(err) => reject(err),
+				);
+			});
 		} catch (error) {
 			console.error("Failed to resize terminal:", error);
 		}
@@ -1131,12 +1135,16 @@ export default class TerminalComponent {
 
 		if (this.pid && this.serverMode) {
 			try {
-				await fetch(
-					`http://localhost:${this.options.port}/terminals/${this.pid}/terminate`,
-					{
-						method: "POST",
-					},
-				);
+				await new Promise((resolve, reject) => {
+					cordova.plugin.http.sendRequest(
+						`http://localhost:${this.options.port}/terminals/${this.pid}/terminate`,
+						{
+							method: "POST",
+						},
+						(res) => resolve(res),
+						(err) => reject(err),
+					);
+				});
 			} catch (error) {
 				console.error("Failed to terminate terminal:", error);
 			}
@@ -1189,7 +1197,7 @@ export default class TerminalComponent {
 // Internal helpers for WebGL renderer lifecycle
 TerminalComponent.prototype._handleWebglContextLoss = function () {
 	try {
-		console.warn("WebGL context lost; falling back to canvas renderer");
+		console.warn("WebGL context lost; terminal rendering will be degraded");
 		try {
 			this.webglAddon?.dispose?.();
 		} catch {}

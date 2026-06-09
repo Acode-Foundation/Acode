@@ -106,6 +106,10 @@
     line-height: 1.4;
   }
 
+  @supports not (gap: 1px) {
+    .tier-header > * + * { margin-left: 0.5rem; }
+  }
+
   .purchase-btn {
     background: var(--button-background-color);
     color: var(--button-text-color);

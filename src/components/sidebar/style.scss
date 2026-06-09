@@ -74,6 +74,11 @@ body.no-animation {
       flex-direction: column;
       align-items: center;
       gap: 4px;
+
+      @supports not (gap: 1px) {
+        > * + * { margin-top: 4px; }
+      }
+
       scrollbar-width: none;
       -ms-overflow-style: none;
 
@@ -410,4 +415,8 @@ body.no-animation {
     background-color: var(--border-color);
     margin: 4px 0;
   }
+}
+
+@supports not (gap: 1px) {
+  .user-menu-item > * + * { margin-left: 8px; }
 }

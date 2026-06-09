@@ -294,9 +294,10 @@ async function loadFont(name) {
 	// Replace any pre-injected @font-face block (from injectFontFace)
 	// with the locally-cached version, or append if not yet present
 	if ($style.textContent.includes(`font-family: '${name}'`)) {
+		let escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 		$style.textContent = $style.textContent.replace(
 			new RegExp(
-				`@font-face\\s*\\{[^}]*font-family:\\s*'${name}'[^}]*\\}`,
+				`@font-face\\s*\\{[^}]*font-family:\\s*'${escapedName}'[^}]*\\}`,
 				"g",
 			),
 			css,

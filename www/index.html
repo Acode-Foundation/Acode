@@ -1,195 +1,207 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
 
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-    />
+<head>
+  <meta charset="UTF-8" />
 
-    <style>
-      html,
-      body {
-        margin: 0;
-        background-color: #20202c; /* fallback dark */
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+  <style>
+    html,
+    body {
+      margin: 0;
+      background-color: #20202c;
+      /* fallback dark */
+    }
+
+    :root {
+      --bg-color: #20202c;
+      /* fallback splash color */
+      --test-height: 45px;
+    }
+
+    body.loading {
+      position: relative;
+    }
+
+    body.loading #splash {
+      display: block;
+    }
+
+    #splash {
+      display: none;
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      inset: 0;
+      z-index: 999999;
+
+      background-image: url("./logo.svg");
+      background-position: center;
+      background-repeat: no-repeat;
+      background-size: 180px;
+      background-color: var(--bg-color);
+
+      text-align: center;
+
+      /* Disable any possible fade */
+      animation: none !important;
+      transition: none !important;
+    }
+
+    .splash-version {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+
+      color: rgb(209, 209, 209);
+      font-size: 0.8rem;
+      white-space: pre;
+      font-family: monospace;
+      text-align: left;
+    }
+
+    .splash-message {
+      position: absolute;
+      bottom: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgb(209, 209, 209);
+      font-size: 1rem;
+      width: 90vw;
+      text-align: center;
+    }
+  </style>
+
+  <!-- Set theme color BEFORE UI renders -->
+  <script>
+    (function () {
+      var MIN_WEBVIEW_MAJOR = 67;
+      var color = localStorage.getItem("__primary_color");
+      var bg = color || "#20202c";
+
+      document.documentElement.style.setProperty("--bg-color", bg);
+      document.documentElement.style.backgroundColor = bg;
+      document.body && (document.body.style.backgroundColor = bg);
+
+      function getWebViewMajor() {
+        var match = navigator.userAgent.match(/(?:Chrome|CriOS)\/(\d+)/);
+        return match ? Number(match[1]) : 0;
       }
 
-      :root {
-        --bg-color: #20202c; /* fallback splash color */
-        --test-height: 45px;
+      var pendingStartupMessage = "";
+      var hasPendingStartupMessageListener = false;
+
+      function isStartupLoading() {
+        return !document.body || document.body.classList.contains("loading");
       }
 
-      body.loading {
-        position: relative;
+      function applyStartupMessage() {
+        hasPendingStartupMessageListener = false;
+        if (document.body && isStartupLoading()) {
+          document.body.setAttribute("data-small-msg", pendingStartupMessage);
+        }
       }
 
-      body.loading #splash {
-        display: block;
+      function setStartupMessage(message) {
+        pendingStartupMessage = message;
+
+        if (document.body) {
+          applyStartupMessage();
+        } else if (!hasPendingStartupMessageListener) {
+          hasPendingStartupMessageListener = true;
+          document.addEventListener("DOMContentLoaded", applyStartupMessage, {
+            once: true
+          });
+        }
       }
 
-      #splash {
-        display: none;
-        position: fixed;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        left: 0;
-        inset: 0;
-        z-index: 999999;
+      var hasES6 = false;
+      try {
+        hasES6 = !!new Function("return (()=>{})")();
+      } catch (e) {}
 
-        background-image: url("./logo.svg");
-        background-position: center;
-        background-repeat: no-repeat;
-        background-size: 180px;
-        background-color: var(--bg-color);
-
-        text-align: center;
-
-        /* Disable any possible fade */
-        animation: none !important;
-        transition: none !important;
+      if (!hasES6) {
+        setStartupMessage(
+          "Acode requires a modern browser. Please update Android System WebView or Chrome."
+        );
       }
 
-      .splash-version {
-        position: absolute;
-        top: 15px;
-        left: 15px;
+      window.__ACODE_WEBVIEW_MAJOR__ = getWebViewMajor();
+      window.__ACODE_MIN_WEBVIEW_MAJOR__ = MIN_WEBVIEW_MAJOR;
 
-        color: rgb(209, 209, 209);
-        font-size: 0.8rem;
-        white-space: pre;
-        font-family: monospace;
-        text-align: left;
+      if (hasES6 &&
+        window.__ACODE_WEBVIEW_MAJOR__ &&
+        window.__ACODE_WEBVIEW_MAJOR__ < MIN_WEBVIEW_MAJOR
+      ) {
+        setStartupMessage(
+          "Your Android System WebView is old. Update Android System WebView or Chrome if Acode stays on this screen."
+        );
       }
 
-      .splash-message {
-        position: absolute;
-        bottom: 15px;
-        left: 50%;
-        transform: translateX(-50%);
-        color: rgb(209, 209, 209);
-        font-size: 1rem;
-        width: 90vw;
-        text-align: center;
+      function handleStartupError(event) {
+        if (!isStartupLoading()) return;
+        var message = event && event.message ? event.message : "Startup error";
+        setStartupMessage(
+          "Acode failed to start. Update Android System WebView or Chrome. " +
+          message
+        );
       }
-    </style>
 
-    <!-- Set theme color BEFORE UI renders -->
-    <script>
-      (function () {
-        var MIN_WEBVIEW_MAJOR = 84;
-        var color = localStorage.getItem("__primary_color");
-        var bg = color || "#20202c";
+      function handleStartupRejection(event) {
+        if (!isStartupLoading()) return;
+        var reason = event && event.reason;
+        var message =
+          reason && reason.message ? reason.message : "Startup promise failed";
+        setStartupMessage(
+          "Acode failed to start. Update Android System WebView or Chrome. " +
+          message
+        );
+      }
 
-        document.documentElement.style.setProperty("--bg-color", bg);
-        document.documentElement.style.backgroundColor = bg;
-        document.body && (document.body.style.backgroundColor = bg);
+      window.addEventListener("error", handleStartupError);
+      window.addEventListener("unhandledrejection", handleStartupRejection);
+    })();
+  </script>
 
-        function getWebViewMajor() {
-          var match = navigator.userAgent.match(/(?:Chrome|CriOS)\/(\d+)/);
-          return match ? Number(match[1]) : 0;
-        }
+  <!-- Core Scripts -->
+  <script src="cordova.js"></script>
 
-        var pendingStartupMessage = "";
-        var hasPendingStartupMessageListener = false;
+  <script src="./build/boot.js"></script>
 
-        function isStartupLoading() {
-          return !document.body || document.body.classList.contains("loading");
-        }
+  <title>Acode</title>
+</head>
 
-        function applyStartupMessage() {
-          hasPendingStartupMessageListener = false;
-          if (document.body && isStartupLoading()) {
-            document.body.setAttribute("data-small-msg", pendingStartupMessage);
-          }
-        }
+<body class="loading" data-version="" data-small-msg="">
+  <div id="splash">
+    <div class="splash-version"></div>
+    <div class="splash-message"></div>
+  </div>
 
-        function setStartupMessage(message) {
-          pendingStartupMessage = message;
+  <wc-page id="root" class="primary"></wc-page>
 
-          if (document.body) {
-            applyStartupMessage();
-          } else if (!hasPendingStartupMessageListener) {
-            hasPendingStartupMessageListener = true;
-            document.addEventListener("DOMContentLoaded", applyStartupMessage, {
-              once: true,
-            });
-          }
-        }
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const splash = document.getElementById("splash");
 
-        window.__ACODE_WEBVIEW_MAJOR__ = getWebViewMajor();
-        window.__ACODE_MIN_WEBVIEW_MAJOR__ = MIN_WEBVIEW_MAJOR;
+      function updateSplash() {
+        splash.querySelector(".splash-version").textContent =
+          document.body.getAttribute("data-version") || "";
 
-        if (
-          window.__ACODE_WEBVIEW_MAJOR__ &&
-          window.__ACODE_WEBVIEW_MAJOR__ < MIN_WEBVIEW_MAJOR
-        ) {
-          setStartupMessage(
-            "Your Android System WebView is old. Update Android System WebView or Chrome if Acode stays on this screen.",
-          );
-        }
+        splash.querySelector(".splash-message").textContent =
+          document.body.getAttribute("data-small-msg") || "";
+      }
 
-        function handleStartupError(event) {
-          if (!isStartupLoading()) return;
-          var message = event && event.message ? event.message : "Startup error";
-          setStartupMessage(
-            "Acode failed to start. Update Android System WebView or Chrome. " +
-              message,
-          );
-        }
+      updateSplash();
 
-        function handleStartupRejection(event) {
-          if (!isStartupLoading()) return;
-          var reason = event && event.reason;
-          var message =
-            reason && reason.message ? reason.message : "Startup promise failed";
-          setStartupMessage(
-            "Acode failed to start. Update Android System WebView or Chrome. " +
-              message,
-          );
-        }
-
-        window.addEventListener("error", handleStartupError);
-        window.addEventListener("unhandledrejection", handleStartupRejection);
-      })();
-    </script>
-
-    <!-- Core Scripts -->
-    <script src="cordova.js"></script>
-
-    <script src="./build/boot.js"></script>
-
-    <title>Acode</title>
-  </head>
-
-  <body class="loading" data-version="" data-small-msg="">
-    <div id="splash">
-      <div class="splash-version"></div>
-      <div class="splash-message"></div>
-    </div>
-
-    <wc-page id="root" class="primary"></wc-page>
-
-    <script>
-      document.addEventListener("DOMContentLoaded", function () {
-        const splash = document.getElementById("splash");
-
-        function updateSplash() {
-          splash.querySelector(".splash-version").textContent =
-            document.body.getAttribute("data-version") || "";
-
-          splash.querySelector(".splash-message").textContent =
-            document.body.getAttribute("data-small-msg") || "";
-        }
-
-        updateSplash();
-
-        new MutationObserver(updateSplash).observe(document.body, {
-          attributes: true,
-          attributeFilter: ["data-version", "data-small-msg"],
-        });
+      new MutationObserver(updateSplash).observe(document.body, {
+        attributes: true,
+        attributeFilter: ["data-version", "data-small-msg"]
       });
-    </script>
-  </body>
+    });
+  </script>
+</body>
+
 </html>

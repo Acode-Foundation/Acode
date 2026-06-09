@@ -154,6 +154,13 @@
 }
 
 
+@supports not (gap: 1px) {
+  .title > * + * { margin-left: 4px; }
+  .notifications-container > * + * { margin-top: 8px; }
+  .notification-item > * + * { margin-left: 10px; }
+  .action-button > * + * { margin-left: 4px; }
+}
+
 @keyframes slideIn {
     from {
         transform: translateX(100%);

@@ -455,3 +455,19 @@
     color: var(--popup-text-color);
     font-family: monospace;
 }
+
+@supports not (gap: 1px) {
+  .lsp-list-actions > * + * { margin-left: 8px; }
+  .lsp-action-btn > * + * { margin-left: 6px; }
+  .lsp-server-item > * + * { margin-left: 12px; }
+  .lsp-server-info > * + * { margin-top: 2px; }
+  .lsp-details-header > * + * { margin-left: 8px; }
+  .lsp-header-actions > * + * { margin-left: 4px; }
+  .lsp-details-title > * + * { margin-left: 10px; }
+  .lsp-chip-container > * { margin-right: 5px; margin-bottom: 5px; }
+  .lsp-logs-actions > * + * { margin-left: 2px; }
+  .lsp-log > * + * { margin-left: 6px; }
+  .lsp-logs-title > * + * { margin-left: 4px; }
+  .lsp-stats-container > * + * { margin-left: 16px; }
+  .lsp-stat > * + * { margin-left: 6px; }
+}

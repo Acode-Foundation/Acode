@@ -83,6 +83,12 @@
     }
   }
 
+  @supports not (gap: 1px) {
+    .file-name > * + * { margin-left: 0.5rem; }
+    .info-grid > * { margin-right: 1.5rem; margin-bottom: 1.5rem; }
+    .info-item > * + * { margin-top: 0.5rem; }
+  }
+
   @media (max-width: 480px) {
     .file-card {
       padding: 1.5rem;

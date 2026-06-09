@@ -148,6 +148,14 @@
     }
 }
 
+  @supports not (gap: 1px) {
+    .welcome-header > * + * { margin-left: 16px; }
+    .action-list > * + * { margin-top: 2px; }
+    .action-row > * + * { margin-left: 12px; }
+    .link-row > * { margin-right: 8px; margin-bottom: 8px; }
+    .link-item > * + * { margin-left: 8px; }
+  }
+
 // Responsive adjustments for smaller screens
 @media (max-width: 360px) {
     #welcome-tab {

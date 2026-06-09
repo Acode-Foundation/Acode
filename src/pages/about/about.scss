@@ -114,6 +114,11 @@
     }
   }
 
+  @supports not (gap: 1px) {
+    > * + * { margin-top: 24px; }
+    .social-links > * { margin-right: 12px; margin-bottom: 12px; }
+  }
+
   .icon {
     height: 100%;
     width: 100%;

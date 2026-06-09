@@ -1,3 +1,8 @@
+@supports not (gap: 1px) {
+  .audio-player > * + * { margin-left: 15px; }
+  .volume-control > * + * { margin-left: 8px; }
+}
+
 .audio-player {
   background: var(--primary-color, #1e1e1e);
   border-radius: 10px;

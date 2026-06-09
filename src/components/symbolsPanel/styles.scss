@@ -407,3 +407,13 @@
         opacity: 0.7;
     }
 }
+
+@supports not (gap: 1px) {
+  .symbols-panel {
+    .header-content > * + * { margin-top: 2px; }
+    .header-title > * + * { margin-left: 8px; }
+    .header-actions > * + * { margin-left: 4px; }
+    .loading-state > * + * { margin-left: 12px; }
+  }
+  .symbol-item > * + * { margin-left: 10px; }
+}

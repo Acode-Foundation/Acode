@@ -163,6 +163,14 @@ wc-page:not([footer-height]) #lsp-status-bar {
     bottom: 10px;
 }
 
+@supports not (gap: 1px) {
+  #lsp-status-bar {
+    .lsp-status-content > * + * { margin-left: 10px; }
+    .lsp-status-text > * + * { margin-top: 2px; }
+    .lsp-status-progress > * + * { margin-left: 8px; }
+  }
+}
+
 @keyframes lspStatusSlideUp {
     from {
         transform: translateY(100%);

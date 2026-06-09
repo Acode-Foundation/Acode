@@ -161,6 +161,15 @@
   }
 
   #plugin {
+    @supports not (gap: 1px) {
+      .plugin-header > * { margin-right: 1.25rem; margin-bottom: 1.25rem; }
+      .plugin-header > *:last-child { margin-right: 0; margin-bottom: 0; }
+      .plugin-info > * + * { margin-left: 1.25rem; }
+      .plugin-title > * + * { margin-left: 1rem; }
+      .plugin-meta > * + * { margin-left: 0.75rem; }
+      .plugin-stats > * + * { margin-left: 0.5rem; }
+    }
+
     .list-item {
       margin: 0 1rem 0.75rem 1rem;
       padding: 1.25rem;

@@ -128,6 +128,10 @@
   }
 }
 
+  @supports not (gap: 1px) {
+    .quicktools-grid > * { margin-right: 8px; margin-bottom: 8px; }
+  }
+
 .tool-ghost {
   position: fixed;
   top: 0;

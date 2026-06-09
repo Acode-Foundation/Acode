@@ -242,6 +242,14 @@
 	}
 }
 
+  @supports not (gap: 1px) {
+    .reward-status > * + * { margin-left: 12px; }
+    .reward-grid > * { margin-right: 10px; margin-bottom: 10px; }
+    .reward-offer > * + * { margin-top: 8px; }
+    .offer-header > * + * { margin-left: 8px; }
+    .reward-notes > * + * { margin-top: 10px; }
+  }
+
 @media (max-width: 400px) {
 	#ad-rewards-page .reward-grid {
 		grid-template-columns: 1fr;

@@ -6,6 +6,7 @@ import multiPrompt from "dialogs/multiPrompt";
 import URLParse from "url-parse";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
+import { interstitialAd } from "./startAd";
 
 export default {
 	/**
@@ -426,9 +427,9 @@ export default {
 async function loadAd() {
 	if (!helpers.canShowAds()) return;
 	try {
-		if (!(await window.iad?.isLoaded())) {
+		if (!(await interstitialAd?.isLoaded())) {
 			toast(strings.loading);
-			await window.iad.load();
+			await interstitialAd?.load();
 		}
 	} catch (error) {
 		console.warn("Failed to load interstitial ad.", error);

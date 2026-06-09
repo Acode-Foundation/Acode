@@ -4,7 +4,6 @@ import admob.plus.cordova.Events
 import admob.plus.cordova.ExecuteContext
 import admob.plus.core.buildAdSize
 import admob.plus.core.pxToDp
-import android.annotation.SuppressLint
 import android.content.res.Configuration
 import android.util.Log
 import android.view.Gravity
@@ -12,7 +11,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import android.widget.FrameLayout
-import android.widget.LinearLayout
 import android.widget.RelativeLayout
 import com.google.android.gms.ads.AdListener
 import com.google.android.gms.ads.AdSize
@@ -24,6 +22,7 @@ enum class AdSizeType {
     BANNER, LARGE_BANNER, MEDIUM_RECTANGLE, FULL_BANNER, LEADERBOARD, SMART_BANNER;
 
     companion object {
+        @Suppress("DEPRECATION")
         fun getAdSize(adSize: Int): AdSize? {
             return when (values()[adSize]) {
                 BANNER -> AdSize.BANNER
@@ -32,7 +31,6 @@ enum class AdSizeType {
                 FULL_BANNER -> AdSize.FULL_BANNER
                 LEADERBOARD -> AdSize.LEADERBOARD
                 SMART_BANNER -> AdSize.SMART_BANNER
-                else -> null
             }
         }
     }
@@ -131,12 +129,9 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
         } else if (mAdView!!.visibility == View.GONE) {
             mAdView!!.resume()
             mAdView!!.visibility = View.VISIBLE
-        } else {
+            // Re-apply bottom margin in case it was reset by hide()
             val wvParentView = getParentView(webView)
-            if (rootLinearLayout !== wvParentView && webViewWrapper !== wvParentView) {
-                removeFromParentView(rootLinearLayout)
-                addBannerView()
-            }
+            setBottomMargin(wvParentView)
         }
         ctx.resolve()
     }
@@ -145,6 +140,8 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
         if (mAdView != null) {
             mAdView!!.pause()
             mAdView!!.visibility = View.GONE
+            val wvParentView = getParentView(webView)
+            resetBottomMargin(wvParentView)
         }
         ctx.resolve()
     }
@@ -215,63 +212,34 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
     private fun addBannerView() {
         if (mAdView == null) return
         if (offset == null) {
-            if (getParentView(mAdView) === rootLinearLayout && rootLinearLayout != null) return
+            if (getParentView(mAdView) === plugin.contentView && plugin.contentView != null) return
             addBannerViewWithLinearLayout()
         } else {
             if (getParentView(mAdView) === mRelativeLayout && mRelativeLayout != null) return
             addBannerViewWithRelativeLayout()
         }
         plugin.contentView?.let {
-            it.bringToFront()
             it.requestLayout()
-            it.requestFocus()
         }
     }
 
     private fun addBannerViewWithLinearLayout() {
         val wvParentView = getParentView(webView)
-        if (rootLinearLayout == null) {
-            rootLinearLayout = LinearLayout(plugin.activity)
-        }
-        if (wvParentView != null && wvParentView !== rootLinearLayout && wvParentView !== webViewWrapper) {
-            if (webViewWrapper == null) {
-                webViewWrapper = FrameLayout(plugin.activity)
-            } else {
-                removeFromParentView(webViewWrapper)
-            }
-            wvParentView.removeView(webView)
-            val content = rootLinearLayout as LinearLayout?
-            content!!.orientation = LinearLayout.VERTICAL
-            rootLinearLayout!!.layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                0.0f
-            )
-            webViewWrapper!!.layoutParams = LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                1.0f
-            )
-            webViewWrapper!!.addView(webView)
-            rootLinearLayout!!.addView(webViewWrapper)
-            val view = getParentView(rootLinearLayout)
-            if (view !== wvParentView) {
-                removeFromParentView(rootLinearLayout)
-                wvParentView.addView(rootLinearLayout)
-            }
-        }
+        if (wvParentView == null) return
+        // Keep the WebView in its original parent. Add the banner to
+        // contentView as a bottom-aligned sibling and push the WebView's
+        // parent up via bottom margin — no removeView/reparent needed.
         removeFromParentView(mAdView)
-        if (isPositionTop) {
-            rootLinearLayout!!.addView(mAdView, 0)
-        } else {
-            rootLinearLayout!!.addView(mAdView)
+        val content = plugin.contentView
+        if (content is FrameLayout) {
+            val bannerParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM
+            )
+            content.addView(mAdView, bannerParams)
         }
-        plugin.contentView?.let {
-            for (i in 0 until it.childCount) {
-                val view = it.getChildAt(i)
-                (view as? RelativeLayout)?.bringToFront()
-            }
-        }
+        setBottomMargin(wvParentView)
     }
 
     private fun addBannerViewWithRelativeLayout() {
@@ -302,24 +270,25 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
     private val isPositionTop: Boolean
         get() = gravity == Gravity.TOP
 
+    private fun setBottomMargin(view: View?) {
+        val lp = view?.layoutParams as? FrameLayout.LayoutParams ?: return
+        lp.bottomMargin = adSize.getHeightInPixels(plugin.activity)
+        view.layoutParams = lp
+    }
+
+    private fun resetBottomMargin(view: View?) {
+        val lp = view?.layoutParams as? FrameLayout.LayoutParams ?: return
+        if (lp.bottomMargin > 0) {
+            lp.bottomMargin = 0
+            view.layoutParams = lp
+        }
+    }
+
     companion object {
         private const val TAG = "AdMobPlus.Banner"
 
-        @SuppressLint("StaticFieldLeak")
-        private var rootLinearLayout: ViewGroup? = null
-        @SuppressLint("StaticFieldLeak")
-        private var webViewWrapper: FrameLayout? = null
         private var screenWidth = 0
-        fun destroyParentView() {
-            try {
-                webViewWrapper?.removeAllViews()
-                webViewWrapper = null
-                val vg = getParentView(rootLinearLayout)
-                vg?.removeAllViews()
-            } finally {
-                rootLinearLayout = null
-            }
-        }
+        fun destroyParentView() {}
 
         private fun runJustBeforeBeingDrawn(view: View, runnable: Runnable) {
             val preDrawListener: ViewTreeObserver.OnPreDrawListener =

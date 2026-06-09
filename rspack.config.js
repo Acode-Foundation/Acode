@@ -26,16 +26,6 @@ module.exports = (env, options) => {
                 syntax: 'typescript',
                 tsx: false,
               },
-              transform: {
-                // react: {
-                //   pragma: 'tag',
-                //   pragmaFrag: 'Array',
-                //   throwIfNamespace: false,
-                //   development: false,
-                //   useBuiltins: false,
-                //   runtime: 'classic',
-                // },
-              },
               target: 'es2015',
             },
           },

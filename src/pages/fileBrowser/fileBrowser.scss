@@ -120,6 +120,10 @@
     z-index: 1;
     gap: 10px;
 
+    @supports not (gap: 1px) {
+      > * + * { margin-left: 10px; }
+    }
+
     .selection-count {
       font-size: 0.9em;
     }

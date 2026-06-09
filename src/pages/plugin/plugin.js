@@ -12,7 +12,7 @@ import customTab from "lib/customTab";
 import installPlugin from "lib/installPlugin";
 import InstallState from "lib/installState";
 import settings from "lib/settings";
-import { hideAd } from "lib/startAd";
+import { hideAd, interstitialAd } from "lib/startAd";
 import markdownIt from "markdown-it";
 import anchor from "markdown-it-anchor";
 import markdownItFootnote from "markdown-it-footnote";
@@ -563,10 +563,10 @@ export default async function PluginInclude(
 	async function loadAd(el) {
 		if (!helpers.canShowAds()) return;
 		try {
-			if (!(await window.iad?.isLoaded())) {
+			if (!(await interstitialAd?.isLoaded())) {
 				const oldText = el.textContent;
 				el.textContent = strings["loading..."];
-				await window.iad.load();
+				await interstitialAd?.load();
 				el.textContent = oldText;
 			}
 		} catch (error) {

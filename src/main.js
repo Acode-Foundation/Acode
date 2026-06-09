@@ -217,6 +217,7 @@ async function onDeviceReady() {
 	const { versionCode } = BuildInfo;
 
 	if (
+		previousVersionCode != null &&
 		!Number.isNaN(previousVersionCode) &&
 		previousVersionCode !== versionCode
 	) {

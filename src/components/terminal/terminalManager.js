@@ -3,18 +3,18 @@
  * Handles terminal session creation and management
  */
 
-import EditorFile from "lib/editorFile";
-import TerminalComponent from "./terminal";
-import TerminalTouchSelection from "./terminalTouchSelection";
 import "@xterm/xterm/css/xterm.css";
 import quickTools from "components/quickTools";
 import toast from "components/toast";
 import alert from "dialogs/alert";
 import confirm from "dialogs/confirm";
+import EditorFile from "lib/editorFile";
 import openFile from "lib/openFile";
 import openFolder from "lib/openFolder";
 import appSettings from "lib/settings";
 import helpers from "utils/helpers";
+import TerminalComponent from "./terminal";
+import TerminalTouchSelection from "./terminalTouchSelection";
 
 const TERMINAL_SESSION_STORAGE_KEY = "acodeTerminalSessions";
 
@@ -581,25 +581,33 @@ class TerminalManager {
 		const textarea = terminalComponent.terminal?.textarea;
 		if (textarea) {
 			const onFocus = () => {
-				const { $toggler } = quickTools;
-				$toggler.classList.add("hide");
-				clearTimeout(this.togglerTimeout);
-				this.togglerTimeout = setTimeout(() => {
-					$toggler.style.display = "none";
-				}, 300);
+				clearTimeout(this.onBlurTimeout);
+				this.onFocusTimeout = setTimeout(() => {
+					const { $toggler } = quickTools;
+					$toggler.classList.add("hide");
+					clearTimeout(this.quickToolsTogglerTimeout);
+					this.quickToolsTogglerTimeout = setTimeout(() => {
+						$toggler.style.display = "none";
+					}, 300);
+				}, 100);
 			};
 
 			const onBlur = () => {
-				const { $toggler } = quickTools;
-				clearTimeout(this.togglerTimeout);
-				$toggler.style.display = "";
-				setTimeout(() => {
-					$toggler.classList.remove("hide");
-				}, 10);
+				clearTimeout(this.onFocusTimeout);
+				this.onBlurTimeout = setTimeout(() => {
+					const { $toggler } = quickTools;
+					$toggler.style.display = "";
+					clearTimeout(this.quickToolsTogglerTimeout);
+					requestAnimationFrame(() => $toggler.classList.remove("hide"));
+				}, 100);
 			};
 
 			textarea.addEventListener("focus", onFocus);
 			textarea.addEventListener("blur", onBlur);
+
+			if (textarea === document.activeElement) {
+				onFocus();
+			}
 
 			terminalComponent.cleanupFocusHandlers = () => {
 				textarea.removeEventListener("focus", onFocus);
