@@ -54,7 +54,7 @@ const devTools = {
 					);
 					await fsOperation(DATA_STORAGE).createFile("eruda.js", erudaScript);
 				} catch (e) {
-				console.error("Failed to download eruda.js", e);
+					console.error("Failed to download eruda.js", e);
 				} finally {
 					if (showLoader) loader.destroy();
 				}
