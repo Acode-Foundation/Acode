@@ -937,7 +937,7 @@ export default class EditorFile {
 		this.hasDiskConflict = false;
 		this.#hasVersionMetadata = true;
 		this.#savedDoc =
-			savedDoc || (isUnsaved ? null : this.#rawSession?.doc || null);
+			savedDoc ?? (isUnsaved ? null : this.#rawSession?.doc || null);
 		this.isUnsaved = isUnsaved || this.hasUnsavedChanges();
 	}
 
@@ -1629,6 +1629,9 @@ export default class EditorFile {
 			if (activeFile?.id === this.id) {
 				this.setReadOnly(editable === false);
 				emit("file-loaded", this);
+			} else if (editable !== undefined) {
+				this.readOnly = !editable;
+				this.#editable = editable;
 			}
 
 			setTimeout(() => {
