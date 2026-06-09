@@ -116,16 +116,16 @@ document.addEventListener("deviceready", () => {
 			softKeyboardHeight =
 				keyboardHeight > MIN_KEYBOARD_HEIGHT ? keyboardHeight : 0;
 			if (!externalKeyboard && softKeyboardHeight) {
+				toggleBannerAd(false);
 				emit("keyboardShowStart");
 			}
 		} else if (currentWindowHeight < window.innerHeight) {
 			// height increasing
 			if (!externalKeyboard && softKeyboardHeight) {
+				toggleBannerAd(true);
 				emit("keyboardHideStart");
 			}
 		}
-
-		toggleBannerAd(currentWindowHeight >= window.innerHeight);
 
 		currentWindowHeight = window.innerHeight;
 	});

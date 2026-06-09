@@ -89,7 +89,7 @@ function emitChange() {
 function hideActiveBanner() {
 	if (bannerAd?.active) {
 		bannerAd.active = false;
-		bannerAd?.hide();
+		bannerAd.hide?.();
 	}
 }
 

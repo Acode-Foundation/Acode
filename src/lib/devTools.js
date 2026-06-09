@@ -53,8 +53,7 @@ const devTools = {
 						"utf-8",
 					);
 					await fsOperation(DATA_STORAGE).createFile("eruda.js", erudaScript);
-				} catch (e) {
-					console.error("Failed to download eruda.js", e);
+				} catch {
 				} finally {
 					if (showLoader) loader.destroy();
 				}
