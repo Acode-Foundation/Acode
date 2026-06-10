@@ -742,12 +742,12 @@
 	"confirm-login": "Anda belum masuk ke Acode, masuk sekarang?",
 	"local word completion": "Penyelesaian kata lokal",
 	"settings-info-editor-local-word-completion": "Sarankan kata dari berkas saat ini.",
-	"terminal:failsafe": "FailSafe mode",
-	"terminal:failsafe-info": "Start terminal with system shell",
-	"auto rename tags": "Auto rename tags",
-	"settings-info-editor-auto-rename-tags": "Rename the matching opening or closing tag while editing HTML-like tags.",
-	"copying items": "Copying {count} items...",
-	"cannot paste folder into itself": "Cannot paste a folder into itself",
-	"folder already exists": "Folder already exists",
-	"file already exists force named": "'{name}' already exists. Overwrite?"
+	"terminal:failsafe": "Mode FailSafe",
+	"terminal:failsafe-info": "Mulai terminal dengan shell sistem",
+	"auto rename tags": "Ubah nama tag otomatis",
+	"settings-info-editor-auto-rename-tags": "Ubah nama tag pembuka atau penutup yang sama ketika mengedit tag yang mirip HTML.",
+	"copying items": "Menyalin {count} item...",
+	"cannot paste folder into itself": "Tidak bisa menempelkan folder ke dalam dirinya sendiri",
+	"folder already exists": "Folder sudah ada",
+	"file already exists force named": "'{name}' sudah ada. Timpa?"
 }
