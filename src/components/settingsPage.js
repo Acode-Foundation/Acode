@@ -310,14 +310,27 @@ function createListItemElement(item, options, useInfoAsDescription) {
 	const $item = (
 		<div
 			tabIndex={1}
-			className={`list-item ${item.sake ? "sake" : ""} ${item.icon ? "" : "no-leading-icon"}`}
+			className={`list-item ${item.sake ? "sake" : ""} ${item.icon || item.image ? "" : "no-leading-icon"}`}
 			data-key={item.key}
 			data-action="list-item"
 		>
 			<span
-				className={`icon ${item.icon || "no-icon"}`}
+				className={`icon ${item.icon || (item.image ? "" : "no-icon")}`}
 				style={{ color: item.iconColor }}
-			></span>
+			>
+				{item.image && (
+					<img
+						src={item.image}
+						alt=""
+						style={{
+							width: "100%",
+							height: "100%",
+							objectFit: "contain",
+							borderRadius: "4px",
+						}}
+					/>
+				)}
+			</span>
 			<div ref={$setting} className="container">
 				<div className="text">{item.text?.capitalize?.(0) ?? item.text}</div>
 			</div>

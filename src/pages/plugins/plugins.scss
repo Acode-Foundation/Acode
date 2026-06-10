@@ -293,6 +293,15 @@
         box-shadow 180ms ease;
     }
 
+    @supports not (gap: 1px) {
+      .plugin-header > * + * { margin-left: 0.75rem; }
+      .plugin-info > * + * { margin-left: 0.75rem; }
+      .plugin-title > * + * { margin-left: 0.75rem; }
+      .plugin-meta > * + * { margin-left: 0.5rem; }
+      .plugin-stats > * + * { margin-left: 0.375rem; }
+      .plugin-price > * + * { margin-left: 0.25rem; }
+    }
+
     .plugin-toggle-switch[data-enabled="true"] .plugin-toggle-thumb,
     .plugin-toggle-track[data-enabled="true"] .plugin-toggle-thumb {
       transform: translateX(1.12rem);

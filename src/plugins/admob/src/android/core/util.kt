@@ -22,11 +22,11 @@ import kotlin.math.roundToInt
 
 fun buildAdRequest(opts: JSONObject): AdRequest {
     val builder = AdRequest.Builder()
-    opts.optString("contentUrl", null)?.let {
+    opts.optString("contentUrl", null as String?)?.let {
         builder.setContentUrl(it)
     }
     val extras = Bundle().apply {
-        opts.optString("npa", null)?.let { npa ->
+        opts.optString("npa", null as String?)?.let { npa ->
             putString("npa", npa)
         }
     }
@@ -36,11 +36,13 @@ fun buildAdRequest(opts: JSONObject): AdRequest {
 fun buildAdSize(opts: JSONObject, activity: Activity): AdSize {
     val name = "size"
     if (!opts.has(name)) {
+        @Suppress("DEPRECATION")
         return AdSize.SMART_BANNER
     }
     val adSizeObj = opts.optJSONObject(name)
     val adSize = AdSizeType.getAdSize(opts.optInt(name))
     if (adSizeObj == null) {
+        @Suppress("DEPRECATION")
         return adSize ?: AdSize.SMART_BANNER
     }
     val adaptive = adSizeObj.optString("adaptive")
@@ -84,7 +86,7 @@ fun optFloat(opts: JSONObject, name: String): Float? {
 
 fun buildRequestConfiguration(opts: JSONObject): RequestConfiguration {
     val builder = RequestConfiguration.Builder()
-    opts.optString("maxAdContentRating", null)?.let {
+    opts.optString("maxAdContentRating", null as String?)?.let {
         builder.setMaxAdContentRating(it)
     }
     optBooleanToInt(

@@ -222,7 +222,7 @@ module.exports = {
       onFail,
       'System',
       'set-native-context-menu-disabled',
-      [String(!!disabled)],
+      [String(!!disabled)]
     );
   },
   getGlobalSetting: function (key, onSuccess, onFail) {

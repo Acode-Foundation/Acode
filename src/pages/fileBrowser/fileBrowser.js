@@ -6,6 +6,7 @@ import Checkbox from "components/checkbox";
 import Contextmenu from "components/contextmenu";
 import Page from "components/page";
 import searchBar from "components/searchbar";
+import terminalManager from "components/terminal/terminalManager";
 import alert from "dialogs/alert";
 import confirm from "dialogs/confirm";
 import loader from "dialogs/loader";
@@ -862,10 +863,46 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					break;
 			}
 
-			function folder() {
+			async function folder() {
 				if (home) {
 					navigateToHome();
 					return;
+				}
+
+				if (url === `${cordova.file.dataDirectory}public`) {
+					try {
+						const isInstalled = await Terminal.isInstalled();
+						if (!isInstalled) {
+							const shouldInstall = await confirm(
+								strings.terminal,
+								strings["terminal not installed prompt"],
+							);
+							if (shouldInstall) {
+								const loaderInstance = loader.create(
+									strings.terminal,
+									strings["loading..."],
+								);
+								try {
+									loaderInstance.show();
+									const res = await terminalManager.checkAndInstallTerminal();
+									if (res.error) {
+										throw new Error(res.error);
+									}
+								} catch (error) {
+									helpers.error(error);
+									return;
+								} finally {
+									loaderInstance.destroy();
+								}
+							} else {
+								return;
+							}
+						}
+					} catch (e) {
+						console.error("Terminal check failed:", e);
+						helpers.error(e, url);
+						return;
+					}
 				}
 				navigate(url, name);
 			}

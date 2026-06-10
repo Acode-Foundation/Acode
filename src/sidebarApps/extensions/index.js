@@ -11,6 +11,7 @@ import config from "lib/config";
 import InstallState from "lib/installState";
 import loadPlugin from "lib/loadPlugin";
 import settings from "lib/settings";
+import { interstitialAd } from "lib/startAd";
 import FileBrowser from "pages/fileBrowser";
 import plugin from "pages/plugin";
 import helpers from "utils/helpers";
@@ -861,10 +862,10 @@ function ListItem({
 async function loadAd(el) {
 	if (!helpers.canShowAds()) return;
 	try {
-		if (!(await window.iad?.isLoaded())) {
+		if (!(await interstitialAd?.isLoaded())) {
 			const oldText = el.textContent;
 			el.textContent = strings["loading..."];
-			await window.iad.load();
+			await interstitialAd?.load();
 			el.textContent = oldText;
 		}
 	} catch (error) {

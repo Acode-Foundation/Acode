@@ -391,6 +391,7 @@ export async function updateActiveTerminals(key, value) {
 				case "fontFamily":
 					// Load font if it's not already loaded
 					try {
+						fonts.injectFontFace(value);
 						await fonts.loadFont(value);
 					} catch (error) {
 						console.warn(`Failed to load font ${value}:`, error);

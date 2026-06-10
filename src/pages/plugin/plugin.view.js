@@ -155,7 +155,7 @@ export default (props) => {
 								<span>{strings.downloads}</span>
 							</div>
 							<div className="metric">
-								<i className="icon favorite"></i>
+								<i className="icon like-solid"></i>
 								<span
 									className={`rating-value ${rating === "unrated" ? "" : rating.replace("%", "") >= 80 ? "rating-high" : rating.replace("%", "") >= 50 ? "rating-medium" : "rating-low"}`}
 								>

@@ -92,6 +92,13 @@
   overflow: auto;
 }
 
+@supports not (gap: 1px) {
+  .cm-tooltip.cm-tooltip-autocomplete {
+    > * + * { margin-left: 0.4rem; }
+    > ul > li > * + * { margin-left: 0.12rem; }
+  }
+}
+
 @media (max-width: 480px) {
   .cm-tooltip {
     font-size: 0.9rem;

@@ -1,7 +1,33 @@
 @use "../../styles/mixins.scss";
 
 .container.extensions {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  .list.collapsible {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    &:not(.hidden) {
+      flex: 1;
+      min-height: 0;
+    }
+
+    &.hidden {
+      flex-shrink: 0;
+    }
+
+    >ul {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+    }
+  }
+
   .header {
+    flex-shrink: 0;
     padding: 10px;
     display: flex;
     flex-direction: column;
@@ -67,7 +93,12 @@
   }
 
   .list.search-result {
-    min-height: 0;
+    flex-shrink: 0;
+    overflow-y: auto;
+
+    &:empty {
+      display: none
+    }
 
     &.loading {
       @include mixins.loader(20px);

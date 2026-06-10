@@ -32,7 +32,7 @@ NC=''
 script1="node ./utils/config.js $mode $app"
 script2="rspack --mode $webpackmode"
 # script3="node ./utils/loadStyles.js"
-script4="cordova run $platform $cordovamode"
+script4="cordova run $platform $cordovamode -- --packageType=apk"
 eval "
 echo \"${RED}$script1${NC}\";
 $script1;

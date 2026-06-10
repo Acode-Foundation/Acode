@@ -298,6 +298,21 @@
   }
 }
 
+@supports not (gap: 1px) {
+  .references-panel {
+    .header-content > * + * { margin-top: 2px; }
+    .header-title > * + * { margin-left: 8px; }
+    .header-actions > * + * { margin-left: 4px; }
+    .loading-state > * + * { margin-left: 12px; }
+  }
+  .ref-file-header > * + * { margin-left: 8px; }
+  .ref-item > * + * { margin-left: 10px; }
+  .references-tab-container {
+    .header-info > * + * { margin-left: 10px; }
+    .loading-state > * + * { margin-left: 12px; }
+  }
+}
+
 .references-tab-container {
   display: flex;
   flex-direction: column;

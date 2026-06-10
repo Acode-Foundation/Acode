@@ -107,8 +107,13 @@ export default class TerminalComponent {
 			this.loadImageAddon();
 		}
 
-		// Load font if specified
-		this.loadTerminalFont();
+		// Load font in background - apply when ready without blocking render
+		this._fontReady = this.loadTerminalFont().then(() => {
+			if (this.terminal) {
+				this.terminal.options.fontFamily = this.options.fontFamily;
+				this.terminal.refresh(0, this.terminal.rows - 1);
+			}
+		});
 
 		// Set up terminal event handlers
 		this.setupEventHandlers();
@@ -565,16 +570,36 @@ export default class TerminalComponent {
 			// First render pass: schedule a fit + focus once the frame is ready
 			if (typeof requestAnimationFrame === "function") {
 				requestAnimationFrame(() => {
+					if (!this.terminal) return;
 					this.fitAddon.fit();
 					this.terminal.focus();
 					this.setupTouchSelection();
 				});
 			} else {
 				setTimeout(() => {
+					if (!this.terminal) return;
 					this.fitAddon.fit();
 					this.terminal.focus();
 					this.setupTouchSelection();
 				}, 0);
+			}
+
+			// Safety: re-apply fontFamily on next frame to ensure xterm
+			// uses correct metrics even if font wasn't ready for first paint
+			if (typeof requestAnimationFrame === "function") {
+				requestAnimationFrame(() => {
+					if (this.terminal) {
+						this.terminal.options.fontFamily = this.options.fontFamily;
+						this.terminal.refresh(0, this.terminal.rows - 1);
+					}
+				});
+			} else {
+				setTimeout(() => {
+					if (this.terminal) {
+						this.terminal.options.fontFamily = this.options.fontFamily;
+						this.terminal.refresh(0, this.terminal.rows - 1);
+					}
+				}, 16);
 			}
 		} catch (error) {
 			console.error("Failed to mount terminal:", error);
@@ -677,23 +702,25 @@ export default class TerminalComponent {
 				rows: this.terminal.rows,
 			};
 
-			const response = await fetch(
-				`http://localhost:${this.options.port}/terminals`,
-				{
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
+			const response = await new Promise((resolve, reject) => {
+				cordova.plugin.http.sendRequest(
+					`http://localhost:${this.options.port}/terminals`,
+					{
+						method: "POST",
+						responseType: "text",
+						serializer: "json",
+						data: requestBody,
 					},
-					body: JSON.stringify(requestBody),
-				},
-			);
+					(res) => resolve(res),
+					(err) => reject(new Error(err.error || `HTTP error!`)),
+				);
+			});
 
-			if (!response.ok) {
+			if (response.status < 200 || response.status >= 300) {
 				throw new Error(`HTTP error! status: ${response.status}`);
 			}
 
-			const data = await response.text();
-			this.pid = data.trim();
+			this.pid = response.data.trim();
 			return this.pid;
 		} catch (error) {
 			console.error("Failed to create terminal session:", error);
@@ -822,16 +849,18 @@ export default class TerminalComponent {
 		if (!this.pid || !this.serverMode) return;
 
 		try {
-			await fetch(
-				`http://localhost:${this.options.port}/terminals/${this.pid}/resize`,
-				{
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
+			await new Promise((resolve, reject) => {
+				cordova.plugin.http.sendRequest(
+					`http://localhost:${this.options.port}/terminals/${this.pid}/resize`,
+					{
+						method: "POST",
+						serializer: "json",
+						data: { cols, rows },
 					},
-					body: JSON.stringify({ cols, rows }),
-				},
-			);
+					(res) => resolve(res),
+					(err) => reject(err),
+				);
+			});
 		} catch (error) {
 			console.error("Failed to resize terminal:", error);
 		}
@@ -1038,6 +1067,7 @@ export default class TerminalComponent {
 		const fontFamily = this.options.fontFamily;
 		if (fontFamily && fonts.get(fontFamily)) {
 			try {
+				fonts.injectFontFace(fontFamily);
 				await fonts.loadFont(fontFamily);
 			} catch (error) {
 				console.warn(`Failed to load terminal font ${fontFamily}:`, error);
@@ -1105,12 +1135,16 @@ export default class TerminalComponent {
 
 		if (this.pid && this.serverMode) {
 			try {
-				await fetch(
-					`http://localhost:${this.options.port}/terminals/${this.pid}/terminate`,
-					{
-						method: "POST",
-					},
-				);
+				await new Promise((resolve, reject) => {
+					cordova.plugin.http.sendRequest(
+						`http://localhost:${this.options.port}/terminals/${this.pid}/terminate`,
+						{
+							method: "POST",
+						},
+						(res) => resolve(res),
+						(err) => reject(err),
+					);
+				});
 			} catch (error) {
 				console.error("Failed to terminate terminal:", error);
 			}
@@ -1163,7 +1197,7 @@ export default class TerminalComponent {
 // Internal helpers for WebGL renderer lifecycle
 TerminalComponent.prototype._handleWebglContextLoss = function () {
 	try {
-		console.warn("WebGL context lost; falling back to canvas renderer");
+		console.warn("WebGL context lost; terminal rendering will be degraded");
 		try {
 			this.webglAddon?.dispose?.();
 		} catch {}

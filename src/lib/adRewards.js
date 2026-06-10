@@ -2,6 +2,7 @@ import toast from "components/toast";
 import auth from "./auth";
 import config from "./config";
 import secureAdRewardState from "./secureAdRewardState";
+import { adUnitIdRewarded, bannerAd } from "./startAd";
 
 const ONE_HOUR = 60 * 60 * 1000;
 const MAX_TIMEOUT = 2_147_483_647;
@@ -67,10 +68,6 @@ function formatDurationRange(minDurationMs, maxDurationMs) {
 	return `${minHours}-${maxHours} hours`;
 }
 
-function getRewardedUnitId() {
-	return window.adRewardedUnitId || "";
-}
-
 function getExpiryDate() {
 	return state.adFreeUntil ? new Date(state.adFreeUntil) : null;
 }
@@ -90,9 +87,9 @@ function emitChange() {
 }
 
 function hideActiveBanner() {
-	if (window.ad?.active) {
-		window.ad.active = false;
-		window.ad.hide?.();
+	if (bannerAd?.active) {
+		bannerAd.active = false;
+		bannerAd.hide?.();
 	}
 }
 
@@ -187,8 +184,7 @@ async function getRewardIdentity() {
 }
 
 async function createRewardedAd(offer, step, sessionId) {
-	const rewardedUnitId = getRewardedUnitId();
-	if (!rewardedUnitId || !admob?.RewardedAd) {
+	if (!admob?.RewardedAd) {
 		throw new Error("Rewarded ads are not available in this build.");
 	}
 
@@ -201,7 +197,7 @@ async function createRewardedAd(offer, step, sessionId) {
 	].join("&");
 
 	return new admob.RewardedAd({
-		adUnitId: rewardedUnitId,
+		adUnitId: adUnitIdRewarded,
 		serverSideVerification: {
 			userId,
 			customData,
@@ -319,7 +315,7 @@ export default {
 		return Boolean(!config.HAS_PRO && !this.isAdFreeActive());
 	},
 	isRewardedSupported() {
-		return Boolean(!config.HAS_PRO && admob?.RewardedAd && getRewardedUnitId());
+		return Boolean(!config.HAS_PRO && admob?.RewardedAd && adUnitIdRewarded);
 	},
 	getRewardedUnavailableReason() {
 		if (config.HAS_PRO) {
@@ -327,9 +323,6 @@ export default {
 		}
 		if (!admob?.RewardedAd) {
 			return "Rewarded ads are unavailable on this device.";
-		}
-		if (!getRewardedUnitId()) {
-			return "Rewarded ads are not configured for production yet.";
 		}
 		return "";
 	},

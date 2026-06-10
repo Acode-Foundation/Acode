@@ -31,6 +31,7 @@
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 0.72fr);
     grid-template-rows: repeat(2, minmax(0, 1fr));
+    gap: 1px;
     width: 1.5rem;
     min-width: 1.5rem;
     height: 1.5rem;
@@ -51,5 +52,18 @@
 
   .theme-swatch-main {
     grid-row: 1 / 3;
+  }
+
+  @supports not (gap: 1px) {
+    .theme-swatch-main {
+      margin-right: 1px;
+    }
+    .theme-swatch:nth-child(2) {
+      margin-left: 1px;
+      margin-bottom: 1px;
+    }
+    .theme-swatch:nth-child(3) {
+      margin-left: 1px;
+    }
   }
 }

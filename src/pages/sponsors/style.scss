@@ -95,6 +95,10 @@
       }
     }
 
+    @supports not (gap: 1px) {
+      .sponsors > * { margin-right: 1rem; margin-bottom: 1rem; }
+    }
+
     .sponsor-card {
       flex-grow: 1;
       min-width: 150px;

@@ -43,6 +43,7 @@ import config from "lib/config";
 import EditorFile from "lib/editorFile";
 import EditorManager from "lib/editorManager";
 import { initFileList } from "lib/fileList";
+import fonts from "lib/fonts";
 import lang from "lib/lang";
 import loadPlugins from "lib/loadPlugins";
 import Logger from "lib/logger";
@@ -136,8 +137,6 @@ async function onDeviceReady() {
 		);
 	});
 
-	startAd();
-
 	let installSource = INSTALL_SOURCE_PLAY;
 
 	try {
@@ -217,7 +216,11 @@ async function onDeviceReady() {
 
 	const { versionCode } = BuildInfo;
 
-	if (previousVersionCode !== versionCode) {
+	if (
+		previousVersionCode != null &&
+		!Number.isNaN(previousVersionCode) &&
+		previousVersionCode !== versionCode
+	) {
 		system.clearCache();
 	}
 
@@ -253,6 +256,9 @@ async function onDeviceReady() {
 	await settings.init();
 	themes.init();
 	initHighlighting();
+
+	// Inject default terminal font face early so browser preloads it
+	fonts.injectFontFace("MesloLGS NF Regular");
 
 	registerPrettierFormatter();
 
@@ -313,6 +319,9 @@ async function onDeviceReady() {
 				console.error("Error checking login status:", error);
 				toast("Error checking login status");
 			}
+
+			fetchPromotions();
+			startAd();
 		}, 500);
 	}
 
@@ -335,9 +344,17 @@ async function onDeviceReady() {
 					.map(Number);
 				const currentVersion = BuildInfo.version.split(".").map(Number);
 
-				const hasUpdate = latestVersion.some(
-					(num, i) => num > currentVersion[i],
-				);
+				let hasUpdate = false;
+				for (let i = 0; i < latestVersion.length; i++) {
+					const latest = latestVersion[i];
+					const current = currentVersion[i] || 0;
+					if (latest > current) {
+						hasUpdate = true;
+						break;
+					} else if (latest < current) {
+						break;
+					}
+				}
 
 				if (hasUpdate) {
 					acode.pushNotification(
@@ -374,6 +391,9 @@ async function onDeviceReady() {
 			);
 		})
 		.catch(console.error);
+
+	// Prompt to initialize terminal if not installed and not already asked
+	promptTerminalInstall();
 }
 
 async function onLogin() {
@@ -386,6 +406,20 @@ async function onLogin() {
 		}
 	} catch (error) {
 		console.error(error);
+	}
+}
+
+async function fetchPromotions() {
+	try {
+		const res = await fetch(`${config.API_BASE}/promotions`);
+		if (res.ok) {
+			const data = await res.json();
+			if (Array.isArray(data)) {
+				localStorage.setItem("cached_promotions", JSON.stringify(data));
+			}
+		}
+	} catch (err) {
+		console.debug("Failed to fetch promotions:", err);
 	}
 }
 
@@ -428,14 +462,53 @@ async function promptUpdateCheckConsent() {
 			return;
 		}
 
-		const message = strings["prompt update check consent message"];
-		const shouldEnable = await confirm(strings?.confirm, message);
-		localStorage.setItem("checkForUpdatesPrompted", "true");
-		if (shouldEnable) {
+		const isPlayStore = window.appInstallSource === "com.android.vending";
+
+		if (!isPlayStore) {
+			const message = strings["prompt update check consent message"];
+			const shouldEnable = await confirm(strings?.confirm, message);
+
+			localStorage.setItem("checkForUpdatesPrompted", "true");
+			if (shouldEnable) {
+				await settings.update({ checkForAppUpdates: true }, false);
+			}
+		} else {
+			localStorage.setItem("checkForUpdatesPrompted", "true");
 			await settings.update({ checkForAppUpdates: true }, false);
 		}
 	} catch (error) {
 		console.error("Failed to prompt for update check consent", error);
+	}
+}
+
+async function promptTerminalInstall() {
+	try {
+		if (localStorage.getItem("terminalInstallPrompted")) return;
+		const isInstalled = await Terminal.isInstalled();
+		if (isInstalled) return;
+
+		const isSupported = await Terminal.isSupported();
+		if (!isSupported) return;
+
+		const shouldInstall = await confirm(
+			strings.terminal,
+			strings["terminal first launch prompt"],
+		);
+
+		localStorage.setItem("terminalInstallPrompted", "true");
+		if (shouldInstall) {
+			const { default: terminalManager } = await import(
+				"components/terminal/terminalManager"
+			);
+			const result = await terminalManager.checkAndInstallTerminal();
+			if (!result.success || result.error) {
+				helpers.error(
+					new Error(result.error || "Terminal installation failed"),
+				);
+			}
+		}
+	} catch (e) {
+		console.warn("Terminal check failed:", e);
 	}
 }
 

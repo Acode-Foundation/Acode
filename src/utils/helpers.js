@@ -4,6 +4,7 @@ import alert from "dialogs/alert";
 import escapeStringRegexp from "escape-string-regexp";
 import adRewards from "lib/adRewards";
 import config from "lib/config";
+import { bannerAd, interstitialAd } from "lib/startAd";
 import path from "./Path";
 import Uri from "./Uri";
 import Url from "./Url";
@@ -293,11 +294,11 @@ export default {
 	async showInterstitialIfReady() {
 		if (!this.canShowAds()) return false;
 		if (
-			typeof window.iad?.isLoaded === "function" &&
-			typeof window.iad?.show === "function" &&
-			(await window.iad.isLoaded())
+			typeof interstitialAd?.isLoaded === "function" &&
+			typeof interstitialAd?.show === "function" &&
+			(await interstitialAd?.isLoaded())
 		) {
-			window.iad.show();
+			interstitialAd.show();
 			return true;
 		}
 		return false;
@@ -306,17 +307,14 @@ export default {
 	 * Displays ad on the current page
 	 */
 	showAd() {
-		const { ad } = window;
-		if (
-			this.canShowAds() &&
-			innerHeight * devicePixelRatio > 600 &&
-			typeof ad?.show === "function"
-		) {
-			const $page = tag.getAll("wc-page:not(#root)").pop();
-			if ($page) {
-				ad.active = true;
-				ad.show();
-			}
+		if (!this.canShowAds()) return;
+		if (innerHeight * devicePixelRatio <= 600) return;
+		if (!bannerAd || typeof bannerAd.show !== "function") return;
+
+		const $page = tag.getAll("wc-page:not(#root)").pop();
+		if ($page) {
+			bannerAd.active = true;
+			bannerAd.show();
 		}
 	},
 	async toInternalUri(uri) {

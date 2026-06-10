@@ -28,6 +28,13 @@ const ROOT = path.resolve(__dirname, "../..");
 const WWW = path.join(ROOT, "www");
 const PLUGINS = path.join(ROOT, "src", "plugins");
 const PLATFORM_WWW = path.join(ROOT, "platforms", "android", "platform_www");
+const CORDOVA_BIN = path.join(
+	ROOT,
+	"node_modules",
+	"cordova",
+	"bin",
+	"cordova",
+);
 const MIME = {
 	".html": "text/html",
 	".js": "application/javascript",
@@ -95,10 +102,39 @@ function log(label, msg) {
 	console.log(`  ${c}[${label}]${reset} ${msg}`);
 }
 
+function resolveSpawnCommand(command) {
+	if (process.platform !== "win32") return command;
+	const lower = command.toLowerCase();
+	if (lower.endsWith(".cmd") || lower.endsWith(".exe")) return command;
+	if (lower === "cordova" || lower === "npx" || lower === "npm") {
+		return `${command}.cmd`;
+	}
+	return command;
+}
+
+function buildSpawnEnv(extra = {}) {
+	const merged = { ...process.env, ...extra };
+	const sanitized = {};
+
+	for (const [key, value] of Object.entries(merged)) {
+		if (!key || key.startsWith("=") || value === undefined) continue;
+		sanitized[key] = String(value);
+	}
+
+	return sanitized;
+}
+
 function spawnAsync(command, args, options) {
 	return new Promise((resolve, reject) => {
-		const mergedOptions = { stdio: "inherit", ...options };
-		const proc = spawn(command, args, mergedOptions);
+		const mergedOptions = {
+			stdio: "inherit",
+			...options,
+			env: options?.env ? buildSpawnEnv(options.env) : options?.env,
+		};
+		const useLocalCordova = command === "cordova" && fs.existsSync(CORDOVA_BIN);
+		const proc = useLocalCordova
+			? spawn(process.execPath, [CORDOVA_BIN, ...args], mergedOptions)
+			: spawn(resolveSpawnCommand(command), args, mergedOptions);
 		proc.on("close", (code) => {
 			if (code === 0) resolve();
 			else reject(new Error(`${command} exited with code ${code}`));
@@ -251,10 +287,16 @@ async function launchApp(target, platform, emulator) {
 		const args = ["run", platform];
 		if (emulator) args.push("--emulator");
 		if (target) args.push("--target", target);
-		const proc = spawn("cordova", args, {
-			cwd: ROOT,
-			stdio: "inherit",
-		});
+		const useLocalCordova = fs.existsSync(CORDOVA_BIN);
+		const proc = useLocalCordova
+			? spawn(process.execPath, [CORDOVA_BIN, ...args], {
+					cwd: ROOT,
+					stdio: "inherit",
+				})
+			: spawn(resolveSpawnCommand("cordova"), args, {
+					cwd: ROOT,
+					stdio: "inherit",
+				});
 
 		proc.on("close", (code) => {
 			if (code === 0) resolve();
@@ -271,19 +313,41 @@ async function launchApp(target, platform, emulator) {
 function startRspackWatch(host, port, proto, onCompiled) {
 	log("info", "Starting rspack --watch...");
 
-	const env = {
-		...process.env,
+	const env = buildSpawnEnv({
 		DEV_MODE: "true",
 		DEV_HOST: host,
 		DEV_PORT: String(port),
 		DEV_PROTO: proto,
-	};
-
-	const proc = spawn("npx", ["rspack", "--watch", "--mode", "development"], {
-		cwd: ROOT,
-		env,
-		stdio: "pipe",
 	});
+	const rspackBin = path.join(
+		ROOT,
+		"node_modules",
+		"@rspack",
+		"cli",
+		"bin",
+		"rspack.js",
+	);
+
+	const useLocalRspack = fs.existsSync(rspackBin);
+	if (!useLocalRspack) {
+		log("warn", "Local rspack CLI not found, falling back to npx rspack");
+	}
+
+	const proc = useLocalRspack
+		? spawn(process.execPath, [rspackBin, "--watch", "--mode", "development"], {
+				cwd: ROOT,
+				env,
+				stdio: "pipe",
+			})
+		: spawn(
+				resolveSpawnCommand("npx"),
+				["rspack", "--watch", "--mode", "development"],
+				{
+					cwd: ROOT,
+					env,
+					stdio: "pipe",
+				},
+			);
 
 	let firstCompile = true;
 
@@ -304,6 +368,8 @@ function startRspackWatch(host, port, proto, onCompiled) {
 
 	proc.on("error", (err) => {
 		log("warn", `rspack error: ${err.message}`);
+		log("warn", "rspack watcher failed to start; exiting dev mode");
+		process.exit(1);
 	});
 
 	proc.on("close", (code) => {

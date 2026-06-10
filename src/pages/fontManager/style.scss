@@ -112,7 +112,15 @@ wc-page.font-manager-page {
 		font-weight: 700;
 	}
 
-	@media screen and (min-width: 768px) {
+  @supports not (gap: 1px) {
+    .font-manager-list > .list-item {
+      > * + * { margin-left: 0.85rem; }
+      > .container > * + * { margin-top: 0.24rem; }
+      > .setting-tail > * + * { margin-left: 0.65rem; }
+    }
+  }
+
+  @media screen and (min-width: 768px) {
 		.font-manager-list {
 			padding-left: 0.5rem;
 			padding-right: 0.5rem;

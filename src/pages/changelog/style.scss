@@ -23,7 +23,11 @@
   }
 }
 
-.status-indicator {
+  @supports not (gap: 1px) {
+    .changelog-version-selector > * + * { margin-left: 8px; }
+  }
+
+  .status-indicator {
   display: inline-block;
   width: 8px;
   height: 8px;

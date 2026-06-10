@@ -120,24 +120,16 @@
           }
 
           .rating-value {
-            padding: 2px 8px;
             border-radius: 12px;
             font-weight: 600;
           }
 
           .rating-high {
-            background: var(--link-text-color);
-            color: #0a3600;
-          }
-
-          .rating-medium {
-            background: #f0a500;
-            color: #3d2800;
+            color: var(--success-text-color);
           }
 
           .rating-low {
-            background: var(--error-text-color);
-            color: #fff;
+            color: var(--danger-color);
           }
         }
       }
@@ -363,6 +355,28 @@
         }
       }
     }
+  }
+
+  @supports not (gap: 1px) {
+    .plugin-header > * {
+      margin-right: 20px;
+      margin-bottom: 20px;
+    }
+    .plugin-header > *:last-child {
+      margin-right: 0;
+      margin-bottom: 0;
+    }
+    .title-wrapper > * + * { margin-left: 16px; }
+    .source-indicator > * + * { margin-left: 6px; }
+    .plugin-meta > * + * { margin-left: 16px; }
+    .meta-item > * + * { margin-left: 4px; }
+    .metrics-row > * + * { margin-left: 16px; }
+    .metric > * + * { margin-left: 4px; }
+    .keywords > * + * { margin-left: 6px; }
+    .action-buttons > * + * { margin-left: 8px; }
+    .info:not(.icon) > * + * { margin-left: 5px; }
+    .btn > * + * { margin-left: 6px; }
+    .contributor > * + * { margin-left: 12px; }
   }
 
   @media (max-width: 768px) {

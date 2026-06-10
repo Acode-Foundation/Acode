@@ -108,6 +108,10 @@
     color: var(--primary-text-color) !important;
   }
 
+  @supports not (gap: 1px) {
+    section.eqno > * + * { margin-left: 12px; }
+  }
+
   .mermaid-error {
     border: 1px solid var(--danger-color);
     border-radius: 8px;
