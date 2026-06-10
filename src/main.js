@@ -609,12 +609,8 @@ async function loadApp() {
 
 	window.log("info", "Started app and its services...");
 
-	// Show welcome tab on first launch or if not dismissed, otherwise create default file
-	const isFirstLaunch = Number.isNaN(previousVersionCode);
-	if (isFirstLaunch || !localStorage.welcomeTabClosed) {
+	if (!files.length) {
 		openWelcomeTab();
-	} else {
-		new EditorFile();
 	}
 
 	// load theme plugins

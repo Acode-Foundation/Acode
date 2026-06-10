@@ -26,10 +26,6 @@ export default function openWelcomeTab() {
 		hideQuickTools: true,
 	});
 
-	welcomeFile.on("close", () => {
-		localStorage.welcomeTabClosed = "true";
-	});
-
 	// Set custom subtitle for the header
 	welcomeFile.setCustomTitle(() => "Get Started");
 }
