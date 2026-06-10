@@ -14,8 +14,7 @@ public class Authenticator extends CordovaPlugin {
     private static final String KEY_TOKEN = "auth_token";
     private static final String PRO_PURCHASED = "pro_purchased";
     private static final String[] API_ORIGINS = {
-        "https://acode.app",
-        "https://dev.acode.app"
+        "https://acode.app"
     };
     private EncryptedPreferenceManager prefManager;
 
@@ -59,7 +58,7 @@ public class Authenticator extends CordovaPlugin {
     private void setTokenCookie(String token) {
         CookieManager cm = CookieManager.getInstance();
         for (String origin : API_ORIGINS) {
-            cm.setCookie(origin, "token=" + token + "; Path=/; Secure; HttpOnly; SameSite=None");
+            cm.setCookie(origin, "token=" + token + "; Domain=.acode.app; Path=/; Secure; HttpOnly; SameSite=None");
         }
         cm.flush();
     }
@@ -67,7 +66,7 @@ public class Authenticator extends CordovaPlugin {
     private void clearTokenCookie() {
         CookieManager cm = CookieManager.getInstance();
         for (String origin : API_ORIGINS) {
-            cm.setCookie(origin, "token=; Path=/; Max-Age=0");
+            cm.setCookie(origin, "token=; Domain=.acode.app; Path=/; Max-Age=0");
         }
         cm.flush();
     }
