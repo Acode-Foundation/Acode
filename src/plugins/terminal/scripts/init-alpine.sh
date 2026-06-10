@@ -29,7 +29,7 @@ done
 
 # If a command was supplied, execute it and exit
 # without it Executor will break
-if [ $# -gt 0 ] && [ "${1#--}" = "$1" ]; then
+if [ "$INSTALLING" != true ] && [ $# -gt 0 ] && [ "${1#--}" = "$1" ]; then
     exec "$@"
 fi
 
