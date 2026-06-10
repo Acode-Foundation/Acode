@@ -391,9 +391,6 @@ async function onDeviceReady() {
 			);
 		})
 		.catch(console.error);
-
-	// Prompt to initialize terminal if not installed and not already asked
-	promptTerminalInstall();
 }
 
 async function onLogin() {
@@ -478,37 +475,6 @@ async function promptUpdateCheckConsent() {
 		}
 	} catch (error) {
 		console.error("Failed to prompt for update check consent", error);
-	}
-}
-
-async function promptTerminalInstall() {
-	try {
-		if (localStorage.getItem("terminalInstallPrompted")) return;
-		const isInstalled = await Terminal.isInstalled();
-		if (isInstalled) return;
-
-		const isSupported = await Terminal.isSupported();
-		if (!isSupported) return;
-
-		const shouldInstall = await confirm(
-			strings.terminal,
-			strings["terminal first launch prompt"],
-		);
-
-		localStorage.setItem("terminalInstallPrompted", "true");
-		if (shouldInstall) {
-			const { default: terminalManager } = await import(
-				"components/terminal/terminalManager"
-			);
-			const result = await terminalManager.checkAndInstallTerminal();
-			if (!result.success || result.error) {
-				helpers.error(
-					new Error(result.error || "Terminal installation failed"),
-				);
-			}
-		}
-	} catch (e) {
-		console.warn("Terminal check failed:", e);
 	}
 }
 
@@ -643,9 +609,9 @@ async function loadApp() {
 
 	window.log("info", "Started app and its services...");
 
-	// Show welcome tab on first launch, otherwise create default file
+	// Show welcome tab on first launch or if not dismissed, otherwise create default file
 	const isFirstLaunch = Number.isNaN(previousVersionCode);
-	if (isFirstLaunch) {
+	if (isFirstLaunch || !localStorage.welcomeTabClosed) {
 		openWelcomeTab();
 	} else {
 		new EditorFile();
