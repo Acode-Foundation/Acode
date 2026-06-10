@@ -13,8 +13,13 @@ public class Authenticator extends CordovaPlugin {
     private static final String PREFS_FILENAME = "acode_auth_secure";
     private static final String KEY_TOKEN = "auth_token";
     private static final String PRO_PURCHASED = "pro_purchased";
+    private static final String KEY_MIGRATED_V2 = "migrated_host_to_domain_cookies";
     private static final String[] API_ORIGINS = {
         "https://acode.app"
+    };
+    private static final String[] LEGACY_ORIGINS = {
+        "https://acode.app",
+        "https://dev.acode.app"
     };
     private EncryptedPreferenceManager prefManager;
 
@@ -25,6 +30,12 @@ public class Authenticator extends CordovaPlugin {
 
         WebView androidWebView = (WebView) webView.getView();
         CookieManager.getInstance().setAcceptThirdPartyCookies(androidWebView, true);
+
+        if (!prefManager.getBoolean(KEY_MIGRATED_V2, false)) {
+            Log.d(TAG, "Migrating: clearing legacy host-scoped cookies");
+            clearLegacyCookies();
+            prefManager.setBoolean(KEY_MIGRATED_V2, true);
+        }
 
         String token = prefManager.getString(KEY_TOKEN, "");
         if (!token.isEmpty()) {
@@ -67,6 +78,14 @@ public class Authenticator extends CordovaPlugin {
         CookieManager cm = CookieManager.getInstance();
         for (String origin : API_ORIGINS) {
             cm.setCookie(origin, "token=; Domain=.acode.app; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=None");
+        }
+        cm.flush();
+    }
+
+    private void clearLegacyCookies() {
+        CookieManager cm = CookieManager.getInstance();
+        for (String origin : LEGACY_ORIGINS) {
+            cm.setCookie(origin, "token=; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=None");
         }
         cm.flush();
     }
