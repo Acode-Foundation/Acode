@@ -66,7 +66,7 @@ public class Authenticator extends CordovaPlugin {
     private void clearTokenCookie() {
         CookieManager cm = CookieManager.getInstance();
         for (String origin : API_ORIGINS) {
-            cm.setCookie(origin, "token=; Domain=.acode.app; Path=/; Max-Age=0");
+            cm.setCookie(origin, "token=; Domain=.acode.app; Path=/; Max-Age=0; Secure; HttpOnly; SameSite=None");
         }
         cm.flush();
     }
