@@ -1140,7 +1140,7 @@ export default class TerminalComponent {
 						`http://localhost:${this.options.port}/terminals/${this.pid}/terminate`,
 						{
 							method: "POST",
-							data: {} // Added empty object to satisfy the plugin's type checker
+							data: {}, // Added empty object to satisfy the plugin's type checker
 						},
 						(res) => resolve(res),
 						(err) => reject(err),
