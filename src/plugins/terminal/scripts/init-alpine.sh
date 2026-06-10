@@ -27,6 +27,12 @@ while [ $# -gt 0 ]; do
     esac
 done
 
+# If a command was supplied, execute it and exit
+# without it Executor will break
+if [ $# -gt 0 ] && [ "${1#--}" = "$1" ]; then
+    exec "$@"
+fi
+
 required_packages="bash command-not-found tzdata wget"
 missing_packages=""
 
@@ -340,8 +346,8 @@ if ! grep -q 'PS1=' "$PREFIX/alpine/initrc"; then
     # echo 'PS1="\[\033[1;32m\]\u\[\033[0m\]@localhost \[\033[1;34m\]\w\[\033[0m\] \$ "' >> "$PREFIX/alpine/initrc"
 fi
 
-chmod +x "$PREFIX/alpine/initrc"
 
+chmod +x "$PREFIX/alpine/initrc"
 
 if [ "$FAILSAFE" != true ]; then
     #actual source
