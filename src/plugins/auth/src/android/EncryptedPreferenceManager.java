@@ -50,6 +50,14 @@ public class EncryptedPreferenceManager {
         return sharedPreferences.getInt(key, defaultValue);
     }
 
+    public void setBoolean(String key, boolean value) {
+        sharedPreferences.edit().putBoolean(key, value).apply();
+    }
+
+    public boolean getBoolean(String key, boolean defaultValue) {
+        return sharedPreferences.getBoolean(key, defaultValue);
+    }
+
     public void remove(String key) {
         sharedPreferences.edit().remove(key).apply();
     }
