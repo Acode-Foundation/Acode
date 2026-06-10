@@ -1249,6 +1249,59 @@ async function EditorManager($header, $body) {
 		if (!forceRecreate && isReusableEditorState(file, extensionSignature)) {
 			editor.setState(getRawEditorState(file.session));
 			applyCurrentEditorOptions(file);
+
+			// Ensure language extensions are properly applied even when reusing state
+			const langExtFn = file.currentLanguageExtension;
+			if (typeof langExtFn === "function") {
+				let result;
+				try {
+					result = langExtFn();
+				} catch (_) {
+					result = [];
+				}
+				// If the loader returns a Promise, reconfigure when it resolves
+				if (result && typeof result.then === "function") {
+					const fileId = file.id;
+					const expectedSignature = extensionSignature;
+					result
+						.then((ext) => {
+							if (
+								manager.activeFile?.id !== fileId ||
+								file.__cmExtensionSignature !== expectedSignature
+							) {
+								return;
+							}
+							try {
+								editor.dispatch({
+									effects: languageCompartment.reconfigure(ext || []),
+								});
+							} catch (error) {
+								warnRecoverable(
+									"Failed to apply language extensions for reused state.",
+									error,
+									"reused-language-reconfigure",
+								);
+							}
+						})
+						.catch(() => {
+							// ignore load errors; remain in plain text
+						});
+				} else if (result && result.length) {
+					// Synchronous language extensions available
+					try {
+						editor.dispatch({
+							effects: languageCompartment.reconfigure(result),
+						});
+					} catch (error) {
+						warnRecoverable(
+							"Failed to apply language extensions for reused state.",
+							error,
+							"reused-language-reconfigure",
+						);
+					}
+				}
+			}
+
 			if (
 				typeof file.lastScrollTop === "number" ||
 				typeof file.lastScrollLeft === "number"

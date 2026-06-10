@@ -1625,9 +1625,11 @@ export default class EditorFile {
 			this.loaded = true;
 			this.loading = false;
 
-			const { activeFile, emit } = editorManager;
+			const { activeFile, emit, switchFile } = editorManager;
 			if (activeFile?.id === this.id) {
 				this.setReadOnly(editable === false);
+				// Re-apply file to editor with loaded content and language extensions
+				switchFile?.(this.id);
 				emit("file-loaded", this);
 			} else if (editable !== undefined) {
 				this.readOnly = !editable;
