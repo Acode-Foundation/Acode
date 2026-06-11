@@ -323,7 +323,7 @@
 	"info-fontLigatures": "Apakah ligatur font diaktifkan di terminal.",
 	"info-confirmTabClose": "Mintalah konfirmasi sebelum menutup tab terminal.",
 	"info-backup": "Membuat cadangan instalasi terminal.",
-	"info-restore": "Pulihkan cadangan instalasi terminal.",
+	"info-restore": "Memulihkan cadangan instalasi terminal.",
 	"info-uninstall": "Menghapus instalasi terminal.",
 	"owned": "Dimiliki",
 	"api_error": "API server turun, silakan coba setelah beberapa waktu.",
