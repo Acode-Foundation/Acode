@@ -471,7 +471,7 @@
 	"collecting plugins": "Mengumpulkan informasi plugin",
 	"creating backup": "Membuat berkas cadangan",
 	"validating backup": "Memvalidasi cadangan",
-	"restoring key bindings": "Pulihkan binding kunci",
+	"restoring key bindings": "Memulihkan binding kunci",
 	"restoring plugins": "Memulihkan plugin",
 	"restoring settings": "Memulihkan pengaturan",
 	"legacy backup warning": "Ini adalah format pencadangan lama. Beberapa fitur mungkin terbatas.",
