@@ -21,9 +21,13 @@ const Terminal = {
             readAsset("init-sandbox.sh"),
         ]);
 
+        const isFdroid = await Executor.execute("echo $FDROID");
 
-        //the symlink must be updated everytime because the symlinks to native libs can break after app updates
+        if(isFdroid !== "true"){
+//the symlink must be updated everytime because the symlinks to native libs can break after app updates
         await Executor.execute("rm -f $PREFIX/axs && ln -s $NATIVE_DIR/libaxs.so $PREFIX/axs")
+}
+        
 
         await writeText(`${filesDir}/init-alpine.sh`, initAlpine);
         await writeText(`${filesDir}/init-sandbox.sh`, initSandbox);
