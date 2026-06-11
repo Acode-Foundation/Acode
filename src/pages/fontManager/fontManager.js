@@ -161,6 +161,11 @@ export default function fontManager() {
 
 			// Read and save the font file
 			const fontData = await fsOperation(fontUrl).readFile();
+
+			if (await fsOperation(FONT_DIR, fontFileName).exists()) {
+				await fsOperation(FONT_DIR, fontFileName).delete();
+			}
+
 			await fsOperation(FONT_DIR).createFile(fontFileName, fontData);
 
 			// Get internal URI for the saved font
@@ -204,7 +209,7 @@ export default function fontManager() {
 				>${css}</textarea>
 			`;
 
-			const dialog = dialog(
+			const editDialog = dialog(
 				`Edit CSS - ${fontName}`,
 				htmlContent,
 				"Save",
@@ -221,11 +226,11 @@ export default function fontManager() {
 					const textarea = document.querySelector(".font-css-editor");
 					const value = textarea ? textarea.value : css;
 					resolve(value);
-					dialog.hide();
+					editDialog.hide();
 				})
 				.cancel(() => {
 					resolve(null);
-					dialog.hide();
+					editDialog.hide();
 				});
 		});
 	}
