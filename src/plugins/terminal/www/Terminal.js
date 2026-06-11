@@ -135,11 +135,6 @@ const Terminal = {
             system.getArch(resolve, reject);
         });
 
-
-        function urlBuilderForSO(){
-                
-        }
-
         try {
 
             const architectures = {
