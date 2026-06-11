@@ -329,6 +329,13 @@ public class System extends CordovaPlugin {
                     return true;
                 }
 
+            case "extractAsset":
+                {
+                    String assetName = args.getString(0);
+                    String destinationPath = args.getString(1);
+                    extractAsset(assetName, destinationPath, callbackContext);
+                    return true;
+                }
             case "getArch":
                 String arch;
 
@@ -2162,5 +2169,24 @@ public class System extends CordovaPlugin {
             return;
         }
         webView.setNativeContextMenuDisabled(disabled);
+    }
+
+    private void extractAsset(String assetName, String destinationPath, CallbackContext callback) {
+        try (
+            InputStream in = context.getAssets().open(assetName);
+            OutputStream out = new FileOutputStream(destinationPath)
+        ) {
+            byte[] buffer = new byte[8192];
+            int length;
+            while ((length = in.read(buffer)) != -1) {
+                out.write(buffer, 0, length);
+            }
+            out.flush();
+            callback.success();
+        }catch (IOException e) {
+            StringWriter sw = new StringWriter();
+            e.printStackTrace(new PrintWriter(sw));
+            callback.error(sw.toString());
+        }
     }
 }

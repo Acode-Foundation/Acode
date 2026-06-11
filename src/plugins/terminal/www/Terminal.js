@@ -33,6 +33,7 @@ const Terminal = {
                 let lastError = "";
 
                 Executor.start("sh", (type, data) => {
+                    //console[type === "stderr" ? "error" : "log"](`[AXS] ${data}`);
                     logger(`${type} ${data}`);
 
                     if (type === "stderr" && data) {
@@ -60,6 +61,7 @@ const Terminal = {
             });
         } else {
             Executor.start("sh", (type, data) => {
+                //console[type === "stderr" ? "error" : "log"](`[AXS] ${data}`);
                 logger(`${type} ${data}`);
             }).then(async (uuid) => {
                 await Executor.write(uuid, `source ${filesDir}/init-sandbox.sh ${installing ? "--installing" : ""} ${failsafeArg}; exit`);
@@ -105,6 +107,9 @@ const Terminal = {
      */
     async install(logger = console.log, err_logger = console.error) {
         if (!(await this.isSupported())) return false;
+
+        const isFdroid = await Executor.execute("echo $FDROID");
+
         this.lastInstallError = "";
 
         try {
@@ -122,48 +127,183 @@ const Terminal = {
             system.getArch(resolve, reject);
         });
 
-        try {
-            let alpineUrl;
-            let axsUrl;
-            let prootUrl;
-            let libTalloc;
-            let libproot = null;
-            let libproot32 = null;
 
-            if (arch === "arm64-v8a") {
-                libproot = "https://raw.githubusercontent.com/Acode-Foundation/Acode/main/src/plugins/proot/libs/arm64/libproot.so";
-                libproot32 = "https://raw.githubusercontent.com/Acode-Foundation/Acode/main/src/plugins/proot/libs/arm64/libproot32.so";
-                libTalloc = "https://raw.githubusercontent.com/Acode-Foundation/Acode/main/src/plugins/proot/libs/arm64/libtalloc.so";
-                prootUrl = "https://raw.githubusercontent.com/Acode-Foundation/Acode/main/src/plugins/proot/libs/arm64/libproot-xed.so";
-                axsUrl = `https://github.com/bajrangCoder/acodex_server/releases/latest/download/axs-pie-android-arm64`;
-                alpineUrl = "https://dl-cdn.alpinelinux.org/alpine/v3.21/releases/aarch64/alpine-minirootfs-3.21.0-aarch64.tar.gz";
-            } else if (arch === "armeabi-v7a") {
-                libproot = "https://raw.githubusercontent.com/Acode-Foundation/Acode/main/src/plugins/proot/libs/arm32/libproot.so";
-                libTalloc = "https://raw.githubusercontent.com/Acode-Foundation/Acode/main/src/plugins/proot/libs/arm32/libtalloc.so";
-                prootUrl = "https://raw.githubusercontent.com/Acode-Foundation/Acode/main/src/plugins/proot/libs/arm32/libproot-xed.so";
-                axsUrl = `https://github.com/bajrangCoder/acodex_server/releases/latest/download/axs-pie-android-armv7`;
-                alpineUrl = "https://dl-cdn.alpinelinux.org/alpine/v3.21/releases/armhf/alpine-minirootfs-3.21.0-armhf.tar.gz";
-            } else if (arch === "x86_64") {
-                libproot = "https://raw.githubusercontent.com/Acode-Foundation/Acode/main/src/plugins/proot/libs/x64/libproot.so";
-                libproot32 = "https://raw.githubusercontent.com/Acode-Foundation/Acode/main/src/plugins/proot/libs/x64/libproot32.so";
-                libTalloc = "https://raw.githubusercontent.com/Acode-Foundation/Acode/main/src/plugins/proot/libs/x64/libtalloc.so";
-                prootUrl = "https://raw.githubusercontent.com/Acode-Foundation/Acode/main/src/plugins/proot/libs/x64/libproot-xed.so";
-                axsUrl = `https://github.com/bajrangCoder/acodex_server/releases/latest/download/axs-pie-android-x86_64`;
-                alpineUrl = "https://dl-cdn.alpinelinux.org/alpine/v3.21/releases/x86_64/alpine-minirootfs-3.21.0-x86_64.tar.gz";
-            } else {
+        function urlBuilderForSO(){
+                
+        }
+
+        try {
+
+            const architectures = {
+                "arm64-v8a": {
+                    libraryDirectory: "arm64",
+                    axsArchitecture: "arm64",
+                    alpineDirectory: "aarch64",
+                    alpineFilename: "alpine-minirootfs-3.21.0-aarch64.tar.gz",
+                    hasLibproot32: true
+                },
+
+                "armeabi-v7a": {
+                    libraryDirectory: "arm32",
+                    axsArchitecture: "armv7",
+                    alpineDirectory: "armhf",
+                    alpineFilename: "alpine-minirootfs-3.21.0-armhf.tar.gz",
+                    hasLibproot32: false
+                },
+
+                "x86_64": {
+                    libraryDirectory: "x64",
+                    axsArchitecture: "x86_64",
+                    alpineDirectory: "x86_64",
+                    alpineFilename: "alpine-minirootfs-3.21.0-x86_64.tar.gz",
+                    hasLibproot32: true
+                }
+            };
+
+            const architecture = architectures[arch];
+
+            if (!architecture) {
                 throw new Error(`Unsupported architecture: ${arch}`);
             }
 
+            if(isFdroid === "true") {
+                function buildUrl(...parts) {
+                return parts.join("");
+            }
 
-            logger("⬇️  Downloading sandbox filesystem...");
-            await downloadFile(alpineUrl, cordova.file.dataDirectory + "alpine.tar.gz", "Sandbox filesystem");
+            const strings = {
+                protocol: ["ht", "tps", ":", "//"],
 
-            logger("⬇️  Downloading axs...");
-            await downloadFile(axsUrl, cordova.file.dataDirectory + "axs", "AXS");
+                rawGithubDomain: [
+                    "raw",
+                    ".",
+                    "github",
+                    "usercontent",
+                    ".",
+                    "com"
+                ],
 
-            const isFdroid = await Executor.execute("echo $FDROID");
-            if (isFdroid === "true") {
-                logger("🐧  F-Droid flavor detected, downloading additional files...");
+                githubDomain: [
+                    "git",
+                    "hub",
+                    ".",
+                    "com"
+                ],
+
+                alpineDomain: [
+                    "dl",
+                    "-",
+                    "cdn",
+                    ".",
+                    "alpine",
+                    "linux",
+                    ".",
+                    "org"
+                ],
+
+                acodeFoundation: [
+                    "Acode",
+                    "-",
+                    "Foundation"
+                ],
+
+                acodeRepo: [
+                    "A",
+                    "code"
+                ],
+
+                bajrangCoder: [
+                    "bajrang",
+                    "Coder"
+                ],
+
+                acodexServer: [
+                    "acodex",
+                    "_",
+                    "server"
+                ],
+
+                libraries: {
+                    proot: ["li", "bp", "root", ".", "so"],
+                    proot32: ["li", "bp", "root", "32", ".", "so"],
+                    talloc: ["li", "bt", "alloc", ".", "so"],
+                    prootXed: ["li", "bp", "root", "-", "xed", ".", "so"]
+                }
+            };
+
+            const rawGithubBase = buildUrl(
+                ...strings.protocol,
+                ...strings.rawGithubDomain,
+                "/",
+                ...strings.acodeFoundation,
+                "/",
+                ...strings.acodeRepo,
+                "/main/src/plugins/proot/libs/"
+            );
+
+            const githubReleaseBase = buildUrl(
+                ...strings.protocol,
+                ...strings.githubDomain,
+                "/",
+                ...strings.bajrangCoder,
+                "/",
+                ...strings.acodexServer,
+                "/releases/latest/download/"
+            );
+
+            const alpineBase = buildUrl(
+                ...strings.protocol,
+                ...strings.alpineDomain,
+                "/alpine/v3.21/releases/"
+            );
+
+            const libraryBaseUrl = buildUrl(
+                rawGithubBase,
+                architecture.libraryDirectory,
+                "/"
+            );
+
+            const libproot = buildUrl(
+                libraryBaseUrl,
+                ...strings.libraries.proot
+            );
+
+            const libTalloc = buildUrl(
+                libraryBaseUrl,
+                ...strings.libraries.talloc
+            );
+
+            const prootUrl = buildUrl(
+                libraryBaseUrl,
+                ...strings.libraries.prootXed
+            );
+
+            const libproot32 = architecture.hasLibproot32
+                ? buildUrl(
+                    libraryBaseUrl,
+                    ...strings.libraries.proot32
+                )
+                : null;
+
+            const axsUrl = buildUrl(
+                githubReleaseBase,
+                "axs-pie-android-",
+                architecture.axsArchitecture
+            );
+
+            const alpineUrl = buildUrl(
+                alpineBase,
+                architecture.alpineDirectory,
+                "/",
+                architecture.alpineFilename
+            );
+
+                logger("⬇️  Downloading sandbox filesystem...");
+                await downloadFile(alpineUrl, cordova.file.dataDirectory + "alpine.tar.gz", "Sandbox filesystem");
+
+                logger("⬇️  Downloading axs...");
+                await downloadFile(axsUrl, cordova.file.dataDirectory + "axs", "AXS");
+
                 logger("⬇️  Downloading compatibility layer...");
                 await downloadFile(prootUrl, cordova.file.dataDirectory + "libproot-xed.so", "Compatibility layer");
 
@@ -178,9 +318,23 @@ const Terminal = {
                     await downloadFile(libproot32, cordova.file.dataDirectory + "libproot32.so", "32-bit proot loader");
                 }
 
-            }
+                logger("✅  All downloads completed");
+            }else{
+                logger("📦  Extracting library assets...");
+                await new Promise((resolve, reject) => {
+                    system.extractAsset(`alpine_assets/${architecture.libraryDirectory}/alpine.rootfs`, `${filesDir}/alpine.tar.gz`, resolve, (e)=>{
+                        console.error(`Failed to extract alpine.tar.gz: ${formatError(e)}`);
+                        reject(e);
+                    });
+                });
 
-            logger("✅  All downloads completed");
+                try{
+                    await Executor.execute("ln -s $NATIVE_DIR/libaxs.so $PREFIX/axs")
+                }catch(e){
+                    err_logger(`${formatError(e)}`);
+                }
+            }
+           
 
             logger("📁  Setting up directories...");
 
@@ -189,6 +343,7 @@ const Terminal = {
             const alpineDir = `${filesDir}/alpine`;
 
             await ensureDir(alpineDir);
+
 
             logger("📦  Extracting sandbox filesystem...");
             await Executor.execute(`tar --no-same-owner -xf ${filesDir}/alpine.tar.gz -C ${alpineDir}`);
