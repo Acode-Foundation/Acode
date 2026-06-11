@@ -170,9 +170,8 @@ const Terminal = {
             }
 
             if(isFdroid === "true") {
-                function buildUrl(...parts) {
-                return parts.join("");
-            }
+                const buildUrl = (...parts) => parts.join("");
+
 
             const strings = {
                 protocol: ["ht", "tps", ":", "//"],
