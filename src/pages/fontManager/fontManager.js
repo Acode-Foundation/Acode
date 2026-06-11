@@ -183,7 +183,10 @@ export default function fontManager() {
 
 			// Show CSS preview/edit dialog
 			const editedCSS = await showCSSEditor(css, fontName);
-			if (editedCSS === null) return; // User cancelled
+			if (editedCSS === null) {
+				await fsOperation(FONT_FILE).delete();
+				return;
+			}
 
 			// Add the font
 			fonts.addCustom(fontName, editedCSS);
