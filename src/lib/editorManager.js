@@ -1347,9 +1347,12 @@ async function EditorManager($header, $body) {
 			doc: "",
 			extensions: [
 				themeCompartment.of(themeExt),
+				...getBaseExtensionsFromOptions(),
+				languageCompartment.of([]),
+				lspCompartment.of([]),
 				readOnlyCompartment.of(EditorState.readOnly.of(true)),
 				EditorView.editable.of(false),
-				placeholder("Loading..."),
+				placeholder(`Loading ${file.filename || "file"}...`),
 			],
 		});
 		editor.setState(loadingState);
