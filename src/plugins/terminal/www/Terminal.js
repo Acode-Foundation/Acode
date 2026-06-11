@@ -21,6 +21,10 @@ const Terminal = {
             readAsset("init-sandbox.sh"),
         ]);
 
+
+        //the symlink must be updated everytime because the symlinks to native libs can break after app updates
+        await Executor.execute("rm -f $PREFIX/axs && ln -s $NATIVE_DIR/libaxs.so $PREFIX/axs")
+
         await writeText(`${filesDir}/init-alpine.sh`, initAlpine);
         await writeText(`${filesDir}/init-sandbox.sh`, initSandbox);
 
@@ -329,7 +333,7 @@ const Terminal = {
                 });
 
                 try{
-                    await Executor.execute("ln -s $NATIVE_DIR/libaxs.so $PREFIX/axs")
+                    await Executor.execute("rm -f $PREFIX/axs && ln -s $NATIVE_DIR/libaxs.so $PREFIX/axs")
                 }catch(e){
                     err_logger(`${formatError(e)}`);
                 }
