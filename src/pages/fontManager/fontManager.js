@@ -162,8 +162,8 @@ export default function fontManager() {
 			// Read and save the font file
 			const fontData = await fsOperation(fontUrl).readFile();
 
-			if (await fsOperation(FONT_DIR, fontFileName).exists()) {
-				await fsOperation(FONT_DIR, fontFileName).delete();
+			if (await fsOperation(FONT_FILE).exists()) {
+				await fsOperation(FONT_FILE).delete();
 			}
 
 			await fsOperation(FONT_DIR).createFile(fontFileName, fontData);
