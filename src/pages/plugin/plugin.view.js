@@ -56,7 +56,6 @@ export default (props) => {
 		license,
 		changelogs,
 		repository,
-		isSupported = true,
 		keywords: keywordsRaw,
 		contributors: contributorsRaw,
 		votes_up: votesUp,
@@ -65,6 +64,8 @@ export default (props) => {
 		author_github: authorGithub,
 		comment_count: commentCount,
 		package_updated_at: packageUpdatedAt,
+		showEditorSupportWarning,
+		unsupportedEditor,
 	} = props;
 
 	let rating = "unrated";
@@ -179,6 +180,9 @@ export default (props) => {
 							))}
 						</div>
 					) : null}
+					{showEditorSupportWarning ? (
+						<LegacyEditorWarning unsupportedEditor={unsupportedEditor} />
+					) : null}
 				</div>
 				<div className="action-buttons">
 					<Buttons {...props} />
@@ -292,23 +296,7 @@ async function Buttons(props) {
 		price,
 		buy,
 		minVersionCode,
-		isSupported = true,
 	} = props;
-
-	if (!isSupported) {
-		return (
-			<div
-				className="error"
-				style={{ display: "flex", flexDirection: "column" }}
-			>
-				<p style={{ display: "flex" }}>
-					<span className="icon info"></span>
-					{strings["plugin-not-supported"]}
-				</p>
-				<small>{strings["plugin-not-supported-info"]}</small>
-			</div>
-		);
-	}
 
 	if (
 		typeof minVersionCode === "number" &&
@@ -408,6 +396,20 @@ async function Buttons(props) {
 			<i className="icon save_alt"></i>
 			{strings.install}
 		</button>
+	);
+}
+
+function LegacyEditorWarning({ unsupportedEditor }) {
+	const oldEditor =
+		unsupportedEditor === "ace" ? "Ace" : unsupportedEditor || "the old editor";
+	return (
+		<div className="legacy-editor-warning">
+			<span className="icon info"></span>
+			<span>
+				{strings["legacy-plugin-warning"] ||
+					`Built for older Acode versions powered by ${oldEditor}. Install with caution; some features may behave unexpectedly in the current CodeMirror version.`}
+			</span>
+		</div>
 	);
 }
 
