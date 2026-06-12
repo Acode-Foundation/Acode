@@ -322,7 +322,7 @@ const Terminal = {
 
                 logger("✅  All downloads completed");
             }else{
-                logger("📦  Extracting library assets...");
+                logger("📦  Extracting assets...");
                 await new Promise((resolve, reject) => {
                     system.extractAsset(`alpine_assets/${architecture.libraryDirectory}/alpine.rootfs`, `${filesDir}/alpine.tar.gz`, resolve, (e)=>{
                         console.error(`Failed to extract alpine.tar.gz: ${formatError(e)}`);
