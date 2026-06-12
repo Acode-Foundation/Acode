@@ -734,6 +734,9 @@ async function EditorManager($header, $body) {
 	function applyLspSettings() {
 		const { lsp } = appSettings.value || {};
 		if (!lsp) return;
+		lspClientManager.setOptions({
+			allowNonTerminalWorkspace: lsp.allowNonTerminalWorkspace === true,
+		});
 		const overrides = lsp.servers || {};
 		for (const [id, config] of Object.entries(overrides)) {
 			if (!config || typeof config !== "object") continue;
