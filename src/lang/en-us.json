@@ -692,7 +692,7 @@
 	"settings-info-editor-teardrop-size": "Set the cursor handle size for touch editing.",
 	"settings-info-editor-text-wrap": "Wrap long lines inside the editor.",
 	"settings-info-lsp-add-custom-server": "Register a custom language server with install, update, and launch commands.",
-	"settings-info-lsp-allow-non-terminal-workspace": "Allow language servers for SAF, external, and remote locations. LSP runs in Acode's built-in terminal, which cannot access those locations, so features may not work correctly. As it will connect to a virtual path or cache location.",
+	"settings-info-lsp-allow-non-terminal-workspace": "Allow language servers for SAF, external, and remote locations. LSP runs in Acode's built-in terminal, which cannot access those locations, so features may not work correctly because it connects to a virtual path or cache location.",
 	"settings-info-lsp-edit-init-options": "Edit initialization options as JSON.",
 	"settings-info-lsp-install-server": "Install or repair this language server.",
 	"settings-info-lsp-remove-custom-server": "Remove this custom language server from Acode.",
