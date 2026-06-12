@@ -406,8 +406,7 @@ function LegacyEditorWarning({ unsupportedEditor }) {
 		<div className="legacy-editor-warning">
 			<span className="icon info"></span>
 			<span>
-				{strings["legacy-plugin-warning"] ||
-					`Built for older Acode versions powered by ${oldEditor}. Install with caution; some features may behave unexpectedly in the current CodeMirror version.`}
+				{`Built for older Acode versions powered by ${oldEditor}. Install with caution; some features may behave unexpectedly in the current CodeMirror version.`}
 			</span>
 		</div>
 	);
