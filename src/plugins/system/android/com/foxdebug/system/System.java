@@ -213,6 +213,7 @@ public class System extends CordovaPlugin {
             case "getInstaller":
             case "compare-file-text":
             case "compare-texts":
+            case "extractAsset":
             case "pin-file-shortcut":
                 break;
             case "get-configuration":
@@ -329,13 +330,6 @@ public class System extends CordovaPlugin {
                     return true;
                 }
 
-            case "extractAsset":
-                {
-                    String assetName = args.getString(0);
-                    String destinationPath = args.getString(1);
-                    extractAsset(assetName, destinationPath, callbackContext);
-                    return true;
-                }
             case "getArch":
                 String arch;
 
@@ -438,6 +432,17 @@ public class System extends CordovaPlugin {
                 new Runnable() {
                     public void run() {
                         switch (action) {
+                            case "extractAsset":
+                                try{
+                                    String assetName = args.getString(0);
+                                    String destinationPath = args.getString(1);
+                                    extractAsset(assetName, destinationPath, callbackContext);
+                                }catch(Exception e){
+                                    callbackContext.error("Failed to extract asset: " + e.getMessage());
+                                            
+                                }
+                                return;
+                            
                             case "getInstaller":
                                 try {
                                     PackageManager pm = context.getPackageManager();
