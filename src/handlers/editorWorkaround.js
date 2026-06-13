@@ -10,10 +10,14 @@ function setTouched() {
 	}, 200);
 }
 
-document.addEventListener("pointerdown", (e) => {
-	lastInput = "pointer";
-	if (e.target.closest(".editor-container")) setTouched();
-}, true);
+document.addEventListener(
+	"pointerdown",
+	(e) => {
+		lastInput = "pointer";
+		if (e.target.closest(".editor-container")) setTouched();
+	},
+	true,
+);
 
 document.addEventListener("keydown", () => {
 	lastInput = "keyboard";
