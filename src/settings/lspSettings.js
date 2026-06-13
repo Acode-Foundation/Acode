@@ -4,6 +4,7 @@ import settingsPage from "components/settingsPage";
 import toast from "components/toast";
 import prompt from "dialogs/prompt";
 import select from "dialogs/select";
+import appSettings from "lib/settings";
 import {
 	getServerOverride,
 	normalizeLanguages,
@@ -170,6 +171,7 @@ export default function lspSettings() {
 		strings?.lsp_settings || strings["language servers"] || "Language Servers";
 	const categories = {
 		customServers: strings["settings-category-custom-servers"],
+		behavior: strings["settings-category-behavior"] || "Behavior",
 		servers: strings["settings-category-servers"],
 	};
 	let page = createPage();
@@ -208,6 +210,13 @@ export default function lspSettings() {
 		});
 
 		const items = [
+			{
+				key: "allow_non_terminal_workspace",
+				text: strings["lsp-allow-non-terminal-workspace"],
+				checkbox: appSettings.value.lsp?.allowNonTerminalWorkspace === true,
+				info: strings["settings-info-lsp-allow-non-terminal-workspace"],
+				category: categories.behavior,
+			},
 			{
 				key: "add_custom_server",
 				text: strings["lsp-add-custom-server"],
@@ -254,7 +263,17 @@ export default function lspSettings() {
 		page.show();
 	}
 
-	async function callback(key) {
+	async function callback(key, value) {
+		if (key === "allow_non_terminal_workspace") {
+			await appSettings.update({
+				lsp: {
+					...(appSettings.value.lsp || {}),
+					allowNonTerminalWorkspace: value === true,
+				},
+			});
+			return;
+		}
+
 		if (key === "add_custom_server") {
 			try {
 				const idInput = await prompt(strings["lsp-server-id"], "", "text");

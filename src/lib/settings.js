@@ -192,6 +192,7 @@ class Settings {
 			pluginsDisabled: {}, // pluginId: true/false
 			lsp: {
 				servers: {},
+				allowNonTerminalWorkspace: false,
 			},
 			developerMode: false,
 			shiftClickSelection: false,

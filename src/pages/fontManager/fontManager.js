@@ -161,6 +161,11 @@ export default function fontManager() {
 
 			// Read and save the font file
 			const fontData = await fsOperation(fontUrl).readFile();
+
+			if (await fsOperation(FONT_FILE).exists()) {
+				await fsOperation(FONT_FILE).delete();
+			}
+
 			await fsOperation(FONT_DIR).createFile(fontFileName, fontData);
 
 			// Get internal URI for the saved font
@@ -178,7 +183,10 @@ export default function fontManager() {
 
 			// Show CSS preview/edit dialog
 			const editedCSS = await showCSSEditor(css, fontName);
-			if (editedCSS === null) return; // User cancelled
+			if (editedCSS === null) {
+				await fsOperation(FONT_FILE).delete();
+				return;
+			}
 
 			// Add the font
 			fonts.addCustom(fontName, editedCSS);
@@ -204,7 +212,7 @@ export default function fontManager() {
 				>${css}</textarea>
 			`;
 
-			const dialog = dialog(
+			const editDialog = dialog(
 				`Edit CSS - ${fontName}`,
 				htmlContent,
 				"Save",
@@ -221,11 +229,11 @@ export default function fontManager() {
 					const textarea = document.querySelector(".font-css-editor");
 					const value = textarea ? textarea.value : css;
 					resolve(value);
-					dialog.hide();
+					editDialog.hide();
 				})
 				.cancel(() => {
 					resolve(null);
-					dialog.hide();
+					editDialog.hide();
 				});
 		});
 	}

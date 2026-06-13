@@ -1,5 +1,17 @@
 # Change Log
 
+## v1.12.4
+
+### What's Changed
+* chore(i18n): update strings in hu_hu.json by @summoner001 in https://github.com/Acode-Foundation/Acode/pull/2171
+* fix: Executor arguments getting ignored by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/2176
+* fix: allow subdomain of acode.app by @deadlyjack in https://github.com/Acode-Foundation/Acode/pull/2179
+* fix: highlighting issue happening due to state reuse by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2180
+* i18n(id-id): update strings by @hyperz111 in https://github.com/Acode-Foundation/Acode/pull/2178
+* feat: polish welcome tab with dynamic shortcuts, dismiss tracking, an… by @deadlyjack in https://github.com/Acode-Foundation/Acode/pull/2182
+* fix: revert customtabs for plugins by @deadlyjack in https://github.com/Acode-Foundation/Acode/pull/2183
+* fix: error when terminating terminal + fixed build by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/2184
+
 ## v1.12.0 (970)
 
 ### Important

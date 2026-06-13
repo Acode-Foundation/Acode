@@ -3,6 +3,11 @@
     xmlns:android="http://schemas.android.com/apk/res/android" id="com.foxdebug.acode.rk.customtabs"
     version="1.0.0">
     <name>Custom Tabs</name>
+
+    <js-module name="CustomTabs" src="www/customtabs.js">
+        <clobbers target="CustomTabs" />
+    </js-module>
+
     <platform name="android">
 
         <config-file parent="/*" target="res/xml/config.xml">

@@ -56,6 +56,7 @@ export default async function PluginInclude(
 	let $settingsIcon;
 	let minVersionCode = -1;
 	let isSupported = true;
+	let unsupportedEditor;
 	let refundHandlerSet = false;
 	let purchaseHandlerSet = false;
 
@@ -134,10 +135,13 @@ export default async function PluginInclude(
 				keywords: installedPlugin.keywords,
 				contributors: installedPlugin.contributors,
 				repository: installedPlugin.repository,
+				supported_editor: installedPlugin.supported_editor,
 				description,
 				changelogs,
 			};
 
+			unsupportedEditor = installedPlugin.supported_editor;
+			isSupported = isPluginEditorSupported(unsupportedEditor);
 			isPaid = installedPlugin.price > 0;
 			$page.settitle(plugin.name);
 			render();
@@ -166,15 +170,14 @@ export default async function PluginInclude(
 					}
 
 					plugin = Object.assign({}, remotePlugin);
+					unsupportedEditor = remotePlugin.supported_editor;
+					isSupported = isPluginEditorSupported(unsupportedEditor);
 
 					if (!Number.parseFloat(remotePlugin.price)) return;
 
 					isPaid = remotePlugin.price > 0;
 					purchased = remotePlugin.owned;
 					price = `${remotePlugin.currencySymbol ?? ""}${remotePlugin.price}`;
-					isSupported = ["all", config.SUPPORTED_EDITOR].includes(
-						remotePlugin.supported_editor,
-					);
 
 					if (
 						helpers.isIapAvailable() &&
@@ -451,6 +454,8 @@ export default async function PluginInclude(
 			currentVersion,
 			minVersionCode,
 			isSupported,
+			unsupportedEditor,
+			showEditorSupportWarning: !isSupported,
 		});
 
 		// Handle anchor links
@@ -583,4 +588,11 @@ export default async function PluginInclude(
 
 function isValidSource(source) {
 	return source ? source.startsWith(Url.join(config.API_BASE, "plugin")) : true;
+}
+
+function isPluginEditorSupported(supportedEditor) {
+	return (
+		!supportedEditor ||
+		["all", config.SUPPORTED_EDITOR].includes(supportedEditor)
+	);
 }
