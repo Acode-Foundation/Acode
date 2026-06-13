@@ -1,6 +1,5 @@
 import lspStatusBar from "components/lspStatusBar";
 import toast from "components/toast";
-import alert from "dialogs/alert";
 import confirm from "dialogs/confirm";
 import loader from "dialogs/loader";
 import { buildShellArchCase } from "./installerUtils";
@@ -34,6 +33,8 @@ const STATUS_DECLINED: InstallStatus = "declined";
 const STATUS_FAILED: InstallStatus = "failed";
 
 const AXS_BINARY = "$PREFIX/axs";
+const DONT_ASK_TERMINAL_REQUIRED_FOR_LSP =
+	"dontAskTerminalRequiredForLsp";
 
 let alreadyInformed = false;
 
@@ -1083,12 +1084,24 @@ export async function ensureServerRunning(
 	} catch {}
 	if (!isTerminalInstalled) {
 		const message = getTerminalRequiredMessage();
-		
-		if (!alreadyInformed){
-			alreadyInformed = true;
-			alert(strings?.error, message);
-		}else{
-			toast(message);
+
+		if (!localStorage.getItem(DONT_ASK_TERMINAL_REQUIRED_FOR_LSP)) {
+			if (!alreadyInformed) {
+				const response = await confirm(strings?.error, message, false, {
+					checkboxText: strings["don't ask again"],
+					returnState: true,
+				});
+				if (
+					typeof response === "object" &&
+					response.confirmed &&
+					response.checked
+				) {
+					localStorage.setItem(DONT_ASK_TERMINAL_REQUIRED_FOR_LSP, "true");
+				}
+				alreadyInformed = true;
+			} else {
+				toast(message);
+			}
 		}
 
 		const unavailable: LspError = new Error(message);
