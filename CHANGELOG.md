@@ -1,8 +1,17 @@
 # Change Log
 
+## v1.12.5
+
+* fix: custom fonts by @deadlyjack in https://github.com/Acode-Foundation/Acode/pull/2192
+* fix(editor): stabilize restored tab highlighting by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2193
+* feat(terminal): bundle everything into the apk by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/2197
+* improve the lsp message and ace to codemirror related clarrification by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2203
+* fix(terminal): handle axs symlink runtime checks by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2204
+* fix(i18n): Improve Indonesian translation naturalness and fix missing entries by @claycuy in https://github.com/Acode-Foundation/Acode/pull/2190
+* fix(lsp): add dont ask again for missing terminal prompt by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2208
+
 ## v1.12.4
 
-### What's Changed
 * chore(i18n): update strings in hu_hu.json by @summoner001 in https://github.com/Acode-Foundation/Acode/pull/2171
 * fix: Executor arguments getting ignored by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/2176
 * fix: allow subdomain of acode.app by @deadlyjack in https://github.com/Acode-Foundation/Acode/pull/2179
