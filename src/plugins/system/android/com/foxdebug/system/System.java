@@ -1015,30 +1015,20 @@ public class System extends CordovaPlugin {
     }
 
     public boolean fileExists(String path, String countSymlinks) {
-        boolean followSymlinks = !Boolean.parseBoolean(countSymlinks);
+        boolean countSymbolicLinks = Boolean.parseBoolean(countSymlinks);
         File file = new File(path);
 
         // Android < O does not implement File#toPath(), fall back to legacy checks
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-            if (!file.exists()) return false;
-            if (followSymlinks) {
-                try {
-                    // If canonical and absolute paths differ, it's a symlink
-                    return file.getCanonicalPath().equals(file.getAbsolutePath());
-                } catch (IOException ignored) {
-                    return false;
-                }
-            }
-            return true;
+            return file.exists();
         }
 
         Path p = file.toPath();
         try {
-            if (followSymlinks) {
-                return Files.exists(p) && !Files.isSymbolicLink(p);
-            } else {
+            if (countSymbolicLinks) {
                 return Files.exists(p, LinkOption.NOFOLLOW_LINKS);
             }
+            return Files.exists(p);
         } catch (Exception e) {
             return false;
         }

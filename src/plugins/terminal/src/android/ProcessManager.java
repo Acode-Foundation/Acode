@@ -5,6 +5,9 @@ import android.content.pm.PackageManager;
 import java.io.*;
 import java.util.Map;
 import java.util.TimeZone;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import com.foxdebug.acode.rk.exec.terminal.*;
 
 public class ProcessManager {
@@ -19,10 +22,55 @@ public class ProcessManager {
      * Creates a ProcessBuilder with common environment setup
      */
     public ProcessBuilder createProcessBuilder(String cmd, boolean useAlpine) {
+        if (useAlpine) {
+            refreshAxsSymlink();
+        }
         String xcmd = useAlpine ? "source $PREFIX/init-sandbox.sh " + cmd : cmd;
         ProcessBuilder builder = new ProcessBuilder("sh", "-c", xcmd);
         setupEnvironment(builder.environment());
         return builder;
+    }
+
+    /**
+     * Play Store builds package axs as a native library. Keep the legacy
+     * $PREFIX/axs path valid for scripts and plugins that execute it directly.
+     */
+    private void refreshAxsSymlink() {
+        if (isFdroidBuild()) {
+            return;
+        }
+
+        Path axsPath = Paths.get(context.getFilesDir().getAbsolutePath(), "axs");
+        Path nativeAxsPath = Paths.get(context.getApplicationInfo().nativeLibraryDir, "libaxs.so");
+
+        if (!Files.exists(nativeAxsPath)) {
+            return;
+        }
+
+        try {
+            if (Files.isSymbolicLink(axsPath)) {
+                Path currentTarget = Files.readSymbolicLink(axsPath);
+                if (currentTarget.equals(nativeAxsPath)) {
+                    return;
+                }
+            }
+
+            Files.deleteIfExists(axsPath);
+            Files.createSymbolicLink(axsPath, nativeAxsPath);
+        } catch (Exception ignored) {
+            // init-sandbox.sh will surface the execution error if the link is unusable.
+        }
+    }
+
+    private boolean isFdroidBuild() {
+        try {
+            int target = context.getPackageManager()
+                .getPackageInfo(context.getPackageName(), 0)
+                .applicationInfo.targetSdkVersion;
+            return target <= 28;
+        } catch (PackageManager.NameNotFoundException e) {
+            return false;
+        }
     }
     
     /**
