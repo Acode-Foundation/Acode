@@ -39,6 +39,13 @@
     .title {
       text-transform: uppercase;
     }
+
+    .confirm-checkbox {
+      width: auto;
+      min-height: 40px;
+      margin: 0 10px;
+      justify-content: flex-start;
+    }
   }
 
   &.select {
