@@ -1091,7 +1091,11 @@ export async function ensureServerRunning(
 					checkboxText: strings["don't ask again"],
 					returnState: true,
 				});
-				if (typeof response === "object" && response.checked) {
+				if (
+					typeof response === "object" &&
+					response.confirmed &&
+					response.checked
+				) {
 					localStorage.setItem(DONT_ASK_TERMINAL_REQUIRED_FOR_LSP, "true");
 				}
 				alreadyInformed = true;
