@@ -10,6 +10,7 @@ import "styles/wideScreen.scss";
 import "lib/polyfill";
 import "cm/supportedModes";
 import "components/WebComponents";
+import "handlers/editorWorkaround";
 
 import fsOperation from "fileSystem";
 import sidebarApps from "sidebarApps";

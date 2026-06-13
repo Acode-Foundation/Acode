@@ -3,65 +3,66 @@
 // main.js is never imported directly; it's loaded dynamically so the dev server
 // can serve a freshly compiled version on every reload.
 
-(function boot() {
-	"use strict";
+const DEV_MODE = typeof __DEV_MODE__ !== 'undefined' && __DEV_MODE__;
+const DEV_HOST = typeof __DEV_HOST__ !== 'undefined' ? __DEV_HOST__ : '';
+const DEV_PORT = typeof __DEV_PORT__ !== 'undefined' ? __DEV_PORT__ : '';
+const DEV_PROTO = typeof __DEV_PROTO__ !== 'undefined' ? __DEV_PROTO__ : '';
+const DEV_ORIGIN = DEV_HOST && DEV_PORT && DEV_PROTO
+  ? `${DEV_PROTO}://${DEV_HOST}:${DEV_PORT}`
+  : '';
 
-	var DEV_MODE = typeof __DEV_MODE__ !== "undefined" && __DEV_MODE__;
-	var DEV_HOST = typeof __DEV_HOST__ !== "undefined" ? __DEV_HOST__ : "";
-	var DEV_PORT = typeof __DEV_PORT__ !== "undefined" ? __DEV_PORT__ : "";
-	var DEV_PROTO = typeof __DEV_PROTO__ !== "undefined" ? __DEV_PROTO__ : "";
-	var DEV_ORIGIN =
-		DEV_HOST && DEV_PORT && DEV_PROTO
-			? DEV_PROTO.concat("://", DEV_HOST, ":", DEV_PORT)
-			: "";
+const loadScript = (src) => {
+  const el = document.createElement('script');
+  el.src = src;
+  document.head.appendChild(el);
+};
 
-	function loadScript(src) {
-		var script = document.createElement("script");
-		script.src = src;
-		document.head.appendChild(script);
-	}
+const loadCSS = (href) => {
+  const el = document.createElement('link');
+  el.rel = 'stylesheet';
+  el.href = href;
+  document.head.appendChild(el);
+};
 
-	function loadCSS(href) {
-		var link = document.createElement("link");
-		link.rel = "stylesheet";
-		link.href = href;
-		document.head.appendChild(link);
-	}
+const bootDev = () => {
+  loadCSS(`${DEV_ORIGIN}/build/main.css`);
+  loadScript(`${DEV_ORIGIN}/build/main.js`);
 
-	if (DEV_MODE && DEV_ORIGIN) {
-		// --- Development mode: load everything from the dev server ---
-		loadCSS("".concat(DEV_ORIGIN, "/build/main.css"));
-		loadScript("".concat(DEV_ORIGIN, "/build/main.js"));
+  const wsProto = DEV_PROTO === 'https' ? 'wss' : 'ws';
+  const connectWS = () => {
+    let ws;
+    try {
+      ws = new WebSocket(`${wsProto}://${DEV_HOST}:${DEV_PORT}`);
+    } catch {
+      setTimeout(connectWS, 1000);
+      return;
+    }
+    ws.onmessage = ({ data }) => {
+      if (data === 'reload') location.reload();
+    };
+    ws.onclose = () => setTimeout(connectWS, 1000);
+    ws.onerror = () => {};
+  };
+  connectWS();
+};
 
-		// WebSocket reload channel
-		(function connectWS() {
-			var wsProto = DEV_PROTO === "https" ? "wss" : "ws";
-			var ws;
+const bootProd = () => {
+  loadCSS('./build/main.css');
+  loadScript('./build/main.js');
+};
 
-			try {
-				ws = new WebSocket("".concat(wsProto, "://", DEV_HOST, ":", DEV_PORT));
-			} catch (_e) {
-				setTimeout(connectWS, 1000);
-				return;
-			}
-
-			ws.onmessage = function (e) {
-				if (e.data === "reload") {
-					window.location.reload();
-				}
-			};
-
-			ws.onclose = function () {
-				setTimeout(connectWS, 1000);
-			};
-
-			ws.onerror = function () {
-				// Will trigger onclose and retry
-			};
-		})();
-	} else {
-		// --- Production / fallback: load local bundle ---
-		loadCSS("./build/main.css");
-		loadScript("./build/main.js");
-	}
-})();
+if (DEV_MODE && DEV_ORIGIN) {
+  fetch(`${DEV_ORIGIN}/build/main.js`, { method: 'HEAD' })
+    .then((res) => {
+      if (res.ok) {
+        bootDev();
+      } else {
+        bootProd();
+      }
+    })
+    .catch(() => {
+      bootProd();
+    });
+} else {
+  bootProd();
+}
