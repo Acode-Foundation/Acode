@@ -33,6 +33,9 @@ module.exports = {
   shareText: function (text, success, error) {
     cordova.exec(success, error, 'System', 'shareText', [text]);
   },
+  getNativeLibraryPath: function (success, error) {
+    cordova.exec(success, error, 'System', 'getNativeLibraryPath', []);
+  },
 
 
   getNativeLibraryPath: function (success, error) {
@@ -47,6 +50,9 @@ module.exports = {
   },
   redeemReward: function (offerId, success, error) {
     cordova.exec(success, error, 'System', 'redeemReward', [offerId]);
+  },
+  extractAsset: function (assetName, destinationPath, success, error) {
+    cordova.exec(success, error, 'System', 'extractAsset', [assetName, destinationPath]);
   },
 
   getParentPath: function (path, success, error) {

@@ -2,9 +2,13 @@ package com.foxdebug.acode.rk.exec.terminal;
 
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import java.io.*;
 import java.util.Map;
 import java.util.TimeZone;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import com.foxdebug.acode.rk.exec.terminal.*;
 
 public class ProcessManager {
@@ -19,10 +23,60 @@ public class ProcessManager {
      * Creates a ProcessBuilder with common environment setup
      */
     public ProcessBuilder createProcessBuilder(String cmd, boolean useAlpine) {
+        if (useAlpine) {
+            refreshAxsSymlink();
+        }
         String xcmd = useAlpine ? "source $PREFIX/init-sandbox.sh " + cmd : cmd;
         ProcessBuilder builder = new ProcessBuilder("sh", "-c", xcmd);
         setupEnvironment(builder.environment());
         return builder;
+    }
+
+    /**
+     * Play Store builds package axs as a native library. Keep the legacy
+     * $PREFIX/axs path valid for scripts and plugins that execute it directly.
+     */
+    private void refreshAxsSymlink() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || isFdroidBuild()) {
+            return;
+        }
+
+        Path axsPath = Paths.get(context.getFilesDir().getAbsolutePath(), "axs");
+        Path nativeAxsPath = Paths.get(context.getApplicationInfo().nativeLibraryDir, "libaxs.so");
+
+        if (!Files.exists(nativeAxsPath)) {
+            return;
+        }
+
+        try {
+            if (Files.isSymbolicLink(axsPath)) {
+                Path currentTarget = Files.readSymbolicLink(axsPath);
+                if (currentTarget.equals(nativeAxsPath)) {
+                    return;
+                }
+            }
+
+            Files.deleteIfExists(axsPath);
+            Files.createSymbolicLink(axsPath, nativeAxsPath);
+        } catch (Exception ignored) {
+            // init-sandbox.sh will surface the execution error if the link is unusable.
+        }
+    }
+
+    private boolean isFdroidBuild() {
+        // F-Droid builds are intentionally pinned to targetSdkVersion 28.
+        // This convention is also exposed to scripts through the FDROID env var.
+        return getTargetSdkVersion() <= 28;
+    }
+
+    private int getTargetSdkVersion() {
+        try {
+            return context.getPackageManager()
+                .getPackageInfo(context.getPackageName(), 0)
+                .applicationInfo.targetSdkVersion;
+        } catch (PackageManager.NameNotFoundException e) {
+            return Build.VERSION_CODES.P;
+        }
     }
     
     /**
@@ -35,14 +89,7 @@ public class ProcessManager {
         TimeZone tz = TimeZone.getDefault();
         env.put("ANDROID_TZ", tz.getID());
         
-        try {
-            int target = context.getPackageManager()
-                .getPackageInfo(context.getPackageName(), 0)
-                .applicationInfo.targetSdkVersion;
-            env.put("FDROID", String.valueOf(target <= 28));
-        } catch (PackageManager.NameNotFoundException e) {
-            e.printStackTrace();
-        }
+        env.put("FDROID", String.valueOf(isFdroidBuild()));
     }
     
     /**

@@ -455,6 +455,8 @@ declare type LangStrings = {
   "terminal:confirm tab close": string;
   "terminal:image support": string;
   "terminal": string;
+  "terminal not installed prompt": string;
+  "terminal first launch prompt": string;
   "allFileAccess": string;
   "fonts": string;
   "sponsor": string;
@@ -616,8 +618,8 @@ declare type LangStrings = {
   "lsp-error-websocket-url-required": string;
   "lsp-view-initialization-options": string;
   "settings-category-about-acode": string;
-  "settings-category-advanced": string;
   "settings-category-discover-apps": string;
+  "settings-category-advanced": string;
   "settings-category-assistance": string;
   "settings-category-core": string;
   "settings-category-cursor": string;
@@ -693,6 +695,7 @@ declare type LangStrings = {
   "settings-info-editor-teardrop-size": string;
   "settings-info-editor-text-wrap": string;
   "settings-info-lsp-add-custom-server": string;
+  "settings-info-lsp-allow-non-terminal-workspace": string;
   "settings-info-lsp-edit-init-options": string;
   "settings-info-lsp-install-server": string;
   "settings-info-lsp-remove-custom-server": string;
@@ -727,6 +730,7 @@ declare type LangStrings = {
   "settings-info-terminal-convert-eol": string;
   "settings-note-formatter-settings": string;
   "settings-note-lsp-settings": string;
+  "lsp-allow-non-terminal-workspace": string;
   "search result label singular": string;
   "search result label plural": string;
   "pin tab": string;

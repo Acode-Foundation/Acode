@@ -1,5 +1,5 @@
 import sidebarApps from "sidebarApps";
-import { indentUnit } from "@codemirror/language";
+import { indentUnit, language as languageFacet } from "@codemirror/language";
 import { search } from "@codemirror/search";
 import { Compartment, EditorState, Prec, StateEffect } from "@codemirror/state";
 import { oneDark } from "@codemirror/theme-one-dark";
@@ -12,6 +12,7 @@ import {
 	highlightWhitespace,
 	keymap,
 	lineNumbers,
+	placeholder,
 } from "@codemirror/view";
 import {
 	abbreviationTracker,
@@ -733,6 +734,9 @@ async function EditorManager($header, $body) {
 	function applyLspSettings() {
 		const { lsp } = appSettings.value || {};
 		if (!lsp) return;
+		lspClientManager.setOptions({
+			allowNonTerminalWorkspace: lsp.allowNonTerminalWorkspace === true,
+		});
 		const overrides = lsp.servers || {};
 		for (const [id, config] of Object.entries(overrides)) {
 			if (!config || typeof config !== "object") continue;
@@ -1197,6 +1201,16 @@ async function EditorManager($header, $body) {
 		});
 	}
 
+	function getEditorOptionsSignature() {
+		const values = appSettings?.value || {};
+		const keys = new Set(["editorTheme"]);
+		for (const spec of cmOptionSpecs) {
+			spec.keys.forEach((key) => keys.add(key));
+		}
+
+		return JSON.stringify([...keys].sort().map((key) => [key, values[key]]));
+	}
+
 	function getRawEditorState(state) {
 		return state?.__rawState || state || null;
 	}
@@ -1213,6 +1227,88 @@ async function EditorManager($header, $body) {
 		);
 	}
 
+	function getFileLanguageSignature(file, extensionSignature) {
+		return JSON.stringify({
+			mode: file?.currentMode || "text",
+			extensions: extensionSignature,
+		});
+	}
+
+	function hasLanguageSupport(state) {
+		try {
+			return !!state?.facet?.(languageFacet);
+		} catch (_) {
+			return false;
+		}
+	}
+
+	function shouldApplyLanguage(file, state, languageSignature) {
+		const langExtFn = file?.currentLanguageExtension;
+		if (typeof langExtFn !== "function") return false;
+		const isPlainText =
+			String(file?.currentMode || "").toLowerCase() === "text";
+		return (
+			file.__cmLanguageSignature !== languageSignature ||
+			!file.__cmLanguageReady ||
+			(!isPlainText && !hasLanguageSupport(state))
+		);
+	}
+
+	function markLanguageReady(file, languageSignature, ready) {
+		file.__cmLanguageSignature = languageSignature;
+		file.__cmLanguageReady = ready;
+	}
+
+	function dispatchLanguageExtension(file, languageSignature, ext, warnKey) {
+		try {
+			editor.dispatch({
+				effects: languageCompartment.reconfigure(ext || []),
+			});
+			file.session = editor.state;
+			markLanguageReady(file, languageSignature, true);
+		} catch (error) {
+			warnRecoverable("Failed to apply language extensions.", error, warnKey);
+		}
+	}
+
+	function resolveLanguageExtension(file, languageSignature, warnKey) {
+		const langExtFn = file.currentLanguageExtension;
+		if (typeof langExtFn !== "function") {
+			markLanguageReady(file, languageSignature, true);
+			return [];
+		}
+
+		let result;
+		try {
+			result = langExtFn();
+		} catch (_) {
+			markLanguageReady(file, languageSignature, true);
+			return [];
+		}
+
+		if (result && typeof result.then === "function") {
+			const fileId = file.id;
+			markLanguageReady(file, languageSignature, false);
+			result
+				.then((ext) => {
+					if (
+						manager.activeFile?.id !== fileId ||
+						file.__cmLanguageSignature !== languageSignature
+					) {
+						return;
+					}
+					dispatchLanguageExtension(file, languageSignature, ext, warnKey);
+				})
+				.catch(() => {
+					markLanguageReady(file, languageSignature, true);
+				});
+			return [];
+		}
+
+		markLanguageReady(file, languageSignature, true);
+		return result || [];
+	}
+
 	function scheduleLspForFile(file) {
 		const fileId = file?.id;
 		window.setTimeout(() => {
@@ -1221,16 +1317,21 @@ async function EditorManager($header, $body) {
 		}, 80);
 	}
 
-	function applyCurrentEditorOptions(file) {
+	function applyCurrentEditorOptions(file, { forceOptions = false } = {}) {
 		touchSelectionController?.onSessionChanged();
-		const desiredTheme = appSettings?.value?.editorTheme;
-		if (desiredTheme) editor.setTheme(desiredTheme);
-		applyOptions();
+		const optionsSignature = getEditorOptionsSignature();
+		if (forceOptions || file.__cmOptionsSignature !== optionsSignature) {
+			const desiredTheme = appSettings?.value?.editorTheme;
+			if (desiredTheme) editor.setTheme(desiredTheme);
+			applyOptions();
+			file.__cmOptionsSignature = optionsSignature;
+		}
 		try {
 			const ro = !file.editable || !!file.loading;
 			editor.dispatch({
 				effects: readOnlyCompartment.reconfigure(EditorState.readOnly.of(ro)),
 			});
+			file.session = editor.state;
 		} catch (error) {
 			warnRecoverable(
 				"Failed to apply read-only compartment update.",
@@ -1240,65 +1341,55 @@ async function EditorManager($header, $body) {
 		}
 	}
 
+	function showLoadingEditor(file) {
+		const desiredTheme = appSettings?.value?.editorTheme;
+		const themeExt = desiredTheme
+			? getThemeExtensions(desiredTheme, [oneDark])
+			: oneDark;
+		const loadingState = EditorState.create({
+			doc: "",
+			extensions: [
+				themeCompartment.of(themeExt),
+				...getBaseExtensionsFromOptions(),
+				languageCompartment.of([]),
+				lspCompartment.of([]),
+				readOnlyCompartment.of(EditorState.readOnly.of(true)),
+				EditorView.editable.of(false),
+				placeholder(`Loading ${file.filename || "file"}...`),
+			],
+		});
+		editor.setState(loadingState);
+		touchSelectionController?.onSessionChanged();
+	}
+
 	// Helper: apply a file's content and language to the editor view
 	function applyFileToEditor(file, options = {}) {
 		if (!file || file.type !== "editor") return;
 		const { forceRecreate = false } = options;
 		const extensionSignature = getEditorExtensionSignature(file);
+		const languageSignature = getFileLanguageSignature(
+			file,
+			extensionSignature,
+		);
 
 		if (!forceRecreate && isReusableEditorState(file, extensionSignature)) {
-			editor.setState(getRawEditorState(file.session));
+			const reusedState = getRawEditorState(file.session);
+			editor.setState(reusedState);
 			applyCurrentEditorOptions(file);
 
-			// Ensure language extensions are properly applied even when reusing state
-			const langExtFn = file.currentLanguageExtension;
-			if (typeof langExtFn === "function") {
-				let result;
-				try {
-					result = langExtFn();
-				} catch (_) {
-					result = [];
-				}
-				// If the loader returns a Promise, reconfigure when it resolves
-				if (result && typeof result.then === "function") {
-					const fileId = file.id;
-					const expectedSignature = extensionSignature;
-					result
-						.then((ext) => {
-							if (
-								manager.activeFile?.id !== fileId ||
-								file.__cmExtensionSignature !== expectedSignature
-							) {
-								return;
-							}
-							try {
-								editor.dispatch({
-									effects: languageCompartment.reconfigure(ext || []),
-								});
-							} catch (error) {
-								warnRecoverable(
-									"Failed to apply language extensions for reused state.",
-									error,
-									"reused-language-reconfigure",
-								);
-							}
-						})
-						.catch(() => {
-							// ignore load errors; remain in plain text
-						});
-				} else if (result && result.length) {
-					// Synchronous language extensions available
-					try {
-						editor.dispatch({
-							effects: languageCompartment.reconfigure(result),
-						});
-					} catch (error) {
-						warnRecoverable(
-							"Failed to apply language extensions for reused state.",
-							error,
-							"reused-language-reconfigure",
-						);
-					}
+			if (shouldApplyLanguage(file, reusedState, languageSignature)) {
+				const ext = resolveLanguageExtension(
+					file,
+					languageSignature,
+					"reused-language-reconfigure",
+				);
+				if (file.__cmLanguageReady) {
+					dispatchLanguageExtension(
+						file,
+						languageSignature,
+						ext,
+						"reused-language-reconfigure",
+					);
 				}
 			}
 
@@ -1330,47 +1421,11 @@ async function EditorManager($header, $body) {
 		const exts = [...baseExtensions];
 		maybeAttachEmmetCompletions(exts, syntax);
 		try {
-			const langExtFn = file.currentLanguageExtension;
-			let initialLang = [];
-			if (typeof langExtFn === "function") {
-				let result;
-				try {
-					result = langExtFn();
-				} catch (_) {
-					result = [];
-				}
-				// If the loader returns a Promise, reconfigure when it resolves
-				if (result && typeof result.then === "function") {
-					initialLang = [];
-					const fileId = file.id;
-					const expectedSignature = extensionSignature;
-					result
-						.then((ext) => {
-							if (
-								manager.activeFile?.id !== fileId ||
-								file.__cmExtensionSignature !== expectedSignature
-							) {
-								return;
-							}
-							try {
-								editor.dispatch({
-									effects: languageCompartment.reconfigure(ext || []),
-								});
-							} catch (error) {
-								warnRecoverable(
-									"Failed to apply async language extensions.",
-									error,
-									"async-language-reconfigure",
-								);
-							}
-						})
-						.catch(() => {
-							// ignore load errors; remain in plain text
-						});
-				} else {
-					initialLang = result || [];
-				}
-			}
+			const initialLang = resolveLanguageExtension(
+				file,
+				languageSignature,
+				"async-language-reconfigure",
+			);
 			// Ensure language compartment is present (empty -> plain text)
 			exts.push(languageCompartment.of(initialLang));
 		} catch (e) {
@@ -1402,6 +1457,9 @@ async function EditorManager($header, $body) {
 		file.session = state;
 		file.__cmSessionReady = true;
 		file.__cmExtensionSignature = extensionSignature;
+		if (file.__cmLanguageReady) {
+			markLanguageReady(file, languageSignature, true);
+		}
 		editor.setState(state);
 		applyCurrentEditorOptions(file);
 
@@ -2502,15 +2560,23 @@ async function EditorManager($header, $body) {
 						`cache-flush-${prev.id}`,
 					);
 				});
-			}, 250);
+			}, 1000);
 		}
 
 		manager.activeFile = file;
+		file.tab.classList.add("active");
+		file.tab.scrollIntoView();
+		$header.text = file.filename;
+		$header.subText = file.headerSubtitle || "";
 
 		if (file.type === "editor") {
 			touchSelectionController?.setEnabled(true);
-			// Apply active file content and language to CodeMirror
-			applyFileToEditor(file);
+			if (!file.loaded && !file.loading) {
+				showLoadingEditor(file);
+			} else {
+				// Apply active file content and language to CodeMirror
+				applyFileToEditor(file);
+			}
 			$container.style.display = "block";
 
 			$hScrollbar.hideImmediately();
@@ -2530,12 +2596,6 @@ async function EditorManager($header, $body) {
 				}
 			}
 		}
-
-		file.tab.classList.add("active");
-		file.tab.scrollIntoView();
-
-		$header.text = file.filename;
-		$header.subText = file.headerSubtitle || "";
 		manager.onupdate("switch-file");
 		events.emit("switch-file", file);
 

@@ -236,6 +236,13 @@ export class LspClientManager {
 			rootUri,
 		} = metadata;
 
+		if (!this.#canUseLspForWorkspace(metadata)) {
+			logLspInfo(
+				`Skipping LSP for non-terminal-accessible workspace: ${rootUri || originalUri}`,
+			);
+			return [];
+		}
+
 		const effectiveLang = safeString(languageId ?? languageName).toLowerCase();
 		if (!effectiveLang) return [];
 
@@ -320,6 +327,8 @@ export class LspClientManager {
 		options: FormattingOptions = {},
 	): Promise<boolean> {
 		const { uri: originalUri, languageId, languageName, view, file } = metadata;
+		if (!this.#canUseLspForWorkspace(metadata)) return false;
+
 		const effectiveLang = safeString(languageId ?? languageName).toLowerCase();
 		if (!effectiveLang || !view) return false;
 
@@ -377,6 +386,12 @@ export class LspClientManager {
 			}
 		}
 		return false;
+	}
+
+	#canUseLspForWorkspace(metadata: FileMetadata): boolean {
+		if (this.options.allowNonTerminalWorkspace === true) return true;
+		if (metadata.file?.SAFMode) return false;
+		return isTerminalAccessibleLspUri(metadata.rootUri || metadata.uri);
 	}
 
 	detach(uri: string, view: EditorView): void {
@@ -1085,6 +1100,19 @@ function normalizeRootUriForServer(
 
 	// Unknown scheme - try to use as-is
 	return { normalizedRootUri: rootUri, originalRootUri: rootUri };
+}
+
+function isTerminalAccessibleLspUri(uri: string | null | undefined): boolean {
+	if (!uri || typeof uri !== "string") return false;
+
+	const schemeMatch = /^([a-zA-Z][\w+\-.]*):/.exec(uri);
+	const scheme = schemeMatch ? schemeMatch[1].toLowerCase() : null;
+
+	if (!scheme) return uri.startsWith("/");
+	if (scheme === "file" || scheme === "untitled") return true;
+	if (scheme !== "content") return false;
+
+	return /^content:\/\/com\.foxdebug\.acode(?:free)?\.documents\//i.test(uri);
 }
 
 function normalizeDocumentUri(uri: string | null | undefined): string | null {

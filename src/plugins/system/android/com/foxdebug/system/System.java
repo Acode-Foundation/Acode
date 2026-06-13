@@ -213,6 +213,7 @@ public class System extends CordovaPlugin {
             case "getInstaller":
             case "compare-file-text":
             case "compare-texts":
+            case "extractAsset":
             case "pin-file-shortcut":
                 break;
             case "get-configuration":
@@ -431,6 +432,17 @@ public class System extends CordovaPlugin {
                 new Runnable() {
                     public void run() {
                         switch (action) {
+                            case "extractAsset":
+                                try{
+                                    String assetName = args.getString(0);
+                                    String destinationPath = args.getString(1);
+                                    extractAsset(assetName, destinationPath, callbackContext);
+                                }catch(Exception e){
+                                    callbackContext.error("Failed to extract asset: " + e.getMessage());
+                                            
+                                }
+                                return;
+                            
                             case "getInstaller":
                                 try {
                                     PackageManager pm = context.getPackageManager();
@@ -1003,30 +1015,20 @@ public class System extends CordovaPlugin {
     }
 
     public boolean fileExists(String path, String countSymlinks) {
-        boolean followSymlinks = !Boolean.parseBoolean(countSymlinks);
+        boolean countSymbolicLinks = Boolean.parseBoolean(countSymlinks);
         File file = new File(path);
 
         // Android < O does not implement File#toPath(), fall back to legacy checks
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-            if (!file.exists()) return false;
-            if (followSymlinks) {
-                try {
-                    // If canonical and absolute paths differ, it's a symlink
-                    return file.getCanonicalPath().equals(file.getAbsolutePath());
-                } catch (IOException ignored) {
-                    return false;
-                }
-            }
-            return true;
+            return file.exists();
         }
 
         Path p = file.toPath();
         try {
-            if (followSymlinks) {
-                return Files.exists(p) && !Files.isSymbolicLink(p);
-            } else {
+            if (countSymbolicLinks) {
                 return Files.exists(p, LinkOption.NOFOLLOW_LINKS);
             }
+            return Files.exists(p);
         } catch (Exception e) {
             return false;
         }
@@ -2162,5 +2164,24 @@ public class System extends CordovaPlugin {
             return;
         }
         webView.setNativeContextMenuDisabled(disabled);
+    }
+
+    private void extractAsset(String assetName, String destinationPath, CallbackContext callback) {
+        try (
+            InputStream in = context.getAssets().open(assetName);
+            OutputStream out = new FileOutputStream(destinationPath)
+        ) {
+            byte[] buffer = new byte[8192];
+            int length;
+            while ((length = in.read(buffer)) != -1) {
+                out.write(buffer, 0, length);
+            }
+            out.flush();
+            callback.success();
+        }catch (IOException e) {
+            StringWriter sw = new StringWriter();
+            e.printStackTrace(new PrintWriter(sw));
+            callback.error(sw.toString());
+        }
     }
 }

@@ -299,6 +299,7 @@ export interface ClientManagerOptions {
 	openFile?: (uri: string) => Promise<EditorView | null>;
 	resolveLanguageId?: (uri: string) => string | null;
 	onClientIdle?: (info: ClientIdleInfo) => void;
+	allowNonTerminalWorkspace?: boolean;
 }
 
 export interface ClientIdleInfo {

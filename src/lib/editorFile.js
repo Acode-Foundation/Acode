@@ -1575,17 +1575,6 @@ export default class EditorFile {
 		this.markChanged = false;
 		this.#emit("loadstart", createFileEvent(this));
 
-		// Immediately apply the loading read-only state without inserting placeholder
-		// text into the real document or undo history.
-		try {
-			const { activeFile, emit } = editorManager;
-			if (activeFile?.id === this.id) {
-				emit("file-loaded", this);
-			}
-		} catch (error) {
-			console.warn("Failed to emit interim file-loaded event.", error);
-		}
-
 		try {
 			const cacheFs = fsOperation(this.cacheFile);
 			const cacheExists = await cacheFs.exists();
@@ -1620,6 +1609,8 @@ export default class EditorFile {
 			this.markChanged = false;
 			this.session = EditorState.create({ doc: value });
 			this.__cmSessionReady = false;
+			this.__cmLanguageReady = false;
+			this.__cmLanguageSignature = null;
 			this.markLoaded({ mtime: loadedMtime, isUnsaved, savedDoc });
 			this.markChanged = true;
 			this.loaded = true;

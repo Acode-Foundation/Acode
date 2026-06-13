@@ -227,12 +227,15 @@ public class Executor extends CordovaPlugin {
     public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
         // For actions that don't need the service, handle them directly
         if (action.equals("loadLibrary")) {
+            callbackContext.error("This feature is no longer supported. Loading native libraries directly from JavaScript is no longer allowed due to security reasons.");
+            /*
             try {
                 System.load(args.getString(0));
                 callbackContext.success("Library loaded successfully.");
             } catch (Exception e) {
                 callbackContext.error("Failed to load library: " + e.getMessage());
             }
+            */
             return true;
         }
 

@@ -11,6 +11,9 @@
         <source-file src="libs/x64/libproot32.so" target-dir="libs/x86_64" />
         <source-file src="libs/x64/libproot-xed.so" target-dir="libs/x86_64" />
         <source-file src="libs/x64/libtalloc.so" target-dir="libs/x86_64" />
+        
+        <source-file src="libs/x64/libaxs.so" target-dir="libs/x86_64" />
+        <resource-file src="assets/alpine_assets/x64/alpine.rootfs" target="assets/alpine_assets/x64/alpine.rootfs" />
 
         <!-- arm64 / arm-v8a -->
         <source-file src="libs/arm64/libproot.so" target-dir="libs/arm64-v8a" />
@@ -18,11 +21,17 @@
         <source-file src="libs/arm64/libproot-xed.so" target-dir="libs/arm64-v8a" />
         <source-file src="libs/arm64/libtalloc.so" target-dir="libs/arm64-v8a" />
 
+        <source-file src="libs/arm64/libaxs.so" target-dir="libs/arm64-v8a" />
+        <resource-file src="assets/alpine_assets/arm64/alpine.rootfs" target="assets/alpine_assets/arm64/alpine.rootfs" />
+
 
         <!-- armhf / armeabi-v7a (armeabi / armeabi-v6a not supported)-->
         <source-file src="libs/arm32/libproot.so" target-dir="libs/armeabi-v7a" />
         <source-file src="libs/arm32/libproot-xed.so" target-dir="libs/armeabi-v7a" />       
         <source-file src="libs/arm32/libtalloc.so" target-dir="libs/armeabi-v7a" />
+
+        <source-file src="libs/arm32/libaxs.so" target-dir="libs/armeabi-v7a" />
+        <resource-file src="assets/alpine_assets/arm32/alpine.rootfs" target="assets/alpine_assets/arm32/alpine.rootfs" />
 
            
     </platform>
