@@ -2,6 +2,7 @@ package com.foxdebug.acode.rk.exec.terminal;
 
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import java.io.*;
 import java.util.Map;
 import java.util.TimeZone;
@@ -36,7 +37,7 @@ public class ProcessManager {
      * $PREFIX/axs path valid for scripts and plugins that execute it directly.
      */
     private void refreshAxsSymlink() {
-        if (isFdroidBuild()) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || isFdroidBuild()) {
             return;
         }
 
@@ -63,13 +64,18 @@ public class ProcessManager {
     }
 
     private boolean isFdroidBuild() {
+        // F-Droid builds are intentionally pinned to targetSdkVersion 28.
+        // This convention is also exposed to scripts through the FDROID env var.
+        return getTargetSdkVersion() <= 28;
+    }
+
+    private int getTargetSdkVersion() {
         try {
-            int target = context.getPackageManager()
+            return context.getPackageManager()
                 .getPackageInfo(context.getPackageName(), 0)
                 .applicationInfo.targetSdkVersion;
-            return target <= 28;
         } catch (PackageManager.NameNotFoundException e) {
-            return false;
+            return Build.VERSION_CODES.P;
         }
     }
     
@@ -83,14 +89,7 @@ public class ProcessManager {
         TimeZone tz = TimeZone.getDefault();
         env.put("ANDROID_TZ", tz.getID());
         
-        try {
-            int target = context.getPackageManager()
-                .getPackageInfo(context.getPackageName(), 0)
-                .applicationInfo.targetSdkVersion;
-            env.put("FDROID", String.valueOf(target <= 28));
-        } catch (PackageManager.NameNotFoundException e) {
-            e.printStackTrace();
-        }
+        env.put("FDROID", String.valueOf(isFdroidBuild()));
     }
     
     /**
