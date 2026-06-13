@@ -752,4 +752,5 @@
 	"file already exists force named": "A(z) „{name}” nevű fájl már létezik. Felülírja?",
 	"lsp-allow-non-terminal-workspace": "LSP futtatása külső mappákban",
 	"settings-info-lsp-allow-non-terminal-workspace": "Nyelvi kiszolgálók engedélyezése SAF, valamint külső és távoli helyekhez. Az LSP az Acode beépített termináljában fut, amely nem fér hozzá ezekhez a helyekhez, így előfordulhat, hogy a funkciók nem fognak működni megfelelően, mivel az egy virtuális útvonalhoz vagy gyorsítótárazott helyhez fog csatlakozni."
+	"don't ask again": "Ne kérdezzen rá újra"
 }
