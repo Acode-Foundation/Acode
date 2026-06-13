@@ -2,6 +2,7 @@
 # Default values
 app="paid"
 mode="d"
+platform="android"
 fdroidFlag=""
 packageType="apk"  # New default: apk or aar
 webpackmode="development"
@@ -15,6 +16,9 @@ for arg in "$@"; do
             ;;
         "p"|"prod"|"d"|"dev")
             mode="$arg"
+            ;;
+        "android"|"ios")
+            platform="$arg"
             ;;
         "fdroid")
             fdroidFlag="fdroid"
@@ -77,11 +81,15 @@ webpackmode="production"
 cordovamode="--release"
 fi
 
-# Set build target based on packageType
-if [ "$packageType" = "bundle" ]; then
-    echo "Building AAR library file..."
+# Set build target based on platform and packageType
+if [ "$platform" = "ios" ]; then
+    echo "Building iOS app..."
 else
-    echo "Building APK file..."
+    if [ "$packageType" = "bundle" ]; then
+        echo "Building AAR library file..."
+    else
+        echo "Building APK file..."
+    fi
 fi
 
 RED=''
@@ -93,7 +101,11 @@ script2="rspack --mode $webpackmode"
 
 echo "type : $packageType"
 
-script4="cordova build android $cordovamode -- --packageType=$packageType"
+if [ "$platform" = "ios" ]; then
+  script4="cordova build $platform $cordovamode --emulator"
+else
+  script4="cordova build $platform $cordovamode -- --packageType=$packageType"
+fi
 
 eval "
 echo \"${RED}$script1${NC}\";

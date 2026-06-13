@@ -6,6 +6,8 @@ declare const DATA_STORAGE: string;
 declare const CACHE_STORAGE: string;
 declare const PLUGIN_DIR: string;
 declare const KEYBINDING_FILE: string;
+declare const PLATFORM_SDK_INT: number;
+/** @deprecated Use PLATFORM_SDK_INT */
 declare const ANDROID_SDK_INT: number;
 declare const DOES_SUPPORT_THEME: boolean;
 declare const acode: object;
@@ -16,6 +18,8 @@ interface Window {
   CACHE_STORAGE: string;
   PLUGIN_DIR: string;
   KEYBINDING_FILE: string;
+  PLATFORM_SDK_INT: number;
+  /** @deprecated Use PLATFORM_SDK_INT */
   ANDROID_SDK_INT: number;
   DOES_SUPPORT_THEME: boolean;
   acode: object;

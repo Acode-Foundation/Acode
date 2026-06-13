@@ -1214,7 +1214,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			let hasInternalStorage = true;
 			allStorages.length = 0;
 
-			if (ANDROID_SDK_INT === 29) {
+			if (typeof ANDROID_SDK_INT === "number" && ANDROID_SDK_INT === 29) {
 				const rootDirName = cordova.file.externalRootDirectory;
 				const testDirName = "Acode_Test_file" + helpers.uuid();
 				const testDirFs = fsOperation(Url.join(rootDirName, testDirName));
@@ -1233,7 +1233,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				hasInternalStorage = false;
 			}
 
-			if (hasInternalStorage) {
+			if (hasInternalStorage && cordova.file.externalRootDirectory) {
 				util.pushFolder(
 					allStorages,
 					"Internal storage",

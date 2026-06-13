@@ -5,7 +5,8 @@
   "cordova": {
     "id": "cordova-plugin-buildinfo",
     "platforms": [
-      "android"
+      "android",
+      "ios"
     ]
   },
   "keywords": [

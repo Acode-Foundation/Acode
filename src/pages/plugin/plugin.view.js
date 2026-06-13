@@ -317,7 +317,7 @@ async function Buttons(props) {
 		return (
 			<div className="error">
 				<span className="icon info"></span>
-				<a href={config.PLAY_STORE_URL} className="text">
+				<a href={config.STORE_URL} className="text">
 					{strings["plugin min version"]
 						.replace("{name}", name)
 						.replace("{v-code}", minVersionCode)}

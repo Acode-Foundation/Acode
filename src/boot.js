@@ -15,6 +15,16 @@
 			? DEV_PROTO.concat("://", DEV_HOST, ":", DEV_PORT)
 			: "";
 
+	// Capture deviceready in case it fires before main.js loads
+	window.__deviceReadyFired = false;
+	document.addEventListener(
+		"deviceready",
+		function () {
+			window.__deviceReadyFired = true;
+		},
+		{ once: true },
+	);
+
 	function loadScript(src) {
 		var script = document.createElement("script");
 		script.src = src;

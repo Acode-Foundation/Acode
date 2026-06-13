@@ -26,8 +26,24 @@ const config = {
 		return `https://play.google.com/store/apps/details?id=${BuildInfo.packageName}`;
 	},
 
+	get APP_STORE_URL() {
+		return `https://apps.apple.com/app/idXXXXXXXXXX`;
+	},
+
+	get STORE_URL() {
+		if (typeof device !== "undefined" && device.platform === "iOS") {
+			return this.APP_STORE_URL;
+		}
+		return this.PLAY_STORE_URL;
+	},
+
 	API_BASE: `${BASE_URL}/api`,
-	SKU_LIST: ["crystal", "bronze", "silver", "gold", "platinum", "titanium"],
+	get SKU_LIST() {
+		if (typeof device !== "undefined" && device.platform === "iOS") {
+			return ["com.foxdebug.acode.crystal", "com.foxdebug.acode.bronze", "com.foxdebug.acode.silver", "com.foxdebug.acode.gold", "com.foxdebug.acode.platinum", "com.foxdebug.acode.titanium"];
+		}
+		return ["crystal", "bronze", "silver", "gold", "platinum", "titanium"];
+	},
 	LOG_FILE_NAME: "Acode.log",
 
 	// Social Links

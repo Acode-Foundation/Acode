@@ -44,4 +44,14 @@
     <framework src="androidx.documentfile:documentfile:1.0.1" />
     <source-file src="android/com/foxdebug/system/RewardPassManager.java" target-dir="src/com/foxdebug/system"/>
   </platform>
+  <platform name="ios">
+    <config-file target="config.xml" parent="/*">
+      <feature name="System">
+        <param name="ios-package" value="SystemPlugin"/>
+        <param name="onload" value="true"/>
+      </feature>
+    </config-file>
+    <header-file src="src/ios/SystemPlugin.h"/>
+    <source-file src="src/ios/SystemPlugin.m"/>
+  </platform>
 </plugin>

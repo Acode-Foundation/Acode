@@ -3,6 +3,13 @@ const path = require('path');
 const fs = require('fs');
 const { execSync } = require('child_process');
 
+// Skip on iOS — all operations in this hook are Android-only
+const platforms = process.env.CORDOVA_PLATFORMS || '';
+if (!platforms.includes('android')) {
+  console.log('[post-process] Skipping — Android-only hook (CORDOVA_PLATFORMS=%s)', platforms);
+  process.exit(0);
+}
+
 const buildFilePath = path.resolve(__dirname, '../build.json');
 const copyToPath = path.resolve(__dirname, '../platforms/android/build.json');
 const gradleFilePath = path.resolve(__dirname, '../build-extras.gradle');

@@ -68,6 +68,7 @@ import $_menu from "views/menu.hbs";
 import auth, { loginEvents } from "./lib/auth";
 
 const INSTALL_SOURCE_PLAY = "com.android.vending";
+const INSTALL_SOURCE_APPSTORE = "com.apple.appstore";
 const oldPreventDefault = TouchEvent.prototype.preventDefault;
 const previousVersionCode = Number.parseInt(localStorage.versionCode, 10);
 const logger = new Logger();
@@ -95,11 +96,24 @@ document.addEventListener("pause", pauseHandler);
 document.addEventListener("resume", resumeHandler);
 document.addEventListener("keydown", keyboardHandler);
 document.addEventListener("deviceready", onDeviceReady);
-document.addEventListener("backbutton", backButtonHandler);
-document.addEventListener("menubutton", menuButtonHandler);
+
+if (window.__deviceReadyFired) {
+	try {
+		onDeviceReady();
+	} catch (e) {
+		console.error(e);
+	}
+}
 
 async function onDeviceReady() {
+	console.log("On device ready");
 	await initEncodings(); // important to load encodings before anything else
+
+	// Android-only hardware button handlers
+	if (device.platform === "Android") {
+		document.addEventListener("backbutton", backButtonHandler);
+		document.addEventListener("menubutton", menuButtonHandler);
+	}
 
 	const isFreePackage = /(free)$/.test(BuildInfo.packageName);
 	const oldResolveURL = window.resolveLocalFileSystemURL;
@@ -137,12 +151,15 @@ async function onDeviceReady() {
 		);
 	});
 
-	let installSource = INSTALL_SOURCE_PLAY;
+	let installSource =
+		device.platform === "iOS" ? INSTALL_SOURCE_APPSTORE : INSTALL_SOURCE_PLAY;
 
-	try {
-		installSource = await helpers.promisify(system.getInstaller);
-	} catch (error) {
-		console.error(error);
+	if (device.platform === "Android") {
+		try {
+			installSource = await helpers.promisify(system.getInstaller);
+		} catch (error) {
+			console.error(error);
+		}
 	}
 
 	Object.defineProperty(window, "appInstallSource", {
@@ -156,39 +173,54 @@ async function onDeviceReady() {
 		enumerable: false,
 	});
 
-	try {
-		await helpers.promisify(iap.startConnection).catch((e) => {
-			window.log("error", "connection error");
-			window.log("error", e);
-		});
+	if (device.platform === "Android") {
+		try {
+			await helpers.promisify(iap.startConnection).catch((e) => {
+				window.log("error", "connection error");
+				window.log("error", e);
+			});
 
+			if (localStorage.acode_pro === "true") {
+				config.HAS_PRO = true;
+			}
+
+			if (navigator.onLine) {
+				const purchases = await helpers.promisify(iap.getPurchases);
+				const isPro = purchases.find((p) =>
+					p.productIds.includes("acode_pro_new"),
+				);
+				if (isPro) {
+					config.HAS_PRO = true;
+				} else {
+					config.HAS_PRO = !isFreePackage;
+				}
+			}
+		} catch (error) {
+			window.log("error", "Purchase error");
+			window.log("error", error);
+		}
+	} else {
+		// iOS: check pro status from local storage or receipt
 		if (localStorage.acode_pro === "true") {
 			config.HAS_PRO = true;
 		}
-
-		if (navigator.onLine) {
-			const purchases = await helpers.promisify(iap.getPurchases);
-			const isPro = purchases.find((p) =>
-				p.productIds.includes("acode_pro_new"),
-			);
-			if (isPro) {
-				config.HAS_PRO = true;
-			} else {
-				config.HAS_PRO = !isFreePackage;
-			}
-		}
-	} catch (error) {
-		window.log("error", "Purchase error");
-		window.log("error", error);
 	}
 
 	try {
-		window.ANDROID_SDK_INT = await new Promise((resolve, reject) =>
-			system.getAndroidVersion(resolve, reject),
-		);
+		window.PLATFORM_SDK_INT = await new Promise((resolve, reject) => {
+			if (device.platform === "Android") {
+				system.getAndroidVersion(resolve, reject);
+			} else {
+				// iOS: use device.version as the OS version integer
+				const ver = device.version.split(".");
+				resolve(Number.parseInt(ver[0], 10));
+			}
+		});
 	} catch (error) {
-		window.ANDROID_SDK_INT = Number.parseInt(device.version);
+		window.PLATFORM_SDK_INT = Number.parseInt(device.version);
 	}
+	// Keep backward compatibility
+	window.ANDROID_SDK_INT = window.PLATFORM_SDK_INT;
 	window.DOES_SUPPORT_THEME = (() => {
 		const $testEl = (
 			<div
@@ -210,9 +242,11 @@ async function onDeviceReady() {
 	await adRewards.init();
 	ensureAceCompatApi();
 
-	system.requestPermission("android.permission.READ_EXTERNAL_STORAGE");
-	system.requestPermission("android.permission.WRITE_EXTERNAL_STORAGE");
-	system.requestPermission("android.permission.POST_NOTIFICATIONS");
+	if (device.platform === "Android") {
+		system.requestPermission("android.permission.READ_EXTERNAL_STORAGE");
+		system.requestPermission("android.permission.WRITE_EXTERNAL_STORAGE");
+		system.requestPermission("android.permission.POST_NOTIFICATIONS");
+	}
 
 	const { versionCode } = BuildInfo;
 
@@ -221,7 +255,9 @@ async function onDeviceReady() {
 		!Number.isNaN(previousVersionCode) &&
 		previousVersionCode !== versionCode
 	) {
-		system.clearCache();
+		if (device.platform === "Android") {
+			system.clearCache();
+		}
 	}
 
 	if (!(await fsOperation(PLUGIN_DIR).exists())) {
@@ -426,9 +462,18 @@ async function setDebugInfo() {
 	const userAgent = navigator.userAgent;
 	const language = navigator.language;
 
-	// Extract Android version
+	// Extract Android/iOS version
 	const androidMatch = userAgent.match(/Android\s([0-9.]+)/);
-	const androidVersion = androidMatch ? androidMatch[1] : "Unknown";
+	const iosMatch = userAgent.match(/OS\s(\d+_\d+)/);
+	let osVersion = "Unknown";
+	let osName = "Unknown";
+	if (androidMatch) {
+		osName = "Android";
+		osVersion = androidMatch[1];
+	} else if (iosMatch) {
+		osName = "iOS";
+		osVersion = iosMatch[1].replace(/_/g, ".");
+	}
 
 	// Extract Chrome/WebView version
 	const chromeMatch = userAgent.match(/Chrome\/([0-9.]+)/);
@@ -442,7 +487,7 @@ async function setDebugInfo() {
 
 	const info = [
 		`App: v${version} (${versionCode})`,
-		`Android: ${androidVersion}`,
+		`${osName}: ${osVersion}`,
 		`WebView: ${webviewVersion}${webviewStatus}`,
 		`Language: ${language}`,
 	].join("\n");
@@ -581,9 +626,11 @@ async function loadApp() {
 	editorManager.on("rename-file", onFileUpdate);
 	editorManager.on("switch-file", onFileUpdate);
 	editorManager.on("file-loaded", onFileUpdate);
-	navigator.app.overrideButton("menubutton", true);
-	system.setIntentHandler(intentHandler, intentHandler.onError);
-	system.getCordovaIntent(intentHandler, intentHandler.onError);
+	if (device.platform === "Android") {
+		navigator.app.overrideButton("menubutton", true);
+		system.setIntentHandler(intentHandler, intentHandler.onError);
+		system.getCordovaIntent(intentHandler, intentHandler.onError);
+	}
 	setTimeout(showTutorials, 1000);
 	settings.on("update:openFileListPos", () => {
 		setMainMenu();
@@ -598,10 +645,12 @@ async function loadApp() {
 		const activeFile = editorManager.activeFile;
 		if (activeFile) editorManager.editor.contentDOM.blur();
 	};
-	sdcard.watchFile(KEYBINDING_FILE, async () => {
-		await setKeyBindings(editorManager.editor);
-		toast(strings["key bindings updated"]);
-	});
+	if (device.platform === "Android" && typeof sdcard !== "undefined") {
+		sdcard.watchFile(KEYBINDING_FILE, async () => {
+			await setKeyBindings(editorManager.editor);
+			toast(strings["key bindings updated"]);
+		});
+	}
 	//#endregion
 
 	const notificationManager = new NotificationManager();

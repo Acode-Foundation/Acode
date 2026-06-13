@@ -2,14 +2,18 @@
   "name": "com.foxdebug.acode",
   "displayName": "Acode",
   "version": "1.12.3",
-  "description": "Acode is a code editor for android",
+  "description": "Acode is a code editor for Android and iOS",
   "scripts": {
     "lang": "node ./utils/lang.js",
     "build": "sh utils/scripts/build.sh",
     "start": "sh utils/scripts/start.sh",
+    "start:ios": "sh utils/scripts/start.sh ios",
+    "start:android": "sh utils/scripts/start.sh android",
     "dev": "node utils/scripts/dev.js",
     "dev:android": "node utils/scripts/dev.js android",
+    "dev:ios": "node utils/scripts/dev.js ios",
     "clean": "sh utils/scripts/clean.sh android android",
+    "clean:ios": "sh utils/scripts/clean.sh ios ios",
     "plugin": "sh utils/scripts/plugin.sh",
     "setup": "node ./utils/setup.js",
     "lint": "biome lint --write",
@@ -47,7 +51,8 @@
       "cordova-plugin-system": {}
     },
     "platforms": [
-      "android"
+      "android",
+      "ios"
     ]
   },
   "repository": {
@@ -161,6 +166,7 @@
     "autosize": "^6.0.1",
     "codemirror": "^6.0.2",
     "cordova": "13.0.0",
+    "cordova-ios": "^8.1.0",
     "core-js": "^3.49.0",
     "dayjs": "^1.11.20",
     "dompurify": "^3.4.2",

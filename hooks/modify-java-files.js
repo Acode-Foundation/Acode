@@ -2,6 +2,13 @@ const path = require('path');
 const fs = require('fs');
 const prettier = require('prettier');
 
+// Skip on iOS — this hook patches Android WebView Java source files only
+const platforms = process.env.CORDOVA_PLATFORMS || '';
+if (!platforms.includes('android')) {
+  console.log('[modify-java-files] Skipping — Android-only hook (CORDOVA_PLATFORMS=%s)', platforms);
+  process.exit(0);
+}
+
 main();
 
 async function main() {

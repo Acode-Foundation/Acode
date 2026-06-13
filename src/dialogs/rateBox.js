@@ -28,9 +28,7 @@ function rateBox() {
 
 		setTimeout(() => {
 			if (val === 5) {
-				system.openInBrowser(
-					`https://play.google.com/store/apps/details?id=${BuildInfo.packageName}`,
-				);
+				system.openInBrowser(config.STORE_URL);
 				localStorage.dontAskForRating = true;
 			} else {
 				const stars = getStars(val);

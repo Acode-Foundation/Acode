@@ -1,6 +1,13 @@
 const path = require('path');
 const fs = require('fs');
 
+// Skip on iOS — this hook copies Android build files (build-extras.gradle, keystore build.json)
+const platforms = process.env.CORDOVA_PLATFORMS || '';
+if (!platforms.includes('android')) {
+  console.log('[move-files] Skipping — Android-only hook (CORDOVA_PLATFORMS=%s)', platforms);
+  process.exit(0);
+}
+
 const gradleFilePath = path.resolve(__dirname, '../build-extras.gradle');
 const newGradleFilePath = path.resolve(
   __dirname,

@@ -1,6 +1,13 @@
 const fs = require("fs");
 const path = require("path");
 
+// Skip on iOS — this hook restores cordova-android template resources only
+const platforms = process.env.CORDOVA_PLATFORMS || '';
+if (!platforms.includes('android')) {
+  console.log('[restore-cordova-resources] Skipping — Android-only hook (CORDOVA_PLATFORMS=%s)', platforms);
+  process.exit(0);
+}
+
 const templateResPath = path.resolve(
   __dirname,
   "../node_modules/cordova-android/templates/project/res",

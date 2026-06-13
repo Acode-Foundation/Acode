@@ -109,6 +109,7 @@ module.exports = (env, options) => {
 
   const main = {
     mode,
+    devtool: prod ? false : 'source-map',
     entry: {
       boot: './src/boot.js',
       main: './src/main.js',

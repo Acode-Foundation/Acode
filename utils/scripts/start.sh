@@ -32,7 +32,11 @@ NC=''
 script1="node ./utils/config.js $mode $app"
 script2="rspack --mode $webpackmode"
 # script3="node ./utils/loadStyles.js"
-script4="cordova run $platform $cordovamode -- --packageType=apk"
+if [ "$platform" = "ios" ]; then
+  script4="cordova emulate ios $cordovamode"
+else
+  script4="cordova run $platform $cordovamode -- --packageType=apk"
+fi
 eval "
 echo \"${RED}$script1${NC}\";
 $script1;

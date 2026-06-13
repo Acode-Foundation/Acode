@@ -6,7 +6,7 @@
  * Starts:
  *   1. HTTP static file server (serves www/) + WebSocket reload relay (same port)
  *   2. rspack --watch with DEV_MODE enabled
- *   3. cordova run android (after first successful compilation)
+ *   3. cordova run android|ios (after first successful compilation)
  *   4. File watcher on src/plugins/ for auto plugin reinstall
  *
  * The app loads boot.js from the APK assets; boot.js detects DEV_MODE and
@@ -27,7 +27,6 @@ const os = require("node:os");
 const ROOT = path.resolve(__dirname, "../..");
 const WWW = path.join(ROOT, "www");
 const PLUGINS = path.join(ROOT, "src", "plugins");
-const PLATFORM_WWW = path.join(ROOT, "platforms", "android", "platform_www");
 const CORDOVA_BIN = path.join(
 	ROOT,
 	"node_modules",
@@ -228,6 +227,24 @@ function handleRequest(req, res) {
 	const contentType = MIME[ext] || "application/octet-stream";
 
 	fs.readFile(filePath, (err, data) => {
+		// Fallback: look for .map sourcemaps in node_modules/
+		if (err && ext === ".map") {
+			const nmPath = path.join(ROOT, "node_modules", relative);
+			fs.readFile(nmPath, (err2, data2) => {
+				if (err2) {
+					res.writeHead(404);
+					res.end("Not found");
+					return;
+				}
+				res.writeHead(200, {
+					"Content-Type": contentType,
+					"Access-Control-Allow-Origin": "*",
+					"Cache-Control": "no-cache, no-store, must-revalidate",
+				});
+				res.end(data2);
+			});
+			return;
+		}
 		if (err) {
 			res.writeHead(404);
 			res.end("Not found");
@@ -255,17 +272,18 @@ function broadcast(wss, message) {
 
 // ─── cordova helpers ─────────────────────────────────────────────────────────
 
-function ensureCordovaFiles() {
+function ensureCordovaFiles(platform) {
+	const platformWww = path.join(ROOT, "platforms", platform, "platform_www");
 	// Copy cordova.js and any other platform_www files into www/
 	// so the dev server can serve them when the app redirects to it.
-	if (!fs.existsSync(PLATFORM_WWW)) {
-		log("warn", "platform_www not found — skipping cordova file copy");
+	if (!fs.existsSync(platformWww)) {
+		log("warn", `platform_www not found for ${platform} — skipping cordova file copy`);
 		return;
 	}
 
-	const files = fs.readdirSync(PLATFORM_WWW);
+	const files = fs.readdirSync(platformWww);
 	for (const file of files) {
-		const src = path.join(PLATFORM_WWW, file);
+		const src = path.join(platformWww, file);
 		const dest = path.join(WWW, file);
 		if (fs.statSync(src).isFile()) {
 			// Don't overwrite index.html
@@ -273,19 +291,21 @@ function ensureCordovaFiles() {
 			fs.copyFileSync(src, dest);
 		}
 	}
-	log("ok", "Copied cordova platform files to www/");
+	log("ok", `Copied ${platform} cordova platform files to www/`);
 }
 
 async function launchApp(target, platform, emulator) {
 	if (target) {
 		log("info", `Launching app on ${target}...`);
+	} else if (emulator) {
+		log("info", `Launching app in ${platform} emulator...`);
 	} else {
 		log("info", "Launching app...");
 	}
 
 	return new Promise((resolve, reject) => {
-		const args = ["run", platform];
-		if (emulator) args.push("--emulator");
+		const args = platform === "ios" ? ["emulate", platform] : ["run", platform];
+		if (platform !== "ios" && emulator) args.push("--emulator");
 		if (target) args.push("--target", target);
 		const useLocalCordova = fs.existsSync(CORDOVA_BIN);
 		const proc = useLocalCordova
@@ -484,6 +504,8 @@ async function applyPluginUpdates() {
 			});
 			if (pluginPlatform === "android") {
 				await spawnAsync("adb", ["uninstall", pkg], { stdio: "ignore" });
+			} else if (pluginPlatform === "ios") {
+				log("info", "iOS: uninstall via Xcode or ios-deploy to reinstall");
 			}
 			await spawnAsync("cordova", ["run", pluginPlatform], {
 				cwd: ROOT,
@@ -502,18 +524,20 @@ async function main() {
 		args.find((a) => /^(android|ios|browser)$/i.test(a)) || "android";
 	const target =
 		args.find((a) => a.startsWith("--target="))?.split("=")[1] || null;
-	const emulator = args.includes("--emulator") || args.includes("-e");
+	const emulator = args.includes("--device") ? false
+		: args.includes("--emulator") || args.includes("-e") ? true
+		: platform === "ios"; // iOS defaults to emulator (no provisioning required)
 
 	console.log("\n  ⚡ Acode Dev Mode\n");
 
-	const host = getLocalIP();
+	const host = platform === "ios" ? "localhost" : getLocalIP();
 	const port = await getFreePort();
 
 	log("info", `Local IP:   ${host}`);
 	log("info", `Port:       ${port}`);
 
 	// 1. Ensure cordova files are in www/ for the dev server
-	ensureCordovaFiles();
+	ensureCordovaFiles(platform);
 
 	// 2. Start HTTPS (or HTTP fallback) + WebSocket server
 	const { server, broadcast, protocol } = await createServer(port);

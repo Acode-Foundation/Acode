@@ -1,11 +1,11 @@
 <?xml version='1.0' encoding='utf-8'?>
-<widget id="com.foxdebug.acode" android-versionCode="974" version="1.12.4"
+<widget id="com.foxdebug.acode" android-versionCode="974" ios-CFBundleVersion="1.12.4" version="1.12.4"
     xmlns="http://www.w3.org/ns/widgets"
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:cdv="http://cordova.apache.org/ns/1.0">
     <name>Acode</name>
     <description>
-        Light weight code editor and web IDE for android.
+        Light weight code editor and web IDE.
     </description>
     <author email="ajit@foxdebug.com" href="https://foxdebug.com">
         Foxdebug
@@ -85,6 +85,92 @@
         <hook type="before_prepare" src="hooks/restore-cordova-resources.js" />
         <hook type="before_prepare" src="hooks/modify-java-files.js" />
         <hook type="after_prepare" src="hooks/post-process.js" />
+    </platform>
+    <platform name="ios">
+        <allow-intent href="itms:*" />
+        <allow-intent href="itms-apps:*" />
+
+        <preference name="DisallowOverscroll" value="true" />
+        <preference name="BackgroundColor" value="0xFF313131" />
+        <preference name="EnableViewportScale" value="true" />
+        <preference name="SuppressesIncrementalRendering" value="true" />
+        <preference name="AllowInlineMediaPlayback" value="true" />
+        <preference name="MediaTypesRequiringUserActionForPlayback" value="none" />
+        <preference name="AllowsAirPlayForMediaPlayback" value="false" />
+        <preference name="deployment-target" value="15.0" />
+        <preference name="target-device" value="universal" />
+        <preference name="PreferredContentMode" value="mobile" />
+        <preference name="BackupWebStorage" value="none" />
+        <preference name="InspectableWebview" value="true" />
+
+        <preference name="AutoHideSplashScreen" value="true" />
+        <preference name="FadeSplashScreen" value="true" />
+        <preference name="FadeSplashScreenDuration" value="250" />
+
+        <config-file parent="CFBundleURLTypes" target="*-Info.plist">
+            <array>
+                <dict>
+                    <key>CFBundleURLName</key>
+                    <string>com.foxdebug.acode</string>
+                    <key>CFBundleURLSchemes</key>
+                    <array>
+                        <string>acode</string>
+                    </array>
+                </dict>
+            </array>
+        </config-file>
+
+        <config-file parent="NSAppTransportSecurity" target="*-Info.plist">
+            <dict>
+                <key>NSAllowsArbitraryLoads</key>
+                <true/>
+            </dict>
+        </config-file>
+
+        <config-file parent="UIStatusBarHidden" target="*-Info.plist">
+            <false/>
+        </config-file>
+
+        <config-file parent="UIStatusBarStyle" target="*-Info.plist">
+            <string>UIStatusBarStyleLightContent</string>
+        </config-file>
+
+        <config-file parent="UIViewControllerBasedStatusBarAppearance" target="*-Info.plist">
+            <false/>
+        </config-file>
+
+        <config-file parent="UISupportedInterfaceOrientations" target="*-Info.plist">
+            <array>
+                <string>UIInterfaceOrientationPortrait</string>
+                <string>UIInterfaceOrientationLandscapeLeft</string>
+                <string>UIInterfaceOrientationLandscapeRight</string>
+            </array>
+        </config-file>
+
+        <config-file parent="UISupportedInterfaceOrientations~ipad" target="*-Info.plist">
+            <array>
+                <string>UIInterfaceOrientationPortrait</string>
+                <string>UIInterfaceOrientationPortraitUpsideDown</string>
+                <string>UIInterfaceOrientationLandscapeLeft</string>
+                <string>UIInterfaceOrientationLandscapeRight</string>
+            </array>
+        </config-file>
+
+        <config-file parent="UIRequiresFullScreen" target="*-Info.plist">
+            <false/>
+        </config-file>
+
+        <config-file parent="NSPhotoLibraryUsageDescription" target="*-Info.plist">
+            <string>This app needs access to the photo library to open and edit image files.</string>
+        </config-file>
+
+        <config-file parent="NSPhotoLibraryAddUsageDescription" target="*-Info.plist">
+            <string>This app needs access to save files to the photo library.</string>
+        </config-file>
+
+        <config-file parent="ITSAppUsesNonExemptEncryption" target="*-Info.plist">
+            <false/>
+        </config-file>
     </platform>
     <preference name="AndroidBlacklistSecureSocketProtocols" value="SSLv3,TLSv1" />
 </widget>
