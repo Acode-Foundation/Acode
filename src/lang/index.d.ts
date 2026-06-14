@@ -152,6 +152,9 @@ declare type LangStrings = {
   "scrollbar size": string;
   "scrollbar height": string;
   "cursor controller size": string;
+  "full": string;
+  "scroll past end": string;
+  "settings-info-scroll-past-end": string;
   "none": string;
   "small": string;
   "large": string;
