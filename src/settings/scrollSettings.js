@@ -47,6 +47,7 @@ export default function scrollSettings() {
 			key: "scrollPastEnd",
 			text: strings["scroll past end"],
 			value: values.scrollPastEnd ?? "medium",
+			info: strings["settings-info-scroll-past-end"],
 			valueText: (val) => {
 				switch (val) {
 					case "none":
@@ -55,7 +56,6 @@ export default function scrollSettings() {
 						return strings.small;
 					case "medium":
 						return strings.medium;
-					case "full":
 					default:
 						return strings.full;
 				}
