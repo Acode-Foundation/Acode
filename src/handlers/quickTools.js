@@ -15,8 +15,12 @@ import appSettings from "lib/settings";
 import searchSettings from "settings/searchSettings";
 import KeyboardEvent from "utils/keyboardEvent";
 
+export let quickToolUsed = false;
+
 /**@type {HTMLInputElement | HTMLTextAreaElement} */
 let input;
+/** @type {number} */
+let quickToolUsedTimeout = null;
 
 const state = {
 	shift: false,
@@ -31,88 +35,6 @@ const events = {
 	ctrl: [],
 	meta: [],
 };
-
-function getRefValue(ref) {
-	if (!ref) return "";
-	const direct = ref.value;
-	if (typeof direct === "string") return direct;
-	if (typeof direct === "number") return String(direct);
-	if (ref.el) {
-		const elValue = ref.el.value;
-		if (typeof elValue === "string") return elValue;
-		if (typeof elValue === "number") return String(elValue);
-	}
-	return "";
-}
-
-function setRefValue(ref, value) {
-	if (!ref) return;
-	const normalized = typeof value === "string" ? value : String(value ?? "");
-	if (ref.el) ref.el.value = normalized;
-	ref.value = normalized;
-}
-
-function applySearchQuery(editor, searchValue, replaceValue) {
-	if (!editor) return null;
-	const options = appSettings?.value?.search ?? {};
-	const queryConfig = {
-		search: String(searchValue ?? ""),
-		caseSensitive: !!options.caseSensitive,
-		regexp: !!options.regExp,
-		wholeWord: !!options.wholeWord,
-	};
-	if (replaceValue !== undefined) {
-		queryConfig.replace = String(replaceValue ?? "");
-	}
-	const query = new SearchQuery(queryConfig);
-	editor.dispatch({ effects: setSearchQuery.of(query) });
-	return query;
-}
-
-function clearSearchQuery(editor) {
-	if (!editor) return;
-	editor.dispatch({
-		effects: setSearchQuery.of(new SearchQuery({ search: "" })),
-	});
-}
-
-function getSelectedText(editor) {
-	if (!editor) return "";
-	if (typeof editor.getSelectedText === "function") {
-		try {
-			return editor.getSelectedText() ?? "";
-		} catch (_) {
-			// fall back to CodeMirror state
-		}
-	}
-	try {
-		const { state } = editor;
-		if (!state) return "";
-		const { from, to } = state.selection.main ?? {};
-		if (typeof from !== "number" || typeof to !== "number") return "";
-		if (from === to) return "";
-		return state.sliceDoc(from, to);
-	} catch (_) {
-		return "";
-	}
-}
-
-function selectionMatchesQuery(editor, query) {
-	try {
-		if (!editor || !query || !query.valid || !query.search) return false;
-		const range = editor.state?.selection?.main;
-		if (!range || range.from === range.to) return false;
-		const cursor = query.getCursor(editor.state.doc, range.from, range.to);
-		cursor.next();
-		return (
-			!cursor.done &&
-			cursor.value.from === range.from &&
-			cursor.value.to === range.to
-		);
-	} catch (_) {
-		return false;
-	}
-}
 
 /**
  * @typedef { 'shift' | 'alt' | 'ctrl' | 'meta' } QuickToolsEvent
@@ -136,11 +58,8 @@ quickTools.$input.addEventListener("input", (e) => {
 		return;
 	}
 
-	const event = KeyboardEvent("keydown", keyCombination);
-	input = input || editorManager.editor.contentDOM;
-
 	resetKeys();
-	input.dispatchEvent(event);
+	getInput().dispatchEvent(KeyboardEvent("keydown", keyCombination));
 });
 
 quickTools.$input.addEventListener("keydown", (e) => {
@@ -155,13 +74,13 @@ quickTools.$input.addEventListener("keydown", (e) => {
 		return;
 	e.preventDefault();
 
-	const event = KeyboardEvent("keydown", keyCombination);
-	if (input && input !== quickTools.$input) {
-		input.dispatchEvent(event);
-	} else {
-		// Otherwise fallback to editor view content
-		editorManager.editor.contentDOM.dispatchEvent(event);
+	let target = getInput();
+	if (target === quickTools.$input) {
+		target = editorManager.editor.contentDOM;
 	}
+
+	target.dispatchEvent(KeyboardEvent("keydown", keyCombination));
+	setQuicktoolsUsed();
 });
 
 appSettings.on("update:quicktoolsItems:after", () => {
@@ -312,12 +231,14 @@ export default function actions(action, value) {
 
 		case "key": {
 			value = Number.parseInt(value, 10);
-			const event = KeyboardEvent("keydown", getKeys({ keyCode: value }));
 			if (value > 40 && value < 37) {
 				resetKeys();
 			}
 			setInput();
-			input.dispatchEvent(event);
+			getInput().dispatchEvent(
+				KeyboardEvent("keydown", getKeys({ keyCode: value })),
+			);
+			setQuicktoolsUsed();
 			return true;
 		}
 
@@ -799,4 +720,102 @@ function shiftKeyMapping(char) {
 		default:
 			return char.toUpperCase();
 	}
+}
+
+function getRefValue(ref) {
+	if (!ref) return "";
+	const direct = ref.value;
+	if (typeof direct === "string") return direct;
+	if (typeof direct === "number") return String(direct);
+	if (ref.el) {
+		const elValue = ref.el.value;
+		if (typeof elValue === "string") return elValue;
+		if (typeof elValue === "number") return String(elValue);
+	}
+	return "";
+}
+
+function setRefValue(ref, value) {
+	if (!ref) return;
+	const normalized = typeof value === "string" ? value : String(value ?? "");
+	if (ref.el) ref.el.value = normalized;
+	ref.value = normalized;
+}
+
+function applySearchQuery(editor, searchValue, replaceValue) {
+	if (!editor) return null;
+	const options = appSettings?.value?.search ?? {};
+	const queryConfig = {
+		search: String(searchValue ?? ""),
+		caseSensitive: !!options.caseSensitive,
+		regexp: !!options.regExp,
+		wholeWord: !!options.wholeWord,
+	};
+	if (replaceValue !== undefined) {
+		queryConfig.replace = String(replaceValue ?? "");
+	}
+	const query = new SearchQuery(queryConfig);
+	editor.dispatch({ effects: setSearchQuery.of(query) });
+	return query;
+}
+
+function clearSearchQuery(editor) {
+	if (!editor) return;
+	editor.dispatch({
+		effects: setSearchQuery.of(new SearchQuery({ search: "" })),
+	});
+}
+
+function getSelectedText(editor) {
+	if (!editor) return "";
+	if (typeof editor.getSelectedText === "function") {
+		try {
+			return editor.getSelectedText() ?? "";
+		} catch (_) {
+			// fall back to CodeMirror state
+		}
+	}
+	try {
+		const { state } = editor;
+		if (!state) return "";
+		const { from, to } = state.selection.main ?? {};
+		if (typeof from !== "number" || typeof to !== "number") return "";
+		if (from === to) return "";
+		return state.sliceDoc(from, to);
+	} catch (_) {
+		return "";
+	}
+}
+
+function selectionMatchesQuery(editor, query) {
+	try {
+		if (!editor || !query || !query.valid || !query.search) return false;
+		const range = editor.state?.selection?.main;
+		if (!range || range.from === range.to) return false;
+		const cursor = query.getCursor(editor.state.doc, range.from, range.to);
+		cursor.next();
+		return (
+			!cursor.done &&
+			cursor.value.from === range.from &&
+			cursor.value.to === range.to
+		);
+	} catch (_) {
+		return false;
+	}
+}
+
+/**
+ * Gets text input
+ * @returns {HTMLElement}
+ */
+function getInput() {
+	return input || editorManager.editor.contentDOM;
+}
+
+function setQuicktoolsUsed() {
+	clearTimeout(quickToolUsedTimeout);
+	quickToolUsed = true;
+	quickToolUsedTimeout = setTimeout(() => {
+		quickToolUsed = false;
+	}, 500);
 }
