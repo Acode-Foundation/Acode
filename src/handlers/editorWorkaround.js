@@ -1,3 +1,5 @@
+import { quickToolUsed } from "./quickTools";
+
 let debounceTimer;
 let lastInput = null;
 let keyboardTimer;
@@ -19,16 +21,8 @@ document.addEventListener(
 	true,
 );
 
-document.addEventListener("keydown", () => {
-	lastInput = "keyboard";
-	clearTimeout(keyboardTimer);
-	keyboardTimer = setTimeout(() => {
-		lastInput = null;
-	}, 500);
-});
-
 document.addEventListener("selectionchange", () => {
-	if (lastInput !== "pointer") return;
+	if (lastInput !== "pointer" || quickToolUsed) return;
 	const sel = document.getSelection();
 	if (!sel?.rangeCount) return;
 	const node = sel.getRangeAt(0).startContainer;

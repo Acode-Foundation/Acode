@@ -69,6 +69,7 @@
     "@babel/runtime-corejs3": "^7.29.2",
     "@babel/traverse": "^7.29.0",
     "@biomejs/biome": "2.4.11",
+    "@lezer/generator": "^1.8.0",
     "@rspack/cli": "^2.0.0",
     "@rspack/core": "^2.0.0",
     "@types/ace": "^0.0.52",

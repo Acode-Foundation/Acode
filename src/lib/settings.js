@@ -170,6 +170,7 @@ class Settings {
 			diagonalScrolling: false,
 			reverseScrolling: false,
 			scrollSpeed: config.SCROLL_SPEED_NORMAL,
+			scrollPastEnd: "medium",
 			customTheme: this.#customTheme,
 			relativeLineNumbers: false,
 			elasticTabstops: false,

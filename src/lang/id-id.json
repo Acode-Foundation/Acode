@@ -59,7 +59,7 @@
 	"open file": "Buka berkas",
 	"open files and folders": "Buka berkas dan folder",
 	"open folder": "Buka folder",
-	"open recent": "Terakhir Dibuka",
+	"open recent": "Terakhir dibuka",
 	"ok": "Oke",
 	"overwrite": "Timpa",
 	"paste": "Tempel",
@@ -559,7 +559,7 @@
 	"lsp-install-info-version-available": "Versi {version} tersedia.",
 	"lsp-install-method-apk": "Paket APK",
 	"lsp-install-method-cargo": "Crate Cargo",
-	"lsp-install-method-manual": "biner manual",
+	"lsp-install-method-manual": "Biner manual",
 	"lsp-install-method-npm": "Paket npm",
 	"lsp-install-method-pip": "Paket pip",
 	"lsp-install-method-shell": "Shell kustom",
@@ -753,5 +753,8 @@
 	"lsp-allow-non-terminal-workspace": "Jalankan LSP pada folder eksternal",
 	"settings-info-lsp-allow-non-terminal-workspace": "Izinkan server bahasa untuk SAF, lokasi eksternal, dan lokasi jarak jauh. LSP berjalan di terminal bawaan Acode yang tidak dapat mengakses lokasi-lokasi tersebut, sehingga fitur mungkin tidak berfungsi dengan baik karena akan terhubung ke jalur virtual atau lokasi cache.",
 	"don't ask again": "Jangan tanya lagi",
-	"scrollbar height": "Tinggi bilah gulir"
+	"scrollbar height": "Tinggi bilah gulir",
+	"full": "Penuh",
+	"scroll past end": "Gulir melampaui batas akhir",
+	"settings-info-scroll-past-end": "Menambahkan ruang kosong ekstra di bagian bawah editor, memungkinkan Anda menggulir baris terakhir hingga ke bagian atas."
 }
