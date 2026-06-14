@@ -28,7 +28,7 @@ document.addEventListener("keydown", () => {
 });
 
 document.addEventListener("selectionchange", () => {
-	if (lastInput === "keyboard") return;
+	if (lastInput !== "pointer") return;
 	const sel = document.getSelection();
 	if (!sel?.rangeCount) return;
 	const node = sel.getRangeAt(0).startContainer;

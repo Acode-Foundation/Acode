@@ -53,7 +53,7 @@ const bootProd = () => {
 };
 
 if (DEV_MODE && DEV_ORIGIN) {
-	fetch(`${DEV_ORIGIN}/build/main.js`, { method: "HEAD" })
+	fetch(`${DEV_ORIGIN}/build/main.js`, { method: "HEAD", cache: "no-store" })
 		.then((res) => {
 			if (res.ok) {
 				bootDev();
