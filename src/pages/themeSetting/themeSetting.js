@@ -278,7 +278,10 @@ export default function () {
 					<span style={`color:${theme.foreground};`}>@</span>
 					<span style={`color:${theme.blue};`}>acode</span>
 					<span style={`color:${theme.foreground};`}>:~$ </span>
-					<span className="terminal-cursor" style={`background:${theme.cursor};`}></span>
+					<span
+						className="terminal-cursor"
+						style={`background:${theme.cursor};`}
+					></span>
 				</div>
 			</div>
 		);
