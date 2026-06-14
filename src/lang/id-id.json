@@ -701,7 +701,7 @@
 	"settings-info-preview-use-current-file": "Utamakan berkas saat ini ketika memulai pratinjau.",
 	"settings-info-terminal-convert-eol": "Konversikan akhiran baris saat menempelkan atau menampilkan output terminal.",
 	"settings-note-formatter-settings": "Tetapkan pemformat untuk setiap bahasa. Pasang plugin pemformat untuk membuka lebih banyak opsi.",
-	"settings-note-lsp-settings": "Language servers add autocomplete, diagnostics, hover details, and more. They work best with folders that Acode's built-in terminal can access directly, such as terminal/public folders. SAF, external, and remote locations are skipped by default because they may use cached or virtual paths; enable the compatibility option only if you want to try them.",
+	"settings-note-lsp-settings": "Server bahasa (LSP) menambahkan pelengkap otomatis, diagnostik, detail melayang, dan lainnya. Fitur ini berfungsi paling baik pada folder yang dapat diakses langsung oleh terminal bawaan Acode, seperti folder terminal/publik. Lokasi SAF, eksternal, dan jarak jauh dilewati secara bawaan karena kemungkinan menggunakan jalur virtual atau cache; aktifkan opsi kompatibilitas hanya jika Anda ingin mencobanya.",
 	"search result label singular": "hasil",
 	"search result label plural": "hasil",
 	"pin tab": "Sematkan tab",
