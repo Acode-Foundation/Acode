@@ -60,6 +60,7 @@ quickTools.$input.addEventListener("input", (e) => {
 
 	resetKeys();
 	getInput().dispatchEvent(KeyboardEvent("keydown", keyCombination));
+	setQuicktoolsUsed();
 });
 
 quickTools.$input.addEventListener("keydown", (e) => {
