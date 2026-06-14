@@ -263,6 +263,10 @@ class NotificationManager {
 			this.notifications.pop();
 		}
 
+		if (!this.timeUpdateInterval) {
+			this.startTimeUpdates();
+		}
+
 		this.renderNotifications();
 
 		// show toast notification
