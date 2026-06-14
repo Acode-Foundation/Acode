@@ -310,7 +310,7 @@ async function EditorManager($header, $body) {
 	}
 
 	function getConfiguredThemeExtension() {
-		const desiredTheme = appSettings?.value?.editorTheme || "one_dark";
+		const desiredTheme = appSettings?.value?.editorTheme;
 		return getThemeExtensions(desiredTheme, [oneDark]);
 	}
 
