@@ -701,7 +701,7 @@
 	"settings-info-preview-use-current-file": "Utamakan berkas saat ini ketika memulai pratinjau.",
 	"settings-info-terminal-convert-eol": "Konversikan akhiran baris saat menempelkan atau menampilkan output terminal.",
 	"settings-note-formatter-settings": "Tetapkan pemformat untuk setiap bahasa. Pasang plugin pemformat untuk membuka lebih banyak opsi.",
-	"settings-note-lsp-settings": "Server bahasa menambahkan penyelesaian otomatis, diagnostik, detail melayang, dan sebagainya. Mereka bekerja lebih baik dengan folder yang bisa diakses langsung oleh terminal bawaan Acode, seperti folder terminal/publik. Lokasi SAF, eksternal, dan jarak jauh dilewati secara default karena mereka mungkin menggunakan jalur yang di-cache atau virtual; aktifkan opsi kompabilitas hanya jika Anda ingin mencobanya.",
+	"settings-note-lsp-settings": "Server bahasa menambahkan penyelesaian otomatis, diagnostik, detail melayang, dan sebagainya. Mereka bekerja lebih baik dengan folder yang bisa diakses langsung oleh terminal bawaan Acode, seperti folder terminal/publik. Lokasi SAF, eksternal, dan jarak jauh dilewati secara default karena mereka mungkin menggunakan jalur yang di-cache atau virtual; aktifkan opsi kompatibilitas hanya jika Anda ingin mencobanya.",
 	"search result label singular": "hasil",
 	"search result label plural": "hasil",
 	"pin tab": "Sematkan tab",
