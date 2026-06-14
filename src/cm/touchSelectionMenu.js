@@ -164,15 +164,10 @@ class TouchSelectionMenuController {
 				[...m.addedNodes, ...m.removedNodes].some(
 					(n) =>
 						n.nodeType === 1 &&
-						(n.matches?.(".cm-tooltip") ||
-							n.querySelector?.(".cm-tooltip")),
+						(n.matches?.(".cm-tooltip") || n.querySelector?.(".cm-tooltip")),
 				),
 			);
-			if (
-				!relevant ||
-				!this.#menuActive ||
-				!this.#shouldShowMenu()
-			) {
+			if (!relevant || !this.#menuActive || !this.#shouldShowMenu()) {
 				return;
 			}
 			this.#showMenuDeferred();
@@ -601,7 +596,8 @@ class TouchSelectionMenuController {
 			const tryAbove = r.top - MENU_MARGIN - menuRect.height;
 			const tryBelow = r.bottom + MENU_MARGIN;
 			const maxTop =
-				containerRect.top + containerRect.height -
+				containerRect.top +
+				containerRect.height -
 				menuRect.height -
 				MENU_MARGIN;
 			const minTop = containerRect.top + MENU_MARGIN;
