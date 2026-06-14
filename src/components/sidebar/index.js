@@ -318,6 +318,10 @@ function create($container, $toggler) {
 					mask.remove();
 					document.ontouchstart = null;
 					resetState();
+					$container.style.overflow = null;
+					onhide();
+					openedFolders.map(($) => ($.onscroll = null));
+					openedFolders = [];
 				} else {
 					root.style.removeProperty("margin-left");
 					root.style.removeProperty("width");
