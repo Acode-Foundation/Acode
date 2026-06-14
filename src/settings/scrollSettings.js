@@ -36,6 +36,13 @@ export default function scrollSettings() {
 			valueText: (size) => `${size}px`,
 			select: [5, 10, 15, 20],
 		},
+		{
+			key: "scrollbarHeight",
+			text: strings["scrollbar height"] || "Scrollbar height",
+			value: values.scrollbarHeight,
+			valueText: (size) => `${size}px`,
+			select: [20, 30, 40, 50, 60],
+		},
 	];
 
 	return settingsPage(title, items, callback, undefined, {
