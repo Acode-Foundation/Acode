@@ -147,7 +147,7 @@ async function EditorManager($header, $body) {
 		}
 	};
 
-	const { scrollbarSize } = appSettings.value;
+	const { scrollbarSize, scrollbarHeight } = appSettings.value;
 	const events = {
 		"switch-file": [],
 		"rename-file": [],
@@ -1547,12 +1547,14 @@ async function EditorManager($header, $body) {
 
 	const $vScrollbar = ScrollBar({
 		width: scrollbarSize,
+		thumbHeight: scrollbarHeight,
 		onscroll: onscrollV,
 		onscrollend: onscrollVend,
 		parent: $body,
 	});
 	const $hScrollbar = ScrollBar({
 		width: scrollbarSize,
+		thumbHeight: scrollbarHeight,
 		onscroll: onscrollH,
 		onscrollend: onscrollHEnd,
 		parent: $body,
@@ -1823,6 +1825,11 @@ async function EditorManager($header, $body) {
 	appSettings.on("update:scrollbarSize", function (value) {
 		$vScrollbar.size = value;
 		$hScrollbar.size = value;
+	});
+
+	appSettings.on("update:scrollbarHeight", function (value) {
+		$vScrollbar.thumbHeight = value;
+		$hScrollbar.thumbHeight = value;
 	});
 
 	// Live autocompletion (activateOnTyping)
