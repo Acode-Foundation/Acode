@@ -138,6 +138,7 @@ class TouchSelectionMenuController {
 	#enabled = true;
 	#handlingMenuAction = false;
 	#menuShowTimer = null;
+	#tooltipObserver = null;
 
 	constructor(view, options = {}) {
 		this.#view = view;
@@ -157,6 +158,24 @@ class TouchSelectionMenuController {
 		document.addEventListener("pointerdown", this.#onGlobalPointerDown, true);
 		document.addEventListener("pointerup", this.#onGlobalPointerUp, true);
 		document.addEventListener("pointercancel", this.#onGlobalPointerUp, true);
+
+		this.#tooltipObserver = new MutationObserver((mutations) => {
+			const relevant = mutations.some((m) =>
+				[...m.addedNodes, ...m.removedNodes].some(
+					(n) =>
+						n.nodeType === 1 &&
+						(n.matches?.(".cm-tooltip") || n.querySelector?.(".cm-tooltip")),
+				),
+			);
+			if (!relevant || !this.#menuActive || !this.#shouldShowMenu()) {
+				return;
+			}
+			this.#showMenuDeferred();
+		});
+		this.#tooltipObserver.observe(this.#view.dom, {
+			childList: true,
+			subtree: true,
+		});
 	}
 
 	destroy() {
@@ -178,6 +197,7 @@ class TouchSelectionMenuController {
 		this.#stateSyncRaf = 0;
 		this.#shiftSelectionSession = null;
 		this.#pendingShiftSelectionClick = null;
+		this.#tooltipObserver?.disconnect();
 		this.#hideMenu(true);
 	}
 
@@ -238,9 +258,6 @@ class TouchSelectionMenuController {
 	onStateChanged(meta = {}) {
 		if (!this.#enabled) return;
 		if (this.#handlingMenuAction) return;
-		if (meta.selectionChanged && this.#menuActive) {
-			this.#hideMenu();
-		}
 		if (!this.#shouldShowMenu()) {
 			if (!this.#hasSelection()) {
 				this.#menuRequested = false;
@@ -285,7 +302,6 @@ class TouchSelectionMenuController {
 			this.#captureShiftSelection(event);
 			this.#isPointerInteracting = true;
 			this.#clearMenuShowTimer();
-			this.#hideMenu();
 			return;
 		}
 		this.#shiftSelectionSession = null;
@@ -304,7 +320,7 @@ class TouchSelectionMenuController {
 		this.#isPointerInteracting = false;
 		if (!this.#enabled) return;
 		if (this.#shouldShowMenu()) {
-			this.#scheduleMenuShow(MENU_SHOW_DELAY);
+			this.#scheduleMenuShow(0);
 			return;
 		}
 		if (!this.#hasSelection()) {
@@ -526,6 +542,8 @@ class TouchSelectionMenuController {
 			},
 		);
 
+		this.#avoidTooltips(containerRect, clamped, menuRect);
+
 		this.$menu.style.left = `${clamped.left - containerRect.left}px`;
 		this.$menu.style.top = `${clamped.top - containerRect.top}px`;
 		this.$menu.style.visibility = "";
@@ -550,6 +568,53 @@ class TouchSelectionMenuController {
 				this.#showMenu(anchor);
 			},
 		});
+	}
+
+	#avoidTooltips(containerRect, clamped, menuRect) {
+		const tooltips = this.#view.dom.querySelectorAll(".cm-tooltip");
+		if (!tooltips.length) return;
+
+		const menuBox = {
+			left: clamped.left,
+			top: clamped.top,
+			right: clamped.left + menuRect.width,
+			bottom: clamped.top + menuRect.height,
+		};
+
+		for (const tooltip of tooltips) {
+			if (!tooltip.isConnected) continue;
+			const r = tooltip.getBoundingClientRect();
+			if (r.width === 0 && r.height === 0) continue;
+			if (
+				menuBox.right <= r.left ||
+				menuBox.left >= r.right ||
+				menuBox.bottom <= r.top ||
+				menuBox.top >= r.bottom
+			) {
+				continue;
+			}
+
+			const tryAbove = r.top - MENU_MARGIN - menuRect.height;
+			const tryBelow = r.bottom + MENU_MARGIN;
+			const maxTop =
+				containerRect.top +
+				containerRect.height -
+				menuRect.height -
+				MENU_MARGIN;
+			const minTop = containerRect.top + MENU_MARGIN;
+
+			if (tryAbove >= minTop) {
+				clamped.top = tryAbove;
+			} else if (tryBelow <= maxTop) {
+				clamped.top = Math.min(tryBelow, maxTop);
+			}
+
+			if (clamped.top < minTop) clamped.top = minTop;
+			if (clamped.top > maxTop) clamped.top = maxTop;
+
+			menuBox.top = clamped.top;
+			menuBox.bottom = clamped.top + menuRect.height;
+		}
 	}
 
 	#hideMenu(force = false) {

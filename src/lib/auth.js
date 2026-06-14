@@ -152,7 +152,7 @@ class AuthService {
 					return JSON.parse(localStorage.getItem(CACHE_USER_KEY));
 				} catch {}
 			}
-			toast("Unable to fetch user info");
+			console.error("Unable to fetch user info:", error);
 			throw error;
 		}
 	}
