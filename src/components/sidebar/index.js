@@ -390,6 +390,7 @@ function create($container, $toggler) {
 
 	function hide(hideIfTab = false) {
 		localStorage.sidebarShown = 0;
+		wasOpenInTab = false;
 		if (mode === "phone") {
 			actionStack.remove("sidebar");
 			hideMaster();
@@ -408,6 +409,7 @@ function create($container, $toggler) {
 	function hideMaster() {
 		$el.style.transform = null;
 		$el.classList.remove("show");
+		wasOpenInTab = false;
 		clearTimeout(hideTimeout);
 		hideTimeout = setTimeout(() => {
 			$el.activated = false;

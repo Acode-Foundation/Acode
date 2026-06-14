@@ -38,10 +38,6 @@ body.no-animation {
     }
   }
 
-  &.tab {
-    max-width: 300px;
-  }
-
   &.show {
     transform: translate(0, 0);
     animation: show-sidebar 300ms ease 1;
