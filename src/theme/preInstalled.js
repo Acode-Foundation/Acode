@@ -21,6 +21,7 @@ dark.errorTextColor = "rgb(255, 185, 92)";
 dark.dangerColor = "rgb(220, 38, 38)";
 dark.scrollbarColor = "rgba(255, 255, 255, 0.2)";
 dark.preferredEditorTheme = getSystemEditorTheme(true);
+dark.preferredTerminalTheme = "dark";
 
 const oled = createBuiltInTheme("OLED");
 oled.primaryColor = "rgb(0, 0, 0)";
@@ -46,6 +47,7 @@ oled.errorTextColor = "rgb(255, 69, 58)";
 oled.dangerColor = "rgb(255, 69, 58)";
 oled.scrollbarColor = "rgba(255, 255, 255, 0.1)";
 oled.preferredEditorTheme = "tokyoNight";
+oled.preferredTerminalTheme = "dark";
 
 const ocean = createBuiltInTheme("Ocean");
 ocean.darkenedPrimaryColor = "rgb(19, 19, 26)";
@@ -63,6 +65,7 @@ ocean.popupActiveColor = "rgb(255, 215, 0)";
 ocean.boxShadowColor = "rgba(0, 0, 0, 0.5)";
 ocean.preferredEditorTheme = "solarizedDark";
 ocean.preferredFont = "Fira Code";
+ocean.preferredTerminalTheme = "ocean";
 
 const bump = createBuiltInTheme("Bump");
 bump.darkenedPrimaryColor = "rgb(24, 28, 36)";
@@ -86,6 +89,7 @@ bump.errorTextColor = "rgb(255, 180, 100)";
 bump.dangerColor = "rgb(240, 70, 60)";
 bump.scrollbarColor = "rgba(230, 232, 238, 0.12)";
 bump.preferredEditorTheme = "one_dark";
+bump.preferredTerminalTheme = "oneDark";
 
 const bling = createBuiltInTheme("Bling");
 bling.darkenedPrimaryColor = "rgb(16, 12, 28)";
@@ -109,6 +113,7 @@ bling.errorTextColor = "rgb(255, 170, 100)";
 bling.dangerColor = "rgb(240, 85, 85)";
 bling.scrollbarColor = "rgba(228, 225, 240, 0.1)";
 bling.preferredEditorTheme = "tokyoNight";
+bling.preferredTerminalTheme = "tokyoNight";
 
 const moon = createBuiltInTheme("Moon");
 moon.darkenedPrimaryColor = "rgb(16, 20, 26)";
@@ -132,6 +137,7 @@ moon.errorTextColor = "rgb(255, 170, 105)";
 moon.dangerColor = "rgb(235, 75, 70)";
 moon.scrollbarColor = "rgba(210, 225, 230, 0.12)";
 moon.preferredEditorTheme = "tokyoNight";
+moon.preferredTerminalTheme = "nord";
 
 const atticus = createBuiltInTheme("Atticus");
 atticus.darkenedPrimaryColor = "rgb(26, 24, 22)";
@@ -155,6 +161,7 @@ atticus.errorTextColor = "rgb(240, 160, 90)";
 atticus.dangerColor = "rgb(210, 65, 55)";
 atticus.scrollbarColor = "rgba(228, 222, 212, 0.12)";
 atticus.preferredEditorTheme = "monokai";
+atticus.preferredTerminalTheme = "gruvbox";
 
 const tomyris = createBuiltInTheme("Tomyris");
 tomyris.darkenedPrimaryColor = "rgb(22, 12, 20)";
@@ -178,6 +185,7 @@ tomyris.errorTextColor = "rgb(255, 175, 100)";
 tomyris.dangerColor = "rgb(235, 65, 65)";
 tomyris.scrollbarColor = "rgba(235, 225, 232, 0.1)";
 tomyris.preferredEditorTheme = "monokai";
+tomyris.preferredTerminalTheme = "dracula";
 
 const menes = createBuiltInTheme("Menes");
 menes.darkenedPrimaryColor = "rgb(18, 22, 28)";
@@ -201,6 +209,7 @@ menes.errorTextColor = "rgb(255, 165, 95)";
 menes.dangerColor = "rgb(240, 75, 65)";
 menes.scrollbarColor = "rgba(225, 230, 240, 0.12)";
 menes.preferredEditorTheme = "one_dark";
+menes.preferredTerminalTheme = "oneDark";
 
 const light = createBuiltInTheme("Light", "light");
 light.primaryColor = "rgb(255, 255, 255)";
@@ -219,6 +228,7 @@ light.errorTextColor = "rgb(185, 28, 28)";
 light.dangerColor = "rgb(220, 38, 38)";
 light.scrollbarColor = "rgba(0, 0, 0, 0.2)";
 light.preferredEditorTheme = getSystemEditorTheme(false);
+light.preferredTerminalTheme = "light";
 
 const system = createBuiltInTheme("System", "dark", "free");
 
@@ -294,6 +304,7 @@ glass.activeTextColor = "rgb(255, 255, 255)";
 glass.errorTextColor = "rgb(185, 28, 28)";
 glass.dangerColor = "rgb(220, 38, 38)";
 glass.scrollbarColor = "rgba(0, 0, 0, 0.15)";
+glass.preferredTerminalTheme = "glass";
 
 const neon = createBuiltInTheme("Neon");
 neon.darkenedPrimaryColor = "rgb(9, 9, 11)";
@@ -317,6 +328,7 @@ neon.activeTextColor = "rgb(0, 0, 0)";
 neon.errorTextColor = "rgb(255, 20, 147)";
 neon.dangerColor = "rgb(255, 20, 147)";
 neon.scrollbarColor = "rgba(10, 255, 200, 0.3)";
+neon.preferredTerminalTheme = "synthwave";
 
 const glassDark = createBuiltInTheme("Glass Dark", "dark");
 glassDark.darkenedPrimaryColor = "rgb(15, 15, 20)";
@@ -340,6 +352,7 @@ glassDark.errorTextColor = "rgb(248, 113, 113)";
 glassDark.dangerColor = "rgb(239, 68, 68)";
 glassDark.scrollbarColor = "rgba(255, 255, 255, 0.2)";
 glassDark.preferredEditorTheme = "tokyoNight";
+glassDark.preferredTerminalTheme = "glassDark";
 
 const sunset = createBuiltInTheme("Sunset");
 sunset.darkenedPrimaryColor = "rgb(251, 243, 235)";
@@ -361,6 +374,7 @@ sunset.activeTextColor = "rgb(255, 255, 255)";
 sunset.errorTextColor = "rgb(185, 28, 28)";
 sunset.dangerColor = "rgb(220, 38, 38)";
 sunset.scrollbarColor = "rgba(124, 45, 18, 0.2)";
+sunset.preferredTerminalTheme = "sunset";
 
 const obsidian = createBuiltInTheme("Obsidian");
 obsidian.darkenedPrimaryColor = "rgb(18, 17, 21)";
@@ -384,6 +398,7 @@ obsidian.errorTextColor = "rgb(255, 152, 100)";
 obsidian.dangerColor = "rgb(220, 80, 60)";
 obsidian.scrollbarColor = "rgba(212, 175, 55, 0.18)";
 obsidian.preferredEditorTheme = "one_dark";
+obsidian.preferredTerminalTheme = "oneDark";
 
 const ember = createBuiltInTheme("Ember");
 ember.darkenedPrimaryColor = "rgb(22, 16, 13)";
@@ -407,6 +422,7 @@ ember.errorTextColor = "rgb(255, 160, 85)";
 ember.dangerColor = "rgb(220, 60, 50)";
 ember.scrollbarColor = "rgba(240, 228, 210, 0.12)";
 ember.preferredEditorTheme = "monokai";
+ember.preferredTerminalTheme = "sunset";
 
 const dusk = createBuiltInTheme("Dusk");
 dusk.darkenedPrimaryColor = "rgb(13, 11, 24)";
@@ -430,6 +446,7 @@ dusk.errorTextColor = "rgb(255, 170, 110)";
 dusk.dangerColor = "rgb(235, 80, 100)";
 dusk.scrollbarColor = "rgba(215, 210, 235, 0.12)";
 dusk.preferredEditorTheme = "tokyoNight";
+dusk.preferredTerminalTheme = "tokyoNight";
 
 const carbon = createBuiltInTheme("Carbon");
 carbon.darkenedPrimaryColor = "rgb(14, 14, 16)";
@@ -453,6 +470,7 @@ carbon.errorTextColor = "rgb(255, 140, 100)";
 carbon.dangerColor = "rgb(235, 70, 60)";
 carbon.scrollbarColor = "rgba(255, 255, 255, 0.1)";
 carbon.preferredEditorTheme = "one_dark";
+carbon.preferredTerminalTheme = "oneDark";
 
 const mint = createBuiltInTheme("Mint", "light");
 mint.darkenedPrimaryColor = "rgb(235, 245, 240)";
@@ -476,6 +494,7 @@ mint.errorTextColor = "rgb(190, 40, 40)";
 mint.dangerColor = "rgb(220, 38, 38)";
 mint.scrollbarColor = "rgba(28, 42, 38, 0.12)";
 mint.preferredEditorTheme = "noctisLilac";
+mint.preferredTerminalTheme = "light";
 
 const sandstone = createBuiltInTheme("Sandstone", "light");
 sandstone.darkenedPrimaryColor = "rgb(238, 230, 218)";
@@ -499,6 +518,7 @@ sandstone.errorTextColor = "rgb(180, 40, 35)";
 sandstone.dangerColor = "rgb(200, 50, 45)";
 sandstone.scrollbarColor = "rgba(60, 45, 35, 0.12)";
 sandstone.preferredEditorTheme = "noctisLilac";
+sandstone.preferredTerminalTheme = "solarizedLight";
 
 const blossom = createBuiltInTheme("Blossom", "light");
 blossom.darkenedPrimaryColor = "rgb(242, 234, 237)";
@@ -522,6 +542,7 @@ blossom.errorTextColor = "rgb(200, 45, 40)";
 blossom.dangerColor = "rgb(210, 50, 45)";
 blossom.scrollbarColor = "rgba(48, 38, 42, 0.12)";
 blossom.preferredEditorTheme = "noctisLilac";
+blossom.preferredTerminalTheme = "light";
 
 const custom = createBuiltInTheme("Custom");
 custom.autoDarkened = true;
