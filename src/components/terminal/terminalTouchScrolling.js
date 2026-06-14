@@ -8,6 +8,9 @@
  */
 
 export default class TerminalTouchScrolling {
+	#tryAttempts = 0;
+	#destroyed = false;
+
 	constructor(terminal, touchSelection = null) {
 		this.terminal = terminal;
 		this.touchSelection = touchSelection;
@@ -28,17 +31,17 @@ export default class TerminalTouchScrolling {
 
 		this.animationId = null;
 		this.boundHandlers = {};
-		this._tryAttempts = 0;
 
-		this._tryInit();
+		this.#tryInit();
 	}
 
-	_tryInit() {
+	#tryInit() {
+		if (this.#destroyed) return;
 		this.element = this.terminal?.element || null;
 		if (!this.element) {
-			this._tryAttempts = (this._tryAttempts || 0) + 1;
-			if (this._tryAttempts < 10) {
-				requestAnimationFrame(() => this._tryInit());
+			this.#tryAttempts++;
+			if (this.#tryAttempts < 10) {
+				requestAnimationFrame(() => this.#tryInit());
 			}
 			return;
 		}
@@ -70,7 +73,6 @@ export default class TerminalTouchScrolling {
 		this.element.addEventListener(
 			"touchcancel",
 			this.boundHandlers.touchCancel,
-			{ passive: false },
 		);
 	}
 
@@ -203,6 +205,7 @@ export default class TerminalTouchScrolling {
 	}
 
 	destroy() {
+		this.#destroyed = true;
 		this.stopMomentum();
 
 		if (this.element) {
