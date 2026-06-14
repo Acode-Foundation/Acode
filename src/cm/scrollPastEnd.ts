@@ -12,8 +12,8 @@ export function scrollPastEndCustom(factor: number): Extension {
 
 	const plugin = ViewPlugin.fromClass(
 		class {
-			height = 1000;
-			attrs = { style: "padding-bottom: 1000px" };
+			height = 0;
+			attrs = { style: "" };
 
 			update(update: ViewUpdate) {
 				const { view } = update;
@@ -24,7 +24,7 @@ export function scrollPastEndCustom(factor: number): Extension {
 					(anyView.documentPadding?.top ?? 0) -
 					0.5;
 				const height = Math.max(0, Math.round(maxScrollHeight * factor));
-				if (height >= 0 && height !== this.height) {
+				if (height !== this.height) {
 					this.height = height;
 					this.attrs = { style: `padding-bottom: ${height}px` };
 				}
