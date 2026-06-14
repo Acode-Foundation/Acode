@@ -22,6 +22,7 @@ import tag from "html-tag-js";
  * @param {HTMLElement} [options.parent]
  * @param {"top"|"left"|"right"|"bottom"} [options.placement = "right"]
  * @param {Number} [options.width]
+ * @param {Number} [options.thumbHeight = 50]
  * @param {function():void} [options.onscroll]
  * @param {function():void} [options.onscrollend]
  * @returns {Scrollbar & HTMLElement}
@@ -62,7 +63,7 @@ export default function ScrollBar(options) {
 		y: 0,
 	};
 	let scrollbarSize = 20;
-	let thumbHeight = options.thumbHeight || 50;
+	let thumbHeight = options.thumbHeight ?? 50;
 	let height;
 	let width;
 	let rect;
@@ -99,11 +100,12 @@ export default function ScrollBar(options) {
 		thumbHeight = value;
 		if (isVertical) {
 			$thumb.style.height = thumbHeight + "px";
-			$thumb.style.marginTop = -(thumbHeight / 2) + "px";
+			$thumb.style.marginTop = "0px";
 		} else {
 			$thumb.style.width = thumbHeight + "px";
-			$thumb.style.marginLeft = -(thumbHeight / 2) + "px";
+			$thumb.style.marginLeft = "0px";
 		}
+		resize();
 	}
 
 	/**
@@ -185,8 +187,8 @@ export default function ScrollBar(options) {
 
 	function resize(render = true) {
 		rect = $scrollbar.getBoundingClientRect();
-		height = rect.height - 20;
-		width = rect.width - 20;
+		height = rect.height - 20 - thumbHeight;
+		width = rect.width - 20 - thumbHeight;
 
 		if (height < 0) height = 0;
 		if (width < 0) width = 0;
