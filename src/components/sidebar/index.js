@@ -304,9 +304,9 @@ function create($container, $toggler) {
 
 			const wasActivated = $el.activated;
 			const previousMode = mode;
-
+			
 			if (previousMode === "tab") {
-				wasOpenInTab = wasActivated;
+				wasOpenInTab = wasActivated && localStorage.sidebarShown === "1";
 			}
 
 			if (wasActivated) {
@@ -340,8 +340,7 @@ function create($container, $toggler) {
 
 			let shouldShow = false;
 			if (mode === "tab") {
-				shouldShow =
-					wasActivated || wasOpenInTab || localStorage.sidebarShown === "1";
+				shouldShow = wasOpenInTab || localStorage.sidebarShown === "1";
 			} else {
 				shouldShow = false;
 			}
