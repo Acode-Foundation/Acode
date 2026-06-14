@@ -665,6 +665,7 @@ export default function lspServerDetail(serverId) {
 						break;
 					}
 
+					$loader.show();
 					await persistStartupTimeout(serverId, timeout);
 					toast(
 						fillTemplate(strings["lsp-startup-timeout-set"], {
@@ -701,6 +702,7 @@ export default function lspServerDetail(serverId) {
 						break;
 					}
 
+					$loader.show();
 					await persistInitOptions(serverId, JSON.parse(result));
 					toast(strings["lsp-initialization-options-updated"]);
 					break;
