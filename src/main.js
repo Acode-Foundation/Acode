@@ -318,7 +318,6 @@ async function onDeviceReady() {
 				}
 			} catch (error) {
 				console.error("Error checking login status:", error);
-				toast("Error checking login status");
 			}
 
 			fetchPromotions();
