@@ -234,20 +234,24 @@ async function onWorkerMessage(e) {
 			let content;
 			let readError;
 
-			const editorFile = editorManager.getFile(data, "uri");
-			if (editorFile?.session?.doc) {
-				try {
-					content = editorFile.session.doc.toString() || "";
-				} catch (_) {
-					content = "";
-				}
+			if (helpers.isBinary(data)) {
+				content = "";
 			} else {
-				try {
-					content = await fsOperation(data).readFile(
-						settings.value.defaultFileEncoding,
-					);
-				} catch (er) {
-					readError = er;
+				const editorFile = editorManager.getFile(data, "uri");
+				if (editorFile?.session?.doc) {
+					try {
+						content = editorFile.session.doc.toString() || "";
+					} catch (_) {
+						content = "";
+					}
+				} else {
+					try {
+						content = await fsOperation(data).readFile(
+							settings.value.defaultFileEncoding,
+						);
+					} catch (er) {
+						readError = er;
+					}
 				}
 			}
 
@@ -424,8 +428,9 @@ async function searchAll() {
 
 	addEvents();
 
-	const allFiles = files();
+	const allFiles = files().filter((file) => !helpers.isBinary(file));
 	editorManager.files.forEach((file) => {
+		if (!file.uri || helpers.isBinary(file.uri)) return;
 		const exists = allFiles.find((f) => f.url === file.uri);
 		if (exists) return;
 
