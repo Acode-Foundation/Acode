@@ -155,6 +155,7 @@ class Settings {
 			showPrintMargin: false,
 			printMargin: 80,
 			scrollbarSize: 20,
+			scrollbarHeight: 50,
 			showSpaces: false,
 			confirmOnExit: true,
 			lineHeight: 2,

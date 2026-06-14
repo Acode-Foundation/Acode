@@ -10,6 +10,7 @@ import "styles/wideScreen.scss";
 import "lib/polyfill";
 import "cm/supportedModes";
 import "components/WebComponents";
+import "handlers/editorWorkaround";
 
 import fsOperation from "fileSystem";
 import sidebarApps from "sidebarApps";
@@ -317,7 +318,6 @@ async function onDeviceReady() {
 				}
 			} catch (error) {
 				console.error("Error checking login status:", error);
-				toast("Error checking login status");
 			}
 
 			fetchPromotions();

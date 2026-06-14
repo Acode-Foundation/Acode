@@ -752,5 +752,6 @@
 	"file already exists force named": "'{name}' sudah ada. Timpa?",
 	"lsp-allow-non-terminal-workspace": "Jalankan LSP pada folder eksternal",
 	"settings-info-lsp-allow-non-terminal-workspace": "Izinkan server bahasa untuk SAF, lokasi eksternal, dan lokasi jarak jauh. LSP berjalan di terminal bawaan Acode yang tidak dapat mengakses lokasi-lokasi tersebut, sehingga fitur mungkin tidak berfungsi dengan baik karena akan terhubung ke jalur virtual atau lokasi cache.",
-	"don't ask again": "Jangan tanya lagi"
+	"don't ask again": "Jangan tanya lagi",
+	"scrollbar height": "Tinggi bilah gulir"
 }
