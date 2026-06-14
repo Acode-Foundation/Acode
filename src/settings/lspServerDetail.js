@@ -11,6 +11,7 @@ import settingsPage from "components/settingsPage";
 import toast from "components/toast";
 import alert from "dialogs/alert";
 import confirm from "dialogs/confirm";
+import loader from "dialogs/loader";
 import prompt from "dialogs/prompt";
 import appSettings from "lib/settings";
 import {
@@ -132,6 +133,19 @@ function formatInstallStatus(result) {
 	}
 }
 
+function formatStatusLabel(result) {
+	switch (result?.status) {
+		case "present":
+			return strings["lsp-status-installed"];
+		case "missing":
+			return strings["lsp-status-not-installed"];
+		case "failed":
+			return strings["lsp-status-check-failed"];
+		default:
+			return strings["lsp-status-unknown"];
+	}
+}
+
 function formatStartupTimeoutValue(timeout) {
 	return typeof timeout === "number"
 		? fillTemplate(strings["lsp-timeout-ms"], { timeout })
@@ -209,8 +223,17 @@ function updateItemDisplay($list, itemsByKey, key, value, extras = {}) {
 		item.checkbox = extras.checkbox;
 	}
 
+	if ("text" in extras) {
+		item.text = extras.text;
+	}
+
 	const $item = $list?.querySelector?.(`[data-key="${key}"]`);
 	if (!$item) return;
+
+	if (extras.text !== undefined) {
+		const $text = $item.querySelector(".text");
+		if ($text) $text.textContent = extras.text;
+	}
 
 	const $subtitle = $item.querySelector(".value");
 	if ($subtitle) {
@@ -327,8 +350,7 @@ function createItems(snapshot) {
 			0,
 			{
 				key: "install_status",
-				text: strings["lsp-installed"],
-				value: formatInstallStatus(snapshot.installResult),
+				text: formatStatusLabel(snapshot.installResult),
 				info: formatInstallInfo(snapshot.installResult),
 				category: categories.installation,
 				chevron: true,
@@ -379,15 +401,10 @@ async function refreshVisibleState($list, itemsByKey, serverId) {
 	updateItemDisplay($list, itemsByKey, "enabled", undefined, {
 		checkbox: snapshot.merged.enabled !== false,
 	});
-	updateItemDisplay(
-		$list,
-		itemsByKey,
-		"install_status",
-		formatInstallStatus(snapshot.installResult),
-		{
-			info: formatInstallInfo(snapshot.installResult),
-		},
-	);
+	updateItemDisplay($list, itemsByKey, "install_status", undefined, {
+		info: formatInstallInfo(snapshot.installResult),
+		text: formatStatusLabel(snapshot.installResult),
+	});
 	updateItemDisplay($list, itemsByKey, "install_server", "");
 	updateItemDisplay($list, itemsByKey, "update_server", "");
 	updateItemDisplay($list, itemsByKey, "uninstall_server", "");
@@ -521,212 +538,230 @@ export default function lspServerDetail(serverId) {
 
 	async function callback(key, value) {
 		const $list = this?.parentElement;
-		const snapshot = await buildSnapshot(serverId);
-		if (!snapshot) {
-			toast(strings["lsp-server-not-found"]);
-			return;
-		}
+		const $loader = loader.create("LSP", strings["loading..."]);
 
-		switch (key) {
-			case "enabled":
-				await persistEnabled(serverId, value);
-				if (!value) {
-					stopManagedServer(serverId);
-				}
-				toast(
-					value
-						? strings["lsp-server-enabled-toast"]
-						: strings["lsp-server-disabled-toast"],
-				);
-				break;
-
-			case "remove_custom_server":
-				if (
-					!(await confirm(
-						strings["lsp-remove-custom-server"],
-						fillTemplate(strings["lsp-remove-custom-server-confirm"], {
-							server: snapshot.liveServer.label || serverId,
-						}),
-					))
-				) {
-					break;
-				}
-				stopManagedServer(serverId);
-				await removeCustomServer(serverId);
-				toast(strings["lsp-custom-server-removed"]);
-				page.hide();
-				appSettings.uiSettings["lsp-settings"]?.show();
+		try {
+			const snapshot = await buildSnapshot(serverId);
+			if (!snapshot) {
+				toast(strings["lsp-server-not-found"]);
 				return;
-
-			case "install_status": {
-				const result = await checkServerInstallation(snapshot.merged);
-				const lines = [
-					fillTemplate(strings["lsp-status-line"], {
-						status: formatInstallStatus(result),
-					}),
-					result.version
-						? fillTemplate(strings["lsp-version-line"], {
-								version: result.version,
-							})
-						: null,
-					fillTemplate(strings["lsp-details-line"], {
-						details: formatInstallInfo(result),
-					}),
-				].filter(Boolean);
-				alert(strings["lsp-installation-status"], lines.join("<br>"));
-				break;
 			}
 
-			case "install_server":
-				if (!snapshot.installCommand) {
-					toast(strings["lsp-install-command-unavailable"]);
+			switch (key) {
+				case "enabled":
+					await persistEnabled(serverId, value);
+					if (!value) {
+						stopManagedServer(serverId);
+					}
+					toast(
+						value
+							? strings["lsp-server-enabled-toast"]
+							: strings["lsp-server-disabled-toast"],
+					);
 					break;
-				}
-				await installServer(snapshot.merged, "install");
-				break;
 
-			case "update_server":
-				if (!snapshot.updateCommand) {
-					toast(strings["lsp-update-command-unavailable"]);
-					break;
-				}
-				await installServer(snapshot.merged, "update");
-				break;
+				case "remove_custom_server":
+					$loader.hide();
+					if (
+						!(await confirm(
+							strings["lsp-remove-custom-server"],
+							fillTemplate(strings["lsp-remove-custom-server-confirm"], {
+								server: snapshot.liveServer.label || serverId,
+							}),
+						))
+					) {
+						break;
+					}
+					$loader.show();
+					stopManagedServer(serverId);
+					await removeCustomServer(serverId);
+					toast(strings["lsp-custom-server-removed"]);
+					page.hide();
+					appSettings.uiSettings["lsp-settings"]?.show();
+					return;
 
-			case "uninstall_server":
-				if (!snapshot.uninstallCommand) {
-					toast(strings["lsp-uninstall-command-unavailable"]);
-					break;
-				}
-				if (
-					!(await confirm(
-						strings["lsp-uninstall-server"],
-						fillTemplate(strings["lsp-remove-installed-files"], {
-							server: snapshot.liveServer.label || serverId,
+				case "install_status": {
+					const result = await checkServerInstallation(snapshot.merged);
+					$loader.hide();
+					const lines = [
+						fillTemplate(strings["lsp-status-line"], {
+							status: formatInstallStatus(result),
 						}),
-					))
-				) {
+						result.version
+							? fillTemplate(strings["lsp-version-line"], {
+									version: result.version,
+								})
+							: null,
+						fillTemplate(strings["lsp-details-line"], {
+							details: formatInstallInfo(result),
+						}),
+					].filter(Boolean);
+					alert(strings["lsp-installation-status"], lines.join("<br>"));
 					break;
 				}
-				await uninstallServer(snapshot.merged);
-				toast(strings["lsp-server-uninstalled"]);
-				break;
 
-			case "startup_timeout": {
-				const currentTimeout =
-					snapshot.override.startupTimeout ??
-					snapshot.liveServer.startupTimeout ??
-					5000;
-				const result = await prompt(
-					strings["lsp-startup-timeout-ms"],
-					String(currentTimeout),
-					"number",
-					{
-						test: (val) => {
-							const timeout = Number.parseInt(String(val), 10);
-							return Number.isFinite(timeout) && timeout >= 1000;
+				case "install_server":
+					if (!snapshot.installCommand) {
+						toast(strings["lsp-install-command-unavailable"]);
+						break;
+					}
+					await installServer(snapshot.merged, "install");
+					break;
+
+				case "update_server":
+					if (!snapshot.updateCommand) {
+						toast(strings["lsp-update-command-unavailable"]);
+						break;
+					}
+					await installServer(snapshot.merged, "update");
+					break;
+
+				case "uninstall_server":
+					if (!snapshot.uninstallCommand) {
+						toast(strings["lsp-uninstall-command-unavailable"]);
+						break;
+					}
+					$loader.hide();
+					if (
+						!(await confirm(
+							strings["lsp-uninstall-server"],
+							fillTemplate(strings["lsp-remove-installed-files"], {
+								server: snapshot.liveServer.label || serverId,
+							}),
+						))
+					) {
+						break;
+					}
+					$loader.show();
+					await uninstallServer(snapshot.merged);
+					toast(strings["lsp-server-uninstalled"]);
+					break;
+
+				case "startup_timeout": {
+					const currentTimeout =
+						snapshot.override.startupTimeout ??
+						snapshot.liveServer.startupTimeout ??
+						5000;
+					$loader.hide();
+					const result = await prompt(
+						strings["lsp-startup-timeout-ms"],
+						String(currentTimeout),
+						"number",
+						{
+							test: (val) => {
+								const timeout = Number.parseInt(String(val), 10);
+								return Number.isFinite(timeout) && timeout >= 1000;
+							},
 						},
-					},
-				);
+					);
 
-				if (result === null) {
+					if (result === null) {
+						break;
+					}
+
+					const timeout = Number.parseInt(String(result), 10);
+					if (!Number.isFinite(timeout) || timeout < 1000) {
+						toast(strings["lsp-invalid-timeout"]);
+						break;
+					}
+
+					$loader.show();
+					await persistStartupTimeout(serverId, timeout);
+					toast(
+						fillTemplate(strings["lsp-startup-timeout-set"], {
+							timeout,
+						}),
+					);
 					break;
 				}
 
-				const timeout = Number.parseInt(String(result), 10);
-				if (!Number.isFinite(timeout) || timeout < 1000) {
-					toast(strings["lsp-invalid-timeout"]);
-					break;
-				}
-
-				await persistStartupTimeout(serverId, timeout);
-				toast(
-					fillTemplate(strings["lsp-startup-timeout-set"], {
-						timeout,
-					}),
-				);
-				break;
-			}
-
-			case "edit_init_options": {
-				const currentJson = JSON.stringify(
-					snapshot.override.initializationOptions || {},
-					null,
-					2,
-				);
-				const result = await prompt(
-					strings["lsp-initialization-options-json"],
-					currentJson || "{}",
-					"textarea",
-					{
-						test: (val) => {
-							try {
-								JSON.parse(val);
-								return true;
-							} catch {
-								return false;
-							}
+				case "edit_init_options": {
+					const currentJson = JSON.stringify(
+						snapshot.override.initializationOptions || {},
+						null,
+						2,
+					);
+					$loader.hide();
+					const result = await prompt(
+						strings["lsp-initialization-options-json"],
+						currentJson || "{}",
+						"textarea",
+						{
+							test: (val) => {
+								try {
+									JSON.parse(val);
+									return true;
+								} catch {
+									return false;
+								}
+							},
 						},
-					},
-				);
+					);
 
-				if (result === null) {
+					if (result === null) {
+						break;
+					}
+
+					$loader.show();
+					await persistInitOptions(serverId, JSON.parse(result));
+					toast(strings["lsp-initialization-options-updated"]);
 					break;
 				}
 
-				await persistInitOptions(serverId, JSON.parse(result));
-				toast(strings["lsp-initialization-options-updated"]);
-				break;
+				case "view_init_options": {
+					const json = JSON.stringify(
+						snapshot.merged.initializationOptions || {},
+						null,
+						2,
+					);
+					$loader.hide();
+					alert(
+						strings["lsp-initialization-options"],
+						`<pre style="overflow: auto; max-height: 60vh; font-size: 12px;">${escapeHtml(json)}</pre>`,
+					);
+					break;
+				}
+
+				case "ext_hover":
+				case "ext_completion":
+				case "ext_signature":
+				case "ext_diagnostics":
+				case "ext_inlayHints":
+				case "ext_formatting": {
+					const extKey = key.replace("ext_", "");
+					const feature = getFeatureItems().find(
+						([featureKey]) => featureKey === key,
+					);
+					const currentClientConfig = clone(
+						snapshot.override.clientConfig || {},
+					);
+					const currentBuiltins = currentClientConfig.builtinExtensions || {};
+
+					await persistClientConfig(serverId, {
+						...currentClientConfig,
+						builtinExtensions: {
+							...currentBuiltins,
+							[extKey]: value,
+						},
+					});
+					toast(
+						fillTemplate(strings["lsp-feature-state-toast"], {
+							feature: feature?.[2] || extKey,
+							state: value
+								? strings["lsp-state-enabled"]
+								: strings["lsp-state-disabled"],
+						}),
+					);
+					break;
+				}
+
+				default:
+					break;
 			}
 
-			case "view_init_options": {
-				const json = JSON.stringify(
-					snapshot.merged.initializationOptions || {},
-					null,
-					2,
-				);
-				alert(
-					strings["lsp-initialization-options"],
-					`<pre style="overflow: auto; max-height: 60vh; font-size: 12px;">${escapeHtml(json)}</pre>`,
-				);
-				break;
-			}
-
-			case "ext_hover":
-			case "ext_completion":
-			case "ext_signature":
-			case "ext_diagnostics":
-			case "ext_inlayHints":
-			case "ext_formatting": {
-				const extKey = key.replace("ext_", "");
-				const feature = getFeatureItems().find(
-					([featureKey]) => featureKey === key,
-				);
-				const currentClientConfig = clone(snapshot.override.clientConfig || {});
-				const currentBuiltins = currentClientConfig.builtinExtensions || {};
-
-				await persistClientConfig(serverId, {
-					...currentClientConfig,
-					builtinExtensions: {
-						...currentBuiltins,
-						[extKey]: value,
-					},
-				});
-				toast(
-					fillTemplate(strings["lsp-feature-state-toast"], {
-						feature: feature?.[2] || extKey,
-						state: value
-							? strings["lsp-state-enabled"]
-							: strings["lsp-state-disabled"],
-					}),
-				);
-				break;
-			}
-
-			default:
-				break;
+			await refreshVisibleState($list, itemsByKey, serverId);
+		} finally {
+			$loader.destroy();
 		}
-
-		await refreshVisibleState($list, itemsByKey, serverId);
 	}
 }

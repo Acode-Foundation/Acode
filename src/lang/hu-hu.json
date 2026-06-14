@@ -584,6 +584,7 @@
 	"lsp-startup-timeout-set": "Indítási időtúllépés beállítva: {timeout} ms",
 	"lsp-state-disabled": "letiltva",
 	"lsp-state-enabled": "engedélyezve",
+	"lsp-status": "Status",
 	"lsp-status-check-failed": "Nem sikerült az ellenőrzés",
 	"lsp-status-installed": "Telepítve",
 	"lsp-status-installed-version": "Telepítve ({version})",

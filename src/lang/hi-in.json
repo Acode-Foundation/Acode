@@ -584,6 +584,7 @@
 	"lsp-startup-timeout-set": "स्टार्टअप टाइमआउट {timeout} ms पर सेट किया गया",
 	"lsp-state-disabled": "अक्षम",
 	"lsp-state-enabled": "सक्षम",
+	"lsp-status": "Status",
 	"lsp-status-check-failed": "जांच विफल रही",
 	"lsp-status-installed": "इंस्टॉल हो गया",
 	"lsp-status-installed-version": "इंस्टॉल हो गया ({version})",

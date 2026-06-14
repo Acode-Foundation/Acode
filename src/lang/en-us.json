@@ -601,6 +601,7 @@
 	"lsp-startup-timeout-set": "Startup timeout set to {timeout} ms",
 	"lsp-state-disabled": "disabled",
 	"lsp-state-enabled": "enabled",
+	"lsp-status": "Status",
 	"lsp-status-check-failed": "Check failed",
 	"lsp-status-installed": "Installed",
 	"lsp-status-installed-version": "Installed ({version})",

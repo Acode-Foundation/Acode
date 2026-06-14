@@ -584,6 +584,7 @@
 	"lsp-startup-timeout-set": "Batas waktu mulai diatur ke {timeout} ms",
 	"lsp-state-disabled": "dinonaktifkan",
 	"lsp-state-enabled": "diaktifkan",
+	"lsp-status": "Status",
 	"lsp-status-check-failed": "Pemeriksaan gagal",
 	"lsp-status-installed": "Terpasang",
 	"lsp-status-installed-version": "Terpasang ({version})",

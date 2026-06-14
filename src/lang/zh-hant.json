@@ -584,6 +584,7 @@
 	"lsp-startup-timeout-set": "啟動超時已設置為 {timeout} ms",
 	"lsp-state-disabled": "禁用",
 	"lsp-state-enabled": "啟用",
+	"lsp-status": "Status",
 	"lsp-status-check-failed": "檢查失敗",
 	"lsp-status-installed": "已安裝",
 	"lsp-status-installed-version": "已安裝（{version}）",
