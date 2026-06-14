@@ -701,7 +701,7 @@
 	"settings-info-preview-use-current-file": "Utamakan berkas saat ini ketika memulai pratinjau.",
 	"settings-info-terminal-convert-eol": "Konversikan akhiran baris saat menempelkan atau menampilkan output terminal.",
 	"settings-note-formatter-settings": "Tetapkan pemformat untuk setiap bahasa. Pasang plugin pemformat untuk membuka lebih banyak opsi.",
-	"settings-note-lsp-settings": "Language servers add autocomplete, diagnostics, hover details, and more. They work best with folders that Acode's built-in terminal can access directly, such as terminal/public folders. SAF, external, and remote locations are skipped by default because they may use cached or virtual paths; enable the compatibility option only if you want to try them.",
+	"settings-note-lsp-settings": "Server bahasa menambahkan penyelesaian otomatis, diagnostik, detail melayang, dan sebagainya. Mereka bekerja lebih baik dengan folder yang bisa diakses langsung oleh terminal bawaan Acode, seperti folder terminal/publik. Lokasi SAF, eksternal, dan jarak jauh dilewati secara default karena mereka mungkin menggunakan jalur yang di-cache atau virtual; aktifkan opsi kompabilitas hanya jika Anda ingin mencobanya.",
 	"search result label singular": "hasil",
 	"search result label plural": "hasil",
 	"pin tab": "Sematkan tab",
@@ -750,11 +750,11 @@
 	"cannot paste folder into itself": "Tidak bisa menempelkan folder ke dalam dirinya sendiri",
 	"folder already exists": "Folder sudah ada",
 	"file already exists force named": "'{name}' sudah ada. Timpa?",
-	"lsp-allow-non-terminal-workspace": "Run LSP on external folders",
-	"settings-info-lsp-allow-non-terminal-workspace": "Allow language servers for SAF, external, and remote locations. LSP runs in Acode's built-in terminal, which cannot access those locations, so features may not work correctly. As it will connect to a virtual path or cache location.",
-	"don't ask again": "Don't ask again",
-	"scrollbar height": "Scrollbar height",
-	"full": "Full",
-	"scroll past end": "Scroll past end",
-	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top."
+	"lsp-allow-non-terminal-workspace": "Jalankan LSP di folder eksternal",
+	"settings-info-lsp-allow-non-terminal-workspace": "Izinkan server bahasa untuk lokasi SAF, eksternal, dan jarak jauh. LSP berjalan di terminal bawaan Acode, yang tidak dapat mengakses lokasi tersebut, jadi fitur-fitur mungkin tidak dapat bekerja dengan benar. Karena itu akan terhubung ke jalur virtual atau lokasi cache.",
+	"don't ask again": "Jangan tanyakan lagi",
+	"scrollbar height": "Tinggi bilah gulir",
+	"full": "Penuh",
+	"scroll past end": "Gulir melewati akhir",
+	"settings-info-scroll-past-end": "Menambahkan spasi kosong ekstra di bawah editor, memungkinkan Anda untuk gulir baris terakhir ke atas."
 }
