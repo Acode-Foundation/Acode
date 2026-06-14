@@ -65,6 +65,7 @@ import {
 import indentGuides from "cm/indentGuides";
 import { lineBreakMarker } from "cm/lineBreakMarker";
 import rainbowBrackets, { getRainbowBracketColors } from "cm/rainbowBrackets";
+import scrollPastEndCustom from "cm/scrollPastEnd";
 import tagAutoRename from "cm/tagAutoRename";
 import { getThemeConfig, getThemeExtensions } from "cm/themes";
 import list from "components/collapsableList";
@@ -147,7 +148,7 @@ async function EditorManager($header, $body) {
 		}
 	};
 
-	const { scrollbarSize } = appSettings.value;
+	const { scrollbarSize, scrollbarHeight } = appSettings.value;
 	const events = {
 		"switch-file": [],
 		"rename-file": [],
@@ -267,6 +268,8 @@ async function EditorManager($header, $body) {
 	const tagAutoRenameCompartment = new Compartment();
 	// Compartment for read-only toggling
 	const readOnlyCompartment = new Compartment();
+	// Compartment for scrolling past the end of the file
+	const scrollPastEndCompartment = new Compartment();
 	// Compartment for language mode (allows async loading/reconfigure)
 	const languageCompartment = new Compartment();
 	// Compartment for LSP extensions so we can swap per file
@@ -531,6 +534,23 @@ async function EditorManager($header, $body) {
 				// Default-on for older settings files that do not have this key yet.
 				const enabled = appSettings?.value?.autoRenameTags !== false;
 				return enabled ? tagAutoRename() : [];
+			},
+		},
+		{
+			keys: ["scrollPastEnd"],
+			compartments: [scrollPastEndCompartment],
+			build() {
+				const value = appSettings?.value?.scrollPastEnd || "medium";
+				if (value === "none") {
+					return [];
+				}
+				const factorMap = {
+					small: 0.25,
+					medium: 0.5,
+					full: 1.0,
+				};
+				const factor = factorMap[value] ?? 1.0;
+				return scrollPastEndCustom(factor);
 			},
 		},
 	];
@@ -1547,12 +1567,14 @@ async function EditorManager($header, $body) {
 
 	const $vScrollbar = ScrollBar({
 		width: scrollbarSize,
+		thumbHeight: scrollbarHeight,
 		onscroll: onscrollV,
 		onscrollend: onscrollVend,
 		parent: $body,
 	});
 	const $hScrollbar = ScrollBar({
 		width: scrollbarSize,
+		thumbHeight: scrollbarHeight,
 		onscroll: onscrollH,
 		onscrollend: onscrollHEnd,
 		parent: $body,
@@ -1825,6 +1847,11 @@ async function EditorManager($header, $body) {
 		$hScrollbar.size = value;
 	});
 
+	appSettings.on("update:scrollbarHeight", function (value) {
+		$vScrollbar.thumbHeight = value;
+		$hScrollbar.thumbHeight = value;
+	});
+
 	// Live autocompletion (activateOnTyping)
 	appSettings.on("update:liveAutoCompletion", function () {
 		applyOptions(["liveAutoCompletion"]);
@@ -1836,6 +1863,10 @@ async function EditorManager($header, $body) {
 
 	appSettings.on("update:autoRenameTags", function () {
 		applyOptions(["autoRenameTags"]);
+	});
+
+	appSettings.on("update:scrollPastEnd", function () {
+		applyOptions(["scrollPastEnd"]);
 	});
 
 	appSettings.on("update:autoCloseTags", function () {

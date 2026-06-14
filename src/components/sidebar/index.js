@@ -160,7 +160,6 @@ function create($container, $toggler) {
 			}
 		} catch (error) {
 			console.error("Error checking login status:", error);
-			toast("Error checking login status", 3000);
 		} finally {
 			loader.destroy();
 		}

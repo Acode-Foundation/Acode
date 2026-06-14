@@ -81,6 +81,16 @@ body {
     }
   }
 
+  &[data-editor-touched] {
+    #quick-tools {
+      pointer-events: none;
+    }
+
+    #lsp-status-bar {
+      pointer-events: none;
+    }
+  }
+
   .main {
     position: relative;
   }
@@ -793,9 +803,14 @@ input[type="search"]::-webkit-search-results-decoration {
   }
 
   @supports not (gap: 1px) {
-    > * + * { margin-top: 8px; }
+    >*+* {
+      margin-top: 8px;
+    }
+
     .notification-toast {
-      > * + * { margin-left: 12px; }
+      >*+* {
+        margin-left: 12px;
+      }
     }
   }
 
