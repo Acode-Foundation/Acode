@@ -306,6 +306,7 @@ class TouchSelectionMenuController {
 		}
 		this.#shiftSelectionSession = null;
 		this.#isPointerInteracting = false;
+		this.#menuRequested = false;
 		this.#hideMenu();
 	};
 
