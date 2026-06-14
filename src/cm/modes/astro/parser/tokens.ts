@@ -24,6 +24,7 @@ const space = 32;
 const tab = 9;
 const lessThan = 60;
 const greaterThan = 62;
+const exclamation = 33;
 const slash = 47;
 const singleQuote = 39;
 const doubleQuote = 34;
@@ -189,6 +190,29 @@ function rawTextElementEndOffset(
 	return null;
 }
 
+function htmlCommentEndOffset(input: Input, offset: number): number | null {
+	if (
+		input.peek(offset) !== lessThan ||
+		input.peek(offset + 1) !== exclamation ||
+		input.peek(offset + 2) !== dash ||
+		input.peek(offset + 3) !== dash
+	) {
+		return null;
+	}
+
+	for (let i = offset + 4; ; i++) {
+		const next = input.peek(i);
+		if (next === eof) return i;
+		if (
+			next === dash &&
+			input.peek(i + 1) === dash &&
+			input.peek(i + 2) === greaterThan
+		) {
+			return i + 3;
+		}
+	}
+}
+
 function expressionEndOffset(
 	input: Input,
 	offset: number,
@@ -279,19 +303,63 @@ function expressionEndOffset(
 	}
 }
 
+function startsInsideTagFragment(input: Input): boolean {
+	for (let offset = 0; ; offset++) {
+		const next = input.peek(offset);
+		if (next === eof || next === lessThan) return false;
+		if (next === greaterThan) return true;
+	}
+}
+
 function htmlContentEndOffset(
 	input: Input,
 ): number {
+	let inTag = startsInsideTagFragment(input);
+	let quote = 0;
+
 	for (let offset = 0; ; offset++) {
 		const next = input.peek(offset);
 		if (next === eof) return offset;
 
+		if (inTag) {
+			if (quote) {
+				if (next === quote) quote = 0;
+				continue;
+			}
+
+			if (next === singleQuote || next === doubleQuote) {
+				quote = next;
+				continue;
+			}
+
+			if (next === greaterThan) {
+				inTag = false;
+				continue;
+			}
+
+			if (next === openBrace && expressionEndOffset(input, offset) > -1) {
+				return offset;
+			}
+
+			continue;
+		}
+
 		if (next === lessThan) {
+			const commentEnd = htmlCommentEndOffset(input, offset);
+			if (commentEnd !== null) {
+				offset = commentEnd - 1;
+				continue;
+			}
+
 			const rawTextEnd = rawTextElementEndOffset(input, offset);
 			if (rawTextEnd !== null) {
 				offset = rawTextEnd - 1;
 				continue;
 			}
+
+			inTag = true;
+			quote = 0;
+			continue;
 		}
 
 		if (next === openBrace && expressionEndOffset(input, offset) > -1) {
