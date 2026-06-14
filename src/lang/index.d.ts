@@ -457,6 +457,7 @@ declare type LangStrings = {
   "terminal": string;
   "terminal not installed prompt": string;
   "terminal first launch prompt": string;
+  "don't ask again": string;
   "allFileAccess": string;
   "fonts": string;
   "sponsor": string;

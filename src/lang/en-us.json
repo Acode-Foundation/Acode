@@ -454,6 +454,7 @@
 	"terminal": "Terminal",
 	"terminal not installed prompt": "Terminal is not installed. Would you like to initialize it now?",
 	"terminal first launch prompt": "Terminal environment is not installed. It enables running commands, SSH, and scripting. Install now?",
+	"don't ask again": "Don't ask again",
 	"allFileAccess": "All file access",
 	"fonts": "Fonts",
 	"sponsor": "Sponsor",
