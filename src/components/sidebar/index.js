@@ -301,14 +301,14 @@ function create($container, $toggler) {
 		resizeTimeout = setTimeout(() => {
 			const { innerWidth: currentWidth } = window;
 			if (innerWidth === currentWidth) return;
-			
+
 			const wasActivated = $el.activated;
 			const previousMode = mode;
-			
+
 			if (previousMode === "tab") {
 				wasOpenInTab = wasActivated;
 			}
-			
+
 			if (wasActivated) {
 				if (previousMode === "phone") {
 					clearTimeout(hideTimeout);
@@ -333,14 +333,15 @@ function create($container, $toggler) {
 			$el.classList.remove(mode);
 			mode = innerWidth > 750 ? "tab" : "phone";
 			$el.classList.add(mode);
-			
+
 			let shouldShow = false;
 			if (mode === "tab") {
-				shouldShow = wasActivated || wasOpenInTab || localStorage.sidebarShown === "1";
+				shouldShow =
+					wasActivated || wasOpenInTab || localStorage.sidebarShown === "1";
 			} else {
 				shouldShow = false;
 			}
-			
+
 			if (shouldShow) {
 				$el.style.animationDuration = "0s";
 				show();
