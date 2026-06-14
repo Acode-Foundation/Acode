@@ -275,29 +275,47 @@ export function isBinaryFile(file) {
 	if (typeof file === "string") return isBinaryPath(file);
 	if (!file) return false;
 
-	return (
-		isBinaryMime(file.mime || file.type) ||
-		isBinaryPath(file.url || file.path || file.name)
-	);
+	const mime = file.mime || file.type;
+	if (isTextMime(mime)) return false;
+	if (isBinaryMime(mime)) return true;
+
+	return isBinaryPath(file.url || file.path || file.name);
 }
 
 export function isBinaryPath(file) {
 	const path = String(file ?? "").split(/[?#]/)[0];
 	const basename = path.split(/[\\/]/).pop()?.toLowerCase() || "";
-	const extension = binaryExtensions.find((extension) =>
-		basename.endsWith(`.${extension}`),
-	);
 
-	return binaryExtensionSet.has(extension);
+	const lastDot = basename.lastIndexOf(".");
+	if (lastDot === -1) return false;
+
+	const singleExtension = basename.slice(lastDot + 1);
+	if (binaryExtensionSet.has(singleExtension)) return true;
+
+	const previousDot = basename.lastIndexOf(".", lastDot - 1);
+	if (previousDot === -1) return false;
+
+	const compoundExtension = basename.slice(previousDot + 1);
+	return binaryExtensionSet.has(compoundExtension);
 }
 
 export function isBinaryMime(mime) {
-	if (!mime || typeof mime !== "string") return false;
-
-	const normalized = mime.split(";")[0].trim().toLowerCase();
-	if (!normalized || textMimeTypes.has(normalized)) return false;
-	if (normalized.startsWith("text/")) return false;
+	const normalized = normalizeMime(mime);
+	if (!normalized || isTextMime(normalized)) return false;
 	if (binaryMimeTypes.has(normalized)) return true;
 
 	return binaryMimePrefixes.some((prefix) => normalized.startsWith(prefix));
+}
+
+function isTextMime(mime) {
+	const normalized = normalizeMime(mime);
+	if (!normalized) return false;
+	if (textMimeTypes.has(normalized)) return true;
+
+	return normalized.startsWith("text/");
+}
+
+function normalizeMime(mime) {
+	if (!mime || typeof mime !== "string") return "";
+	return mime.split(";")[0].trim().toLowerCase();
 }

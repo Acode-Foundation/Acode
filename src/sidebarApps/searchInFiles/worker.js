@@ -1,6 +1,6 @@
 import "core-js/stable";
 import picomatch from "picomatch/posix";
-import { binaryExtensions, isBinaryFile } from "utils/binaryExtensions";
+import { isBinaryFile } from "utils/binaryExtensions";
 
 const resolvers = {};
 
@@ -223,14 +223,10 @@ function done(ratio, mode) {
  * @param {string} arg.include - The inclusion patterns separated by commas.
  */
 function Skip({ exclude, include }) {
-	// Default exclude patterns for binary/media/archives/fonts/etc.
-	const defaultExcludes = binaryExtensions.map(
-		(extension) => `**/*.${extension}`,
-	);
 	const userExcludes = (exclude ? exclude.split(",") : [])
 		.map((p) => p.trim())
 		.filter(Boolean);
-	const excludeFiles = [...defaultExcludes, ...userExcludes];
+	const excludeFiles = userExcludes;
 	const includeFiles = (include ? include.split(",") : ["**"]).map((p) =>
 		p.trim(),
 	);
