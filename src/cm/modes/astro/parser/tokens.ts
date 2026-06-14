@@ -34,6 +34,11 @@ const closeBrace = 125;
 const dash = 45;
 const asterisk = 42;
 
+interface TagEnd {
+	end: number;
+	selfClosing: boolean;
+}
+
 function lower(code: number): number {
 	return code >= 65 && code <= 90 ? code + 32 : code;
 }
@@ -80,13 +85,6 @@ function lineHasOnlyFrontmatterFence(
 	}
 }
 
-function lineEndOffset(input: Input): number {
-	for (let offset = 0; ; offset++) {
-		const next = input.peek(offset);
-		if (next === eof || next === newline) return offset;
-	}
-}
-
 function lineEndPosition(input: Input, offset = 0): number {
 	for (let i = offset; ; i++) {
 		const next = input.peek(i);
@@ -113,15 +111,16 @@ function startsWithTagName(
 	return isNameBoundary(input.peek(offset + 1 + name.length));
 }
 
-function tagEndOffset(
+function tagEnd(
 	input: Input,
 	offset: number,
-): number {
+): TagEnd {
 	let quote = 0;
+	let lastNonWhitespace = 0;
 
 	for (let i = offset; ; i++) {
 		const next = input.peek(i);
-		if (next === eof) return i;
+		if (next === eof) return { end: i, selfClosing: false };
 
 		if (quote) {
 			if (next === quote) quote = 0;
@@ -133,8 +132,16 @@ function tagEndOffset(
 			continue;
 		}
 
-		if (next === greaterThan) return i + 1;
+		if (next === greaterThan) {
+			return { end: i + 1, selfClosing: lastNonWhitespace === slash };
+		}
+
+		if (!isWhitespace(next)) lastNonWhitespace = next;
 	}
+}
+
+function tagEndOffset(input: Input, offset: number): number {
+	return tagEnd(input, offset).end;
 }
 
 function closeTagEndOffset(
@@ -168,15 +175,15 @@ function rawTextElementEndOffset(
 	offset: number,
 ): number | null {
 	if (startsWithTagName(input, offset, "script")) {
-		const openEnd = tagEndOffset(input, offset);
-		if (input.peek(openEnd - 2) === slash) return openEnd;
-		return closeTagEndOffset(input, openEnd, "script");
+		const openTag = tagEnd(input, offset);
+		if (openTag.selfClosing) return openTag.end;
+		return closeTagEndOffset(input, openTag.end, "script");
 	}
 
 	if (startsWithTagName(input, offset, "style")) {
-		const openEnd = tagEndOffset(input, offset);
-		if (input.peek(openEnd - 2) === slash) return openEnd;
-		return closeTagEndOffset(input, openEnd, "style");
+		const openTag = tagEnd(input, offset);
+		if (openTag.selfClosing) return openTag.end;
+		return closeTagEndOffset(input, openTag.end, "style");
 	}
 
 	return null;
@@ -191,6 +198,7 @@ function expressionEndOffset(
 	let escaped = false;
 	let lineComment = false;
 	let blockComment = false;
+	const templateExpressionDepths: number[] = [];
 
 	for (let i = offset; ; i++) {
 		const char = input.peek(i);
@@ -226,6 +234,8 @@ function expressionEndOffset(
 			}
 			if (quote === backtick && char === 36 && next === openBrace) {
 				depth++;
+				templateExpressionDepths.push(depth);
+				quote = 0;
 				i++;
 			}
 			continue;
@@ -254,6 +264,15 @@ function expressionEndOffset(
 		}
 
 		if (char === closeBrace) {
+			const templateExpressionDepth =
+				templateExpressionDepths[templateExpressionDepths.length - 1];
+			if (templateExpressionDepth === depth) {
+				depth--;
+				templateExpressionDepths.pop();
+				quote = backtick;
+				continue;
+			}
+
 			depth--;
 			if (depth === 0) return i;
 		}
@@ -315,7 +334,7 @@ export const astroTokens = new ExternalTokenizer(
 			atLineStart(input) &&
 			lineHasOnlyFrontmatterFence(input)
 		) {
-			input.acceptTokenTo(FrontmatterClose, input.pos + lineEndOffset(input));
+			input.acceptTokenTo(FrontmatterClose, lineEndPosition(input));
 			return;
 		}
 
