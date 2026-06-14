@@ -604,7 +604,7 @@ class TouchSelectionMenuController {
 
 			if (tryAbove >= minTop) {
 				clamped.top = tryAbove;
-			} else if (tryBelow + menuRect.height <= maxTop + menuRect.height) {
+			} else if (tryBelow <= maxTop) {
 				clamped.top = Math.min(tryBelow, maxTop);
 			}
 
