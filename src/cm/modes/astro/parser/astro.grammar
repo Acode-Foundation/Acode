@@ -1,0 +1,21 @@
+@top Document {
+  Frontmatter? (AstroExpression | HtmlContent)*
+}
+
+Frontmatter {
+  FrontmatterOpen FrontmatterContent? FrontmatterClose
+}
+
+AstroExpression {
+  ExpressionOpen ExpressionContent? ExpressionClose
+}
+
+@external tokens astroTokens from "./tokens" {
+  FrontmatterOpen,
+  FrontmatterContent,
+  FrontmatterClose,
+  ExpressionOpen,
+  ExpressionContent,
+  ExpressionClose,
+  HtmlContent
+}
