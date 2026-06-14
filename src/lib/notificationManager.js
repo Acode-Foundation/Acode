@@ -64,7 +64,7 @@ class NotificationManager {
 
 		container.querySelectorAll(".notification-time").forEach((timeElement) => {
 			const notificationItem = timeElement.closest(".notification-item");
-			const id = notificationItem.id;
+			const id = notificationItem?.id;
 			if (!id) return;
 
 			const notification = this.notifications.find((n) => n.id === id);
@@ -280,7 +280,7 @@ class NotificationManager {
 			return <span className="icon notifications" />;
 		}
 		if (icon.startsWith("<svg")) {
-			return <span className="icon" innerHTML={icon} />;
+			return <span className="icon" innerHTML={this.#sanitizeIcon(icon)} />;
 		}
 		if (icon.startsWith("data:") || icon.startsWith("http")) {
 			return <img src={icon} alt="notification" width="16" height="16" />;
@@ -292,6 +292,13 @@ class NotificationManager {
 		return DOMPurify.sanitize(String(text ?? ""), {
 			ALLOWED_TAGS: [],
 			ALLOWED_ATTR: [],
+		});
+	}
+
+	#sanitizeIcon(iconMarkup) {
+		return DOMPurify.sanitize(iconMarkup, {
+			USE_PROFILES: { html: true, svg: true },
+			ALLOW_DATA_ATTR: false,
 		});
 	}
 
