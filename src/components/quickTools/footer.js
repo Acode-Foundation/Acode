@@ -113,6 +113,7 @@ export function RowItem({ id, icon, letters, action, value, ref, repeat }) {
 			data-letters={letters}
 			data-action={action}
 			data-repeat={repeat}
+			vibrate="true"
 		></button>
 	);
 

@@ -1029,7 +1029,6 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 							);
 							break;
 						}
-						alert(strings.success, strings["copied to clipboard"]);
 						break;
 
 					case "open_with":

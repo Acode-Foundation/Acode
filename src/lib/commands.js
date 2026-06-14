@@ -611,7 +611,6 @@ Additional Info:
 				// Copy the info to clipboard
 				if (cordova.plugins.clipboard) {
 					cordova.plugins.clipboard.copy(info);
-					toast(strings["copied to clipboard"]);
 				}
 			})
 			.catch((error) => {

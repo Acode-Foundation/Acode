@@ -216,17 +216,11 @@ function copyLogsToClipboard(serverId, serverLabel) {
 	const header = `=== ${serverLabel} LSP Logs ===\n`;
 
 	if (navigator.clipboard?.writeText) {
-		navigator.clipboard
-			.writeText(header + text)
-			.then(() => {
-				toast("Logs copied");
-			})
-			.catch(() => {
-				toast("Failed to copy");
-			});
+		navigator.clipboard.writeText(header + text).catch(() => {
+			toast("Failed to copy");
+		});
 	} else if (cordova?.plugins?.clipboard) {
 		cordova.plugins.clipboard.copy(header + text);
-		toast("Logs copied");
 	} else {
 		toast("Clipboard not available");
 	}

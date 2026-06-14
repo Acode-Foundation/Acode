@@ -797,7 +797,7 @@ export async function installServer(
 		return bundle.installServer(server.id, server, mode, options);
 	}
 
-	const { promptConfirm = true } = options;
+	const { promptConfirm = false } = options;
 	const cacheKey = getInstallCacheKey(server);
 	const displayLabel = getInstallLabel(server);
 	const isUpdate = mode === "update";
@@ -868,7 +868,7 @@ export async function uninstallServer(
 		return bundle.uninstallServer(server.id, server, options);
 	}
 
-	const { promptConfirm = true } = options;
+	const { promptConfirm = false } = options;
 	const cacheKey = getInstallCacheKey(server);
 	const displayLabel = getInstallLabel(server);
 	const command = getUninstallCommand(server);
@@ -934,7 +934,7 @@ async function performInstallCheck(
 		}
 
 		const installed = await installServer(server, "install", {
-			promptConfirm: true,
+			promptConfirm: false,
 		});
 		if (!installed) {
 			checkedCommands.set(cacheKey, STATUS_DECLINED);

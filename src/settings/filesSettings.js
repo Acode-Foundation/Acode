@@ -17,6 +17,14 @@ export default function filesSettings() {
 			checkbox: values.showHiddenFiles,
 			info: strings["info-showHiddenFiles"],
 		},
+		{
+			key: "listFiles",
+			text: strings["title-listfiles"],
+			checkbox: values.listFiles !== false,
+			info:
+				strings["info-listFiles"] ||
+				"List all files in opened folders for quick search",
+		},
 	];
 
 	return settingsPage(title, items, callback, undefined, {
