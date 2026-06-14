@@ -21,20 +21,20 @@
   }
 }
 
-@mixin linear-loader($width, $height) {
+@mixin bar-loader($width, $height) {
+  position: relative;
+  overflow: hidden;
+
   &::after {
     content: '';
-    display: block;
     position: absolute;
+    inset: 0;
+    width: 100%;
+    height: $height;
     bottom: 0;
-    left: 0;
-    right: 0;
-    margin: 0 auto;
-    width: 30%;
-    height: 2px;
-    background-color: rgb(0, 0, 0);
-    animation: linear-loader-animation ease 1s infinite;
-    border-radius: 1px;
+    top: auto;
+    background: currentColor;
+    animation: bar-loader-animation 1.5s cubic-bezier(.4, 0, .2, 1) infinite;
   }
 }
 

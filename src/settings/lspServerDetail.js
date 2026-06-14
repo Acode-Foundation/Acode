@@ -608,7 +608,7 @@ export default function lspServerDetail(serverId) {
 				) {
 					break;
 				}
-				await uninstallServer(snapshot.merged, { promptConfirm: false });
+				await uninstallServer(snapshot.merged);
 				toast(strings["lsp-server-uninstalled"]);
 				break;
 

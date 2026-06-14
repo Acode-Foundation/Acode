@@ -1,13 +1,11 @@
-import NotificationManager from "lib/notificationManager";
 import "./style.scss";
 import Sidebar from "components/sidebar";
+import notificationManager from "lib/notificationManager";
 
 /**@type {HTMLElement} */
 let container;
 /** @type {HTMLElement} */
 let $notificationContainer = null;
-
-let notificationManager;
 
 export default [
 	"notifications", // icon
@@ -45,8 +43,6 @@ function initApp(el) {
 		<div className="notifications-container scroll"></div>
 	);
 	container.append($notificationContainer);
-
-	notificationManager = new NotificationManager();
 
 	Sidebar.on("show", onSelected);
 }

@@ -571,6 +571,7 @@ declare type LangStrings = {
   "lsp-install-info-ready": string;
   "lsp-install-info-unknown": string;
   "lsp-install-info-version-available": string;
+  "lsp-install-notification": string;
   "lsp-install-method-apk": string;
   "lsp-install-method-cargo": string;
   "lsp-install-method-manual": string;
@@ -609,6 +610,7 @@ declare type LangStrings = {
   "lsp-transport-method-stdio": string;
   "lsp-transport-method-websocket": string;
   "lsp-uninstall-command-unavailable": string;
+  "lsp-uninstall-notification": string;
   "lsp-uninstall-server": string;
   "lsp-update-command-optional": string;
   "lsp-update-command-unavailable": string;

@@ -59,7 +59,7 @@ import {
 	onPluginLoadCallback,
 	onPluginsLoadCompleteCallback,
 } from "lib/loadPlugins";
-import NotificationManager from "lib/notificationManager";
+import notificationManager from "lib/notificationManager";
 import openFolder, { addedFolder } from "lib/openFolder";
 import projects from "lib/projects";
 import selectionMenu from "lib/selectionMenu";
@@ -75,7 +75,7 @@ import KeyboardEvent from "utils/keyboardEvent";
 import Url from "utils/Url";
 import config from "./config";
 
-export default class Acode {
+class Acode {
 	#modules = {};
 	#pluginsInit = {};
 	#pluginUnmount = {};
@@ -898,21 +898,18 @@ export default class Acode {
 	 * @param {string} message Message body of the notification
 	 * @param {Object} options Notification options
 	 * @param {string} [options.icon] Icon for the notification, can be a URL or a base64 encoded image or icon class or svg string
-	 * @param {boolean} [options.autoClose=true] Whether notification should auto close
 	 * @param {Function} [options.action=null] Action callback when notification is clicked
 	 * @param {('info'|'warning'|'error'|'success')} [options.type='info'] Type of notification
 	 */
 	pushNotification(
 		title,
 		message,
-		{ icon, autoClose = true, action = null, type = "info" } = {},
+		{ icon, action = null, type = "info" } = {},
 	) {
-		const nm = new NotificationManager();
-		nm.pushNotification({
+		notificationManager.pushNotification({
 			title,
 			message,
 			icon,
-			autoClose,
 			action,
 			type,
 		});
@@ -995,3 +992,6 @@ export default class Acode {
 		};
 	}
 }
+
+const acode = new Acode();
+export default acode;

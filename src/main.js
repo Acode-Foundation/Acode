@@ -33,7 +33,7 @@ import intentHandler, { processPendingIntents } from "handlers/intent";
 import keyboardHandler, { keydownState } from "handlers/keyboard";
 import quickToolsInit from "handlers/quickToolsInit";
 import windowResize from "handlers/windowResize";
-import Acode from "lib/acode";
+import acode from "lib/acode";
 import actionStack from "lib/actionStack";
 import adRewards from "lib/adRewards";
 import ajax from "lib/ajax";
@@ -48,7 +48,7 @@ import fonts from "lib/fonts";
 import lang from "lib/lang";
 import loadPlugins from "lib/loadPlugins";
 import Logger from "lib/logger";
-import NotificationManager from "lib/notificationManager";
+import notificationManager from "lib/notificationManager";
 import openFolder, { addedFolder } from "lib/openFolder";
 import { registerPrettierFormatter } from "lib/prettierFormatter";
 import restoreFiles from "lib/restoreFiles";
@@ -207,7 +207,7 @@ async function onDeviceReady() {
 		if (client.height === 0) return false;
 		return true;
 	})();
-	window.acode = new Acode();
+	window.acode = acode;
 	await adRewards.init();
 	ensureAceCompatApi();
 
@@ -604,9 +604,7 @@ async function loadApp() {
 	});
 	//#endregion
 
-	const notificationManager = new NotificationManager();
 	notificationManager.init();
-
 	window.log("info", "Started app and its services...");
 
 	if (!files.length) {

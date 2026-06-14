@@ -23,43 +23,40 @@
   }
 }
 
-  @supports not (gap: 1px) {
-    .changelog-version-selector > * + * { margin-left: 8px; }
+@supports not (gap: 1px) {
+  .changelog-version-selector>*+* {
+    margin-left: 8px;
   }
+}
 
-  .status-indicator {
+.status-indicator {
   display: inline-block;
   width: 8px;
   height: 8px;
   border-radius: 50%;
 }
+
 .status-latest {
   background-color: #10b981;
 }
+
 .status-prerelease {
   background-color: var(--danger-color);
 }
+
 .status-current {
   background-color: var(--active-icon-color);
-}
-
-.loading {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-  color: var(--primary-text-color);
-  font-size: 1.2em;
-  animation: pulse 1.5s ease-in-out infinite;
 }
 
 @keyframes pulse {
   0% {
     opacity: 0.6;
   }
+
   50% {
     opacity: 1;
   }
+
   100% {
     opacity: 0.6;
   }
