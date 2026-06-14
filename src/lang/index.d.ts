@@ -604,6 +604,7 @@ declare type LangStrings = {
   "lsp-startup-timeout-set": string;
   "lsp-state-disabled": string;
   "lsp-state-enabled": string;
+  "lsp-status": string;
   "lsp-status-check-failed": string;
   "lsp-status-installed": string;
   "lsp-status-installed-version": string;

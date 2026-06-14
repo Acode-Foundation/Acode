@@ -602,6 +602,7 @@
 	"lsp-state-disabled": "disabled",
 	"lsp-state-enabled": "enabled",
 	"lsp-status-check-failed": "Check failed",
+	"lsp-status": "Status",
 	"lsp-status-installed": "Installed",
 	"lsp-status-installed-version": "Installed ({version})",
 	"lsp-status-line": "Status: {status}",

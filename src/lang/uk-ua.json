@@ -584,6 +584,7 @@
 	"lsp-startup-timeout-set": "Startup timeout set to {timeout} ms",
 	"lsp-state-disabled": "вимкнено",
 	"lsp-state-enabled": "увімкнено",
+	"lsp-status": "Status",
 	"lsp-status-check-failed": "Check failed",
 	"lsp-status-installed": "Встановлено",
 	"lsp-status-installed-version": "Installed ({version})",
