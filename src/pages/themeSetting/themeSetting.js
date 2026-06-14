@@ -207,7 +207,7 @@ export default function () {
 		if (appSettings.value.appTheme?.toLowerCase() === "system") {
 			alert(
 				strings.info,
-				"App theme is set to 'System'. Changing the terminal theme will not affect the terminal appearance.",
+				"Terminal theme cannot be changed while the app theme is set to 'System'.",
 			);
 			return;
 		}
@@ -250,33 +250,41 @@ export default function () {
 			"brightCyan",
 			"brightWhite",
 		];
-		const swatches = ansiKeys
-			.map(
-				(k) =>
-					`<span class="ansi-swatch" style="background:${theme[k]};" title="${k}"></span>`,
-			)
-			.join("");
 
-		$themePreview.innerHTML = `
-			<div class="terminal-preview-content" style="background:${theme.background};color:${theme.foreground};">
-				<div class="ansi-colors">${swatches}</div>
-				<div class="terminal-line terminal-prompt">
-					<span style="color:${theme.green}">user</span>
-					<span style="color:${theme.foreground}">@</span>
-					<span style="color:${theme.blue}">acode</span>
-					<span style="color:${theme.foreground}">:~$ </span>
+		const container = (
+			<div
+				className="terminal-preview-content"
+				style={`background:${theme.background};color:${theme.foreground};`}
+			>
+				<div className="ansi-colors">
+					{ansiKeys.map((k) => (
+						<span
+							className="ansi-swatch"
+							style={`background:${theme[k]};`}
+							title={k}
+						></span>
+					))}
+				</div>
+				<div className="terminal-line terminal-prompt">
+					<span style={`color:${theme.green};`}>user</span>
+					<span style={`color:${theme.foreground};`}>@</span>
+					<span style={`color:${theme.blue};`}>acode</span>
+					<span style={`color:${theme.foreground};`}>:~$ </span>
 					<span>echo "Hello, Acode!"</span>
 				</div>
-				<div class="terminal-line terminal-output">Hello, Acode!</div>
-				<div class="terminal-line terminal-prompt">
-					<span style="color:${theme.green}">user</span>
-					<span style="color:${theme.foreground}">@</span>
-					<span style="color:${theme.blue}">acode</span>
-					<span style="color:${theme.foreground}">:~$ </span>
-					<span class="terminal-cursor" style="background:${theme.cursor};"></span>
+				<div className="terminal-line terminal-output">Hello, Acode!</div>
+				<div className="terminal-line terminal-prompt">
+					<span style={`color:${theme.green};`}>user</span>
+					<span style={`color:${theme.foreground};`}>@</span>
+					<span style={`color:${theme.blue};`}>acode</span>
+					<span style={`color:${theme.foreground};`}>:~$ </span>
+					<span className="terminal-cursor" style={`background:${theme.cursor};`}></span>
 				</div>
 			</div>
-		`;
+		);
+
+		$themePreview.innerHTML = "";
+		$themePreview.appendChild(container);
 	}
 
 	/**

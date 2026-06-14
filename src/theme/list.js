@@ -113,7 +113,7 @@ export async function apply(id, init) {
 		fonts.setFont(theme.preferredFont);
 	}
 
-	if (init && theme.preferredTerminalTheme) {
+	if (init && firstTime && theme.preferredTerminalTheme) {
 		update.terminalSettings = {
 			...(settings.value.terminalSettings || {}),
 			theme: theme.preferredTerminalTheme,
@@ -122,7 +122,7 @@ export async function apply(id, init) {
 
 	settings.update(update, false);
 
-	if (init && theme.preferredTerminalTheme) {
+	if (init && firstTime && theme.preferredTerminalTheme) {
 		if (editorManager != null) {
 			updateActiveTerminals("theme", theme.preferredTerminalTheme);
 		}
