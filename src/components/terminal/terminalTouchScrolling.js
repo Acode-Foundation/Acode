@@ -1,0 +1,228 @@
+/**
+ * Terminal Touch Scrolling with Momentum Physics
+ * Provides smooth, consistent touch scrolling with inertia across all Android WebView versions.
+ *
+ * Listens on terminal.element (same as TerminalTouchSelection) because xterm's canvas
+ * layers overlay the .xterm-viewport and intercept touch events. Scrolls by directly
+ * manipulating viewport.scrollTop — xterm.js syncs from the native scroll event.
+ */
+
+export default class TerminalTouchScrolling {
+	constructor(terminal, touchSelection = null) {
+		this.terminal = terminal;
+		this.touchSelection = touchSelection;
+		this.element = null;
+
+		this.touchStartY = 0;
+		this.lastTouchY = 0;
+		this.lastTouchTime = 0;
+		this.isTouching = false;
+		this.didScroll = false;
+
+		this.velocitySamples = [];
+		this.velocity = 0;
+		this.maxVelocity = 35;
+		this.friction = 0.95;
+		this.minVelocity = 0.1;
+		this.velocityThreshold = 1;
+
+		this.animationId = null;
+		this.boundHandlers = {};
+		this._tryAttempts = 0;
+
+		this._tryInit();
+	}
+
+	_tryInit() {
+		this.element = this.terminal?.element || null;
+		if (!this.element) {
+			this._tryAttempts = (this._tryAttempts || 0) + 1;
+			if (this._tryAttempts < 10) {
+				requestAnimationFrame(() => this._tryInit());
+			}
+			return;
+		}
+		this.attachListeners();
+	}
+
+	getViewport() {
+		if (!this.element) return null;
+		return this.element.querySelector(".xterm-viewport");
+	}
+
+	attachListeners() {
+		if (!this.element) return;
+
+		this.boundHandlers.touchStart = this.onTouchStart.bind(this);
+		this.boundHandlers.touchMove = this.onTouchMove.bind(this);
+		this.boundHandlers.touchEnd = this.onTouchEnd.bind(this);
+		this.boundHandlers.touchCancel = this.onTouchEnd.bind(this);
+
+		this.element.addEventListener("touchstart", this.boundHandlers.touchStart, {
+			passive: false,
+		});
+		this.element.addEventListener("touchmove", this.boundHandlers.touchMove, {
+			passive: false,
+		});
+		this.element.addEventListener("touchend", this.boundHandlers.touchEnd, {
+			passive: false,
+		});
+		this.element.addEventListener(
+			"touchcancel",
+			this.boundHandlers.touchCancel,
+			{ passive: false },
+		);
+	}
+
+	isSelectionActive() {
+		if (!this.touchSelection) return false;
+		return (
+			this.touchSelection.isSelecting ||
+			this.touchSelection.isHandleDragging ||
+			this.touchSelection.isPinching
+		);
+	}
+
+	onTouchStart(event) {
+		if (this.isSelectionActive()) return;
+		if (event.touches.length !== 1) return;
+
+		this.stopMomentum();
+
+		const touch = event.touches[0];
+		this.touchStartY = touch.clientY;
+		this.lastTouchY = touch.clientY;
+		this.lastTouchTime = performance.now();
+		this.isTouching = true;
+		this.didScroll = false;
+		this.velocity = 0;
+		this.velocitySamples = [];
+	}
+
+	onTouchMove(event) {
+		if (!this.isTouching) return;
+
+		if (this.isSelectionActive()) {
+			this.isTouching = false;
+			return;
+		}
+
+		if (event.touches.length !== 1) {
+			this.isTouching = false;
+			return;
+		}
+
+		const touch = event.touches[0];
+		const deltaY = this.lastTouchY - touch.clientY;
+		const deltaTime = performance.now() - this.lastTouchTime;
+
+		if (deltaTime > 0) {
+			const instantVelocity = (deltaY / deltaTime) * 16.67;
+			this.velocitySamples.push(instantVelocity);
+			if (this.velocitySamples.length > 6) {
+				this.velocitySamples.shift();
+			}
+		}
+
+		if (Math.abs(deltaY) > 0.5) {
+			event.preventDefault();
+			this.didScroll = true;
+
+			const viewport = this.getViewport();
+			if (viewport) {
+				viewport.scrollTop += deltaY;
+			}
+		}
+
+		this.lastTouchY = touch.clientY;
+		this.lastTouchTime = performance.now();
+	}
+
+	onTouchEnd(event) {
+		if (!this.isTouching) return;
+
+		if (this.didScroll && event.cancelable) {
+			event.preventDefault();
+		}
+
+		this.isTouching = false;
+
+		if (!this.didScroll) {
+			this.velocitySamples = [];
+			return;
+		}
+
+		if (this.velocitySamples.length > 0) {
+			this.velocity =
+				this.velocitySamples.reduce((a, b) => a + b, 0) /
+				this.velocitySamples.length;
+
+			this.velocity = Math.max(
+				-this.maxVelocity,
+				Math.min(this.maxVelocity, this.velocity),
+			);
+		}
+
+		if (Math.abs(this.velocity) > this.velocityThreshold) {
+			this.startMomentum();
+		}
+
+		this.velocitySamples = [];
+	}
+
+	startMomentum() {
+		const animate = () => {
+			if (this.isTouching) {
+				this.animationId = null;
+				return;
+			}
+
+			if (Math.abs(this.velocity) < this.minVelocity) {
+				this.stopMomentum();
+				return;
+			}
+
+			const viewport = this.getViewport();
+			if (viewport) {
+				viewport.scrollTop += this.velocity;
+			}
+			this.velocity *= this.friction;
+
+			this.animationId = requestAnimationFrame(animate);
+		};
+
+		this.animationId = requestAnimationFrame(animate);
+	}
+
+	stopMomentum() {
+		if (this.animationId) {
+			cancelAnimationFrame(this.animationId);
+			this.animationId = null;
+		}
+		this.velocity = 0;
+	}
+
+	destroy() {
+		this.stopMomentum();
+
+		if (this.element) {
+			this.element.removeEventListener(
+				"touchstart",
+				this.boundHandlers.touchStart,
+			);
+			this.element.removeEventListener(
+				"touchmove",
+				this.boundHandlers.touchMove,
+			);
+			this.element.removeEventListener("touchend", this.boundHandlers.touchEnd);
+			this.element.removeEventListener(
+				"touchcancel",
+				this.boundHandlers.touchCancel,
+			);
+			this.element = null;
+		}
+
+		this.terminal = null;
+		this.touchSelection = null;
+	}
+}
