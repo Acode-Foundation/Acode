@@ -755,5 +755,9 @@
 	"file already exists force named": "'{name}' sudah ada. Timpa?",
 	"lsp-allow-non-terminal-workspace": "Run LSP on external folders",
 	"settings-info-lsp-allow-non-terminal-workspace": "Allow language servers for SAF, external, and remote locations. LSP runs in Acode's built-in terminal, which cannot access those locations, so features may not work correctly. As it will connect to a virtual path or cache location.",
-	"don't ask again": "Don't ask again"
+	"don't ask again": "Don't ask again",
+	"scrollbar height": "Scrollbar height",
+	"full": "Full",
+	"scroll past end": "Scroll past end",
+	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top."
 }

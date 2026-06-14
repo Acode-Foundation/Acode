@@ -1,5 +1,6 @@
 import "core-js/stable";
 import picomatch from "picomatch/posix";
+import { isBinaryFile } from "utils/binaryExtensions";
 
 const resolvers = {};
 
@@ -222,53 +223,10 @@ function done(ratio, mode) {
  * @param {string} arg.include - The inclusion patterns separated by commas.
  */
 function Skip({ exclude, include }) {
-	// Default exclude patterns for binary/media/archives/fonts/etc.
-	const defaultExcludes = [
-		"**/*.png",
-		"**/*.jpg",
-		"**/*.jpeg",
-		"**/*.gif",
-		"**/*.bmp",
-		"**/*.webp",
-		"**/*.avif",
-		"**/*.ico",
-		"**/*.svgz",
-		"**/*.mp3",
-		"**/*.wav",
-		"**/*.ogg",
-		"**/*.flac",
-		"**/*.m4a",
-		"**/*.aac",
-		"**/*.mp4",
-		"**/*.mkv",
-		"**/*.webm",
-		"**/*.mov",
-		"**/*.avi",
-		"**/*.zip",
-		"**/*.gz",
-		"**/*.bz2",
-		"**/*.xz",
-		"**/*.7z",
-		"**/*.rar",
-		"**/*.tar",
-		"**/*.exe",
-		"**/*.dll",
-		"**/*.so",
-		"**/*.bin",
-		"**/*.class",
-		"**/*.ttf",
-		"**/*.otf",
-		"**/*.woff",
-		"**/*.woff2",
-		"**/*.pdf",
-		"**/*.psd",
-		"**/*.ai",
-		"**/*.sketch",
-	];
 	const userExcludes = (exclude ? exclude.split(",") : [])
 		.map((p) => p.trim())
 		.filter(Boolean);
-	const excludeFiles = [...defaultExcludes, ...userExcludes];
+	const excludeFiles = userExcludes;
 	const includeFiles = (include ? include.split(",") : ["**"]).map((p) =>
 		p.trim(),
 	);
@@ -282,6 +240,7 @@ function Skip({ exclude, include }) {
 	 */
 	function test(file) {
 		if (!file.path) return false;
+		if (isBinaryFile(file)) return true;
 		const match = (pattern) =>
 			picomatch.isMatch(file.path, pattern, { matchBase: true });
 		return excludeFiles.some(match) || !includeFiles.some(match);

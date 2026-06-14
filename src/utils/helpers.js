@@ -5,6 +5,7 @@ import escapeStringRegexp from "escape-string-regexp";
 import adRewards from "lib/adRewards";
 import config from "lib/config";
 import { bannerAd, interstitialAd } from "lib/startAd";
+import { isBinaryFile } from "./binaryExtensions";
 import path from "./Path";
 import Uri from "./Uri";
 import Url from "./Url";
@@ -535,58 +536,7 @@ export default {
 		);
 	},
 	isBinary(file) {
-		// binary file extensions
-		const binaryExtensions = [
-			"exe",
-			"dll",
-			"so",
-			"dylib",
-			"bin",
-			"o",
-			"apk",
-			"aab",
-			"zip",
-			"rar",
-			"7z",
-			"gz",
-			"tar",
-			"tgz",
-			"jpg",
-			"jpeg",
-			"png",
-			"gif",
-			"bmp",
-			"ico",
-			"mp3",
-			"mp4",
-			"wav",
-			"avi",
-			"mov",
-			"dds",
-			"tga",
-			"swf",
-			"ttf",
-			"eot",
-			"otf",
-			"woff",
-			"woff2",
-			"pdf",
-			"doc",
-			"docx",
-			"xls",
-			"xlsx",
-			"class",
-			"pyc",
-			"jar",
-			"war",
-		];
-
-		const extension = Url.basename(file)?.split(".")?.pop()?.toLowerCase();
-
-		if (extension && binaryExtensions.includes(extension)) {
-			return true;
-		}
-		return false;
+		return isBinaryFile(file);
 	},
 
 	isIapAvailable() {

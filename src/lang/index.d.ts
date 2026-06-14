@@ -151,10 +151,14 @@ declare type LangStrings = {
   "show print margin": string;
   login: string;
   "scrollbar size": string;
+  "scrollbar height": string;
   "cursor controller size": string;
-  none: string;
-  small: string;
-  large: string;
+  "full": string;
+  "scroll past end": string;
+  "settings-info-scroll-past-end": string;
+  "none": string;
+  "small": string;
+  "large": string;
   "floating button": string;
   "confirm on exit": string;
   "show console": string;
