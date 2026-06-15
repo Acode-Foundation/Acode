@@ -286,7 +286,8 @@ export default {
 			url = url.replace(/#/g, uuid);
 		}
 
-		let { username, password, hostname, pathname, port, searchParams } = new URL(url);
+		let { username, password, hostname, pathname, port, searchParams } =
+			new URL(url);
 
 		if (pathname) {
 			pathname = decodeURIComponent(pathname);
