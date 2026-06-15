@@ -304,7 +304,7 @@ function create($container, $toggler) {
 
 			const wasActivated = $el.activated;
 			const previousMode = mode;
-			
+
 			if (previousMode === "tab") {
 				wasOpenInTab = wasActivated && localStorage.sidebarShown === "1";
 			}
