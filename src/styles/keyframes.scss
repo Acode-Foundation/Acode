@@ -4,20 +4,25 @@
   }
 }
 
-@keyframes linear-loader-animation {
+@keyframes bar-loader-animation {
   0% {
-    background-color: rgb(0, 0, 0);
-    transform: scale3d(0, 1, 1);
+    transform: scaleX(0);
+    transform-origin: left;
   }
 
   50% {
-    background-color: rgb(255, 255, 255);
-    transform: scale3d(4, 1, 1);
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+
+  50.01% {
+    transform: scaleX(1);
+    transform-origin: right;
   }
 
   100% {
-    background-color: rgb(0, 0, 0);
-    transform: scale3d(0, 1, 1);
+    transform: scaleX(0);
+    transform-origin: right;
   }
 }
 

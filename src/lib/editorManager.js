@@ -309,6 +309,11 @@ async function EditorManager($header, $body) {
 		});
 	}
 
+	function getConfiguredThemeExtension() {
+		const desiredTheme = appSettings?.value?.editorTheme;
+		return getThemeExtensions(desiredTheme, [oneDark]);
+	}
+
 	function makeWrapExtension() {
 		return appSettings?.value?.textWrap ? EditorView.lineWrapping : [];
 	}
@@ -860,7 +865,7 @@ async function EditorManager($header, $body) {
 			}),
 			baseExtensions: createBaseExtensions(),
 			commandKeymapExtension: getCommandKeymapExtension(),
-			themeExtension: themeCompartment.of(oneDark),
+			themeExtension: themeCompartment.of(getConfiguredThemeExtension()),
 			pointerCursorVisibilityExtension,
 			shiftClickSelectionExtension,
 			touchSelectionUpdateExtension,
@@ -1362,14 +1367,10 @@ async function EditorManager($header, $body) {
 	}
 
 	function showLoadingEditor(file) {
-		const desiredTheme = appSettings?.value?.editorTheme;
-		const themeExt = desiredTheme
-			? getThemeExtensions(desiredTheme, [oneDark])
-			: oneDark;
 		const loadingState = EditorState.create({
 			doc: "",
 			extensions: [
-				themeCompartment.of(themeExt),
+				themeCompartment.of(getConfiguredThemeExtension()),
 				...getBaseExtensionsFromOptions(),
 				languageCompartment.of([]),
 				lspCompartment.of([]),
@@ -1430,7 +1431,7 @@ async function EditorManager($header, $body) {
 			baseExtensions: createBaseExtensions(),
 			commandKeymapExtension: getCommandKeymapExtension(),
 			// keep compartment in the state to allow dynamic theme changes later
-			themeExtension: themeCompartment.of(oneDark),
+			themeExtension: themeCompartment.of(getConfiguredThemeExtension()),
 			pointerCursorVisibilityExtension,
 			shiftClickSelectionExtension,
 			touchSelectionUpdateExtension,

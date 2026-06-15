@@ -291,13 +291,13 @@ function emit(event, ...args) {
  */
 async function createChildTree(parent, item, root) {
 	if (!root.isConnected) return;
-	const { name, url, isDirectory } = item;
+	const { name, url, isDirectory, mime, type } = item;
 	const exists = parent.children.findIndex(({ value }) => value === url);
 	if (exists > -1) {
 		return;
 	}
 
-	const file = await Tree.create(url, name, isDirectory);
+	const file = await Tree.create(url, name, isDirectory, mime || type);
 	if (!root.isConnected) return;
 
 	const existingTree = getTree(Object.values(filesTree), file.url);
@@ -345,9 +345,10 @@ export class Tree {
 	 * @param {string} url
 	 * @param {boolean} isDirectory
 	 */
-	constructor(name, url, isDirectory) {
+	constructor(name, url, isDirectory, mime) {
 		this.#name = name;
 		this.#url = url;
+		this.mime = mime || null;
 		this.#children = isDirectory ? this.#childrenArray() : null;
 		this.#parent = null;
 	}
@@ -371,14 +372,15 @@ export class Tree {
 	 * @param {string} [name] file name
 	 * @param {boolean} [isDirectory] if the file is a directory
 	 */
-	static async create(url, name, isDirectory) {
+	static async create(url, name, isDirectory, mime) {
 		if (!name && !isDirectory) {
 			const stat = await fsOperation(url).stat();
 			name = stat.name;
 			isDirectory = stat.isDirectory;
+			mime = stat.mime || stat.type;
 		}
 
-		return new Tree(name, url, isDirectory);
+		return new Tree(name, url, isDirectory, mime);
 	}
 
 	/**
@@ -485,6 +487,7 @@ export class Tree {
 			url: this.#url,
 			path: this.#path,
 			parent: this.#parent?.url,
+			mime: this.mime,
 			isDirectory: !!this.#children,
 		};
 	}
@@ -495,8 +498,8 @@ export class Tree {
 	 * @returns {Tree}
 	 */
 	static fromJSON(json) {
-		const { name, url, path, parent, isDirectory } = json;
-		const tree = new Tree(name, url, isDirectory);
+		const { name, url, path, parent, mime, isDirectory } = json;
+		const tree = new Tree(name, url, isDirectory, mime);
 		tree.#parent = getTree(Object.values(filesTree), parent);
 		tree.#path = path;
 		return tree;

@@ -69,23 +69,6 @@ export default function terminalSettings() {
 			category: categories.display,
 		},
 		{
-			key: "theme",
-			text: strings["theme"],
-			value: terminalValues.theme,
-			info: strings["info-theme"],
-			get select() {
-				return TerminalThemeManager.getThemeNames().map((name) => [
-					name,
-					name.charAt(0).toUpperCase() + name.slice(1),
-				]);
-			},
-			valueText(value) {
-				const option = this.select.find(([v]) => v === value);
-				return option ? option[1] : value;
-			},
-			category: categories.display,
-		},
-		{
 			key: "fontWeight",
 			text: strings["terminal:font weight"],
 			value: terminalValues.fontWeight,

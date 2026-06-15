@@ -1,8 +1,5 @@
-/**
- * Touch Selection for Terminal
- */
-import select from "dialogs/select";
 import "./terminalTouchSelection.css";
+import select from "dialogs/select";
 
 const DEFAULT_MORE_OPTION_ID = "__acode_terminal_select_all__";
 const terminalMoreOptions = new Map();

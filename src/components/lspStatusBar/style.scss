@@ -1,28 +1,25 @@
 @use "../../styles/mixins.scss";
 
 #lsp-status-bar {
-    position: fixed;
-    bottom: 50px;
-    left: 0;
-    right: 0;
-    margin: 0 auto;
-    max-width: 95vw;
-    width: fit-content;
-    min-width: 200px;
+    position: relative;
     padding: 8px 12px;
     padding-right: 36px;
     background-color: var(--secondary-color);
     color: var(--secondary-text-color);
     border-radius: 6px;
-    box-shadow: 0 2px 12px var(--box-shadow-color);
+    box-shadow: 0 4px 12px var(--box-shadow-color);
     border: 1px solid var(--border-color);
-    z-index: 97;
-    animation: lspStatusSlideUp 0.3s ease-out;
+    animation: toastSlideIn 0.3s ease-out;
     transition: all 0.3s ease;
     box-sizing: border-box;
+    width: 100%;
+    min-width: 200px;
+    max-width: min(400px, 100%);
 
     &.hiding {
-        animation: lspStatusSlideDown 0.3s ease-out forwards;
+        opacity: 0;
+        transform: translateX(40px);
+        transition: all 0.3s ease;
     }
 
     .lsp-status-content {
@@ -145,53 +142,19 @@
     }
 }
 
-// Adjust position when quicktools has different heights
-wc-page[footer-height="1"] #lsp-status-bar {
-    bottom: 50px;
-}
-
-wc-page[footer-height="2"] #lsp-status-bar {
-    bottom: 90px;
-}
-
-wc-page[footer-height="3"] #lsp-status-bar {
-    bottom: 130px;
-}
-
-// When quicktools is hidden
-wc-page:not([footer-height]) #lsp-status-bar {
-    bottom: 10px;
-}
-
 @supports not (gap: 1px) {
-  #lsp-status-bar {
-    .lsp-status-content > * + * { margin-left: 10px; }
-    .lsp-status-text > * + * { margin-top: 2px; }
-    .lsp-status-progress > * + * { margin-left: 8px; }
-  }
-}
+    #lsp-status-bar {
+        .lsp-status-content>*+* {
+            margin-left: 10px;
+        }
 
-@keyframes lspStatusSlideUp {
-    from {
-        transform: translateY(100%);
-        opacity: 0;
-    }
+        .lsp-status-text>*+* {
+            margin-top: 2px;
+        }
 
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
-}
-
-@keyframes lspStatusSlideDown {
-    from {
-        transform: translateY(0);
-        opacity: 1;
-    }
-
-    to {
-        transform: translateY(100%);
-        opacity: 0;
+        .lsp-status-progress>*+* {
+            margin-left: 8px;
+        }
     }
 }
 

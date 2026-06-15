@@ -190,13 +190,7 @@ function openFolder(_path, opts = {}) {
 
 	(async () => {
 		if (typeof listFiles !== "boolean") {
-			const protocol = Url.getProtocol(_path).slice(0, -1);
-			const type = /^(content|file)$/.test(protocol) ? "" : ` (${protocol})`;
-			const message = strings["list files"].replace(
-				"{name}",
-				`${title}${type}`,
-			);
-			listFiles = await confirm(strings.confirm, message, true);
+			listFiles = appSettings.value.fileBrowser?.listFiles ?? true;
 		}
 
 		if (listFiles) {
@@ -533,7 +527,6 @@ function execOperation(type, action, url, $target, name) {
 
 			if (cordova.plugins.clipboard) {
 				cordova.plugins.clipboard.copy(relativePath);
-				toast(strings.success || "Relative path copied to clipboard");
 			} else {
 				console.error("Clipboard not available");
 				toast("Clipboard not available");

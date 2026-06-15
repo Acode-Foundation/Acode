@@ -58,7 +58,6 @@ export default async function showFileInfo(url) {
 
 				if (action === "copy") {
 					cordova.plugins.clipboard.copy($target.textContent);
-					toast(strings["copied to clipboard"]);
 				}
 			}
 		});

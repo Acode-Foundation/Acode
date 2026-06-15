@@ -22,7 +22,7 @@
             cursor: pointer;
 
             &.loading {
-                @include mixins.linear-loader(30%, 2px);
+                @include mixins.bar-loader(30%, 2px);
             }
         }
     }

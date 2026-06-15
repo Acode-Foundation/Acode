@@ -5,6 +5,7 @@
 @use "./styles/fileInfo.scss";
 @use "./styles/markdown.scss";
 @use "./styles/codemirror.scss";
+@use "./styles/notification.scss";
 
 :root {
   --scrollbar-width: 4px;
@@ -86,7 +87,7 @@ body {
       pointer-events: none;
     }
 
-    #lsp-status-bar {
+    .notification-item-container {
       pointer-events: none;
     }
   }
@@ -221,6 +222,13 @@ a.icon {
 
   &.hidden {
     display: none !important;
+  }
+
+  &.loading {
+    display: block;
+    padding: 5px;
+    box-sizing: border-box;
+    @include mixins.circular-loader(calc(100% - 10px));
   }
 
   &.color {
@@ -565,6 +573,12 @@ textarea {
 button {
   cursor: pointer;
 
+  &.icon {
+    border: none;
+    color: var(--primary-text-color);
+    background-color: transparent;
+  }
+
   &.floating.icon {
     z-index: 1;
     opacity: 1;
@@ -695,8 +709,8 @@ input[type="search"]::-webkit-search-results-decoration {
   overflow: auto;
 }
 
-.notification-toast-container {
-  position: absolute;
+.notification-item-container {
+  position: fixed;
   bottom: 20px;
   left: 10px;
   right: 10px;
@@ -707,99 +721,21 @@ input[type="search"]::-webkit-search-results-decoration {
   z-index: 1000;
   pointer-events: none;
 
-  >* {
-    pointer-events: auto;
-  }
-
-  .notification-toast {
+  .notification-item {
     padding: 12px;
-    border-radius: 6px;
     background: var(--secondary-color);
     min-width: 200px;
     max-width: min(400px, calc(100vw - 40px));
-    display: flex;
     gap: 12px;
-    align-items: flex-start;
     box-shadow: 0 4px 12px var(--box-shadow-color);
     animation: toastSlideIn 0.3s ease-out;
-    transition: all 0.3s ease;
     border: 1px solid var(--border-color);
-    word-break: break-word;
-    white-space: normal;
+    white-space: wrap;
     box-sizing: border-box;
+  }
 
-    &.hiding {
-      transform: translateX(120%);
-      opacity: 0;
-    }
-
-    .close-icon {
-      cursor: pointer;
-      font-size: 14px;
-      color: var(--secondary-text-color);
-      margin-left: auto;
-
-      &:hover {
-        color: var(--button-background-color);
-      }
-    }
-
-    .notification-icon {
-      width: 20px;
-      height: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      color: var(--primary-text-color);
-    }
-
-    .notification-content {
-      flex: 1;
-      min-width: 0;
-
-      .notification-title {
-        font-size: 13px;
-        font-weight: 500;
-        margin-bottom: 4px;
-        color: var(--primary-text-color);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-
-      .notification-message {
-        font-size: 12px;
-        color: var(--secondary-text-color);
-        line-height: 1.4;
-        overflow-wrap: break-word;
-        hyphens: auto;
-      }
-    }
-
-    &.success {
-      .notification-icon {
-        color: #48c158;
-      }
-    }
-
-    &.warning {
-      .notification-icon {
-        color: var(--danger-text-color);
-      }
-    }
-
-    &.error {
-      .notification-icon {
-        color: var(--error-text-color);
-      }
-    }
-
-    &.info {
-      .notification-icon {
-        color: var(--primary-text-color);
-      }
-    }
+  >* {
+    pointer-events: auto;
   }
 
   @supports not (gap: 1px) {
@@ -807,7 +743,7 @@ input[type="search"]::-webkit-search-results-decoration {
       margin-top: 8px;
     }
 
-    .notification-toast {
+    .notification-item {
       >*+* {
         margin-left: 12px;
       }
@@ -817,7 +753,7 @@ input[type="search"]::-webkit-search-results-decoration {
   @media (max-width: 768px) {
     align-items: stretch;
 
-    .notification-toast {
+    .notification-item {
       min-width: auto;
       max-width: 100%;
     }
