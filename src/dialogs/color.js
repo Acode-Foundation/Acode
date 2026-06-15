@@ -13,7 +13,7 @@ let lastPicked = localStorage.__picker_last_picked || "#fff";
 function color(defaultColor, onhide) {
 	defaultColor = defaultColor || lastPicked;
 	let type = checkColorType(defaultColor) || "hex";
-	return new Promise((resolve) => {
+	return new Promise((resolve, reject) => {
 		const colorModes = ["hsl", "hex", "rgb"];
 		let mode = colorModes.indexOf(type);
 		let color = null;
@@ -21,6 +21,59 @@ function color(defaultColor, onhide) {
 		const parent = tag("div", {
 			className: "message color-picker",
 		});
+
+		const formatToggle = tag("span", {
+			className: "format-toggle",
+			onclick: function (e) {
+				e.preventDefault();
+				e.stopPropagation();
+				formatPopup.classList.toggle("visible");
+			},
+			children: [
+				tag("span", {
+					className: "format-toggle-text",
+					textContent: type.toUpperCase(),
+				}),
+				tag("span", {
+					className: "icon keyboard_arrow_down",
+				}),
+			],
+		});
+
+		const formatPopup = tag("div", {
+			className: "format-popup",
+			children: [
+				tag("div", {
+					className: "format-popup-backdrop",
+					onclick: function () {
+						formatPopup.classList.remove("visible");
+					},
+				}),
+				tag("div", {
+					className: "format-popup-body",
+					children: colorModes.map((m) =>
+						tag("span", {
+							className: `format-option${m === type ? " active" : ""}`,
+							textContent: m.toUpperCase(),
+							onclick: function () {
+								mode = colorModes.indexOf(m);
+								type = m;
+								formatToggle.get(".format-toggle-text").textContent =
+									m.toUpperCase();
+								formatPopup.querySelector(".active").classList.remove("active");
+								this.classList.add("active");
+								formatPopup.classList.remove("visible");
+								picker.setOptions({
+									color,
+									editorFormat: type,
+								});
+							},
+						}),
+					),
+				}),
+			],
+		});
+
 		const okBtn = tag("button", {
 			textContent: strings.ok,
 			onclick: function () {
@@ -30,39 +83,39 @@ function color(defaultColor, onhide) {
 				resolve(color);
 			},
 		});
-		const toggleMode = tag("button", {
-			textContent: type,
-			onclick: function (e) {
-				++mode;
-				if (mode >= colorModes.length) mode = 0;
-				type = colorModes[mode];
-				this.textContent = type;
-				picker.setOptions({
-					color,
-					editorFormat: type,
-				});
-				e.preventDefault();
-				e.stopPropagation();
-				e.stopImmediatePropagation();
+		const cancelBtn = tag("button", {
+			textContent: strings.cancel,
+			onclick: function () {
+				hide();
+				reject();
 			},
 		});
 		const box = tag("div", {
 			className: "prompt box",
 			children: [
-				tag("strong", {
+				tag("div", {
 					className: "title",
-					textContent: strings["choose color"],
+					children: [
+						tag("span", {
+							className: "title-text",
+							textContent: strings["choose color"],
+						}),
+						formatToggle,
+					],
 				}),
 				parent,
 				tag("div", {
 					className: "button-container",
-					children: [toggleMode, okBtn],
+					children: [cancelBtn, okBtn],
 				}),
 			],
 		});
 		const mask = tag("span", {
 			className: "mask",
-			onclick: hide,
+			onclick: function () {
+				hide();
+				reject();
+			},
 		});
 		const picker = new Picker({
 			parent,
@@ -75,6 +128,7 @@ function color(defaultColor, onhide) {
 		});
 
 		picker.show();
+		parent.append(formatPopup);
 
 		actionStack.push({
 			id: "box",
