@@ -326,21 +326,29 @@ class Acode {
 				return Reflect.get(target, prop, receiver);
 			},
 			set(target, prop, value, receiver) {
-				console.warn(`[Security Alert] Attempt to modify read-only config property '${String(prop)}' blocked.`);
+				console.warn(
+					`[Security Alert] Attempt to modify read-only config property '${String(prop)}' blocked.`,
+				);
 				return true;
 			},
 			defineProperty(target, prop, descriptor) {
-				console.warn(`[Security Alert] Attempt to define property '${String(prop)}' on read-only config blocked.`);
+				console.warn(
+					`[Security Alert] Attempt to define property '${String(prop)}' on read-only config blocked.`,
+				);
 				return false;
 			},
 			deleteProperty(target, prop) {
-				console.warn(`[Security Alert] Attempt to delete property '${String(prop)}' on read-only config blocked.`);
+				console.warn(
+					`[Security Alert] Attempt to delete property '${String(prop)}' on read-only config blocked.`,
+				);
 				return false;
 			},
 			setPrototypeOf(target, prototype) {
-				console.warn(`[Security Alert] Attempt to change prototype of read-only config blocked.`);
+				console.warn(
+					`[Security Alert] Attempt to change prototype of read-only config blocked.`,
+				);
 				return false;
-			}
+			},
 		});
 
 		this.define("config", configProxy);
