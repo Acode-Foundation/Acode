@@ -49,6 +49,11 @@ interface LspError extends Error {
   code?: string;
 }
 
+interface LspBridgeStatusResponse {
+  program?: unknown;
+  processes?: unknown;
+}
+
 function getExecutor(): Executor {
   const executor = (globalThis as unknown as { Executor?: Executor }).Executor;
   if (!executor) {
@@ -247,11 +252,61 @@ async function waitForPort(
   return portInfo;
 }
 
+function getBridgeStatusUrl(webSocketUrl: string): string {
+  return webSocketUrl
+    .replace(/^ws:/i, "http:")
+    .replace(/^wss:/i, "https:")
+    .replace(/\/?$/, "/status");
+}
+
+function isLspBridgeStatusResponse(
+  value: LspBridgeStatusResponse | null,
+): boolean {
+  return (
+    !!value &&
+    typeof value.program === "string" &&
+    Array.isArray(value.processes)
+  );
+}
+
 /**
- * Quick check if a server is running and connectable.
- * Attempts a fast WebSocket connection test.
+ * Quick check if the axs LSP bridge is running.
+ * Prefer /status because opening "/" creates a real LSP websocket session.
  */
-async function checkServerAlive(url: string, timeout = 1000): Promise<boolean> {
+async function checkLspBridgeStatus(
+  url: string,
+  timeout = 1000,
+): Promise<boolean> {
+  const statusUrl = getBridgeStatusUrl(url);
+  const controller =
+    typeof AbortController !== "undefined" ? new AbortController() : null;
+  const timeoutId = setTimeout(() => controller?.abort(), timeout);
+
+  try {
+    const response = await fetch(statusUrl, {
+      signal: controller?.signal,
+    });
+    if (!response.ok) return false;
+
+    const data = (await response.json().catch(() => null)) as
+      | LspBridgeStatusResponse
+      | null;
+    return isLspBridgeStatusResponse(data);
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+/**
+ * Compatibility fallback for older proxies without /status.
+ * This opens and immediately closes a real LSP websocket session.
+ */
+async function checkServerAliveViaWebSocket(
+  url: string,
+  timeout = 1000,
+): Promise<boolean> {
   return new Promise((resolve) => {
     try {
       const ws = new WebSocket(url);
@@ -306,7 +361,9 @@ export async function canReuseExistingServer(
   }
 
   const url = `ws://127.0.0.1:${portInfo.port}/`;
-  const alive = await checkServerAlive(url, 1000);
+  const alive =
+    (await checkLspBridgeStatus(url, 1000)) ||
+    (await checkServerAliveViaWebSocket(url, 1000));
 
   if (alive) {
     console.info(
