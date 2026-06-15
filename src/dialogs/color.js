@@ -64,7 +64,7 @@ function color(defaultColor, onhide) {
 								this.classList.add("active");
 								formatPopup.classList.remove("visible");
 								picker.setOptions({
-									color,
+									color: color || defaultColor,
 									editorFormat: type,
 								});
 							},
@@ -87,7 +87,7 @@ function color(defaultColor, onhide) {
 			textContent: strings.cancel,
 			onclick: function () {
 				hide();
-				reject();
+				reject(new Error("cancelled"));
 			},
 		});
 		const box = tag("div", {
@@ -114,7 +114,7 @@ function color(defaultColor, onhide) {
 			className: "mask",
 			onclick: function () {
 				hide();
-				reject();
+				reject(new Error("cancelled"));
 			},
 		});
 		const picker = new Picker({
@@ -132,7 +132,10 @@ function color(defaultColor, onhide) {
 
 		actionStack.push({
 			id: "box",
-			action: hideSelect,
+			action() {
+				hide();
+				reject(new Error("cancelled"));
+			},
 		});
 
 		document.body.append(box, mask);
