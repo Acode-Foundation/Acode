@@ -397,7 +397,9 @@ async function onLogin() {
 	try {
 		const user = await auth.getLoggedInUser();
 		if (!user) return;
-		config.HAS_PRO = Boolean(user.acode_pro);
+		if (Boolean(user.acode_pro)) {
+			config.HAS_PRO = true;
+		}
 		if (config.HAS_PRO) {
 			hideAd(true);
 		}
