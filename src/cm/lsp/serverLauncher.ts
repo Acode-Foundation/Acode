@@ -288,9 +288,7 @@ async function checkLspBridgeStatus(
       signal: controller.signal,
     });
     if (!response.ok) {
-      return response.status >= 400 && response.status < 500
-        ? "unsupported"
-        : "dead";
+      return "unsupported";
     }
 
     const data = (await response.json().catch(() => null)) as
