@@ -80,6 +80,7 @@ class Settings {
 		"**/temp/**",
 		"**/tmp/**",
 		"**/.cache/**",
+		"**/.gradle/**",
 		"**/logs/**",
 		"**/.sass-cache/**",
 		"**/.DS_Store/**",

@@ -170,7 +170,10 @@ export function createSearchResultView(
 			// File icon
 			const fileNames =
 				(typeof getFileNames === "function" ? getFileNames() : []) || [];
-			const fname = fileNames[groupIndex] || "";
+			const fileInfo = fileNames[groupIndex] || {};
+			const fname =
+				typeof fileInfo === "string" ? fileInfo : fileInfo.name || "";
+			const fpath = typeof fileInfo === "string" ? "" : fileInfo.path || "";
 			const iconClass = helpers.getIconForFile(fname);
 			builder.push(
 				Decoration.widget({
@@ -353,7 +356,7 @@ export function createSearchResultView(
 	const state = EditorState.create({
 		doc: "",
 		extensions: [
-			EditorState.tabSize.of(1),
+			EditorState.tabSize.of(4),
 			readOnly,
 			noCursor,
 			lineWrap,
