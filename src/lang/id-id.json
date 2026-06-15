@@ -712,7 +712,7 @@
 	"unpin tab": "Lepas sematan tab",
 	"pinned tab": "Tab yang tersematkan",
 	"unpin tab before closing": "Lepas sematan tab sebelum menutupnya.",
-	"app font": " Aplikasi",
+	"app font": "Font Aplikasi",
 	"settings-info-app-font-family": "Pilih Font yang digunakan di seluruh antarmuka aplikasi.",
 	"lsp-transport-method-stdio": "STDIO (luncurkan perintah biner)",
 	"lsp-transport-method-websocket": "WebSocket (hubungkan ke sebuah URL ws/wss)",
