@@ -97,9 +97,13 @@ export default function CustomThemeInclude() {
 								className="list-item"
 								tabindex={0}
 								onclick={async (e) => {
-									const newColor = await color(customTheme[key]);
-									customTheme[key] = newColor;
-									e.target.get(".icon").style.color = newColor;
+									try {
+										const newColor = await color(customTheme[key]);
+										customTheme[key] = newColor;
+										e.target.get(".icon").style.color = newColor;
+									} catch (_) {
+										/* cancelled */
+									}
 								}}
 							>
 								<span
