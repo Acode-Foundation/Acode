@@ -574,11 +574,18 @@ async function resolveItemInteraction(item, $target) {
 		}
 
 		if (selectColor) {
-			const color = await colorPicker(value);
-			return {
-				shouldUpdateValue: true,
-				value: color,
-			};
+			try {
+				const color = await colorPicker(value);
+				return {
+					shouldUpdateValue: true,
+					value: color,
+				};
+			} catch (_) {
+				return {
+					shouldUpdateValue: false,
+					shouldCallCallback: false,
+				};
+			}
 		}
 
 		if (link) {
