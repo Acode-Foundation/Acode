@@ -54,6 +54,8 @@ interface LspBridgeStatusResponse {
   processes?: unknown;
 }
 
+type LspBridgeStatusCheckResult = "alive" | "unsupported" | "dead";
+
 function getExecutor(): Executor {
   const executor = (globalThis as unknown as { Executor?: Executor }).Executor;
   if (!executor) {
@@ -276,24 +278,27 @@ function isLspBridgeStatusResponse(
 async function checkLspBridgeStatus(
   url: string,
   timeout = 1000,
-): Promise<boolean> {
+): Promise<LspBridgeStatusCheckResult> {
   const statusUrl = getBridgeStatusUrl(url);
-  const controller =
-    typeof AbortController !== "undefined" ? new AbortController() : null;
-  const timeoutId = setTimeout(() => controller?.abort(), timeout);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
 
   try {
     const response = await fetch(statusUrl, {
-      signal: controller?.signal,
+      signal: controller.signal,
     });
-    if (!response.ok) return false;
+    if (!response.ok) {
+      return response.status >= 400 && response.status < 500
+        ? "unsupported"
+        : "dead";
+    }
 
     const data = (await response.json().catch(() => null)) as
       | LspBridgeStatusResponse
       | null;
-    return isLspBridgeStatusResponse(data);
+    return isLspBridgeStatusResponse(data) ? "alive" : "dead";
   } catch {
-    return false;
+    return "dead";
   } finally {
     clearTimeout(timeoutId);
   }
@@ -310,29 +315,33 @@ async function checkServerAliveViaWebSocket(
   return new Promise((resolve) => {
     try {
       const ws = new WebSocket(url);
+      let settled = false;
+      const finish = (alive: boolean) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve(alive);
+      };
       const timer = setTimeout(() => {
         try {
           ws.close();
         } catch {}
-        resolve(false);
+        finish(false);
       }, timeout);
 
       ws.onopen = () => {
-        clearTimeout(timer);
         try {
           ws.close();
         } catch {}
-        resolve(true);
+        finish(true);
       };
 
       ws.onerror = () => {
-        clearTimeout(timer);
-        resolve(false);
+        finish(false);
       };
 
       ws.onclose = () => {
-        clearTimeout(timer);
-        resolve(false);
+        finish(false);
       };
     } catch {
       resolve(false);
@@ -361,9 +370,11 @@ export async function canReuseExistingServer(
   }
 
   const url = `ws://127.0.0.1:${portInfo.port}/`;
+  const status = await checkLspBridgeStatus(url, 1000);
   const alive =
-    (await checkLspBridgeStatus(url, 1000)) ||
-    (await checkServerAliveViaWebSocket(url, 1000));
+    status === "alive" ||
+    (status === "unsupported" &&
+      (await checkServerAliveViaWebSocket(url, 1000)));
 
   if (alive) {
     console.info(
