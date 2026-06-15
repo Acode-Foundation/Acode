@@ -30,7 +30,7 @@ const langMap = {
 		},
 	},
 	"id-id": {
-		name: "Indonesian",
+		name: "Bahasa Indonesia",
 		async strings() {
 			return await import("../lang/id-id.json");
 		},
