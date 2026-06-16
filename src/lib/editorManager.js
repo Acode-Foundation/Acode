@@ -332,6 +332,10 @@ async function EditorManager($header, $body) {
 	function makeLineNumberExtension() {
 		const { linenumbers = true, relativeLineNumbers = false } =
 			appSettings?.value || {};
+		const activeLineGutter =
+			appSettings?.value?.highlightActiveLine !== false
+				? [highlightActiveLineGutter()]
+				: [];
 		const lineNumberConfig = {
 			domEventHandlers: {
 				click(view, line, event) {
@@ -349,10 +353,7 @@ async function EditorManager($header, $body) {
 				},
 			});
 		if (!relativeLineNumbers)
-			return Prec.highest([
-				lineNumbers(lineNumberConfig),
-				highlightActiveLineGutter(),
-			]);
+			return Prec.highest([lineNumbers(lineNumberConfig), ...activeLineGutter]);
 		return Prec.highest([
 			lineNumbers({
 				...lineNumberConfig,
@@ -366,7 +367,7 @@ async function EditorManager($header, $body) {
 					}
 				},
 			}),
-			highlightActiveLineGutter(),
+			...activeLineGutter,
 		]);
 	}
 
@@ -394,9 +395,9 @@ async function EditorManager($header, $body) {
 	}
 
 	function getBaseExtensionSignature() {
-		const values = appSettings?.value || {};
+		const options = getBaseExtensionOptions();
 		return JSON.stringify(
-			baseExtensionSettings.map((key) => [key, values[key] !== false]),
+			baseExtensionSettings.map((key) => [key, options[key]]),
 		);
 	}
 
@@ -1924,14 +1925,6 @@ async function EditorManager($header, $body) {
 
 	appSettings.on("update:scrollPastEnd", function () {
 		applyOptions(["scrollPastEnd"]);
-	});
-
-	appSettings.on("update:useEditContext", function () {
-		applyEditContextSetting();
-		const file = manager.activeFile;
-		if (file?.type === "editor") {
-			applyFileToEditor(file, { forceRecreate: true });
-		}
 	});
 
 	appSettings.on("update:autoCloseTags", function () {

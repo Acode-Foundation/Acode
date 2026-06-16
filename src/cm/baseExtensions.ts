@@ -46,11 +46,11 @@ export default function createBaseExtensions(
 		highlightSelectionMatches: enableHighlightSelectionMatches = true,
 	} = options;
 	const extensions: Extension[] = [
-		highlightActiveLineGutter(),
 		highlightSpecialChars(),
 		history(),
 	];
 
+	if (enableHighlightActiveLine) extensions.push(highlightActiveLineGutter());
 	if (codeFolding) extensions.push(foldGutter());
 	extensions.push(drawSelection());
 	extensions.push(dropCursor());
