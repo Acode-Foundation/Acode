@@ -14,6 +14,7 @@ import { EditorView, keymap } from "@codemirror/view";
 import lspStatusBar from "components/lspStatusBar";
 import notificationManager from "lib/notificationManager";
 import Uri from "utils/Uri";
+import Url from "utils/Url";
 import { clearDiagnosticsEffect } from "./diagnostics";
 import { supportsBuiltinFormatting } from "./formattingSupport";
 import { inlayHintsExtension } from "./inlayHints";
@@ -60,6 +61,45 @@ function pluginKey(
 
 function safeString(value: unknown): string {
   return value != null ? String(value) : "";
+}
+
+function isSettingsOrKeybindingsFile(
+  server: LspServerDefinition,
+  uri: string | null | undefined,
+  file?: { uri?: string } | null,
+): boolean {
+  if (server.id !== "json") return false;
+
+  const fileUri = String(uri || file?.uri || "").toLowerCase();
+  if (!fileUri) return false;
+
+  // 1. Check if it matches the exact Acode paths from window globals
+  try {
+    const dataStorage = (globalThis as any).DATA_STORAGE;
+    if (dataStorage) {
+        const settingsPath = Url.join(dataStorage, "settings.json");
+        const keybindingsPath = (
+            (globalThis as any).KEYBINDING_FILE ||
+            Url.join(dataStorage, ".key-bindings.json")
+        );
+
+      if (fileUri === settingsPath || fileUri === keybindingsPath) {
+        return true;
+      }
+    }
+  } catch {}
+
+  // 2. Check if it matches generic/relative names as a robust fallback
+  return (
+    fileUri.endsWith("/settings.json") ||
+    fileUri.endsWith("/.key-bindings.json") ||
+    fileUri.endsWith("/keybindings.json") ||
+    fileUri.endsWith("/.keybindings.json") ||
+    fileUri === "settings.json" ||
+    fileUri === ".key-bindings.json" ||
+    fileUri === "keybindings.json" ||
+    fileUri === ".keybindings.json"
+  );
 }
 
 function isVerboseLspLoggingEnabled(): boolean {
@@ -248,6 +288,9 @@ export class LspClientManager {
     const diagnosticsUiExtension = this.options.diagnosticsUiExtension;
 
     for (const server of servers) {
+      if (isSettingsOrKeybindingsFile(server, originalUri, file)) {
+        continue;
+      }
       const normalizedUri = await this.#resolveDocumentUri(server, {
         uri: originalUri,
         file,
@@ -330,6 +373,9 @@ export class LspClientManager {
     if (!servers.length) return false;
 
     for (const server of servers) {
+      if (isSettingsOrKeybindingsFile(server, originalUri, file)) {
+        continue;
+      }
       if (!supportsBuiltinFormatting(server)) continue;
       try {
         const normalizedUri = await this.#resolveDocumentUri(server, {
