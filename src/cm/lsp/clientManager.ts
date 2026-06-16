@@ -77,11 +77,11 @@ function isSettingsOrKeybindingsFile(
   try {
     const dataStorage = (globalThis as any).DATA_STORAGE;
     if (dataStorage) {
-        const settingsPath = Url.join(dataStorage, "settings.json");
+        const settingsPath = Url.join(dataStorage, "settings.json").toLowerCase();
         const keybindingsPath = (
             (globalThis as any).KEYBINDING_FILE ||
             Url.join(dataStorage, ".key-bindings.json")
-        );
+        ).toLowerCase();
 
       if (fileUri === settingsPath || fileUri === keybindingsPath) {
         return true;

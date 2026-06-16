@@ -1,4 +1,5 @@
 import toast from "components/toast";
+import confirm from "dialogs/confirm";
 import { createTransport } from "../transport";
 import {
 	checkServerInstallation,
@@ -50,8 +51,23 @@ export const builtinAlpineRuntimeProvider: LspRuntimeProvider = {
 		if (!isTerminalInstalled) {
 			const message =
 				strings?.terminal_required_message_for_lsp ??
-				"Terminal not installed. Please install Terminal first to use builtin LSP servers.";
-			toast(message);
+				"Terminal not installed. Please install Terminal first to use LSP servers.";
+
+			if (!localStorage.getItem("dontAskTerminalRequiredForLsp")) {
+				const response = await confirm(strings?.error, message, false, {
+					checkboxText: strings["don't ask again"],
+					returnState: true,
+				});
+				if (
+					typeof response === "object" &&
+					response.confirmed &&
+					response.checked
+				) {
+					localStorage.setItem("dontAskTerminalRequiredForLsp", "true");
+				}
+			} else {
+				toast(message);
+			}
 			return false;
 		}
 
