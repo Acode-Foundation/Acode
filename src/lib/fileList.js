@@ -108,7 +108,11 @@ export default function files(dir) {
 	const listedDirs = [];
 	let transform = (item) => item;
 	if (typeof dir === "string") {
-		return Object.values(filesTree).find((item) => getFile(dir, item));
+		for (const item of Object.values(filesTree)) {
+			const found = getFile(dir, item);
+			if (found) return found;
+		}
+		return null;
 	} else if (typeof dir === "function") {
 		transform = dir;
 	}

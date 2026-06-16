@@ -38,14 +38,14 @@ function create($container, $toggler) {
 	let { innerWidth } = window;
 
 	const START_THRESHOLD = config.SIDEBAR_SLIDE_START_THRESHOLD_PX; //Point where to start swipe
-	const MIN_WIDTH = 200; //Min width of the side bar
+	const MIN_WIDTH = 250; //Min width of the side bar
 	const MAX_WIDTH = () => innerWidth * 0.7; //Max width of the side bar
 	const resizeBar = Ref();
 	const userAvatar = Ref();
 	const userContextMenu = Ref();
 
 	$container = $container || app;
-	let mode = innerWidth > 600 ? "tab" : "phone";
+	let mode = innerWidth > 750 ? "tab" : "phone";
 	let width = +(localStorage.sideBarWidth || MIN_WIDTH);
 
 	const eventOptions = { passive: false };
@@ -94,6 +94,8 @@ function create($container, $toggler) {
 	let openedFolders = [];
 	let resizeTimeout = null;
 	let setWidthTimeout = null;
+	let hideTimeout = null;
+	let wasOpenInTab = false;
 
 	$toggler?.addEventListener("click", toggle);
 	$container.addEventListener("touchstart", ontouchstart, eventOptions);
@@ -298,11 +300,67 @@ function create($container, $toggler) {
 		resizeTimeout = setTimeout(() => {
 			const { innerWidth: currentWidth } = window;
 			if (innerWidth === currentWidth) return;
-			hide(true);
+
+			const wasActivated = $el.activated;
+			const previousMode = mode;
+			const shouldRestoreInTab =
+				(previousMode === "tab" &&
+					wasActivated &&
+					localStorage.sidebarShown === "1") ||
+				(previousMode === "phone" &&
+					(wasOpenInTab ||
+						(wasActivated && localStorage.sidebarShown === "1")));
+
+			if (previousMode === "tab") {
+				wasOpenInTab = wasActivated && localStorage.sidebarShown === "1";
+			}
+
+			if (wasActivated) {
+				if (previousMode === "phone") {
+					clearTimeout(hideTimeout);
+					actionStack.remove("sidebar");
+					$el.style.transform = null;
+					$el.classList.remove("show");
+					mask.remove();
+					document.ontouchstart = null;
+					resetState();
+					$container.style.overflow = null;
+					onhide();
+					openedFolders.map(($) => ($.onscroll = null));
+					openedFolders = [];
+				} else {
+					root.style.removeProperty("margin-left");
+					root.style.removeProperty("width");
+					$el.style.maxWidth = null;
+					$el.style.transition = null;
+				}
+				$el.remove();
+			} else {
+				hide(true);
+			}
+
 			innerWidth = currentWidth;
 			$el.classList.remove(mode);
 			mode = innerWidth > 750 ? "tab" : "phone";
 			$el.classList.add(mode);
+
+			let shouldShow = false;
+			if (mode === "tab") {
+				shouldShow = shouldRestoreInTab || localStorage.sidebarShown === "1";
+			} else {
+				shouldShow = false;
+			}
+
+			if (shouldShow) {
+				$el.style.animationDuration = "0s";
+				show();
+				setTimeout(() => {
+					$el.style.animationDuration = null;
+				}, 100);
+			} else {
+				$el.activated = false;
+				localStorage.sidebarShown = 0;
+			}
 		}, 300);
 	}
 
@@ -312,6 +370,7 @@ function create($container, $toggler) {
 	}
 
 	function show() {
+		clearTimeout(hideTimeout);
 		localStorage.sidebarShown = 1;
 		$el.activated = true;
 		$el.onclick = null;
@@ -340,6 +399,7 @@ function create($container, $toggler) {
 
 	function hide(hideIfTab = false) {
 		localStorage.sidebarShown = 0;
+		wasOpenInTab = false;
 		if (mode === "phone") {
 			actionStack.remove("sidebar");
 			hideMaster();
@@ -347,6 +407,8 @@ function create($container, $toggler) {
 			$el.activated = false;
 			root.style.removeProperty("margin-left");
 			root.style.removeProperty("width");
+			$el.style.maxWidth = null;
+			$el.style.transition = null;
 			$el.remove();
 			// TODO : Codemirror
 			//editorManager.editor.resize(true);
@@ -356,7 +418,9 @@ function create($container, $toggler) {
 	function hideMaster() {
 		$el.style.transform = null;
 		$el.classList.remove("show");
-		setTimeout(() => {
+		wasOpenInTab = false;
+		clearTimeout(hideTimeout);
+		hideTimeout = setTimeout(() => {
 			$el.activated = false;
 			mask.remove();
 			$el.remove();
