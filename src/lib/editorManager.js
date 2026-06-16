@@ -237,6 +237,15 @@ async function EditorManager($header, $body) {
 			}
 		},
 	);
+	const baseExtensionDefaults = {
+		autoIndent: true,
+		codeFolding: true,
+		autoCloseBrackets: true,
+		bracketMatching: true,
+		highlightActiveLine: true,
+		highlightSelectionMatches: true,
+	};
+	const baseExtensionSettings = Object.keys(baseExtensionDefaults);
 
 	// Compartment to swap editor theme dynamically
 	const themeCompartment = new Compartment();
@@ -368,6 +377,45 @@ async function EditorManager($header, $body) {
 			indentExt: indentUnit.of(unit),
 			tabSizeExt: EditorState.tabSize.of(Math.max(1, Number(tabSize) || 2)),
 		};
+	}
+
+	function getBaseExtensionOptions() {
+		const values = appSettings?.value || {};
+		return Object.fromEntries(
+			Object.entries(baseExtensionDefaults).map(([key, defaultValue]) => [
+				key,
+				values[key] ?? defaultValue,
+			]),
+		);
+	}
+
+	function createConfiguredBaseExtensions() {
+		return createBaseExtensions(getBaseExtensionOptions());
+	}
+
+	function getBaseExtensionSignature() {
+		const values = appSettings?.value || {};
+		return JSON.stringify(
+			baseExtensionSettings.map((key) => [key, values[key] !== false]),
+		);
+	}
+
+	function applyEditContextSetting() {
+		try {
+			if (appSettings?.value?.useEditContext === false) {
+				EditorView.EDIT_CONTEXT = false;
+			} else if (
+				Object.prototype.hasOwnProperty.call(EditorView, "EDIT_CONTEXT")
+			) {
+				delete EditorView.EDIT_CONTEXT;
+			}
+		} catch (error) {
+			warnRecoverable(
+				"Failed to apply CodeMirror EditContext setting.",
+				error,
+				"edit-context-setting",
+			);
+		}
 	}
 
 	function makeRainbowBracketExtension() {
@@ -858,6 +906,8 @@ async function EditorManager($header, $body) {
 	}
 
 	// Create minimal CodeMirror editor
+	applyEditContextSetting();
+
 	const editorState = EditorState.create({
 		doc: "",
 		extensions: createMainEditorExtensions({
@@ -865,7 +915,7 @@ async function EditorManager($header, $body) {
 			emmetExtensions: createEmmetExtensionSet({
 				syntax: EmmetKnownSyntax.html,
 			}),
-			baseExtensions: createBaseExtensions(),
+			baseExtensions: createConfiguredBaseExtensions(),
 			commandKeymapExtension: getCommandKeymapExtension(),
 			themeExtension: themeCompartment.of(getConfiguredThemeExtension()),
 			pointerCursorVisibilityExtension,
@@ -1225,6 +1275,8 @@ async function EditorManager($header, $body) {
 			syntax: getEmmetSyntaxForFile(file),
 			colorPreview: !!appSettings.value.colorPreview,
 			autoCloseTags: appSettings.value.autoCloseTags !== false,
+			baseExtensions: getBaseExtensionSignature(),
+			useEditContext: appSettings.value.useEditContext !== false,
 		});
 	}
 
@@ -1430,7 +1482,7 @@ async function EditorManager($header, $body) {
 		const baseExtensions = createMainEditorExtensions({
 			// Emmet needs to precede default keymaps so tracker Tab wins over indent
 			emmetExtensions: createEmmetExtensionSet({ syntax }),
-			baseExtensions: createBaseExtensions(),
+			baseExtensions: createConfiguredBaseExtensions(),
 			commandKeymapExtension: getCommandKeymapExtension(),
 			// keep compartment in the state to allow dynamic theme changes later
 			themeExtension: themeCompartment.of(getConfiguredThemeExtension()),
@@ -1870,6 +1922,14 @@ async function EditorManager($header, $body) {
 
 	appSettings.on("update:scrollPastEnd", function () {
 		applyOptions(["scrollPastEnd"]);
+	});
+
+	appSettings.on("update:useEditContext", function () {
+		applyEditContextSetting();
+		const file = manager.activeFile;
+		if (file?.type === "editor") {
+			applyFileToEditor(file, { forceRecreate: true });
+		}
 	});
 
 	appSettings.on("update:autoCloseTags", function () {
