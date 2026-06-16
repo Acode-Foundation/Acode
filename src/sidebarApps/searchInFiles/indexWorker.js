@@ -224,7 +224,6 @@ function buildRecord(file, content) {
 		name: file.name,
 		indexedAt: Date.now(),
 		indexVersion: INDEX_VERSION,
-		contentHash: hashString(content),
 		skipped: false,
 		searchText: content.toLocaleLowerCase(),
 	};
@@ -319,16 +318,6 @@ function normalizeModifiedDate(value) {
 	if (typeof value === "number") return value;
 	const time = new Date(value).getTime();
 	return Number.isNaN(time) ? 0 : time;
-}
-
-function hashString(value) {
-	let hash = 2166136261;
-	for (let i = 0; i < value.length; i++) {
-		hash ^= value.charCodeAt(i);
-		hash +=
-			(hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
-	}
-	return (hash >>> 0).toString(16);
 }
 
 function getFile(url) {

@@ -43,6 +43,7 @@ function processFiles(data, mode = "search") {
 	let count = 0;
 	let cursor = 0;
 	let active = 0;
+	let pumpScheduled = false;
 
 	if (!total) {
 		done(1, mode);
@@ -55,6 +56,7 @@ function processFiles(data, mode = "search") {
 	 * Starts more file reads without flooding the main thread.
 	 */
 	function pump() {
+		pumpScheduled = false;
 		while (active < MAX_CONCURRENT_FILE_READS && cursor < total) {
 			const file = files[cursor++];
 			active += 1;
@@ -62,10 +64,16 @@ function processFiles(data, mode = "search") {
 		}
 	}
 
+	function schedulePump() {
+		if (pumpScheduled) return;
+		pumpScheduled = true;
+		Promise.resolve().then(pump);
+	}
+
 	function finishOne() {
 		active -= 1;
 		done(++count / total, mode);
-		pump();
+		schedulePump();
 	}
 
 	/**

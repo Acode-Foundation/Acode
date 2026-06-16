@@ -45,16 +45,19 @@ export function createSearchIndex({ readFile, onStatus }) {
 		const fileRequest = fileRequests.get(id);
 		if (fileRequest) return;
 		fileRequests.set(id, true);
+		const targetWorker = worker;
 
 		try {
 			const content = await readFile(data);
-			getWorker().postMessage({
+			if (worker !== targetWorker || !targetWorker) return;
+			targetWorker.postMessage({
 				action: "get-file",
 				id,
 				data: content || "",
 			});
 		} catch (error) {
-			getWorker().postMessage({
+			if (worker !== targetWorker || !targetWorker) return;
+			targetWorker.postMessage({
 				action: "get-file",
 				id,
 				error: error?.message || String(error),

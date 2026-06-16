@@ -173,7 +173,6 @@ export function createSearchResultView(
 			const fileInfo = fileNames[groupIndex] || {};
 			const fname =
 				typeof fileInfo === "string" ? fileInfo : fileInfo.name || "";
-			const fpath = typeof fileInfo === "string" ? "" : fileInfo.path || "";
 			const iconClass = helpers.getIconForFile(fname);
 			builder.push(
 				Decoration.widget({
