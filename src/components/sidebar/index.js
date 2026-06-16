@@ -303,6 +303,13 @@ function create($container, $toggler) {
 
 			const wasActivated = $el.activated;
 			const previousMode = mode;
+			const shouldRestoreInTab =
+				(previousMode === "tab" &&
+					wasActivated &&
+					localStorage.sidebarShown === "1") ||
+				(previousMode === "phone" &&
+					(wasOpenInTab ||
+						(wasActivated && localStorage.sidebarShown === "1")));
 
 			if (previousMode === "tab") {
 				wasOpenInTab = wasActivated && localStorage.sidebarShown === "1";
@@ -339,7 +346,7 @@ function create($container, $toggler) {
 
 			let shouldShow = false;
 			if (mode === "tab") {
-				shouldShow = wasOpenInTab || localStorage.sidebarShown === "1";
+				shouldShow = shouldRestoreInTab || localStorage.sidebarShown === "1";
 			} else {
 				shouldShow = false;
 			}
