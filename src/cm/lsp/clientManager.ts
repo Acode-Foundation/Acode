@@ -18,7 +18,7 @@ import { clearDiagnosticsEffect } from "./diagnostics";
 import { supportsBuiltinFormatting } from "./formattingSupport";
 import { inlayHintsExtension } from "./inlayHints";
 import { acodeRenameKeymap } from "./rename";
-import { ensureServerRunning } from "./serverLauncher";
+import { selectRuntimeProvider } from "./runtimeProviders";
 import serverRegistry from "./serverRegistry";
 import { hoverTooltips, signatureHelp } from "./tooltipExtensions";
 import { createTransport } from "./transport";
@@ -30,12 +30,14 @@ import type {
   FileMetadata,
   FormattingOptions,
   LspServerDefinition,
+  LspRuntimeConnection,
   NormalizedRootUri,
   ParsedUri,
   RootUriContext,
   TextEdit,
-  Transport,
+  TransportContext,
   TransportHandle,
+  Transport,
 } from "./types";
 import AcodeWorkspace from "./workspace";
 
@@ -236,13 +238,6 @@ export class LspClientManager {
       rootUri,
     } = metadata;
 
-    if (!this.#canUseLspForWorkspace(metadata)) {
-      logLspInfo(
-        `Skipping LSP for non-terminal-accessible workspace: ${rootUri || originalUri}`,
-      );
-      return [];
-    }
-
     const effectiveLang = safeString(languageId ?? languageName).toLowerCase();
     if (!effectiveLang) return [];
 
@@ -327,7 +322,6 @@ export class LspClientManager {
     options: FormattingOptions = {},
   ): Promise<boolean> {
     const { uri: originalUri, languageId, languageName, view, file } = metadata;
-    if (!this.#canUseLspForWorkspace(metadata)) return false;
 
     const effectiveLang = safeString(languageId ?? languageName).toLowerCase();
     if (!effectiveLang || !view) return false;
@@ -386,12 +380,6 @@ export class LspClientManager {
       }
     }
     return false;
-  }
-
-  #canUseLspForWorkspace(metadata: FileMetadata): boolean {
-    if (this.options.allowNonTerminalWorkspace === true) return true;
-    if (metadata.file?.SAFMode) return false;
-    return isTerminalAccessibleLspUri(metadata.rootUri || metadata.uri);
   }
 
   detach(uri: string, view: EditorView): void {
@@ -766,21 +754,49 @@ export class LspClientManager {
 
     let transportHandle: TransportHandle | undefined;
     let client: ExtendedLSPClient | undefined;
+    let runtimeConnection: LspRuntimeConnection | undefined;
 
     try {
-      // Get session from server ID for auto-port discovery
-      const session = server.id;
-      const serverResult = await ensureServerRunning(server, session);
-
-      // Use discovered port if available (for auto-port discovery)
-      const dynamicPort = serverResult.discoveredPort;
-
-      transportHandle = createTransport(server, {
+      const runtimeContext = {
         ...context,
         rootUri: normalizedRootUri ?? null,
         originalRootUri: originalRootUri ?? undefined,
-        dynamicPort,
-      });
+        serverId: server.id,
+        allowNonTerminalWorkspace:
+          this.options.allowNonTerminalWorkspace === true,
+      };
+      const runtimeProvider = await selectRuntimeProvider(
+        server,
+        runtimeContext,
+      );
+      if (!runtimeProvider) {
+        const unavailable: LSPError = new Error(
+          `No LSP runtime provider can handle ${server.id}.`,
+        );
+        unavailable.code = "LSP_SERVER_UNAVAILABLE";
+        throw unavailable;
+      }
+
+      const connection = await runtimeProvider.start(server, runtimeContext);
+      const connectionDispose = connection.dispose;
+      connection.dispose = async () => {
+        try {
+          if (connectionDispose) {
+            await connectionDispose();
+          }
+        } finally {
+          if (runtimeProvider.stop) {
+            await runtimeProvider.stop(connection);
+          }
+        }
+      };
+      runtimeConnection = connection;
+
+      transportHandle = createTransportFromRuntimeConnection(
+        server,
+        runtimeContext,
+        connection,
+      );
       await transportHandle.ready;
       client = new LSPClient(clientConfig) as ExtendedLSPClient;
       connectClient(client, transportHandle.transport, initializationOptions);
@@ -808,7 +824,11 @@ export class LspClientManager {
         client.__acodeLoggedInfo = true;
       }
     } catch (error) {
-      transportHandle?.dispose?.();
+      if (transportHandle) {
+        await transportHandle.dispose?.();
+      } else {
+        await runtimeConnection?.dispose?.();
+      }
       throw error;
     }
 
@@ -980,8 +1000,44 @@ export class LspClientManager {
       }
     }
 
-    return normalizedUri;
+    return normalizedUri || originalUri;
   }
+}
+
+function createTransportFromRuntimeConnection(
+  server: LspServerDefinition,
+  context: TransportContext,
+  connection: LspRuntimeConnection,
+): TransportHandle {
+  if (connection.kind === "transport") {
+    if (!connection.dispose) return connection.transport;
+    return {
+      ...connection.transport,
+      dispose: async () => {
+        await connection.transport.dispose?.();
+        await connection.dispose?.();
+      },
+    };
+  }
+
+  const transportServer: LspServerDefinition = {
+    ...server,
+    transport: {
+      ...server.transport,
+      kind: "websocket",
+      url: connection.url,
+      protocols: connection.protocols,
+    },
+  };
+  const handle = createTransport(transportServer, context);
+  if (!connection.dispose) return handle;
+  return {
+    ...handle,
+    dispose: async () => {
+      await handle.dispose?.();
+      await connection.dispose?.();
+    },
+  };
 }
 
 interface Change {
@@ -1099,19 +1155,6 @@ function normalizeRootUriForServer(
 
   // Unknown scheme - try to use as-is
   return { normalizedRootUri: rootUri, originalRootUri: rootUri };
-}
-
-function isTerminalAccessibleLspUri(uri: string | null | undefined): boolean {
-  if (!uri || typeof uri !== "string") return false;
-
-  const schemeMatch = /^([a-zA-Z][\w+\-.]*):/.exec(uri);
-  const scheme = schemeMatch ? schemeMatch[1].toLowerCase() : null;
-
-  if (!scheme) return uri.startsWith("/");
-  if (scheme === "file" || scheme === "untitled") return true;
-  if (scheme !== "content") return false;
-
-  return /^content:\/\/com\.foxdebug\.acode(?:free)?\.documents\//i.test(uri);
 }
 
 function normalizeDocumentUri(uri: string | null | undefined): string | null {

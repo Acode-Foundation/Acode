@@ -99,6 +99,7 @@ export async function upsertCustomServer(serverId, config) {
 			? config.transport
 			: existing.transport || { kind: "websocket" },
 		launcher: hasLauncher ? config.launcher : existing.launcher,
+		runtimes: config.runtimes || existing.runtimes,
 		enabled: config.enabled !== false,
 	};
 
@@ -123,6 +124,7 @@ export async function upsertCustomServer(serverId, config) {
 		languages,
 		transport: nextConfig.transport,
 		launcher: nextConfig.launcher,
+		runtimes: nextConfig.runtimes,
 		clientConfig: nextConfig.clientConfig,
 		initializationOptions: nextConfig.initializationOptions,
 		startupTimeout: nextConfig.startupTimeout,

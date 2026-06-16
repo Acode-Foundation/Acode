@@ -1,3 +1,5 @@
+import "./runtimes/registerBuiltins";
+
 export {
 	bundles,
 	default as lspApi,
@@ -5,7 +7,10 @@ export {
 	defineServer,
 	installers,
 	register,
+	registerRuntime,
+	runtimes,
 	servers,
+	unregisterRuntime,
 	upsert,
 } from "./api";
 export { default as clientManager, LspClientManager } from "./clientManager";
@@ -65,6 +70,32 @@ export {
 	resetManagedServers,
 	stopManagedServer,
 } from "./serverLauncher";
+export {
+	BUILTIN_ALPINE_RUNTIME_ID,
+	EXTERNAL_WEBSOCKET_RUNTIME_ID,
+	getRuntimeProvider,
+	inferWorkspaceKind,
+	isBuiltinAlpineAccessible,
+	listRuntimeProviders,
+	registerRuntimeProvider,
+	selectRuntimeProvider,
+	unregisterRuntimeProvider,
+} from "./runtimeProviders";
+export {
+	checkRuntimeServerInstallation,
+	getRuntimeInstallCommand,
+	getRuntimeLabelForServer,
+	getRuntimeUninstallCommand,
+	installRuntimeServer,
+	uninstallRuntimeServer,
+} from "./runtimeActions";
+export {
+	AUTO_RUNTIME_ID,
+	getDefaultRuntimeSetting,
+	getServerRuntimeSetting,
+	setDefaultRuntime,
+	setServerRuntime,
+} from "./runtimeSettings";
 export { default as serverRegistry } from "./serverRegistry";
 export {
 	nextSignature,
@@ -86,6 +117,9 @@ export type {
 	LSPFormattingOptions,
 	LSPPluginAPI,
 	LspDiagnostic,
+	LspRuntimeConnection,
+	LspRuntimeContext,
+	LspRuntimeProvider,
 	LspServerDefinition,
 	Position,
 	Range,
@@ -93,5 +127,6 @@ export type {
 	TransportDescriptor,
 	TransportHandle,
 	WorkspaceOptions,
+	WorkspaceKind,
 } from "./types";
 export { default as AcodeWorkspace } from "./workspace";

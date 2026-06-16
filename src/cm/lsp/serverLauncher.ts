@@ -9,10 +9,14 @@ import {
   runForegroundCommand,
   runQuickCommand,
 } from "./installRuntime";
+import {
+  buildAxsBridgeCommand,
+  checkAxsBridgeStatus,
+  checkServerAliveViaWebSocket,
+} from "./runtimes/axsBridge";
 import { getServerBundle } from "./serverCatalog";
 import notificationManager from "lib/notificationManager";
 import type {
-  BridgeConfig,
   InstallCheckResult,
   InstallStatus,
   LauncherConfig,
@@ -33,7 +37,6 @@ const STATUS_PRESENT: InstallStatus = "present";
 const STATUS_DECLINED: InstallStatus = "declined";
 const STATUS_FAILED: InstallStatus = "failed";
 
-const AXS_BINARY = "$PREFIX/axs";
 const DONT_ASK_TERMINAL_REQUIRED_FOR_LSP = "dontAskTerminalRequiredForLsp";
 
 let alreadyInformed = false;
@@ -48,13 +51,6 @@ function getTerminalRequiredMessage(): string {
 interface LspError extends Error {
   code?: string;
 }
-
-interface LspBridgeStatusResponse {
-  program?: unknown;
-  processes?: unknown;
-}
-
-type LspBridgeStatusCheckResult = "alive" | "unsupported" | "dead";
 
 function getExecutor(): Executor {
   const executor = (globalThis as unknown as { Executor?: Executor }).Executor;
@@ -254,99 +250,6 @@ async function waitForPort(
   return portInfo;
 }
 
-function getBridgeStatusUrl(webSocketUrl: string): string {
-  return webSocketUrl
-    .replace(/^ws:/i, "http:")
-    .replace(/^wss:/i, "https:")
-    .replace(/\/?$/, "/status");
-}
-
-function isLspBridgeStatusResponse(
-  value: LspBridgeStatusResponse | null,
-): boolean {
-  return (
-    !!value &&
-    typeof value.program === "string" &&
-    Array.isArray(value.processes)
-  );
-}
-
-/**
- * Quick check if the axs LSP bridge is running.
- * Prefer /status because opening "/" creates a real LSP websocket session.
- */
-async function checkLspBridgeStatus(
-  url: string,
-  timeout = 1000,
-): Promise<LspBridgeStatusCheckResult> {
-  const statusUrl = getBridgeStatusUrl(url);
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-  try {
-    const response = await fetch(statusUrl, {
-      signal: controller.signal,
-    });
-    if (!response.ok) {
-      return "unsupported";
-    }
-
-    const data = (await response.json().catch(() => null)) as
-      | LspBridgeStatusResponse
-      | null;
-    return isLspBridgeStatusResponse(data) ? "alive" : "dead";
-  } catch {
-    return "dead";
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
-
-/**
- * Compatibility fallback for older proxies without /status.
- * This opens and immediately closes a real LSP websocket session.
- */
-async function checkServerAliveViaWebSocket(
-  url: string,
-  timeout = 1000,
-): Promise<boolean> {
-  return new Promise((resolve) => {
-    try {
-      const ws = new WebSocket(url);
-      let settled = false;
-      const finish = (alive: boolean) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        resolve(alive);
-      };
-      const timer = setTimeout(() => {
-        try {
-          ws.close();
-        } catch {}
-        finish(false);
-      }, timeout);
-
-      ws.onopen = () => {
-        try {
-          ws.close();
-        } catch {}
-        finish(true);
-      };
-
-      ws.onerror = () => {
-        finish(false);
-      };
-
-      ws.onclose = () => {
-        finish(false);
-      };
-    } catch {
-      resolve(false);
-    }
-  });
-}
-
 /**
  * Check if we can reuse an existing server by testing the port.
  * Returns the port number if the server is alive, null otherwise.
@@ -368,7 +271,7 @@ export async function canReuseExistingServer(
   }
 
   const url = `ws://127.0.0.1:${portInfo.port}/`;
-  const status = await checkLspBridgeStatus(url, 1000);
+  const status = await checkAxsBridgeStatus(url, 1000);
   const alive =
     status === "alive" ||
     (status === "unsupported" &&
@@ -385,49 +288,6 @@ export async function canReuseExistingServer(
     `[LSP:${server.id}] Found stale port file, will start new server`,
   );
   return null;
-}
-
-function buildAxsBridgeCommand(
-  bridge: BridgeConfig | undefined,
-  commandOverride?: string | null,
-  session?: string,
-): string | null {
-  if (!bridge || bridge.kind !== "axs") return null;
-
-  const binary =
-    commandOverride || bridge.command
-      ? String(commandOverride || bridge.command)
-      : (() => {
-          throw new Error("Bridge requires a command to execute");
-        })();
-  const args: string[] = Array.isArray(bridge.args)
-    ? bridge.args.map((arg) => String(arg))
-    : [];
-
-  // Use session ID or bridge session or server command as fallback session
-  const effectiveSession = session || bridge.session || binary;
-
-  const parts = [AXS_BINARY, "lsp"];
-
-  // Add --session flag for port file naming
-  parts.push("--session", quoteArg(effectiveSession));
-
-  // Only add --port if explicitly specified
-  if (
-    typeof bridge.port === "number" &&
-    bridge.port > 0 &&
-    bridge.port <= 65535
-  ) {
-    parts.push("--port", String(bridge.port));
-  }
-
-  parts.push(quoteArg(binary));
-
-  if (args.length) {
-    parts.push("--");
-    args.forEach((arg) => parts.push(quoteArg(arg)));
-  }
-  return parts.join(" ");
 }
 
 function resolveStartCommand(

@@ -102,6 +102,7 @@ async function EditorManager($header, $body) {
 	let isScrolling = false;
 	let lastScrollTop = 0;
 	let lastScrollLeft = 0;
+	let suppressCursorRevealUntil = 0;
 
 	// Debounce timers for CodeMirror change handling
 	let checkTimeout = null;
@@ -195,6 +196,7 @@ async function EditorManager($header, $body) {
 			);
 			if (!pointerTriggered) return;
 			requestAnimationFrame(() => {
+				if (isCursorRevealSuppressed()) return;
 				if (!isCursorVisible()) scrollCursorIntoView({ behavior: "instant" });
 			});
 		},
@@ -2167,10 +2169,14 @@ async function EditorManager($header, $body) {
 
 		keyboardHandler.on("keyboardShowStart", () => {
 			requestAnimationFrame(() => {
+				if (isCursorRevealSuppressed()) return;
 				scrollCursorIntoView({ behavior: "instant" });
 			});
 		});
-		keyboardHandler.on("keyboardShow", scrollCursorIntoView);
+		keyboardHandler.on("keyboardShow", () => {
+			if (isCursorRevealSuppressed()) return;
+			scrollCursorIntoView();
+		});
 
 		// Attach native DOM event listeners directly to the editor's contentDOM
 		const contentDOM = editor.contentDOM;
@@ -2259,6 +2265,14 @@ async function EditorManager($header, $body) {
 		}
 	}
 
+	function suppressCursorReveal(duration = 500) {
+		suppressCursorRevealUntil = Date.now() + duration;
+	}
+
+	function isCursorRevealSuppressed() {
+		return Date.now() < suppressCursorRevealUntil;
+	}
+
 	/**
 	 * Checks if the cursor is visible within the CodeMirror viewport.
 	 * @returns {boolean} - True if the cursor is visible, false otherwise.
@@ -2291,6 +2305,7 @@ async function EditorManager($header, $body) {
 	function onscrollV(value) {
 		const scroller = editor?.scrollDOM;
 		if (!scroller) return;
+		suppressCursorReveal();
 		const normalized = clamp01(value);
 		const maxScroll = Math.max(
 			scroller.scrollHeight - scroller.clientHeight,
@@ -2305,6 +2320,7 @@ async function EditorManager($header, $body) {
 	 * Handles the onscroll event for the vend element.
 	 */
 	function onscrollVend() {
+		suppressCursorReveal();
 		preventScrollbarV = false;
 		setVScrollValue();
 	}
@@ -2317,6 +2333,7 @@ async function EditorManager($header, $body) {
 		if (appSettings.value.textWrap) return;
 		const scroller = editor?.scrollDOM;
 		if (!scroller) return;
+		suppressCursorReveal();
 		const normalized = clamp01(value);
 		const maxScroll = Math.max(scroller.scrollWidth - scroller.clientWidth, 0);
 		preventScrollbarH = true;
@@ -2328,6 +2345,7 @@ async function EditorManager($header, $body) {
 	 * Handles the event when the horizontal scrollbar reaches the end.
 	 */
 	function onscrollHEnd() {
+		suppressCursorReveal();
 		preventScrollbarH = false;
 		setHScrollValue();
 	}

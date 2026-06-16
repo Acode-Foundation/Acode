@@ -1,12 +1,12 @@
 import lspApi from "cm/lsp/api";
 import {
-	checkServerInstallation,
-	getInstallCommand,
-	getUninstallCommand,
-	installServer,
-	stopManagedServer,
-	uninstallServer,
-} from "cm/lsp/serverLauncher";
+	checkRuntimeServerInstallation,
+	getRuntimeInstallCommand,
+	getRuntimeUninstallCommand,
+	installRuntimeServer,
+	uninstallRuntimeServer,
+} from "cm/lsp/runtimeActions";
+import { stopManagedServer } from "cm/lsp/serverLauncher";
 import settingsPage from "components/settingsPage";
 import toast from "components/toast";
 import alert from "dialogs/alert";
@@ -113,6 +113,7 @@ function getMergedConfig(server) {
 			},
 		},
 		launcher: mergeLauncher(server.launcher, override.launcher),
+		runtimes: override.runtimes || server.runtimes,
 	};
 }
 
@@ -260,21 +261,15 @@ async function buildSnapshot(serverId) {
 	const merged = getMergedConfig(liveServer);
 	const override = getServerOverride(serverId);
 	const directWebSocket = isDirectWebSocketServer(merged);
-	const installResult = directWebSocket
-		? {
-				status: "unknown",
-				version: null,
-				canInstall: false,
-				canUpdate: false,
-				message: strings["lsp-websocket-server-managed-externally"],
-			}
-		: await checkServerInstallation(merged).catch((error) => ({
-				status: "failed",
-				version: null,
-				canInstall: true,
-				canUpdate: true,
-				message: error instanceof Error ? error.message : String(error),
-			}));
+	const installResult = await checkRuntimeServerInstallation(merged).catch(
+		(error) => ({
+			status: "failed",
+			version: null,
+			canInstall: true,
+			canUpdate: true,
+			message: error instanceof Error ? error.message : String(error),
+		}),
+	);
 
 	return {
 		liveServer,
@@ -284,9 +279,9 @@ async function buildSnapshot(serverId) {
 		isCustom: isCustomServer(serverId),
 		installResult,
 		builtinExts: merged.clientConfig?.builtinExtensions || {},
-		installCommand: getInstallCommand(merged, "install"),
-		updateCommand: getInstallCommand(merged, "update"),
-		uninstallCommand: getUninstallCommand(merged),
+		installCommand: await getRuntimeInstallCommand(merged, "install"),
+		updateCommand: await getRuntimeInstallCommand(merged, "update"),
+		uninstallCommand: await getRuntimeUninstallCommand(merged),
 	};
 }
 
@@ -344,40 +339,52 @@ function createItems(snapshot) {
 		},
 	];
 
-	if (!snapshot.directWebSocket) {
-		items.splice(
-			1,
-			0,
-			{
-				key: "install_status",
-				text: formatStatusLabel(snapshot.installResult),
-				info: formatInstallInfo(snapshot.installResult),
-				category: categories.installation,
-				chevron: true,
-			},
-			{
-				key: "install_server",
-				text: strings["lsp-install-repair"],
-				info: strings["settings-info-lsp-install-server"],
-				category: categories.installation,
-				chevron: true,
-			},
-			{
-				key: "update_server",
-				text: strings["lsp-update-server"],
-				info: strings["settings-info-lsp-update-server"],
-				category: categories.installation,
-				chevron: true,
-			},
-			{
-				key: "uninstall_server",
-				text: strings["lsp-uninstall-server"],
-				info: strings["settings-info-lsp-uninstall-server"],
-				category: categories.installation,
-				chevron: true,
-			},
-		);
+	const installationItems = [
+		{
+			key: "install_status",
+			text: formatStatusLabel(snapshot.installResult),
+			info: formatInstallInfo(snapshot.installResult),
+			category: categories.installation,
+			chevron: true,
+		},
+	];
+	if (
+		snapshot.installCommand ||
+		snapshot.installResult?.canInstall ||
+		!snapshot.directWebSocket
+	) {
+		installationItems.push({
+			key: "install_server",
+			text: strings["lsp-install-repair"],
+			info: strings["settings-info-lsp-install-server"],
+			category: categories.installation,
+			chevron: true,
+		});
 	}
+	if (
+		snapshot.updateCommand ||
+		snapshot.installResult?.canUpdate ||
+		!snapshot.directWebSocket
+	) {
+		installationItems.push({
+			key: "update_server",
+			text: strings["lsp-update-server"],
+			info: strings["settings-info-lsp-update-server"],
+			category: categories.installation,
+			chevron: true,
+		});
+	}
+	if (snapshot.uninstallCommand || !snapshot.directWebSocket) {
+		installationItems.push({
+			key: "uninstall_server",
+			text: strings["lsp-uninstall-server"],
+			info: strings["settings-info-lsp-uninstall-server"],
+			category: categories.installation,
+			chevron: true,
+		});
+	}
+
+	items.splice(2, 0, ...installationItems);
 
 	featureItems.forEach(([key, extKey, text, info]) => {
 		items.push({
@@ -408,6 +415,24 @@ async function refreshVisibleState($list, itemsByKey, serverId) {
 	updateItemDisplay($list, itemsByKey, "install_server", "");
 	updateItemDisplay($list, itemsByKey, "update_server", "");
 	updateItemDisplay($list, itemsByKey, "uninstall_server", "");
+
+	const $installItem = $list.querySelector('[data-key="install_server"]');
+	if ($installItem) {
+		$installItem.style.display =
+			snapshot.installCommand || snapshot.installResult?.canInstall
+				? ""
+				: "none";
+	}
+	const $updateItem = $list.querySelector('[data-key="update_server"]');
+	if ($updateItem) {
+		$updateItem.style.display =
+			snapshot.updateCommand || snapshot.installResult?.canUpdate ? "" : "none";
+	}
+	const $uninstallItem = $list.querySelector('[data-key="uninstall_server"]');
+	if ($uninstallItem) {
+		$uninstallItem.style.display = snapshot.uninstallCommand ? "" : "none";
+	}
+
 	updateItemDisplay(
 		$list,
 		itemsByKey,
@@ -479,35 +504,27 @@ export default function lspServerDetail(serverId) {
 		return null;
 	}
 
+	const directWebSocket = isDirectWebSocketServer(
+		getMergedConfig(initialServer),
+	);
 	const initialSnapshot = {
 		liveServer: initialServer,
 		merged: getMergedConfig(initialServer),
 		override: getServerOverride(serverId),
-		directWebSocket: isDirectWebSocketServer(getMergedConfig(initialServer)),
+		directWebSocket,
 		isCustom: isCustomServer(serverId),
-		installResult: isDirectWebSocketServer(getMergedConfig(initialServer))
-			? {
-					status: "unknown",
-					version: null,
-					canInstall: false,
-					canUpdate: false,
-					message: strings["lsp-websocket-server-managed-externally"],
-				}
-			: {
-					status: "unknown",
-					version: null,
-					canInstall: true,
-					canUpdate: true,
-					message: strings["lsp-checking-installation-status"],
-				},
+		installResult: {
+			status: "unknown",
+			version: null,
+			canInstall: !directWebSocket,
+			canUpdate: !directWebSocket,
+			message: strings["lsp-checking-installation-status"],
+		},
 		builtinExts:
 			getMergedConfig(initialServer).clientConfig?.builtinExtensions || {},
-		installCommand: getInstallCommand(
-			getMergedConfig(initialServer),
-			"install",
-		),
-		updateCommand: getInstallCommand(getMergedConfig(initialServer), "update"),
-		uninstallCommand: getUninstallCommand(getMergedConfig(initialServer)),
+		installCommand: null,
+		updateCommand: null,
+		uninstallCommand: null,
 	};
 
 	const items = createItems(initialSnapshot);
@@ -581,7 +598,7 @@ export default function lspServerDetail(serverId) {
 					return;
 
 				case "install_status": {
-					const result = await checkServerInstallation(snapshot.merged);
+					const result = await checkRuntimeServerInstallation(snapshot.merged);
 					$loader.hide();
 					const lines = [
 						fillTemplate(strings["lsp-status-line"], {
@@ -605,7 +622,7 @@ export default function lspServerDetail(serverId) {
 						toast(strings["lsp-install-command-unavailable"]);
 						break;
 					}
-					await installServer(snapshot.merged, "install");
+					await installRuntimeServer(snapshot.merged, "install");
 					break;
 
 				case "update_server":
@@ -613,7 +630,7 @@ export default function lspServerDetail(serverId) {
 						toast(strings["lsp-update-command-unavailable"]);
 						break;
 					}
-					await installServer(snapshot.merged, "update");
+					await installRuntimeServer(snapshot.merged, "update");
 					break;
 
 				case "uninstall_server":
@@ -633,7 +650,7 @@ export default function lspServerDetail(serverId) {
 						break;
 					}
 					$loader.show();
-					await uninstallServer(snapshot.merged);
+					await uninstallRuntimeServer(snapshot.merged);
 					toast(strings["lsp-server-uninstalled"]);
 					break;
 
