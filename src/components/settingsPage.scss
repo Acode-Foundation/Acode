@@ -835,3 +835,42 @@ wc-page.detail-settings-page.formatter-settings-page {
 		align-self: center;
 	}
 }
+
+@supports not (color: color-mix(in srgb, red, blue)) {
+	wc-page.main-settings-page,
+	wc-page.detail-settings-page {
+		.input-checkbox {
+			.box {
+				background: var(--popup-background-color) !important;
+				border: 1px solid var(--secondary-text-color) !important;
+				opacity: 0.65;
+
+				&::after {
+					background: var(--popup-text-color) !important;
+					opacity: 1 !important;
+				}
+			}
+
+			input:checked + .box {
+				background: var(--button-background-color) !important;
+				border-color: var(--button-background-color) !important;
+				opacity: 1 !important;
+
+				&::after {
+					background: var(--button-text-color) !important;
+				}
+			}
+		}
+
+		.setting-value-display.is-select,
+		.settings-search-section .setting-value-display.is-select {
+			background: var(--popup-background-color) !important;
+			border: 1px solid var(--secondary-text-color) !important;
+			box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12) !important;
+		}
+
+		.settings-section-label {
+			color: var(--active-color) !important;
+		}
+	}
+}
