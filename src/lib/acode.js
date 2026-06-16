@@ -338,13 +338,13 @@ class Acode {
 				console.warn(
 					`[Security Alert] Attempt to delete property '${String(prop)}' on read-only config blocked.`,
 				);
-				return false;
+				return true;
 			},
 			setPrototypeOf(target, prototype) {
 				console.warn(
 					`[Security Alert] Attempt to change prototype of read-only config blocked.`,
 				);
-				return false;
+				return true;
 			},
 		});
 
