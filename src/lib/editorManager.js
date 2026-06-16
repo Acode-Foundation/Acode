@@ -403,6 +403,8 @@ async function EditorManager($header, $body) {
 	function applyEditContextSetting() {
 		try {
 			if (appSettings?.value?.useEditContext === false) {
+				// Avoid Chromium Android EditContext scroll jumps when tapping empty
+				// lines. https://issues.chromium.org/issues/484891671
 				EditorView.EDIT_CONTEXT = false;
 			} else if (
 				Object.prototype.hasOwnProperty.call(EditorView, "EDIT_CONTEXT")
