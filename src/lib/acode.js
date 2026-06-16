@@ -322,9 +322,6 @@ class Acode {
 		});
 
 		const configProxy = new Proxy(config, {
-			get(target, prop, receiver) {
-				return Reflect.get(target, prop, receiver);
-			},
 			set(target, prop, value, receiver) {
 				console.warn(
 					`[Security Alert] Attempt to modify read-only config property '${String(prop)}' blocked.`,
@@ -335,7 +332,7 @@ class Acode {
 				console.warn(
 					`[Security Alert] Attempt to define property '${String(prop)}' on read-only config blocked.`,
 				);
-				return false;
+				return true;
 			},
 			deleteProperty(target, prop) {
 				console.warn(

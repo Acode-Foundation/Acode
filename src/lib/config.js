@@ -27,7 +27,7 @@ const config = {
 	},
 
 	API_BASE: `${BASE_URL}/api`,
-	SKU_LIST: ["crystal", "bronze", "silver", "gold", "platinum", "titanium"],
+	SKU_LIST: Object.freeze(["crystal", "bronze", "silver", "gold", "platinum", "titanium"]),
 	LOG_FILE_NAME: "Acode.log",
 
 	// Social Links
