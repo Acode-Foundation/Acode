@@ -1,3 +1,4 @@
+import toast from "components/toast";
 import { createTransport } from "../transport";
 import {
 	checkServerInstallation,
@@ -36,7 +37,24 @@ export const builtinAlpineRuntimeProvider: LspRuntimeProvider = {
 		return checkServerInstallation(server);
 	},
 
-	install(server, context, mode, options) {
+	async install(server, context, mode, options) {
+		const terminal = (
+			globalThis as unknown as {
+				Terminal?: { isInstalled?: () => Promise<boolean> | boolean };
+			}
+		).Terminal;
+		let isTerminalInstalled = false;
+		try {
+			isTerminalInstalled = Boolean(await terminal?.isInstalled?.());
+		} catch {}
+		if (!isTerminalInstalled) {
+			const message =
+				strings?.terminal_required_message_for_lsp ??
+				"Terminal not installed. Please install Terminal first to use builtin LSP servers.";
+			toast(message);
+			return false;
+		}
+
 		return installServer(server, mode, options);
 	},
 
