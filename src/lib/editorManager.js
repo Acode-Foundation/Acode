@@ -103,6 +103,10 @@ async function EditorManager($header, $body) {
 	let lastScrollTop = 0;
 	let lastScrollLeft = 0;
 	let suppressCursorRevealUntil = 0;
+	let scrollbarScrollLockUntil = 0;
+	let scrollbarScrollLockTop = null;
+	let scrollbarScrollLockLeft = null;
+	let restoringScrollbarScrollLock = false;
 
 	// Debounce timers for CodeMirror change handling
 	let checkTimeout = null;
@@ -194,14 +198,16 @@ async function EditorManager($header, $body) {
 					tr.isUserEvent("touch") ||
 					tr.isUserEvent("select.touch"),
 			);
-			if (!pointerTriggered) return;
+			if (!pointerTriggered) {
+				clearScrollbarScrollLock();
+				return;
+			}
 			requestAnimationFrame(() => {
 				if (isCursorRevealSuppressed()) return;
 				if (!isCursorVisible()) scrollCursorIntoView({ behavior: "instant" });
 			});
 		},
 	);
-
 	const isShiftSelectionActive = (event) => {
 		if (!appSettings.value.shiftClickSelection) return false;
 		return !!event?.shiftKey || quickTools?.$footer?.dataset?.shift != null;
@@ -1092,6 +1098,7 @@ async function EditorManager($header, $body) {
 			const pos = docLine.from + col;
 
 			// Move cursor and scroll into view
+			clearScrollbarScrollLock();
 			editor.dispatch({
 				selection: { anchor: pos, head: pos },
 				effects: EditorView.scrollIntoView(pos, { y: "center" }),
@@ -1155,6 +1162,7 @@ async function EditorManager($header, $body) {
 			if (!scroller) return false;
 
 			if (row === Number.POSITIVE_INFINITY) {
+				clearScrollbarScrollLock();
 				scroller.scrollTop = Math.max(
 					scroller.scrollHeight - scroller.clientHeight,
 					0,
@@ -1167,6 +1175,7 @@ async function EditorManager($header, $body) {
 			const aceRow = Math.max(0, Math.floor(parsedRow));
 			const lineNum = Math.min(editor.state.doc.lines, aceRow + 1);
 			const line = editor.state.doc.line(lineNum);
+			clearScrollbarScrollLock();
 			editor.dispatch({
 				effects: EditorView.scrollIntoView(line.from, { y: "start" }),
 			});
@@ -2202,6 +2211,7 @@ async function EditorManager($header, $body) {
 
 		function handleEditorScroll() {
 			if (!scroller) return;
+			if (restoreScrollbarScrollLock()) return;
 			if (!isScrolling) {
 				isScrolling = true;
 				if (hasHoverTooltips(editor.state)) {
@@ -2220,6 +2230,15 @@ async function EditorManager($header, $body) {
 		}
 
 		scroller?.addEventListener("scroll", handleEditorScroll, { passive: true });
+		scroller?.addEventListener("pointerdown", clearScrollbarScrollLock, {
+			passive: true,
+		});
+		scroller?.addEventListener("touchstart", clearScrollbarScrollLock, {
+			passive: true,
+		});
+		scroller?.addEventListener("wheel", clearScrollbarScrollLock, {
+			passive: true,
+		});
 		syncScrollUi();
 
 		keyboardHandler.on("keyboardShowStart", () => {
@@ -2328,6 +2347,52 @@ async function EditorManager($header, $body) {
 		return Date.now() < suppressCursorRevealUntil;
 	}
 
+	function lockScrollbarScrollPosition({ top, left }, duration = 1200) {
+		const scroller = editor?.scrollDOM;
+		if (!scroller) return;
+		scrollbarScrollLockUntil = Date.now() + duration;
+		if (typeof top === "number") scrollbarScrollLockTop = top;
+		if (typeof left === "number") scrollbarScrollLockLeft = left;
+	}
+
+	function clearScrollbarScrollLock() {
+		scrollbarScrollLockUntil = 0;
+		scrollbarScrollLockTop = null;
+		scrollbarScrollLockLeft = null;
+	}
+
+	function restoreScrollbarScrollLock() {
+		if (restoringScrollbarScrollLock) return false;
+		if (Date.now() >= scrollbarScrollLockUntil) {
+			clearScrollbarScrollLock();
+			return false;
+		}
+
+		const scroller = editor?.scrollDOM;
+		if (!scroller) return false;
+
+		let restored = false;
+		restoringScrollbarScrollLock = true;
+		if (
+			typeof scrollbarScrollLockTop === "number" &&
+			Math.abs(scroller.scrollTop - scrollbarScrollLockTop) > 1
+		) {
+			scroller.scrollTop = scrollbarScrollLockTop;
+			lastScrollTop = scroller.scrollTop;
+			restored = true;
+		}
+		if (
+			typeof scrollbarScrollLockLeft === "number" &&
+			Math.abs(scroller.scrollLeft - scrollbarScrollLockLeft) > 1
+		) {
+			scroller.scrollLeft = scrollbarScrollLockLeft;
+			lastScrollLeft = scroller.scrollLeft;
+			restored = true;
+		}
+		restoringScrollbarScrollLock = false;
+		return restored;
+	}
+
 	/**
 	 * Checks if the cursor is visible within the CodeMirror viewport.
 	 * @returns {boolean} - True if the cursor is visible, false otherwise.
@@ -2369,13 +2434,15 @@ async function EditorManager($header, $body) {
 		preventScrollbarV = true;
 		scroller.scrollTop = normalized * maxScroll;
 		lastScrollTop = scroller.scrollTop;
+		lockScrollbarScrollPosition({ top: lastScrollTop });
 	}
 
 	/**
 	 * Handles the onscroll event for the vend element.
 	 */
 	function onscrollVend() {
-		suppressCursorReveal();
+		suppressCursorReveal(1200);
+		lockScrollbarScrollPosition({ top: editor?.scrollDOM?.scrollTop }, 1200);
 		preventScrollbarV = false;
 		setVScrollValue();
 	}
@@ -2394,13 +2461,15 @@ async function EditorManager($header, $body) {
 		preventScrollbarH = true;
 		scroller.scrollLeft = normalized * maxScroll;
 		lastScrollLeft = scroller.scrollLeft;
+		lockScrollbarScrollPosition({ left: lastScrollLeft });
 	}
 
 	/**
 	 * Handles the event when the horizontal scrollbar reaches the end.
 	 */
 	function onscrollHEnd() {
-		suppressCursorReveal();
+		suppressCursorReveal(1200);
+		lockScrollbarScrollPosition({ left: editor?.scrollDOM?.scrollLeft }, 1200);
 		preventScrollbarH = false;
 		setHScrollValue();
 	}
