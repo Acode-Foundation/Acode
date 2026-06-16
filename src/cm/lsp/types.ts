@@ -83,6 +83,81 @@ export interface TransportContext {
 }
 
 // ============================================================================
+// Runtime Provider Types
+// ============================================================================
+
+export type WorkspaceKind =
+	| "app-private"
+	| "builtin-alpine"
+	| "termux-saf"
+	| "saf"
+	| "remote"
+	| "proot-distro"
+	| "virtual"
+	| "unknown";
+
+export interface LspRuntimeContext extends TransportContext {
+	documentUri?: string | null;
+	serverId?: string;
+	workspaceKind?: WorkspaceKind;
+	allowNonTerminalWorkspace?: boolean;
+}
+
+export type LspRuntimeConnection =
+	| {
+			kind: "transport";
+			providerId: string;
+			transport: TransportHandle;
+			dispose?: () => Promise<void> | void;
+	  }
+	| {
+			kind: "websocket";
+			providerId: string;
+			url: string;
+			protocols?: string[];
+			dispose?: () => Promise<void> | void;
+	  };
+
+export interface LspRuntimeProvider {
+	id: string;
+	label: string;
+	priority?: number;
+	canHandle: (
+		server: LspServerDefinition,
+		context: LspRuntimeContext,
+	) => boolean | Promise<boolean>;
+	checkInstallation?: (
+		server: LspServerDefinition,
+		context: LspRuntimeContext,
+	) => Promise<InstallCheckResult>;
+	install?: (
+		server: LspServerDefinition,
+		context: LspRuntimeContext,
+		mode: "install" | "update" | "reinstall",
+		options?: { promptConfirm?: boolean },
+	) => Promise<boolean>;
+	uninstall?: (
+		server: LspServerDefinition,
+		context: LspRuntimeContext,
+		options?: { promptConfirm?: boolean },
+	) => Promise<boolean>;
+	getInstallCommand?: (
+		server: LspServerDefinition,
+		context: LspRuntimeContext,
+		mode?: "install" | "update",
+	) => string | null;
+	getUninstallCommand?: (
+		server: LspServerDefinition,
+		context: LspRuntimeContext,
+	) => string | null;
+	start: (
+		server: LspServerDefinition,
+		context: LspRuntimeContext,
+	) => Promise<LspRuntimeConnection>;
+	stop?: (connection: LspRuntimeConnection) => Promise<void> | void;
+}
+
+// ============================================================================
 // Server Registry Types
 // ============================================================================
 
@@ -196,6 +271,7 @@ export interface LspServerManifest {
 		| ((context: LanguageResolverContext) => string | null)
 		| null;
 	launcher?: LauncherConfig;
+	runtimes?: string[];
 	useWorkspaceFolders?: boolean;
 }
 
@@ -249,6 +325,7 @@ export interface LspServerDefinition {
 		| ((context: LanguageResolverContext) => string | null)
 		| null;
 	launcher?: LauncherConfig;
+	runtimes?: string[];
 	/**
 	 * When true, uses a single server instance with workspace folders
 	 * instead of starting separate servers per project root.
@@ -299,6 +376,7 @@ export interface ClientManagerOptions {
 	openFile?: (uri: string) => Promise<EditorView | null>;
 	resolveLanguageId?: (uri: string) => string | null;
 	onClientIdle?: (info: ClientIdleInfo) => void;
+	allowNonTerminalWorkspace?: boolean;
 }
 
 export interface ClientIdleInfo {

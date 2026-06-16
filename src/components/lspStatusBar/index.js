@@ -64,14 +64,12 @@ function ensureStatusBar() {
 		</div>
 	);
 
-	// Find the quicktools footer to insert before it
-	const $footer = document.getElementById("quick-tools");
-	if ($footer && $footer.parentNode) {
-		$footer.parentNode.insertBefore($statusBar, $footer);
+	// Prepend to notification container so it stacks naturally with toasts
+	const $container = document.querySelector(".notification-item-container");
+	if ($container) {
+		$container.prepend($statusBar);
 	} else {
-		// Fallback: append to app
-		const $app = document.getElementById("app") || document.body;
-		$app.appendChild($statusBar);
+		document.body.appendChild($statusBar);
 	}
 
 	return $statusBar;
@@ -171,7 +169,6 @@ function hideStatusBar() {
 		clearTimeout(hideTimeout);
 		hideTimeout = null;
 	}
-
 	if ($statusBar) {
 		$statusBar.classList.add("hiding");
 		setTimeout(() => {

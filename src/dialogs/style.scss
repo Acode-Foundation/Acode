@@ -39,6 +39,13 @@
     .title {
       text-transform: uppercase;
     }
+
+    .confirm-checkbox {
+      width: auto;
+      min-height: 40px;
+      margin: 0 10px;
+      justify-content: flex-start;
+    }
   }
 
   &.select {
@@ -132,6 +139,32 @@
       min-height: 40px;
       margin: 5px 10px 0 10px;
     }
+
+    .title-text {
+      flex: 1;
+    }
+
+    .format-toggle {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      font-size: 0.55em;
+      font-weight: 600;
+      padding: 2px 4px 2px 6px;
+      border: solid 1px var(--popup-border-color, #ccc);
+      border-radius: 3px;
+      color: var(--popup-text-color, #333);
+      cursor: pointer;
+      user-select: none;
+      letter-spacing: 0.5px;
+      gap: 1px;
+
+      .icon.keyboard_arrow_down {
+        font-size: 1.3em;
+        opacity: 0.5;
+        transition: opacity 0.15s;
+      }
+    }
   }
 
   .message {
@@ -139,8 +172,61 @@
     font-size: 0.9em;
 
     &.color-picker {
+      position: relative;
+
       .button-container {
         margin: 0;
+      }
+
+      .format-popup {
+        position: absolute;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 2;
+
+        &.visible {
+          display: flex;
+        }
+
+        .format-popup-backdrop {
+          position: absolute;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.5);
+        }
+
+        .format-popup-body {
+          position: relative;
+          display: flex;
+          gap: 4px;
+          padding: 6px;
+          border-radius: 8px;
+          background: var(--popup-background-color, #fff);
+          box-shadow: 0 4px 16px var(--box-shadow-color, rgba(0, 0, 0, 0.15));
+
+          .format-option {
+            padding: 6px 14px;
+            font-size: 12px;
+            font-weight: 600;
+            border-radius: 5px;
+            cursor: pointer;
+            user-select: none;
+            color: var(--popup-text-color, #333);
+            opacity: 0.5;
+            transition: opacity 0.15s, background-color 0.15s, color 0.15s;
+
+            &:hover {
+              opacity: 0.8;
+            }
+
+            &.active {
+              opacity: 1;
+              background-color: var(--button-background-color, #39f);
+              color: var(--button-text-color, #fff);
+            }
+          }
+        }
       }
     }
 

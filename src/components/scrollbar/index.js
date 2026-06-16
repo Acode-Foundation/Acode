@@ -22,6 +22,7 @@ import tag from "html-tag-js";
  * @param {HTMLElement} [options.parent]
  * @param {"top"|"left"|"right"|"bottom"} [options.placement = "right"]
  * @param {Number} [options.width]
+ * @param {Number} [options.thumbHeight = 50]
  * @param {function():void} [options.onscroll]
  * @param {function():void} [options.onscrollend]
  * @returns {Scrollbar & HTMLElement}
@@ -62,6 +63,7 @@ export default function ScrollBar(options) {
 		y: 0,
 	};
 	let scrollbarSize = 20;
+	let thumbHeight = options.thumbHeight ?? 50;
 	let height;
 	let width;
 	let rect;
@@ -74,6 +76,7 @@ export default function ScrollBar(options) {
 	if (options.width) scrollbarSize = options.width;
 
 	setWidth(scrollbarSize);
+	setThumbHeight(thumbHeight);
 	$scrollbar.onScroll = options.onscroll;
 	$scrollbar.onScrollEnd = options.onscrollend;
 	$thumb.addEventListener("touchstart", touchStart, config);
@@ -91,6 +94,18 @@ export default function ScrollBar(options) {
 	function setWidth(width) {
 		if (isVertical) $scrollbar.style.width = $cursor.style.width = width + "px";
 		else $scrollbar.style.height = $cursor.style.height = width + "px";
+	}
+
+	function setThumbHeight(value) {
+		thumbHeight = value;
+		if (isVertical) {
+			$thumb.style.height = thumbHeight + "px";
+			$thumb.style.marginTop = "0px";
+		} else {
+			$thumb.style.width = thumbHeight + "px";
+			$thumb.style.marginLeft = "0px";
+		}
+		resize();
 	}
 
 	/**
@@ -172,8 +187,8 @@ export default function ScrollBar(options) {
 
 	function resize(render = true) {
 		rect = $scrollbar.getBoundingClientRect();
-		height = rect.height - 20;
-		width = rect.width - 20;
+		height = rect.height - 20 - thumbHeight;
+		width = rect.width - 20 - thumbHeight;
 
 		if (height < 0) height = 0;
 		if (width < 0) width = 0;
@@ -237,6 +252,11 @@ export default function ScrollBar(options) {
 	Object.defineProperty($scrollbar, "size", {
 		get: () => scrollbarSize,
 		set: setWidth,
+	});
+
+	Object.defineProperty($scrollbar, "thumbHeight", {
+		get: () => thumbHeight,
+		set: setThumbHeight,
 	});
 
 	Object.defineProperty($scrollbar, "resize", {

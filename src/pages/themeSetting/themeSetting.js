@@ -8,6 +8,7 @@ import { basicSetup, EditorView } from "codemirror";
 import Page from "components/page";
 import searchBar from "components/searchbar";
 import TabView from "components/tabView";
+import { TerminalThemeManager } from "components/terminal";
 import alert from "dialogs/alert";
 import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
@@ -16,6 +17,7 @@ import removeAds from "lib/removeAds";
 import appSettings from "lib/settings";
 import { hideAd } from "lib/startAd";
 import CustomTheme from "pages/customTheme";
+import { updateActiveTerminals } from "settings/terminalSettings";
 import ThemeBuilder from "theme/builder";
 import themes from "theme/list";
 import helpers from "utils/helpers";
@@ -46,6 +48,7 @@ export default function () {
 
 	function createPreview(themeId) {
 		destroyPreview("create");
+		$themePreview.innerHTML = "";
 		const theme = getThemeExtensions(themeId, [oneDark]);
 		const fixedHeightTheme = EditorView.theme({
 			"&": { height: "100%", flex: "1 1 auto" },
@@ -81,6 +84,9 @@ export default function () {
 				</span>
 				<span onclick={renderEditorThemes} tabindex={0}>
 					Editor
+				</span>
+				<span onclick={renderTerminalThemes} tabindex={0}>
+					Terminal
 				</span>
 			</div>
 			<div ref={list} id="theme-list" className="list scroll"></div>
@@ -161,6 +167,127 @@ export default function () {
 			return $item;
 		});
 		$currentItem?.scrollIntoView();
+	}
+
+	function renderTerminalThemes() {
+		destroyPreview("switch-tab");
+		$themePreview.innerHTML = "";
+		const currentTheme = appSettings.value.terminalSettings?.theme || "dark";
+
+		if (innerHeight * 0.3 >= 120) {
+			if (!$themePreview.parentElement) {
+				$page.body.append($themePreview);
+			}
+			createTerminalPreview(currentTheme);
+		} else {
+			$themePreview.remove();
+		}
+
+		const themeNames = TerminalThemeManager.getThemeNames();
+		let $currentItem;
+		list.el.content = themeNames.map((name) => {
+			const isCurrent = name === currentTheme;
+			const themeObj = TerminalThemeManager.getTheme(name);
+			const label = name.charAt(0).toUpperCase() + name.slice(1);
+			const $item = (
+				<Item
+					name={label}
+					isCurrent={isCurrent}
+					swatches={[themeObj.background, themeObj.foreground, themeObj.cursor]}
+					onclick={() => setTerminalTheme(name)}
+				/>
+			);
+			if (isCurrent) $currentItem = $item;
+			return $item;
+		});
+		$currentItem?.scrollIntoView();
+	}
+
+	function setTerminalTheme(name) {
+		if (appSettings.value.appTheme?.toLowerCase() === "system") {
+			alert(
+				strings.info,
+				"Terminal theme cannot be changed while the app theme is set to 'System'.",
+			);
+			return;
+		}
+
+		const currentSettings = appSettings.value.terminalSettings || {};
+		appSettings.update({
+			terminalSettings: {
+				...currentSettings,
+				theme: name,
+			},
+		});
+		if (editorManager != null) {
+			updateActiveTerminals("theme", name);
+		}
+		if ($themePreview.parentElement) {
+			createTerminalPreview(name);
+		}
+		const label = name.charAt(0).toUpperCase() + name.slice(1);
+		updateCheckedItem(label);
+	}
+
+	function createTerminalPreview(themeName) {
+		destroyPreview("create");
+		const theme = TerminalThemeManager.getTheme(themeName);
+		const ansiKeys = [
+			"black",
+			"red",
+			"green",
+			"yellow",
+			"blue",
+			"magenta",
+			"cyan",
+			"white",
+			"brightBlack",
+			"brightRed",
+			"brightGreen",
+			"brightYellow",
+			"brightBlue",
+			"brightMagenta",
+			"brightCyan",
+			"brightWhite",
+		];
+
+		const container = (
+			<div
+				className="terminal-preview-content"
+				style={`background:${theme.background};color:${theme.foreground};`}
+			>
+				<div className="ansi-colors">
+					{ansiKeys.map((k) => (
+						<span
+							className="ansi-swatch"
+							style={`background:${theme[k]};`}
+							title={k}
+						></span>
+					))}
+				</div>
+				<div className="terminal-line terminal-prompt">
+					<span style={`color:${theme.green};`}>user</span>
+					<span style={`color:${theme.foreground};`}>@</span>
+					<span style={`color:${theme.blue};`}>acode</span>
+					<span style={`color:${theme.foreground};`}>:~$ </span>
+					<span>echo "Hello, Acode!"</span>
+				</div>
+				<div className="terminal-line terminal-output">Hello, Acode!</div>
+				<div className="terminal-line terminal-prompt">
+					<span style={`color:${theme.green};`}>user</span>
+					<span style={`color:${theme.foreground};`}>@</span>
+					<span style={`color:${theme.blue};`}>acode</span>
+					<span style={`color:${theme.foreground};`}>:~$ </span>
+					<span
+						className="terminal-cursor"
+						style={`background:${theme.cursor};`}
+					></span>
+				</div>
+			</div>
+		);
+
+		$themePreview.innerHTML = "";
+		$themePreview.appendChild(container);
 	}
 
 	/**

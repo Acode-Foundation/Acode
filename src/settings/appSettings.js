@@ -224,6 +224,7 @@ export default function otherSettings() {
 			promptType: "textarea",
 			promptOptions: {
 				test(value) {
+					if (!value.trim()) return true;
 					return value.split("\n").every((item) => {
 						return item.trim().length > 0;
 					});

@@ -45,6 +45,18 @@ function sanitizeLanguages(languages: string[] = []): string[] {
 		.filter(Boolean);
 }
 
+function sanitizeRuntimeIds(runtimes: unknown): string[] | undefined {
+	if (!Array.isArray(runtimes)) return undefined;
+	const ids = runtimes
+		.map((runtime) =>
+			String(runtime ?? "")
+				.trim()
+				.toLowerCase(),
+		)
+		.filter(Boolean);
+	return ids.length ? Array.from(new Set(ids)) : undefined;
+}
+
 function parsePort(value: unknown): number | null {
 	const num = Number(value);
 	if (!Number.isFinite(num)) return null;
@@ -303,6 +315,7 @@ function sanitizeDefinition(
 				? definition.resolveLanguageId
 				: null,
 		launcher,
+		runtimes: sanitizeRuntimeIds(definition.runtimes),
 		useWorkspaceFolders: definition.useWorkspaceFolders === true,
 	};
 

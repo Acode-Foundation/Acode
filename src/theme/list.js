@@ -4,6 +4,7 @@ import color from "utils/color";
 import Url from "utils/Url";
 import fonts from "../lib/fonts";
 import settings from "../lib/settings";
+import { updateActiveTerminals } from "../settings/terminalSettings";
 import ThemeBuilder from "./builder";
 import themes, { updateSystemTheme } from "./preInstalled";
 
@@ -112,7 +113,20 @@ export async function apply(id, init) {
 		fonts.setFont(theme.preferredFont);
 	}
 
+	if (init && firstTime && theme.preferredTerminalTheme) {
+		update.terminalSettings = {
+			...(settings.value.terminalSettings || {}),
+			theme: theme.preferredTerminalTheme,
+		};
+	}
+
 	settings.update(update, false);
+
+	if (init && firstTime && theme.preferredTerminalTheme) {
+		if (editorManager != null) {
+			updateActiveTerminals("theme", theme.preferredTerminalTheme);
+		}
+	}
 	localStorage.__primary_color = theme.primaryColor;
 	document.body.setAttribute("theme-type", theme.type);
 	$style.textContent = theme.css;

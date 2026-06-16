@@ -1,5 +1,5 @@
 import type { Extension } from "@codemirror/state";
-import { EditorView, scrollPastEnd } from "@codemirror/view";
+import { EditorView } from "@codemirror/view";
 
 interface MainEditorExtensionOptions {
 	emmetExtensions?: Extension[];
@@ -44,7 +44,6 @@ export function createMainEditorExtensions(
 	pushExtension(extensions, options.commandKeymapExtension);
 	pushExtension(extensions, options.themeExtension);
 	extensions.push(fixedHeightTheme);
-	extensions.push(scrollPastEnd());
 	pushExtension(extensions, options.pointerCursorVisibilityExtension);
 	pushExtension(extensions, options.shiftClickSelectionExtension);
 	pushExtension(extensions, options.touchSelectionUpdateExtension);

@@ -26,6 +26,7 @@ import {
 	getTerminalSettings,
 } from "./terminalDefaults";
 import TerminalThemeManager from "./terminalThemeManager";
+import TerminalTouchScrolling from "./terminalTouchScrolling";
 import TerminalTouchSelection from "./terminalTouchSelection";
 
 export default class TerminalComponent {
@@ -68,6 +69,7 @@ export default class TerminalComponent {
 		this.isConnected = false;
 		this.serverMode = options.serverMode !== false; // Default true
 		this.touchSelection = null;
+		this.touchScrolling = null;
 		this.parsedAppKeybindings = [];
 		this.parsedAppKeybindingsVersion = -1;
 		this.boundNativeSelectionMenuHandler = null;
@@ -344,6 +346,21 @@ export default class TerminalComponent {
 				},
 			);
 		}
+		if (this.touchScrolling) {
+			this.touchScrolling.touchSelection = this.touchSelection;
+		}
+	}
+
+	/**
+	 * Setup custom touch scrolling with momentum physics
+	 */
+	setupTouchScrolling() {
+		if (!this.terminal?.element || this.touchScrolling) return;
+
+		this.touchScrolling = new TerminalTouchScrolling(
+			this.terminal,
+			this.touchSelection,
+		);
 	}
 
 	/**
@@ -566,6 +583,9 @@ export default class TerminalComponent {
 			if (terminalSettings.fontLigatures) {
 				this.loadLigaturesAddon();
 			}
+
+			// Setup custom touch scrolling with momentum physics
+			this.setupTouchScrolling();
 
 			// First render pass: schedule a fit + focus once the frame is ready
 			if (typeof requestAnimationFrame === "function") {
@@ -1162,6 +1182,12 @@ export default class TerminalComponent {
 		if (this.touchSelection) {
 			this.touchSelection.destroy();
 			this.touchSelection = null;
+		}
+
+		// Dispose touch scrolling
+		if (this.touchScrolling) {
+			this.touchScrolling.destroy();
+			this.touchScrolling = null;
 		}
 
 		// Dispose addons

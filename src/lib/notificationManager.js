@@ -1,11 +1,31 @@
 import sidebarApps from "sidebarApps";
 import DOMPurify from "dompurify";
+import Ref from "html-tag-js/ref";
+
+/**
+ * Notification create param
+ * @typedef {object} NotificationProps
+ * @prop {string} [props.id]
+ * @prop {string} props.title
+ * @prop {string} props.message
+ * @prop {string} [props.icon]
+ * @prop {number} [props.time]
+ * @prop {(notification: NotificationProps) => void} [props.action]
+ * @prop {(notification: NotificationProps) => void} [props.onDismiss]
+ * @prop {() => number} [props.progress]
+ * @prop {() => loading} [props.loading = false]
+ * @prop {"info"|"success"|"warning"|"error"} [props.type]
+ */
 
 // Singleton instance
 let instance = null;
+let notificationCounter = 0;
 
-export default class NotificationManager {
-	DEFAULT_ICON = `<i class="icon notifications"></i>`;
+const notificationToastContainer = (
+	<div className="notification-item-container"></div>
+);
+
+class NotificationManager {
 	MAX_NOTIFICATIONS = 20;
 	notifications = [];
 	REFRESH_INTERVAL = 60000; // 1 minute refresh interval
@@ -20,16 +40,9 @@ export default class NotificationManager {
 	}
 
 	init() {
-		document.body.appendChild(
-			<div className="notification-toast-container"></div>,
-		);
+		document.body.appendChild(notificationToastContainer);
 		this.renderNotifications();
 		this.startTimeUpdates();
-
-		sidebarApps
-			.get("notification")
-			?.querySelector(".notifications-container")
-			.addEventListener("click", this.handleClick.bind(this));
 	}
 
 	startTimeUpdates() {
@@ -51,14 +64,12 @@ export default class NotificationManager {
 
 		container.querySelectorAll(".notification-time").forEach((timeElement) => {
 			const notificationItem = timeElement.closest(".notification-item");
-			const id = notificationItem?.dataset.id;
+			const id = notificationItem?.id;
 			if (!id) return;
 
-			const notification = this.notifications.find(
-				(n) => n.id === Number.parseInt(id),
-			);
+			const notification = this.notifications.find((n) => n.id === id);
 			if (notification) {
-				timeElement.textContent = this.formatTime(notification.time);
+				timeElement.textContent = this.#formatTime(notification.time);
 			}
 		});
 	}
@@ -80,106 +91,171 @@ export default class NotificationManager {
 		});
 	}
 
-	handleClick(e) {
-		const dismissButton = e.target.closest(".action-button");
-		if (!dismissButton) return;
-
-		e.stopPropagation();
-		const notificationElement = dismissButton.closest(".notification-item");
-		if (!notificationElement) return;
-
-		const id = notificationElement.dataset.id;
-		if (id) {
-			const index = this.notifications.findIndex(
-				(n) => n.id === Number.parseInt(id),
-			);
-			if (index > -1) {
-				notificationElement.remove();
-				this.notifications.splice(index, 1);
-				this.renderNotifications();
-			}
-		}
-	}
-
+	/**
+	 *
+	 * @param {NotificationProps} notification
+	 * @returns
+	 */
 	createNotificationElement(notification) {
-		const element = (
-			<div
-				className={`notification-item ${notification.type}`}
-				data-id={notification.id}
-			></div>
-		);
-		const safeIcon = this.sanitizeIcon(this.parseIcon(notification.icon));
-		const safeTitle = this.sanitizeText(notification.title);
-		const safeMessage = this.sanitizeText(notification.message);
-		element.innerHTML = `
-							<div class="notification-icon">
-							${safeIcon}
-				</div>
-				<div class="notification-content">
-					<div class="notification-title">
-						${safeTitle}
-						<span class="notification-time">${this.formatTime(notification.time)}</span>
-					</div>
-					<div class="notification-message">${safeMessage}</div>
-					<div class="notification-actions">
-							<div class="action-button">Dismiss</div>
-					</div>
-				</div>
-							`;
-		if (notification.action) {
-			element.addEventListener("click", (e) => {
-				if (e.target.closest(".action-button")) {
-					return;
-				}
-				notification.action(notification);
-			});
-		}
-		return element;
+		return this.#createNotification(notification, "notification");
 	}
 
+	/**
+	 *
+	 * @param {NotificationProps} notification
+	 * @returns
+	 */
 	createToastNotification(notification) {
-		const element = (
-			<div
-				className={`notification-toast ${notification.type}`}
-				data-id={notification.id}
-			></div>
-		);
-		const safeIcon = this.sanitizeIcon(this.parseIcon(notification.icon));
-		const safeTitle = this.sanitizeText(notification.title);
-		const safeMessage = this.sanitizeText(notification.message);
-		element.innerHTML = `
-							<div class="notification-icon">${safeIcon}</div>
-							<div class="notification-content">
-					<div class="notification-title">
-						${safeTitle}
-					</div>
-					<div class="notification-message">${safeMessage}</div>
-				</div>
-				${notification.autoClose ? "" : `<span class="close-icon icon clearclose"></span>`}
-				`;
-
-		const closeIcon = element.querySelector(".close-icon");
-		if (closeIcon) {
-			closeIcon.addEventListener("click", (event) => {
-				event.stopPropagation();
-				element.remove();
-			});
-		}
-		if (notification.action) {
-			element.addEventListener("click", () =>
-				notification.action(notification),
-			);
-		}
-		if (notification.autoClose) {
-			setTimeout(() => {
-				element.classList.add("hiding");
-				setTimeout(() => element.remove(), 300);
-			}, 5000);
-		}
-		return element;
+		return this.#createNotification(notification, "toast");
 	}
 
-	addNotification(notification) {
+	/**
+	 *
+	 * @param {NotificationProps} notification
+	 * @param {"toast" | "notification"} type
+	 * @returns
+	 */
+	#createNotification(notification, type) {
+		let onDismiss;
+
+		if (type === "toast") {
+			onDismiss = (e) => {
+				e.stopPropagation();
+				this.#hideNotificationToast(notification);
+				if (typeof notification.onDismiss === "function") {
+					notification.onDismiss(notification);
+				}
+			};
+
+			if (
+				typeof notification.loading !== "function" ||
+				!notification.loading()
+			) {
+				setTimeout(() => {
+					if (!notificationToastContainer.get(`#${notification.id}`)) return;
+					this.#hideNotificationToast(notification);
+					if (typeof notification.onDismiss === "function") {
+						notification.onDismiss(notification);
+					}
+				}, 5000);
+			}
+		} else {
+			onDismiss = (e) => {
+				e.stopPropagation();
+				this.#clearNotification(notification.id);
+			};
+		}
+
+		const safeIcon = this.#parseIcon(notification.icon);
+		const safeTitle = this.#sanitizeText(notification.title);
+		const safeMessage = this.#sanitizeText(notification.message);
+		const elementRef = Ref();
+
+		if (typeof notification.loading === "function" && notification.loading()) {
+			elementRef.onref = (el) => {
+				if (notification.loading()) {
+					elementRef.classList.add("loading");
+					const nextFrame = () => {
+						if (!notification.loading()) {
+							if (type === "toast") {
+								this.#hideNotificationToast(notification);
+								if (typeof notification.onDismiss === "function") {
+									notification.onDismiss(notification);
+								}
+							}
+
+							elementRef.classList.remove("loading");
+						} else {
+							requestAnimationFrame(nextFrame);
+						}
+					};
+
+					requestAnimationFrame(nextFrame);
+				}
+			};
+		}
+
+		return (
+			<div
+				id={notification.id}
+				ref={elementRef}
+				className={`notification-item ${notification.type}`}
+				onclick={
+					notification.action ? () => notification.action(notification) : null
+				}
+			>
+				<div className="notification-header">
+					<div className="notification-icon">{safeIcon}</div>
+					<div className="notification-title">
+						{safeTitle}
+						{type === "notification" && (
+							<small className="notification-time">
+								{this.#formatTime(notification.time)}
+							</small>
+						)}
+					</div>
+					<button
+						className={`icon ${type === "toast" ? "clearclose" : "delete"} notification-close`}
+						onclick={onDismiss}
+					/>
+				</div>
+				<div className="notification-message">{safeMessage}</div>
+			</div>
+		);
+	}
+
+	/**
+	 *
+	 * @param {NotificationProps} notification
+	 */
+	closeNotification(notification) {
+		this.#hideNotificationToast(notification);
+		this.#clearNotification(notification.id);
+	}
+
+	/**
+	 * hide notification
+	 * @param {NotificationProps} notification
+	 * @returns
+	 */
+	#hideNotificationToast(notification) {
+		const notificationElement = notificationToastContainer.get(
+			`#${notification.id}`,
+		);
+		if (!notificationElement) return;
+		notificationElement.classList.add("hiding");
+		setTimeout(() => notificationElement.remove(), 300);
+	}
+
+	#clearNotification(id) {
+		const container = sidebarApps
+			.get("notification")
+			?.querySelector(".notifications-container");
+
+		if (!container) return;
+
+		const index = this.notifications.findIndex((n) => n.id === id);
+		if (index > -1) {
+			this.notifications.splice(index, 1);
+			this.renderNotifications();
+		}
+	}
+
+	/**
+	 * Notification create
+	 * @param {NotificationProps} notification
+	 */
+	pushNotification(notification) {
+		if (!notification) {
+			throw new Error("Notification param not provided");
+		}
+
+		notification = {
+			...notification,
+			id: `notification_${++notificationCounter}`,
+			time: new Date(),
+		};
+
 		this.notifications.unshift(notification);
 
 		// Remove oldest if exceeding limit
@@ -187,58 +263,46 @@ export default class NotificationManager {
 			this.notifications.pop();
 		}
 
+		if (!this.timeUpdateInterval) {
+			this.startTimeUpdates();
+		}
+
 		this.renderNotifications();
 
 		// show toast notification
 		document
-			.querySelector(".notification-toast-container")
+			.querySelector(".notification-item-container")
 			?.appendChild(this.createToastNotification(notification));
 	}
 
-	pushNotification({
-		title,
-		message,
-		icon,
-		autoClose = true,
-		action = null,
-		type = "info",
-	}) {
-		const notification = {
-			id: Date.now(),
-			title,
-			message,
-			icon,
-			action,
-			autoClose,
-			type,
-			time: new Date(),
-		};
-		this.addNotification(notification);
+	#parseIcon(icon) {
+		if (typeof icon !== "string" || !icon) {
+			return <span className="icon notifications" />;
+		}
+		if (icon.startsWith("<svg")) {
+			return <span className="icon" innerHTML={this.#sanitizeIcon(icon)} />;
+		}
+		if (icon.startsWith("data:") || icon.startsWith("http")) {
+			return <img src={icon} alt="notification" width="16" height="16" />;
+		}
+		return <span className={`icon ${icon}`} />;
 	}
 
-	parseIcon(icon) {
-		if (typeof icon !== "string" || !icon) return this.DEFAULT_ICON;
-		if (icon.startsWith("<svg")) return icon;
-		if (icon.startsWith("data:") || icon.startsWith("http"))
-			return `<img src="${icon}" alt="notification" width="16" height="16">`;
-		return `<i class="icon ${icon}"></i>`;
-	}
-
-	sanitizeText(text) {
+	#sanitizeText(text) {
 		return DOMPurify.sanitize(String(text ?? ""), {
 			ALLOWED_TAGS: [],
 			ALLOWED_ATTR: [],
 		});
 	}
 
-	sanitizeIcon(iconMarkup) {
+	#sanitizeIcon(iconMarkup) {
 		return DOMPurify.sanitize(iconMarkup, {
 			USE_PROFILES: { html: true, svg: true },
 			ALLOW_DATA_ATTR: false,
 		});
 	}
 
-	formatTime(date) {
+	#formatTime(date) {
 		const now = new Date();
 		const diff = Math.floor((now - date) / 1000);
 
@@ -259,3 +323,6 @@ export default class NotificationManager {
 		}
 	}
 }
+
+const notificationManager = new NotificationManager();
+export default notificationManager;

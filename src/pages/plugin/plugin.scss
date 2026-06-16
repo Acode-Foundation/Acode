@@ -155,6 +155,27 @@
           border: 1px solid color-mix(in srgb, var(--link-text-color) 25%, transparent);
         }
       }
+
+      .legacy-editor-warning {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        max-width: 100%;
+        margin-top: 12px;
+        padding: 7px 10px;
+        border-radius: 8px;
+        border: 1px solid color-mix(in srgb, var(--error-text-color) 28%, transparent);
+        background: color-mix(in srgb, var(--error-text-color) 10%, transparent);
+        color: color-mix(in srgb, var(--primary-text-color) 88%, var(--error-text-color));
+        font-size: 12px;
+        line-height: 1.35;
+
+        .icon {
+          flex: 0 0 auto;
+          color: var(--error-text-color);
+          font-size: 15px;
+        }
+      }
     }
 
     .action-buttons {
@@ -373,6 +394,7 @@
     .metrics-row > * + * { margin-left: 16px; }
     .metric > * + * { margin-left: 4px; }
     .keywords > * + * { margin-left: 6px; }
+    .legacy-editor-warning > * + * { margin-left: 6px; }
     .action-buttons > * + * { margin-left: 8px; }
     .info:not(.icon) > * + * { margin-left: 5px; }
     .btn > * + * { margin-left: 6px; }

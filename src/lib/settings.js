@@ -43,6 +43,7 @@ class Settings {
 	#fileBrowserSettings = {
 		showHiddenFiles: false,
 		sortByName: true,
+		listFiles: true,
 	};
 	#excludeFolders = [
 		"**/node_modules/**",
@@ -79,6 +80,7 @@ class Settings {
 		"**/temp/**",
 		"**/tmp/**",
 		"**/.cache/**",
+		"**/.gradle/**",
 		"**/logs/**",
 		"**/.sass-cache/**",
 		"**/.DS_Store/**",
@@ -150,11 +152,19 @@ class Settings {
 			floatingButton: !this.#IS_TABLET,
 			liveAutoCompletion: true,
 			localWordCompletion: true,
+			autoIndent: true,
+			codeFolding: true,
+			autoCloseBrackets: true,
+			bracketMatching: true,
+			highlightActiveLine: true,
+			highlightSelectionMatches: true,
+			useEditContext: false,
 			autoCloseTags: true,
 			autoRenameTags: true,
 			showPrintMargin: false,
 			printMargin: 80,
 			scrollbarSize: 20,
+			scrollbarHeight: 50,
 			showSpaces: false,
 			confirmOnExit: true,
 			lineHeight: 2,
@@ -169,6 +179,7 @@ class Settings {
 			diagonalScrolling: false,
 			reverseScrolling: false,
 			scrollSpeed: config.SCROLL_SPEED_NORMAL,
+			scrollPastEnd: "medium",
 			customTheme: this.#customTheme,
 			relativeLineNumbers: false,
 			elasticTabstops: false,
@@ -192,6 +203,12 @@ class Settings {
 			pluginsDisabled: {}, // pluginId: true/false
 			lsp: {
 				servers: {},
+				allowNonTerminalWorkspace: false,
+				runtime: {
+					default: "auto",
+					servers: {},
+					workspaces: {},
+				},
 			},
 			developerMode: false,
 			shiftClickSelection: false,
@@ -252,16 +269,21 @@ class Settings {
 	}
 
 	async #save() {
-		const fs = fsOperation(this.settingsFile);
-		const settingsText = JSON.stringify(this.value, undefined, 4);
+		try {
+			const fs = fsOperation(this.settingsFile);
+			const settingsText = JSON.stringify(this.value, undefined, 4);
 
-		if (!(await fs.exists())) {
-			const dirFs = fsOperation(DATA_STORAGE);
-			await dirFs.createFile("settings.json");
+			if (!(await fs.exists())) {
+				const dirFs = fsOperation(DATA_STORAGE);
+				await dirFs.createFile("settings.json");
+			}
+
+			await fs.writeFile(settingsText);
+			this.#oldSettings = structuredClone(this.value);
+		} catch (error) {
+			toast(strings["settings save failed"] || "Settings save failed");
+			console.error("Settings save failed:", error);
 		}
-
-		await fs.writeFile(settingsText);
-		this.#oldSettings = structuredClone(this.value);
 	}
 
 	/**
@@ -298,7 +320,6 @@ class Settings {
 		});
 
 		if (saveFile) await this.#save();
-		if (showToast) toast(strings["settings saved"]);
 
 		changedSettings.forEach((setting) => {
 			const listeners = this.#on[`update:${setting}:after`];

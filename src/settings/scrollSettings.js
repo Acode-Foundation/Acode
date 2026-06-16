@@ -36,6 +36,37 @@ export default function scrollSettings() {
 			valueText: (size) => `${size}px`,
 			select: [5, 10, 15, 20],
 		},
+		{
+			key: "scrollbarHeight",
+			text: strings["scrollbar height"] || "Scrollbar height",
+			value: values.scrollbarHeight,
+			valueText: (size) => `${size}px`,
+			select: [20, 30, 40, 50, 60],
+		},
+		{
+			key: "scrollPastEnd",
+			text: strings["scroll past end"],
+			value: values.scrollPastEnd ?? "medium",
+			info: strings["settings-info-scroll-past-end"],
+			valueText: (val) => {
+				switch (val) {
+					case "none":
+						return strings.none;
+					case "small":
+						return strings.small;
+					case "medium":
+						return strings.medium;
+					default:
+						return strings.full;
+				}
+			},
+			select: [
+				["none", strings.none],
+				["small", strings.small],
+				["medium", strings.medium],
+				["full", strings.full],
+			],
+		},
 	];
 
 	return settingsPage(title, items, callback, undefined, {

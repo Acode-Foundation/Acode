@@ -66,6 +66,12 @@ function createLanguageLoader(name: string, lang: LanguageDescription) {
 	const normalizedName = normalizeModeKey(name);
 
 	switch (normalizedName) {
+		case "javascript":
+			return async () => {
+				const { javascript } = await import("@codemirror/lang-javascript");
+				return javascript({ jsx: true });
+			};
+
 		case "html":
 			return async () => {
 				const { html } = await import("@codemirror/lang-html");
@@ -187,4 +193,11 @@ for (const lang of languages as readonly LanguageDescription[]) {
 addMode("Luau", "luau", "Luau", async () => {
 	const { luau } = await import("./modes/luau");
 	return luau();
+});
+
+// Astro isn't bundled in @codemirror/language-data. Register it with HTML as
+// the structural parser plus Astro frontmatter and expression highlighting.
+addMode("Astro", "astro", "Astro", async () => {
+	const { astro } = await import("./modes/astro");
+	return astro({ autoCloseTags: await shouldAutoCloseTags() });
 });

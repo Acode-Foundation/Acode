@@ -1255,7 +1255,6 @@ function copyCommand(view) {
 	});
 	const textToCopy = texts.join("\n");
 	cordova.plugins.clipboard.copy(textToCopy);
-	toast?.(strings?.["copied to clipboard"] || "Copied to clipboard");
 	return true;
 }
 
