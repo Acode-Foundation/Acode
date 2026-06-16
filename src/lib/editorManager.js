@@ -106,7 +106,6 @@ async function EditorManager($header, $body) {
 	let scrollbarScrollLockUntil = 0;
 	let scrollbarScrollLockTop = null;
 	let scrollbarScrollLockLeft = null;
-	let restoringScrollbarScrollLock = false;
 
 	// Debounce timers for CodeMirror change handling
 	let checkTimeout = null;
@@ -189,7 +188,7 @@ async function EditorManager($header, $body) {
 
 	const pointerCursorVisibilityExtension = EditorView.updateListener.of(
 		(update) => {
-			if (!update.selectionSet) return;
+			if (!update.transactions.length) return;
 			const pointerTriggered = update.transactions.some(
 				(tr) =>
 					tr.isUserEvent("pointer") ||
@@ -202,6 +201,7 @@ async function EditorManager($header, $body) {
 				clearScrollbarScrollLock();
 				return;
 			}
+			if (!update.selectionSet) return;
 			requestAnimationFrame(() => {
 				if (isCursorRevealSuppressed()) return;
 				if (!isCursorVisible()) scrollCursorIntoView({ behavior: "instant" });
@@ -1098,7 +1098,6 @@ async function EditorManager($header, $body) {
 			const pos = docLine.from + col;
 
 			// Move cursor and scroll into view
-			clearScrollbarScrollLock();
 			editor.dispatch({
 				selection: { anchor: pos, head: pos },
 				effects: EditorView.scrollIntoView(pos, { y: "center" }),
@@ -1175,7 +1174,6 @@ async function EditorManager($header, $body) {
 			const aceRow = Math.max(0, Math.floor(parsedRow));
 			const lineNum = Math.min(editor.state.doc.lines, aceRow + 1);
 			const line = editor.state.doc.line(lineNum);
-			clearScrollbarScrollLock();
 			editor.dispatch({
 				effects: EditorView.scrollIntoView(line.from, { y: "start" }),
 			});
@@ -2362,7 +2360,6 @@ async function EditorManager($header, $body) {
 	}
 
 	function restoreScrollbarScrollLock() {
-		if (restoringScrollbarScrollLock) return false;
 		if (Date.now() >= scrollbarScrollLockUntil) {
 			clearScrollbarScrollLock();
 			return false;
@@ -2372,7 +2369,6 @@ async function EditorManager($header, $body) {
 		if (!scroller) return false;
 
 		let restored = false;
-		restoringScrollbarScrollLock = true;
 		if (
 			typeof scrollbarScrollLockTop === "number" &&
 			Math.abs(scroller.scrollTop - scrollbarScrollLockTop) > 1
@@ -2389,7 +2385,6 @@ async function EditorManager($header, $body) {
 			lastScrollLeft = scroller.scrollLeft;
 			restored = true;
 		}
-		restoringScrollbarScrollLock = false;
 		return restored;
 	}
 
