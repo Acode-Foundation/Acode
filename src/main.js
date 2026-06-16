@@ -338,11 +338,22 @@ async function onDeviceReady() {
 			(response) => {
 				const release = response.data;
 				// assuming version is in format v1.2.3
+				const versionFormat = /^v?(\d+(?:\.\d+)*)/;
 				const latestVersion = release.tag_name
-					.replace("v", "")
+					.match(versionFormat)?.[1]
 					.split(".")
 					.map(Number);
-				const currentVersion = BuildInfo.version.split(".").map(Number);
+				const currentVersion = BuildInfo.version
+					.match(versionFormat)?.[1]
+					.split(".")
+					.map(Number);
+				if (!(latestVersion && currentVersion)) {
+					window.log(
+						"error",
+						"Failed to parse version while checking for updates.",
+					);
+					return;
+				}
 
 				let hasUpdate = false;
 				for (let i = 0; i < latestVersion.length; i++) {
