@@ -134,6 +134,20 @@ export default function otherSettings() {
 			category: categories.interface,
 		},
 		{
+			key: "touchMoveThreshold",
+			text: strings["touch move threshold"],
+			value: values.touchMoveThreshold,
+			prompt: strings["touch move threshold"],
+			promptType: "number",
+			promptOptions: {
+				test(value) {
+					return value >= 0;
+				},
+			},
+			info: strings["settings-info-app-touch-move-threshold"],
+			category: categories.interface,
+		},
+		{
 			key: "floatingButton",
 			text: strings["quick tools toggler"],
 			checkbox: values.floatingButton,
@@ -161,9 +175,10 @@ export default function otherSettings() {
 			key: "quickToolsTriggerMode",
 			text: strings["quicktools trigger mode"],
 			value: values.quickToolsTriggerMode,
+			valueText: (value) => value.capitalize(),
 			select: [
-				[appSettings.QUICKTOOLS_TRIGGER_MODE_CLICK, "click"],
-				[appSettings.QUICKTOOLS_TRIGGER_MODE_TOUCH, "touch"],
+				[appSettings.QUICKTOOLS_TRIGGER_MODE_CLICK, "Click"],
+				[appSettings.QUICKTOOLS_TRIGGER_MODE_TOUCH, "Touch"],
 			],
 			info: strings["settings-info-app-quick-tools-trigger-mode"],
 			category: categories.quickTools,
@@ -174,20 +189,6 @@ export default function otherSettings() {
 			info: strings["settings-info-app-quick-tools-settings"],
 			category: categories.quickTools,
 			chevron: true,
-		},
-		{
-			key: "touchMoveThreshold",
-			text: strings["touch move threshold"],
-			value: values.touchMoveThreshold,
-			prompt: strings["touch move threshold"],
-			promptType: "number",
-			promptOptions: {
-				test(value) {
-					return value >= 0;
-				},
-			},
-			info: strings["settings-info-app-touch-move-threshold"],
-			category: categories.interface,
 		},
 		{
 			key: "appFont",
