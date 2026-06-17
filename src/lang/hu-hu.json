@@ -146,7 +146,6 @@
 	"none": "Egyik sem",
 	"small": "Kicsi",
 	"large": "Nagy",
-	"floating button": "Lebegő gomb",
 	"confirm on exit": "Megerősítés kérése kilépéskor",
 	"show console": "Konzol megjelenítése",
 	"image": "Kép",
@@ -760,5 +759,9 @@
 	"scrollbar height": "Scrollbar height",
 	"full": "Full",
 	"scroll past end": "Scroll past end",
-	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top."
+	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top.",
+	"compact": "Kompakt",
+	"off": "Ki",
+	"quick tools height": "Gyorseszközök magassága",
+	"quick tools toggler": "Gyorseszközök kapcsoló"
 }

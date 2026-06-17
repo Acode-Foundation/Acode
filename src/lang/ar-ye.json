@@ -146,7 +146,6 @@
 	"none": "بلا",
 	"small": "صغير",
 	"large": "كبير",
-	"floating button": "الزر العائم",
 	"confirm on exit": "تأكيد عند الخروج",
 	"show console": "إظهار وحدة التحكم",
 	"image": "صورة",
@@ -760,5 +759,9 @@
 	"scrollbar height": "Scrollbar height",
 	"full": "Full",
 	"scroll past end": "Scroll past end",
-	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top."
+	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top.",
+	"compact": "مضغوط",
+	"off": "إيقاف",
+	"quick tools height": "ارتفاع الأدوات السريعة",
+	"quick tools toggler": "مبدل الأدوات السريعة"
 }

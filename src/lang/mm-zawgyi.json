@@ -146,7 +146,6 @@
 	"none": "none",
 	"small": "ေသးမည္",
 	"large": "ႀကီးမည္",
-	"floating button": "Floating button",
 	"confirm on exit": "App မွထြက္လွ်င္ Confirm Button ႏွိပ္ရမည္",
 	"show console": "console ကိုျပမည္",
 	"image": "Image",
@@ -760,5 +759,9 @@
 	"scrollbar height": "Scrollbar height",
 	"full": "Full",
 	"scroll past end": "Scroll past end",
-	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top."
+	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top.",
+	"compact": "Compact",
+	"off": "Off",
+	"quick tools height": "Quick tools height",
+	"quick tools toggler": "Quick tools toggler"
 }

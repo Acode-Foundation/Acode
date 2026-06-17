@@ -146,7 +146,6 @@
 	"none": "Няма",
 	"small": "Маленькі",
 	"large": "Вялікі",
-	"floating button": "Выплыўная панэль кнопак",
 	"confirm on exit": "Пацвярджэнне выхаду",
 	"show console": "Паказваць кансоль",
 	"image": "Выява",
@@ -760,5 +759,9 @@
 	"scrollbar height": "Scrollbar height",
 	"full": "Full",
 	"scroll past end": "Scroll past end",
-	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top."
+	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top.",
+	"compact": "Кампактны",
+	"off": "Выкл",
+	"quick tools height": "Вышыня хуткіх інструментаў",
+	"quick tools toggler": "Пераключальнік хуткіх інструментаў"
 }

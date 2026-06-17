@@ -146,7 +146,6 @@
 	"none": "Нема",
 	"small": "Малий",
 	"large": "Великий",
-	"floating button": "Плаваюча кнопка",
 	"confirm on exit": "Підтверджувати вихід",
 	"show console": "Показати консоль",
 	"image": "Зображення",
@@ -760,5 +759,9 @@
 	"scrollbar height": "Scrollbar height",
 	"full": "Full",
 	"scroll past end": "Scroll past end",
-	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top."
+	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top.",
+	"compact": "Компактний",
+	"off": "Вимк",
+	"quick tools height": "Висота швидких інструментів",
+	"quick tools toggler": "Перемикач швидких інструментів"
 }

@@ -84,7 +84,10 @@ export default function init() {
 		$footer.removeAttribute("data-unsaved");
 	});
 
-	root.append($footer, $toggler);
+	root.append($footer);
+	if (appSettings.value.floatingButton) {
+		root.appendOuter($toggler);
+	}
 	document.body.append($input);
 	if (
 		appSettings.value.quickToolsTriggerMode ===

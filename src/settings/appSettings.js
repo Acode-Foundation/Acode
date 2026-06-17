@@ -1,5 +1,6 @@
 import fsOperation from "fileSystem";
 import { resetKeyBindings } from "cm/commandRegistry";
+import quickTools from "components/quickTools";
 import settingsPage from "components/settingsPage";
 import loader from "dialogs/loader";
 import select from "dialogs/select";
@@ -29,6 +30,7 @@ export default function otherSettings() {
 		fonts: strings["settings-category-fonts"],
 		filesSessions: strings["settings-category-files-sessions"],
 		advanced: strings["settings-category-advanced"],
+		quickTools: strings["quick tools"],
 	};
 	const items = [
 		{
@@ -105,13 +107,6 @@ export default function otherSettings() {
 			category: categories.interface,
 		},
 		{
-			key: "floatingButton",
-			text: strings["floating button"],
-			checkbox: values.floatingButton,
-			info: strings["settings-info-app-floating-button"],
-			category: categories.interface,
-		},
-		{
 			key: "showSideButtons",
 			text: strings["show side buttons"],
 			checkbox: values.showSideButtons,
@@ -139,11 +134,28 @@ export default function otherSettings() {
 			category: categories.interface,
 		},
 		{
+			key: "floatingButton",
+			text: strings["quick tools toggler"],
+			checkbox: values.floatingButton,
+			info: strings["settings-info-app-floating-button"],
+			category: categories.quickTools,
+		},
+		{
 			key: "quickTools",
-			text: strings["quick tools"],
-			checkbox: !!values.quickTools,
+			text: strings["quick tools height"],
+			value: values.quickTools,
+			valueText: (value) => {
+				if (value === 0) return strings.off;
+				if (value === 1) return strings.compact;
+				return strings.full;
+			},
+			select: [
+				[0, strings.off],
+				[1, strings.compact],
+				[2, strings.full],
+			],
 			info: strings["info-quickTools"],
-			category: categories.interface,
+			category: categories.quickTools,
 		},
 		{
 			key: "quickToolsTriggerMode",
@@ -154,13 +166,13 @@ export default function otherSettings() {
 				[appSettings.QUICKTOOLS_TRIGGER_MODE_TOUCH, "touch"],
 			],
 			info: strings["settings-info-app-quick-tools-trigger-mode"],
-			category: categories.interface,
+			category: categories.quickTools,
 		},
 		{
 			key: "quickToolsSettings",
 			text: strings["shortcut buttons"],
 			info: strings["settings-info-app-quick-tools-settings"],
-			category: categories.interface,
+			category: categories.quickTools,
 			chevron: true,
 		},
 		{
@@ -175,7 +187,7 @@ export default function otherSettings() {
 				},
 			},
 			info: strings["settings-info-app-touch-move-threshold"],
-			category: categories.interface,
+			category: categories.quickTools,
 		},
 		{
 			key: "appFont",
@@ -423,7 +435,21 @@ export default function otherSettings() {
 				break;
 
 			case "floatingButton":
-				root.classList.toggle("hide-floating-button");
+				if (value) {
+					clearTimeout(quickTools.$toggler._hideTimeout);
+					quickTools.$toggler._hideTimeout = null;
+					quickTools.$toggler.classList.remove("hide");
+					if (!quickTools.$toggler.isConnected) {
+						root.appendOuter(quickTools.$toggler);
+					}
+				} else if (quickTools.$toggler.isConnected) {
+					clearTimeout(quickTools.$toggler._hideTimeout);
+					quickTools.$toggler.classList.add("hide");
+					quickTools.$toggler._hideTimeout = setTimeout(() => {
+						quickTools.$toggler.remove();
+						quickTools.$toggler._hideTimeout = null;
+					}, 300);
+				}
 				break;
 
 			case "keyboardMode":
@@ -442,14 +468,9 @@ export default function otherSettings() {
 				break;
 
 			case "quickTools":
-				if (value) {
-					value = 1;
-					actions("set-height", 1);
-				} else {
-					value = 0;
-					actions("set-height", 0);
-				}
-				break;
+				value = Number(value) || 0;
+				actions("set-height", value);
+				return;
 
 			case "excludeFolders":
 				value = value
@@ -462,7 +483,7 @@ export default function otherSettings() {
 				break;
 		}
 
-		appSettings.update({
+		await appSettings.update({
 			[key]: value,
 		});
 	}

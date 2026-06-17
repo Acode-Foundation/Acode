@@ -146,7 +146,6 @@
 	"none": "Žádná",
 	"small": "Malá",
 	"large": "Velká",
-	"floating button": "Plovoucí tlačítko",
 	"confirm on exit": "Potvrdit při zavření",
 	"show console": "Zobrazit konzoli",
 	"image": "Obrázek",
@@ -760,5 +759,9 @@
 	"scrollbar height": "Scrollbar height",
 	"full": "Full",
 	"scroll past end": "Scroll past end",
-	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top."
+	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top.",
+	"compact": "Kompaktní",
+	"off": "Vypnuto",
+	"quick tools height": "Výška rychlých nástrojů",
+	"quick tools toggler": "Přepínač rychlých nástrojů"
 }

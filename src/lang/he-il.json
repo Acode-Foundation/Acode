@@ -146,7 +146,6 @@
 	"none": "ללא",
 	"small": "קטן",
 	"large": "גדול",
-	"floating button": "כפתור צף",
 	"confirm on exit": "אמת יציאה",
 	"show console": "הצג קונסולה",
 	"image": "תמונה",
@@ -760,5 +759,9 @@
 	"scrollbar height": "Scrollbar height",
 	"full": "Full",
 	"scroll past end": "Scroll past end",
-	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top."
+	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top.",
+	"compact": "קומפקטי",
+	"off": "כבוי",
+	"quick tools height": "גובה כלים מהירים",
+	"quick tools toggler": "מחליף כלים מהירים"
 }

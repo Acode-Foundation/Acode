@@ -144,7 +144,6 @@
 	"none": "कोई भी नहीं",
 	"small": "छोटा",
 	"large": "विशाल",
-	"floating button": "फ्लोटिंग बटन",
 	"confirm on exit": "बाहर निकलने पर पुष्टि करें",
 	"show console": "कंसोल दिखाएँ",
 	"image": "इमेज",
@@ -760,5 +759,9 @@
 	"scrollbar height": "Scrollbar height",
 	"full": "Full",
 	"scroll past end": "Scroll past end",
-	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top."
+	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top.",
+	"compact": "संक्षिप्त",
+	"off": "बंद",
+	"quick tools height": "त्वरित उपकरण ऊंचाई",
+	"quick tools toggler": "त्वरित उपकरण टॉगलर"
 }
