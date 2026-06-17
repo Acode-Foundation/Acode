@@ -528,8 +528,12 @@ async function searchAll() {
 	fileNames.length = 0;
 	currentSearchRegex = regex;
 	searchResult.setGhostText(strings["searching..."], { row: 0, column: 0 });
-	const nativeFiles = filesToSearch.filter((file) => supportsNativeSearch(file.url));
-	const workerFiles = filesToSearch.filter((file) => !supportsNativeSearch(file.url));
+	const nativeFiles = filesToSearch.filter((file) =>
+		supportsNativeSearch(file.url),
+	);
+	const workerFiles = filesToSearch.filter(
+		(file) => !supportsNativeSearch(file.url),
+	);
 	activeSearchTasks = 0;
 	if (nativeFiles.length) {
 		activeSearchTasks += 1;
@@ -712,8 +716,12 @@ async function replaceAll() {
 
 	replacing = true;
 	activeReplaceTasks = 0;
-	const nativeFiles = filesSearched.filter((file) => supportsNativeSearch(file.url));
-	const workerFiles = filesSearched.filter((file) => !supportsNativeSearch(file.url));
+	const nativeFiles = filesSearched.filter((file) =>
+		supportsNativeSearch(file.url),
+	);
+	const workerFiles = filesSearched.filter(
+		(file) => !supportsNativeSearch(file.url),
+	);
 	if (nativeFiles.length) {
 		activeReplaceTasks += 1;
 		sendNativeSearch("replace", nativeFiles, search, options, replace);

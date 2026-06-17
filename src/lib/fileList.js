@@ -351,7 +351,8 @@ async function getAllFilesNative(parent, root, options = {}) {
 function addNativeEntries(root, entries) {
 	for (const item of entries) {
 		const parentUrl = item.parentUrl || item.parent;
-		const parentTree = parentUrl === root.url ? root : getTree([root], parentUrl);
+		const parentTree =
+			parentUrl === root.url ? root : getTree([root], parentUrl);
 		if (!parentTree?.children) continue;
 		if (parentTree.children.find(({ url }) => url === item.url)) continue;
 
