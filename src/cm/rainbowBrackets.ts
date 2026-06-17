@@ -2,7 +2,6 @@ import { syntaxTree } from "@codemirror/language";
 import { RangeSetBuilder } from "@codemirror/state";
 import type { DecorationSet, ViewUpdate } from "@codemirror/view";
 import { Decoration, EditorView, ViewPlugin } from "@codemirror/view";
-import type { SyntaxNode } from "@lezer/common";
 
 const DEFAULT_DARK_COLORS = [
 	"#e5c07b",
@@ -22,21 +21,9 @@ const DEFAULT_LIGHT_COLORS = [
 	"#267f99",
 ];
 
-const BLOCK_SIZE = 2048;
-const MAX_BLOCK_CACHE_ENTRIES = 192;
-const CONTEXT_SIGNATURE_DEPTH = 4;
 const MIN_LOOK_BEHIND = 4000;
 const MAX_LOOK_BEHIND = 24000;
 const DEFAULT_EXACT_SCAN_LIMIT = 24000;
-
-const SKIP_CONTEXTS = new Set([
-	"String",
-	"TemplateString",
-	"Comment",
-	"LineComment",
-	"BlockComment",
-	"RegExp",
-]);
 
 const CLOSING_TO_OPENING = {
 	")": "(",
@@ -70,25 +57,11 @@ interface BracketInfo {
 	colorIndex: number;
 }
 
-interface BracketToken {
-	offset: number;
-	char: string;
-}
-
-interface BlockCacheEntry {
-	carrySkipChars: number;
-	tokens: readonly BracketToken[];
-}
-
 function normalizeHexColor(value: unknown): string | null {
 	if (typeof value !== "string") return null;
 	const color = value.trim().toLowerCase();
 	if (/^#([\da-f]{3}|[\da-f]{6})$/.test(color)) return color;
 	return null;
-}
-
-function alignToBlockStart(pos: number): number {
-	return pos - (pos % BLOCK_SIZE);
 }
 
 function clampLookBehind(value: number | undefined): number {
@@ -127,121 +100,18 @@ function getScanStart(
 	);
 }
 
-function isBracketCode(code: number): boolean {
-	return (
-		code === 40 ||
-		code === 41 ||
-		code === 91 ||
-		code === 93 ||
-		code === 123 ||
-		code === 125
-	);
-}
-
 function isOpeningBracket(char: string): boolean {
 	return char === "(" || char === "[" || char === "{";
 }
 
-function getSkipContextEnd(
-	tree: ReturnType<typeof syntaxTree>,
-	pos: number,
-): number {
-	let node: SyntaxNode | null = tree.resolveInner(pos, 1);
-
-	while (node) {
-		if (SKIP_CONTEXTS.has(node.name)) return node.to;
-		node = node.parent;
-	}
-
-	return -1;
-}
-
-function getContextChainSignature(
-	tree: ReturnType<typeof syntaxTree>,
-	pos: number,
-): string {
-	if (tree.length <= 0) return "";
-
-	const clampedPos = Math.max(0, Math.min(tree.length - 1, pos));
-	let node: SyntaxNode | null = tree.resolveInner(clampedPos, 1);
-	const parts: string[] = [];
-
-	for (let depth = 0; node && depth < CONTEXT_SIGNATURE_DEPTH; depth++) {
-		parts.push(node.name);
-		node = node.parent;
-	}
-
-	return parts.join(">");
-}
-
-function getBlockContextSignature(
-	tree: ReturnType<typeof syntaxTree>,
-	blockStart: number,
-	blockEnd: number,
-): string {
-	if (blockEnd <= blockStart) return "";
-	const endPos = Math.max(blockStart, blockEnd - 1);
-	return `${getContextChainSignature(tree, blockStart)}|${getContextChainSignature(tree, endPos)}`;
-}
-
-function getBlockCacheKey(
-	blockText: string,
-	initialSkipChars: number,
-	contextSignature: string,
-): string {
-	return `${initialSkipChars}\u0000${contextSignature}\u0000${blockText}`;
-}
-
-function tokenizeBlock(
-	tree: ReturnType<typeof syntaxTree>,
-	blockText: string,
-	blockStart: number,
-	initialSkipChars: number,
-): BlockCacheEntry {
-	const tokens: BracketToken[] = [];
-	let skipUntilOffset = Math.max(0, initialSkipChars);
-
-	if (!blockText.length) {
-		return { carrySkipChars: skipUntilOffset, tokens };
-	}
-
-	if (skipUntilOffset >= blockText.length) {
-		return { carrySkipChars: skipUntilOffset - blockText.length, tokens };
-	}
-
-	for (let offset = 0; offset < blockText.length; offset++) {
-		if (offset < skipUntilOffset) continue;
-
-		const code = blockText.charCodeAt(offset);
-		if (!isBracketCode(code)) continue;
-
-		const pos = blockStart + offset;
-		const skipContextEnd = getSkipContextEnd(tree, pos);
-		if (skipContextEnd > pos) {
-			skipUntilOffset = Math.max(skipUntilOffset, skipContextEnd - blockStart);
-			continue;
-		}
-
-		tokens.push({ offset, char: blockText[offset] });
-	}
-
-	return {
-		carrySkipChars: Math.max(0, skipUntilOffset - blockText.length),
-		tokens,
-	};
-}
-
-function isVisiblePosition(
-	pos: number,
-	ranges: readonly { from: number; to: number }[],
-	cursor: { index: number },
-): boolean {
-	while (cursor.index < ranges.length && pos >= ranges[cursor.index].to) {
-		cursor.index++;
-	}
-
-	const range = ranges[cursor.index];
-	return !!range && pos >= range.from && pos < range.to;
+function isSkipContext(name: string): boolean {
+	const lower = name.toLowerCase();
+	return (
+		lower.includes("string") ||
+		lower.includes("comment") ||
+		lower === "regexp" ||
+		lower === "escape"
+	);
 }
 
 function buildTheme(colors: readonly string[]) {
@@ -314,9 +184,6 @@ export function rainbowBrackets(options: RainbowBracketsOptions = {}) {
 	const rainbowBracketsPlugin = ViewPlugin.fromClass(
 		class {
 			decorations: DecorationSet;
-			blockCache = new Map<string, BlockCacheEntry>();
-			raf = 0;
-			pendingView: EditorView | null = null;
 
 			constructor(view: EditorView) {
 				this.decorations = this.buildDecorations(view);
@@ -324,21 +191,7 @@ export function rainbowBrackets(options: RainbowBracketsOptions = {}) {
 
 			update(update: ViewUpdate) {
 				if (!update.docChanged && !update.viewportChanged) return;
-				this.scheduleBuild(update.view);
-			}
-
-			scheduleBuild(view: EditorView): void {
-				this.pendingView = view;
-				if (this.raf) return;
-				// Bracket recoloring is cosmetic. Collapse bursts of edits/scroll
-				// events into a single frame so large pastes don't block repeatedly.
-				this.raf = requestAnimationFrame(() => {
-					this.raf = 0;
-					const pendingView = this.pendingView;
-					this.pendingView = null;
-					if (!pendingView) return;
-					this.decorations = this.buildDecorations(pendingView);
-				});
+				this.decorations = this.buildDecorations(update.view);
 			}
 
 			buildDecorations(view: EditorView): DecorationSet {
@@ -346,107 +199,76 @@ export function rainbowBrackets(options: RainbowBracketsOptions = {}) {
 				if (!visibleRanges.length || !marks.length) return Decoration.none;
 
 				const tree = syntaxTree(view.state);
-				const scanStart = alignToBlockStart(
-					getScanStart(view, lookBehind, exactScanLimit),
-				);
+				if (tree.length <= 0) return Decoration.none;
+
+				const scanStart = getScanStart(view, lookBehind, exactScanLimit);
 				const scanEnd = visibleRanges[visibleRanges.length - 1].to;
-				const visibleCursor = { index: 0 };
 				const openBrackets: BracketInfo[] = [];
-				let carrySkipChars = 0;
 				const builder = new RangeSetBuilder<Decoration>();
 
-				for (
-					let blockStart = scanStart;
-					blockStart < scanEnd;
-					blockStart += BLOCK_SIZE
-				) {
-					const blockEnd = Math.min(scanEnd, blockStart + BLOCK_SIZE);
-					const blockText = view.state.doc.sliceString(blockStart, blockEnd);
-					const cacheKey = getBlockCacheKey(
-						blockText,
-						carrySkipChars,
-						getBlockContextSignature(tree, blockStart, blockEnd),
-					);
-					let cachedBlock = this.getCachedBlock(cacheKey);
-
-					if (!cachedBlock) {
-						cachedBlock = tokenizeBlock(
-							tree,
-							blockText,
-							blockStart,
-							carrySkipChars,
-						);
-						this.setCachedBlock(cacheKey, cachedBlock);
+				let visibleRangeIndex = 0;
+				const isVisible = (pos: number): boolean => {
+					while (
+						visibleRangeIndex < visibleRanges.length &&
+						pos >= visibleRanges[visibleRangeIndex].to
+					) {
+						visibleRangeIndex++;
 					}
+					const range = visibleRanges[visibleRangeIndex];
+					return !!range && pos >= range.from && pos < range.to;
+				};
 
-					for (const token of cachedBlock.tokens) {
-						const pos = blockStart + token.offset;
-
-						if (isOpeningBracket(token.char)) {
-							const colorIndex = openBrackets.length % marks.length;
-							if (isVisiblePosition(pos, visibleRanges, visibleCursor)) {
-								builder.add(pos, pos + 1, marks[colorIndex]);
-							}
-							openBrackets.push({ char: token.char, colorIndex });
-							continue;
+				tree.iterate({
+					from: scanStart,
+					to: scanEnd,
+					enter(node) {
+						if (isSkipContext(node.name)) {
+							return false;
 						}
 
-						const matchingOpen =
-							CLOSING_TO_OPENING[token.char as ClosingBracket];
-						if (!matchingOpen) continue;
+						const name = node.name;
+						if (
+							name === "(" ||
+							name === "[" ||
+							name === "{" ||
+							name === ")" ||
+							name === "]" ||
+							name === "}"
+						) {
+							const pos = node.from;
 
-						for (let index = openBrackets.length - 1; index >= 0; index--) {
-							if (openBrackets[index].char !== matchingOpen) continue;
+							if (isOpeningBracket(name)) {
+								const colorIndex = openBrackets.length % marks.length;
+								if (isVisible(pos)) {
+									builder.add(pos, pos + 1, marks[colorIndex]);
+								}
+								openBrackets.push({ char: name, colorIndex });
+							} else {
+								const matchingOpen = CLOSING_TO_OPENING[name as ClosingBracket];
+								if (!matchingOpen) return;
 
-							if (isVisiblePosition(pos, visibleRanges, visibleCursor)) {
-								builder.add(
-									pos,
-									pos + 1,
-									marks[openBrackets[index].colorIndex],
-								);
+								for (let index = openBrackets.length - 1; index >= 0; index--) {
+									if (openBrackets[index].char !== matchingOpen) continue;
+
+									if (isVisible(pos)) {
+										builder.add(
+											pos,
+											pos + 1,
+											marks[openBrackets[index].colorIndex],
+										);
+									}
+									openBrackets.length = index;
+									break;
+								}
 							}
-
-							openBrackets.length = index;
-							break;
 						}
-					}
-
-					carrySkipChars = cachedBlock.carrySkipChars;
-				}
+					},
+				});
 
 				return builder.finish();
 			}
 
-			getCachedBlock(key: string): BlockCacheEntry | null {
-				const cached = this.blockCache.get(key);
-				if (!cached) return null;
-				this.blockCache.delete(key);
-				this.blockCache.set(key, cached);
-				return cached;
-			}
-
-			setCachedBlock(key: string, value: BlockCacheEntry): void {
-				if (this.blockCache.has(key)) {
-					this.blockCache.delete(key);
-				}
-
-				this.blockCache.set(key, value);
-				if (this.blockCache.size <= MAX_BLOCK_CACHE_ENTRIES) return;
-
-				const oldestKey = this.blockCache.keys().next().value;
-				if (oldestKey !== undefined) {
-					this.blockCache.delete(oldestKey);
-				}
-			}
-
-			destroy(): void {
-				if (this.raf) {
-					cancelAnimationFrame(this.raf);
-					this.raf = 0;
-				}
-				this.pendingView = null;
-				this.blockCache.clear();
-			}
+			destroy(): void {}
 		},
 		{
 			decorations: (value) => value.decorations,
