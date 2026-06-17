@@ -38,7 +38,7 @@ export default {
 			if (!$toggler.isConnected) {
 				root.appendOuter($toggler);
 			}
-		} else if ($toggler.isConnected) {
+		} else {
 			clearTimeout($toggler._hideTimeout);
 			$toggler.classList.add("hide");
 			$toggler._hideTimeout = setTimeout(() => {

@@ -1360,13 +1360,11 @@ export default class EditorFile {
 		if (this.hideQuickTools) {
 			const { $toggler } = quickTools;
 			clearTimeout($toggler._hideTimeout);
-			if ($toggler.isConnected) {
-				$toggler.classList.add("hide");
-				$toggler._hideTimeout = setTimeout(() => {
-					$toggler.remove();
-					$toggler._hideTimeout = null;
-				}, 300);
-			}
+			$toggler.classList.add("hide");
+			$toggler._hideTimeout = setTimeout(() => {
+				$toggler.remove();
+				$toggler._hideTimeout = null;
+			}, 300);
 			actions("set-height", { height: 0, save: false });
 		} else {
 			const { $toggler } = quickTools;

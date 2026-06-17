@@ -443,7 +443,7 @@ export default function otherSettings() {
 					if (!quickTools.$toggler.isConnected) {
 						root.appendOuter(quickTools.$toggler);
 					}
-				} else if (quickTools.$toggler.isConnected) {
+				} else {
 					clearTimeout(quickTools.$toggler._hideTimeout);
 					quickTools.$toggler.classList.add("hide");
 					quickTools.$toggler._hideTimeout = setTimeout(() => {

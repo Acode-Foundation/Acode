@@ -432,12 +432,6 @@ function setHeight(height = 1, save = true) {
 		appSettings.update({ quickTools: height }, false);
 	}
 
-	if (!height) {
-		$row1.remove();
-		$row2.remove();
-		return;
-	}
-
 	if (height >= 1) {
 		$row1.style.scrollBehavior = "unset";
 		$footer.append($row1);
@@ -446,6 +440,8 @@ function setHeight(height = 1, save = true) {
 			10,
 		);
 		--height;
+	} else {
+		$row1.remove();
 	}
 
 	if (height >= 1) {
@@ -456,6 +452,8 @@ function setHeight(height = 1, save = true) {
 			10,
 		);
 		--height;
+	} else {
+		$row2.remove();
 	}
 }
 
