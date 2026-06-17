@@ -46,6 +46,9 @@ export default function init() {
 	$toggler.addEventListener("click", (e) => {
 		e.preventDefault();
 		e.stopPropagation();
+		if (appSettings.value.vibrateOnTap) {
+			navigator.vibrate(config.VIBRATION_TIME);
+		}
 		actions("toggle");
 	});
 
@@ -328,6 +331,11 @@ function click($el) {
 	$el.dataset.timeout = setTimeout(() => {
 		$el.classList.remove("click");
 	}, 300);
+
+	if (appSettings.value.vibrateOnTap) {
+		navigator.vibrate(config.VIBRATION_TIME);
+	}
+
 	const { action } = $el.dataset;
 	if (!action) return;
 

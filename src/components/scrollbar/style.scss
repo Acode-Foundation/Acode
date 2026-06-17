@@ -7,6 +7,9 @@
   animation: scrollbar-show 300ms ease 1;
   transition: all 300ms ease;
   opacity: 1;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 
   &.hide {
     opacity: 0;

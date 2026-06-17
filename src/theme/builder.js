@@ -35,6 +35,7 @@ export default class ThemeBuilder {
 	/** Whether Auto update darkened primary color when primary color is updated. */
 	autoDarkened = true;
 	preferredEditorTheme = null;
+	preferredTerminalTheme = null;
 	preferredFont = null;
 
 	/**

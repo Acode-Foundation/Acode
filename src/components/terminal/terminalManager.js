@@ -308,14 +308,17 @@ class TerminalManager {
 				id: `terminal-${terminalId}`,
 			});
 
-			// Terminal styles (inject once)
-			if (!document.getElementById("acode-terminal-styles")) {
-				const terminalStyles = this.getTerminalStyles();
-				const terminalStyle = tag("style", {
+			// Terminal styles (inject or update)
+			const terminalStyles = this.getTerminalStyles();
+			let terminalStyle = document.getElementById("acode-terminal-styles");
+			if (!terminalStyle) {
+				terminalStyle = tag("style", {
 					id: "acode-terminal-styles",
 					textContent: terminalStyles,
 				});
 				document.body.appendChild(terminalStyle);
+			} else {
+				terminalStyle.textContent = terminalStyles;
 			}
 
 			// Create EditorFile for terminal
@@ -505,14 +508,17 @@ class TerminalManager {
 			id: `terminal-${terminalId}`,
 		});
 
-		// Terminal styles (inject once)
-		if (!document.getElementById("acode-terminal-styles")) {
-			const terminalStyles = this.getTerminalStyles();
-			const terminalStyle = tag("style", {
+		// Terminal styles (inject or update)
+		const terminalStyles = this.getTerminalStyles();
+		let terminalStyle = document.getElementById("acode-terminal-styles");
+		if (!terminalStyle) {
+			terminalStyle = tag("style", {
 				id: "acode-terminal-styles",
 				textContent: terminalStyles,
 			});
 			document.body.appendChild(terminalStyle);
+		} else {
+			terminalStyle.textContent = terminalStyles;
 		}
 
 		// Create EditorFile for terminal
@@ -996,6 +1002,11 @@ class TerminalManager {
 			.terminal-content .xterm {
 				padding: 0.25rem;
 				box-sizing: border-box;
+				touch-action: none;
+			}
+
+			.terminal-content .xterm-viewport {
+				overscroll-behavior: none;
 			}
 		`;
 	}

@@ -66,6 +66,12 @@ function createLanguageLoader(name: string, lang: LanguageDescription) {
 	const normalizedName = normalizeModeKey(name);
 
 	switch (normalizedName) {
+		case "javascript":
+			return async () => {
+				const { javascript } = await import("@codemirror/lang-javascript");
+				return javascript({ jsx: true });
+			};
+
 		case "html":
 			return async () => {
 				const { html } = await import("@codemirror/lang-html");

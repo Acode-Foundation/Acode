@@ -16,7 +16,17 @@ import {
 	unregisterServer,
 	updateServer,
 } from "./serverRegistry";
+import {
+	getRuntimeProvider,
+	listRuntimeProviders,
+	registerRuntimeProvider,
+	selectRuntimeProvider,
+	unregisterRuntimeProvider,
+} from "./runtimeProviders";
+import "./runtimes/registerBuiltins";
 import type {
+	LspRuntimeContext,
+	LspRuntimeProvider,
 	LspServerBundle,
 	LspServerDefinition,
 	LspServerManifest,
@@ -83,6 +93,30 @@ export const bundles = {
 	},
 };
 
+export const runtimes = {
+	register(provider: LspRuntimeProvider): LspRuntimeProvider {
+		return registerRuntimeProvider(provider);
+	},
+	unregister(id: string): boolean {
+		return unregisterRuntimeProvider(id);
+	},
+	get(id: string): LspRuntimeProvider | null {
+		return getRuntimeProvider(id);
+	},
+	list(): LspRuntimeProvider[] {
+		return listRuntimeProviders();
+	},
+	select(
+		server: LspServerDefinition,
+		context?: LspRuntimeContext,
+	): Promise<LspRuntimeProvider | null> {
+		return selectRuntimeProvider(server, context);
+	},
+};
+
+export const registerRuntime = runtimes.register;
+export const unregisterRuntime = runtimes.unregister;
+
 const lspApi = {
 	defineServer,
 	defineBundle,
@@ -91,6 +125,9 @@ const lspApi = {
 	installers,
 	servers,
 	bundles,
+	runtimes,
+	registerRuntimeProvider: registerRuntime,
+	unregisterRuntimeProvider: unregisterRuntime,
 };
 
 export default lspApi;

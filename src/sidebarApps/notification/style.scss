@@ -47,118 +47,38 @@
         flex-direction: column;
         gap: 8px;
 
+        .notification-item {
+            padding-bottom: 5px;
+            margin-bottom: 10px;
+            border-radius: 0;
+        }
+
         .empty-state {
             text-align: center;
             color: var(--secondary-text-color);
             padding: 20px;
             font-size: 14px;
         }
-
-        .notification-item {
-            padding: 10px 12px;
-            border-radius: 6px;
-            background: var(--popup-background-color);
-            display: flex;
-            gap: 10px;
-            align-items: flex-start;
-            animation: slideIn 0.3s ease-out;
-            border: 1px solid var(--popup-border-color);
-            transition: all 0.2s ease;
-
-            &:hover {
-                background: rgba($color: #000000, $alpha: 0.2);
-                border-color: var(--popup-border-color);
-            }
-
-            .notification-icon {
-                width: 20px;
-                height: 20px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                flex-shrink: 0;
-                color: var(--primary-text-color);
-            }
-
-            .notification-content {
-                flex: 1;
-                min-width: 0;
-
-                .notification-title {
-                    font-size: 13px;
-                    font-weight: 500;
-                    margin-bottom: 4px;
-                    white-space: nowrap;
-                    overflow: hidden;
-                    word-wrap: break-word;
-                    color: var(--primary-text-color);
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-
-                    .notification-time {
-                        font-size: 11px;
-                        color: var(--secondary-text-color);
-                    }
-                }
-
-                .notification-message {
-                    font-size: 12px;
-                    color: var(--secondary-text-color);
-                    line-height: 1.4;
-                    overflow: hidden;
-                    display: -webkit-box;
-                    -webkit-box-orient: vertical;
-                    word-break: break-word;
-                }
-
-                .notification-actions {
-                    margin-top: 8px;
-                    display: flex;
-                    justify-content: flex-end;
-
-                    .action-button {
-                        font-size: 11px;
-                        padding: 6px 12px;
-                        border-radius: 4px;
-                        background: transparent;
-                        color: var(--secondary-text-color);
-                        cursor: pointer;
-                        transition: all 0.2s ease;
-                        border: 1px solid var(--border-color);
-                        display: flex;
-                        align-items: center;
-                        gap: 4px;
-
-                        &:hover {
-                            background: rgba($color: var(--border-color), $alpha: 0.6);
-                            color: var(--primary-text-color);
-                            border-color: var(--border-color);
-                        }
-
-                        &:active {
-                            transform: translateY(1px);
-                        }
-
-                        &::before {
-                            content: '×';
-                            font-size: 14px;
-                            line-height: 1;
-                            opacity: 0.8;
-                        }
-                    }
-                }
-            }
-        }
     }
 }
 
 
 @supports not (gap: 1px) {
-  .title > * + * { margin-left: 4px; }
-  .notifications-container > * + * { margin-top: 8px; }
-  .notification-item > * + * { margin-left: 10px; }
-  .action-button > * + * { margin-left: 4px; }
+    .title>*+* {
+        margin-left: 4px;
+    }
+
+    .notifications-container>*+* {
+        margin-top: 8px;
+    }
+
+    .notification-item>*+* {
+        margin-left: 10px;
+    }
+
+    .action-button>*+* {
+        margin-left: 4px;
+    }
 }
 
 @keyframes slideIn {

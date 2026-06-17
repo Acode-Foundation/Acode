@@ -102,6 +102,10 @@ async function EditorManager($header, $body) {
 	let isScrolling = false;
 	let lastScrollTop = 0;
 	let lastScrollLeft = 0;
+	let suppressCursorRevealUntil = 0;
+	let scrollbarScrollLockUntil = 0;
+	let scrollbarScrollLockTop = null;
+	let scrollbarScrollLockLeft = null;
 
 	// Debounce timers for CodeMirror change handling
 	let checkTimeout = null;
@@ -184,7 +188,7 @@ async function EditorManager($header, $body) {
 
 	const pointerCursorVisibilityExtension = EditorView.updateListener.of(
 		(update) => {
-			if (!update.selectionSet) return;
+			if (!update.transactions.length) return;
 			const pointerTriggered = update.transactions.some(
 				(tr) =>
 					tr.isUserEvent("pointer") ||
@@ -193,13 +197,17 @@ async function EditorManager($header, $body) {
 					tr.isUserEvent("touch") ||
 					tr.isUserEvent("select.touch"),
 			);
-			if (!pointerTriggered) return;
+			if (!pointerTriggered) {
+				clearScrollbarScrollLock();
+				return;
+			}
+			if (!update.selectionSet) return;
 			requestAnimationFrame(() => {
+				if (isCursorRevealSuppressed()) return;
 				if (!isCursorVisible()) scrollCursorIntoView({ behavior: "instant" });
 			});
 		},
 	);
-
 	const isShiftSelectionActive = (event) => {
 		if (!appSettings.value.shiftClickSelection) return false;
 		return !!event?.shiftKey || quickTools?.$footer?.dataset?.shift != null;
@@ -235,6 +243,15 @@ async function EditorManager($header, $body) {
 			}
 		},
 	);
+	const baseExtensionDefaults = {
+		autoIndent: true,
+		codeFolding: true,
+		autoCloseBrackets: true,
+		bracketMatching: true,
+		highlightActiveLine: true,
+		highlightSelectionMatches: true,
+	};
+	const baseExtensionSettings = Object.keys(baseExtensionDefaults);
 
 	// Compartment to swap editor theme dynamically
 	const themeCompartment = new Compartment();
@@ -309,6 +326,11 @@ async function EditorManager($header, $body) {
 		});
 	}
 
+	function getConfiguredThemeExtension() {
+		const desiredTheme = appSettings?.value?.editorTheme;
+		return getThemeExtensions(desiredTheme, [oneDark]);
+	}
+
 	function makeWrapExtension() {
 		return appSettings?.value?.textWrap ? EditorView.lineWrapping : [];
 	}
@@ -316,6 +338,10 @@ async function EditorManager($header, $body) {
 	function makeLineNumberExtension() {
 		const { linenumbers = true, relativeLineNumbers = false } =
 			appSettings?.value || {};
+		const activeLineGutter =
+			appSettings?.value?.highlightActiveLine !== false
+				? [highlightActiveLineGutter()]
+				: [];
 		const lineNumberConfig = {
 			domEventHandlers: {
 				click(view, line, event) {
@@ -333,10 +359,7 @@ async function EditorManager($header, $body) {
 				},
 			});
 		if (!relativeLineNumbers)
-			return Prec.highest([
-				lineNumbers(lineNumberConfig),
-				highlightActiveLineGutter(),
-			]);
+			return Prec.highest([lineNumbers(lineNumberConfig), ...activeLineGutter]);
 		return Prec.highest([
 			lineNumbers({
 				...lineNumberConfig,
@@ -350,7 +373,7 @@ async function EditorManager($header, $body) {
 					}
 				},
 			}),
-			highlightActiveLineGutter(),
+			...activeLineGutter,
 		]);
 	}
 
@@ -361,6 +384,47 @@ async function EditorManager($header, $body) {
 			indentExt: indentUnit.of(unit),
 			tabSizeExt: EditorState.tabSize.of(Math.max(1, Number(tabSize) || 2)),
 		};
+	}
+
+	function getBaseExtensionOptions() {
+		const values = appSettings?.value || {};
+		return Object.fromEntries(
+			Object.entries(baseExtensionDefaults).map(([key, defaultValue]) => [
+				key,
+				values[key] ?? defaultValue,
+			]),
+		);
+	}
+
+	function createConfiguredBaseExtensions() {
+		return createBaseExtensions(getBaseExtensionOptions());
+	}
+
+	function getBaseExtensionSignature() {
+		const options = getBaseExtensionOptions();
+		return JSON.stringify(
+			baseExtensionSettings.map((key) => [key, options[key]]),
+		);
+	}
+
+	function applyEditContextSetting() {
+		try {
+			if (appSettings?.value?.useEditContext === false) {
+				// Avoid Chromium Android EditContext scroll jumps when tapping empty
+				// lines. https://issues.chromium.org/issues/484891671
+				EditorView.EDIT_CONTEXT = false;
+			} else if (
+				Object.prototype.hasOwnProperty.call(EditorView, "EDIT_CONTEXT")
+			) {
+				delete EditorView.EDIT_CONTEXT;
+			}
+		} catch (error) {
+			warnRecoverable(
+				"Failed to apply CodeMirror EditContext setting.",
+				error,
+				"edit-context-setting",
+			);
+		}
 	}
 
 	function makeRainbowBracketExtension() {
@@ -851,6 +915,8 @@ async function EditorManager($header, $body) {
 	}
 
 	// Create minimal CodeMirror editor
+	applyEditContextSetting();
+
 	const editorState = EditorState.create({
 		doc: "",
 		extensions: createMainEditorExtensions({
@@ -858,9 +924,9 @@ async function EditorManager($header, $body) {
 			emmetExtensions: createEmmetExtensionSet({
 				syntax: EmmetKnownSyntax.html,
 			}),
-			baseExtensions: createBaseExtensions(),
+			baseExtensions: createConfiguredBaseExtensions(),
 			commandKeymapExtension: getCommandKeymapExtension(),
-			themeExtension: themeCompartment.of(oneDark),
+			themeExtension: themeCompartment.of(getConfiguredThemeExtension()),
 			pointerCursorVisibilityExtension,
 			shiftClickSelectionExtension,
 			touchSelectionUpdateExtension,
@@ -1095,6 +1161,7 @@ async function EditorManager($header, $body) {
 			if (!scroller) return false;
 
 			if (row === Number.POSITIVE_INFINITY) {
+				clearScrollbarScrollLock();
 				scroller.scrollTop = Math.max(
 					scroller.scrollHeight - scroller.clientHeight,
 					0,
@@ -1218,6 +1285,8 @@ async function EditorManager($header, $body) {
 			syntax: getEmmetSyntaxForFile(file),
 			colorPreview: !!appSettings.value.colorPreview,
 			autoCloseTags: appSettings.value.autoCloseTags !== false,
+			baseExtensions: getBaseExtensionSignature(),
+			useEditContext: appSettings.value.useEditContext !== false,
 		});
 	}
 
@@ -1362,14 +1431,10 @@ async function EditorManager($header, $body) {
 	}
 
 	function showLoadingEditor(file) {
-		const desiredTheme = appSettings?.value?.editorTheme;
-		const themeExt = desiredTheme
-			? getThemeExtensions(desiredTheme, [oneDark])
-			: oneDark;
 		const loadingState = EditorState.create({
 			doc: "",
 			extensions: [
-				themeCompartment.of(themeExt),
+				themeCompartment.of(getConfiguredThemeExtension()),
 				...getBaseExtensionsFromOptions(),
 				languageCompartment.of([]),
 				lspCompartment.of([]),
@@ -1427,10 +1492,10 @@ async function EditorManager($header, $body) {
 		const baseExtensions = createMainEditorExtensions({
 			// Emmet needs to precede default keymaps so tracker Tab wins over indent
 			emmetExtensions: createEmmetExtensionSet({ syntax }),
-			baseExtensions: createBaseExtensions(),
+			baseExtensions: createConfiguredBaseExtensions(),
 			commandKeymapExtension: getCommandKeymapExtension(),
 			// keep compartment in the state to allow dynamic theme changes later
-			themeExtension: themeCompartment.of(oneDark),
+			themeExtension: themeCompartment.of(getConfiguredThemeExtension()),
 			pointerCursorVisibilityExtension,
 			shiftClickSelectionExtension,
 			touchSelectionUpdateExtension,
@@ -2138,12 +2203,15 @@ async function EditorManager($header, $body) {
 
 		function syncScrollUi() {
 			scrollSyncRaf = 0;
-			onscrolltop();
-			onscrollleft();
+			editor.requestMeasure({
+				read: () => readScrollMetrics(),
+				write: updateScrollbarsFromMetrics,
+			});
 		}
 
 		function handleEditorScroll() {
 			if (!scroller) return;
+			if (restoreScrollbarScrollLock()) return;
 			if (!isScrolling) {
 				isScrolling = true;
 				if (hasHoverTooltips(editor.state)) {
@@ -2162,14 +2230,27 @@ async function EditorManager($header, $body) {
 		}
 
 		scroller?.addEventListener("scroll", handleEditorScroll, { passive: true });
+		scroller?.addEventListener("pointerdown", clearScrollbarScrollLock, {
+			passive: true,
+		});
+		scroller?.addEventListener("touchstart", clearScrollbarScrollLock, {
+			passive: true,
+		});
+		scroller?.addEventListener("wheel", clearScrollbarScrollLock, {
+			passive: true,
+		});
 		syncScrollUi();
 
 		keyboardHandler.on("keyboardShowStart", () => {
 			requestAnimationFrame(() => {
+				if (isCursorRevealSuppressed()) return;
 				scrollCursorIntoView({ behavior: "instant" });
 			});
 		});
-		keyboardHandler.on("keyboardShow", scrollCursorIntoView);
+		keyboardHandler.on("keyboardShow", () => {
+			if (isCursorRevealSuppressed()) return;
+			scrollCursorIntoView();
+		});
 
 		// Attach native DOM event listeners directly to the editor's contentDOM
 		const contentDOM = editor.contentDOM;
@@ -2258,6 +2339,57 @@ async function EditorManager($header, $body) {
 		}
 	}
 
+	function suppressCursorReveal(duration = 500) {
+		suppressCursorRevealUntil = Date.now() + duration;
+	}
+
+	function isCursorRevealSuppressed() {
+		return Date.now() < suppressCursorRevealUntil;
+	}
+
+	function lockScrollbarScrollPosition({ top, left }, duration = 1200) {
+		const scroller = editor?.scrollDOM;
+		if (!scroller) return;
+		scrollbarScrollLockUntil = Date.now() + duration;
+		if (typeof top === "number") scrollbarScrollLockTop = top;
+		if (typeof left === "number") scrollbarScrollLockLeft = left;
+	}
+
+	function clearScrollbarScrollLock() {
+		scrollbarScrollLockUntil = 0;
+		scrollbarScrollLockTop = null;
+		scrollbarScrollLockLeft = null;
+	}
+
+	function restoreScrollbarScrollLock() {
+		if (Date.now() >= scrollbarScrollLockUntil) {
+			clearScrollbarScrollLock();
+			return false;
+		}
+
+		const scroller = editor?.scrollDOM;
+		if (!scroller) return false;
+
+		let restored = false;
+		if (
+			typeof scrollbarScrollLockTop === "number" &&
+			Math.abs(scroller.scrollTop - scrollbarScrollLockTop) > 1
+		) {
+			scroller.scrollTop = scrollbarScrollLockTop;
+			lastScrollTop = scroller.scrollTop;
+			restored = true;
+		}
+		if (
+			typeof scrollbarScrollLockLeft === "number" &&
+			Math.abs(scroller.scrollLeft - scrollbarScrollLockLeft) > 1
+		) {
+			scroller.scrollLeft = scrollbarScrollLockLeft;
+			lastScrollLeft = scroller.scrollLeft;
+			restored = true;
+		}
+		return restored;
+	}
+
 	/**
 	 * Checks if the cursor is visible within the CodeMirror viewport.
 	 * @returns {boolean} - True if the cursor is visible, false otherwise.
@@ -2290,6 +2422,7 @@ async function EditorManager($header, $body) {
 	function onscrollV(value) {
 		const scroller = editor?.scrollDOM;
 		if (!scroller) return;
+		suppressCursorReveal();
 		const normalized = clamp01(value);
 		const maxScroll = Math.max(
 			scroller.scrollHeight - scroller.clientHeight,
@@ -2298,12 +2431,15 @@ async function EditorManager($header, $body) {
 		preventScrollbarV = true;
 		scroller.scrollTop = normalized * maxScroll;
 		lastScrollTop = scroller.scrollTop;
+		lockScrollbarScrollPosition({ top: lastScrollTop });
 	}
 
 	/**
 	 * Handles the onscroll event for the vend element.
 	 */
 	function onscrollVend() {
+		suppressCursorReveal(1200);
+		lockScrollbarScrollPosition({ top: editor?.scrollDOM?.scrollTop }, 1200);
 		preventScrollbarV = false;
 		setVScrollValue();
 	}
@@ -2316,17 +2452,21 @@ async function EditorManager($header, $body) {
 		if (appSettings.value.textWrap) return;
 		const scroller = editor?.scrollDOM;
 		if (!scroller) return;
+		suppressCursorReveal();
 		const normalized = clamp01(value);
 		const maxScroll = Math.max(scroller.scrollWidth - scroller.clientWidth, 0);
 		preventScrollbarH = true;
 		scroller.scrollLeft = normalized * maxScroll;
 		lastScrollLeft = scroller.scrollLeft;
+		lockScrollbarScrollPosition({ left: lastScrollLeft });
 	}
 
 	/**
 	 * Handles the event when the horizontal scrollbar reaches the end.
 	 */
 	function onscrollHEnd() {
+		suppressCursorReveal(1200);
+		lockScrollbarScrollPosition({ left: editor?.scrollDOM?.scrollLeft }, 1200);
 		preventScrollbarH = false;
 		setHScrollValue();
 	}
@@ -2370,6 +2510,61 @@ async function EditorManager($header, $body) {
 			return;
 		}
 		setHScrollValue();
+		$hScrollbar.render();
+	}
+
+	function readScrollMetrics() {
+		const scroller = editor?.scrollDOM;
+		if (!scroller) return null;
+		return {
+			scrollTop: scroller.scrollTop,
+			scrollLeft: scroller.scrollLeft,
+			scrollHeight: scroller.scrollHeight,
+			scrollWidth: scroller.scrollWidth,
+			clientHeight: scroller.clientHeight,
+			clientWidth: scroller.clientWidth,
+		};
+	}
+
+	function updateScrollbarsFromMetrics(metrics) {
+		if (!metrics) return;
+
+		const maxScrollTop = Math.max(
+			metrics.scrollHeight - metrics.clientHeight,
+			0,
+		);
+		if (maxScrollTop <= 0) {
+			$vScrollbar.hide();
+			lastScrollTop = 0;
+			$vScrollbar.value = 0;
+		} else {
+			if (!preventScrollbarV && metrics.scrollTop !== lastScrollTop) {
+				lastScrollTop = metrics.scrollTop;
+				$vScrollbar.value = clamp01(metrics.scrollTop / maxScrollTop);
+			}
+			$vScrollbar.render();
+		}
+
+		if (appSettings.value.textWrap) {
+			$hScrollbar.hide();
+			return;
+		}
+
+		const maxScrollLeft = Math.max(
+			metrics.scrollWidth - metrics.clientWidth,
+			0,
+		);
+		if (maxScrollLeft <= 0) {
+			$hScrollbar.hide();
+			lastScrollLeft = 0;
+			$hScrollbar.value = 0;
+			return;
+		}
+
+		if (!preventScrollbarH && metrics.scrollLeft !== lastScrollLeft) {
+			lastScrollLeft = metrics.scrollLeft;
+			$hScrollbar.value = clamp01(metrics.scrollLeft / maxScrollLeft);
+		}
 		$hScrollbar.render();
 	}
 

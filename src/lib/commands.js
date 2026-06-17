@@ -458,11 +458,16 @@ export default {
 
 		editor.contentDOM.blur();
 		const wasFocused = editorManager.activeFile.focused;
-		const res = await color(defaultColor, () => {
-			if (wasFocused) {
-				editor.focus();
-			}
-		});
+		let res;
+		try {
+			res = await color(defaultColor, () => {
+				if (wasFocused) {
+					editor.focus();
+				}
+			});
+		} catch (_) {
+			return;
+		}
 
 		if (range) {
 			editor.dispatch({
@@ -611,7 +616,6 @@ Additional Info:
 				// Copy the info to clipboard
 				if (cordova.plugins.clipboard) {
 					cordova.plugins.clipboard.copy(info);
-					toast(strings["copied to clipboard"]);
 				}
 			})
 			.catch((error) => {

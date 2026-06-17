@@ -21,7 +21,12 @@ function pushExtension(target: Extension[], extension?: Extension): void {
 
 export const fixedHeightTheme = EditorView.theme({
 	"&": { height: "100%" },
-	".cm-scroller": { height: "100%", overflow: "auto" },
+	".cm-scroller": {
+		height: "100%",
+		overflow: "auto",
+		willChange: "transform",
+		contentVisibility: "auto",
+	},
 });
 
 export function createMainEditorExtensions(
