@@ -2203,8 +2203,10 @@ async function EditorManager($header, $body) {
 
 		function syncScrollUi() {
 			scrollSyncRaf = 0;
-			onscrolltop();
-			onscrollleft();
+			editor.requestMeasure({
+				read: () => readScrollMetrics(),
+				write: updateScrollbarsFromMetrics,
+			});
 		}
 
 		function handleEditorScroll() {
@@ -2508,6 +2510,61 @@ async function EditorManager($header, $body) {
 			return;
 		}
 		setHScrollValue();
+		$hScrollbar.render();
+	}
+
+	function readScrollMetrics() {
+		const scroller = editor?.scrollDOM;
+		if (!scroller) return null;
+		return {
+			scrollTop: scroller.scrollTop,
+			scrollLeft: scroller.scrollLeft,
+			scrollHeight: scroller.scrollHeight,
+			scrollWidth: scroller.scrollWidth,
+			clientHeight: scroller.clientHeight,
+			clientWidth: scroller.clientWidth,
+		};
+	}
+
+	function updateScrollbarsFromMetrics(metrics) {
+		if (!metrics) return;
+
+		const maxScrollTop = Math.max(
+			metrics.scrollHeight - metrics.clientHeight,
+			0,
+		);
+		if (maxScrollTop <= 0) {
+			$vScrollbar.hide();
+			lastScrollTop = 0;
+			$vScrollbar.value = 0;
+		} else {
+			if (!preventScrollbarV && metrics.scrollTop !== lastScrollTop) {
+				lastScrollTop = metrics.scrollTop;
+				$vScrollbar.value = clamp01(metrics.scrollTop / maxScrollTop);
+			}
+			$vScrollbar.render();
+		}
+
+		if (appSettings.value.textWrap) {
+			$hScrollbar.hide();
+			return;
+		}
+
+		const maxScrollLeft = Math.max(
+			metrics.scrollWidth - metrics.clientWidth,
+			0,
+		);
+		if (maxScrollLeft <= 0) {
+			$hScrollbar.hide();
+			lastScrollLeft = 0;
+			$hScrollbar.value = 0;
+			return;
+		}
+
+		if (!preventScrollbarH && metrics.scrollLeft !== lastScrollLeft) {
+			lastScrollLeft = metrics.scrollLeft;
+			$hScrollbar.value = clamp01(metrics.scrollLeft / maxScrollLeft);
+		}
 		$hScrollbar.render();
 	}
 
