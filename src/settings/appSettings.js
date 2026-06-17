@@ -471,8 +471,8 @@ export default function otherSettings() {
 
 			case "quickTools":
 				value = Number(value) || 0;
-				actions("set-height", value);
-				return;
+				actions("set-height", { height: value, save: false });
+				break;
 
 			case "excludeFolders":
 				value = value
