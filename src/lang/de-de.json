@@ -30,7 +30,7 @@
 	"failed": "Fehlgeschlagen",
 	"file already exists": "Datei existiert bereits",
 	"file already exists force": "Datei existiert bereits ! Möchten sie sie ersetzen?",
-	"file changed": "wurde verändert, soll die Datei neu geladen werden?",
+	"file changed": " wurde verändert, soll die Datei neu geladen werden?",
 	"file deleted": "Datei gelöscht",
 	"file is not supported": "Datei wird nicht unterstützt",
 	"file not supported": "Dateiformat nicht unterstützt.",
