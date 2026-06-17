@@ -184,9 +184,28 @@ function searchBar($list, setHide, onhideCb, searchFunction) {
 	function cloneSearchItem($item) {
 		const $clone = $item.cloneNode(true);
 		$clone.addEventListener("click", () => {
+			$item.addEventListener(
+				"settings-item-interaction-end",
+				(event) => {
+					if (event.detail?.updated) {
+						syncSearchClone($clone, $item);
+					}
+				},
+				{ once: true },
+			);
 			$item.click();
 		});
 		return $clone;
+	}
+
+	/**
+	 * Keep a visible search-result clone in sync after the backing item updates.
+	 * @param {HTMLElement} $clone
+	 * @param {HTMLElement} $item
+	 */
+	function syncSearchClone($clone, $item) {
+		$clone.className = $item.className;
+		$clone.innerHTML = $item.innerHTML;
 	}
 }
 
