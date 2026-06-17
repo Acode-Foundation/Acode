@@ -1,3 +1,4 @@
+import { redoDepth, undoDepth } from "@codemirror/commands";
 import quickTools from "components/quickTools";
 import config from "lib/config";
 import appSettings from "lib/settings";
@@ -78,10 +79,17 @@ export default function init() {
 		} else {
 			$footer.removeAttribute("data-unsaved");
 		}
+		updateHistoryButtons();
 	});
 
 	editorManager.on("save-file", () => {
 		$footer.removeAttribute("data-unsaved");
+	});
+
+	editorManager.on("editor-state-changed", updateHistoryButtons);
+
+	appSettings.on("update:quicktoolsItems:after", () => {
+		setTimeout(updateHistoryButtons, 100);
 	});
 
 	root.append($footer);
@@ -89,6 +97,8 @@ export default function init() {
 		root.appendOuter($toggler);
 	}
 	document.body.append($input);
+	setTimeout(updateHistoryButtons, 0);
+
 	if (
 		appSettings.value.quickToolsTriggerMode ===
 		appSettings.QUICKTOOLS_TRIGGER_MODE_CLICK
@@ -139,6 +149,12 @@ function onwheel(e) {
 function onclick(e) {
 	reset();
 
+	if (e.target.disabled) {
+		e.preventDefault();
+		e.stopPropagation();
+		return;
+	}
+
 	e.preventDefault();
 	e.stopPropagation();
 	click(e.target);
@@ -150,6 +166,11 @@ function touchstart(e) {
 
 	const $el = e.target;
 	if ($el instanceof HTMLInputElement) {
+		return;
+	}
+	if ($el.disabled) {
+		e.preventDefault();
+		e.stopPropagation();
 		return;
 	}
 
@@ -329,6 +350,8 @@ function oncontextmenu(e) {
  * @param {HTMLElement} $el
  */
 function click($el) {
+	if ($el.disabled) return;
+
 	$el.classList.add("click");
 	clearTimeout($el.dataset.timeout);
 	$el.dataset.timeout = setTimeout(() => {
@@ -349,4 +372,21 @@ function click($el) {
 	}
 
 	actions(action, value);
+}
+
+function updateHistoryButtons() {
+	const { editor, activeFile } = editorManager;
+	const disabled = !editor || activeFile?.type !== "editor";
+
+	updateHistoryButton("undo", disabled || undoDepth(editor.state) === 0);
+	updateHistoryButton("redo", disabled || redoDepth(editor.state) === 0);
+}
+
+function updateHistoryButton(id, disabled) {
+	quickTools.$footer
+		.querySelectorAll(`[data-id="${id}"]`)
+		.forEach(($button) => {
+			$button.disabled = disabled;
+			$button.setAttribute("aria-disabled", String(disabled));
+		});
 }
