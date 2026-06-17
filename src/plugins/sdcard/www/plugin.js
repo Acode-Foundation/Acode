@@ -62,5 +62,20 @@ module.exports = {
   },
   listEncodings: function (onSuccess, onFail) {
     cordova.exec(onSuccess, onFail, 'SDcard', 'list encodings', []);
+  },
+  workspaceScan: function (options, onEvent, onFail) {
+    cordova.exec(onEvent, onFail, 'SDcard', 'workspace scan', [options || {}]);
+  },
+  workspaceSearch: function (options, onEvent, onFail) {
+    cordova.exec(onEvent, onFail, 'SDcard', 'workspace search', [options || {}]);
+  },
+  workspaceCancel: function (id, onSuccess, onFail) {
+    cordova.exec(onSuccess, onFail, 'SDcard', 'workspace cancel', [id]);
+  },
+  workspaceMarkDirty: function (urls, onSuccess, onFail) {
+    cordova.exec(onSuccess, onFail, 'SDcard', 'workspace mark dirty', [urls || []]);
+  },
+  workspaceClear: function (roots, onSuccess, onFail) {
+    cordova.exec(onSuccess, onFail, 'SDcard', 'workspace clear', [roots || []]);
   }
 };

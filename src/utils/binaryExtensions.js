@@ -200,6 +200,55 @@ export const binaryExtensions = [
 ];
 
 const binaryExtensionSet = new Set(binaryExtensions);
+const textExtensionSet = new Set([
+	"astro",
+	"c",
+	"cc",
+	"cfg",
+	"conf",
+	"cpp",
+	"cs",
+	"css",
+	"csv",
+	"cxx",
+	"dart",
+	"env",
+	"go",
+	"graphql",
+	"h",
+	"hpp",
+	"htm",
+	"html",
+	"java",
+	"js",
+	"json",
+	"jsx",
+	"kt",
+	"kts",
+	"less",
+	"lua",
+	"md",
+	"mjs",
+	"php",
+	"properties",
+	"py",
+	"rb",
+	"rs",
+	"sass",
+	"scss",
+	"sh",
+	"sql",
+	"svg",
+	"swift",
+	"toml",
+	"ts",
+	"tsx",
+	"txt",
+	"vue",
+	"xml",
+	"yaml",
+	"yml",
+]);
 
 const binaryMimePrefixes = ["audio/", "font/", "image/", "model/", "video/"];
 
@@ -280,9 +329,18 @@ export function isBinaryFile(file) {
 
 	const mime = file.mime || file.type;
 	if (isTextMime(mime)) return false;
+	if (isTextPath(file.url || file.path || file.name)) return false;
 	if (isBinaryMime(mime)) return true;
 
 	return isBinaryPath(file.url || file.path || file.name);
+}
+
+export function isTextPath(file) {
+	const path = String(file ?? "").split(/[?#]/)[0];
+	const basename = path.split(/[\\/]/).pop()?.toLowerCase() || "";
+	const lastDot = basename.lastIndexOf(".");
+	if (lastDot === -1) return false;
+	return textExtensionSet.has(basename.slice(lastDot + 1));
 }
 
 export function isBinaryPath(file) {
