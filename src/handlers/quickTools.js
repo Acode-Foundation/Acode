@@ -21,6 +21,7 @@ export let quickToolUsed = false;
 let input;
 /** @type {number} */
 let quickToolUsedTimeout = null;
+let activeSearchState = null;
 
 const state = {
 	shift: false,
@@ -348,6 +349,7 @@ function toggleSearch() {
 		const { className } = quickTools.$toggler;
 		const $content = [...$footer.children];
 		const footerHeight = getFooterHeight();
+		activeSearchState = { className, content: $content, footerHeight };
 
 		$toggler.className = "floating icon clearclose";
 		$footer.content = [$searchRow1, $searchRow2];
@@ -375,10 +377,16 @@ function toggleSearch() {
 		actionStack.push({
 			id: "search-bar",
 			action: () => {
+				const restoreState = activeSearchState || {
+					className,
+					content: $content,
+					footerHeight,
+				};
 				removeSearch();
-				$footer.content = $content;
-				$toggler.className = className;
-				setFooterHeight(footerHeight);
+				$footer.content = restoreState.content;
+				$toggler.className = restoreState.className;
+				setFooterHeight(restoreState.footerHeight);
+				activeSearchState = null;
 			},
 		});
 	} else {
@@ -427,6 +435,25 @@ function setHeight(height = 1, save = true) {
 		save = false;
 	}
 
+	const searchBar = actionStack.get("search-bar");
+	if (searchBar?.action) {
+		if (height === 0) {
+			searchBar.action();
+		} else {
+			const footerHeight = Number(height) || 0;
+			activeSearchState = {
+				className:
+					activeSearchState?.className || quickTools.$toggler.className,
+				content: getQuickToolsRows(footerHeight),
+				footerHeight,
+			};
+			if (save) {
+				appSettings.update({ quickTools: height }, false);
+			}
+			return;
+		}
+	}
+
 	setFooterHeight(height);
 	if (save) {
 		appSettings.update({ quickTools: height }, false);
@@ -455,6 +482,11 @@ function setHeight(height = 1, save = true) {
 	} else {
 		$row2.remove();
 	}
+}
+
+function getQuickToolsRows(height) {
+	const { $row1, $row2 } = quickTools;
+	return [$row1, $row2].slice(0, height);
 }
 
 /**
