@@ -109,8 +109,9 @@ function isSkipContext(name: string): boolean {
 	return (
 		lower.includes("string") ||
 		lower.includes("comment") ||
-		lower === "regexp" ||
-		lower === "escape"
+		lower.includes("regexp") ||
+		lower.includes("regex") ||
+		lower.includes("regular")
 	);
 }
 
@@ -184,6 +185,8 @@ export function rainbowBrackets(options: RainbowBracketsOptions = {}) {
 	const rainbowBracketsPlugin = ViewPlugin.fromClass(
 		class {
 			decorations: DecorationSet;
+			raf = 0;
+			pendingView: EditorView | null = null;
 
 			constructor(view: EditorView) {
 				this.decorations = this.buildDecorations(view);
@@ -191,7 +194,23 @@ export function rainbowBrackets(options: RainbowBracketsOptions = {}) {
 
 			update(update: ViewUpdate) {
 				if (!update.docChanged && !update.viewportChanged) return;
-				this.decorations = this.buildDecorations(update.view);
+				if (update.docChanged) {
+					this.decorations = this.decorations.map(update.changes);
+				}
+				this.scheduleBuild(update.view);
+			}
+
+			scheduleBuild(view: EditorView): void {
+				this.pendingView = view;
+				if (this.raf) return;
+				this.raf = requestAnimationFrame(() => {
+					this.raf = 0;
+					const pendingView = this.pendingView;
+					this.pendingView = null;
+					if (!pendingView) return;
+					this.decorations = this.buildDecorations(pendingView);
+					pendingView.dispatch({});
+				});
 			}
 
 			buildDecorations(view: EditorView): DecorationSet {
@@ -268,7 +287,13 @@ export function rainbowBrackets(options: RainbowBracketsOptions = {}) {
 				return builder.finish();
 			}
 
-			destroy(): void {}
+			destroy(): void {
+				if (this.raf) {
+					cancelAnimationFrame(this.raf);
+					this.raf = 0;
+				}
+				this.pendingView = null;
+			}
 		},
 		{
 			decorations: (value) => value.decorations,
