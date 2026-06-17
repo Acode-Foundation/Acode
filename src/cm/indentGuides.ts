@@ -25,9 +25,9 @@ const defaultConfig: Required<IndentGuidesConfig> = {
 };
 
 const GUIDE_MARK_CLASS = "cm-indent-guides";
-const MAX_VISIBLE_GUIDE_LINES = 1200;
+const GUIDE_LINE_CLASS = "cm-indent-guides-line";
+const MAX_VISIBLE_GUIDE_LINES = 500;
 const MAX_GUIDE_LEVELS = 40;
-const REBUILD_DELAY_MS = 50;
 
 interface IndentLineInfo {
 	text: string;
@@ -39,6 +39,8 @@ interface IndentLineInfo {
 
 type IndentLineCache = Map<number, IndentLineInfo>;
 type GuideStyleCache = Map<string, string>;
+
+const BLANK_LINE_SCAN_LIMIT = 100;
 
 /**
  * Get the tab size from editor state
@@ -171,8 +173,47 @@ function buildDecorations(
 	for (const { from: blockFrom, to: blockTo } of view.visibleRanges) {
 		const startLine = state.doc.lineAt(blockFrom);
 		const endLine = state.doc.lineAt(blockTo);
+		const firstLineNumber = startLine.number;
+		const lastLineNumber = endLine.number;
+		const scanStartLine = Math.max(1, firstLineNumber - BLANK_LINE_SCAN_LIMIT);
+		const scanEndLine = Math.min(
+			state.doc.lines,
+			lastLineNumber + BLANK_LINE_SCAN_LIMIT,
+		);
+		const prevIndentByLine = new Map<number, number>();
+		const nextIndentByLine = new Map<number, number>();
+		let prevIndent = -1;
+		let prevIndentLine = -1;
 
-		for (let lineNum = startLine.number; lineNum <= endLine.number; lineNum++) {
+		for (let lineNum = scanStartLine; lineNum <= scanEndLine; lineNum++) {
+			const line = state.doc.line(lineNum);
+			const info = getCachedLineInfo(lineNum, line.text, tabSize, lineCache);
+			prevIndentByLine.set(
+				lineNum,
+				lineNum - prevIndentLine <= BLANK_LINE_SCAN_LIMIT ? prevIndent : -1,
+			);
+			if (!info.blank) {
+				prevIndent = info.indentColumns;
+				prevIndentLine = lineNum;
+			}
+		}
+
+		let nextIndent = -1;
+		let nextIndentLine = state.doc.lines + 1;
+		for (let lineNum = scanEndLine; lineNum >= scanStartLine; lineNum--) {
+			const line = state.doc.line(lineNum);
+			const info = getCachedLineInfo(lineNum, line.text, tabSize, lineCache);
+			nextIndentByLine.set(
+				lineNum,
+				nextIndentLine - lineNum <= BLANK_LINE_SCAN_LIMIT ? nextIndent : -1,
+			);
+			if (!info.blank) {
+				nextIndent = info.indentColumns;
+				nextIndentLine = lineNum;
+			}
+		}
+
+		for (let lineNum = firstLineNumber; lineNum <= lastLineNumber; lineNum++) {
 			if (processedLines >= MAX_VISIBLE_GUIDE_LINES) return builder.finish();
 			processedLines++;
 
@@ -183,23 +224,49 @@ function buildDecorations(
 				continue;
 			}
 
+			let indentColumns = info.indentColumns;
+			if (info.blank) {
+				const previousIndent = prevIndentByLine.get(lineNum) ?? -1;
+				const followingIndent = nextIndentByLine.get(lineNum) ?? -1;
+				if (previousIndent !== -1 && followingIndent !== -1) {
+					indentColumns = Math.min(previousIndent, followingIndent);
+				} else if (previousIndent !== -1) {
+					indentColumns = previousIndent;
+				} else if (followingIndent !== -1) {
+					indentColumns = followingIndent;
+				}
+			}
+
 			const levels = Math.min(
-				Math.floor(info.indentColumns / indentUnit),
+				Math.floor(indentColumns / indentUnit),
 				MAX_GUIDE_LEVELS,
 			);
 			if (levels <= 0) continue;
-			if (info.leadingWhitespaceLength <= 0) continue;
 
-			builder.add(
-				line.from,
-				line.from + info.leadingWhitespaceLength,
-				Decoration.mark({
-					attributes: {
-						class: GUIDE_MARK_CLASS,
-						style: getGuideStyle(levels, guideStepPx, styleCache),
-					},
-				}),
-			);
+			if (info.blank) {
+				builder.add(
+					line.from,
+					line.from,
+					Decoration.line({
+						attributes: {
+							class: GUIDE_LINE_CLASS,
+							style: getGuideStyle(levels, guideStepPx, styleCache),
+						},
+					}),
+				);
+			} else {
+				if (info.leadingWhitespaceLength <= 0) continue;
+				builder.add(
+					line.from,
+					line.from + info.leadingWhitespaceLength,
+					Decoration.mark({
+						attributes: {
+							class: GUIDE_MARK_CLASS,
+							style: getGuideStyle(levels, guideStepPx, styleCache),
+						},
+					}),
+				);
+			}
 		}
 	}
 
@@ -218,57 +285,72 @@ function createIndentGuidesPlugin(
 	return ViewPlugin.fromClass(
 		class {
 			decorations: DecorationSet;
-			rebuildTimer = 0;
-			pendingView: EditorView | null = null;
 			lineCache: IndentLineCache = new Map();
 			styleCache: GuideStyleCache = new Map();
+			lastCharWidth = 0;
+			lastTabSize = 4;
+			lastIndentUnit = 4;
 
 			constructor(view: EditorView) {
-				this.decorations = Decoration.none;
-				this.scheduleBuild(view);
+				const { state } = view;
+				this.lastCharWidth = view.defaultCharacterWidth;
+				this.lastTabSize = getTabSize(state);
+				this.lastIndentUnit = getIndentUnitColumns(state);
+
+				this.decorations = buildDecorations(
+					view,
+					config,
+					this.lineCache,
+					this.styleCache,
+				);
 			}
 
 			update(update: ViewUpdate): void {
-				if (
-					!update.docChanged &&
-					!update.viewportChanged &&
-					!update.geometryChanged
-				) {
-					return;
-				}
+				const { view, state } = update;
+				let needsRebuild = false;
+
 				if (update.docChanged) {
 					this.decorations = this.decorations.map(update.changes);
 					this.lineCache.clear();
+					needsRebuild = true;
 				}
-				if (update.geometryChanged) {
-					this.styleCache.clear();
-				}
-				this.scheduleBuild(update.view);
-			}
 
-			scheduleBuild(view: EditorView): void {
-				this.pendingView = view;
-				if (this.rebuildTimer) return;
-				this.rebuildTimer = window.setTimeout(() => {
-					this.rebuildTimer = 0;
-					const pendingView = this.pendingView;
-					this.pendingView = null;
-					if (!pendingView) return;
+				if (update.viewportChanged) {
+					needsRebuild = true;
+				}
+
+				const currentTabSize = getTabSize(state);
+				const currentIndentUnit = getIndentUnitColumns(state);
+				const currentCharWidth = view.defaultCharacterWidth;
+
+				if (
+					currentTabSize !== this.lastTabSize ||
+					currentIndentUnit !== this.lastIndentUnit
+				) {
+					this.lastTabSize = currentTabSize;
+					this.lastIndentUnit = currentIndentUnit;
+					this.lineCache.clear();
+					this.styleCache.clear();
+					needsRebuild = true;
+				}
+
+				if (currentCharWidth !== this.lastCharWidth) {
+					this.lastCharWidth = currentCharWidth;
+					this.styleCache.clear();
+					needsRebuild = true;
+				}
+
+				if (needsRebuild) {
 					this.decorations = buildDecorations(
-						pendingView,
+						view,
 						config,
 						this.lineCache,
 						this.styleCache,
 					);
-				}, REBUILD_DELAY_MS);
+				}
 			}
 
 			destroy(): void {
-				if (this.rebuildTimer) {
-					window.clearTimeout(this.rebuildTimer);
-					this.rebuildTimer = 0;
-				}
-				this.pendingView = null;
 				this.lineCache.clear();
 				this.styleCache.clear();
 			}
@@ -287,6 +369,9 @@ const indentGuidesTheme = EditorView.baseTheme({
 	".cm-indent-guides": {
 		display: "inline-block",
 		verticalAlign: "top",
+	},
+	".cm-indent-guides-line": {
+		backgroundOrigin: "content-box",
 	},
 	"&": {
 		"--indent-guide-color": "rgba(128, 128, 128, 0.25)",
