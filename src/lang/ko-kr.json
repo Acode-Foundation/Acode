@@ -146,7 +146,6 @@
 	"none": "없음",
 	"small": "작은",
 	"large": "큰",
-	"floating button": "유동적인 버튼",
 	"confirm on exit": "엡 종료시 확인",
 	"show console": "콘솔 보기",
 	"image": "사진",
@@ -760,5 +759,9 @@
 	"scrollbar height": "Scrollbar height",
 	"full": "Full",
 	"scroll past end": "Scroll past end",
-	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top."
+	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top.",
+	"compact": "컴팩트",
+	"off": "끄기",
+	"quick tools height": "퀵툴 높이",
+	"quick tools toggler": "퀵툴 토글러"
 }

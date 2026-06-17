@@ -146,7 +146,6 @@
 	"none": "ഒന്നുമില്ല",
 	"small": "ചെറുത്",
 	"large": "വലുത്",
-	"floating button": "ഫ്ലോട്ടിങ് ബട്ടൺ",
 	"confirm on exit": "കൺഫേം ഓൺ എക്സിറ് ",
 	"show console": "കൺസോൾ കാണിക്കുക",
 	"image": "ചിത്രം",
@@ -760,5 +759,9 @@
 	"scrollbar height": "Scrollbar height",
 	"full": "Full",
 	"scroll past end": "Scroll past end",
-	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top."
+	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top.",
+	"compact": "കോംപാക്റ്റ്",
+	"off": "ഓഫ്",
+	"quick tools height": "ദ്രുത ഉപകരണ ഉയരം",
+	"quick tools toggler": "ദ്രുത ഉപകരണ ടോഗ്ലർ"
 }

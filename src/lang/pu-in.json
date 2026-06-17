@@ -146,7 +146,6 @@
 	"none": "ਕੋਈ ਨਹੀਂ",
 	"small": "ਛੋਟਾ",
 	"large": "ਵੱਡਾ",
-	"floating button": "ਫਲੋਟਿੰਗ ਬਟਨ",
 	"confirm on exit": "ਬੰਦ ਹੋਣ ਦੀ ਪੁਸ਼ਟੀ ਕਰੋ",
 	"show console": "ਕੰਸੋਲ ਦਿਖਾਓ",
 	"image": "ਚਿੱਤਰ",
@@ -760,5 +759,9 @@
 	"scrollbar height": "Scrollbar height",
 	"full": "Full",
 	"scroll past end": "Scroll past end",
-	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top."
+	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top.",
+	"compact": "ਸੰਖੇਪ",
+	"off": "ਬੰਦ",
+	"quick tools height": "ਤੇਜ਼ ਟੂਲ ਦੀ ਉਚਾਈ",
+	"quick tools toggler": "ਤੇਜ਼ ਟੂਲ ਟੌਗਲਰ"
 }

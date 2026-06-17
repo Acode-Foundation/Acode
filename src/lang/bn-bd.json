@@ -146,7 +146,6 @@
 	"none": "none",
 	"small": "ছোট",
 	"large": "বড়",
-	"floating button": "ভাসমান বাটোন",
 	"confirm on exit": "প্রস্থান নিশ্চিত করুন",
 	"show console": "কনসোল দেখান",
 	"image": "ছবি",
@@ -760,5 +759,9 @@
 	"scrollbar height": "Scrollbar height",
 	"full": "Full",
 	"scroll past end": "Scroll past end",
-	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top."
+	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top.",
+	"compact": "কম্প্যাক্ট",
+	"off": "বন্ধ",
+	"quick tools height": "কুইক টুলসের উচ্চতা",
+	"quick tools toggler": "কুইক টুলস টগলার"
 }

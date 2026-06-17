@@ -1,3 +1,4 @@
+import quickTools from "../components/quickTools";
 import actions from "../handlers/quickTools";
 import appSettings from "../lib/settings";
 import themes from "../theme/list";
@@ -29,8 +30,21 @@ export default {
 	},
 	afterRender() {
 		const { value: settings } = appSettings;
-		if (!settings.floatingButton) {
-			root.classList.add("hide-floating-button");
+		const { $toggler } = quickTools;
+		if (settings.floatingButton) {
+			clearTimeout($toggler._hideTimeout);
+			$toggler._hideTimeout = null;
+			$toggler.classList.remove("hide");
+			if (!$toggler.isConnected) {
+				root.appendOuter($toggler);
+			}
+		} else {
+			clearTimeout($toggler._hideTimeout);
+			$toggler.classList.add("hide");
+			$toggler._hideTimeout = setTimeout(() => {
+				$toggler.remove();
+				$toggler._hideTimeout = null;
+			}, 300);
 		}
 
 		actions("set-height", settings.quickTools);

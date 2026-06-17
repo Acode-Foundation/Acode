@@ -233,15 +233,29 @@ function listItems($list, items, callback, options = {}) {
 		const item = itemByKey.get(key);
 		if (!item) return;
 		const result = await resolveItemInteraction(item, $target);
-		if (result.shouldCallCallback === false) return;
-		if (!result.shouldUpdateValue)
+		if (result.shouldCallCallback === false) {
+			dispatchItemInteractionEnd($target, false);
+			return;
+		}
+		if (!result.shouldUpdateValue) {
+			dispatchItemInteractionEnd($target, false);
 			return callback.call($target, key, item.value);
+		}
 
 		item.value = result.value;
 		updateItemValueDisplay($target, item, options, useInfoAsDescription);
+		dispatchItemInteractionEnd($target, true);
 
 		callback.call($target, key, item.value);
 	}
+}
+
+function dispatchItemInteractionEnd($target, updated) {
+	$target.dispatchEvent(
+		new CustomEvent("settings-item-interaction-end", {
+			detail: { updated },
+		}),
+	);
 }
 
 function normalizeSettings(settings) {
