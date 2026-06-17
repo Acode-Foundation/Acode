@@ -171,7 +171,7 @@
     "html-tag-js": "^2.4.16",
     "jszip": "^3.10.1",
     "katex": "^0.16.45",
-    "markdown-it": "^14.1.1",
+    "markdown-it": "^14.2.0",
     "markdown-it-anchor": "^9.2.0",
     "markdown-it-emoji": "^3.0.0",
     "markdown-it-footnote": "^4.0.0",
