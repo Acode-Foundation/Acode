@@ -187,7 +187,7 @@ export default function otherSettings() {
 				},
 			},
 			info: strings["settings-info-app-touch-move-threshold"],
-			category: categories.quickTools,
+			category: categories.interface,
 		},
 		{
 			key: "appFont",

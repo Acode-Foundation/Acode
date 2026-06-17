@@ -1370,11 +1370,13 @@ export default class EditorFile {
 			actions("set-height", { height: 0, save: false });
 		} else {
 			const { $toggler } = quickTools;
-			clearTimeout($toggler._hideTimeout);
-			$toggler._hideTimeout = null;
-			$toggler.classList.remove("hide");
-			if (appSettings.value.floatingButton && !$toggler.isConnected) {
-				root.appendOuter($toggler);
+			if (appSettings.value.floatingButton) {
+				clearTimeout($toggler._hideTimeout);
+				$toggler._hideTimeout = null;
+				$toggler.classList.remove("hide");
+				if (!$toggler.isConnected) {
+					root.appendOuter($toggler);
+				}
 			}
 			const quickToolsHeight =
 				appSettings.value.quickTools !== undefined
