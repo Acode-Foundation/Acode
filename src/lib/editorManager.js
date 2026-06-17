@@ -2026,6 +2026,10 @@ async function EditorManager($header, $body) {
 			const file = manager.activeFile;
 			if (!file || file.type !== "editor") return;
 
+			if (update.docChanged) {
+				events.emit("editor-state-changed", update.view);
+			}
+
 			// Only run expensive work when the document actually changed
 			if (!update.docChanged) return;
 
