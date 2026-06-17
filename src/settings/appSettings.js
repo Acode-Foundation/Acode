@@ -159,8 +159,9 @@ export default function otherSettings() {
 			text: strings["quick tools height"],
 			value: values.quickTools,
 			valueText: (value) => {
-				if (value === 0) return strings.off;
-				if (value === 1) return strings.compact;
+				const height = Number(value) || 0;
+				if (height === 0) return strings.off;
+				if (height === 1) return strings.compact;
 				return strings.full;
 			},
 			select: [
