@@ -285,57 +285,66 @@ class WorkspaceIndex {
     String defaultEncoding = options.optString("defaultEncoding", "UTF-8");
     boolean indexContent = options.optBoolean("indexContent", false);
 
-    ContentValues workspace = new ContentValues();
-    workspace.put("root_url", rootUrl);
-    workspace.put("title", title);
-    workspace.put("indexed_at", System.currentTimeMillis());
-    workspace.put("options_hash", String.valueOf(options.toString().hashCode()));
-    db.getWritableDatabase().replace("workspaces", null, workspace);
-    db.getWritableDatabase().delete("files", "root_url = ?", new String[] { rootUrl });
-
     JSONArray batch = new JSONArray();
     ScanStats stats = new ScanStats();
 
     sendStatus(callback, job.id, "scanning", "Scanning project files", 0, true);
 
-    if (isSafUrl(rootUrl)) {
-      SafUrl rootSafUrl = parseSafUrl(rootUrl);
-      scanSafDir(
-        job,
-        callback,
-        rootSafUrl.treeUrl,
-        rootUrl,
-        rootSafUrl.docId,
-        rootUrl,
-        title,
-        title,
-        exclude,
-        showHiddenFiles,
-        defaultEncoding,
-        indexContent,
-        batch,
-        stats
-      );
-    } else {
-      File rootFile = fileFromUrl(rootUrl);
-      scanFileDir(
-        job,
-        callback,
-        rootUrl,
-        rootFile,
-        rootUrl,
-        title,
-        title,
-        exclude,
-        showHiddenFiles,
-        defaultEncoding,
-        indexContent,
-        batch,
-        stats
-      );
+    SQLiteDatabase writable = db.getWritableDatabase();
+    writable.beginTransaction();
+    try {
+      ContentValues workspace = new ContentValues();
+      workspace.put("root_url", rootUrl);
+      workspace.put("title", title);
+      workspace.put("indexed_at", System.currentTimeMillis());
+      workspace.put("options_hash", String.valueOf(options.toString().hashCode()));
+      writable.replace("workspaces", null, workspace);
+      writable.delete("files", "root_url = ?", new String[] { rootUrl });
+
+      if (isSafUrl(rootUrl)) {
+        SafUrl rootSafUrl = parseSafUrl(rootUrl);
+        scanSafDir(
+          job,
+          callback,
+          rootSafUrl.treeUrl,
+          rootUrl,
+          rootSafUrl.docId,
+          rootUrl,
+          title,
+          title,
+          exclude,
+          showHiddenFiles,
+          defaultEncoding,
+          indexContent,
+          batch,
+          stats
+        );
+      } else {
+        File rootFile = fileFromUrl(rootUrl);
+        scanFileDir(
+          job,
+          callback,
+          rootUrl,
+          rootFile,
+          rootUrl,
+          title,
+          title,
+          exclude,
+          showHiddenFiles,
+          defaultEncoding,
+          indexContent,
+          batch,
+          stats
+        );
+      }
+
+      if (job.cancelled) return;
+      flushBatch(callback, job.id, batch);
+      writable.setTransactionSuccessful();
+    } finally {
+      writable.endTransaction();
     }
 
-    flushBatch(callback, job.id, batch);
     JSONObject done = baseEvent(job.id, "done");
     done.put("files", stats.files);
     done.put("dirs", stats.dirs);
@@ -933,11 +942,12 @@ class WorkspaceIndex {
     if ("**".equals(normalizedPattern)) return true;
 
     String regex = globToRegex(normalizedPattern);
-    if (Pattern.compile(regex).matcher(normalizedPath).matches()) return true;
+    Pattern compiled = Pattern.compile(regex);
+    if (compiled.matcher(normalizedPath).matches()) return true;
 
     int slash = normalizedPath.lastIndexOf('/');
     String basename = slash >= 0 ? normalizedPath.substring(slash + 1) : normalizedPath;
-    return Pattern.compile(regex).matcher(basename).matches();
+    return compiled.matcher(basename).matches();
   }
 
   private String globToRegex(String glob) {
@@ -1049,7 +1059,6 @@ class WorkspaceIndex {
       if (
         (ch >= 0 && ch <= 8) ||
         ch == 11 ||
-        ch == 12 ||
         (ch >= 14 && ch <= 31) ||
         ch == 127
       ) {
@@ -1168,12 +1177,6 @@ class WorkspaceIndex {
 
   private Uri formatSafUri(String url) {
     SafUrl safUrl = parseSafUrl(url);
-    if (!url.contains(SEPARATOR)) {
-      return DocumentsContract.buildDocumentUriUsingTree(
-        Uri.parse(safUrl.treeUrl),
-        safUrl.docId
-      );
-    }
     return DocumentsContract.buildDocumentUriUsingTree(
       Uri.parse(safUrl.treeUrl),
       safUrl.docId
