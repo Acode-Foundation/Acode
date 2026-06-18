@@ -394,7 +394,7 @@ class WorkspaceIndex {
 
       addEntry(callback, job.id, batch, entry, stats);
       if (isDir) {
-        if (isExcluded(path + "/", exclude)) continue;
+        if (isExcluded(path, exclude)) continue;
         scanFileDir(
           job,
           callback,
@@ -485,7 +485,7 @@ class WorkspaceIndex {
 
         addEntry(callback, job.id, batch, entry, stats);
         if (isDir) {
-          if (isExcluded(path + "/", exclude)) continue;
+          if (isExcluded(path, exclude)) continue;
           scanSafDir(
             job,
             callback,
