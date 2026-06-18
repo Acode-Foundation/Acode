@@ -29,8 +29,8 @@
 	"error": "Fehler",
 	"failed": "Fehlgeschlagen",
 	"file already exists": "Datei existiert bereits",
-	"file already exists force": "Datei existiert bereits ! Möchten sie sie ersetzen?",
-	"file changed": "wurde verändert, soll die Datei neu geladen werden?",
+	"file already exists force": "Datei existiert bereits! Möchten Sie sie ersetzen?",
+	"file changed": " wurde verändert, soll die Datei neu geladen werden?",
 	"file deleted": "Datei gelöscht",
 	"file is not supported": "Datei wird nicht unterstützt",
 	"file not supported": "Dateiformat nicht unterstützt.",
@@ -41,7 +41,7 @@
 	"folder already added": "Ordner wurde bereits hinzugefügt",
 	"font size": "Schriftgröße",
 	"goto": "Spring zur Zeile",
-	"icons definition": "„Symboldefinitionen",
+	"icons definition": "Symboldefinitionen",
 	"info": "Information",
 	"invalid value": "Ungültiger Wert",
 	"language changed": "Anwendungssprache erfolgreich geändert",
@@ -146,6 +146,7 @@
 	"none": "Keine",
 	"small": "Klein",
 	"large": "Groß",
+	"floating button": "Schwebende Schaltfläche",
 	"confirm on exit": "Beim Beenden bestätigen",
 	"show console": "Konsole anzeigen",
 	"image": "Bild",
@@ -759,5 +760,10 @@
 	"scrollbar height": "Scrollbar height",
 	"full": "Full",
 	"scroll past end": "Scroll past end",
+	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top.",
+	"compact": "Kompakt",
+	"off": "Aus",
+	"quick tools height": "Schnellwerkzeug-Höhe",
+	"quick tools toggler": "Schnellwerkzeug-Schaltfläche"
 	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top."
 }
