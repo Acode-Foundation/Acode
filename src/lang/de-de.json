@@ -34,7 +34,7 @@
 	"file deleted": "Datei gelöscht",
 	"file is not supported": "Datei wird nicht unterstützt",
 	"file not supported": "Dateiformat nicht unterstützt.",
-	"file too large": "Datei ist zu groß um bearbeitet zu werden die Maximale Größe beträgt {size}",
+	"file too large": "Datei ist zu groß, um bearbeitet zu werden. Die maximale Größe beträgt {size}.",
 	"file renamed": "Datei umbenannt",
 	"file saved": "Datei gespeichert",
 	"folder added": "Ordner hinzugefügt",
