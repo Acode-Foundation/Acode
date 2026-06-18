@@ -97,7 +97,7 @@
             echo "should not skip tags, releases: ${{ ! inputs.skip_tagging_and_releases }}" >> $GITHUB_STEP_SUMMARY     
 
         - name: Checkout Repository
-          uses: actions/checkout@v6
+          uses: actions/checkout@v7
           with:
             fetch-depth: 0 # Required for tags
             # persists credentials locally if tagging and releases are not skipped.
