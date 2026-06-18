@@ -598,7 +598,8 @@ class WorkspaceIndex {
       }
 
       if ("replace".equals(mode)) {
-        String text = pattern.matcher(content).replaceAll(replace == null ? "" : replace);
+        String replacement = Matcher.quoteReplacement(replace == null ? "" : replace);
+        String text = pattern.matcher(content).replaceAll(replacement);
         JSONObject result = baseEvent(job.id, "replace-result");
         result.put("file", file);
         result.put("text", text);
