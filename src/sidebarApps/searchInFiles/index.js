@@ -365,7 +365,7 @@ async function onWorkerMessage(e) {
 }
 
 function appendSearchResult(data) {
-	const { file, matches, text } = data;
+	const { file, matches, limited } = data;
 
 	if (!matches.length) return;
 	if (filesSearched.find((item) => item.url === file.url)) return;
@@ -382,27 +382,68 @@ function appendSearchResult(data) {
 	);
 
 	const index = filesSearched.length - 1;
+	const displayRows = groupMatchesForDisplay(matches);
 	results.push({
 		file: index,
 		match: null,
 		position: null,
 	});
 
-	fileNames.push({ name: file.name, path: file.path });
+	fileNames.push({ name: file.name, path: file.path, count: matches.length });
 	for (const result of matches) {
 		result.file = index;
-		results.push(result);
 		if (words.length < MAX_HL_WORDS) {
 			const token = escapeStringRegexp(result.renderText);
 			if (!words.includes(token)) words.push(token);
 		}
 	}
+	for (const { result } of displayRows) {
+		results.push(result);
+	}
+	if (limited) {
+		results.push({
+			file: index,
+			match: null,
+			position: null,
+			notice: true,
+		});
+	}
 
+	const text = formatSearchResultText(file, displayRows, limited);
 	if (fileNames.length > 1) {
 		appendSearchResultText(`\n${text}`);
 	} else {
 		appendSearchResultText(text);
 	}
+}
+
+function groupMatchesForDisplay(matches) {
+	const rows = [];
+	const seen = new Set();
+	for (const result of matches) {
+		const row = result.position?.start?.row ?? -1;
+		const preview = String(
+			result.line || result.text || result.renderText || result.match || "",
+		).trim();
+		const key = `${row}\n${preview}`;
+		if (seen.has(key)) continue;
+		seen.add(key);
+		rows.push({ result, preview });
+	}
+	return rows;
+}
+
+function formatSearchResultText(file, displayRows, limited) {
+	const lines = [file.name];
+	for (const { result, preview } of displayRows) {
+		const row = result.position?.start?.row;
+		const lineNumber = Number.isInteger(row) ? `${row + 1}: ` : "";
+		lines.push(`\t${lineNumber}${preview}`);
+	}
+	if (limited) {
+		lines.push("\t... result limit reached for this file");
+	}
+	return lines.join("\n");
 }
 
 async function finishSearchTask() {
@@ -420,6 +461,7 @@ async function finishSearchTask() {
 
 	searching = false;
 	nativeSearchId = null;
+	$indexStatus.value = "";
 }
 
 async function finishReplaceTask() {
@@ -428,6 +470,7 @@ async function finishReplaceTask() {
 	await helpers.showInterstitialIfReady();
 	replacing = false;
 	nativeSearchId = null;
+	$indexStatus.value = "";
 }
 
 /**
@@ -474,12 +517,15 @@ function onInput(e) {
 	newFiles = 0;
 	$error.value = "";
 	results.length = 0;
+	words.length = 0;
+	fileNames.length = 0;
+	currentSearchRegex = null;
 	$progress.value = 0;
 	filesSearched.length = 0;
 	resultOverview.reset();
+	clearPendingResultText();
 	searchResult.setValue("");
 	searchResult.setGhostText(strings["searching..."], { row: 0, column: 0 });
-	clearPendingResultText();
 	removeEvents();
 	debounceSearch();
 }

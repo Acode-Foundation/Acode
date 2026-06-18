@@ -44,7 +44,11 @@ class WorkspaceIndex {
   private static final int DB_VERSION = 1;
   private static final int BATCH_SIZE = 200;
   private static final int MAX_INDEXED_CHARS = 512 * 1024;
-  private static final int READ_LIMIT_BYTES = MAX_INDEXED_CHARS * 4;
+  private static final int INDEX_READ_LIMIT_BYTES = MAX_INDEXED_CHARS * 4;
+  private static final int DIRECT_SEARCH_READ_LIMIT_BYTES = 16 * 1024 * 1024;
+  private static final int EXPLICIT_INCLUDE_READ_LIMIT_BYTES = 128 * 1024 * 1024;
+  private static final int SAMPLE_BYTES = 8192;
+  private static final int MAX_MATCHES_PER_FILE = 5000;
 
   private static final Set<String> BINARY_EXTENSIONS = new HashSet<>();
   private static final Set<String> TEXT_EXTENSIONS = new HashSet<>();
@@ -548,6 +552,15 @@ class WorkspaceIndex {
     for (int i = 0; i < total; i++) {
       if (job.cancelled) return;
       JSONObject file = files.getJSONObject(i);
+      sendProgress(callback, job.id, total == 0 ? 100 : (processed * 100) / total);
+      sendStatus(
+        callback,
+        job.id,
+        "searching",
+        "Searching " + file.optString("name", "file"),
+        total == 0 ? 100 : (processed * 100) / total,
+        true
+      );
       if (!isSupportedUrl(file.optString("url"))) {
         processed += 1;
         continue;
@@ -557,9 +570,21 @@ class WorkspaceIndex {
         continue;
       }
 
-      String content = getFileContent(file, overlays, defaultEncoding, useIndex);
+      boolean allowLargeFile = isExplicitlyIncluded(file, searchOptions);
+      String content = getFileContent(
+        file,
+        overlays,
+        defaultEncoding,
+        useIndex,
+        allowLargeFile,
+        callback,
+        job.id,
+        total,
+        processed
+      );
       if (content == null) {
         processed += 1;
+        sendProgress(callback, job.id, total == 0 ? 100 : (processed * 100) / total);
         continue;
       }
 
@@ -575,9 +600,7 @@ class WorkspaceIndex {
       }
 
       processed += 1;
-      if (processed % 10 == 0 || processed == total) {
-        sendProgress(callback, job.id, total == 0 ? 100 : (processed * 100) / total);
-      }
+      sendProgress(callback, job.id, total == 0 ? 100 : (processed * 100) / total);
     }
 
     sendProgress(callback, job.id, 100);
@@ -611,15 +634,44 @@ class WorkspaceIndex {
       text = new StringBuilder("..." + text.substring(text.length() - 30));
     }
 
+    boolean limited = false;
+    int cursor = 0;
+    int row = 0;
+    int column = 0;
     while (matcher.find()) {
+      if (matches.length() >= MAX_MATCHES_PER_FILE) {
+        limited = true;
+        break;
+      }
       String word = matcher.group();
       int start = matcher.start();
       int end = matcher.end();
       String[] surrounding = getSurrounding(content, word, start, end);
+      while (cursor < start) {
+        if (content.charAt(cursor) == '\n') {
+          row += 1;
+          column = 0;
+        } else {
+          column += 1;
+        }
+        cursor += 1;
+      }
+      JSONObject startPosition = lineColumn(row, column);
+      while (cursor < end) {
+        if (content.charAt(cursor) == '\n') {
+          row += 1;
+          column = 0;
+        } else {
+          column += 1;
+        }
+        cursor += 1;
+      }
+      JSONObject endPosition = lineColumn(row, column);
       JSONObject match = new JSONObject();
       match.put("match", word);
       match.put("renderText", surrounding[1]);
-      match.put("position", position(content, start, end));
+      match.put("line", surrounding[0].trim());
+      match.put("position", position(startPosition, endPosition));
       matches.put(match);
       text.append("\n\t").append(surrounding[0].trim());
     }
@@ -629,6 +681,12 @@ class WorkspaceIndex {
     JSONObject data = new JSONObject();
     data.put("file", file);
     data.put("matches", matches);
+    if (limited) {
+      text
+        .append("\n\t")
+        .append("... result limit reached for this file");
+    }
+    data.put("limited", limited);
     data.put("text", text.toString());
 
     JSONObject event = baseEvent(id, "search-result");
@@ -640,7 +698,12 @@ class WorkspaceIndex {
     JSONObject file,
     JSONObject overlays,
     String defaultEncoding,
-    boolean useIndex
+    boolean useIndex,
+    boolean allowLargeFile,
+    CallbackContext callback,
+    String jobId,
+    int totalFiles,
+    int processedFiles
   ) throws Exception {
     String url = file.optString("url");
     if (overlays.has(url)) return overlays.optString(url, "");
@@ -675,17 +738,38 @@ class WorkspaceIndex {
     }
 
     FileEntry entry = FileEntry.fromJSON(file);
-    if (useIndex) return indexFile(entry, defaultEncoding);
-    return readFileText(entry, defaultEncoding);
+    if (useIndex && !allowLargeFile) {
+      String indexed = indexFile(entry, defaultEncoding);
+      if (indexed != null) return indexed;
+    }
+    return readFileText(
+      entry,
+      defaultEncoding,
+      allowLargeFile ? EXPLICIT_INCLUDE_READ_LIMIT_BYTES : DIRECT_SEARCH_READ_LIMIT_BYTES,
+      allowLargeFile ? EXPLICIT_INCLUDE_READ_LIMIT_BYTES : DIRECT_SEARCH_READ_LIMIT_BYTES,
+      callback,
+      jobId,
+      totalFiles,
+      processedFiles
+    );
   }
 
   private String indexFile(FileEntry entry, String defaultEncoding) {
-    if (entry.isDirectory || isBinary(entry) || entry.size > READ_LIMIT_BYTES) {
+    if (entry.isDirectory || isBinary(entry) || entry.size > INDEX_READ_LIMIT_BYTES) {
       return null;
     }
 
     try {
-      String text = readFileText(entry, defaultEncoding);
+      String text = readFileText(
+        entry,
+        defaultEncoding,
+        INDEX_READ_LIMIT_BYTES,
+        MAX_INDEXED_CHARS,
+        null,
+        null,
+        0,
+        0
+      );
       if (text == null) return null;
       String encoding = normalizeEncoding(defaultEncoding);
 
@@ -705,21 +789,47 @@ class WorkspaceIndex {
     }
   }
 
-  private String readFileText(FileEntry entry, String defaultEncoding)
+  private String readFileText(
+    FileEntry entry,
+    String defaultEncoding,
+    int readLimitBytes,
+    int maxChars,
+    CallbackContext callback,
+    String jobId,
+    int totalFiles,
+    int processedFiles
+  )
     throws Exception {
-    if (entry.isDirectory || isBinary(entry) || entry.size > READ_LIMIT_BYTES) {
+    if (entry.isDirectory || isBinary(entry) || entry.size > readLimitBytes) {
       return null;
     }
 
-    byte[] bytes = readBytes(entry.url, READ_LIMIT_BYTES + 1);
-    if (bytes.length > READ_LIMIT_BYTES) return null;
+    byte[] bytes = readBytes(
+      entry.url,
+      readLimitBytes + 1,
+      callback,
+      jobId,
+      totalFiles,
+      processedFiles,
+      entry.size
+    );
+    if (bytes.length > readLimitBytes) return null;
     String encoding = detectEncoding(bytes, defaultEncoding);
+    if (isSingleByteEncoding(encoding) && looksBinary(bytes)) return null;
     String text = new String(bytes, Charset.forName(encoding));
-    if (text.length() > MAX_INDEXED_CHARS || hasBinaryChars(text)) return null;
+    if (text.length() > maxChars || hasBinaryChars(text)) return null;
     return text;
   }
 
-  private byte[] readBytes(String url, int limit) throws Exception {
+  private byte[] readBytes(
+    String url,
+    int limit,
+    CallbackContext callback,
+    String jobId,
+    int totalFiles,
+    int processedFiles,
+    long fileSize
+  ) throws Exception {
     InputStream input = null;
     try {
       if (isSafUrl(url)) {
@@ -733,8 +843,18 @@ class WorkspaceIndex {
       byte[] buffer = new byte[8192];
       int read;
       int total = 0;
+      int lastProgress = -1;
       while ((read = input.read(buffer)) != -1) {
         total += read;
+        if (callback != null && jobId != null && totalFiles > 0) {
+          long denominator = fileSize > 0 ? fileSize : limit;
+          int fileProgress = (int) Math.min(99, (total * 100L) / denominator);
+          int progress = ((processedFiles * 100) + fileProgress) / totalFiles;
+          if (progress != lastProgress) {
+            sendProgress(callback, jobId, progress);
+            lastProgress = progress;
+          }
+        }
         if (total > limit) {
           output.write(buffer, 0, read - (total - limit));
           break;
@@ -773,6 +893,13 @@ class WorkspaceIndex {
     if (includes.length() == 0) includes.put("**");
 
     return matchesAny(path, excludes) || !matchesAny(path, includes);
+  }
+
+  private boolean isExplicitlyIncluded(JSONObject file, JSONObject options) {
+    String path = file.optString("path", "");
+    if (path.length() == 0) return false;
+    JSONArray includes = splitPatterns(options.optString("include", ""));
+    return includes.length() > 0 && matchesAny(path, includes);
   }
 
   private JSONArray splitPatterns(String value) {
@@ -820,8 +947,13 @@ class WorkspaceIndex {
       if (ch == '*') {
         boolean doublestar = i + 1 < glob.length() && glob.charAt(i + 1) == '*';
         if (doublestar) {
-          regex.append(".*");
           i++;
+          if (i + 1 < glob.length() && glob.charAt(i + 1) == '/') {
+            regex.append("(?:.*/)?");
+            i++;
+          } else {
+            regex.append(".*");
+          }
         } else {
           regex.append("[^/]*");
         }
@@ -851,7 +983,53 @@ class WorkspaceIndex {
     if (bytes.length >= 2 && (bytes[0] & 0xff) == 0xfe && (bytes[1] & 0xff) == 0xff) {
       return "UTF-16BE";
     }
+    String utf16 = detectUtf16ByNullPattern(bytes);
+    if (utf16 != null) return utf16;
     return normalizeEncoding(defaultEncoding);
+  }
+
+  private String detectUtf16ByNullPattern(byte[] bytes) {
+    int sample = Math.min(bytes.length, SAMPLE_BYTES);
+    if (sample < 8) return null;
+
+    int evenNulls = 0;
+    int oddNulls = 0;
+    int pairs = sample / 2;
+    for (int i = 0; i + 1 < sample; i += 2) {
+      if (bytes[i] == 0) evenNulls++;
+      if (bytes[i + 1] == 0) oddNulls++;
+    }
+    if (oddNulls > pairs * 0.35 && evenNulls < pairs * 0.05) return "UTF-16LE";
+    if (evenNulls > pairs * 0.35 && oddNulls < pairs * 0.05) return "UTF-16BE";
+    return null;
+  }
+
+  private boolean isSingleByteEncoding(String encoding) {
+    String normalized = encoding == null ? "" : encoding.toUpperCase(Locale.ROOT);
+    return !normalized.startsWith("UTF-16") && !normalized.startsWith("UTF-32");
+  }
+
+  private boolean looksBinary(byte[] bytes) {
+    int sample = Math.min(bytes.length, SAMPLE_BYTES);
+    if (sample == 0) return false;
+
+    int control = 0;
+    int high = 0;
+    for (int i = 0; i < sample; i++) {
+      int value = bytes[i] & 0xff;
+      if (value == 0) return true;
+      if (
+        value < 32 &&
+        value != 9 &&
+        value != 10 &&
+        value != 13 &&
+        value != 12
+      ) {
+        control++;
+      }
+      if (value >= 0x80) high++;
+    }
+    return control > Math.max(8, sample * 0.02) && high < sample * 0.5;
   }
 
   private String normalizeEncoding(String defaultEncoding) {
@@ -881,26 +1059,14 @@ class WorkspaceIndex {
     return false;
   }
 
-  private JSONObject position(String content, int start, int end)
-    throws JSONException {
+  private JSONObject position(JSONObject start, JSONObject end) throws JSONException {
     JSONObject position = new JSONObject();
-    position.put("start", lineColumn(content, start));
-    position.put("end", lineColumn(content, end));
+    position.put("start", start);
+    position.put("end", end);
     return position;
   }
 
-  private JSONObject lineColumn(String content, int offset) throws JSONException {
-    int row = 0;
-    int column = 0;
-    int max = Math.min(offset, content.length());
-    for (int i = 0; i < max; i++) {
-      if (content.charAt(i) == '\n') {
-        row += 1;
-        column = 0;
-      } else {
-        column += 1;
-      }
-    }
+  private JSONObject lineColumn(int row, int column) throws JSONException {
     JSONObject result = new JSONObject();
     result.put("row", row);
     result.put("column", column);
@@ -908,25 +1074,40 @@ class WorkspaceIndex {
   }
 
   private String[] getSurrounding(String content, String word, int start, int end) {
-    int max = 50;
-    int remaining = max - (end - start);
-    String line;
-    String renderText;
-
-    if (remaining <= 0) {
-      renderText = word.length() > max ? word.substring(word.length() - max) : word;
-      line = "..." + renderText;
-    } else {
-      int left = remaining / 2;
-      int right = left;
-      int leftStart = Math.max(0, start - left);
-      int rightEnd = Math.min(content.length(), end + right);
-      line = content.substring(leftStart, start) + word + content.substring(end, rightEnd);
-      renderText = word;
+    int max = 160;
+    int lineStart = start;
+    while (lineStart > 0) {
+      char previous = content.charAt(lineStart - 1);
+      if (previous == '\n' || previous == '\r') break;
+      lineStart--;
     }
 
+    int lineEnd = end;
+    while (lineEnd < content.length()) {
+      char current = content.charAt(lineEnd);
+      if (current == '\n' || current == '\r') break;
+      lineEnd++;
+    }
+
+    int snippetStart = lineStart;
+    int snippetEnd = lineEnd;
+    if (lineEnd - lineStart > max) {
+      int matchLength = Math.max(1, end - start);
+      int remaining = Math.max(0, max - matchLength);
+      int left = remaining / 2;
+      int right = remaining - left;
+      snippetStart = Math.max(lineStart, start - left);
+      snippetEnd = Math.min(lineEnd, end + right);
+    }
+
+    StringBuilder line = new StringBuilder();
+    if (snippetStart > lineStart) line.append("...");
+    line.append(content.substring(snippetStart, snippetEnd).trim());
+    if (snippetEnd < lineEnd) line.append("...");
+    String renderText = word;
+
     return new String[] {
-      line.replaceAll("[\\r\\n]+", " ⏎ "),
+      line.toString().replaceAll("[\\r\\n]+", " ⏎ "),
       renderText.replaceAll("[\\r\\n]+", " ⏎ "),
     };
   }

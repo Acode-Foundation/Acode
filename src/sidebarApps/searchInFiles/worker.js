@@ -125,7 +125,7 @@ function searchInFile({ file, content, search }) {
 		};
 		const [line, renderText] = getSurrounding(content, word, start, end);
 		text += `\n\t${line.trim()}`;
-		matches.push({ match: word, position, renderText });
+		matches.push({ match: word, position, renderText, line: line.trim() });
 	}
 
 	self.postMessage({
@@ -163,24 +163,37 @@ function replaceInFile({ file, content, search, replace }) {
  * @param {number} end
  */
 function getSurrounding(content, word, start, end) {
-	const max = 50;
-	const remaining = max - (end - start);
-	let result = [];
-
-	if (remaining <= 0) {
-		word = word.slice(-max);
-		result = [`...${word}`, word];
-	} else {
-		let left = Math.floor(remaining / 2);
-		let right = left;
-
-		let leftText = content.substring(start - left, start);
-		let rightText = content.substring(end, end + right);
-
-		result = [`${leftText}${word}${rightText}`, word];
+	const max = 160;
+	let lineStart = start;
+	while (lineStart > 0) {
+		const previous = content[lineStart - 1];
+		if (previous === "\n" || previous === "\r") break;
+		lineStart--;
 	}
 
-	return result.map((text) => text.replace(/[\r\n]+/g, " ⏎ "));
+	let lineEnd = end;
+	while (lineEnd < content.length) {
+		const current = content[lineEnd];
+		if (current === "\n" || current === "\r") break;
+		lineEnd++;
+	}
+
+	let snippetStart = lineStart;
+	let snippetEnd = lineEnd;
+	if (lineEnd - lineStart > max) {
+		const matchLength = Math.max(1, end - start);
+		const remaining = Math.max(0, max - matchLength);
+		const left = Math.floor(remaining / 2);
+		const right = remaining - left;
+		snippetStart = Math.max(lineStart, start - left);
+		snippetEnd = Math.min(lineEnd, end + right);
+	}
+
+	let line = content.substring(snippetStart, snippetEnd).trim();
+	if (snippetStart > lineStart) line = `...${line}`;
+	if (snippetEnd < lineEnd) line = `${line}...`;
+
+	return [line, word].map((text) => text.replace(/[\r\n]+/g, " ⏎ "));
 }
 
 /**

@@ -201,17 +201,17 @@
         padding: 0 !important;
       }
 
-      .cm-line:nth-child(odd) {
-        background-color: rgba(0, 0, 0, 0.04) !important; // Fallback for old webviews
-        background-color: color-mix(in srgb, var(--secondary-color) 8%, transparent) !important;
-      }
-
       .cm-line:not(.cm-fileName) {
         cursor: pointer;
-        padding-left: 4px !important;
+        padding: 7px 8px 7px 18px !important;
+        color: var(--primary-text-color);
+        color: color-mix(in srgb, var(--primary-text-color) 82%, var(--secondary-text-color));
+        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        border-bottom: 1px solid color-mix(in srgb, var(--border-color) 28%, transparent);
 
         &:hover {
           background-color: rgba(255, 255, 255, 0.05) !important;
+          background-color: color-mix(in srgb, var(--active-color) 9%, transparent) !important;
         }
       }
     }
@@ -223,26 +223,33 @@
     .cm-line.cm-fileName .cm-foldChevron {
       display: inline-flex;
       align-items: center;
-      width: auto;
-      margin-right: 2px;
-      opacity: 0.9;
+      justify-content: center;
+      width: 22px;
+      min-width: 22px;
+      flex: 0 0 22px;
+      margin-left: 8px;
+      color: var(--secondary-text-color);
+      opacity: 0.85;
       vertical-align: middle;
     }
 
     .cm-line.cm-fileName {
       font-weight: 600;
-      padding: 3px 8px 3px 5px !important;
-      background-color: rgba(0, 0, 0, 0.15); // Fallback for old webviews
-      background-color: color-mix(in srgb, var(--secondary-color) 24%, transparent);
+      padding: 10px 9px 8px 18px !important;
+      color: var(--primary-text-color);
+      background-color: rgba(0, 0, 0, 0.14); // Fallback for old webviews
+      background-color: color-mix(in srgb, var(--secondary-color) 28%, transparent);
       border-top: 1px solid rgba(0, 0, 0, 0.08);
       border-top: 1px solid color-mix(in srgb, var(--border-color) 40%, transparent);
       border-bottom: 1px solid rgba(0, 0, 0, 0.08);
       border-bottom: 1px solid color-mix(in srgb, var(--border-color) 40%, transparent);
-      border-left: 3px solid var(--active-color) !important;
       display: flex;
       align-items: center;
+      gap: 0;
       margin-top: 4px;
       cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
 
       &:first-child {
         margin-top: 0;
@@ -253,17 +260,25 @@
       display: inline-flex;
       align-items: center;
       vertical-align: middle;
-      margin-right: 2px;
-      font-size: 1em;
+      margin-right: 10px;
+      color: var(--active-color);
+      font-size: 1.18em;
       line-height: 1;
+      flex: 0 0 auto;
     }
 
     .cm-line.cm-fileName .cm-fileCount {
-      display: inline-block;
-      margin-left: 6px;
-      font-size: 0.8em;
+      display: inline-flex;
+      align-items: center;
+      flex: 0 0 auto;
+      margin-left: auto;
+      padding-left: 14px;
+      font-size: 0.86em;
       color: var(--active-color);
-      font-weight: bold;
+      font-weight: 700;
+      letter-spacing: 0;
+      white-space: nowrap;
+      word-break: keep-all;
     }
 
     .cm-collapsedSummary {
@@ -284,6 +299,16 @@
       outline: 1px solid var(--border-color);
       border-radius: 2px;
       font-weight: 500;
+    }
+
+    .cm-resultLineNumber {
+      color: var(--secondary-text-color);
+      font-size: 0.9em;
+      display: inline-block;
+      min-width: 3.5ch;
+      margin-right: 10px;
+      text-align: right;
+      user-select: none;
     }
   }
 

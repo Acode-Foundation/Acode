@@ -22,6 +22,7 @@ export function createSearchResultView(
 	{ onLineClick, getWords, getFileNames, getRegex },
 ) {
 	let view;
+	let isGhostText = false;
 
 	// Effect and field to maintain collapsed headers (by line number)
 	const toggleFold = StateEffect.define();
@@ -77,7 +78,7 @@ export function createSearchResultView(
 		}
 		toDOM() {
 			const span = document.createElement("span");
-			span.className = `cm-foldChevron icon keyboard_arrow_${this.collapsed ? "right" : "down"}`;
+			span.className = `cm-foldChevron icon keyboard_arrow_${this.collapsed ? "down" : "up"}`;
 			return span;
 		}
 		ignoreEvent() {
@@ -115,7 +116,7 @@ export function createSearchResultView(
 		toDOM() {
 			const span = document.createElement("span");
 			span.className = "cm-fileCount";
-			span.textContent = `(${this.count})`;
+			span.textContent = String(this.count);
 			return span;
 		}
 		ignoreEvent() {
@@ -147,7 +148,7 @@ export function createSearchResultView(
 		// No removed groups
 		const fns =
 			(typeof getFileNames === "function" ? getFileNames() : []) || [];
-		if (!fns.length || doc.length === 0 || doc.lines === 0)
+		if (isGhostText || !fns.length || doc.length === 0 || doc.lines === 0)
 			return Decoration.none;
 
 		const builder = [];
@@ -160,12 +161,6 @@ export function createSearchResultView(
 			// Header line class and chevron widget
 			builder.push(
 				Decoration.line({ class: "cm-fileName" }).range(header.from),
-			);
-			builder.push(
-				Decoration.widget({
-					widget: new ChevronWidget(collapsed),
-					side: -1,
-				}).range(header.from),
 			);
 			// File icon
 			const fileNames =
@@ -181,11 +176,20 @@ export function createSearchResultView(
 				}).range(header.from),
 			);
 			// Count badge on right
-			const count = Math.max(0, end - start);
+			const count =
+				typeof fileInfo === "object" && Number.isFinite(fileInfo.count)
+					? fileInfo.count
+					: Math.max(0, end - start);
 			builder.push(
 				Decoration.widget({ widget: new CountWidget(count), side: 1 }).range(
 					header.to,
 				),
+			);
+			builder.push(
+				Decoration.widget({
+					widget: new ChevronWidget(collapsed),
+					side: 1,
+				}).range(header.to),
 			);
 
 			if (collapsed && end > start) {
@@ -195,7 +199,7 @@ export function createSearchResultView(
 				builder.push(
 					Decoration.replace({ block: true }).range(first.from, last.to),
 				);
-				const count2 = end - start;
+				const count2 = count;
 				builder.push(
 					Decoration.widget({
 						widget: new SummaryWidget(
@@ -247,6 +251,7 @@ export function createSearchResultView(
 
 			buildDecos(view) {
 				const builder = [];
+				if (isGhostText) return Decoration.none;
 				let searchRegex = null;
 				if (typeof getRegex === "function") {
 					const r = getRegex();
@@ -277,9 +282,27 @@ export function createSearchResultView(
 							const line = view.state.doc.lineAt(pos);
 							const text = line.text;
 							if (text && text.charCodeAt(0) === 9) {
+								const lineNumberMatch = text.match(/^\t\d+: /);
+								const searchStart = lineNumberMatch
+									? lineNumberMatch[0].length
+									: 0;
+								if (lineNumberMatch) {
+									builder.push(
+										Decoration.mark({
+											class: "cm-resultLineNumber",
+										}).range(
+											line.from + 1,
+											line.from + lineNumberMatch[0].length,
+										),
+									);
+								}
 								matcher.lastIndex = 0;
 								let m;
 								while ((m = matcher.exec(text))) {
+									if (m.index < searchStart) {
+										if (m.index === matcher.lastIndex) matcher.lastIndex++;
+										continue;
+									}
 									const fromPos = line.from + m.index;
 									const toPos = fromPos + m[0].length;
 									builder.push(
@@ -304,21 +327,23 @@ export function createSearchResultView(
 			decorations: (v) => v.decorations,
 			eventHandlers: {
 				mousedown(event, view) {
-					// Map click to line number and notify (use client coords)
-					const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
-					if (pos == null) return;
+					if (isGhostText) return;
 					// Only react when clicking on a line element, not empty space
 					const lineEl =
 						event.target && event.target.closest
 							? event.target.closest(".cm-line")
 							: null;
 					if (!lineEl) return;
+					const pos = view.posAtDOM(lineEl, 0);
 					const ln = view.state.doc.lineAt(pos).number - 1; // zero-based
 					const lineText = view.state.doc.line(ln + 1).text;
+					const clickedHeader = lineEl.classList.contains("cm-fileName");
 					const isHeader = lineText.length > 0 && lineText.charCodeAt(0) !== 9;
-					if (isHeader) {
+					if (clickedHeader || isHeader) {
 						// Toggle collapse on header click
 						view.dispatch({ effects: toggleFold.of(ln) });
+						event.preventDefault();
+						event.stopPropagation();
 						return;
 					}
 					// Only trigger navigation for match lines (start with tab)
@@ -370,6 +395,7 @@ export function createSearchResultView(
 
 	return {
 		setValue(text) {
+			isGhostText = false;
 			view.dispatch({
 				changes: { from: 0, to: view.state.doc.length, insert: text || "" },
 			});
@@ -379,9 +405,13 @@ export function createSearchResultView(
 			view.dispatch({ changes: { from: view.state.doc.length, insert: text } });
 		},
 		setGhostText(text) {
-			this.setValue(text || "");
+			isGhostText = true;
+			view.dispatch({
+				changes: { from: 0, to: view.state.doc.length, insert: text || "" },
+			});
 		},
 		removeGhostText() {
+			isGhostText = false;
 			this.setValue("");
 		},
 		get view() {

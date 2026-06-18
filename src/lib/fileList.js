@@ -51,7 +51,7 @@ export async function append(parent, child) {
  */
 export function remove(item) {
 	if (filesTree[item]) {
-		delete filesTree[item];
+		removeRootTree(item);
 		emit("remove-file", item);
 		return;
 	}
@@ -62,6 +62,15 @@ export function remove(item) {
 	const index = parent.children.indexOf(tree);
 	parent.children.splice(index, 1);
 	emit("remove-file", tree);
+}
+
+function removeRootTree(url) {
+	const rootUrl = url.endsWith("/") ? url : `${url}/`;
+	Object.keys(filesTree).forEach((key) => {
+		if (key === url || key.startsWith(rootUrl)) {
+			delete filesTree[key];
+		}
+	});
 }
 
 /**
@@ -243,7 +252,7 @@ export async function addRoot({ url, name }) {
 function onRemoveFolder({ url }) {
 	const tree = filesTree[url];
 	if (!tree) return;
-	delete filesTree[url];
+	removeRootTree(url);
 	emit("remove-folder", tree);
 }
 
