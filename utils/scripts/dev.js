@@ -441,7 +441,7 @@ async function applyPluginUpdates() {
 		}
 
 		const xml = fs.readFileSync(pluginXml, "utf8");
-		const idMatch = /<plugin[^>]*\sid=["']([^"']+)["']/.exec(xml);
+		const idMatch = /<plugin[^>]*?\sid=["']([^"']+)["']/.exec(xml);
 		const pluginId = idMatch?.[1];
 		if (!pluginId) {
 			log("warn", `Could not find plugin id in ${dir}/plugin.xml`);

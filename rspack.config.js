@@ -96,7 +96,7 @@ module.exports = (env, options) => {
     },
     // Regular CSS/SCSS files
     {
-      test: /(?<!\.m)\.(sa|sc|c)ss$/,
+      test: /\.(?<!\.m\.)(sa|sc|c)ss$/,
       type: 'javascript/auto',
       use: [
         rspack.CssExtractRspackPlugin.loader,

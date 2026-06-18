@@ -797,7 +797,7 @@ export default class EditorFile {
 		let text = this.session.doc.toString();
 
 		if (value === "windows") {
-			text = text.replace(/(?<!\r)\n/g, "\r\n");
+			text = text.replace(/\n(?<!\r.)/g, "\r\n");
 		} else {
 			text = text.replace(/\r/g, "");
 		}
