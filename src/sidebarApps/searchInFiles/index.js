@@ -287,6 +287,8 @@ export default [
  */
 async function onWorkerMessage(e) {
 	const { action, error, data, id } = e.data;
+	const version = e.target.searchVersion;
+	if (version !== searchVersion) return;
 	if (error) {
 		window.log("error", error);
 		console.error(error);
@@ -332,7 +334,7 @@ async function onWorkerMessage(e) {
 			e.target.doneReplacing = true;
 
 			terminateWorker(false);
-			await finishReplaceTask();
+			await finishReplaceTask(version);
 			break;
 		}
 
@@ -344,7 +346,7 @@ async function onWorkerMessage(e) {
 			}
 
 			terminateWorker(false);
-			await finishSearchTask();
+			await finishSearchTask(version);
 			break;
 		}
 
@@ -446,13 +448,15 @@ function formatSearchResultText(file, displayRows, limited) {
 	return lines.join("\n");
 }
 
-async function finishSearchTask() {
+async function finishSearchTask(version = searchVersion) {
+	if (version !== searchVersion) return;
 	activeSearchTasks = Math.max(0, activeSearchTasks - 1);
 	if (activeSearchTasks > 0) return;
 
 	const showAd = results.length > 100;
 	if (showAd) {
 		await helpers.showInterstitialIfReady();
+		if (version !== searchVersion) return;
 	}
 
 	if (!results.length) {
@@ -464,10 +468,12 @@ async function finishSearchTask() {
 	$indexStatus.value = "";
 }
 
-async function finishReplaceTask() {
+async function finishReplaceTask(version = searchVersion) {
+	if (version !== searchVersion) return;
 	activeReplaceTasks = Math.max(0, activeReplaceTasks - 1);
 	if (activeReplaceTasks > 0) return;
 	await helpers.showInterstitialIfReady();
+	if (version !== searchVersion) return;
 	replacing = false;
 	nativeSearchId = null;
 	$indexStatus.value = "";
@@ -626,6 +632,7 @@ function cancelNativeSearch() {
 
 function sendNativeSearch(mode, searchFiles, search, options, replace) {
 	const id = `search-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+	const version = searchVersion;
 	nativeSearchId = id;
 	sdcard.workspaceSearch(
 		{
@@ -640,7 +647,13 @@ function sendNativeSearch(mode, searchFiles, search, options, replace) {
 			useIndex: store.useIndex,
 		},
 		async (event) => {
-			if (!event || event.id !== id) return;
+			if (
+				!event ||
+				event.id !== id ||
+				version !== searchVersion ||
+				nativeSearchId !== id
+			)
+				return;
 			switch (event.type || event.action) {
 				case "status":
 					$indexStatus.value = event.message || "";
@@ -659,22 +672,31 @@ function sendNativeSearch(mode, searchFiles, search, options, replace) {
 					});
 					break;
 				case "done-searching":
-					await finishSearchTask();
+					nativeSearchId = null;
+					await finishSearchTask(version);
 					break;
 				case "done-replacing":
-					await finishReplaceTask();
+					nativeSearchId = null;
+					await finishReplaceTask(version);
 					break;
 				case "error":
 					console.error(event.error);
 					$error.value = event.error || "Native search failed";
-					await (mode === "replace" ? finishReplaceTask() : finishSearchTask());
+					nativeSearchId = null;
+					await (mode === "replace"
+						? finishReplaceTask(version)
+						: finishSearchTask(version));
 					break;
 			}
 		},
 		async (error) => {
+			if (version !== searchVersion || nativeSearchId !== id) return;
 			console.error(error);
 			$error.value = error?.message || String(error);
-			await (mode === "replace" ? finishReplaceTask() : finishSearchTask());
+			nativeSearchId = null;
+			await (mode === "replace"
+				? finishReplaceTask(version)
+				: finishSearchTask(version));
 		},
 	);
 }
@@ -799,6 +821,7 @@ function sendMessage(action, files, search, options, replace) {
 			.map((file) => file.toJSON());
 		if (!filesForThisWorker.length) break;
 		worker.started = true;
+		worker.searchVersion = searchVersion;
 		worker.postMessage({
 			action: action,
 			data: {
