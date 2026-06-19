@@ -1,10 +1,19 @@
 @use '../../styles/mixins.scss';
 
 #quick-tools {
-  .icon.click {
+  .icon.click:not([disabled]) {
     @include mixins.active-icon;
     transition: all 0.3s ease-in-out;
     transform: scale(1.2);
+  }
+
+  [disabled] {
+    cursor: default;
+    opacity: 0.45;
+  }
+
+  [data-id="paste"] {
+    font-size: 0.9em;
   }
 
   &[data-alt="true"] {

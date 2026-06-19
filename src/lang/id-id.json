@@ -146,7 +146,6 @@
 	"none": "Tidak ada",
 	"small": "Kecil",
 	"large": "Besar",
-	"floating button": "Tombol mengambang",
 	"confirm on exit": "Konfirmasi saat keluar",
 	"show console": "Tampilkan konsol",
 	"image": "Gambar",
@@ -760,5 +759,9 @@
 	"scrollbar height": "Tinggi bilah gulir",
 	"full": "Penuh",
 	"scroll past end": "Gulir melewati akhir",
-	"settings-info-scroll-past-end": "Menambahkan spasi kosong ekstra di bawah editor, memungkinkan Anda untuk gulir baris terakhir ke atas."
+	"settings-info-scroll-past-end": "Menambahkan spasi kosong ekstra di bawah editor, memungkinkan Anda untuk gulir baris terakhir ke atas.",
+	"compact": "Ringkas",
+	"off": "Mati",
+	"quick tools height": "Tinggi alat cepat",
+	"quick tools toggler": "Pengalih alat cepat"
 }

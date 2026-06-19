@@ -3,20 +3,35 @@ name: community-release-notifier
 on:
   release:
     types: [ released ]
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        required: true
+        description: "Release tag_name"
+        type: string
+      url:
+        required: true
+        description: "release URL"
+        type: string
+      body:
+        required: true
+        description: "Release Body"
+        type: string
+        default: ''
   workflow_call:
     inputs:
       tag_name:
         required: true
         description: "Release tag_name"
-        type: 'string'
+        type: string
       url:
         required: true
         description: "release URL"
-        type: 'string'
+        type: string
       body:
         required: true
         description: "Release Body"
-        type: 'string'
+        type: string
         default: ''
     secrets:
       DISCORD_WEBHOOK_RELEASE_NOTES:

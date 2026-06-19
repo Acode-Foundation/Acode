@@ -12,7 +12,6 @@ import openFile from "lib/openFile";
 import settings from "lib/settings";
 import helpers from "utils/helpers";
 import { createSearchResultView } from "./cmResultView";
-import { createSearchIndex } from "./searchIndex";
 
 // Local highlight sources
 const words = [];
@@ -32,6 +31,7 @@ const $exclude = Ref();
 const $include = Ref();
 const $wholeWord = Ref();
 const $caseSensitive = Ref();
+const $useIndex = Ref();
 const $btnReplaceAll = Ref();
 const $resultOverview = Ref();
 const $error = Reactive();
@@ -39,9 +39,6 @@ const $progress = Reactive();
 const $indexStatus = Reactive("");
 
 const FILE_LIST_WAIT_TIMEOUT = 250;
-const INDEX_QUERY_TIMEOUT = 120;
-const INDEX_SYNC_DELAY = 700;
-const IDLE_INDEX_RETRY_DELAY = 10000;
 const SEARCH_WORKER_COUNT = 1;
 
 const resultOverview = {
@@ -60,6 +57,7 @@ const WHOLE_WORD = "search-in-files-whole-word";
 const REG_EXP = "search-in-files-reg-exp";
 const EXCLUDE = "search-in-files-exclude";
 const INCLUDE = "search-in-files-include";
+const USE_INDEX = "search-in-files-use-native-index";
 
 const store = {
 	get caseSensitive() {
@@ -92,6 +90,12 @@ const store = {
 	set include(value) {
 		return localStorage.setItem(INCLUDE, value);
 	},
+	get useIndex() {
+		return localStorage.getItem(USE_INDEX) === "true";
+	},
+	set useIndex(value) {
+		localStorage.setItem(USE_INDEX, value);
+	},
 };
 
 const debounceSearch = helpers.debounce(searchAll, 500);
@@ -102,24 +106,23 @@ let useIncludeAndExclude = showExtras;
 const $headerEl = Ref();
 let searchResult = null; // CM6 wrapper from createSearchResultView
 let currentSearchRegex = null;
+let resultScrollTop = 0;
+let resultScrollLeft = 0;
+let resultScrollRestoreFrame = 0;
 let replacing = false;
 let newFiles = 0;
 let searching = false;
 let searchVersion = 0;
-let lastIndexSyncKey = "";
-let pendingIndexFiles = null;
-let indexSyncTimer = null;
 let pendingResultText = "";
 let pendingResultFlush = 0;
-
-const searchIndex = createSearchIndex({
-	readFile: readSearchFileContent,
-	onStatus: updateIndexStatus,
-});
+let nativeSearchId = null;
+let activeSearchTasks = 0;
+let activeReplaceTasks = 0;
 
 addEventListener($regExp, "change", onInput);
 addEventListener($wholeWord, "change", onInput);
 addEventListener($caseSensitive, "change", onInput);
+addEventListener($useIndex, "change", onInput);
 addEventListener($search, "input", onInput);
 addEventListener($include, "input", onInput);
 addEventListener($exclude, "input", onInput);
@@ -137,6 +140,14 @@ $container.onref = ($el) => {
 		getFileNames: () => fileNames,
 		getRegex: () => currentSearchRegex,
 	});
+	searchResult.view.scrollDOM?.addEventListener(
+		"scroll",
+		rememberResultScroll,
+		{
+			passive: true,
+		},
+	);
+	restoreResultScroll();
 	$container.style.lineHeight = "1.5";
 };
 
@@ -168,6 +179,7 @@ export default [
 	strings["search in files"],
 	(/**@type {HTMLElement} */ el) => {
 		el.classList.add("search-in-files");
+		Sidebar.on("show", restoreResultScroll);
 
 		el.content = (
 			<>
@@ -215,6 +227,12 @@ export default [
 							size="10px"
 							text=".*"
 							ref={$regExp}
+						/>
+						<Checkbox
+							checked={store.useIndex}
+							size="10px"
+							text="IDX"
+							ref={$useIndex}
 						/>
 					</div>
 
@@ -270,7 +288,7 @@ export default [
 				></div>
 			</>
 		);
-		scheduleAutomaticIndex();
+		return () => Sidebar.off("show", restoreResultScroll);
 	},
 	false, // show as first item
 	() => {},
@@ -282,6 +300,8 @@ export default [
  */
 async function onWorkerMessage(e) {
 	const { action, error, data, id } = e.data;
+	const version = e.target.searchVersion;
+	if (version !== searchVersion) return;
 	if (error) {
 		window.log("error", error);
 		console.error(error);
@@ -309,45 +329,7 @@ async function onWorkerMessage(e) {
 		}
 
 		case "search-result": {
-			const { file, matches, text } = data;
-
-			if (!matches.length) return;
-			if (filesSearched.includes(file)) return;
-
-			filesSearched.push(Tree.fromJSON(file));
-			// Clear any ghost text on first result
-			if (filesSearched.length === 1) {
-				searchResult.setValue("");
-			}
-			resultOverview.filesCount += 1;
-			resultOverview.matchesCount += matches.length;
-			$resultOverview.innerHTML = searchResultText(
-				resultOverview.filesCount,
-				resultOverview.matchesCount,
-			);
-
-			const index = filesSearched.length - 1;
-			results.push({
-				file: index,
-				match: null,
-				position: null,
-			});
-
-			fileNames.push({ name: file.name, path: file.path });
-			for (const result of matches) {
-				result.file = index;
-				results.push(result);
-				if (words.length < MAX_HL_WORDS) {
-					const token = escapeStringRegexp(result.renderText);
-					if (!words.includes(token)) words.push(token);
-				}
-			}
-
-			if (fileNames.length > 1) {
-				appendSearchResultText(`\n${text}`);
-			} else {
-				appendSearchResultText(text);
-			}
+			appendSearchResult(data);
 			break;
 		}
 
@@ -364,14 +346,8 @@ async function onWorkerMessage(e) {
 		case "done-replacing": {
 			e.target.doneReplacing = true;
 
-			if (workers.find((worker) => worker.started && !worker.doneReplacing)) {
-				break;
-			}
-
-			await helpers.showInterstitialIfReady();
-
 			terminateWorker(false);
-			replacing = false;
+			await finishReplaceTask(version);
 			break;
 		}
 
@@ -382,17 +358,8 @@ async function onWorkerMessage(e) {
 				break;
 			}
 
-			const showAd = results.length > 100;
-			if (showAd) {
-				await helpers.showInterstitialIfReady();
-			}
-
-			if (!results.length) {
-				searchResult.setGhostText(strings["no result"], { row: 0, column: 0 });
-			}
-
-			searching = false;
 			terminateWorker(false);
+			await finishSearchTask(version);
 			break;
 		}
 
@@ -410,6 +377,119 @@ async function onWorkerMessage(e) {
 		default:
 			break;
 	}
+}
+
+function appendSearchResult(data) {
+	const { file, matches, limited } = data;
+
+	if (!matches.length) return;
+	if (filesSearched.find((item) => item.url === file.url)) return;
+
+	filesSearched.push(Tree.fromJSON(file));
+	if (filesSearched.length === 1) {
+		searchResult.setValue("");
+	}
+	resultOverview.filesCount += 1;
+	resultOverview.matchesCount += matches.length;
+	$resultOverview.innerHTML = searchResultText(
+		resultOverview.filesCount,
+		resultOverview.matchesCount,
+	);
+
+	const index = filesSearched.length - 1;
+	const displayRows = groupMatchesForDisplay(matches);
+	results.push({
+		file: index,
+		match: null,
+		position: null,
+	});
+
+	fileNames.push({ name: file.name, path: file.path, count: matches.length });
+	for (const result of matches) {
+		result.file = index;
+		if (words.length < MAX_HL_WORDS) {
+			const token = escapeStringRegexp(result.renderText);
+			if (!words.includes(token)) words.push(token);
+		}
+	}
+	for (const { result } of displayRows) {
+		results.push(result);
+	}
+	if (limited) {
+		results.push({
+			file: index,
+			match: null,
+			position: null,
+			notice: true,
+		});
+	}
+
+	const text = formatSearchResultText(file, displayRows, limited);
+	if (fileNames.length > 1) {
+		appendSearchResultText(`\n${text}`);
+	} else {
+		appendSearchResultText(text);
+	}
+}
+
+function groupMatchesForDisplay(matches) {
+	const rows = [];
+	const seen = new Set();
+	for (const result of matches) {
+		const row = result.position?.start?.row ?? -1;
+		const preview = String(
+			result.line || result.text || result.renderText || result.match || "",
+		).trim();
+		const key = `${row}\n${preview}`;
+		if (seen.has(key)) continue;
+		seen.add(key);
+		rows.push({ result, preview });
+	}
+	return rows;
+}
+
+function formatSearchResultText(file, displayRows, limited) {
+	const lines = [file.name];
+	for (const { result, preview } of displayRows) {
+		const row = result.position?.start?.row;
+		const lineNumber = Number.isInteger(row) ? `${row + 1}: ` : "";
+		lines.push(`\t${lineNumber}${preview}`);
+	}
+	if (limited) {
+		lines.push("\t... result limit reached for this file");
+	}
+	return lines.join("\n");
+}
+
+async function finishSearchTask(version = searchVersion) {
+	if (version !== searchVersion) return;
+	activeSearchTasks = Math.max(0, activeSearchTasks - 1);
+	if (activeSearchTasks > 0) return;
+
+	const showAd = results.length > 100;
+	if (showAd) {
+		await helpers.showInterstitialIfReady();
+		if (version !== searchVersion) return;
+	}
+
+	if (!results.length) {
+		searchResult.setGhostText(strings["no result"], { row: 0, column: 0 });
+	}
+
+	searching = false;
+	nativeSearchId = null;
+	$indexStatus.value = "";
+}
+
+async function finishReplaceTask(version = searchVersion) {
+	if (version !== searchVersion) return;
+	activeReplaceTasks = Math.max(0, activeReplaceTasks - 1);
+	if (activeReplaceTasks > 0) return;
+	await helpers.showInterstitialIfReady();
+	if (version !== searchVersion) return;
+	replacing = false;
+	nativeSearchId = null;
+	$indexStatus.value = "";
 }
 
 /**
@@ -434,6 +514,10 @@ function onInput(e) {
 		store.regExp = $regExp.el.checked;
 	}
 
+	if (target === $useIndex.el) {
+		store.useIndex = $useIndex.el.checked;
+	}
+
 	if (target === $exclude.el) {
 		store.exclude = $exclude.el.value;
 	}
@@ -443,20 +527,30 @@ function onInput(e) {
 	}
 
 	terminateWorker();
-	stopSearchIndex();
+	cancelNativeSearch();
+	$indexStatus.value = "";
 	searchVersion += 1;
 	searching = false;
+	activeSearchTasks = 0;
+	activeReplaceTasks = 0;
 	newFiles = 0;
 	$error.value = "";
 	results.length = 0;
+	words.length = 0;
+	fileNames.length = 0;
+	currentSearchRegex = null;
 	$progress.value = 0;
 	filesSearched.length = 0;
 	resultOverview.reset();
-	searchResult.setValue("");
-	searchResult.setGhostText(strings["searching..."], { row: 0, column: 0 });
+	resetResultScroll();
 	clearPendingResultText();
+	searchResult.setValue("");
 	removeEvents();
-	scheduleAutomaticIndex(IDLE_INDEX_RETRY_DELAY);
+	if (!$search.value) {
+		searchResult.removeGhostText();
+		return;
+	}
+	searchResult.setGhostText(strings["searching..."], { row: 0, column: 0 });
 	debounceSearch();
 }
 
@@ -491,23 +585,7 @@ async function searchAll() {
 		allFiles.push(new Tree(file.name, file.uri, false));
 	});
 
-	const allFileJson = allFiles.map((file) => file.toJSON());
-	pendingIndexFiles = allFileJson;
-
-	let filesToSearch = allFiles;
-	try {
-		const indexResult = await withTimeout(
-			searchIndex.query(allFileJson, search, options, forceUrls),
-			INDEX_QUERY_TIMEOUT,
-		);
-		if (version !== searchVersion) return;
-		filesToSearch = getIndexedFiles(allFiles, indexResult);
-	} catch (error) {
-		console.warn(
-			"Search index query failed. Falling back to full scan.",
-			error,
-		);
-	}
+	const filesToSearch = allFiles;
 
 	if (!filesToSearch.length) {
 		searchResult.setGhostText(strings["no result"], { row: 0, column: 0 });
@@ -520,7 +598,21 @@ async function searchAll() {
 	fileNames.length = 0;
 	currentSearchRegex = regex;
 	searchResult.setGhostText(strings["searching..."], { row: 0, column: 0 });
-	sendMessage("search-files", filesToSearch, regex, options);
+	const nativeFiles = filesToSearch.filter((file) =>
+		supportsNativeSearch(file.url),
+	);
+	const workerFiles = filesToSearch.filter(
+		(file) => !supportsNativeSearch(file.url),
+	);
+	activeSearchTasks = 0;
+	if (nativeFiles.length) {
+		activeSearchTasks += 1;
+		sendNativeSearch("search", nativeFiles, search, options);
+	}
+	if (workerFiles.length) {
+		activeSearchTasks += 1;
+		sendMessage("search-files", workerFiles, regex, options);
+	}
 }
 
 async function readSearchFileContent(uri) {
@@ -538,21 +630,108 @@ async function readSearchFileContent(uri) {
 	return fsOperation(uri).readFile(settings.value.defaultFileEncoding);
 }
 
-function getIndexedFiles(allFiles, indexResult) {
-	if (!indexResult?.supported || !Array.isArray(indexResult.urls))
-		return allFiles;
-
-	const indexedUrls = new Set(indexResult.urls);
-	return allFiles.filter((file) => indexedUrls.has(file.url));
+function supportsNativeSearch(url = "") {
+	return (
+		typeof sdcard !== "undefined" &&
+		typeof sdcard.workspaceSearch === "function" &&
+		(/^file:/.test(url) || /^content:/.test(url))
+	);
 }
 
-function syncSearchIndex(files) {
-	const syncKey = getIndexSyncKey(files);
-	if (syncKey === lastIndexSyncKey) return;
+function cancelNativeSearch() {
+	if (!nativeSearchId || typeof sdcard === "undefined") return;
+	try {
+		sdcard.workspaceCancel(nativeSearchId);
+	} catch (_) {
+		// ignore cancellation failures
+	}
+	nativeSearchId = null;
+}
 
-	lastIndexSyncKey = syncKey;
-	$indexStatus.value = "Search index queued";
-	searchIndex.sync(files);
+function sendNativeSearch(mode, searchFiles, search, options, replace) {
+	const id = `search-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+	const version = searchVersion;
+	nativeSearchId = id;
+	sdcard.workspaceSearch(
+		{
+			id,
+			mode,
+			files: searchFiles.map((file) => file.toJSON()),
+			search,
+			replace,
+			options,
+			overlays: getOpenFileOverlays(searchFiles),
+			defaultEncoding: settings.value.defaultFileEncoding,
+			useIndex: store.useIndex,
+		},
+		async (event) => {
+			if (
+				!event ||
+				event.id !== id ||
+				version !== searchVersion ||
+				nativeSearchId !== id
+			)
+				return;
+			switch (event.type || event.action) {
+				case "status":
+					$indexStatus.value = event.message || "";
+					break;
+				case "progress":
+					$progress.value = event.data || 0;
+					break;
+				case "search-result":
+					appendSearchResult(event.data);
+					break;
+				case "replace-result":
+					filesReplaced.push(event.file);
+					openFile(event.file.url, {
+						render: filesSearched.length === filesReplaced.length,
+						text: event.text,
+					});
+					break;
+				case "done-searching":
+					nativeSearchId = null;
+					await finishSearchTask(version);
+					break;
+				case "done-replacing":
+					nativeSearchId = null;
+					await finishReplaceTask(version);
+					break;
+				case "error":
+					console.error(event.error);
+					$error.value = event.error || "Native search failed";
+					nativeSearchId = null;
+					await (mode === "replace"
+						? finishReplaceTask(version)
+						: finishSearchTask(version));
+					break;
+			}
+		},
+		async (error) => {
+			if (version !== searchVersion || nativeSearchId !== id) return;
+			console.error(error);
+			$error.value = error?.message || String(error);
+			nativeSearchId = null;
+			await (mode === "replace"
+				? finishReplaceTask(version)
+				: finishSearchTask(version));
+		},
+	);
+}
+
+function getOpenFileOverlays(searchFiles) {
+	const supportedUrls = new Set(searchFiles.map(({ url }) => url));
+	const overlays = {};
+	editorManager.files.forEach((file) => {
+		if (!file.uri || !supportedUrls.has(file.uri)) return;
+		if (!file.session?.doc) return;
+		try {
+			overlays[file.uri] = file.session.doc.toString() || "";
+		} catch (_) {
+			// ignore invalid editor docs
+		}
+	});
+	return overlays;
 }
 
 async function waitForFileListIfReady() {
@@ -562,87 +741,17 @@ async function waitForFileListIfReady() {
 	}
 }
 
-function scheduleAutomaticIndex(delay = INDEX_SYNC_DELAY) {
-	clearTimeout(indexSyncTimer);
-
-	indexSyncTimer = setTimeout(() => {
-		prepareAutomaticIndex();
-	}, delay);
-}
-
-function prepareAutomaticIndex() {
-	waitForFileList().then(() => {
-		if (searching || replacing) {
-			scheduleAutomaticIndex(IDLE_INDEX_RETRY_DELAY);
-			return;
-		}
-
-		const allFiles = files().filter((file) => !helpers.isBinary(file));
-		if (!allFiles.length) return;
-		pendingIndexFiles = allFiles.map((file) => file.toJSON());
-		scheduleSearchIndexSync();
-	});
-}
-
-function scheduleSearchIndexSync(delay = INDEX_SYNC_DELAY) {
-	clearTimeout(indexSyncTimer);
-
-	indexSyncTimer = setTimeout(() => {
-		if (searching || replacing || !pendingIndexFiles) return;
-
-		const files = pendingIndexFiles;
-		pendingIndexFiles = null;
-		syncSearchIndex(files);
-	}, delay);
-}
-
-function stopSearchIndex() {
-	clearTimeout(indexSyncTimer);
-	indexSyncTimer = null;
-	$indexStatus.value = "";
-	searchIndex.stop();
-}
-
-function getIndexSyncKey(files) {
-	return files
-		.map(
-			({ url, size = 0, modifiedDate = 0 }) =>
-				`${url}:${size}:${modifiedDate || 0}`,
-		)
-		.join("\n");
-}
-
 function markIndexDirty(urls) {
-	lastIndexSyncKey = "";
-	searchIndex.markDirty(urls);
-}
-
-function updateIndexStatus(status = {}) {
-	if (status.state === "indexing" && status.total) {
-		$indexStatus.value =
-			status.message || `Indexing ${status.indexed}/${status.total}`;
-		return;
+	if (
+		typeof sdcard !== "undefined" &&
+		typeof sdcard.workspaceMarkDirty === "function"
+	) {
+		try {
+			sdcard.workspaceMarkDirty(urls);
+		} catch (_) {
+			// ignore native dirty-mark failures
+		}
 	}
-
-	if (status.state === "error") {
-		$indexStatus.value = status.message || "Search index unavailable";
-		return;
-	}
-
-	if (status.state === "queued") {
-		$indexStatus.value = status.message || "Search index queued";
-		return;
-	}
-
-	if (status.state === "ready") {
-		$indexStatus.value = status.message || "Search index ready";
-		setTimeout(() => {
-			if ($indexStatus.value === status.message) $indexStatus.value = "";
-		}, 2500);
-		return;
-	}
-
-	$indexStatus.value = "";
 }
 
 function appendSearchResultText(text) {
@@ -692,7 +801,22 @@ async function replaceAll() {
 	if (!regex) return;
 
 	replacing = true;
-	sendMessage("replace-files", filesSearched, regex, options, replace);
+	activeReplaceTasks = 0;
+	const nativeFiles = filesSearched.filter((file) =>
+		supportsNativeSearch(file.url),
+	);
+	const workerFiles = filesSearched.filter(
+		(file) => !supportsNativeSearch(file.url),
+	);
+	if (nativeFiles.length) {
+		activeReplaceTasks += 1;
+		sendNativeSearch("replace", nativeFiles, search, options, replace);
+	}
+	if (workerFiles.length) {
+		activeReplaceTasks += 1;
+		sendMessage("replace-files", workerFiles, regex, options, replace);
+	}
+	if (!activeReplaceTasks) replacing = false;
 }
 
 /**
@@ -715,6 +839,7 @@ function sendMessage(action, files, search, options, replace) {
 			.map((file) => file.toJSON());
 		if (!filesForThisWorker.length) break;
 		worker.started = true;
+		worker.searchVersion = searchVersion;
 		worker.postMessage({
 			action: action,
 			data: {
@@ -901,6 +1026,7 @@ async function onCursorChange(line) {
 		return;
 	}
 
+	rememberResultScroll();
 	Sidebar.hide();
 	const { url } = filesSearched[file];
 	await openFile(url, { render: true });
@@ -935,6 +1061,31 @@ function onEditorFileUpdate(file) {
 	const uri = file?.uri;
 	if (uri) markIndexDirty([uri]);
 	onInput();
+}
+
+function rememberResultScroll() {
+	const position = searchResult?.getScrollPosition?.();
+	if (!position) return;
+	resultScrollTop = position.top;
+	resultScrollLeft = position.left;
+}
+
+function restoreResultScroll() {
+	cancelAnimationFrame(resultScrollRestoreFrame);
+	resultScrollRestoreFrame = requestAnimationFrame(() => {
+		resultScrollRestoreFrame = 0;
+		searchResult?.setScrollPosition?.({
+			top: resultScrollTop,
+			left: resultScrollLeft,
+		});
+	});
+}
+
+function resetResultScroll() {
+	resultScrollTop = 0;
+	resultScrollLeft = 0;
+	cancelAnimationFrame(resultScrollRestoreFrame);
+	resultScrollRestoreFrame = 0;
 }
 
 /**

@@ -21,6 +21,7 @@
     <framework src="androidx.documentfile:documentfile:1.0.1" />
 
     <source-file src="src/android/SDcard.java" target-dir="src/com/foxdebug/sdcard"/>
+    <source-file src="src/android/WorkspaceIndex.java" target-dir="src/com/foxdebug/sdcard"/>
     <config-file target="AndroidManifest.xml" parent="/manifest"></config-file>
   </platform>
 </plugin>

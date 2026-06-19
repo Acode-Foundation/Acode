@@ -435,6 +435,7 @@ function create($container, $toggler) {
 	}
 
 	async function onshow() {
+		hideEditorNativeSelectionHandles();
 		if ($el.onshow) $el.onshow.call($el);
 		events.show.forEach((fn) => fn());
 
@@ -453,6 +454,23 @@ function create($container, $toggler) {
 	function onhide() {
 		if ($el.onhide) $el.onhide.call($el);
 		events.hide.forEach((fn) => fn());
+	}
+
+	function hideEditorNativeSelectionHandles() {
+		const editor = window.editorManager?.editor;
+		if (!editor) return;
+
+		try {
+			editor.contentDOM?.blur();
+		} catch (_) {
+			// Ignore focus cleanup failures; clearing DOM selection below is best-effort.
+		}
+
+		try {
+			document.getSelection()?.removeAllRanges();
+		} catch (error) {
+			console.warn("Failed to clear native text selection.", error);
+		}
 	}
 
 	/**

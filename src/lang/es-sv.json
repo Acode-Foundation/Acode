@@ -146,7 +146,6 @@
 	"none": "ninguno",
 	"small": "pequeño",
 	"large": "grande",
-	"floating button": "Botón flotante",
 	"confirm on exit": "Confirmar al salir",
 	"show console": "Mostrar consola",
 	"image": "Imagen",
@@ -760,5 +759,9 @@
 	"scrollbar height": "Scrollbar height",
 	"full": "Full",
 	"scroll past end": "Scroll past end",
-	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top."
+	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top.",
+	"compact": "Compacto",
+	"off": "Apagado",
+	"quick tools height": "Altura de herramientas rápidas",
+	"quick tools toggler": "Alternador de herramientas rápidas"
 }

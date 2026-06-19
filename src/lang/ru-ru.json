@@ -146,7 +146,6 @@
 	"none": "Выкл.",
 	"small": "Маленький",
 	"large": "Большой",
-	"floating button": "Плавающая кнопка",
 	"confirm on exit": "Подтверждение перед выходом",
 	"show console": "Показать консоль",
 	"image": "Изображение",
@@ -760,5 +759,9 @@
 	"scrollbar height": "Scrollbar height",
 	"full": "Full",
 	"scroll past end": "Scroll past end",
-	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top."
+	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top.",
+	"compact": "Компактный",
+	"off": "Выкл",
+	"quick tools height": "Высота быстрых инструментов",
+	"quick tools toggler": "Переключатель быстрых инструментов"
 }

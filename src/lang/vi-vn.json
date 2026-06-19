@@ -146,7 +146,6 @@
 	"none": "Không có",
 	"small": "Nhỏ",
 	"large": "Lớn",
-	"floating button": "Nút nổi",
 	"confirm on exit": "Xác nhận khi thoát",
 	"show console": "Hiển thị bảng điều khiển",
 	"image": "Hình ảnh",
@@ -760,5 +759,9 @@
 	"scrollbar height": "Scrollbar height",
 	"full": "Full",
 	"scroll past end": "Scroll past end",
-	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top."
+	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top.",
+	"compact": "Gọn",
+	"off": "Tắt",
+	"quick tools height": "Chiều cao công cụ nhanh",
+	"quick tools toggler": "Bật/tắt công cụ nhanh"
 }

@@ -156,7 +156,6 @@
 	"none": "None",
 	"small": "Small",
 	"large": "Large",
-	"floating button": "Floating button",
 	"confirm on exit": "Confirm on exit",
 	"show console": "Show console",
 	"image": "Image",
@@ -760,5 +759,9 @@
 	"iap-pro-purchase-warning": "This purchase will not be synced to your Acode account. Use same Google account in play store to restore your purchase.",
 	"confirm-login": "You are not singed in to Acode, sign in now?",
 	"terminal:failsafe": "FailSafe mode",
-	"terminal:failsafe-info": "Start terminal with system shell"
+	"terminal:failsafe-info": "Start terminal with system shell",
+	"compact": "Compact",
+	"off": "Off",
+	"quick tools height": "Quick tools height",
+	"quick tools toggler": "Quick tools toggler"
 }

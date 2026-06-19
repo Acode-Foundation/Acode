@@ -20,7 +20,7 @@ let $sponsorIcon = null;
  * @param {string} id id of the app
  * @param {HTMLElement} el element to show in sidebar
  * @param {string} title title of the app
- * @param {(container:HTMLElement)=>void} initFunction
+ * @param {(container:HTMLElement)=>(void|Function)} initFunction
  * @param {boolean} prepend weather to show this app at the top of the sidebar or not
  * @param {(container:HTMLElement)=>void} onSelected
  * @returns {void}

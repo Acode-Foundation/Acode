@@ -146,7 +146,6 @@
 	"none": "無",
 	"small": "小",
 	"large": "大",
-	"floating button": "懸浮按鈕",
 	"confirm on exit": "退出前確認",
 	"show console": "顯示控製臺",
 	"image": "圖像",
@@ -760,5 +759,9 @@
 	"scrollbar height": "Scrollbar height",
 	"full": "Full",
 	"scroll past end": "Scroll past end",
-	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top."
+	"settings-info-scroll-past-end": "Adds extra empty space at the bottom of the editor, allowing you to scroll the last line to the top.",
+	"compact": "緊湊",
+	"off": "關閉",
+	"quick tools height": "快捷工具欄高度",
+	"quick tools toggler": "快捷工具切換按鈕"
 }

@@ -1,5 +1,44 @@
 # Change Log
 
+## v1.12.6
+
+* Refactor boot script and add editor interaction handler by @deadlyjack in https://github.com/Acode-Foundation/Acode/pull/2216
+* fix(touchSelectionMenu): prevent menu overlap with cm-tooltips by @deadlyjack in https://github.com/Acode-Foundation/Acode/pull/2220
+* fix: suppressed startup auth related toast instead just log it by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2222
+* feat: add option to control scrollbar height by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2223
+* feat: add astro mode (with lezer parser and grammar) by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2224
+* fix: improve cursor and quicktoolbar by @deadlyjack in https://github.com/Acode-Foundation/Acode/pull/2225
+* feat(editor): make scroll-past-end bottom margin configurable by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2226
+* feat: Improve binary file skipping in sidebar search by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2229
+* fix(editor): preserve selected theme after sidebar file moves by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2230
+* ux improvements by @deadlyjack in https://github.com/Acode-Foundation/Acode/pull/2231
+* feat(terminal): add custom touch scrolling with momentum physics by @deadlyjack in https://github.com/Acode-Foundation/Acode/pull/2232
+* feat(terminal): add terminal theme picker to Theme Settings page by @deadlyjack in https://github.com/Acode-Foundation/Acode/pull/2234
+* fix(lsp): show dynamic install status label with loader feedback by @deadlyjack in https://github.com/Acode-Foundation/Acode/pull/2235
+* i18n(id-id): update strings by @hyperz111 in https://github.com/Acode-Foundation/Acode/pull/2228
+* feat: Improve LSP server reuse check with bridge status endpoint by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2238
+* i18n(lang.js): Update Indonesian language name to Bahasa Indonesia by @claycuy in https://github.com/Acode-Foundation/Acode/pull/2236
+* feat(color-picker): add format dropdown, cancel button, and cancellat… by @deadlyjack in https://github.com/Acode-Foundation/Acode/pull/2240
+* fix: pro detection by @deadlyjack in https://github.com/Acode-Foundation/Acode/pull/2248
+* i18n(id): refine translations for a more natural and accurate phrasing by @claycuy in https://github.com/Acode-Foundation/Acode/pull/2239
+* refactor(lsp): decouple runtime execution from built-in Alpine & support custom runtime providers by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2241
+* feat: improve the indexing and search UI/UX and few fallbacks stuff by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2256
+* fix: version parsing failure on nightly tags by @AuDevTist1C in https://github.com/Acode-Foundation/Acode/pull/2249
+* feat: added config proxy by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/2246
+* fix: disable CodeMirror EditContext by default by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2258
+* fix(lsp): check Terminal installation before installing server for builtin Alpine by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2259
+* fix(sidebar): preserve state across orientation changes by @Elitex07 in https://github.com/Acode-Foundation/Acode/pull/2219
+* fix: make indent guide stable and close to vscode one by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2266
+* fix(editor): prevent cursor snap after scrollbar drag by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2263
+* feat(quickTools): replace checkbox with height select & dynamic toggler by @deadlyjack in https://github.com/Acode-Foundation/Acode/pull/2278
+* chore(deps): bump markdown-it from 14.1.1 to 14.2.0 by @dependabot[bot] in https://github.com/Acode-Foundation/Acode/pull/2286
+* chore(deps): bump dompurify from 3.4.3 to 3.4.10 by @dependabot[bot] in https://github.com/Acode-Foundation/Acode/pull/2271
+* chote(i18n): update german translation by @Mythryl-dev in https://github.com/Acode-Foundation/Acode/pull/2293
+* feat: do file-listing and index on java for file:/// and saf locations by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2283
+* improve vscode editor theme 
+* add few more popular editor themes like nord, AyuDark, GruvboxDark, MaterialPalenight.
+* enable jsx in js mode
+
 ## v1.12.5
 
 * fix: custom fonts by @deadlyjack in https://github.com/Acode-Foundation/Acode/pull/2192

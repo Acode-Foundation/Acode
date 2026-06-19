@@ -2,11 +2,11 @@
   <span class="text">{{new file}}</span>
   <span class="icon file-control document-add"></span>
 </li>
-<li action="save">
+<li action="save" {{^can_save_file}}class="disabled" {{/can_save_file}}>
   <span class="text">{{save}}</span>
   <span class="icon save"></span>
 </li>
-<li action="save-as">
+<li action="save-as" {{^can_save_file}}class="disabled" {{/can_save_file}}>
   <span class="text">{{save as}}</span>
   <span class="icon save" style="filter: brightness(85%)"></span>
 </li>

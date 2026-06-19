@@ -58,12 +58,15 @@ public class SDcard extends CordovaPlugin {
   private DocumentFile originalRootFile;
   private CallbackContext activityResultCallback;
   private HashMap<String, MyFileObserver> fileObservers = new HashMap();
+  private WorkspaceIndex workspaceIndex;
 
   public void initialize(CordovaInterface cordova, CordovaWebView webView) {
     super.initialize(cordova, webView);
     this.REQUEST_CODE = this.ACCESS_INTENT;
     this.context = cordova.getContext();
     this.activity = cordova.getActivity();
+    this.contentResolver = this.context.getContentResolver();
+    this.workspaceIndex = new WorkspaceIndex(this.context);
     this.storageManager = (StorageManager) this.activity.getSystemService(
         Context.STORAGE_SERVICE
       );
@@ -152,6 +155,30 @@ public class SDcard extends CordovaPlugin {
         break;
       case "unwatch file":
         unwatchFile(arg1);
+        break;
+      case "workspace scan":
+        workspaceIndex.scan(
+          args.optJSONObject(0) == null ? new JSONObject() : args.optJSONObject(0),
+          callback
+        );
+        break;
+      case "workspace search":
+        workspaceIndex.search(
+          args.optJSONObject(0) == null ? new JSONObject() : args.optJSONObject(0),
+          callback
+        );
+        break;
+      case "workspace cancel":
+        workspaceIndex.cancel(arg1);
+        callback.success("OK");
+        break;
+      case "workspace mark dirty":
+        workspaceIndex.markDirty(args.optJSONArray(0));
+        callback.success("OK");
+        break;
+      case "workspace clear":
+        workspaceIndex.clear(args.optJSONArray(0));
+        callback.success("OK");
         break;
       default:
         return false;

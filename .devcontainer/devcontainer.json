@@ -19,7 +19,7 @@
       "platform": "36",
       "build_tools": "36.0.0"
     },
-    "ghcr.io/devcontainers/features/node:2.0": {
+    "ghcr.io/devcontainers/features/node:2.1": {
       "nodeGypDependencies": false,
       "installYarnUsingApt": false,
       "version": "lts",
