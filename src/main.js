@@ -770,7 +770,10 @@ function createMainMenu({ top, bottom, toggler }) {
 		toggler,
 		transformOrigin: top ? "top right" : "bottom right",
 		innerHTML: () => {
-			return mustache.render($_menu, strings);
+			return mustache.render($_menu, {
+				...strings,
+				can_save_file: window.editorManager?.activeFile?.type === "editor",
+			});
 		},
 	});
 }
