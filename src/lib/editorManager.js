@@ -646,6 +646,7 @@ async function EditorManager($header, $body) {
 		tracker = {},
 		config: emmetOverrides = {},
 	} = {}) {
+		if (appSettings.value.useEmmet === false) return [];
 		const resolvedSyntax =
 			syntax === undefined ? EmmetKnownSyntax.html : syntax;
 		if (!resolvedSyntax) return [];
@@ -761,6 +762,7 @@ async function EditorManager($header, $body) {
 	]);
 
 	function maybeAttachEmmetCompletions(targetExtensions, syntax) {
+		if (appSettings.value.useEmmet === false) return;
 		if (emmetCompletionSyntaxes.has(syntax)) {
 			targetExtensions.push(
 				EditorState.languageData.of(() => [
@@ -1286,6 +1288,7 @@ async function EditorManager($header, $body) {
 	function getEditorExtensionSignature(file) {
 		return JSON.stringify({
 			syntax: getEmmetSyntaxForFile(file),
+			useEmmet: appSettings.value.useEmmet !== false,
 			colorPreview: !!appSettings.value.colorPreview,
 			autoCloseTags: appSettings.value.autoCloseTags !== false,
 			baseExtensions: getBaseExtensionSignature(),
@@ -1915,6 +1918,16 @@ async function EditorManager($header, $body) {
 		applyOptions(["linenumbers", "relativeLineNumbers"]);
 	}
 
+	function recreateActiveEditorState() {
+		const file = manager.activeFile;
+		if (file?.type !== "editor") return;
+
+		file.session = editor.state;
+		file.lastScrollTop = editor.scrollDOM?.scrollTop ?? 0;
+		file.lastScrollLeft = editor.scrollDOM?.scrollLeft ?? 0;
+		applyFileToEditor(file, { forceRecreate: true });
+	}
+
 	appSettings.on("update:tabSize", function () {
 		updateEditorIndentationSettings();
 	});
@@ -1978,6 +1991,10 @@ async function EditorManager($header, $body) {
 		applyOptions(["localWordCompletion"]);
 	});
 
+	appSettings.on("update:useEmmet", function () {
+		recreateActiveEditorState();
+	});
+
 	appSettings.on("update:autoRenameTags", function () {
 		applyOptions(["autoRenameTags"]);
 	});
@@ -1987,9 +2004,7 @@ async function EditorManager($header, $body) {
 	});
 
 	appSettings.on("update:autoCloseTags", function () {
-		const file = manager.activeFile;
-		if (file?.type === "editor")
-			applyFileToEditor(file, { forceRecreate: true });
+		recreateActiveEditorState();
 	});
 
 	appSettings.on("update:linenumbers", function () {
@@ -2043,9 +2058,7 @@ async function EditorManager($header, $body) {
 	// });
 
 	appSettings.on("update:colorPreview", function () {
-		const file = manager.activeFile;
-		if (file?.type === "editor")
-			applyFileToEditor(file, { forceRecreate: true });
+		recreateActiveEditorState();
 	});
 
 	appSettings.on("update:showSideButtons", function () {
