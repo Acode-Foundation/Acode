@@ -106,6 +106,9 @@ async function EditorManager($header, $body) {
 	let scrollbarScrollLockUntil = 0;
 	let scrollbarScrollLockTop = null;
 	let scrollbarScrollLockLeft = null;
+	let scrollRestoreFrame = 0;
+	let scrollRestoreNestedFrame = 0;
+	let scrollRestoreTimeout = 0;
 
 	// Debounce timers for CodeMirror change handling
 	let checkTimeout = null;
@@ -643,6 +646,7 @@ async function EditorManager($header, $body) {
 		tracker = {},
 		config: emmetOverrides = {},
 	} = {}) {
+		if (appSettings.value.useEmmet === false) return [];
 		const resolvedSyntax =
 			syntax === undefined ? EmmetKnownSyntax.html : syntax;
 		if (!resolvedSyntax) return [];
@@ -758,6 +762,7 @@ async function EditorManager($header, $body) {
 	]);
 
 	function maybeAttachEmmetCompletions(targetExtensions, syntax) {
+		if (appSettings.value.useEmmet === false) return;
 		if (emmetCompletionSyntaxes.has(syntax)) {
 			targetExtensions.push(
 				EditorState.languageData.of(() => [
@@ -1283,6 +1288,7 @@ async function EditorManager($header, $body) {
 	function getEditorExtensionSignature(file) {
 		return JSON.stringify({
 			syntax: getEmmetSyntaxForFile(file),
+			useEmmet: appSettings.value.useEmmet !== false,
 			colorPreview: !!appSettings.value.colorPreview,
 			autoCloseTags: appSettings.value.autoCloseTags !== false,
 			baseExtensions: getBaseExtensionSignature(),
@@ -1478,12 +1484,7 @@ async function EditorManager($header, $body) {
 				}
 			}
 
-			if (
-				typeof file.lastScrollTop === "number" ||
-				typeof file.lastScrollLeft === "number"
-			) {
-				setScrollPosition(editor, file.lastScrollTop, file.lastScrollLeft);
-			}
+			restoreFileScrollPosition(file);
 			scheduleLspForFile(file);
 			return;
 		}
@@ -1578,15 +1579,69 @@ async function EditorManager($header, $body) {
 			);
 		}
 
-		// Restore last known scroll position if present
-		if (
-			typeof file.lastScrollTop === "number" ||
-			typeof file.lastScrollLeft === "number"
-		) {
-			setScrollPosition(editor, file.lastScrollTop, file.lastScrollLeft);
-		}
+		restoreFileScrollPosition(file);
 
 		scheduleLspForFile(file);
+	}
+
+	function restoreFileScrollPosition(file) {
+		cancelPendingScrollRestore();
+		if (!file || file.type !== "editor") return;
+		const hasTop = typeof file.lastScrollTop === "number";
+		const hasLeft = typeof file.lastScrollLeft === "number";
+		if (!hasTop && !hasLeft) return;
+
+		const fileId = file.id;
+		const top = hasTop ? file.lastScrollTop : undefined;
+		const left = hasLeft ? file.lastScrollLeft : undefined;
+
+		const apply = () => {
+			if (manager.activeFile?.id !== fileId) return;
+			suppressCursorReveal(450);
+			setScrollPosition(editor, top, left);
+
+			const scroller = editor?.scrollDOM;
+			if (scroller) {
+				if (hasTop) lastScrollTop = scroller.scrollTop;
+				if (hasLeft) lastScrollLeft = scroller.scrollLeft;
+				lockScrollbarScrollPosition(
+					{
+						top: hasTop ? scroller.scrollTop : undefined,
+						left: hasLeft ? scroller.scrollLeft : undefined,
+					},
+					450,
+				);
+			}
+		};
+
+		apply();
+		scrollRestoreFrame = requestAnimationFrame(() => {
+			scrollRestoreFrame = 0;
+			apply();
+			scrollRestoreNestedFrame = requestAnimationFrame(() => {
+				scrollRestoreNestedFrame = 0;
+				apply();
+			});
+		});
+		scrollRestoreTimeout = setTimeout(() => {
+			scrollRestoreTimeout = 0;
+			apply();
+		}, 120);
+	}
+
+	function cancelPendingScrollRestore() {
+		if (scrollRestoreFrame) {
+			cancelAnimationFrame(scrollRestoreFrame);
+			scrollRestoreFrame = 0;
+		}
+		if (scrollRestoreNestedFrame) {
+			cancelAnimationFrame(scrollRestoreNestedFrame);
+			scrollRestoreNestedFrame = 0;
+		}
+		if (scrollRestoreTimeout) {
+			clearTimeout(scrollRestoreTimeout);
+			scrollRestoreTimeout = 0;
+		}
 	}
 
 	function getEmmetSyntaxForFile(file) {
@@ -1863,6 +1918,16 @@ async function EditorManager($header, $body) {
 		applyOptions(["linenumbers", "relativeLineNumbers"]);
 	}
 
+	function recreateActiveEditorState() {
+		const file = manager.activeFile;
+		if (file?.type !== "editor") return;
+
+		file.session = editor.state;
+		file.lastScrollTop = editor.scrollDOM?.scrollTop ?? 0;
+		file.lastScrollLeft = editor.scrollDOM?.scrollLeft ?? 0;
+		applyFileToEditor(file, { forceRecreate: true });
+	}
+
 	appSettings.on("update:tabSize", function () {
 		updateEditorIndentationSettings();
 	});
@@ -1926,6 +1991,10 @@ async function EditorManager($header, $body) {
 		applyOptions(["localWordCompletion"]);
 	});
 
+	appSettings.on("update:useEmmet", function () {
+		recreateActiveEditorState();
+	});
+
 	appSettings.on("update:autoRenameTags", function () {
 		applyOptions(["autoRenameTags"]);
 	});
@@ -1935,9 +2004,7 @@ async function EditorManager($header, $body) {
 	});
 
 	appSettings.on("update:autoCloseTags", function () {
-		const file = manager.activeFile;
-		if (file?.type === "editor")
-			applyFileToEditor(file, { forceRecreate: true });
+		recreateActiveEditorState();
 	});
 
 	appSettings.on("update:linenumbers", function () {
@@ -1991,9 +2058,7 @@ async function EditorManager($header, $body) {
 	// });
 
 	appSettings.on("update:colorPreview", function () {
-		const file = manager.activeFile;
-		if (file?.type === "editor")
-			applyFileToEditor(file, { forceRecreate: true });
+		recreateActiveEditorState();
 	});
 
 	appSettings.on("update:showSideButtons", function () {
@@ -2254,6 +2319,12 @@ async function EditorManager($header, $body) {
 		keyboardHandler.on("keyboardShow", () => {
 			if (isCursorRevealSuppressed()) return;
 			scrollCursorIntoView();
+		});
+		keyboardHandler.on("keyboardHide", () => {
+			requestAnimationFrame(() => {
+				if (isCursorRevealSuppressed()) return;
+				scrollCursorIntoView({ behavior: "instant" });
+			});
 		});
 
 		// Attach native DOM event listeners directly to the editor's contentDOM

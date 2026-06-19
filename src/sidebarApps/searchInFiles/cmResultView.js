@@ -414,6 +414,18 @@ export function createSearchResultView(
 			isGhostText = false;
 			this.setValue("");
 		},
+		getScrollPosition() {
+			return {
+				top: view.scrollDOM?.scrollTop ?? 0,
+				left: view.scrollDOM?.scrollLeft ?? 0,
+			};
+		},
+		setScrollPosition({ top = 0, left = 0 } = {}) {
+			const scroller = view.scrollDOM;
+			if (!scroller) return;
+			scroller.scrollTop = top;
+			scroller.scrollLeft = left;
+		},
 		get view() {
 			return view;
 		},

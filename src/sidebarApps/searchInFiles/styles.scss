@@ -20,18 +20,24 @@
       display: flex;
       justify-content: space-between !important;
       align-items: center;
+      gap: 8px;
       width: 100%;
       color: var(--primary-text-color);
       margin-bottom: 8px;
 
       .title-text {
         font-size: 0.9rem;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
       .actions {
         display: flex;
         align-items: center;
         gap: 6px;
+        flex: 0 0 auto;
       }
 
       .icon-button {
@@ -61,14 +67,31 @@
       }
     }
 
-    /* Options Row (Original Right-Aligned Checkboxes) */
     .options {
-      display: flex;
-      justify-content: center;
-      gap: 16px;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
       width: 100%;
       margin-bottom: 10px;
       flex-shrink: 0;
+
+      .input-checkbox {
+        min-width: 0;
+        justify-content: center;
+        white-space: nowrap;
+
+        .box {
+          flex: 0 0 auto;
+          margin: 0 5px 0 0;
+        }
+
+        >span:last-child {
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+      }
     }
 
     /* Input Rows */

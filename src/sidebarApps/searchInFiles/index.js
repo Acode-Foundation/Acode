@@ -106,6 +106,9 @@ let useIncludeAndExclude = showExtras;
 const $headerEl = Ref();
 let searchResult = null; // CM6 wrapper from createSearchResultView
 let currentSearchRegex = null;
+let resultScrollTop = 0;
+let resultScrollLeft = 0;
+let resultScrollRestoreFrame = 0;
 let replacing = false;
 let newFiles = 0;
 let searching = false;
@@ -137,6 +140,14 @@ $container.onref = ($el) => {
 		getFileNames: () => fileNames,
 		getRegex: () => currentSearchRegex,
 	});
+	searchResult.view.scrollDOM?.addEventListener(
+		"scroll",
+		rememberResultScroll,
+		{
+			passive: true,
+		},
+	);
+	restoreResultScroll();
 	$container.style.lineHeight = "1.5";
 };
 
@@ -168,6 +179,7 @@ export default [
 	strings["search in files"],
 	(/**@type {HTMLElement} */ el) => {
 		el.classList.add("search-in-files");
+		Sidebar.on("show", restoreResultScroll);
 
 		el.content = (
 			<>
@@ -276,6 +288,7 @@ export default [
 				></div>
 			</>
 		);
+		return () => Sidebar.off("show", restoreResultScroll);
 	},
 	false, // show as first item
 	() => {},
@@ -529,10 +542,15 @@ function onInput(e) {
 	$progress.value = 0;
 	filesSearched.length = 0;
 	resultOverview.reset();
+	resetResultScroll();
 	clearPendingResultText();
 	searchResult.setValue("");
-	searchResult.setGhostText(strings["searching..."], { row: 0, column: 0 });
 	removeEvents();
+	if (!$search.value) {
+		searchResult.removeGhostText();
+		return;
+	}
+	searchResult.setGhostText(strings["searching..."], { row: 0, column: 0 });
 	debounceSearch();
 }
 
@@ -1008,6 +1026,7 @@ async function onCursorChange(line) {
 		return;
 	}
 
+	rememberResultScroll();
 	Sidebar.hide();
 	const { url } = filesSearched[file];
 	await openFile(url, { render: true });
@@ -1042,6 +1061,31 @@ function onEditorFileUpdate(file) {
 	const uri = file?.uri;
 	if (uri) markIndexDirty([uri]);
 	onInput();
+}
+
+function rememberResultScroll() {
+	const position = searchResult?.getScrollPosition?.();
+	if (!position) return;
+	resultScrollTop = position.top;
+	resultScrollLeft = position.left;
+}
+
+function restoreResultScroll() {
+	cancelAnimationFrame(resultScrollRestoreFrame);
+	resultScrollRestoreFrame = requestAnimationFrame(() => {
+		resultScrollRestoreFrame = 0;
+		searchResult?.setScrollPosition?.({
+			top: resultScrollTop,
+			left: resultScrollLeft,
+		});
+	});
+}
+
+function resetResultScroll() {
+	resultScrollTop = 0;
+	resultScrollLeft = 0;
+	cancelAnimationFrame(resultScrollRestoreFrame);
+	resultScrollRestoreFrame = 0;
 }
 
 /**

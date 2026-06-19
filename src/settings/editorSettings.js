@@ -134,6 +134,12 @@ export default function editorSettings() {
 			category: categories.assistance,
 		},
 		{
+			key: "useEmmet",
+			text: strings["use emmet"],
+			checkbox: values.useEmmet ?? true,
+			category: categories.assistance,
+		},
+		{
 			key: "autoCloseTags",
 			text: strings["auto close tags"],
 			checkbox: values.autoCloseTags,
