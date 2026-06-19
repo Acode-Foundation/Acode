@@ -545,8 +545,12 @@ function onInput(e) {
 	resetResultScroll();
 	clearPendingResultText();
 	searchResult.setValue("");
-	searchResult.setGhostText(strings["searching..."], { row: 0, column: 0 });
 	removeEvents();
+	if (!$search.value) {
+		searchResult.removeGhostText();
+		return;
+	}
+	searchResult.setGhostText(strings["searching..."], { row: 0, column: 0 });
 	debounceSearch();
 }
 
