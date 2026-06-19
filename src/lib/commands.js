@@ -65,8 +65,12 @@ function resolveReferenceFile(referenceFile) {
 	return referenceFile;
 }
 
-function canSaveFile(file = editorManager.activeFile) {
-	return file?.type === "editor" && typeof file.save === "function";
+export function canSaveFile(file = editorManager.activeFile) {
+	return (
+		file?.type === "editor" &&
+		typeof file.save === "function" &&
+		typeof file.saveAs === "function"
+	);
 }
 
 function getTabsRelativeToFile(side, referenceFile) {
@@ -360,8 +364,7 @@ export default {
 	async "save-as"(showToast) {
 		try {
 			const { activeFile } = editorManager;
-			if (!canSaveFile(activeFile) || typeof activeFile.saveAs !== "function")
-				return;
+			if (!canSaveFile(activeFile)) return;
 			await activeFile.saveAs();
 			if (showToast) {
 				toast(strings["file saved"]);

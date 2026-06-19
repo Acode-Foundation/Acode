@@ -40,6 +40,7 @@ import ajax from "lib/ajax";
 import applySettings from "lib/applySettings";
 import checkFiles from "lib/checkFiles";
 import checkPluginsUpdate from "lib/checkPluginsUpdate";
+import { canSaveFile } from "lib/commands";
 import config from "lib/config";
 import EditorFile from "lib/editorFile";
 import EditorManager from "lib/editorManager";
@@ -772,7 +773,7 @@ function createMainMenu({ top, bottom, toggler }) {
 		innerHTML: () => {
 			return mustache.render($_menu, {
 				...strings,
-				can_save_file: window.editorManager?.activeFile?.type === "editor",
+				can_save_file: canSaveFile(window.editorManager?.activeFile),
 			});
 		},
 	});

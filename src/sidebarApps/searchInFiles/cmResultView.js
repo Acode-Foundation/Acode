@@ -416,8 +416,8 @@ export function createSearchResultView(
 		},
 		getScrollPosition() {
 			return {
-				top: view.scrollDOM?.scrollTop || 0,
-				left: view.scrollDOM?.scrollLeft || 0,
+				top: view.scrollDOM?.scrollTop ?? 0,
+				left: view.scrollDOM?.scrollLeft ?? 0,
 			};
 		},
 		setScrollPosition({ top = 0, left = 0 } = {}) {

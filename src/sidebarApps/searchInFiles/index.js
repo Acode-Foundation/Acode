@@ -155,8 +155,6 @@ preventSlide((target) => {
 	return $container.el?.contains(target);
 });
 
-Sidebar.on("show", restoreResultScroll);
-
 function toggleReplace() {
 	showReplace = !showReplace;
 	$headerEl.el.classList.toggle("show-replace", showReplace);
@@ -181,6 +179,7 @@ export default [
 	strings["search in files"],
 	(/**@type {HTMLElement} */ el) => {
 		el.classList.add("search-in-files");
+		Sidebar.on("show", restoreResultScroll);
 
 		el.content = (
 			<>
@@ -289,6 +288,7 @@ export default [
 				></div>
 			</>
 		);
+		return () => Sidebar.off("show", restoreResultScroll);
 	},
 	false, // show as first item
 	() => {},
