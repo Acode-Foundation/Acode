@@ -753,7 +753,7 @@
 	"cannot paste folder into itself": "A mappa nem másolható önmagába",
 	"folder already exists": "A mappa már létezik",
 	"file already exists force named": "A(z) „{name}” nevű fájl már létezik. Felülírja?",
-"lsp-allow-non-terminal-workspace": "LSP futtatása külső mappákban",
+	"lsp-allow-non-terminal-workspace": "LSP futtatása külső mappákban",
 	"settings-info-lsp-allow-non-terminal-workspace": "Nyelvi kiszolgálók engedélyezése SAF-, külső és távoli helyekhez. Az LSP az Acode beépített termináljában fut, amely nem fér hozzá ezekhez a helyekhez, így előfordulhat, hogy a funkciók nem fognak megfelelően működni, mivel ilyenkor virtuális útvonalhoz vagy gyorsítótárazott helyhez csatlakozik.",
 	"don't ask again": "Ne kérdezzen rá újra",
 	"scrollbar height": "Görgetősáv magassága",
