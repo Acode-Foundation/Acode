@@ -295,6 +295,33 @@ public class Executor extends CordovaPlugin {
         }
 
 
+        if (action.equals("listAllProcesses")) {
+            try {
+                callbackContext.success(ProcessUtils.getAllProcesses());
+            } catch (Exception e) {
+                callbackContext.error("Failed to list all processes: " + e.getMessage());
+            }
+            return true;
+        }
+
+        if (action.equals("killProcess")) {
+            try {
+                int targetPid = args.getInt(0);
+                ProcessUtils.killProcess(targetPid);
+                callbackContext.success("Process terminated");
+            } catch (Exception e) {
+                callbackContext.error("Failed to kill process: " + e.getMessage());
+            }
+            return true;
+        }
+
+        if (action.equals("listProcesses")) {
+            if (!isServiceBound || serviceMessenger == null) {
+                callbackContext.success(new org.json.JSONArray());
+                return true;
+            }
+        }
+
         // For all other actions, ensure service is bound first
         if (!ensureServiceBound(callbackContext)) {
             // Error already sent by ensureServiceBound

@@ -43,6 +43,12 @@ public class BackgroundExecutor extends CordovaPlugin {
             case "listProcesses":
                 listProcesses(callbackContext);
                 return true;
+            case "listAllProcesses":
+                listAllProcesses(callbackContext);
+                return true;
+            case "killProcess":
+                killProcess(args.getInt(0), callbackContext);
+                return true;
             case "loadLibrary":
                 loadLibrary(args.getString(0), callbackContext);
                 return true;
@@ -74,10 +80,11 @@ public class BackgroundExecutor extends CordovaPlugin {
                 ProcessBuilder builder = processManager.createProcessBuilder(cmd, useAlpine);
                 Process process = builder.start();
 
+                long pidVal = ProcessUtils.getPid(process);
                 processes.put(pid, process);
                 processInputs.put(pid, process.getOutputStream());
                 processCallbacks.put(pid, callbackContext);
-                processDetails.put(pid, new ProcessDetails(cmd, useAlpine));
+                processDetails.put(pid, new ProcessDetails(cmd, useAlpine, pidVal));
 
                 sendPluginResult(callbackContext, pid, true);
 
@@ -159,6 +166,7 @@ public class BackgroundExecutor extends CordovaPlugin {
                 item.put("command", details.command);
                 item.put("alpine", details.alpine);
                 item.put("startedAt", details.startedAt);
+                item.put("pid", details.pid);
                 result.put(item);
             } catch (JSONException ignored) {
                 // These values are generated internally and should always serialize.
@@ -197,15 +205,34 @@ public class BackgroundExecutor extends CordovaPlugin {
         processDetails.remove(pid);
     }
 
+    private void listAllProcesses(CallbackContext callbackContext) {
+        try {
+            callbackContext.success(ProcessUtils.getAllProcesses());
+        } catch (Exception e) {
+            callbackContext.error("Failed to list all processes: " + e.getMessage());
+        }
+    }
+
+    private void killProcess(int pid, CallbackContext callbackContext) {
+        try {
+            ProcessUtils.killProcess(pid);
+            callbackContext.success("Process terminated");
+        } catch (Exception e) {
+            callbackContext.error("Failed to kill process: " + e.getMessage());
+        }
+    }
+
     private static class ProcessDetails {
         final String command;
         final boolean alpine;
         final long startedAt;
+        final long pid;
 
-        ProcessDetails(String command, boolean alpine) {
+        ProcessDetails(String command, boolean alpine, long pid) {
             this.command = command;
             this.alpine = alpine;
             this.startedAt = System.currentTimeMillis();
+            this.pid = pid;
         }
     }
 }

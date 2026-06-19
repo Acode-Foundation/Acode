@@ -164,9 +164,10 @@ public class TerminalService extends Service {
                 ProcessBuilder builder = processManager.createProcessBuilder(cmd, useAlpine);
                 Process process = builder.start();
                 
+                long pidVal = ProcessUtils.getPid(process);
                 processes.put(pid, process);
                 processInputs.put(pid, process.getOutputStream());
-                processDetails.put(pid, new ProcessDetails(cmd, useAlpine));
+                processDetails.put(pid, new ProcessDetails(cmd, useAlpine, pidVal));
                 
                 // Stream stdout
                 threadPool.execute(() -> 
@@ -292,6 +293,7 @@ public class TerminalService extends Service {
                 item.put("command", details.command);
                 item.put("alpine", details.alpine);
                 item.put("startedAt", details.startedAt);
+                item.put("pid", details.pid);
                 result.put(item);
             } catch (JSONException ignored) {
                 // These values are generated internally and should always serialize.
@@ -341,11 +343,13 @@ public class TerminalService extends Service {
         final String command;
         final boolean alpine;
         final long startedAt;
+        final long pid;
 
-        ProcessDetails(String command, boolean alpine) {
+        ProcessDetails(String command, boolean alpine, long pid) {
             this.command = command;
             this.alpine = alpine;
             this.startedAt = System.currentTimeMillis();
+            this.pid = pid;
         }
     }
 

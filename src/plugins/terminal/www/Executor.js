@@ -191,6 +191,29 @@ class Executor {
   }
 
   /**
+   * Lists all running OS processes under the app's user ID.
+   *
+   * @returns {Promise<Array<{pid: number, ppid: number, name: string, command: string, state: string, memory: number, isSelf: boolean}>>}
+   */
+  listAllProcesses() {
+    return new Promise((resolve, reject) => {
+      exec(resolve, reject, this.ExecutorType, "listAllProcesses", []);
+    });
+  }
+
+  /**
+   * Forcefully kills a process by its native PID.
+   *
+   * @param {number} pid - Native process ID to kill.
+   * @returns {Promise<string>} Resolves when the process is terminated.
+   */
+  killProcess(pid) {
+    return new Promise((resolve, reject) => {
+      exec(resolve, reject, this.ExecutorType, "killProcess", [pid]);
+    });
+  }
+
+  /**
    * Stops the executor service completely.
    *
    * @returns {Promise<string>} Resolves when the service has been stopped.
