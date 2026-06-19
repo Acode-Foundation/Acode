@@ -92,6 +92,7 @@ export default function RunningProcesses() {
 				searchQuery = value;
 				return renderSearch(value);
 			},
+			false,
 		);
 	}
 
