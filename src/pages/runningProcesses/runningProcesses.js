@@ -124,6 +124,7 @@ export default function RunningProcesses() {
 						type: "Terminal service",
 						id: p.id,
 						alpine: p.alpine,
+						startedAt: p.startedAt,
 						background: false,
 					});
 			}
@@ -133,6 +134,7 @@ export default function RunningProcesses() {
 						type: "Background executor",
 						id: p.id,
 						alpine: p.alpine,
+						startedAt: p.startedAt,
 						background: true,
 					});
 			}
@@ -144,6 +146,7 @@ export default function RunningProcesses() {
 					p.managedType = managed.type;
 					p.managedId = managed.id;
 					p.alpine = managed.alpine;
+					if (managed.startedAt) p.startedAt = managed.startedAt;
 				}
 			}
 
