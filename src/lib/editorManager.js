@@ -106,6 +106,9 @@ async function EditorManager($header, $body) {
 	let scrollbarScrollLockUntil = 0;
 	let scrollbarScrollLockTop = null;
 	let scrollbarScrollLockLeft = null;
+	let scrollRestoreFrame = 0;
+	let scrollRestoreNestedFrame = 0;
+	let scrollRestoreTimeout = 0;
 
 	// Debounce timers for CodeMirror change handling
 	let checkTimeout = null;
@@ -1579,6 +1582,7 @@ async function EditorManager($header, $body) {
 	}
 
 	function restoreFileScrollPosition(file) {
+		cancelPendingScrollRestore();
 		if (!file || file.type !== "editor") return;
 		const hasTop = typeof file.lastScrollTop === "number";
 		const hasLeft = typeof file.lastScrollLeft === "number";
@@ -1608,11 +1612,33 @@ async function EditorManager($header, $body) {
 		};
 
 		apply();
-		requestAnimationFrame(() => {
+		scrollRestoreFrame = requestAnimationFrame(() => {
+			scrollRestoreFrame = 0;
 			apply();
-			requestAnimationFrame(apply);
+			scrollRestoreNestedFrame = requestAnimationFrame(() => {
+				scrollRestoreNestedFrame = 0;
+				apply();
+			});
 		});
-		setTimeout(apply, 120);
+		scrollRestoreTimeout = setTimeout(() => {
+			scrollRestoreTimeout = 0;
+			apply();
+		}, 120);
+	}
+
+	function cancelPendingScrollRestore() {
+		if (scrollRestoreFrame) {
+			cancelAnimationFrame(scrollRestoreFrame);
+			scrollRestoreFrame = 0;
+		}
+		if (scrollRestoreNestedFrame) {
+			cancelAnimationFrame(scrollRestoreNestedFrame);
+			scrollRestoreNestedFrame = 0;
+		}
+		if (scrollRestoreTimeout) {
+			clearTimeout(scrollRestoreTimeout);
+			scrollRestoreTimeout = 0;
+		}
 	}
 
 	function getEmmetSyntaxForFile(file) {
