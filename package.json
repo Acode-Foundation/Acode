@@ -164,7 +164,7 @@
     "cordova": "13.0.0",
     "core-js": "^3.49.0",
     "dayjs": "^1.11.20",
-    "dompurify": "^3.4.10",
+    "dompurify": "^3.4.11",
     "escape-string-regexp": "^5.0.0",
     "esprima": "^4.0.1",
     "filesize": "^11.0.17",
