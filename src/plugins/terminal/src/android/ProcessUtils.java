@@ -53,10 +53,11 @@ public class ProcessUtils {
     /**
      * Forcefully kills a single process
      */
-    public static void killProcess(int pid) {
-        try {
-            Runtime.getRuntime().exec("kill -9 " + pid).waitFor();
-        } catch (Exception ignored) {}
+    public static void killProcess(int pid) throws IOException, InterruptedException {
+        int exitCode = Runtime.getRuntime().exec("kill -9 " + pid).waitFor();
+        if (exitCode != 0) {
+            throw new IOException("kill -9 " + pid + " exited with code " + exitCode);
+        }
     }
 
     /**

@@ -395,7 +395,7 @@ function extractProcessName(command, fallbackName) {
 		if (
 			basename.endsWith(".sh") &&
 			i < args.length - 1 &&
-			!interpreters.has(getBasename(args[i + 1]))
+			interpreters.has(getBasename(args[i + 1]).toLowerCase())
 		) {
 			i++;
 			continue;
