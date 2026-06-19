@@ -301,7 +301,15 @@ export default function RunningProcesses() {
 
 		try {
 			clearTimeout(refreshTimer);
-			await Executor.killProcess(proc.pid);
+			if (proc.managed) {
+				const executor =
+					proc.managedType === "Background executor"
+						? Executor.BackgroundExecutor
+						: Executor;
+				await executor.stop(proc.managedId);
+			} else {
+				await Executor.killProcess(proc.pid);
+			}
 			toast(text("process terminated", "Process terminated"));
 			await refresh();
 		} catch (error) {

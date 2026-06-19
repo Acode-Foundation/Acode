@@ -51,12 +51,9 @@ public class ProcessUtils {
     }
 
     /**
-     * Forcefully kills a process and its process group
+     * Forcefully kills a single process
      */
     public static void killProcess(int pid) {
-        try {
-            Runtime.getRuntime().exec("kill -9 -" + pid).waitFor();
-        } catch (Exception ignored) {}
         try {
             Runtime.getRuntime().exec("kill -9 " + pid).waitFor();
         } catch (Exception ignored) {}
