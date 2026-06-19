@@ -1478,12 +1478,7 @@ async function EditorManager($header, $body) {
 				}
 			}
 
-			if (
-				typeof file.lastScrollTop === "number" ||
-				typeof file.lastScrollLeft === "number"
-			) {
-				setScrollPosition(editor, file.lastScrollTop, file.lastScrollLeft);
-			}
+			restoreFileScrollPosition(file);
 			scheduleLspForFile(file);
 			return;
 		}
@@ -1578,15 +1573,46 @@ async function EditorManager($header, $body) {
 			);
 		}
 
-		// Restore last known scroll position if present
-		if (
-			typeof file.lastScrollTop === "number" ||
-			typeof file.lastScrollLeft === "number"
-		) {
-			setScrollPosition(editor, file.lastScrollTop, file.lastScrollLeft);
-		}
+		restoreFileScrollPosition(file);
 
 		scheduleLspForFile(file);
+	}
+
+	function restoreFileScrollPosition(file) {
+		if (!file || file.type !== "editor") return;
+		const hasTop = typeof file.lastScrollTop === "number";
+		const hasLeft = typeof file.lastScrollLeft === "number";
+		if (!hasTop && !hasLeft) return;
+
+		const fileId = file.id;
+		const top = hasTop ? file.lastScrollTop : undefined;
+		const left = hasLeft ? file.lastScrollLeft : undefined;
+
+		const apply = () => {
+			if (manager.activeFile?.id !== fileId) return;
+			suppressCursorReveal(450);
+			setScrollPosition(editor, top, left);
+
+			const scroller = editor?.scrollDOM;
+			if (scroller) {
+				if (hasTop) lastScrollTop = scroller.scrollTop;
+				if (hasLeft) lastScrollLeft = scroller.scrollLeft;
+				lockScrollbarScrollPosition(
+					{
+						top: hasTop ? scroller.scrollTop : undefined,
+						left: hasLeft ? scroller.scrollLeft : undefined,
+					},
+					450,
+				);
+			}
+		};
+
+		apply();
+		requestAnimationFrame(() => {
+			apply();
+			requestAnimationFrame(apply);
+		});
+		setTimeout(apply, 120);
 	}
 
 	function getEmmetSyntaxForFile(file) {
