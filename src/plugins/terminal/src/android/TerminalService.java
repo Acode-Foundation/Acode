@@ -279,10 +279,7 @@ public class TerminalService extends Service {
         for (Map.Entry<String, Process> entry : processes.entrySet()) {
             String id = entry.getKey();
             Process process = entry.getValue();
-            if (!ProcessUtils.isAlive(process)) {
-                cleanup(id);
-                continue;
-            }
+            if (!ProcessUtils.isAlive(process)) continue;
 
             ProcessDetails details = processDetails.get(id);
             if (details == null) continue;

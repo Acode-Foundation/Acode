@@ -98,6 +98,15 @@ export default function RunningProcesses() {
 	async function refresh() {
 		if ($refresh.classList.contains("spinning")) return;
 		clearTimeout(refreshTimer);
+		if (typeof Executor === "undefined") {
+			$listContainer.replaceChildren(
+				<div className="process-state error">
+					<span className="icon error"></span>
+					{text("feature not available", "This feature is not available.")}
+				</div>,
+			);
+			return;
+		}
 		$refresh.classList.add("spinning");
 
 		try {
@@ -276,7 +285,11 @@ export default function RunningProcesses() {
 		} else {
 			expandedPids.add(pid);
 		}
-		renderList();
+		if (isSearching) {
+			$listContainer.replaceChildren(...renderSearch(searchQuery));
+		} else {
+			renderList();
+		}
 	}
 
 	async function handleKill(proc) {
@@ -287,12 +300,14 @@ export default function RunningProcesses() {
 		if (!shouldKill) return;
 
 		try {
+			clearTimeout(refreshTimer);
 			await Executor.killProcess(proc.pid);
 			toast(text("process terminated", "Process terminated"));
 			await refresh();
 		} catch (error) {
 			console.error("Failed to terminate process:", error);
 			toast(text("kill process failed", "Failed to terminate process"));
+			if (visible) refreshTimer = setTimeout(refresh, 3000);
 		}
 	}
 

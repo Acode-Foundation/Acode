@@ -62,6 +62,7 @@ interface Executor {
 
 interface ExecutorProcess {
   id: string;
+  pid: number;
   command: string;
   alpine: boolean;
   startedAt: number;
