@@ -16,6 +16,9 @@ import android.os.Messenger;
 import android.os.PowerManager;
 import android.os.RemoteException;
 import androidx.core.app.NotificationCompat;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Map;
@@ -31,6 +34,7 @@ public class TerminalService extends Service {
     public static final int MSG_STOP_PROCESS = 3;
     public static final int MSG_IS_RUNNING = 4;
     public static final int MSG_EXEC = 5;
+    public static final int MSG_LIST_PROCESSES = 6;
 
     public static final String CHANNEL_ID = "terminal_exec_channel";
     
@@ -43,6 +47,7 @@ public class TerminalService extends Service {
     private final Map<String, Process> processes = new ConcurrentHashMap<>();
     private final Map<String, OutputStream> processInputs = new ConcurrentHashMap<>();
     private final Map<String, Messenger> clientMessengers = new ConcurrentHashMap<>();
+    private final Map<String, ProcessDetails> processDetails = new ConcurrentHashMap<>();
     private final java.util.concurrent.ExecutorService threadPool = Executors.newCachedThreadPool();
 
     private final Messenger serviceMessenger = new Messenger(new ServiceHandler());
@@ -118,6 +123,9 @@ public class TerminalService extends Service {
                     clientMessengers.put(id, clientMessenger);
                     exec(id, execCmd, "true".equals(execAlpine));
                     break;
+                case MSG_LIST_PROCESSES:
+                    listProcesses(id, clientMessenger);
+                    break;
             }
         }
     }
@@ -158,6 +166,7 @@ public class TerminalService extends Service {
                 
                 processes.put(pid, process);
                 processInputs.put(pid, process.getOutputStream());
+                processDetails.put(pid, new ProcessDetails(cmd, useAlpine));
                 
                 // Stream stdout
                 threadPool.execute(() -> 
@@ -263,6 +272,45 @@ public class TerminalService extends Service {
         }
     }
 
+    private void listProcesses(String requestId, Messenger clientMessenger) {
+        JSONArray result = new JSONArray();
+
+        for (Map.Entry<String, Process> entry : processes.entrySet()) {
+            String id = entry.getKey();
+            Process process = entry.getValue();
+            if (!ProcessUtils.isAlive(process)) {
+                cleanup(id);
+                continue;
+            }
+
+            ProcessDetails details = processDetails.get(id);
+            if (details == null) continue;
+
+            try {
+                JSONObject item = new JSONObject();
+                item.put("id", id);
+                item.put("command", details.command);
+                item.put("alpine", details.alpine);
+                item.put("startedAt", details.startedAt);
+                result.put(item);
+            } catch (JSONException ignored) {
+                // These values are generated internally and should always serialize.
+            }
+        }
+
+        try {
+            Message reply = Message.obtain();
+            Bundle bundle = new Bundle();
+            bundle.putString("id", requestId);
+            bundle.putString("action", "listProcesses");
+            bundle.putString("data", result.toString());
+            reply.setData(bundle);
+            clientMessenger.send(reply);
+        } catch (RemoteException ignored) {
+            // The requesting WebView is no longer available.
+        }
+    }
+
    private void isProcessRunning(String pid, Messenger clientMessenger) {
     boolean running =
         processes.containsKey(pid) &&
@@ -286,6 +334,19 @@ public class TerminalService extends Service {
         processes.remove(id);
         processInputs.remove(id);
         clientMessengers.remove(id);
+        processDetails.remove(id);
+    }
+
+    private static class ProcessDetails {
+        final String command;
+        final boolean alpine;
+        final long startedAt;
+
+        ProcessDetails(String command, boolean alpine) {
+            this.command = command;
+            this.alpine = alpine;
+            this.startedAt = System.currentTimeMillis();
+        }
     }
 
     private void createNotificationChannel() {
@@ -343,6 +404,7 @@ public class TerminalService extends Service {
         processes.clear();
         processInputs.clear();
         clientMessengers.clear();
+        processDetails.clear();
         threadPool.shutdown();
     }
 

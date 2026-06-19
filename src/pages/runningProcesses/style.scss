@@ -1,0 +1,71 @@
+#running-processes {
+	height: 100%;
+	overflow-y: auto;
+	padding: 12px;
+	box-sizing: border-box;
+
+	.process-state {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+		height: 100%;
+		color: var(--secondary-text-color);
+
+		&.error {
+			color: var(--danger-color);
+		}
+	}
+
+	.process-card {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		margin-bottom: 10px;
+		padding: 14px;
+		border: 1px solid var(--border-color);
+		border-radius: 8px;
+		background: var(--secondary-color);
+
+		.process-card-main {
+			min-width: 0;
+			flex: 1;
+		}
+
+		.process-command {
+			overflow: hidden;
+			font-family: var(--editor-font-family, monospace);
+			font-weight: 600;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+
+		.process-meta {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 4px 12px;
+			margin-top: 7px;
+			color: var(--secondary-text-color);
+			font-size: 0.78rem;
+		}
+
+		.process-id {
+			display: block;
+			overflow: hidden;
+			margin-top: 5px;
+			color: var(--secondary-text-color);
+			font-size: 0.7rem;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+
+		.process-kill {
+			flex: 0 0 auto;
+			padding: 10px;
+			border: 0;
+			background: transparent;
+			color: var(--danger-color);
+			font-size: 1.35rem;
+		}
+	}
+}

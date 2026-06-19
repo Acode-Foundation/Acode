@@ -456,6 +456,7 @@
 	"terminal:confirm tab close": "Confirm terminal tab close",
 	"terminal:image support": "Image support",
 	"terminal": "Terminal",
+	"running processes": "Running processes",
 	"terminal not installed prompt": "Terminal is not installed. Would you like to initialize it now?",
 	"terminal first launch prompt": "Terminal environment is not installed. It enables running commands, SSH, and scripting. Install now?",
 	"don't ask again": "Don't ask again",

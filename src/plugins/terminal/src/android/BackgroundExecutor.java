@@ -12,6 +12,7 @@ public class BackgroundExecutor extends CordovaPlugin {
     private final Map<String, Process> processes = new ConcurrentHashMap<>();
     private final Map<String, OutputStream> processInputs = new ConcurrentHashMap<>();
     private final Map<String, CallbackContext> processCallbacks = new ConcurrentHashMap<>();
+    private final Map<String, ProcessDetails> processDetails = new ConcurrentHashMap<>();
     private ProcessManager processManager;
 
     @Override
@@ -38,6 +39,9 @@ public class BackgroundExecutor extends CordovaPlugin {
                 return true;
             case "isRunning":
                 isProcessRunning(args.getString(0), callbackContext);
+                return true;
+            case "listProcesses":
+                listProcesses(callbackContext);
                 return true;
             case "loadLibrary":
                 loadLibrary(args.getString(0), callbackContext);
@@ -73,6 +77,7 @@ public class BackgroundExecutor extends CordovaPlugin {
                 processes.put(pid, process);
                 processInputs.put(pid, process.getOutputStream());
                 processCallbacks.put(pid, callbackContext);
+                processDetails.put(pid, new ProcessDetails(cmd, useAlpine));
 
                 sendPluginResult(callbackContext, pid, true);
 
@@ -134,6 +139,35 @@ public class BackgroundExecutor extends CordovaPlugin {
         }
     }
 
+    private void listProcesses(CallbackContext callbackContext) {
+        JSONArray result = new JSONArray();
+
+        for (Map.Entry<String, Process> entry : processes.entrySet()) {
+            String id = entry.getKey();
+            Process process = entry.getValue();
+            if (!ProcessUtils.isAlive(process)) {
+                cleanup(id);
+                continue;
+            }
+
+            ProcessDetails details = processDetails.get(id);
+            if (details == null) continue;
+
+            try {
+                JSONObject item = new JSONObject();
+                item.put("id", id);
+                item.put("command", details.command);
+                item.put("alpine", details.alpine);
+                item.put("startedAt", details.startedAt);
+                result.put(item);
+            } catch (JSONException ignored) {
+                // These values are generated internally and should always serialize.
+            }
+        }
+
+        callbackContext.success(result);
+    }
+
     private void loadLibrary(String path, CallbackContext callbackContext) {
         try {
             System.load(path);
@@ -160,5 +194,18 @@ public class BackgroundExecutor extends CordovaPlugin {
         processes.remove(pid);
         processInputs.remove(pid);
         processCallbacks.remove(pid);
+        processDetails.remove(pid);
+    }
+
+    private static class ProcessDetails {
+        final String command;
+        final boolean alpine;
+        final long startedAt;
+
+        ProcessDetails(String command, boolean alpine) {
+            this.command = command;
+            this.alpine = alpine;
+            this.startedAt = System.currentTimeMillis();
+        }
     }
 }

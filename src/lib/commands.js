@@ -643,6 +643,12 @@ Additional Info:
 			window.toast("Failed to create terminal");
 		}
 	},
+	async "running-processes"() {
+		const { default: RunningProcesses } = await import(
+			"pages/runningProcesses"
+		);
+		RunningProcesses();
+	},
 	welcome() {
 		openWelcomeTab();
 	},

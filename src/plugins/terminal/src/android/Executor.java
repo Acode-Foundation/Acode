@@ -217,6 +217,14 @@ public class Executor extends CordovaPlugin {
                             callbackContext.success(data);
                             cleanupCallback(pid);
                             break;
+                        case "listProcesses":
+                            try {
+                                callbackContext.success(new JSONArray(data));
+                            } catch (JSONException error) {
+                                callbackContext.error("Invalid process list: " + error.getMessage());
+                            }
+                            cleanupCallback(pid);
+                            break;
                     }
                 }
             }
@@ -318,6 +326,11 @@ public class Executor extends CordovaPlugin {
                 String pidCheck = args.getString(0);
                 callbackContextMap.put(pidCheck, callbackContext);
                 isProcessRunning(pidCheck);
+                return true;
+            case "listProcesses":
+                String requestId = UUID.randomUUID().toString();
+                callbackContextMap.put(requestId, callbackContext);
+                listProcesses(requestId);
                 return true;
             default:
                 callbackContext.error("Unknown action: " + action);
@@ -432,6 +445,23 @@ public class Executor extends CordovaPlugin {
             if (callbackContext != null) {
                 callbackContext.error("Check running error: " + e.getMessage());
                 cleanupCallback(pid);
+            }
+        }
+    }
+
+    private void listProcesses(String requestId) {
+        Message msg = Message.obtain(null, TerminalService.MSG_LIST_PROCESSES);
+        msg.replyTo = handlerMessenger;
+        Bundle bundle = new Bundle();
+        bundle.putString("id", requestId);
+        msg.setData(bundle);
+        try {
+            serviceMessenger.send(msg);
+        } catch (RemoteException e) {
+            CallbackContext callbackContext = getCallbackContext(requestId);
+            if (callbackContext != null) {
+                callbackContext.error("List processes error: " + e.getMessage());
+                cleanupCallback(requestId);
             }
         }
     }

@@ -171,6 +171,26 @@ class Executor {
   }
 
   /**
+   * Lists the processes currently managed by this executor.
+   *
+   * @returns {Promise<Array<{id: string, command: string, alpine: boolean, startedAt: number, background: boolean}>>}
+   */
+  listProcesses() {
+    return new Promise((resolve, reject) => {
+      exec(
+        (processes) => resolve(processes.map((process) => ({
+          ...process,
+          background: this.ExecutorType === "BackgroundExecutor",
+        }))),
+        reject,
+        this.ExecutorType,
+        "listProcesses",
+        []
+      );
+    });
+  }
+
+  /**
    * Stops the executor service completely.
    *
    * @returns {Promise<string>} Resolves when the service has been stopped.
