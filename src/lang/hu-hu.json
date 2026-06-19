@@ -146,7 +146,6 @@
 	"none": "Egyik sem",
 	"small": "Kicsi",
 	"large": "Nagy",
-	"floating button": "Lebegő gomb",
 	"confirm on exit": "Megerősítés kérése kilépéskor",
 	"show console": "Konzol megjelenítése",
 	"image": "Kép",
@@ -760,5 +759,9 @@
 	"scrollbar height": "Görgetősáv magassága",
 	"full": "Teljes",
 	"scroll past end": "Túlgörgetés",
-	"settings-info-scroll-past-end": "Egy extra üres terület hozzáadása a szerkesztő aljához, így az utolsó sor egészen a képernyő tetejéig görgethető."
+	"settings-info-scroll-past-end": "Egy extra üres terület hozzáadása a szerkesztő aljához, így az utolsó sor egészen a képernyő tetejéig görgethető.",
+	"compact": "Kompakt",
+	"off": "Kikapcsolva",
+	"quick tools height": "Gyorseszközök magassága",
+	"quick tools toggler": "Gyorseszközök be/ki"
 }
