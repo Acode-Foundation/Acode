@@ -2307,6 +2307,12 @@ async function EditorManager($header, $body) {
 			if (isCursorRevealSuppressed()) return;
 			scrollCursorIntoView();
 		});
+		keyboardHandler.on("keyboardHide", () => {
+			requestAnimationFrame(() => {
+				if (isCursorRevealSuppressed()) return;
+				scrollCursorIntoView({ behavior: "instant" });
+			});
+		});
 
 		// Attach native DOM event listeners directly to the editor's contentDOM
 		const contentDOM = editor.contentDOM;

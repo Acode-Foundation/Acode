@@ -187,14 +187,24 @@ function emit(eventName) {
 }
 
 /**
- * Focus the editor if keyboard is visible, blur it otherwise.
+ * Blur regular inputs when the soft keyboard is dismissed.
+ * Keep CodeMirror focused so its cursor remains visible after keyboard close.
  * @param {boolean} keyboardHidden
  * @returns
  */
 function focusBlurEditor(keyboardHidden) {
-	if (keyboardHidden) {
-		document.activeElement?.blur();
+	if (!keyboardHidden) return;
+
+	const activeElement = document.activeElement;
+	const editorContent = window.editorManager?.editor?.contentDOM;
+	if (
+		editorContent &&
+		(activeElement === editorContent || editorContent.contains(activeElement))
+	) {
+		return;
 	}
+
+	activeElement?.blur();
 }
 
 /**
