@@ -246,11 +246,14 @@ class PageHandler {
 		if (typeof this.onRestore === "function") this.onRestore();
 		this.$el.off("hide", this.onhide);
 		this.$replacement.parentElement.replaceChild(this.$el, this.$replacement);
-		const $body = this.$el.body;
-		if ($body) {
-			$body.scrollLeft = this.scrollLeft;
-			$body.scrollTop = this.scrollTop;
-		}
+		const { scrollLeft, scrollTop } = this;
+		requestAnimationFrame(() => {
+			const $body = this.$el.body;
+			if ($body) {
+				$body.scrollLeft = scrollLeft;
+				$body.scrollTop = scrollTop;
+			}
+		});
 		this.$el.on("hide", this.onhide);
 	}
 
