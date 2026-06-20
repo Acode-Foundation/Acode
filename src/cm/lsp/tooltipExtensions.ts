@@ -49,9 +49,11 @@ interface LspClientInternals {
 const SIGNATURE_TRIGGER_DELAY = 120;
 const SIGNATURE_RETRIGGER_DELAY = 250;
 const hoverLanguageLoads = new Map<string, Promise<Language | null>>();
-const pluginHoverLanguages = new Map<Mode, Language>();
-const pluginHoverLanguageLoads = new Map<Mode, Promise<Language | null>>();
-const MARKDOWN_FENCE = /^ {0,3}(?:`{3,}|~{3,})[ \t]*([^\n]*)$/gm;
+const pluginHoverLanguages = new WeakMap<Mode, Language>();
+const pluginHoverLanguageLoads = new WeakMap<
+	Mode,
+	Promise<Language | null>
+>();
 
 function normalizeLanguageName(value: string): string {
 	return String(value ?? "")
@@ -212,8 +214,12 @@ function getFenceLanguage(info: string): string {
 }
 
 function collectMarkdownLanguages(markdown: string, result: Set<string>): void {
-	MARKDOWN_FENCE.lastIndex = 0;
-	for (let match = MARKDOWN_FENCE.exec(markdown); match; match = MARKDOWN_FENCE.exec(markdown)) {
+	const fencePattern = /^ {0,3}(?:`{3,}|~{3,})[ \t]*([^\n]*)$/gm;
+	for (
+		let match = fencePattern.exec(markdown);
+		match;
+		match = fencePattern.exec(markdown)
+	) {
 		const language = getFenceLanguage(match[1] || "");
 		if (language) result.add(language);
 	}
