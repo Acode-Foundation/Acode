@@ -6,6 +6,7 @@ import type {
 	Workspace,
 	WorkspaceFile,
 } from "@codemirror/lsp-client";
+import type { Language } from "@codemirror/language";
 import type { ChangeSet, Extension, MapMode, Text } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 
@@ -234,6 +235,7 @@ export interface AcodeClientConfig {
 	workspace?: (client: LSPClient) => Workspace;
 	rootUri?: string;
 	timeout?: number;
+	highlightLanguage?: (name: string) => Language | null;
 }
 
 export interface LanguageResolverContext {

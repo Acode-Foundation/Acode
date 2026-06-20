@@ -1,4 +1,8 @@
-import { closeBrackets, completionKeymap } from "@codemirror/autocomplete";
+import {
+	acceptCompletion,
+	closeBrackets,
+	completionKeymap,
+} from "@codemirror/autocomplete";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import {
 	bracketMatching,
@@ -9,7 +13,7 @@ import {
 } from "@codemirror/language";
 import { highlightSelectionMatches } from "@codemirror/search";
 import type { Extension } from "@codemirror/state";
-import { EditorState } from "@codemirror/state";
+import { EditorState, Prec } from "@codemirror/state";
 import {
 	crosshairCursor,
 	drawSelection,
@@ -67,6 +71,9 @@ export default function createBaseExtensions(
 	if (enableHighlightSelectionMatches) {
 		extensions.push(highlightSelectionMatches());
 	}
+	extensions.push(
+		Prec.highest(keymap.of([{ key: "Tab", run: acceptCompletion }])),
+	);
 	extensions.push(
 		keymap.of([...completionKeymap, ...defaultKeymap, ...historyKeymap]),
 	);

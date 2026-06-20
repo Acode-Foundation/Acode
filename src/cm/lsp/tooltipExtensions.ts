@@ -1,8 +1,10 @@
 import {
 	highlightingFor,
 	type Language,
+	LanguageDescription,
 	language as languageFacet,
 } from "@codemirror/language";
+import { languages } from "@codemirror/language-data";
 import { LSPPlugin } from "@codemirror/lsp-client";
 import {
 	type Extension,
@@ -35,6 +37,7 @@ import type {
 	MarkedString,
 	MarkupContent,
 } from "vscode-languageserver-types";
+import { getMode, getModeForPath, type Mode } from "../modelist";
 
 interface LspClientInternals {
 	config?: {
@@ -45,6 +48,201 @@ interface LspClientInternals {
 
 const SIGNATURE_TRIGGER_DELAY = 120;
 const SIGNATURE_RETRIGGER_DELAY = 250;
+const hoverLanguageLoads = new Map<string, Promise<Language | null>>();
+const pluginHoverLanguages = new Map<Mode, Language>();
+const pluginHoverLanguageLoads = new Map<Mode, Promise<Language | null>>();
+const MARKDOWN_FENCE = /^ {0,3}(?:`{3,}|~{3,})[ \t]*([^\n]*)$/gm;
+
+function normalizeLanguageName(value: string): string {
+	return String(value ?? "")
+		.trim()
+		.toLowerCase();
+}
+
+function matchingModeName(a: string, b: string): boolean {
+	const normalizedA = normalizeLanguageName(a);
+	const normalizedB = normalizeLanguageName(b);
+	if (!normalizedA || !normalizedB) return false;
+	if (normalizedA === normalizedB) return true;
+
+	const languageA = findLanguageDescription(normalizedA);
+	const languageB = findLanguageDescription(normalizedB);
+	return !!languageA && languageA === languageB;
+}
+
+function getLanguageCandidates(language: string): string[] {
+	const normalized = normalizeLanguageName(language);
+	if (!normalized) return [];
+
+	const candidates = new Set([normalized]);
+	if (normalized.endsWith("react")) {
+		const withoutReact = normalized.slice(0, -"react".length);
+		if (withoutReact) candidates.add(withoutReact);
+	}
+	return [...candidates];
+}
+
+function findLanguageDescription(language: string): LanguageDescription | null {
+	for (const candidate of getLanguageCandidates(language)) {
+		const byName = LanguageDescription.matchLanguageName(
+			languages,
+			candidate,
+			false,
+		);
+		if (byName) return byName;
+
+		const byExtension = LanguageDescription.matchFilename(
+			languages,
+			`file.${candidate}`,
+		);
+		if (byExtension) return byExtension;
+	}
+	return null;
+}
+
+function findPluginMode(language: string): Mode | null {
+	for (const candidate of getLanguageCandidates(language)) {
+		const byName = getMode(candidate);
+		if (byName) return byName;
+
+		const byExtension = getModeForPath(`file.${candidate}`);
+		if (byExtension && byExtension.name !== "text") return byExtension;
+	}
+	return null;
+}
+
+function extractLanguage(value: unknown): Language | null {
+	if (!value) return null;
+	if (Array.isArray(value)) {
+		for (const item of value) {
+			const language = extractLanguage(item);
+			if (language) return language;
+		}
+		return null;
+	}
+	if (typeof value !== "object") return null;
+
+	const record = value as Record<string, unknown>;
+	const language = record.language;
+	if (language && typeof language === "object" && "parser" in language) {
+		return language as Language;
+	}
+	return "parser" in record ? (value as Language) : null;
+}
+
+function startPluginLanguageLoad(mode: Mode): Promise<Language | null> | null {
+	const cached = pluginHoverLanguageLoads.get(mode);
+	if (cached) return cached;
+
+	const loader = mode.getExtension();
+	if (!loader) return null;
+
+	const load = Promise.resolve()
+		.then(() => loader())
+		.then((extension) => {
+			const language = extractLanguage(extension);
+			if (language) pluginHoverLanguages.set(mode, language);
+			return language;
+		})
+		.catch(() => null);
+	pluginHoverLanguageLoads.set(mode, load);
+	return load;
+}
+
+export function resolveLspHoverHighlightLanguage(
+	language: string,
+): Language | null {
+	const description = findLanguageDescription(language);
+	if (description) {
+		if (description.support) return description.support.language;
+
+		const key = description.name.toLowerCase();
+		if (!hoverLanguageLoads.has(key)) {
+			hoverLanguageLoads.set(
+				key,
+				description
+					.load()
+					.then((support) => support.language)
+					.catch(() => null),
+			);
+		}
+		return null;
+	}
+
+	const mode = findPluginMode(language);
+	if (!mode) return null;
+	const loaded = pluginHoverLanguages.get(mode);
+	if (loaded) return loaded;
+	startPluginLanguageLoad(mode);
+	return null;
+}
+
+export async function loadLspHoverHighlightLanguage(
+	language: string,
+): Promise<Language | null> {
+	const description = findLanguageDescription(language);
+	if (description) {
+		if (description.support) return description.support.language;
+
+		const key = description.name.toLowerCase();
+		let load = hoverLanguageLoads.get(key);
+		if (!load) {
+			load = description
+				.load()
+				.then((support) => support.language)
+				.catch(() => null);
+			hoverLanguageLoads.set(key, load);
+		}
+		return load;
+	}
+
+	const mode = findPluginMode(language);
+	if (!mode) return null;
+	return pluginHoverLanguages.get(mode) || startPluginLanguageLoad(mode);
+}
+
+function getFenceLanguage(info: string): string {
+	const trimmed = info.trim();
+	if (!trimmed) return "";
+
+	if (trimmed.startsWith("{")) {
+		return trimmed.match(/\.([\w+#.-]+)/)?.[1] || "";
+	}
+	return trimmed.split(/\s+/, 1)[0] || "";
+}
+
+function collectMarkdownLanguages(markdown: string, result: Set<string>): void {
+	MARKDOWN_FENCE.lastIndex = 0;
+	for (let match = MARKDOWN_FENCE.exec(markdown); match; match = MARKDOWN_FENCE.exec(markdown)) {
+		const language = getFenceLanguage(match[1] || "");
+		if (language) result.add(language);
+	}
+}
+
+function collectHoverLanguages(
+	contents: Hover["contents"],
+	result = new Set<string>(),
+): Set<string> {
+	if (Array.isArray(contents)) {
+		contents.forEach((content) => collectHoverLanguages(content, result));
+	} else if (typeof contents === "string") {
+		collectMarkdownLanguages(contents, result);
+	} else if ("language" in contents) {
+		if (contents.language) result.add(contents.language);
+	} else if (contents.kind === "markdown") {
+		collectMarkdownLanguages(contents.value, result);
+	}
+	return result;
+}
+
+async function loadHoverContentLanguages(contents: Hover["contents"]): Promise<void> {
+	const languageTags = collectHoverLanguages(contents);
+	await Promise.all(
+		Array.from(languageTags, (language) =>
+			loadLspHoverHighlightLanguage(language),
+		),
+	);
+}
 
 function fromPosition(
 	doc: EditorView["state"]["doc"],
@@ -83,7 +281,7 @@ function renderCode(plugin: LSPPlugin, code: MarkedString): string {
 
 	if (!lang) {
 		const viewLang = plugin.view.state.facet(languageFacet);
-		if (viewLang && (!language || viewLang.name === language)) {
+		if (viewLang && (!language || matchingModeName(viewLang.name, language))) {
 			lang = viewLang;
 		}
 	}
@@ -167,8 +365,9 @@ function lspTooltipSource(
 	const plugin = LSPPlugin.get(view);
 	if (!plugin) return Promise.resolve(null);
 
-	return hoverRequest(plugin, pos).then((result) => {
+	return hoverRequest(plugin, pos).then(async (result) => {
 		if (!result) return null;
+		await loadHoverContentLanguages(result.contents);
 
 		return {
 			pos: result.range

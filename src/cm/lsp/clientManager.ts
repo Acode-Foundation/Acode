@@ -21,7 +21,11 @@ import { inlayHintsExtension } from "./inlayHints";
 import { acodeRenameKeymap } from "./rename";
 import { selectRuntimeProvider } from "./runtimeProviders";
 import serverRegistry from "./serverRegistry";
-import { hoverTooltips, signatureHelp } from "./tooltipExtensions";
+import {
+  hoverTooltips,
+  resolveLspHoverHighlightLanguage,
+  signatureHelp,
+} from "./tooltipExtensions";
 import { createTransport } from "./transport";
 import type {
   BuiltinExtensionsConfig,
@@ -796,6 +800,10 @@ export class LspClientManager {
 
     if (server.startupTimeout && !clientConfig.timeout) {
       clientConfig.timeout = server.startupTimeout;
+    }
+
+    if (!clientConfig.highlightLanguage) {
+      clientConfig.highlightLanguage = resolveLspHoverHighlightLanguage;
     }
 
     let transportHandle: TransportHandle | undefined;
