@@ -40,7 +40,7 @@ export default function QuickTools() {
 	};
 
 	app.append($page);
-	manager.setScrollTop(availableToolsScrollTop);
+	requestAnimationFrame(() => manager.setScrollTop(availableToolsScrollTop));
 	helpers.showAd();
 }
 
