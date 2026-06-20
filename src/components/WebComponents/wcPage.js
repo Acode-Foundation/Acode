@@ -200,6 +200,8 @@ export default class WCPage extends HTMLElement {
 class PageHandler {
 	$el;
 	$replacement;
+	scrollLeft = 0;
+	scrollTop = 0;
 	onRestore;
 	onReplace;
 
@@ -226,6 +228,11 @@ class PageHandler {
 	replaceEl() {
 		this.$el.off("hide", this.onhide);
 		if (!this.$el.isConnected || this.$replacement.isConnected) return;
+		const $body = this.$el.body;
+		if ($body) {
+			this.scrollLeft = $body.scrollLeft;
+			this.scrollTop = $body.scrollTop;
+		}
 		if (typeof this.onReplace === "function") this.onReplace();
 		this.$el.parentElement.replaceChild(this.$replacement, this.$el);
 		this.$el.classList.add("no-transition");
@@ -239,6 +246,11 @@ class PageHandler {
 		if (typeof this.onRestore === "function") this.onRestore();
 		this.$el.off("hide", this.onhide);
 		this.$replacement.parentElement.replaceChild(this.$el, this.$replacement);
+		const $body = this.$el.body;
+		if ($body) {
+			$body.scrollLeft = this.scrollLeft;
+			$body.scrollTop = this.scrollTop;
+		}
 		this.$el.on("hide", this.onhide);
 	}
 
