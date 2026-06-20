@@ -77,7 +77,7 @@ export interface TransportContext {
 	view?: EditorView;
 	languageId?: string;
 	rootUri?: string | null;
-	originalRootUri?: string;
+	originalRootUri?: string | null;
 	debugWebSocket?: boolean;
 	/** Dynamically discovered port from auto-port discovery */
 	dynamicPort?: number;
@@ -99,9 +99,25 @@ export type WorkspaceKind =
 
 export interface LspRuntimeContext extends TransportContext {
 	documentUri?: string | null;
+	originalDocumentUri?: string;
 	serverId?: string;
 	workspaceKind?: WorkspaceKind;
 	allowNonTerminalWorkspace?: boolean;
+}
+
+export type LspClientScope = "workspace" | "document";
+
+export interface LspRuntimeUriResolutionContext extends LspRuntimeContext {
+	originalDocumentUri: string;
+	originalRootUri: string | null;
+	normalizedDocumentUri: string | null;
+	normalizedRootUri: string | null;
+}
+
+export interface LspRuntimeUriResolution {
+	documentUri?: string | null;
+	rootUri?: string | null;
+	scope?: LspClientScope;
 }
 
 export type LspRuntimeConnection =
@@ -127,6 +143,15 @@ export interface LspRuntimeProvider {
 		server: LspServerDefinition,
 		context: LspRuntimeContext,
 	) => boolean | Promise<boolean>;
+	/**
+	 * Translate editor URIs into paths visible inside this runtime. The hook runs
+	 * only after this provider has been selected, so one runtime cannot rewrite
+	 * another provider's documents.
+	 */
+	resolveUris?: (
+		server: LspServerDefinition,
+		context: LspRuntimeUriResolutionContext,
+	) => MaybePromise<LspRuntimeUriResolution | null | undefined>;
 	checkInstallation?: (
 		server: LspServerDefinition,
 		context: LspRuntimeContext,

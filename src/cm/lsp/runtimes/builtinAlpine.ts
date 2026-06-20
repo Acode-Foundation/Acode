@@ -14,9 +14,32 @@ import type {
 	LspRuntimeContext,
 	LspRuntimeProvider,
 	LspServerDefinition,
+	LspRuntimeUriResolutionContext,
 } from "../types";
 
 export const BUILTIN_ALPINE_RUNTIME_ID = "builtin-alpine";
+
+function isUntitled(context: LspRuntimeContext): boolean {
+	return /^untitled:/i.test(
+		String(context.originalDocumentUri || context.uri || ""),
+	);
+}
+
+function cacheDocumentUri(context: LspRuntimeContext): string | null {
+	const cacheFile = context.file?.cacheFile;
+	if (!cacheFile || typeof cacheFile !== "string") return null;
+	if (/^file:\/\//i.test(cacheFile)) return cacheFile;
+	const path = cacheFile.startsWith("/") ? cacheFile : `/${cacheFile}`;
+	return `file://${encodeURI(path).replace(/#/g, "%23")}`;
+}
+
+function canUseRealPath(context: LspRuntimeContext): boolean {
+	return isBuiltinAlpineAccessible({
+		...context,
+		rootUri: context.originalRootUri || context.rootUri,
+		uri: context.originalDocumentUri || context.uri,
+	});
+}
 
 export const builtinAlpineRuntimeProvider: LspRuntimeProvider = {
 	id: BUILTIN_ALPINE_RUNTIME_ID,
@@ -29,9 +52,25 @@ export const builtinAlpineRuntimeProvider: LspRuntimeProvider = {
 	): boolean {
 		return (
 			!!server.launcher &&
-			(context.allowNonTerminalWorkspace === true ||
-				isBuiltinAlpineAccessible(context))
+			(canUseRealPath(context) ||
+				(isUntitled(context) && !!cacheDocumentUri(context)) ||
+				(context.allowNonTerminalWorkspace === true &&
+					!!cacheDocumentUri(context)))
 		);
+	},
+
+	resolveUris(
+		server: LspServerDefinition,
+		context: LspRuntimeUriResolutionContext,
+	) {
+		if (canUseRealPath(context) && !isUntitled(context)) return null;
+
+		const documentUri = cacheDocumentUri(context);
+		return {
+			documentUri,
+			rootUri: null,
+			scope: "document",
+		};
 	},
 
 	checkInstallation(server, context) {

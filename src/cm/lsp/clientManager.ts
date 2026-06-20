@@ -36,6 +36,8 @@ import type {
   FormattingOptions,
   LspServerDefinition,
   LspRuntimeConnection,
+  LspRuntimeProvider,
+  LspClientScope,
   NormalizedRootUri,
   ParsedUri,
   RootUriContext,
@@ -238,14 +240,23 @@ function buildBuiltinExtensions(
   return { extensions, diagnosticsExtension };
 }
 
-interface LSPError extends Error {
-  code?: string;
-}
-
 interface InitContext {
   key: string;
   normalizedRootUri: string | null;
   originalRootUri: string | null;
+  originalDocumentUri: string;
+  documentUri: string;
+  runtimeProvider: LspRuntimeProvider;
+  scope: LspClientScope;
+}
+
+interface ResolvedRuntimeTarget {
+  originalDocumentUri: string;
+  documentUri: string;
+  normalizedRootUri: string | null;
+  originalRootUri: string | null;
+  runtimeProvider: LspRuntimeProvider;
+  scope: LspClientScope;
 }
 
 interface ExtendedLSPClient extends LSPClient {
@@ -295,19 +306,20 @@ export class LspClientManager {
       if (isSettingsOrKeybindingsFile(server, originalUri, file)) {
         continue;
       }
-      const normalizedUri = await this.#resolveDocumentUri(server, {
+      const target = await this.#resolveRuntimeTarget(server, {
         uri: originalUri,
         file,
         view,
         languageId: effectiveLang,
         rootUri,
       });
-      if (!normalizedUri) {
+      if (!target) {
         console.warn(
-          `Cannot resolve document URI for LSP server ${server.id}: ${originalUri}`,
+          `Cannot resolve runtime or document URI for LSP server ${server.id}: ${originalUri}`,
         );
         continue;
       }
+      const normalizedUri = target.documentUri;
       let targetLanguageId = effectiveLang;
       if (server.resolveLanguageId) {
         try {
@@ -327,13 +339,17 @@ export class LspClientManager {
       }
 
       try {
-        const clientState = await this.#ensureClient(server, {
-          uri: normalizedUri,
-          file,
-          view,
-          languageId: targetLanguageId,
-          rootUri,
-        });
+        const clientState = await this.#ensureClient(
+          server,
+          {
+            uri: normalizedUri,
+            file,
+            view,
+            languageId: targetLanguageId,
+            rootUri: target.normalizedRootUri ?? undefined,
+          },
+          target,
+        );
         const plugin = clientState.client.plugin(
           normalizedUri,
           targetLanguageId,
@@ -343,13 +359,6 @@ export class LspClientManager {
         clientState.attach(normalizedUri, view as EditorView, aliases);
         lspExtensions.push(plugin);
       } catch (error) {
-        const lspError = error as LSPError;
-        if (lspError?.code === "LSP_SERVER_UNAVAILABLE") {
-          console.info(
-            `Skipping LSP client for ${server.id}: ${lspError.message}`,
-          );
-          continue;
-        }
         console.error(
           `Failed to initialize LSP client for ${server.id}`,
           error,
@@ -382,27 +391,28 @@ export class LspClientManager {
       }
       if (!supportsBuiltinFormatting(server)) continue;
       try {
-        const normalizedUri = await this.#resolveDocumentUri(server, {
+        const target = await this.#resolveRuntimeTarget(server, {
           uri: originalUri,
           file,
           view,
           languageId: effectiveLang,
           rootUri: metadata.rootUri,
         });
-        if (!normalizedUri) {
+        if (!target) {
           console.warn(
             `Cannot resolve document URI for formatting with ${server.id}: ${originalUri}`,
           );
           continue;
         }
+        const normalizedUri = target.documentUri;
         const context: RootUriContext = {
           uri: normalizedUri,
           languageId: effectiveLang,
           view,
           file,
-          rootUri: metadata.rootUri,
+          rootUri: target.normalizedRootUri ?? undefined,
         };
-        const state = await this.#ensureClient(server, context);
+        const state = await this.#ensureClient(server, context, target);
         const capabilities = state.client.serverCapabilities;
         if (!capabilities?.documentFormattingProvider) continue;
         state.attach(normalizedUri, view);
@@ -498,16 +508,24 @@ export class LspClientManager {
   async #ensureClient(
     server: LspServerDefinition,
     context: RootUriContext,
+    target: ResolvedRuntimeTarget,
   ): Promise<ClientState> {
-    const useWsFolders = server.useWorkspaceFolders === true;
-    const resolvedRoot = await this.#resolveRootUri(server, context);
-    const { normalizedRootUri, originalRootUri } = normalizeRootUriForServer(
-      server,
-      resolvedRoot,
-    );
+    const {
+      documentUri,
+      normalizedRootUri,
+      originalRootUri,
+      runtimeProvider,
+      scope,
+    } = target;
+    const useWsFolders =
+      scope === "workspace" && server.useWorkspaceFolders === true;
+    const runtimeServerKey = `${server.id}@${runtimeProvider.id}`;
 
-    // For workspace folders mode, use a shared key based on server ID only
-    const key = pluginKey(server.id, normalizedRootUri, useWsFolders);
+    // Workspace-folder clients are shared only within the selected runtime.
+    const key =
+      scope === "document"
+        ? `${runtimeServerKey}::__document__::${documentUri}`
+        : pluginKey(runtimeServerKey, normalizedRootUri, useWsFolders);
 
     // Return existing client if already initialized
     if (this.#clients.has(key)) {
@@ -532,6 +550,10 @@ export class LspClientManager {
       key,
       normalizedRootUri: useWsFolders ? null : normalizedRootUri,
       originalRootUri: useWsFolders ? null : originalRootUri,
+      originalDocumentUri: target.originalDocumentUri,
+      documentUri,
+      runtimeProvider,
+      scope,
     });
     this.#pendingClients.set(key, initPromise);
 
@@ -547,7 +569,15 @@ export class LspClientManager {
     context: RootUriContext,
     initContext: InitContext,
   ): Promise<ClientState> {
-    const { key, normalizedRootUri, originalRootUri } = initContext;
+    const {
+      key,
+      normalizedRootUri,
+      originalRootUri,
+      originalDocumentUri,
+      documentUri,
+      runtimeProvider,
+      scope,
+    } = initContext;
 
     const workspaceOptions = {
       displayFile: this.options.displayFile,
@@ -813,24 +843,15 @@ export class LspClientManager {
     try {
       const runtimeContext = {
         ...context,
+        uri: documentUri,
+        documentUri,
+        originalDocumentUri,
         rootUri: normalizedRootUri ?? null,
         originalRootUri: originalRootUri ?? undefined,
         serverId: server.id,
         allowNonTerminalWorkspace:
           this.options.allowNonTerminalWorkspace === true,
       };
-      const runtimeProvider = await selectRuntimeProvider(
-        server,
-        runtimeContext,
-      );
-      if (!runtimeProvider) {
-        const unavailable: LSPError = new Error(
-          `No LSP runtime provider can handle ${server.id}.`,
-        );
-        unavailable.code = "LSP_SERVER_UNAVAILABLE";
-        throw unavailable;
-      }
-
       const connection = await runtimeProvider.start(server, runtimeContext);
       const connectionDispose = connection.dispose;
       connection.dispose = async () => {
@@ -892,7 +913,7 @@ export class LspClientManager {
       client,
       transportHandle,
       normalizedRootUri,
-      originalRootUri,
+      originalRootUri: scope === "document" ? null : originalRootUri,
     });
 
     this.#clients.set(key, state);
@@ -1018,6 +1039,77 @@ export class LspClientManager {
     return null;
   }
 
+  async #resolveRuntimeTarget(
+    server: LspServerDefinition,
+    context: RootUriContext,
+  ): Promise<ResolvedRuntimeTarget | null> {
+    const originalDocumentUri = context.uri;
+    if (!originalDocumentUri) return null;
+
+    const originalRootUri = await this.#resolveRootUri(server, context);
+    const { normalizedRootUri } = normalizeRootUriForServer(
+      server,
+      originalRootUri,
+    );
+    const normalizedDocumentUri = await this.#resolveDocumentUri(
+      server,
+      context,
+    );
+    const providerContext = {
+      ...context,
+      uri: originalDocumentUri,
+      documentUri: normalizedDocumentUri,
+      originalDocumentUri,
+      rootUri: originalRootUri,
+      originalRootUri: originalRootUri ?? undefined,
+      serverId: server.id,
+      allowNonTerminalWorkspace:
+        this.options.allowNonTerminalWorkspace === true,
+    };
+    const runtimeProvider = await selectRuntimeProvider(server, providerContext);
+    if (!runtimeProvider) return null;
+
+    let documentUri = normalizedDocumentUri;
+    let rootUri = normalizedRootUri;
+    let scope: LspClientScope = "workspace";
+
+    if (runtimeProvider.resolveUris) {
+      try {
+        const resolution = await runtimeProvider.resolveUris(server, {
+          ...providerContext,
+          originalRootUri,
+          normalizedDocumentUri,
+          normalizedRootUri,
+        });
+        if (resolution) {
+          if (Object.prototype.hasOwnProperty.call(resolution, "documentUri")) {
+            documentUri = resolution.documentUri || null;
+          }
+          if (Object.prototype.hasOwnProperty.call(resolution, "rootUri")) {
+            rootUri = resolution.rootUri || null;
+          }
+          if (resolution.scope) scope = resolution.scope;
+        }
+      } catch (error) {
+        console.warn(
+          `LSP runtime provider ${runtimeProvider.id} failed to resolve URIs for ${server.id}`,
+          error,
+        );
+        return null;
+      }
+    }
+
+    if (!documentUri) return null;
+    return {
+      originalDocumentUri,
+      documentUri,
+      normalizedRootUri: rootUri,
+      originalRootUri,
+      runtimeProvider,
+      scope,
+    };
+  }
+
   async #resolveDocumentUri(
     server: LspServerDefinition,
     context: RootUriContext,
@@ -1025,19 +1117,7 @@ export class LspClientManager {
     const originalUri = context?.uri;
     if (!originalUri) return null;
 
-    let normalizedUri = normalizeDocumentUri(originalUri);
-    if (!normalizedUri) {
-      // Fall back to cache file path for providers that do not expose a file:// URI.
-      const cacheFile = context.file?.cacheFile;
-      if (cacheFile && typeof cacheFile === "string") {
-        normalizedUri = buildFileUri(cacheFile.replace(/^file:\/\//, ""));
-        if (normalizedUri) {
-          console.info(
-            `LSP using cache path for unrecognized URI: ${originalUri} -> ${normalizedUri}`,
-          );
-        }
-      }
-    }
+    const normalizedUri = normalizeDocumentUri(originalUri);
 
     if (typeof server.documentUri === "function") {
       try {
@@ -1054,7 +1134,7 @@ export class LspClientManager {
       }
     }
 
-    return normalizedUri || originalUri;
+    return normalizedUri;
   }
 }
 

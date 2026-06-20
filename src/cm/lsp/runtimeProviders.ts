@@ -36,6 +36,7 @@ function normalizeProvider(
 		throw new Error(`LSP runtime provider ${id} requires start()`);
 	}
 	for (const method of [
+		"resolveUris",
 		"checkInstallation",
 		"install",
 		"uninstall",
@@ -202,7 +203,7 @@ export function isBuiltinAlpineAccessible(
 	const scheme = schemeMatch ? schemeMatch[1].toLowerCase() : null;
 
 	if (!scheme) return uri.startsWith("/");
-	if (scheme === "file" || scheme === "untitled") return true;
+	if (scheme === "file") return true;
 	if (scheme !== "content") return false;
 
 	return /^content:\/\/com\.foxdebug\.acode(?:free)?\.documents\//i.test(uri);
