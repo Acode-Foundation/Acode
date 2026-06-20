@@ -553,7 +553,7 @@ const Terminal = {
 
             echo "ok"
             `;
-            const result = await Executor.execute(cmd);
+            const result = await Executor.BackgroundExecutor.execute(cmd);
             if (result === "ok") {
                 resolve(result);
             } else {
