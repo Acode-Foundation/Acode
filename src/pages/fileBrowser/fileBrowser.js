@@ -869,41 +869,6 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					return;
 				}
 
-				if (url === `${cordova.file.dataDirectory}public`) {
-					try {
-						const isInstalled = await Terminal.isInstalled();
-						if (!isInstalled) {
-							const shouldInstall = await confirm(
-								strings.terminal,
-								strings["terminal not installed prompt"],
-							);
-							if (shouldInstall) {
-								const loaderInstance = loader.create(
-									strings.terminal,
-									strings["loading..."],
-								);
-								try {
-									loaderInstance.show();
-									const res = await terminalManager.checkAndInstallTerminal();
-									if (res.error) {
-										throw new Error(res.error);
-									}
-								} catch (error) {
-									helpers.error(error);
-									return;
-								} finally {
-									loaderInstance.destroy();
-								}
-							} else {
-								return;
-							}
-						}
-					} catch (e) {
-						console.error("Terminal check failed:", e);
-						helpers.error(e, url);
-						return;
-					}
-				}
 				navigate(url, name);
 			}
 
@@ -1245,6 +1210,12 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 			try {
 				const terminalPublicUrl = cordova.file.dataDirectory + "public";
+				const exists = await fsOperation(terminalPublicUrl).exists();
+				if (!exists) {
+					await fsOperation(cordova.file.dataDirectory).createDirectory(
+						"public",
+					);
+				}
 
 				// Check if this storage is not already in the list
 				const terminalPublicStorageExists = allStorages.find(
