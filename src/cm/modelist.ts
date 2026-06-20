@@ -218,7 +218,7 @@ export class Mode {
 		const regexParts: string[] = [];
 
 		if (extensionPatterns.length) {
-			regexParts.push(`^.*\\.(${extensionPatterns.join("|")})$`);
+			regexParts.push(`^.*?\\.(${extensionPatterns.join("|")})$`);
 		}
 
 		regexParts.push(...filenamePatterns);

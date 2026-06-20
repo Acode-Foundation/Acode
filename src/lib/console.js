@@ -590,7 +590,7 @@ import loadPolyFill from "utils/polyfill";
 		 * @returns {IterableIterator<RegExpMatchArray>}
 		 */
 		function matchRegex(str) {
-			return str.matchAll(/(?<!%)%[oOsdifc]/g);
+			return str.matchAll(/%(?<!%%)[oOsdifc]/g);
 		}
 	}
 
@@ -605,10 +605,10 @@ import loadPolyFill from "utils/polyfill";
 		}
 		let stack = error.stack.split("\n");
 		if (!skip) stack.splice(1, 1);
-		let regExecRes = /<(.*)>:(\d+):(\d+)/.exec(stack[1]) || [];
+		let regExecRes = /<([^>]*)>:(\d+):(\d+)/.exec(stack[1]) || [];
 		if (!regExecRes.length) {
 			const errorInfo = stack[1]?.split("/").pop();
-			regExecRes = /(.+):(\d+):(\d+)/.exec(errorInfo) || [];
+			regExecRes = /(.+?):(\d+):(\d+)/.exec(errorInfo) || [];
 		}
 		let src = "";
 		const location = regExecRes[1];

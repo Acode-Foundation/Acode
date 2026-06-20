@@ -495,7 +495,7 @@ class SftpClient {
 	 * @param {String} name
 	 */
 	#safeName(name) {
-		const escapeCh = (str) => str.replace(/\\([\s\S])|([`"])/g, "\\$1$2");
+		const escapeCh = (str) => str.replace(/\\([^])|([`"])/g, "\\$1$2");
 		const ar = name.split("/");
 		return ar.map((dirname) => escapeCh(dirname)).join("/");
 	}

@@ -773,6 +773,8 @@ function createMainMenu({ top, bottom, toggler }) {
 		innerHTML: () => {
 			return mustache.render($_menu, {
 				...strings,
+				"running processes":
+					strings["running processes"] || "Running processes",
 				can_save_file: canSaveFile(window.editorManager?.activeFile),
 			});
 		},

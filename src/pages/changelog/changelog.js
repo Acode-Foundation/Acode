@@ -160,7 +160,7 @@ export default async function Changelog() {
 				`[#$1](${REPO_URL}/pull/$1)`,
 			)
 			// Convert existing #number references to links if they aren't already
-			.replace(/(?<!\[)#(\d+)(?!\])/g, `[#$1](${REPO_URL}/pull/$1)`)
+			.replace(/#(?<!\[#)(\d+)(?!\])/g, `[#$1](${REPO_URL}/pull/$1)`)
 			// Convert @username mentions to GitHub profile links
 			.replace(/@(\w+)/g, "[@$1](https://github.com/$1)");
 

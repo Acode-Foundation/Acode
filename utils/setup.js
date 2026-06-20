@@ -27,7 +27,7 @@ function isPaidVersion() {
 		});
 	}
 
-	const widgetId = /<widget[^>]*\sid=["']([^"']+)["']/.exec(config)?.[1];
+	const widgetId = /<widget[^>]*?\sid=["']([^"']+)["']/.exec(config)?.[1];
 
 	return widgetId === ID_PAID;
 }

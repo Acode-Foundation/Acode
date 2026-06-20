@@ -217,6 +217,14 @@ public class Executor extends CordovaPlugin {
                             callbackContext.success(data);
                             cleanupCallback(pid);
                             break;
+                        case "listProcesses":
+                            try {
+                                callbackContext.success(new JSONArray(data));
+                            } catch (JSONException error) {
+                                callbackContext.error("Invalid process list: " + error.getMessage());
+                            }
+                            cleanupCallback(pid);
+                            break;
                     }
                 }
             }
@@ -287,6 +295,33 @@ public class Executor extends CordovaPlugin {
         }
 
 
+        if (action.equals("listAllProcesses")) {
+            try {
+                callbackContext.success(ProcessUtils.getAllProcesses());
+            } catch (Exception e) {
+                callbackContext.error("Failed to list all processes: " + e.getMessage());
+            }
+            return true;
+        }
+
+        if (action.equals("killProcess")) {
+            try {
+                int targetPid = args.getInt(0);
+                ProcessUtils.killProcess(targetPid);
+                callbackContext.success("Process terminated");
+            } catch (Exception e) {
+                callbackContext.error("Failed to kill process: " + e.getMessage());
+            }
+            return true;
+        }
+
+        if (action.equals("listProcesses")) {
+            if (!isServiceBound || serviceMessenger == null) {
+                callbackContext.success(new org.json.JSONArray());
+                return true;
+            }
+        }
+
         // For all other actions, ensure service is bound first
         if (!ensureServiceBound(callbackContext)) {
             // Error already sent by ensureServiceBound
@@ -318,6 +353,11 @@ public class Executor extends CordovaPlugin {
                 String pidCheck = args.getString(0);
                 callbackContextMap.put(pidCheck, callbackContext);
                 isProcessRunning(pidCheck);
+                return true;
+            case "listProcesses":
+                String requestId = UUID.randomUUID().toString();
+                callbackContextMap.put(requestId, callbackContext);
+                listProcesses(requestId);
                 return true;
             default:
                 callbackContext.error("Unknown action: " + action);
@@ -432,6 +472,23 @@ public class Executor extends CordovaPlugin {
             if (callbackContext != null) {
                 callbackContext.error("Check running error: " + e.getMessage());
                 cleanupCallback(pid);
+            }
+        }
+    }
+
+    private void listProcesses(String requestId) {
+        Message msg = Message.obtain(null, TerminalService.MSG_LIST_PROCESSES);
+        msg.replyTo = handlerMessenger;
+        Bundle bundle = new Bundle();
+        bundle.putString("id", requestId);
+        msg.setData(bundle);
+        try {
+            serviceMessenger.send(msg);
+        } catch (RemoteException e) {
+            CallbackContext callbackContext = getCallbackContext(requestId);
+            if (callbackContext != null) {
+                callbackContext.error("List processes error: " + e.getMessage());
+                cleanupCallback(requestId);
             }
         }
     }

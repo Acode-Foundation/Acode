@@ -480,18 +480,18 @@ async function main() {
   }
 
   function getConstructorRegex(filename) {
-    return new RegExp(`([^]*${filename.split('.')[0]}\\s*\\(.*\\)\\s*{[^}]*})([^]*)`, 'm');
+    return new RegExp(`([^]*?${filename.split('.')[0]}\\s*\\(.*?\\)\\s*{[^}]*})([^]*)`, 'm');
   }
 
   function getInterfaceDeclarationRegex(filename) {
-    return new RegExp(`([^]*interface\\s+${filename.split('.')[0]}[\\s\\w]*{)([^]*})`, 'm');
+    return new RegExp(`([^]*?interface\\s+${filename.split('.')[0]}[\\s\\w]*{)([^]*})`, 'm');
   }
 
   function getClassDeclarationRegex(filename) {
-    return new RegExp(`([^]*class\\s+${filename.split('.')[0]}[\\s\\w]*{)([^]*})`, 'm');
+    return new RegExp(`([^]*?class\\s+${filename.split('.')[0]}[\\s\\w]*{)([^]*})`, 'm');
   }
 
   function removeComments(content) {
-    return content.replace(/\/\*[\s\S]*?\*\/|([^\\:]|^)\/\/.*$/gm, '');
+    return content.replace(/\/\*[^]*?\*\/|([^\\:]|^)\/\/.*$/gm, '');
   }
 }

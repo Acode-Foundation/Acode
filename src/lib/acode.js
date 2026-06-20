@@ -7,7 +7,9 @@ import * as cmLint from "@codemirror/lint";
 import * as cmSearch from "@codemirror/search";
 import * as cmState from "@codemirror/state";
 import * as cmView from "@codemirror/view";
+import * as lezerCommon from "@lezer/common";
 import * as lezerHighlight from "@lezer/highlight";
+import * as lezerLR from "@lezer/lr";
 import {
 	getRegisteredCommands as listRegisteredCommands,
 	refreshCommandKeymap,
@@ -314,7 +316,12 @@ class Acode {
 			autocomplete: cmAutocomplete,
 			commands: cmCommands,
 			language: cmLanguage,
-			lezer: lezerHighlight,
+			lezer: Object.freeze({
+				...lezerHighlight,
+				common: lezerCommon,
+				highlight: lezerHighlight,
+				lr: lezerLR,
+			}),
 			lint: cmLint,
 			search: cmSearch,
 			state: cmState,
@@ -399,7 +406,9 @@ class Acode {
 		this.define("@codemirror/search", cmSearch);
 		this.define("@codemirror/state", cmState);
 		this.define("@codemirror/view", cmView);
+		this.define("@lezer/common", lezerCommon);
 		this.define("@lezer/highlight", lezerHighlight);
+		this.define("@lezer/lr", lezerLR);
 		this.define("createKeyboardEvent", KeyboardEvent);
 		this.define("toInternalUrl", helpers.toInternalUri);
 		this.define("commands", this.#createCommandApi());

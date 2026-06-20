@@ -763,5 +763,6 @@
 	"compact": "Compact",
 	"off": "Désactivé",
 	"quick tools height": "Hauteur des outils rapides",
-	"quick tools toggler": "Bascule des outils rapides"
+	"quick tools toggler": "Bascule des outils rapides",
+	"running processes": "Running processes"
 }

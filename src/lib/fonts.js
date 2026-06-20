@@ -229,7 +229,7 @@ async function setAppFont(name) {
   --app-font-family: "${name}", ${DEFAULT_APP_FONT_STACK};
 }`;
 	} catch (error) {
-		toast(`${name} font not found`, "error");
+		toast(`${name} font not found`, 3000);
 		$style.textContent = `:root {
   --app-font-family: ${DEFAULT_APP_FONT_STACK};
 }`;

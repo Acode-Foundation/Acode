@@ -8,8 +8,15 @@ import actionStack from "lib/actionStack";
  * @param {(hide:Function)=>void} setHide
  * @param {()=>void} onhideCb callback to be called when search bar is hidden
  * @param {(value:string)=>HTMLElement[]} searchFunction
+ * @param {boolean} cloneResults whether search results should be cloned
  */
-function searchBar($list, setHide, onhideCb, searchFunction) {
+function searchBar(
+	$list,
+	setHide,
+	onhideCb,
+	searchFunction,
+	cloneResults = true,
+) {
 	let hideOnBlur = true;
 	let timeout = null;
 	const $searchInput = Ref();
@@ -93,7 +100,7 @@ function searchBar($list, setHide, onhideCb, searchFunction) {
 		}
 
 		$list.textContent = "";
-		$list.append(...buildSearchContent(result, val));
+		$list.append(...(cloneResults ? buildSearchContent(result, val) : result));
 	}
 
 	/**

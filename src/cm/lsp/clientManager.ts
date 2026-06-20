@@ -1181,7 +1181,7 @@ function normalizeRootUriForServer(
   if (!rootUri || typeof rootUri !== "string") {
     return { normalizedRootUri: null, originalRootUri: null };
   }
-  const schemeMatch = /^([a-zA-Z][\w+\-.]*):/.exec(rootUri);
+  const schemeMatch = /^([a-zA-Z][\w+\-.]*?):/.exec(rootUri);
   const scheme = schemeMatch ? schemeMatch[1].toLowerCase() : null;
 
   // Already a file:// URI - use as-is
@@ -1206,7 +1206,7 @@ function normalizeRootUriForServer(
 function normalizeDocumentUri(uri: string | null | undefined): string | null {
   if (!uri || typeof uri !== "string") return null;
 
-  const schemeMatch = /^([a-zA-Z][\w+\-.]*):/.exec(uri);
+  const schemeMatch = /^([a-zA-Z][\w+\-.]*?):/.exec(uri);
   const scheme = schemeMatch ? schemeMatch[1].toLowerCase() : null;
 
   // Already a file:// URI or untitled use as-is

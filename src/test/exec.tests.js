@@ -118,6 +118,37 @@ export async function runExecutorTests(writeOutput) {
 		);
 	});
 
+	runner.test("listProcesses()", async (test) => {
+		const uuid = await Executor.start("sh", () => {});
+		await new Promise((r) => setTimeout(r, 200));
+
+		const processes = await Executor.listProcesses();
+		const process = processes.find((item) => item.id === uuid);
+		test.assert(process?.command === "sh", "Running process should be listed");
+		test.assert(
+			process?.background === false,
+			"Executor type should be included",
+		);
+
+		await Executor.stop(uuid);
+	});
+
+	runner.test("listProcesses() (BackgroundExecutor)", async (test) => {
+		const executor = Executor.BackgroundExecutor;
+		const uuid = await executor.start("sh", () => {});
+		await new Promise((r) => setTimeout(r, 200));
+
+		const processes = await executor.listProcesses();
+		const process = processes.find((item) => item.id === uuid);
+		test.assert(process?.id === uuid, "Background process should be listed");
+		test.assert(
+			process?.background === true,
+			"Executor type should be included",
+		);
+
+		await executor.stop(uuid);
+	});
+
 	runner.test("FDROID env variable", async (test) => {
 		const result = await Executor.execute("echo $FDROID");
 

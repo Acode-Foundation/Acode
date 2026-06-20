@@ -35,7 +35,7 @@ function installWindows(windowsPath) {
 
     // Replace <Content Include="strings\buildinfo.resjson"> to <PRIResource Include="strings\buildinfo.resjson">
     if (projitems.match(/<ItemGroup>[\s]*?<Content +.*?Include="strings\/buildinfo.resjson".+/m)) {
-        const search = /<ItemGroup>[\s]*?<Content +.*?Include="strings\/buildinfo.resjson"[\s\S]*?<\/ItemGroup>/m;
+        const search = /<ItemGroup>[\s]*?<Content +.*?Include="strings\/buildinfo.resjson"[^]*?<\/ItemGroup>/m;
 
         const replace
             = "<ItemGroup>\r\n"

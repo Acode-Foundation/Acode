@@ -169,7 +169,7 @@ export function inferWorkspaceKind(
 	const uri = String(context.rootUri || context.file?.uri || context.uri || "");
 	if (!uri) return "unknown";
 
-	const schemeMatch = /^([a-zA-Z][\w+\-.]*):/.exec(uri);
+	const schemeMatch = /^([a-zA-Z][\w+\-.]*?):/.exec(uri);
 	const scheme = schemeMatch ? schemeMatch[1].toLowerCase() : null;
 
 	if (!scheme) return uri.startsWith("/") ? "app-private" : "unknown";
@@ -198,7 +198,7 @@ export function isBuiltinAlpineAccessible(
 	const uri = String(context.rootUri || context.file?.uri || context.uri || "");
 	if (!uri) return false;
 
-	const schemeMatch = /^([a-zA-Z][\w+\-.]*):/.exec(uri);
+	const schemeMatch = /^([a-zA-Z][\w+\-.]*?):/.exec(uri);
 	const scheme = schemeMatch ? schemeMatch[1].toLowerCase() : null;
 
 	if (!scheme) return uri.startsWith("/");

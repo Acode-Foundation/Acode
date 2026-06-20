@@ -47,6 +47,7 @@ interface Executor {
   write: (uuid: string, input: string) => Promise<void>;
   stop: (uuid: string) => Promise<void>;
   isRunning: (uuid: string) => Promise<boolean>;
+  listProcesses: () => Promise<ExecutorProcess[]>;
   /** Move the executor service to the foreground (shows notification) */
   moveToForeground: () => Promise<void>;
   /** Move the executor service to the background (hides notification) */
@@ -57,6 +58,15 @@ interface Executor {
    * Background executor
    */
   BackgroundExecutor: Executor;
+}
+
+interface ExecutorProcess {
+  id: string;
+  pid: number;
+  command: string;
+  alpine: boolean;
+  startedAt: number;
+  background: boolean;
 }
 
 declare const Executor: Executor | undefined;

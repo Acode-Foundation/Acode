@@ -6,6 +6,8 @@ import settings from "lib/settings";
 import { hideAd } from "lib/startAd";
 import helpers from "utils/helpers";
 
+let availableToolsScrollTop = 0;
+
 export default function QuickTools() {
 	const $page = Page(strings["shortcut buttons"]);
 	$page.id = "quicktools-settings-page";
@@ -32,26 +34,37 @@ export default function QuickTools() {
 	$page.onhide = () => {
 		actionStack.remove("quicktools-settings");
 		hideAd();
+		availableToolsScrollTop = manager.getScrollTop();
 		// Cleanup manager
 		manager.destroy();
 	};
 
 	app.append($page);
+	requestAnimationFrame(() => manager.setScrollTop(availableToolsScrollTop));
 	helpers.showAd();
 }
 
 class QuickToolsManager {
 	constructor() {
 		this.container = <div id="quicktools-settings"></div>;
-		this.render();
-		this.bindEvents();
-
 		this.longPressTimer = null;
 		this.dragState = null;
+		this.render();
+		this.bindEvents();
 	}
 
 	getContainer() {
 		return this.container;
+	}
+
+	getScrollTop() {
+		return this.availableSection?.scrollTop || 0;
+	}
+
+	setScrollTop(scrollTop) {
+		if (this.availableSection) {
+			this.availableSection.scrollTop = scrollTop;
+		}
 	}
 
 	render() {
@@ -64,7 +77,7 @@ class QuickToolsManager {
 			<div className="section-title">{strings["active tools"]}</div>,
 		);
 
-		const activeGrid = <div className="quicktools-grid active-grid"></div>;
+		this.activeGrid = <div className="quicktools-grid active-grid"></div>;
 
 		const totalSlots =
 			settings.QUICKTOOLS_ROWS *
@@ -75,15 +88,15 @@ class QuickToolsManager {
 			const itemIndex = settings.value.quicktoolsItems[i];
 			const itemDef = items[itemIndex];
 			const el = this.createItemElement(itemDef, i, "active");
-			activeGrid.appendChild(el);
+			this.activeGrid.appendChild(el);
 		}
 
-		activeSection.appendChild(activeGrid);
+		activeSection.appendChild(this.activeGrid);
 		this.container.appendChild(activeSection);
 
 		// --- Available Tools Section ---
-		const availableSection = <div className="section available-tools"></div>;
-		availableSection.appendChild(
+		this.availableSection = <div className="section available-tools"></div>;
+		this.availableSection.appendChild(
 			<div className="section-title">{strings["available tools"]}</div>,
 		);
 
@@ -118,11 +131,22 @@ class QuickToolsManager {
 				catGrid.appendChild(el);
 			});
 
-			availableSection.appendChild(catHeader);
-			availableSection.appendChild(catGrid);
+			this.availableSection.appendChild(catHeader);
+			this.availableSection.appendChild(catGrid);
 		});
 
-		this.container.appendChild(availableSection);
+		this.container.appendChild(this.availableSection);
+	}
+
+	refreshActiveSlots(indices) {
+		for (const index of indices) {
+			const currentItem = this.activeGrid.children[index];
+			const itemIndex = settings.value.quicktoolsItems[index];
+			const itemDef = items[itemIndex];
+			currentItem?.replaceWith(
+				this.createItemElement(itemDef, index, "active"),
+			);
+		}
 	}
 
 	createItemElement(itemDef, index, type) {
@@ -354,13 +378,13 @@ class QuickToolsManager {
 		settings.value.quicktoolsItems[destIndex] = temp;
 
 		settings.update();
-		this.render(); // Re-render to reflect changes
+		this.refreshActiveSlots([srcIndex, destIndex]);
 	}
 
 	replaceItem(slotIndex, newItemId) {
 		settings.value.quicktoolsItems[slotIndex] = newItemId;
 		settings.update();
-		this.render();
+		this.refreshActiveSlots([slotIndex]);
 	}
 
 	async handleClick(el) {
