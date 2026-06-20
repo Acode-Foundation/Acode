@@ -336,7 +336,7 @@
 	"no-product-info": "Produk ini tidak tersedia di negara Anda saat ini, silakan coba lagi.",
 	"close": "Tutup",
 	"explore": "Jelajahi",
-	"key bindings updated": "pemetaan tombol diperbarui",
+	"key bindings updated": "Pemetaan tombol diperbarui",
 	"search in files": "Cari dalam berkas",
 	"exclude files": "Kecualikan berkas",
 	"include files": "Sertakan berkas",
@@ -350,7 +350,7 @@
 	"save all changes warning": "Apakah Anda yakin ingin menyimpan semua berkas?",
 	"close all warning": "Apakah Anda yakin ingin menutup semua berkas? Anda akan kehilangan perubahan yang belum disimpan dan tindakan ini tidak dapat dibalik.",
 	"refresh": "Segarkan",
-	"shortcut buttons": "pemetaan tombol",
+	"shortcut buttons": "Tombol pintasan",
 	"no result": "Tidak ada hasil",
 	"searching...": "Mencari...",
 	"quicktools:ctrl-key": "Kunci Control/Command",
@@ -764,5 +764,5 @@
 	"off": "Mati",
 	"quick tools height": "Tinggi alat cepat",
 	"quick tools toggler": "Pengalih alat cepat",
-	"running processes": "Running processes"
+	"running processes": "Proses yang berjalan"
 }
