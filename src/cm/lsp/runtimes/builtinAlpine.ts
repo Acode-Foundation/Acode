@@ -28,8 +28,14 @@ function isUntitled(context: LspRuntimeContext): boolean {
 function cacheDocumentUri(context: LspRuntimeContext): string | null {
 	const cacheFile = context.file?.cacheFile;
 	if (!cacheFile || typeof cacheFile !== "string") return null;
-	if (/^file:\/\//i.test(cacheFile)) return cacheFile;
-	const path = cacheFile.startsWith("/") ? cacheFile : `/${cacheFile}`;
+	const rawPath = cacheFile.replace(/^file:\/\//i, "");
+	const absolutePath = rawPath.startsWith("/") ? rawPath : `/${rawPath}`;
+	let path = absolutePath;
+	try {
+		path = decodeURIComponent(absolutePath);
+	} catch {
+		// Keep the original value and let encodeURI escape any literal percent signs.
+	}
 	return `file://${encodeURI(path).replace(/#/g, "%23")}`;
 }
 
@@ -66,6 +72,11 @@ export const builtinAlpineRuntimeProvider: LspRuntimeProvider = {
 		if (canUseRealPath(context) && !isUntitled(context)) return null;
 
 		const documentUri = cacheDocumentUri(context);
+		if (!documentUri) {
+			throw new Error(
+				`Built-in Alpine cannot resolve a cache URI for ${context.originalDocumentUri}`,
+			);
+		}
 		return {
 			documentUri,
 			rootUri: null,

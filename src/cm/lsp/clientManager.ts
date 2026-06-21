@@ -1067,7 +1067,12 @@ export class LspClientManager {
         this.options.allowNonTerminalWorkspace === true,
     };
     const runtimeProvider = await selectRuntimeProvider(server, providerContext);
-    if (!runtimeProvider) return null;
+    if (!runtimeProvider) {
+      console.warn(
+        `No LSP runtime provider selected for ${server.id}: uri=${originalDocumentUri}, root=${originalRootUri ?? "none"}, normalizedUri=${normalizedDocumentUri ?? "none"}`,
+      );
+      return null;
+    }
 
     let documentUri = normalizedDocumentUri;
     let rootUri = normalizedRootUri;
@@ -1099,7 +1104,12 @@ export class LspClientManager {
       }
     }
 
-    if (!documentUri) return null;
+    if (!documentUri) {
+      console.warn(
+        `LSP runtime provider ${runtimeProvider.id} produced no document URI for ${server.id}: uri=${originalDocumentUri}, normalizedUri=${normalizedDocumentUri ?? "none"}`,
+      );
+      return null;
+    }
     return {
       originalDocumentUri,
       documentUri,

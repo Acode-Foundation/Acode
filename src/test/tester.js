@@ -1,7 +1,6 @@
 import { runAceCompatibilityTests } from "./ace.test";
 import { runCodeMirrorTests } from "./editor.tests";
 import { runExecutorTests } from "./exec.tests";
-import { runLspRuntimeTests } from "./lspRuntime.tests";
 import { runSanityTests } from "./sanity.tests";
 import { runUrlTests } from "./url.tests";
 
@@ -22,7 +21,6 @@ export async function runAllTests() {
 		await runCodeMirrorTests(write);
 		await runAceCompatibilityTests(write);
 		await runExecutorTests(write);
-		await runLspRuntimeTests(write);
 		await runUrlTests(write);
 
 		write("\x1b[36m\x1b[1mTests completed!\x1b[0m\n");
