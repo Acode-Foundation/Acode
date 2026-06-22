@@ -281,16 +281,19 @@ function shouldEnableSearch(type, settingsCount) {
 }
 
 function restoreAllSettingsPages() {
-	Object.values(appSettings.uiSettings).forEach((page) => {
+	getSettingsPages().forEach((page) => {
 		page.restoreList();
 	});
 }
 
 function createSearchHandler(type, searchItems) {
+	let settingsPages;
+
 	return (key) => {
 		if (type === "united") {
 			const $items = [];
-			Object.values(appSettings.uiSettings).forEach((page) => {
+			settingsPages ??= getSettingsPages(true);
+			settingsPages.forEach((page) => {
 				$items.push(...page.search(key));
 			});
 			return $items;
@@ -301,6 +304,16 @@ function createSearchHandler(type, searchItems) {
 			return text.match(key, "i");
 		});
 	};
+}
+
+function getSettingsPages(includeLazyPages = false) {
+	const keys = includeLazyPages
+		? Object.getOwnPropertyNames(appSettings.uiSettings)
+		: Object.keys(appSettings.uiSettings);
+
+	return keys
+		.map((key) => appSettings.uiSettings[key])
+		.filter((page) => page?.search && page?.restoreList);
 }
 
 function createNote(note) {
