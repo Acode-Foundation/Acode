@@ -152,6 +152,21 @@ export async function detectEncoding(buffer) {
 }
 
 /**
+ * Resolves a charset string to the canonical encoding name.
+ * @param {string} charset
+ * @returns {string}
+ */
+export function getEncodingName(charset) {
+	if (!charset) {
+		charset = settings.value.defaultFileEncoding;
+	}
+
+	if (charset === "auto") charset = "UTF-8";
+
+	return getEncoding(charset).name;
+}
+
+/**
  * Decodes arrayBuffer to String according given encoding type
  * @param {ArrayBuffer} buffer
  * @param {string} [charset]
@@ -165,13 +180,7 @@ export async function decode(buffer, charset) {
 		isJson = true;
 	}
 
-	if (!charset) {
-		charset = settings.value.defaultFileEncoding;
-	}
-
-	if (charset === "auto") charset = "UTF-8";
-
-	charset = getEncoding(charset).name;
+	charset = getEncodingName(charset);
 	const text = await execDecode(buffer, charset);
 
 	if (isJson) {
@@ -188,13 +197,7 @@ export async function decode(buffer, charset) {
  * @returns {Promise<ArrayBuffer>}
  */
 export function encode(text, charset) {
-	if (!charset) {
-		charset = settings.value.defaultFileEncoding;
-	}
-
-	if (charset === "auto") charset = "UTF-8";
-
-	charset = getEncoding(charset).name;
+	charset = getEncodingName(charset);
 	return execEncode(text, charset);
 }
 

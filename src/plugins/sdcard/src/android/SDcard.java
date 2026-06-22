@@ -24,6 +24,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.nio.charset.Charset;
 import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -108,6 +111,9 @@ public class SDcard extends CordovaPlugin {
       case "read":
         readFile(arg1, callback);
         break;
+      case "readAsText":
+        readAsText(arg1, arg2, callback);
+        break;
       case "write":
         writeFile(
           formatUri(arg1),
@@ -115,6 +121,9 @@ public class SDcard extends CordovaPlugin {
           args.optBoolean(2),
           callback
         );
+        break;
+      case "writeText":
+        writeText(arg1, arg2, arg3, callback);
         break;
       case "rename":
         rename(arg1, arg2, callback);
@@ -468,6 +477,105 @@ public class SDcard extends CordovaPlugin {
               }
               is.close();
               callback.success(outputStream.toByteArray());
+            } catch (Exception e) {
+              callback.error(e.toString());
+            }
+          }
+        }
+      );
+  }
+
+  private void readAsText(final String filename, final String encoding, final CallbackContext callback) {
+    cordova
+      .getThreadPool()
+      .execute(
+        new Runnable() {
+          public void run() {
+            try {
+              String formattedUri = formatUri(filename);
+              Uri uri = Uri.parse(formattedUri);
+              
+              String charSetName = encoding;
+              if (charSetName == null || charSetName.isEmpty() || "auto".equalsIgnoreCase(charSetName)) {
+                charSetName = "UTF-8";
+              }
+              if (!Charset.isSupported(charSetName)) {
+                callback.error("Charset not supported: " + charSetName);
+                return;
+              }
+              Charset charset = Charset.forName(charSetName);
+
+              InputStream is = context
+                .getContentResolver()
+                .openInputStream(uri);
+
+              if (is == null) {
+                callback.error("File not found");
+                return;
+              }
+
+              StringBuilder sb = new StringBuilder();
+              try (BufferedReader reader = new BufferedReader(new InputStreamReader(is, charset))) {
+                char[] buffer = new char[8192];
+                int charsRead;
+                while ((charsRead = reader.read(buffer)) != -1) {
+                  sb.append(buffer, 0, charsRead);
+                }
+              }
+              is.close();
+              callback.success(sb.toString());
+            } catch (Exception e) {
+              callback.error(e.toString());
+            }
+          }
+        }
+      );
+  }
+
+  private void writeText(
+    final String filename,
+    final String content,
+    final String encoding,
+    final CallbackContext callback
+  ) {
+    final Context context = this.context;
+
+    cordova
+      .getThreadPool()
+      .execute(
+        new Runnable() {
+          public void run() {
+            try {
+              String formattedUri = formatUri(filename);
+              DocumentFile file = getFile(formattedUri);
+              if (file == null) {
+                callback.error("File not found.");
+                return;
+              }
+              if (canWrite(file.getUri())) {
+                String charSetName = encoding;
+                if (charSetName == null || charSetName.isEmpty() || "auto".equalsIgnoreCase(charSetName)) {
+                  charSetName = "UTF-8";
+                }
+                if (!Charset.isSupported(charSetName)) {
+                  callback.error("Charset not supported: " + charSetName);
+                  return;
+                }
+                Charset charset = Charset.forName(charSetName);
+
+                OutputStream op = context
+                  .getContentResolver()
+                  .openOutputStream(file.getUri(), "rwt");
+
+                byte[] bytes = content.getBytes(charset);
+                op.write(bytes);
+
+                op.flush();
+                op.close();
+                callback.success("OK");
+              } else {
+                callback.error("No write permission");
+              }
             } catch (Exception e) {
               callback.error(e.toString());
             }

@@ -1,5 +1,5 @@
 import loader from "dialogs/loader";
-import { decode, encode } from "utils/encodings";
+import { decode, encode, getEncodingName } from "utils/encodings";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
 
@@ -11,9 +11,23 @@ const externalFs = {
 		});
 	},
 
+	async readAsText(url, encoding) {
+		url = await this.formatUri(url);
+		return new Promise((resolve, reject) => {
+			sdcard.readAsText(url, encoding, resolve, reject);
+		});
+	},
+
 	async writeFile(filename, data) {
 		return new Promise(async (resolve, reject) => {
 			sdcard.write(filename, data, resolve, reject);
+		});
+	},
+
+	async writeText(filename, data, encoding) {
+		filename = await this.formatUri(filename);
+		return new Promise((resolve, reject) => {
+			sdcard.writeText(filename, data, encoding, resolve, reject);
 		});
 	},
 
@@ -178,17 +192,20 @@ function createFs(url) {
 			return externalFs.listDir(url);
 		},
 		async readFile(encoding) {
-			let { data } = await externalFs.readFile(url, encoding);
-
 			if (encoding) {
-				data = await decode(data, encoding);
+				const isJson = encoding === "json";
+				const charset = getEncodingName(isJson ? null : encoding);
+				const text = await externalFs.readAsText(url, charset);
+				return isJson ? JSON.parse(text) : text;
 			}
 
+			let { data } = await externalFs.readFile(url);
 			return data;
 		},
 		async writeFile(content, encoding) {
 			if (typeof content === "string" && encoding) {
-				content = await encode(content, encoding);
+				const charset = getEncodingName(encoding === "json" ? null : encoding);
+				return externalFs.writeText(url, content, charset);
 			}
 			return externalFs.writeFile(url, content);
 		},

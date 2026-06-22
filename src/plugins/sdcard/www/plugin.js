@@ -44,9 +44,15 @@ module.exports = {
   read: function (filename, onSuccess, onFail) {
     cordova.exec(onSuccess, onFail, 'SDcard', 'read', [filename]);
   },
+  readAsText: function (filename, encoding, onSuccess, onFail) {
+    cordova.exec(onSuccess, onFail, 'SDcard', 'readAsText', [filename, encoding]);
+  },
   write: function (filename, content, onSuccess, onFail) {
     var _isBuffer = content instanceof ArrayBuffer;
     cordova.exec(onSuccess, onFail, 'SDcard', 'write', [filename, content, _isBuffer]);
+  },
+  writeText: function (filename, content, encoding, onSuccess, onFail) {
+    cordova.exec(onSuccess, onFail, 'SDcard', 'writeText', [filename, content, encoding]);
   },
   stats: function (filename, onSuccess, onFail) {
     cordova.exec(onSuccess, onFail, 'SDcard', 'stats', [filename]);
