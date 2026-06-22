@@ -196,7 +196,7 @@ function createFs(url) {
 				const isJson = encoding === "json";
 				const charset = getEncodingName(isJson ? "utf-8" : encoding);
 				const text = await externalFs.readAsText(url, charset);
-				const stripped = text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text;
+				const stripped = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
 				return isJson ? JSON.parse(stripped) : stripped;
 			}
 
@@ -205,7 +205,9 @@ function createFs(url) {
 		},
 		async writeFile(content, encoding) {
 			if (typeof content === "string" && encoding) {
-				const charset = getEncodingName(encoding === "json" ? "utf-8" : encoding);
+				const charset = getEncodingName(
+					encoding === "json" ? "utf-8" : encoding,
+				);
 				return externalFs.writeText(url, content, charset);
 			}
 			return externalFs.writeFile(url, content);
