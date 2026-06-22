@@ -260,8 +260,13 @@ async function run(
 			if (pathName) {
 				url = Url.join(pathName, reqPath);
 				file = editorManager.getFile(url, "uri");
-			} else if (!activeFile.uri) {
+			} else if (!activeFile.uri && filename === reqPath) {
 				file = activeFile;
+			}
+
+			if (!url && !file) {
+				error(reqId);
+				return;
 			}
 
 			// Handle extensionless URLs (e.g., "about" -> "about.html" or "about/index.html")
