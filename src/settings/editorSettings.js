@@ -134,6 +134,13 @@ export default function editorSettings() {
 			category: categories.assistance,
 		},
 		{
+			key: "languageCompletion",
+			text: strings["language package completion"],
+			checkbox: values.languageCompletion ?? true,
+			info: strings["settings-info-editor-language-completion"],
+			category: categories.assistance,
+		},
+		{
 			key: "useEmmet",
 			text: strings["use emmet"],
 			checkbox: values.useEmmet ?? true,

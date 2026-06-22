@@ -138,6 +138,7 @@ declare type LangStrings = {
   "add path": string;
   "live autocompletion": string;
   "local word completion": string;
+  "language package completion": string;
   "auto close tags": string;
   "auto rename tags": string;
   "file properties": string;
@@ -690,6 +691,7 @@ declare type LangStrings = {
   "settings-info-editor-lint-gutter": string;
   "settings-info-editor-live-autocomplete": string;
   "settings-info-editor-local-word-completion": string;
+  "settings-info-editor-language-completion": string;
   "settings-info-editor-auto-close-tags": string;
   "settings-info-editor-auto-rename-tags": string;
   "settings-info-editor-rainbow-brackets": string;

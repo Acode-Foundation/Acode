@@ -33,9 +33,11 @@ import {
 	removeExternalCommand,
 } from "cm/commandRegistry";
 import { handleLineNumberClick } from "cm/lineNumberSelection";
-import localWordCompletions from "cm/localWordCompletions";
+import localWordCompletions, {
+	localWordCompletionSource,
+} from "cm/localWordCompletions";
 import lspApi from "cm/lsp/api";
-import lspClientManager from "cm/lsp/clientManager";
+import lspClientManager, { lspCompletionEnabled } from "cm/lsp/clientManager";
 import {
 	getLspDiagnostics,
 	LSP_DIAGNOSTICS_EVENT,
@@ -55,6 +57,7 @@ import {
 import createTouchSelectionMenu from "cm/touchSelectionMenu";
 import "cm/supportedModes";
 import { autocompletion } from "@codemirror/autocomplete";
+import { serverCompletionSource } from "@codemirror/lsp-client";
 import colorView from "cm/colorView";
 import {
 	getAllFolds,
@@ -304,6 +307,41 @@ async function EditorManager($header, $body) {
 	function getEditorFontFamily() {
 		const font = appSettings?.value?.editorFont || "Roboto Mono";
 		return `${font}, Noto Mono, Monaco, monospace`;
+	}
+
+	function getLspCompletionSource(context) {
+		if (!context.state.facet(lspCompletionEnabled)) return null;
+		return serverCompletionSource(context);
+	}
+
+	function getEmmetCompletionSource(context) {
+		try {
+			return emmetCompletionSource(context);
+		} catch {
+			return null;
+		}
+	}
+
+	function getAutocompleteConfig() {
+		const live = !!appSettings?.value?.liveAutoCompletion;
+		const config = {
+			activateOnTyping: live,
+			activateOnTypingDelay: isCoarsePointerDevice() ? 220 : 100,
+		};
+
+		if (appSettings?.value?.languageCompletion === false) {
+			config.override = [getLspCompletionSource];
+
+			if (appSettings?.value?.localWordCompletion) {
+				config.override.push(localWordCompletionSource);
+			}
+
+			if (appSettings?.value?.useEmmet !== false) {
+				config.override.push(getEmmetCompletionSource);
+			}
+		}
+
+		return config;
 	}
 
 	function makeFontTheme() {
@@ -576,14 +614,10 @@ async function EditorManager($header, $body) {
 			},
 		},
 		{
-			keys: ["liveAutoCompletion"],
+			keys: ["liveAutoCompletion", "localWordCompletion", "languageCompletion"],
 			compartments: [completionCompartment],
 			build() {
-				const live = !!appSettings?.value?.liveAutoCompletion;
-				return autocompletion({
-					activateOnTyping: live,
-					activateOnTypingDelay: isCoarsePointerDevice() ? 220 : 100,
-				});
+				return autocompletion(getAutocompleteConfig());
 			},
 		},
 		{
@@ -1989,6 +2023,10 @@ async function EditorManager($header, $body) {
 
 	appSettings.on("update:localWordCompletion", function () {
 		applyOptions(["localWordCompletion"]);
+	});
+
+	appSettings.on("update:languageCompletion", function () {
+		applyOptions(["languageCompletion"]);
 	});
 
 	appSettings.on("update:useEmmet", function () {
