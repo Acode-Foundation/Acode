@@ -260,8 +260,13 @@ async function run(
 			if (pathName) {
 				url = Url.join(pathName, reqPath);
 				file = editorManager.getFile(url, "uri");
-			} else if (!activeFile.uri) {
+			} else if (!activeFile.uri && filename === reqPath) {
 				file = activeFile;
+			}
+
+			if (!url && !file) {
+				error(reqId);
+				return;
 			}
 
 			// Handle extensionless URLs (e.g., "about" -> "about.html" or "about/index.html")
@@ -302,7 +307,7 @@ async function run(
 			switch (ext) {
 				case ".htm":
 				case ".html":
-					if (file && file.loaded && file.isUnsaved) {
+					if (!url || (file && file.loaded && file.isUnsaved)) {
 						sendHTML(file.session?.doc?.toString(), reqId);
 					} else {
 						sendFileContent(url, reqId, MIMETYPE_HTML);
@@ -331,7 +336,7 @@ async function run(
 					break;
 
 				default:
-					if (file && file.loaded && file.isUnsaved) {
+					if (!url || (file && file.loaded && file.isUnsaved)) {
 						sendText(
 							file.session?.doc?.toString(),
 							reqId,

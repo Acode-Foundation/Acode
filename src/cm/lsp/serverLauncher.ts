@@ -849,7 +849,8 @@ export async function uninstallServer(
       message: `Uninstalling ${displayLabel}...`,
       loading: () => loading,
     });
-    await runForegroundCommand(command);
+    //await runForegroundCommand(command);
+    await runQuickCommand(command);
     if (cacheKey) {
       checkedCommands.delete(cacheKey);
     }
