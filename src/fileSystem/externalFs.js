@@ -196,7 +196,11 @@ function createFs(url) {
 				const isJson = encoding === "json";
 				const charset = getEncodingName(isJson ? null : encoding);
 				const text = await externalFs.readAsText(url, charset);
-				return isJson ? JSON.parse(text) : text;
+				if (isJson) {
+					const stripped = text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text;
+					return JSON.parse(stripped);
+				}
+				return text;
 			}
 
 			let { data } = await externalFs.readFile(url);

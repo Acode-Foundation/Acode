@@ -522,7 +522,6 @@ public class SDcard extends CordovaPlugin {
                   sb.append(buffer, 0, charsRead);
                 }
               }
-              is.close();
               callback.success(sb.toString());
             } catch (Exception e) {
               callback.error(e.toString());
@@ -563,15 +562,13 @@ public class SDcard extends CordovaPlugin {
                 }
                 Charset charset = Charset.forName(charSetName);
 
-                OutputStream op = context
+                try (OutputStream op = context
                   .getContentResolver()
-                  .openOutputStream(file.getUri(), "rwt");
-
-                byte[] bytes = content.getBytes(charset);
-                op.write(bytes);
-
-                op.flush();
-                op.close();
+                  .openOutputStream(file.getUri(), "rwt")) {
+                  byte[] bytes = content.getBytes(charset);
+                  op.write(bytes);
+                  op.flush();
+                }
                 callback.success("OK");
               } else {
                 callback.error("No write permission");
