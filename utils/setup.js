@@ -85,7 +85,7 @@ const plugins = fs.readdirSync(path.join(__dirname, "../src/plugins"));
 plugins.forEach((plugin) => {
 	if (PLATFORM_FILES.includes(plugin) || plugin.startsWith(".")) return;
 	const pluginPath = path.join(__dirname, "../src/plugins", plugin);
-	if (!fs.statSync(pluginPath).isDirectory()) return;
+	if (!fs.lstatSync(pluginPath).isDirectory()) return;
 	if (shouldSkipAdmob && plugin === ADMOB_PLUGIN_DIR) return;
 	execSync(`cordova plugin add ./src/plugins/${plugin}`, { stdio: "inherit" });
 });
