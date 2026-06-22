@@ -220,6 +220,19 @@ class PageHandler {
 
 		this.$el.on("hide", this.onhide);
 		this.$el.on("show", this.onshow);
+
+		// Cache scroll position on scroll event to prevent synchronous layout reading (forced reflow) during page transitions
+		this.$el.addEventListener(
+			"scroll",
+			(e) => {
+				const $body = this.$el.body;
+				if ($body && e.target === $body) {
+					this.scrollLeft = $body.scrollLeft;
+					this.scrollTop = $body.scrollTop;
+				}
+			},
+			{ capture: true, passive: true },
+		);
 	}
 
 	/**
@@ -228,11 +241,6 @@ class PageHandler {
 	replaceEl() {
 		this.$el.off("hide", this.onhide);
 		if (!this.$el.isConnected || this.$replacement.isConnected) return;
-		const $body = this.$el.body;
-		if ($body) {
-			this.scrollLeft = $body.scrollLeft;
-			this.scrollTop = $body.scrollTop;
-		}
 		if (typeof this.onReplace === "function") this.onReplace();
 		this.$el.parentElement.replaceChild(this.$replacement, this.$el);
 		this.$el.classList.add("no-transition");
