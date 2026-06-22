@@ -347,16 +347,28 @@ export default function mainSettings() {
 		delete appSettings.uiSettings[key];
 		Object.defineProperty(appSettings.uiSettings, key, {
 			get() {
-				if (!instantiated[key]) {
+				if (!(key in instantiated)) {
 					instantiated[key] = initializer();
+					Object.defineProperty(appSettings.uiSettings, key, {
+						value: instantiated[key],
+						writable: true,
+						configurable: true,
+						enumerable: true,
+					});
 				}
 				return instantiated[key];
 			},
 			set(val) {
 				instantiated[key] = val;
+				Object.defineProperty(appSettings.uiSettings, key, {
+					value: val,
+					writable: true,
+					configurable: true,
+					enumerable: true,
+				});
 			},
 			configurable: true,
-			enumerable: true,
+			enumerable: false,
 		});
 	}
 }
