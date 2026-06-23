@@ -6,6 +6,9 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.io.IOException;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipEntry;
+import java.io.BufferedOutputStream;
 import android.app.Activity;
 import android.app.PendingIntent;
 import android.content.ClipData;
@@ -214,6 +217,7 @@ public class System extends CordovaPlugin {
             case "compare-file-text":
             case "compare-texts":
             case "extractAsset":
+            case "unzip":
             case "pin-file-shortcut":
                 break;
             case "get-configuration":
@@ -440,6 +444,16 @@ public class System extends CordovaPlugin {
                                 }catch(Exception e){
                                     callbackContext.error("Failed to extract asset: " + e.getMessage());
                                             
+                                }
+                                return;
+
+                            case "unzip":
+                                try {
+                                    String zipPath = args.getString(0);
+                                    String destPath = args.getString(1);
+                                    unzip(zipPath, destPath, callbackContext);
+                                } catch (Exception e) {
+                                    callbackContext.error("Failed to unzip: " + e.getMessage());
                                 }
                                 return;
                             
@@ -2179,6 +2193,92 @@ public class System extends CordovaPlugin {
             out.flush();
             callback.success();
         }catch (IOException e) {
+            StringWriter sw = new StringWriter();
+            e.printStackTrace(new PrintWriter(sw));
+            callback.error(sw.toString());
+        }
+    }
+
+    private void unzip(String zipPath, String destPath, CallbackContext callback) {
+        try {
+            Uri zipUri = Uri.parse(zipPath);
+            File destDir = null;
+            Uri destUri = Uri.parse(destPath);
+            if ("file".equalsIgnoreCase(destUri.getScheme())) {
+                destDir = new File(destUri.getPath());
+            } else {
+                destDir = new File(destPath);
+            }
+
+            if (!destDir.exists()) {
+                destDir.mkdirs();
+            }
+
+            String canonicalDestDirPath = destDir.getCanonicalPath();
+
+            InputStream is = null;
+            if ("file".equalsIgnoreCase(zipUri.getScheme())) {
+                is = new FileInputStream(new File(zipUri.getPath()));
+            } else if (zipUri.getScheme() != null) {
+                is = context.getContentResolver().openInputStream(zipUri);
+            } else {
+                is = new FileInputStream(new File(zipPath));
+            }
+
+            if (is == null) {
+                callback.error("Could not open input stream for zip file");
+                return;
+            }
+
+            try (ZipInputStream zis = new ZipInputStream(is)) {
+                ZipEntry entry;
+                byte[] buffer = new byte[8192];
+                while ((entry = zis.getNextEntry()) != null) {
+                    String name = entry.getName();
+                    
+                    // Normalize separator
+                    name = name.replace('\\', '/');
+                    
+                    // Skip unsafe absolute paths
+                    if (name.startsWith("/") || name.contains("://") || name.startsWith("\\\\") || (name.length() > 1 && name.charAt(1) == ':')) {
+                        // Unsafe, skip it
+                        zis.closeEntry();
+                        continue;
+                    }
+
+                    // Resolve relative paths
+                    File file = new File(destDir, name);
+                    String canonicalFilePath = file.getCanonicalPath();
+                    
+                    // Prevent Zip Slip
+                    if (!canonicalFilePath.startsWith(canonicalDestDirPath + File.separator) && !canonicalFilePath.equals(canonicalDestDirPath)) {
+                        zis.closeEntry();
+                        continue;
+                    }
+
+                    if (entry.isDirectory()) {
+                        file.mkdirs();
+                    } else {
+                        // Ensure parent directory exists
+                        File parent = file.getParentFile();
+                        if (parent != null && !parent.exists()) {
+                            parent.mkdirs();
+                        }
+
+                        try (FileOutputStream fos = new FileOutputStream(file);
+                             BufferedOutputStream bos = new BufferedOutputStream(fos, buffer.length)) {
+                            int len;
+                            while ((len = zis.read(buffer)) != -1) {
+                                bos.write(buffer, 0, len);
+                            }
+                            bos.flush();
+                        }
+                    }
+                    zis.closeEntry();
+                }
+            }
+            callback.success();
+        } catch (Exception e) {
             StringWriter sw = new StringWriter();
             e.printStackTrace(new PrintWriter(sw));
             callback.error(sw.toString());

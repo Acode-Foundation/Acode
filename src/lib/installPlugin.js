@@ -38,6 +38,7 @@ export default async function installPlugin(
 	let pluginDir;
 	let pluginUrl;
 	let state;
+	let tempZipFile;
 
 	try {
 		if (!(await fsOperation(PLUGIN_DIR).exists())) {
@@ -174,65 +175,48 @@ export default async function installPlugin(
 
 			// Track unsafe absolute entries to skip
 			const ignoredUnsafeEntries = new Set();
-
 			const files = Object.keys(zip.files);
-			const limit = 2;
 
-			async function processFile(file) {
-				try {
-					const entry = zip.files[file];
+			const tempZipName = `${id.replace(/[^a-zA-Z0-9]/g, "_")}.zip`;
+			tempZipFile = Url.join(CACHE_STORAGE, tempZipName);
+			if (await fsOperation(tempZipFile).exists()) {
+				await fsOperation(tempZipFile).delete();
+			}
+			await fsOperation(CACHE_STORAGE).createFile(tempZipName, plugin);
 
-					let correctFile = file.replace(/\\/g, "/");
-					const isDirEntry = entry.dir || correctFile.endsWith("/");
+			// Natively unzip to plugin directory
+			await new Promise((resolve, reject) => {
+				system.unzip(tempZipFile, pluginDir, resolve, reject);
+			});
 
-					if (isUnsafeAbsolutePath(file)) {
-						ignoredUnsafeEntries.add(file);
-						return;
-					}
-
-					correctFile = sanitizeZipPath(correctFile, isDirEntry);
-					if (!correctFile) return;
-
-					const fileUrl = Url.join(pluginDir, correctFile);
-
-					// Handle directory entries
-					if (isDirEntry) {
-						await createFileRecursive(pluginDir, correctFile, true);
-						return;
-					}
-
-					// Ensure parent directory exists
-					const lastSlash = correctFile.lastIndexOf("/");
-					if (lastSlash !== -1) {
-						const parentRel = correctFile.slice(0, lastSlash + 1);
-						await createFileRecursive(pluginDir, parentRel, true);
-					}
-
-					if (!state.exists(correctFile)) {
-						await createFileRecursive(pluginDir, correctFile, false);
-					}
-
-					let data = await entry.async("ArrayBuffer");
-
-					if (file === "plugin.json") {
-						data = JSON.stringify(pluginJson);
-					}
-
-					if (!(await state.isUpdated(correctFile, data))) return;
-
-					await fsOperation(fileUrl).writeFile(data);
-				} catch (error) {
-					console.error(`Error processing file ${file}:`, error);
-				}
+			// Overwrite the original plugin.json inside pluginDir with the patched pluginJson
+			const pluginJsonFile = Url.join(pluginDir, "plugin.json");
+			if (await fsOperation(pluginJsonFile).exists()) {
+				await fsOperation(pluginJsonFile).writeFile(JSON.stringify(pluginJson));
+			} else {
+				await fsOperation(pluginDir).createFile(
+					"plugin.json",
+					JSON.stringify(pluginJson),
+				);
 			}
 
-			// Process in batches
-			for (let i = 0; i < files.length; i += limit) {
-				const batch = files.slice(i, i + limit);
-				await Promise.allSettled(batch.map(processFile));
+			// Populate install state (updatedStore) and track skipped unsafe entries
+			for (const file of files) {
+				const entry = zip.files[file];
+				let correctFile = file.replace(/\\/g, "/");
+				const isDirEntry = entry.dir || correctFile.endsWith("/");
 
-				// Allow UI thread to breathe
-				await new Promise((r) => setTimeout(r, 0));
+				if (isUnsafeAbsolutePath(file)) {
+					ignoredUnsafeEntries.add(file);
+					continue;
+				}
+
+				correctFile = sanitizeZipPath(correctFile, isDirEntry);
+				if (!correctFile) continue;
+
+				if (!isDirEntry) {
+					state.updatedStore[correctFile.toLowerCase()] = "1";
+				}
 			}
 			// Emit a non-blocking warning if any unsafe entries were skipped
 			if (!isDependency && ignoredUnsafeEntries.size) {
@@ -276,6 +260,15 @@ export default async function installPlugin(
 		}
 		throw err;
 	} finally {
+		if (tempZipFile) {
+			try {
+				if (await fsOperation(tempZipFile).exists()) {
+					await fsOperation(tempZipFile).delete();
+				}
+			} catch (e) {
+				console.error("Failed to delete tempZipFile:", e);
+			}
+		}
 		if (!isDependency) {
 			loaderDialog.destroy();
 		}

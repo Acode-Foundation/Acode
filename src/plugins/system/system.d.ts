@@ -295,6 +295,19 @@ interface System {
     onSuccess?: () => void,
     onFail?: OnFail,
   ): void;
+  /**
+   * Unzip a zip archive natively
+   * @param zipFile Path or URI to the zip file
+   * @param destDir Target directory path to extract contents
+   * @param onSuccess Success callback
+   * @param onFail Error callback
+   */
+  unzip(
+    zipFile: string,
+    destDir: string,
+    onSuccess: () => void,
+    onFail: OnFail,
+  ): void;
 }
 
 interface Window{

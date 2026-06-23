@@ -272,5 +272,8 @@ module.exports = {
         [text1, text2]
       );
     });
+  },
+  unzip: function (zipFile, destDir, success, error) {
+    cordova.exec(success, error, 'System', 'unzip', [zipFile, destDir]);
   }
 };
