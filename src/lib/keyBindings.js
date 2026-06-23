@@ -533,7 +533,7 @@ const APP_BINDING_CONFIG = [
 	},
 	{
 		name: "foldAll",
-		description: "Folding all top-level ranges usually depends on the syntax tree. It may not work reliably if the document isn't fully parsed (e.g., just initialized or too large to parse completely)",
+		description: "Fold all - top-level ranges usually depends on the syntax tree. It may not work reliably if the document isn't fully parsed (e.g., just initialized or too large to parse completely)",
 		key: "Ctrl-Alt-[",
 		readOnly: false,
 		editorOnly: true,
