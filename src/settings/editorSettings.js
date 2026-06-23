@@ -142,11 +142,9 @@ export default function editorSettings() {
 		},
 		{
 			key: "recommendExtensions",
-			text: strings["recommend extensions"] || "Recommend extensions",
+			text: strings["recommend extensions"],
 			checkbox: values.recommendExtensions ?? true,
-			info:
-				strings["settings-info-editor-recommend-extensions"] ||
-				"Suggest plugins when a file opens as plain text because no language mode is available.",
+			info: strings["settings-info-editor-recommend-extensions"],
 			category: categories.assistance,
 		},
 		{

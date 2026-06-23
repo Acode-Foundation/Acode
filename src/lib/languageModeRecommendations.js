@@ -101,22 +101,20 @@ class LanguageModeRecommendations {
 
 		if (hasPlugins) {
 			notificationManager.pushNotification({
-				title: formatString(
-					strings["extension recommendation title"] ||
-						"Extensions available for {extension}",
-					{ extension: displayExt, keyword },
-				),
-				message: formatString(
-					strings["extension recommendation message"] ||
-						'No syntax mode is installed for {extension}. Search plugins for "{keyword}".',
-					{ extension: displayExt, keyword },
-				),
+				title: formatString(strings["extension recommendation title"], {
+					extension: displayExt,
+					keyword,
+				}),
+				message: formatString(strings["extension recommendation message"], {
+					extension: displayExt,
+					keyword,
+				}),
 				icon: "extension",
 				type: "info",
 				action: () => openExtensions(keyword),
 				actions: [
 					{
-						text: strings["search plugins"] || "Search plugins",
+						text: strings["search plugins"],
 						icon: "search",
 						action: () => openExtensions(keyword),
 					},
@@ -127,22 +125,20 @@ class LanguageModeRecommendations {
 
 		const issueUrl = getIssueUrl(keyword);
 		notificationManager.pushNotification({
-			title: formatString(
-				strings["extension request title"] ||
-					"No extension found for {extension}",
-				{ extension: displayExt, keyword },
-			),
-			message: formatString(
-				strings["extension request message"] ||
-					"Ask for a plugin so Acode can highlight this file type.",
-				{ extension: displayExt, keyword },
-			),
+			title: formatString(strings["extension request title"], {
+				extension: displayExt,
+				keyword,
+			}),
+			message: formatString(strings["extension request message"], {
+				extension: displayExt,
+				keyword,
+			}),
 			icon: "extension",
 			type: "warning",
 			action: () => openUrl(issueUrl),
 			actions: [
 				{
-					text: strings["request plugin"] || "Request plugin",
+					text: strings["request plugin"],
 					icon: "open_in_new",
 					action: () => openUrl(issueUrl),
 				},

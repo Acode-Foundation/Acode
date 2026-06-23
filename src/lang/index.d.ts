@@ -139,6 +139,7 @@ declare type LangStrings = {
   "live autocompletion": string;
   "local word completion": string;
   "language package completion": string;
+  "recommend extensions": string;
   "auto close tags": string;
   "auto rename tags": string;
   "file properties": string;
@@ -692,6 +693,13 @@ declare type LangStrings = {
   "settings-info-editor-live-autocomplete": string;
   "settings-info-editor-local-word-completion": string;
   "settings-info-editor-language-completion": string;
+  "settings-info-editor-recommend-extensions": string;
+  "extension recommendation title": string;
+  "extension recommendation message": string;
+  "extension request title": string;
+  "extension request message": string;
+  "search plugins": string;
+  "request plugin": string;
   "settings-info-editor-auto-close-tags": string;
   "settings-info-editor-auto-rename-tags": string;
   "settings-info-editor-rainbow-brackets": string;

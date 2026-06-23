@@ -766,5 +766,13 @@
 	"off": "Wyłączone",
 	"quick tools height": "Wysokość szybkich narzędzi",
 	"quick tools toggler": "Przełącznik szybkich narzędzi",
-	"running processes": "Running processes"
+	"running processes": "Running processes",
+	"recommend extensions": "Recommend extensions",
+	"settings-info-editor-recommend-extensions": "Suggest plugins when a file opens as plain text because no language mode is available.",
+	"extension recommendation title": "Extensions available for {extension}",
+	"extension recommendation message": "No syntax mode is installed for {extension}. Search plugins for \"{keyword}\".",
+	"extension request title": "No extension found for {extension}",
+	"extension request message": "Ask for a plugin so Acode can highlight this file type.",
+	"search plugins": "Search plugins",
+	"request plugin": "Request plugin"
 }
