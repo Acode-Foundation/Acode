@@ -955,7 +955,7 @@ function registerCoreCommands() {
 	addCommand({
 		name: "foldCode",
 		description: "Fold the Lines that are selected (if possible)",
-		readOnly: false,
+		readOnly: true,
 		requiresView: true,
 		run(view) {
 			const resolvedView = resolveView(view);
@@ -966,7 +966,7 @@ function registerCoreCommands() {
 	addCommand({
 		name: "unfoldCode",
 		description: "Unfold folded ranges on selected lines.",
-		readOnly: false,
+		readOnly: true,
 		requiresView: true,
 		run(view) {
 			const resolvedView = resolveView(view);
@@ -978,7 +978,7 @@ function registerCoreCommands() {
 		name: "foldAll",
 		description:
 			"Fold all - top-level ranges usually depends on the syntax tree. It may not work reliably if the document isn't fully parsed (e.g., just initialized or too large to parse completely)",
-		readOnly: false,
+		readOnly: true,
 		requiresView: true,
 		run(view) {
 			const resolvedView = resolveView(view);
@@ -989,7 +989,7 @@ function registerCoreCommands() {
 	addCommand({
 		name: "unfoldAll",
 		description: "Unfold all folded code.",
-		readOnly: false,
+		readOnly: true,
 		requiresView: true,
 		run(view) {
 			const resolvedView = resolveView(view);
