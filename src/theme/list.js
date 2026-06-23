@@ -4,7 +4,6 @@ import color from "utils/color";
 import Url from "utils/Url";
 import fonts from "../lib/fonts";
 import settings from "../lib/settings";
-import { updateActiveTerminals } from "../settings/terminalSettings";
 import ThemeBuilder from "./builder";
 import themes, { updateSystemTheme } from "./preInstalled";
 
@@ -124,6 +123,9 @@ export async function apply(id, init) {
 
 	if (init && firstTime && theme.preferredTerminalTheme) {
 		if (editorManager != null) {
+			const { updateActiveTerminals } = await import(
+				"../settings/terminalSettings"
+			);
 			updateActiveTerminals("theme", theme.preferredTerminalTheme);
 		}
 	}

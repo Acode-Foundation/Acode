@@ -1,8 +1,8 @@
 import fsOperation from "fileSystem";
 import auth from "lib/auth";
 import config from "lib/config";
+import { loadStartAdModule } from "lib/lazyAds";
 import openFile from "lib/openFile";
-import { hideAd } from "lib/startAd";
 import helpers from "utils/helpers";
 
 const handlers = [];
@@ -53,6 +53,7 @@ export default async function HandleIntent(intent = {}) {
 				try {
 					const user = await auth.getLoggedInUser(true);
 					if (user.acode_pro) {
+						const { hideAd } = await loadStartAdModule();
 						hideAd();
 						config.HAS_PRO = true;
 						const settings = document.querySelector(

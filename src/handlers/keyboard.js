@@ -1,4 +1,4 @@
-import { bannerAd } from "lib/startAd";
+import { getLoadedStartAdModule } from "lib/lazyAds";
 import {
 	getSystemConfiguration,
 	HARDKEYBOARDHIDDEN_NO,
@@ -212,6 +212,7 @@ function focusBlurEditor(keyboardHidden) {
  * @param {boolean} keyboardHidden
  */
 function toggleBannerAd(keyboardHidden) {
+	const { bannerAd } = getLoadedStartAdModule() || {};
 	const bannerIsActive = !!bannerAd?.active;
 
 	if (

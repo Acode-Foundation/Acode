@@ -2,7 +2,6 @@ import fsOperation from "fileSystem";
 import prompt from "dialogs/prompt";
 import select from "dialogs/select";
 import recents from "lib/recents";
-import FileBrowser from "pages/fileBrowser";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
 import config from "./config";
@@ -162,6 +161,7 @@ async function saveFile(file, isSaveAs = false) {
 	}
 
 	async function selectFolder() {
+		const { default: FileBrowser } = await import("pages/fileBrowser");
 		const dir = await FileBrowser(
 			"folder",
 			strings[`save file${isSaveAs ? " as" : ""}`],

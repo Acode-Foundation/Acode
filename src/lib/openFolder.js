@@ -3,7 +3,6 @@ import sidebarApps from "sidebarApps";
 import collapsableList from "components/collapsableList";
 import FileTree from "components/fileTree";
 import Sidebar from "components/sidebar";
-import { TerminalManager } from "components/terminal";
 import tile from "components/tile";
 import toast from "components/toast";
 import alert from "dialogs/alert";
@@ -11,7 +10,6 @@ import confirm from "dialogs/confirm";
 import prompt from "dialogs/prompt";
 import select from "dialogs/select";
 import escapeStringRegexp from "escape-string-regexp";
-import FileBrowser from "pages/fileBrowser";
 import helpers from "utils/helpers";
 import Path from "utils/Path";
 import Uri from "utils/Uri";
@@ -539,6 +537,10 @@ function execOperation(type, action, url, $target, name) {
 
 	async function openInTerminal() {
 		try {
+			const { loadTerminalManager } = await import(
+				"components/terminal/lazyTerminalManager"
+			);
+			const TerminalManager = await loadTerminalManager();
 			const prootPath = convertToProotPath(url);
 			const terminal = await TerminalManager.createTerminal({
 				name: `Terminal - ${name}`,
@@ -897,6 +899,7 @@ function execOperation(type, action, url, $target, name) {
 	async function insertFile() {
 		startLoading();
 		try {
+			const { default: FileBrowser } = await import("pages/fileBrowser");
 			const file = await FileBrowser("file", strings["insert file"]);
 			const sourceFs = fsOperation(file.url);
 			const data = await sourceFs.readFile();
@@ -923,6 +926,7 @@ function execOperation(type, action, url, $target, name) {
 	}
 
 	async function open() {
+		const { default: FileBrowser } = await import("pages/fileBrowser");
 		FileBrowser.openFolder({
 			url,
 			name,

@@ -24,7 +24,6 @@ import {
 import Contextmenu from "components/contextmenu";
 import { hasConnectedServers } from "components/lspInfoDialog";
 import Sidebar from "components/sidebar";
-import { TerminalManager } from "components/terminal";
 import tile from "components/tile";
 import toast from "components/toast";
 import tutorial from "components/tutorial";
@@ -35,18 +34,17 @@ import quickToolsInit from "handlers/quickToolsInit";
 import windowResize from "handlers/windowResize";
 import acode from "lib/acode";
 import actionStack from "lib/actionStack";
-import adRewards from "lib/adRewards";
 import ajax from "lib/ajax";
 import applySettings from "lib/applySettings";
+import { canSaveFile } from "lib/canSaveFile";
 import checkFiles from "lib/checkFiles";
-import checkPluginsUpdate from "lib/checkPluginsUpdate";
-import { canSaveFile } from "lib/commands";
 import config from "lib/config";
 import EditorFile from "lib/editorFile";
 import EditorManager from "lib/editorManager";
 import { initFileList } from "lib/fileList";
 import fonts from "lib/fonts";
 import lang from "lib/lang";
+import { loadAdRewards, loadStartAdModule } from "lib/lazyAds";
 import loadPlugins from "lib/loadPlugins";
 import Logger from "lib/logger";
 import notificationManager from "lib/notificationManager";
@@ -54,10 +52,7 @@ import openFolder, { addedFolder } from "lib/openFolder";
 import { registerPrettierFormatter } from "lib/prettierFormatter";
 import restoreFiles from "lib/restoreFiles";
 import settings from "lib/settings";
-import startAd, { hideAd } from "lib/startAd";
 import mustache from "mustache";
-import plugins from "pages/plugins";
-import openWelcomeTab from "pages/welcome";
 import otherSettings from "settings/appSettings";
 import themes from "theme/list";
 import { initHighlighting } from "utils/codeHighlight";
@@ -73,6 +68,23 @@ const INSTALL_SOURCE_PLAY = "com.android.vending";
 const oldPreventDefault = TouchEvent.prototype.preventDefault;
 const previousVersionCode = Number.parseInt(localStorage.versionCode, 10);
 const logger = new Logger();
+const STARTUP_MARK_PREFIX = "acode-startup";
+
+function markStartup(name) {
+	try {
+		performance.mark(`${STARTUP_MARK_PREFIX}:${name}`);
+	} catch (_) {}
+}
+
+function measureStartup(name, start, end) {
+	try {
+		performance.measure(
+			`${STARTUP_MARK_PREFIX}:${name}`,
+			`${STARTUP_MARK_PREFIX}:${start}`,
+			`${STARTUP_MARK_PREFIX}:${end}`,
+		);
+	} catch (_) {}
+}
 
 ajax.response = (xhr) => {
 	return xhr.response;
@@ -101,6 +113,7 @@ document.addEventListener("backbutton", backButtonHandler);
 document.addEventListener("menubutton", menuButtonHandler);
 
 async function onDeviceReady() {
+	markStartup("device-ready");
 	await initEncodings(); // important to load encodings before anything else
 
 	const isFreePackage = /(free)$/.test(BuildInfo.packageName);
@@ -209,7 +222,6 @@ async function onDeviceReady() {
 		return true;
 	})();
 	window.acode = acode;
-	await adRewards.init();
 	ensureAceCompatApi();
 
 	system.requestPermission("android.permission.READ_EXTERNAL_STORAGE");
@@ -256,8 +268,10 @@ async function onDeviceReady() {
 
 	acode.setLoadingMessage("Loading settings...");
 	await settings.init();
+	markStartup("settings-ready");
 	themes.init();
 	initHighlighting();
+	markStartup("theme-ready");
 
 	// Inject default terminal font face early so browser preloads it
 	fonts.injectFontFace("MesloLGS NF Regular");
@@ -285,10 +299,19 @@ async function onDeviceReady() {
 		setTimeout(async () => {
 			document.body.removeAttribute("data-small-msg");
 			app.classList.remove("loading", "splash");
+			markStartup("splash-removed");
+			measureStartup(
+				"device-ready-to-splash-removed",
+				"device-ready",
+				"splash-removed",
+			);
 
+			initAdRewards();
+			await restoreTerminalSessions();
 			// load plugins
 			try {
 				await loadPlugins();
+				markStartup("plugins-loaded");
 				// Ensure at least one sidebar app is active after all plugins are loaded
 				// This handles cases where the stored section was from an uninstalled plugin
 				sidebarApps.ensureActiveApp();
@@ -322,87 +345,11 @@ async function onDeviceReady() {
 			}
 
 			fetchPromotions();
-			startAd();
+			startAds();
+			checkForAppUpdates();
+			checkForPluginUpdates();
 		}, 500);
 	}
-
-	await promptUpdateCheckConsent();
-
-	// Check for app updates
-	if (settings.value.checkForAppUpdates && navigator.onLine) {
-		cordova.plugin.http.sendRequest(
-			"https://api.github.com/repos/Acode-Foundation/Acode/releases/latest",
-			{
-				method: "GET",
-				responseType: "json",
-			},
-			(response) => {
-				const release = response.data;
-				// assuming version is in format v1.2.3
-				const versionFormat = /^v?(\d+(?:\.\d+)*)/;
-				const latestVersion = release.tag_name
-					.match(versionFormat)?.[1]
-					.split(".")
-					.map(Number);
-				const currentVersion = BuildInfo.version
-					.match(versionFormat)?.[1]
-					.split(".")
-					.map(Number);
-				if (!(latestVersion && currentVersion)) {
-					window.log(
-						"error",
-						"Failed to parse version while checking for updates.",
-					);
-					return;
-				}
-
-				let hasUpdate = false;
-				for (let i = 0; i < latestVersion.length; i++) {
-					const latest = latestVersion[i];
-					const current = currentVersion[i] || 0;
-					if (latest > current) {
-						hasUpdate = true;
-						break;
-					} else if (latest < current) {
-						break;
-					}
-				}
-
-				if (hasUpdate) {
-					acode.pushNotification(
-						"Update Available",
-						`Acode ${release.tag_name} is now available! Click here to checkout.`,
-						{
-							icon: "update",
-							type: "warning",
-							action: () => {
-								system.openInBrowser(release.html_url);
-							},
-						},
-					);
-				}
-			},
-			(err) => {
-				window.log("error", "Failed to check for updates");
-				window.log("error", err);
-			},
-		);
-	}
-	checkPluginsUpdate()
-		.then((updates) => {
-			if (!updates.length) return;
-			acode.pushNotification(
-				"Plugin Updates",
-				`${updates.length} plugin${updates.length > 1 ? "s" : ""} ${updates.length > 1 ? "have" : "has"} new version${updates.length > 1 ? "s" : ""} available.`,
-				{
-					icon: "extension",
-					action: () => {
-						plugins(updates);
-					},
-				},
-			);
-		})
-		.catch(console.error);
 }
 
 async function onLogin() {
@@ -413,10 +360,20 @@ async function onLogin() {
 			config.HAS_PRO = true;
 		}
 		if (config.HAS_PRO) {
+			const { hideAd } = await loadStartAdModule();
 			hideAd(true);
 		}
 	} catch (error) {
 		console.error(error);
+	}
+}
+
+async function initAdRewards() {
+	try {
+		const adRewards = await loadAdRewards();
+		await adRewards.init();
+	} catch (error) {
+		console.error("Failed to initialize ad rewards:", error);
 	}
 }
 
@@ -431,6 +388,116 @@ async function fetchPromotions() {
 		}
 	} catch (err) {
 		console.debug("Failed to fetch promotions:", err);
+	}
+}
+
+async function startAds() {
+	try {
+		const { default: startAd } = await loadStartAdModule();
+		startAd();
+	} catch (error) {
+		console.error("Failed to start ads:", error);
+	}
+}
+
+async function restoreTerminalSessions() {
+	try {
+		const { loadTerminalManager } = await import(
+			"components/terminal/lazyTerminalManager"
+		);
+		const TerminalManager = await loadTerminalManager();
+		await TerminalManager.restorePersistedSessions();
+		markStartup("terminal-sessions-restored");
+	} catch (error) {
+		console.error("Terminal restoration failed:", error);
+	}
+}
+
+async function checkForAppUpdates() {
+	await promptUpdateCheckConsent();
+
+	if (!settings.value.checkForAppUpdates || !navigator.onLine) return;
+
+	cordova.plugin.http.sendRequest(
+		"https://api.github.com/repos/Acode-Foundation/Acode/releases/latest",
+		{
+			method: "GET",
+			responseType: "json",
+		},
+		(response) => {
+			const release = response.data;
+			// assuming version is in format v1.2.3
+			const versionFormat = /^v?(\d+(?:\.\d+)*)/;
+			const latestVersion = release.tag_name
+				.match(versionFormat)?.[1]
+				.split(".")
+				.map(Number);
+			const currentVersion = BuildInfo.version
+				.match(versionFormat)?.[1]
+				.split(".")
+				.map(Number);
+			if (!(latestVersion && currentVersion)) {
+				window.log(
+					"error",
+					"Failed to parse version while checking for updates.",
+				);
+				return;
+			}
+
+			let hasUpdate = false;
+			for (let i = 0; i < latestVersion.length; i++) {
+				const latest = latestVersion[i];
+				const current = currentVersion[i] || 0;
+				if (latest > current) {
+					hasUpdate = true;
+					break;
+				}
+				if (latest < current) {
+					break;
+				}
+			}
+
+			if (hasUpdate) {
+				acode.pushNotification(
+					"Update Available",
+					`Acode ${release.tag_name} is now available! Click here to checkout.`,
+					{
+						icon: "update",
+						type: "warning",
+						action: () => {
+							system.openInBrowser(release.html_url);
+						},
+					},
+				);
+			}
+		},
+		(err) => {
+			window.log("error", "Failed to check for updates");
+			window.log("error", err);
+		},
+	);
+}
+
+async function checkForPluginUpdates() {
+	try {
+		const { default: checkPluginsUpdate } = await import(
+			"lib/checkPluginsUpdate"
+		);
+		const updates = await checkPluginsUpdate();
+		if (!updates.length) return;
+		acode.pushNotification(
+			"Plugin Updates",
+			`${updates.length} plugin${updates.length > 1 ? "s" : ""} ${updates.length > 1 ? "have" : "has"} new version${updates.length > 1 ? "s" : ""} available.`,
+			{
+				icon: "extension",
+				action: async () => {
+					const { default: plugins } = await import("pages/plugins");
+					plugins(updates);
+				},
+			},
+		);
+	} catch (error) {
+		console.error(error);
 	}
 }
 
@@ -582,6 +649,7 @@ async function loadApp() {
 	//#region rendering
 	applySettings.beforeRender();
 	root.appendOuter($header, $main, $floatingNavToggler, $headerToggler);
+	markStartup("editor-rendered");
 	//#endregion
 
 	//#region Add event listeners
@@ -622,12 +690,15 @@ async function loadApp() {
 	window.log("info", "Started app and its services...");
 
 	if (!files.length) {
+		const { default: openWelcomeTab } = await import("pages/welcome");
 		openWelcomeTab();
+		markStartup("welcome-rendered");
 	}
 
 	// load theme plugins
 	try {
 		await loadPlugins(true);
+		markStartup("theme-plugins-ready");
 	} catch (error) {
 		window.log("error", "Failed to load theme plugins!");
 		window.log("error", error);
@@ -656,6 +727,7 @@ async function loadApp() {
 		}
 		// Process any pending intents that were queued before files were restored
 		await processPendingIntents();
+		markStartup("active-file-restored");
 	} else {
 		// Even when no files need to be restored, mark as restored and process pending intents
 		sessionStorage.setItem("isfilesRestored", true);
@@ -664,10 +736,6 @@ async function loadApp() {
 	}
 
 	initFileList();
-
-	TerminalManager.restorePersistedSessions().catch((error) => {
-		console.error("Terminal restoration failed:", error);
-	});
 
 	/**
 	 *
@@ -874,8 +942,13 @@ async function pauseHandler() {
 	acode?.exec("save-state");
 }
 
-function resumeHandler() {
-	adRewards.handleResume();
+async function resumeHandler() {
+	try {
+		const adRewards = await loadAdRewards();
+		adRewards.handleResume();
+	} catch (error) {
+		console.error("Failed to resume ad rewards:", error);
+	}
 	if (!settings.value.checkFiles) return;
 	checkFiles();
 }

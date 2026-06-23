@@ -1,39 +1,18 @@
 import fsOperation from "fileSystem";
-import { selectAll } from "@codemirror/commands";
-import Sidebar from "components/sidebar";
-import { TerminalManager } from "components/terminal";
-import color from "dialogs/color";
 import confirm from "dialogs/confirm";
 import prompt from "dialogs/prompt";
 import select from "dialogs/select";
-import actions from "handlers/quickTools";
 import recents from "lib/recents";
-import About from "pages/about";
-import FileBrowser from "pages/fileBrowser";
-import plugins from "pages/plugins";
-import Problems from "pages/problems/problems";
-import openWelcomeTab from "pages/welcome/welcome";
-import changeEncoding from "palettes/changeEncoding";
-import changeMode from "palettes/changeMode";
-import changeTheme from "palettes/changeTheme";
-import commandPalette from "palettes/commandPalette";
-import findFile from "palettes/findFile";
-import browser from "plugins/browser";
-import help from "settings/helpSettings";
-import mainSettings from "settings/mainSettings";
-import { runAllTests } from "test/tester";
-import { getColorRange } from "utils/color/regex";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
+import { canSaveFile } from "./canSaveFile";
 import checkFiles from "./checkFiles";
 import config from "./config";
 import EditorFile from "./editorFile";
-import openFile from "./openFile";
-import openFolder from "./openFolder";
-import run from "./run";
 import saveState from "./saveState";
 import appSettings from "./settings";
-import showFileInfo from "./showFileInfo";
+
+export { canSaveFile };
 
 function getTabCloseSelectionOptions() {
 	return {
@@ -63,14 +42,6 @@ function resolveReferenceFile(referenceFile) {
 	}
 
 	return referenceFile;
-}
-
-export function canSaveFile(file = editorManager.activeFile) {
-	return (
-		file?.type === "editor" &&
-		typeof file.save === "function" &&
-		typeof file.saveAs === "function"
-	);
 }
 
 function getTabsRelativeToFile(side, referenceFile) {
@@ -140,6 +111,7 @@ async function closeTabs(files, options = {}) {
 
 export default {
 	async "run-tests"() {
+		const { runAllTests } = await import("test/tester");
 		await runAllTests();
 	},
 	async "close-all-tabs"() {
@@ -180,14 +152,16 @@ export default {
 	"toggle-pin-tab"(referenceFile) {
 		resolveReferenceFile(referenceFile)?.togglePinned?.();
 	},
-	console() {
+	async console() {
+		const { default: run } = await import("./run");
 		run(true, "inapp");
 	},
 	"check-files"() {
 		if (!appSettings.value.checkFiles) return;
 		checkFiles();
 	},
-	"command-palette"() {
+	async "command-palette"() {
+		const { default: commandPalette } = await import("palettes/commandPalette");
 		commandPalette();
 	},
 	"disable-fullscreen"() {
@@ -198,7 +172,8 @@ export default {
 		app.classList.add("fullscreen-mode");
 		this["resize-editor"]();
 	},
-	encoding() {
+	async encoding() {
+		const { default: changeEncoding } = await import("palettes/changeEncoding");
 		changeEncoding();
 	},
 	exit() {
@@ -207,18 +182,22 @@ export default {
 	"edit-with"() {
 		editorManager.activeFile.editWith();
 	},
-	"find-file"() {
+	async "find-file"() {
+		const { default: findFile } = await import("palettes/findFile");
 		findFile();
 	},
-	files() {
+	async files() {
+		const { default: FileBrowser } = await import("pages/fileBrowser");
 		FileBrowser("both", strings["file browser"])
 			.then(FileBrowser.open)
 			.catch(FileBrowser.openError);
 	},
-	find() {
+	async find() {
+		const { default: actions } = await import("handlers/quickTools");
 		actions("search");
 	},
-	"file-info"(url) {
+	async "file-info"(url) {
+		const { default: showFileInfo } = await import("./showFileInfo");
 		showFileInfo(url);
 	},
 	async goto() {
@@ -256,30 +235,50 @@ export default {
 
 		editorManager.files[fileIndex].makeActive();
 	},
-	open(page) {
+	async open(page) {
 		switch (page) {
 			case "settings":
-				mainSettings();
+				{
+					const { default: mainSettings } = await import(
+						"settings/mainSettings"
+					);
+					mainSettings();
+				}
 				break;
 
 			case "help":
-				help();
+				{
+					const { default: help } = await import("settings/helpSettings");
+					help();
+				}
 				break;
 
 			case "problems":
-				Problems();
+				{
+					const { default: Problems } = await import("pages/problems/problems");
+					Problems();
+				}
 				break;
 
 			case "plugins":
-				plugins();
+				{
+					const { default: plugins } = await import("pages/plugins");
+					plugins();
+				}
 				break;
 
 			case "file_browser":
-				FileBrowser();
+				{
+					const { default: FileBrowser } = await import("pages/fileBrowser");
+					FileBrowser();
+				}
 				break;
 
 			case "about":
-				About();
+				{
+					const { default: About } = await import("pages/about");
+					About();
+				}
 				break;
 
 			default:
@@ -290,13 +289,15 @@ export default {
 	"open-with"() {
 		editorManager.activeFile.openWith();
 	},
-	"open-file"() {
+	async "open-file"() {
+		const { default: FileBrowser } = await import("pages/fileBrowser");
 		editorManager.editor.contentDOM.blur();
 		FileBrowser("file")
 			.then(FileBrowser.openFile)
 			.catch(FileBrowser.openFileError);
 	},
-	"open-folder"() {
+	async "open-folder"() {
+		const { default: FileBrowser } = await import("pages/fileBrowser");
 		editorManager.editor.contentDOM.blur();
 		FileBrowser("folder")
 			.then(FileBrowser.openFolder)
@@ -315,7 +316,11 @@ export default {
 		const file = editorManager.activeFile;
 		file.editable = !file.editable;
 	},
-	recent() {
+	async recent() {
+		const [{ default: openFile }, { default: openFolder }] = await Promise.all([
+			import("./openFile"),
+			import("./openFolder"),
+		]);
 		recents.select().then((res) => {
 			const { type } = res;
 			if (helpers.isFile(type)) {
@@ -338,7 +343,8 @@ export default {
 		// TODO : Codemirror
 		//editorManager.editor.resize(true);
 	},
-	"open-inapp-browser"(url) {
+	async "open-inapp-browser"(url) {
+		const { default: browser } = await import("plugins/browser");
 		browser.open(url);
 	},
 	run() {
@@ -433,20 +439,24 @@ export default {
 			helpers.error(error);
 		}
 	},
-	syntax() {
+	async syntax() {
+		const { default: changeMode } = await import("palettes/changeMode");
 		changeMode();
 	},
-	"change-app-theme"() {
+	async "change-app-theme"() {
+		const { default: changeTheme } = await import("palettes/changeTheme");
 		changeTheme("app");
 	},
-	"change-editor-theme"() {
+	async "change-editor-theme"() {
+		const { default: changeTheme } = await import("palettes/changeTheme");
 		changeTheme("editor");
 	},
 	"toggle-fullscreen"() {
 		app.classList.toggle("fullscreen-mode");
 		this["resize-editor"]();
 	},
-	"toggle-sidebar"() {
+	async "toggle-sidebar"() {
+		const { default: Sidebar } = await import("components/sidebar");
 		Sidebar.toggle();
 	},
 	"toggle-menu"() {
@@ -456,6 +466,10 @@ export default {
 		tag.get("[action=toggle-edit-menu")?.click();
 	},
 	async "insert-color"() {
+		const [{ default: color }, { getColorRange }] = await Promise.all([
+			import("dialogs/color"),
+			import("utils/color/regex"),
+		]);
 		const { editor } = editorManager;
 		const range = getColorRange();
 		let defaultColor = "";
@@ -498,7 +512,8 @@ export default {
 	paste() {
 		editorManager.editor.execCommand("paste");
 	},
-	"select-all"() {
+	async "select-all"() {
+		const { selectAll } = await import("@codemirror/commands");
 		const { editor } = editorManager;
 		selectAll(editor);
 	},
@@ -539,6 +554,7 @@ export default {
 				file.uri = newUri;
 				file.filename = newname;
 
+				const { default: openFolder } = await import("./openFolder");
 				openFolder.renameItem(uri, newUri, newname);
 				toast(strings["file renamed"]);
 			} catch (err) {
@@ -564,7 +580,8 @@ export default {
 		});
 		editorManager.activeFile.eol = eol;
 	},
-	"open-log-file"() {
+	async "open-log-file"() {
+		const { default: openFile } = await import("./openFile");
 		openFile(Url.join(DATA_STORAGE, config.LOG_FILE_NAME));
 	},
 	"copy-device-info"() {
@@ -637,6 +654,10 @@ Additional Info:
 	},
 	async "new-terminal"() {
 		try {
+			const { loadTerminalManager } = await import(
+				"components/terminal/lazyTerminalManager"
+			);
+			const TerminalManager = await loadTerminalManager();
 			await TerminalManager.createServerTerminal();
 		} catch (error) {
 			console.error("Failed to create terminal:", error);
@@ -649,7 +670,8 @@ Additional Info:
 		);
 		RunningProcesses();
 	},
-	welcome() {
+	async welcome() {
+		const { default: openWelcomeTab } = await import("pages/welcome");
 		openWelcomeTab();
 	},
 	async "toggle-inspector"() {

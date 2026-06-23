@@ -2,15 +2,6 @@ import fsOperation from "fileSystem";
 import { parse } from "acorn";
 import toast from "components/toast";
 import appSettings from "lib/settings";
-import prettierPluginBabel from "prettier/plugins/babel";
-import prettierPluginEstree from "prettier/plugins/estree";
-import prettierPluginGraphql from "prettier/plugins/graphql";
-import prettierPluginHtml from "prettier/plugins/html";
-import prettierPluginMarkdown from "prettier/plugins/markdown";
-import prettierPluginPostcss from "prettier/plugins/postcss";
-import prettierPluginTypescript from "prettier/plugins/typescript";
-import prettierPluginYaml from "prettier/plugins/yaml";
-import prettier from "prettier/standalone";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
 
@@ -33,16 +24,7 @@ const CONFIG_FILENAMES = [
 	"prettier.config.cjs",
 	"prettier.config.mjs",
 ];
-const PRETTIER_PLUGINS = [
-	prettierPluginEstree,
-	prettierPluginBabel,
-	prettierPluginHtml,
-	prettierPluginMarkdown,
-	prettierPluginPostcss,
-	prettierPluginTypescript,
-	prettierPluginYaml,
-	prettierPluginGraphql,
-];
+let prettierModulesPromise;
 
 /**
  * Supported parser mapping keyed by CodeMirror mode name
@@ -129,11 +111,12 @@ async function formatActiveFileWithPrettier() {
 	const source = doc.toString();
 	const filepath = file.uri || file.filename || "";
 	try {
+		const { prettier, plugins } = await loadPrettierModules();
 		const config = await resolvePrettierConfig(file);
 		const formatted = await prettier.format(source, {
 			...config,
 			parser,
-			plugins: PRETTIER_PLUGINS,
+			plugins,
 			filepath,
 			overrideEditorconfig: true,
 		});
@@ -153,6 +136,46 @@ async function formatActiveFileWithPrettier() {
 		toast(message);
 		return false;
 	}
+}
+
+function loadPrettierModules() {
+	prettierModulesPromise ??= Promise.all([
+		import("prettier/standalone"),
+		import("prettier/plugins/estree"),
+		import("prettier/plugins/babel"),
+		import("prettier/plugins/html"),
+		import("prettier/plugins/markdown"),
+		import("prettier/plugins/postcss"),
+		import("prettier/plugins/typescript"),
+		import("prettier/plugins/yaml"),
+		import("prettier/plugins/graphql"),
+	]).then(
+		([
+			{ default: prettier },
+			{ default: prettierPluginEstree },
+			{ default: prettierPluginBabel },
+			{ default: prettierPluginHtml },
+			{ default: prettierPluginMarkdown },
+			{ default: prettierPluginPostcss },
+			{ default: prettierPluginTypescript },
+			{ default: prettierPluginYaml },
+			{ default: prettierPluginGraphql },
+		]) => ({
+			prettier,
+			plugins: [
+				prettierPluginEstree,
+				prettierPluginBabel,
+				prettierPluginHtml,
+				prettierPluginMarkdown,
+				prettierPluginPostcss,
+				prettierPluginTypescript,
+				prettierPluginYaml,
+				prettierPluginGraphql,
+			],
+		}),
+	);
+
+	return prettierModulesPromise;
 }
 
 function getParserForMode(modeName) {

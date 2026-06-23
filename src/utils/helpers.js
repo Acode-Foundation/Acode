@@ -2,9 +2,12 @@ import fsOperation from "fileSystem";
 import { getModeForPath as getCMModeForPath } from "cm/modelist";
 import alert from "dialogs/alert";
 import escapeStringRegexp from "escape-string-regexp";
-import adRewards from "lib/adRewards";
 import config from "lib/config";
-import { bannerAd, interstitialAd } from "lib/startAd";
+import {
+	getLoadedAdRewards,
+	getLoadedStartAdModule,
+	loadStartAdModule,
+} from "lib/lazyAds";
 import { isBinaryFile } from "./binaryExtensions";
 import path from "./Path";
 import Uri from "./Uri";
@@ -290,10 +293,11 @@ export default {
 		editorManager.emit("update", "file-delete");
 	},
 	canShowAds() {
-		return Boolean(!config.HAS_PRO && adRewards.canShowAds());
+		return Boolean(!config.HAS_PRO && getLoadedAdRewards()?.canShowAds());
 	},
 	async showInterstitialIfReady() {
 		if (!this.canShowAds()) return false;
+		const { interstitialAd } = await loadStartAdModule();
 		if (
 			typeof interstitialAd?.isLoaded === "function" &&
 			typeof interstitialAd?.show === "function" &&
@@ -310,6 +314,7 @@ export default {
 	showAd() {
 		if (!this.canShowAds()) return;
 		if (innerHeight * devicePixelRatio <= 600) return;
+		const { bannerAd } = getLoadedStartAdModule() || {};
 		if (!bannerAd || typeof bannerAd.show !== "function") return;
 
 		const $page = tag.getAll("wc-page:not(#root)").pop();

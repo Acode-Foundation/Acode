@@ -34,7 +34,11 @@ import Page from "components/page";
 import palette from "components/palette";
 import settingsPage from "components/settingsPage";
 import SideButton from "components/sideButton";
-import { TerminalManager, TerminalThemeManager } from "components/terminal";
+import {
+	getLoadedTerminalManager,
+	loadTerminalManager,
+} from "components/terminal/lazyTerminalManager";
+import TerminalThemeManager from "components/terminal/terminalThemeManager";
 import toast from "components/toast";
 import tutorial from "components/tutorial";
 import alert from "dialogs/alert";
@@ -66,7 +70,6 @@ import openFolder, { addedFolder } from "lib/openFolder";
 import projects from "lib/projects";
 import selectionMenu from "lib/selectionMenu";
 import appSettings from "lib/settings";
-import FileBrowser from "pages/fileBrowser";
 import formatterSettings from "settings/formatterSettings";
 import ThemeBuilder from "theme/builder";
 import themes from "theme/list";
@@ -76,6 +79,34 @@ import helpers from "utils/helpers";
 import KeyboardEvent from "utils/keyboardEvent";
 import Url from "utils/Url";
 import config from "./config";
+
+let fileBrowserPromise;
+
+function loadFileBrowser() {
+	fileBrowserPromise ??= import("pages/fileBrowser").then(
+		(module) => module.default,
+	);
+	return fileBrowserPromise;
+}
+
+function createLazyFileBrowser() {
+	const FileBrowser = (...args) =>
+		loadFileBrowser().then((module) => module(...args));
+
+	for (const method of [
+		"openFile",
+		"openFileError",
+		"openFolder",
+		"openFolderError",
+		"open",
+		"openError",
+	]) {
+		FileBrowser[method] = (...args) =>
+			loadFileBrowser().then((module) => module[method](...args));
+	}
+
+	return FileBrowser;
+}
 
 class Acode {
 	#modules = {};
@@ -281,20 +312,26 @@ class Acode {
 		};
 
 		const terminalTouchSelectionMoreOptions = {
-			add: (option) => TerminalManager.addTouchSelectionMoreOption(option),
-			remove: (id) => TerminalManager.removeTouchSelectionMoreOption(id),
-			list: () => TerminalManager.getTouchSelectionMoreOptions(),
+			add: async (option) =>
+				(await loadTerminalManager()).addTouchSelectionMoreOption(option),
+			remove: async (id) =>
+				(await loadTerminalManager()).removeTouchSelectionMoreOption(id),
+			list: () =>
+				getLoadedTerminalManager()?.getTouchSelectionMoreOptions() || [],
 		};
 
 		const terminalModule = {
-			create: (options) => TerminalManager.createTerminal(options),
-			createLocal: (options) => TerminalManager.createLocalTerminal(options),
-			createServer: (options) => TerminalManager.createServerTerminal(options),
-			get: (id) => TerminalManager.getTerminal(id),
-			getAll: () => TerminalManager.getAllTerminals(),
+			create: async (options) =>
+				(await loadTerminalManager()).createTerminal(options),
+			createLocal: async (options) =>
+				(await loadTerminalManager()).createLocalTerminal(options),
+			createServer: async (options) =>
+				(await loadTerminalManager()).createServerTerminal(options),
+			get: (id) => getLoadedTerminalManager()?.getTerminal(id) || null,
+			getAll: () => getLoadedTerminalManager()?.getAllTerminals() || [],
 			write: (id, data) => this.#secureTerminalWrite(id, data),
-			clear: (id) => TerminalManager.clearTerminal(id),
-			close: (id) => TerminalManager.closeTerminal(id),
+			clear: async (id) => (await loadTerminalManager()).clearTerminal(id),
+			close: async (id) => (await loadTerminalManager()).closeTerminal(id),
 			moreOptions: terminalTouchSelectionMoreOptions,
 			touchSelection: {
 				moreOptions: terminalTouchSelectionMoreOptions,
@@ -389,7 +426,7 @@ class Acode {
 		this.define("multiPrompt", multiPrompt);
 		this.define("addedfolder", addedFolder);
 		this.define("contextMenu", Contextmenu);
-		this.define("fileBrowser", FileBrowser);
+		this.define("fileBrowser", createLazyFileBrowser());
 		this.define("fsOperation", fsOperation);
 		this.define("keyboard", keyboardHandler);
 		this.define("windowResize", windowResize);
@@ -508,7 +545,9 @@ class Acode {
 		}
 
 		// If all security checks pass, proceed with writing
-		return TerminalManager.writeToTerminal(id, data);
+		return loadTerminalManager().then((TerminalManager) =>
+			TerminalManager.writeToTerminal(id, data),
+		);
 	}
 
 	/**
