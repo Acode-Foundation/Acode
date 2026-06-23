@@ -517,6 +517,34 @@ const APP_BINDING_CONFIG = [
 		editorOnly: true,
 		action: "format",
 	},
+	{
+		name: "foldCode",
+		description: "Fold code",
+		key: "Ctrl-Shift-[",
+		readOnly: false,
+		editorOnly: true,
+	},
+	{
+		name: "unfoldCode",
+		description: "Unfold code",
+		key: "Ctrl-Shift-]",
+		readOnly: false,
+		editorOnly: true,
+	},
+	{
+		name: "foldAll",
+		description: "Folding all top-level ranges usually depends on the syntax tree. It may not work reliably if the document isn't fully parsed (e.g., just initialized or too large to parse completely)",
+		key: "Ctrl-Alt-[",
+		readOnly: false,
+		editorOnly: true,
+	},
+	{
+		name: "unfoldAll",
+		description: "Unfold all folded code",
+		key: "Ctrl-Alt-]",
+		readOnly: false,
+		editorOnly: true,
+	}
 ];
 
 const APP_KEY_BINDINGS = buildAppBindings(APP_BINDING_CONFIG);
@@ -589,6 +617,7 @@ function buildCodemirrorKeyBindings(appBindings) {
 	const comboMap = new Map();
 
 	for (const binding of KEYMAP_SOURCES) {
+		console.log(binding)
 		const baseCombos = new Set();
 
 		pushCommandCombo(binding.run, binding.key, "win", baseCombos);
@@ -615,6 +644,7 @@ function buildCodemirrorKeyBindings(appBindings) {
 	}
 
 	const result = {};
+	console.log("comboMap", comboMap)
 	for (const [name, combos] of comboMap.entries()) {
 		if (!combos.size || appBindings[name]) continue;
 		result[name] = {
@@ -626,6 +656,7 @@ function buildCodemirrorKeyBindings(appBindings) {
 			editorOnly: true,
 		};
 	}
+	console.log("result", result)
 	return result;
 
 	function pushCommandCombo(commandFn, key, platform, baseCombos) {
