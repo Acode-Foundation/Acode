@@ -644,7 +644,6 @@ function buildCodemirrorKeyBindings(appBindings) {
 	}
 
 	const result = {};
-	console.log("comboMap", comboMap);
 	for (const [name, combos] of comboMap.entries()) {
 		if (!combos.size || appBindings[name]) continue;
 		result[name] = {
