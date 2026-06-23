@@ -4,6 +4,7 @@
  */
 
 import "@xterm/xterm/css/xterm.css";
+import "./terminalTouchSelection.css";
 import quickTools from "components/quickTools";
 import toast from "components/toast";
 import alert from "dialogs/alert";

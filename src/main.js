@@ -68,23 +68,6 @@ const INSTALL_SOURCE_PLAY = "com.android.vending";
 const oldPreventDefault = TouchEvent.prototype.preventDefault;
 const previousVersionCode = Number.parseInt(localStorage.versionCode, 10);
 const logger = new Logger();
-const STARTUP_MARK_PREFIX = "acode-startup";
-
-function markStartup(name) {
-	try {
-		performance.mark(`${STARTUP_MARK_PREFIX}:${name}`);
-	} catch (_) {}
-}
-
-function measureStartup(name, start, end) {
-	try {
-		performance.measure(
-			`${STARTUP_MARK_PREFIX}:${name}`,
-			`${STARTUP_MARK_PREFIX}:${start}`,
-			`${STARTUP_MARK_PREFIX}:${end}`,
-		);
-	} catch (_) {}
-}
 
 ajax.response = (xhr) => {
 	return xhr.response;
@@ -113,7 +96,6 @@ document.addEventListener("backbutton", backButtonHandler);
 document.addEventListener("menubutton", menuButtonHandler);
 
 async function onDeviceReady() {
-	markStartup("device-ready");
 	await initEncodings(); // important to load encodings before anything else
 
 	const isFreePackage = /(free)$/.test(BuildInfo.packageName);
@@ -268,10 +250,8 @@ async function onDeviceReady() {
 
 	acode.setLoadingMessage("Loading settings...");
 	await settings.init();
-	markStartup("settings-ready");
 	themes.init();
 	initHighlighting();
-	markStartup("theme-ready");
 
 	// Inject default terminal font face early so browser preloads it
 	fonts.injectFontFace("MesloLGS NF Regular");
@@ -299,36 +279,35 @@ async function onDeviceReady() {
 		setTimeout(async () => {
 			document.body.removeAttribute("data-small-msg");
 			app.classList.remove("loading", "splash");
-			markStartup("splash-removed");
-			measureStartup(
-				"device-ready-to-splash-removed",
-				"device-ready",
-				"splash-removed",
-			);
 
-			initAdRewards();
+			requestAnimationFrame(() => {
+				initAdRewards();
+			});
+
 			await restoreTerminalSessions();
-			// load plugins
-			try {
-				await loadPlugins();
-				markStartup("plugins-loaded");
-				// Ensure at least one sidebar app is active after all plugins are loaded
-				// This handles cases where the stored section was from an uninstalled plugin
-				sidebarApps.ensureActiveApp();
 
-				// Re-emit events for active file after plugins are loaded
-				const { activeFile } = editorManager;
-				if (activeFile?.uri) {
-					// Re-emit file-loaded event
-					editorManager.emit("file-loaded", activeFile);
-					// Re-emit switch-file event
-					editorManager.emit("switch-file", activeFile);
+			setTimeout(async () => {
+				try {
+					await loadPlugins();
+
+					setTimeout(() => {
+						// Ensure at least one sidebar app is active after all plugins are loaded.
+						sidebarApps.ensureActiveApp();
+
+						// Re-emit events for active file after plugins are loaded.
+						const { activeFile } = editorManager;
+						if (activeFile?.uri) {
+							editorManager.emit("file-loaded", activeFile);
+							editorManager.emit("switch-file", activeFile);
+						}
+					}, 0);
+				} catch (error) {
+					window.log("error", "Failed to load plugins!");
+					window.log("error", error);
+					toast("Failed to load plugins!");
 				}
-			} catch (error) {
-				window.log("error", "Failed to load plugins!");
-				window.log("error", error);
-				toast("Failed to load plugins!");
-			}
+			}, 0);
+
 			applySettings.afterRender();
 
 			// Check login status before emitting events
@@ -407,7 +386,6 @@ async function restoreTerminalSessions() {
 		);
 		const TerminalManager = await loadTerminalManager();
 		await TerminalManager.restorePersistedSessions();
-		markStartup("terminal-sessions-restored");
 	} catch (error) {
 		console.error("Terminal restoration failed:", error);
 	}
@@ -649,7 +627,6 @@ async function loadApp() {
 	//#region rendering
 	applySettings.beforeRender();
 	root.appendOuter($header, $main, $floatingNavToggler, $headerToggler);
-	markStartup("editor-rendered");
 	//#endregion
 
 	//#region Add event listeners
@@ -692,13 +669,11 @@ async function loadApp() {
 	if (!files.length) {
 		const { default: openWelcomeTab } = await import("pages/welcome");
 		openWelcomeTab();
-		markStartup("welcome-rendered");
 	}
 
 	// load theme plugins
 	try {
 		await loadPlugins(true);
-		markStartup("theme-plugins-ready");
 	} catch (error) {
 		window.log("error", "Failed to load theme plugins!");
 		window.log("error", error);
@@ -727,7 +702,6 @@ async function loadApp() {
 		}
 		// Process any pending intents that were queued before files were restored
 		await processPendingIntents();
-		markStartup("active-file-restored");
 	} else {
 		// Even when no files need to be restored, mark as restored and process pending intents
 		sessionStorage.setItem("isfilesRestored", true);
@@ -758,7 +732,11 @@ async function loadApp() {
 		// if (!$editMenuToggler.isConnected) {
 		// 	$header.insertBefore($editMenuToggler, $header.lastChild);
 		// }
-		if (activeFile?.type === "page" || activeFile?.type === "terminal") {
+		if (
+			activeFile?.type === "page" ||
+			activeFile?.type === "terminal" ||
+			activeFile?.type === "welcome"
+		) {
 			$editMenuToggler.remove();
 		} else {
 			if (!$editMenuToggler.isConnected) {

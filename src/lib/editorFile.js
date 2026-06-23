@@ -451,7 +451,7 @@ export default class EditorFile {
 				let container;
 				let shadow;
 
-				if (this.#type === "terminal") {
+				if (this.#type === "terminal" || this.#type === "welcome") {
 					container = tag("div", {
 						className: "tab-page-container",
 					});

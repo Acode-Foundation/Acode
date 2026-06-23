@@ -1,4 +1,3 @@
-import "./terminalTouchSelection.css";
 import select from "dialogs/select";
 
 const DEFAULT_MORE_OPTION_ID = "__acode_terminal_select_all__";

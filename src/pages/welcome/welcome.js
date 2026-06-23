@@ -20,7 +20,7 @@ export default function openWelcomeTab() {
 	const welcomeFile = new EditorFile("Welcome", {
 		id: "welcome-tab",
 		render: true,
-		type: "page",
+		type: "welcome",
 		content: welcomeContent,
 		tabIcon: "icon acode",
 		hideQuickTools: true,
