@@ -53,7 +53,13 @@ import {
 	toggleBlockComment,
 	undo,
 } from "@codemirror/commands";
-import { foldAll, foldCode, indentUnit as indentUnitFacet, unfoldAll, unfoldCode } from "@codemirror/language";
+import {
+	foldAll,
+	foldCode,
+	indentUnit as indentUnitFacet,
+	unfoldAll,
+	unfoldCode,
+} from "@codemirror/language";
 import {
 	closeLintPanel,
 	forceLinting,
@@ -955,7 +961,7 @@ function registerCoreCommands() {
 			const resolvedView = resolveView(view);
 			if (!resolvedView) return false;
 			return foldCode(resolvedView);
-		}
+		},
 	});
 	addCommand({
 		name: "unfoldCode",
@@ -966,18 +972,19 @@ function registerCoreCommands() {
 			const resolvedView = resolveView(view);
 			if (!resolvedView) return false;
 			return unfoldCode(resolvedView);
-		}
+		},
 	});
 	addCommand({
 		name: "foldAll",
-		description: "Fold all - top-level ranges usually depends on the syntax tree. It may not work reliably if the document isn't fully parsed (e.g., just initialized or too large to parse completely)",
+		description:
+			"Fold all - top-level ranges usually depends on the syntax tree. It may not work reliably if the document isn't fully parsed (e.g., just initialized or too large to parse completely)",
 		readOnly: false,
 		requiresView: true,
 		run(view) {
 			const resolvedView = resolveView(view);
 			if (!resolvedView) return false;
 			return foldAll(resolvedView);
-		}
+		},
 	});
 	addCommand({
 		name: "unfoldAll",
@@ -988,7 +995,7 @@ function registerCoreCommands() {
 			const resolvedView = resolveView(view);
 			if (!resolvedView) return false;
 			return unfoldAll(resolvedView);
-		}
+		},
 	});
 }
 
