@@ -268,7 +268,7 @@ export default {
 	 * @returns {string}
 	 */
 	hidePassword(url) {
-		const { protocol, username, hostname, pathname } = new URL(url);
+		const { protocol, username, hostname, pathname } = URLParse(url);
 		if (protocol === "file:") {
 			return url;
 		} else {
