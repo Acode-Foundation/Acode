@@ -70,7 +70,7 @@ class LanguageModeRecommendations {
 			withSupportedEditor(
 				Url.join(
 					config.API_BASE,
-					`plugins?name=${encodeURIComponent(keyword)}`,
+					`plugins?name=${encodeURIComponent(`mode:${keyword}`)}`,
 				),
 			),
 		)
@@ -118,20 +118,20 @@ class LanguageModeRecommendations {
 			notificationManager.pushNotification({
 				title: formatString(strings["extension recommendation title"], {
 					extension: displayExt,
-					keyword,
+					keyword: `mode:${keyword}`,
 				}),
 				message: formatString(strings["extension recommendation message"], {
 					extension: displayExt,
-					keyword,
+					keyword: `mode:${keyword}`,
 				}),
 				icon: "extension",
 				type: "info",
-				action: () => openExtensions(keyword),
+				action: () => openExtensions(`mode:${keyword}`),
 				actions: [
 					{
 						text: strings["search plugins"],
 						icon: "search",
-						action: () => openExtensions(keyword),
+						action: () => openExtensions(`mode:${keyword}`),
 					},
 				],
 			});
