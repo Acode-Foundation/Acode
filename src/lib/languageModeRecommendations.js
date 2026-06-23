@@ -58,6 +58,7 @@ function hasPlainTextFallback(modeInfo, filename) {
 
 class LanguageModeRecommendations {
 	notifiedKeywords = new Set();
+	pendingKeywords = new Set();
 	availabilityCache = new Map();
 
 	async getPluginAvailability(keyword) {
@@ -73,9 +74,9 @@ class LanguageModeRecommendations {
 				),
 			),
 		)
-			.then((response) => response.json())
+			.then((response) => (response.ok ? response.json() : []))
 			.then((plugins) => Array.isArray(plugins) && plugins.length > 0)
-			.catch(() => true);
+			.catch(() => false);
 
 		this.availabilityCache.set(keyword, availability);
 		return availability;
@@ -88,11 +89,25 @@ class LanguageModeRecommendations {
 		if (!hasPlainTextFallback(modeInfo, filename)) return;
 
 		const keyword = getSearchKeyword(filename);
-		if (!keyword || this.notifiedKeywords.has(keyword)) return;
+		if (
+			!keyword ||
+			this.notifiedKeywords.has(keyword) ||
+			this.pendingKeywords.has(keyword)
+		) {
+			return;
+		}
 
-		this.notifiedKeywords.add(keyword);
-
-		void this.showRecommendation(keyword);
+		this.pendingKeywords.add(keyword);
+		void this.showRecommendation(keyword)
+			.then(() => {
+				this.notifiedKeywords.add(keyword);
+			})
+			.catch((error) => {
+				console.warn("Failed to show extension recommendation.", error);
+			})
+			.finally(() => {
+				this.pendingKeywords.delete(keyword);
+			});
 	}
 
 	async showRecommendation(keyword) {

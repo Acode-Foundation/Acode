@@ -27,6 +27,7 @@ let container = null;
 let $searchResult = null;
 
 const LIMIT = 50;
+const SEARCH_INPUT_WAIT_TIMEOUT = 1000;
 let currentPage = 1;
 let hasMore = true;
 let isLoading = false;
@@ -260,15 +261,35 @@ async function runSearch(query) {
 	}
 }
 
-export function openWithSearch(query) {
+function getSearchInput() {
+	return container?.querySelector('input[name="search-ext"]');
+}
+
+function waitForSearchInput() {
+	const startTime = Date.now();
+
+	return new Promise((resolve) => {
+		const check = () => {
+			const searchInput = getSearchInput();
+			if (searchInput || Date.now() - startTime >= SEARCH_INPUT_WAIT_TIMEOUT) {
+				resolve(searchInput);
+				return;
+			}
+
+			requestAnimationFrame(check);
+		};
+
+		check();
+	});
+}
+
+export async function openWithSearch(query) {
 	Sidebar.show();
 	document
 		.querySelector('[data-action="sidebar-app"][data-id="extensions"]')
 		?.click();
 
-	if (!container) return;
-
-	const searchInput = container.querySelector('input[name="search-ext"]');
+	const searchInput = await waitForSearchInput();
 	if (!searchInput) return;
 
 	searchInput.value = query;
