@@ -190,6 +190,7 @@ function searchBar(
 	 */
 	function cloneSearchItem($item) {
 		const $clone = $item.cloneNode(true);
+		syncCheckboxState($clone, $item);
 		$clone.addEventListener("click", () => {
 			$item.addEventListener(
 				"settings-item-interaction-end",
@@ -213,6 +214,26 @@ function searchBar(
 	function syncSearchClone($clone, $item) {
 		$clone.className = $item.className;
 		$clone.innerHTML = $item.innerHTML;
+		syncCheckboxState($clone, $item);
+	}
+
+	/**
+	 * Sync the checked property of checkbox and radio elements, since cloneNode and innerHTML do not copy/preserve dynamic checked state.
+	 * @param {HTMLElement} $clone
+	 * @param {HTMLElement} $item
+	 */
+	function syncCheckboxState($clone, $item) {
+		const $itemCheckbox = $item.querySelector(
+			'input[type="checkbox"], input[type="radio"]',
+		);
+		if ($itemCheckbox) {
+			const $cloneCheckbox = $clone.querySelector(
+				'input[type="checkbox"], input[type="radio"]',
+			);
+			if ($cloneCheckbox) {
+				$cloneCheckbox.checked = $itemCheckbox.checked;
+			}
+		}
 	}
 }
 
