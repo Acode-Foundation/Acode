@@ -3,6 +3,7 @@ import Ftp from "fileSystem/ftp";
 import Sftp from "fileSystem/sftp";
 import loader from "dialogs/loader";
 import multiPrompt from "dialogs/multiPrompt";
+import URLParse from "utils/urlParse";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
 import { interstitialAd } from "./startAd";
@@ -366,7 +367,7 @@ export default {
 		}
 	},
 	edit({ name, storageType, url }) {
-		let { username, password, hostname, port, searchParams } = new URL(url);
+		let { username, password, hostname, port, searchParams } = URLParse(url);
 
 		if (username) {
 			username = decodeURIComponent(username);

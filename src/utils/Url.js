@@ -1,3 +1,4 @@
+import URLParse from "./urlParse";
 import path from "./Path";
 import Uri from "./Uri";
 
@@ -287,7 +288,7 @@ export default {
 		}
 
 		let { username, password, hostname, pathname, port, searchParams } =
-			new URL(url);
+			URLParse(url);
 
 		if (pathname) {
 			pathname = decodeURIComponent(pathname);
