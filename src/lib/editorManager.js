@@ -330,6 +330,9 @@ async function EditorManager($header, $body) {
 		};
 
 		if (appSettings?.value?.languageCompletion === false) {
+			// CodeMirror override mode bypasses normal completion discovery,
+			// including plugin-provided sources. Re-add the sources that should
+			// survive this setting explicitly.
 			config.override = [getLspCompletionSource];
 
 			if (appSettings?.value?.localWordCompletion) {

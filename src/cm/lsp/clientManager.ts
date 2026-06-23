@@ -49,6 +49,9 @@ import type {
 import AcodeWorkspace from "./workspace";
 
 export const lspCompletionEnabled = Facet.define<boolean, boolean>({
+  // File-level marker used by the autocomplete override path. If any attached
+  // server exposes completion, keep the shared LSP completion source available.
+  // Per-server completion opt-outs do not make this a per-server gate.
   combine: (values) => values.some(Boolean),
 });
 
