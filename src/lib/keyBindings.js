@@ -618,7 +618,6 @@ function buildCodemirrorKeyBindings(appBindings) {
 	const comboMap = new Map();
 
 	for (const binding of KEYMAP_SOURCES) {
-		console.log(binding);
 		const baseCombos = new Set();
 
 		pushCommandCombo(binding.run, binding.key, "win", baseCombos);
