@@ -227,6 +227,20 @@ function createSessionProxy(state, file) {
 	});
 }
 
+function maybeRecommendLanguageModeExtension(file, modeInfo) {
+	if (appSettings.value.recommendExtensions === false) return;
+	if (modeInfo?.name !== "text" || modeInfo.supportsFile(file.filename)) return;
+
+	void import("./languageModeRecommendations").then(
+		({ default: recommend }) => {
+			recommend(file, modeInfo);
+		},
+		(error) => {
+			console.warn("Failed to load language mode recommendations.", error);
+		},
+	);
+}
+
 /**
  * @typedef {'run'|'save'|'change'|'focus'|'blur'|'close'|'rename'|'load'|'loadError'|'loadStart'|'loadEnd'|'changeMode'|'changeEncoding'|'changeReadOnly'} FileEvents
  */
@@ -1295,6 +1309,7 @@ export default class EditorFile {
 		// Store mode info for later use when creating editor view
 		this.currentMode = mode;
 		this.currentLanguageExtension = modeInfo?.getExtension() || null;
+		maybeRecommendLanguageModeExtension(this, modeInfo);
 
 		// sets file icon
 		this.#tab.lead(

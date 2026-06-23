@@ -141,6 +141,15 @@ export default function editorSettings() {
 			category: categories.assistance,
 		},
 		{
+			key: "recommendExtensions",
+			text: strings["recommend extensions"] || "Recommend extensions",
+			checkbox: values.recommendExtensions ?? true,
+			info:
+				strings["settings-info-editor-recommend-extensions"] ||
+				"Suggest plugins when a file opens as plain text because no language mode is available.",
+			category: categories.assistance,
+		},
+		{
 			key: "useEmmet",
 			text: strings["use emmet"],
 			checkbox: values.useEmmet ?? true,
