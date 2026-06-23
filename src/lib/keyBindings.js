@@ -521,14 +521,14 @@ const APP_BINDING_CONFIG = [
 		name: "foldCode",
 		description: "Fold code",
 		key: "Ctrl-Shift-[",
-		readOnly: false,
+		readOnly: true,
 		editorOnly: true,
 	},
 	{
 		name: "unfoldCode",
 		description: "Unfold code",
 		key: "Ctrl-Shift-]",
-		readOnly: false,
+		readOnly: true,
 		editorOnly: true,
 	},
 	{
@@ -536,14 +536,14 @@ const APP_BINDING_CONFIG = [
 		description:
 			"Fold all - top-level ranges usually depends on the syntax tree. It may not work reliably if the document isn't fully parsed (e.g., just initialized or too large to parse completely)",
 		key: "Ctrl-Alt-[",
-		readOnly: false,
+		readOnly: true,
 		editorOnly: true,
 	},
 	{
 		name: "unfoldAll",
 		description: "Unfold all folded code",
 		key: "Ctrl-Alt-]",
-		readOnly: false,
+		readOnly: true,
 		editorOnly: true,
 	},
 ];
