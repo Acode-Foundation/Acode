@@ -3,9 +3,9 @@ import Ftp from "fileSystem/ftp";
 import Sftp from "fileSystem/sftp";
 import loader from "dialogs/loader";
 import multiPrompt from "dialogs/multiPrompt";
-import URLParse from "utils/urlParse";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
+import URLParse from "utils/urlParse";
 import { interstitialAd } from "./startAd";
 
 export default {

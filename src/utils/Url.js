@@ -1,6 +1,6 @@
-import URLParse from "./urlParse";
 import path from "./Path";
 import Uri from "./Uri";
+import URLParse from "./urlParse";
 
 export default {
 	/**
