@@ -655,7 +655,6 @@ function buildCodemirrorKeyBindings(appBindings) {
 			editorOnly: true,
 		};
 	}
-	console.log("result", result);
 	return result;
 
 	function pushCommandCombo(commandFn, key, platform, baseCombos) {
