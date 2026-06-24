@@ -331,6 +331,7 @@ JSZip.prototype.generateAsync = function(options, onUpdate) {
         self.root._pending = [];
 
         return new Promise(function(resolve, reject) {
+            var chunks = [];
             exec(
                 function(result) {
                     if (result && result.progress) {
@@ -342,11 +343,28 @@ JSZip.prototype.generateAsync = function(options, onUpdate) {
                         }
                         return;
                     }
-                    var base64Data = result.data;
-                    try {
-                        resolve(self._convertOutput(base64Data, type, mimeType));
-                    } catch (e) {
-                        reject(e);
+                    if (result && result.done) {
+                        var totalLength = 0;
+                        for (var i = 0; i < chunks.length; i++) {
+                            totalLength += chunks[i].byteLength;
+                        }
+                        var merged = new Uint8Array(totalLength);
+                        var offset = 0;
+                        for (var i = 0; i < chunks.length; i++) {
+                            merged.set(new Uint8Array(chunks[i]), offset);
+                            offset += chunks[i].byteLength;
+                        }
+                        try {
+                            resolve(self._convertOutput(merged.buffer, type, mimeType));
+                        } catch (e) {
+                            reject(e);
+                        }
+                        return;
+                    }
+                    if (result instanceof ArrayBuffer) {
+                        chunks.push(result);
+                    } else if (ArrayBuffer.isView(result)) {
+                        chunks.push(result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength));
                     }
                 },
                 function(err) {
@@ -592,6 +610,7 @@ JSZipObject.prototype.async = function(type, onUpdate) {
         return resolveLocal(this._data);
     }
 
+    var chunks = [];
     return new Promise(function(resolve, reject) {
         exec(
             function(result) {
@@ -604,10 +623,28 @@ JSZipObject.prototype.async = function(type, onUpdate) {
                     }
                     return;
                 }
-                try {
-                    resolve(self.root._convertOutput(result, type, "application/octet-stream"));
-                } catch (e) {
-                    reject(e);
+                if (result && result.done) {
+                    var totalLength = 0;
+                    for (var i = 0; i < chunks.length; i++) {
+                        totalLength += chunks[i].byteLength;
+                    }
+                    var merged = new Uint8Array(totalLength);
+                    var offset = 0;
+                    for (var i = 0; i < chunks.length; i++) {
+                        merged.set(new Uint8Array(chunks[i]), offset);
+                        offset += chunks[i].byteLength;
+                    }
+                    try {
+                        resolve(self.root._convertOutput(merged.buffer, type, "application/octet-stream"));
+                    } catch (e) {
+                        reject(e);
+                    }
+                    return;
+                }
+                if (result instanceof ArrayBuffer) {
+                    chunks.push(result);
+                } else if (ArrayBuffer.isView(result)) {
+                    chunks.push(result.buffer.slice(result.byteOffset, result.byteOffset + result.byteLength));
                 }
             },
             function(err) {
