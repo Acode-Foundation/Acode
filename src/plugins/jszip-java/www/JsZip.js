@@ -126,19 +126,19 @@ JSZip.prototype.file = function(name, data, options) {
     var fullPath = this.prefix + name;
     options = options || {};
 
+    var fileObj = new JSZipObject(fullPath, false, this.root, options);
+    fileObj._data = data;
+    this.root.files[fullPath] = fileObj;
+
     if (typeof data.then === 'function') {
         var self = this;
         var promise = data.then(function(resolvedData) {
+            fileObj._data = resolvedData;
             return self._addFileToNative(fullPath, resolvedData, options);
         });
         this.root._pending.push(promise);
-
-        var fileObj = new JSZipObject(fullPath, false, this.root, options);
-        this.root.files[fullPath] = fileObj;
     } else {
         this._addFileToNative(fullPath, data, options);
-        var fileObj = new JSZipObject(fullPath, false, this.root, options);
-        this.root.files[fullPath] = fileObj;
     }
 
     return this;
@@ -184,37 +184,52 @@ JSZip.prototype._addFileToNative = function(fullPath, data, options) {
     var dataType = "string";
     var payload = data;
     if (data instanceof ArrayBuffer) {
-        dataType = "base64";
-        payload = arrayBufferToBase64(data);
+        dataType = "arraybuffer";
+        payload = data;
     } else if (ArrayBuffer.isView(data)) {
-        dataType = "base64";
-        payload = arrayBufferToBase64(data);
+        dataType = "arraybuffer";
+        payload = data;
     } else if (options.base64) {
         dataType = "base64";
     }
 
     if (data && typeof data.async === 'function') {
+        var fileObj = self.root.files[fullPath];
         var promise = data.async("arraybuffer").then(function(buffer) {
+            if (fileObj) {
+                fileObj._data = buffer;
+            }
             return self._addFileToNative(fullPath, buffer, options);
         });
         this.root._pending.push(promise);
         return;
     }
 
-    exec(null, null, "JsZip", "addFile", [
-        this.root.id,
-        fullPath,
-        payload,
-        {
-            dataType: dataType,
-            dir: options.dir || false,
-            date: options.date ? (options.date instanceof Date ? options.date.getTime() : options.date) : null,
-            comment: options.comment || "",
-            unixPermissions: options.unixPermissions || null,
-            dosPermissions: options.dosPermissions || null,
-            binary: options.binary || false
-        }
-    ]);
+    exec(
+        function() {
+            var fileObj = self.root.files[fullPath];
+            if (fileObj) {
+                delete fileObj._data;
+            }
+        },
+        null,
+        "JsZip",
+        "addFile",
+        [
+            this.root.id,
+            fullPath,
+            payload,
+            {
+                dataType: dataType,
+                dir: options.dir || false,
+                date: options.date ? (options.date instanceof Date ? options.date.getTime() : options.date) : null,
+                comment: options.comment || "",
+                unixPermissions: options.unixPermissions || null,
+                dosPermissions: options.dosPermissions || null,
+                binary: options.binary || false
+            }
+        ]
+    );
 };
 
 JSZip.prototype.remove = function(name) {
@@ -250,26 +265,22 @@ JSZip.prototype.filter = function(callback) {
     return results;
 };
 
-JSZip.prototype._convertOutput = function(base64Data, type, mimeType) {
+JSZip.prototype._convertOutput = function(arrayBuffer, type, mimeType) {
     type = (type || "").toLowerCase();
-    if (type === "base64") {
-        return base64Data;
+    
+    if (type === "arraybuffer") {
+        return arrayBuffer;
     }
     
-    var binaryString = window.atob(base64Data);
-    var len = binaryString.length;
+    var bytes = new Uint8Array(arrayBuffer);
+    var len = bytes.byteLength;
 
-    if (type === "string" || type === "binarystring") {
-        return binaryString;
+    if (type === "uint8array") {
+        return bytes;
     }
 
-    if (type === "text") {
-        return decodeURIComponent(escape(binaryString));
-    }
-
-    var bytes = new Uint8Array(len);
-    for (var i = 0; i < len; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
+    if (type === "blob") {
+        return new Blob([arrayBuffer], { type: mimeType });
     }
 
     if (type === "array") {
@@ -280,16 +291,28 @@ JSZip.prototype._convertOutput = function(base64Data, type, mimeType) {
         return arr;
     }
 
-    if (type === "uint8array") {
-        return bytes;
+    // For string formats, we convert to binary string first
+    var binaryString = '';
+    var chunk = 8192;
+    for (var i = 0; i < len; i += chunk) {
+        var slice = bytes.subarray(i, i + chunk);
+        binaryString += String.fromCharCode.apply(null, slice);
     }
 
-    if (type === "arraybuffer") {
-        return bytes.buffer;
+    if (type === "string" || type === "binarystring") {
+        return binaryString;
     }
 
-    if (type === "blob") {
-        return new Blob([bytes], { type: mimeType });
+    if (type === "base64") {
+        return window.btoa(binaryString);
+    }
+
+    if (type === "text") {
+        if (typeof TextDecoder !== 'undefined') {
+            return new TextDecoder().decode(arrayBuffer);
+        } else {
+            return decodeURIComponent(escape(binaryString));
+        }
     }
 
     throw new Error("Type '" + type + "' is not supported or not implemented.");
@@ -356,8 +379,8 @@ JSZip.prototype.loadAsync = function(data, options) {
                     var reader = new FileReader();
                     reader.onload = function(e) {
                         resolve({
-                            payload: arrayBufferToBase64(e.target.result),
-                            dataType: "base64"
+                            payload: e.target.result,
+                            dataType: "arraybuffer"
                         });
                     };
                     reader.onerror = function(err) {
@@ -367,13 +390,13 @@ JSZip.prototype.loadAsync = function(data, options) {
                 });
             } else if (data instanceof ArrayBuffer) {
                 return {
-                    payload: arrayBufferToBase64(data),
-                    dataType: "base64"
+                    payload: data,
+                    dataType: "arraybuffer"
                 };
             } else if (ArrayBuffer.isView(data)) {
                 return {
-                    payload: arrayBufferToBase64(data),
-                    dataType: "base64"
+                    payload: data,
+                    dataType: "arraybuffer"
                 };
             } else if (typeof data === 'string') {
                 if (options.base64) {
@@ -382,10 +405,9 @@ JSZip.prototype.loadAsync = function(data, options) {
                         dataType: "base64"
                     };
                 } else {
-                    var base64 = window.btoa(data);
                     return {
-                        payload: base64,
-                        dataType: "base64"
+                        payload: data,
+                        dataType: "string"
                     };
                 }
             } else {
@@ -422,6 +444,7 @@ JSZip.prototype.loadAsync = function(data, options) {
                         self.root.id,
                         normalized.payload,
                         {
+                            dataType: normalized.dataType,
                             checkCRC32: options.checkCRC32 || false,
                             createFolders: options.createFolders || false
                         }
@@ -520,6 +543,55 @@ function JSZipObject(name, dir, root, options) {
 
 JSZipObject.prototype.async = function(type, onUpdate) {
     var self = this;
+    
+    function resolveLocal(data) {
+        if (typeof Blob !== 'undefined' && data instanceof Blob) {
+            if (type.toLowerCase() === "blob") {
+                return Promise.resolve(data);
+            }
+            return new Promise(function(resolve, reject) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        resolve(self.root._convertOutput(e.target.result, type, data.type));
+                    } catch (e) {
+                        reject(e);
+                    }
+                };
+                reader.onerror = function(err) {
+                    reject(err);
+                };
+                reader.readAsArrayBuffer(data);
+            });
+        }
+        
+        var buffer;
+        if (data instanceof ArrayBuffer) {
+            buffer = data;
+        } else if (ArrayBuffer.isView(data)) {
+            buffer = data.buffer;
+        } else if (typeof data === 'string') {
+            var bytes = new Uint8Array(data.length);
+            for (var i = 0; i < data.length; i++) {
+                bytes[i] = data.charCodeAt(i);
+            }
+            buffer = bytes.buffer;
+        }
+        
+        try {
+            return Promise.resolve(self.root._convertOutput(buffer || data, type, "application/octet-stream"));
+        } catch (e) {
+            return Promise.reject(e);
+        }
+    }
+
+    if (this._data !== undefined && this._data !== null) {
+        if (typeof this._data.then === 'function') {
+            return this._data.then(resolveLocal);
+        }
+        return resolveLocal(this._data);
+    }
+
     return new Promise(function(resolve, reject) {
         exec(
             function(result) {
@@ -532,9 +604,8 @@ JSZipObject.prototype.async = function(type, onUpdate) {
                     }
                     return;
                 }
-                var base64Data = result.data;
                 try {
-                    resolve(self.root._convertOutput(base64Data, type, "application/octet-stream"));
+                    resolve(self.root._convertOutput(result, type, "application/octet-stream"));
                 } catch (e) {
                     reject(e);
                 }

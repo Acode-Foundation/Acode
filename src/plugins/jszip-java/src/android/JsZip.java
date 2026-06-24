@@ -149,7 +149,7 @@ public class JsZip extends CordovaPlugin {
     @Override
     public boolean execute(
         String action,
-        JSONArray args,
+        CordovaArgs args,
         final CallbackContext callbackContext
     ) throws JSONException {
         cordova.getThreadPool().execute(
@@ -164,24 +164,22 @@ public class JsZip extends CordovaPlugin {
                         } else if ("addFile".equals(action)) {
                             String id = args.getString(0);
                             String path = args.getString(1);
-                            String data = args.isNull(2) ? null : args.getString(2);
                             JSONObject options = args.optJSONObject(3);
                             if (options == null) {
                                 options = new JSONObject();
                             }
-                            addFile(id, path, data, options, callbackContext);
+                            addFile(id, path, args, options, callbackContext);
                         } else if ("removeFile".equals(action)) {
                             String id = args.getString(0);
                             String path = args.getString(1);
                             removeFile(id, path, callbackContext);
                         } else if ("load".equals(action)) {
                             String id = args.getString(0);
-                            String base64Data = args.getString(1);
                             JSONObject options = args.optJSONObject(2);
                             if (options == null) {
                                 options = new JSONObject();
                             }
-                            loadZip(id, base64Data, options, callbackContext);
+                            loadZip(id, args, options, callbackContext);
                         } else if ("getFileContent".equals(action)) {
                             String id = args.getString(0);
                             String path = args.getString(1);
@@ -225,7 +223,7 @@ public class JsZip extends CordovaPlugin {
         instances.put(id, instance);
     }
 
-    private void addFile(String id, String name, String data, JSONObject options, CallbackContext callbackContext) {
+    private void addFile(String id, String name, CordovaArgs args, JSONObject options, CallbackContext callbackContext) {
         try {
             ZipInstance instance = instances.get(id);
             if (instance == null) {
@@ -251,16 +249,20 @@ public class JsZip extends CordovaPlugin {
                 entry.dosPermissions = options.optInt("dosPermissions");
             }
 
-            if (!isDir && data != null) {
+            if (!isDir && !args.isNull(2)) {
                 if (entry.tempFile == null) {
                     entry.tempFile = new File(instance.baseDir, UUID.randomUUID().toString() + ".tmp");
                 }
                 
                 String dataType = options.optString("dataType", "string");
                 byte[] bytes;
-                if ("base64".equals(dataType)) {
+                if ("arraybuffer".equals(dataType)) {
+                    bytes = args.getArrayBuffer(2);
+                } else if ("base64".equals(dataType)) {
+                    String data = args.getString(2);
                     bytes = Base64.decode(data, Base64.DEFAULT);
                 } else {
+                    String data = args.getString(2);
                     boolean binary = options.optBoolean("binary", false);
                     if (binary) {
                         bytes = data.getBytes("ISO-8859-1");
@@ -303,7 +305,7 @@ public class JsZip extends CordovaPlugin {
         }
     }
 
-    private void loadZip(String id, String base64Data, JSONObject options, CallbackContext callbackContext) {
+    private void loadZip(String id, CordovaArgs args, JSONObject options, CallbackContext callbackContext) {
         File tempZipFile = null;
         try {
             ZipInstance instance = instances.get(id);
@@ -320,9 +322,20 @@ public class JsZip extends CordovaPlugin {
             }
             instance.entries.clear();
 
-            byte[] zipBytes = Base64.decode(base64Data, Base64.DEFAULT);
-            Log.d("JsZip", "loadZip: base64Length=" + base64Data.length() + ", zipBytesLength=" + zipBytes.length);
-            System.out.println("[JsZip-Java Debug Native] loadZip: base64Length=" + base64Data.length() + ", zipBytesLength=" + zipBytes.length);
+            String dataType = options.optString("dataType", "base64");
+            byte[] zipBytes;
+            if ("arraybuffer".equals(dataType)) {
+                zipBytes = args.getArrayBuffer(1);
+            } else if ("base64".equals(dataType)) {
+                String data = args.getString(1);
+                zipBytes = Base64.decode(data, Base64.DEFAULT);
+            } else {
+                String data = args.getString(1);
+                zipBytes = data.getBytes("ISO-8859-1");
+            }
+            
+            Log.d("JsZip", "loadZip: dataType=" + dataType + ", zipBytesLength=" + zipBytes.length);
+            System.out.println("[JsZip-Java Debug Native] loadZip: dataType=" + dataType + ", zipBytesLength=" + zipBytes.length);
             
             // Write to a temporary ZIP file in cache
             tempZipFile = new File(instance.baseDir, "temp_load_" + UUID.randomUUID().toString() + ".zip");
@@ -412,7 +425,7 @@ public class JsZip extends CordovaPlugin {
 
             JSONObject resultObj = new JSONObject();
             resultObj.put("files", metaList);
-            resultObj.put("base64Length", base64Data.length());
+            resultObj.put("base64Length", zipBytes.length); // Maintain compatibility/logs
             resultObj.put("zipBytesLength", zipBytes.length);
             callbackContext.success(resultObj);
         } catch (Exception e) {
@@ -457,10 +470,9 @@ public class JsZip extends CordovaPlugin {
                 }
             }
 
-            String base64Data = Base64.encodeToString(bytes, Base64.NO_WRAP);
-            JSONObject result = new JSONObject();
-            result.put("data", base64Data);
-            callbackContext.success(result);
+            // Return byte[] directly as raw binary
+            PluginResult result = new PluginResult(PluginResult.Status.OK, bytes);
+            callbackContext.sendPluginResult(result);
         } catch (Exception e) {
             callbackContext.error("Failed to get file content: " + e.getMessage());
         }
@@ -588,11 +600,9 @@ public class JsZip extends CordovaPlugin {
 
             zipFile.delete();
 
-            String base64Data = Base64.encodeToString(zipBytes, Base64.NO_WRAP);
-            JSONObject result = new JSONObject();
-            result.put("data", base64Data);
-            callbackContext.success(result);
-
+            // Return byte[] directly as raw binary
+            PluginResult result = new PluginResult(PluginResult.Status.OK, zipBytes);
+            callbackContext.sendPluginResult(result);
         } catch (Exception e) {
             callbackContext.error("Failed to generate ZIP: " + e.getMessage());
         }
