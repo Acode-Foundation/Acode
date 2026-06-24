@@ -2,7 +2,6 @@ import { TestRunner } from "./tester";
 
 export async function runSanityTests(writeOutput) {
 	const runner = new TestRunner("JS (WebView) Sanity Tests");
-
 	// Test 1: String operations
 	runner.test("String concatenation", (test) => {
 		const result = "Hello" + " " + "World";
