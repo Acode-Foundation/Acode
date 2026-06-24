@@ -767,12 +767,12 @@
 	"quick tools height": "Tinggi alat cepat",
 	"quick tools toggler": "Pengalih alat cepat",
 	"running processes": "Proses yang berjalan",
-	"recommend extensions": "Recommend extensions",
-	"settings-info-editor-recommend-extensions": "Suggest plugins when a file opens as plain text because no language mode is available.",
-	"extension recommendation title": "Extensions available for {extension}",
-	"extension recommendation message": "No syntax mode is installed for {extension}. Search plugins for \"{keyword}\".",
-	"extension request title": "No extension found for {extension}",
-	"extension request message": "Ask for a plugin so Acode can highlight this file type.",
-	"search plugins": "Search plugins",
-	"request plugin": "Request plugin"
+	"recommend extensions": "Rekomendasikan ekstensi",
+	"settings-info-editor-recommend-extensions": "Sarankan plugin saat file dibuka sebagai teks biasa karena mode bahasa tidak tersedia.",
+	"extension recommendation title": "Ekstensi yang tersedia untuk {extension}",
+	"extension recommendation message": "Tidak ada mode sintaksis yang diinstal untuk {extension}. Cari plugin untuk \"{keyword}\".",
+	"extension request title": "Ekstensi tidak ditemukan untuk {extension}",
+	"extension request message": "Minta plugin agar Acode dapat menyoroti jenis file ini.",
+	"search plugins": "Cari plugin",
+	"request plugin": "Minta plugin"
 }
