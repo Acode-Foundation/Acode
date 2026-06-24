@@ -1,6 +1,6 @@
-import URLParse from "url-parse";
 import path from "./Path";
 import Uri from "./Uri";
+import URLParse from "./urlParse";
 
 export default {
 	/**
@@ -287,10 +287,8 @@ export default {
 			url = url.replace(/#/g, uuid);
 		}
 
-		let { username, password, hostname, pathname, port, query } = URLParse(
-			url,
-			true,
-		);
+		let { username, password, hostname, pathname, port, searchParams } =
+			URLParse(url);
 
 		if (pathname) {
 			pathname = decodeURIComponent(pathname);
@@ -309,6 +307,7 @@ export default {
 			port = Number.parseInt(port);
 		}
 
+		const query = Object.fromEntries(searchParams);
 		let { keyFile, passPhrase } = query;
 
 		if (keyFile) {

@@ -3,9 +3,9 @@ import Ftp from "fileSystem/ftp";
 import Sftp from "fileSystem/sftp";
 import loader from "dialogs/loader";
 import multiPrompt from "dialogs/multiPrompt";
-import URLParse from "url-parse";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
+import URLParse from "utils/urlParse";
 import { interstitialAd } from "./startAd";
 
 export default {
@@ -367,7 +367,7 @@ export default {
 		}
 	},
 	edit({ name, storageType, url }) {
-		let { username, password, hostname, port, query } = URLParse(url, true);
+		let { username, password, hostname, port, searchParams } = URLParse(url);
 
 		if (username) {
 			username = decodeURIComponent(username);
@@ -378,11 +378,12 @@ export default {
 		}
 
 		if (storageType === "ftp") {
-			let { security, mode } = query;
+			let security = searchParams.get("security");
 			if (security) {
 				security = decodeURIComponent(security);
 			}
 
+			let mode = searchParams.get("mode");
 			if (mode) {
 				mode = decodeURIComponent(mode);
 			}
@@ -399,11 +400,12 @@ export default {
 		}
 
 		if (storageType === "sftp") {
-			let { passPhrase, keyFile } = query;
+			let passPhrase = searchParams.get("passPhrase");
 			if (passPhrase) {
 				passPhrase = decodeURIComponent(passPhrase);
 			}
 
+			let keyFile = searchParams.get("keyFile");
 			if (keyFile) {
 				keyFile = decodeURIComponent(keyFile);
 			}

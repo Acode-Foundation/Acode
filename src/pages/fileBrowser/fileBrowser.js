@@ -25,9 +25,9 @@ import { hideAd } from "lib/startAd";
 import mimeTypes from "mime-types";
 import mustache from "mustache";
 import filesSettings from "settings/filesSettings";
-import URLParse from "url-parse";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
+import URLParse from "utils/urlParse";
 import _addMenu from "./add-menu.hbs";
 import _addMenuHome from "./add-menu-home.hbs";
 import _template from "./fileBrowser.hbs";
@@ -1127,9 +1127,9 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					}
 
 					if (storage.url) {
-						const parsedUrl = URLParse(storage.url, true);
+						const parsedUrl = URLParse(storage.url);
 						const keyFile = decodeURIComponent(
-							parsedUrl.query["keyFile"] || "",
+							parsedUrl.searchParams.get("keyFile") || "",
 						);
 						if (keyFile) {
 							fsOperation(keyFile).delete();
