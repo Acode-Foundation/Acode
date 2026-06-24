@@ -73,8 +73,8 @@ export default function terminalSettings() {
 			text: strings["terminal:font weight"],
 			value: terminalValues.fontWeight,
 			select: [
-				strings["terminal:normal"],
-				strings["terminal:bold"],
+				["normal", strings["terminal:normal"]],
+				["bold", strings["terminal:bold"]],
 				"100",
 				"200",
 				"300",
