@@ -1,3 +1,4 @@
+import { getModeForPath } from "cm/modelist";
 import notificationManager from "lib/notificationManager";
 import Path from "utils/Path";
 import Url from "utils/Url";
@@ -98,9 +99,9 @@ class LanguageModeRecommendations {
 		}
 
 		this.pendingKeywords.add(keyword);
-		void this.showRecommendation(keyword)
-			.then(() => {
-				this.notifiedKeywords.add(keyword);
+		void this.showRecommendation(keyword, filename)
+			.then((shown) => {
+				if (shown) this.notifiedKeywords.add(keyword);
 			})
 			.catch((error) => {
 				console.warn("Failed to show extension recommendation.", error);
@@ -110,8 +111,10 @@ class LanguageModeRecommendations {
 			});
 	}
 
-	async showRecommendation(keyword) {
+	async showRecommendation(keyword, filename) {
 		const hasPlugins = await this.getPluginAvailability(keyword);
+		if (!hasPlainTextFallback(getModeForPath(filename), filename)) return false;
+
 		const displayExt = `.${keyword}`;
 
 		if (hasPlugins) {
@@ -135,7 +138,7 @@ class LanguageModeRecommendations {
 					},
 				],
 			});
-			return;
+			return true;
 		}
 
 		const issueUrl = getIssueUrl(keyword);
@@ -159,6 +162,7 @@ class LanguageModeRecommendations {
 				},
 			],
 		});
+		return true;
 	}
 }
 

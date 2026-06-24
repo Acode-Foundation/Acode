@@ -295,6 +295,12 @@ async function onDeviceReady() {
 
 				// Re-emit events for active file after plugins are loaded
 				const { activeFile } = editorManager;
+				for (const file of editorManager.files) {
+					if (file?.type === "editor") {
+						file.setMode();
+					}
+				}
+				editorManager.reapplyActiveFile();
 				if (activeFile?.uri) {
 					// Re-emit file-loaded event
 					editorManager.emit("file-loaded", activeFile);
