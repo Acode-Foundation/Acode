@@ -9,6 +9,13 @@ let onCancelCallback = null;
 let $currentDialog = null;
 let $currentMask = null;
 const titleLoaderId = "__title-loader";
+const tailSpinGradientId = "tail-spin-gradient";
+let tailSpinSvgId = 0;
+
+function createTailSpinSvg() {
+	const gradientId = `${tailSpinGradientId}-${tailSpinSvgId++}`;
+	return tailSpinSvg.split(tailSpinGradientId).join(gradientId);
+}
 
 /**
  * @typedef {object} LoaderOptions
@@ -53,7 +60,7 @@ function create(titleText, message = "", options = {}) {
 				{titleText}
 			</strong>
 			<span className="message loader">
-				<span className="loader" innerHTML={tailSpinSvg}></span>
+				<span className="loader" innerHTML={createTailSpinSvg()}></span>
 				<div
 					ref={$message}
 					className="message"
@@ -100,7 +107,7 @@ function create(titleText, message = "", options = {}) {
 
 function createTitleLoader() {
 	const $titleLoader = tag.get(`#${titleLoaderId}`) || (
-		<span id={titleLoaderId} innerHTML={tailSpinSvg}></span>
+		<span id={titleLoaderId} innerHTML={createTailSpinSvg()}></span>
 	);
 
 	if (!$titleLoader.isConnected) {
