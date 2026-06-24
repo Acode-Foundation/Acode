@@ -11,11 +11,10 @@ import { runUrlTests } from "./url.tests";
  * these are just functions that runs tests by creating a instance of TestRunner
  */
 export const testDefinitions = [
-	runTesterTests,
-	runSanityTests,
-	runExecutorTests,
-	runUrlTests,
-	runFsTests,
-	runCodeMirrorTests,
-	runAceCompatibilityTests,
+  runSanityTests,
+  runExecutorTests,
+  runUrlTests,
+  runFsTests,
+  runCodeMirrorTests,
+  runAceCompatibilityTests,
 ];
