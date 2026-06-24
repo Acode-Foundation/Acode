@@ -1,9 +1,9 @@
 import { runAceCompatibilityTests } from "./ace.test";
 import { runCodeMirrorTests } from "./editor.tests";
 import { runExecutorTests } from "./exec.tests";
+import { runJsZipTests } from "./jszip.tests";
 import { runSanityTests } from "./sanity.tests";
 import { runUrlTests } from "./url.tests";
-import { runJsZipTests } from "./jszip.tests";
 
 export async function runAllTests() {
 	const terminal = acode.require("terminal");
