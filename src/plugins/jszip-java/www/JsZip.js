@@ -8,6 +8,10 @@ function genUUID() {
     return 'zip_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 }
 
+var registry = typeof FinalizationRegistry !== 'undefined' ? new FinalizationRegistry(function(id) {
+    exec(null, null, "JsZip", "destroy", [id]);
+}) : null;
+
 function arrayBufferToBase64(bufferOrView) {
     var bytes;
     if (bufferOrView instanceof ArrayBuffer) {
@@ -39,6 +43,10 @@ function JSZip() {
 
     // Notify native of instance creation
     exec(null, null, "JsZip", "create", [this.id]);
+
+    if (registry) {
+        registry.register(this, this.id);
+    }
 }
 
 JSZip.support = {
@@ -87,7 +95,10 @@ JSZip.prototype.folder = function(name) {
         var folderObj = new JSZipObject(fullPath, true, this.root);
         this.root.files[fullPath] = folderObj;
         
-        exec(null, null, "JsZip", "addFile", [this.root.id, fullPath, null, { dir: true }]);
+        var promise = new Promise(function(resolve, reject) {
+            exec(resolve, reject, "JsZip", "addFile", [this.root.id, fullPath, null, { dir: true }]);
+        });
+        this.root._pending.push(promise);
     }
 
     var child = Object.create(JSZip.prototype);
@@ -134,7 +145,7 @@ JSZip.prototype.file = function(name, data, options) {
         var self = this;
         var promise = data.then(function(resolvedData) {
             fileObj._data = resolvedData;
-            return self._addFileToNative(fullPath, resolvedData, options);
+            return self._addFileToNativePromise(fullPath, resolvedData, options);
         });
         this.root._pending.push(promise);
     } else {
@@ -145,22 +156,44 @@ JSZip.prototype.file = function(name, data, options) {
 };
 
 JSZip.prototype._ensureParentFolders = function(fullPath) {
+    var self = this;
     var parts = fullPath.split('/');
     var current = "";
+    var promise = Promise.resolve();
+    
     for (var i = 0; i < parts.length - 1; i++) {
         current += parts[i] + "/";
         if (!this.root.files[current]) {
-            var folderObj = new JSZipObject(current, true, this.root);
-            this.root.files[current] = folderObj;
-            exec(null, null, "JsZip", "addFile", [this.root.id, current, null, { dir: true }]);
+            (function(folderPath) {
+                var folderObj = new JSZipObject(folderPath, true, self.root);
+                self.root.files[folderPath] = folderObj;
+                promise = promise.then(function() {
+                    return new Promise(function(resolve, reject) {
+                        exec(
+                            resolve,
+                            reject,
+                            "JsZip",
+                            "addFile",
+                            [self.root.id, folderPath, null, { dir: true }]
+                        );
+                    });
+                });
+            })(current);
         }
     }
+    return promise;
 };
 
 JSZip.prototype._addFileToNative = function(fullPath, data, options) {
+    var promise = this._addFileToNativePromise(fullPath, data, options);
+    this.root._pending.push(promise);
+    return promise;
+};
+
+JSZip.prototype._addFileToNativePromise = function(fullPath, data, options) {
     var self = this;
     if (typeof Blob !== 'undefined' && data instanceof Blob) {
-        var promise = new Promise(function(resolve, reject) {
+        return new Promise(function(resolve, reject) {
             var reader = new FileReader();
             reader.onload = function(e) {
                 resolve(e.target.result);
@@ -170,15 +203,24 @@ JSZip.prototype._addFileToNative = function(fullPath, data, options) {
             };
             reader.readAsArrayBuffer(data);
         }).then(function(buffer) {
-            return self._addFileToNative(fullPath, buffer, options);
+            return self._addFileToNativePromise(fullPath, buffer, options);
         });
-        this.root._pending.push(promise);
-        return;
+    }
+
+    if (data && typeof data.async === 'function') {
+        var fileObj = self.root.files[fullPath];
+        return data.async("arraybuffer").then(function(buffer) {
+            if (fileObj) {
+                fileObj._data = buffer;
+            }
+            return self._addFileToNativePromise(fullPath, buffer, options);
+        });
     }
 
     var createFolders = options.createFolders !== false;
+    var parentPromise = Promise.resolve();
     if (createFolders) {
-        this._ensureParentFolders(fullPath);
+        parentPromise = this._ensureParentFolders(fullPath);
     }
 
     var dataType = "string";
@@ -193,43 +235,38 @@ JSZip.prototype._addFileToNative = function(fullPath, data, options) {
         dataType = "base64";
     }
 
-    if (data && typeof data.async === 'function') {
-        var fileObj = self.root.files[fullPath];
-        var promise = data.async("arraybuffer").then(function(buffer) {
-            if (fileObj) {
-                fileObj._data = buffer;
-            }
-            return self._addFileToNative(fullPath, buffer, options);
+    return parentPromise.then(function() {
+        return new Promise(function(resolve, reject) {
+            exec(
+                function() {
+                    var fileObj = self.root.files[fullPath];
+                    if (fileObj) {
+                        delete fileObj._data;
+                    }
+                    resolve();
+                },
+                function(err) {
+                    reject(err);
+                },
+                "JsZip",
+                "addFile",
+                [
+                    self.root.id,
+                    fullPath,
+                    payload,
+                    {
+                        dataType: dataType,
+                        dir: options.dir || false,
+                        date: options.date ? (options.date instanceof Date ? options.date.getTime() : options.date) : null,
+                        comment: options.comment || "",
+                        unixPermissions: options.unixPermissions || null,
+                        dosPermissions: options.dosPermissions || null,
+                        binary: options.binary || false
+                    }
+                ]
+            );
         });
-        this.root._pending.push(promise);
-        return;
-    }
-
-    exec(
-        function() {
-            var fileObj = self.root.files[fullPath];
-            if (fileObj) {
-                delete fileObj._data;
-            }
-        },
-        null,
-        "JsZip",
-        "addFile",
-        [
-            this.root.id,
-            fullPath,
-            payload,
-            {
-                dataType: dataType,
-                dir: options.dir || false,
-                date: options.date ? (options.date instanceof Date ? options.date.getTime() : options.date) : null,
-                comment: options.comment || "",
-                unixPermissions: options.unixPermissions || null,
-                dosPermissions: options.dosPermissions || null,
-                binary: options.binary || false
-            }
-        ]
-    );
+    });
 };
 
 JSZip.prototype.remove = function(name) {
@@ -242,7 +279,10 @@ JSZip.prototype.remove = function(name) {
         }
     }
     
-    exec(null, null, "JsZip", "removeFile", [this.root.id, fullPath]);
+    var promise = new Promise(function(resolve, reject) {
+        exec(resolve, reject, "JsZip", "removeFile", [this.root.id, fullPath]);
+    });
+    this.root._pending.push(promise);
     return this;
 };
 
@@ -542,9 +582,6 @@ JSZip.prototype.destroy = function() {
     exec(null, null, "JsZip", "destroy", [this.root.id]);
 };
 
-var registry = typeof FinalizationRegistry !== 'undefined' ? new FinalizationRegistry(function(id) {
-    exec(null, null, "JsZip", "destroy", [id]);
-}) : null;
 
 function JSZipObject(name, dir, root, options) {
     this.name = name;
