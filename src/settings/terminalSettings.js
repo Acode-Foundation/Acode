@@ -121,7 +121,7 @@ export default function terminalSettings() {
 			text: strings["terminal:cursor inactive style"],
 			value: terminalValues.cursorInactiveStyle,
 			select: [
-			  ["outline", strings["terminal:inactive outline"]],
+				["outline", strings["terminal:inactive outline"]],
 				["block", strings["terminal:inactive block"]],
 				["underline", strings["terminal:inactive underline"]],
 				["bar", strings["terminal:inactive bar"]],
