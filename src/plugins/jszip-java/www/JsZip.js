@@ -584,6 +584,22 @@ JSZip.prototype.destroy = function() {
     exec(null, null, "JsZip", "destroy", [this.root.id]);
 };
 
+JSZip.prototype.load = function() {
+    throw new Error("This method has been removed in JSZip 3.0, please check the upgrade guide.");
+};
+
+JSZip.prototype.generate = function() {
+    throw new Error("This method has been removed in JSZip 3.0, please check the upgrade guide.");
+};
+
+JSZip.prototype.generateNodeStream = function() {
+    throw new Error("generateNodeStream is not supported by this platform");
+};
+
+JSZip.prototype.generateInternalStream = function() {
+    throw new Error("generateInternalStream is not supported by this platform");
+};
+
 
 function JSZipObject(name, dir, root, options) {
     this.name = name;
@@ -698,6 +714,30 @@ JSZipObject.prototype.async = function(type, onUpdate) {
 
 JSZipObject.prototype.nodeStream = function() {
     throw new Error("nodeStream is not supported by this platform");
+};
+
+JSZipObject.prototype.internalStream = function() {
+    throw new Error("internalStream is not supported by this platform");
+};
+
+JSZipObject.prototype.asText = function() {
+    throw new Error("this method has been removed in JSZip 3.0, please check the upgrade guide.");
+};
+
+JSZipObject.prototype.asBinary = function() {
+    throw new Error("this method has been removed in JSZip 3.0, please check the upgrade guide.");
+};
+
+JSZipObject.prototype.asNodeBuffer = function() {
+    throw new Error("this method has been removed in JSZip 3.0, please check the upgrade guide.");
+};
+
+JSZipObject.prototype.asUint8Array = function() {
+    throw new Error("this method has been removed in JSZip 3.0, please check the upgrade guide.");
+};
+
+JSZipObject.prototype.asArrayBuffer = function() {
+    throw new Error("this method has been removed in JSZip 3.0, please check the upgrade guide.");
 };
 
 if (typeof window !== 'undefined') {

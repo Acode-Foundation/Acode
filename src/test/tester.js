@@ -3,6 +3,7 @@ import { runCodeMirrorTests } from "./editor.tests";
 import { runExecutorTests } from "./exec.tests";
 import { runSanityTests } from "./sanity.tests";
 import { runUrlTests } from "./url.tests";
+import { runJsZipTests } from "./jszip.tests";
 
 export async function runAllTests() {
 	const terminal = acode.require("terminal");
@@ -22,6 +23,7 @@ export async function runAllTests() {
 		await runAceCompatibilityTests(write);
 		await runExecutorTests(write);
 		await runUrlTests(write);
+		await runJsZipTests(write);
 
 		write("\x1b[36m\x1b[1mTests completed!\x1b[0m\n");
 	} catch (error) {
