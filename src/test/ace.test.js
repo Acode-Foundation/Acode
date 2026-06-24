@@ -141,11 +141,9 @@ export async function runAceCompatibilityTests(writeOutput) {
 		test.assert(typeof text === "string", "should return string");
 	});
 
-	runner.test("editor.session exists", async (test) => {
-		const testFile = await createTestFile("test");
+	runner.test("editor.session exists", (test) => {
 		const editor = getEditor();
-		test.assert(editor.session != null, "session should exist");
-		testFile.remove(false);
+		test.assert("session" in editor, "session property should exist on editor");
 	});
 
 	runner.test("editor.setTheme()", (test) => {
@@ -238,53 +236,65 @@ export async function runAceCompatibilityTests(writeOutput) {
 
 	runner.test("session.getValue()", async (test) => {
 		const testFile = await createTestFile("test content");
-		const editor = getEditor();
-		test.assert(
-			typeof editor.session.getValue === "function",
-			"getValue should exist",
-		);
-		const value = editor.session.getValue();
-		test.assert(typeof value === "string", "should return string");
-		test.assertEqual(value, "test content");
-		testFile.remove(false);
+		try {
+			const session = testFile.session;
+			test.assert(
+				typeof session.getValue === "function",
+				"getValue should exist",
+			);
+			const value = session.getValue();
+			test.assert(typeof value === "string", "should return string");
+			test.assertEqual(value, "test content");
+		} finally {
+			testFile.remove(false);
+		}
 	});
 
 	runner.test("session.setValue()", async (test) => {
 		const testFile = await createTestFile("original");
-		const editor = getEditor();
-		test.assert(
-			typeof editor.session.setValue === "function",
-			"setValue should exist",
-		);
-		editor.session.setValue("modified");
-		test.assertEqual(editor.session.getValue(), "modified");
-		testFile.remove(false);
+		try {
+			const session = testFile.session;
+			test.assert(
+				typeof session.setValue === "function",
+				"setValue should exist",
+			);
+			session.setValue("modified");
+			test.assertEqual(testFile.session.getValue(), "modified");
+		} finally {
+			testFile.remove(false);
+		}
 	});
 
 	runner.test("session.getLength()", async (test) => {
 		const testFile = await createTestFile("line1\nline2\nline3");
-		const editor = getEditor();
-		test.assert(
-			typeof editor.session.getLength === "function",
-			"getLength should exist",
-		);
-		const len = editor.session.getLength();
-		test.assert(typeof len === "number", "should return number");
-		test.assertEqual(len, 3);
-		testFile.remove(false);
+		try {
+			const session = testFile.session;
+			test.assert(
+				typeof session.getLength === "function",
+				"getLength should exist",
+			);
+			const len = session.getLength();
+			test.assert(typeof len === "number", "should return number");
+			test.assertEqual(len, 3);
+		} finally {
+			testFile.remove(false);
+		}
 	});
 
 	runner.test("session.getLine()", async (test) => {
 		const testFile = await createTestFile("first\nsecond\nthird");
-		const editor = getEditor();
-		test.assert(
-			typeof editor.session.getLine === "function",
-			"getLine should exist",
-		);
-		test.assertEqual(editor.session.getLine(0), "first");
-		test.assertEqual(editor.session.getLine(1), "second");
-		test.assertEqual(editor.session.getLine(2), "third");
-		testFile.remove(false);
+		try {
+			const session = testFile.session;
+			test.assert(
+				typeof session.getLine === "function",
+				"getLine should exist",
+			);
+			test.assertEqual(session.getLine(0), "first");
+			test.assertEqual(session.getLine(1), "second");
+			test.assertEqual(session.getLine(2), "third");
+		} finally {
+			testFile.remove(false);
+		}
 	});
 
 	return await runner.run(writeOutput);

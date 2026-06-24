@@ -53,7 +53,13 @@ import {
 	toggleBlockComment,
 	undo,
 } from "@codemirror/commands";
-import { indentUnit as indentUnitFacet } from "@codemirror/language";
+import {
+	foldAll,
+	foldCode,
+	indentUnit as indentUnitFacet,
+	unfoldAll,
+	unfoldCode,
+} from "@codemirror/language";
 import {
 	closeLintPanel,
 	forceLinting,
@@ -944,6 +950,51 @@ function registerCoreCommands() {
 			const resolvedView = resolveView(view);
 			if (!resolvedView) return false;
 			return simplifySelection(resolvedView);
+		},
+	});
+	addCommand({
+		name: "foldCode",
+		description: "Fold the Lines that are selected (if possible)",
+		readOnly: true,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return foldCode(resolvedView);
+		},
+	});
+	addCommand({
+		name: "unfoldCode",
+		description: "Unfold folded ranges on selected lines.",
+		readOnly: true,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return unfoldCode(resolvedView);
+		},
+	});
+	addCommand({
+		name: "foldAll",
+		description:
+			"Fold all - top-level ranges usually depends on the syntax tree. It may not work reliably if the document isn't fully parsed (e.g., just initialized or too large to parse completely)",
+		readOnly: true,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return foldAll(resolvedView);
+		},
+	});
+	addCommand({
+		name: "unfoldAll",
+		description: "Unfold all folded code.",
+		readOnly: true,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return unfoldAll(resolvedView);
 		},
 	});
 }

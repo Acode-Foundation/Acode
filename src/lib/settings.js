@@ -152,6 +152,7 @@ class Settings {
 			liveAutoCompletion: true,
 			localWordCompletion: true,
 			languageCompletion: true,
+			recommendExtensions: true,
 			useEmmet: true,
 			autoIndent: true,
 			codeFolding: true,

@@ -1746,6 +1746,7 @@ async function EditorManager($header, $body) {
 		editor,
 		readOnlyCompartment,
 		getFile,
+		reapplyActiveFile,
 		switchFile,
 		moveFileByPinnedState,
 		normalizePinnedTabOrder,
@@ -2942,6 +2943,12 @@ async function EditorManager($header, $body) {
 		events.emit("switch-file", file);
 
 		toggleProblemButton();
+	}
+
+	function reapplyActiveFile() {
+		const file = manager.activeFile;
+		if (!file || file.type !== "editor" || !file.loaded || file.loading) return;
+		applyFileToEditor(file, { forceRecreate: true });
 	}
 
 	/**

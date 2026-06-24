@@ -12,6 +12,7 @@ import Ref from "html-tag-js/ref";
  * @prop {number} [props.time]
  * @prop {(notification: NotificationProps) => void} [props.action]
  * @prop {(notification: NotificationProps) => void} [props.onDismiss]
+ * @prop {{text:string, icon?:string, action:(notification: NotificationProps) => void}[]} [props.actions]
  * @prop {() => number} [props.progress]
  * @prop {() => loading} [props.loading = false]
  * @prop {"info"|"success"|"warning"|"error"} [props.type]
@@ -200,6 +201,24 @@ class NotificationManager {
 					/>
 				</div>
 				<div className="notification-message">{safeMessage}</div>
+				{Array.isArray(notification.actions) &&
+					notification.actions.length > 0 && (
+						<div className="notification-actions">
+							{notification.actions.map((action) => (
+								<button
+									type="button"
+									className="notification-action"
+									onclick={(event) => {
+										event.stopPropagation();
+										action.action?.(notification);
+									}}
+								>
+									{action.icon && <span className={`icon ${action.icon}`} />}
+									<span>{this.#sanitizeText(action.text)}</span>
+								</button>
+							))}
+						</div>
+					)}
 			</div>
 		);
 	}

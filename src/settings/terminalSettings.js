@@ -73,8 +73,8 @@ export default function terminalSettings() {
 			text: strings["terminal:font weight"],
 			value: terminalValues.fontWeight,
 			select: [
-				"normal",
-				"bold",
+				["normal", strings["terminal:normal"]],
+				["bold", strings["terminal:bold"]],
 				"100",
 				"200",
 				"300",
@@ -108,7 +108,11 @@ export default function terminalSettings() {
 			key: "cursorStyle",
 			text: strings["terminal:cursor style"],
 			value: terminalValues.cursorStyle,
-			select: ["block", "underline", "bar"],
+			select: [
+				["block", strings["terminal:block"]],
+				["underline", strings["terminal:underline"]],
+				["bar", strings["terminal:bar"]],
+			],
 			info: strings["info-cursorStyle"],
 			category: categories.cursor,
 		},
@@ -116,7 +120,13 @@ export default function terminalSettings() {
 			key: "cursorInactiveStyle",
 			text: strings["terminal:cursor inactive style"],
 			value: terminalValues.cursorInactiveStyle,
-			select: ["outline", "block", "bar", "underline", "none"],
+			select: [
+				["outline", strings["terminal:inactive outline"]],
+				["block", strings["terminal:inactive block"]],
+				["underline", strings["terminal:inactive underline"]],
+				["bar", strings["terminal:inactive bar"]],
+				["none", strings["terminal:inactive none"]],
+			],
 			info: strings["info-cursorInactiveStyle"],
 			category: categories.cursor,
 		},
@@ -248,7 +258,7 @@ export default function terminalSettings() {
 			case "uninstall":
 				const confirmation = await confirm(
 					strings.confirm,
-					"Are you sure you want to uninstall the terminal?",
+					strings["settings-info-terminal-uninstall"],
 				);
 				if (confirmation) {
 					loader.showTitleLoader();

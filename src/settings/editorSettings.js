@@ -141,6 +141,13 @@ export default function editorSettings() {
 			category: categories.assistance,
 		},
 		{
+			key: "recommendExtensions",
+			text: strings["recommend extensions"],
+			checkbox: values.recommendExtensions ?? true,
+			info: strings["settings-info-editor-recommend-extensions"],
+			category: categories.assistance,
+		},
+		{
 			key: "useEmmet",
 			text: strings["use emmet"],
 			checkbox: values.useEmmet ?? true,

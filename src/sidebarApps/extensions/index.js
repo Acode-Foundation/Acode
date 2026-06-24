@@ -27,6 +27,7 @@ let container = null;
 let $searchResult = null;
 
 const LIMIT = 50;
+const SEARCH_INPUT_WAIT_TIMEOUT = 1000;
 let currentPage = 1;
 let hasMore = true;
 let isLoading = false;
@@ -214,40 +215,86 @@ async function loadFilteredPlugins(filterState, isInitial = false) {
 async function searchPlugin() {
 	clearTimeout(searchTimeout);
 	searchTimeout = setTimeout(async () => {
-		// Clear filter when searching
-		currentFilter = null;
-		filterHasMore = true;
-		isFilterLoading = false;
-		$searchResult.onscroll = null;
-
-		$searchResult.content = "";
-		const status = await helpers.checkAPIStatus();
-		if (!status) {
-			$searchResult.content = (
-				<span className="error">{strings.api_error}</span>
-			);
-			return;
-		}
-
-		const query = this.value;
-		if (!query) return;
-
-		try {
-			$searchResult.classList.add("loading");
-			const plugins = await fsOperation(
-				withSupportedEditor(Url.join(config.API_BASE, `plugins?name=${query}`)),
-			).readFile("json");
-
-			installedPlugins = await listInstalledPlugins();
-			$searchResult.content = plugins.map(ListItem);
-			updateHeight($searchResult);
-		} catch (error) {
-			window.log("error", error);
-			$searchResult.content = <span className="error">{strings.error}</span>;
-		} finally {
-			$searchResult.classList.remove("loading");
-		}
+		await runSearch(this.value);
 	}, 500);
+}
+
+async function runSearch(query) {
+	// Clear filter when searching
+	currentFilter = null;
+	filterHasMore = true;
+	isFilterLoading = false;
+	$searchResult.onscroll = null;
+
+	$searchResult.content = "";
+	const status = await helpers.checkAPIStatus();
+	if (!status) {
+		$searchResult.content = <span className="error">{strings.api_error}</span>;
+		return;
+	}
+
+	query = String(query || "").trim();
+	if (!query) return;
+
+	try {
+		$searchResult.classList.add("loading");
+		const plugins = await fsOperation(
+			withSupportedEditor(
+				Url.join(config.API_BASE, `plugins?name=${encodeURIComponent(query)}`),
+			),
+		).readFile("json");
+
+		installedPlugins = await listInstalledPlugins();
+		$searchResult.content = plugins.length ? (
+			plugins.map(ListItem)
+		) : (
+			<span className="error empty">
+				{strings["no plugins found"] || strings.empty || "No plugins found"}
+			</span>
+		);
+		updateHeight($searchResult);
+	} catch (error) {
+		window.log("error", error);
+		$searchResult.content = <span className="error">{strings.error}</span>;
+	} finally {
+		$searchResult.classList.remove("loading");
+	}
+}
+
+function getSearchInput() {
+	return container?.querySelector('input[name="search-ext"]');
+}
+
+function waitForSearchInput() {
+	const startTime = Date.now();
+
+	return new Promise((resolve) => {
+		const check = () => {
+			const searchInput = getSearchInput();
+			if (searchInput || Date.now() - startTime >= SEARCH_INPUT_WAIT_TIMEOUT) {
+				resolve(searchInput);
+				return;
+			}
+
+			requestAnimationFrame(check);
+		};
+
+		check();
+	});
+}
+
+export async function openWithSearch(query) {
+	Sidebar.show();
+	document
+		.querySelector('[data-action="sidebar-app"][data-id="extensions"]')
+		?.click();
+
+	const searchInput = await waitForSearchInput();
+	if (!searchInput) return;
+
+	searchInput.value = query;
+	clearTimeout(searchTimeout);
+	void runSearch(query);
 }
 
 async function filterPlugins() {

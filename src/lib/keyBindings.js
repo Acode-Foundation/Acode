@@ -517,6 +517,35 @@ const APP_BINDING_CONFIG = [
 		editorOnly: true,
 		action: "format",
 	},
+	{
+		name: "foldCode",
+		description: "Fold code",
+		key: "Ctrl-Shift-[",
+		readOnly: true,
+		editorOnly: true,
+	},
+	{
+		name: "unfoldCode",
+		description: "Unfold code",
+		key: "Ctrl-Shift-]",
+		readOnly: true,
+		editorOnly: true,
+	},
+	{
+		name: "foldAll",
+		description:
+			"Fold all - top-level ranges usually depends on the syntax tree. It may not work reliably if the document isn't fully parsed (e.g., just initialized or too large to parse completely)",
+		key: "Ctrl-Alt-[",
+		readOnly: true,
+		editorOnly: true,
+	},
+	{
+		name: "unfoldAll",
+		description: "Unfold all folded code",
+		key: "Ctrl-Alt-]",
+		readOnly: true,
+		editorOnly: true,
+	},
 ];
 
 const APP_KEY_BINDINGS = buildAppBindings(APP_BINDING_CONFIG);
