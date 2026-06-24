@@ -1,5 +1,6 @@
 import fsOperation from "fileSystem";
 import dialog from "dialogs/dialog";
+import loader from "dialogs/loader";
 import { filesize } from "filesize";
 import mustache from "mustache";
 import helpers from "utils/helpers";
@@ -13,7 +14,7 @@ import settings from "./settings";
  */
 export default async function showFileInfo(url) {
 	if (!url) url = editorManager.activeFile.uri;
-	app.classList.add("title-loading");
+	loader.showTitleLoader();
 	try {
 		const fs = fsOperation(url);
 		const stats = await fs.stat();
@@ -65,5 +66,5 @@ export default async function showFileInfo(url) {
 		helpers.error(err);
 	}
 
-	app.classList.remove("title-loading");
+	loader.removeTitleLoader();
 }

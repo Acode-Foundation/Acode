@@ -2,11 +2,13 @@ import DOMPurify from "dompurify";
 import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
 import restoreTheme from "lib/restoreTheme";
+import tailSpinSvg from "res/tail-spin.svg?raw";
 
 let loaderIsImmortal = false;
 let onCancelCallback = null;
 let $currentDialog = null;
 let $currentMask = null;
+const titleLoaderId = "__title-loader";
 
 /**
  * @typedef {object} LoaderOptions
@@ -51,7 +53,7 @@ function create(titleText, message = "", options = {}) {
 				{titleText}
 			</strong>
 			<span className="message loader">
-				<span className="loader"></span>
+				<span className="loader" innerHTML={tailSpinSvg}></span>
 				<div
 					ref={$message}
 					className="message"
@@ -94,6 +96,18 @@ function create(titleText, message = "", options = {}) {
 		show,
 		destroy,
 	};
+}
+
+function createTitleLoader() {
+	const $titleLoader = tag.get(`#${titleLoaderId}`) || (
+		<span id={titleLoaderId} innerHTML={tailSpinSvg}></span>
+	);
+
+	if (!$titleLoader.isConnected) {
+		app.append($titleLoader);
+	}
+
+	return $titleLoader;
 }
 
 /**
@@ -159,6 +173,7 @@ function showTitleLoader(immortal = false) {
 	}
 
 	setTimeout(() => {
+		createTitleLoader();
 		app.classList.remove("title-loading-hide");
 		app.classList.add("title-loading");
 	}, 0);

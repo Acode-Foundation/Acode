@@ -89,9 +89,15 @@ module.exports = (env, options) => {
       ],
       type: 'javascript/auto',
     },
+    {
+      test: /\.svg$/,
+      resourceQuery: /raw/,
+      type: 'asset/source',
+    },
     // Asset files
     {
       test: /\.(png|svg|jpg|jpeg|ico|ttf|webp|eot|woff|webm|mp4|wav)(\?.*)?$/,
+      resourceQuery: { not: [/raw/] },
       type: 'asset/resource',
     },
     // Regular CSS/SCSS files
