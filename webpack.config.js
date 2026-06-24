@@ -39,7 +39,13 @@ module.exports = (env, options) => {
       ],
     },
     {
+      test: /\.svg$/,
+      resourceQuery: /raw/,
+      type: 'asset/source',
+    },
+    {
       test: /\.(png|svg|jpg|jpeg|ico|ttf|webp|eot|woff|webm|mp4|webp|wav)(\?.*)?$/,
+      resourceQuery: { not: [/raw/] },
       type: "asset/resource",
     },
     {

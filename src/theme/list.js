@@ -1,10 +1,8 @@
-import fsOperation from "fileSystem";
+import fonts from "lib/fonts";
+import settings from "lib/settings";
 import { isDeviceDarkTheme } from "lib/systemConfiguration";
+import { updateActiveTerminals } from "settings/terminalSettings";
 import color from "utils/color";
-import Url from "utils/Url";
-import fonts from "../lib/fonts";
-import settings from "../lib/settings";
-import { updateActiveTerminals } from "../settings/terminalSettings";
 import ThemeBuilder from "./builder";
 import themes, { updateSystemTheme } from "./preInstalled";
 
@@ -86,9 +84,6 @@ export async function apply(id, init) {
 	}
 
 	themeApplied = true;
-	const loaderFile = Url.join(ASSETS_DIRECTORY, "res/tail-spin.svg");
-	const svgName = "__tail-spin__.svg";
-	const img = Url.join(DATA_STORAGE, svgName);
 	const theme = get(id);
 	const $style = document.head.get("style#app-theme") ?? (
 		<style id="app-theme"></style>
@@ -127,6 +122,7 @@ export async function apply(id, init) {
 			updateActiveTerminals("theme", theme.preferredTerminalTheme);
 		}
 	}
+
 	localStorage.__primary_color = theme.primaryColor;
 	document.body.setAttribute("theme-type", theme.type);
 	$style.textContent = theme.css;
@@ -143,19 +139,6 @@ export async function apply(id, init) {
 			system.setUiTheme(primaryColor, scheme);
 		}, 1000);
 		firstTime = false;
-	}
-
-	try {
-		let fs = fsOperation(loaderFile);
-		const svg = await fs.readFile("utf8");
-
-		fs = fsOperation(img);
-		if (!(await fs.exists())) {
-			await fsOperation(DATA_STORAGE).createFile(svgName);
-		}
-		await fs.writeFile(svg.replace(/#fff/g, theme.primaryColor));
-	} catch (error) {
-		window.log("error", error);
 	}
 }
 

@@ -2,6 +2,7 @@ import DOMPurify from "dompurify";
 import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
 import restoreTheme from "lib/restoreTheme";
+import tailSpinSvg from "res/tail-spin.svg?raw";
 
 let loaderIsImmortal = false;
 let onCancelCallback = null;
@@ -51,7 +52,7 @@ function create(titleText, message = "", options = {}) {
 				{titleText}
 			</strong>
 			<span className="message loader">
-				<span className="loader"></span>
+				<span className="loader" innerHTML={tailSpinSvg}></span>
 				<div
 					ref={$message}
 					className="message"

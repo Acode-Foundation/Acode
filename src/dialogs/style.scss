@@ -1,5 +1,3 @@
-@use "../styles/mixins.scss";
-
 .prompt {
   position: fixed;
   left: 50%;
@@ -285,8 +283,19 @@
       align-items: center;
 
       .loader {
-        @include mixins.circular-loader(30px);
+        width: 30px;
+        height: 30px;
+        color: rgb(153, 153, 255);
+        color: var(--primary-color);
+        display: flex;
+        flex-shrink: 0;
         margin: 0 10px;
+
+        svg {
+          width: 100%;
+          height: 100%;
+          display: block;
+        }
       }
 
       .message {

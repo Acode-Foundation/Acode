@@ -11,7 +11,7 @@ export const config = {
 	cursor: "#5c49e9",
 	dropdownBackground: "#f2f1f8",
 	dropdownBorder: "#e1def3",
-	activeLine: "#e1def3",
+	activeLine: "#e1def355",
 	lineNumber: "#0c006b70",
 	lineNumberActive: "#0c006b",
 	matchingBracket: "#d5d1f2",
