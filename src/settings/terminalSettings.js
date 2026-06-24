@@ -109,9 +109,9 @@ export default function terminalSettings() {
 			text: strings["terminal:cursor style"],
 			value: terminalValues.cursorStyle,
 			select: [
-			  strings["terminal:block"],
-			  strings["terminal:underline"],
-			  strings["terminal:bar"]
+				strings["terminal:block"],
+				strings["terminal:underline"],
+				strings["terminal:bar"],
 			],
 			info: strings["info-cursorStyle"],
 			category: categories.cursor,
@@ -121,10 +121,10 @@ export default function terminalSettings() {
 			text: strings["terminal:cursor inactive style"],
 			value: terminalValues.cursorInactiveStyle,
 			select: [
-			  strings["terminal:inactive block"],
-			  strings["terminal:inactive underline"],
-			  strings["terminal:inactive bar"],
-			  strings["terminal:inactive none"]
+				strings["terminal:inactive block"],
+				strings["terminal:inactive underline"],
+				strings["terminal:inactive bar"],
+				strings["terminal:inactive none"],
 			],
 			info: strings["info-cursorInactiveStyle"],
 			category: categories.cursor,
