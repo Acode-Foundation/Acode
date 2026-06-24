@@ -14,8 +14,8 @@ export const testDefinitions = [
 	runSanityTests,
 	runExecutorTests,
 	runUrlTests,
-  runFsTests,
-  runJsZipTests,
+	runFsTests,
+	runJsZipTests,
 	runCodeMirrorTests,
 	runAceCompatibilityTests,
 ];
