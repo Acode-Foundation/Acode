@@ -71,13 +71,14 @@ JSZip.defaults = {
 };
 
 JSZip.prototype.folder = function(name) {
+    var self = this;
     if (name instanceof RegExp) {
         var results = [];
         var regex = name;
-        for (var filename in this.files) {
-            var file = this.files[filename];
-            if (file.dir && filename.indexOf(this.prefix) === 0) {
-                var relative = filename.slice(this.prefix.length);
+        for (var filename in self.files) {
+            var file = self.files[filename];
+            if (file.dir && filename.indexOf(self.prefix) === 0) {
+                var relative = filename.slice(self.prefix.length);
                 if (regex.test(relative)) {
                     results.push(file);
                 }
@@ -89,24 +90,24 @@ JSZip.prototype.folder = function(name) {
     if (!name.endsWith('/')) {
         name += '/';
     }
-    var fullPath = this.prefix + name;
+    var fullPath = self.prefix + name;
 
-    if (!this.root.files[fullPath]) {
-        var folderObj = new JSZipObject(fullPath, true, this.root);
-        this.root.files[fullPath] = folderObj;
+    if (!self.root.files[fullPath]) {
+        var folderObj = new JSZipObject(fullPath, true, self.root);
+        self.root.files[fullPath] = folderObj;
         
         var promise = new Promise(function(resolve, reject) {
-            exec(resolve, reject, "JsZip", "addFile", [this.root.id, fullPath, null, { dir: true }]);
+            exec(resolve, reject, "JsZip", "addFile", [self.root.id, fullPath, null, { dir: true }]);
         });
-        this.root._pending.push(promise);
+        self.root._pending.push(promise);
     }
 
     var child = Object.create(JSZip.prototype);
-    child.id = this.root.id;
-    child.root = this.root;
+    child.id = self.root.id;
+    child.root = self.root;
     child.prefix = fullPath;
-    child.files = this.root.files;
-    child._pending = this.root._pending;
+    child.files = self.root.files;
+    child._pending = self.root._pending;
     return child;
 };
 
@@ -220,7 +221,7 @@ JSZip.prototype._addFileToNativePromise = function(fullPath, data, options) {
     var createFolders = options.createFolders !== false;
     var parentPromise = Promise.resolve();
     if (createFolders) {
-        parentPromise = this._ensureParentFolders(fullPath);
+        parentPromise = self._ensureParentFolders(fullPath);
     }
 
     var dataType = "string";
@@ -270,20 +271,21 @@ JSZip.prototype._addFileToNativePromise = function(fullPath, data, options) {
 };
 
 JSZip.prototype.remove = function(name) {
-    var fullPath = this.prefix + name;
+    var self = this;
+    var fullPath = self.prefix + name;
     var normalizedPath = fullPath.endsWith('/') ? fullPath : fullPath + '/';
     
-    for (var filename in this.root.files) {
+    for (var filename in self.root.files) {
         if (filename === fullPath || filename === normalizedPath || filename.indexOf(normalizedPath) === 0) {
-            delete this.root.files[filename];
+            delete self.root.files[filename];
         }
     }
     
     var promise = new Promise(function(resolve, reject) {
-        exec(resolve, reject, "JsZip", "removeFile", [this.root.id, fullPath]);
+        exec(resolve, reject, "JsZip", "removeFile", [self.root.id, fullPath]);
     });
-    this.root._pending.push(promise);
-    return this;
+    self.root._pending.push(promise);
+    return self;
 };
 
 JSZip.prototype.forEach = function(callback) {
