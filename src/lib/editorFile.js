@@ -1285,8 +1285,9 @@ export default class EditorFile {
 	/**
 	 * Sets syntax highlighting of the file.
 	 * @param {string} [mode]
+	 * @param {{ recommend?: boolean }} [options]
 	 */
-	setMode(mode) {
+	setMode(mode, options = {}) {
 		if (this.type !== "editor") return;
 		const event = createFileEvent(this);
 		this.#emit("changemode", event);
@@ -1309,7 +1310,9 @@ export default class EditorFile {
 		// Store mode info for later use when creating editor view
 		this.currentMode = mode;
 		this.currentLanguageExtension = modeInfo?.getExtension() || null;
-		maybeRecommendLanguageModeExtension(this, modeInfo);
+		if (options.recommend !== false) {
+			maybeRecommendLanguageModeExtension(this, modeInfo);
+		}
 
 		// sets file icon
 		this.#tab.lead(

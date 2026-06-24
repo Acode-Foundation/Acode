@@ -113,6 +113,8 @@ class LanguageModeRecommendations {
 
 	async showRecommendation(keyword, filename) {
 		const hasPlugins = await this.getPluginAvailability(keyword);
+		// If a plugin registered the mode while the lookup was pending, suppress
+		// this stale recommendation and leave the keyword eligible for future checks.
 		if (!hasPlainTextFallback(getModeForPath(filename), filename)) return false;
 
 		const displayExt = `.${keyword}`;
