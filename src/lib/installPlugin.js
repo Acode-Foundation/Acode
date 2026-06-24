@@ -3,7 +3,6 @@ import alert from "dialogs/alert";
 import confirm from "dialogs/confirm";
 import loader from "dialogs/loader";
 import purchaseListener from "handlers/purchase";
-import JSZip from "jszip";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
 import config from "./config";
@@ -101,7 +100,7 @@ export default async function installPlugin(
 		}
 
 		if (plugin) {
-			const zip = new JSZip();
+			const zip = new window.JSZip();
 			await zip.loadAsync(plugin);
 
 			if (!zip.files["plugin.json"]) {

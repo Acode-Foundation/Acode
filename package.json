@@ -44,7 +44,8 @@
       "com.foxdebug.acode.rk.exec.proot": {},
       "cordova-plugin-iap": {},
       "com.foxdebug.acode.rk.customtabs": {},
-      "cordova-plugin-system": {}
+      "cordova-plugin-system": {},
+      "com.foxdebug.acode.rk.zip": {}
     },
     "platforms": [
       "android"
@@ -98,6 +99,7 @@
     "cordova-plugin-system": "file:src/plugins/system",
     "cordova-plugin-websocket": "file:src/plugins/websocket",
     "css-loader": "^7.1.4",
+    "JsZip-Java": "file:src/plugins/jszip-java",
     "mini-css-extract-plugin": "^2.10.2",
     "path-browserify": "^1.0.1",
     "postcss-loader": "^8.2.1",

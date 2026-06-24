@@ -1,0 +1,17 @@
+{
+  "name": "JsZip-Java",
+  "version": "1.0.0",
+  "description": "A complete drop-in replacement for jszip with java backend",
+  "cordova": {
+    "id": "com.foxdebug.acode.rk.zip",
+    "platforms": [
+      "android"
+    ]
+  },
+  "keywords": [
+    "ecosystem:cordova",
+    "cordova-android"
+  ],
+  "author": "@RohitKushvaha01",
+  "license": "MIT"
+}

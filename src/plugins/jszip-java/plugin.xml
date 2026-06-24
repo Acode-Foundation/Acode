@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<plugin
+    xmlns="http://apache.org/cordova/ns/plugins/1.0"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    id="com.foxdebug.acode.rk.zip"
+    version="1.0.0"
+>
+    <name>JsZip-Java</name>
+
+
+    <js-module name="JsZip" src="www/JsZip.js">
+        <clobbers target="window.JSZip" />
+    </js-module>
+
+
+    <platform name="android">
+        <config-file parent="/*" target="res/xml/config.xml">
+            <feature name="JsZip">
+                <param
+                    name="android-package"
+                    value="com.foxdebug.acode.rk.zip.JsZip"
+                />
+            </feature>
+        </config-file>
+
+        <source-file
+            src="src/android/JsZip.java"
+            target-dir="src/com/foxdebug/acode/rk/zip"
+        />
+
+    </platform>
+</plugin>

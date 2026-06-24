@@ -12,7 +12,6 @@ import confirm from "dialogs/confirm";
 import loader from "dialogs/loader";
 import prompt from "dialogs/prompt";
 import select from "dialogs/select";
-import JSZip from "jszip";
 import actionStack from "lib/actionStack";
 import checkFiles from "lib/checkFiles";
 import config from "lib/config";
@@ -302,7 +301,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 					try {
 						const zipContent = await fsOperation(zipFile).readFile();
-						const zip = await JSZip.loadAsync(zipContent);
+						const zip = await window.JSZip.loadAsync(zipContent);
 						const targetDir = currentDir.url;
 						const targetFs = fsOperation(targetDir);
 
@@ -381,7 +380,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 						break;
 					}
 
-					const zip = new JSZip();
+					const zip = new window.JSZip();
 					let loadingLoader = loader.create(
 						strings["loading"],
 						"Compressing files",
