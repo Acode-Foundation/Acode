@@ -1,4 +1,3 @@
-import "./welcome.scss";
 import { getResolvedKeyBindings } from "cm/commandRegistry";
 import Logo from "components/logo";
 import config from "lib/config";

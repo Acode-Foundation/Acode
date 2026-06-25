@@ -6,6 +6,7 @@ import "res/icons/style.css";
 import "res/file-icons/style.css";
 import "styles/overrideAceStyle.scss";
 import "styles/wideScreen.scss";
+import "pages/welcome/welcome.scss";
 
 import "lib/polyfill";
 import "cm/supportedModes";
@@ -36,6 +37,7 @@ import actionStack from "lib/actionStack";
 import adRewards from "lib/adRewards";
 import ajax from "lib/ajax";
 import applySettings from "lib/applySettings";
+import checkFiles from "lib/checkFiles";
 import { canSaveFile } from "lib/commands";
 import config from "lib/config";
 import EditorFile from "lib/editorFile";
@@ -904,12 +906,7 @@ async function pauseHandler() {
 function resumeHandler() {
 	adRewards.handleResume();
 	if (!settings.value.checkFiles) return;
-	import(/* webpackChunkName: "checkFiles" */ "lib/checkFiles").then(
-		({ default: checkFiles }) => checkFiles(),
-		(error) => {
-			console.error("Failed to load checkFiles module:", error);
-		},
-	);
+	checkFiles();
 }
 
 function createAceModelistCompatModule() {
