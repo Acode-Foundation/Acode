@@ -178,16 +178,15 @@ export default function otherSettings() {
 			key: "quickToolsTriggerMode",
 			text: strings["quicktools trigger mode"],
 			value: values.quickToolsTriggerMode,
-			valueText: (value) => {
-				switch (value) {
-					case appSettings.QUICKTOOLS_TRIGGER_MODE_CLICK:
-						return strings["quicktools-trigger:click"];
-					case appSettings.QUICKTOOLS_TRIGGER_MODE_TOUCH:
-						return strings["quicktools-trigger:touch"];
-					default:
-						return value.capitalize();
-				}
-			},
+valueText: (value) => {
+    const options = {
+        [appSettings.QUICKTOOLS_TRIGGER_MODE_CLICK]: strings["quicktools-trigger:click"],
+        [appSettings.QUICKTOOLS_TRIGGER_MODE_TOUCH]: strings["quicktools-trigger:touch"],
+    };
+    
+    return options[value] || value.capitalize();
+},
+
 			select: [
 				[
 					appSettings.QUICKTOOLS_TRIGGER_MODE_CLICK,

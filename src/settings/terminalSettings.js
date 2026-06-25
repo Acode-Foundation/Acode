@@ -158,7 +158,6 @@ export default function terminalSettings() {
 			info: strings["info-cursorInactiveStyle"],
 			category: categories.cursor,
 		},
-
 		{
 			key: "cursorBlink",
 			text: strings["terminal:cursor blink"],
