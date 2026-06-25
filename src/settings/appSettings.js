@@ -186,7 +186,7 @@ export default function otherSettings() {
 						strings["quicktools-trigger:touch"],
 				};
 
-				return options[value] || value.capitalize();
+				return options[value] ?? (value != null ? value.capitalize() : value);
 			},
 			select: [
 				[
