@@ -1,0 +1,69 @@
+{
+  "name": "cordova-plugin-advanced-http",
+  "version": "3.3.1",
+  "description": "Cordova / Phonegap plugin for communicating with HTTP servers using SSL pinning",
+  "scripts": {
+    "update:cert": "node ./scripts/update-e2e-server-cert.js && node ./scripts/update-e2e-client-cert.js",
+    "build:browser": "./scripts/build-test-app.sh --browser",
+    "build:android": "./scripts/build-test-app.sh --android --emulator",
+    "build:ios": "./scripts/build-test-app.sh --ios --emulator",
+    "test:android": "npm run update:cert && npm run build:android && ./scripts/test-app.sh --android --emulator",
+    "test:ios": "npm run update:cert && npm run build:ios && ./scripts/test-app.sh --ios --emulator",
+    "test:app": "npm run test:android && npm run test:ios",
+    "test:js": "mocha ./test/js-specs.js",
+    "test": "npm run test:js && npm run test:app",
+    "release": "npm run test && ./scripts/release.sh"
+  },
+  "cordova": {
+    "id": "cordova-plugin-advanced-http",
+    "platforms": [
+      "ios",
+      "android"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/silkimen/cordova-plugin-advanced-http.git"
+  },
+  "keywords": [
+    "cordova",
+    "device",
+    "ecosystem:cordova",
+    "cordova-ios",
+    "cordova-android",
+    "ssl",
+    "tls"
+  ],
+  "engines": [
+    {
+      "name": "cordova",
+      "version": ">=4.0.0"
+    }
+  ],
+  "author": "Wymsee",
+  "contributors": [
+    "devgeeks",
+    "EddyVerbruggen",
+    "mbektchiev",
+    "denisbabineau",
+    "andrey-tsaplin",
+    "pvsaikrishna",
+    "cvillerm",
+    "hideov",
+    "silkimen"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/silkimen/cordova-plugin-advanced-http/issues"
+  },
+  "homepage": "https://github.com/silkimen/cordova-plugin-advanced-http#readme",
+  "devDependencies": {
+    "chai": "4.3.6",
+    "colors": "1.4.0",
+    "cordova": "11.0.0",
+    "mocha": "9.2.2",
+    "umd-tough-cookie": "3.0.0",
+    "wd": "1.14.0",
+    "xml2js": "0.4.23"
+  }
+}

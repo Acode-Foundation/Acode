@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<plugin xmlns="http://www.phonegap.com/ns/plugins/1.0" xmlns:android="http://schemas.android.com/apk/res/android" id="cordova-plugin-advanced-http" version="3.3.1">
+  <name>Advanced HTTP plugin</name>
+  <description>
+        Cordova / Phonegap plugin for communicating with HTTP servers using SSL pinning
+	 </description>
+  <engines>
+    <engine name="cordova" version=">=4.0.0"/>
+  </engines>
+  <dependency id="cordova-plugin-file" version=">=2.0.0"/>
+  <preference name="AndroidBlacklistSecureSocketProtocols" default="SSLv3,TLSv1"/>
+  <js-module src="www/cookie-handler.js" name="cookie-handler"/>
+  <js-module src="www/dependency-validator.js" name="dependency-validator"/>
+  <js-module src="www/error-codes.js" name="error-codes"/>
+  <js-module src="www/global-configs.js" name="global-configs"/>
+  <js-module src="www/helpers.js" name="helpers"/>
+  <js-module src="www/js-util.js" name="js-util"/>
+  <js-module src="www/local-storage-store.js" name="local-storage-store"/>
+  <js-module src="www/lodash.js" name="lodash"/>
+  <js-module src="www/messages.js" name="messages"/>
+  <js-module src="www/ponyfills.js" name="ponyfills"/>
+  <js-module src="www/public-interface.js" name="public-interface"/>
+  <js-module src="www/umd-tough-cookie.js" name="tough-cookie"/>
+  <js-module src="www/url-util.js" name="url-util"/>
+  <js-module src="www/advanced-http.js" name="http">
+    <clobbers target="cordova.plugin.http"/>
+  </js-module>
+
+  <platform name="android">
+    <config-file target="res/xml/config.xml" parent="/*">
+      <feature name="CordovaHttpPlugin">
+        <param name="android-package" value="com.silkimen.cordovahttp.CordovaHttpPlugin"/>
+      </feature>
+    </config-file>
+    <config-file target="AndroidManifest.xml" parent="/manifest">
+      <uses-permission android:name="android.permission.INTERNET"/>
+      <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+    </config-file>
+    <source-file src="src/android/com/silkimen/cordovahttp/CordovaClientAuth.java" target-dir="src/com/silkimen/cordovahttp"/>
+    <source-file src="src/android/com/silkimen/cordovahttp/CordovaHttpBase.java" target-dir="src/com/silkimen/cordovahttp"/>
+    <source-file src="src/android/com/silkimen/cordovahttp/CordovaHttpDownload.java" target-dir="src/com/silkimen/cordovahttp"/>
+    <source-file src="src/android/com/silkimen/cordovahttp/CordovaHttpOperation.java" target-dir="src/com/silkimen/cordovahttp"/>
+    <source-file src="src/android/com/silkimen/cordovahttp/CordovaHttpPlugin.java" target-dir="src/com/silkimen/cordovahttp"/>
+    <source-file src="src/android/com/silkimen/cordovahttp/CordovaHttpResponse.java" target-dir="src/com/silkimen/cordovahttp"/>
+    <source-file src="src/android/com/silkimen/cordovahttp/CordovaHttpUpload.java" target-dir="src/com/silkimen/cordovahttp"/>
+    <source-file src="src/android/com/silkimen/cordovahttp/CordovaObservableCallbackContext.java" target-dir="src/com/silkimen/cordovahttp"/>
+    <source-file src="src/android/com/silkimen/cordovahttp/CordovaServerTrust.java" target-dir="src/com/silkimen/cordovahttp"/>
+    <source-file src="src/android/com/silkimen/http/HttpBodyDecoder.java" target-dir="src/com/silkimen/http"/>
+    <source-file src="src/android/com/silkimen/http/HttpRequest.java" target-dir="src/com/silkimen/http"/>
+    <source-file src="src/android/com/silkimen/http/JsonUtils.java" target-dir="src/com/silkimen/http"/>
+    <source-file src="src/android/com/silkimen/http/KeyChainKeyManager.java" target-dir="src/com/silkimen/http"/>
+    <source-file src="src/android/com/silkimen/http/TLSConfiguration.java" target-dir="src/com/silkimen/http"/>
+    <source-file src="src/android/com/silkimen/http/TLSSocketFactory.java" target-dir="src/com/silkimen/http"/>
+  </platform>
+
+</plugin>
