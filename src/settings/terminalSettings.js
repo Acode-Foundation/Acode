@@ -72,6 +72,14 @@ export default function terminalSettings() {
 			key: "fontWeight",
 			text: strings["terminal:font weight"],
 			value: terminalValues.fontWeight,
+			valueText: (value) => {
+				const tuple = [
+					["normal", strings["terminal:normal"]],
+					["bold", strings["terminal:bold"]],
+				].find((item) => item[0] === value);
+
+				return tuple ? tuple[1] : value;
+			},
 			select: [
 				["normal", strings["terminal:normal"]],
 				["bold", strings["terminal:bold"]],
@@ -88,6 +96,7 @@ export default function terminalSettings() {
 			info: strings["info-fontWeight"],
 			category: categories.display,
 		},
+
 		{
 			key: "letterSpacing",
 			text: strings["letter spacing"],
@@ -108,6 +117,14 @@ export default function terminalSettings() {
 			key: "cursorStyle",
 			text: strings["terminal:cursor style"],
 			value: terminalValues.cursorStyle,
+			valueText: (value) => {
+				const option = [
+					["block", strings["terminal:block"]],
+					["underline", strings["terminal:underline"]],
+					["bar", strings["terminal:bar"]],
+				].find((item) => item[0] === value);
+				return option ? option[1] : value;
+			},
 			select: [
 				["block", strings["terminal:block"]],
 				["underline", strings["terminal:underline"]],
@@ -120,6 +137,17 @@ export default function terminalSettings() {
 			key: "cursorInactiveStyle",
 			text: strings["terminal:cursor inactive style"],
 			value: terminalValues.cursorInactiveStyle,
+			valueText: (value) => {
+				const options = [
+					["outline", strings["terminal:inactive outline"]],
+					["block", strings["terminal:inactive block"]],
+					["underline", strings["terminal:inactive underline"]],
+					["bar", strings["terminal:inactive bar"]],
+					["none", strings["terminal:inactive none"]],
+				];
+				const option = options.find((item) => item[0] === value);
+				return option ? option[1] : value;
+			},
 			select: [
 				["outline", strings["terminal:inactive outline"]],
 				["block", strings["terminal:inactive block"]],
@@ -130,6 +158,7 @@ export default function terminalSettings() {
 			info: strings["info-cursorInactiveStyle"],
 			category: categories.cursor,
 		},
+
 		{
 			key: "cursorBlink",
 			text: strings["terminal:cursor blink"],
