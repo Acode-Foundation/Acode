@@ -113,7 +113,7 @@ export function registerPrettierFormatter() {
 	);
 }
 
-async function formatActiveFileWithPrettier() {
+export async function formatActiveFileWithPrettier() {
 	const file = editorManager?.activeFile;
 	const editor = editorManager?.editor;
 	if (!file || file.type !== "editor" || !editor) return false;

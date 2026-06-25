@@ -1,7 +1,10 @@
 import "./styles.scss";
 import lspClientManager from "cm/lsp/clientManager";
+import {
+	getServersForCurrentFile,
+	hasConnectedServers,
+} from "cm/lsp/connectionState";
 import { getServerStats } from "cm/lsp/serverLauncher";
-import serverRegistry from "cm/lsp/serverRegistry";
 import toast from "components/toast";
 import actionStack from "lib/actionStack";
 import restoreTheme from "lib/restoreTheme";
@@ -141,27 +144,6 @@ console.error = function (...args) {
 function getActiveClients() {
 	try {
 		return lspClientManager.getActiveClients();
-	} catch {
-		return [];
-	}
-}
-
-function getCurrentFileLanguage() {
-	try {
-		const file = window.editorManager?.activeFile;
-		if (!file || file.type !== "editor") return null;
-		return file.currentMode?.toLowerCase() || null;
-	} catch {
-		return null;
-	}
-}
-
-function getServersForCurrentFile() {
-	const language = getCurrentFileLanguage();
-	if (!language) return [];
-
-	try {
-		return serverRegistry.getServersForLanguage(language);
 	} catch {
 		return [];
 	}
@@ -691,11 +673,6 @@ function showLspInfoDialog() {
 	if (currentView === "list") {
 		renderList();
 	}
-}
-
-function hasConnectedServers() {
-	const relevantServers = getServersForCurrentFile();
-	return relevantServers.length > 0;
 }
 
 export { addLspLog, getLspLogs, hasConnectedServers, showLspInfoDialog };
