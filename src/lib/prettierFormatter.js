@@ -14,8 +14,6 @@ import prettier from "prettier/standalone";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
 
-const PRETTIER_ID = "prettier";
-const PRETTIER_NAME = "Prettier";
 const CONFIG_FILENAMES = [
 	".prettierrc",
 	".prettierrc.json",
@@ -71,47 +69,6 @@ const MODE_TO_PARSER = {
 	vue: "vue",
 	javascript: "babel",
 };
-
-const SUPPORTED_EXTENSIONS = [
-	"js",
-	"cjs",
-	"mjs",
-	"jsx",
-	"ts",
-	"tsx",
-	"json",
-	"json5",
-	"css",
-	"scss",
-	"less",
-	"html",
-	"htm",
-	"vue",
-	"md",
-	"markdown",
-	"mdx",
-	"yaml",
-	"yml",
-	"graphql",
-	"gql",
-];
-
-/**
- * Register Prettier formatter with Acode instance
- */
-export function registerPrettierFormatter() {
-	if (!window?.acode) return;
-	const alreadyRegistered = acode.formatters.some(
-		({ id }) => id === PRETTIER_ID,
-	);
-	if (alreadyRegistered) return;
-	acode.registerFormatter(
-		PRETTIER_ID,
-		SUPPORTED_EXTENSIONS,
-		() => formatActiveFileWithPrettier(),
-		PRETTIER_NAME,
-	);
-}
 
 export async function formatActiveFileWithPrettier() {
 	const file = editorManager?.activeFile;

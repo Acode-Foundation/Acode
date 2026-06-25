@@ -12,16 +12,13 @@ import Url from "utils/Url";
 import checkFiles from "./checkFiles";
 import config from "./config";
 import EditorFile from "./editorFile";
+import { loadFileBrowser } from "./lazyImports";
 import openFile from "./openFile";
 import openFolder from "./openFolder";
 import run from "./run";
 import saveState from "./saveState";
 import appSettings from "./settings";
 import showFileInfo from "./showFileInfo";
-
-const loadFileBrowser = async () =>
-	(await import(/* webpackChunkName: "fileBrowser" */ "pages/fileBrowser"))
-		.default;
 
 function getTabCloseSelectionOptions() {
 	return {

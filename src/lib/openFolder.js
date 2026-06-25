@@ -16,6 +16,7 @@ import Uri from "utils/Uri";
 import Url from "utils/Url";
 import config from "./config";
 import * as FileList from "./fileList";
+import { loadFileBrowser } from "./lazyImports";
 import openFile from "./openFile";
 import recents from "./recents";
 import appSettings from "./settings";
@@ -26,10 +27,6 @@ const isAcodeTerminalPublicSafUri = (value = "") =>
 	value.startsWith("content://com.foxdebug.acode.documents/tree/");
 const isTerminalSafUri = (value = "") =>
 	isTermuxSafUri(value) || isAcodeTerminalPublicSafUri(value);
-
-const loadFileBrowser = async () =>
-	(await import(/* webpackChunkName: "fileBrowser" */ "pages/fileBrowser"))
-		.default;
 
 const getTerminalPaths = () => {
 	const packageName = window.BuildInfo?.packageName || "com.foxdebug.acode";
