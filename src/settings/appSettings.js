@@ -316,6 +316,13 @@ export default function otherSettings() {
 			key: "console",
 			text: strings.console,
 			value: values.console,
+			valueText: (value) => {
+				const options = {
+					[appSettings.CONSOLE_LEGACY]: "Legacy",
+					[appSettings.CONSOLE_ERUDA]: "Eruda",
+				};
+				return options[value] ?? (value != null ? value.capitalize() : value);
+			},
 			select: [
 				[appSettings.CONSOLE_LEGACY, "Legacy"],
 				[appSettings.CONSOLE_ERUDA, "Eruda"],

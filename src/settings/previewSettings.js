@@ -48,10 +48,7 @@ export default function previewSettings() {
 					[appSettings.PREVIEW_MODE_BROWSER]: strings.browser,
 					[appSettings.PREVIEW_MODE_INAPP]: strings.inapp,
 				};
-
-				if (options[value]) return options[value];
-
-				return value ? value.capitalize() : "";
+				return options[value] ?? (value != null ? value.capitalize() : value);
 			},
 			select: [
 				[appSettings.PREVIEW_MODE_BROWSER, strings.browser],
