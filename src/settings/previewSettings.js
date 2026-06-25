@@ -43,6 +43,13 @@ export default function previewSettings() {
 			key: "previewMode",
 			text: strings["preview mode"],
 			value: values.previewMode,
+			valueText: (value) => {
+				const options = {
+					[appSettings.PREVIEW_MODE_BROWSER]: strings.browser,
+					[appSettings.PREVIEW_MODE_INAPP]: strings.inapp,
+				};
+				return options[value] || value.capitalize();
+			},
 			select: [
 				[appSettings.PREVIEW_MODE_BROWSER, strings.browser],
 				[appSettings.PREVIEW_MODE_INAPP, strings.inapp],
