@@ -316,7 +316,10 @@ export default function otherSettings() {
 			key: "console",
 			text: strings.console,
 			value: values.console,
-			select: [appSettings.CONSOLE_LEGACY, appSettings.CONSOLE_ERUDA],
+			select: [
+				[appSettings.CONSOLE_LEGACY, "Legacy"],
+				[appSettings.CONSOLE_ERUDA, "Eruda"],
+			],
 			info: strings["settings-info-app-console"],
 			category: categories.advanced,
 		},
