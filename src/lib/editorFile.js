@@ -22,6 +22,7 @@ import helpers from "utils/helpers";
 import Path from "utils/Path";
 import Url from "utils/Url";
 import config from "./config";
+import { isInitialPluginLoadComplete } from "./loadPlugins";
 import openFolder from "./openFolder";
 import run from "./run";
 import saveFile from "./saveFile";
@@ -229,6 +230,7 @@ function createSessionProxy(state, file) {
 
 function maybeRecommendLanguageModeExtension(file, modeInfo) {
 	if (appSettings.value.recommendExtensions === false) return;
+	if (!isInitialPluginLoadComplete()) return;
 	if (modeInfo?.name !== "text" || modeInfo.supportsFile(file.filename)) return;
 
 	void import("./languageModeRecommendations").then(

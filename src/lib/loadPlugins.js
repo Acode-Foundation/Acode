@@ -36,6 +36,7 @@ const AUTO_DISABLED_PLUGINS = new Set();
 const PLUGIN_LOAD_TIMEOUT = 15000;
 const PLUGIN_DISABLE_TIMEOUT = 60000;
 let pluginDisabledUpdateQueue = Promise.resolve();
+let initialPluginLoadComplete = false;
 
 class PluginLoadTimeoutError extends Error {
 	constructor() {
@@ -45,70 +46,84 @@ class PluginLoadTimeoutError extends Error {
 }
 
 export default async function loadPlugins(loadOnlyTheme = false) {
-	const plugins = await fsOperation(PLUGIN_DIR).lsDir();
-	const results = [];
-
-	if (plugins.length > 0) {
-		toast(strings["loading plugins"]);
+	if (!loadOnlyTheme) {
+		initialPluginLoadComplete = false;
 	}
 
-	let pluginsToLoad = [];
-	const currentTheme = settings.value.appTheme;
-	const enabledMap = settings.value.pluginsDisabled || {};
+	try {
+		const plugins = await fsOperation(PLUGIN_DIR).lsDir();
+		const results = [];
 
-	if (loadOnlyTheme) {
-		// Only load theme plugins matching current theme
-		pluginsToLoad = plugins.filter((pluginDir) => {
+		if (plugins.length > 0) {
+			toast(strings["loading plugins"]);
+		}
+
+		let pluginsToLoad = [];
+		const currentTheme = settings.value.appTheme;
+		const enabledMap = settings.value.pluginsDisabled || {};
+
+		if (loadOnlyTheme) {
+			// Only load theme plugins matching current theme
+			pluginsToLoad = plugins.filter((pluginDir) => {
+				const pluginId = Url.basename(pluginDir.url);
+				// Skip already loaded and plugins that were previously marked broken
+				return (
+					isThemePlugin(pluginId) &&
+					!LOADED_PLUGINS.has(pluginId) &&
+					enabledMap[pluginId] !== true &&
+					!BROKEN_PLUGINS.has(pluginId)
+				);
+			});
+		} else {
+			// Load non-theme plugins that aren't loaded yet and are enabled
+			pluginsToLoad = plugins.filter((pluginDir) => {
+				const pluginId = Url.basename(pluginDir.url);
+				// Skip theme plugins, already loaded, disabled or previously marked broken
+				return (
+					!isThemePlugin(pluginId) &&
+					!LOADED_PLUGINS.has(pluginId) &&
+					enabledMap[pluginId] !== true &&
+					!BROKEN_PLUGINS.has(pluginId)
+				);
+			});
+		}
+
+		const loadPromises = pluginsToLoad.map(async (pluginDir) => {
 			const pluginId = Url.basename(pluginDir.url);
-			// Skip already loaded and plugins that were previously marked broken
-			return (
-				isThemePlugin(pluginId) &&
-				!LOADED_PLUGINS.has(pluginId) &&
-				enabledMap[pluginId] !== true &&
-				!BROKEN_PLUGINS.has(pluginId)
-			);
-		});
-	} else {
-		// Load non-theme plugins that aren't loaded yet and are enabled
-		pluginsToLoad = plugins.filter((pluginDir) => {
-			const pluginId = Url.basename(pluginDir.url);
-			// Skip theme plugins, already loaded, disabled or previously marked broken
-			return (
-				!isThemePlugin(pluginId) &&
-				!LOADED_PLUGINS.has(pluginId) &&
-				enabledMap[pluginId] !== true &&
-				!BROKEN_PLUGINS.has(pluginId)
-			);
-		});
-	}
 
-	const loadPromises = pluginsToLoad.map(async (pluginDir) => {
-		const pluginId = Url.basename(pluginDir.url);
-
-		if (loadOnlyTheme && currentTheme) {
-			const pluginIdLower = pluginId.toLowerCase();
-			const currentThemeLower = currentTheme.toLowerCase();
-			const matchFound = pluginIdLower.includes(currentThemeLower);
-			// Skip if:
-			// 1. No match found with current theme AND
-			// 2. It's not a theme plugin at all
-			if (!matchFound && !isThemePlugin(pluginId)) {
-				return;
+			if (loadOnlyTheme && currentTheme) {
+				const pluginIdLower = pluginId.toLowerCase();
+				const currentThemeLower = currentTheme.toLowerCase();
+				const matchFound = pluginIdLower.includes(currentThemeLower);
+				// Skip if:
+				// 1. No match found with current theme AND
+				// 2. It's not a theme plugin at all
+				if (!matchFound && !isThemePlugin(pluginId)) {
+					return;
+				}
 			}
+
+			try {
+				results.push(await loadPluginWithTimeout(pluginId));
+			} catch (error) {
+				console.error(`Error loading plugin ${pluginId}:`, error);
+				results.push(false);
+			}
+		});
+
+		await Promise.allSettled(loadPromises);
+
+		acode[onPluginsLoadCompleteCallback]();
+		return results.filter(Boolean).length;
+	} finally {
+		if (!loadOnlyTheme) {
+			initialPluginLoadComplete = true;
 		}
+	}
+}
 
-		try {
-			results.push(await loadPluginWithTimeout(pluginId));
-		} catch (error) {
-			console.error(`Error loading plugin ${pluginId}:`, error);
-			results.push(false);
-		}
-	});
-
-	await Promise.allSettled(loadPromises);
-
-	acode[onPluginsLoadCompleteCallback]();
-	return results.filter(Boolean).length;
+export function isInitialPluginLoadComplete() {
+	return initialPluginLoadComplete;
 }
 
 export async function loadPluginWithTimeout(pluginId, justInstalled = false) {
