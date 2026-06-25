@@ -188,7 +188,6 @@ export default function otherSettings() {
 
 				return options[value] || value.capitalize();
 			},
-
 			select: [
 				[
 					appSettings.QUICKTOOLS_TRIGGER_MODE_CLICK,
