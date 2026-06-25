@@ -6,6 +6,7 @@ import adRewards from "lib/adRewards";
 import config from "lib/config";
 import { bannerAd, interstitialAd } from "lib/startAd";
 import { isBinaryFile } from "./binaryExtensions";
+import { isPlayStoreInstall } from "./installSource";
 import path from "./Path";
 import Uri from "./Uri";
 import Url from "./Url";
@@ -548,9 +549,6 @@ export default {
 	},
 
 	shouldAllowExternalPurchase() {
-		return (
-			!this.isIapAvailable() &&
-			window.appInstallSource !== "com.android.vending"
-		);
+		return !this.isIapAvailable() && !isPlayStoreInstall();
 	},
 };

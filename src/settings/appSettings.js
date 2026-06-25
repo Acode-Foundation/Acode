@@ -15,14 +15,13 @@ import FontManager from "pages/fontManager";
 import QuickToolsSettings from "pages/quickTools";
 import encodings, { getEncoding } from "utils/encodings";
 import helpers from "utils/helpers";
+import { isPlayStoreInstall } from "utils/installSource";
 import Url from "utils/Url";
-
-const INSTALL_SOURCE_PLAY = "com.android.vending";
 
 export default function otherSettings() {
 	const values = appSettings.value;
 	const title = strings["app settings"].capitalize();
-	const isPlayStoreInstall = window.appInstallSource === INSTALL_SOURCE_PLAY;
+	const installedFromPlayStore = isPlayStoreInstall();
 	const appFontText = strings["app font"] || "App font";
 	const appFontInfo =
 		strings["settings-info-app-font-family"] ||
@@ -293,7 +292,7 @@ export default function otherSettings() {
 			info: strings["settings-info-app-check-files"],
 			category: categories.advanced,
 		},
-		...(!isPlayStoreInstall
+		...(!installedFromPlayStore
 			? [
 					{
 						key: "checkForAppUpdates",

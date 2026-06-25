@@ -63,20 +63,16 @@ import themes from "theme/list";
 import { initHighlighting } from "utils/codeHighlight";
 import { getEncoding, initEncodings } from "utils/encodings";
 import helpers from "utils/helpers";
+import { INSTALL_SOURCE_PLAY, isPlayStoreInstall } from "utils/installSource";
 import loadPolyFill from "utils/polyfill";
 import Url from "utils/Url";
 import $_fileMenu from "views/file-menu.hbs";
 import $_menu from "views/menu.hbs";
 import auth, { loginEvents } from "./lib/auth";
 
-const INSTALL_SOURCE_PLAY = "com.android.vending";
 const oldPreventDefault = TouchEvent.prototype.preventDefault;
 const previousVersionCode = Number.parseInt(localStorage.versionCode, 10);
 const logger = new Logger();
-
-function isPlayStoreInstall() {
-	return window.appInstallSource === INSTALL_SOURCE_PLAY;
-}
 
 ajax.response = (xhr) => {
 	return xhr.response;
@@ -480,8 +476,6 @@ async function setDebugInfo() {
 
 async function promptUpdateCheckConsent() {
 	try {
-		if (Boolean(localStorage.getItem("checkForUpdatesPrompted"))) return;
-
 		if (isPlayStoreInstall()) {
 			localStorage.setItem("checkForUpdatesPrompted", "true");
 
@@ -491,6 +485,8 @@ async function promptUpdateCheckConsent() {
 
 			return;
 		}
+
+		if (Boolean(localStorage.getItem("checkForUpdatesPrompted"))) return;
 
 		if (settings.value.checkForAppUpdates) {
 			localStorage.setItem("checkForUpdatesPrompted", "true");
