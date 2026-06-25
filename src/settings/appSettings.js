@@ -17,9 +17,12 @@ import encodings, { getEncoding } from "utils/encodings";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
 
+const INSTALL_SOURCE_PLAY = "com.android.vending";
+
 export default function otherSettings() {
 	const values = appSettings.value;
 	const title = strings["app settings"].capitalize();
+	const isPlayStoreInstall = window.appInstallSource === INSTALL_SOURCE_PLAY;
 	const appFontText = strings["app font"] || "App font";
 	const appFontInfo =
 		strings["settings-info-app-font-family"] ||
@@ -290,13 +293,17 @@ export default function otherSettings() {
 			info: strings["settings-info-app-check-files"],
 			category: categories.advanced,
 		},
-		{
-			key: "checkForAppUpdates",
-			text: strings["check for app updates"],
-			checkbox: values.checkForAppUpdates,
-			info: strings["info-checkForAppUpdates"],
-			category: categories.advanced,
-		},
+		...(!isPlayStoreInstall
+			? [
+					{
+						key: "checkForAppUpdates",
+						text: strings["check for app updates"],
+						checkbox: values.checkForAppUpdates,
+						info: strings["info-checkForAppUpdates"],
+						category: categories.advanced,
+					},
+				]
+			: []),
 		{
 			key: "console",
 			text: strings.console,

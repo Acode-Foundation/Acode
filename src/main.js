@@ -74,6 +74,10 @@ const oldPreventDefault = TouchEvent.prototype.preventDefault;
 const previousVersionCode = Number.parseInt(localStorage.versionCode, 10);
 const logger = new Logger();
 
+function isPlayStoreInstall() {
+	return window.appInstallSource === INSTALL_SOURCE_PLAY;
+}
+
 ajax.response = (xhr) => {
 	return xhr.response;
 };
@@ -335,7 +339,11 @@ async function onDeviceReady() {
 	await promptUpdateCheckConsent();
 
 	// Check for app updates
-	if (settings.value.checkForAppUpdates && navigator.onLine) {
+	if (
+		!isPlayStoreInstall() &&
+		settings.value.checkForAppUpdates &&
+		navigator.onLine
+	) {
 		cordova.plugin.http.sendRequest(
 			"https://api.github.com/repos/Acode-Foundation/Acode/releases/latest",
 			{
@@ -474,23 +482,26 @@ async function promptUpdateCheckConsent() {
 	try {
 		if (Boolean(localStorage.getItem("checkForUpdatesPrompted"))) return;
 
+		if (isPlayStoreInstall()) {
+			localStorage.setItem("checkForUpdatesPrompted", "true");
+
+			if (settings.value.checkForAppUpdates) {
+				await settings.update({ checkForAppUpdates: false }, false);
+			}
+
+			return;
+		}
+
 		if (settings.value.checkForAppUpdates) {
 			localStorage.setItem("checkForUpdatesPrompted", "true");
 			return;
 		}
 
-		const isPlayStore = window.appInstallSource === "com.android.vending";
+		const message = strings["prompt update check consent message"];
+		const shouldEnable = await confirm(strings?.confirm, message);
 
-		if (!isPlayStore) {
-			const message = strings["prompt update check consent message"];
-			const shouldEnable = await confirm(strings?.confirm, message);
-
-			localStorage.setItem("checkForUpdatesPrompted", "true");
-			if (shouldEnable) {
-				await settings.update({ checkForAppUpdates: true }, false);
-			}
-		} else {
-			localStorage.setItem("checkForUpdatesPrompted", "true");
+		localStorage.setItem("checkForUpdatesPrompted", "true");
+		if (shouldEnable) {
 			await settings.update({ checkForAppUpdates: true }, false);
 		}
 	} catch (error) {
