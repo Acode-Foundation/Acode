@@ -1,1 +1,1 @@
-A lightweight but powerful text/code editor.
+Code editor for Android with Linux terminal, Git, plugins and AI tools.
