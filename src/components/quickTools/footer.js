@@ -70,7 +70,7 @@ export const $footer = <footer id="quick-tools" tabIndex={-1}></footer>;
 /**@type {HTMLElement} */
 export const $toggler = (
 	<span
-		className="floating icon keyboard_arrow_up"
+		className="floating icon keyboard_arrow_up hide"
 		id="quicktools-toggler"
 	></span>
 );
