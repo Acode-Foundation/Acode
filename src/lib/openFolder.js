@@ -183,22 +183,22 @@ function openFolder(_path, opts = {}) {
 		},
 	};
 
+	if (typeof listFiles !== "boolean") {
+		listFiles = appSettings.value.fileBrowser?.listFiles ?? true;
+	}
+
+	folder.listFiles = listFiles;
+	addedFolder.push(folder);
+
 	editorManager.emit("update", "add-folder");
 	editorManager.onupdate("add-folder", event);
 	editorManager.emit("add-folder", event);
 
-	(async () => {
-		if (typeof listFiles !== "boolean") {
-			listFiles = appSettings.value.fileBrowser?.listFiles ?? true;
-		}
-
-		if (listFiles) {
-			FileList.addRoot({ url: _path, name: title });
-		}
-
-		folder.listFiles = listFiles;
-		addedFolder.push(folder);
-	})();
+	if (listFiles) {
+		FileList.addRoot({ url: _path, name: title }).catch((err) => {
+			console.error("Failed to add root to FileList:", err);
+		});
+	}
 
 	if (listState[_path]) {
 		$root.expand();

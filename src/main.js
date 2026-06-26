@@ -681,6 +681,7 @@ async function loadApp() {
 		onEditorUpdate(undefined, false);
 	}
 
+	acode.exec("save-state");
 	initFileList();
 
 	import(/* webpackChunkName: "terminal" */ "components/terminal").then(
@@ -733,7 +734,9 @@ async function loadApp() {
 			return;
 		}
 
-		if (saveState) acode.exec("save-state");
+		if (saveState && sessionStorage.getItem("isfilesRestored") === "true") {
+			acode.exec("save-state");
+		}
 	}
 
 	async function onFileUpdate() {
