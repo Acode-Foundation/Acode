@@ -11,15 +11,16 @@ function withSupportedEditor(url) {
 	return `${url}${separator}supported_editor=${config.SUPPORTED_EDITOR}`;
 }
 
-function getSearchKeyword(filename) {
-	const ext = Path.extname(filename || "")
-		.replace(/^\./, "")
+export function getLanguageModeRecommendationSearchKeyword(filename) {
+	const basename = Path.basename(filename || "")
 		.trim()
 		.toLowerCase();
+	const ext = Path.extname(basename).replace(/^\./, "").trim().toLowerCase();
+	const keyword = ext || (basename.startsWith(".") ? basename.slice(1) : "");
 
-	if (!/^[a-z0-9][a-z0-9._+-]*$/.test(ext)) return "";
+	if (!/^[a-z0-9][a-z0-9._+-]*$/.test(keyword)) return "";
 
-	return ext;
+	return keyword;
 }
 
 function getIssueUrl(keyword) {
@@ -89,7 +90,7 @@ class LanguageModeRecommendations {
 		const filename = file.filename || "";
 		if (!hasPlainTextFallback(modeInfo, filename)) return;
 
-		const keyword = getSearchKeyword(filename);
+		const keyword = getLanguageModeRecommendationSearchKeyword(filename);
 		if (
 			!keyword ||
 			this.notifiedKeywords.has(keyword) ||
