@@ -18,19 +18,10 @@
         margin-bottom: 48px;
 
         .logo {
-            width: 64px;
-            height: 64px;
+            width: 48px;
+            height: auto;
+            max-height: 48px;
             flex-shrink: 0;
-
-            &::after {
-                background-size: 48px;
-            }
-
-            &::before {
-                background: radial-gradient(circle,
-                        color-mix(in srgb, var(--button-background-color) 30%, transparent) 0%,
-                        transparent 70%);
-            }
         }
 
         .welcome-header-text {
@@ -167,12 +158,8 @@
             margin-bottom: 36px;
 
             .logo {
-                width: 56px;
-                height: 56px;
-
-                &::after {
-                    background-size: 40px;
-                }
+                width: 40px;
+                max-height: 40px;
             }
 
             .welcome-header-text h1 {
