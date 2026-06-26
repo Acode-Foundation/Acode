@@ -1,3 +1,4 @@
+import { getLanguageModeRecommendationSearchKeyword } from "../lib/languageModeRecommendations";
 import { TestRunner } from "./tester";
 
 export async function runSanityTests(writeOutput) {
@@ -61,6 +62,24 @@ export async function runSanityTests(writeOutput) {
 		const value = 10;
 		test.assert(value > 5, "Condition should be true");
 		test.assert(!(value < 5), "Negation should work");
+	});
+
+	runner.test("Language mode recommendation keywords", (test) => {
+		test.assertEqual(
+			getLanguageModeRecommendationSearchKeyword(".gitignore"),
+			"gitignore",
+			"Dotfiles without extensions should use the dotfile name",
+		);
+		test.assertEqual(
+			getLanguageModeRecommendationSearchKeyword("src/main.js"),
+			"js",
+			"Normal files should use the file extension",
+		);
+		test.assertEqual(
+			getLanguageModeRecommendationSearchKeyword("README"),
+			"",
+			"Extensionless non-dotfiles should not request plugin recommendations",
+		);
 	});
 
 	// Run all tests
