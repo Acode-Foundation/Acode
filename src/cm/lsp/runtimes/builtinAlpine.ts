@@ -56,6 +56,10 @@ export const builtinAlpineRuntimeProvider: LspRuntimeProvider = {
 		server: LspServerDefinition,
 		context: LspRuntimeContext,
 	): boolean {
+		if (context.runtimeAction && server.launcher) {
+			return true;
+		}
+
 		return (
 			!!server.launcher &&
 			(canUseRealPath(context) ||

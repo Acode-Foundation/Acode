@@ -25,4 +25,8 @@ function hasConnectedServers() {
 	return getServersForCurrentFile().length > 0;
 }
 
-export { getServersForCurrentFile, hasConnectedServers };
+export {
+	getCurrentFileLanguage,
+	getServersForCurrentFile,
+	hasConnectedServers,
+};

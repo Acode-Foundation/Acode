@@ -56,6 +56,14 @@ export {
 	inlayHintsExtension,
 } from "./inlayHints";
 export {
+	addLspLog,
+	clearLspLogs,
+	getLspLogs,
+	onLspLog,
+	type LspLogEntry,
+	type LspLogLevel,
+} from "./logs";
+export {
 	closeReferencesPanel,
 	findAllReferences,
 	findAllReferencesInTab,
