@@ -15,7 +15,7 @@ module.exports = {
     try {
       const fileData = fs.readFileSync(configXML, "utf8");
       const manifest = fs.readFileSync(androidManifest, "utf8");
-      const ID = reset ? "com.foxdebug" : /widget id="([0-9a-zA-Z\.\-_]*)"/.exec(fileData)[1];
+      const ID = reset ? "com.foxdebug" : /widget\s+id="([0-9a-zA-Z\.\-_]*)"/.exec(fileData)[1];
       const newFileData = manifest.replace(
         /(android:authorities=")([0-9a-zA-Z\.\-_]*)(")/,
         `$1${reset ? "com.foxdebug" : ID}.provider$3`

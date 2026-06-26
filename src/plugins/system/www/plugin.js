@@ -272,5 +272,11 @@ module.exports = {
         [text1, text2]
       );
     });
+  },
+  getAppIcons: function (success, error) {
+    cordova.exec(success, error, 'System', 'get-app-icons', []);
+  },
+  setAppIcon: function (componentName, success, error) {
+    cordova.exec(success, error, 'System', 'set-app-icon', [componentName]);
   }
 };

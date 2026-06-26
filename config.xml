@@ -1,8 +1,12 @@
-<?xml version='1.0' encoding='utf-8'?>
-<widget id="com.foxdebug.acode" android-versionCode="1001" version="1.12.6"
+<?xml version='1.0' encoding='utf-8' ?>
+<widget
+    id="com.foxdebug.acode"
+    android-versionCode="1001"
+    version="1.12.6"
     xmlns="http://www.w3.org/ns/widgets"
     xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:cdv="http://cordova.apache.org/ns/1.0">
+    xmlns:cdv="http://cordova.apache.org/ns/1.0"
+>
     <name>Acode</name>
     <description>
         Light weight code editor and web IDE for android.
@@ -28,11 +32,22 @@
         <preference name="ShowTitle" value="true" />
         <preference name="DisallowOverscroll" value="true" />
         <preference name="BackgroundColor" value="0xFF313131" />
-        <preference name="AndroidWindowSplashScreenBackground" value="@color/ic_splash_background" />
-        <preference name="AndroidWindowSplashScreenAnimatedIcon"
-            value="res/android/drawable/ic_launcher_foreground.xml" />
-        <preference name="AndroidPostSplashScreenTheme" value="@style/Theme.App.Activity" />
-        <preference name="AndroidPersistentFileLocation" value="Compatibility" />
+        <preference
+            name="AndroidWindowSplashScreenBackground"
+            value="@color/ic_splash_background"
+        />
+        <preference
+            name="AndroidWindowSplashScreenAnimatedIcon"
+            value="res/android/drawable/ic_launcher_foreground.xml"
+        />
+        <preference
+            name="AndroidPostSplashScreenTheme"
+            value="@style/Theme.App.Activity"
+        />
+        <preference
+            name="AndroidPersistentFileLocation"
+            value="Compatibility"
+        />
         <preference name="AndroidLaunchMode" value="singleTask" />
         <preference name="prerendered-icon" value="false" />
         <preference name="androidxEnabled" value="true" />
@@ -41,23 +56,33 @@
         <preference name="android-minSdkVersion" value="26" />
 
 
-        <edit-config file="app/src/main/AndroidManifest.xml" mode="merge"
-            target="/manifest/application">
+        <edit-config
+            file="app/src/main/AndroidManifest.xml"
+            mode="merge"
+            target="/manifest/application"
+        >
             <application
                 android:networkSecurityConfig="@xml/network_security_config"
                 android:hardwareAccelerated="true"
                 android:largeHeap="true"
                 android:requestLegacyExternalStorage="true"
                 android:usesCleartextTraffic="true"
-                android:enableOnBackInvokedCallback="false" />
+                android:enableOnBackInvokedCallback="false"
+            />
         </edit-config>
 
-        <edit-config file="app/src/main/AndroidManifest.xml" mode="merge"
-            target="/manifest/application/activity[@android:name='MainActivity']">
+        <edit-config
+            file="app/src/main/AndroidManifest.xml"
+            mode="merge"
+            target="/manifest/application/activity[@android:name='MainActivity']"
+        >
             <activity android:resizeableActivity="true" />
         </edit-config>
 
-        <config-file parent="./application/activity" target="AndroidManifest.xml">
+        <config-file
+            parent="./application/activity"
+            target="AndroidManifest.xml"
+        >
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <action android:name="android.intent.action.EDIT" />
@@ -76,15 +101,42 @@
         </config-file>
 
         <config-file target="AndroidManifest.xml" parent="/manifest">
-            <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-            <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-            <uses-permission android:name="android.permission.WRITE_MEDIA_STORAGE" />
+            <uses-permission
+                android:name="android.permission.READ_EXTERNAL_STORAGE"
+            />
+            <uses-permission
+                android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+            />
+            <uses-permission
+                android:name="android.permission.WRITE_MEDIA_STORAGE"
+            />
             <uses-permission android:name="android.permission.VIBRATE" />
+        </config-file>
+
+        <config-file
+            target="AndroidManifest.xml"
+            parent="/manifest/application"
+        >
+            <activity-alias
+                android:name=".MainActivityAlt1"
+                android:enabled="false"
+                android:exported="true"
+                android:icon="@drawable/ic_alt"
+                android:targetActivity=".MainActivity"
+            >
+                <intent-filter>
+                    <action android:name="android.intent.action.MAIN" />
+                    <category android:name="android.intent.category.LAUNCHER" />
+                </intent-filter>
+            </activity-alias>
         </config-file>
 
         <hook type="before_prepare" src="hooks/restore-cordova-resources.js" />
         <hook type="before_prepare" src="hooks/modify-java-files.js" />
         <hook type="after_prepare" src="hooks/post-process.js" />
     </platform>
-    <preference name="AndroidBlacklistSecureSocketProtocols" value="SSLv3,TLSv1" />
+    <preference
+        name="AndroidBlacklistSecureSocketProtocols"
+        value="SSLv3,TLSv1"
+    />
 </widget>

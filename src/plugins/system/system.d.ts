@@ -295,6 +295,26 @@ interface System {
     onSuccess?: () => void,
     onFail?: OnFail,
   ): void;
+  /**
+   * Fetch all available launcher app icons (activities/activity-aliases).
+   * @param onSuccess
+   * @param onFail
+   */
+  getAppIcons(onSuccess: (icons: AppIcon[]) => void, onFail: OnFail): void;
+  /**
+   * Set the active app icon by component/alias name.
+   * @param componentName
+   * @param onSuccess
+   * @param onFail
+   */
+  setAppIcon(componentName: string, onSuccess: OnSuccessBool, onFail: OnFail): void;
+}
+
+interface AppIcon {
+  name: string;
+  label: string;
+  icon: string;
+  enabled: boolean;
 }
 
 interface Window{
