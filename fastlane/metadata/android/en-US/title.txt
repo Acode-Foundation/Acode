@@ -1,1 +1,1 @@
-Acode editor - Android code editor
+Acode IDE: Terminal & AI Code

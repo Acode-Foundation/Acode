@@ -31,7 +31,8 @@ export default {
 	afterRender() {
 		const { value: settings } = appSettings;
 		const { $toggler } = quickTools;
-		if (settings.floatingButton) {
+		const activeFile = editorManager.activeFile;
+		if (settings.floatingButton && !activeFile?.hideQuickTools) {
 			clearTimeout($toggler._hideTimeout);
 			$toggler._hideTimeout = null;
 			$toggler.classList.remove("hide");
@@ -47,7 +48,11 @@ export default {
 			}, 300);
 		}
 
-		actions("set-height", settings.quickTools);
+		if (activeFile?.hideQuickTools) {
+			actions("set-height", { height: 0, save: false });
+		} else {
+			actions("set-height", settings.quickTools);
+		}
 		fonts.setAppFont(settings.appFont);
 		fonts.setEditorFont(settings.editorFont);
 		if (!themes.applied) {

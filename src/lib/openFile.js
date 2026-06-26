@@ -180,6 +180,7 @@ export default async function openFile(file, options = {}) {
 				tabIcon: "file file_type_video",
 				content: videoContainer,
 				render: true,
+				hideQuickTools: true,
 			});
 			return;
 		}
@@ -347,6 +348,7 @@ export default async function openFile(file, options = {}) {
 				tabIcon: "file file_type_image",
 				content: imageContainer,
 				render: true,
+				hideQuickTools: true,
 			});
 			return;
 		}
@@ -374,6 +376,7 @@ export default async function openFile(file, options = {}) {
 				tabIcon: "file file_type_audio",
 				content: audioPlayer.container,
 				render: true,
+				hideQuickTools: true,
 			});
 			audioTab.onclose = () => {
 				audioPlayer.cleanup();
