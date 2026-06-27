@@ -265,7 +265,7 @@ async function doRename(
 
 export const renameSymbol: Command = (view) => {
 	performRename(view).catch((error) => {
-		const plugin = view ? LSPPlugin.get(view) : null;
+		const plugin = LSPPlugin.get(view);
 		addLspLogFor(plugin, "error", "Rename command failed", error);
 		console.error("[LSP:Rename] Rename command failed:", error);
 	});

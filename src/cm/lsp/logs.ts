@@ -74,14 +74,16 @@ export function addLspLog(
 
 export function getLspLogServerId(source: unknown): string | null {
 	const client =
-		source && typeof source === "object" && "client" in source
+		source &&
+		typeof source === "object" &&
+		Object.prototype.hasOwnProperty.call(source, "client")
 			? (source as { client?: unknown }).client
 			: source;
 	const metadata = client as
-		| { __acodeServerId?: unknown; serverId?: unknown }
+		| { __acodeServerId?: unknown }
 		| null
 		| undefined;
-	const serverId = metadata?.__acodeServerId ?? metadata?.serverId;
+	const serverId = metadata?.__acodeServerId;
 	return typeof serverId === "string" && serverId.trim()
 		? serverId.trim()
 		: null;
