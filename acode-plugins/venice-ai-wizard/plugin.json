@@ -1,0 +1,14 @@
+{
+  "id": "venice-ai-wizard",
+  "name": "Venice AI Coding Wizard",
+  "version": "1.0.0",
+  "main": "main.js",
+  "icon": "icon.png",
+  "readme": "readme.md",
+  "author": {
+    "name": "DUptain1993",
+    "email": "daniel.r.uptain93@gmail.com"
+  },
+  "description": "An AI coding wizard powered by Venice AI. Generate, edit, read and create code using uncensored models like Gemma 4. Full codebase context awareness.",
+  "minVersionCode": 290
+}
