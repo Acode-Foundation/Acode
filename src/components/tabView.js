@@ -29,7 +29,7 @@ export default function TabView({ id, disableSwipe = false }, children) {
 		const update = () => {
 			const $active = $options.querySelector(".active");
 			if ($active) {
-				const targetTransform = `translate3d(${$active.offsetLeft}px, 0, 0) scaleX(${$active.offsetWidth})`;
+				const targetTransform = `translateX(${$active.offsetLeft}px) scaleX(${$active.offsetWidth})`;
 				animate(
 					$indicator,
 					{
