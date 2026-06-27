@@ -72,6 +72,32 @@ export function addLspLog(
 	listeners.forEach((listener) => listener(id, entry));
 }
 
+export function getLspLogServerId(source: unknown): string | null {
+	const client =
+		source && typeof source === "object" && "client" in source
+			? (source as { client?: unknown }).client
+			: source;
+	const metadata = client as
+		| { __acodeServerId?: unknown; serverId?: unknown }
+		| null
+		| undefined;
+	const serverId = metadata?.__acodeServerId ?? metadata?.serverId;
+	return typeof serverId === "string" && serverId.trim()
+		? serverId.trim()
+		: null;
+}
+
+export function addLspLogFor(
+	source: unknown,
+	level: LspLogLevel,
+	message: unknown,
+	details?: unknown,
+): void {
+	const serverId = getLspLogServerId(source);
+	if (!serverId) return;
+	addLspLog(serverId, level, message, details);
+}
+
 export function getLspLogs(serverId: string): LspLogEntry[] {
 	return logsByServer.get(String(serverId || "").trim()) || [];
 }
