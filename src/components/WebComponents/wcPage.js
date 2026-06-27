@@ -291,6 +291,7 @@ class PageHandler {
 	 * Replace current element with a replacement element
 	 */
 	replaceEl() {
+		if (this.$el.classList.contains("primary")) return;
 		this.$el.off("hide", this.onhide);
 		if (!this.$el.isConnected || this.$replacement.isConnected) return;
 		if (typeof this.onReplace === "function") this.onReplace();
