@@ -12,6 +12,7 @@ import type {
 	WorkspaceEdit,
 } from "vscode-languageserver-types";
 import type { Position, Range } from "./types";
+import { addLspLogFor } from "./logs";
 import type AcodeWorkspace from "./workspace";
 
 type CodeActionResponse = (CodeAction | Command)[] | null;
@@ -116,6 +117,7 @@ async function resolveCodeAction(
 		);
 		return resolved ?? action;
 	} catch (error) {
+		addLspLogFor(plugin, "warn", "Code action resolve failed", error);
 		console.warn("[LSP:CodeAction] Failed to resolve:", error);
 		return action;
 	}
@@ -138,6 +140,7 @@ async function executeCommand(
 		// -32601 = Method not implemented (expected for some LSP servers)
 		const lspError = error as { code?: number };
 		if (lspError?.code !== -32601) {
+			addLspLogFor(plugin, "warn", "Code action command execution failed", error);
 			console.warn("[LSP:CodeAction] Command execution failed:", error);
 		}
 		return false;
@@ -173,6 +176,11 @@ async function applyChangesToFile(
 
 	const displayedView = await workspace.displayFile(uri);
 	if (!displayedView?.state?.doc) {
+		addLspLogFor(
+			workspace.client,
+			"warn",
+			`Code action could not open file: ${uri}`,
+		);
 		console.warn(`[LSP:CodeAction] Could not open file: ${uri}`);
 		return false;
 	}
@@ -326,6 +334,7 @@ export async function fetchCodeActions(
 
 		return items;
 	} catch (error) {
+		addLspLogFor(plugin, "error", "Code action fetch failed", error);
 		console.error("[LSP:CodeAction] Failed to fetch:", error);
 		return [];
 	}
@@ -349,6 +358,7 @@ export async function executeCodeAction(
 		// Handle CodeAction
 		return applyCodeAction(view, item.action);
 	} catch (error) {
+		addLspLogFor(plugin, "error", "Code action execution failed", error);
 		console.error("[LSP:CodeAction] Failed to execute:", error);
 		return false;
 	}

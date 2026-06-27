@@ -250,6 +250,7 @@ function createWebSocketTransport(
 			};
 		} catch (error) {
 			console.error(`[LSP:${server.id}] Reconnection failed`, error);
+			addLspLog(server.id, "error", "Reconnection failed", error);
 			if (reconnectAttempts < maxReconnectAttempts) {
 				scheduleReconnect();
 			}

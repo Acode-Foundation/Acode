@@ -268,6 +268,7 @@ interface ResolvedRuntimeTarget {
 }
 
 interface ExtendedLSPClient extends LSPClient {
+  __acodeServerId?: string;
   __acodeLoggedInfo?: boolean;
 }
 
@@ -888,6 +889,7 @@ export class LspClientManager {
       );
       await transportHandle.ready;
       client = new LSPClient(clientConfig) as ExtendedLSPClient;
+      client.__acodeServerId = server.id;
       connectClient(client, transportHandle.transport, initializationOptions);
       await client.initializing;
       if (!client.__acodeLoggedInfo) {
