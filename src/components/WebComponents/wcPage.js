@@ -338,7 +338,7 @@ class PageHandler {
  */
 function handlePagesForSmoothExperience() {
 	const $pages = [...tag.getAll("wc-page")];
-	for (let $page of $pages.slice(0, -1)) {
+	for (let $page of $pages.slice(0, -2)) {
 		$page.handler.replaceEl();
 	}
 }
