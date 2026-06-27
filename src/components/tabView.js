@@ -1,4 +1,5 @@
 import Ref from "html-tag-js/ref";
+import { animate } from "motion";
 
 /**
  *
@@ -13,6 +14,68 @@ export default function TabView({ id, disableSwipe = false }, children) {
 	let lastY = 0;
 	let isScrolling = false;
 	const el = Ref();
+
+	// Initialize the tab indicator after rendering
+	requestAnimationFrame(() => {
+		const $options = el.get?.(".options");
+		if (!$options) return;
+
+		let $indicator = $options.querySelector(".tab-indicator");
+		if (!$indicator) {
+			$indicator = <div className="tab-indicator"></div>;
+			$options.append($indicator);
+		}
+
+		const update = () => {
+			const $active = $options.querySelector(".active");
+			if ($active) {
+				const targetTransform = `translate3d(${$active.offsetLeft}px, 0, 0) scaleX(${$active.offsetWidth})`;
+				animate(
+					$indicator,
+					{
+						transform: targetTransform,
+					},
+					{
+						type: "spring",
+						stiffness: 380,
+						damping: 30,
+					},
+				).then(() => {
+					$indicator.style.transform = targetTransform;
+				});
+			}
+		};
+
+		// Initial positioning
+		update();
+
+		// Observe changes to 'class' attribute of child tab spans
+		const observer = new MutationObserver((mutations) => {
+			for (const mutation of mutations) {
+				if (
+					mutation.type === "attributes" &&
+					mutation.attributeName === "class" &&
+					mutation.target.classList.contains("active")
+				) {
+					update();
+					break;
+				}
+			}
+		});
+
+		observer.observe($options, {
+			attributes: true,
+			childList: false,
+			subtree: true,
+			attributeFilter: ["class"],
+		});
+
+		// Clean up observer when container is disconnected
+		el.el.addEventListener("DOMNodeRemovedFromDocument", () => {
+			observer.disconnect();
+		});
+	});
+
 	return (
 		<div
 			ref={el}
@@ -63,15 +126,18 @@ export default function TabView({ id, disableSwipe = false }, children) {
 
 		// Only change tabs when a significant horizontal swipe is detected and not scrolling vertically
 		if (!isScrolling && Math.abs(moveX) > 100) {
-			const tabs = Array.from(el.get(".options").children);
+			const tabs = Array.from(el.get(".options").children).filter((child) =>
+				child.matches("span"),
+			);
 			const currentTab = el.get(".options>span.active");
 			const direction = moveX > 0 ? 1 : -1;
 			const currentTabIndex = tabs.indexOf(currentTab);
 			const nextTabIndex =
 				(currentTabIndex + direction + tabs.length) % tabs.length;
-			tabs[nextTabIndex].click();
-			currentTab.classList.remove("active");
-			tabs[nextTabIndex].classList.add("active");
+			const nextTab = tabs[nextTabIndex];
+			nextTab.click();
+			if (currentTab) currentTab.classList.remove("active");
+			nextTab.classList.add("active");
 		}
 	}
 
@@ -80,7 +146,7 @@ export default function TabView({ id, disableSwipe = false }, children) {
 		if (!target.matches(".options>span")) return;
 		const currentTab = el.get(".options>span.active");
 		if (target === currentTab) return;
-		currentTab.classList.remove("active");
+		if (currentTab) currentTab.classList.remove("active");
 		target.classList.add("active");
 	}
 }

@@ -15,8 +15,7 @@
     border: solid 1px var(--secondary-text-color);
     margin: 0 5px;
 
-    &::after {
-      content: '';
+    .handle {
       display: block;
       height: 80%;
       width: 80%;
@@ -24,18 +23,21 @@
       background-color: var(--button-background-color);
       margin: auto;
       border-radius: 2px;
+      transition: opacity 140ms ease;
     }
   }
 
   input:checked {
-    &+.box::after {
+    &+.box .handle {
       opacity: 1;
     }
   }
 
-  input:not(:checked) {
-    &+.box::after {
-      opacity: 0;
+  &:not(.switch) {
+    input:not(:checked) {
+      &+.box .handle {
+        opacity: 0;
+      }
     }
   }
 }

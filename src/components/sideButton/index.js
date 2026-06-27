@@ -1,3 +1,4 @@
+import { animate, press } from "motion";
 import "./style.scss";
 
 /**@type {HTMLDivElement} */
@@ -20,6 +21,21 @@ export default function SideButtons({
 			<span>{text}</span>
 		</button>
 	);
+
+	press($button, (element) => {
+		animate(
+			element,
+			{ scale: 0.95 },
+			{ type: "spring", stiffness: 450, damping: 20 },
+		);
+		return () => {
+			animate(
+				element,
+				{ scale: 1 },
+				{ type: "spring", stiffness: 450, damping: 20 },
+			);
+		};
+	});
 
 	return {
 		show() {

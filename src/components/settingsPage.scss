@@ -331,7 +331,8 @@ wc-page.main-settings-page {
 				border-color 160ms ease,
 				box-shadow 180ms ease;
 
-			&::after {
+			.handle {
+				display: block;
 				width: 1.25rem;
 				height: 1.25rem;
 				margin: 0.14rem;
@@ -345,7 +346,6 @@ wc-page.main-settings-page {
 					0 0 0 1px color-mix(in srgb, var(--border-color), transparent 34%),
 					0 1px 3px rgba(0, 0, 0, 0.22);
 				transition:
-					transform 180ms cubic-bezier(0.2, 0.9, 0.3, 1),
 					background-color 160ms ease,
 					box-shadow 180ms ease;
 			}
@@ -357,14 +357,13 @@ wc-page.main-settings-page {
 			box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--button-background-color), transparent 12%);
 		}
 
-		input:checked+.box::after {
-			transform: translateX(1.12rem);
+		input:checked+.box .handle {
 			background: var(--button-text-color);
 			opacity: 1;
 			box-shadow: 0 2px 8px color-mix(in srgb, var(--button-background-color), transparent 55%);
 		}
 
-		input:not(:checked)+.box::after {
+		input:not(:checked)+.box .handle {
 			opacity: 1;
 		}
 	}
@@ -662,7 +661,8 @@ wc-page.detail-settings-page {
 				border-color 160ms ease,
 				box-shadow 180ms ease;
 
-			&::after {
+			.handle {
+				display: block;
 				width: 1.25rem;
 				height: 1.25rem;
 				margin: 0.14rem;
@@ -679,7 +679,6 @@ wc-page.detail-settings-page {
 					0 0 0 1px color-mix(in srgb, var(--border-color), transparent 34%),
 					0 1px 3px rgba(0, 0, 0, 0.22);
 				transition:
-					transform 180ms cubic-bezier(0.2, 0.9, 0.3, 1),
 					background-color 160ms ease,
 					box-shadow 180ms ease;
 			}
@@ -693,15 +692,14 @@ wc-page.detail-settings-page {
 			box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--button-background-color), transparent 12%);
 		}
 
-		input:checked+.box::after {
-			transform: translateX(1.12rem);
+		input:checked+.box .handle {
 			background: var(--button-text-color);
 			opacity: 1;
 			box-shadow: 0 2px 8px var(--button-background-color);
 			box-shadow: 0 2px 8px color-mix(in srgb, var(--button-background-color), transparent 55%);
 		}
 
-		input:not(:checked)+.box::after {
+		input:not(:checked)+.box .handle {
 			opacity: 1;
 		}
 	}

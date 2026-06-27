@@ -182,6 +182,7 @@
     "markdown-it-texmath": "^1.0.0",
     "mermaid": "^11.14.0",
     "mime-types": "^3.0.2",
+    "motion": "^12.42.0",
     "mustache": "^4.2.0",
     "picomatch": "^4.0.4",
     "url-parse": "^1.5.10",

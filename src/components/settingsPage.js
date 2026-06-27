@@ -6,6 +6,7 @@ import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
 import appSettings from "lib/settings";
 import { hideAd } from "lib/startAd";
+import { animate, hover, press } from "motion";
 import FileBrowser from "pages/fileBrowser";
 import { isValidColor } from "utils/color/regex";
 import helpers from "utils/helpers";
@@ -372,7 +373,17 @@ function createListItemElement(item, options, useInfoAsDescription) {
 	}
 
 	if (isCheckboxItem) {
-		const $checkbox = Checkbox("", item.checkbox || item.value);
+		const $checkbox = Checkbox(
+			"",
+			item.checkbox || item.value,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			undefined,
+			true,
+		);
+		$checkbox.classList.add("switch");
 		$tail.el.appendChild($checkbox);
 	}
 
@@ -404,6 +415,37 @@ function createListItemElement(item, options, useInfoAsDescription) {
 	if (!$tail.el.children.length) {
 		$tail.el.remove();
 	}
+
+	// Register high-performance press & hover transitions
+	press($item, (element) => {
+		animate(
+			element,
+			{ scale: 0.985 },
+			{ type: "spring", stiffness: 450, damping: 25 },
+		);
+		return () => {
+			animate(
+				element,
+				{ scale: 1 },
+				{ type: "spring", stiffness: 450, damping: 25 },
+			);
+		};
+	});
+
+	hover($item, (element) => {
+		// Subtle background brightness lift when hovered
+		animate(
+			element,
+			{
+				backgroundColor:
+					"color-mix(in srgb, var(--secondary-color), var(--popup-text-color) 4%)",
+			},
+			{ duration: 0.15 },
+		);
+		return () => {
+			animate(element, { backgroundColor: "transparent" }, { duration: 0.15 });
+		};
+	});
 
 	return $item;
 }
