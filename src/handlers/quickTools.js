@@ -242,7 +242,6 @@ export default function actions(action, value) {
 			getInput().dispatchEvent(
 				KeyboardEvent("keydown", getKeys({ keyCode: value })),
 			);
-			setQuicktoolsUsed();
 			return true;
 		}
 
