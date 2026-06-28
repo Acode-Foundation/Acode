@@ -451,26 +451,6 @@ async function EditorManager($header, $body) {
 		);
 	}
 
-	function applyEditContextSetting() {
-		try {
-			if (appSettings?.value?.useEditContext === false) {
-				// Avoid Chromium Android EditContext scroll jumps when tapping empty
-				// lines. https://issues.chromium.org/issues/484891671
-				EditorView.EDIT_CONTEXT = false;
-			} else if (
-				Object.prototype.hasOwnProperty.call(EditorView, "EDIT_CONTEXT")
-			) {
-				delete EditorView.EDIT_CONTEXT;
-			}
-		} catch (error) {
-			warnRecoverable(
-				"Failed to apply CodeMirror EditContext setting.",
-				error,
-				"edit-context-setting",
-			);
-		}
-	}
-
 	function makeRainbowBracketExtension() {
 		const enabled = appSettings?.value?.rainbowBrackets ?? true;
 		if (!enabled) return [];
@@ -957,7 +937,6 @@ async function EditorManager($header, $body) {
 	}
 
 	// Create minimal CodeMirror editor
-	applyEditContextSetting();
 
 	const editorState = EditorState.create({
 		doc: "",
@@ -1329,7 +1308,6 @@ async function EditorManager($header, $body) {
 			colorPreview: !!appSettings.value.colorPreview,
 			autoCloseTags: appSettings.value.autoCloseTags !== false,
 			baseExtensions: getBaseExtensionSignature(),
-			useEditContext: appSettings.value.useEditContext !== false,
 		});
 	}
 
