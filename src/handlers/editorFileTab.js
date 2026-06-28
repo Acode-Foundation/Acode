@@ -73,7 +73,8 @@ let prevScrollLeft = 0;
 let initialNextSibling = null;
 let didReorder = false;
 
-const MAX_SCROLL_SPEED = 4;
+const MIN_SCROLL_SPEED = 2;
+const MAX_SCROLL_SPEED = 14;
 const REORDER_DURATION = 280;
 const RELEASE_DURATION = 250;
 const SPRING_EASING = "cubic-bezier(0.2, 1.2, 0.4, 1)";
@@ -473,8 +474,9 @@ function getScroll() {
 	const leftDiff = parentLeft - tabLeft;
 
 	const scrollSpeed = (diff) => {
-		const ratio = diff / tabWidth;
-		return ratio * MAX_SCROLL_SPEED;
+		const t = Math.min(diff / tabWidth, 1);
+		const eased = t * t;
+		return MIN_SCROLL_SPEED + eased * (MAX_SCROLL_SPEED - MIN_SCROLL_SPEED);
 	};
 
 	if (leftDiff > 0 && scrollX > MIN_SCROLL) {
