@@ -66,8 +66,20 @@ let animationFrame = null;
  * @type {number}
  */
 let prevScrollLeft = 0;
+/**
+ * The original next sibling of the dragged tab.
+ * @type {Element|null}
+ */
+let initialNextSibling = null;
+let didReorder = false;
 
 const MAX_SCROLL_SPEED = 4;
+const REORDER_DURATION = 280;
+const RELEASE_DURATION = 250;
+const SPRING_EASING = "cubic-bezier(0.2, 1.2, 0.4, 1)";
+
+/** @type {WeakMap<HTMLElement, Animation>} */
+const reorderAnimations = new WeakMap();
 
 /**
  * Handles file drag
@@ -88,6 +100,8 @@ export default function startDrag(e) {
 	$tab = e.target;
 	$parent = $tab.parentElement;
 	$tabClone = $tab.cloneNode(true);
+	initialNextSibling = $tab.nextElementSibling;
+	didReorder = false;
 
 	const rect = $tab.getBoundingClientRect();
 	const parentRect = $parent.getBoundingClientRect();
@@ -121,6 +135,7 @@ export default function startDrag(e) {
 	$tabClone.style.height = `${rect.height}px`;
 	$tabClone.style.width = `${rect.width}px`;
 	$tabClone.style.transform = `translate3d(${rect.x}px, ${rect.y}px, 0)`;
+	$tab.style.opacity = "0.35";
 	app.append($tabClone);
 	$tab.click();
 
@@ -153,6 +168,7 @@ function onDrag(e) {
 	tabTop = clientY - offsetY;
 
 	$tabClone.style.transform = `translate3d(${tabLeft}px, ${tabTop}px, 0)`;
+	updateDragPreview(clientX, clientY);
 
 	if ($parent.scrollWidth === $parent.clientWidth) return;
 
@@ -179,37 +195,19 @@ function releaseDrag(e) {
 
 	/**@type {HTMLDivElement} target tab */
 	const $target = document.elementFromPoint(clientX, clientY);
+	const shouldCommitReorder = $parent.contains($target);
 
-	if (
-		$parent.contains($target) && // target is in parent
-		$target !== $tab && // target is not the tab
-		!$tab.contains($target) // target is not a child of tab
-	) {
-		// get the target tab, if target is a child it will get the parent
-		const $targetTab = $target.closest(".tile");
-
-		if ($targetTab) {
-			const rect = $targetTab.getBoundingClientRect();
-			const midX = rect.left + rect.width / 2;
-			const pointerX = tabLeft + tabWidth / 2;
-			if (midX < pointerX) {
-				// move right
-				const $nextSibling = $targetTab.nextElementSibling;
-				if ($nextSibling) {
-					$parent.insertBefore($tab, $nextSibling);
-				} else {
-					$parent.appendChild($tab);
-				}
-			} else {
-				$parent.insertBefore($tab, $targetTab);
-			}
+	if (shouldCommitReorder) {
+		updateDragPreview(clientX, clientY);
+		if (didReorder) {
 			updateFileList($parent);
 		}
 	} else if (
-		$target.tagName === "INPUT" ||
-		$target.tagName === "TEXTAREA" ||
-		$target.isContentEditable ||
-		$target.closest(".cm-editor")
+		$target &&
+		($target.tagName === "INPUT" ||
+			$target.tagName === "TEXTAREA" ||
+			$target.isContentEditable ||
+			$target.closest(".cm-editor"))
 	) {
 		// If released on an input area or CodeMirror editor
 		const filePath = editorManager.activeFile.uri;
@@ -223,9 +221,17 @@ function releaseDrag(e) {
 		}
 	}
 
+	const shouldSettleClone = shouldCommitReorder || didReorder;
+
+	if (!shouldCommitReorder && didReorder) {
+		restoreInitialTabPosition();
+	}
+
+	finishDrag(shouldSettleClone);
+}
+
+function finishDrag(shouldSettleClone) {
 	cancelAnimationFrame(animationFrame);
-	$tabClone.remove();
-	$tabClone = null;
 
 	document.removeEventListener("mousemove", onDrag, opts);
 	document.removeEventListener("touchmove", onDrag, opts);
@@ -235,11 +241,147 @@ function releaseDrag(e) {
 	document.removeEventListener("mouseleave", releaseDrag, opts);
 
 	$parent.removeEventListener("scroll", preventDefaultScroll);
+
+	if (shouldSettleClone) {
+		const rect = $tab.getBoundingClientRect();
+		const anim = $tabClone.animate(
+			[{ transform: `translate3d(${rect.left}px, ${rect.top}px, 0)` }],
+			{ duration: RELEASE_DURATION, easing: SPRING_EASING, fill: "forwards" },
+		);
+		anim.onfinish = cleanupDrag;
+		anim.oncancel = cleanupDrag;
+		return;
+	}
+
+	cleanupDrag();
+}
+
+function cleanupDrag() {
+	$tab.style.opacity = "";
+	$tabClone.remove();
+	$tabClone = null;
+	initialNextSibling = null;
+	didReorder = false;
 }
 
 function preventDefaultScroll() {
 	this.scrollLeft = prevScrollLeft;
 }
+
+function updateDragPreview(clientX, clientY) {
+	const $target = document.elementFromPoint(clientX, clientY);
+	if (
+		!$parent.contains($target) ||
+		$target === $tab ||
+		$tab.contains($target)
+	) {
+		return;
+	}
+
+	const $targetTab = $target.closest(".tile");
+	if (!$targetTab) return;
+
+	const rect = $targetTab.getBoundingClientRect();
+	const midX = rect.left + rect.width / 2;
+	const pointerX = tabLeft + tabWidth / 2;
+	const $nextSibling = $targetTab.nextElementSibling;
+	const $insertBefore = midX < pointerX ? $nextSibling : $targetTab;
+
+	if ($insertBefore === $tab || $tab.nextElementSibling === $insertBefore)
+		return;
+
+	reorderTab($insertBefore);
+	didReorder = true;
+}
+
+function restoreInitialTabPosition() {
+	reorderTab(
+		initialNextSibling?.parentElement === $parent ? initialNextSibling : null,
+	);
+}
+
+function reorderTab($insertBefore) {
+	const previousRects = captureVisualPositions($parent);
+
+	if ($insertBefore) {
+		$parent.insertBefore($tab, $insertBefore);
+	} else {
+		$parent.appendChild($tab);
+	}
+
+	animateTabReorder($parent, previousRects);
+}
+
+/**
+ * Captures where each tab visually is right now (including mid-animation
+ * transforms via WAAPI), so the FLIP delta is calculated from the visual
+ * position rather than the DOM layout position.
+ * @param {HTMLElement} $parent
+ * @returns {Map<HTMLElement, DOMRect>}
+ */
+function captureVisualPositions($parent) {
+	return new Map(
+		[...$parent.children].map(($child) => [
+			$child,
+			$child.getBoundingClientRect(),
+		]),
+	);
+}
+
+/**
+ * Animates the visual change after the DOM order is updated using FLIP.
+ * Uses WAAPI directly for reliable mid-animation compositing and to
+ * properly respect the app's no-animation setting.
+ * @param {HTMLElement} $parent
+ * @param {Map<HTMLElement, DOMRect>} previousRects
+ */
+function animateTabReorder($parent, previousRects) {
+	for (const $child of $parent.children) {
+		if ($child === $tab) continue;
+
+		const oldAnim = reorderAnimations.get($child);
+		if (oldAnim) {
+			oldAnim.cancel();
+			reorderAnimations.delete($child);
+		}
+
+		const previousRect = previousRects.get($child);
+		if (!previousRect) continue;
+
+		const currentRect = $child.getBoundingClientRect();
+		const deltaX = previousRect.left - currentRect.left;
+		const deltaY = previousRect.top - currentRect.top;
+
+		if (Math.abs(deltaX) < 0.5 && Math.abs(deltaY) < 0.5) continue;
+
+		const anim = $child.animate(
+			[
+				{ transform: `translate3d(${deltaX}px, ${deltaY}px, 0)` },
+				{ transform: "translate3d(0, 0, 0)" },
+			],
+			{
+				duration: REORDER_DURATION,
+				easing: SPRING_EASING,
+				fill: "none",
+				composite: "replace",
+			},
+		);
+		reorderAnimations.set($child, anim);
+
+		anim.onfinish = () => {
+			if (reorderAnimations.get($child) === anim) {
+				reorderAnimations.delete($child);
+			}
+		};
+		anim.oncancel = () => {
+			if (reorderAnimations.get($child) === anim) {
+				reorderAnimations.delete($child);
+			}
+		};
+	}
+}
+
+
 
 /**
  * Scrolls the container using animation frame
