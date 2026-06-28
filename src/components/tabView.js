@@ -27,9 +27,16 @@ export default function TabView({ id, disableSwipe = false }, children) {
 		}
 
 		const update = () => {
+			if (!$options.isConnected) return;
 			const $active = $options.querySelector(".active");
 			if ($active) {
-				const targetTransform = `translateX(${$active.offsetLeft}px) scaleX(${$active.offsetWidth})`;
+				const optionsRect = $options.getBoundingClientRect();
+				const activeRect = $active.getBoundingClientRect();
+				if (!activeRect.width) return;
+				const targetLeft = activeRect.left - optionsRect.left;
+				const targetWidth = activeRect.width;
+				const targetTransform = `translate3d(${targetLeft}px, 0, 0)`;
+				$indicator.style.width = `${targetWidth}px`;
 				if (document.body.classList.contains("no-animation")) {
 					$indicator.style.transform = targetTransform;
 				} else {
@@ -44,6 +51,7 @@ export default function TabView({ id, disableSwipe = false }, children) {
 							damping: 30,
 						},
 					).then(() => {
+						$indicator.style.width = `${targetWidth}px`;
 						$indicator.style.transform = targetTransform;
 					});
 				}
@@ -71,7 +79,6 @@ export default function TabView({ id, disableSwipe = false }, children) {
 				subtree: true,
 				attributeFilter: ["class"],
 			});
-			update();
 		};
 		const disconnect = () => {
 			observer.disconnect();
@@ -79,9 +86,11 @@ export default function TabView({ id, disableSwipe = false }, children) {
 		const $page = el.el.closest("wc-page");
 
 		connect();
+		update();
 
 		if ($page?.on) {
 			$page.on("willconnect", connect);
+			$page.on("show", update);
 			$page.on("willdisconnect", disconnect);
 		}
 	});
