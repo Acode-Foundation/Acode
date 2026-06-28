@@ -235,7 +235,7 @@ export default function actions(action, value) {
 
 		case "key": {
 			value = Number.parseInt(value, 10);
-			if (value > 40 && value < 37) {
+			if (value < 37 || value > 40) {
 				resetKeys();
 			}
 			setInput();
