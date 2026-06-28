@@ -55,6 +55,7 @@ export default class WCPage extends HTMLElement {
 		);
 
 		press(this.#leadBtn, (element) => {
+			if (document.body.classList.contains("no-animation")) return;
 			animate(
 				element,
 				{ scale: 0.85 },
@@ -100,19 +101,23 @@ export default class WCPage extends HTMLElement {
 		const isNoTransition = this.classList.contains("no-transition");
 
 		if (!isPrimary) {
-			this.style.opacity = "0";
-			animate(
-				this,
-				{
-					opacity: 1,
-				},
-				{
-					duration: isNoTransition ? 0.08 : 0.14,
-					ease: "easeOut",
-				},
-			).then(() => {
+			if (document.body.classList.contains("no-animation")) {
 				this.style.opacity = "";
-			});
+			} else {
+				this.style.opacity = "0";
+				animate(
+					this,
+					{
+						opacity: 1,
+					},
+					{
+						duration: isNoTransition ? 0.08 : 0.14,
+						ease: "easeOut",
+					},
+				).then(() => {
+					this.style.opacity = "";
+				});
+			}
 		}
 
 		if (typeof this.onconnect === "function") this.onconnect();
@@ -160,7 +165,7 @@ export default class WCPage extends HTMLElement {
 		const isPrimary = this.classList.contains("primary");
 		const isNoTransition = this.classList.contains("no-transition");
 
-		if (isPrimary) {
+		if (isPrimary || document.body.classList.contains("no-animation")) {
 			this.remove();
 			this.handler.remove();
 		} else {

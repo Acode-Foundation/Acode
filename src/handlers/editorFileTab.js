@@ -247,7 +247,13 @@ function finishDrag(shouldSettleClone) {
 		const rect = $tab.getBoundingClientRect();
 		const anim = $tabClone.animate(
 			[{ transform: `translate3d(${rect.left}px, ${rect.top}px, 0)` }],
-			{ duration: RELEASE_DURATION, easing: SPRING_EASING, fill: "forwards" },
+			{
+				duration: document.body.classList.contains("no-animation")
+					? 0
+					: RELEASE_DURATION,
+				easing: SPRING_EASING,
+				fill: "forwards",
+			},
 		);
 		anim.onfinish = cleanupDrag;
 		anim.oncancel = cleanupDrag;
@@ -361,7 +367,9 @@ function animateTabReorder($parent, previousRects) {
 				{ transform: "translate3d(0, 0, 0)" },
 			],
 			{
-				duration: REORDER_DURATION,
+				duration: document.body.classList.contains("no-animation")
+					? 0
+					: REORDER_DURATION,
 				easing: SPRING_EASING,
 				fill: "none",
 				composite: "replace",

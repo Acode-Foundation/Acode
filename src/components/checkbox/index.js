@@ -63,7 +63,7 @@ function Checkbox(text, checked, name, id, type, ref, size, isSwitch) {
 				? "translate3d(1.12rem, 0, 0)"
 				: "translate3d(0, 0, 0)";
 
-			if (animateToggle) {
+			if (animateToggle && !document.body.classList.contains("no-animation")) {
 				animate(
 					$handle.el,
 					{

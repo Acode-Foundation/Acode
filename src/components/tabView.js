@@ -30,19 +30,23 @@ export default function TabView({ id, disableSwipe = false }, children) {
 			const $active = $options.querySelector(".active");
 			if ($active) {
 				const targetTransform = `translateX(${$active.offsetLeft}px) scaleX(${$active.offsetWidth})`;
-				animate(
-					$indicator,
-					{
-						transform: targetTransform,
-					},
-					{
-						type: "spring",
-						stiffness: 380,
-						damping: 30,
-					},
-				).then(() => {
+				if (document.body.classList.contains("no-animation")) {
 					$indicator.style.transform = targetTransform;
-				});
+				} else {
+					animate(
+						$indicator,
+						{
+							transform: targetTransform,
+						},
+						{
+							type: "spring",
+							stiffness: 380,
+							damping: 30,
+						},
+					).then(() => {
+						$indicator.style.transform = targetTransform;
+					});
+				}
 			}
 		};
 

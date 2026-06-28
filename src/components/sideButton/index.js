@@ -23,6 +23,7 @@ export default function SideButtons({
 	);
 
 	press($button, (element) => {
+		if (document.body.classList.contains("no-animation")) return;
 		animate(
 			element,
 			{ scale: 0.95 },

@@ -418,6 +418,7 @@ function createListItemElement(item, options, useInfoAsDescription) {
 
 	// Register high-performance press transitions
 	press($item, (element) => {
+		if (document.body.classList.contains("no-animation")) return;
 		animate(
 			element,
 			{ scale: 0.985 },
@@ -434,6 +435,13 @@ function createListItemElement(item, options, useInfoAsDescription) {
 
 	if (supportsPrimaryHoverInput()) {
 		hover($item, (element) => {
+			if (document.body.classList.contains("no-animation")) {
+				element.style.backgroundColor =
+					"color-mix(in srgb, var(--secondary-color), var(--popup-text-color) 4%)";
+				return () => {
+					element.style.backgroundColor = "transparent";
+				};
+			}
 			animate(
 				element,
 				{
