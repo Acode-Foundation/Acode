@@ -416,7 +416,7 @@ function createListItemElement(item, options, useInfoAsDescription) {
 		$tail.el.remove();
 	}
 
-	// Register high-performance press & hover transitions
+	// Register high-performance press transitions
 	press($item, (element) => {
 		animate(
 			element,
@@ -432,22 +432,31 @@ function createListItemElement(item, options, useInfoAsDescription) {
 		};
 	});
 
-	hover($item, (element) => {
-		// Subtle background brightness lift when hovered
-		animate(
-			element,
-			{
-				backgroundColor:
-					"color-mix(in srgb, var(--secondary-color), var(--popup-text-color) 4%)",
-			},
-			{ duration: 0.15 },
-		);
-		return () => {
-			animate(element, { backgroundColor: "transparent" }, { duration: 0.15 });
-		};
-	});
+	if (supportsPrimaryHoverInput()) {
+		hover($item, (element) => {
+			animate(
+				element,
+				{
+					backgroundColor:
+						"color-mix(in srgb, var(--secondary-color), var(--popup-text-color) 4%)",
+				},
+				{ duration: 0.15 },
+			);
+			return () => {
+				animate(
+					element,
+					{ backgroundColor: "transparent" },
+					{ duration: 0.15 },
+				);
+			};
+		});
+	}
 
 	return $item;
+}
+
+function supportsPrimaryHoverInput() {
+	return globalThis.matchMedia?.("(hover: hover)").matches === true;
 }
 
 function isBooleanSetting(item) {
