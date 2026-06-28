@@ -473,6 +473,7 @@ declare type LangStrings = {
   "overview": string;
   "contributors": string;
   "quicktools:hyphen": string;
+  "quicktools:select-all": string;
   "check for app updates": string;
   "prompt update check consent message": string;
   "keywords": string;
