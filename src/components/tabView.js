@@ -46,9 +46,6 @@ export default function TabView({ id, disableSwipe = false }, children) {
 			}
 		};
 
-		// Initial positioning
-		update();
-
 		// Observe changes to 'class' attribute of child tab spans
 		const observer = new MutationObserver((mutations) => {
 			for (const mutation of mutations) {
@@ -63,28 +60,25 @@ export default function TabView({ id, disableSwipe = false }, children) {
 			}
 		});
 
-		observer.observe($options, {
-			attributes: true,
-			childList: false,
-			subtree: true,
-			attributeFilter: ["class"],
-		});
-
-		const connectionObserver = new MutationObserver(() => {
-			if (!el.el.isConnected) {
-				observer.disconnect();
-				connectionObserver.disconnect();
-			}
-		});
-
-		connectionObserver.observe(document.body || document.documentElement, {
-			childList: true,
-			subtree: true,
-		});
-
-		if (!el.el.isConnected) {
+		const connect = () => {
+			observer.observe($options, {
+				attributes: true,
+				childList: false,
+				subtree: true,
+				attributeFilter: ["class"],
+			});
+			update();
+		};
+		const disconnect = () => {
 			observer.disconnect();
-			connectionObserver.disconnect();
+		};
+		const $page = el.el.closest("wc-page");
+
+		connect();
+
+		if ($page?.on) {
+			$page.on("willconnect", connect);
+			$page.on("willdisconnect", disconnect);
 		}
 	});
 
