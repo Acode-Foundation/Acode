@@ -59,8 +59,8 @@ export function canSaveFile(file = editorManager.activeFile) {
 }
 
 function getTabsRelativeToFile(side, referenceFile) {
-	const { files } = editorManager;
 	const file = resolveReferenceFile(referenceFile);
+	const files = editorManager.getPaneFiles?.(file) || editorManager.files;
 	const activeIndex = files.indexOf(file);
 
 	if (activeIndex === -1) return [];
@@ -163,7 +163,25 @@ export default {
 		});
 	},
 	"close-current-tab"() {
-		editorManager.activeFile.remove();
+		editorManager.activeFile?.remove();
+	},
+	"new-pane"() {
+		return editorManager.createPane?.();
+	},
+	"split-pane"() {
+		return editorManager.splitPane?.();
+	},
+	"close-pane"() {
+		return editorManager.closeActivePane?.();
+	},
+	"focus-next-pane"() {
+		return editorManager.focusNextPane?.();
+	},
+	"focus-previous-pane"() {
+		return editorManager.focusPreviousPane?.();
+	},
+	"move-tab-to-new-pane"() {
+		return editorManager.moveActiveFileToNewPane?.();
 	},
 	"toggle-pin-tab"(referenceFile) {
 		resolveReferenceFile(referenceFile)?.togglePinned?.();
@@ -246,13 +264,18 @@ export default {
 		});
 	},
 	"next-file"() {
-		const len = editorManager.files.length;
-		let fileIndex = editorManager.files.indexOf(editorManager.activeFile);
+		const files =
+			editorManager.getPaneFiles?.(editorManager.activeFile) ||
+			editorManager.files;
+		const len = files.length;
+		let fileIndex = files.indexOf(editorManager.activeFile);
+
+		if (!len || fileIndex === -1) return;
 
 		if (fileIndex === len - 1) fileIndex = 0;
 		else ++fileIndex;
 
-		editorManager.files[fileIndex].makeActive();
+		files[fileIndex].makeActive();
 	},
 	async open(page) {
 		switch (page) {
@@ -317,13 +340,18 @@ export default {
 			.catch(FileBrowser.openFolderError);
 	},
 	"prev-file"() {
-		const len = editorManager.files.length;
-		let fileIndex = editorManager.files.indexOf(editorManager.activeFile);
+		const files =
+			editorManager.getPaneFiles?.(editorManager.activeFile) ||
+			editorManager.files;
+		const len = files.length;
+		let fileIndex = files.indexOf(editorManager.activeFile);
+
+		if (!len || fileIndex === -1) return;
 
 		if (fileIndex === 0) fileIndex = len - 1;
 		else --fileIndex;
 
-		editorManager.files[fileIndex].makeActive();
+		files[fileIndex].makeActive();
 	},
 	"read-only"() {
 		const file = editorManager.activeFile;

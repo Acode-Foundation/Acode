@@ -432,6 +432,10 @@ function getClientPos(e) {
  * @param {HTMLElement} $parent
  */
 function updateFileList($parent) {
+	if (typeof editorManager.updatePaneFileOrderFromTabs === "function") {
+		if (editorManager.updatePaneFileOrderFromTabs($parent)) return;
+	}
+
 	const pinnedCount = editorManager.files.filter((file) => file.pinned).length;
 	const children = [...$parent.children];
 	const newFileList = [];

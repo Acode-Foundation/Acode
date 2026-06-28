@@ -214,6 +214,56 @@ function registerCoreCommands() {
 		},
 	});
 	addCommand({
+		name: "newPane",
+		description: "Create new editor pane",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("new-pane");
+			return true;
+		},
+	});
+	addCommand({
+		name: "moveTabToNewPane",
+		description: "Move current tab to new pane",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("move-tab-to-new-pane");
+			return true;
+		},
+	});
+	addCommand({
+		name: "closePane",
+		description: "Close active editor pane",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("close-pane");
+			return true;
+		},
+	});
+	addCommand({
+		name: "focusNextPane",
+		description: "Focus next editor pane",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("focus-next-pane");
+			return true;
+		},
+	});
+	addCommand({
+		name: "focusPreviousPane",
+		description: "Focus previous editor pane",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("focus-previous-pane");
+			return true;
+		},
+	});
+	addCommand({
 		name: "closeAllTabs",
 		description: "Close all tabs",
 		readOnly: false,

@@ -2,6 +2,130 @@
   position: relative;
 }
 
+.editor-pane-root {
+  display: flex;
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+
+  &[data-tabs-position="bottom"] {
+    .editor-pane-tabs {
+      order: 2;
+      border-top: 1px solid var(--border-color);
+      border-bottom: 0;
+    }
+  }
+
+  &.hide-pane-tabs {
+    .editor-pane-tabs {
+      display: none;
+    }
+  }
+}
+
+.editor-pane {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-width: min(360px, 100%);
+  min-height: 0;
+  overflow: hidden;
+  border-left: 1px solid var(--border-color);
+  background: var(--secondary-color);
+
+  &:first-child {
+    border-left: 0;
+  }
+}
+
+.editor-pane-root.multi-pane {
+  .editor-pane.active {
+    box-shadow: inset 0 2px 0 var(--active-color);
+  }
+
+  .editor-pane-resize-handle:not([hidden]) {
+    display: block;
+  }
+}
+
+.editor-pane-root:not(.multi-pane) {
+  .editor-pane-tabs {
+    border-top: 0;
+    border-bottom: 0;
+  }
+}
+
+.editor-pane-resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -3px;
+  z-index: 5;
+  display: none;
+  width: 6px;
+  cursor: col-resize;
+  touch-action: none;
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 2px;
+    width: 1px;
+    background: var(--border-color);
+  }
+
+  &:hover::after,
+  &:active::after {
+    background: var(--active-color);
+  }
+}
+
+body.resizing-editor-pane {
+  cursor: col-resize;
+  user-select: none;
+}
+
+.editor-pane-tabs {
+  flex: 0 0 30px;
+  border-bottom: 1px solid var(--border-color);
+
+  li.tile {
+    min-width: min(var(--file-tab-width), 44%);
+    max-width: var(--file-tab-width);
+  }
+}
+
+.editor-pane-content {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.editor-pane-content > .editor-container {
+  height: 100%;
+}
+
+@media (max-width: 720px) {
+  .editor-pane-root.multi-pane {
+    .editor-pane {
+      display: none;
+      min-width: 100%;
+    }
+
+    .editor-pane.active {
+      display: flex;
+    }
+  }
+}
+
 .editor-container > .cursor-menu {
   z-index: 600;
 }

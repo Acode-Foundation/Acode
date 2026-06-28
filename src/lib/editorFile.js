@@ -269,6 +269,9 @@ function maybeRecommendLanguageModeExtension(file, modeInfo) {
  * @property {number} [savedMtime] file mtime last saved or loaded from disk
  * @property {number} [diskMtime] latest known file mtime on disk
  * @property {boolean} [hasDiskConflict] whether editor and disk both changed
+ * @property {string} [paneId] target editor pane id
+ * @property {object} [pane] target editor pane
+ * @property {boolean} [isPanePlaceholder] temporary empty tab for an empty pane
  */
 
 export default class EditorFile {
@@ -437,6 +440,7 @@ export default class EditorFile {
 	savedMtime = null;
 	diskMtime = null;
 	hasDiskConflict = false;
+	isPanePlaceholder = false;
 
 	/**
 	 *
@@ -448,6 +452,8 @@ export default class EditorFile {
 		let doesExists = null;
 
 		this.hideQuickTools = options?.hideQuickTools || false;
+		this.paneId = options?.paneId || options?.pane?.id || null;
+		this.isPanePlaceholder = !!options?.isPanePlaceholder;
 
 		// if options are passed
 		if (options) {
@@ -960,6 +966,7 @@ export default class EditorFile {
 
 	markEdited() {
 		if (this.type !== "editor") return;
+		this.isPanePlaceholder = false;
 		if (this.id === config.DEFAULT_FILE_SESSION) {
 			this.id = helpers.uuid();
 		}
@@ -1198,7 +1205,11 @@ export default class EditorFile {
 	 * @param {boolean} force if true, will prompt to save the file
 	 */
 	async remove(force = false, options = {}) {
-		const { ignorePinned = false, silentPinned = false } = options || {};
+		const {
+			ignorePinned = false,
+			silentPinned = false,
+			suppressPanePlaceholder = false,
+		} = options || {};
 
 		if (this.id === config.DEFAULT_FILE_SESSION && !editorManager.files.length)
 			return false;
@@ -1221,9 +1232,12 @@ export default class EditorFile {
 
 		this.#destroy();
 
-		editorManager.files = editorManager.files.filter(
-			(file) => file.id !== this.id,
-		);
+		const removal = editorManager.removeFileFromPane?.(this);
+		if (!removal) {
+			editorManager.files = editorManager.files.filter(
+				(file) => file.id !== this.id,
+			);
+		}
 		const { files, activeFile } = editorManager;
 		const wasActive = activeFile?.id === this.id;
 		if (wasActive) {
@@ -1233,8 +1247,24 @@ export default class EditorFile {
 			Sidebar.hide();
 			editorManager.activeFile = null;
 			new EditorFile();
+		} else if (removal?.wasPaneActive && removal.nextFile) {
+			removal.nextFile.makeActive();
+		} else if (
+			removal?.wasPaneActive &&
+			removal.pane &&
+			!removal.nextFile &&
+			!suppressPanePlaceholder
+		) {
+			new EditorFile(config.DEFAULT_FILE_NAME, {
+				paneId: removal.pane.id,
+				text: "",
+				isUnsaved: false,
+				isPanePlaceholder: true,
+			});
 		} else if (wasActive) {
-			files[files.length - 1].makeActive();
+			(
+				editorManager.activePane?.activeFile || files[files.length - 1]
+			).makeActive();
 		}
 		editorManager.onupdate("remove-file");
 		editorManager.emit("remove-file", this);
@@ -1326,20 +1356,24 @@ export default class EditorFile {
 	 * Makes this file active
 	 */
 	makeActive() {
-		const { activeFile, editor, switchFile } = editorManager;
+		const pane = editorManager.getFilePane?.(this) || editorManager.activePane;
+		const wasActivePane = editorManager.activePane?.id === pane?.id;
+		const { activeFile, switchFile } = editorManager;
+		const paneActiveFile = pane?.activeFile;
 
-		if (activeFile) {
-			if (activeFile.id === this.id) return;
+		if (paneActiveFile && paneActiveFile.id !== this.id) {
+			paneActiveFile.focusedBefore = paneActiveFile.focused;
+			paneActiveFile.removeActive();
+		} else if (activeFile && (activeFile.id !== this.id || !wasActivePane)) {
 			activeFile.focusedBefore = activeFile.focused;
 			activeFile.removeActive();
-
-			// Hide previous content if it exists
-			if (activeFile.type !== "editor" && activeFile.content) {
-				activeFile.content.style.display = "none";
-			}
 		}
 
-		switchFile(this.id);
+		if (activeFile?.id === this.id && wasActivePane) return;
+
+		switchFile(this.id, pane);
+
+		const { editor } = editorManager;
 
 		// Show/hide appropriate content
 		if (this.type === "editor") {
@@ -1359,7 +1393,9 @@ export default class EditorFile {
 			editorManager.container.style.display = "none";
 			if (this.content) {
 				this.content.style.display = "block";
-				if (!this.content.parentElement) {
+				if (
+					this.content.parentElement !== editorManager.container.parentElement
+				) {
 					editorManager.container.parentElement.appendChild(this.content);
 				}
 			}
@@ -1440,11 +1476,27 @@ export default class EditorFile {
 		this.makeActive();
 
 		if (this.id !== config.DEFAULT_FILE_SESSION) {
+			const pane = editorManager.getFilePane?.(this);
 			const defaultFile = editorManager.getFile(
 				config.DEFAULT_FILE_SESSION,
 				"id",
 			);
-			defaultFile?.remove();
+			if (defaultFile && editorManager.getFilePane?.(defaultFile) === pane) {
+				defaultFile.remove();
+			}
+
+			editorManager
+				.getPaneFiles?.(this)
+				?.filter(
+					(file) =>
+						file !== this &&
+						file.isPanePlaceholder &&
+						!file.isUnsaved &&
+						editorManager.getFilePane?.(file) === pane,
+				)
+				.forEach((file) => {
+					file.remove(true, { ignorePinned: true });
+				});
 		}
 
 		// Show/hide editor based on content type
@@ -1455,7 +1507,11 @@ export default class EditorFile {
 			editorManager.container.style.display = "none";
 			if (this.#content) {
 				this.#content.style.display = "block";
-				editorManager.container.parentElement.appendChild(this.#content);
+				if (
+					this.#content.parentElement !== editorManager.container.parentElement
+				) {
+					editorManager.container.parentElement.appendChild(this.#content);
+				}
 			}
 		}
 	}
