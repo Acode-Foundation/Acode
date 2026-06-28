@@ -47,7 +47,7 @@ export default [
 	item("caret", "letters", "insert", "^", "^"),
 	item("hyphen", "letters", "insert", "-", "-"),
 	item("paste", "paste", "command", "paste"),
-	item("select-all", "text_format", "command", "selectall"),
+	item("select all", "text_format", "command", "selectall"),
 ];
 
 /**
