@@ -6,6 +6,7 @@ import actions, { key } from "./quickTools";
 
 const CONTEXT_MENU_TIMEOUT = 500;
 const MOVE_X_THRESHOLD = 50;
+const TOUCH_EVENT_OPTIONS = { passive: false };
 
 let time;
 let moveX;
@@ -108,7 +109,7 @@ export default function init() {
 		$footer.addEventListener("contextmenu", oncontextmenu, true);
 		$footer.addEventListener("wheel", onwheel, { passive: false });
 	} else {
-		$footer.addEventListener("touchstart", touchstart);
+		$footer.addEventListener("touchstart", touchstart, TOUCH_EVENT_OPTIONS);
 		$footer.addEventListener("keydown", touchstart);
 	}
 
@@ -124,7 +125,7 @@ export default function init() {
 			$footer.removeEventListener("click", onclick);
 			$footer.removeEventListener("wheel", onwheel);
 			$footer.addEventListener("keydown", touchstart);
-			$footer.addEventListener("touchstart", touchstart);
+			$footer.addEventListener("touchstart", touchstart, TOUCH_EVENT_OPTIONS);
 		}
 	});
 }

@@ -201,6 +201,8 @@ export const key = {
  * @returns {boolean} Whether the action was performed
  */
 export default function actions(action, value) {
+	setQuicktoolsUsed();
+
 	const { editor } = editorManager;
 	const { $input, $replaceInput } = quickTools;
 
