@@ -470,6 +470,7 @@
 	"overview": "Overview",
 	"contributors": "Contributors",
 	"quicktools:hyphen": "Insert hyphen symbol",
+	"quicktools:select-all": "Select all",
 	"check for app updates": "Check for app updates",
 	"prompt update check consent message": "Acode can check for new app updates when you're online. Enable update checks?",
 	"keywords": "Keywords",
