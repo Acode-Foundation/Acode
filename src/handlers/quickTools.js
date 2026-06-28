@@ -201,6 +201,8 @@ export const key = {
  * @returns {boolean} Whether the action was performed
  */
 export default function actions(action, value) {
+	setQuicktoolsUsed();
+
 	const { editor } = editorManager;
 	const { $input, $replaceInput } = quickTools;
 
@@ -233,14 +235,13 @@ export default function actions(action, value) {
 
 		case "key": {
 			value = Number.parseInt(value, 10);
-			if (value > 40 && value < 37) {
+			if (value < 37 || value > 40) {
 				resetKeys();
 			}
 			setInput();
 			getInput().dispatchEvent(
 				KeyboardEvent("keydown", getKeys({ keyCode: value })),
 			);
-			setQuicktoolsUsed();
 			return true;
 		}
 

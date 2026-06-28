@@ -6,6 +6,7 @@ import actions, { key } from "./quickTools";
 
 const CONTEXT_MENU_TIMEOUT = 500;
 const MOVE_X_THRESHOLD = 50;
+const TOUCH_EVENT_OPTIONS = { passive: false };
 
 let time;
 let moveX;
@@ -73,17 +74,19 @@ export default function init() {
 		else $footer.removeAttribute("data-meta");
 	});
 
-	editorManager.on(["file-content-changed", "switch-file"], () => {
-		if (editorManager.activeFile?.isUnsaved) {
-			$footer.setAttribute("data-unsaved", "true");
-		} else {
-			$footer.removeAttribute("data-unsaved");
-		}
-		updateHistoryButtons();
-	});
+	editorManager.on(
+		[
+			"file-content-changed",
+			"switch-file",
+			"new-file",
+			"file-loaded",
+			"remove-file",
+		],
+		scheduleUpdateQuickToolsState,
+	);
 
 	editorManager.on("save-file", () => {
-		$footer.removeAttribute("data-unsaved");
+		scheduleUpdateQuickToolsState();
 	});
 
 	editorManager.on("editor-state-changed", updateHistoryButtons);
@@ -97,7 +100,7 @@ export default function init() {
 		root.appendOuter($toggler);
 	}
 	document.body.append($input);
-	setTimeout(updateHistoryButtons, 0);
+	scheduleUpdateQuickToolsState();
 
 	if (
 		appSettings.value.quickToolsTriggerMode ===
@@ -108,7 +111,7 @@ export default function init() {
 		$footer.addEventListener("contextmenu", oncontextmenu, true);
 		$footer.addEventListener("wheel", onwheel, { passive: false });
 	} else {
-		$footer.addEventListener("touchstart", touchstart);
+		$footer.addEventListener("touchstart", touchstart, TOUCH_EVENT_OPTIONS);
 		$footer.addEventListener("keydown", touchstart);
 	}
 
@@ -124,7 +127,7 @@ export default function init() {
 			$footer.removeEventListener("click", onclick);
 			$footer.removeEventListener("wheel", onwheel);
 			$footer.addEventListener("keydown", touchstart);
-			$footer.addEventListener("touchstart", touchstart);
+			$footer.addEventListener("touchstart", touchstart, TOUCH_EVENT_OPTIONS);
 		}
 	});
 }
@@ -374,6 +377,22 @@ function click($el) {
 	actions(action, value);
 }
 
+function scheduleUpdateQuickToolsState() {
+	setTimeout(updateQuickToolsState, 0);
+}
+
+function updateQuickToolsState() {
+	const { $footer } = quickTools;
+
+	if (editorManager.activeFile?.isUnsaved) {
+		$footer.setAttribute("data-unsaved", "true");
+	} else {
+		$footer.removeAttribute("data-unsaved");
+	}
+
+	updateHistoryButtons();
+}
+
 function updateHistoryButtons() {
 	const { editor, activeFile } = editorManager;
 	const disabled = !editor || activeFile?.type !== "editor";
@@ -383,10 +402,20 @@ function updateHistoryButtons() {
 }
 
 function updateHistoryButton(id, disabled) {
-	quickTools.$footer
-		.querySelectorAll(`[data-id="${id}"]`)
-		.forEach(($button) => {
-			$button.disabled = disabled;
-			$button.setAttribute("aria-disabled", String(disabled));
+	const buttons = new Set();
+
+	for (const $container of [
+		quickTools.$footer,
+		quickTools.$row1,
+		quickTools.$row2,
+	]) {
+		$container?.querySelectorAll(`[data-id="${id}"]`)?.forEach(($button) => {
+			buttons.add($button);
 		});
+	}
+
+	buttons.forEach(($button) => {
+		$button.disabled = disabled;
+		$button.setAttribute("aria-disabled", String(disabled));
+	});
 }
