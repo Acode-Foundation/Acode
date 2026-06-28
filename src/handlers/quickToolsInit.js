@@ -409,7 +409,7 @@ function updateHistoryButton(id, disabled) {
 		quickTools.$row1,
 		quickTools.$row2,
 	]) {
-		$container?.querySelectorAll(`[data-id="${id}"]`).forEach(($button) => {
+		$container?.querySelectorAll(`[data-id="${id}"]`)?.forEach(($button) => {
 			buttons.add($button);
 		});
 	}
