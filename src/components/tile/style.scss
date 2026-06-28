@@ -29,7 +29,7 @@ header {
 
   &.drag {
     pointer-events: none;
-    border: solid 1px rgb(255, 215, 0);
+    border: solid 1px var(--active-color);
     background-color: inherit !important;
     pointer-events: none;
     position: fixed;
