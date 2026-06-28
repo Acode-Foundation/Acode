@@ -70,10 +70,22 @@ export default function TabView({ id, disableSwipe = false }, children) {
 			attributeFilter: ["class"],
 		});
 
-		// Clean up observer when container is disconnected
-		el.el.addEventListener("DOMNodeRemovedFromDocument", () => {
-			observer.disconnect();
+		const connectionObserver = new MutationObserver(() => {
+			if (!el.el.isConnected) {
+				observer.disconnect();
+				connectionObserver.disconnect();
+			}
 		});
+
+		connectionObserver.observe(document.body || document.documentElement, {
+			childList: true,
+			subtree: true,
+		});
+
+		if (!el.el.isConnected) {
+			observer.disconnect();
+			connectionObserver.disconnect();
+		}
 	});
 
 	return (
@@ -95,7 +107,7 @@ export default function TabView({ id, disableSwipe = false }, children) {
 		lastY = e.touches[0].clientY;
 		isScrolling = false;
 
-		document.addEventListener("touchmove", omtouchmove, { passive: true });
+		document.addEventListener("touchmove", omtouchmove, { passive: false });
 		document.addEventListener("touchend", omtouchend);
 		document.addEventListener("touchcancel", omtouchend);
 	}
