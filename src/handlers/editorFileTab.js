@@ -381,8 +381,6 @@ function animateTabReorder($parent, previousRects) {
 	}
 }
 
-
-
 /**
  * Scrolls the container using animation frame
  */
