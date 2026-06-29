@@ -1,5 +1,6 @@
 import config from "lib/config";
 import settings from "lib/settings";
+import { animate } from "motion";
 
 const opts = { passive: false };
 
@@ -18,6 +19,9 @@ let $tab = null;
  * @type {HTMLDivElement}
  */
 let $parent = null;
+let $originParent = null;
+let draggedFile = null;
+let allowPaneTransfer = true;
 
 let MAX_SCROLL = 0;
 let MIN_SCROLL = 0;
@@ -75,11 +79,11 @@ let didReorder = false;
 
 const MIN_SCROLL_SPEED = 2;
 const MAX_SCROLL_SPEED = 14;
-const REORDER_DURATION = 280;
-const RELEASE_DURATION = 250;
-const SPRING_EASING = "cubic-bezier(0.2, 1.2, 0.4, 1)";
+const REORDER_DURATION = 0.28;
+const RELEASE_DURATION = 0.25;
+const SPRING_EASING = [0.2, 1, 0.4, 1];
 
-/** @type {WeakMap<HTMLElement, Animation>} */
+/** @type {WeakMap<HTMLElement, {cancel?: function(): void}>} */
 const reorderAnimations = new WeakMap();
 
 /**
@@ -98,8 +102,12 @@ export default function startDrag(e) {
 		navigator.vibrate(config.VIBRATION_TIME);
 	}
 
-	$tab = e.target;
+	$tab = e.currentTarget || e.target.closest?.(".tile") || e.target;
 	$parent = $tab.parentElement;
+	$originParent = $parent;
+	draggedFile = editorManager.files.find((file) => file.tab === $tab) || null;
+	allowPaneTransfer =
+		!!draggedFile && !(draggedFile.isPanePlaceholder && !draggedFile.isUnsaved);
 	$tabClone = $tab.cloneNode(true);
 	initialNextSibling = $tab.nextElementSibling;
 	didReorder = false;
@@ -196,11 +204,18 @@ function releaseDrag(e) {
 
 	/**@type {HTMLDivElement} target tab */
 	const $target = document.elementFromPoint(clientX, clientY);
-	const shouldCommitReorder = $parent.contains($target);
+	const $dropParent = getDropTabList(clientX, clientY);
+	if ($dropParent && $dropParent !== $parent) {
+		moveDragToParent($dropParent);
+	}
+	const shouldCommitReorder =
+		$parent.contains($target) || $dropParent === $parent;
 
 	if (shouldCommitReorder) {
 		updateDragPreview(clientX, clientY);
-		if (didReorder) {
+		if ($parent !== $originParent) {
+			commitPaneTransfer();
+		} else if (didReorder) {
 			updateFileList($parent);
 		}
 	} else if (
@@ -245,18 +260,16 @@ function finishDrag(shouldSettleClone) {
 
 	if (shouldSettleClone) {
 		const rect = $tab.getBoundingClientRect();
-		const anim = $tabClone.animate(
-			[{ transform: `translate3d(${rect.left}px, ${rect.top}px, 0)` }],
+		animate(
+			$tabClone,
+			{ transform: `translate3d(${rect.left}px, ${rect.top}px, 0)` },
 			{
 				duration: document.body.classList.contains("no-animation")
 					? 0
 					: RELEASE_DURATION,
-				easing: SPRING_EASING,
-				fill: "forwards",
+				ease: SPRING_EASING,
 			},
-		);
-		anim.onfinish = cleanupDrag;
-		anim.oncancel = cleanupDrag;
+		).then(cleanupDrag);
 		return;
 	}
 
@@ -267,6 +280,9 @@ function cleanupDrag() {
 	$tab.style.opacity = "";
 	$tabClone.remove();
 	$tabClone = null;
+	$originParent = null;
+	draggedFile = null;
+	allowPaneTransfer = true;
 	initialNextSibling = null;
 	didReorder = false;
 }
@@ -277,16 +293,19 @@ function preventDefaultScroll() {
 
 function updateDragPreview(clientX, clientY) {
 	const $target = document.elementFromPoint(clientX, clientY);
-	if (
-		!$parent.contains($target) ||
-		$target === $tab ||
-		$tab.contains($target)
-	) {
+	const $dropParent = getDropTabList(clientX, clientY);
+	if ($dropParent && $dropParent !== $parent) {
+		moveDragToParent($dropParent);
+	}
+
+	if (!$target || $target === $tab || $tab.contains($target)) {
 		return;
 	}
 
 	const $targetTab = $target.closest(".tile");
-	if (!$targetTab) return;
+	if (!$targetTab || !$parent.contains($targetTab)) {
+		return;
+	}
 
 	const rect = $targetTab.getBoundingClientRect();
 	const midX = rect.left + rect.width / 2;
@@ -302,9 +321,47 @@ function updateDragPreview(clientX, clientY) {
 }
 
 function restoreInitialTabPosition() {
+	if ($parent !== $originParent) {
+		moveDragToParent($originParent, initialNextSibling);
+		return;
+	}
+
 	reorderTab(
 		initialNextSibling?.parentElement === $parent ? initialNextSibling : null,
 	);
+}
+
+function moveDragToParent($nextParent, $insertBefore = null) {
+	if (!$nextParent || $nextParent === $parent) return;
+
+	const previousParents = [$parent, $nextParent].filter(Boolean);
+	const previousRects = captureVisualPositionsForParents(previousParents);
+	$parent.removeEventListener("scroll", preventDefaultScroll, opts);
+
+	if ($insertBefore?.parentElement === $nextParent) {
+		$nextParent.insertBefore($tab, $insertBefore);
+	} else {
+		$nextParent.appendChild($tab);
+	}
+
+	previousParents.forEach(($list) => animateTabReorder($list, previousRects));
+	$parent = $nextParent;
+	updateParentMetrics();
+	prevScrollLeft = $parent.scrollLeft;
+	$parent.addEventListener("scroll", preventDefaultScroll, opts);
+	didReorder = true;
+}
+
+function commitPaneTransfer() {
+	const targetPane = $parent?.__editorPane;
+	if (!targetPane || !draggedFile || !allowPaneTransfer) return;
+
+	const index = [...$parent.children].indexOf($tab);
+	editorManager.moveFileToPane?.(draggedFile, targetPane, {
+		activate: true,
+		index,
+	});
+	editorManager.updatePaneFileOrderFromTabs?.($parent);
 }
 
 function reorderTab($insertBefore) {
@@ -335,10 +392,47 @@ function captureVisualPositions($parent) {
 	);
 }
 
+function captureVisualPositionsForParents(parents) {
+	const rects = new Map();
+	parents.forEach(($list) => {
+		if (!$list) return;
+		for (const $child of $list.children) {
+			rects.set($child, $child.getBoundingClientRect());
+		}
+	});
+	return rects;
+}
+
+function updateParentMetrics() {
+	const parentRect = $parent.getBoundingClientRect();
+	parentLeft = parentRect.left;
+	parentRight = parentRect.right;
+	MAX_SCROLL = $parent.scrollWidth - parentRect.width;
+	MIN_SCROLL = 0;
+}
+
+function getDropTabList(clientX, clientY) {
+	const $target = document.elementFromPoint(clientX, clientY);
+	const $tabList = $target?.closest?.(".editor-pane-tabs");
+	if (isValidDropTabList($tabList)) return $tabList;
+
+	const pane = $target?.closest?.(".editor-pane")?.__editorPane;
+	if (isValidDropTabList(pane?.tabList)) return pane.tabList;
+
+	return $parent;
+}
+
+function isValidDropTabList($tabList) {
+	if (!$tabList?.__editorPane) return false;
+	if ($tabList === $originParent) return true;
+	if (!allowPaneTransfer) return false;
+	return $tabList.getClientRects().length > 0;
+}
+
 /**
  * Animates the visual change after the DOM order is updated using FLIP.
- * Uses WAAPI directly for reliable mid-animation compositing and to
- * properly respect the app's no-animation setting.
+ * Uses Motion for reliable mid-animation compositing and to respect the
+ * app's no-animation setting.
  * @param {HTMLElement} $parent
  * @param {Map<HTMLElement, DOMRect>} previousRects
  */
@@ -348,7 +442,7 @@ function animateTabReorder($parent, previousRects) {
 
 		const oldAnim = reorderAnimations.get($child);
 		if (oldAnim) {
-			oldAnim.cancel();
+			oldAnim.cancel?.();
 			reorderAnimations.delete($child);
 		}
 
@@ -361,32 +455,28 @@ function animateTabReorder($parent, previousRects) {
 
 		if (Math.abs(deltaX) < 0.5 && Math.abs(deltaY) < 0.5) continue;
 
-		const anim = $child.animate(
-			[
-				{ transform: `translate3d(${deltaX}px, ${deltaY}px, 0)` },
-				{ transform: "translate3d(0, 0, 0)" },
-			],
+		const anim = animate(
+			$child,
+			{
+				transform: [
+					`translate3d(${deltaX}px, ${deltaY}px, 0)`,
+					"translate3d(0, 0, 0)",
+				],
+			},
 			{
 				duration: document.body.classList.contains("no-animation")
 					? 0
 					: REORDER_DURATION,
-				easing: SPRING_EASING,
-				fill: "none",
-				composite: "replace",
+				ease: SPRING_EASING,
 			},
 		);
 		reorderAnimations.set($child, anim);
 
-		anim.onfinish = () => {
+		anim.then(() => {
 			if (reorderAnimations.get($child) === anim) {
 				reorderAnimations.delete($child);
 			}
-		};
-		anim.oncancel = () => {
-			if (reorderAnimations.get($child) === anim) {
-				reorderAnimations.delete($child);
-			}
-		};
+		});
 	}
 }
 
@@ -394,13 +484,13 @@ function animateTabReorder($parent, previousRects) {
  * Scrolls the container using animation frame
  */
 function scrollContainer() {
-	return animate();
+	return step();
 
-	function animate() {
+	function step() {
 		const scroll = getScroll();
 		if (!scroll) return;
 		prevScrollLeft = $parent.scrollLeft += scroll;
-		animationFrame = requestAnimationFrame(animate);
+		animationFrame = requestAnimationFrame(step);
 	}
 }
 
