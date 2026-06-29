@@ -144,6 +144,10 @@ body.resizing-editor-pane {
   }
 }
 
+.editor-global-open-file-list {
+  display: none !important;
+}
+
 .editor-pane-content {
   position: relative;
   flex: 1 1 auto;

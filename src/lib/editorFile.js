@@ -1360,13 +1360,14 @@ export default class EditorFile {
 		const wasActivePane = editorManager.activePane?.id === pane?.id;
 		const { activeFile, switchFile } = editorManager;
 		const paneActiveFile = pane?.activeFile;
+		const inactiveFiles = [paneActiveFile, !wasActivePane ? activeFile : null];
+		const blurredFileIds = new Set();
 
-		if (paneActiveFile && paneActiveFile.id !== this.id) {
-			paneActiveFile.focusedBefore = paneActiveFile.focused;
-			paneActiveFile.removeActive();
-		} else if (activeFile && (activeFile.id !== this.id || !wasActivePane)) {
-			activeFile.focusedBefore = activeFile.focused;
-			activeFile.removeActive();
+		for (const file of inactiveFiles) {
+			if (!file || file.id === this.id || blurredFileIds.has(file.id)) continue;
+			file.focusedBefore = file.focused;
+			file.removeActive();
+			blurredFileIds.add(file.id);
 		}
 
 		if (activeFile?.id === this.id && wasActivePane) return;

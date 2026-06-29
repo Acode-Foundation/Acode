@@ -190,6 +190,9 @@ async function EditorManager($header, $body) {
 	let editor = null;
 	const panes = [];
 	const $paneRoot = <div className="editor-pane-root"></div>;
+	const $globalOpenFileList = (
+		<ul className="open-file-list editor-global-open-file-list"></ul>
+	);
 	let $container = createEditorContainer();
 	let paneLayoutRoot = null;
 	const primaryPane = createPaneShell($container);
@@ -523,6 +526,7 @@ async function EditorManager($header, $body) {
 		if (manager) {
 			manager.activeFile = pane.activeFile || null;
 			updateHeaderForFile(manager.activeFile);
+			if (isPaneTabLayout()) syncGlobalOpenFileListMirror();
 			updateActivePaneScrollbars();
 			toggleProblemButton();
 			if (options.emitSwitch !== false && manager.activeFile) {
@@ -1384,6 +1388,7 @@ async function EditorManager($header, $body) {
 	};
 
 	Object.defineProperty(editor.commands, "commands", {
+		configurable: true,
 		get() {
 			const map = {};
 			getRegisteredCommands().forEach((cmd) => {
@@ -1396,8 +1401,9 @@ async function EditorManager($header, $body) {
 	// Provide editor.session for Ace API compatibility
 	// Returns the active file's session (Proxy with Ace-like methods)
 	Object.defineProperty(editor, "session", {
+		configurable: true,
 		get() {
-			return manager.activeFile?.session ?? null;
+			return editor.__editorPane?.activeFile?.session ?? null;
 		},
 	});
 
@@ -1705,32 +1711,335 @@ async function EditorManager($header, $body) {
 		touchSelectionController?.setMenu(!!value);
 	};
 
-	const editorCompatibilityKeys = [
-		"execCommand",
-		"commands",
-		"session",
-		"insert",
-		"setTheme",
-		"gotoLine",
-		"getCursorPosition",
-		"getSelectionRange",
-		"scrollToRow",
-		"moveCursorToPosition",
-		"getValue",
-		"selection",
-		"getCopyText",
-		"setSelection",
-		"setMenu",
-	];
-	const editorCompatibilityDescriptors = Object.fromEntries(
-		editorCompatibilityKeys
-			.map((key) => [key, Object.getOwnPropertyDescriptor(editor, key)])
-			.filter(([, descriptor]) => descriptor),
-	);
+	function getEditorCompatibilityPane(targetEditor) {
+		return targetEditor?.__editorPane || getActivePane();
+	}
+
+	function refreshPaneCommandKeymaps() {
+		panes.forEach((pane) => {
+			if (pane.editor) refreshCommandKeymap(pane.editor);
+		});
+	}
+
+	function createEditorCommands() {
+		const commands = {
+			addCommand(descriptor) {
+				const command = registerExternalCommand(descriptor);
+				refreshPaneCommandKeymaps();
+				return command;
+			},
+			removeCommand(name) {
+				if (!name) return;
+				removeExternalCommand(name);
+				refreshPaneCommandKeymaps();
+			},
+		};
+
+		Object.defineProperty(commands, "commands", {
+			configurable: true,
+			get() {
+				const map = {};
+				getRegisteredCommands().forEach((cmd) => {
+					map[cmd.name] = cmd;
+				});
+				return map;
+			},
+		});
+
+		return commands;
+	}
+
+	function createEditorCompatibilityDescriptors(targetEditor) {
+		const getState = () => targetEditor.state;
+		const getDoc = () => getState().doc;
+		const getSelection = () => getState().selection.main;
+		const getTouchSelectionController = () =>
+			getEditorCompatibilityPane(targetEditor)?.touchSelectionController ||
+			touchSelectionController;
+
+		return {
+			execCommand: {
+				configurable: true,
+				writable: true,
+				value(commandName, args) {
+					if (!commandName) return false;
+					return executeCommand(String(commandName), targetEditor, args);
+				},
+			},
+			commands: {
+				configurable: true,
+				writable: true,
+				value: createEditorCommands(),
+			},
+			session: {
+				configurable: true,
+				get() {
+					return (
+						getEditorCompatibilityPane(targetEditor)?.activeFile?.session ??
+						null
+					);
+				},
+			},
+			insert: {
+				configurable: true,
+				writable: true,
+				value(text) {
+					try {
+						const { from, to } = getSelection();
+						const insertText = String(text ?? "");
+						targetEditor.dispatch({
+							changes: { from, to, insert: insertText },
+							selection: {
+								anchor: from + insertText.length,
+								head: from + insertText.length,
+							},
+						});
+						return true;
+					} catch (_) {
+						return false;
+					}
+				},
+			},
+			setTheme: {
+				configurable: true,
+				writable: true,
+				value(themeId) {
+					return applyThemeToEditor(targetEditor, themeId);
+				},
+			},
+			gotoLine: {
+				configurable: true,
+				writable: true,
+				value(line, column = 0, animate = false) {
+					try {
+						const state = getState();
+						const { doc } = state;
+
+						let targetLine;
+						let targetColumn = column;
+
+						if (typeof line === "string") {
+							const match = /^([+-])?(\d+)?(:\d+)?(%)?$/.exec(line.trim());
+							if (!match) {
+								console.warn("Invalid gotoLine format:", line);
+								return false;
+							}
+
+							const currentLine = doc.lineAt(state.selection.main.head);
+							const [, sign, lineNum, colonColumn, percent] = match;
+
+							if (colonColumn) {
+								targetColumn = Math.max(0, +colonColumn.slice(1) - 1);
+							}
+
+							const parsedLine = lineNum ? +lineNum : currentLine.number;
+
+							if (lineNum && percent) {
+								let percentage = parsedLine / 100;
+								if (sign) {
+									percentage =
+										percentage * (sign === "-" ? -1 : 1) +
+										currentLine.number / doc.lines;
+								}
+								targetLine = Math.round(doc.lines * percentage);
+							} else if (lineNum && sign) {
+								targetLine =
+									parsedLine * (sign === "-" ? -1 : 1) + currentLine.number;
+							} else if (lineNum) {
+								targetLine = parsedLine;
+							} else {
+								targetLine = currentLine.number;
+							}
+						} else {
+							targetLine = line;
+						}
+
+						const lineNum = Math.max(1, Math.min(targetLine, doc.lines));
+						const docLine = doc.line(lineNum);
+						const col = Math.max(0, Math.min(targetColumn, docLine.length));
+						const pos = docLine.from + col;
+
+						targetEditor.dispatch({
+							selection: { anchor: pos, head: pos },
+							effects: EditorView.scrollIntoView(pos, { y: "center" }),
+						});
+						targetEditor.focus();
+						return true;
+					} catch (error) {
+						console.error("Error in gotoLine:", error);
+						return false;
+					}
+				},
+			},
+			getCursorPosition: {
+				configurable: true,
+				writable: true,
+				value() {
+					try {
+						const head = getSelection().head;
+						const cursor = getDoc().lineAt(head);
+						return { row: cursor.number, column: head - cursor.from };
+					} catch (_) {
+						return { row: 1, column: 0 };
+					}
+				},
+			},
+			getSelectionRange: {
+				configurable: true,
+				writable: true,
+				value() {
+					try {
+						const { from, to } = getSelection();
+						const doc = getDoc();
+						const fromLine = doc.lineAt(from);
+						const toLine = doc.lineAt(to);
+						return {
+							start: {
+								row: Math.max(0, fromLine.number - 1),
+								column: from - fromLine.from,
+							},
+							end: {
+								row: Math.max(0, toLine.number - 1),
+								column: to - toLine.from,
+							},
+						};
+					} catch (_) {
+						return { start: { row: 0, column: 0 }, end: { row: 0, column: 0 } };
+					}
+				},
+			},
+			scrollToRow: {
+				configurable: true,
+				writable: true,
+				value(row) {
+					try {
+						const scroller = targetEditor.scrollDOM;
+						if (!scroller) return false;
+
+						if (row === Number.POSITIVE_INFINITY) {
+							clearScrollbarScrollLock();
+							scroller.scrollTop = Math.max(
+								scroller.scrollHeight - scroller.clientHeight,
+								0,
+							);
+							return true;
+						}
+
+						const parsedRow = Number(row);
+						if (!Number.isFinite(parsedRow)) return false;
+						const aceRow = Math.max(0, Math.floor(parsedRow));
+						const lineNum = Math.min(getDoc().lines, aceRow + 1);
+						const line = getDoc().line(lineNum);
+						targetEditor.dispatch({
+							effects: EditorView.scrollIntoView(line.from, { y: "start" }),
+						});
+						return true;
+					} catch (_) {
+						return false;
+					}
+				},
+			},
+			moveCursorToPosition: {
+				configurable: true,
+				writable: true,
+				value(pos) {
+					try {
+						const lineNum = Math.max(1, pos.row || 1);
+						const col = Math.max(0, pos.column || 0);
+						targetEditor.gotoLine(lineNum, col);
+					} catch (_) {
+						// ignore
+					}
+				},
+			},
+			getValue: {
+				configurable: true,
+				writable: true,
+				value() {
+					try {
+						return getDoc().toString();
+					} catch (_) {
+						return "";
+					}
+				},
+			},
+			selection: {
+				configurable: true,
+				writable: true,
+				value: {
+					get anchor() {
+						try {
+							return getSelection().anchor;
+						} catch (_) {
+							return 0;
+						}
+					},
+					getRange() {
+						try {
+							const { from, to } = getSelection();
+							const doc = getDoc();
+							const fromLine = doc.lineAt(from);
+							const toLine = doc.lineAt(to);
+							return {
+								start: {
+									row: fromLine.number,
+									column: from - fromLine.from,
+								},
+								end: {
+									row: toLine.number,
+									column: to - toLine.from,
+								},
+							};
+						} catch (_) {
+							return {
+								start: { row: 1, column: 0 },
+								end: { row: 1, column: 0 },
+							};
+						}
+					},
+					getCursor() {
+						return targetEditor.getCursorPosition();
+					},
+				},
+			},
+			getCopyText: {
+				configurable: true,
+				writable: true,
+				value() {
+					try {
+						const { from, to } = getSelection();
+						if (from === to) return "";
+						return getDoc().sliceString(from, to);
+					} catch (_) {
+						return "";
+					}
+				},
+			},
+			setSelection: {
+				configurable: true,
+				writable: true,
+				value(value) {
+					getTouchSelectionController()?.setSelection(!!value);
+				},
+			},
+			setMenu: {
+				configurable: true,
+				writable: true,
+				value(value) {
+					getTouchSelectionController()?.setMenu(!!value);
+				},
+			},
+		};
+	}
 
 	function applyEditorCompatibility(targetEditor) {
-		Object.defineProperties(targetEditor, editorCompatibilityDescriptors);
+		Object.defineProperties(
+			targetEditor,
+			createEditorCompatibilityDescriptors(targetEditor),
+		);
 	}
+
+	applyEditorCompatibility(editor);
 
 	function canCreatePane(
 		direction = PANE_SPLIT_HORIZONTAL,
@@ -1856,6 +2165,7 @@ async function EditorManager($header, $body) {
 	function closeActivePane() {
 		const pane = getActivePane();
 		if (!pane || panes.length <= 1) return false;
+		const preferredFile = pane.activeFile;
 
 		const orderedPanes = getOrderedPanes();
 		const paneIndex = orderedPanes.indexOf(pane);
@@ -1888,7 +2198,9 @@ async function EditorManager($header, $body) {
 		if (storedPaneIndex >= 0) panes.splice(storedPaneIndex, 1);
 		updatePaneLayoutState();
 		rebuildFileListFromPanes();
-		const fileToActivate = targetPane.activeFile;
+		const fileToActivate = targetPane.files.includes(preferredFile)
+			? preferredFile
+			: targetPane.activeFile;
 		targetPane.activeFile = null;
 		setActivePane(targetPane, { emitSwitch: false });
 		fileToActivate?.makeActive();
@@ -2405,6 +2717,7 @@ async function EditorManager($header, $body) {
 		getFile,
 		getFilePane,
 		getPaneFiles,
+		getPaneTabList,
 		setActivePane,
 		reapplyActiveFile,
 		switchFile,
@@ -2437,6 +2750,9 @@ async function EditorManager($header, $body) {
 		get panes() {
 			return panes.slice();
 		},
+		get activePaneTabList() {
+			return getPaneTabList();
+		},
 		get container() {
 			return getActivePane()?.editorContainer || $container;
 		},
@@ -2444,8 +2760,10 @@ async function EditorManager($header, $body) {
 			return isScrolling;
 		},
 		get openFileList() {
-			if (!$openFileList) initFileTabContainer();
-			if (isPaneTabLayout()) return getActivePane()?.tabList || $openFileList;
+			if (isPaneTabLayout()) return $globalOpenFileList;
+			if (!$openFileList || $openFileList === $globalOpenFileList) {
+				initFileTabContainer();
+			}
 			return $openFileList;
 		},
 		get TIMEOUT_VALUE() {
@@ -2966,6 +3284,18 @@ async function EditorManager($header, $body) {
 		return manager.files;
 	}
 
+	function syncGlobalOpenFileListMirror() {
+		$globalOpenFileList.replaceChildren(
+			...manager.files.map((file) => {
+				const tab = file.tab.cloneNode(true);
+				tab.dataset.fileId = file.id;
+				tab.dataset.paneId = file.paneId || "";
+				tab.classList.toggle("active", manager.activeFile?.id === file.id);
+				return tab;
+			}),
+		);
+	}
+
 	function syncOpenFileList() {
 		if (isPaneTabLayout()) {
 			$paneRoot.classList.remove("hide-pane-tabs");
@@ -2976,11 +3306,15 @@ async function EditorManager($header, $body) {
 				});
 				pane.element.classList.toggle("empty", pane.files.length === 0);
 			});
+			syncGlobalOpenFileListMirror();
 			return;
 		}
 
 		$paneRoot.classList.add("hide-pane-tabs");
-		const $list = manager.openFileList;
+		if (!$openFileList || $openFileList === $globalOpenFileList) {
+			initFileTabContainer();
+		}
+		const $list = $openFileList;
 		manager.files.forEach((file) => {
 			$list.append(file.tab);
 		});
@@ -3053,6 +3387,15 @@ async function EditorManager($header, $body) {
 		return pane?.files || manager.files;
 	}
 
+	function getPaneTabList(fileOrPane = getActivePane()) {
+		const pane = fileOrPane?.tabList
+			? fileOrPane
+			: typeof fileOrPane === "string"
+				? getPaneById(fileOrPane) || getFilePane(fileOrPane)
+				: getFilePane(fileOrPane);
+		return pane?.tabList || null;
+	}
+
 	function moveFileToPane(file, targetPane, options = {}) {
 		if (!file || !targetPane) return false;
 		const {
@@ -3096,6 +3439,7 @@ async function EditorManager($header, $body) {
 				sourcePane.editorContainer.style.display = "block";
 				createUntitledPaneFile(sourcePane);
 			}
+			syncOpenFileList();
 		}
 
 		if (activate) {
@@ -3160,6 +3504,7 @@ async function EditorManager($header, $body) {
 
 	function isPaneTabLayout() {
 		const { openFileListPos } = appSettings.value;
+		// Sidebar mode keeps the global sidebar list, so pane-local tab bars stay hidden.
 		return (
 			openFileListPos === appSettings.OPEN_FILE_LIST_POS_HEADER ||
 			openFileListPos === appSettings.OPEN_FILE_LIST_POS_BOTTOM
@@ -3794,6 +4139,7 @@ async function EditorManager($header, $body) {
 		file.tab.classList.add("active");
 		file.tab.scrollIntoView();
 		updateHeaderForFile(file);
+		if (isPaneTabLayout()) syncGlobalOpenFileListMirror();
 
 		if (file.type === "editor") {
 			pane.touchSelectionController?.setEnabled(true);
@@ -3842,6 +4188,7 @@ async function EditorManager($header, $body) {
 
 		if (
 			$openFileList &&
+			$openFileList !== $globalOpenFileList &&
 			!$openFileList.classList.contains("editor-pane-tabs")
 		) {
 			if ($openFileList.classList.contains("collapsible")) {
@@ -3855,7 +4202,7 @@ async function EditorManager($header, $body) {
 		// show open file list in header
 		const { openFileListPos } = appSettings.value;
 		if (isPaneTabLayout()) {
-			$openFileList = getActivePane()?.tabList || null;
+			$openFileList = $globalOpenFileList;
 			$paneRoot.dataset.tabsPosition =
 				openFileListPos === appSettings.OPEN_FILE_LIST_POS_BOTTOM
 					? "bottom"

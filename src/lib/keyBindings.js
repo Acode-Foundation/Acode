@@ -139,7 +139,7 @@ const APP_BINDING_CONFIG = [
 	{
 		name: "closePane",
 		description: "Close active editor pane",
-		key: "Ctrl-Shift-W",
+		key: "Ctrl-Alt-W",
 		action: "close-pane",
 		readOnly: true,
 	},
