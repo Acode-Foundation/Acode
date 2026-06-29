@@ -351,13 +351,13 @@ async function filterPlugins() {
 	};
 
 	if (option.type === "author") {
-		const authorName = (await prompt("Enter author name", "", "text"))?.trim();
+		const authorName = (await prompt(strings["enter author name"], "", "text"))?.trim();
 		if (!authorName) return;
 		filterState.value = authorName.toLowerCase();
 		filterState.originalValue = authorName;
 		filterState.displayLabel = `${option.baseLabel}: ${authorName}`;
 	} else if (option.type === "keywords") {
-		const rawKeywords = (await prompt("Enter keywords", "", "text"))?.trim();
+		const rawKeywords = (await prompt(strings["enter keywords"], "", "text"))?.trim();
 		if (!rawKeywords) return;
 		const keywordList = rawKeywords
 			.split(",")
@@ -422,7 +422,7 @@ async function addSource(sourceType, value = "https://") {
 	if (!sourceType) return;
 	let source;
 	if (sourceType === "remote") {
-		source = await prompt("Enter plugin source", value, "url");
+		source = await prompt(strings["enter plugin source"], value, "url");
 	} else {
 		source = (await FileBrowser("file", "Select plugin source")).url;
 	}

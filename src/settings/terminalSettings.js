@@ -267,7 +267,7 @@ export default function terminalSettings() {
 							loader.removeTitleLoader();
 							alert(
 								strings.success.toUpperCase(),
-								"Terminal uninstalled successfully.",
+								`${strings["uninstalled successfully"]}.`,
 							);
 						})
 						.catch((error) => {
@@ -348,7 +348,7 @@ export default function terminalSettings() {
 					loader.removeTitleLoader();
 					alert(
 						strings.success.toUpperCase(),
-						"Terminal restored successfully",
+						`${strings["restored successfully"]}.`,
 					);
 				},
 				toast,
