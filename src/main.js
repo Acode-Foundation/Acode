@@ -475,9 +475,6 @@ async function setDebugInfo() {
 }
 
 function getUpdateMessage(count) {
-	if (settings.value.lang === "en") {
-		return `${count} plugin${count > 1 ? "s" : ""} ${count > 1 ? "have" : "has"} new version${count > 1 ? "s" : ""} available.`;
-	}
 	return count === 1
 		? strings["plugin updates singular"]
 		: strings["plugin updates plural"].replace(/\{count\}/, count);
