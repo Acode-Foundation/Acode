@@ -75,49 +75,62 @@
   position: relative;
   z-index: 5;
   display: none;
-  flex: 0 0 1px;
-  background: var(--border-color);
+  flex: 0 0 9px;
+  background: transparent;
   touch-action: none;
 
-  &::after {
+  &::before {
     content: "";
     position: absolute;
-    inset: 0;
-    background: transparent;
+    background: var(--border-color);
   }
 
-  &:hover,
-  &:active {
+  &:hover::before,
+  &:active::before {
     background: var(--active-color);
   }
 
   &[data-direction="horizontal"] {
-    width: 1px;
+    margin-right: -4px;
+    margin-left: -4px;
     cursor: col-resize;
 
-    &::after {
-      left: -5px;
-      right: -5px;
+    &::before {
+      top: 0;
+      bottom: 0;
+      left: 4px;
+      width: 1px;
     }
   }
 
   &[data-direction="vertical"] {
-    height: 1px;
+    margin-top: -4px;
+    margin-bottom: -4px;
     cursor: row-resize;
 
-    &::after {
-      top: -5px;
-      bottom: -5px;
+    &::before {
+      top: 4px;
+      right: 0;
+      left: 0;
+      height: 1px;
     }
   }
 }
 
 body.resizing-editor-pane {
-  cursor: col-resize;
+  cursor: col-resize !important;
   user-select: none;
 
+  * {
+    cursor: col-resize !important;
+  }
+
   &[data-editor-pane-resize-axis="y"] {
-    cursor: row-resize;
+    cursor: row-resize !important;
+
+    * {
+      cursor: row-resize !important;
+    }
   }
 }
 

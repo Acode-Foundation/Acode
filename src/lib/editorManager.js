@@ -395,8 +395,9 @@ async function EditorManager($header, $body) {
 
 		if (parent.children.length === 1) {
 			const onlyChild = parent.children[0];
-			onlyChild.element.style.flex =
-				parent.element.style.flex || onlyChild.element.style.flex;
+			onlyChild.element.style.flex = parent.parent
+				? parent.element.style.flex || "1 1 0"
+				: "1 1 0";
 			replacePaneLayoutNode(parent, onlyChild);
 			parent.children = [];
 			parent.element.remove();
@@ -473,8 +474,8 @@ async function EditorManager($header, $body) {
 					Math.min(totalSize - minSize, previousSize + pendingDelta),
 				);
 				const nextCurrentSize = totalSize - nextPreviousSize;
-				previousNode.element.style.flex = `0 1 ${nextPreviousSize}px`;
-				nextNode.element.style.flex = `0 1 ${nextCurrentSize}px`;
+				previousNode.element.style.flex = `1 1 ${nextPreviousSize}px`;
+				nextNode.element.style.flex = `1 1 ${nextCurrentSize}px`;
 			});
 		};
 
@@ -1877,6 +1878,7 @@ async function EditorManager($header, $body) {
 			moveFileToPane(file, targetPane, {
 				activate: false,
 				createSourcePlaceholder: false,
+				activateSourceFallback: false,
 			});
 		}
 
@@ -2969,6 +2971,7 @@ async function EditorManager($header, $body) {
 			$paneRoot.classList.remove("hide-pane-tabs");
 			panes.forEach((pane) => {
 				pane.files.forEach((file) => {
+					file.tab.classList.toggle("active", pane.activeFile?.id === file.id);
 					pane.tabList.append(file.tab);
 				});
 				pane.element.classList.toggle("empty", pane.files.length === 0);
@@ -3056,6 +3059,7 @@ async function EditorManager($header, $body) {
 			activate = true,
 			index = null,
 			createSourcePlaceholder = true,
+			activateSourceFallback = true,
 		} = options;
 		const sourcePane = getFilePane(file);
 		if (sourcePane === targetPane) {
@@ -3084,7 +3088,8 @@ async function EditorManager($header, $body) {
 			const nextSourceFile =
 				sourcePane.files[sourcePane.files.length - 1] || null;
 			sourcePane.activeFile = null;
-			if (nextSourceFile) {
+			file.tab?.classList.remove("active");
+			if (nextSourceFile && activateSourceFallback) {
 				nextSourceFile.makeActive();
 			} else if (createSourcePlaceholder) {
 				sourcePane.editor?.setState(createEmptyEditorState());
