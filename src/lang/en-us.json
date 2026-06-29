@@ -797,5 +797,9 @@
 	"update available info": "Acode {version} is now available! Click here to check out.",
 	"plugin updates": "Plugin Updates",
 	"plugin updates singular": "1 plugin has a new version available.",
-	"plugin updates plural": "{count} plugins have new versions available."
+	"plugin updates plural": "{count} plugins have new versions available.",
+	"just_now": "Just now",
+	"min_ago": "{count}m",
+	"hour_ago": "{count}h",
+	"day_ago": "{count}d"
 }

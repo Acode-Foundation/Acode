@@ -797,5 +797,9 @@
 	"update available info": "Acode {version} kini tersedia! Klik di sini untuk melihat.",
 	"plugin updates": "Pembaruan Plugin",
 	"plugin updates singular": "1 plugin memiliki versi baru yang tersedia.",
-	"plugin updates plural": "{count} plugin memiliki versi baru yang tersedia."
+	"plugin updates plural": "{count} plugin memiliki versi baru yang tersedia.",
+	"just_now": "Baru saja",
+	"min_ago": "{count}m",
+	"hour_ago": "{count}j",
+	"day_ago": "{count}h"
 }

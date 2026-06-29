@@ -325,10 +325,13 @@ class NotificationManager {
 		const now = new Date();
 		const diff = Math.floor((now - date) / 1000);
 
-		if (diff < 60) return "Just now";
-		if (diff < 3600) return `${Math.floor(diff / 60)}m`;
-		if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
-		if (diff < 604800) return `${Math.floor(diff / 86400)}d`;
+		if (diff < 60) return strings["just_now"];
+		if (diff < 3600)
+			return strings["min_ago"].replace("{count}", Math.floor(diff / 60));
+		if (diff < 86400)
+			return strings["hour_ago"].replace("{count}", Math.floor(diff / 3600));
+		if (diff < 604800)
+			return strings["day_ago"].replace("{count}", Math.floor(diff / 86400));
 
 		return date.toLocaleDateString();
 	}
