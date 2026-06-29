@@ -801,7 +801,7 @@
 	"just now": "Just now",
 	"day singular": "{count} day ago",
 	"hour singular": "{count} hour ago",
-	"min singular": "{count} min ago",
+	"min singular": "{count} minute ago",
 	"day plural": "{count} days ago",
 	"hour plural": "{count} hours ago",
 	"min plural": "{count} minutes ago"
