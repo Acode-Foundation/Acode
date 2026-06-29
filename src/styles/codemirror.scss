@@ -26,20 +26,32 @@
   }
 }
 
+.editor-pane-split {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+
+  &[data-direction="horizontal"] {
+    flex-direction: row;
+  }
+
+  &[data-direction="vertical"] {
+    flex-direction: column;
+  }
+}
+
 .editor-pane {
   position: relative;
   display: flex;
   flex: 1 1 0;
   flex-direction: column;
   min-width: min(360px, 100%);
-  min-height: 0;
+  min-height: min(220px, 100%);
   overflow: hidden;
-  border-left: 1px solid var(--border-color);
   background: var(--secondary-color);
-
-  &:first-child {
-    border-left: 0;
-  }
 }
 
 .editor-pane-root.multi-pane {
@@ -47,7 +59,7 @@
     box-shadow: inset 0 2px 0 var(--active-color);
   }
 
-  .editor-pane-resize-handle:not([hidden]) {
+  .editor-pane-split-handle {
     display: block;
   }
 }
@@ -59,36 +71,54 @@
   }
 }
 
-.editor-pane-resize-handle {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: -3px;
+.editor-pane-split-handle {
+  position: relative;
   z-index: 5;
   display: none;
-  width: 6px;
-  cursor: col-resize;
+  flex: 0 0 1px;
+  background: var(--border-color);
   touch-action: none;
 
   &::after {
     content: "";
     position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 2px;
-    width: 1px;
-    background: var(--border-color);
+    inset: 0;
+    background: transparent;
   }
 
-  &:hover::after,
-  &:active::after {
+  &:hover,
+  &:active {
     background: var(--active-color);
+  }
+
+  &[data-direction="horizontal"] {
+    width: 1px;
+    cursor: col-resize;
+
+    &::after {
+      left: -5px;
+      right: -5px;
+    }
+  }
+
+  &[data-direction="vertical"] {
+    height: 1px;
+    cursor: row-resize;
+
+    &::after {
+      top: -5px;
+      bottom: -5px;
+    }
   }
 }
 
 body.resizing-editor-pane {
   cursor: col-resize;
   user-select: none;
+
+  &[data-editor-pane-resize-axis="y"] {
+    cursor: row-resize;
+  }
 }
 
 .editor-pane-tabs {
@@ -115,13 +145,27 @@ body.resizing-editor-pane {
 
 @media (max-width: 720px) {
   .editor-pane-root.multi-pane {
+    .editor-pane-split {
+      min-width: 100%;
+      min-height: 100%;
+    }
+
+    .editor-pane-split > .editor-pane-split:not(.active-path) {
+      display: none;
+    }
+
     .editor-pane {
       display: none;
       min-width: 100%;
+      min-height: 100%;
     }
 
     .editor-pane.active {
       display: flex;
+    }
+
+    .editor-pane-split-handle {
+      display: none;
     }
   }
 }

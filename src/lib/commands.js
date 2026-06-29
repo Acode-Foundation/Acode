@@ -171,6 +171,12 @@ export default {
 	"split-pane"() {
 		return editorManager.splitPane?.();
 	},
+	"split-pane-right"() {
+		return editorManager.splitPaneRight?.();
+	},
+	"split-pane-down"() {
+		return editorManager.splitPaneDown?.();
+	},
 	"close-pane"() {
 		return editorManager.closeActivePane?.();
 	},
@@ -180,8 +186,23 @@ export default {
 	"focus-previous-pane"() {
 		return editorManager.focusPreviousPane?.();
 	},
+	"focus-pane-left"() {
+		return editorManager.focusPaneByDirection?.("left");
+	},
+	"focus-pane-right"() {
+		return editorManager.focusPaneByDirection?.("right");
+	},
+	"focus-pane-up"() {
+		return editorManager.focusPaneByDirection?.("up");
+	},
+	"focus-pane-down"() {
+		return editorManager.focusPaneByDirection?.("down");
+	},
 	"move-tab-to-new-pane"() {
 		return editorManager.moveActiveFileToNewPane?.();
+	},
+	"move-tab-to-new-pane-down"() {
+		return editorManager.moveActiveFileToNewPane?.("vertical");
 	},
 	"toggle-pin-tab"(referenceFile) {
 		resolveReferenceFile(referenceFile)?.togglePinned?.();

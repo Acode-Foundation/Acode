@@ -76,6 +76,7 @@ import quickTools from "components/quickTools";
 import ScrollBar from "components/scrollbar";
 import SideButton, { sideButtonContainer } from "components/sideButton";
 import keyboardHandler, { keydownState } from "handlers/keyboard";
+import { animate } from "motion";
 import config from "./config";
 import EditorFile from "./editorFile";
 import openFile from "./openFile";
@@ -114,7 +115,11 @@ async function EditorManager($header, $body) {
 	let scrollRestoreNestedFrame = 0;
 	let scrollRestoreTimeout = 0;
 	const MIN_PANE_WIDTH = 360;
+	const MIN_PANE_HEIGHT = 220;
 	const MIN_RESIZED_PANE_WIDTH = 280;
+	const MIN_RESIZED_PANE_HEIGHT = 180;
+	const PANE_SPLIT_HORIZONTAL = "horizontal";
+	const PANE_SPLIT_VERTICAL = "vertical";
 
 	// Debounce timers for CodeMirror change handling
 	let checkTimeout = null;
@@ -186,7 +191,10 @@ async function EditorManager($header, $body) {
 	const panes = [];
 	const $paneRoot = <div className="editor-pane-root"></div>;
 	let $container = createEditorContainer();
+	let paneLayoutRoot = null;
 	const primaryPane = createPaneShell($container);
+	paneLayoutRoot = createPaneNode(primaryPane);
+	$paneRoot.append(paneLayoutRoot.element);
 	const problemButton = SideButton({
 		text: strings.problems,
 		icon: "warningreport_problem",
@@ -216,9 +224,9 @@ async function EditorManager($header, $body) {
 			editorContainer,
 			touchSelectionController: null,
 			element: <section className="editor-pane"></section>,
-			resizeHandle: <div className="editor-pane-resize-handle"></div>,
 			tabList: <ul className="open-file-list editor-pane-tabs"></ul>,
 			content: <div className="editor-pane-content"></div>,
+			layoutNode: null,
 		};
 
 		pane.element.dataset.paneId = pane.id;
@@ -226,13 +234,9 @@ async function EditorManager($header, $body) {
 		pane.element.__editorPane = pane;
 		pane.tabList.__editorPane = pane;
 		pane.content.__editorPane = pane;
-		pane.resizeHandle.__editorPane = pane;
 		pane.editorContainer.__editorPane = pane;
 		pane.content.append(pane.editorContainer);
-		pane.element.append(pane.resizeHandle, pane.tabList, pane.content);
-		pane.resizeHandle.addEventListener("pointerdown", (event) => {
-			startPaneResize(event, pane);
-		});
+		pane.element.append(pane.tabList, pane.content);
 		pane.element.addEventListener(
 			"pointerdown",
 			() => {
@@ -241,53 +245,261 @@ async function EditorManager($header, $body) {
 			true,
 		);
 		panes.push(pane);
-		$paneRoot.append(pane.element);
-		updatePaneResizeHandles();
 		return pane;
 	}
 
-	function updatePaneResizeHandles() {
-		panes.forEach((pane, index) => {
-			pane.resizeHandle.hidden = index === 0 || panes.length <= 1;
+	function createPaneNode(pane) {
+		const node = {
+			type: "pane",
+			pane,
+			parent: null,
+			element: pane.element,
+		};
+		pane.layoutNode = node;
+		return node;
+	}
+
+	function createSplitNode(direction) {
+		const node = {
+			type: "split",
+			direction: normalizePaneDirection(direction),
+			children: [],
+			parent: null,
+			element: <div className="editor-pane-split"></div>,
+		};
+		node.element.dataset.direction = node.direction;
+		return node;
+	}
+
+	function normalizePaneDirection(direction) {
+		return direction === PANE_SPLIT_VERTICAL ||
+			direction === "down" ||
+			direction === "below"
+			? PANE_SPLIT_VERTICAL
+			: PANE_SPLIT_HORIZONTAL;
+	}
+
+	function renderPaneLayout(node = paneLayoutRoot) {
+		if (!node || node.type !== "split") return;
+
+		node.element.dataset.direction = node.direction;
+		node.element.replaceChildren();
+		node.children.forEach((child, index) => {
+			if (index > 0) {
+				node.element.append(createPaneSplitHandle(node, index));
+			}
+			node.element.append(child.element);
+			renderPaneLayout(child);
 		});
 	}
 
-	function startPaneResize(event, pane) {
-		const paneIndex = panes.indexOf(pane);
-		const previousPane = panes[paneIndex - 1];
-		if (!previousPane) return;
+	function createPaneSplitHandle(splitNode, childIndex) {
+		const $handle = <div className="editor-pane-split-handle"></div>;
+		$handle.dataset.direction = splitNode.direction;
+		$handle.addEventListener("pointerdown", (event) => {
+			startPaneResize(event, splitNode, childIndex, $handle);
+		});
+		return $handle;
+	}
+
+	function replacePaneLayoutNode(oldNode, nextNode) {
+		const parent = oldNode?.parent || null;
+		if (parent) {
+			const index = parent.children.indexOf(oldNode);
+			if (index >= 0) {
+				parent.children[index] = nextNode;
+				nextNode.parent = parent;
+				oldNode.parent = null;
+				renderPaneLayout(parent);
+			}
+			return;
+		}
+
+		paneLayoutRoot = nextNode;
+		nextNode.parent = null;
+		$paneRoot.replaceChildren(nextNode.element);
+		renderPaneLayout(nextNode);
+	}
+
+	function insertPaneIntoLayout(sourcePane, pane, direction) {
+		const sourceNode = sourcePane?.layoutNode || paneLayoutRoot;
+		const paneNode = createPaneNode(pane);
+		const splitDirection = normalizePaneDirection(direction);
+
+		if (!sourceNode) {
+			paneLayoutRoot = paneNode;
+			$paneRoot.replaceChildren(paneNode.element);
+			return paneNode;
+		}
+
+		if (
+			sourceNode.parent &&
+			sourceNode.parent.type === "split" &&
+			sourceNode.parent.direction === splitDirection
+		) {
+			const parent = sourceNode.parent;
+			const index = parent.children.indexOf(sourceNode);
+			parent.children.splice(index + 1, 0, paneNode);
+			paneNode.parent = parent;
+			renderPaneLayout(parent);
+			return paneNode;
+		}
+
+		const splitNode = createSplitNode(splitDirection);
+		const oldParent = sourceNode.parent;
+		const previousFlex = sourceNode.element.style.flex;
+		splitNode.children = [sourceNode, paneNode];
+		splitNode.element.style.flex = previousFlex;
+		sourceNode.element.style.flex = "";
+		paneNode.element.style.flex = "";
+		sourceNode.parent = splitNode;
+		paneNode.parent = splitNode;
+
+		if (oldParent) {
+			const index = oldParent.children.indexOf(sourceNode);
+			if (index >= 0) {
+				oldParent.children[index] = splitNode;
+				splitNode.parent = oldParent;
+				renderPaneLayout(oldParent);
+			}
+		} else {
+			paneLayoutRoot = splitNode;
+			splitNode.parent = null;
+			$paneRoot.replaceChildren(splitNode.element);
+			renderPaneLayout(splitNode);
+		}
+		return paneNode;
+	}
+
+	function removePaneFromLayout(pane) {
+		const node = pane?.layoutNode;
+		if (!node) {
+			pane?.element?.remove();
+			return;
+		}
+
+		const parent = node.parent;
+		if (!parent) {
+			paneLayoutRoot = null;
+			node.element.remove();
+			pane.layoutNode = null;
+			return;
+		}
+
+		const index = parent.children.indexOf(node);
+		if (index >= 0) {
+			parent.children.splice(index, 1);
+		}
+		node.parent = null;
+		pane.layoutNode = null;
+
+		if (parent.children.length === 1) {
+			const onlyChild = parent.children[0];
+			onlyChild.element.style.flex =
+				parent.element.style.flex || onlyChild.element.style.flex;
+			replacePaneLayoutNode(parent, onlyChild);
+			parent.children = [];
+			parent.element.remove();
+			return;
+		}
+
+		renderPaneLayout(parent);
+	}
+
+	function getOrderedPanes(node = paneLayoutRoot) {
+		if (!node) return panes.slice();
+		if (node.type === "pane") return node.pane ? [node.pane] : [];
+		return node.children.flatMap((child) => getOrderedPanes(child));
+	}
+
+	function updatePaneLayoutState() {
+		$paneRoot.classList.toggle("multi-pane", panes.length > 1);
+		renderPaneLayout();
+		updateActivePaneLayoutPath(activePane);
+	}
+
+	function animatePaneEntry(pane) {
+		if (!pane?.element || document.body.classList.contains("no-animation")) {
+			return;
+		}
+
+		pane.element.style.opacity = "0";
+		pane.element.style.transform = "scale(0.985)";
+		animate(
+			pane.element,
+			{ opacity: 1, transform: "scale(1)" },
+			{ type: "spring", stiffness: 360, damping: 32 },
+		).then(() => {
+			pane.element.style.opacity = "";
+			pane.element.style.transform = "";
+		});
+	}
+
+	function startPaneResize(event, splitNode, childIndex, handle) {
+		const previousNode = splitNode.children[childIndex - 1];
+		const nextNode = splitNode.children[childIndex];
+		if (!previousNode || !nextNode) return;
 
 		event.preventDefault();
 		event.stopPropagation();
 
-		const startX = event.clientX;
-		const previousRect = previousPane.element.getBoundingClientRect();
-		const paneRect = pane.element.getBoundingClientRect();
-		const totalWidth = previousRect.width + paneRect.width;
-		const minWidth = Math.min(MIN_RESIZED_PANE_WIDTH, totalWidth / 2);
+		const isVertical = splitNode.direction === PANE_SPLIT_VERTICAL;
+		const axis = isVertical ? "y" : "x";
+		const start = isVertical ? event.clientY : event.clientX;
+		const previousRect = previousNode.element.getBoundingClientRect();
+		const nextRect = nextNode.element.getBoundingClientRect();
+		const previousSize = isVertical ? previousRect.height : previousRect.width;
+		const nextSize = isVertical ? nextRect.height : nextRect.width;
+		const totalSize = previousSize + nextSize;
+		const minSize = Math.min(
+			isVertical ? MIN_RESIZED_PANE_HEIGHT : MIN_RESIZED_PANE_WIDTH,
+			totalSize / 2,
+		);
+		let pendingDelta = 0;
+		let resizeFrame = 0;
 
 		document.body.classList.add("resizing-editor-pane");
-		pane.resizeHandle.setPointerCapture?.(event.pointerId);
+		document.body.dataset.editorPaneResizeAxis = axis;
+		handle.setPointerCapture?.(event.pointerId);
 
 		const resize = (moveEvent) => {
-			const delta = moveEvent.clientX - startX;
-			const previousWidth = Math.max(
-				minWidth,
-				Math.min(totalWidth - minWidth, previousRect.width + delta),
-			);
-			const nextWidth = totalWidth - previousWidth;
-			previousPane.element.style.flex = `0 1 ${previousWidth}px`;
-			pane.element.style.flex = `0 1 ${nextWidth}px`;
+			pendingDelta =
+				(isVertical ? moveEvent.clientY : moveEvent.clientX) - start;
+			if (resizeFrame) return;
+			resizeFrame = requestAnimationFrame(() => {
+				resizeFrame = 0;
+				const nextPreviousSize = Math.max(
+					minSize,
+					Math.min(totalSize - minSize, previousSize + pendingDelta),
+				);
+				const nextCurrentSize = totalSize - nextPreviousSize;
+				previousNode.element.style.flex = `0 1 ${nextPreviousSize}px`;
+				nextNode.element.style.flex = `0 1 ${nextCurrentSize}px`;
+			});
+		};
+
+		const refreshEditors = () => {
+			getOrderedPanes().forEach((pane) => {
+				pane.editor?.requestMeasure?.();
+			});
+			updateActivePaneScrollbars();
 		};
 
 		const stop = () => {
+			if (resizeFrame) {
+				cancelAnimationFrame(resizeFrame);
+				resizeFrame = 0;
+			}
 			document.removeEventListener("pointermove", resize);
 			document.removeEventListener("pointerup", stop);
 			document.removeEventListener("pointercancel", stop);
 			document.body.classList.remove("resizing-editor-pane");
+			delete document.body.dataset.editorPaneResizeAxis;
+			handle.releasePointerCapture?.(event.pointerId);
+			requestAnimationFrame(refreshEditors);
 		};
 
-		document.addEventListener("pointermove", resize);
+		document.addEventListener("pointermove", resize, { passive: true });
 		document.addEventListener("pointerup", stop);
 		document.addEventListener("pointercancel", stop);
 	}
@@ -305,6 +517,7 @@ async function EditorManager($header, $body) {
 		$container = pane.editorContainer || $container;
 		touchSelectionController = pane.touchSelectionController || null;
 		pane.element.classList.add("active");
+		updateActivePaneLayoutPath(pane);
 
 		if (manager) {
 			manager.activeFile = pane.activeFile || null;
@@ -325,6 +538,18 @@ async function EditorManager($header, $body) {
 		}
 
 		return pane;
+	}
+
+	function updateActivePaneLayoutPath(pane) {
+		$paneRoot
+			.querySelectorAll(".editor-pane-split.active-path")
+			.forEach(($split) => $split.classList.remove("active-path"));
+
+		let node = pane?.layoutNode?.parent || null;
+		while (node) {
+			node.element?.classList.add("active-path");
+			node = node.parent;
+		}
 	}
 
 	function updateHeaderForFile(file) {
@@ -1506,14 +1731,33 @@ async function EditorManager($header, $body) {
 		Object.defineProperties(targetEditor, editorCompatibilityDescriptors);
 	}
 
-	function canCreatePane() {
-		const width =
-			$paneRoot.getBoundingClientRect?.().width || $body.clientWidth || 0;
-		if (!width) return true;
-		return width / (panes.length + 1) >= MIN_PANE_WIDTH;
+	function canCreatePane(
+		direction = PANE_SPLIT_HORIZONTAL,
+		sourcePane = getActivePane(),
+	) {
+		const normalizedDirection = normalizePaneDirection(direction);
+		const rect = sourcePane?.element?.getBoundingClientRect?.() ||
+			$paneRoot.getBoundingClientRect?.() || {
+				width: $body.clientWidth || 0,
+				height: $body.clientHeight || 0,
+			};
+		if (normalizedDirection === PANE_SPLIT_VERTICAL) {
+			if (!rect.height) return true;
+			return rect.height / 2 >= MIN_PANE_HEIGHT;
+		}
+		if (!rect.width) return true;
+		return rect.width / 2 >= MIN_PANE_WIDTH;
 	}
 
 	function createUntitledPaneFile(pane) {
+		const existingPlaceholder = pane?.files?.find(
+			(file) => file.isPanePlaceholder && !file.isUnsaved,
+		);
+		if (existingPlaceholder) {
+			if (!pane.activeFile) existingPlaceholder.makeActive();
+			return existingPlaceholder;
+		}
+
 		return new EditorFile(config.DEFAULT_FILE_NAME, {
 			paneId: pane.id,
 			text: "",
@@ -1522,8 +1766,23 @@ async function EditorManager($header, $body) {
 		});
 	}
 
+	function removePanePlaceholders(pane, exceptFile = null) {
+		const placeholders = [...(pane?.files || [])].filter(
+			(file) =>
+				file !== exceptFile && file.isPanePlaceholder && !file.isUnsaved,
+		);
+		placeholders.forEach((file) => {
+			file.remove(true, {
+				ignorePinned: true,
+				suppressPanePlaceholder: true,
+			});
+		});
+	}
+
 	async function createPane(options = {}) {
-		if (!canCreatePane()) {
+		const direction = normalizePaneDirection(options.direction);
+		const sourcePane = options.sourcePane || getActivePane() || primaryPane;
+		if (!canCreatePane(direction, sourcePane)) {
 			window.toast?.(
 				strings["not enough space"] ||
 					"Not enough space to create another editor pane.",
@@ -1532,6 +1791,9 @@ async function EditorManager($header, $body) {
 		}
 
 		const pane = createPaneShell();
+		insertPaneIntoLayout(sourcePane, pane, direction);
+		updatePaneLayoutState();
+		animatePaneEntry(pane);
 		const paneEditor = new EditorView({
 			state: createEmptyEditorState(),
 			parent: pane.editorContainer,
@@ -1557,8 +1819,7 @@ async function EditorManager($header, $body) {
 			);
 		}
 		await setupEditor(pane);
-		$paneRoot.classList.toggle("multi-pane", panes.length > 1);
-		updatePaneResizeHandles();
+		updatePaneLayoutState();
 		syncOpenFileList();
 
 		if (options.moveFile) {
@@ -1573,23 +1834,35 @@ async function EditorManager($header, $body) {
 		return pane;
 	}
 
-	function splitPane() {
-		return createPane();
+	function splitPane(direction = PANE_SPLIT_HORIZONTAL) {
+		return createPane({ direction });
 	}
 
-	async function moveActiveFileToNewPane() {
+	function splitPaneRight() {
+		return splitPane(PANE_SPLIT_HORIZONTAL);
+	}
+
+	function splitPaneDown() {
+		return splitPane(PANE_SPLIT_VERTICAL);
+	}
+
+	async function moveActiveFileToNewPane(direction = PANE_SPLIT_HORIZONTAL) {
 		const file = manager.activeFile;
 		if (!file) return null;
-		return createPane({ moveFile: file });
+		return createPane({ moveFile: file, direction });
 	}
 
 	function closeActivePane() {
 		const pane = getActivePane();
 		if (!pane || panes.length <= 1) return false;
 
-		const paneIndex = panes.indexOf(pane);
+		const orderedPanes = getOrderedPanes();
+		const paneIndex = orderedPanes.indexOf(pane);
 		const targetPane =
-			panes[paneIndex - 1] || panes[paneIndex + 1] || panes[0] || null;
+			orderedPanes[paneIndex - 1] ||
+			orderedPanes[paneIndex + 1] ||
+			orderedPanes[0] ||
+			null;
 		if (!targetPane) return false;
 
 		for (const file of [...pane.files]) {
@@ -1608,10 +1881,10 @@ async function EditorManager($header, $body) {
 		}
 
 		pane.editor?.destroy?.();
-		pane.element.remove();
-		panes.splice(paneIndex, 1);
-		$paneRoot.classList.toggle("multi-pane", panes.length > 1);
-		updatePaneResizeHandles();
+		removePaneFromLayout(pane);
+		const storedPaneIndex = panes.indexOf(pane);
+		if (storedPaneIndex >= 0) panes.splice(storedPaneIndex, 1);
+		updatePaneLayoutState();
 		rebuildFileListFromPanes();
 		const fileToActivate = targetPane.activeFile;
 		targetPane.activeFile = null;
@@ -1623,8 +1896,12 @@ async function EditorManager($header, $body) {
 
 	function focusPaneByOffset(offset) {
 		if (panes.length <= 1) return false;
-		const index = Math.max(0, panes.indexOf(getActivePane()));
-		const nextPane = panes[(index + offset + panes.length) % panes.length];
+		const orderedPanes = getOrderedPanes();
+		const index = Math.max(0, orderedPanes.indexOf(getActivePane()));
+		const nextPane =
+			orderedPanes[
+				(index + offset + orderedPanes.length) % orderedPanes.length
+			];
 		if (!nextPane) return false;
 		const fileToActivate = nextPane.activeFile;
 		nextPane.activeFile = null;
@@ -1643,6 +1920,63 @@ async function EditorManager($header, $body) {
 
 	function focusPreviousPane() {
 		return focusPaneByOffset(-1);
+	}
+
+	function focusPaneByDirection(direction) {
+		const active = getActivePane();
+		if (!active || panes.length <= 1) return false;
+
+		const activeRect = active.element.getBoundingClientRect();
+		const activeCenterX = activeRect.left + activeRect.width / 2;
+		const activeCenterY = activeRect.top + activeRect.height / 2;
+		let bestPane = null;
+		let bestScore = Number.POSITIVE_INFINITY;
+
+		for (const pane of getOrderedPanes()) {
+			if (pane === active) continue;
+			const rect = pane.element.getBoundingClientRect();
+			const centerX = rect.left + rect.width / 2;
+			const centerY = rect.top + rect.height / 2;
+			let axisDistance = 0;
+			let crossDistance = 0;
+
+			if (direction === "left") {
+				if (centerX >= activeCenterX) continue;
+				axisDistance = activeRect.left - rect.right;
+				crossDistance = Math.abs(centerY - activeCenterY);
+			} else if (direction === "right") {
+				if (centerX <= activeCenterX) continue;
+				axisDistance = rect.left - activeRect.right;
+				crossDistance = Math.abs(centerY - activeCenterY);
+			} else if (direction === "up") {
+				if (centerY >= activeCenterY) continue;
+				axisDistance = activeRect.top - rect.bottom;
+				crossDistance = Math.abs(centerX - activeCenterX);
+			} else if (direction === "down") {
+				if (centerY <= activeCenterY) continue;
+				axisDistance = rect.top - activeRect.bottom;
+				crossDistance = Math.abs(centerX - activeCenterX);
+			} else {
+				return false;
+			}
+
+			const score = Math.max(0, axisDistance) * 1000 + crossDistance;
+			if (score < bestScore) {
+				bestScore = score;
+				bestPane = pane;
+			}
+		}
+
+		if (!bestPane) return false;
+		const fileToActivate = bestPane.activeFile;
+		bestPane.activeFile = null;
+		setActivePane(bestPane, { emitSwitch: false });
+		if (fileToActivate) {
+			fileToActivate.makeActive();
+		} else {
+			bestPane.editor?.focus();
+		}
+		return true;
 	}
 
 	function getEditorExtensionSignature(file) {
@@ -2074,9 +2408,12 @@ async function EditorManager($header, $body) {
 		switchFile,
 		createPane,
 		splitPane,
+		splitPaneRight,
+		splitPaneDown,
 		closeActivePane,
 		focusNextPane,
 		focusPreviousPane,
+		focusPaneByDirection,
 		moveActiveFileToNewPane,
 		moveFileToPane,
 		removeFileFromPane,
@@ -2623,7 +2960,7 @@ async function EditorManager($header, $body) {
 	}
 
 	function rebuildFileListFromPanes() {
-		manager.files = panes.flatMap((pane) => pane.files);
+		manager.files = getOrderedPanes().flatMap((pane) => pane.files);
 		return manager.files;
 	}
 
@@ -2734,6 +3071,9 @@ async function EditorManager($header, $body) {
 		}
 
 		insertFileIntoPane(file, targetPane, index);
+		if (!file.isPanePlaceholder || file.isUnsaved) {
+			removePanePlaceholders(targetPane, file);
+		}
 		if (!targetPane.activeFile && !activate) {
 			targetPane.activeFile = file;
 		}
