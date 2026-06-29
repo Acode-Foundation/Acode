@@ -145,6 +145,7 @@ export default function startDrag(e) {
 	$tabClone.style.width = `${rect.width}px`;
 	$tabClone.style.transform = `translate3d(${rect.x}px, ${rect.y}px, 0)`;
 	$tab.style.opacity = "0.35";
+	$tab.dataset.editorTabDragging = "true";
 	app.append($tabClone);
 	$tab.click();
 
@@ -278,6 +279,7 @@ function finishDrag(shouldSettleClone) {
 
 function cleanupDrag() {
 	$tab.style.opacity = "";
+	delete $tab.dataset.editorTabDragging;
 	$tabClone.remove();
 	$tabClone = null;
 	$originParent = null;
@@ -361,7 +363,7 @@ function commitPaneTransfer() {
 		activate: true,
 		index,
 	});
-	editorManager.updatePaneFileOrderFromTabs?.($parent);
+	editorManager.updatePaneFileOrderFromTabs?.($parent, { draggedFile });
 }
 
 function reorderTab($insertBefore) {
@@ -523,7 +525,8 @@ function getClientPos(e) {
  */
 function updateFileList($parent) {
 	if (typeof editorManager.updatePaneFileOrderFromTabs === "function") {
-		if (editorManager.updatePaneFileOrderFromTabs($parent)) return;
+		if (editorManager.updatePaneFileOrderFromTabs($parent, { draggedFile }))
+			return;
 	}
 
 	const pinnedCount = editorManager.files.filter((file) => file.pinned).length;

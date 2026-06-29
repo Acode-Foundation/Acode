@@ -1210,6 +1210,8 @@ export default class EditorFile {
 			silentPinned = false,
 			suppressPanePlaceholder = false,
 		} = options || {};
+		const suppressFallback =
+			suppressPanePlaceholder && this.isPanePlaceholder && !this.isUnsaved;
 
 		if (this.id === config.DEFAULT_FILE_SESSION && !editorManager.files.length)
 			return false;
@@ -1246,14 +1248,18 @@ export default class EditorFile {
 		if (!files.length) {
 			Sidebar.hide();
 			editorManager.activeFile = null;
-			new EditorFile();
-		} else if (removal?.wasPaneActive && removal.nextFile) {
+			if (!suppressFallback) new EditorFile();
+		} else if (
+			removal?.wasPaneActive &&
+			removal.nextFile &&
+			!suppressFallback
+		) {
 			removal.nextFile.makeActive();
 		} else if (
 			removal?.wasPaneActive &&
 			removal.pane &&
 			!removal.nextFile &&
-			!suppressPanePlaceholder
+			!suppressFallback
 		) {
 			new EditorFile(config.DEFAULT_FILE_NAME, {
 				paneId: removal.pane.id,
@@ -1261,7 +1267,7 @@ export default class EditorFile {
 				isUnsaved: false,
 				isPanePlaceholder: true,
 			});
-		} else if (wasActive) {
+		} else if (wasActive && !suppressFallback) {
 			(
 				editorManager.activePane?.activeFile || files[files.length - 1]
 			).makeActive();

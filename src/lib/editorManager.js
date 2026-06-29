@@ -193,6 +193,16 @@ async function EditorManager($header, $body) {
 	const $globalOpenFileList = (
 		<ul className="open-file-list editor-global-open-file-list"></ul>
 	);
+	const globalOpenFileListNative = {
+		append: $globalOpenFileList.append.bind($globalOpenFileList),
+		appendChild: $globalOpenFileList.appendChild.bind($globalOpenFileList),
+		insertBefore: $globalOpenFileList.insertBefore.bind($globalOpenFileList),
+		prepend: $globalOpenFileList.prepend.bind($globalOpenFileList),
+		replaceChildren:
+			$globalOpenFileList.replaceChildren.bind($globalOpenFileList),
+	};
+	const $paneAwareOpenFileList =
+		createPaneAwareOpenFileListProxy($globalOpenFileList);
 	let $container = createEditorContainer();
 	let paneLayoutRoot = null;
 	const primaryPane = createPaneShell($container);
@@ -216,6 +226,71 @@ async function EditorManager($header, $body) {
 		$el.style.height = "100%";
 		$el.style.width = "100%";
 		return $el;
+	}
+
+	function createPaneAwareOpenFileListProxy(target) {
+		return new Proxy(target, {
+			get(target, prop) {
+				if (prop === "children" || prop === "childNodes") {
+					return toDomCollection(getOpenFileListChildren());
+				}
+				if (prop === "childElementCount")
+					return getOpenFileListChildren().length;
+				if (prop === "firstChild" || prop === "firstElementChild") {
+					return getOpenFileListChildren()[0] || null;
+				}
+				if (prop === "lastChild" || prop === "lastElementChild") {
+					const children = getOpenFileListChildren();
+					return children[children.length - 1] || null;
+				}
+				if (prop === "append" || prop === "appendChild" || prop === "prepend") {
+					return (...args) => mutateVisibleOpenFileList(prop, args);
+				}
+				if (prop === "insertBefore") {
+					return (node, child) =>
+						mutateVisibleOpenFileList("insertBefore", [node, child]);
+				}
+				if (prop === "contains") {
+					return (node) =>
+						getOpenFileListChildren().some(
+							(child) => child === node || child.contains(node),
+						) || target.contains(node);
+				}
+				if (prop === "querySelector") {
+					return (selector) => queryOpenFileList(selector)[0] || null;
+				}
+				if (prop === "querySelectorAll") {
+					return (selector) => toDomCollection(queryOpenFileList(selector));
+				}
+				if (prop === "getElementsByClassName") {
+					return (className) =>
+						toDomCollection(
+							collectFromOpenFileListChildren((child) => [
+								...(child.classList.contains(className) ? [child] : []),
+								...child.getElementsByClassName(className),
+							]),
+						);
+				}
+				if (prop === "getElementsByTagName") {
+					return (tagName) => {
+						const selector = tagName === "*" ? "*" : tagName;
+						return toDomCollection(queryOpenFileList(selector));
+					};
+				}
+				if (prop === "getClientRects" || prop === "getBoundingClientRect") {
+					return (...args) => {
+						const targetList = getOpenFileListMutationTarget();
+						return targetList[prop](...args);
+					};
+				}
+				if (typeof prop === "string" && /^\d+$/.test(prop)) {
+					return getOpenFileListChildren()[Number(prop)];
+				}
+
+				const value = Reflect.get(target, prop, target);
+				return typeof value === "function" ? value.bind(target) : value;
+			},
+		});
 	}
 
 	function createPaneShell(editorContainer = createEditorContainer()) {
@@ -2771,7 +2846,10 @@ async function EditorManager($header, $body) {
 			return isScrolling;
 		},
 		get openFileList() {
-			if (isPaneTabLayout()) return $globalOpenFileList;
+			if (isPaneTabLayout()) {
+				syncGlobalOpenFileListMirror();
+				return $paneAwareOpenFileList;
+			}
 			if (!$openFileList || $openFileList === $globalOpenFileList) {
 				initFileTabContainer();
 			}
@@ -3296,8 +3374,72 @@ async function EditorManager($header, $body) {
 		return manager.files;
 	}
 
+	function toDomCollection(nodes) {
+		const collection = [...nodes].filter(Boolean);
+		collection.item = (index) => collection[index] || null;
+		return collection;
+	}
+
+	function getOpenFileListChildren() {
+		if (!isPaneTabLayout()) {
+			const list = $openFileList?.$ul || $openFileList;
+			return list ? [...list.children] : [];
+		}
+
+		return getOrderedPanes().flatMap((pane) => [...pane.tabList.children]);
+	}
+
+	function collectFromOpenFileListChildren(collector) {
+		const result = [];
+		getOpenFileListChildren().forEach((child) => {
+			result.push(...collector(child));
+		});
+		return result;
+	}
+
+	function queryOpenFileList(selector) {
+		return collectFromOpenFileListChildren((child) => [
+			...(child.matches?.(selector) ? [child] : []),
+			...child.querySelectorAll(selector),
+		]);
+	}
+
+	function getOpenFileListMutationTarget(referenceNode = null) {
+		if (!isPaneTabLayout()) {
+			if (!$openFileList || $openFileList === $globalOpenFileList) {
+				initFileTabContainer();
+			}
+			return $openFileList?.$ul || $openFileList || $globalOpenFileList;
+		}
+
+		if (referenceNode?.parentElement?.classList?.contains("editor-pane-tabs")) {
+			return referenceNode.parentElement;
+		}
+
+		return getPaneTabList() || getActivePane()?.tabList || $globalOpenFileList;
+	}
+
+	function mutateVisibleOpenFileList(method, args) {
+		const target = getOpenFileListMutationTarget(
+			method === "insertBefore" ? args[1] : null,
+		);
+		if (!target || target === $globalOpenFileList) {
+			return globalOpenFileListNative[method]?.(...args);
+		}
+
+		if (method === "insertBefore") {
+			const [node, referenceNode] = args;
+			return target.insertBefore(
+				node,
+				referenceNode?.parentElement === target ? referenceNode : null,
+			);
+		}
+
+		return target[method](...args);
+	}
+
 	function syncGlobalOpenFileListMirror() {
-		$globalOpenFileList.replaceChildren(
+		globalOpenFileListNative.replaceChildren(
 			...manager.files.map((file) => {
 				const tab = file.tab.cloneNode(true);
 				tab.dataset.fileId = file.id;
@@ -3479,7 +3621,7 @@ async function EditorManager($header, $body) {
 		return { pane, wasPaneActive, nextFile };
 	}
 
-	function updatePaneFileOrderFromTabs($tabList) {
+	function updatePaneFileOrderFromTabs($tabList, options = {}) {
 		const pane = $tabList?.__editorPane;
 		if (!pane) return false;
 
@@ -3490,9 +3632,11 @@ async function EditorManager($header, $body) {
 
 		pane.files = nextFiles;
 		const pinnedCount = pane.files.filter((file) => file.pinned).length;
-		const draggedFile = pane.files.find(
-			(file) => file.tab?.style.opacity === "0.35",
-		);
+		const draggedFile = pane.files.includes(options.draggedFile)
+			? options.draggedFile
+			: pane.files.find(
+					(file) => file.tab?.dataset.editorTabDragging === "true",
+				);
 		if (draggedFile) {
 			const draggedIndex = pane.files.indexOf(draggedFile);
 			let nextPinnedState;
