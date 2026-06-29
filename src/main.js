@@ -377,7 +377,7 @@ async function onDeviceReady() {
 				if (hasUpdate) {
 					acode.pushNotification(
 						strings["update available"],
-						`${strings["update available info"].replace(/\{version\}/, release.tag_name)}`,
+						strings["update available info"].replace(/\{version\}/, release.tag_name),
 						{
 							icon: "update",
 							type: "warning",
