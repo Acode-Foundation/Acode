@@ -801,13 +801,13 @@ declare type LangStrings = {
   "plugin updates": string;
   "plugin updates singular": string;
   "plugin updates plural": string;
-  "just_now": string;
-  "day_singular": string;
-  "hour_singular": string;
-  "min_singular": string;
-  "day_plural": string;
-  "hour_plural": string;
-  "min_plural": string;
+  "just now": string;
+  "day singular": string;
+  "hour singular": string;
+  "min singular": string;
+  "day plural": string;
+  "hour plural": string;
+  "min plural": string;
 };
 
 declare var strings: LangStrings;

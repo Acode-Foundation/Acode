@@ -326,11 +326,11 @@ class NotificationManager {
 		const diff = Math.floor((now - date) / 1000);
 		const count = (unit) => Math.floor(diff / unit);
 
-		if (diff < 60) return strings["just_now"];
+		if (diff < 60) return strings["just now"];
 
 		if (diff < 3600) {
 			const val = count(60);
-			return strings[val === 1 ? "min_singular" : "min_plural"].replace(
+			return strings[val === 1 ? "min singular" : "min plural"].replace(
 				/\{count\}/,
 				val,
 			);
@@ -338,7 +338,7 @@ class NotificationManager {
 
 		if (diff < 86400) {
 			const val = count(3600);
-			return strings[val === 1 ? "hour_singular" : "hour_plural"].replace(
+			return strings[val === 1 ? "hour singular" : "hour plural"].replace(
 				/\{count\}/,
 				val,
 			);
@@ -346,7 +346,7 @@ class NotificationManager {
 
 		if (diff < 604800) {
 			const val = count(86400);
-			return strings[val === 1 ? "day_singular" : "day_plural"].replace(
+			return strings[val === 1 ? "day singular" : "day plural"].replace(
 				/\{count\}/,
 				val,
 			);
