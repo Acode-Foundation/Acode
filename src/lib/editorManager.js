@@ -121,9 +121,7 @@ async function EditorManager($header, $body) {
 	const PANE_SPLIT_HORIZONTAL = "horizontal";
 	const PANE_SPLIT_VERTICAL = "vertical";
 
-	// Debounce timers for CodeMirror change handling
-	let checkTimeout = null;
-	let autosaveTimeout = null;
+	const docSyncTimers = new WeakMap();
 	let touchSelectionController = null;
 	let touchSelectionSyncRaf = 0;
 	let nativeContextMenuDisabled = null;
@@ -135,6 +133,26 @@ async function EditorManager($header, $body) {
 			recoverableWarningKeys.add(key);
 		}
 		console.warn(message, error);
+	}
+
+	function getDocSyncTimers(file) {
+		let timers = docSyncTimers.get(file);
+		if (!timers) {
+			timers = {
+				checkTimeout: null,
+				autosaveTimeout: null,
+			};
+			docSyncTimers.set(file, timers);
+		}
+		return timers;
+	}
+
+	function clearDocSyncTimers(file) {
+		const timers = docSyncTimers.get(file);
+		if (!timers) return;
+		if (timers.checkTimeout) clearTimeout(timers.checkTimeout);
+		if (timers.autosaveTimeout) clearTimeout(timers.autosaveTimeout);
+		docSyncTimers.delete(file);
 	}
 
 	function isCoarsePointerDevice() {
@@ -2479,12 +2497,23 @@ async function EditorManager($header, $body) {
 			markLanguageReady(file, languageSignature, false);
 			result
 				.then((ext) => {
+					const pane = getFilePane(file);
+					const isGlobalActive = manager.activeFile?.id === fileId;
+					const isPaneActive = pane?.activeFile?.id === fileId;
 					if (
-						manager.activeFile?.id !== fileId ||
+						(!isGlobalActive && !isPaneActive) ||
 						file.__cmLanguageSignature !== languageSignature
 					) {
 						return;
 					}
+
+					if (isPaneActive && pane !== getActivePane()) {
+						withPaneEditorContext(pane, () => {
+							dispatchLanguageExtension(file, languageSignature, ext, warnKey);
+						});
+						return;
+					}
+
 					dispatchLanguageExtension(file, languageSignature, ext, warnKey);
 				})
 				.catch(() => {
@@ -2546,10 +2575,51 @@ async function EditorManager($header, $body) {
 		touchSelectionController?.onSessionChanged();
 	}
 
+	function withPaneEditorContext(pane, callback) {
+		if (!pane?.editor) return callback();
+
+		const previousEditor = editor;
+		const previousContainer = $container;
+		const previousTouchSelectionController = touchSelectionController;
+
+		editor = pane.editor;
+		$container = pane.editorContainer || $container;
+		touchSelectionController = pane.touchSelectionController || null;
+
+		try {
+			return callback();
+		} finally {
+			editor = previousEditor;
+			$container = previousContainer;
+			touchSelectionController = previousTouchSelectionController;
+		}
+	}
+
+	function applyFileToPaneEditor(file, pane, options = {}) {
+		if (!file || file.type !== "editor") return false;
+		if (!pane?.editor || pane.activeFile?.id !== file.id) return false;
+		const isCurrentPane = pane === getActivePane();
+		const paneOptions = {
+			...options,
+			restoreScroll: options.restoreScroll ?? isCurrentPane,
+			scheduleLsp: options.scheduleLsp ?? isCurrentPane,
+		};
+		if (isCurrentPane) {
+			applyFileToEditor(file, paneOptions);
+		} else {
+			withPaneEditorContext(pane, () => applyFileToEditor(file, paneOptions));
+		}
+		return true;
+	}
+
 	// Helper: apply a file's content and language to the editor view
 	function applyFileToEditor(file, options = {}) {
 		if (!file || file.type !== "editor") return;
-		const { forceRecreate = false } = options;
+		const {
+			forceRecreate = false,
+			restoreScroll = true,
+			scheduleLsp = true,
+		} = options;
 		const extensionSignature = getEditorExtensionSignature(file);
 		const languageSignature = getFileLanguageSignature(
 			file,
@@ -2577,8 +2647,8 @@ async function EditorManager($header, $body) {
 				}
 			}
 
-			restoreFileScrollPosition(file);
-			scheduleLspForFile(file);
+			if (restoreScroll) restoreFileScrollPosition(file);
+			if (scheduleLsp) scheduleLspForFile(file);
 			return;
 		}
 
@@ -2672,9 +2742,8 @@ async function EditorManager($header, $body) {
 			);
 		}
 
-		restoreFileScrollPosition(file);
-
-		scheduleLspForFile(file);
+		if (restoreScroll) restoreFileScrollPosition(file);
+		if (scheduleLsp) scheduleLspForFile(file);
 	}
 
 	function restoreFileScrollPosition(file) {
@@ -3242,10 +3311,12 @@ async function EditorManager($header, $body) {
 			file.markEdited();
 
 			// Debounced change handling (unsaved flag, cache, autosave)
-			if (checkTimeout) clearTimeout(checkTimeout);
-			if (autosaveTimeout) clearTimeout(autosaveTimeout);
+			const timers = getDocSyncTimers(file);
+			if (timers.checkTimeout) clearTimeout(timers.checkTimeout);
+			if (timers.autosaveTimeout) clearTimeout(timers.autosaveTimeout);
 
-			checkTimeout = setTimeout(async () => {
+			timers.checkTimeout = setTimeout(async () => {
+				timers.checkTimeout = null;
 				try {
 					file.scheduleCacheWrite();
 				} catch (error) {
@@ -3263,8 +3334,15 @@ async function EditorManager($header, $body) {
 
 				const { autosave } = appSettings.value;
 				if (file.uri && file.isUnsaved && autosave) {
-					autosaveTimeout = setTimeout(() => {
-						acode.exec("save", false);
+					timers.autosaveTimeout = setTimeout(() => {
+						timers.autosaveTimeout = null;
+						file.save()?.catch?.((error) => {
+							warnRecoverable(
+								`Failed to autosave ${file.filename || file.uri}`,
+								error,
+								`autosave-${file.id}`,
+							);
+						});
 					}, autosave);
 				}
 
@@ -3275,8 +3353,11 @@ async function EditorManager($header, $body) {
 
 	// Register critical listeners
 	manager.on(["file-loaded"], (file) => {
-		if (!file) return;
-		if (manager.activeFile?.id === file.id && file.type === "editor") {
+		if (!file || file.type !== "editor") return;
+		const pane = getFilePane(file);
+		if (pane?.activeFile?.id === file.id) {
+			applyFileToPaneEditor(file, pane);
+		} else if (manager.activeFile?.id === file.id) {
 			applyFileToEditor(file);
 		}
 	});
@@ -3302,6 +3383,7 @@ async function EditorManager($header, $body) {
 	});
 
 	manager.on(["remove-file"], (file) => {
+		clearDocSyncTimers(file);
 		detachLspForFile(file);
 		toggleProblemButton();
 	});
@@ -3683,8 +3765,6 @@ async function EditorManager($header, $body) {
 		const scrollMarginRight = textWrap ? 0 : leftMargin;
 		const scrollMarginBottom = 0;
 
-		let checkTimeout = null;
-		let autosaveTimeout;
 		let scrollTimeout;
 		let scrollSyncRaf = 0;
 		const scroller = editor.scrollDOM;

@@ -1296,15 +1296,26 @@ export default class EditorFile {
 	}
 
 	setReadOnly(value) {
+		const readOnly = !!value;
+		this.readOnly = readOnly;
+		this.#editable = !readOnly;
+
 		try {
-			const { editor, readOnlyCompartment } = editorManager;
-			if (!editor) return;
-			if (!readOnlyCompartment) return;
-			editor.dispatch({
-				effects: readOnlyCompartment.reconfigure(
-					EditorState.readOnly.of(!!value),
-				),
-			});
+			const { readOnlyCompartment } = editorManager;
+			if (readOnlyCompartment) {
+				const pane = editorManager.getFilePane?.(this);
+				const targetEditor =
+					pane?.activeFile?.id === this.id
+						? pane.editor
+						: editorManager.activeFile?.id === this.id
+							? editorManager.editor
+							: null;
+				targetEditor?.dispatch({
+					effects: readOnlyCompartment.reconfigure(
+						EditorState.readOnly.of(readOnly),
+					),
+				});
+			}
 		} catch (error) {
 			console.warn(
 				`Failed to update read-only state for ${this.filename || this.uri}`,
@@ -1312,9 +1323,6 @@ export default class EditorFile {
 			);
 		}
 
-		// Sync internal flags and header
-		this.readOnly = !!value;
-		this.#editable = !this.readOnly;
 		if (editorManager.activeFile?.id === this.id) {
 			editorManager.header.subText = this.#getTitle();
 		}
@@ -1715,7 +1723,9 @@ export default class EditorFile {
 			this.loading = false;
 
 			const { activeFile, emit } = editorManager;
-			if (activeFile?.id === this.id) {
+			const pane = editorManager.getFilePane?.(this);
+			const isActiveInPane = pane?.activeFile?.id === this.id;
+			if (isActiveInPane || activeFile?.id === this.id) {
 				this.setReadOnly(editable === false);
 				emit("file-loaded", this);
 			} else if (editable !== undefined) {
