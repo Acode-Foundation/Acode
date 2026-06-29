@@ -351,13 +351,17 @@ async function filterPlugins() {
 	};
 
 	if (option.type === "author") {
-		const authorName = (await prompt(strings["enter author name"], "", "text"))?.trim();
+		const authorName = (
+			await prompt(strings["enter author name"], "", "text")
+		)?.trim();
 		if (!authorName) return;
 		filterState.value = authorName.toLowerCase();
 		filterState.originalValue = authorName;
 		filterState.displayLabel = `${option.baseLabel}: ${authorName}`;
 	} else if (option.type === "keywords") {
-		const rawKeywords = (await prompt(strings["enter keywords"], "", "text"))?.trim();
+		const rawKeywords = (
+			await prompt(strings["enter keywords"], "", "text")
+		)?.trim();
 		if (!rawKeywords) return;
 		const keywordList = rawKeywords
 			.split(",")

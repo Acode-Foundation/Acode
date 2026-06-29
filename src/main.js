@@ -380,8 +380,8 @@ async function onDeviceReady() {
 
 				if (hasUpdate) {
 					acode.pushNotification(
-						"Update Available",
-						`Acode ${release.tag_name} is now available! Click here to checkout.`,
+						strings["update available"],
+						`${strings["update available info"].replace(/\{version\}/, release.tag_name)}`,
 						{
 							icon: "update",
 							type: "warning",
@@ -402,8 +402,8 @@ async function onDeviceReady() {
 		.then((updates) => {
 			if (!updates.length) return;
 			acode.pushNotification(
-				"Plugin Updates",
-				`${updates.length} plugin${updates.length > 1 ? "s" : ""} ${updates.length > 1 ? "have" : "has"} new version${updates.length > 1 ? "s" : ""} available.`,
+				strings["plugin updates"],
+				getUpdateMessage(updates.length),
 				{
 					icon: "extension",
 					action: () => {
@@ -472,6 +472,15 @@ async function setDebugInfo() {
 	].join("\n");
 
 	document.body.setAttribute("data-version", info);
+}
+
+function getUpdateMessage(count) {
+	if (settings.value.lang === "en") {
+		return `${count} plugin${count > 1 ? "s" : ""} ${count > 1 ? "have" : "has"} new version${count > 1 ? "s" : ""} available.`;
+	}
+	return count === 1
+		? strings["plugin updates singular"]
+		: strings["plugin updates plural"].replace(/\{count\}/, count);
 }
 
 async function promptUpdateCheckConsent() {

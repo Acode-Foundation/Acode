@@ -1,94 +1,93 @@
 .container.notifications {
-    display: flex;
-    flex-direction: column;
+	display: flex;
+	flex-direction: column;
 
-    .header {
-        padding: 10px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-bottom: 1px solid var(--border-color);
+	.header {
+		padding: 10px;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		border-bottom: 1px solid var(--border-color);
 
-        .title {
-            gap: 4px;
-            display: flex;
-            font-weight: 600;
-            align-items: center;
-            color: var(--primary-text-color);
-            justify-content: space-between !important;
+		.title {
+			gap: 4px;
+			display: flex;
+			font-weight: 600;
+			align-items: center;
+			color: var(--primary-text-color);
+			justify-content: space-between !important;
 
-            .icon-button {
-                border: none;
-                background: none;
-                cursor: pointer;
-                color: var(--primary-text-color);
-                margin-left: 0.4rem;
-                border-radius: 6px;
-                transition: all 0.2s ease;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                min-width: 32px;
-                min-height: 32px;
-                font-size: 1.1em;
+			.icon-button {
+				border: none;
+				background: none;
+				cursor: pointer;
+				color: var(--primary-text-color);
+				margin-left: 0.4rem;
+				border-radius: 6px;
+				transition: all 0.2s ease;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				min-width: 32px;
+				min-height: 32px;
+				font-size: 1.1em;
 
-                &:hover {
-                    background-color: var(--primary-color);
-                }
-            }
-        }
-    }
+				&:hover {
+					background-color: var(--primary-color);
+				}
+			}
+		}
+	}
 
-    .notifications-container {
-        flex: 1;
-        overflow-y: auto;
-        padding: 12px;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
+	.notifications-container {
+		flex: 1;
+		overflow-y: auto;
+		padding: 12px;
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
 
-        .notification-item {
-            padding-bottom: 5px;
-            margin-bottom: 10px;
-            border-radius: 0;
-        }
+		.notification-item {
+			padding-bottom: 5px;
+			margin-bottom: 10px;
+			border-radius: 0;
+		}
 
-        .empty-state {
-            text-align: center;
-            color: var(--secondary-text-color);
-            padding: 20px;
-            font-size: 14px;
-        }
-    }
+		.empty-state {
+			text-align: center;
+			color: var(--secondary-text-color);
+			padding: 20px;
+			font-size: 14px;
+		}
+	}
 }
 
-
 @supports not (gap: 1px) {
-    .title>*+* {
-        margin-left: 4px;
-    }
+	.title > * + * {
+		margin-left: 4px;
+	}
 
-    .notifications-container>*+* {
-        margin-top: 8px;
-    }
+	.notifications-container > * + * {
+		margin-top: 8px;
+	}
 
-    .notification-item>*+* {
-        margin-left: 10px;
-    }
+	.notification-item > * + * {
+		margin-left: 10px;
+	}
 
-    .action-button>*+* {
-        margin-left: 4px;
-    }
+	.action-button > * + * {
+		margin-left: 4px;
+	}
 }
 
 @keyframes slideIn {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
+	from {
+		transform: translateX(100%);
+		opacity: 0;
+	}
 
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
+	to {
+		transform: translateX(0);
+		opacity: 1;
+	}
 }
