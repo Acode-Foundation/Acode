@@ -799,7 +799,10 @@
 	"plugin updates singular": "1 plugin has a new version available.",
 	"plugin updates plural": "{count} plugins have new versions available.",
 	"just_now": "Just now",
-	"min_ago": "{count}m",
-	"hour_ago": "{count}h",
-	"day_ago": "{count}d"
+	"day_singular": "{count} day ago",
+	"hour_singular": "{count} hour ago",
+	"min_singular": "{count} min ago",
+	"day_plural": "{count} days ago",
+	"hour_plural": "{count} hours ago",
+	"min_plural": "{count} minutes ago"
 }

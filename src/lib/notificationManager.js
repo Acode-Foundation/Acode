@@ -324,14 +324,33 @@ class NotificationManager {
 	#formatTime(date) {
 		const now = new Date();
 		const diff = Math.floor((now - date) / 1000);
+		const count = (unit) => Math.floor(diff / unit);
 
 		if (diff < 60) return strings["just_now"];
-		if (diff < 3600)
-			return strings["min_ago"].replace("{count}", Math.floor(diff / 60));
-		if (diff < 86400)
-			return strings["hour_ago"].replace("{count}", Math.floor(diff / 3600));
-		if (diff < 604800)
-			return strings["day_ago"].replace("{count}", Math.floor(diff / 86400));
+
+		if (diff < 3600) {
+			const val = count(60);
+			return strings[val === 1 ? "min_singular" : "min_plural"].replace(
+				/\{count\}/,
+				val,
+			);
+		}
+
+		if (diff < 86400) {
+			const val = count(3600);
+			return strings[val === 1 ? "hour_singular" : "hour_plural"].replace(
+				/\{count\}/,
+				val,
+			);
+		}
+
+		if (diff < 604800) {
+			const val = count(86400);
+			return strings[val === 1 ? "day_singular" : "day_plural"].replace(
+				/\{count\}/,
+				val,
+			);
+		}
 
 		return date.toLocaleDateString();
 	}

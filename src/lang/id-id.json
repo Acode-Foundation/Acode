@@ -799,7 +799,10 @@
 	"plugin updates singular": "1 plugin memiliki versi baru yang tersedia.",
 	"plugin updates plural": "{count} plugin memiliki versi baru yang tersedia.",
 	"just_now": "Baru saja",
-	"min_ago": "{count}m",
-	"hour_ago": "{count}j",
-	"day_ago": "{count}h"
+	"day_singular": "{count} hari lalu",
+	"hour_singular": "{count} jam lalu",
+	"min_singular": "{count} menit lalu",
+	"day_plural": "{count} hari lalu",
+	"hour_plural": "{count} jam lalu",
+	"min_plural": "{count} menit lalu"
 }

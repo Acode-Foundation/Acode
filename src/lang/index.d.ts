@@ -802,9 +802,12 @@ declare type LangStrings = {
   "plugin updates singular": string;
   "plugin updates plural": string;
   "just_now": string;
-  "min_ago": string;
-  "hour_ago": string;
-  "day_ago": string;
+  "day_singular": string;
+  "hour_singular": string;
+  "min_singular": string;
+  "day_plural": string;
+  "hour_plural": string;
+  "min_plural": string;
 };
 
 declare var strings: LangStrings;
