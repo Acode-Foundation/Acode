@@ -18,6 +18,7 @@ import Url from "utils/Url";
 import { clearDiagnosticsEffect } from "./diagnostics";
 import { supportsBuiltinFormatting } from "./formattingSupport";
 import { inlayHintsExtension } from "./inlayHints";
+import { addLspLog } from "./logs";
 import { acodeRenameKeymap } from "./rename";
 import { selectRuntimeProvider } from "./runtimeProviders";
 import serverRegistry from "./serverRegistry";
@@ -267,6 +268,7 @@ interface ResolvedRuntimeTarget {
 }
 
 interface ExtendedLSPClient extends LSPClient {
+  __acodeServerId?: string;
   __acodeLoggedInfo?: boolean;
 }
 
@@ -689,6 +691,7 @@ export class LspClientManager {
             level = "info";
         }
         const logFn = console[level] ?? console.info;
+        addLspLog(server.id, level === "log" ? "info" : level, message);
         logFn(`[LSP:${server.id}] ${message}`);
         return true;
       },
@@ -716,6 +719,7 @@ export class LspClientManager {
             icon: type === 1 ? "error" : "warningreport_problem",
             type: type === 1 ? "error" : "warning",
           });
+          addLspLog(server.id, type === 1 ? "error" : "warn", message);
           logLspInfo(`[LSP:${server.id}] ${message}`);
           return true;
         }
@@ -728,6 +732,7 @@ export class LspClientManager {
           icon: type === 4 ? "autorenew" : "info",
           duration: 5000,
         });
+        addLspLog(server.id, "info", message);
         logLspInfo(`[LSP:${server.id}] ${message}`);
         return true;
       },
@@ -884,6 +889,7 @@ export class LspClientManager {
       );
       await transportHandle.ready;
       client = new LSPClient(clientConfig) as ExtendedLSPClient;
+      client.__acodeServerId = server.id;
       connectClient(client, transportHandle.transport, initializationOptions);
       await client.initializing;
       if (!client.__acodeLoggedInfo) {
@@ -906,6 +912,7 @@ export class LspClientManager {
           );
         }
         logLspInfo(`[LSP:${server.id}] initialized`);
+        addLspLog(server.id, "info", "Initialized");
         client.__acodeLoggedInfo = true;
       }
     } catch (error) {

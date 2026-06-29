@@ -1,40 +1,60 @@
-Welcome to Acode!
+Acode is an open-source code editor and web IDE for Android. Edit projects, manage files, use a Linux terminal, work with Git and SSH, and extend your setup with community plugins.
 
-A powerful, lightweight code editor, and web IDE for Android. Now enhanced with cutting-edge features and updates to transform your coding experience.
+LINUX TERMINAL
 
-What's New?
+Acode includes an Alpine Linux terminal powered by proot, with no root required. Use apk to install supported command-line packages, keep multiple terminal tabs, customize your shell, and back up or restore your terminal setup.
 
-Step into the future of coding with our innovative Plugin System. This brand new feature supports a wide range of plugins, boosting the functionality of Acode to meet all your development needs. With over 30 plugins already available in the Plugin Store, the possibilities are endless.
+AI CODING SUPPORT
 
-Latest Updates Include:
+Use the terminal and plugin ecosystem with AI-assisted coding tools where supported. Generate code, review errors, refactor files, and ask for explanations while working from your phone or tablet.
 
-- Enhanced Ace Editor: Now updated to version 1.22.0 for more efficient editing.
-- Search in All Files: Our beta feature lets you search and replace text in all files within your opened projects.
-- Customizable Quick Tools: Personalize your quick tools to enhance your workflow.
-- Fast File Listing in Find Files (Ctrl + P): Acode now loads and caches files at startup, leading to faster file listing.
-- Ctrl Key Functionality: Take advantage of keyboard shortcuts for actions such as save (Ctrl+S) and open command palette (Ctrl+Shift+P).
+JAVASCRIPT AND WEB DEVELOPMENT
 
-Why Choose Acode?
+Set up mobile web projects with Node.js and npm, run package scripts, build APIs with server-side JavaScript, preview HTML and Markdown, and test front-end projects inside Acode.
 
-Acode lets you build and run websites directly within your browser, debug with ease using the integrated console, and edit a wide range of source files - from Python and CSS to Java, JavaScript, Dart, and more.
+PROFESSIONAL CODE EDITOR
 
-Key Features:
+- Syntax highlighting for 100+ programming languages
+- Multi-file editing with tabs
+- Command palette (Ctrl+Shift+P)
+- File search across projects (Ctrl+P)
+- Code completion and IntelliSense via LSP plugins
+- Keyboard shortcuts for common editor actions
+- Emmet support for fast HTML and CSS authoring
+- Interactive JavaScript console for debugging
+- Live HTML and Markdown preview
+- Customizable themes and fonts
+- Smooth editing for large files
 
-- Universal File Editor: Edit any file directly from your device.
-- GitHub Integration: Seamlessly sync your projects with GitHub.
-- FTP/SFTP Support: Manage your files efficiently with FTP/SFTP.
-- Extensive Syntax Highlighting: Supports over 100 programming languages.
-- Personalized Themes: Choose from dozens of unique themes to match your style.
-- User-Friendly Interface: Navigate with ease through our intuitive design.
-- In-App Preview: Instantly view your HTML/MarkDown files within the app.
-- Interactive JavaScript Console: Debug JavaScript code right from the console.
-- In-App File Browser: Access your files directly within Acode.
-- Open Source: Benefit from our transparent and community-driven project.
-- High Performance: Supports files with over 50,000 lines, ensuring smooth workflow.
-- Multi-File Support: Work on multiple files simultaneously for productive multitasking.
-- Customizable Interface: Adapt Acode to your personal coding style.
-- Keyboard Shortcuts: Speed up your coding with handy shortcuts.
-- File Recovery: Never lose your work with our reliable file recovery feature.
-- File Management: Keep your projects organized with effective file management.
+GIT, SSH AND REMOTE TOOLS
 
-Start your streamlined coding journey with Acode today. Join our ever-growing community of developers and experience the difference for yourself!
+- Git workflows including clone, commit, push, pull and branch management
+- SSH access for remote server work
+- FTP and SFTP file management
+- GitHub integration for project sync
+- Tools for editing, previewing and deploying web projects from Android
+
+COMMUNITY PLUGINS
+
+Extend Acode with plugins from the in-app Plugin Store:
+- Language servers for IntelliSense
+- Themes and icon packs
+- AI-assisted coding tools
+- Build tools and formatters
+- Framework support for modern web development
+- JavaScript and TypeScript plugin development
+
+OPEN SOURCE
+
+Acode is free and open source under the MIT license. Source code is available at github.com/Acode-Foundation/Acode. Documentation and community links are available at acode.app.
+
+Pro version is available with ad removal and premium themes. In-app purchases may vary by region.
+
+GET STARTED
+
+1. Install Acode
+2. Open the terminal and complete the one-time setup
+3. Install the packages and plugins you need
+4. Start editing, previewing and managing projects from your Android device
+
+Acode requires Android 7.0+. The free version contains ads.

@@ -3,7 +3,6 @@ import sidebarApps from "sidebarApps";
 import collapsableList from "components/collapsableList";
 import FileTree from "components/fileTree";
 import Sidebar from "components/sidebar";
-import { TerminalManager } from "components/terminal";
 import tile from "components/tile";
 import toast from "components/toast";
 import alert from "dialogs/alert";
@@ -11,13 +10,13 @@ import confirm from "dialogs/confirm";
 import prompt from "dialogs/prompt";
 import select from "dialogs/select";
 import escapeStringRegexp from "escape-string-regexp";
-import FileBrowser from "pages/fileBrowser";
 import helpers from "utils/helpers";
 import Path from "utils/Path";
 import Uri from "utils/Uri";
 import Url from "utils/Url";
 import config from "./config";
 import * as FileList from "./fileList";
+import { loadFileBrowser } from "./lazyImports";
 import openFile from "./openFile";
 import recents from "./recents";
 import appSettings from "./settings";
@@ -184,22 +183,22 @@ function openFolder(_path, opts = {}) {
 		},
 	};
 
+	if (typeof listFiles !== "boolean") {
+		listFiles = appSettings.value.fileBrowser?.listFiles ?? true;
+	}
+
+	folder.listFiles = listFiles;
+	addedFolder.push(folder);
+
 	editorManager.emit("update", "add-folder");
 	editorManager.onupdate("add-folder", event);
 	editorManager.emit("add-folder", event);
 
-	(async () => {
-		if (typeof listFiles !== "boolean") {
-			listFiles = appSettings.value.fileBrowser?.listFiles ?? true;
-		}
-
-		if (listFiles) {
-			FileList.addRoot({ url: _path, name: title });
-		}
-
-		folder.listFiles = listFiles;
-		addedFolder.push(folder);
-	})();
+	if (listFiles) {
+		FileList.addRoot({ url: _path, name: title }).catch((err) => {
+			console.error("Failed to add root to FileList:", err);
+		});
+	}
 
 	if (listState[_path]) {
 		$root.expand();
@@ -539,6 +538,9 @@ function execOperation(type, action, url, $target, name) {
 
 	async function openInTerminal() {
 		try {
+			const { TerminalManager } = await import(
+				/* webpackChunkName: "terminal" */ "components/terminal"
+			);
 			const prootPath = convertToProotPath(url);
 			const terminal = await TerminalManager.createTerminal({
 				name: `Terminal - ${name}`,
@@ -897,6 +899,7 @@ function execOperation(type, action, url, $target, name) {
 	async function insertFile() {
 		startLoading();
 		try {
+			const FileBrowser = await loadFileBrowser();
 			const file = await FileBrowser("file", strings["insert file"]);
 			const sourceFs = fsOperation(file.url);
 			const data = await sourceFs.readFile();
@@ -923,6 +926,7 @@ function execOperation(type, action, url, $target, name) {
 	}
 
 	async function open() {
+		const FileBrowser = await loadFileBrowser();
 		FileBrowser.openFolder({
 			url,
 			name,

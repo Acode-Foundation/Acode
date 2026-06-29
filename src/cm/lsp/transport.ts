@@ -4,6 +4,7 @@
 */
 
 import type { Transport } from "@codemirror/lsp-client";
+import { addLspLog } from "./logs";
 import type {
 	LspServerDefinition,
 	TransportContext,
@@ -44,6 +45,7 @@ function createWebSocketTransport(
 		console.info(
 			`[LSP:${server.id}] Using auto-discovered port ${context.dynamicPort}`,
 		);
+		addLspLog(server.id, "info", `Using auto-discovered port ${context.dynamicPort}`);
 	}
 
 	// URL is only required when not using dynamic port
@@ -175,17 +177,24 @@ function createWebSocketTransport(
 		const wasClean = event.wasClean || event.code === 1000;
 		if (wasClean) {
 			console.info(`[LSP:${server.id}] WebSocket closed cleanly`);
+			addLspLog(server.id, "info", "WebSocket closed cleanly");
 			return;
 		}
 
 		console.warn(
 			`[LSP:${server.id}] WebSocket closed unexpectedly (code: ${event.code})`,
 		);
+		addLspLog(
+			server.id,
+			"warn",
+			`WebSocket closed unexpectedly (code: ${event.code})`,
+		);
 
 		if (enableReconnect && reconnectAttempts < maxReconnectAttempts) {
 			scheduleReconnect();
 		} else if (reconnectAttempts >= maxReconnectAttempts) {
 			console.error(`[LSP:${server.id}] Max reconnection attempts reached`);
+			addLspLog(server.id, "error", "Max reconnection attempts reached");
 		}
 	}
 
@@ -195,6 +204,7 @@ function createWebSocketTransport(
 		const reason =
 			errorEvent?.message || errorEvent?.type || "connection error";
 		console.error(`[LSP:${server.id}] WebSocket error: ${reason}`);
+		addLspLog(server.id, "error", `WebSocket error: ${reason}`);
 	}
 
 	function scheduleReconnect(): void {
@@ -208,6 +218,11 @@ function createWebSocketTransport(
 
 		console.info(
 			`[LSP:${server.id}] Reconnecting in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnectAttempts})`,
+		);
+		addLspLog(
+			server.id,
+			"info",
+			`Reconnecting in ${delay}ms (attempt ${reconnectAttempts}/${maxReconnectAttempts})`,
 		);
 
 		reconnectTimer = setTimeout(() => {
@@ -228,12 +243,14 @@ function createWebSocketTransport(
 				connected = true;
 				reconnectAttempts = 0;
 				console.info(`[LSP:${server.id}] Reconnected successfully`);
+				addLspLog(server.id, "info", "Reconnected successfully");
 				if (socket) {
 					socket.onopen = null;
 				}
 			};
 		} catch (error) {
 			console.error(`[LSP:${server.id}] Reconnection failed`, error);
+			addLspLog(server.id, "error", "Reconnection failed", error);
 			if (reconnectAttempts < maxReconnectAttempts) {
 				scheduleReconnect();
 			}

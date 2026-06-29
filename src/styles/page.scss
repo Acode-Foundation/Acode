@@ -248,6 +248,7 @@ wc-page {
 
   .main {
     >.options {
+      position: relative;
       display: flex;
       height: 40px;
       min-height: 40px;
@@ -261,18 +262,18 @@ wc-page {
         align-items: center;
         justify-content: center;
         box-sizing: border-box;
+      }
 
-        &.active::after {
-          content: "";
-          position: absolute;
-          bottom: 0;
-          left: 0;
-          height: 2px;
-          width: 100%;
-          animation: strech 300ms ease 1;
-          background-color: rgb(51, 153, 255);
-          background-color: var(--active-color);
-        }
+      .tab-indicator {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        height: 2px;
+        width: 1px;
+        background-color: rgb(51, 153, 255);
+        background-color: var(--active-color);
+        transform-origin: left center;
+        z-index: 1;
       }
     }
   }
@@ -435,22 +436,8 @@ wc-page {
     z-index: auto;
   }
 
-  &:not(.primary):not(.no-transition) {
-    animation: page-transition 200ms ease 1;
-  }
-
-  &.no-transition {
-    animation: page-transition-opacity 200ms ease 1;
-  }
-
   &:not(#root) {
     z-index: 110;
-  }
-
-  &.hide {
-    transition: 300ms ease;
-    opacity: 0;
-    transform: translate3d(0, 50%, 0);
   }
 
   main,

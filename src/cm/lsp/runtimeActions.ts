@@ -9,26 +9,33 @@ import type {
 function getSettingsContext(
 	server: LspServerDefinition,
 	context: LspRuntimeContext = {},
+	runtimeAction: LspRuntimeContext["runtimeAction"] = "command",
 ): LspRuntimeContext {
 	return {
 		...context,
 		serverId: context.serverId || server.id,
 		allowNonTerminalWorkspace: true,
+		runtimeAction,
 	};
 }
 
 async function getProvider(
 	server: LspServerDefinition,
 	context: LspRuntimeContext = {},
+	runtimeAction?: LspRuntimeContext["runtimeAction"],
 ): Promise<LspRuntimeProvider | null> {
-	return selectRuntimeProvider(server, getSettingsContext(server, context));
+	return selectRuntimeProvider(
+		server,
+		getSettingsContext(server, context, runtimeAction),
+	);
 }
 
 export async function checkRuntimeServerInstallation(
 	server: LspServerDefinition,
 	context?: LspRuntimeContext,
 ): Promise<InstallCheckResult> {
-	const provider = await getProvider(server, context);
+	const settingsContext = getSettingsContext(server, context, "checkInstallation");
+	const provider = await getProvider(server, context, "checkInstallation");
 	if (!provider?.checkInstallation) {
 		return {
 			status: "unknown",
@@ -38,7 +45,7 @@ export async function checkRuntimeServerInstallation(
 			message: "The selected runtime does not provide installation checks.",
 		};
 	}
-	return provider.checkInstallation(server, getSettingsContext(server, context));
+	return provider.checkInstallation(server, settingsContext);
 }
 
 export async function installRuntimeServer(
@@ -47,11 +54,12 @@ export async function installRuntimeServer(
 	options: { promptConfirm?: boolean } = {},
 	context?: LspRuntimeContext,
 ): Promise<boolean> {
-	const provider = await getProvider(server, context);
+	const settingsContext = getSettingsContext(server, context, "install");
+	const provider = await getProvider(server, context, "install");
 	if (!provider?.install) {
 		throw new Error("The selected runtime does not support installation.");
 	}
-	return provider.install(server, getSettingsContext(server, context), mode, options);
+	return provider.install(server, settingsContext, mode, options);
 }
 
 export async function uninstallRuntimeServer(
@@ -59,11 +67,12 @@ export async function uninstallRuntimeServer(
 	options: { promptConfirm?: boolean } = {},
 	context?: LspRuntimeContext,
 ): Promise<boolean> {
-	const provider = await getProvider(server, context);
+	const settingsContext = getSettingsContext(server, context, "uninstall");
+	const provider = await getProvider(server, context, "uninstall");
 	if (!provider?.uninstall) {
 		throw new Error("The selected runtime does not support uninstall.");
 	}
-	return provider.uninstall(server, getSettingsContext(server, context), options);
+	return provider.uninstall(server, settingsContext, options);
 }
 
 export async function getRuntimeInstallCommand(
@@ -71,11 +80,12 @@ export async function getRuntimeInstallCommand(
 	mode: "install" | "update" = "install",
 	context?: LspRuntimeContext,
 ): Promise<string | null> {
-	const provider = await getProvider(server, context);
+	const settingsContext = getSettingsContext(server, context, "command");
+	const provider = await getProvider(server, context, "command");
 	return (
 		provider?.getInstallCommand?.(
 			server,
-			getSettingsContext(server, context),
+			settingsContext,
 			mode,
 		) ?? null
 	);
@@ -85,11 +95,12 @@ export async function getRuntimeUninstallCommand(
 	server: LspServerDefinition,
 	context?: LspRuntimeContext,
 ): Promise<string | null> {
-	const provider = await getProvider(server, context);
+	const settingsContext = getSettingsContext(server, context, "command");
+	const provider = await getProvider(server, context, "command");
 	return (
 		provider?.getUninstallCommand?.(
 			server,
-			getSettingsContext(server, context),
+			settingsContext,
 		) ?? null
 	);
 }

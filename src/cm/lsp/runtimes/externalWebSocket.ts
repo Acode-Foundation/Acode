@@ -17,7 +17,10 @@ export const externalWebSocketRuntimeProvider: LspRuntimeProvider = {
 	label: "External WebSocket",
 	priority: -50,
 
-	canHandle(server) {
+	canHandle(server, context) {
+		if (context.runtimeAction && server.launcher) {
+			return false;
+		}
 		return server.transport?.kind === "websocket" && !!server.transport.url;
 	},
 

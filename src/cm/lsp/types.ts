@@ -103,6 +103,7 @@ export interface LspRuntimeContext extends TransportContext {
 	serverId?: string;
 	workspaceKind?: WorkspaceKind;
 	allowNonTerminalWorkspace?: boolean;
+	runtimeAction?: "checkInstallation" | "install" | "uninstall" | "command";
 }
 
 export type LspClientScope = "workspace" | "document";

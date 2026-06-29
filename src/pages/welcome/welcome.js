@@ -1,6 +1,5 @@
-import "./welcome.scss";
 import { getResolvedKeyBindings } from "cm/commandRegistry";
-import Logo from "components/logo";
+import logoSrc from "components/logo/logo.png?inline";
 import config from "lib/config";
 import EditorFile from "lib/editorFile";
 
@@ -45,7 +44,7 @@ function createWelcomeContent() {
 		<div id="welcome-tab" className="welcome-page scroll">
 			{/* Hero Section */}
 			<header className="welcome-header">
-				<Logo />
+				<img className="logo" src={logoSrc} width="48" height="48" alt="" />
 				<div className="welcome-header-text">
 					<h1>Welcome to Acode</h1>
 					<p className="tagline">Powerful code editor for Android</p>

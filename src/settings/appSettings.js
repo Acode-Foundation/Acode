@@ -178,7 +178,16 @@ export default function otherSettings() {
 			key: "quickToolsTriggerMode",
 			text: strings["quicktools trigger mode"],
 			value: values.quickToolsTriggerMode,
-			valueText: (value) => value.capitalize(),
+			valueText: (value) => {
+				const options = {
+					[appSettings.QUICKTOOLS_TRIGGER_MODE_CLICK]:
+						strings["quicktools-trigger:click"],
+					[appSettings.QUICKTOOLS_TRIGGER_MODE_TOUCH]:
+						strings["quicktools-trigger:touch"],
+				};
+
+				return options[value] ?? (value != null ? value.capitalize() : value);
+			},
 			select: [
 				[
 					appSettings.QUICKTOOLS_TRIGGER_MODE_CLICK,
@@ -307,7 +316,17 @@ export default function otherSettings() {
 			key: "console",
 			text: strings.console,
 			value: values.console,
-			select: [appSettings.CONSOLE_LEGACY, appSettings.CONSOLE_ERUDA],
+			valueText: (value) => {
+				const options = {
+					[appSettings.CONSOLE_LEGACY]: "Legacy",
+					[appSettings.CONSOLE_ERUDA]: "Eruda",
+				};
+				return options[value] ?? (value != null ? value.capitalize() : value);
+			},
+			select: [
+				[appSettings.CONSOLE_LEGACY, "Legacy"],
+				[appSettings.CONSOLE_ERUDA, "Eruda"],
+			],
 			info: strings["settings-info-app-console"],
 			category: categories.advanced,
 		},
@@ -449,7 +468,7 @@ export default function otherSettings() {
 				break;
 
 			case "floatingButton":
-				if (value) {
+				if (value && !editorManager.activeFile?.hideQuickTools) {
 					clearTimeout(quickTools.$toggler._hideTimeout);
 					quickTools.$toggler._hideTimeout = null;
 					quickTools.$toggler.classList.remove("hide");

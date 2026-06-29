@@ -16,6 +16,7 @@ import {
 } from "./runtimes/axsBridge";
 import { getServerBundle } from "./serverCatalog";
 import notificationManager from "lib/notificationManager";
+import { addLspLog } from "./logs";
 import type {
   InstallCheckResult,
   InstallStatus,
@@ -278,6 +279,7 @@ export async function canReuseExistingServer(
       (await checkServerAliveViaWebSocket(url, 1000)));
 
   if (alive) {
+    addLspLog(server.id, "info", `Reusing existing server on port ${portInfo.port}`);
     console.info(
       `[LSP:${server.id}] Reusing existing server on port ${portInfo.port}`,
     );
@@ -287,6 +289,7 @@ export async function canReuseExistingServer(
   console.info(
     `[LSP:${server.id}] Found stale port file, will start new server`,
   );
+  addLspLog(server.id, "warn", "Found stale port file, starting a new server");
   return null;
 }
 
@@ -909,8 +912,10 @@ async function startInteractiveServer(
   const callback: ExecutorCallback = (type, data) => {
     if (type === "stderr") {
       if (/proot warning/i.test(data)) return;
+      addLspLog(serverId, "stderr", data);
       console.warn(`[LSP:${serverId}] ${data}`);
     } else if (type === "stdout" && data && data.trim()) {
+      addLspLog(serverId, "info", data);
       console.info(`[LSP:${serverId}] ${data}`);
       // Detect when the axs proxy signals it's listening
       if (/listening on/i.test(data)) {
@@ -919,6 +924,7 @@ async function startInteractiveServer(
     }
   };
   const uuid = await executor.start(command, callback, true);
+  addLspLog(serverId, "info", `Started shell process ${uuid}`);
   managedServers.set(serverId, {
     uuid,
     command,
@@ -1115,6 +1121,7 @@ export async function ensureServerRunning(
         console.info(
           `[LSP:${server.id}] Auto-discovered port ${discoveredPort}`,
         );
+        addLspLog(server.id, "info", `Auto-discovered port ${discoveredPort}`);
         // Update managed server entry with the port
         const entry = managedServers.get(key);
         if (entry) {
@@ -1137,12 +1144,14 @@ export async function ensureServerRunning(
 
     if (!announcedServers.has(key)) {
       console.info(`[LSP:${server.id}] ${server.label} connected`);
+      addLspLog(server.id, "info", `${server.label} connected`);
       announcedServers.add(key);
     }
     return { uuid, discoveredPort };
   } catch (error) {
     console.error(`Failed to start language server ${server.id}`, error);
     const errorMessage = error instanceof Error ? error.message : String(error);
+    addLspLog(server.id, "error", errorMessage || "Connection failed");
     lspStatusBar.show({
       message: errorMessage || "Connection failed",
       title: `${server.label} failed`,
@@ -1173,6 +1182,7 @@ export async function ensureServerRunning(
 export function stopManagedServer(serverId: string): void {
   const entry = managedServers.get(serverId);
   if (!entry) return;
+  addLspLog(serverId, "info", "Stopping managed server");
   const executor = getExecutor();
   executor.stop(entry.uuid).catch((error: Error) => {
     console.warn(`Failed to stop language server ${serverId}`, error);

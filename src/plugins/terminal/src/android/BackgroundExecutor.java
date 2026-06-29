@@ -174,12 +174,13 @@ public class BackgroundExecutor extends CordovaPlugin {
     }
 
     private void loadLibrary(String path, CallbackContext callbackContext) {
-        try {
+        callbackContext.error("This feature is no longer supported. Loading native libraries directly from JavaScript is no longer allowed due to security reasons.");
+        /*try {
             System.load(path);
             callbackContext.success("Library loaded successfully.");
         } catch (Exception e) {
             callbackContext.error("Failed to load library: " + e.getMessage());
-        }
+        }*/
     }
 
     private void sendPluginResult(CallbackContext ctx, String message, boolean keepCallback) {

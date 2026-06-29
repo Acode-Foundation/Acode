@@ -724,7 +724,7 @@ export default class TerminalComponent {
 
 			const response = await new Promise((resolve, reject) => {
 				cordova.plugin.http.sendRequest(
-					`http://localhost:${this.options.port}/terminals`,
+					`http://127.0.0.1:${this.options.port}/terminals`,
 					{
 						method: "POST",
 						responseType: "text",
@@ -765,7 +765,7 @@ export default class TerminalComponent {
 
 		this.pid = pid;
 
-		const wsUrl = `ws://localhost:${this.options.port}/terminals/${pid}`;
+		const wsUrl = `ws://127.0.0.1:${this.options.port}/terminals/${pid}`;
 
 		await new Promise((resolve, reject) => {
 			const websocket = new WebSocket(wsUrl);
@@ -871,7 +871,7 @@ export default class TerminalComponent {
 		try {
 			await new Promise((resolve, reject) => {
 				cordova.plugin.http.sendRequest(
-					`http://localhost:${this.options.port}/terminals/${this.pid}/resize`,
+					`http://127.0.0.1:${this.options.port}/terminals/${this.pid}/resize`,
 					{
 						method: "POST",
 						serializer: "json",
@@ -1157,7 +1157,7 @@ export default class TerminalComponent {
 			try {
 				await new Promise((resolve, reject) => {
 					cordova.plugin.http.sendRequest(
-						`http://localhost:${this.options.port}/terminals/${this.pid}/terminate`,
+						`http://127.0.0.1:${this.options.port}/terminals/${this.pid}/terminate`,
 						{
 							method: "POST",
 							data: {}, // Added empty object to satisfy the plugin's type checker

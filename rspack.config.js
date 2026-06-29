@@ -94,10 +94,15 @@ module.exports = (env, options) => {
       resourceQuery: /raw/,
       type: 'asset/source',
     },
+    {
+      test: /\.(png|svg|jpg|jpeg|ico|webp)(\?.*)?$/,
+      resourceQuery: /inline/,
+      type: 'asset/inline',
+    },
     // Asset files
     {
       test: /\.(png|svg|jpg|jpeg|ico|ttf|webp|eot|woff|webm|mp4|wav)(\?.*)?$/,
-      resourceQuery: { not: [/raw/] },
+      resourceQuery: { not: [/raw/, /inline/] },
       type: 'asset/resource',
     },
     // Regular CSS/SCSS files

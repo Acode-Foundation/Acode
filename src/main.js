@@ -6,6 +6,8 @@ import "res/icons/style.css";
 import "res/file-icons/style.css";
 import "styles/overrideAceStyle.scss";
 import "styles/wideScreen.scss";
+// Editor tabs use a shadow root that only links build/main.css.
+import "pages/welcome/welcome.scss";
 
 import "lib/polyfill";
 import "cm/supportedModes";
@@ -15,6 +17,7 @@ import "handlers/editorWorkaround";
 import fsOperation from "fileSystem";
 import sidebarApps from "sidebarApps";
 import { setKeyBindings } from "cm/commandRegistry";
+import { hasConnectedServers } from "cm/lsp/connectionState";
 import {
 	getModeForPath,
 	getModes,
@@ -22,12 +25,9 @@ import {
 	initModes,
 } from "cm/modelist";
 import Contextmenu from "components/contextmenu";
-import { hasConnectedServers } from "components/lspInfoDialog";
 import Sidebar from "components/sidebar";
-import { TerminalManager } from "components/terminal";
 import tile from "components/tile";
 import toast from "components/toast";
-import tutorial from "components/tutorial";
 import confirm from "dialogs/confirm";
 import intentHandler, { processPendingIntents } from "handlers/intent";
 import keyboardHandler, { keydownState } from "handlers/keyboard";
@@ -39,7 +39,6 @@ import adRewards from "lib/adRewards";
 import ajax from "lib/ajax";
 import applySettings from "lib/applySettings";
 import checkFiles from "lib/checkFiles";
-import checkPluginsUpdate from "lib/checkPluginsUpdate";
 import { canSaveFile } from "lib/commands";
 import config from "lib/config";
 import EditorFile from "lib/editorFile";
@@ -51,14 +50,11 @@ import loadPlugins from "lib/loadPlugins";
 import Logger from "lib/logger";
 import notificationManager from "lib/notificationManager";
 import openFolder, { addedFolder } from "lib/openFolder";
-import { registerPrettierFormatter } from "lib/prettierFormatter";
+import { registerPrettierFormatter } from "lib/registerPrettierFormatter";
 import restoreFiles from "lib/restoreFiles";
 import settings from "lib/settings";
 import startAd, { hideAd } from "lib/startAd";
 import mustache from "mustache";
-import plugins from "pages/plugins";
-import openWelcomeTab from "pages/welcome";
-import otherSettings from "settings/appSettings";
 import themes from "theme/list";
 import { initHighlighting } from "utils/codeHighlight";
 import { getEncoding, initEncodings } from "utils/encodings";
@@ -398,6 +394,9 @@ async function onDeviceReady() {
 			},
 		);
 	}
+	const { default: checkPluginsUpdate } = await import(
+		/* webpackChunkName: "checkPluginsUpdate" */ "lib/checkPluginsUpdate"
+	);
 	checkPluginsUpdate()
 		.then((updates) => {
 			if (!updates.length) return;
@@ -406,7 +405,10 @@ async function onDeviceReady() {
 				getUpdateMessage(updates.length),
 				{
 					icon: "extension",
-					action: () => {
+					action: async () => {
+						const { default: plugins } = await import(
+							/* webpackChunkName: "plugins" */ "pages/plugins"
+						);
 						plugins(updates);
 					},
 				},
@@ -641,6 +643,9 @@ async function loadApp() {
 	window.log("info", "Started app and its services...");
 
 	if (!files.length) {
+		const { default: openWelcomeTab } = await import(
+			/* webpackChunkName: "welcome" */ "pages/welcome"
+		);
 		openWelcomeTab();
 	}
 
@@ -682,11 +687,19 @@ async function loadApp() {
 		onEditorUpdate(undefined, false);
 	}
 
+	acode.exec("save-state");
 	initFileList();
 
-	TerminalManager.restorePersistedSessions().catch((error) => {
-		console.error("Terminal restoration failed:", error);
-	});
+	import(/* webpackChunkName: "terminal" */ "components/terminal").then(
+		({ TerminalManager }) => {
+			TerminalManager.restorePersistedSessions().catch((error) => {
+				console.error("Terminal restoration failed:", error);
+			});
+		},
+		(error) => {
+			console.error("Failed to load terminal module:", error);
+		},
+	);
 
 	/**
 	 *
@@ -727,7 +740,9 @@ async function loadApp() {
 			return;
 		}
 
-		if (saveState) acode.exec("save-state");
+		if (saveState && sessionStorage.getItem("isfilesRestored") === "true") {
+			acode.exec("save-state");
+		}
 	}
 
 	async function onFileUpdate() {
@@ -850,8 +865,13 @@ function createFileMenu({ top, bottom, toggler }) {
 	return $menu;
 }
 
-function showTutorials() {
+async function showTutorials() {
 	if (window.innerWidth > 750) {
+		const [{ default: tutorial }, { default: otherSettings }] =
+			await Promise.all([
+				import(/* webpackChunkName: "tutorial" */ "components/tutorial"),
+				import(/* webpackChunkName: "appSettings" */ "settings/appSettings"),
+			]);
 		tutorial("quicktools-tutorials", (hide) => {
 			const onclick = () => {
 				otherSettings();

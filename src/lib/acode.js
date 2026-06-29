@@ -47,7 +47,6 @@ import prompt from "dialogs/prompt";
 import select from "dialogs/select";
 import { addIntentHandler, removeIntentHandler } from "handlers/intent";
 import keyboardHandler from "handlers/keyboard";
-import purchaseListener from "handlers/purchase";
 import windowResize from "handlers/windowResize";
 import actionStack from "lib/actionStack";
 import commands from "lib/commands";
@@ -67,7 +66,6 @@ import projects from "lib/projects";
 import selectionMenu from "lib/selectionMenu";
 import appSettings from "lib/settings";
 import FileBrowser from "pages/fileBrowser";
-import formatterSettings from "settings/formatterSettings";
 import ThemeBuilder from "theme/builder";
 import themes from "theme/list";
 import Color from "utils/color";
@@ -582,20 +580,25 @@ class Acode {
 
 											if (isPaid && !purchaseToken) {
 												if (!product) throw new Error("Product not found");
-												return helpers.checkAPIStatus().then((apiStatus) => {
-													if (!apiStatus) {
-														alert(strings.error, strings.api_error);
-														return;
-													}
+												return helpers
+													.checkAPIStatus()
+													.then(async (apiStatus) => {
+														if (!apiStatus) {
+															alert(strings.error, strings.api_error);
+															return;
+														}
 
-													iap.setPurchaseUpdatedListener(
-														...purchaseListener(onpurchase, onerror),
-													);
-													return helpers.promisify(
-														iap.purchase,
-														product.productId,
-													);
-												});
+														const { default: purchaseListener } = await import(
+															/* webpackChunkName: "purchaseHandler" */ "handlers/purchase"
+														);
+														iap.setPurchaseUpdatedListener(
+															...purchaseListener(onpurchase, onerror),
+														);
+														return helpers.promisify(
+															iap.purchase,
+															product.productId,
+														);
+													});
 											}
 										})
 										.then(() => {
@@ -792,6 +795,9 @@ class Acode {
 			}
 
 			if (selectIfNull) {
+				const { default: formatterSettings } = await import(
+					/* webpackChunkName: "formatterSettings" */ "settings/formatterSettings"
+				);
 				formatterSettings(modeName);
 				this.#afterSelectFormatter(modeName);
 			} else {
