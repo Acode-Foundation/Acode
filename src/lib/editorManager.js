@@ -243,7 +243,7 @@ async function EditorManager($header, $body) {
 		pane.element.addEventListener(
 			"pointerdown",
 			() => {
-				setActivePane(pane);
+				activatePane(pane);
 			},
 			true,
 		);
@@ -542,6 +542,24 @@ async function EditorManager($header, $body) {
 			}
 		}
 
+		return pane;
+	}
+
+	function activatePane(pane, options = {}) {
+		if (!pane) return null;
+		if (activePane === pane) {
+			if (options.focusEditor !== false) pane.editor?.focus?.();
+			return pane;
+		}
+
+		const fileToActivate = pane.activeFile || null;
+		if (fileToActivate) {
+			fileToActivate.makeActive();
+			return pane;
+		}
+
+		setActivePane(pane, { emitSwitch: false });
+		if (options.focusEditor !== false) pane.editor?.focus?.();
 		return pane;
 	}
 
@@ -2089,21 +2107,7 @@ async function EditorManager($header, $body) {
 		});
 	}
 
-	async function createPane(options = {}) {
-		const direction = normalizePaneDirection(options.direction);
-		const sourcePane = options.sourcePane || getActivePane() || primaryPane;
-		if (!canCreatePane(direction, sourcePane)) {
-			window.toast?.(
-				strings["not enough space"] ||
-					"Not enough space to create another editor pane.",
-			);
-			return null;
-		}
-
-		const pane = createPaneShell();
-		insertPaneIntoLayout(sourcePane, pane, direction);
-		updatePaneLayoutState();
-		animatePaneEntry(pane);
+	async function createPaneEditor(pane) {
 		const paneEditor = new EditorView({
 			state: createEmptyEditorState(),
 			parent: pane.editorContainer,
@@ -2129,6 +2133,25 @@ async function EditorManager($header, $body) {
 			);
 		}
 		await setupEditor(pane);
+		return paneEditor;
+	}
+
+	async function createPane(options = {}) {
+		const direction = normalizePaneDirection(options.direction);
+		const sourcePane = options.sourcePane || getActivePane() || primaryPane;
+		if (!canCreatePane(direction, sourcePane)) {
+			window.toast?.(
+				strings["not enough space"] ||
+					"Not enough space to create another editor pane.",
+			);
+			return null;
+		}
+
+		const pane = createPaneShell();
+		insertPaneIntoLayout(sourcePane, pane, direction);
+		updatePaneLayoutState();
+		animatePaneEntry(pane);
+		await createPaneEditor(pane);
 		updatePaneLayoutState();
 		syncOpenFileList();
 
@@ -2201,9 +2224,11 @@ async function EditorManager($header, $body) {
 		const fileToActivate = targetPane.files.includes(preferredFile)
 			? preferredFile
 			: targetPane.activeFile;
-		targetPane.activeFile = null;
-		setActivePane(targetPane, { emitSwitch: false });
-		fileToActivate?.makeActive();
+		if (fileToActivate) {
+			fileToActivate.makeActive();
+		} else {
+			activatePane(targetPane);
+		}
 		syncOpenFileList();
 		return true;
 	}
@@ -2217,14 +2242,7 @@ async function EditorManager($header, $body) {
 				(index + offset + orderedPanes.length) % orderedPanes.length
 			];
 		if (!nextPane) return false;
-		const fileToActivate = nextPane.activeFile;
-		nextPane.activeFile = null;
-		setActivePane(nextPane, { emitSwitch: false });
-		if (fileToActivate) {
-			fileToActivate.makeActive();
-		} else {
-			nextPane.editor?.focus();
-		}
+		activatePane(nextPane);
 		return true;
 	}
 
@@ -2282,14 +2300,7 @@ async function EditorManager($header, $body) {
 		}
 
 		if (!bestPane) return false;
-		const fileToActivate = bestPane.activeFile;
-		bestPane.activeFile = null;
-		setActivePane(bestPane, { emitSwitch: false });
-		if (fileToActivate) {
-			fileToActivate.makeActive();
-		} else {
-			bestPane.editor?.focus();
-		}
+		activatePane(bestPane);
 		return true;
 	}
 
@@ -3248,6 +3259,7 @@ async function EditorManager($header, $body) {
 		if (manager.files.includes(file)) return;
 		const pane = getPaneById(file.paneId) || getActivePane() || primaryPane;
 		insertFileIntoPane(file, pane);
+		if (!pane.activeFile) pane.activeFile = file;
 		rebuildFileListFromPanes();
 		syncOpenFileList();
 		if (!manager.activeFile) {
