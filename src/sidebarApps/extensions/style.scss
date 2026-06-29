@@ -19,7 +19,7 @@
       flex-shrink: 0;
     }
 
-    > ul {
+    >ul {
       flex: 1;
       min-height: 0;
       overflow-y: auto;
@@ -97,7 +97,7 @@
     overflow-y: auto;
 
     &:empty {
-      display: none;
+      display: none
     }
 
     &.loading {
