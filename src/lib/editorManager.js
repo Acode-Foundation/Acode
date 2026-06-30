@@ -3534,12 +3534,20 @@ async function EditorManager($header, $body) {
 		);
 	}
 
+	function isDraggingFileTab(file) {
+		return file?.tab?.dataset.editorTabDragging === "true";
+	}
+
 	function syncOpenFileList() {
 		if (isPaneTabLayout()) {
 			$paneRoot.classList.remove("hide-pane-tabs");
 			panes.forEach((pane) => {
+				const preserveCurrentTabOrder = !!pane.tabList.querySelector(
+					'[data-editor-tab-dragging="true"]',
+				);
 				pane.files.forEach((file) => {
 					file.tab.classList.toggle("active", pane.activeFile?.id === file.id);
+					if (isDraggingFileTab(file) || preserveCurrentTabOrder) return;
 					pane.tabList.append(file.tab);
 				});
 				pane.element.classList.toggle("empty", pane.files.length === 0);
@@ -3634,6 +3642,15 @@ async function EditorManager($header, $body) {
 		return pane?.tabList || null;
 	}
 
+	function getPaneFallbackFile(pane) {
+		if (!pane?.files?.length) return null;
+		for (let i = pane.files.length - 1; i >= 0; i--) {
+			const file = pane.files[i];
+			if (!isDraggingFileTab(file)) return file;
+		}
+		return null;
+	}
+
 	function moveFileToPane(file, targetPane, options = {}) {
 		if (!file || !targetPane) return false;
 		const {
@@ -3666,8 +3683,7 @@ async function EditorManager($header, $body) {
 		syncOpenFileList();
 
 		if (sourcePane?.activeFile?.id === file.id) {
-			const nextSourceFile =
-				sourcePane.files[sourcePane.files.length - 1] || null;
+			const nextSourceFile = getPaneFallbackFile(sourcePane);
 			sourcePane.activeFile = null;
 			file.tab?.classList.remove("active");
 			if (nextSourceFile && activateSourceFallback) {

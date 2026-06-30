@@ -281,6 +281,7 @@ function cleanupDrag() {
 	$tab.style.opacity = "";
 	delete $tab.dataset.editorTabDragging;
 	$tabClone.remove();
+	editorManager.syncOpenFileList?.();
 	$tabClone = null;
 	$originParent = null;
 	draggedFile = null;
