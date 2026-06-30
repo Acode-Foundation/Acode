@@ -475,6 +475,7 @@ function animateTabReorder($parent, previousRects) {
 		if (oldAnim) {
 			oldAnim.cancel?.();
 			reorderAnimations.delete($child);
+			$child.style.transform = "";
 		}
 
 		const previousRect = previousRects.get($child);
@@ -503,11 +504,14 @@ function animateTabReorder($parent, previousRects) {
 		);
 		reorderAnimations.set($child, anim);
 
-		anim.then(() => {
+		const cleanup = () => {
 			if (reorderAnimations.get($child) === anim) {
+				$child.style.transform = "";
 				reorderAnimations.delete($child);
 			}
-		});
+		};
+
+		anim.then(cleanup).catch(cleanup);
 	}
 }
 

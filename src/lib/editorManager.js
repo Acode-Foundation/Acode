@@ -509,6 +509,17 @@ async function EditorManager($header, $body) {
 		return node.children.flatMap((child) => getOrderedPanes(child));
 	}
 
+	function getVisiblePaneRect(pane) {
+		const element = pane?.element;
+		if (!element?.isConnected || element.getClientRects().length === 0) {
+			return null;
+		}
+
+		const rect = element.getBoundingClientRect();
+		if (rect.width < 1 || rect.height < 1) return null;
+		return rect;
+	}
+
 	function updatePaneLayoutState() {
 		$paneRoot.classList.toggle("multi-pane", panes.length > 1);
 		renderPaneLayout();
@@ -522,14 +533,21 @@ async function EditorManager($header, $body) {
 
 		pane.element.style.opacity = "0";
 		pane.element.style.transform = "scale(0.985)";
+		const element = pane.element;
+		let cleaned = false;
+		const cleanup = () => {
+			if (cleaned) return;
+			cleaned = true;
+			element.style.opacity = "";
+			element.style.transform = "";
+		};
 		animate(
-			pane.element,
+			element,
 			{ opacity: 1, transform: "scale(1)" },
 			{ type: "spring", stiffness: 360, damping: 32 },
-		).then(() => {
-			pane.element.style.opacity = "";
-			pane.element.style.transform = "";
-		});
+		)
+			.then(cleanup)
+			.catch(cleanup);
 	}
 
 	function startPaneResize(event, splitNode, childIndex, handle) {
@@ -2353,15 +2371,30 @@ async function EditorManager($header, $body) {
 		const active = getActivePane();
 		if (!active || panes.length <= 1) return false;
 
-		const activeRect = active.element.getBoundingClientRect();
+		const orderedPanes = getOrderedPanes();
+		const visiblePanes = orderedPanes
+			.map((pane) => ({ pane, rect: getVisiblePaneRect(pane) }))
+			.filter((entry) => entry.rect);
+		const activeEntry = visiblePanes.find((entry) => entry.pane === active);
+
+		if (!activeEntry || visiblePanes.length <= 1) {
+			if (direction === "left" || direction === "up") {
+				return focusPaneByOffset(-1);
+			}
+			if (direction === "right" || direction === "down") {
+				return focusPaneByOffset(1);
+			}
+			return false;
+		}
+
+		const activeRect = activeEntry.rect;
 		const activeCenterX = activeRect.left + activeRect.width / 2;
 		const activeCenterY = activeRect.top + activeRect.height / 2;
 		let bestPane = null;
 		let bestScore = Number.POSITIVE_INFINITY;
 
-		for (const pane of getOrderedPanes()) {
+		for (const { pane, rect } of visiblePanes) {
 			if (pane === active) continue;
-			const rect = pane.element.getBoundingClientRect();
 			const centerX = rect.left + rect.width / 2;
 			const centerY = rect.top + rect.height / 2;
 			let axisDistance = 0;
