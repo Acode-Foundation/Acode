@@ -128,10 +128,12 @@ class TouchSelectionMenuController {
 	#container;
 	#getActiveFile;
 	#isShiftSelectionActive;
+	#isCtrlSelectionActive;
 	#stateSyncRaf = 0;
 	#isScrolling = false;
 	#isPointerInteracting = false;
 	#shiftSelectionSession = null;
+	#ctrlSelectionSession = null;
 	#pendingShiftSelectionClick = null;
 	#menuActive = false;
 	#menuRequested = false;
@@ -147,6 +149,8 @@ class TouchSelectionMenuController {
 		this.#getActiveFile = options.getActiveFile || (() => null);
 		this.#isShiftSelectionActive =
 			options.isShiftSelectionActive || (() => false);
+		this.#isCtrlSelectionActive =
+			options.isCtrlSelectionActive || (() => false);
 		this.$menu = document.createElement("menu");
 		this.$menu.className = "cursor-menu";
 		this.#bindEvents();
@@ -196,6 +200,7 @@ class TouchSelectionMenuController {
 		cancelAnimationFrame(this.#stateSyncRaf);
 		this.#stateSyncRaf = 0;
 		this.#shiftSelectionSession = null;
+		this.#ctrlSelectionSession = null;
 		this.#pendingShiftSelectionClick = null;
 		this.#tooltipObserver?.disconnect();
 		this.#hideMenu(true);
@@ -205,6 +210,7 @@ class TouchSelectionMenuController {
 		this.#enabled = !!enabled;
 		if (this.#enabled) return;
 		this.#shiftSelectionSession = null;
+		this.#ctrlSelectionSession = null;
 		this.#pendingShiftSelectionClick = null;
 		this.#menuRequested = false;
 		this.#isPointerInteracting = false;
@@ -274,6 +280,7 @@ class TouchSelectionMenuController {
 	onSessionChanged() {
 		if (!this.#enabled) return;
 		this.#shiftSelectionSession = null;
+		this.#ctrlSelectionSession = null;
 		this.#pendingShiftSelectionClick = null;
 		this.#menuRequested = false;
 		this.#isPointerInteracting = false;
@@ -296,15 +303,19 @@ class TouchSelectionMenuController {
 		if (this.$menu.contains(target)) return;
 		if (this.#isIgnoredPointerTarget(target)) {
 			this.#shiftSelectionSession = null;
+			this.#ctrlSelectionSession = null;
 			return;
 		}
 		if (target instanceof Node && this.#view.dom.contains(target)) {
-			this.#captureShiftSelection(event);
+			if (!this.#captureCtrlSelection(event)) {
+				this.#captureShiftSelection(event);
+			}
 			this.#isPointerInteracting = true;
 			this.#clearMenuShowTimer();
 			return;
 		}
 		this.#shiftSelectionSession = null;
+		this.#ctrlSelectionSession = null;
 		this.#isPointerInteracting = false;
 		this.#menuRequested = false;
 		this.#hideMenu();
@@ -312,9 +323,12 @@ class TouchSelectionMenuController {
 
 	#onGlobalPointerUp = (event) => {
 		if (event.type === "pointerup") {
-			this.#commitShiftSelection(event);
+			if (!this.#commitCtrlSelection(event)) {
+				this.#commitShiftSelection(event);
+			}
 		} else {
 			this.#shiftSelectionSession = null;
+			this.#ctrlSelectionSession = null;
 		}
 		if (!this.#isPointerInteracting) return;
 		this.#isPointerInteracting = false;
@@ -330,6 +344,7 @@ class TouchSelectionMenuController {
 	};
 
 	#captureShiftSelection(event) {
+		this.#ctrlSelectionSession = null;
 		if (!this.#canExtendSelection(event)) {
 			this.#shiftSelectionSession = null;
 			return;
@@ -377,11 +392,104 @@ class TouchSelectionMenuController {
 		event.preventDefault();
 	}
 
+	#captureCtrlSelection(event) {
+		this.#shiftSelectionSession = null;
+		if (!this.#canAddCursor(event)) {
+			this.#ctrlSelectionSession = null;
+			return false;
+		}
+
+		this.#ctrlSelectionSession = {
+			pointerId: event.pointerId,
+			x: event.clientX,
+			y: event.clientY,
+		};
+		event.preventDefault();
+		event.stopPropagation();
+		return true;
+	}
+
+	#commitCtrlSelection(event) {
+		const session = this.#ctrlSelectionSession;
+		this.#ctrlSelectionSession = null;
+		if (!session) return false;
+		if (!this.#canAddCursor(event)) return false;
+		if (event.pointerId !== session.pointerId) return false;
+		if (
+			Math.hypot(event.clientX - session.x, event.clientY - session.y) >
+			TAP_MAX_DISTANCE
+		) {
+			return false;
+		}
+		const target = event.target;
+		if (!(target instanceof Node) || !this.#view.dom.contains(target)) {
+			return false;
+		}
+		if (this.#isIgnoredPointerTarget(target)) return false;
+
+		const pos = this.#view.posAtCoords(
+			{ x: event.clientX, y: event.clientY },
+			false,
+		);
+		if (pos == null) return false;
+
+		const selection = this.#view.state.selection;
+		const ranges = selection.ranges;
+		const existingIndex = ranges.findIndex(
+			(range) => range.from <= pos && range.to >= pos,
+		);
+		let nextRanges;
+		let mainIndex;
+
+		if (existingIndex >= 0) {
+			if (ranges.length <= 1) {
+				this.#pendingShiftSelectionClick = {
+					x: event.clientX,
+					y: event.clientY,
+					timeStamp: event.timeStamp,
+				};
+				event.preventDefault();
+				event.stopPropagation();
+				return true;
+			}
+			nextRanges = ranges.filter((_, index) => index !== existingIndex);
+			mainIndex = Math.min(selection.mainIndex, nextRanges.length - 1);
+		} else {
+			const cursor = EditorSelection.cursor(pos);
+			const insertAt = ranges.findIndex(
+				(range) => range.from > pos || (range.from === pos && range.to >= pos),
+			);
+			mainIndex = insertAt === -1 ? ranges.length : insertAt;
+			nextRanges = ranges.slice();
+			nextRanges.splice(mainIndex, 0, cursor);
+		}
+
+		this.#view.dispatch({
+			selection: EditorSelection.create(nextRanges, mainIndex),
+			userEvent: "select.pointer",
+		});
+		this.#pendingShiftSelectionClick = {
+			x: event.clientX,
+			y: event.clientY,
+			timeStamp: event.timeStamp,
+		};
+		event.preventDefault();
+		event.stopPropagation();
+		return true;
+	}
+
 	#canExtendSelection(event) {
 		if (!this.#enabled) return false;
 		if (!(event.isTrusted && event.isPrimary)) return false;
 		if (typeof event.button === "number" && event.button !== 0) return false;
 		return !!this.#isShiftSelectionActive(event);
+	}
+
+	#canAddCursor(event) {
+		if (!this.#enabled) return false;
+		if (!(event.isTrusted && event.isPrimary)) return false;
+		if (typeof event.button === "number" && event.button !== 0) return false;
+		return !!this.#isCtrlSelectionActive(event);
 	}
 
 	consumePendingShiftSelectionClick(event) {

@@ -1,7 +1,7 @@
 import sidebarApps from "sidebarApps";
 import { indentUnit, language as languageFacet } from "@codemirror/language";
 import { search } from "@codemirror/search";
-import { Compartment, EditorState, Prec, StateEffect } from "@codemirror/state";
+import { Compartment, EditorState, Prec } from "@codemirror/state";
 import { oneDark } from "@codemirror/theme-one-dark";
 import {
 	closeHoverTooltips,
@@ -311,7 +311,10 @@ async function EditorManager($header, $body) {
 		});
 	}
 
-	function createPaneShell(editorContainer = createEditorContainer()) {
+	function createPaneShell(
+		editorContainer = createEditorContainer(),
+		registerPane = true,
+	) {
 		const pane = {
 			id: `pane-${++paneIdCounter}`,
 			files: [],
@@ -341,7 +344,7 @@ async function EditorManager($header, $body) {
 			},
 			true,
 		);
-		panes.push(pane);
+		if (registerPane) panes.push(pane);
 		return pane;
 	}
 
@@ -727,6 +730,9 @@ async function EditorManager($header, $body) {
 	const isShiftSelectionActive = (event) => {
 		if (!appSettings.value.shiftClickSelection) return false;
 		return !!event?.shiftKey || quickTools?.$footer?.dataset?.shift != null;
+	};
+	const isCtrlSelectionActive = (event) => {
+		return !!event?.ctrlKey || quickTools?.$footer?.dataset?.ctrl != null;
 	};
 
 	function registerSoftKeyboardCursorReveal() {
@@ -1574,6 +1580,7 @@ async function EditorManager($header, $body) {
 		container: $container,
 		getActiveFile: () => manager?.activeFile || null,
 		isShiftSelectionActive,
+		isCtrlSelectionActive,
 	});
 	primaryPane.touchSelectionController = touchSelectionController;
 
@@ -2265,18 +2272,8 @@ async function EditorManager($header, $body) {
 			container: pane.editorContainer,
 			getActiveFile: () => pane.activeFile || null,
 			isShiftSelectionActive,
+			isCtrlSelectionActive,
 		});
-		try {
-			paneEditor.dispatch({
-				effects: StateEffect.appendConfig.of(getDocSyncListener()),
-			});
-		} catch (error) {
-			warnRecoverable(
-				"Failed to attach document sync listener to split editor.",
-				error,
-				`doc-sync-listener-${pane.id}`,
-			);
-		}
 		await setupEditor(pane);
 		return paneEditor;
 	}
@@ -2292,12 +2289,27 @@ async function EditorManager($header, $body) {
 			return null;
 		}
 
-		const pane = createPaneShell();
+		const pane = createPaneShell(undefined, false);
+		try {
+			await createPaneEditor(pane);
+		} catch (error) {
+			pane.touchSelectionController?.destroy?.();
+			pane.touchSelectionController = null;
+			pane.editor?.destroy?.();
+			pane.editor = null;
+			warnRecoverable(
+				"Failed to create split editor pane.",
+				error,
+				`create-pane-editor-${pane.id}`,
+			);
+			window.toast?.(strings.error || "Error");
+			return null;
+		}
+		panes.push(pane);
 		insertPaneIntoLayout(sourcePane, pane, direction);
 		updatePaneLayoutState();
 		animatePaneEntry(pane);
-		await createPaneEditor(pane);
-		updatePaneLayoutState();
+		pane.editor?.requestMeasure?.();
 		syncOpenFileList();
 
 		if (options.moveFile) {
@@ -3467,19 +3479,6 @@ async function EditorManager($header, $body) {
 			applyFileToEditor(file, { forceRecreate: true });
 		}
 	});
-
-	// Attach doc-sync listener to the current editor instance
-	try {
-		editor.dispatch({
-			effects: StateEffect.appendConfig.of(getDocSyncListener()),
-		});
-	} catch (error) {
-		warnRecoverable(
-			"Failed to attach document sync listener to editor.",
-			error,
-			"doc-sync-listener",
-		);
-	}
 
 	return manager;
 
