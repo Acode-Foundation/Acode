@@ -2308,6 +2308,8 @@ async function EditorManager($header, $body) {
 			});
 		}
 
+		pane.touchSelectionController?.destroy?.();
+		pane.touchSelectionController = null;
 		pane.editor?.destroy?.();
 		removePaneFromLayout(pane);
 		const storedPaneIndex = panes.indexOf(pane);
