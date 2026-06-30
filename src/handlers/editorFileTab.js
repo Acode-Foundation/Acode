@@ -205,12 +205,15 @@ function releaseDrag(e) {
 
 	/**@type {HTMLDivElement} target tab */
 	const $target = document.elementFromPoint(clientX, clientY);
-	const $dropParent = getDropTabList(clientX, clientY);
+	const isPathDropTarget = isFilePathDropTarget($target);
+	const $dropParent = isPathDropTarget
+		? null
+		: getDropTabList(clientX, clientY);
 	if ($dropParent && $dropParent !== $parent) {
 		moveDragToParent($dropParent);
 	}
 	const shouldCommitReorder =
-		$parent.contains($target) || $dropParent === $parent;
+		!!$dropParent && ($parent.contains($target) || $dropParent === $parent);
 
 	if (shouldCommitReorder) {
 		updateDragPreview(clientX, clientY);
@@ -219,23 +222,8 @@ function releaseDrag(e) {
 		} else if (didReorder) {
 			updateFileList($parent);
 		}
-	} else if (
-		$target &&
-		($target.tagName === "INPUT" ||
-			$target.tagName === "TEXTAREA" ||
-			$target.isContentEditable ||
-			$target.closest(".cm-editor"))
-	) {
-		// If released on an input area or CodeMirror editor
-		const filePath = editorManager.activeFile.uri;
-		if (filePath) {
-			if ($target.closest(".cm-editor")) {
-				const view = editorManager.editor;
-				view.dispatch(view.state.replaceSelection(filePath));
-			} else {
-				$target.value += filePath;
-			}
-		}
+	} else if (isPathDropTarget) {
+		insertDraggedFilePath($target);
 	}
 
 	const shouldSettleClone = shouldCommitReorder || didReorder;
@@ -419,10 +407,38 @@ function getDropTabList(clientX, clientY) {
 	const $tabList = $target?.closest?.(".editor-pane-tabs");
 	if (isValidDropTabList($tabList)) return $tabList;
 
-	const pane = $target?.closest?.(".editor-pane")?.__editorPane;
-	if (isValidDropTabList(pane?.tabList)) return pane.tabList;
+	if (isFilePathDropTarget($target)) return null;
 
-	return $parent;
+	const pane = $target?.closest?.(".editor-pane")?.__editorPane;
+	if (pane?.tabList !== $parent && isValidDropTabList(pane?.tabList)) {
+		return pane.tabList;
+	}
+
+	return null;
+}
+
+function isFilePathDropTarget($target) {
+	return !!(
+		$target &&
+		($target.tagName === "INPUT" ||
+			$target.tagName === "TEXTAREA" ||
+			$target.isContentEditable ||
+			$target.closest(".cm-editor"))
+	);
+}
+
+function insertDraggedFilePath($target) {
+	const filePath = draggedFile?.uri || editorManager.activeFile?.uri;
+	if (!filePath) return;
+
+	if ($target.closest(".cm-editor")) {
+		const view = editorManager.editor;
+		view.dispatch(view.state.replaceSelection(filePath));
+	} else if ($target.isContentEditable) {
+		$target.textContent += filePath;
+	} else {
+		$target.value += filePath;
+	}
 }
 
 function isValidDropTabList($tabList) {
