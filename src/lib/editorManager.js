@@ -317,6 +317,7 @@ async function EditorManager($header, $body) {
 			files: [],
 			activeFile: null,
 			editor: null,
+			cleanupEditorListeners: null,
 			editorContainer,
 			touchSelectionController: null,
 			element: <section className="editor-pane"></section>,
@@ -336,7 +337,7 @@ async function EditorManager($header, $body) {
 		pane.element.addEventListener(
 			"pointerdown",
 			() => {
-				activatePane(pane);
+				activatePane(pane, { focusEditor: false });
 			},
 			true,
 		);
@@ -727,6 +728,39 @@ async function EditorManager($header, $body) {
 		if (!appSettings.value.shiftClickSelection) return false;
 		return !!event?.shiftKey || quickTools?.$footer?.dataset?.shift != null;
 	};
+
+	function registerSoftKeyboardCursorReveal() {
+		const shouldRevealCursor = () => {
+			const view = editor;
+			if (!view || manager?.activeFile?.type !== "editor") return false;
+			const activeElement = document.activeElement;
+			return (
+				view.contentDOM === activeElement ||
+				view.contentDOM.contains(activeElement)
+			);
+		};
+
+		keyboardHandler.on("keyboardShowStart", () => {
+			requestAnimationFrame(() => {
+				if (!shouldRevealCursor()) return;
+				if (isCursorRevealSuppressed()) return;
+				scrollCursorIntoView({ behavior: "instant" });
+			});
+		});
+		keyboardHandler.on("keyboardShow", () => {
+			if (!shouldRevealCursor()) return;
+			if (isCursorRevealSuppressed()) return;
+			scrollCursorIntoView();
+		});
+		keyboardHandler.on("keyboardHide", () => {
+			requestAnimationFrame(() => {
+				if (!shouldRevealCursor()) return;
+				if (isCursorRevealSuppressed()) return;
+				scrollCursorIntoView({ behavior: "instant" });
+			});
+		});
+	}
+
 	const shiftClickSelectionExtension = EditorView.domEventHandlers({
 		click(event) {
 			if (!touchSelectionController?.consumePendingShiftSelectionClick(event)) {
@@ -2272,7 +2306,6 @@ async function EditorManager($header, $body) {
 			createUntitledPaneFile(pane);
 		} else if (options.activate !== false) {
 			setActivePane(pane);
-			pane.editor?.focus();
 		}
 
 		return pane;
@@ -2328,7 +2361,10 @@ async function EditorManager($header, $body) {
 
 		pane.touchSelectionController?.destroy?.();
 		pane.touchSelectionController = null;
+		pane.cleanupEditorListeners?.();
+		pane.cleanupEditorListeners = null;
 		pane.editor?.destroy?.();
+		pane.editor = null;
 		removePaneFromLayout(pane);
 		const storedPaneIndex = panes.indexOf(pane);
 		if (storedPaneIndex >= 0) panes.splice(storedPaneIndex, 1);
@@ -2340,7 +2376,7 @@ async function EditorManager($header, $body) {
 		if (fileToActivate) {
 			fileToActivate.makeActive();
 		} else {
-			activatePane(targetPane);
+			activatePane(targetPane, { focusEditor: false });
 		}
 		syncOpenFileList();
 		return true;
@@ -2355,7 +2391,7 @@ async function EditorManager($header, $body) {
 				(index + offset + orderedPanes.length) % orderedPanes.length
 			];
 		if (!nextPane) return false;
-		activatePane(nextPane);
+		activatePane(nextPane, { focusEditor: false });
 		return true;
 	}
 
@@ -2428,7 +2464,7 @@ async function EditorManager($header, $body) {
 		}
 
 		if (!bestPane) return false;
-		activatePane(bestPane);
+		activatePane(bestPane, { focusEditor: false });
 		return true;
 	}
 
@@ -3103,6 +3139,7 @@ async function EditorManager($header, $body) {
 
 	$body.append($paneRoot);
 	initModes(); // Initialize CodeMirror modes
+	registerSoftKeyboardCursorReveal();
 	await setupEditor(primaryPane);
 
 	// Initialize theme from settings or fallback
@@ -3819,6 +3856,9 @@ async function EditorManager($header, $body) {
 		let scrollTimeout;
 		let scrollSyncRaf = 0;
 		const scroller = editor.scrollDOM;
+		let pendingKeyboardHideBlur = null;
+		pane.cleanupEditorListeners?.();
+		pane.cleanupEditorListeners = null;
 
 		function syncScrollUi() {
 			if (pane !== activePane) return;
@@ -3862,23 +3902,6 @@ async function EditorManager($header, $body) {
 		});
 		syncScrollUi();
 
-		keyboardHandler.on("keyboardShowStart", () => {
-			requestAnimationFrame(() => {
-				if (isCursorRevealSuppressed()) return;
-				scrollCursorIntoView({ behavior: "instant" });
-			});
-		});
-		keyboardHandler.on("keyboardShow", () => {
-			if (isCursorRevealSuppressed()) return;
-			scrollCursorIntoView();
-		});
-		keyboardHandler.on("keyboardHide", () => {
-			requestAnimationFrame(() => {
-				if (isCursorRevealSuppressed()) return;
-				scrollCursorIntoView({ behavior: "instant" });
-			});
-		});
-
 		// Attach native DOM event listeners directly to the editor's contentDOM
 		const contentDOM = editor.contentDOM;
 		const isFocused =
@@ -3886,7 +3909,7 @@ async function EditorManager($header, $body) {
 			contentDOM.contains(document.activeElement);
 		setNativeContextMenuDisabled(isFocused);
 
-		contentDOM.addEventListener("focus", (_event) => {
+		function handleContentFocus(_event) {
 			setActivePane(pane);
 			setNativeContextMenuDisabled(true);
 			const activeFile = pane.activeFile;
@@ -3894,9 +3917,9 @@ async function EditorManager($header, $body) {
 				activeFile.focused = true;
 			}
 			touchSelectionController?.onStateChanged();
-		});
+		}
 
-		contentDOM.addEventListener("blur", async (_event) => {
+		async function handleContentBlur(_event) {
 			setNativeContextMenuDisabled(false);
 			touchSelectionController?.setMenu(false);
 			const { hardKeyboardHidden, keyboardHeight } =
@@ -3919,16 +3942,46 @@ async function EditorManager($header, $body) {
 			// soft keyboard - wait for keyboard to hide
 			const onKeyboardHide = () => {
 				keyboardHandler.off("keyboardHide", onKeyboardHide);
+				if (pendingKeyboardHideBlur === onKeyboardHide) {
+					pendingKeyboardHideBlur = null;
+				}
 				blur();
 			};
+			if (pendingKeyboardHideBlur) {
+				keyboardHandler.off("keyboardHide", pendingKeyboardHideBlur);
+			}
+			pendingKeyboardHideBlur = onKeyboardHide;
 			keyboardHandler.on("keyboardHide", onKeyboardHide);
-		});
+		}
 
-		contentDOM.addEventListener("keydown", (event) => {
+		function handleContentKeydown(event) {
 			if (event.key === "Escape") {
 				keydownState.esc = { value: true, target: contentDOM };
 			}
-		});
+		}
+
+		contentDOM.addEventListener("focus", handleContentFocus);
+		contentDOM.addEventListener("blur", handleContentBlur);
+		contentDOM.addEventListener("keydown", handleContentKeydown);
+
+		pane.cleanupEditorListeners = () => {
+			scroller?.removeEventListener("scroll", handleEditorScroll);
+			scroller?.removeEventListener("pointerdown", clearScrollbarScrollLock);
+			scroller?.removeEventListener("touchstart", clearScrollbarScrollLock);
+			scroller?.removeEventListener("wheel", clearScrollbarScrollLock);
+			contentDOM.removeEventListener("focus", handleContentFocus);
+			contentDOM.removeEventListener("blur", handleContentBlur);
+			contentDOM.removeEventListener("keydown", handleContentKeydown);
+			clearTimeout(scrollTimeout);
+			if (scrollSyncRaf) {
+				cancelAnimationFrame(scrollSyncRaf);
+				scrollSyncRaf = 0;
+			}
+			if (pendingKeyboardHideBlur) {
+				keyboardHandler.off("keyboardHide", pendingKeyboardHideBlur);
+				pendingKeyboardHideBlur = null;
+			}
+		};
 
 		updateMargin(true);
 		updateSideButtonContainer();
@@ -4391,10 +4444,20 @@ async function EditorManager($header, $body) {
 		const pane = targetPane || getFilePane(id) || getActivePane();
 		if (!pane) return;
 		const paneActiveFile = pane.activeFile;
-		if (paneActiveFile?.id === id && activePane === pane) return;
-
 		const file = manager.getFile(id);
 		if (!file) return;
+		if (paneActiveFile?.id === id && activePane === pane) {
+			if (manager.activeFile?.id !== id) {
+				manager.activeFile = file;
+				file.tab?.classList.add("active");
+				updateHeaderForFile(file);
+				if (isPaneTabLayout()) syncGlobalOpenFileListMirror();
+				manager.onupdate("switch-file");
+				events.emit("switch-file", file);
+				toggleProblemButton();
+			}
+			return;
+		}
 
 		setActivePane(pane, { emitSwitch: false });
 

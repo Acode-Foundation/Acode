@@ -644,7 +644,12 @@ function create($container, $toggler) {
 		root.style.width = `calc(100% - ${width}px)`;
 		clearTimeout(setWidthTimeout);
 		setWidthTimeout = setTimeout(() => {
-			editorManager?.editor?.resize(true);
+			const editor = editorManager?.editor;
+			if (typeof editor?.resize === "function") {
+				editor.resize(true);
+			} else {
+				editor?.requestMeasure?.();
+			}
 		}, 300);
 	}
 

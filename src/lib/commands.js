@@ -238,7 +238,9 @@ export default {
 		navigator.app.exitApp();
 	},
 	"edit-with"() {
-		editorManager.activeFile.editWith();
+		const { activeFile } = editorManager;
+		if (!activeFile?.uri) return;
+		activeFile.editWith?.();
 	},
 	async "find-file"() {
 		const { default: findFile } = await import(
@@ -344,7 +346,9 @@ export default {
 		editorManager.editor.contentDOM.blur();
 	},
 	"open-with"() {
-		editorManager.activeFile.openWith();
+		const { activeFile } = editorManager;
+		if (!activeFile?.uri) return;
+		activeFile.openWith?.();
 	},
 	async "open-file"() {
 		editorManager.editor.contentDOM.blur();
@@ -408,12 +412,13 @@ export default {
 		browser.open(url);
 	},
 	run() {
-		editorManager.activeFile[
+		const { activeFile } = editorManager;
+		activeFile?.[
 			appSettings.value.useCurrentFileForPreview ? "runFile" : "run"
 		]?.();
 	},
 	"run-file"() {
-		editorManager.activeFile.runFile?.();
+		editorManager.activeFile?.runFile?.();
 	},
 	async save(showToast) {
 		try {
@@ -443,7 +448,9 @@ export default {
 		saveState();
 	},
 	share() {
-		editorManager.activeFile.share();
+		const { activeFile } = editorManager;
+		if (!activeFile?.uri) return;
+		activeFile.share?.();
 	},
 	async "pin-file-shortcut"() {
 		const file = editorManager.activeFile;
@@ -637,6 +644,7 @@ export default {
 		}
 	},
 	async eol() {
+		if (editorManager.activeFile?.type !== "editor") return;
 		const eol = await select(strings["new line mode"], ["unix", "windows"], {
 			default: editorManager.activeFile.eol,
 		});

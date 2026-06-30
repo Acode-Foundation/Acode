@@ -21,7 +21,7 @@ const events = {
 };
 
 export function initFileList() {
-	if (editorManager?.activeFile.loading) {
+	if (editorManager?.activeFile?.loading) {
 		editorManager.activeFile.on("loadend", initFileList);
 		return;
 	}

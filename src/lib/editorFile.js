@@ -28,6 +28,44 @@ import run from "./run";
 import saveFile from "./saveFile";
 import appSettings from "./settings";
 
+function syncQuickToolsVisibility(file) {
+	const { $toggler } = quickTools;
+	const hideForFile = !!file?.hideQuickTools;
+
+	clearTimeout($toggler._hideTimeout);
+	if (hideForFile || !appSettings.value.floatingButton) {
+		$toggler.classList.add("hide");
+		$toggler._hideTimeout = setTimeout(() => {
+			$toggler.remove();
+			$toggler._hideTimeout = null;
+		}, 300);
+	} else {
+		$toggler._hideTimeout = null;
+		$toggler.classList.remove("hide");
+		if (!$toggler.isConnected) {
+			root.appendOuter($toggler);
+		}
+	}
+
+	if (hideForFile) {
+		actions("set-height", { height: 0, save: false });
+		return;
+	}
+
+	const quickToolsHeight =
+		appSettings.value.quickTools !== undefined
+			? appSettings.value.quickTools
+			: 1;
+	actions("set-height", { height: quickToolsHeight, save: false });
+}
+
+function isTouchDevice() {
+	return (
+		typeof navigator !== "undefined" &&
+		Number(navigator.maxTouchPoints || 0) > 0
+	);
+}
+
 /**
  * Creates a Proxy around an EditorState that provides Ace-compatible methods.
  * @param {EditorState} state - The raw CodeMirror EditorState
@@ -1374,6 +1412,10 @@ export default class EditorFile {
 		const wasActivePane = editorManager.activePane?.id === pane?.id;
 		const { activeFile, switchFile } = editorManager;
 		const paneActiveFile = pane?.activeFile;
+		const activeEditor = editorManager.editor;
+		const editorHadDomFocus =
+			activeEditor?.contentDOM === document.activeElement ||
+			activeEditor?.contentDOM?.contains(document.activeElement);
 		const inactiveFiles = [paneActiveFile, !wasActivePane ? activeFile : null];
 		const blurredFileIds = new Set();
 
@@ -1384,7 +1426,10 @@ export default class EditorFile {
 			blurredFileIds.add(file.id);
 		}
 
-		if (activeFile?.id === this.id && wasActivePane) return;
+		if (activeFile?.id === this.id && wasActivePane) {
+			syncQuickToolsVisibility(this);
+			return;
+		}
 
 		switchFile(this.id, pane);
 
@@ -1393,7 +1438,7 @@ export default class EditorFile {
 		// Show/hide appropriate content
 		if (this.type === "editor") {
 			editorManager.container.style.display = "block";
-			if (this.focused) {
+			if (this.focused && editorHadDomFocus && !isTouchDevice()) {
 				editor.focus();
 			} else {
 				editor.contentDOM.blur();
@@ -1427,32 +1472,7 @@ export default class EditorFile {
 			this.#loadText();
 		}
 
-		// Handle quicktools visibility based on hideQuickTools property
-		if (this.hideQuickTools) {
-			const { $toggler } = quickTools;
-			clearTimeout($toggler._hideTimeout);
-			$toggler.classList.add("hide");
-			$toggler._hideTimeout = setTimeout(() => {
-				$toggler.remove();
-				$toggler._hideTimeout = null;
-			}, 300);
-			actions("set-height", { height: 0, save: false });
-		} else {
-			const { $toggler } = quickTools;
-			if (appSettings.value.floatingButton) {
-				clearTimeout($toggler._hideTimeout);
-				$toggler._hideTimeout = null;
-				$toggler.classList.remove("hide");
-				if (!$toggler.isConnected) {
-					root.appendOuter($toggler);
-				}
-			}
-			const quickToolsHeight =
-				appSettings.value.quickTools !== undefined
-					? appSettings.value.quickTools
-					: 1;
-			actions("set-height", { height: quickToolsHeight, save: false });
-		}
+		syncQuickToolsVisibility(this);
 
 		editorManager.header.subText = this.#getTitle();
 
