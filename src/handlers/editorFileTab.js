@@ -249,6 +249,12 @@ function finishDrag(shouldSettleClone) {
 
 	if (shouldSettleClone) {
 		const rect = $tab.getBoundingClientRect();
+		let cleaned = false;
+		const safeCleanup = () => {
+			if (cleaned) return;
+			cleaned = true;
+			cleanupDrag();
+		};
 		animate(
 			$tabClone,
 			{ transform: `translate3d(${rect.left}px, ${rect.top}px, 0)` },
@@ -258,7 +264,10 @@ function finishDrag(shouldSettleClone) {
 					: RELEASE_DURATION,
 				ease: SPRING_EASING,
 			},
-		).then(cleanupDrag);
+		)
+			.then(safeCleanup)
+			.catch(safeCleanup);
+		setTimeout(safeCleanup, 500);
 		return;
 	}
 
@@ -404,7 +413,9 @@ function updateParentMetrics() {
 
 function getDropTabList(clientX, clientY) {
 	const $target = document.elementFromPoint(clientX, clientY);
-	const $tabList = $target?.closest?.(".editor-pane-tabs");
+	const $tabList =
+		$target?.closest?.(".open-file-list") ||
+		$target?.closest?.(".file-list > ul");
 	if (isValidDropTabList($tabList)) return $tabList;
 
 	if (isFilePathDropTarget($target)) return null;
@@ -442,8 +453,9 @@ function insertDraggedFilePath($target) {
 }
 
 function isValidDropTabList($tabList) {
-	if (!$tabList?.__editorPane) return false;
+	if (!$tabList) return false;
 	if ($tabList === $originParent) return true;
+	if (!$tabList.__editorPane) return false;
 	if (!allowPaneTransfer) return false;
 	return $tabList.getClientRects().length > 0;
 }
@@ -560,19 +572,19 @@ function updateFileList($parent) {
 
 	editorManager.files = newFileList;
 
-	const draggedFile = newFileList.find((file) => file.tab === $tab);
-	if (draggedFile) {
-		const draggedIndex = newFileList.indexOf(draggedFile);
+	const localDraggedFile = newFileList.find((file) => file.tab === $tab);
+	if (localDraggedFile) {
+		const draggedIndex = newFileList.indexOf(localDraggedFile);
 		let nextPinnedState;
 
-		if (!draggedFile.pinned && draggedIndex < pinnedCount) {
+		if (!localDraggedFile.pinned && draggedIndex < pinnedCount) {
 			nextPinnedState = true;
-		} else if (draggedFile.pinned && draggedIndex >= pinnedCount) {
+		} else if (localDraggedFile.pinned && draggedIndex >= pinnedCount) {
 			nextPinnedState = false;
 		}
 
 		if (nextPinnedState !== undefined) {
-			draggedFile.setPinnedState(nextPinnedState, { reorder: false });
+			localDraggedFile.setPinnedState(nextPinnedState, { reorder: false });
 			if (typeof editorManager.normalizePinnedTabOrder === "function") {
 				editorManager.normalizePinnedTabOrder(editorManager.files);
 			}
