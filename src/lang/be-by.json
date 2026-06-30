@@ -787,5 +787,22 @@
 	"quicktools-trigger:click": "Click",
 	"quicktools-trigger:touch": "Touch",
 	"settings-info-terminal-uninstall": "Are you sure you want to uninstall the terminal?",
-	"terminal:inactive outline": "Outline"
+	"terminal:inactive outline": "Outline",
+	"restored successfully": "Terminal restored successfully",
+	"uninstalled successfully": "Terminal uninstalled successfully",
+	"enter plugin source": "Enter plugin source",
+	"enter keywords": "Enter keywords",
+	"enter author name": "Enter author name",
+	"update available": "Update Available",
+	"update available info": "Acode {version} is now available! Click here to check out.",
+	"plugin updates": "Plugin Updates",
+	"plugin updates singular": "1 plugin has a new version available.",
+	"plugin updates plural": "{count} plugins have new versions available.",
+	"just now": "Just now",
+	"day singular": "{count} day ago",
+	"hour singular": "{count} hour ago",
+	"min singular": "{count} minute ago",
+	"day plural": "{count} days ago",
+	"hour plural": "{count} hours ago",
+	"min plural": "{count} minutes ago"
 }

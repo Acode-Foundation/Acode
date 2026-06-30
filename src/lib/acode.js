@@ -733,7 +733,15 @@ class Acode {
 
 	unmountPlugin(id) {
 		if (id in this.#pluginUnmount) {
-			this.#pluginUnmount[id]();
+			try {
+				this.#pluginUnmount[id]();
+			} catch (err) {
+				console.group(
+					`Error while calling unmount callback for plugin "${id}"`,
+				);
+				console.error(err);
+				console.groupEnd();
+			}
 			fsOperation(Url.join(CACHE_STORAGE, id)).delete();
 		}
 

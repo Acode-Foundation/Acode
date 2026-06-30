@@ -791,6 +791,23 @@ declare type LangStrings = {
   "quicktools-trigger:touch": string;
   "settings-info-terminal-uninstall": string;
   "terminal:inactive outline": string;
+  "restored successfully": string;
+  "uninstalled successfully": string;
+  "enter plugin source": string;
+  "enter keywords": string;
+  "enter author name": string;
+  "update available": string;
+  "update available info": string;
+  "plugin updates": string;
+  "plugin updates singular": string;
+  "plugin updates plural": string;
+  "just now": string;
+  "day singular": string;
+  "hour singular": string;
+  "min singular": string;
+  "day plural": string;
+  "hour plural": string;
+  "min plural": string;
 };
 
 declare var strings: LangStrings;

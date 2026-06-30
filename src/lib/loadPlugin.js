@@ -16,14 +16,7 @@ export default async function loadPlugin(pluginId, justInstalled = false) {
 	// listeners, etc. — is lost and can never be called. Letting the framework
 	// invoke unmountPlugin() first ensures the OLD destroy() runs while it still
 	// exists, so all old-version resources are properly cleaned up.
-	try {
-		acode.unmountPlugin(pluginId);
-	} catch (e) {
-		// unmountPlugin() itself is safe when no callback is registered (it no-ops),
-		// but a plugin's destroy() callback may throw. We catch here so a faulty
-		// cleanup in the old version does not block reloading the new one.
-		console.error(`Error while unmounting plugin "${pluginId}":`, e);
-	}
+	acode.unmountPlugin(pluginId);
 
 	// Remove the old <script> tag so the browser fetches the new source.
 	const oldScript = document.getElementById(`${pluginId}-mainScript`);

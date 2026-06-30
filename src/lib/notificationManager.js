@@ -324,11 +324,33 @@ class NotificationManager {
 	#formatTime(date) {
 		const now = new Date();
 		const diff = Math.floor((now - date) / 1000);
+		const count = (unit) => Math.floor(diff / unit);
 
-		if (diff < 60) return "Just now";
-		if (diff < 3600) return `${Math.floor(diff / 60)}m`;
-		if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
-		if (diff < 604800) return `${Math.floor(diff / 86400)}d`;
+		if (diff < 60) return strings["just now"];
+
+		if (diff < 3600) {
+			const val = count(60);
+			return strings[val === 1 ? "min singular" : "min plural"].replace(
+				/\{count\}/,
+				val,
+			);
+		}
+
+		if (diff < 86400) {
+			const val = count(3600);
+			return strings[val === 1 ? "hour singular" : "hour plural"].replace(
+				/\{count\}/,
+				val,
+			);
+		}
+
+		if (diff < 604800) {
+			const val = count(86400);
+			return strings[val === 1 ? "day singular" : "day plural"].replace(
+				/\{count\}/,
+				val,
+			);
+		}
 
 		return date.toLocaleDateString();
 	}
