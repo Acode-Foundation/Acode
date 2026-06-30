@@ -443,7 +443,9 @@ function insertDraggedFilePath($target) {
 	if (!filePath) return;
 
 	if ($target.closest(".cm-editor")) {
-		const view = editorManager.editor;
+		const view =
+			$target.closest(".editor-pane")?.__editorPane?.editor ||
+			editorManager.editor;
 		view.dispatch(view.state.replaceSelection(filePath));
 	} else if ($target.isContentEditable) {
 		$target.textContent += filePath;
