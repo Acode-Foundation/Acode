@@ -154,7 +154,8 @@ for (const lang of languages as readonly LanguageDescription[]) {
 		];
 
 		// Merge custom mappings to make language detection robust
-		if (name === "Shell") {
+		const normalizedName = name.toLowerCase();
+		if (normalizedName === "shell" || modeId === "shell") {
 			langExtensions.push(
 				"zsh",
 				"zshrc",
@@ -187,17 +188,21 @@ for (const lang of languages as readonly LanguageDescription[]) {
 				".bash_history",
 				".zsh_history",
 			);
-		} else if (name === "Properties files") {
+		} else if (
+			normalizedName === "properties files" ||
+			normalizedName === "properties" ||
+			modeId === "ini"
+		) {
 			langExtensions.push("gitconfig", "editorconfig", "npmrc", "yarnrc");
 			filenames.push(".gitconfig", ".editorconfig", ".npmrc", ".yarnrc");
-		} else if (name === "JSON") {
+		} else if (normalizedName === "json" || modeId === "json") {
 			langExtensions.push("prettierrc", "hintrc", "eslintrc", "babelrc");
 			filenames.push(".prettierrc", ".hintrc", ".eslintrc", ".babelrc", "bun.lock");
-		} else if (name === "YAML") {
+		} else if (normalizedName === "yaml" || modeId === "yaml") {
 			filenames.push("yarn.lock");
-		} else if (name === "TOML") {
+		} else if (normalizedName === "toml" || modeId === "toml") {
 			filenames.push("Cargo.lock", "poetry.lock");
-		} else if (name === "ProtoBuf") {
+		} else if (normalizedName === "protobuf" || modeId === "protobuf") {
 			langExtensions.push("pb");
 		}
 
