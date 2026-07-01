@@ -2,7 +2,15 @@ import { quickToolUsed } from "./quickTools";
 
 let debounceTimer;
 let lastInput = null;
-let keyboardTimer;
+
+const setKeyboardInput = () => {
+	lastInput = "keyboard";
+};
+
+document.addEventListener("keydown", setKeyboardInput, true);
+document.addEventListener("beforeinput", setKeyboardInput, true);
+document.addEventListener("input", setKeyboardInput, true);
+document.addEventListener("compositionstart", setKeyboardInput, true);
 
 function setTouched() {
 	clearTimeout(debounceTimer);
