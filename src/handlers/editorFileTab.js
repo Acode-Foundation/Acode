@@ -223,7 +223,7 @@ function releaseDrag(e) {
 			updateFileList($parent);
 		}
 	} else if (isPathDropTarget) {
-		insertDraggedFilePath($target);
+		insertDraggedFilePath($target, clientX, clientY);
 	}
 
 	const shouldSettleClone = shouldCommitReorder || didReorder;
@@ -438,7 +438,7 @@ function isFilePathDropTarget($target) {
 	);
 }
 
-function insertDraggedFilePath($target) {
+function insertDraggedFilePath($target, clientX, clientY) {
 	const filePath = draggedFile?.uri || editorManager.activeFile?.uri;
 	if (!filePath) return;
 
@@ -448,10 +448,152 @@ function insertDraggedFilePath($target) {
 			editorManager.editor;
 		view.dispatch(view.state.replaceSelection(filePath));
 	} else if ($target.isContentEditable) {
-		$target.textContent += filePath;
+		insertTextIntoContentEditable($target, filePath, clientX, clientY);
 	} else {
-		$target.value += filePath;
+		insertTextIntoInput($target, filePath);
 	}
+}
+
+function insertTextIntoContentEditable($target, text, clientX, clientY) {
+	const $editable = getContentEditableRoot($target);
+	const range = getContentEditableRange($editable, clientX, clientY);
+	const selection = document.getSelection();
+
+	if (!range || !selection) {
+		$editable.append(document.createTextNode(text));
+		$editable.dispatchEvent(createInputEvent(text));
+		return;
+	}
+
+	focusWithoutScrolling($editable);
+	selection.removeAllRanges();
+	selection.addRange(range);
+
+	if (
+		typeof document.execCommand === "function" &&
+		document.queryCommandSupported?.("insertText")
+	) {
+		const inserted = document.execCommand("insertText", false, text);
+		if (inserted) return;
+	}
+
+	range.deleteContents();
+	const textNode = document.createTextNode(text);
+	range.insertNode(textNode);
+	range.setStartAfter(textNode);
+	range.collapse(true);
+	selection.removeAllRanges();
+	selection.addRange(range);
+	$editable.dispatchEvent(createInputEvent(text));
+}
+
+function getContentEditableRoot($target) {
+	let $editable = $target;
+	while ($editable.parentElement?.isContentEditable) {
+		$editable = $editable.parentElement;
+	}
+
+	return $editable;
+}
+
+function focusWithoutScrolling($target) {
+	try {
+		$target.focus({ preventScroll: true });
+	} catch {
+		$target.focus();
+	}
+}
+
+function getContentEditableRange($target, clientX, clientY) {
+	const range = getCaretRangeFromPoint(clientX, clientY);
+	if (range && isRangeInsideElement(range, $target)) return range;
+
+	const selection = document.getSelection();
+	if (selection?.rangeCount) {
+		const selectionRange = selection.getRangeAt(0);
+		if (isRangeInsideElement(selectionRange, $target)) {
+			return selectionRange.cloneRange();
+		}
+	}
+
+	const fallbackRange = document.createRange();
+	fallbackRange.selectNodeContents($target);
+	fallbackRange.collapse(false);
+	return fallbackRange;
+}
+
+function getCaretRangeFromPoint(clientX, clientY) {
+	const caretRange = document.caretRangeFromPoint?.(clientX, clientY);
+	if (caretRange) return caretRange;
+
+	const caretPosition = document.caretPositionFromPoint?.(clientX, clientY);
+	if (!caretPosition) return null;
+
+	const range = document.createRange();
+	range.setStart(caretPosition.offsetNode, caretPosition.offset);
+	range.collapse(true);
+	return range;
+}
+
+function isRangeInsideElement(range, $element) {
+	const { commonAncestorContainer } = range;
+	return (
+		commonAncestorContainer === $element ||
+		$element.contains(commonAncestorContainer)
+	);
+}
+
+function insertTextIntoInput($target, text) {
+	const value = $target.value || "";
+	const start = getInputSelectionOffset(
+		$target,
+		"selectionStart",
+		value.length,
+	);
+	const end = getInputSelectionOffset($target, "selectionEnd", start);
+
+	if (typeof $target.setRangeText === "function") {
+		try {
+			$target.setRangeText(text, start, end, "end");
+		} catch {
+			$target.value = `${value}${text}`;
+		}
+	} else {
+		const nextValue = `${value.slice(0, start)}${text}${value.slice(end)}`;
+		$target.value = nextValue;
+		setInputSelectionOffset($target, start + text.length);
+	}
+
+	$target.dispatchEvent(createInputEvent(text));
+}
+
+function getInputSelectionOffset($target, key, fallback) {
+	try {
+		return typeof $target[key] === "number" ? $target[key] : fallback;
+	} catch {
+		return fallback;
+	}
+}
+
+function setInputSelectionOffset($target, offset) {
+	try {
+		$target.selectionStart = $target.selectionEnd = offset;
+	} catch {
+		return;
+	}
+}
+
+function createInputEvent(text) {
+	if (typeof InputEvent === "function") {
+		return new InputEvent("input", {
+			bubbles: true,
+			cancelable: false,
+			data: text,
+			inputType: "insertText",
+		});
+	}
+
+	return new Event("input", { bubbles: true, cancelable: false });
 }
 
 function isValidDropTabList($tabList) {
