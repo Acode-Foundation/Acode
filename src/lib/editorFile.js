@@ -1607,6 +1607,9 @@ export default class EditorFile {
 
 		this.#loadOptions = null;
 
+		if (!editable) {
+			this.setReadOnly(true);
+		}
 		this.loading = true;
 		this.markChanged = false;
 		this.#emit("loadstart", createFileEvent(this));
@@ -1656,9 +1659,6 @@ export default class EditorFile {
 			if (activeFile?.id === this.id) {
 				this.setReadOnly(editable === false);
 				emit("file-loaded", this);
-			} else if (editable !== undefined) {
-				this.readOnly = !editable;
-				this.#editable = editable;
 			}
 
 			setTimeout(() => {
