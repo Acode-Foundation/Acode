@@ -1,6 +1,6 @@
 import fsOperation from "fileSystem";
 // CodeMirror imports for document state management
-import { EditorState } from "@codemirror/state";
+import { ChangeSet, EditorState } from "@codemirror/state";
 import {
 	clearSelection,
 	restoreFolds,
@@ -27,6 +27,13 @@ import openFolder from "./openFolder";
 import run from "./run";
 import saveFile from "./saveFile";
 import appSettings from "./settings";
+
+const RECOVERY_JOURNAL_SUFFIX = ".recovery.json";
+const RECOVERY_TEMP_SUFFIX = ".tmp";
+const RECOVERY_LOCAL_STORAGE_PREFIX = "acode:recovery-journal:";
+const RECOVERY_LOCAL_STORAGE_LIMIT = 512 * 1024;
+const RECOVERY_JOURNAL_WRITE_DELAY = 100;
+const RECOVERY_MAX_JOURNAL_ENTRIES = 200;
 
 /**
  * Creates a Proxy around an EditorState that provides Ace-compatible methods.
@@ -65,9 +72,14 @@ function createSessionProxy(state, file) {
 		}
 	}
 
-	function recordInactiveEdit() {
+	function recordInactiveEdit(changes) {
 		if (file.markChanged === false) return;
+		const fromVersion = file.docVersion;
+		const needsImmediateStateSave =
+			!file.isUnsaved || file.id === config.DEFAULT_FILE_SESSION;
 		file.markEdited();
+		file.recordRecoveryChange(changes, fromVersion, file.docVersion);
+		if (needsImmediateStateSave) window.acode?.exec?.("save-state");
 		file.scheduleCacheWrite();
 		editorManager.emit("file-content-changed", file);
 		editorManager.onupdate("file-changed");
@@ -101,12 +113,11 @@ function createSessionProxy(state, file) {
 						});
 					} else {
 						// Inactive file: update stored state
-						file._setRawSession(
-							target.update({
-								changes: { from: 0, to: target.doc.length, insert: newText },
-							}).state,
-						);
-						recordInactiveEdit();
+						const transaction = target.update({
+							changes: { from: 0, to: target.doc.length, insert: newText },
+						});
+						file._setRawSession(transaction.state);
+						recordInactiveEdit(transaction.changes);
 					}
 				};
 			}
@@ -151,12 +162,11 @@ function createSessionProxy(state, file) {
 							changes: { from: offset, insert: String(text ?? "") },
 						});
 					} else {
-						file._setRawSession(
-							target.update({
-								changes: { from: offset, insert: String(text ?? "") },
-							}).state,
-						);
-						recordInactiveEdit();
+						const transaction = target.update({
+							changes: { from: offset, insert: String(text ?? "") },
+						});
+						file._setRawSession(transaction.state);
+						recordInactiveEdit(transaction.changes);
 					}
 				};
 			}
@@ -172,10 +182,11 @@ function createSessionProxy(state, file) {
 					if (activeFile?.id === file.id && editor) {
 						editor.dispatch({ changes: { from, to, insert: "" } });
 					} else {
-						file._setRawSession(
-							target.update({ changes: { from, to, insert: "" } }).state,
-						);
-						recordInactiveEdit();
+						const transaction = target.update({
+							changes: { from, to, insert: "" },
+						});
+						file._setRawSession(transaction.state);
+						recordInactiveEdit(transaction.changes);
 					}
 					return removed;
 				};
@@ -193,12 +204,11 @@ function createSessionProxy(state, file) {
 							changes: { from, to, insert: String(text ?? "") },
 						});
 					} else {
-						file._setRawSession(
-							target.update({
-								changes: { from, to, insert: String(text ?? "") },
-							}).state,
-						);
-						recordInactiveEdit();
+						const transaction = target.update({
+							changes: { from, to, insert: String(text ?? "") },
+						});
+						file._setRawSession(transaction.state);
+						recordInactiveEdit(transaction.changes);
 					}
 				};
 			}
@@ -391,6 +401,9 @@ export default class EditorFile {
 	#hasVersionMetadata = false;
 	#cacheWriteTimer = null;
 	#cacheWritePromise = null;
+	#recoveryJournal = null;
+	#recoveryWriteTimer = null;
+	#recoveryWritePromise = null;
 	#savedDoc = null;
 	/**
 	 * Whether to show run button or not
@@ -905,6 +918,10 @@ export default class EditorFile {
 		return Url.join(CACHE_STORAGE, this.#id);
 	}
 
+	get recoveryFile() {
+		return Url.join(CACHE_STORAGE, `${this.#id}${RECOVERY_JOURNAL_SUFFIX}`);
+	}
+
 	/**
 	 * File icon
 	 */
@@ -944,11 +961,30 @@ export default class EditorFile {
 		);
 	}
 
-	markLoaded({ mtime, isUnsaved = false, savedDoc = null } = {}) {
+	markLoaded({
+		mtime,
+		isUnsaved = false,
+		savedDoc = null,
+		docVersion,
+		savedVersion,
+		cacheVersion,
+	} = {}) {
 		const normalizedMtime = helpers.normalizeMtime(mtime);
-		this.docVersion = isUnsaved ? 1 : 0;
-		this.savedVersion = isUnsaved ? 0 : this.docVersion;
-		this.cacheVersion = isUnsaved ? this.docVersion : this.savedVersion;
+		this.docVersion = Number.isFinite(docVersion)
+			? docVersion
+			: isUnsaved
+				? 1
+				: 0;
+		this.savedVersion = Number.isFinite(savedVersion)
+			? savedVersion
+			: isUnsaved
+				? 0
+				: this.docVersion;
+		this.cacheVersion = Number.isFinite(cacheVersion)
+			? cacheVersion
+			: isUnsaved
+				? this.docVersion
+				: this.savedVersion;
 		this.savedMtime = normalizedMtime;
 		this.diskMtime = normalizedMtime;
 		this.hasDiskConflict = false;
@@ -979,6 +1015,7 @@ export default class EditorFile {
 		this.#hasVersionMetadata = true;
 		this.#savedDoc = savedDoc || this.#rawSession?.doc || null;
 		this.isUnsaved = this.hasUnsavedChanges();
+		this.#compactRecoveryJournalAfterCheckpoint(this.savedVersion);
 	}
 
 	markDiskChanged({ mtime, deleted = false } = {}) {
@@ -1018,6 +1055,7 @@ export default class EditorFile {
 	}
 
 	async flushCacheWrite() {
+		await this.flushRecoveryWrite();
 		if (this.#cacheWriteTimer) {
 			clearTimeout(this.#cacheWriteTimer);
 			this.#cacheWriteTimer = null;
@@ -1043,23 +1081,108 @@ export default class EditorFile {
 	async writeToCache() {
 		const writeVersion = this.docVersion;
 		const text = this.session.doc.toString();
-		const fs = fsOperation(this.cacheFile);
 
 		try {
-			if (!(await fs.exists())) {
-				await fsOperation(CACHE_STORAGE).createFile(this.id, text);
-				this.cacheVersion = writeVersion;
-				this.#hasVersionMetadata = true;
-				if (this.docVersion !== writeVersion) this.scheduleCacheWrite();
-				return;
-			}
-
-			await fs.writeFile(text);
+			await writeCacheFile(this.cacheFile, text);
 			this.cacheVersion = writeVersion;
 			this.#hasVersionMetadata = true;
+			await this.#compactRecoveryJournalAfterCheckpoint(writeVersion);
 			if (this.docVersion !== writeVersion) this.scheduleCacheWrite();
 		} catch (error) {
 			window.log("error", "Writing to cache failed:");
+			window.log("error", error);
+		}
+	}
+
+	recordRecoveryChange(changes, fromVersion, toVersion) {
+		if (this.type !== "editor" || !changes) return Promise.resolve();
+		if (!Number.isFinite(fromVersion) || !Number.isFinite(toVersion)) {
+			return this.scheduleCacheWrite(0);
+		}
+
+		let serializedChanges;
+		try {
+			serializedChanges = changes.toJSON();
+		} catch (error) {
+			window.log("error", "Serializing recovery changes failed:");
+			window.log("error", error);
+			return this.scheduleCacheWrite(0);
+		}
+
+		if (
+			!this.#recoveryJournal ||
+			this.#recoveryJournal.baseVersion !== this.cacheVersion
+		) {
+			this.#recoveryJournal = this.#createRecoveryJournal(this.cacheVersion);
+		}
+
+		if (this.#recoveryJournal.targetVersion !== fromVersion) {
+			this.#recoveryJournal = null;
+			clearRecoveryJournalLocal(this.id);
+			return this.scheduleCacheWrite(0);
+		}
+
+		this.#recoveryJournal.changes.push({
+			fromVersion,
+			toVersion,
+			changes: serializedChanges,
+		});
+		this.#recoveryJournal.targetVersion = toVersion;
+		this.#recoveryJournal.updatedAt = Date.now();
+
+		if (this.#recoveryJournal.changes.length > RECOVERY_MAX_JOURNAL_ENTRIES) {
+			this.scheduleCacheWrite(0);
+		}
+
+		this.#writeRecoveryJournalLocal();
+		return this.scheduleRecoveryWrite();
+	}
+
+	scheduleRecoveryWrite(delay = RECOVERY_JOURNAL_WRITE_DELAY) {
+		if (this.type !== "editor") return Promise.resolve();
+		if (!this.#recoveryJournal?.changes?.length) return Promise.resolve();
+
+		if (this.#recoveryWriteTimer) clearTimeout(this.#recoveryWriteTimer);
+		if (delay <= 0) {
+			this.#recoveryWriteTimer = null;
+			this.#recoveryWritePromise = this.writeRecoveryJournal().finally(() => {
+				this.#recoveryWritePromise = null;
+			});
+			return this.#recoveryWritePromise;
+		}
+
+		this.#recoveryWriteTimer = setTimeout(() => {
+			this.#recoveryWriteTimer = null;
+			this.#recoveryWritePromise = this.writeRecoveryJournal().finally(() => {
+				this.#recoveryWritePromise = null;
+			});
+		}, delay);
+		return Promise.resolve();
+	}
+
+	async flushRecoveryWrite() {
+		if (this.#recoveryWriteTimer) {
+			clearTimeout(this.#recoveryWriteTimer);
+			this.#recoveryWriteTimer = null;
+			if (!this.#recoveryWritePromise) {
+				this.#recoveryWritePromise = this.writeRecoveryJournal().finally(() => {
+					this.#recoveryWritePromise = null;
+				});
+			}
+		}
+		if (this.#recoveryWritePromise) await this.#recoveryWritePromise;
+	}
+
+	async writeRecoveryJournal() {
+		if (!this.#recoveryJournal?.changes?.length) return;
+
+		try {
+			await writeCacheFile(
+				this.recoveryFile,
+				JSON.stringify(this.#recoveryJournal),
+			);
+		} catch (error) {
+			window.log("error", "Writing recovery journal failed:");
 			window.log("error", error);
 		}
 	}
@@ -1573,9 +1696,12 @@ export default class EditorFile {
 	 */
 	async #renameCacheFile(newId) {
 		try {
-			const fs = fsOperation(this.cacheFile);
-			if (!(await fs.exists())) return;
-			fs.renameTo(newId);
+			await renameCacheFileIfExists(this.cacheFile, newId);
+			await renameCacheFileIfExists(
+				this.recoveryFile,
+				`${newId}${RECOVERY_JOURNAL_SUFFIX}`,
+			);
+			moveRecoveryJournalLocal(this.id, newId);
 		} catch (error) {
 			window.log("error", "renameCacheFile");
 			window.log("error", error);
@@ -1587,12 +1713,138 @@ export default class EditorFile {
 	 */
 	async #removeCache() {
 		try {
-			const fs = fsOperation(this.cacheFile);
-			if (!(await fs.exists())) return;
-			await fs.delete();
+			await deleteCacheFile(this.cacheFile);
+			await deleteCacheFile(this.recoveryFile);
+			clearRecoveryJournalLocal(this.id);
 		} catch (error) {
 			window.log("error", error);
 		}
+	}
+
+	#createRecoveryJournal(baseVersion) {
+		return {
+			version: 1,
+			fileId: this.id,
+			baseVersion,
+			targetVersion: baseVersion,
+			updatedAt: Date.now(),
+			changes: [],
+		};
+	}
+
+	#writeRecoveryJournalLocal() {
+		if (!this.#recoveryJournal?.changes?.length) {
+			clearRecoveryJournalLocal(this.id);
+			return;
+		}
+
+		try {
+			const serialized = JSON.stringify(this.#recoveryJournal);
+			if (serialized.length > RECOVERY_LOCAL_STORAGE_LIMIT) {
+				clearRecoveryJournalLocal(this.id);
+				this.scheduleRecoveryWrite(0);
+				this.scheduleCacheWrite(0);
+				return;
+			}
+			localStorage.setItem(getRecoveryJournalLocalKey(this.id), serialized);
+		} catch (error) {
+			window.log("error", "Writing local recovery journal failed:");
+			window.log("error", error);
+		}
+	}
+
+	async #readRecoveryJournal() {
+		const candidates = [];
+		const localJournal = readRecoveryJournalLocal(this.id);
+		if (localJournal) candidates.push(localJournal);
+
+		try {
+			const journalText = await readCacheFile(this.recoveryFile);
+			if (journalText) {
+				const journal = helpers.parseJSON(journalText);
+				if (journal) candidates.push(journal);
+			}
+		} catch (error) {
+			window.log("error", "Reading recovery journal failed:");
+			window.log("error", error);
+		}
+
+		return candidates
+			.filter(isValidRecoveryJournal)
+			.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))[0];
+	}
+
+	#applyRecoveryJournal(text, journal, baseVersion) {
+		if (!isValidRecoveryJournal(journal)) {
+			return { text, applied: false, targetVersion: baseVersion };
+		}
+		if (journal.baseVersion !== baseVersion) {
+			return { text, applied: false, targetVersion: baseVersion };
+		}
+
+		try {
+			let state = EditorState.create({ doc: text });
+			for (const entry of journal.changes) {
+				if (!entry || typeof entry !== "object") continue;
+				const changes = ChangeSet.fromJSON(entry.changes);
+				state = state.update({ changes }).state;
+			}
+			return {
+				text: state.doc.toString(),
+				applied: true,
+				targetVersion: journal.targetVersion,
+			};
+		} catch (error) {
+			window.log("error", "Applying recovery journal failed:");
+			window.log("error", error);
+			return { text, applied: false, targetVersion: baseVersion };
+		}
+	}
+
+	async #compactRecoveryJournalAfterCheckpoint(checkpointVersion) {
+		if (!this.#recoveryJournal?.changes?.length) {
+			await this.#clearRecoveryJournal();
+			return;
+		}
+
+		const changes = this.#recoveryJournal.changes;
+		if (this.#recoveryJournal.targetVersion <= checkpointVersion) {
+			await this.#clearRecoveryJournal();
+			return;
+		}
+
+		const firstPendingIndex = changes.findIndex(
+			(entry) => entry.toVersion > checkpointVersion,
+		);
+		const pending =
+			firstPendingIndex >= 0 ? changes.slice(firstPendingIndex) : [];
+
+		if (!pending.length || pending[0].fromVersion !== checkpointVersion) {
+			await this.#clearRecoveryJournal();
+			if (this.docVersion !== checkpointVersion) this.scheduleCacheWrite(0);
+			return;
+		}
+
+		this.#recoveryJournal = {
+			...this.#recoveryJournal,
+			baseVersion: checkpointVersion,
+			targetVersion: pending[pending.length - 1].toVersion,
+			updatedAt: Date.now(),
+			changes: pending,
+		};
+		this.#writeRecoveryJournalLocal();
+		await this.scheduleRecoveryWrite(0);
+	}
+
+	async #clearRecoveryJournal() {
+		if (this.#recoveryWriteTimer) {
+			clearTimeout(this.#recoveryWriteTimer);
+			this.#recoveryWriteTimer = null;
+		}
+		if (this.#recoveryWritePromise) await this.#recoveryWritePromise;
+		this.#recoveryJournal = null;
+		clearRecoveryJournalLocal(this.id);
+		await deleteCacheFile(this.recoveryFile);
 	}
 
 	async #loadText() {
@@ -1611,13 +1863,16 @@ export default class EditorFile {
 		this.#emit("loadstart", createFileEvent(this));
 
 		try {
-			const cacheFs = fsOperation(this.cacheFile);
-			const cacheExists = await cacheFs.exists();
+			const cacheText = await readCacheFile(this.cacheFile);
+			const cacheExists = cacheText !== null;
+			const restoredCacheVersion = this.cacheVersion;
+			const restoredDocVersion = this.docVersion;
+			const restoredSavedVersion = this.savedVersion;
 			let loadedMtime = this.savedMtime;
 			let savedDoc = null;
 
 			if (cacheExists) {
-				value = await cacheFs.readFile(this.encoding);
+				value = cacheText;
 			}
 
 			if (this.uri) {
@@ -1640,13 +1895,35 @@ export default class EditorFile {
 				}
 			}
 
+			const recoveryBaseVersion = cacheExists
+				? restoredCacheVersion
+				: restoredSavedVersion;
+			const recoveryJournal = await this.#readRecoveryJournal();
+			const recovered = this.#applyRecoveryJournal(
+				value,
+				recoveryJournal,
+				recoveryBaseVersion,
+			);
+			value = recovered.text;
+			this.#recoveryJournal = recovered.applied ? recoveryJournal : null;
+
 			const isUnsaved = this.isUnsaved;
 			this.markChanged = false;
 			this.session = EditorState.create({ doc: value });
 			this.__cmSessionReady = false;
 			this.__cmLanguageReady = false;
 			this.__cmLanguageSignature = null;
-			this.markLoaded({ mtime: loadedMtime, isUnsaved, savedDoc });
+			this.markLoaded({
+				mtime: loadedMtime,
+				isUnsaved,
+				savedDoc,
+				docVersion: recovered.applied
+					? recovered.targetVersion
+					: restoredDocVersion,
+				savedVersion: restoredSavedVersion,
+				cacheVersion: recoveryBaseVersion,
+			});
+			if (recovered.applied) this.scheduleCacheWrite();
 			this.markChanged = true;
 			this.loaded = true;
 			this.loading = false;
@@ -1744,6 +2021,11 @@ export default class EditorFile {
 			this.#cacheWriteTimer = null;
 		}
 		this.#cacheWritePromise = null;
+		if (this.#recoveryWriteTimer) {
+			clearTimeout(this.#recoveryWriteTimer);
+			this.#recoveryWriteTimer = null;
+		}
+		this.#recoveryWritePromise = null;
 		this.#savedDoc = null;
 		if (this.type === "editor") {
 			this.#removeCache();
@@ -1837,6 +2119,106 @@ function tabOnclick(e) {
 
 function createFileEvent(file) {
 	return new FileEvent(file);
+}
+
+async function writeCacheFile(url, content) {
+	const tmpUrl = `${url}${RECOVERY_TEMP_SUFFIX}`;
+	await deleteSingleCacheFile(tmpUrl);
+	await fsOperation(Url.dirname(tmpUrl)).createFile(
+		Url.basename(tmpUrl),
+		content ?? "",
+	);
+	await deleteSingleCacheFile(url);
+	await fsOperation(tmpUrl).renameTo(Url.basename(url));
+}
+
+async function readCacheFile(url) {
+	for (const candidate of [url, `${url}${RECOVERY_TEMP_SUFFIX}`]) {
+		try {
+			const fs = fsOperation(candidate);
+			if (fs && (await fs.exists())) return await fs.readFile();
+		} catch (error) {
+			window.log("error", "Reading cache file failed:");
+			window.log("error", error);
+		}
+	}
+	return null;
+}
+
+async function deleteCacheFile(url) {
+	await deleteSingleCacheFile(url);
+	await deleteSingleCacheFile(`${url}${RECOVERY_TEMP_SUFFIX}`);
+}
+
+async function deleteSingleCacheFile(url) {
+	try {
+		const fs = fsOperation(url);
+		if (fs && (await fs.exists())) await fs.delete();
+	} catch (error) {
+		window.log("error", "Deleting cache file failed:");
+		window.log("error", error);
+	}
+}
+
+async function renameCacheFileIfExists(url, newName) {
+	await renameSingleCacheFileIfExists(url, newName);
+	await renameSingleCacheFileIfExists(
+		`${url}${RECOVERY_TEMP_SUFFIX}`,
+		`${newName}${RECOVERY_TEMP_SUFFIX}`,
+	);
+}
+
+async function renameSingleCacheFileIfExists(url, newName) {
+	const fs = fsOperation(url);
+	if (!fs || !(await fs.exists())) return;
+	await fs.renameTo(newName);
+}
+
+function getRecoveryJournalLocalKey(id) {
+	return `${RECOVERY_LOCAL_STORAGE_PREFIX}${id}`;
+}
+
+function readRecoveryJournalLocal(id) {
+	try {
+		const value = localStorage.getItem(getRecoveryJournalLocalKey(id));
+		return value ? helpers.parseJSON(value) : null;
+	} catch (error) {
+		window.log("error", "Reading local recovery journal failed:");
+		window.log("error", error);
+		return null;
+	}
+}
+
+function clearRecoveryJournalLocal(id) {
+	try {
+		localStorage.removeItem(getRecoveryJournalLocalKey(id));
+	} catch (error) {
+		window.log("error", "Clearing local recovery journal failed:");
+		window.log("error", error);
+	}
+}
+
+function moveRecoveryJournalLocal(oldId, newId) {
+	try {
+		const oldKey = getRecoveryJournalLocalKey(oldId);
+		const value = localStorage.getItem(oldKey);
+		if (!value) return;
+		localStorage.setItem(getRecoveryJournalLocalKey(newId), value);
+		localStorage.removeItem(oldKey);
+	} catch (error) {
+		window.log("error", "Moving local recovery journal failed:");
+		window.log("error", error);
+	}
+}
+
+function isValidRecoveryJournal(journal) {
+	return (
+		journal &&
+		journal.version === 1 &&
+		Number.isFinite(journal.baseVersion) &&
+		Number.isFinite(journal.targetVersion) &&
+		Array.isArray(journal.changes)
+	);
 }
 
 class FileEvent {

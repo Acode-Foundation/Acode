@@ -76,6 +76,7 @@ import quickTools from "components/quickTools";
 import ScrollBar from "components/scrollbar";
 import SideButton, { sideButtonContainer } from "components/sideButton";
 import keyboardHandler, { keydownState } from "handlers/keyboard";
+import config from "./config";
 import EditorFile from "./editorFile";
 import openFile from "./openFile";
 import { addedFolder } from "./openFolder";
@@ -2125,7 +2126,12 @@ async function EditorManager($header, $body) {
 				return;
 			}
 
+			const fromVersion = file.docVersion;
+			const needsImmediateStateSave =
+				!file.isUnsaved || file.id === config.DEFAULT_FILE_SESSION;
 			file.markEdited();
+			file.recordRecoveryChange(update.changes, fromVersion, file.docVersion);
+			if (needsImmediateStateSave) acode?.exec?.("save-state");
 
 			// Debounced change handling (unsaved flag, cache, autosave)
 			if (checkTimeout) clearTimeout(checkTimeout);
