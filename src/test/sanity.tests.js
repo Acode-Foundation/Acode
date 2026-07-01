@@ -1,3 +1,8 @@
+import {
+	clearModifierState,
+	clearQuickToolsButtonFeedback,
+	removeActionStackEntries,
+} from "../handlers/quickToolsState";
 import { getLanguageModeRecommendationSearchKeyword } from "../lib/languageModeRecommendations";
 import { TestRunner } from "./tester";
 
@@ -81,6 +86,71 @@ export async function runSanityTests(writeOutput) {
 			"Extensionless non-dotfiles should not request plugin recommendations",
 		);
 	});
+
+	runner.test("Quick tools modifier cleanup emits inactive state", (test) => {
+		const state = {
+			shift: true,
+			alt: true,
+			ctrl: true,
+			meta: true,
+		};
+		const emitted = [];
+		const events = {
+			shift: [(value) => emitted.push(["shift", value])],
+			alt: [(value) => emitted.push(["alt", value])],
+			ctrl: [(value) => emitted.push(["ctrl", value])],
+			meta: [(value) => emitted.push(["meta", value])],
+		};
+
+		test.assert(clearModifierState(state, events));
+		test.assertEqual(state.shift, false);
+		test.assertEqual(state.alt, false);
+		test.assertEqual(state.ctrl, false);
+		test.assertEqual(state.meta, false);
+		test.assertEqual(
+			JSON.stringify(emitted),
+			JSON.stringify([
+				["shift", false],
+				["alt", false],
+				["ctrl", false],
+				["meta", false],
+			]),
+		);
+	});
+
+	runner.test(
+		"Quick tools feedback cleanup clears stale button state",
+		(test) => {
+			const container = document.createElement("div");
+			const button = document.createElement("button");
+			button.className = "icon active click";
+			button.dataset.timeout = setTimeout(() => {}, 1000);
+			container.append(button);
+
+			test.assertEqual(clearQuickToolsButtonFeedback([container]), 1);
+			test.assert(!button.classList.contains("active"));
+			test.assert(!button.classList.contains("click"));
+			test.assertEqual(button.dataset.timeout, undefined);
+		},
+	);
+
+	runner.test(
+		"Quick tools search cleanup removes duplicate stack entries",
+		(test) => {
+			const entries = ["search-bar", "other", "search-bar"];
+			const stack = {
+				remove(id) {
+					const index = entries.indexOf(id);
+					if (index === -1) return false;
+					entries.splice(index, 1);
+					return true;
+				},
+			};
+
+			test.assertEqual(removeActionStackEntries(stack, "search-bar"), 2);
+			test.assertEqual(JSON.stringify(entries), JSON.stringify(["other"]));
+		},
+	);
 
 	// Run all tests
 	return await runner.run(writeOutput);

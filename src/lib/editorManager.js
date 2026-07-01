@@ -70,7 +70,10 @@ import { lineBreakMarker } from "cm/lineBreakMarker";
 import quickToolsModifierInput from "cm/quickToolsModifierInput";
 import rainbowBrackets, { getRainbowBracketColors } from "cm/rainbowBrackets";
 import scrollPastEndCustom from "cm/scrollPastEnd";
-import { isShiftSelectionActive as resolveShiftSelectionActive } from "cm/shiftSelection";
+import {
+	isMultiCursorSelectionActive as resolveMultiCursorSelectionActive,
+	isShiftSelectionActive as resolveShiftSelectionActive,
+} from "cm/shiftSelection";
 import tagAutoRename from "cm/tagAutoRename";
 import { getThemeConfig, getThemeExtensions } from "cm/themes";
 import list from "components/collapsableList";
@@ -220,7 +223,20 @@ async function EditorManager($header, $body) {
 		return resolveShiftSelectionActive({
 			event,
 			quickToolsShift: quickTools?.$footer?.dataset?.shift != null,
-			shiftClickSelection: appSettings.value.shiftClickSelection,
+		});
+	};
+	const isMultiCursorSelectionActive = (event) => {
+		return resolveMultiCursorSelectionActive({
+			event,
+			quickToolsCtrl: quickTools?.$footer?.dataset?.ctrl != null,
+			quickToolsMeta: quickTools?.$footer?.dataset?.meta != null,
+		});
+	};
+	const isQuickToolsMultiCursorSelectionActive = () => {
+		return resolveMultiCursorSelectionActive({
+			quickToolsCtrl: quickTools?.$footer?.dataset?.ctrl != null,
+			quickToolsMeta: quickTools?.$footer?.dataset?.meta != null,
+			isMac: false,
 		});
 	};
 	const shiftClickSelectionExtension = EditorView.domEventHandlers({
@@ -232,6 +248,9 @@ async function EditorManager($header, $body) {
 			return true;
 		},
 	});
+	const multiCursorSelectionExtension = EditorView.clickAddsSelectionRange.of(
+		isMultiCursorSelectionActive,
+	);
 	const touchSelectionUpdateExtension = EditorView.updateListener.of(
 		(update) => {
 			if (!touchSelectionController) return;
@@ -955,6 +974,7 @@ async function EditorManager($header, $body) {
 			themeExtension: themeCompartment.of(getConfiguredThemeExtension()),
 			pointerCursorVisibilityExtension,
 			shiftClickSelectionExtension,
+			multiCursorSelectionExtension,
 			touchSelectionUpdateExtension,
 			quickToolsModifierInputExtension: quickToolsModifierInput(),
 			searchExtension: search(),
@@ -1012,6 +1032,7 @@ async function EditorManager($header, $body) {
 		container: $container,
 		getActiveFile: () => manager?.activeFile || null,
 		isShiftSelectionActive,
+		isMultiCursorSelectionActive: isQuickToolsMultiCursorSelectionActive,
 	});
 
 	// Provide minimal Ace-like API compatibility used by plugins
@@ -1520,6 +1541,7 @@ async function EditorManager($header, $body) {
 			themeExtension: themeCompartment.of(getConfiguredThemeExtension()),
 			pointerCursorVisibilityExtension,
 			shiftClickSelectionExtension,
+			multiCursorSelectionExtension,
 			touchSelectionUpdateExtension,
 			quickToolsModifierInputExtension: quickToolsModifierInput(),
 			searchExtension: search(),

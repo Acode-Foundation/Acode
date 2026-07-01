@@ -224,13 +224,6 @@ export default function editorSettings() {
 			category: categories.guidesIndicators,
 		},
 		{
-			key: "shiftClickSelection",
-			text: strings["shift click selection"],
-			checkbox: values.shiftClickSelection,
-			info: strings["settings-info-editor-shift-click-selection"],
-			category: categories.cursorSelection,
-		},
-		{
 			key: "showShareButton",
 			text: strings["show share button"],
 			checkbox: values.showShareButton ?? true,

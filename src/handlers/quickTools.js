@@ -20,6 +20,11 @@ import searchHistory from "lib/searchHistory";
 import appSettings from "lib/settings";
 import searchSettings from "settings/searchSettings";
 import KeyboardEvent from "utils/keyboardEvent";
+import {
+	clearModifierState,
+	clearQuickToolsButtonFeedback,
+	removeActionStackEntries,
+} from "./quickToolsState";
 
 export let quickToolUsed = false;
 
@@ -201,6 +206,12 @@ export const key = {
 		events[event] = events[event].filter((cb) => cb !== callback);
 	},
 };
+
+export function clearQuickToolsModifierState({ restoreFocus = false } = {}) {
+	const changed = clearModifierState(state, events);
+	if (restoreFocus) input?.focus?.();
+	return changed;
+}
 
 /**
  * Performs quick actions
@@ -415,6 +426,8 @@ function toggleSearch() {
 	const selectedText = getSelectedText(editor);
 
 	if (!$footer.contains($searchRow1)) {
+		removeSearchBarActions();
+		clearSearchQuickToolsState();
 		const { className } = quickTools.$toggler;
 		const $content = [...$footer.children];
 		const footerHeight = getFooterHeight();
@@ -422,6 +435,7 @@ function toggleSearch() {
 
 		$toggler.className = "floating icon clearclose";
 		$footer.content = [$searchRow1, $searchRow2];
+		clearSearchQuickToolsState($content);
 		setRefValue($searchInput, selectedText || "");
 
 		$searchInput.oninput = function () {
@@ -451,10 +465,13 @@ function toggleSearch() {
 					content: $content,
 					footerHeight,
 				};
+				clearSearchQuickToolsState(restoreState.content);
 				removeSearch();
+				clearQuickToolsButtonFeedback(restoreState.content);
 				$footer.content = restoreState.content;
 				$toggler.className = restoreState.className;
 				setFooterHeight(restoreState.footerHeight);
+				clearSearchQuickToolsState(restoreState.content);
 				activeSearchState = null;
 			},
 		});
@@ -466,7 +483,7 @@ function toggleSearch() {
 			return;
 		}
 
-		actionStack.get("search-bar").action();
+		actionStack.get("search-bar")?.action?.();
 	}
 
 	$searchInput.focus();
@@ -509,6 +526,7 @@ function setHeight(height = 1, save = true) {
 		if (height === 0) {
 			searchBar.action();
 		} else {
+			clearSearchQuickToolsState(activeSearchState?.content);
 			const footerHeight = Number(height) || 0;
 			activeSearchState = {
 				className:
@@ -516,6 +534,7 @@ function setHeight(height = 1, save = true) {
 				content: getQuickToolsRows(footerHeight),
 				footerHeight,
 			};
+			clearQuickToolsButtonFeedback(activeSearchState.content);
 			if (save) {
 				appSettings.update({ quickTools: height }, false);
 			}
@@ -563,9 +582,11 @@ function getQuickToolsRows(height) {
  */
 function removeSearch() {
 	const { $footer, $searchRow1, $searchRow2 } = quickTools;
+	const hasSearchRows = $footer.contains($searchRow1);
 
-	if (!$footer.contains($searchRow1)) return;
-	actionStack.remove("search-bar");
+	removeSearchBarActions();
+	if (!hasSearchRows) return;
+	clearSearchQuickToolsState();
 	$footer.removeAttribute("data-searching");
 	$searchRow1.remove();
 	$searchRow2.remove();
@@ -712,15 +733,29 @@ function focusEditor() {
 }
 
 function resetKeys() {
-	state.shift = false;
-	events.shift.forEach((cb) => cb(false));
-	state.alt = false;
-	events.alt.forEach((cb) => cb(false));
-	state.ctrl = false;
-	events.ctrl.forEach((cb) => cb(false));
-	state.meta = false;
-	events.meta.forEach((cb) => cb(false));
-	input?.focus?.();
+	clearQuickToolsModifierState({ restoreFocus: true });
+}
+
+function clearSearchQuickToolsState(extraContainers = []) {
+	clearQuickToolsModifierState();
+	clearQuickToolsButtonFeedback(
+		getQuickToolsFeedbackContainers(extraContainers),
+	);
+}
+
+function getQuickToolsFeedbackContainers(extraContainers = []) {
+	const { $footer, $row1, $row2 } = quickTools;
+	return [
+		$footer,
+		$row1,
+		$row2,
+		...(activeSearchState?.content || []),
+		...(Array.isArray(extraContainers) ? extraContainers : [extraContainers]),
+	];
+}
+
+function removeSearchBarActions() {
+	return removeActionStackEntries(actionStack, "search-bar");
 }
 
 /**

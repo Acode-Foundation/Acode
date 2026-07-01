@@ -20,8 +20,14 @@ import {
 	runQuickToolKey,
 	runQuickToolNavigation,
 } from "cm/quickToolsNavigation";
-import { isShiftSelectionActive } from "cm/shiftSelection";
-import { getEdgeScrollDirections } from "cm/touchSelectionMenu";
+import {
+	isMultiCursorSelectionActive,
+	isShiftSelectionActive,
+} from "cm/shiftSelection";
+import {
+	addPointerSelectionRange,
+	getEdgeScrollDirections,
+} from "cm/touchSelectionMenu";
 import { TestRunner } from "./tester";
 
 export async function runCodeMirrorTests(writeOutput) {
@@ -393,23 +399,110 @@ export async function runCodeMirrorTests(writeOutput) {
 		},
 	);
 
-	runner.test("Physical Shift pointer selection respects setting", (test) => {
+	runner.test(
+		"Physical Shift pointer selection ignores hidden setting",
+		(test) => {
+			test.assert(
+				isShiftSelectionActive({
+					event: { shiftKey: true },
+					quickToolsShift: false,
+					shiftClickSelection: false,
+				}),
+				"Physical Shift should ignore old disabled settings",
+			);
+			test.assert(
+				isShiftSelectionActive({
+					event: { shiftKey: true },
+					quickToolsShift: false,
+					shiftClickSelection: true,
+				}),
+				"Physical Shift should work when setting is enabled",
+			);
+			test.assert(
+				isShiftSelectionActive({
+					event: { shiftKey: true },
+					quickToolsShift: false,
+				}),
+				"Physical Shift should default to enabled",
+			);
+		},
+	);
+
+	runner.test("Quick tools Ctrl/Meta enable multi-cursor selection", (test) => {
 		test.assert(
-			!isShiftSelectionActive({
-				event: { shiftKey: true },
-				quickToolsShift: false,
-				shiftClickSelection: false,
+			isMultiCursorSelectionActive({
+				event: { ctrlKey: false, metaKey: false },
+				quickToolsCtrl: true,
+				quickToolsMeta: false,
 			}),
-			"Physical Shift should be ignored when setting is disabled",
+			"Quick tools Ctrl should add a cursor",
 		);
 		test.assert(
-			isShiftSelectionActive({
-				event: { shiftKey: true },
-				quickToolsShift: false,
-				shiftClickSelection: true,
+			isMultiCursorSelectionActive({
+				event: { ctrlKey: false, metaKey: false },
+				quickToolsCtrl: false,
+				quickToolsMeta: true,
 			}),
-			"Physical Shift should work when setting is enabled",
+			"Quick tools Meta should add a cursor",
 		);
+	});
+
+	runner.test("Physical multi-cursor modifier follows platform", (test) => {
+		test.assert(
+			isMultiCursorSelectionActive({
+				event: { ctrlKey: true, metaKey: false },
+				isMac: false,
+			}),
+			"Ctrl should add a cursor on non-macOS",
+		);
+		test.assert(
+			!isMultiCursorSelectionActive({
+				event: { ctrlKey: false, metaKey: true },
+				isMac: false,
+			}),
+			"Meta should not be the default add-cursor modifier on non-macOS",
+		);
+		test.assert(
+			isMultiCursorSelectionActive({
+				event: { ctrlKey: false, metaKey: true },
+				isMac: true,
+			}),
+			"Meta should add a cursor on macOS",
+		);
+		test.assert(
+			!isMultiCursorSelectionActive({
+				event: { ctrlKey: true, metaKey: false },
+				isMac: true,
+			}),
+			"Ctrl should not be the default add-cursor modifier on macOS",
+		);
+	});
+
+	runner.test("Pointer multi-cursor appends cursor and range", (test) => {
+		const cursorSelection = addPointerSelectionRange(
+			EditorSelection.single(10),
+			{
+				anchor: 10,
+				head: 4,
+			},
+		);
+
+		test.assertEqual(cursorSelection.ranges.length, 2);
+		test.assert(cursorSelection.main.empty, "Added cursor should be empty");
+		test.assertEqual(cursorSelection.main.head, 4);
+
+		const rangeSelection = addPointerSelectionRange(
+			EditorSelection.single(10),
+			{
+				anchor: 0,
+				head: 4,
+				extend: true,
+			},
+		);
+
+		test.assertEqual(rangeSelection.ranges.length, 2);
+		test.assertEqual(rangeSelection.main.anchor, 0);
+		test.assertEqual(rangeSelection.main.head, 4);
 	});
 
 	runner.test("Quick tools Shift maps printable text", (test) => {
