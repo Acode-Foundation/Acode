@@ -215,6 +215,8 @@ public class System extends CordovaPlugin {
             case "compare-texts":
             case "extractAsset":
             case "pin-file-shortcut":
+            case "get-app-icons":
+            case "set-app-icon":
                 break;
             case "get-configuration":
                 getConfiguration(callbackContext);
@@ -574,9 +576,15 @@ public class System extends CordovaPlugin {
                             case "is-powersave-mode":
                                 isPowerSaveMode(callbackContext);
                                 break;
-                            case "get-app-info":
-                                getAppInfo(callbackContext);
-                                break;
+                             case "get-app-info":
+                                 getAppInfo(callbackContext);
+                                 break;
+                             case "get-app-icons":
+                                 getAppIcons(callbackContext);
+                                 break;
+                             case "set-app-icon":
+                                 setAppIcon(arg1, callbackContext);
+                                 break;
                             case "pin-file-shortcut":
                                 pinFileShortcut(args.optJSONObject(0), callbackContext);
                                 break;
@@ -2182,6 +2190,122 @@ public class System extends CordovaPlugin {
             StringWriter sw = new StringWriter();
             e.printStackTrace(new PrintWriter(sw));
             callback.error(sw.toString());
+        }
+    }
+
+    private void getAppIcons(CallbackContext callbackContext) {
+        try {
+            PackageManager pm = context.getPackageManager();
+            Intent intent = new Intent(Intent.ACTION_MAIN);
+            intent.addCategory(Intent.CATEGORY_LAUNCHER);
+            intent.setPackage(context.getPackageName());
+
+            int flags = PackageManager.GET_META_DATA;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                flags |= PackageManager.MATCH_DISABLED_COMPONENTS;
+            } else {
+                flags |= PackageManager.GET_DISABLED_COMPONENTS;
+            }
+
+            List<ResolveInfo> resolveInfos = pm.queryIntentActivities(intent, flags);
+            JSONArray result = new JSONArray();
+
+            for (ResolveInfo info : resolveInfos) {
+                JSONObject iconInfo = new JSONObject();
+                String name = info.activityInfo.name;
+                String label = info.loadLabel(pm).toString();
+                
+                int iconRes = info.activityInfo.getIconResource();
+                String iconName = "";
+                if (iconRes != 0) {
+                    try {
+                        iconName = context.getResources().getResourceEntryName(iconRes);
+                    } catch (Exception e) {
+                        // ignore
+                    }
+                }
+
+                // Check if currently enabled
+                ComponentName componentName = new ComponentName(context, name);
+                int enabledSetting = pm.getComponentEnabledSetting(componentName);
+                boolean isEnabled;
+                if (enabledSetting == PackageManager.COMPONENT_ENABLED_STATE_DEFAULT) {
+                    isEnabled = info.activityInfo.enabled;
+                } else {
+                    isEnabled = (enabledSetting == PackageManager.COMPONENT_ENABLED_STATE_ENABLED);
+                }
+
+                iconInfo.put("name", name);
+                iconInfo.put("label", label);
+                iconInfo.put("icon", iconName);
+                iconInfo.put("enabled", isEnabled);
+                result.put(iconInfo);
+            }
+
+            callbackContext.success(result);
+        } catch (Exception e) {
+            callbackContext.error(e.getMessage());
+        }
+    }
+
+    private void setAppIcon(String targetComponentName, CallbackContext callbackContext) {
+        try {
+            PackageManager pm = context.getPackageManager();
+            Intent intent = new Intent(Intent.ACTION_MAIN);
+            intent.addCategory(Intent.CATEGORY_LAUNCHER);
+            intent.setPackage(context.getPackageName());
+
+            int flags = PackageManager.GET_META_DATA;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                flags |= PackageManager.MATCH_DISABLED_COMPONENTS;
+            } else {
+                flags |= PackageManager.GET_DISABLED_COMPONENTS;
+            }
+
+            List<ResolveInfo> resolveInfos = pm.queryIntentActivities(intent, flags);
+            
+            String target = targetComponentName;
+            if (target.startsWith(".")) {
+                target = context.getPackageName() + target;
+            }
+
+            boolean found = false;
+
+            // First pass: verify if targetComponentName is a valid launcher component
+            for (ResolveInfo info : resolveInfos) {
+                if (info.activityInfo.name.equals(target)) {
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found) {
+                callbackContext.error("Component " + target + " not found as a launcher activity or alias in the manifest");
+                return;
+            }
+
+            // Second pass: enable targetComponentName and disable others
+            for (ResolveInfo info : resolveInfos) {
+                String name = info.activityInfo.name;
+                ComponentName componentName = new ComponentName(context, name);
+                if (name.equals(target)) {
+                    pm.setComponentEnabledSetting(
+                        componentName,
+                        PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                        PackageManager.DONT_KILL_APP
+                    );
+                } else {
+                    pm.setComponentEnabledSetting(
+                        componentName,
+                        PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                        PackageManager.DONT_KILL_APP
+                    );
+                }
+            }
+
+            callbackContext.success();
+        } catch (Exception e) {
+            callbackContext.error(e.getMessage());
         }
     }
 }
