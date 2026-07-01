@@ -584,7 +584,8 @@ export default class EditorFile {
 			}),
 		});
 
-		const editable = options?.editable ?? true;
+		const editable =
+			options?.editable !== undefined ? !!options.editable : !options?.readOnly;
 
 		this.#SAFMode = options?.SAFMode;
 		this.docVersion = Number.isFinite(options?.docVersion)
@@ -627,6 +628,9 @@ export default class EditorFile {
 		}
 
 		// if not loaded then create load options
+		this.readOnly = !editable;
+		this.#editable = editable;
+
 		if (!this.loaded) {
 			this.#loadOptions = {
 				cursorPos: options?.cursorPos,
@@ -635,8 +639,6 @@ export default class EditorFile {
 				folds: options?.folds,
 				editable,
 			};
-		} else {
-			this.editable = editable;
 		}
 
 		this.#onFilePosChange = () => {
@@ -1707,7 +1709,9 @@ export default class EditorFile {
 
 		this.#loadOptions = null;
 
-		this.setReadOnly(true);
+		if (!editable) {
+			this.setReadOnly(true);
+		}
 		this.loading = true;
 		this.markChanged = false;
 		this.#emit("loadstart", createFileEvent(this));
@@ -1759,9 +1763,6 @@ export default class EditorFile {
 			if (isActiveInPane || activeFile?.id === this.id) {
 				this.setReadOnly(editable === false);
 				emit("file-loaded", this);
-			} else if (editable !== undefined) {
-				this.readOnly = !editable;
-				this.#editable = editable;
 			}
 
 			setTimeout(() => {
