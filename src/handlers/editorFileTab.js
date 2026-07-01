@@ -1,5 +1,6 @@
 import config from "lib/config";
 import settings from "lib/settings";
+import { animate } from "motion";
 
 const opts = { passive: false };
 
@@ -18,6 +19,9 @@ let $tab = null;
  * @type {HTMLDivElement}
  */
 let $parent = null;
+let $originParent = null;
+let draggedFile = null;
+let allowPaneTransfer = true;
 
 let MAX_SCROLL = 0;
 let MIN_SCROLL = 0;
@@ -72,14 +76,15 @@ let prevScrollLeft = 0;
  */
 let initialNextSibling = null;
 let didReorder = false;
+let dragSessionId = 0;
 
 const MIN_SCROLL_SPEED = 2;
 const MAX_SCROLL_SPEED = 14;
-const REORDER_DURATION = 280;
-const RELEASE_DURATION = 250;
-const SPRING_EASING = "cubic-bezier(0.2, 1.2, 0.4, 1)";
+const REORDER_DURATION = 0.28;
+const RELEASE_DURATION = 0.25;
+const SPRING_EASING = [0.2, 1, 0.4, 1];
 
-/** @type {WeakMap<HTMLElement, Animation>} */
+/** @type {WeakMap<HTMLElement, {cancel?: function(): void}>} */
 const reorderAnimations = new WeakMap();
 
 /**
@@ -98,11 +103,16 @@ export default function startDrag(e) {
 		navigator.vibrate(config.VIBRATION_TIME);
 	}
 
-	$tab = e.target;
+	$tab = e.currentTarget || e.target.closest?.(".tile") || e.target;
 	$parent = $tab.parentElement;
+	$originParent = $parent;
+	draggedFile = editorManager.files.find((file) => file.tab === $tab) || null;
+	allowPaneTransfer =
+		!!draggedFile && !(draggedFile.isPanePlaceholder && !draggedFile.isUnsaved);
 	$tabClone = $tab.cloneNode(true);
 	initialNextSibling = $tab.nextElementSibling;
 	didReorder = false;
+	dragSessionId += 1;
 
 	const rect = $tab.getBoundingClientRect();
 	const parentRect = $parent.getBoundingClientRect();
@@ -137,6 +147,7 @@ export default function startDrag(e) {
 	$tabClone.style.width = `${rect.width}px`;
 	$tabClone.style.transform = `translate3d(${rect.x}px, ${rect.y}px, 0)`;
 	$tab.style.opacity = "0.35";
+	$tab.dataset.editorTabDragging = "true";
 	app.append($tabClone);
 	$tab.click();
 
@@ -196,30 +207,25 @@ function releaseDrag(e) {
 
 	/**@type {HTMLDivElement} target tab */
 	const $target = document.elementFromPoint(clientX, clientY);
-	const shouldCommitReorder = $parent.contains($target);
+	const isPathDropTarget = isFilePathDropTarget($target);
+	const $dropParent = isPathDropTarget
+		? null
+		: getDropTabList(clientX, clientY);
+	if ($dropParent && $dropParent !== $parent) {
+		moveDragToParent($dropParent);
+	}
+	const shouldCommitReorder =
+		!!$dropParent && ($parent.contains($target) || $dropParent === $parent);
 
 	if (shouldCommitReorder) {
 		updateDragPreview(clientX, clientY);
-		if (didReorder) {
+		if ($parent !== $originParent) {
+			commitPaneTransfer();
+		} else if (didReorder) {
 			updateFileList($parent);
 		}
-	} else if (
-		$target &&
-		($target.tagName === "INPUT" ||
-			$target.tagName === "TEXTAREA" ||
-			$target.isContentEditable ||
-			$target.closest(".cm-editor"))
-	) {
-		// If released on an input area or CodeMirror editor
-		const filePath = editorManager.activeFile.uri;
-		if (filePath) {
-			if ($target.closest(".cm-editor")) {
-				const view = editorManager.editor;
-				view.dispatch(view.state.replaceSelection(filePath));
-			} else {
-				$target.value += filePath;
-			}
-		}
+	} else if (isPathDropTarget) {
+		insertDraggedFilePath($target, clientX, clientY);
 	}
 
 	const shouldSettleClone = shouldCommitReorder || didReorder;
@@ -232,6 +238,7 @@ function releaseDrag(e) {
 }
 
 function finishDrag(shouldSettleClone) {
+	const dragState = getCurrentDragState();
 	cancelAnimationFrame(animationFrame);
 
 	document.removeEventListener("mousemove", onDrag, opts);
@@ -244,29 +251,63 @@ function finishDrag(shouldSettleClone) {
 	$parent.removeEventListener("scroll", preventDefaultScroll);
 
 	if (shouldSettleClone) {
-		const rect = $tab.getBoundingClientRect();
-		const anim = $tabClone.animate(
-			[{ transform: `translate3d(${rect.left}px, ${rect.top}px, 0)` }],
+		const rect = dragState.tab.getBoundingClientRect();
+		let cleaned = false;
+		let cleanupTimeout = null;
+		const safeCleanup = () => {
+			if (cleaned) return;
+			cleaned = true;
+			if (cleanupTimeout) clearTimeout(cleanupTimeout);
+			cleanupDrag(dragState);
+		};
+		animate(
+			dragState.tabClone,
+			{ transform: `translate3d(${rect.left}px, ${rect.top}px, 0)` },
 			{
 				duration: document.body.classList.contains("no-animation")
 					? 0
 					: RELEASE_DURATION,
-				easing: SPRING_EASING,
-				fill: "forwards",
+				ease: SPRING_EASING,
 			},
-		);
-		anim.onfinish = cleanupDrag;
-		anim.oncancel = cleanupDrag;
+		)
+			.then(safeCleanup)
+			.catch(safeCleanup);
+		cleanupTimeout = setTimeout(safeCleanup, 500);
 		return;
 	}
 
-	cleanupDrag();
+	cleanupDrag(dragState);
 }
 
-function cleanupDrag() {
-	$tab.style.opacity = "";
-	$tabClone.remove();
+function getCurrentDragState() {
+	return {
+		id: dragSessionId,
+		tab: $tab,
+		tabClone: $tabClone,
+	};
+}
+
+function cleanupDrag(state = getCurrentDragState()) {
+	const isCurrentDrag =
+		state.id === dragSessionId &&
+		state.tabClone &&
+		state.tabClone === $tabClone;
+	const isSameTabInNewDrag = !isCurrentDrag && state.tab && state.tab === $tab;
+
+	if (state.tab && !isSameTabInNewDrag) {
+		state.tab.style.opacity = "";
+		delete state.tab.dataset.editorTabDragging;
+	}
+
+	state.tabClone?.remove();
+
+	if (!isCurrentDrag) return;
+
+	editorManager.syncOpenFileList?.();
 	$tabClone = null;
+	$originParent = null;
+	draggedFile = null;
+	allowPaneTransfer = true;
 	initialNextSibling = null;
 	didReorder = false;
 }
@@ -277,16 +318,19 @@ function preventDefaultScroll() {
 
 function updateDragPreview(clientX, clientY) {
 	const $target = document.elementFromPoint(clientX, clientY);
-	if (
-		!$parent.contains($target) ||
-		$target === $tab ||
-		$tab.contains($target)
-	) {
+	const $dropParent = getDropTabList(clientX, clientY);
+	if ($dropParent && $dropParent !== $parent) {
+		moveDragToParent($dropParent);
+	}
+
+	if (!$target || $target === $tab || $tab.contains($target)) {
 		return;
 	}
 
 	const $targetTab = $target.closest(".tile");
-	if (!$targetTab) return;
+	if (!$targetTab || !$parent.contains($targetTab)) {
+		return;
+	}
 
 	const rect = $targetTab.getBoundingClientRect();
 	const midX = rect.left + rect.width / 2;
@@ -302,9 +346,47 @@ function updateDragPreview(clientX, clientY) {
 }
 
 function restoreInitialTabPosition() {
+	if ($parent !== $originParent) {
+		moveDragToParent($originParent, initialNextSibling);
+		return;
+	}
+
 	reorderTab(
 		initialNextSibling?.parentElement === $parent ? initialNextSibling : null,
 	);
+}
+
+function moveDragToParent($nextParent, $insertBefore = null) {
+	if (!$nextParent || $nextParent === $parent) return;
+
+	const previousParents = [$parent, $nextParent].filter(Boolean);
+	const previousRects = captureVisualPositionsForParents(previousParents);
+	$parent.removeEventListener("scroll", preventDefaultScroll, opts);
+
+	if ($insertBefore?.parentElement === $nextParent) {
+		$nextParent.insertBefore($tab, $insertBefore);
+	} else {
+		$nextParent.appendChild($tab);
+	}
+
+	previousParents.forEach(($list) => animateTabReorder($list, previousRects));
+	$parent = $nextParent;
+	updateParentMetrics();
+	prevScrollLeft = $parent.scrollLeft;
+	$parent.addEventListener("scroll", preventDefaultScroll, opts);
+	didReorder = true;
+}
+
+function commitPaneTransfer() {
+	const targetPane = $parent?.__editorPane;
+	if (!targetPane || !draggedFile || !allowPaneTransfer) return;
+
+	const index = [...$parent.children].indexOf($tab);
+	editorManager.moveFileToPane?.(draggedFile, targetPane, {
+		activate: true,
+		index,
+	});
+	editorManager.updatePaneFileOrderFromTabs?.($parent, { draggedFile });
 }
 
 function reorderTab($insertBefore) {
@@ -335,10 +417,222 @@ function captureVisualPositions($parent) {
 	);
 }
 
+function captureVisualPositionsForParents(parents) {
+	const rects = new Map();
+	parents.forEach(($list) => {
+		if (!$list) return;
+		for (const $child of $list.children) {
+			rects.set($child, $child.getBoundingClientRect());
+		}
+	});
+	return rects;
+}
+
+function updateParentMetrics() {
+	const parentRect = $parent.getBoundingClientRect();
+	parentLeft = parentRect.left;
+	parentRight = parentRect.right;
+	MAX_SCROLL = $parent.scrollWidth - parentRect.width;
+	MIN_SCROLL = 0;
+}
+
+function getDropTabList(clientX, clientY) {
+	const $target = document.elementFromPoint(clientX, clientY);
+	const $tabList =
+		$target?.closest?.(".open-file-list") ||
+		$target?.closest?.(".file-list > ul");
+	if (isValidDropTabList($tabList)) return $tabList;
+
+	if (isFilePathDropTarget($target)) return null;
+
+	const pane = $target?.closest?.(".editor-pane")?.__editorPane;
+	if (pane?.tabList !== $parent && isValidDropTabList(pane?.tabList)) {
+		return pane.tabList;
+	}
+
+	return null;
+}
+
+function isFilePathDropTarget($target) {
+	return !!(
+		$target &&
+		($target.tagName === "INPUT" ||
+			$target.tagName === "TEXTAREA" ||
+			$target.isContentEditable ||
+			$target.closest(".cm-editor"))
+	);
+}
+
+function insertDraggedFilePath($target, clientX, clientY) {
+	const filePath = draggedFile?.uri || editorManager.activeFile?.uri;
+	if (!filePath) return;
+
+	if ($target.closest(".cm-editor")) {
+		const view =
+			$target.closest(".editor-pane")?.__editorPane?.editor ||
+			editorManager.editor;
+		view.dispatch(view.state.replaceSelection(filePath));
+	} else if ($target.isContentEditable) {
+		insertTextIntoContentEditable($target, filePath, clientX, clientY);
+	} else {
+		insertTextIntoInput($target, filePath);
+	}
+}
+
+function insertTextIntoContentEditable($target, text, clientX, clientY) {
+	const $editable = getContentEditableRoot($target);
+	const range = getContentEditableRange($editable, clientX, clientY);
+	const selection = document.getSelection();
+
+	if (!range || !selection) {
+		$editable.append(document.createTextNode(text));
+		$editable.dispatchEvent(createInputEvent(text));
+		return;
+	}
+
+	focusWithoutScrolling($editable);
+	selection.removeAllRanges();
+	selection.addRange(range);
+
+	if (
+		typeof document.execCommand === "function" &&
+		document.queryCommandSupported?.("insertText")
+	) {
+		const inserted = document.execCommand("insertText", false, text);
+		if (inserted) return;
+	}
+
+	range.deleteContents();
+	const textNode = document.createTextNode(text);
+	range.insertNode(textNode);
+	range.setStartAfter(textNode);
+	range.collapse(true);
+	selection.removeAllRanges();
+	selection.addRange(range);
+	$editable.dispatchEvent(createInputEvent(text));
+}
+
+function getContentEditableRoot($target) {
+	let $editable = $target;
+	while ($editable.parentElement?.isContentEditable) {
+		$editable = $editable.parentElement;
+	}
+
+	return $editable;
+}
+
+function focusWithoutScrolling($target) {
+	try {
+		$target.focus({ preventScroll: true });
+	} catch {
+		$target.focus();
+	}
+}
+
+function getContentEditableRange($target, clientX, clientY) {
+	const range = getCaretRangeFromPoint(clientX, clientY);
+	if (range && isRangeInsideElement(range, $target)) return range;
+
+	const selection = document.getSelection();
+	if (selection?.rangeCount) {
+		const selectionRange = selection.getRangeAt(0);
+		if (isRangeInsideElement(selectionRange, $target)) {
+			return selectionRange.cloneRange();
+		}
+	}
+
+	const fallbackRange = document.createRange();
+	fallbackRange.selectNodeContents($target);
+	fallbackRange.collapse(false);
+	return fallbackRange;
+}
+
+function getCaretRangeFromPoint(clientX, clientY) {
+	const caretRange = document.caretRangeFromPoint?.(clientX, clientY);
+	if (caretRange) return caretRange;
+
+	const caretPosition = document.caretPositionFromPoint?.(clientX, clientY);
+	if (!caretPosition) return null;
+
+	const range = document.createRange();
+	range.setStart(caretPosition.offsetNode, caretPosition.offset);
+	range.collapse(true);
+	return range;
+}
+
+function isRangeInsideElement(range, $element) {
+	const { commonAncestorContainer } = range;
+	return (
+		commonAncestorContainer === $element ||
+		$element.contains(commonAncestorContainer)
+	);
+}
+
+function insertTextIntoInput($target, text) {
+	const value = $target.value || "";
+	const start = getInputSelectionOffset(
+		$target,
+		"selectionStart",
+		value.length,
+	);
+	const end = getInputSelectionOffset($target, "selectionEnd", start);
+
+	if (typeof $target.setRangeText === "function") {
+		try {
+			$target.setRangeText(text, start, end, "end");
+		} catch {
+			$target.value = `${value}${text}`;
+		}
+	} else {
+		const nextValue = `${value.slice(0, start)}${text}${value.slice(end)}`;
+		$target.value = nextValue;
+		setInputSelectionOffset($target, start + text.length);
+	}
+
+	$target.dispatchEvent(createInputEvent(text));
+}
+
+function getInputSelectionOffset($target, key, fallback) {
+	try {
+		return typeof $target[key] === "number" ? $target[key] : fallback;
+	} catch {
+		return fallback;
+	}
+}
+
+function setInputSelectionOffset($target, offset) {
+	try {
+		$target.selectionStart = $target.selectionEnd = offset;
+	} catch {
+		return;
+	}
+}
+
+function createInputEvent(text) {
+	if (typeof InputEvent === "function") {
+		return new InputEvent("input", {
+			bubbles: true,
+			cancelable: false,
+			data: text,
+			inputType: "insertText",
+		});
+	}
+
+	return new Event("input", { bubbles: true, cancelable: false });
+}
+
+function isValidDropTabList($tabList) {
+	if (!$tabList) return false;
+	if ($tabList === $originParent) return true;
+	if (!$tabList.__editorPane) return false;
+	if (!allowPaneTransfer) return false;
+	return $tabList.getClientRects().length > 0;
+}
+
 /**
  * Animates the visual change after the DOM order is updated using FLIP.
- * Uses WAAPI directly for reliable mid-animation compositing and to
- * properly respect the app's no-animation setting.
+ * Uses Motion for reliable mid-animation compositing and to respect the
+ * app's no-animation setting.
  * @param {HTMLElement} $parent
  * @param {Map<HTMLElement, DOMRect>} previousRects
  */
@@ -348,8 +642,9 @@ function animateTabReorder($parent, previousRects) {
 
 		const oldAnim = reorderAnimations.get($child);
 		if (oldAnim) {
-			oldAnim.cancel();
+			oldAnim.cancel?.();
 			reorderAnimations.delete($child);
+			$child.style.transform = "";
 		}
 
 		const previousRect = previousRects.get($child);
@@ -361,32 +656,31 @@ function animateTabReorder($parent, previousRects) {
 
 		if (Math.abs(deltaX) < 0.5 && Math.abs(deltaY) < 0.5) continue;
 
-		const anim = $child.animate(
-			[
-				{ transform: `translate3d(${deltaX}px, ${deltaY}px, 0)` },
-				{ transform: "translate3d(0, 0, 0)" },
-			],
+		const anim = animate(
+			$child,
+			{
+				transform: [
+					`translate3d(${deltaX}px, ${deltaY}px, 0)`,
+					"translate3d(0, 0, 0)",
+				],
+			},
 			{
 				duration: document.body.classList.contains("no-animation")
 					? 0
 					: REORDER_DURATION,
-				easing: SPRING_EASING,
-				fill: "none",
-				composite: "replace",
+				ease: SPRING_EASING,
 			},
 		);
 		reorderAnimations.set($child, anim);
 
-		anim.onfinish = () => {
+		const cleanup = () => {
 			if (reorderAnimations.get($child) === anim) {
+				$child.style.transform = "";
 				reorderAnimations.delete($child);
 			}
 		};
-		anim.oncancel = () => {
-			if (reorderAnimations.get($child) === anim) {
-				reorderAnimations.delete($child);
-			}
-		};
+
+		anim.then(cleanup).catch(cleanup);
 	}
 }
 
@@ -394,13 +688,13 @@ function animateTabReorder($parent, previousRects) {
  * Scrolls the container using animation frame
  */
 function scrollContainer() {
-	return animate();
+	return step();
 
-	function animate() {
+	function step() {
 		const scroll = getScroll();
 		if (!scroll) return;
 		prevScrollLeft = $parent.scrollLeft += scroll;
-		animationFrame = requestAnimationFrame(animate);
+		animationFrame = requestAnimationFrame(step);
 	}
 }
 
@@ -432,6 +726,11 @@ function getClientPos(e) {
  * @param {HTMLElement} $parent
  */
 function updateFileList($parent) {
+	if (typeof editorManager.updatePaneFileOrderFromTabs === "function") {
+		if (editorManager.updatePaneFileOrderFromTabs($parent, { draggedFile }))
+			return;
+	}
+
 	const pinnedCount = editorManager.files.filter((file) => file.pinned).length;
 	const children = [...$parent.children];
 	const newFileList = [];
@@ -446,19 +745,19 @@ function updateFileList($parent) {
 
 	editorManager.files = newFileList;
 
-	const draggedFile = newFileList.find((file) => file.tab === $tab);
-	if (draggedFile) {
-		const draggedIndex = newFileList.indexOf(draggedFile);
+	const localDraggedFile = newFileList.find((file) => file.tab === $tab);
+	if (localDraggedFile) {
+		const draggedIndex = newFileList.indexOf(localDraggedFile);
 		let nextPinnedState;
 
-		if (!draggedFile.pinned && draggedIndex < pinnedCount) {
+		if (!localDraggedFile.pinned && draggedIndex < pinnedCount) {
 			nextPinnedState = true;
-		} else if (draggedFile.pinned && draggedIndex >= pinnedCount) {
+		} else if (localDraggedFile.pinned && draggedIndex >= pinnedCount) {
 			nextPinnedState = false;
 		}
 
 		if (nextPinnedState !== undefined) {
-			draggedFile.setPinnedState(nextPinnedState, { reorder: false });
+			localDraggedFile.setPinnedState(nextPinnedState, { reorder: false });
 			if (typeof editorManager.normalizePinnedTabOrder === "function") {
 				editorManager.normalizePinnedTabOrder(editorManager.files);
 			}

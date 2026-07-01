@@ -3,6 +3,7 @@ import fsOperation from "fileSystem";
 import { EditorState } from "@codemirror/state";
 import {
 	clearSelection,
+	getDocText,
 	restoreFolds,
 	restoreSelection,
 	setScrollPosition,
@@ -27,6 +28,44 @@ import openFolder from "./openFolder";
 import run from "./run";
 import saveFile from "./saveFile";
 import appSettings from "./settings";
+
+function syncQuickToolsVisibility(file) {
+	const { $toggler } = quickTools;
+	const hideForFile = !!file?.hideQuickTools;
+
+	clearTimeout($toggler._hideTimeout);
+	if (hideForFile || !appSettings.value.floatingButton) {
+		$toggler.classList.add("hide");
+		$toggler._hideTimeout = setTimeout(() => {
+			$toggler.remove();
+			$toggler._hideTimeout = null;
+		}, 300);
+	} else {
+		$toggler._hideTimeout = null;
+		$toggler.classList.remove("hide");
+		if (!$toggler.isConnected) {
+			root.appendOuter($toggler);
+		}
+	}
+
+	if (hideForFile) {
+		actions("set-height", { height: 0, save: false });
+		return;
+	}
+
+	const quickToolsHeight =
+		appSettings.value.quickTools !== undefined
+			? appSettings.value.quickTools
+			: 1;
+	actions("set-height", { height: quickToolsHeight, save: false });
+}
+
+function isTouchDevice() {
+	return (
+		typeof navigator !== "undefined" &&
+		Number(navigator.maxTouchPoints || 0) > 0
+	);
+}
 
 /**
  * Creates a Proxy around an EditorState that provides Ace-compatible methods.
@@ -82,7 +121,7 @@ function createSessionProxy(state, file) {
 
 			// Ace-compatible method: getValue()
 			if (prop === "getValue") {
-				return () => target.doc.toString();
+				return () => getDocText(target.doc);
 			}
 
 			// Ace-compatible method: setValue(text)
@@ -269,6 +308,9 @@ function maybeRecommendLanguageModeExtension(file, modeInfo) {
  * @property {number} [savedMtime] file mtime last saved or loaded from disk
  * @property {number} [diskMtime] latest known file mtime on disk
  * @property {boolean} [hasDiskConflict] whether editor and disk both changed
+ * @property {string} [paneId] target editor pane id
+ * @property {object} [pane] target editor pane
+ * @property {boolean} [isPanePlaceholder] temporary empty tab for an empty pane
  */
 
 export default class EditorFile {
@@ -437,6 +479,7 @@ export default class EditorFile {
 	savedMtime = null;
 	diskMtime = null;
 	hasDiskConflict = false;
+	isPanePlaceholder = false;
 
 	/**
 	 *
@@ -448,6 +491,8 @@ export default class EditorFile {
 		let doesExists = null;
 
 		this.hideQuickTools = options?.hideQuickTools || false;
+		this.paneId = options?.paneId || options?.pane?.id || null;
+		this.isPanePlaceholder = !!options?.isPanePlaceholder;
 
 		// if options are passed
 		if (options) {
@@ -812,7 +857,7 @@ export default class EditorFile {
 	set eol(value) {
 		if (this.type !== "editor") return;
 		if (this.eol === value) return;
-		let text = this.session.doc.toString();
+		let text = getDocText(this.session.doc);
 
 		if (value === "windows") {
 			text = text.replace(/\n(?<!\r\n)/g, "\r\n");
@@ -946,6 +991,11 @@ export default class EditorFile {
 		);
 	}
 
+	refreshUnsavedState() {
+		this.isUnsaved = this.hasUnsavedChanges();
+		return this.#isUnsaved;
+	}
+
 	markLoaded({ mtime, isUnsaved = false, savedDoc = null } = {}) {
 		const normalizedMtime = helpers.normalizeMtime(mtime);
 		this.docVersion = isUnsaved ? 1 : 0;
@@ -960,14 +1010,19 @@ export default class EditorFile {
 		this.isUnsaved = isUnsaved || this.hasUnsavedChanges();
 	}
 
-	markEdited() {
+	markEdited({ exact = false } = {}) {
 		if (this.type !== "editor") return;
+		this.isPanePlaceholder = false;
 		if (this.id === config.DEFAULT_FILE_SESSION) {
 			this.id = helpers.uuid();
 		}
 		this.docVersion += 1;
 		this.#hasVersionMetadata = true;
-		this.isUnsaved = this.hasUnsavedChanges();
+		if (exact) {
+			this.refreshUnsavedState();
+			return;
+		}
+		if (!this.#isUnsaved) this.isUnsaved = true;
 	}
 
 	markSaved({ mtime, savedDoc, savedVersion } = {}) {
@@ -1044,7 +1099,7 @@ export default class EditorFile {
 
 	async writeToCache() {
 		const writeVersion = this.docVersion;
-		const text = this.session.doc.toString();
+		const text = getDocText(this.session.doc);
 		const fs = fsOperation(this.cacheFile);
 
 		try {
@@ -1089,7 +1144,7 @@ export default class EditorFile {
 		}
 
 		const protocol = Url.getProtocol(this.#uri);
-		const text = this.session.doc.toString();
+		const text = getDocText(this.session.doc);
 
 		// Helper for JS-based comparison (used as fallback)
 		const jsCompare = async (fileUri) => {
@@ -1200,7 +1255,14 @@ export default class EditorFile {
 	 * @param {boolean} force if true, will prompt to save the file
 	 */
 	async remove(force = false, options = {}) {
-		const { ignorePinned = false, silentPinned = false } = options || {};
+		const {
+			ignorePinned = false,
+			silentPinned = false,
+			suppressPanePlaceholder = false,
+		} = options || {};
+		const isUnsaved = this.refreshUnsavedState();
+		const suppressFallback =
+			suppressPanePlaceholder && this.isPanePlaceholder && !isUnsaved;
 
 		if (this.id === config.DEFAULT_FILE_SESSION && !editorManager.files.length)
 			return false;
@@ -1213,7 +1275,7 @@ export default class EditorFile {
 			}
 			return false;
 		}
-		if (!force && this.isUnsaved) {
+		if (!force && isUnsaved) {
 			const confirmation = await confirm(
 				strings.warning.toUpperCase(),
 				strings["unsaved file"],
@@ -1223,20 +1285,52 @@ export default class EditorFile {
 
 		this.#destroy();
 
-		editorManager.files = editorManager.files.filter(
-			(file) => file.id !== this.id,
-		);
-		const { files, activeFile } = editorManager;
+		const removal = editorManager.removeFileFromPane?.(this);
+		if (!removal) {
+			editorManager.files = editorManager.files.filter(
+				(file) => file.id !== this.id,
+			);
+		}
+		const { activeFile } = editorManager;
 		const wasActive = activeFile?.id === this.id;
 		if (wasActive) {
 			editorManager.activeFile = null;
 		}
+		const paneClosed =
+			!suppressFallback &&
+			this.isPanePlaceholder &&
+			!isUnsaved &&
+			removal?.pane &&
+			!removal.nextFile &&
+			editorManager.closeEmptyPane?.(removal.pane);
+		const { files } = editorManager;
 		if (!files.length) {
 			Sidebar.hide();
 			editorManager.activeFile = null;
-			new EditorFile();
-		} else if (wasActive) {
-			files[files.length - 1].makeActive();
+			if (!suppressFallback) new EditorFile();
+		} else if (
+			removal?.wasPaneActive &&
+			removal.nextFile &&
+			!suppressFallback
+		) {
+			removal.nextFile.makeActive();
+		} else if (
+			removal?.wasPaneActive &&
+			removal.pane &&
+			!removal.nextFile &&
+			!paneClosed &&
+			!suppressFallback
+		) {
+			new EditorFile(config.DEFAULT_FILE_NAME, {
+				paneId: removal.pane.id,
+				text: "",
+				isUnsaved: false,
+				isPanePlaceholder: true,
+			});
+		} else if (wasActive && !suppressFallback) {
+			(
+				editorManager.activePane?.activeFile || files[files.length - 1]
+			).makeActive();
 		}
 		editorManager.onupdate("remove-file");
 		editorManager.emit("remove-file", this);
@@ -1262,15 +1356,26 @@ export default class EditorFile {
 	}
 
 	setReadOnly(value) {
+		const readOnly = !!value;
+		this.readOnly = readOnly;
+		this.#editable = !readOnly;
+
 		try {
-			const { editor, readOnlyCompartment } = editorManager;
-			if (!editor) return;
-			if (!readOnlyCompartment) return;
-			editor.dispatch({
-				effects: readOnlyCompartment.reconfigure(
-					EditorState.readOnly.of(!!value),
-				),
-			});
+			const { readOnlyCompartment } = editorManager;
+			if (readOnlyCompartment) {
+				const pane = editorManager.getFilePane?.(this);
+				const targetEditor =
+					pane?.activeFile?.id === this.id
+						? pane.editor
+						: editorManager.activeFile?.id === this.id
+							? editorManager.editor
+							: null;
+				targetEditor?.dispatch({
+					effects: readOnlyCompartment.reconfigure(
+						EditorState.readOnly.of(readOnly),
+					),
+				});
+			}
 		} catch (error) {
 			console.warn(
 				`Failed to update read-only state for ${this.filename || this.uri}`,
@@ -1278,9 +1383,6 @@ export default class EditorFile {
 			);
 		}
 
-		// Sync internal flags and header
-		this.readOnly = !!value;
-		this.#editable = !this.readOnly;
 		if (editorManager.activeFile?.id === this.id) {
 			editorManager.header.subText = this.#getTitle();
 		}
@@ -1328,25 +1430,37 @@ export default class EditorFile {
 	 * Makes this file active
 	 */
 	makeActive() {
-		const { activeFile, editor, switchFile } = editorManager;
+		const pane = editorManager.getFilePane?.(this) || editorManager.activePane;
+		const wasActivePane = editorManager.activePane?.id === pane?.id;
+		const { activeFile, switchFile } = editorManager;
+		const paneActiveFile = pane?.activeFile;
+		const activeEditor = editorManager.editor;
+		const editorHadDomFocus =
+			activeEditor?.contentDOM === document.activeElement ||
+			activeEditor?.contentDOM?.contains(document.activeElement);
+		const inactiveFiles = [paneActiveFile, !wasActivePane ? activeFile : null];
+		const blurredFileIds = new Set();
 
-		if (activeFile) {
-			if (activeFile.id === this.id) return;
-			activeFile.focusedBefore = activeFile.focused;
-			activeFile.removeActive();
-
-			// Hide previous content if it exists
-			if (activeFile.type !== "editor" && activeFile.content) {
-				activeFile.content.style.display = "none";
-			}
+		for (const file of inactiveFiles) {
+			if (!file || file.id === this.id || blurredFileIds.has(file.id)) continue;
+			file.focusedBefore = file.focused;
+			file.removeActive();
+			blurredFileIds.add(file.id);
 		}
 
-		switchFile(this.id);
+		if (activeFile?.id === this.id && wasActivePane) {
+			syncQuickToolsVisibility(this);
+			return;
+		}
+
+		switchFile(this.id, pane);
+
+		const { editor } = editorManager;
 
 		// Show/hide appropriate content
 		if (this.type === "editor") {
 			editorManager.container.style.display = "block";
-			if (this.focused) {
+			if (this.focused && editorHadDomFocus && !isTouchDevice()) {
 				editor.focus();
 			} else {
 				editor.contentDOM.blur();
@@ -1361,7 +1475,9 @@ export default class EditorFile {
 			editorManager.container.style.display = "none";
 			if (this.content) {
 				this.content.style.display = "block";
-				if (!this.content.parentElement) {
+				if (
+					this.content.parentElement !== editorManager.container.parentElement
+				) {
 					editorManager.container.parentElement.appendChild(this.content);
 				}
 			}
@@ -1378,32 +1494,7 @@ export default class EditorFile {
 			this.#loadText();
 		}
 
-		// Handle quicktools visibility based on hideQuickTools property
-		if (this.hideQuickTools) {
-			const { $toggler } = quickTools;
-			clearTimeout($toggler._hideTimeout);
-			$toggler.classList.add("hide");
-			$toggler._hideTimeout = setTimeout(() => {
-				$toggler.remove();
-				$toggler._hideTimeout = null;
-			}, 300);
-			actions("set-height", { height: 0, save: false });
-		} else {
-			const { $toggler } = quickTools;
-			if (appSettings.value.floatingButton) {
-				clearTimeout($toggler._hideTimeout);
-				$toggler._hideTimeout = null;
-				$toggler.classList.remove("hide");
-				if (!$toggler.isConnected) {
-					root.appendOuter($toggler);
-				}
-			}
-			const quickToolsHeight =
-				appSettings.value.quickTools !== undefined
-					? appSettings.value.quickTools
-					: 1;
-			actions("set-height", { height: quickToolsHeight, save: false });
-		}
+		syncQuickToolsVisibility(this);
 
 		editorManager.header.subText = this.#getTitle();
 
@@ -1442,11 +1533,27 @@ export default class EditorFile {
 		this.makeActive();
 
 		if (this.id !== config.DEFAULT_FILE_SESSION) {
+			const pane = editorManager.getFilePane?.(this);
 			const defaultFile = editorManager.getFile(
 				config.DEFAULT_FILE_SESSION,
 				"id",
 			);
-			defaultFile?.remove();
+			if (defaultFile && editorManager.getFilePane?.(defaultFile) === pane) {
+				defaultFile.remove();
+			}
+
+			editorManager
+				.getPaneFiles?.(this)
+				?.filter(
+					(file) =>
+						file !== this &&
+						file.isPanePlaceholder &&
+						!file.isUnsaved &&
+						editorManager.getFilePane?.(file) === pane,
+				)
+				.forEach((file) => {
+					file.remove(true, { ignorePinned: true });
+				});
 		}
 
 		// Show/hide editor based on content type
@@ -1457,7 +1564,11 @@ export default class EditorFile {
 			editorManager.container.style.display = "none";
 			if (this.#content) {
 				this.#content.style.display = "block";
-				editorManager.container.parentElement.appendChild(this.#content);
+				if (
+					this.#content.parentElement !== editorManager.container.parentElement
+				) {
+					editorManager.container.parentElement.appendChild(this.#content);
+				}
 			}
 		}
 	}
@@ -1656,7 +1767,9 @@ export default class EditorFile {
 			this.loading = false;
 
 			const { activeFile, emit } = editorManager;
-			if (activeFile?.id === this.id) {
+			const pane = editorManager.getFilePane?.(this);
+			const isActiveInPane = pane?.activeFile?.id === this.id;
+			if (isActiveInPane || activeFile?.id === this.id) {
 				this.setReadOnly(editable === false);
 				emit("file-loaded", this);
 			}

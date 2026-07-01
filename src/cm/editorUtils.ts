@@ -22,6 +22,24 @@ export interface ScrollPosition {
 	scrollLeft: number;
 }
 
+const docTextCache = new WeakMap<object, string>();
+
+/**
+ * CodeMirror Text documents are immutable, so the full string can be cached
+ * per document object and reused across compatibility/plugin reads.
+ */
+export function getDocText(
+	doc: { toString(): string } | string | null | undefined,
+): string {
+	if (!doc) return "";
+	if (typeof doc !== "object" && typeof doc !== "function") return String(doc);
+	const cached = docTextCache.get(doc);
+	if (cached !== undefined) return cached;
+	const text = doc.toString();
+	docTextCache.set(doc, text);
+	return text;
+}
+
 /**
  * Get all folded ranges from CodeMirror editor state
  */

@@ -13,7 +13,9 @@ import settings from "./settings";
  * @param {String} [url]
  */
 export default async function showFileInfo(url) {
-	if (!url) url = editorManager.activeFile.uri;
+	const activeFile = editorManager.activeFile;
+	if (!url) url = activeFile?.uri;
+	if (!url) return;
 	loader.showTitleLoader();
 	try {
 		const fs = fsOperation(url);
@@ -24,7 +26,7 @@ export default async function showFileInfo(url) {
 		lastModified = new Date(lastModified).toLocaleString();
 
 		const protocol = Url.getProtocol(url);
-		const fileType = type.toLowerCase();
+		const fileType = String(type || "").toLowerCase();
 		const options = {
 			name: name.slice(0, name.length - Url.extname(name).length),
 			extension: Url.extname(name),
@@ -34,10 +36,11 @@ export default async function showFileInfo(url) {
 			lang: strings,
 			showUri: helpers.getVirtualPath(url),
 			isEditor:
-				fileType === "text/plain" || editorManager.activeFile.type === "editor",
+				fileType === "text/plain" ||
+				(activeFile?.uri === url && activeFile.type === "editor"),
 		};
 
-		if (editorManager.activeFile.type === "editor") {
+		if (options.isEditor) {
 			const value = await fs.readFile(settings.value.defaultFileEncoding);
 			options.lineCount = value.split(/\n+/).length;
 			options.wordCount = value.split(/\s+|\n+/).length;

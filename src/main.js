@@ -725,12 +725,16 @@ async function loadApp() {
 		// if (!$editMenuToggler.isConnected) {
 		// 	$header.insertBefore($editMenuToggler, $header.lastChild);
 		// }
-		if (activeFile?.type === "page" || activeFile?.type === "terminal") {
-			$editMenuToggler.remove();
-		} else {
+		if (
+			activeFile &&
+			activeFile.type !== "page" &&
+			activeFile.type !== "terminal"
+		) {
 			if (!$editMenuToggler.isConnected) {
 				$header.insertBefore($editMenuToggler, $header.lastChild);
 			}
+		} else {
+			$editMenuToggler.remove();
 		}
 
 		if (mode === "switch-file") {
@@ -825,9 +829,9 @@ function createFileMenu({ top, bottom, toggler }) {
 		toggler,
 		transformOrigin: top ? "top right" : "bottom right",
 		innerHTML: () => {
-			const file = window.editorManager.activeFile;
+			const file = window.editorManager?.activeFile;
 
-			if (file.type === "page") {
+			if (!file || file.type === "page" || file.type === "terminal") {
 				return "";
 			}
 

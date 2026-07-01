@@ -59,8 +59,8 @@ export function canSaveFile(file = editorManager.activeFile) {
 }
 
 function getTabsRelativeToFile(side, referenceFile) {
-	const { files } = editorManager;
 	const file = resolveReferenceFile(referenceFile);
+	const files = editorManager.getPaneFiles?.(file) || editorManager.files;
 	const activeIndex = files.indexOf(file);
 
 	if (activeIndex === -1) return [];
@@ -163,7 +163,46 @@ export default {
 		});
 	},
 	"close-current-tab"() {
-		editorManager.activeFile.remove();
+		editorManager.activeFile?.remove();
+	},
+	"new-pane"() {
+		return editorManager.createPane?.();
+	},
+	"split-pane"() {
+		return editorManager.splitPane?.();
+	},
+	"split-pane-right"() {
+		return editorManager.splitPaneRight?.();
+	},
+	"split-pane-down"() {
+		return editorManager.splitPaneDown?.();
+	},
+	"close-pane"() {
+		return editorManager.closeActivePane?.();
+	},
+	"focus-next-pane"() {
+		return editorManager.focusNextPane?.();
+	},
+	"focus-previous-pane"() {
+		return editorManager.focusPreviousPane?.();
+	},
+	"focus-pane-left"() {
+		return editorManager.focusPaneByDirection?.("left");
+	},
+	"focus-pane-right"() {
+		return editorManager.focusPaneByDirection?.("right");
+	},
+	"focus-pane-up"() {
+		return editorManager.focusPaneByDirection?.("up");
+	},
+	"focus-pane-down"() {
+		return editorManager.focusPaneByDirection?.("down");
+	},
+	"move-tab-to-new-pane"() {
+		return editorManager.moveActiveFileToNewPane?.();
+	},
+	"move-tab-to-new-pane-down"() {
+		return editorManager.moveActiveFileToNewPane?.("vertical");
 	},
 	"toggle-pin-tab"(referenceFile) {
 		resolveReferenceFile(referenceFile)?.togglePinned?.();
@@ -199,7 +238,9 @@ export default {
 		navigator.app.exitApp();
 	},
 	"edit-with"() {
-		editorManager.activeFile.editWith();
+		const { activeFile } = editorManager;
+		if (!activeFile?.uri) return;
+		activeFile.editWith?.();
 	},
 	async "find-file"() {
 		const { default: findFile } = await import(
@@ -246,13 +287,18 @@ export default {
 		});
 	},
 	"next-file"() {
-		const len = editorManager.files.length;
-		let fileIndex = editorManager.files.indexOf(editorManager.activeFile);
+		const files =
+			editorManager.getPaneFiles?.(editorManager.activeFile) ||
+			editorManager.files;
+		const len = files.length;
+		let fileIndex = files.indexOf(editorManager.activeFile);
+
+		if (!len || fileIndex === -1) return;
 
 		if (fileIndex === len - 1) fileIndex = 0;
 		else ++fileIndex;
 
-		editorManager.files[fileIndex].makeActive();
+		files[fileIndex].makeActive();
 	},
 	async open(page) {
 		switch (page) {
@@ -300,7 +346,9 @@ export default {
 		editorManager.editor.contentDOM.blur();
 	},
 	"open-with"() {
-		editorManager.activeFile.openWith();
+		const { activeFile } = editorManager;
+		if (!activeFile?.uri) return;
+		activeFile.openWith?.();
 	},
 	async "open-file"() {
 		editorManager.editor.contentDOM.blur();
@@ -317,13 +365,18 @@ export default {
 			.catch(FileBrowser.openFolderError);
 	},
 	"prev-file"() {
-		const len = editorManager.files.length;
-		let fileIndex = editorManager.files.indexOf(editorManager.activeFile);
+		const files =
+			editorManager.getPaneFiles?.(editorManager.activeFile) ||
+			editorManager.files;
+		const len = files.length;
+		let fileIndex = files.indexOf(editorManager.activeFile);
+
+		if (!len || fileIndex === -1) return;
 
 		if (fileIndex === 0) fileIndex = len - 1;
 		else --fileIndex;
 
-		editorManager.files[fileIndex].makeActive();
+		files[fileIndex].makeActive();
 	},
 	"read-only"() {
 		const file = editorManager.activeFile;
@@ -359,12 +412,13 @@ export default {
 		browser.open(url);
 	},
 	run() {
-		editorManager.activeFile[
+		const { activeFile } = editorManager;
+		activeFile?.[
 			appSettings.value.useCurrentFileForPreview ? "runFile" : "run"
 		]?.();
 	},
 	"run-file"() {
-		editorManager.activeFile.runFile?.();
+		editorManager.activeFile?.runFile?.();
 	},
 	async save(showToast) {
 		try {
@@ -394,7 +448,9 @@ export default {
 		saveState();
 	},
 	share() {
-		editorManager.activeFile.share();
+		const { activeFile } = editorManager;
+		if (!activeFile?.uri) return;
+		activeFile.share?.();
 	},
 	async "pin-file-shortcut"() {
 		const file = editorManager.activeFile;
@@ -588,6 +644,7 @@ export default {
 		}
 	},
 	async eol() {
+		if (editorManager.activeFile?.type !== "editor") return;
 		const eol = await select(strings["new line mode"], ["unix", "windows"], {
 			default: editorManager.activeFile.eol,
 		});

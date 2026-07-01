@@ -2,6 +2,7 @@ import "./styles.scss";
 import fsOperation from "fileSystem";
 import { EditorView } from "@codemirror/view";
 import autosize from "autosize";
+import { getDocText } from "cm/editorUtils";
 import Checkbox from "components/checkbox";
 import Sidebar, { preventSlide } from "components/sidebar";
 import escapeStringRegexp from "escape-string-regexp";
@@ -621,7 +622,7 @@ async function readSearchFileContent(uri) {
 	const editorFile = editorManager.getFile(uri, "uri");
 	if (editorFile?.session?.doc) {
 		try {
-			return editorFile.session.doc.toString() || "";
+			return getDocText(editorFile.session.doc);
 		} catch (_) {
 			return "";
 		}
@@ -726,7 +727,7 @@ function getOpenFileOverlays(searchFiles) {
 		if (!file.uri || !supportedUrls.has(file.uri)) return;
 		if (!file.session?.doc) return;
 		try {
-			overlays[file.uri] = file.session.doc.toString() || "";
+			overlays[file.uri] = getDocText(file.session.doc);
 		} catch (_) {
 			// ignore invalid editor docs
 		}

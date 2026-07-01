@@ -14,7 +14,7 @@ body {
   }
 
   &.fullscreen-mode {
-    .open-file-list {
+    .open-file-list:not(.editor-pane-tabs) {
       height: 30px;
       left: 40px;
     }
@@ -101,7 +101,7 @@ body {
             box-shadow: none !important;
           }
 
-          .open-file-list {
+          .open-file-list:not(.editor-pane-tabs) {
             top: 0;
             width: calc(100% - 140px);
           }
@@ -233,7 +233,7 @@ wc-page {
         box-shadow: 0 -32px 4px var(--box-shadow-color);
       }
 
-      .open-file-list {
+      .open-file-list:not(.editor-pane-tabs) {
         top: auto !important;
         bottom: 0;
         z-index: 99;
@@ -293,7 +293,7 @@ wc-page {
   &[footer-height="1"] {
     &[open-file-list-pos="bottom"] {
       &#root {
-        .open-file-list {
+        .open-file-list:not(.editor-pane-tabs) {
           bottom: 40px;
         }
       }
@@ -322,7 +322,7 @@ wc-page {
   &[footer-height="2"] {
     &[open-file-list-pos="bottom"] {
       &#root {
-        .open-file-list {
+        .open-file-list:not(.editor-pane-tabs) {
           bottom: 80px;
         }
       }
@@ -351,7 +351,7 @@ wc-page {
   &[footer-height="3"] {
     &[open-file-list-pos="bottom"] {
       &#root {
-        .open-file-list {
+        .open-file-list:not(.editor-pane-tabs) {
           bottom: 120px;
         }
       }
