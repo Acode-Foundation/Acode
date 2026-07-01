@@ -61,6 +61,7 @@ import { serverCompletionSource } from "@codemirror/lsp-client";
 import colorView from "cm/colorView";
 import {
 	getAllFolds,
+	getDocText,
 	restoreFolds,
 	restoreSelection,
 	setScrollPosition,
@@ -219,6 +220,12 @@ async function EditorManager($header, $body) {
 		replaceChildren:
 			$globalOpenFileList.replaceChildren.bind($globalOpenFileList),
 	};
+	let globalOpenFileListMirrorFiles = null;
+	let globalOpenFileListMirrorActiveFileId = "";
+	const globalOpenFileListMirrorTabs = new Map();
+	const globalOpenFileListMirrorTabsById = new Map();
+	const globalOpenFileListMirrorTabSignatures = new Map();
+	const globalOpenFileListMirrorDirtyFiles = new Set();
 	const $paneAwareOpenFileList =
 		createPaneAwareOpenFileListProxy($globalOpenFileList);
 	let $container = createEditorContainer();
@@ -1804,7 +1811,7 @@ async function EditorManager($header, $body) {
 	 */
 	editor.getValue = function () {
 		try {
-			return editor.state.doc.toString();
+			return getDocText(editor.state.doc);
 		} catch (_) {
 			return "";
 		}
@@ -2127,7 +2134,7 @@ async function EditorManager($header, $body) {
 				writable: true,
 				value() {
 					try {
-						return getDoc().toString();
+						return getDocText(getDoc());
 					} catch (_) {
 						return "";
 					}
@@ -3401,6 +3408,7 @@ async function EditorManager($header, $body) {
 
 			timers.checkTimeout = setTimeout(async () => {
 				timers.checkTimeout = null;
+				file.refreshUnsavedState?.();
 				try {
 					file.scheduleCacheWrite();
 				} catch (error) {
@@ -3445,6 +3453,11 @@ async function EditorManager($header, $body) {
 			applyFileToEditor(file);
 		}
 	});
+
+	manager.on(
+		["file-content-changed", "rename-file", "save-file", "update:pin-tab"],
+		markGlobalOpenFileListMirrorDirty,
+	);
 
 	manager.on(["update:read-only"], () => {
 		const file = manager.activeFile;
@@ -3592,15 +3605,110 @@ async function EditorManager($header, $body) {
 	}
 
 	function syncGlobalOpenFileListMirror() {
+		const shouldRebuild =
+			globalOpenFileListMirrorFiles !== manager.files ||
+			$globalOpenFileList.childElementCount !== manager.files.length;
+
+		if (shouldRebuild) {
+			rebuildGlobalOpenFileListMirror();
+			return;
+		}
+
+		if (!globalOpenFileListMirrorDirtyFiles.size) {
+			syncGlobalOpenFileListMirrorActiveState();
+			return;
+		}
+
+		const dirtyFiles = [...globalOpenFileListMirrorDirtyFiles];
+		const fileIndexes = new Map(
+			manager.files.map((file, index) => [file, index]),
+		);
+		globalOpenFileListMirrorDirtyFiles.clear();
+
+		dirtyFiles.forEach((file) => {
+			const index = fileIndexes.get(file);
+			if (index === undefined) return;
+			const signature = getGlobalOpenFileListMirrorTabSignature(file);
+			if (globalOpenFileListMirrorTabSignatures.get(file) === signature) {
+				return;
+			}
+
+			const nextTab = createGlobalOpenFileListMirrorTab(file);
+			const currentTab =
+				globalOpenFileListMirrorTabs.get(file) ||
+				$globalOpenFileList.children[index];
+			if (currentTab?.parentElement === $globalOpenFileList) {
+				globalOpenFileListNative.insertBefore(nextTab, currentTab);
+				currentTab.remove();
+			} else {
+				globalOpenFileListNative.insertBefore(
+					nextTab,
+					$globalOpenFileList.children[index] || null,
+				);
+			}
+			cacheGlobalOpenFileListMirrorTab(file, nextTab, signature);
+		});
+
+		syncGlobalOpenFileListMirrorActiveState();
+	}
+
+	function rebuildGlobalOpenFileListMirror() {
+		globalOpenFileListMirrorTabs.clear();
+		globalOpenFileListMirrorTabsById.clear();
+		globalOpenFileListMirrorTabSignatures.clear();
+		globalOpenFileListMirrorDirtyFiles.clear();
+
 		globalOpenFileListNative.replaceChildren(
 			...manager.files.map((file) => {
-				const tab = file.tab.cloneNode(true);
-				tab.dataset.fileId = file.id;
-				tab.dataset.paneId = file.paneId || "";
-				tab.classList.toggle("active", manager.activeFile?.id === file.id);
+				const tab = createGlobalOpenFileListMirrorTab(file);
+				cacheGlobalOpenFileListMirrorTab(
+					file,
+					tab,
+					getGlobalOpenFileListMirrorTabSignature(file),
+				);
 				return tab;
 			}),
 		);
+
+		globalOpenFileListMirrorFiles = manager.files;
+		globalOpenFileListMirrorActiveFileId = manager.activeFile?.id || "";
+	}
+
+	function createGlobalOpenFileListMirrorTab(file) {
+		const tab = file.tab.cloneNode(true);
+		tab.dataset.fileId = file.id;
+		tab.dataset.paneId = file.paneId || "";
+		tab.classList.toggle("active", manager.activeFile?.id === file.id);
+		return tab;
+	}
+
+	function cacheGlobalOpenFileListMirrorTab(file, tab, signature) {
+		globalOpenFileListMirrorTabs.set(file, tab);
+		globalOpenFileListMirrorTabsById.set(file.id, tab);
+		globalOpenFileListMirrorTabSignatures.set(file, signature);
+	}
+
+	function markGlobalOpenFileListMirrorDirty(file) {
+		if (file) globalOpenFileListMirrorDirtyFiles.add(file);
+	}
+
+	function syncGlobalOpenFileListMirrorActiveState() {
+		const activeFileId = manager.activeFile?.id || "";
+		if (globalOpenFileListMirrorActiveFileId === activeFileId) return;
+
+		globalOpenFileListMirrorTabsById
+			.get(globalOpenFileListMirrorActiveFileId)
+			?.classList.remove("active");
+		globalOpenFileListMirrorTabsById.get(activeFileId)?.classList.add("active");
+		globalOpenFileListMirrorActiveFileId = activeFileId;
+	}
+
+	function getGlobalOpenFileListMirrorTabSignature(file) {
+		const tab = file.tab;
+		const classNames = [...tab.classList]
+			.filter((className) => className !== "active")
+			.join(" ");
+		return `${classNames}\n${tab.innerHTML}`;
 	}
 
 	function isDraggingFileTab(file) {
@@ -4584,7 +4692,9 @@ async function EditorManager($header, $body) {
 	 * @returns {number} The number of unsaved files.
 	 */
 	function hasUnsavedFiles() {
-		const unsavedFiles = manager.files.filter((file) => file.isUnsaved);
+		const unsavedFiles = manager.files.filter(
+			(file) => file.refreshUnsavedState?.() ?? file.isUnsaved,
+		);
 		return unsavedFiles.length;
 	}
 

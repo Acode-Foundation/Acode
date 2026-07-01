@@ -1,4 +1,5 @@
 import fsOperation from "fileSystem";
+import { getDocText } from "cm/editorUtils";
 import tutorial from "components/tutorial";
 import alert from "dialogs/alert";
 import dialog from "dialogs/dialog";
@@ -205,7 +206,7 @@ async function run(
 				break;
 
 			case EXECUTING_SCRIPT: {
-				const text = activeFile?.session?.doc?.toString() || "";
+				const text = getDocText(activeFile?.session?.doc);
 				sendText(text, reqId, "application/javascript");
 				break;
 			}
@@ -244,7 +245,7 @@ async function run(
 			if (activeFile.SAFMode === "single") {
 				if (filename === reqPath) {
 					sendText(
-						activeFile.session?.doc?.toString(),
+						getDocText(activeFile.session?.doc),
 						reqId,
 						mimeType.lookup(filename),
 					);
@@ -283,7 +284,7 @@ async function run(
 				const htmlUrl = Url.join(pathName, reqPath + ".html");
 				const htmlFile = editorManager.getFile(htmlUrl, "uri");
 				if (htmlFile?.loaded && htmlFile.isUnsaved) {
-					sendHTML(htmlFile.session?.doc?.toString(), reqId);
+					sendHTML(getDocText(htmlFile.session?.doc), reqId);
 					return;
 				}
 				const htmlFs = fsOperation(htmlUrl);
@@ -308,7 +309,7 @@ async function run(
 				case ".htm":
 				case ".html":
 					if (!url || (file && file.loaded && file.isUnsaved)) {
-						sendHTML(file.session?.doc?.toString(), reqId);
+						sendHTML(getDocText(file.session?.doc), reqId);
 					} else {
 						sendFileContent(url, reqId, MIMETYPE_HTML);
 					}
@@ -325,7 +326,7 @@ async function run(
 										.toLowerCase()
 										.replace(/[^a-z0-9]+/g, "-"),
 							})
-							.render(file.session?.doc?.toString());
+							.render(getDocText(file.session?.doc));
 						const doc = mustache.render($_markdown, {
 							html,
 							filename,
@@ -338,7 +339,7 @@ async function run(
 				default:
 					if (!url || (file && file.loaded && file.isUnsaved)) {
 						sendText(
-							file.session?.doc?.toString(),
+							getDocText(file.session?.doc),
 							reqId,
 							mimeType.lookup(file.filename),
 						);

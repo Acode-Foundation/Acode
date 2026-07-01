@@ -1,6 +1,7 @@
 import "./style.scss";
 
 import fsOperation from "fileSystem";
+import { getDocText } from "cm/editorUtils";
 import Page from "components/page";
 import DOMPurify from "dompurify";
 import actionStack from "lib/actionStack";
@@ -480,7 +481,7 @@ function createMarkdownPreview(file) {
 		revokeObjectUrls(previewState.objectUrls);
 		previewState.objectUrls = [];
 
-		const markdownText = previewState.file.session?.doc?.toString?.() || "";
+		const markdownText = getDocText(previewState.file.session?.doc);
 		const pendingRenderTasks = [
 			renderMarkdown(markdownText, previewState.file),
 		];

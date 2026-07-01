@@ -5,6 +5,7 @@ import {
 	openReferencesTab,
 	showReferencesPanel,
 } from "components/referencesPanel";
+import { getDocText } from "cm/editorUtils";
 import settings from "lib/settings";
 
 interface Position {
@@ -61,7 +62,7 @@ async function fetchLineText(uri: string, line: number): Promise<string> {
 				}
 			}
 			if (typeof doc.toString === "function") {
-				const content = doc.toString();
+				const content = getDocText(doc as { toString(): string });
 				const lines = content.split("\n");
 				if (lines[line] !== undefined) {
 					return lines[line];

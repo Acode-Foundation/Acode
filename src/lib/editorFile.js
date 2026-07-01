@@ -3,6 +3,7 @@ import fsOperation from "fileSystem";
 import { EditorState } from "@codemirror/state";
 import {
 	clearSelection,
+	getDocText,
 	restoreFolds,
 	restoreSelection,
 	setScrollPosition,
@@ -120,7 +121,7 @@ function createSessionProxy(state, file) {
 
 			// Ace-compatible method: getValue()
 			if (prop === "getValue") {
-				return () => target.doc.toString();
+				return () => getDocText(target.doc);
 			}
 
 			// Ace-compatible method: setValue(text)
@@ -854,7 +855,7 @@ export default class EditorFile {
 	set eol(value) {
 		if (this.type !== "editor") return;
 		if (this.eol === value) return;
-		let text = this.session.doc.toString();
+		let text = getDocText(this.session.doc);
 
 		if (value === "windows") {
 			text = text.replace(/\n(?<!\r\n)/g, "\r\n");
@@ -988,6 +989,11 @@ export default class EditorFile {
 		);
 	}
 
+	refreshUnsavedState() {
+		this.isUnsaved = this.hasUnsavedChanges();
+		return this.#isUnsaved;
+	}
+
 	markLoaded({ mtime, isUnsaved = false, savedDoc = null } = {}) {
 		const normalizedMtime = helpers.normalizeMtime(mtime);
 		this.docVersion = isUnsaved ? 1 : 0;
@@ -1002,7 +1008,7 @@ export default class EditorFile {
 		this.isUnsaved = isUnsaved || this.hasUnsavedChanges();
 	}
 
-	markEdited() {
+	markEdited({ exact = false } = {}) {
 		if (this.type !== "editor") return;
 		this.isPanePlaceholder = false;
 		if (this.id === config.DEFAULT_FILE_SESSION) {
@@ -1010,7 +1016,11 @@ export default class EditorFile {
 		}
 		this.docVersion += 1;
 		this.#hasVersionMetadata = true;
-		this.isUnsaved = this.hasUnsavedChanges();
+		if (exact) {
+			this.refreshUnsavedState();
+			return;
+		}
+		if (!this.#isUnsaved) this.isUnsaved = true;
 	}
 
 	markSaved({ mtime, savedDoc, savedVersion } = {}) {
@@ -1087,7 +1097,7 @@ export default class EditorFile {
 
 	async writeToCache() {
 		const writeVersion = this.docVersion;
-		const text = this.session.doc.toString();
+		const text = getDocText(this.session.doc);
 		const fs = fsOperation(this.cacheFile);
 
 		try {
@@ -1132,7 +1142,7 @@ export default class EditorFile {
 		}
 
 		const protocol = Url.getProtocol(this.#uri);
-		const text = this.session.doc.toString();
+		const text = getDocText(this.session.doc);
 
 		// Helper for JS-based comparison (used as fallback)
 		const jsCompare = async (fileUri) => {
@@ -1248,8 +1258,9 @@ export default class EditorFile {
 			silentPinned = false,
 			suppressPanePlaceholder = false,
 		} = options || {};
+		const isUnsaved = this.refreshUnsavedState();
 		const suppressFallback =
-			suppressPanePlaceholder && this.isPanePlaceholder && !this.isUnsaved;
+			suppressPanePlaceholder && this.isPanePlaceholder && !isUnsaved;
 
 		if (this.id === config.DEFAULT_FILE_SESSION && !editorManager.files.length)
 			return false;
@@ -1262,7 +1273,7 @@ export default class EditorFile {
 			}
 			return false;
 		}
-		if (!force && this.isUnsaved) {
+		if (!force && isUnsaved) {
 			const confirmation = await confirm(
 				strings.warning.toUpperCase(),
 				strings["unsaved file"],

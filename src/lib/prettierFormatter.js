@@ -1,5 +1,6 @@
 import fsOperation from "fileSystem";
 import { parse } from "acorn";
+import { getDocText } from "cm/editorUtils";
 import toast from "components/toast";
 import appSettings from "lib/settings";
 import prettierPluginBabel from "prettier/plugins/babel";
@@ -83,7 +84,7 @@ export async function formatActiveFileWithPrettier() {
 	}
 
 	const doc = editor.state.doc;
-	const source = doc.toString();
+	const source = getDocText(doc);
 	const filepath = file.uri || file.filename || "";
 	try {
 		const config = await resolvePrettierConfig(file);

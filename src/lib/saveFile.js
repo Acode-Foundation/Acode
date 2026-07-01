@@ -1,4 +1,5 @@
 import fsOperation from "fileSystem";
+import { getDocText } from "cm/editorUtils";
 import prompt from "dialogs/prompt";
 import select from "dialogs/select";
 import recents from "lib/recents";
@@ -127,7 +128,7 @@ async function saveFile(file, isSaveAs = false) {
 
 		const savedDoc = file.session?.doc || null;
 		const savedVersion = file.docVersion;
-		const data = savedDoc ? savedDoc.toString() : "";
+		const data = getDocText(savedDoc);
 
 		await fileOnDevice.writeFile(data, encoding);
 		const stat = await fileOnDevice.stat().catch(() => null);
