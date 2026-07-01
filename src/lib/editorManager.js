@@ -67,8 +67,10 @@ import {
 } from "cm/editorUtils";
 import indentGuides from "cm/indentGuides";
 import { lineBreakMarker } from "cm/lineBreakMarker";
+import quickToolsModifierInput from "cm/quickToolsModifierInput";
 import rainbowBrackets, { getRainbowBracketColors } from "cm/rainbowBrackets";
 import scrollPastEndCustom from "cm/scrollPastEnd";
+import { isShiftSelectionActive as resolveShiftSelectionActive } from "cm/shiftSelection";
 import tagAutoRename from "cm/tagAutoRename";
 import { getThemeConfig, getThemeExtensions } from "cm/themes";
 import list from "components/collapsableList";
@@ -215,8 +217,11 @@ async function EditorManager($header, $body) {
 		},
 	);
 	const isShiftSelectionActive = (event) => {
-		if (!appSettings.value.shiftClickSelection) return false;
-		return !!event?.shiftKey || quickTools?.$footer?.dataset?.shift != null;
+		return resolveShiftSelectionActive({
+			event,
+			quickToolsShift: quickTools?.$footer?.dataset?.shift != null,
+			shiftClickSelection: appSettings.value.shiftClickSelection,
+		});
 	};
 	const shiftClickSelectionExtension = EditorView.domEventHandlers({
 		click(event) {
@@ -951,6 +956,7 @@ async function EditorManager($header, $body) {
 			pointerCursorVisibilityExtension,
 			shiftClickSelectionExtension,
 			touchSelectionUpdateExtension,
+			quickToolsModifierInputExtension: quickToolsModifierInput(),
 			searchExtension: search(),
 			// Ensure read-only can be toggled later via compartment
 			readOnlyExtension: readOnlyCompartment.of(EditorState.readOnly.of(false)),
@@ -1515,6 +1521,7 @@ async function EditorManager($header, $body) {
 			pointerCursorVisibilityExtension,
 			shiftClickSelectionExtension,
 			touchSelectionUpdateExtension,
+			quickToolsModifierInputExtension: quickToolsModifierInput(),
 			searchExtension: search(),
 			// Keep dynamic compartments across state swaps
 			optionExtensions: getBaseExtensionsFromOptions(),

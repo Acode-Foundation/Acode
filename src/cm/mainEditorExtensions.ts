@@ -9,6 +9,7 @@ interface MainEditorExtensionOptions {
 	pointerCursorVisibilityExtension?: Extension;
 	shiftClickSelectionExtension?: Extension;
 	touchSelectionUpdateExtension?: Extension;
+	quickToolsModifierInputExtension?: Extension;
 	searchExtension?: Extension;
 	readOnlyExtension?: Extension;
 	optionExtensions?: Extension[];
@@ -47,6 +48,7 @@ export function createMainEditorExtensions(
 	pushExtension(extensions, options.pointerCursorVisibilityExtension);
 	pushExtension(extensions, options.shiftClickSelectionExtension);
 	pushExtension(extensions, options.touchSelectionUpdateExtension);
+	pushExtension(extensions, options.quickToolsModifierInputExtension);
 	pushExtension(extensions, options.searchExtension);
 	pushExtension(extensions, options.readOnlyExtension);
 

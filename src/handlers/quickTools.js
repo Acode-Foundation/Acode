@@ -7,7 +7,13 @@ import {
 	SearchQuery,
 	setSearchQuery,
 } from "@codemirror/search";
-import { executeCommand } from "cm/commandRegistry";
+import { executeCommand, getRegisteredCommands } from "cm/commandRegistry";
+import { setQuickToolsModifierInputHandler } from "cm/quickToolsModifierInput";
+import {
+	findQuickToolCommand,
+	mapQuickToolShiftText,
+} from "cm/quickToolsModifierKeys";
+import { runQuickToolKey } from "cm/quickToolsNavigation";
 import quickTools from "components/quickTools";
 import actionStack from "lib/actionStack";
 import searchHistory from "lib/searchHistory";
@@ -36,6 +42,8 @@ const events = {
 	ctrl: [],
 	meta: [],
 };
+
+setQuickToolsModifierInputHandler(handleCodeMirrorQuickToolsTextInput);
 
 /**
  * @typedef { 'shift' | 'alt' | 'ctrl' | 'meta' } QuickToolsEvent
@@ -212,7 +220,11 @@ export default function actions(action, value) {
 		state[action] = value;
 		events[action].forEach((cb) => cb(value));
 		if (Object.values(state).includes(true)) {
-			$input.focus();
+			if (isCodeMirrorEditorInput(input)) {
+				editor?.focus();
+			} else {
+				$input.focus();
+			}
 		} else if (input) {
 			input.focus();
 		} else {
@@ -235,13 +247,12 @@ export default function actions(action, value) {
 
 		case "key": {
 			value = Number.parseInt(value, 10);
-			if (value < 37 || value > 40) {
-				resetKeys();
-			}
+			const keyCombination = getKeys({ keyCode: value });
 			setInput();
-			getInput().dispatchEvent(
-				KeyboardEvent("keydown", getKeys({ keyCode: value })),
-			);
+			if (runCodeMirrorQuickToolKey(value, keyCombination)) {
+				return true;
+			}
+			getInput().dispatchEvent(KeyboardEvent("keydown", keyCombination));
 			return true;
 		}
 
@@ -335,6 +346,63 @@ function setInput() {
 	)
 		return;
 	input = activeElement;
+}
+
+function isCodeMirrorEditorInput(target) {
+	const { editor, activeFile } = editorManager;
+	if (!editor || activeFile?.type !== "editor") return false;
+	const contentDOM = editor.contentDOM;
+	return target === contentDOM || (contentDOM?.contains?.(target) ?? false);
+}
+
+function runCodeMirrorQuickToolKey(keyCode, keyCombination) {
+	if (!isCodeMirrorEditorInput(input)) return false;
+	return runQuickToolKey(editorManager.editor, keyCode, keyCombination);
+}
+
+export function handleCodeMirrorQuickToolsTextInput(view, text) {
+	if (!Object.values(state).includes(true)) return;
+	if (!view?.state || !view.contentDOM) return false;
+	if (!text || text.length !== 1) return;
+
+	const keyCombination = getKeys({ key: text });
+	input = view.contentDOM;
+
+	if (
+		keyCombination.shiftKey &&
+		!keyCombination.ctrlKey &&
+		!keyCombination.altKey &&
+		!keyCombination.metaKey
+	) {
+		resetKeys();
+		view.dispatch(view.state.replaceSelection(mapQuickToolShiftText(text)));
+		setQuicktoolsUsed();
+		return true;
+	}
+
+	if (
+		!keyCombination.ctrlKey &&
+		!keyCombination.altKey &&
+		!keyCombination.metaKey
+	) {
+		return false;
+	}
+
+	resetKeys();
+
+	const command = findQuickToolCommand(
+		getRegisteredCommands(),
+		text,
+		keyCombination,
+	);
+	if (command && executeCommand(command.name, view)) {
+		setQuicktoolsUsed();
+		return true;
+	}
+
+	getInput().dispatchEvent(KeyboardEvent("keydown", keyCombination));
+	setQuicktoolsUsed();
+	return true;
 }
 
 function toggleSearch() {
@@ -708,50 +776,7 @@ function insertText(value) {
 }
 
 function shiftKeyMapping(char) {
-	switch (char) {
-		case "1":
-			return "!";
-		case "2":
-			return "@";
-		case "3":
-			return "#";
-		case "4":
-			return "$";
-		case "5":
-			return "%";
-		case "6":
-			return "^";
-		case "7":
-			return "&";
-		case "8":
-			return "*";
-		case "9":
-			return "(";
-		case "0":
-			return ")";
-		case "-":
-			return "_";
-		case "=":
-			return "+";
-		case "[":
-			return "{";
-		case "]":
-			return "}";
-		case "\\":
-			return "|";
-		case ";":
-			return ":";
-		case "'":
-			return '"';
-		case ",":
-			return "<";
-		case ".":
-			return ">";
-		case "/":
-			return "?";
-		default:
-			return char.toUpperCase();
-	}
+	return mapQuickToolShiftText(char);
 }
 
 function getRefValue(ref) {
