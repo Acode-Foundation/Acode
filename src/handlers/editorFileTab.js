@@ -76,6 +76,7 @@ let prevScrollLeft = 0;
  */
 let initialNextSibling = null;
 let didReorder = false;
+let dragSessionId = 0;
 
 const MIN_SCROLL_SPEED = 2;
 const MAX_SCROLL_SPEED = 14;
@@ -111,6 +112,7 @@ export default function startDrag(e) {
 	$tabClone = $tab.cloneNode(true);
 	initialNextSibling = $tab.nextElementSibling;
 	didReorder = false;
+	dragSessionId += 1;
 
 	const rect = $tab.getBoundingClientRect();
 	const parentRect = $parent.getBoundingClientRect();
@@ -236,6 +238,7 @@ function releaseDrag(e) {
 }
 
 function finishDrag(shouldSettleClone) {
+	const dragState = getCurrentDragState();
 	cancelAnimationFrame(animationFrame);
 
 	document.removeEventListener("mousemove", onDrag, opts);
@@ -248,15 +251,17 @@ function finishDrag(shouldSettleClone) {
 	$parent.removeEventListener("scroll", preventDefaultScroll);
 
 	if (shouldSettleClone) {
-		const rect = $tab.getBoundingClientRect();
+		const rect = dragState.tab.getBoundingClientRect();
 		let cleaned = false;
+		let cleanupTimeout = null;
 		const safeCleanup = () => {
 			if (cleaned) return;
 			cleaned = true;
-			cleanupDrag();
+			if (cleanupTimeout) clearTimeout(cleanupTimeout);
+			cleanupDrag(dragState);
 		};
 		animate(
-			$tabClone,
+			dragState.tabClone,
 			{ transform: `translate3d(${rect.left}px, ${rect.top}px, 0)` },
 			{
 				duration: document.body.classList.contains("no-animation")
@@ -267,17 +272,37 @@ function finishDrag(shouldSettleClone) {
 		)
 			.then(safeCleanup)
 			.catch(safeCleanup);
-		setTimeout(safeCleanup, 500);
+		cleanupTimeout = setTimeout(safeCleanup, 500);
 		return;
 	}
 
-	cleanupDrag();
+	cleanupDrag(dragState);
 }
 
-function cleanupDrag() {
-	$tab.style.opacity = "";
-	delete $tab.dataset.editorTabDragging;
-	$tabClone.remove();
+function getCurrentDragState() {
+	return {
+		id: dragSessionId,
+		tab: $tab,
+		tabClone: $tabClone,
+	};
+}
+
+function cleanupDrag(state = getCurrentDragState()) {
+	const isCurrentDrag =
+		state.id === dragSessionId &&
+		state.tabClone &&
+		state.tabClone === $tabClone;
+	const isSameTabInNewDrag = !isCurrentDrag && state.tab && state.tab === $tab;
+
+	if (state.tab && !isSameTabInNewDrag) {
+		state.tab.style.opacity = "";
+		delete state.tab.dataset.editorTabDragging;
+	}
+
+	state.tabClone?.remove();
+
+	if (!isCurrentDrag) return;
+
 	editorManager.syncOpenFileList?.();
 	$tabClone = null;
 	$originParent = null;
