@@ -1291,11 +1291,19 @@ export default class EditorFile {
 				(file) => file.id !== this.id,
 			);
 		}
-		const { files, activeFile } = editorManager;
+		const { activeFile } = editorManager;
 		const wasActive = activeFile?.id === this.id;
 		if (wasActive) {
 			editorManager.activeFile = null;
 		}
+		const paneClosed =
+			!suppressFallback &&
+			this.isPanePlaceholder &&
+			!isUnsaved &&
+			removal?.pane &&
+			!removal.nextFile &&
+			editorManager.closeEmptyPane?.(removal.pane);
+		const { files } = editorManager;
 		if (!files.length) {
 			Sidebar.hide();
 			editorManager.activeFile = null;
@@ -1310,6 +1318,7 @@ export default class EditorFile {
 			removal?.wasPaneActive &&
 			removal.pane &&
 			!removal.nextFile &&
+			!paneClosed &&
 			!suppressFallback
 		) {
 			new EditorFile(config.DEFAULT_FILE_NAME, {

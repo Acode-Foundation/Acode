@@ -738,9 +738,6 @@ async function EditorManager($header, $body) {
 		if (!appSettings.value.shiftClickSelection) return false;
 		return !!event?.shiftKey || quickTools?.$footer?.dataset?.shift != null;
 	};
-	const isCtrlSelectionActive = (event) => {
-		return !!event?.ctrlKey || quickTools?.$footer?.dataset?.ctrl != null;
-	};
 
 	function registerSoftKeyboardCursorReveal() {
 		const shouldRevealCursor = () => {
@@ -1587,7 +1584,6 @@ async function EditorManager($header, $body) {
 		container: $container,
 		getActiveFile: () => manager?.activeFile || null,
 		isShiftSelectionActive,
-		isCtrlSelectionActive,
 	});
 	primaryPane.touchSelectionController = touchSelectionController;
 
@@ -2279,7 +2275,6 @@ async function EditorManager($header, $body) {
 			container: pane.editorContainer,
 			getActiveFile: () => pane.activeFile || null,
 			isShiftSelectionActive,
-			isCtrlSelectionActive,
 		});
 		await setupEditor(pane);
 		return paneEditor;
@@ -2348,10 +2343,10 @@ async function EditorManager($header, $body) {
 		return createPane({ moveFile: file, direction });
 	}
 
-	function closeActivePane() {
-		const pane = getActivePane();
+	function closePane(pane = getActivePane()) {
 		if (!pane || panes.length <= 1) return false;
 		const preferredFile = pane.activeFile;
+		const wasActivePane = activePane === pane;
 
 		const orderedPanes = getOrderedPanes();
 		const paneIndex = orderedPanes.indexOf(pane);
@@ -2392,13 +2387,26 @@ async function EditorManager($header, $body) {
 		const fileToActivate = targetPane.files.includes(preferredFile)
 			? preferredFile
 			: targetPane.activeFile;
-		if (fileToActivate) {
-			fileToActivate.makeActive();
+		if (wasActivePane || activePane === pane) {
+			if (fileToActivate) {
+				fileToActivate.makeActive();
+			} else {
+				activatePane(targetPane, { focusEditor: false });
+			}
 		} else {
-			activatePane(targetPane, { focusEditor: false });
+			updateActivePaneLayoutPath(activePane);
 		}
 		syncOpenFileList();
 		return true;
+	}
+
+	function closeActivePane() {
+		return closePane(getActivePane());
+	}
+
+	function closeEmptyPane(pane) {
+		if (!pane || pane.files.length || panes.length <= 1) return false;
+		return closePane(pane);
 	}
 
 	function focusPaneByOffset(offset) {
@@ -2971,6 +2979,7 @@ async function EditorManager($header, $body) {
 		splitPaneRight,
 		splitPaneDown,
 		closeActivePane,
+		closeEmptyPane,
 		focusNextPane,
 		focusPreviousPane,
 		focusPaneByDirection,
