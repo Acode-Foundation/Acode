@@ -101,7 +101,10 @@ export function getModeForPath(path: string): Mode {
 
 	// Sort modes by specificity (descending) to check most specific first
 	const sortedModes = [...modes].sort((a, b) => {
-		return getModeSpecificityScore(b) - getModeSpecificityScore(a);
+		const scoreDiff = getModeSpecificityScore(b) - getModeSpecificityScore(a);
+		if (scoreDiff !== 0) return scoreDiff;
+		// Tie-breaker: prefer modes registered later (plugins) over those registered earlier (core)
+		return modes.indexOf(b) - modes.indexOf(a);
 	});
 
 	for (const iMode of sortedModes) {
@@ -120,6 +123,10 @@ export function getModeForPath(path: string): Mode {
  * - Non-anchored patterns (extensions) are scored by length.
  */
 function getModeSpecificityScore(modeInstance: Mode): number {
+	if (modeInstance.name.toLowerCase() === "text") {
+		return 0;
+	}
+
 	const extensionsStr = modeInstance.extensions;
 	let maxScore = 0;
 
