@@ -1,4 +1,5 @@
 import { getLanguageModeRecommendationSearchKeyword } from "../lib/languageModeRecommendations";
+import { isVersionGreater } from "../utils/version";
 import { TestRunner } from "./tester";
 
 export async function runSanityTests(writeOutput) {
@@ -81,6 +82,28 @@ export async function runSanityTests(writeOutput) {
 			"Extensionless non-dotfiles should not request plugin recommendations",
 		);
 	});
+
+	runner.test(
+		"Plugin version comparison only accepts newer versions",
+		(test) => {
+			test.assert(
+				isVersionGreater("1.1.2", "1.1.1"),
+				"Patch updates should be newer",
+			);
+			test.assert(
+				isVersionGreater("1.2.0", "1.1.9"),
+				"Minor updates should be newer",
+			);
+			test.assert(
+				!isVersionGreater("1.1.1", "1.1.1"),
+				"Equal versions should not be updates",
+			);
+			test.assert(
+				!isVersionGreater("1.0.0", "1.1.1"),
+				"Lower remote versions should not be updates",
+			);
+		},
+	);
 
 	// Run all tests
 	return await runner.run(writeOutput);
