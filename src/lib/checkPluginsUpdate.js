@@ -37,7 +37,10 @@ export default async function checkPluginsUpdate() {
 						.readFile("json")
 						.catch(() => null);
 
-					if (isVersionGreater(remotePlugin?.version, plugin.version)) {
+					if (
+						!remotePlugin?.version ||
+						isVersionGreater(remotePlugin.version, plugin.version)
+					) {
 						updates.push(plugin.id);
 					}
 				}

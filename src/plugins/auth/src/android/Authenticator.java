@@ -244,8 +244,13 @@ public class Authenticator extends CordovaPlugin {
     }
 
     private void setLoginCallback(CallbackContext callbackContext) {
+        CallbackContext previousCallback = null;
         synchronized (loginCallbackLock) {
+            previousCallback = loginCallback;
             loginCallback = callbackContext;
+        }
+        if (previousCallback != null) {
+            previousCallback.error("Login cancelled");
         }
     }
 
