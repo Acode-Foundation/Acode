@@ -1,7 +1,13 @@
 import sidebarApps from "sidebarApps";
 import { indentUnit, language as languageFacet } from "@codemirror/language";
 import { search } from "@codemirror/search";
-import { Compartment, EditorState, Prec, StateEffect } from "@codemirror/state";
+import {
+	Compartment,
+	EditorSelection,
+	EditorState,
+	Prec,
+	StateEffect,
+} from "@codemirror/state";
 import { oneDark } from "@codemirror/theme-one-dark";
 import {
 	closeHoverTooltips,
@@ -219,10 +225,13 @@ async function EditorManager($header, $body) {
 			});
 		},
 	);
+	const isShiftClickSelectionEnabled = () =>
+		appSettings.value.shiftClickSelection !== false;
 	const isShiftSelectionActive = (event) => {
 		return resolveShiftSelectionActive({
 			event,
 			quickToolsShift: quickTools?.$footer?.dataset?.shift != null,
+			shiftClickSelection: isShiftClickSelectionEnabled(),
 		});
 	};
 	const isMultiCursorSelectionActive = (event) => {
@@ -240,6 +249,24 @@ async function EditorManager($header, $body) {
 		});
 	};
 	const shiftClickSelectionExtension = EditorView.domEventHandlers({
+		mousedown(event, view) {
+			if (!event.shiftKey || isShiftClickSelectionEnabled()) return false;
+			if ((event.button ?? 0) !== 0) return false;
+
+			const pos = view.posAtCoords(
+				{ x: event.clientX, y: event.clientY },
+				false,
+			);
+			if (pos != null) {
+				view.dispatch({
+					selection: EditorSelection.cursor(pos),
+					userEvent: "select.pointer",
+				});
+				view.focus();
+			}
+			event.preventDefault();
+			return true;
+		},
 		click(event) {
 			if (!touchSelectionController?.consumePendingShiftSelectionClick(event)) {
 				return false;
@@ -413,7 +440,10 @@ async function EditorManager($header, $body) {
 		const lineNumberConfig = {
 			domEventHandlers: {
 				click(view, line, event) {
-					return handleLineNumberClick(view, line, event);
+					return handleLineNumberClick(view, line, event, {
+						shiftClickSelection:
+							appSettings.value.shiftClickSelection !== false,
+					});
 				},
 			},
 		};

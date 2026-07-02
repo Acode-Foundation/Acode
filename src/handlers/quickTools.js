@@ -259,12 +259,17 @@ export default function actions(action, value) {
 		case "key": {
 			value = Number.parseInt(value, 10);
 			const keyCombination = getKeys({ keyCode: value });
+			const shouldResetKeys = value < 37 || value > 40;
 			setInput();
-			if (runCodeMirrorQuickToolKey(value, keyCombination)) {
+			try {
+				if (runCodeMirrorQuickToolKey(value, keyCombination)) {
+					return true;
+				}
+				getInput().dispatchEvent(KeyboardEvent("keydown", keyCombination));
 				return true;
+			} finally {
+				if (shouldResetKeys) resetKeys();
 			}
-			getInput().dispatchEvent(KeyboardEvent("keydown", keyCombination));
-			return true;
 		}
 
 		case "search":
@@ -372,12 +377,11 @@ function runCodeMirrorQuickToolKey(keyCode, keyCombination) {
 }
 
 export function handleCodeMirrorQuickToolsTextInput(view, text) {
-	if (!Object.values(state).includes(true)) return;
+	if (!Object.values(state).includes(true)) return false;
 	if (!view?.state || !view.contentDOM) return false;
-	if (!text || text.length !== 1) return;
+	if (!text || text.length !== 1) return false;
 
 	const keyCombination = getKeys({ key: text });
-	input = view.contentDOM;
 
 	if (
 		keyCombination.shiftKey &&
@@ -411,7 +415,7 @@ export function handleCodeMirrorQuickToolsTextInput(view, text) {
 		return true;
 	}
 
-	getInput().dispatchEvent(KeyboardEvent("keydown", keyCombination));
+	view.contentDOM.dispatchEvent(KeyboardEvent("keydown", keyCombination));
 	setQuicktoolsUsed();
 	return true;
 }

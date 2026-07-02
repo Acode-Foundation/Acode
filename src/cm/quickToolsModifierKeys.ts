@@ -80,13 +80,10 @@ export function getQuickToolCombo(
 	const normalizedKey = normalizeKey(key);
 	if (!normalizedKey) return null;
 
-	const parts: string[] = [];
-	if (modifiers.ctrlKey) parts.push("Ctrl");
-	if (modifiers.altKey) parts.push("Alt");
-	if (modifiers.shiftKey) parts.push("Shift");
-	if (modifiers.metaKey) parts.push("Meta");
-	parts.push(normalizedKey);
-	return normalizeShortcutCombo(parts.join("-"));
+	const modifierParts = Object.entries(modifiers)
+		.filter(([, enabled]) => enabled)
+		.map(([modifier]) => modifier.replace(/Key$/, ""));
+	return normalizeShortcutCombo([...modifierParts, normalizedKey].join("-"));
 }
 
 export function findQuickToolCommand(

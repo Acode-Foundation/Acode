@@ -385,48 +385,47 @@ export async function runCodeMirrorTests(writeOutput) {
 		},
 	);
 
-	runner.test(
-		"Quick tools Shift enables pointer selection independently",
-		(test) => {
-			test.assert(
-				isShiftSelectionActive({
-					event: { shiftKey: false },
-					quickToolsShift: true,
-					shiftClickSelection: false,
-				}),
-				"Quick tools Shift should bypass shift-click setting",
-			);
-		},
-	);
-
-	runner.test(
-		"Physical Shift pointer selection ignores hidden setting",
-		(test) => {
-			test.assert(
-				isShiftSelectionActive({
-					event: { shiftKey: true },
-					quickToolsShift: false,
-					shiftClickSelection: false,
-				}),
-				"Physical Shift should ignore old disabled settings",
-			);
-			test.assert(
-				isShiftSelectionActive({
-					event: { shiftKey: true },
-					quickToolsShift: false,
-					shiftClickSelection: true,
-				}),
-				"Physical Shift should work when setting is enabled",
-			);
-			test.assert(
-				isShiftSelectionActive({
-					event: { shiftKey: true },
-					quickToolsShift: false,
-				}),
-				"Physical Shift should default to enabled",
-			);
-		},
-	);
+	runner.test("Shift pointer selection follows setting", (test) => {
+		test.assert(
+			isShiftSelectionActive({
+				event: { shiftKey: false },
+				quickToolsShift: true,
+				shiftClickSelection: true,
+			}),
+			"Quick tools Shift should extend selection when enabled",
+		);
+		test.assert(
+			!isShiftSelectionActive({
+				event: { shiftKey: false },
+				quickToolsShift: true,
+				shiftClickSelection: false,
+			}),
+			"Quick tools Shift should respect disabled setting",
+		);
+		test.assert(
+			!isShiftSelectionActive({
+				event: { shiftKey: true },
+				quickToolsShift: false,
+				shiftClickSelection: false,
+			}),
+			"Physical Shift should respect disabled setting",
+		);
+		test.assert(
+			isShiftSelectionActive({
+				event: { shiftKey: true },
+				quickToolsShift: false,
+				shiftClickSelection: true,
+			}),
+			"Physical Shift should work when setting is enabled",
+		);
+		test.assert(
+			isShiftSelectionActive({
+				event: { shiftKey: true },
+				quickToolsShift: false,
+			}),
+			"Physical Shift should default to enabled",
+		);
+	});
 
 	runner.test("Quick tools Ctrl/Meta enable multi-cursor selection", (test) => {
 		test.assert(

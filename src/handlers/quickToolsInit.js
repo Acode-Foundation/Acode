@@ -27,6 +27,7 @@ let timeout;
 let $touchstart;
 
 function reset() {
+	clearTouchFeedback();
 	moveX = 0;
 	movedX = 0;
 	time = 300;
@@ -36,6 +37,12 @@ function reset() {
 	touchMoved = undefined;
 	contextmenuTimeout = null;
 	active = false;
+}
+
+function clearTouchFeedback() {
+	if ($touchstart && !active) {
+		$touchstart.classList.remove("active");
+	}
 }
 
 /**
@@ -312,7 +319,7 @@ function touchcancel(e) {
 	document.removeEventListener("touchmove", touchmove);
 	clearTimeout(timeout);
 	clearTimeout(contextmenuTimeout);
-	if (!active) $touchstart.classList.remove("active");
+	clearTouchFeedback();
 }
 
 /**

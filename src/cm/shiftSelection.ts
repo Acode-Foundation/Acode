@@ -14,7 +14,9 @@ interface ShiftSelectionOptions {
 export function isRangeSelectionActive({
 	event,
 	quickToolsShift,
+	shiftClickSelection = true,
 }: ShiftSelectionOptions = {}): boolean {
+	if (shiftClickSelection === false) return false;
 	if (quickToolsShift) return true;
 	return !!event?.shiftKey;
 }

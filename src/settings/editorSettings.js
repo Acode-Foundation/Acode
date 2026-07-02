@@ -231,6 +231,13 @@ export default function editorSettings() {
 			category: categories.cursorSelection,
 		},
 		{
+			key: "shiftClickSelection",
+			text: strings["shift click selection"],
+			checkbox: values.shiftClickSelection !== false,
+			info: strings["settings-info-editor-shift-click-selection"],
+			category: categories.cursorSelection,
+		},
+		{
 			key: "rtlText",
 			text: strings["line based rtl switching"],
 			checkbox: values.rtlText,
