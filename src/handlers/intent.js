@@ -28,6 +28,10 @@ export default async function HandleIntent(intent = {}) {
 			const path = url.replace("acode://", "");
 			const [module, action, value] = path.split("/");
 
+			if (module === "auth" && action === "callback") {
+				return;
+			}
+
 			let defaultPrevented = false;
 			const event = new IntentEvent(module, action, value);
 			for (const handler of handlers) {

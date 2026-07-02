@@ -132,6 +132,17 @@ body.no-animation {
         &.active {
           opacity: 1;
         }
+
+        &.avatar-loading {
+          opacity: 0.45;
+          background-color: rgba(255, 255, 255, 0.08);
+          animation: sidebar-avatar-loading 1.2s ease-in-out infinite;
+
+          &:hover {
+            opacity: 0.45;
+            background-color: rgba(255, 255, 255, 0.08);
+          }
+        }
       }
     }
 
@@ -337,6 +348,17 @@ body.no-animation {
       justify-content: center;
       font-weight: 600;
     }
+  }
+}
+
+@keyframes sidebar-avatar-loading {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(0.94);
   }
 }
 

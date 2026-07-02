@@ -1,7 +1,4 @@
-import toast from "components/toast";
-import { addIntentHandler } from "handlers/intent";
 import config from "./config";
-import customTab from "./customTab";
 
 /**
  * @typedef {object} User
@@ -50,7 +47,6 @@ class AuthService {
 	#loginTimeout = null;
 
 	constructor() {
-		addIntentHandler(this.onIntentReceiver.bind(this));
 		loginEvents.addListener(() => {
 			clearTimeout(this.#loginTimeout);
 			for (const callback of this.#loginCallbacks) {
@@ -68,25 +64,6 @@ class AuthService {
 				this.#loginCallbacks.clear();
 			}, 1000);
 		});
-	}
-
-	async onIntentReceiver(event) {
-		try {
-			if (event?.module === "user" && event?.action === "login") {
-				if (event?.value) {
-					this.#exec("saveToken", [event.value]);
-					toast("Logged in successfully");
-
-					setTimeout(() => {
-						loginEvents.emit();
-					}, 500);
-				}
-			}
-			return null;
-		} catch (error) {
-			console.error("Failed to parse intent token.", error);
-			return null;
-		}
 	}
 
 	/**
@@ -159,12 +136,22 @@ class AuthService {
 
 	async login() {
 		return new Promise((resolve, reject) => {
-			customTab(`${config.BASE_URL}/login?redirect=app`).catch((err) => {
-				console.error("Custom tab error", err);
-				reject("Failed to open browser");
-			});
-
-			this.#loginCallbacks.add({ resolve, reject });
+			const callback = { resolve, reject };
+			this.#loginCallbacks.add(callback);
+			this.#exec("login", [
+				{
+					baseUrl: config.BASE_URL,
+					appVersionCode: window.BuildInfo?.versionCode || 0,
+				},
+			])
+				.then(() => {
+					loginEvents.emit();
+				})
+				.catch((err) => {
+					console.error("Native login error", err);
+					this.#loginCallbacks.delete(callback);
+					reject("Failed to login");
+				});
 		});
 	}
 }
