@@ -8,7 +8,9 @@ interface MainEditorExtensionOptions {
 	themeExtension?: Extension;
 	pointerCursorVisibilityExtension?: Extension;
 	shiftClickSelectionExtension?: Extension;
+	multiCursorSelectionExtension?: Extension;
 	touchSelectionUpdateExtension?: Extension;
+	quickToolsModifierInputExtension?: Extension;
 	searchExtension?: Extension;
 	readOnlyExtension?: Extension;
 	optionExtensions?: Extension[];
@@ -46,7 +48,9 @@ export function createMainEditorExtensions(
 	extensions.push(fixedHeightTheme);
 	pushExtension(extensions, options.pointerCursorVisibilityExtension);
 	pushExtension(extensions, options.shiftClickSelectionExtension);
+	pushExtension(extensions, options.multiCursorSelectionExtension);
 	pushExtension(extensions, options.touchSelectionUpdateExtension);
+	pushExtension(extensions, options.quickToolsModifierInputExtension);
 	pushExtension(extensions, options.searchExtension);
 	pushExtension(extensions, options.readOnlyExtension);
 

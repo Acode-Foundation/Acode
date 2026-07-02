@@ -14,6 +14,10 @@ type LineNumberClickEvent = Pick<
 	| "defaultPrevented"
 >;
 
+interface LineNumberClickOptions {
+	shiftClickSelection?: boolean;
+}
+
 function toDocumentOffset(
 	value: number | null | undefined,
 	fallback = 0,
@@ -91,6 +95,7 @@ export function handleLineNumberClick(
 	view: EditorView | null | undefined,
 	line: LineInfo,
 	event: LineNumberClickEvent | null | undefined,
+	options: LineNumberClickOptions = {},
 ): boolean {
 	if (!view || !event || event.defaultPrevented) return false;
 	if ((event.button ?? 0) !== 0) return false;
@@ -100,13 +105,15 @@ export function handleLineNumberClick(
 
 	const range = getLineSelectionRange(view.state, line);
 	if (!range) return false;
+	const extendSelection =
+		event.shiftKey && options.shiftClickSelection !== false;
 
 	event.preventDefault();
 	view.dispatch({
-		selection: event.shiftKey
+		selection: extendSelection
 			? createExtendedLineSelection(view.state, range)
 			: createLineSelection(range),
-		userEvent: event.shiftKey ? "select.extend.pointer" : "select.pointer",
+		userEvent: extendSelection ? "select.extend.pointer" : "select.pointer",
 	});
 	view.focus();
 	return true;

@@ -115,6 +115,20 @@ export function getEdgeScrollDirections(options) {
 	return { horizontal, vertical };
 }
 
+/**
+ * Add a cursor or range to an existing CodeMirror selection.
+ * @param {EditorSelection} selection
+ * @param {{anchor:number, head:number, extend?:boolean}} options
+ * @returns {EditorSelection}
+ */
+export function addPointerSelectionRange(selection, options) {
+	const { anchor, head, extend = false } = options;
+	const range = extend
+		? EditorSelection.range(anchor, head)
+		: EditorSelection.cursor(head);
+	return selection.addRange(range);
+}
+
 function clamp(value, min, max) {
 	return Math.max(min, Math.min(max, value));
 }
@@ -128,11 +142,12 @@ class TouchSelectionMenuController {
 	#container;
 	#getActiveFile;
 	#isShiftSelectionActive;
+	#isMultiCursorSelectionActive;
 	#stateSyncRaf = 0;
 	#isScrolling = false;
 	#isPointerInteracting = false;
-	#shiftSelectionSession = null;
-	#pendingShiftSelectionClick = null;
+	#pointerSelectionSession = null;
+	#pendingPointerSelectionClick = null;
 	#menuActive = false;
 	#menuRequested = false;
 	#enabled = true;
@@ -147,6 +162,8 @@ class TouchSelectionMenuController {
 		this.#getActiveFile = options.getActiveFile || (() => null);
 		this.#isShiftSelectionActive =
 			options.isShiftSelectionActive || (() => false);
+		this.#isMultiCursorSelectionActive =
+			options.isMultiCursorSelectionActive || (() => false);
 		this.$menu = document.createElement("menu");
 		this.$menu.className = "cursor-menu";
 		this.#bindEvents();
@@ -195,8 +212,8 @@ class TouchSelectionMenuController {
 		this.#clearMenuShowTimer();
 		cancelAnimationFrame(this.#stateSyncRaf);
 		this.#stateSyncRaf = 0;
-		this.#shiftSelectionSession = null;
-		this.#pendingShiftSelectionClick = null;
+		this.#pointerSelectionSession = null;
+		this.#pendingPointerSelectionClick = null;
 		this.#tooltipObserver?.disconnect();
 		this.#hideMenu(true);
 	}
@@ -204,8 +221,8 @@ class TouchSelectionMenuController {
 	setEnabled(enabled) {
 		this.#enabled = !!enabled;
 		if (this.#enabled) return;
-		this.#shiftSelectionSession = null;
-		this.#pendingShiftSelectionClick = null;
+		this.#pointerSelectionSession = null;
+		this.#pendingPointerSelectionClick = null;
 		this.#menuRequested = false;
 		this.#isPointerInteracting = false;
 		this.#isScrolling = false;
@@ -273,8 +290,8 @@ class TouchSelectionMenuController {
 
 	onSessionChanged() {
 		if (!this.#enabled) return;
-		this.#shiftSelectionSession = null;
-		this.#pendingShiftSelectionClick = null;
+		this.#pointerSelectionSession = null;
+		this.#pendingPointerSelectionClick = null;
 		this.#menuRequested = false;
 		this.#isPointerInteracting = false;
 		this.#isScrolling = false;
@@ -295,16 +312,16 @@ class TouchSelectionMenuController {
 		const target = event.target;
 		if (this.$menu.contains(target)) return;
 		if (this.#isIgnoredPointerTarget(target)) {
-			this.#shiftSelectionSession = null;
+			this.#pointerSelectionSession = null;
 			return;
 		}
 		if (target instanceof Node && this.#view.dom.contains(target)) {
-			this.#captureShiftSelection(event);
+			this.#capturePointerSelection(event);
 			this.#isPointerInteracting = true;
 			this.#clearMenuShowTimer();
 			return;
 		}
-		this.#shiftSelectionSession = null;
+		this.#pointerSelectionSession = null;
 		this.#isPointerInteracting = false;
 		this.#menuRequested = false;
 		this.#hideMenu();
@@ -312,9 +329,9 @@ class TouchSelectionMenuController {
 
 	#onGlobalPointerUp = (event) => {
 		if (event.type === "pointerup") {
-			this.#commitShiftSelection(event);
+			this.#commitPointerSelection(event);
 		} else {
-			this.#shiftSelectionSession = null;
+			this.#pointerSelectionSession = null;
 		}
 		if (!this.#isPointerInteracting) return;
 		this.#isPointerInteracting = false;
@@ -329,25 +346,27 @@ class TouchSelectionMenuController {
 		this.#hideMenu();
 	};
 
-	#captureShiftSelection(event) {
-		if (!this.#canExtendSelection(event)) {
-			this.#shiftSelectionSession = null;
+	#capturePointerSelection(event) {
+		if (!this.#canHandlePointerSelection(event)) {
+			this.#pointerSelectionSession = null;
 			return;
 		}
 
-		this.#shiftSelectionSession = {
+		this.#pointerSelectionSession = {
 			pointerId: event.pointerId,
 			anchor: this.#view.state.selection.main.anchor,
+			extend: this.#canExtendSelection(event),
+			addRange: this.#canAddSelectionRange(event),
 			x: event.clientX,
 			y: event.clientY,
 		};
 	}
 
-	#commitShiftSelection(event) {
-		const session = this.#shiftSelectionSession;
-		this.#shiftSelectionSession = null;
+	#commitPointerSelection(event) {
+		const session = this.#pointerSelectionSession;
+		this.#pointerSelectionSession = null;
 		if (!session) return;
-		if (!this.#canExtendSelection(event)) return;
+		if (!this.#canHandlePointerSelection(event)) return;
 		if (event.pointerId !== session.pointerId) return;
 		if (
 			Math.hypot(event.clientX - session.x, event.clientY - session.y) >
@@ -365,16 +384,28 @@ class TouchSelectionMenuController {
 			{ x: event.clientX, y: event.clientY },
 			false,
 		);
+		if (head == null) return;
+		const selection = session.addRange
+			? addPointerSelectionRange(this.#view.state.selection, {
+					anchor: session.anchor,
+					head,
+					extend: session.extend,
+				})
+			: EditorSelection.range(session.anchor, head);
 		this.#view.dispatch({
-			selection: EditorSelection.range(session.anchor, head),
-			userEvent: "select.extend",
+			selection,
+			userEvent: session.addRange ? "select.pointer" : "select.extend",
 		});
-		this.#pendingShiftSelectionClick = {
+		this.#pendingPointerSelectionClick = {
 			x: event.clientX,
 			y: event.clientY,
 			timeStamp: event.timeStamp,
 		};
 		event.preventDefault();
+	}
+
+	#canHandlePointerSelection(event) {
+		return this.#canExtendSelection(event) || this.#canAddSelectionRange(event);
 	}
 
 	#canExtendSelection(event) {
@@ -384,9 +415,16 @@ class TouchSelectionMenuController {
 		return !!this.#isShiftSelectionActive(event);
 	}
 
+	#canAddSelectionRange(event) {
+		if (!this.#enabled) return false;
+		if (!(event.isTrusted && event.isPrimary)) return false;
+		if (typeof event.button === "number" && event.button !== 0) return false;
+		return !!this.#isMultiCursorSelectionActive(event);
+	}
+
 	consumePendingShiftSelectionClick(event) {
-		const pending = this.#pendingShiftSelectionClick;
-		this.#pendingShiftSelectionClick = null;
+		const pending = this.#pendingPointerSelectionClick;
+		this.#pendingPointerSelectionClick = null;
 		if (!pending || !this.#enabled) return false;
 		if (event.timeStamp - pending.timeStamp > TAP_MAX_DELAY) return false;
 		if (

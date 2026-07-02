@@ -10,7 +10,24 @@ import { EditorSelection, EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import createBaseExtensions from "cm/baseExtensions";
 import indentGuides from "cm/indentGuides";
-import { getEdgeScrollDirections } from "cm/touchSelectionMenu";
+import {
+	findQuickToolCommand,
+	getShortcutAlternatives,
+	mapQuickToolShiftText,
+} from "cm/quickToolsModifierKeys";
+import {
+	createQuickToolKeyEvent,
+	runQuickToolKey,
+	runQuickToolNavigation,
+} from "cm/quickToolsNavigation";
+import {
+	isMultiCursorSelectionActive,
+	isShiftSelectionActive,
+} from "cm/shiftSelection";
+import {
+	addPointerSelectionRange,
+	getEdgeScrollDirections,
+} from "cm/touchSelectionMenu";
 import { TestRunner } from "./tester";
 
 export async function runCodeMirrorTests(writeOutput) {
@@ -218,6 +235,304 @@ export async function runCodeMirrorTests(writeOutput) {
 			test.assertEqual(main.to, 5);
 			test.assert(main.empty, "Cursor selection should be empty");
 		});
+	});
+
+	runner.test(
+		"Quick tools arrow moves cursor without selection",
+		async (test) => {
+			await withEditor(test, async (view) => {
+				view.dispatch({
+					changes: { from: 0, to: view.state.doc.length, insert: "abc" },
+					selection: EditorSelection.cursor(0),
+				});
+
+				const handled = runQuickToolNavigation(view, 39, { shiftKey: false });
+				const main = view.state.selection.main;
+
+				test.assert(handled, "Right arrow should be handled");
+				test.assert(main.empty, "Selection should stay empty");
+				test.assertEqual(main.head, 1);
+			});
+		},
+	);
+
+	runner.test("Quick tools Shift+Right extends selection", async (test) => {
+		await withEditor(test, async (view) => {
+			view.dispatch({
+				changes: { from: 0, to: view.state.doc.length, insert: "abc" },
+				selection: EditorSelection.cursor(0),
+			});
+
+			const handled = runQuickToolNavigation(view, 39, { shiftKey: true });
+			const main = view.state.selection.main;
+
+			test.assert(handled, "Shift+Right should be handled");
+			test.assertEqual(main.anchor, 0);
+			test.assertEqual(main.head, 1);
+			test.assertEqual(view.state.sliceDoc(main.from, main.to), "a");
+		});
+	});
+
+	runner.test("Quick tools Ctrl+Right moves by word", async (test) => {
+		await withEditor(test, async (view) => {
+			view.dispatch({
+				changes: { from: 0, to: view.state.doc.length, insert: "one two" },
+				selection: EditorSelection.cursor(0),
+			});
+
+			const handled = runQuickToolKey(view, 39, { ctrlKey: true });
+			const main = view.state.selection.main;
+
+			test.assert(handled, "Ctrl+Right should be handled");
+			test.assert(main.empty, "Selection should stay empty");
+			test.assert(
+				main.head > 1,
+				"Ctrl+Right should move farther than one character",
+			);
+		});
+	});
+
+	runner.test("Quick tools Ctrl+Shift+Right selects by word", async (test) => {
+		await withEditor(test, async (view) => {
+			view.dispatch({
+				changes: { from: 0, to: view.state.doc.length, insert: "one two" },
+				selection: EditorSelection.cursor(0),
+			});
+
+			const handled = runQuickToolKey(view, 39, {
+				ctrlKey: true,
+				shiftKey: true,
+			});
+			const main = view.state.selection.main;
+
+			test.assert(handled, "Ctrl+Shift+Right should be handled");
+			test.assertEqual(main.anchor, 0);
+			test.assert(
+				main.head > 1,
+				"Ctrl+Shift+Right should select farther than one character",
+			);
+		});
+	});
+
+	runner.test("Quick tools Shift+Home selects to line start", async (test) => {
+		await withEditor(test, async (view) => {
+			view.dispatch({
+				changes: { from: 0, to: view.state.doc.length, insert: "abc\ndef" },
+				selection: EditorSelection.cursor(6),
+			});
+
+			const handled = runQuickToolKey(view, 36, { shiftKey: true });
+			const main = view.state.selection.main;
+
+			test.assert(handled, "Shift+Home should be handled");
+			test.assertEqual(main.anchor, 6);
+			test.assertEqual(main.head, 4);
+		});
+	});
+
+	runner.test("Quick tools key events preserve modifiers", (test) => {
+		const event = createQuickToolKeyEvent(39, {
+			ctrlKey: true,
+			shiftKey: true,
+			altKey: true,
+			metaKey: true,
+		});
+
+		test.assertEqual(event.key, "ArrowRight");
+		test.assertEqual(event.keyCode, 39);
+		test.assert(event.ctrlKey, "Ctrl should be preserved");
+		test.assert(event.shiftKey, "Shift should be preserved");
+		test.assert(event.altKey, "Alt should be preserved");
+		test.assert(event.metaKey, "Meta should be preserved");
+	});
+
+	runner.test("Quick tools unsupported key falls back", async (test) => {
+		await withEditor(test, async (view) => {
+			const handled = runQuickToolKey(view, 112, {
+				ctrlKey: true,
+				shiftKey: true,
+			});
+			test.assert(!handled, "Unsupported key should not be handled");
+		});
+	});
+
+	runner.test(
+		"Quick tools Shift+Up and Shift+Down extend selection",
+		async (test) => {
+			await withEditor(test, async (view) => {
+				const doc = "abc\ndef\nghi";
+				const line2 = 5;
+				view.dispatch({
+					changes: { from: 0, to: view.state.doc.length, insert: doc },
+					selection: EditorSelection.cursor(line2),
+				});
+
+				const downHandled = runQuickToolNavigation(view, 40, {
+					shiftKey: true,
+				});
+				let main = view.state.selection.main;
+				test.assert(downHandled, "Shift+Down should be handled");
+				test.assertEqual(main.anchor, line2);
+				test.assertEqual(main.head, 9);
+
+				view.dispatch({ selection: EditorSelection.cursor(line2) });
+				const upHandled = runQuickToolNavigation(view, 38, { shiftKey: true });
+				main = view.state.selection.main;
+				test.assert(upHandled, "Shift+Up should be handled");
+				test.assertEqual(main.anchor, line2);
+				test.assertEqual(main.head, 1);
+			});
+		},
+	);
+
+	runner.test("Shift pointer selection follows setting", (test) => {
+		test.assert(
+			isShiftSelectionActive({
+				event: { shiftKey: false },
+				quickToolsShift: true,
+				shiftClickSelection: true,
+			}),
+			"Quick tools Shift should extend selection when enabled",
+		);
+		test.assert(
+			!isShiftSelectionActive({
+				event: { shiftKey: false },
+				quickToolsShift: true,
+				shiftClickSelection: false,
+			}),
+			"Quick tools Shift should respect disabled setting",
+		);
+		test.assert(
+			!isShiftSelectionActive({
+				event: { shiftKey: true },
+				quickToolsShift: false,
+				shiftClickSelection: false,
+			}),
+			"Physical Shift should respect disabled setting",
+		);
+		test.assert(
+			isShiftSelectionActive({
+				event: { shiftKey: true },
+				quickToolsShift: false,
+				shiftClickSelection: true,
+			}),
+			"Physical Shift should work when setting is enabled",
+		);
+		test.assert(
+			isShiftSelectionActive({
+				event: { shiftKey: true },
+				quickToolsShift: false,
+			}),
+			"Physical Shift should default to enabled",
+		);
+	});
+
+	runner.test("Quick tools Ctrl/Meta enable multi-cursor selection", (test) => {
+		test.assert(
+			isMultiCursorSelectionActive({
+				event: { ctrlKey: false, metaKey: false },
+				quickToolsCtrl: true,
+				quickToolsMeta: false,
+			}),
+			"Quick tools Ctrl should add a cursor",
+		);
+		test.assert(
+			isMultiCursorSelectionActive({
+				event: { ctrlKey: false, metaKey: false },
+				quickToolsCtrl: false,
+				quickToolsMeta: true,
+			}),
+			"Quick tools Meta should add a cursor",
+		);
+	});
+
+	runner.test("Physical multi-cursor modifier follows platform", (test) => {
+		test.assert(
+			isMultiCursorSelectionActive({
+				event: { ctrlKey: true, metaKey: false },
+				isMac: false,
+			}),
+			"Ctrl should add a cursor on non-macOS",
+		);
+		test.assert(
+			!isMultiCursorSelectionActive({
+				event: { ctrlKey: false, metaKey: true },
+				isMac: false,
+			}),
+			"Meta should not be the default add-cursor modifier on non-macOS",
+		);
+		test.assert(
+			isMultiCursorSelectionActive({
+				event: { ctrlKey: false, metaKey: true },
+				isMac: true,
+			}),
+			"Meta should add a cursor on macOS",
+		);
+		test.assert(
+			!isMultiCursorSelectionActive({
+				event: { ctrlKey: true, metaKey: false },
+				isMac: true,
+			}),
+			"Ctrl should not be the default add-cursor modifier on macOS",
+		);
+	});
+
+	runner.test("Pointer multi-cursor appends cursor and range", (test) => {
+		const cursorSelection = addPointerSelectionRange(
+			EditorSelection.single(10),
+			{
+				anchor: 10,
+				head: 4,
+			},
+		);
+
+		test.assertEqual(cursorSelection.ranges.length, 2);
+		test.assert(cursorSelection.main.empty, "Added cursor should be empty");
+		test.assertEqual(cursorSelection.main.head, 4);
+
+		const rangeSelection = addPointerSelectionRange(
+			EditorSelection.single(10),
+			{
+				anchor: 0,
+				head: 4,
+				extend: true,
+			},
+		);
+
+		test.assertEqual(rangeSelection.ranges.length, 2);
+		test.assertEqual(rangeSelection.main.anchor, 0);
+		test.assertEqual(rangeSelection.main.head, 4);
+	});
+
+	runner.test("Quick tools Shift maps printable text", (test) => {
+		test.assertEqual(mapQuickToolShiftText("a"), "A");
+		test.assertEqual(mapQuickToolShiftText("1"), "!");
+		test.assertEqual(mapQuickToolShiftText("/"), "?");
+	});
+
+	runner.test("Quick tools modifier combos resolve commands", (test) => {
+		const commands = [
+			{ name: "selectall", key: "Ctrl-A" },
+			{ name: "saveFile", key: "Ctrl-S" },
+			{ name: "redo", key: "Ctrl-Shift-Z|Ctrl-Y" },
+		];
+
+		test.assertEqual(
+			findQuickToolCommand(commands, "a", { ctrlKey: true })?.name,
+			"selectall",
+		);
+		test.assertEqual(
+			findQuickToolCommand(commands, "s", { ctrlKey: true })?.name,
+			"saveFile",
+		);
+		test.assertEqual(
+			findQuickToolCommand(commands, "y", { ctrlKey: true })?.name,
+			"redo",
+		);
+		test.assertEqual(
+			getShortcutAlternatives("Ctrl-Shift-Z|Ctrl-Y").join(","),
+			"Ctrl-Shift-Z,Ctrl-Y",
+		);
 	});
 
 	// =========================================
