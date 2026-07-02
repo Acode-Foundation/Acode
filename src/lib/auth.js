@@ -26,6 +26,7 @@ let loggedInUser = null;
 let cacheTimeout = null;
 
 const CACHE_USER_KEY = "cached-logged-in-user";
+const LOGIN_RESUME_TIMEOUT_MS = 60_000;
 
 const loginEvents = {
 	listeners: new Set(),
@@ -62,7 +63,7 @@ class AuthService {
 				}
 
 				this.#loginCallbacks.clear();
-			}, 1000);
+			}, LOGIN_RESUME_TIMEOUT_MS);
 		});
 	}
 

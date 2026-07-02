@@ -30,6 +30,8 @@ public class Authenticator extends CordovaPlugin {
     private static final String KEY_PENDING_STATE = "pending_login_state";
     private static final String KEY_PENDING_VERIFIER = "pending_login_verifier";
     private static final String KEY_PENDING_BASE_URL = "pending_login_base_url";
+    private static final int AUTH_CONNECT_TIMEOUT_MS = 15_000;
+    private static final int AUTH_READ_TIMEOUT_MS = 30_000;
     private static final String[] API_ORIGINS = {
         "https://acode.app"
     };
@@ -38,7 +40,8 @@ public class Authenticator extends CordovaPlugin {
         "https://dev.acode.app"
     };
     private EncryptedPreferenceManager prefManager;
-    private CallbackContext loginCallback;
+    private final Object loginCallbackLock = new Object();
+    private volatile CallbackContext loginCallback;
 
     @Override
     protected void pluginInitialize() {
@@ -106,7 +109,7 @@ public class Authenticator extends CordovaPlugin {
         prefManager.setString(KEY_PENDING_STATE, state);
         prefManager.setString(KEY_PENDING_VERIFIER, verifier);
         prefManager.setString(KEY_PENDING_BASE_URL, baseUrl);
-        loginCallback = callbackContext;
+        setLoginCallback(callbackContext);
 
         Uri loginUri = Uri.parse(baseUrl)
             .buildUpon()
@@ -135,7 +138,7 @@ public class Authenticator extends CordovaPlugin {
                     result.setKeepCallback(true);
                     callbackContext.sendPluginResult(result);
                 } catch (Exception fallbackError) {
-                    callbackContext.error(fallbackError.getMessage());
+                    failLogin(fallbackError.getMessage());
                 }
             }
         });
@@ -166,9 +169,9 @@ public class Authenticator extends CordovaPlugin {
                 prefManager.remove(KEY_PENDING_VERIFIER);
                 prefManager.remove(KEY_PENDING_BASE_URL);
                 cordova.getActivity().runOnUiThread(() -> setTokenCookie(token));
-                if (loginCallback != null) {
-                    loginCallback.success();
-                    loginCallback = null;
+                CallbackContext callback = takeLoginCallback();
+                if (callback != null) {
+                    callback.success();
                 }
             } catch (Exception error) {
                 Log.e(TAG, "Failed to exchange app auth code", error);
@@ -182,34 +185,40 @@ public class Authenticator extends CordovaPlugin {
     private String exchangeCode(String baseUrl, String code, String state, String verifier) throws Exception {
         URL url = new URL(baseUrl + "/api/user/app-token/exchange");
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-        connection.setRequestMethod("POST");
-        connection.setRequestProperty("Content-Type", "application/json");
-        connection.setDoOutput(true);
+        try {
+            connection.setConnectTimeout(AUTH_CONNECT_TIMEOUT_MS);
+            connection.setReadTimeout(AUTH_READ_TIMEOUT_MS);
+            connection.setRequestMethod("POST");
+            connection.setRequestProperty("Content-Type", "application/json");
+            connection.setDoOutput(true);
 
-        JSONObject body = new JSONObject();
-        body.put("code", code);
-        body.put("state", state);
-        body.put("verifier", verifier);
+            JSONObject body = new JSONObject();
+            body.put("code", code);
+            body.put("state", state);
+            body.put("verifier", verifier);
 
-        try (OutputStream os = connection.getOutputStream()) {
-            os.write(body.toString().getBytes(StandardCharsets.UTF_8));
+            try (OutputStream os = connection.getOutputStream()) {
+                os.write(body.toString().getBytes(StandardCharsets.UTF_8));
+            }
+
+            int status = connection.getResponseCode();
+            InputStream stream = status >= 200 && status < 300 ? connection.getInputStream() : connection.getErrorStream();
+            String response = readStream(stream);
+
+            if (status < 200 || status >= 300) {
+                throw new IllegalStateException(response);
+            }
+
+            JSONObject json = new JSONObject(response);
+            String token = json.optString("token", "");
+            if (token.isEmpty()) {
+                throw new IllegalStateException("Missing token");
+            }
+
+            return token;
+        } finally {
+            connection.disconnect();
         }
-
-        int status = connection.getResponseCode();
-        InputStream stream = status >= 200 && status < 300 ? connection.getInputStream() : connection.getErrorStream();
-        String response = readStream(stream);
-
-        if (status < 200 || status >= 300) {
-            throw new IllegalStateException(response);
-        }
-
-        JSONObject json = new JSONObject(response);
-        String token = json.optString("token", "");
-        if (token.isEmpty()) {
-            throw new IllegalStateException("Missing token");
-        }
-
-        return token;
     }
 
     private String readStream(InputStream stream) throws Exception {
@@ -228,9 +237,23 @@ public class Authenticator extends CordovaPlugin {
         prefManager.remove(KEY_PENDING_STATE);
         prefManager.remove(KEY_PENDING_VERIFIER);
         prefManager.remove(KEY_PENDING_BASE_URL);
-        if (loginCallback != null) {
-            loginCallback.error(message);
+        CallbackContext callback = takeLoginCallback();
+        if (callback != null) {
+            callback.error(message);
+        }
+    }
+
+    private void setLoginCallback(CallbackContext callbackContext) {
+        synchronized (loginCallbackLock) {
+            loginCallback = callbackContext;
+        }
+    }
+
+    private CallbackContext takeLoginCallback() {
+        synchronized (loginCallbackLock) {
+            CallbackContext callback = loginCallback;
             loginCallback = null;
+            return callback;
         }
     }
 
