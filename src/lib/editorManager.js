@@ -257,13 +257,13 @@ async function EditorManager($header, $body) {
 				{ x: event.clientX, y: event.clientY },
 				false,
 			);
-			if (pos != null) {
-				view.dispatch({
-					selection: EditorSelection.cursor(pos),
-					userEvent: "select.pointer",
-				});
-				view.focus();
-			}
+			if (pos == null) return false;
+
+			view.dispatch({
+				selection: EditorSelection.cursor(pos),
+				userEvent: "select.pointer",
+			});
+			view.focus();
 			event.preventDefault();
 			return true;
 		},

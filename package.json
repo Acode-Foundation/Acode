@@ -42,7 +42,9 @@
       "cordova-plugin-iap": {},
       "com.foxdebug.acode.rk.customtabs": {},
       "cordova-plugin-system": {},
-      "cordova-plugin-advanced-http": {}
+      "cordova-plugin-advanced-http": {
+        "ANDROIDBLACKLISTSECURESOCKETPROTOCOLS": "SSLv3,TLSv1"
+      }
     },
     "platforms": [
       "android"

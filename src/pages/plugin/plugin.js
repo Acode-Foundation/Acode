@@ -21,6 +21,7 @@ import markdownItTaskLists from "markdown-it-task-lists";
 import { highlightCodeBlock, initHighlighting } from "utils/codeHighlight";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
+import { isVersionGreater } from "utils/version";
 import view, { cleanups } from "./plugin.view.js";
 
 let $lastPluginPage;
@@ -160,7 +161,10 @@ export default async function PluginInclude(
 
 					if (cancelled || !remotePlugin) return;
 
-					if (installed && remotePlugin?.version !== plugin.version) {
+					if (
+						installed &&
+						isVersionGreater(remotePlugin?.version, plugin.version)
+					) {
 						currentVersion = plugin.version;
 						update = true;
 					}

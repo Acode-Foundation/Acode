@@ -4,6 +4,7 @@ import {
 	removeActionStackEntries,
 } from "../handlers/quickToolsState";
 import { getLanguageModeRecommendationSearchKeyword } from "../lib/languageModeRecommendations";
+import { isVersionGreater } from "../utils/version";
 import { TestRunner } from "./tester";
 
 export async function runSanityTests(writeOutput) {
@@ -149,6 +150,28 @@ export async function runSanityTests(writeOutput) {
 
 			test.assertEqual(removeActionStackEntries(stack, "search-bar"), 2);
 			test.assertEqual(JSON.stringify(entries), JSON.stringify(["other"]));
+		},
+	);
+
+	runner.test(
+		"Plugin version comparison only accepts newer versions",
+		(test) => {
+			test.assert(
+				isVersionGreater("1.1.2", "1.1.1"),
+				"Patch updates should be newer",
+			);
+			test.assert(
+				isVersionGreater("1.2.0", "1.1.9"),
+				"Minor updates should be newer",
+			);
+			test.assert(
+				!isVersionGreater("1.1.1", "1.1.1"),
+				"Equal versions should not be updates",
+			);
+			test.assert(
+				!isVersionGreater("1.0.0", "1.1.1"),
+				"Lower remote versions should not be updates",
+			);
 		},
 	);
 
