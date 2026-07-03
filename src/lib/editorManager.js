@@ -1,7 +1,13 @@
 import sidebarApps from "sidebarApps";
 import { indentUnit, language as languageFacet } from "@codemirror/language";
 import { search } from "@codemirror/search";
-import { Compartment, EditorState, Prec } from "@codemirror/state";
+import {
+	Compartment,
+	EditorSelection,
+	EditorState,
+	Prec,
+	StateEffect,
+} from "@codemirror/state";
 import { oneDark } from "@codemirror/theme-one-dark";
 import {
 	closeHoverTooltips,
@@ -68,8 +74,13 @@ import {
 } from "cm/editorUtils";
 import indentGuides from "cm/indentGuides";
 import { lineBreakMarker } from "cm/lineBreakMarker";
+import quickToolsModifierInput from "cm/quickToolsModifierInput";
 import rainbowBrackets, { getRainbowBracketColors } from "cm/rainbowBrackets";
 import scrollPastEndCustom from "cm/scrollPastEnd";
+import {
+	isMultiCursorSelectionActive as resolveMultiCursorSelectionActive,
+	isShiftSelectionActive as resolveShiftSelectionActive,
+} from "cm/shiftSelection";
 import tagAutoRename from "cm/tagAutoRename";
 import { getThemeConfig, getThemeExtensions } from "cm/themes";
 import list from "components/collapsableList";
@@ -734,9 +745,28 @@ async function EditorManager($header, $body) {
 			});
 		},
 	);
+	const isShiftClickSelectionEnabled = () =>
+		appSettings.value.shiftClickSelection !== false;
 	const isShiftSelectionActive = (event) => {
-		if (!appSettings.value.shiftClickSelection) return false;
-		return !!event?.shiftKey || quickTools?.$footer?.dataset?.shift != null;
+		return resolveShiftSelectionActive({
+			event,
+			quickToolsShift: quickTools?.$footer?.dataset?.shift != null,
+			shiftClickSelection: isShiftClickSelectionEnabled(),
+		});
+	};
+	const isMultiCursorSelectionActive = (event) => {
+		return resolveMultiCursorSelectionActive({
+			event,
+			quickToolsCtrl: quickTools?.$footer?.dataset?.ctrl != null,
+			quickToolsMeta: quickTools?.$footer?.dataset?.meta != null,
+		});
+	};
+	const isQuickToolsMultiCursorSelectionActive = () => {
+		return resolveMultiCursorSelectionActive({
+			quickToolsCtrl: quickTools?.$footer?.dataset?.ctrl != null,
+			quickToolsMeta: quickTools?.$footer?.dataset?.meta != null,
+			isMac: false,
+		});
 	};
 
 	function registerSoftKeyboardCursorReveal() {
@@ -772,6 +802,24 @@ async function EditorManager($header, $body) {
 	}
 
 	const shiftClickSelectionExtension = EditorView.domEventHandlers({
+		mousedown(event, view) {
+			if (!event.shiftKey || isShiftClickSelectionEnabled()) return false;
+			if ((event.button ?? 0) !== 0) return false;
+
+			const pos = view.posAtCoords(
+				{ x: event.clientX, y: event.clientY },
+				false,
+			);
+			if (pos == null) return false;
+
+			view.dispatch({
+				selection: EditorSelection.cursor(pos),
+				userEvent: "select.pointer",
+			});
+			view.focus();
+			event.preventDefault();
+			return true;
+		},
 		click(event) {
 			if (!touchSelectionController?.consumePendingShiftSelectionClick(event)) {
 				return false;
@@ -780,6 +828,9 @@ async function EditorManager($header, $body) {
 			return true;
 		},
 	});
+	const multiCursorSelectionExtension = EditorView.clickAddsSelectionRange.of(
+		isMultiCursorSelectionActive,
+	);
 	const touchSelectionUpdateExtension = EditorView.updateListener.of(
 		(update) => {
 			if (!touchSelectionController) return;
@@ -942,7 +993,10 @@ async function EditorManager($header, $body) {
 		const lineNumberConfig = {
 			domEventHandlers: {
 				click(view, line, event) {
-					return handleLineNumberClick(view, line, event);
+					return handleLineNumberClick(view, line, event, {
+						shiftClickSelection:
+							appSettings.value.shiftClickSelection !== false,
+					});
 				},
 			},
 		};
@@ -1517,7 +1571,9 @@ async function EditorManager($header, $body) {
 				themeExtension: themeCompartment.of(getConfiguredThemeExtension()),
 				pointerCursorVisibilityExtension,
 				shiftClickSelectionExtension,
+				multiCursorSelectionExtension,
 				touchSelectionUpdateExtension,
+				quickToolsModifierInputExtension: quickToolsModifierInput(),
 				searchExtension: search(),
 				// Ensure read-only can be toggled later via compartment
 				readOnlyExtension: readOnlyCompartment.of(
@@ -1584,6 +1640,7 @@ async function EditorManager($header, $body) {
 		container: $container,
 		getActiveFile: () => manager?.activeFile || null,
 		isShiftSelectionActive,
+		isMultiCursorSelectionActive: isQuickToolsMultiCursorSelectionActive,
 	});
 	primaryPane.touchSelectionController = touchSelectionController;
 
@@ -2760,7 +2817,9 @@ async function EditorManager($header, $body) {
 			themeExtension: themeCompartment.of(getConfiguredThemeExtension()),
 			pointerCursorVisibilityExtension,
 			shiftClickSelectionExtension,
+			multiCursorSelectionExtension,
 			touchSelectionUpdateExtension,
+			quickToolsModifierInputExtension: quickToolsModifierInput(),
 			searchExtension: search(),
 			// Keep dynamic compartments across state swaps
 			optionExtensions: getBaseExtensionsFromOptions(),

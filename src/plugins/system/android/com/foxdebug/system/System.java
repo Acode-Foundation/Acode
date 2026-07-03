@@ -1885,6 +1885,12 @@ public class System extends CordovaPlugin {
 
     private void getCordovaIntent(CallbackContext callback) {
         Intent intent = activity.getIntent();
+        if (isReservedAuthIntent(intent)) {
+            callback.sendPluginResult(
+                new PluginResult(PluginResult.Status.OK, new JSONObject())
+            );
+            return;
+        }
         callback.sendPluginResult(
             new PluginResult(PluginResult.Status.OK, getIntentJson(intent))
         );
@@ -1899,6 +1905,9 @@ public class System extends CordovaPlugin {
 
     @Override
     public void onNewIntent(Intent intent) {
+        if (isReservedAuthIntent(intent)) {
+            return;
+        }
         if (intentHandler != null) {
             PluginResult result = new PluginResult(
                 PluginResult.Status.OK,
@@ -1907,6 +1916,16 @@ public class System extends CordovaPlugin {
             result.setKeepCallback(true);
             intentHandler.sendPluginResult(result);
         }
+    }
+
+    private boolean isReservedAuthIntent(Intent intent) {
+        Uri data = intent != null ? intent.getData() : null;
+        if (data == null || !"acode".equals(data.getScheme())) {
+            return false;
+        }
+        String host = data.getHost();
+        String path = data.getPath();
+        return "auth".equals(host) && "/callback".equals(path);
     }
 
     private JSONObject getIntentJson(Intent intent) {

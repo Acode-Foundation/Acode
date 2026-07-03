@@ -1,5 +1,6 @@
 import fsOperation from "fileSystem";
 import Url from "utils/Url";
+import { isVersionGreater } from "utils/version";
 import config from "./config";
 
 export default async function checkPluginsUpdate() {
@@ -20,7 +21,26 @@ export default async function checkPluginsUpdate() {
 
 				if (res.ok) {
 					const json = await res.json();
-					if (json.update) {
+					if (!json.update) return;
+
+					if (json.version) {
+						if (isVersionGreater(json.version, plugin.version)) {
+							updates.push(plugin.id);
+						}
+						return;
+					}
+
+					const remotePlugin = await fsOperation(
+						config.API_BASE,
+						`plugin/${plugin.id}`,
+					)
+						.readFile("json")
+						.catch(() => null);
+
+					if (
+						!remotePlugin?.version ||
+						isVersionGreater(remotePlugin.version, plugin.version)
+					) {
 						updates.push(plugin.id);
 					}
 				}

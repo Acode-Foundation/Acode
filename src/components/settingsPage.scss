@@ -838,13 +838,31 @@ wc-page.detail-settings-page.formatter-settings-page {
 	wc-page.detail-settings-page {
 		.input-checkbox {
 			.box {
+				position: relative !important;
 				background: var(--popup-background-color) !important;
 				border: 1px solid var(--secondary-text-color) !important;
 				opacity: 0.65;
 
 				&::after {
+					content: "";
+					position: absolute;
+					top: 0.14rem;
+					left: 0.14rem;
+					display: block;
+					width: 1.25rem;
+					height: 1.25rem;
+					border-radius: 999px;
 					background: var(--popup-text-color) !important;
 					opacity: 1 !important;
+					box-shadow:
+						0 0 0 1px var(--border-color),
+						0 1px 3px rgba(0, 0, 0, 0.22);
+					transform: translate3d(0, 0, 0);
+					transition: transform 160ms ease;
+				}
+
+				.handle {
+					opacity: 0 !important;
 				}
 			}
 
@@ -855,6 +873,7 @@ wc-page.detail-settings-page.formatter-settings-page {
 
 				&::after {
 					background: var(--button-text-color) !important;
+					transform: translate3d(1.12rem, 0, 0);
 				}
 			}
 		}

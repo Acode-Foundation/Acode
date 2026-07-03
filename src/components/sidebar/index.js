@@ -216,7 +216,7 @@ function create($container, $toggler) {
 			return;
 		}
 
-		defaultAvatar.classList.add("loading");
+		defaultAvatar.classList.add("avatar-loading");
 
 		const img = <img alt="User avatar" className="avatar" />;
 		const avatarFile = await getUserAvatar(user);
