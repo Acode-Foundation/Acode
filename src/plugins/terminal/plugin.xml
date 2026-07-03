@@ -59,7 +59,7 @@
                 android:name="com.foxdebug.acode.rk.exec.terminal.TerminalService"
                 android:enabled="true"
                 android:foregroundServiceType="specialUse"
-                android:exported="true" />
+                android:exported="false" />
 
         </config-file>
 
