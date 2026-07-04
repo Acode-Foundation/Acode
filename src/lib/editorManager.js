@@ -340,6 +340,8 @@ async function EditorManager($header, $body) {
 			editor: null,
 			cleanupEditorListeners: null,
 			cleanupPaneListeners: null,
+			lspRequestToken: 0,
+			lastLspUri: null,
 			editorContainer,
 			touchSelectionController: null,
 			element: <section className="editor-pane"></section>,
@@ -921,8 +923,6 @@ async function EditorManager($header, $body) {
 	const diagnosticsClientExt = lspDiagnosticsClientExtension();
 	const buildDiagnosticsUiExt = () =>
 		lspDiagnosticsUiExtension(appSettings?.value?.lintGutter !== false);
-	let lspRequestToken = 0;
-	let lastLspUri = null;
 	const UNTITLED_URI_PREFIX = "untitled://acode/";
 
 	function getEditorFontFamily() {
@@ -1360,39 +1360,45 @@ async function EditorManager($header, $body) {
 	}
 
 	async function configureLspForFile(file) {
-		const pane = getFilePane(file);
+		const pane = getFileLspPane(file);
+		if (!pane) return;
 		const targetEditor = pane?.editor || editor;
 		const metadata = buildLspMetadata(file, targetEditor);
-		const token = ++lspRequestToken;
+		const token = ++pane.lspRequestToken;
 		if (!metadata) {
-			detachActiveLsp();
+			detachActiveLsp(pane, { invalidate: false });
 			targetEditor?.dispatch({ effects: lspCompartment.reconfigure([]) });
+			if (file?.type === "editor" && targetEditor) {
+				file.session = targetEditor.state;
+			}
 			return;
 		}
-		if (metadata.uri !== lastLspUri) {
-			detachActiveLsp();
+		if (metadata.uri !== pane.lastLspUri) {
+			detachActiveLsp(pane, { invalidate: false });
 		}
 		try {
 			const extensions =
 				(await lspClientManager.getExtensionsForFile(metadata)) || [];
-			if (token !== lspRequestToken) return;
+			if (token !== pane.lspRequestToken) return;
 			if (!isFileActiveInEditor(file, targetEditor)) return;
 			if (!extensions.length) {
-				lastLspUri = null;
+				pane.lastLspUri = null;
 				targetEditor.dispatch({ effects: lspCompartment.reconfigure([]) });
+				file.session = targetEditor.state;
 				return;
 			}
-			lastLspUri = metadata.uri;
+			pane.lastLspUri = metadata.uri;
 			targetEditor.dispatch({
 				effects: lspCompartment.reconfigure(extensions),
 			});
 			file.session = targetEditor.state;
 		} catch (error) {
-			if (token !== lspRequestToken) return;
+			if (token !== pane.lspRequestToken) return;
 			if (!isFileActiveInEditor(file, targetEditor)) return;
 			console.error("Failed to configure LSP", error);
-			lastLspUri = null;
+			pane.lastLspUri = null;
 			targetEditor.dispatch({ effects: lspCompartment.reconfigure([]) });
+			file.session = targetEditor.state;
 		}
 	}
 
@@ -1410,14 +1416,19 @@ async function EditorManager($header, $body) {
 		if (!file || file.type !== "editor") return;
 		const uri = getFileLspUri(file);
 		if (!uri) return;
+		const pane = getFileLspPane(file);
+		if (!pane) return;
+		const targetEditor = pane?.editor || editor;
 		try {
-			lspClientManager.detach(uri);
+			lspClientManager.detach(uri, targetEditor);
 		} catch (error) {
 			console.warn(`Failed to detach LSP client for ${uri}`, error);
 		}
-		if (uri === lastLspUri && manager.activeFile?.id === file.id) {
-			lastLspUri = null;
-			editor.dispatch({ effects: lspCompartment.reconfigure([]) });
+		if (uri === pane.lastLspUri && pane.activeFile?.id === file.id) {
+			pane.lspRequestToken++;
+			pane.lastLspUri = null;
+			targetEditor.dispatch({ effects: lspCompartment.reconfigure([]) });
+			file.session = targetEditor.state;
 		}
 	}
 
@@ -1480,14 +1491,20 @@ async function EditorManager($header, $body) {
 		return uri;
 	}
 
-	function detachActiveLsp() {
-		if (!lastLspUri) return;
+	function detachActiveLsp(pane = getActivePane(), { invalidate = true } = {}) {
+		if (!pane) return;
+		if (invalidate) pane.lspRequestToken++;
+		if (!pane.lastLspUri) return;
+		const targetEditor = pane.editor || editor;
 		try {
-			lspClientManager.detach(lastLspUri, editor);
+			lspClientManager.detach(pane.lastLspUri, targetEditor);
 		} catch (error) {
-			console.warn(`Failed to detach LSP session for ${lastLspUri}`, error);
+			console.warn(
+				`Failed to detach LSP session for ${pane.lastLspUri}`,
+				error,
+			);
 		}
-		lastLspUri = null;
+		pane.lastLspUri = null;
 	}
 
 	function applyLspSettings() {
@@ -2705,15 +2722,13 @@ async function EditorManager($header, $body) {
 					}
 
 					if (isPaneActive && pane !== getActivePane()) {
-						withPaneEditorContext(pane, () => {
-							dispatchLanguageExtension(
-								file,
-								languageSignature,
-								ext,
-								warnKey,
-								pane.editor,
-							);
-						});
+						dispatchLanguageExtension(
+							file,
+							languageSignature,
+							ext,
+							warnKey,
+							pane.editor,
+						);
 						return;
 					}
 
@@ -2738,7 +2753,10 @@ async function EditorManager($header, $body) {
 	function scheduleLspForFile(file) {
 		const fileId = file?.id;
 		window.setTimeout(() => {
-			if (!fileId || manager.activeFile?.id !== fileId) return;
+			const pane = getFileLspPane(file);
+			const isGlobalActive = manager.activeFile?.id === fileId;
+			const isPaneActive = pane?.activeFile?.id === fileId;
+			if (!fileId || (!isGlobalActive && !isPaneActive)) return;
 			void configureLspForFile(file);
 		}, 80);
 	}
@@ -3940,6 +3958,17 @@ async function EditorManager($header, $body) {
 		if (!id) return null;
 		return (
 			panes.find((pane) => pane.files.some((file) => file.id === id)) || null
+		);
+	}
+
+	function getFileLspPane(file, targetEditor = null) {
+		return (
+			getFilePane(file) ||
+			getPaneById(file?.paneId) ||
+			targetEditor?.__editorPane ||
+			getActivePane() ||
+			panes[0] ||
+			null
 		);
 	}
 
