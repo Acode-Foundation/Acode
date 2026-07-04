@@ -231,7 +231,7 @@ async function EditorManager($header, $body) {
 		replaceChildren:
 			$globalOpenFileList.replaceChildren.bind($globalOpenFileList),
 	};
-	let globalOpenFileListMirrorFiles = null;
+	let globalOpenFileListMirrorOrderSignature = "";
 	let globalOpenFileListMirrorActiveFileId = "";
 	const globalOpenFileListMirrorTabs = new Map();
 	const globalOpenFileListMirrorTabsById = new Map();
@@ -339,6 +339,7 @@ async function EditorManager($header, $body) {
 			activeFile: null,
 			editor: null,
 			cleanupEditorListeners: null,
+			cleanupPaneListeners: null,
 			editorContainer,
 			touchSelectionController: null,
 			element: <section className="editor-pane"></section>,
@@ -355,13 +356,17 @@ async function EditorManager($header, $body) {
 		pane.editorContainer.__editorPane = pane;
 		pane.content.append(pane.editorContainer);
 		pane.element.append(pane.tabList, pane.content);
-		pane.element.addEventListener(
-			"pointerdown",
-			() => {
-				activatePane(pane, { focusEditor: false });
-			},
-			true,
-		);
+		function handlePanePointerDown() {
+			activatePane(pane, { focusEditor: false });
+		}
+		pane.element.addEventListener("pointerdown", handlePanePointerDown, true);
+		pane.cleanupPaneListeners = () => {
+			pane.element.removeEventListener(
+				"pointerdown",
+				handlePanePointerDown,
+				true,
+			);
+		};
 		if (registerPane) panes.push(pane);
 		return pane;
 	}
@@ -401,6 +406,7 @@ async function EditorManager($header, $body) {
 		if (!node || node.type !== "split") return;
 
 		node.element.dataset.direction = node.direction;
+		cleanupPaneSplitHandles(node.element);
 		node.element.replaceChildren();
 		node.children.forEach((child, index) => {
 			if (index > 0) {
@@ -414,10 +420,20 @@ async function EditorManager($header, $body) {
 	function createPaneSplitHandle(splitNode, childIndex) {
 		const $handle = <div className="editor-pane-split-handle"></div>;
 		$handle.dataset.direction = splitNode.direction;
-		$handle.addEventListener("pointerdown", (event) => {
+		function handleSplitPointerDown(event) {
 			startPaneResize(event, splitNode, childIndex, $handle);
-		});
+		}
+		$handle.addEventListener("pointerdown", handleSplitPointerDown);
+		$handle.__cleanupPaneSplitHandle = () => {
+			$handle.removeEventListener("pointerdown", handleSplitPointerDown);
+		};
 		return $handle;
+	}
+
+	function cleanupPaneSplitHandles(container) {
+		container
+			?.querySelectorAll?.(".editor-pane-split-handle")
+			.forEach((handle) => handle.__cleanupPaneSplitHandle?.());
 	}
 
 	function replacePaneLayoutNode(oldNode, nextNode) {
@@ -518,6 +534,7 @@ async function EditorManager($header, $body) {
 				: "1 1 0";
 			replacePaneLayoutNode(parent, onlyChild);
 			parent.children = [];
+			cleanupPaneSplitHandles(parent.element);
 			parent.element.remove();
 			return;
 		}
@@ -1327,7 +1344,7 @@ async function EditorManager($header, $body) {
 		});
 	}
 
-	function buildLspMetadata(file) {
+	function buildLspMetadata(file, targetEditor = editor) {
 		if (!file || file.type !== "editor") return null;
 		const uri = getFileLspUri(file);
 		if (!uri) return null;
@@ -1336,18 +1353,20 @@ async function EditorManager($header, $body) {
 			uri,
 			languageId,
 			languageName: file.currentMode || file.mode || languageId,
-			view: editor,
+			view: targetEditor,
 			file,
 			rootUri: resolveRootUriForContext({ uri, file }),
 		};
 	}
 
 	async function configureLspForFile(file) {
-		const metadata = buildLspMetadata(file);
+		const pane = getFilePane(file);
+		const targetEditor = pane?.editor || editor;
+		const metadata = buildLspMetadata(file, targetEditor);
 		const token = ++lspRequestToken;
 		if (!metadata) {
 			detachActiveLsp();
-			editor.dispatch({ effects: lspCompartment.reconfigure([]) });
+			targetEditor?.dispatch({ effects: lspCompartment.reconfigure([]) });
 			return;
 		}
 		if (metadata.uri !== lastLspUri) {
@@ -1357,21 +1376,34 @@ async function EditorManager($header, $body) {
 			const extensions =
 				(await lspClientManager.getExtensionsForFile(metadata)) || [];
 			if (token !== lspRequestToken) return;
+			if (!isFileActiveInEditor(file, targetEditor)) return;
 			if (!extensions.length) {
 				lastLspUri = null;
-				editor.dispatch({ effects: lspCompartment.reconfigure([]) });
+				targetEditor.dispatch({ effects: lspCompartment.reconfigure([]) });
 				return;
 			}
 			lastLspUri = metadata.uri;
-			editor.dispatch({
+			targetEditor.dispatch({
 				effects: lspCompartment.reconfigure(extensions),
 			});
+			file.session = targetEditor.state;
 		} catch (error) {
 			if (token !== lspRequestToken) return;
+			if (!isFileActiveInEditor(file, targetEditor)) return;
 			console.error("Failed to configure LSP", error);
 			lastLspUri = null;
-			editor.dispatch({ effects: lspCompartment.reconfigure([]) });
+			targetEditor.dispatch({ effects: lspCompartment.reconfigure([]) });
 		}
+	}
+
+	function isFileActiveInEditor(file, targetEditor) {
+		const pane = getFilePane(file);
+		return !!(
+			file &&
+			targetEditor &&
+			pane?.editor === targetEditor &&
+			pane.activeFile?.id === file.id
+		);
 	}
 
 	function detachLspForFile(file) {
@@ -2354,6 +2386,8 @@ async function EditorManager($header, $body) {
 		} catch (error) {
 			pane.touchSelectionController?.destroy?.();
 			pane.touchSelectionController = null;
+			pane.cleanupPaneListeners?.();
+			pane.cleanupPaneListeners = null;
 			pane.editor?.destroy?.();
 			pane.editor = null;
 			warnRecoverable(
@@ -2432,6 +2466,8 @@ async function EditorManager($header, $body) {
 
 		pane.touchSelectionController?.destroy?.();
 		pane.touchSelectionController = null;
+		pane.cleanupPaneListeners?.();
+		pane.cleanupPaneListeners = null;
 		pane.cleanupEditorListeners?.();
 		pane.cleanupEditorListeners = null;
 		pane.editor?.destroy?.();
@@ -2620,12 +2656,18 @@ async function EditorManager($header, $body) {
 		file.__cmLanguageReady = ready;
 	}
 
-	function dispatchLanguageExtension(file, languageSignature, ext, warnKey) {
+	function dispatchLanguageExtension(
+		file,
+		languageSignature,
+		ext,
+		warnKey,
+		targetEditor = editor,
+	) {
 		try {
-			editor.dispatch({
+			targetEditor.dispatch({
 				effects: languageCompartment.reconfigure(ext || []),
 			});
-			file.session = editor.state;
+			file.session = targetEditor.state;
 			markLanguageReady(file, languageSignature, true);
 		} catch (error) {
 			warnRecoverable("Failed to apply language extensions.", error, warnKey);
@@ -2664,12 +2706,24 @@ async function EditorManager($header, $body) {
 
 					if (isPaneActive && pane !== getActivePane()) {
 						withPaneEditorContext(pane, () => {
-							dispatchLanguageExtension(file, languageSignature, ext, warnKey);
+							dispatchLanguageExtension(
+								file,
+								languageSignature,
+								ext,
+								warnKey,
+								pane.editor,
+							);
 						});
 						return;
 					}
 
-					dispatchLanguageExtension(file, languageSignature, ext, warnKey);
+					dispatchLanguageExtension(
+						file,
+						languageSignature,
+						ext,
+						warnKey,
+						pane?.editor || editor,
+					);
 				})
 				.catch(() => {
 					markLanguageReady(file, languageSignature, true);
@@ -2689,21 +2743,27 @@ async function EditorManager($header, $body) {
 		}, 80);
 	}
 
-	function applyCurrentEditorOptions(file, { forceOptions = false } = {}) {
-		touchSelectionController?.onSessionChanged();
+	function applyCurrentEditorOptions(
+		file,
+		{ forceOptions = false, targetEditor = editor } = {},
+	) {
+		const targetPane = getEditorCompatibilityPane(targetEditor);
+		const targetTouchSelectionController =
+			targetPane?.touchSelectionController || touchSelectionController;
+		targetTouchSelectionController?.onSessionChanged();
 		const optionsSignature = getEditorOptionsSignature();
 		if (forceOptions || file.__cmOptionsSignature !== optionsSignature) {
 			const desiredTheme = appSettings?.value?.editorTheme;
-			if (desiredTheme) editor.setTheme(desiredTheme);
-			applyOptions();
+			if (desiredTheme) targetEditor.setTheme(desiredTheme);
+			applyOptions(null, targetEditor);
 			file.__cmOptionsSignature = optionsSignature;
 		}
 		try {
 			const ro = !file.editable || !!file.loading;
-			editor.dispatch({
+			targetEditor.dispatch({
 				effects: readOnlyCompartment.reconfigure(EditorState.readOnly.of(ro)),
 			});
-			file.session = editor.state;
+			file.session = targetEditor.state;
 		} catch (error) {
 			warnRecoverable(
 				"Failed to apply read-only compartment update.",
@@ -2784,7 +2844,7 @@ async function EditorManager($header, $body) {
 		if (!forceRecreate && isReusableEditorState(file, extensionSignature)) {
 			const reusedState = getRawEditorState(file.session);
 			editor.setState(reusedState);
-			applyCurrentEditorOptions(file);
+			applyCurrentEditorOptions(file, { targetEditor: editor });
 
 			if (shouldApplyLanguage(file, reusedState, languageSignature)) {
 				const ext = resolveLanguageExtension(
@@ -2798,6 +2858,7 @@ async function EditorManager($header, $body) {
 						languageSignature,
 						ext,
 						"reused-language-reconfigure",
+						editor,
 					);
 				}
 			}
@@ -2867,7 +2928,7 @@ async function EditorManager($header, $body) {
 			markLanguageReady(file, languageSignature, true);
 		}
 		editor.setState(state);
-		applyCurrentEditorOptions(file);
+		applyCurrentEditorOptions(file, { targetEditor: editor });
 
 		// Restore selection from previous state if available
 		try {
@@ -3673,12 +3734,13 @@ async function EditorManager($header, $body) {
 	}
 
 	function syncGlobalOpenFileListMirror() {
+		const nextOrderSignature = getGlobalOpenFileListMirrorOrderSignature();
 		const shouldRebuild =
-			globalOpenFileListMirrorFiles !== manager.files ||
+			globalOpenFileListMirrorOrderSignature !== nextOrderSignature ||
 			$globalOpenFileList.childElementCount !== manager.files.length;
 
 		if (shouldRebuild) {
-			rebuildGlobalOpenFileListMirror();
+			rebuildGlobalOpenFileListMirror(nextOrderSignature);
 			return;
 		}
 
@@ -3720,7 +3782,9 @@ async function EditorManager($header, $body) {
 		syncGlobalOpenFileListMirrorActiveState();
 	}
 
-	function rebuildGlobalOpenFileListMirror() {
+	function rebuildGlobalOpenFileListMirror(
+		orderSignature = getGlobalOpenFileListMirrorOrderSignature(),
+	) {
 		globalOpenFileListMirrorTabs.clear();
 		globalOpenFileListMirrorTabsById.clear();
 		globalOpenFileListMirrorTabSignatures.clear();
@@ -3738,8 +3802,14 @@ async function EditorManager($header, $body) {
 			}),
 		);
 
-		globalOpenFileListMirrorFiles = manager.files;
+		globalOpenFileListMirrorOrderSignature = orderSignature;
 		globalOpenFileListMirrorActiveFileId = manager.activeFile?.id || "";
+	}
+
+	function getGlobalOpenFileListMirrorOrderSignature() {
+		return manager.files
+			.map((file) => `${file.id}:${file.paneId || ""}`)
+			.join("|");
 	}
 
 	function createGlobalOpenFileListMirrorTab(file) {
