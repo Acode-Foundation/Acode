@@ -15,6 +15,7 @@
     margin-bottom: 24px;
 
     .plugin-icon {
+      grid-column: span 1;
       width: 80px;
       height: 80px;
       border-radius: 16px;
@@ -135,28 +136,6 @@
         }
       }
 
-      .keywords {
-        display: flex;
-        gap: 6px;
-        flex-wrap: wrap;
-        margin-top: 16px;
-        position: relative;
-
-        .keyword {
-          background: var(--popup-background-color);
-          background: color-mix(in srgb,
-              var(--link-text-color) 10%,
-              transparent);
-          color: var(--link-text-color);
-          padding: 6px 10px;
-          border-radius: 12px;
-          font-size: 13px;
-          transition: all 0.2s;
-          border: 1px solid var(--link-text-color);
-          border: 1px solid color-mix(in srgb, var(--link-text-color) 25%, transparent);
-        }
-      }
-
       .legacy-editor-warning {
         display: inline-flex;
         align-items: center;
@@ -180,7 +159,9 @@
     }
 
     .action-buttons {
+      grid-column: 1/-1;
       display: flex;
+      flex-wrap: wrap;
       gap: 8px;
 
       .info:not(.icon),
@@ -202,6 +183,7 @@
         text-align: left;
         gap: 5px;
         opacity: 0.8;
+        width: 100%;
       }
 
       .btn {
@@ -215,6 +197,7 @@
         display: inline-flex;
         align-items: center;
         gap: 6px;
+        width: fit-content;
 
         &:hover {
           transform: translateY(-1px);
@@ -273,6 +256,28 @@
       padding: 0 0 24px;
 
       #overview {
+        .keywords {
+          display: flex;
+          gap: 6px;
+          flex-wrap: wrap;
+          margin-top: 16px;
+          position: relative;
+
+          .keyword {
+            background: var(--popup-background-color);
+            background: color-mix(in srgb,
+                var(--link-text-color) 10%,
+                transparent);
+            color: var(--link-text-color);
+            padding: 6px 10px;
+            border-radius: 12px;
+            font-size: 13px;
+            transition: all 0.2s;
+            border: 1px solid var(--link-text-color);
+            border: 1px solid color-mix(in srgb, var(--link-text-color) 25%, transparent);
+          }
+        }
+
         pre {
           margin: 16px 0;
           border-radius: 8px;
@@ -459,13 +464,8 @@
       justify-content: center;
     }
 
-    .action-buttons {
-      flex-direction: column;
-      width: 100%;
-    }
-
     .btn {
-      width: 100%;
+      flex: 1;
       justify-content: center;
     }
 

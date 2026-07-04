@@ -173,13 +173,6 @@ export default (props) => {
 							</div>
 						</div>
 					) : null}
-					{Array.isArray(keywords) && keywords.length ? (
-						<div className="keywords">
-							{keywords.map((keyword) => (
-								<span className="keyword">{keyword}</span>
-							))}
-						</div>
-					) : null}
 					{showEditorSupportWarning ? (
 						<LegacyEditorWarning unsupportedEditor={unsupportedEditor} />
 					) : null}
@@ -208,11 +201,18 @@ export default (props) => {
 					</span>
 				</div>
 				<div className="tab-content">
-					<div
-						id="overview"
-						className="content-section active md"
-						innerHTML={DOMPurify.sanitize(body, { FORBID_TAGS: ["style"] })}
-					></div>
+					<div id="overview" className="content-section active md">
+						{Array.isArray(keywords) && keywords.length ? (
+							<div className="keywords">
+								{keywords.map((keyword) => (
+									<span className="keyword">{keyword}</span>
+								))}
+							</div>
+						) : null}
+						<section
+							innerHTML={DOMPurify.sanitize(body, { FORBID_TAGS: ["style"] })}
+						/>
+					</div>
 					<div id="contributors" className="content-section">
 						{(() => {
 							let contributorsList = contributors?.length
