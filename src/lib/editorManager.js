@@ -2487,6 +2487,7 @@ async function EditorManager($header, $body) {
 		pane.cleanupPaneListeners = null;
 		pane.cleanupEditorListeners?.();
 		pane.cleanupEditorListeners = null;
+		detachActiveLsp(pane);
 		pane.editor?.destroy?.();
 		pane.editor = null;
 		removePaneFromLayout(pane);
