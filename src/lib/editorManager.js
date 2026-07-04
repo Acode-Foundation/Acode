@@ -435,7 +435,7 @@ async function EditorManager($header, $body) {
 	function cleanupPaneSplitHandles(container) {
 		container
 			?.querySelectorAll?.(".editor-pane-split-handle")
-			.forEach((handle) => handle.__cleanupPaneSplitHandle?.());
+			?.forEach((handle) => handle.__cleanupPaneSplitHandle?.());
 	}
 
 	function replacePaneLayoutNode(oldNode, nextNode) {
@@ -3961,11 +3961,10 @@ async function EditorManager($header, $body) {
 		);
 	}
 
-	function getFileLspPane(file, targetEditor = null) {
+	function getFileLspPane(file) {
 		return (
 			getFilePane(file) ||
 			getPaneById(file?.paneId) ||
-			targetEditor?.__editorPane ||
 			getActivePane() ||
 			panes[0] ||
 			null
