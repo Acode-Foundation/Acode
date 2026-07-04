@@ -3962,13 +3962,14 @@ async function EditorManager($header, $body) {
 	}
 
 	function getFileLspPane(file) {
-		return (
-			getFilePane(file) ||
-			getPaneById(file?.paneId) ||
-			getActivePane() ||
-			panes[0] ||
-			null
-		);
+		const pane = getFilePane(file) || getPaneById(file?.paneId);
+		if (pane) return pane;
+		const id = file?.id || null;
+		const active = getActivePane();
+		if (id && active?.activeFile?.id === id) return active;
+		const primary = panes[0] || null;
+		if (id && primary?.activeFile?.id === id) return primary;
+		return null;
 	}
 
 	function getPaneFiles(fileOrPane = getActivePane()) {
