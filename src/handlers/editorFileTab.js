@@ -80,8 +80,8 @@ let dragSessionId = 0;
 
 const MIN_SCROLL_SPEED = 2;
 const MAX_SCROLL_SPEED = 14;
-const REORDER_DURATION = 0.28;
-const RELEASE_DURATION = 0.25;
+const REORDER_DURATION_SECONDS = 0.28;
+const RELEASE_DURATION_SECONDS = 0.25;
 const SPRING_EASING = [0.2, 1, 0.4, 1];
 
 /** @type {WeakMap<HTMLElement, {cancel?: function(): void}>} */
@@ -266,7 +266,7 @@ function finishDrag(shouldSettleClone) {
 			{
 				duration: document.body.classList.contains("no-animation")
 					? 0
-					: RELEASE_DURATION,
+					: RELEASE_DURATION_SECONDS,
 				ease: SPRING_EASING,
 			},
 		)
@@ -667,7 +667,7 @@ function animateTabReorder($parent, previousRects) {
 			{
 				duration: document.body.classList.contains("no-animation")
 					? 0
-					: REORDER_DURATION,
+					: REORDER_DURATION_SECONDS,
 				ease: SPRING_EASING,
 			},
 		);

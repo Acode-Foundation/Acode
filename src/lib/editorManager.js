@@ -2802,17 +2802,26 @@ async function EditorManager($header, $body) {
 		const previousEditor = editor;
 		const previousContainer = $container;
 		const previousTouchSelectionController = touchSelectionController;
+		const restoreContext = () => {
+			editor = previousEditor;
+			$container = previousContainer;
+			touchSelectionController = previousTouchSelectionController;
+		};
 
 		editor = pane.editor;
 		$container = pane.editorContainer || $container;
 		touchSelectionController = pane.touchSelectionController || null;
 
 		try {
-			return callback();
-		} finally {
-			editor = previousEditor;
-			$container = previousContainer;
-			touchSelectionController = previousTouchSelectionController;
+			const result = callback();
+			if (result && typeof result.then === "function") {
+				return Promise.resolve(result).finally(restoreContext);
+			}
+			restoreContext();
+			return result;
+		} catch (error) {
+			restoreContext();
+			throw error;
 		}
 	}
 
