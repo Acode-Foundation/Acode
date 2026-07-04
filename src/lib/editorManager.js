@@ -1361,8 +1361,8 @@ async function EditorManager($header, $body) {
 
 	async function configureLspForFile(file) {
 		const pane = getFileLspPane(file);
-		if (!pane) return;
-		const targetEditor = pane?.editor || editor;
+		if (!pane?.editor || pane.activeFile?.id !== file?.id) return;
+		const targetEditor = pane.editor;
 		const metadata = buildLspMetadata(file, targetEditor);
 		const token = ++pane.lspRequestToken;
 		if (!metadata) {
@@ -1403,7 +1403,7 @@ async function EditorManager($header, $body) {
 	}
 
 	function isFileActiveInEditor(file, targetEditor) {
-		const pane = getFilePane(file);
+		const pane = targetEditor?.__editorPane || getFileLspPane(file);
 		return !!(
 			file &&
 			targetEditor &&
@@ -2711,24 +2711,12 @@ async function EditorManager($header, $body) {
 			markLanguageReady(file, languageSignature, false);
 			result
 				.then((ext) => {
-					const pane = getFilePane(file);
-					const isGlobalActive = manager.activeFile?.id === fileId;
-					const isPaneActive = pane?.activeFile?.id === fileId;
+					const pane = getFileLspPane(file);
 					if (
-						(!isGlobalActive && !isPaneActive) ||
+						!pane?.editor ||
+						pane.activeFile?.id !== fileId ||
 						file.__cmLanguageSignature !== languageSignature
 					) {
-						return;
-					}
-
-					if (isPaneActive && pane !== getActivePane()) {
-						dispatchLanguageExtension(
-							file,
-							languageSignature,
-							ext,
-							warnKey,
-							pane.editor,
-						);
 						return;
 					}
 
@@ -2737,7 +2725,7 @@ async function EditorManager($header, $body) {
 						languageSignature,
 						ext,
 						warnKey,
-						pane?.editor || editor,
+						pane.editor,
 					);
 				})
 				.catch(() => {
@@ -2754,9 +2742,8 @@ async function EditorManager($header, $body) {
 		const fileId = file?.id;
 		window.setTimeout(() => {
 			const pane = getFileLspPane(file);
-			const isGlobalActive = manager.activeFile?.id === fileId;
 			const isPaneActive = pane?.activeFile?.id === fileId;
-			if (!fileId || (!isGlobalActive && !isPaneActive)) return;
+			if (!fileId || !isPaneActive) return;
 			void configureLspForFile(file);
 		}, 80);
 	}
