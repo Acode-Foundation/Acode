@@ -232,6 +232,7 @@ function maybeRecommendLanguageModeExtension(file, modeInfo) {
 	if (appSettings.value.recommendExtensions === false) return;
 	if (!isInitialPluginLoadComplete()) return;
 	if (modeInfo?.name !== "text" || modeInfo.supportsFile(file.filename)) return;
+	if (helpers.isBinary(file.filename || file.uri)) return;
 
 	void import("./languageModeRecommendations").then(
 		({ default: recommend }) => {
