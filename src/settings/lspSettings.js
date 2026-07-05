@@ -1,5 +1,6 @@
 import { quoteArg } from "cm/lsp/installRuntime";
 import serverRegistry from "cm/lsp/serverRegistry";
+import { builtinServers } from "cm/lsp/servers";
 import settingsPage from "components/settingsPage";
 import toast from "components/toast";
 import prompt from "dialogs/prompt";
@@ -7,6 +8,7 @@ import select from "dialogs/select";
 import appSettings from "lib/settings";
 import {
 	getServerOverride,
+	isCustomServer,
 	normalizeLanguages,
 	normalizeServerId,
 	upsertCustomServer,
@@ -172,7 +174,10 @@ export default function lspSettings() {
 	const categories = {
 		customServers: strings["settings-category-custom-servers"],
 		behavior: strings["settings-category-behavior"] || "Behavior",
-		servers: strings["settings-category-servers"],
+		builtinServers:
+			strings["settings-category-builtin-servers"] || "Built-in servers",
+		pluginServers:
+			strings["settings-category-plugin-servers"] || "Plugin servers",
 	};
 	let page = createPage();
 
@@ -209,23 +214,9 @@ export default function lspSettings() {
 			return a.label.localeCompare(b.label);
 		});
 
-		const items = [
-			{
-				key: "allow_non_terminal_workspace",
-				text: strings["lsp-allow-non-terminal-workspace"],
-				checkbox: appSettings.value.lsp?.allowNonTerminalWorkspace === true,
-				info: strings["settings-info-lsp-allow-non-terminal-workspace"],
-				category: categories.behavior,
-			},
-			{
-				key: "add_custom_server",
-				text: strings["lsp-add-custom-server"],
-				info: strings["settings-info-lsp-add-custom-server"],
-				category: categories.customServers,
-				index: 0,
-				chevron: true,
-			},
-		];
+		const builtinServersList = [];
+		const pluginServersList = [];
+		const customServersList = [];
 
 		for (const server of sortedServers) {
 			const source = server.launcher?.install?.source
@@ -236,14 +227,44 @@ export default function lspSettings() {
 					? `${server.languages.join(", ")}${source}`
 					: source.slice(3);
 
-			items.push({
+			const serverItem = {
 				key: `server:${server.id}`,
 				text: server.label,
 				info: languagesList || undefined,
-				category: categories.servers,
 				chevron: true,
-			});
+			};
+
+			if (builtinServers.some((s) => s.id === server.id)) {
+				serverItem.category = categories.builtinServers;
+				builtinServersList.push(serverItem);
+			} else if (isCustomServer(server.id)) {
+				serverItem.category = categories.customServers;
+				customServersList.push(serverItem);
+			} else {
+				serverItem.category = categories.pluginServers;
+				pluginServersList.push(serverItem);
+			}
 		}
+
+		const items = [
+			{
+				key: "allow_non_terminal_workspace",
+				text: strings["lsp-allow-non-terminal-workspace"],
+				checkbox: appSettings.value.lsp?.allowNonTerminalWorkspace === true,
+				info: strings["settings-info-lsp-allow-non-terminal-workspace"],
+				category: categories.behavior,
+			},
+			...builtinServersList,
+			...pluginServersList,
+			{
+				key: "add_custom_server",
+				text: strings["lsp-add-custom-server"],
+				info: strings["settings-info-lsp-add-custom-server"],
+				category: categories.customServers,
+				chevron: true,
+			},
+			...customServersList,
+		];
 
 		items.push({
 			note: strings["settings-note-lsp-settings"],
