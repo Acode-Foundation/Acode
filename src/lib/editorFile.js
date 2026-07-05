@@ -33,24 +33,9 @@ let mainCSSStyleSheet = null;
 
 function getMainCSSStyleSheet() {
 	if (mainCSSStyleSheet) return mainCSSStyleSheet;
-	if (
-		typeof CSSStyleSheet === "undefined" ||
-		!CSSStyleSheet.prototype.replaceSync
-	) {
-		return null;
-	}
 	for (const sheet of document.styleSheets) {
 		if (sheet.href && sheet.href.endsWith("main.css")) {
-			try {
-				const cssText = Array.from(sheet.cssRules)
-					.map((rule) => rule.cssText)
-					.join("\n");
-				mainCSSStyleSheet = new CSSStyleSheet();
-				mainCSSStyleSheet.replaceSync(cssText);
-				return mainCSSStyleSheet;
-			} catch (e) {
-				console.warn("Failed to create CSSStyleSheet from main.css rules", e);
-			}
+			return sheet;
 		}
 	}
 	return null;
@@ -558,9 +543,40 @@ export default class EditorFile {
 
 					// Add base styles to shadow DOM first
 					const sharedSheet = getMainCSSStyleSheet();
+					let adopted = false;
 					if (sharedSheet) {
-						shadow.adoptedStyleSheets = [sharedSheet];
-					} else {
+						try {
+							shadow.adoptedStyleSheets = [sharedSheet];
+							adopted = true;
+						} catch (e) {
+							console.warn(
+								"Failed to adopt document stylesheet, attempting constructed fallback",
+								e,
+							);
+							if (
+								typeof CSSStyleSheet !== "undefined" &&
+								CSSStyleSheet.prototype.replaceSync
+							) {
+								try {
+									const cssText = Array.from(sharedSheet.cssRules)
+										.map((rule) => rule.cssText)
+										.join("\n");
+									const constructedSheet = new CSSStyleSheet();
+									constructedSheet.replaceSync(cssText);
+									shadow.adoptedStyleSheets = [constructedSheet];
+									adopted = true;
+									mainCSSStyleSheet = constructedSheet;
+								} catch (innerError) {
+									console.warn(
+										"Failed constructed stylesheet fallback",
+										innerError,
+									);
+								}
+							}
+						}
+					}
+
+					if (!adopted) {
 						shadow.appendChild(<link rel="stylesheet" href="build/main.css" />);
 					}
 
