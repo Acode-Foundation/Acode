@@ -302,7 +302,6 @@ class NotificationManager {
 
 			$toastEl.style.opacity = "0";
 			$toastEl.style.transform = "translateX(100%)";
-			$toastEl.style.willChange = "transform, opacity";
 
 			animate(
 				$toastEl,

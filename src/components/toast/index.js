@@ -50,8 +50,6 @@ export default function toast(message, duration = 0, bgColor, color) {
 				app.append(this);
 				this.style.opacity = "0";
 				this.style.transform = "translateY(20px) scale(0.95)";
-				this.style.willChange = "transform, opacity";
-
 				animate(
 					this,
 					{ opacity: 1, transform: "translateY(0) scale(1)" },
