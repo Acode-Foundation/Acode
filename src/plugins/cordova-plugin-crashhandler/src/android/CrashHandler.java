@@ -46,8 +46,8 @@ public class CrashHandler extends CordovaPlugin {
             Log.e(TAG, "Failed to launch CrashActivity", e);
           } finally {
             //Should we terminate the app? or let it run with faulty state?
-            //android.os.Process.killProcess(android.os.Process.myPid());
-            //System.exit(10);
+            android.os.Process.killProcess(android.os.Process.myPid());
+            System.exit(10);
           }
         }
       }
