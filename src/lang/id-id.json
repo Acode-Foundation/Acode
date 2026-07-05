@@ -804,5 +804,7 @@
 	"min singular": "{count} menit lalu",
 	"day plural": "{count} hari lalu",
 	"hour plural": "{count} jam lalu",
-	"min plural": "{count} menit lalu"
+	"min plural": "{count} menit lalu",
+	"settings-category-builtin-servers": "Built-in servers",
+	"settings-category-plugin-servers": "Plugin servers"
 }

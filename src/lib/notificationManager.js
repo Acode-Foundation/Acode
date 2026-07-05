@@ -1,6 +1,7 @@
 import sidebarApps from "sidebarApps";
 import DOMPurify from "dompurify";
 import Ref from "html-tag-js/ref";
+import { animate } from "motion";
 
 /**
  * Notification create param
@@ -242,8 +243,13 @@ class NotificationManager {
 			`#${notification.id}`,
 		);
 		if (!notificationElement) return;
-		notificationElement.classList.add("hiding");
-		setTimeout(() => notificationElement.remove(), 300);
+		animate(
+			notificationElement,
+			{ opacity: 0, transform: "translateX(100%)" },
+			{ duration: 0.25, ease: "easeIn" },
+		).then(() => {
+			notificationElement.remove();
+		});
 	}
 
 	#clearNotification(id) {
@@ -289,9 +295,20 @@ class NotificationManager {
 		this.renderNotifications();
 
 		// show toast notification
-		document
-			.querySelector(".notification-item-container")
-			?.appendChild(this.createToastNotification(notification));
+		const $toastEl = this.createToastNotification(notification);
+		const $container = document.querySelector(".notification-item-container");
+		if ($container) {
+			$container.appendChild($toastEl);
+
+			$toastEl.style.opacity = "0";
+			$toastEl.style.transform = "translateX(100%)";
+
+			animate(
+				$toastEl,
+				{ opacity: 1, transform: "translateX(0)" },
+				{ type: "spring", stiffness: 300, damping: 26 },
+			);
+		}
 	}
 
 	#parseIcon(icon) {
