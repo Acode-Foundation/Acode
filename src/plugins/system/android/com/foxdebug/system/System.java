@@ -1718,6 +1718,21 @@ public class System extends CordovaPlugin {
       webView.getPluginManager().postMessage("updateSystemBars", null);
       applySystemBarTheme();
 
+      if (scheme != null) {
+        try {
+          android.content.SharedPreferences themePrefs = activity
+            .getApplicationContext()
+            .getSharedPreferences("acode_theme", Context.MODE_PRIVATE);
+          android.content.SharedPreferences.Editor prefEditor = themePrefs.edit();
+          Iterator<String> keys = scheme.keys();
+          while (keys.hasNext()) {
+            String key = keys.next();
+            prefEditor.putString(key, scheme.optString(key));
+          }
+          prefEditor.apply();
+        } catch (Exception ignored) {}
+      }
+
       callback.success();
     } catch (IllegalArgumentException e) {
       callback.error("Invalid color: " + systemBarColor);
