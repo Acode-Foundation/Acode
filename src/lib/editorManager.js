@@ -408,13 +408,36 @@ async function EditorManager($header, $body) {
 		if (!node || node.type !== "split") return;
 
 		node.element.dataset.direction = node.direction;
-		cleanupPaneSplitHandles(node.element);
-		node.element.replaceChildren();
+
+		const targetElements = [];
 		node.children.forEach((child, index) => {
 			if (index > 0) {
-				node.element.append(createPaneSplitHandle(node, index));
+				targetElements.push(createPaneSplitHandle(node, index));
 			}
-			node.element.append(child.element);
+			targetElements.push(child.element);
+		});
+
+		cleanupPaneSplitHandles(node.element);
+
+		const currentChildren = Array.from(node.element.children);
+		const targetSet = new Set(targetElements);
+
+		currentChildren.forEach((childEl) => {
+			if (!targetSet.has(childEl)) {
+				childEl.remove();
+			}
+		});
+
+		let currentEl = node.element.firstElementChild;
+		for (const targetEl of targetElements) {
+			if (currentEl === targetEl) {
+				currentEl = currentEl.nextElementSibling;
+			} else {
+				node.element.insertBefore(targetEl, currentEl);
+			}
+		}
+
+		node.children.forEach((child) => {
 			renderPaneLayout(child);
 		});
 	}

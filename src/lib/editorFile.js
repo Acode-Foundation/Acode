@@ -29,6 +29,33 @@ import run from "./run";
 import saveFile from "./saveFile";
 import appSettings from "./settings";
 
+let mainCSSStyleSheet = null;
+
+function getMainCSSStyleSheet() {
+	if (mainCSSStyleSheet) return mainCSSStyleSheet;
+	if (
+		typeof CSSStyleSheet === "undefined" ||
+		!CSSStyleSheet.prototype.replaceSync
+	) {
+		return null;
+	}
+	for (const sheet of document.styleSheets) {
+		if (sheet.href && sheet.href.endsWith("main.css")) {
+			try {
+				const cssText = Array.from(sheet.cssRules)
+					.map((rule) => rule.cssText)
+					.join("\n");
+				mainCSSStyleSheet = new CSSStyleSheet();
+				mainCSSStyleSheet.replaceSync(cssText);
+				return mainCSSStyleSheet;
+			} catch (e) {
+				console.warn("Failed to create CSSStyleSheet from main.css rules", e);
+			}
+		}
+	}
+	return null;
+}
+
 function syncQuickToolsVisibility(file) {
 	const { $toggler } = quickTools;
 	const hideForFile = !!file?.hideQuickTools;
@@ -530,7 +557,12 @@ export default class EditorFile {
 					shadow = container.attachShadow({ mode: "open" });
 
 					// Add base styles to shadow DOM first
-					shadow.appendChild(<link rel="stylesheet" href="build/main.css" />);
+					const sharedSheet = getMainCSSStyleSheet();
+					if (sharedSheet) {
+						shadow.adoptedStyleSheets = [sharedSheet];
+					} else {
+						shadow.appendChild(<link rel="stylesheet" href="build/main.css" />);
+					}
 
 					// Handle custom stylesheets if provided
 					if (options.stylesheets) {
