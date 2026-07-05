@@ -804,5 +804,7 @@
 	"min singular": "{count} perce",
 	"day plural": "{count} napja",
 	"hour plural": "{count} órája",
-	"min plural": "{count} perce"
+	"min plural": "{count} perce",
+	"settings-category-builtin-servers": "Built-in servers",
+	"settings-category-plugin-servers": "Plugin servers"
 }

@@ -804,5 +804,7 @@
 	"min singular": "{count} minute ago",
 	"day plural": "{count} days ago",
 	"hour plural": "{count} hours ago",
-	"min plural": "{count} minutes ago"
+	"min plural": "{count} minutes ago",
+	"settings-category-builtin-servers": "Built-in servers",
+	"settings-category-plugin-servers": "Plugin servers"
 }

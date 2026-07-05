@@ -808,6 +808,8 @@ declare type LangStrings = {
   "day plural": string;
   "hour plural": string;
   "min plural": string;
+  "settings-category-builtin-servers": string;
+  "settings-category-plugin-servers": string;
 };
 
 declare var strings: LangStrings;
