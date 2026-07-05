@@ -42,7 +42,7 @@ public class CrashHandler extends CordovaPlugin {
               Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK
             );
             context.startActivity(intent);
-          } catch (Exception e) {
+          } catch (Throwable e) {
             Log.e(TAG, "Failed to launch CrashActivity", e);
           } finally {
             //Should we terminate the app? or let it run with faulty state?
