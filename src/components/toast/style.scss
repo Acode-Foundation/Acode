@@ -16,15 +16,10 @@
   max-width: 80vw;
   width: fit-content;
   overflow: auto;
-  animation: slow-appear 500ms linear 1;
   z-index: 9999;
   border-radius: 4px;
   pointer-events: none;
-
-  &.hide {
-    transition: all 1s linear;
-    opacity: 0;
-  }
+  will-change: transform, opacity;
 
   &[clickable='true'] {
     pointer-events: all;

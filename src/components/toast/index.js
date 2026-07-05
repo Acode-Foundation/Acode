@@ -1,4 +1,5 @@
 import "./style.scss";
+import { animate } from "motion";
 
 /**@type {Array<HTMLElement>} */
 const toastQueue = [];
@@ -33,17 +34,29 @@ export default function toast(message, duration = 0, bgColor, color) {
 	Object.defineProperties($toast, {
 		hide: {
 			value() {
-				this.classList.add("hide");
-				setTimeout(() => {
+				animate(
+					this,
+					{ opacity: 0, transform: "translateY(15px) scale(0.95)" },
+					{ duration: 0.25, ease: "easeIn" },
+				).then(() => {
 					this.remove();
 					const $toast = toastQueue.splice(0, 1)[0];
 					if ($toast) $toast.show();
-				}, 500);
+				});
 			},
 		},
 		show: {
 			value() {
 				app.append(this);
+				this.style.opacity = "0";
+				this.style.transform = "translateY(20px) scale(0.95)";
+				this.style.willChange = "transform, opacity";
+
+				animate(
+					this,
+					{ opacity: 1, transform: "translateY(0) scale(1)" },
+					{ type: "spring", stiffness: 300, damping: 25 },
+				);
 
 				if (typeof duration === "number") {
 					setTimeout(() => {

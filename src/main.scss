@@ -738,10 +738,10 @@ input[type="search"]::-webkit-search-results-decoration {
     max-width: min(400px, calc(100vw - 40px));
     gap: 12px;
     box-shadow: 0 4px 12px var(--box-shadow-color);
-    animation: toastSlideIn 0.3s ease-out;
     border: 1px solid var(--border-color);
     white-space: wrap;
     box-sizing: border-box;
+    will-change: transform, opacity;
   }
 
   >* {

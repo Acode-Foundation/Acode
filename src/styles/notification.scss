@@ -10,7 +10,7 @@
   align-items: flex-start;
   animation: slideIn 0.3s ease-out;
   border: 1px solid var(--popup-border-color);
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
   overflow: hidden;
 
   &.loading {
@@ -120,10 +120,7 @@
     }
   }
 
-  &.hiding {
-    transform: translateX(120%);
-    opacity: 0;
-  }
+
 
   &.success {
     .notification-icon {
