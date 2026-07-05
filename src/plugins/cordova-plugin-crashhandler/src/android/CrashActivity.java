@@ -218,9 +218,11 @@ public class CrashActivity extends Activity {
                 if (restartIntent != null) {
                     restartIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                     startActivity(restartIntent);
+                    finish();
+                    System.exit(0);
+                } else {
+                    Toast.makeText(CrashActivity.this, "Unable to restart the app.", Toast.LENGTH_SHORT).show();
                 }
-                finish();
-                System.exit(0);
             }
         });
         buttonsLayout.addView(btnRestart);
