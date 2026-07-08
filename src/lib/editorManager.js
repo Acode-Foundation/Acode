@@ -2705,6 +2705,8 @@ async function EditorManager($header, $body) {
 		targetEditor = editor,
 	) {
 		try {
+			file.__cmCachedLanguageExtension = ext || [];
+			file.__cmCachedLanguageSignature = languageSignature;
 			targetEditor.dispatch({
 				effects: languageCompartment.reconfigure(ext || []),
 			});
@@ -2722,6 +2724,14 @@ async function EditorManager($header, $body) {
 			return [];
 		}
 
+		if (
+			file.__cmCachedLanguageExtension &&
+			file.__cmCachedLanguageSignature === languageSignature
+		) {
+			markLanguageReady(file, languageSignature, true);
+			return file.__cmCachedLanguageExtension;
+		}
+
 		let result;
 		try {
 			result = langExtFn();
@@ -2735,11 +2745,15 @@ async function EditorManager($header, $body) {
 			markLanguageReady(file, languageSignature, false);
 			result
 				.then((ext) => {
+					if (file.__cmLanguageSignature !== languageSignature) {
+						return;
+					}
+					file.__cmCachedLanguageExtension = ext || [];
+					file.__cmCachedLanguageSignature = languageSignature;
 					const pane = getFileLspPane(file);
 					if (
 						!pane?.editor ||
-						pane.activeFile?.id !== fileId ||
-						file.__cmLanguageSignature !== languageSignature
+						pane.activeFile?.id !== fileId
 					) {
 						return;
 					}
@@ -2759,6 +2773,8 @@ async function EditorManager($header, $body) {
 		}
 
 		markLanguageReady(file, languageSignature, true);
+		file.__cmCachedLanguageExtension = result || [];
+		file.__cmCachedLanguageSignature = languageSignature;
 		return result || [];
 	}
 
