@@ -42,9 +42,9 @@ export const Row = ({ row }) => {
 export const SearchRow1 = ({ inputRef }) => (
 	<div className="button-container" id="search_row1">
 		<input ref={inputRef} type="search" placeholder={strings.search} />
-		<RowItem icon="arrow_back" action="search-prev" />
-		<RowItem icon="arrow_forward" action="search-next" />
-		<RowItem icon="settings" action="search-settings" />
+		<RowItem id="search-prev" icon="arrow_back" action="search-prev" />
+		<RowItem id="search-next" icon="arrow_forward" action="search-next" />
+		<RowItem id="search-settings" icon="settings" action="search-settings" />
 	</div>
 );
 
@@ -123,7 +123,6 @@ export function RowItem({ id, icon, letters, action, value, ref, repeat }) {
 		></button>
 	);
 	if (id) {
-		//extra
 		$item.addEventListener("mouseenter", () => {
 			showTooltip($item, description(id));
 		});

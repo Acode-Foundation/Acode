@@ -15,7 +15,7 @@ function createTooltip() {
 export function showTooltip(target, text) {
 	if (!target || !text) return;
 
-	const tooltip = createTooltip();
+	const $tooltip = createTooltip();
 
 	tooltip.textContent = text;
 
@@ -25,10 +25,18 @@ export function showTooltip(target, text) {
 		const width = tooltip.offsetWidth;
 		const height = tooltip.offsetHeight;
 
-		tooltip.style.left = rect.left + rect.width / 2 - width / 2 + "px";
+		const left = Math.max(
+			8,
+			Math.min(
+				window.innerWidth - width - 8,
+				rect.left + rect.width / 2 - width / 2,
+			),
+		);
 
-		tooltip.style.top = rect.top - height - 10 + "px";
+		const top = Math.max(8, rect.top - height - 10);
 
+		tooltip.style.left = `${left}px`;
+		tooltip.style.top = `${top}px`;
 		tooltip.classList.add("show");
 	});
 }
