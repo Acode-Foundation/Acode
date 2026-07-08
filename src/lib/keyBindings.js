@@ -123,6 +123,20 @@ const APP_BINDING_CONFIG = [
 		readOnly: true,
 	},
 	{
+		name: "nextFileHistory",
+		description: "Open next file tab from history",
+		key: null,
+		action: "next-file-history",
+		readOnly: true,
+	},
+	{
+		name: "prevFileHistory",
+		description: "Open previous file tab from history",
+		key: null,
+		action: "prev-file-history",
+		readOnly: true,
+	},
+	{
 		name: "splitPaneRight",
 		description: "Split editor pane right",
 		key: "Ctrl-\\",

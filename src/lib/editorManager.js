@@ -138,6 +138,9 @@ async function EditorManager($header, $body) {
 	let touchSelectionSyncRaf = 0;
 	let nativeContextMenuDisabled = null;
 	const recoverableWarningKeys = new Set();
+	let historyStack = [];
+	let historyIndex = -1;
+	let isNavigatingHistory = false;
 
 	function warnRecoverable(message, error, key) {
 		if (key) {
@@ -705,6 +708,7 @@ async function EditorManager($header, $body) {
 			updateActivePaneScrollbars();
 			toggleProblemButton();
 			if (options.emitSwitch !== false && manager.activeFile) {
+				recordHistory(manager.activeFile);
 				manager.onupdate("switch-file");
 				events.emit("switch-file", manager.activeFile);
 			}
@@ -3152,6 +3156,15 @@ async function EditorManager($header, $body) {
 		getEditorHeight,
 		getEditorWidth,
 		header: $header,
+		openPreviousEditorFromHistory,
+		openNextEditorFromHistory,
+		recordHistory,
+		get editorHistory() {
+			return historyStack;
+		},
+		get editorHistoryIndex() {
+			return historyIndex;
+		},
 		getLspMetadata: buildLspMetadata,
 		get editor() {
 			return getActivePane()?.editor || editor;
@@ -3647,6 +3660,7 @@ async function EditorManager($header, $body) {
 	});
 
 	manager.on(["remove-file"], (file) => {
+		removeFileFromHistory(file);
 		clearDocSyncTimers(file);
 		detachLspForFile(file);
 		toggleProblemButton();
@@ -4204,7 +4218,7 @@ async function EditorManager($header, $body) {
 		setNativeContextMenuDisabled(isFocused);
 
 		function handleContentFocus(_event) {
-			setActivePane(pane);
+			setActivePane(pane, { emitSwitch: false });
 			setNativeContextMenuDisabled(true);
 			const activeFile = pane.activeFile;
 			if (activeFile) {
@@ -4746,6 +4760,7 @@ async function EditorManager($header, $body) {
 				file.tab?.classList.add("active");
 				updateHeaderForFile(file);
 				if (isPaneTabLayout()) syncGlobalOpenFileListMirror();
+				recordHistory(file);
 				manager.onupdate("switch-file");
 				events.emit("switch-file", file);
 				toggleProblemButton();
@@ -4812,6 +4827,7 @@ async function EditorManager($header, $body) {
 				}
 			}
 		}
+		recordHistory(file);
 		manager.onupdate("switch-file");
 		events.emit("switch-file", file);
 
@@ -4822,6 +4838,74 @@ async function EditorManager($header, $body) {
 		const file = manager.activeFile;
 		if (!file || file.type !== "editor" || !file.loaded || file.loading) return;
 		applyFileToEditor(file, { forceRecreate: true });
+	}
+
+	function recordHistory(file) {
+		if (!file || isNavigatingHistory) return;
+		const current = historyStack[historyIndex];
+		if (current?.id === file.id) return;
+
+		historyStack = historyStack.slice(0, historyIndex + 1);
+		historyStack.push(file);
+		historyIndex = historyStack.length - 1;
+
+		const MAX_HISTORY = 100;
+		if (historyStack.length > MAX_HISTORY) {
+			historyStack.shift();
+			historyIndex = Math.max(0, historyIndex - 1);
+		}
+	}
+
+	function removeFileFromHistory(file) {
+		if (!file) return;
+		for (let i = historyStack.length - 1; i >= 0; i--) {
+			if (historyStack[i]?.id === file.id) {
+				historyStack.splice(i, 1);
+				if (i <= historyIndex) {
+					historyIndex--;
+				}
+			}
+		}
+		if (historyIndex < 0 && historyStack.length > 0) {
+			historyIndex = 0;
+		}
+	}
+
+	function openPreviousEditorFromHistory() {
+		while (historyIndex > 0) {
+			historyIndex--;
+			const file = historyStack[historyIndex];
+			if (file && getFile(file.id, "id")) {
+				isNavigatingHistory = true;
+				try {
+					file.makeActive();
+				} finally {
+					isNavigatingHistory = false;
+				}
+				return true;
+			}
+			historyStack.splice(historyIndex, 1);
+		}
+		return false;
+	}
+
+	function openNextEditorFromHistory() {
+		while (historyIndex < historyStack.length - 1) {
+			historyIndex++;
+			const file = historyStack[historyIndex];
+			if (file && getFile(file.id, "id")) {
+				isNavigatingHistory = true;
+				try {
+					file.makeActive();
+				} finally {
+					isNavigatingHistory = false;
+				}
+				return true;
+			}
+			historyStack.splice(historyIndex, 1);
+			historyIndex--;
+		}
+		return false;
 	}
 
 	/**

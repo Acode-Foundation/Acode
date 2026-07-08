@@ -364,6 +364,26 @@ function registerCoreCommands() {
 		},
 	});
 	addCommand({
+		name: "nextFileHistory",
+		description: "Open next file tab from history",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("next-file-history");
+			return true;
+		},
+	});
+	addCommand({
+		name: "prevFileHistory",
+		description: "Open previous file tab from history",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("prev-file-history");
+			return true;
+		},
+	});
+	addCommand({
 		name: "showSettingsMenu",
 		description: "Show settings menu",
 		readOnly: true,
@@ -1637,7 +1657,19 @@ async function loadCustomKeyBindings() {
 		if (await bindingsFile.exists()) {
 			const bindings = await bindingsFile.readFile("json");
 			if (bindings && typeof bindings === "object") {
+				let updated = false;
+				Object.keys(keyBindings).forEach((key) => {
+					if (!(key in bindings)) {
+						bindings[key] = keyBindings[key];
+						updated = true;
+					}
+				});
 				resolvedKeyBindings = bindings;
+				if (updated) {
+					bindingsFile
+						.writeFile(JSON.stringify(bindings, undefined, 2))
+						.catch(() => {});
+				}
 			}
 		} else {
 			throw new Error("Key binding file not found");
