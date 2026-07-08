@@ -147,7 +147,7 @@ public class CrashActivity extends Activity {
         LinearLayout metaCard = new LinearLayout(this);
         metaCard.setOrientation(LinearLayout.VERTICAL);
         metaCard.setPadding(dp(16), dp(16), dp(16), dp(16));
-        
+
         GradientDrawable cardBg = new GradientDrawable();
         cardBg.setColor(colorSecondaryBg);
         cardBg.setCornerRadius(dp(4));
@@ -414,11 +414,11 @@ public class CrashActivity extends Activity {
         final GradientDrawable normalBg = new GradientDrawable();
         normalBg.setColor(bgColor);
         normalBg.setCornerRadius(dp(4));
-        
+
         if (hasBorder) {
             normalBg.setStroke(dp(1), colorBorder);
         }
-        
+
         btn.setBackground(normalBg);
 
         LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(
