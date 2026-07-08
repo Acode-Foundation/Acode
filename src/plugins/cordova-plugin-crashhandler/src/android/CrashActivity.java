@@ -23,9 +23,12 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
+import android.webkit.WebView;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import org.json.JSONObject;
 
 public class CrashActivity extends Activity {
 
@@ -80,12 +83,13 @@ public class CrashActivity extends Activity {
 
         String deviceName = Build.MANUFACTURER + " " + Build.MODEL;
         String androidVersion = Build.VERSION.RELEASE + " (SDK " + Build.VERSION.SDK_INT + ")";
-        String timestamp = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(new Date());
+        String webViewVersion = getWebViewVersion();
+        String appLanguage = getAppLanguage();
 
         fullReport = "Acode Crash Report\n" +
                 "==================\n" +
-                "Time: " + timestamp + "\n" +
-                "Error Type: " + errorType + "\n" +
+                "WebView Version: " + webViewVersion + "\n" +
+                "App Language: " + appLanguage + "\n" +
                 "Error Message: " + errorMessage + "\n" +
                 "App Version: " + appVersion + " (" + appBuild + ")\n" +
                 "Device: " + deviceName + "\n" +
@@ -163,8 +167,8 @@ public class CrashActivity extends Activity {
         metaCard.addView(createMetaRow("App Version", appVersion + " (" + appBuild + ")"));
         metaCard.addView(createMetaRow("Device", deviceName));
         metaCard.addView(createMetaRow("Android OS", androidVersion));
-        metaCard.addView(createMetaRow("Time", timestamp));
-        metaCard.addView(createMetaRow("Error Type", errorType));
+        metaCard.addView(createMetaRow("WebView", webViewVersion));
+        metaCard.addView(createMetaRow("App Language", appLanguage));
         rootLayout.addView(metaCard);
 
         TextView logsTitleView = new TextView(this);
@@ -440,6 +444,75 @@ public class CrashActivity extends Activity {
         });
 
         return btn;
+    }
+
+    private String getWebViewVersion() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            try {
+                PackageInfo info = WebView.getCurrentWebViewPackage();
+                if (info != null) {
+                    return info.versionName;
+                }
+            } catch (Exception e) {
+                // Ignore
+            }
+        }
+
+        try {
+            String[] packages = {
+                "com.google.android.webview",
+                "com.android.chrome",
+                "com.android.webview"
+            };
+            for (String pkg : packages) {
+                try {
+                    PackageInfo info = getPackageManager().getPackageInfo(pkg, 0);
+                    if (info != null) {
+                        return info.versionName;
+                    }
+                } catch (Exception ignored) {}
+            }
+        } catch (Exception e) {
+            // Ignore
+        }
+
+        try {
+            return System.getProperty("http.agent");
+        } catch (Exception e) {
+            // Ignore
+        }
+
+        return "Unknown";
+    }
+
+    private String getAppLanguage() {
+        String langCode = "en-us";
+        try {
+            File settingsFile = new File(getExternalFilesDir(null), "settings.json");
+            if (!settingsFile.exists()) {
+                settingsFile = new File(getFilesDir(), "settings.json");
+            }
+            if (settingsFile.exists()) {
+                FileInputStream fis = new FileInputStream(settingsFile);
+                BufferedReader reader = new BufferedReader(new InputStreamReader(fis, "UTF-8"));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    sb.append(line);
+                }
+                reader.close();
+                fis.close();
+
+                JSONObject json = new JSONObject(sb.toString());
+                if (json.has("lang")) {
+                    langCode = json.getString("lang");
+                }
+            }
+        } catch (Exception e) {
+            // Ignore
+        }
+
+        return langCode;
     }
 
     private int dp(float value) {
