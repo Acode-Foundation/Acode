@@ -27,6 +27,9 @@ declare type LangStrings = {
   "editor theme": string;
   "enter file name": string;
   "enter folder name": string;
+  "enter new name": string;
+  "new name": string;
+  "code actions": string;
   "empty folder message": string;
   "enter line number": string;
   "error": string;

@@ -74,6 +74,7 @@
     "@rspack/core": "^2.0.0",
     "@types/ace": "^0.0.52",
     "@types/cordova": "^11.0.3",
+    "@types/node": "^26.1.0",
     "@types/url-parse": "^1.4.11",
     "autoprefixer": "^10.5.0",
     "babel-loader": "^10.1.1",
@@ -110,6 +111,7 @@
     "terminal": "^0.1.4",
     "ts-loader": "^9.5.7",
     "typescript": "^5.9.3",
+    "vscode-languageserver-protocol": "3.18.2",
     "vscode-languageserver-types": "^3.17.5",
     "ws": "^8.21.0"
   },
