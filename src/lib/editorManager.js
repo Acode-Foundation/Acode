@@ -2751,10 +2751,7 @@ async function EditorManager($header, $body) {
 					file.__cmCachedLanguageExtension = ext || [];
 					file.__cmCachedLanguageSignature = languageSignature;
 					const pane = getFileLspPane(file);
-					if (
-						!pane?.editor ||
-						pane.activeFile?.id !== fileId
-					) {
+					if (!pane?.editor || pane.activeFile?.id !== fileId) {
 						return;
 					}
 
