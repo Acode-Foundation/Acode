@@ -4218,7 +4218,7 @@ async function EditorManager($header, $body) {
 		setNativeContextMenuDisabled(isFocused);
 
 		function handleContentFocus(_event) {
-			setActivePane(pane, { emitSwitch: false });
+			setActivePane(pane);
 			setNativeContextMenuDisabled(true);
 			const activeFile = pane.activeFile;
 			if (activeFile) {

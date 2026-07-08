@@ -1668,7 +1668,10 @@ async function loadCustomKeyBindings() {
 				if (updated) {
 					bindingsFile
 						.writeFile(JSON.stringify(bindings, undefined, 2))
-						.catch(() => {});
+						.catch((error) => {
+							window.log?.("error", "Failed to back-fill new key bindings!");
+							window.log?.("error", error);
+						});
 				}
 			}
 		} else {
