@@ -20,6 +20,7 @@ let startTime;
 let contextmenuTimeout;
 let active = false; // is button already active
 let slide = 0;
+let longPress = false;
 
 /**@type {HTMLElement} */
 let $row;
@@ -39,6 +40,7 @@ function reset() {
 	touchMoved = undefined;
 	contextmenuTimeout = null;
 	active = false;
+	longPress = false;
 }
 
 function clearTouchFeedback() {
@@ -195,6 +197,7 @@ function touchstart(e) {
 	contextmenuTimeout = setTimeout(() => {
 		if (touchMoved) return;
 
+		longPress = true;
 		showTooltip($el, description($el.dataset.id));
 
 		if ($el.dataset.repeat === "true") {
@@ -305,7 +308,7 @@ function touchend(e) {
 		return;
 	}
 
-	if ($touchstart !== $el || contextmenu) {
+	if ($touchstart !== $el || contextmenu || longPress) {
 		touchcancel(e);
 		return;
 	}

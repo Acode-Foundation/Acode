@@ -3,11 +3,11 @@
 
 	padding: 6px 10px;
 
-	background: rgba(40,40,40,.95);
-
-	color: white;
-
-	border-radius: 6px;
+	background: var(--popup-background-color);
+	color: var(--popup-text-color);
+	border: 1px solid var(--popup-border-color);
+	box-shadow: 0 0 4px var(--box-shadow-color);
+	border-radius: var(--popup-border-radius);
 
 	font-size: 12px;
 
@@ -19,13 +19,6 @@
 
 	transform: translateY(5px);
 
-	transition: .15s;
-
 	z-index: 999999;
 }
 
-.acode-tooltip.show {
-	opacity: 1;
-
-	transform: translateY(0);
-}
