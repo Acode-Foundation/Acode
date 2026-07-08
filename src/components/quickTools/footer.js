@@ -119,7 +119,7 @@ export function RowItem({ id, icon, letters, action, value, ref, repeat }) {
 			data-action={action}
 			data-repeat={repeat}
 			vibrate="true"
-			title={id ? description(id) : ""}
+			aria-label={id ? description(id) : ""}
 		></button>
 	);
 	if (id) {
