@@ -2705,12 +2705,12 @@ async function EditorManager($header, $body) {
 		targetEditor = editor,
 	) {
 		try {
-			file.__cmCachedLanguageExtension = ext || [];
-			file.__cmCachedLanguageSignature = languageSignature;
 			targetEditor.dispatch({
 				effects: languageCompartment.reconfigure(ext || []),
 			});
 			file.session = targetEditor.state;
+			file.__cmCachedLanguageExtension = ext || [];
+			file.__cmCachedLanguageSignature = languageSignature;
 			markLanguageReady(file, languageSignature, true);
 		} catch (error) {
 			warnRecoverable("Failed to apply language extensions.", error, warnKey);
