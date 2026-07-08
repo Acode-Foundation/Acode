@@ -61,7 +61,7 @@ fi
 
 if [ "$INSTALLING" = true ]; then
     echo "Configuring timezone..."
-    
+
     if [ -n "$ANDROID_TZ" ] && [ -f "/usr/share/zoneinfo/$ANDROID_TZ" ]; then
         ln -sf "/usr/share/zoneinfo/$ANDROID_TZ" /etc/localtime
         echo "$ANDROID_TZ" > /etc/timezone
@@ -149,7 +149,7 @@ open_in_acode() {
     local path=$(get_abs_path "$1")
     local type="file"
     [[ -d "$path" ]] && type="folder"
-    
+
     # Send OSC 7777 escape sequence: \e]7777;cmd;type;path\a
     # The terminal component will intercept and handle this
     printf '\e]7777;open;%s;%s\a' "$type" "$path"
@@ -181,7 +181,7 @@ ACODE_CLI
     fi
 
     # Create initrc if it doesn't exist
-    #initrc runs in bash so we can use bash features 
+    #initrc runs in bash so we can use bash features
 if [ ! -e "$PREFIX/alpine/initrc" ]; then
     cat <<'EOF' > "$PREFIX/alpine/initrc"
 # Source rc files if they exist
@@ -194,7 +194,7 @@ fi
 export PATH=$PATH:/bin:/sbin:/usr/bin:/usr/sbin:/usr/share/bin:/usr/share/sbin:/usr/local/bin:/usr/local/sbin
 
 export HOME=/public
-export TERM=xterm-256color 
+export TERM=xterm-256color
 SHELL=/bin/bash
 export PIP_BREAK_SYSTEM_PACKAGES=1
 
@@ -203,20 +203,20 @@ export PIP_BREAK_SYSTEM_PACKAGES=1
 #   eval "$(starship init bash)"
 _shorten_path() {
     local path="$PWD"
-    
+
     if [[ "$HOME" != "/" && "$path" == "$HOME" ]]; then
         echo "~"
         return
     elif [[ "$HOME" != "/" && "$path" == "$HOME/"* ]]; then
         path="~${path#$HOME}"
     fi
-    
+
     [[ "$path" == "~" ]] && echo "~" && return
-    
+
     local parts result=""
     IFS='/' read -ra parts <<< "$path"
     local len=${#parts[@]}
-    
+
     for ((i=0; i<len; i++)); do
         [[ -z "${parts[i]}" ]] && continue
         if [[ $i -lt $((len-1)) ]]; then
@@ -225,7 +225,7 @@ _shorten_path() {
             result+="${parts[i]}"
         fi
     done
-    
+
     [[ "$path" == /* ]] && echo "/$result" || echo "$result"
 }
 
@@ -335,6 +335,9 @@ command_not_found_handle() {
     return 127
 }
 
+# Replicate behaviour of termux (non standard)
+alias clear='reset'
+
 EOF
 fi
 
@@ -350,7 +353,6 @@ fi
 chmod +x "$PREFIX/alpine/initrc"
 
 if [ "$FAILSAFE" != true ]; then
-    #actual source
     #everytime a terminal is started initrc will run
     "$PREFIX/axs" -c "bash --rcfile /initrc -i"
 fi
