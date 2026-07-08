@@ -2,8 +2,9 @@
  * @typedef {import('html-tag-js/ref')} Ref
  */
 
+import { hideTooltip, showTooltip } from "components/tooltip";
 import settings from "lib/settings";
-import items, { ref } from "./items";
+import items, { description, ref } from "./items";
 
 /**
  * Create a row with common buttons
@@ -54,8 +55,12 @@ export const SearchRow1 = ({ inputRef }) => (
 export const SearchRow2 = ({ inputRef, posRef, totalRef }) => (
 	<div className="button-container" id="search_row2">
 		<input ref={inputRef} type="text" placeholder={strings.replace} />
-		<RowItem icon="replace" action="search-replace" />
-		<RowItem icon="replace_all" action="search-replace-all" />
+		<RowItem id="search-replace" icon="replace" action="search-replace" />
+		<RowItem
+			id="search-replace-all"
+			icon="replace_all"
+			action="search-replace-all"
+		/>
 		<div className="search-status">
 			<span ref={posRef}>0</span>
 			<span>of</span>
@@ -114,9 +119,19 @@ export function RowItem({ id, icon, letters, action, value, ref, repeat }) {
 			data-action={action}
 			data-repeat={repeat}
 			vibrate="true"
+			title={id ? description(id) : ""}
 		></button>
 	);
+	if (id) {
+		//extra
+		$item.addEventListener("mouseenter", () => {
+			showTooltip($item, description(id));
+		});
 
+		$item.addEventListener("mouseleave", () => {
+			hideTooltip();
+		});
+	}
 	if (typeof value === "function") {
 		$item.value = value;
 	} else if (value !== undefined) {

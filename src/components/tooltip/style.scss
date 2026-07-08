@@ -1,0 +1,31 @@
+.acode-tooltip {
+	position: fixed;
+
+	padding: 6px 10px;
+
+	background: rgba(40,40,40,.95);
+
+	color: white;
+
+	border-radius: 6px;
+
+	font-size: 12px;
+
+	white-space: nowrap;
+
+	pointer-events: none;
+
+	opacity: 0;
+
+	transform: translateY(5px);
+
+	transition: .15s;
+
+	z-index: 999999;
+}
+
+.acode-tooltip.show {
+	opacity: 1;
+
+	transform: translateY(0);
+}

@@ -1,5 +1,7 @@
 import { redoDepth, undoDepth } from "@codemirror/commands";
 import quickTools from "components/quickTools";
+import { description } from "components/quickTools/items";
+import { hideTooltip, showTooltip } from "components/tooltip";
 import config from "lib/config";
 import appSettings from "lib/settings";
 import actions, { key } from "./quickTools";
@@ -168,6 +170,7 @@ function onclick(e) {
 	e.preventDefault();
 	e.stopPropagation();
 	click(e.target);
+	hideTooltip();
 	clearTimeout(timeout);
 }
 
@@ -189,13 +192,16 @@ function touchstart(e) {
 	e.preventDefault();
 	e.stopPropagation();
 
-	if ($el.dataset.repeat === "true") {
-		contextmenuTimeout = setTimeout(() => {
-			if (touchMoved) return;
+	contextmenuTimeout = setTimeout(() => {
+		if (touchMoved) return;
+
+		showTooltip($el, description($el.dataset.id));
+
+		if ($el.dataset.repeat === "true") {
 			contextmenu = true;
 			oncontextmenu(e);
-		}, CONTEXT_MENU_TIMEOUT);
-	}
+		}
+	}, CONTEXT_MENU_TIMEOUT);
 
 	if ($el.classList.contains("active")) {
 		active = true;
@@ -320,6 +326,7 @@ function touchcancel(e) {
 	clearTimeout(timeout);
 	clearTimeout(contextmenuTimeout);
 	clearTouchFeedback();
+	hideTooltip();
 }
 
 /**
