@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   build:
-    uses: Acode-Foundation/acode/.github/workflows/nightly-build.yml@main
+    uses: unschooledgamer/acode/.github/workflows/nightly-build.yml@main
     permissions:
       contents: read
       pull-requests: read
@@ -29,7 +29,7 @@ jobs:
   release:
     needs: build
     runs-on: ubuntu-latest
-    if: ${{ github.repository_owner == 'Acode-Foundation' && needs.build.result == 'success' }}
+    # if: ${{ github.repository_owner == 'Acode-Foundation' && needs.build.result == 'success' }}
     permissions:
       contents: write
     steps:
