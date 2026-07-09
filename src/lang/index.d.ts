@@ -822,6 +822,7 @@ declare type LangStrings = {
 	"diff hr": string;
 	"diff min": string;
 	"diff sec": string;
+	command: string;
 };
 
 declare var strings: LangStrings;
