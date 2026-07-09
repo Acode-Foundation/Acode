@@ -24,7 +24,7 @@ jobs:
     name: Trigger Preview Release (if conditions met)
     permissions:
       contents: read
-      pull_requests: write
+      pull-requests: write
       issues: write
     if: |
         github.event.pull_request.draft == false
@@ -77,7 +77,7 @@ jobs:
       needs: job_trigger
       permissions:
         contents: read
-        pull_requests: read
+        pull-requests: read
         issues: read
       secrets:
         KEYSTORE_CONTENT: ${{ secrets.KEYSTORE_CONTENT }}
