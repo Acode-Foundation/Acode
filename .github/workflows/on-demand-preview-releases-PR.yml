@@ -9,7 +9,7 @@ on:
 
 # defined at workflow-level as the workflow, Requires these permissions to function.
 permissions:
-  contents: read
+  contents: write # due to nightly workflow complaining, even tho release step isn't executed. 
   pull-requests: write
   # All Pull Requests are issues, but not all issues are Pull Requests (like GitHub says 🙃)
   issues: write
@@ -22,6 +22,10 @@ concurrency:
 jobs:
   job_trigger:
     name: Trigger Preview Release (if conditions met)
+    permissions:
+      contents: read
+      pull_requests: write
+      issues: write
     if: |
         github.event.pull_request.draft == false
         && (github.repository_owner == 'Acode-Foundation'
@@ -71,6 +75,10 @@ jobs:
 
   trigger_builder:
       needs: job_trigger
+      permissions:
+        contents: read
+        pull_requests: read
+        issues: read
       secrets:
         KEYSTORE_CONTENT: ${{ secrets.KEYSTORE_CONTENT }}
         BUILD_JSON_CONTENT: ${{ secrets.BUILD_JSON_CONTENT }}
@@ -83,6 +91,9 @@ jobs:
 
   update_Last_Comment:
       needs: [job_trigger,trigger_builder]
+      permissions:
+        contents: read
+
       runs-on: ubuntu-latest
       if: ${{ github.repository_owner == 'Acode-Foundation' && always() && contains(fromJSON('["failure","cancelled", "success"]'), needs.trigger_builder.result) }}
       steps:
