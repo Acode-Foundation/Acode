@@ -420,10 +420,10 @@ function formatMemory(kb) {
 }
 
 function formatUptime(startedAt) {
-	if (!startedAt) return "Unknown";
+	if (!startedAt) return text("unknown", "Unknown");
 	const now = Date.now();
 	const diffMs = now - startedAt;
-	if (diffMs < 0) return "Just started";
+	if (diffMs < 0) return text("just started", "Just started");
 
 	const diffSec = Math.floor(diffMs / 1000);
 	const diffMin = Math.floor(diffSec / 60);
@@ -431,13 +431,19 @@ function formatUptime(startedAt) {
 	const diffDays = Math.floor(diffHr / 24);
 
 	if (diffDays > 0) {
-		return `${diffDays}d ${diffHr % 24}h ago`;
+		return text("diff days", "{days}d {hr}h ago")
+			.replace(/\{days\}/g, diffDays)
+			.replace(/\{hr\}/g, diffHr % 24);
 	}
 	if (diffHr > 0) {
-		return `${diffHr}h ${diffMin % 60}m ago`;
+		return text("diff hr", "{hr}h {min}m ago")
+			.replace(/\{hr\}/g, diffHr)
+			.replace(/\{min\}/g, diffMin % 60);
 	}
 	if (diffMin > 0) {
-		return `${diffMin}m ${diffSec % 60}s ago`;
+		return text("diff min", "{min}m {sec}s ago")
+			.replace(/\{min\}/g, diffMin)
+			.replace(/\{sec\}/g, diffSec % 60);
 	}
-	return `${diffSec}s ago`;
+	return text("diff sec", "{sec}s ago").replace(/\{sec\}/g, diffSec);
 }

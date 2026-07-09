@@ -812,5 +812,11 @@
 	"uptime": "Uptime",
 	"note": "Note",
 	"acode main process": "Acode main process",
-	"ppid parent": "PPID (Parent)"
+	"ppid parent": "PPID (Parent)",
+	"unknown": "Unknown",
+	"just started": "Just Started",
+	"diff days": "{days}d {hr}h ago",
+	"diff hr": "{hr}h {min}m ago",
+	"diff min": "{min}m {sec}s ago",
+	"diff sec": "{sec}s ago"
 }

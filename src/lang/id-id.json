@@ -812,5 +812,11 @@
 	"uptime": "Waktu Aktif",
 	"note": "Catatan",
 	"acode main process": "Proses utama Acode",
-	"ppid parent": "PPID (Induk)"
+	"ppid parent": "PPID (Induk)",
+	"unknown": "Tidak diketahui",
+	"just started": "Baru dimulai",
+	"diff days": "{days}h {hr}j yang lalu",
+	"diff hr": "{hr}j {min}m yang lalu",
+	"diff min": "{min}m {sec}d yang lalu",
+	"diff sec": "{sec}d yang lalu"
 }

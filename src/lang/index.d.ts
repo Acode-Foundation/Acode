@@ -816,6 +816,12 @@ declare type LangStrings = {
 	note: string;
 	"acode main process": string;
 	"ppid parent": string;
+	unknown: string;
+	"just started": string;
+	"diff days": string;
+	"diff hr": string;
+	"diff min": string;
+	"diff sec": string;
 };
 
 declare var strings: LangStrings;
