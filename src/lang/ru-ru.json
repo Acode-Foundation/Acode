@@ -826,5 +826,17 @@
 	"sponsors:join-our-community": "Join our community of supporters and help shape the future of mobile development",
 	"sponsors:become-a-sponsor": "Become a Sponsor",
 	"sponsors:acode-sponsors": "Acode's SponsorsAcode's Sponsors",
-	"unable to load sponsors": "Unable to load sponsors..."
+	"unable to load sponsors": "Unable to load sponsors...",
+	"lsp:clipboard not available": "Clipboard not available",
+	"lsp:restarting server": "Restarting server...",
+	"lsp:no logs to copy": "No logs to copy",
+	"lsp:failed to copy": "Failed to copy",
+	"lsp:server restarted": "Server restarted",
+	"lsp:restart failed": "Restart failed",
+	"lsp:stopping": "Stopping...",
+	"lsp:server stopped": "Server stopped",
+	"lsp:failed to stop": "Failed to stop",
+	"lsp:servers started": "Servers started",
+	"lsp:starting lsp servers": "Starting LSP servers...",
+	"lsp:failed to start servers": "Failed to start servers"
 }

@@ -51,7 +51,7 @@ function getStatusColor(status) {
 function copyLogsToClipboard(serverId, serverLabel) {
 	const logs = getLspLogs(serverId);
 	if (logs.length === 0) {
-		toast("No logs to copy");
+		toast(strings["lsp:no-logs-to-copy"]);
 		return;
 	}
 
@@ -71,18 +71,18 @@ function copyLogsToClipboard(serverId, serverLabel) {
 
 	if (navigator.clipboard?.writeText) {
 		navigator.clipboard.writeText(header + text).catch(() => {
-			toast("Failed to copy");
+			toast(strings["lsp:failed-to-copy"]);
 		});
 	} else if (cordova?.plugins?.clipboard) {
 		cordova.plugins.clipboard.copy(header + text);
 	} else {
-		toast("Clipboard not available");
+		toast(strings["lsp:clipboard-not-available"]);
 	}
 }
 
 async function restartServer(serverId) {
 	addLspLog(serverId, "info", "Restart requested by user");
-	toast("Restarting server...");
+	toast(strings["lsp:restarting-server"]);
 
 	try {
 		const clientState = getClientState(serverId);
@@ -96,16 +96,16 @@ async function restartServer(serverId) {
 		window.editorManager?.restartLsp?.();
 
 		addLspLog(serverId, "info", "Server restarted successfully");
-		toast("Server restarted");
+		toast(strings["lsp:server-restarted"]);
 	} catch (err) {
 		addLspLog(serverId, "error", `Restart failed: ${err.message}`);
-		toast("Restart failed");
+		toast(strings["lsp:restart failed"]);
 	}
 }
 
 async function stopServer(serverId) {
 	addLspLog(serverId, "info", "Stop requested by user");
-	toast("Stopping...");
+	toast(strings["lsp:stopping"]);
 
 	try {
 		const clientState = getClientState(serverId);
@@ -117,20 +117,20 @@ async function stopServer(serverId) {
 		stopManagedServer(serverId);
 
 		addLspLog(serverId, "info", "Server stopped");
-		toast("Server stopped");
+		toast(strings["lsp:server stopped"]);
 	} catch (err) {
 		addLspLog(serverId, "error", `Stop failed: ${err.message}`);
-		toast("Failed to stop");
+		toast(strings["lsp:failed to stop"]);
 	}
 }
 
 async function startAllServers() {
-	toast("Starting LSP servers...");
+	toast(strings["lsp:starting lsp servers"]);
 	try {
 		window.editorManager?.restartLsp?.();
-		toast("Servers started");
+		toast(strings["lsp:servers started"]);
 	} catch (err) {
-		toast("Failed to start servers");
+		toast(strings["lsp:failed to start servers"]);
 	}
 }
 

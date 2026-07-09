@@ -830,6 +830,18 @@ declare type LangStrings = {
 	"sponsors:become-a-sponsor": string;
 	"sponsors:acode-sponsors": string;
 	"unable to load sponsors": string;
+	"lsp:clipboard not available": string;
+	"lsp:restarting server": string;
+	"lsp:no logs to copy": string;
+	"lsp:failed to copy": string;
+	"lsp:server restarted": string;
+	"lsp:restart failed": string;
+	"lsp:stopping": string;
+	"lsp:server stopped": string;
+	"lsp:failed to stop": string;
+	"lsp:servers started": string;
+	"lsp:starting lsp servers": string;
+	"lsp:failed to start servers": string;
 };
 
 declare var strings: LangStrings;
