@@ -72,7 +72,8 @@ jobs:
             cosign sign-blob --yes "$f" \
               --oidc-provider=github-actions \
               --output-signature "${f}.sig" \
-              --output-certificate "${f}.pem"
+              --output-certificate "${f}.pem" \
+              --bundle "${f}.sigstore.json"
           done
 
       - name: Create provenance attestation (per APK)
@@ -147,11 +148,13 @@ jobs:
             /tmp/artifacts/normal/*.apk.sig
             /tmp/artifacts/normal/*.apk.pem
             /tmp/artifacts/normal/*.apk.jsonl
+            /tmp/artifacts/normal/*.apk.sigstore.json
             /tmp/artifacts/fdroid/*.apk
             /tmp/artifacts/fdroid/*.apk.sha256
             /tmp/artifacts/fdroid/*.apk.sig
             /tmp/artifacts/fdroid/*.apk.pem
             /tmp/artifacts/fdroid/*.apk.jsonl
+            /tmp/artifacts/fdroid/*.apk.sigstore.json
           body: |
             Automated Nightly pre-release
 
