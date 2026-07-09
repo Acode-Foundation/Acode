@@ -829,6 +829,7 @@ declare type LangStrings = {
 	"sponsors:join-our-community": string;
 	"sponsors:become-a-sponsor": string;
 	"sponsors:acode-sponsors": string;
+	"unable to load sponsors": string;
 };
 
 declare var strings: LangStrings;

@@ -825,5 +825,6 @@
 	"sponsors": "Sponsors",
 	"sponsors:join-our-community": "Join our community of supporters and help shape the future of mobile development",
 	"sponsors:become-a-sponsor": "Become a Sponsor",
-	"sponsors:acode-sponsors": "Acode's SponsorsAcode's Sponsors"
+	"sponsors:acode-sponsors": "Acode's SponsorsAcode's Sponsors",
+	"unable to load sponsors": "Unable to load sponsors..."
 }

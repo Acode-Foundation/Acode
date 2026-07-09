@@ -17,6 +17,15 @@ export default function Sponsors() {
 	const crystalSponsors = Ref();
 	let cancel = false;
 
+	let sponsorLists = [
+		"Crystal",
+		"Bronze",
+		"Silver",
+		"Gold",
+		"Platinum",
+		"Titanium",
+	];
+
 	actionStack.push({
 		id: "sponsors_page",
 		action: page.hide,
@@ -41,61 +50,85 @@ export default function Sponsors() {
 				<div className="sponsors-list" onclick={handleLinkClick}>
 					<div className="tier">
 						<div className="tier-name">
-							<span className="tier-icon titanium"></span>Titanium
+							<span className="tier-icon titanium"></span>
+							{sponsorLists[5]}
 						</div>
 						<div
 							className="sponsors"
-							data-empty-message="Be the first Titanium Sponsor!"
+							data-empty-message={strings["sponsors:be-the-first"].replace(
+								/\{tier\}/g,
+								sponsorLists[5],
+							)}
 							ref={titaniumSponsors}
 						></div>
 					</div>
 					<div className="tier">
 						<div className="tier-name">
-							<span className="tier-icon platinum"></span>Platinum
+							<span className="tier-icon platinum"></span>
+							{sponsorLists[4]}
 						</div>
 						<div
 							className="sponsors"
-							data-empty-message="Be the first Platinum Sponsor!"
+							data-empty-message={strings["sponsors:be-the-first"].replace(
+								/\{tier\}/g,
+								sponsorLists[4],
+							)}
 							ref={platinumSponsors}
 						></div>
 					</div>
 					<div className="tier">
 						<div className="tier-name">
-							<span className="tier-icon gold"></span>Gold
+							<span className="tier-icon gold"></span>
+							{sponsorLists[3]}
 						</div>
 						<div
 							className="sponsors"
-							data-empty-message="Be the first Gold Sponsor!"
+							data-empty-message={strings["sponsors:be-the-first"].replace(
+								/\{tier\}/g,
+								sponsorLists[3],
+							)}
 							ref={goldSponsors}
 						></div>
 					</div>
 					<div className="tier">
 						<div className="tier-name">
-							<span className="tier-icon silver"></span>Silver
+							<span className="tier-icon silver"></span>
+							{sponsorLists[2]}
 						</div>
 						<div
 							className="sponsors"
-							data-empty-message="Be the first Silver Sponsor!"
+							data-empty-message={strings["sponsors:be-the-first"].replace(
+								/\{tier\}/g,
+								sponsorLists[2],
+							)}
 							ref={silverSponsors}
 						></div>
 					</div>
 					<div className="tier">
 						<div className="tier-name">
-							<span className="tier-icon bronze"></span>Bronze
+							<span className="tier-icon bronze"></span>
+							{sponsorLists[1]}
 						</div>
 						<div
 							className="sponsors"
-							data-empty-message="Be the first Bronze Sponsor!"
+							data-empty-message={strings["sponsors:be-the-first"].replace(
+								/\{tier\}/g,
+								sponsorLists[1],
+							)}
 							ref={bronzeSponsors}
 						></div>
 					</div>
 					<div className="tier">
 						<div className="tier-name">
-							<span className="tier-icon crystal"></span>Crystal
+							<span className="tier-icon crystal"></span>
+							{sponsorLists[0]}
 						</div>
 						<div
 							className="sponsors"
-							data-empty-message="Be the first Crystal Sponsor!"
+							data-empty-message={strings["sponsors:be-the-first"].replace(
+								/\{tier\}/g,
+								sponsorLists[0],
+							)}
 							ref={crystalSponsors}
 						></div>
 					</div>
@@ -117,14 +150,14 @@ export default function Sponsors() {
 
 			const sponsorList = await res.json();
 			if (sponsorList.error) {
-				toast("Unable to load sponsors...");
+				toast(strings["unable to load sponsors"]);
 				console.error("Error loading sponsors:", sponsorList.error);
 			} else {
 				sponsors = sponsorList;
 				localStorage.setItem("cached_sponsors", JSON.stringify(sponsors));
 			}
 		} catch (error) {
-			toast("Unable to load sponsors...");
+			toast(strings["unable to load sponsors"]);
 			console.error("Error loading sponsors:", error);
 		}
 
