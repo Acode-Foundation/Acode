@@ -24,14 +24,21 @@ function getActiveClients() {
 function getServerStatus(serverId) {
 	const activeClients = getActiveClients();
 	const client = activeClients.find((c) => c.server?.id === serverId);
-	if (!client) return strings["lsp:stopped status"];
+	if (!client) return "stopped";
 	try {
-		return client.client?.connected !== false
-			? strings["lsp:active status"]
-			: strings["lsp:connecting status"];
+		return client.client?.connected !== false ? "active" : "connecting";
 	} catch {
-		return strings["lsp:stopped status"];
+		return "stopped";
 	}
+}
+
+function getStatusLabel(status) {
+	const map = {
+		active: strings["lsp:active status"],
+		connecting: strings["lsp:connecting status"],
+		stopped: strings["lsp:stopped status"],
+	};
+	return map[status] || status;
 }
 
 function getClientState(serverId) {
@@ -286,7 +293,7 @@ function showLspInfoDialog() {
 					/>
 					<div className="lsp-server-info">
 						<span className="lsp-server-name">{server.label}</span>
-						<span className="lsp-server-status">{status}</span>
+						<span className="lsp-server-status">{getStatusLabel(status)}</span>
 					</div>
 					{errorCount > 0 && (
 						<span className="lsp-error-badge">{errorCount}</span>
