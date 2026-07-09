@@ -90,7 +90,7 @@ jobs:
       needs: [job_trigger,trigger_builder]
       permissions:
         contents: read
-
+        pull-requests: write
       runs-on: ubuntu-latest
       if: ${{ github.repository_owner == 'UnschooledGamer' && always() && contains(fromJSON('["failure","cancelled", "success"]'), needs.trigger_builder.result) }}
       steps:

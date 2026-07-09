@@ -132,11 +132,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.NIGHTLY_RELEASE_NOTES_GH_TOKEN }}
 
       - name: Create nightly prerelease
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
+        env:
+            FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
         with:
           prerelease: true
           tag_name: nightly-${{ github.sha }}
-          name: nightly-${{ github.sha }}
+          name: nightly-${{ needs.build.outputs.updated_version}}
           files: |
             /tmp/artifacts/normal/*.apk
             /tmp/artifacts/normal/*.apk.sha256
