@@ -15,6 +15,10 @@
           default: false
           type: boolean
           description: If a Pull Request has triggered it.
+        is_trusted_pr:
+          default: false
+          type: boolean
+          description: If a Pull Request is from the same repository, and not a forked one.
         PR_NUMBER:
           required: true
           type: number
@@ -59,7 +63,6 @@
       permissions:
 #        contents write is needed to create Nightly Releases.
         contents: write
-#        issues: write
         pull-requests: write
 
       outputs:
@@ -118,6 +121,7 @@
             cache: ${{ (!(inputs.is_PR && inputs.PR_NUMBER) && github.ref == 'refs/heads/main' && 'npm') || '' }}
 
         - name: Add keystore and build.json from secrets
+          if: ${{ !inputs.is_PR || inputs.is_trusted_pr }}
           run: |
             echo "${{ secrets.KEYSTORE_CONTENT }}" | base64 -d > ${{ env.STORE_FILE_PATH }}
             echo "${{ secrets.BUILD_JSON_CONTENT }}" | base64 -d > ${{ env.BUILD_JSON_PATH }}
@@ -265,18 +269,6 @@
               [Compare Changes](https://github.com/${{ github.repository }}/compare/${{ env.TAG_COMMIT }}...${{ github.sha }})
 
               ${{ env.RELEASE_NOTES }}
-
-        - name: Update Last Comment by bot (If ran in PR)
-          if: inputs.is_PR
-          uses: marocchino/sticky-pull-request-comment@v3
-          with:
-             hide_and_recreate: true
-             hide_classify: "OUTDATED"
-             header: on-demand-build-status
-             message: |
-                   Preview Release for this, has been built.
-         
-                   [Click here to view that github actions build](https://github.com/${{ github.repository}}/actions/runs/${{ github.run_id }})
              
 
     community-release-notifier:
