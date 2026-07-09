@@ -79,6 +79,7 @@
          FDROID_APK_PATH: ${{ steps.update-version.outputs.FDROID_APK_PATH }}
          RELEASE_NOTES: ${{ env.RELEASE_NOTES }}
          tag_commit: ${{ steps.check-nightly-tag-force-update.outputs.tag_commit }}
+         release_required: ${{ steps.check-nightly-tag-force-update.outputs.release_required }}
       steps:
         - name: Fast Fail if secrets are missing
           if: ${{ env.KEYSTORE_CONTENT == '' || env.BUILD_JSON_CONTENT == '' }}
@@ -239,7 +240,7 @@
     release:
       needs: build
       runs-on: ubuntu-latest
-      if: ${{ github.repository_owner == 'Acode-Foundation' && !inputs.is_PR && !inputs.skip_tagging_and_releases && needs.build.outputs.release_output_url }}
+      if: ${{ github.repository_owner == 'Acode-Foundation' && !inputs.is_PR && !inputs.skip_tagging_and_releases && needs.build.outputs.release_output_url && needs.build.outputs.release_required == 'true' }}
       permissions:
         contents: write
       steps:
@@ -267,7 +268,7 @@
           id: gen-release-notes
           continue-on-error: true
           run: |
-            RELEASE_NOTES=$(node utils/scripts/generate-release-notes.js ${{ github.repository_owner }} Acode ${{ github.sha }} --format md --from-tag ${{ needs.build.outputs.tag_commit }} --important-only --quiet || true)
+            RELEASE_NOTES=$(node utils/scripts/generate-release-notes.js ${{ github.repository_owner }} Acode ${{ github.sha }} --format md --from-tag ${{ needs.build.outputs.tag_commit }} --important-only --quiet --changelog-only || true)
             {
               echo "RELEASE_NOTES<<EOF"
               echo "$RELEASE_NOTES"
