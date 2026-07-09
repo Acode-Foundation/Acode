@@ -24,11 +24,13 @@ function getActiveClients() {
 function getServerStatus(serverId) {
 	const activeClients = getActiveClients();
 	const client = activeClients.find((c) => c.server?.id === serverId);
-	if (!client) return "stopped";
+	if (!client) return strings["lsp:stopped status"];
 	try {
-		return client.client?.connected !== false ? "active" : "connecting";
+		return client.client?.connected !== false
+			? strings["lsp:active status"]
+			: strings["lsp:connecting status"];
 	} catch {
-		return "stopped";
+		return strings["lsp:stopped status"];
 	}
 }
 
@@ -142,7 +144,13 @@ async function restartAllServers() {
 	}
 
 	const count = activeClients.length;
-	toast(`Restarting ${count} LSP server${count > 1 ? "s" : ""}...`);
+	const key =
+		count > 1
+			? "lsp:restarting lsp server plural"
+			: "lsp:restarting lsp server singular";
+	const message = strings[key].replace("{count}", count);
+
+	toast(message);
 
 	try {
 		await lspClientManager.dispose();
@@ -164,7 +172,13 @@ async function stopAllServers() {
 
 	try {
 		await lspClientManager.dispose();
-		toast(`Stopped ${count} LSP server${count > 1 ? "s" : ""}`);
+		const key =
+			count > 1
+				? "lsp:stopped lsp server plural"
+				: "lsp:stopped lsp server singular";
+		const message = strings[key].replace("{count}", count);
+
+		toast(message);
 	} catch (err) {
 		toast(strings["lsp:failed to stop servers"]);
 	}
@@ -230,7 +244,9 @@ function showLspInfoDialog() {
 					}}
 				>
 					<span className="icon autorenew" />
-					<span>{hasRunning ? "Restart All" : "Start All"}</span>
+					<span>
+						{hasRunning ? strings["lsp:restart all"] : strings["lsp:start all"]}
+					</span>
 				</button>
 				{hasRunning && (
 					<button
@@ -242,7 +258,7 @@ function showLspInfoDialog() {
 						}}
 					>
 						<span className="icon power_settings_new" />
-						<span>Stop All</span>
+						<span>{strings["lsp:stop all"]}</span>
 					</button>
 				)}
 			</div>
@@ -383,7 +399,7 @@ function showLspInfoDialog() {
 				)}
 
 				<div className="lsp-section">
-					<div className="lsp-section-label">Supported</div>
+					<div className="lsp-section-label">{strings["lsp:supported"]}</div>
 					<div className="lsp-chip-container">
 						{server.languages.map((lang) => (
 							<span className="lsp-chip ext">.{lang}</span>
@@ -448,7 +464,7 @@ function showLspInfoDialog() {
 				>
 					<div className="lsp-logs-title">
 						<span className="icon expand_more lsp-expand-icon" />
-						<span>LSP Logs</span>
+						<span>{strings["lsp:logs"]}</span>
 						{logs.length > 0 && (
 							<span className="lsp-log-count">({logs.length})</span>
 						)}

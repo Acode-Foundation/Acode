@@ -842,5 +842,16 @@
 	"lsp:failed to stop servers": "Failed to stop servers",
 	"lsp:no lsp servers are currently running": "No LSP servers are currently running",
 	"lsp:failed to restart servers": "Failed to restart servers",
-	"sponsors:be-the-first": "Be the first {tier} Sponsor!"
+	"sponsors:be-the-first": "Be the first {tier} Sponsor!",
+	"lsp:restarting lsp server singular": "Restarting {count} LSP server...",
+	"lsp:restarting lsp server plural": "Restarting {count} LSP servers...",
+	"lsp:stopped lsp server singular": "Stopped {count} LSP server",
+	"lsp:stopped lsp server plural": "Stopped {count} LSP servers",
+	"lsp:restart all": "Restart All",
+	"lsp:start all": "Start All",
+	"lsp:supported": "Supported",
+	"lsp:logs": "LSP logs",
+	"lsp:stopped status": "stopped",
+	"lsp:active status": "active",
+	"lsp:connecting status": "connecting"
 }

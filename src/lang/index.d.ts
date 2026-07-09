@@ -846,6 +846,17 @@ declare type LangStrings = {
 	"lsp:no lsp servers are currently running": string;
 	"lsp:failed to restart servers": string;
 	"sponsors:be-the-first": string;
+	"lsp:restarting lsp server singular": string;
+	"lsp:restarting lsp server plural": string;
+	"lsp:stopped lsp server singular": string;
+	"lsp:stopped lsp server plural": string;
+	"lsp:restart all": string;
+	"lsp:start all": string;
+	"lsp:supported": string;
+	"lsp:logs": string;
+	"lsp:stopped status": string;
+	"lsp:active status": string;
+	"lsp:connecting status": string;
 };
 
 declare var strings: LangStrings;
