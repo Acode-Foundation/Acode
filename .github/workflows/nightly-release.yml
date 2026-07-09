@@ -42,6 +42,18 @@ jobs:
       - name: Install cosign
         uses: sigstore/cosign-installer@v4.1.0
 
+      - name: Download normal APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app-debug-${{ github.sha }}
+          path: /tmp/artifacts/normal
+
+      - name: Download fdroid APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app-debug-fdroid-${{ github.sha }}
+          path: /tmp/artifacts/fdroid
+
       - name: Generate sha256 files (per APK)
         shell: bash
         run: |
@@ -103,18 +115,6 @@ jobs:
           git config --global user.email 'github-actions@github.com'
           git tag -f nightly "${GITHUB_SHA}"
           git push origin refs/tags/nightly --force
-
-      - name: Download normal APK artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: app-debug-${{ github.sha }}
-          path: /tmp/artifacts/normal
-
-      - name: Download fdroid APK artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: app-debug-fdroid-${{ github.sha }}
-          path: /tmp/artifacts/fdroid
 
       - name: Generate release notes
         id: notes
