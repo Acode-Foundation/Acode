@@ -805,6 +805,12 @@
 	"day plural": "{count} hari lalu",
 	"hour plural": "{count} jam lalu",
 	"min plural": "{count} menit lalu",
-	"settings-category-builtin-servers": "Built-in servers",
-	"settings-category-plugin-servers": "Plugin servers"
+	"settings-category-builtin-servers": "Server bawaan",
+	"settings-category-plugin-servers": "Server plugin",
+	"active processes": "Proses Aktif",
+	"total memory": "Total Memori",
+	"uptime": "Waktu Aktif",
+	"note": "Catatan",
+	"acode main process": "Proses utama Acode",
+	"ppid parent": "PPID (Induk)"
 }

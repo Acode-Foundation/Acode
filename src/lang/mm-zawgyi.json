@@ -806,5 +806,11 @@
 	"hour plural": "{count} hours ago",
 	"min plural": "{count} minutes ago",
 	"settings-category-builtin-servers": "Built-in servers",
-	"settings-category-plugin-servers": "Plugin servers"
+	"settings-category-plugin-servers": "Plugin servers",
+	"active processes": "Active Processes",
+	"total memory": "Total Memory",
+	"uptime": "Uptime",
+	"note": "Note",
+	"acode main process": "Acode main process",
+	"ppid parent": "PPID (Parent)"
 }
