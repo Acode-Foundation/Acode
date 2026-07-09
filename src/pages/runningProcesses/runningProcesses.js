@@ -233,7 +233,9 @@ export default function RunningProcesses() {
 				>
 					<span className="process-name">{name}</span>
 					<span className="process-pid">{proc.pid}</span>
-					{proc.managed && <span className="process-tag">{text("managed", "Managed")}</span>}
+					{proc.managed && (
+						<span className="process-tag">{text("managed", "Managed")}</span>
+					)}
 					<span className="process-memory">{formatMemory(proc.memory)}</span>
 					{!proc.isSelf && (
 						<span
@@ -268,7 +270,9 @@ export default function RunningProcesses() {
 					</div>
 					{proc.managed && (
 						<div className="detail-row highlight">
-							<span className="detail-label">{text("acode service", "Acode Service")}</span>
+							<span className="detail-label">
+								{text("acode service", "Acode Service")}
+							</span>
 							<span className="detail-value">
 								{proc.managedType} ({proc.alpine ? "Alpine" : "Android"})
 							</span>
