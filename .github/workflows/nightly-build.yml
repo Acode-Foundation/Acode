@@ -28,6 +28,13 @@
           default: true
           type: boolean
           description: Skips Tagging & releases, since workflow_call isn't available for github.event_name, default is true
+      secrets:
+        KEYSTORE_CONTENT:
+          required: true
+          description: Base64 encoded keystore file content
+        BUILD_JSON_CONTENT:
+          required: true
+          description: Base64 encoded build.json file content
       outputs:
         job_result:
           description: "Build job result"
