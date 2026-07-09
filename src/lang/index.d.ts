@@ -857,6 +857,7 @@ declare type LangStrings = {
 	"lsp:stopped status": string;
 	"lsp:active status": string;
 	"lsp:connecting status": string;
+	"lsp:stop all": string;
 };
 
 declare var strings: LangStrings;

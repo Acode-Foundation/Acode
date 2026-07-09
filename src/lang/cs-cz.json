@@ -853,5 +853,6 @@
 	"lsp:logs": "LSP logs",
 	"lsp:stopped status": "stopped",
 	"lsp:active status": "active",
-	"lsp:connecting status": "connecting"
+	"lsp:connecting status": "connecting",
+	"lsp:stop all": "Stop All"
 }
