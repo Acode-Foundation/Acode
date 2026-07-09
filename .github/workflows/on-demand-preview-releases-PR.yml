@@ -8,11 +8,8 @@ on:
     types: [labeled, synchronize]
 
 # defined at workflow-level as the workflow, Requires these permissions to function.
-permissions:
-  contents: write # due to nightly workflow complaining, even tho release step isn't executed. 
-  pull-requests: write
-  # All Pull Requests are issues, but not all issues are Pull Requests (like GitHub says 🙃)
-  issues: write
+permissions: 
+  contents: read
 
 concurrency:
   # Allow only one workflow per any non-`main` branch.
