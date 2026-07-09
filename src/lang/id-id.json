@@ -819,5 +819,11 @@
 	"diff hr": "{hr}j {min}m yang lalu",
 	"diff min": "{min}m {sec}d yang lalu",
 	"diff sec": "{sec}d yang lalu",
-	"command": "Perintah"
+	"command": "Perintah",
+	"managed": "Dikelola",
+	"acode service": "Layanan Acode",
+	"sponsors": "Sponsors",
+	"sponsors:join-our-community": "Join our community of supporters and help shape the future of mobile development",
+	"sponsors:become-a-sponsor": "Become a Sponsor",
+	"sponsors:acode-sponsors": "Acode's SponsorsAcode's Sponsors"
 }

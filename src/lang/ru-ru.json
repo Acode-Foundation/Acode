@@ -819,5 +819,11 @@
 	"diff hr": "{hr}h {min}m ago",
 	"diff min": "{min}m {sec}s ago",
 	"diff sec": "{sec}s ago",
-	"command": "Command"
+	"command": "Command",
+	"managed": "Managed",
+	"acode service": "Acode Service",
+	"sponsors": "Sponsors",
+	"sponsors:join-our-community": "Join our community of supporters and help shape the future of mobile development",
+	"sponsors:become-a-sponsor": "Become a Sponsor",
+	"sponsors:acode-sponsors": "Acode's SponsorsAcode's Sponsors"
 }

@@ -823,6 +823,12 @@ declare type LangStrings = {
 	"diff min": string;
 	"diff sec": string;
 	command: string;
+	managed: string;
+	"acode service": string;
+	sponsors: string;
+	"sponsors:join-our-community": string;
+	"sponsors:become-a-sponsor": string;
+	"sponsors:acode-sponsors": string;
 };
 
 declare var strings: LangStrings;
