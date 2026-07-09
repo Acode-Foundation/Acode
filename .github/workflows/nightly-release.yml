@@ -33,6 +33,13 @@ jobs:
     permissions:
       contents: write
       id-token: write
+
+    outputs:
+      release_output_url: ${{ steps.gh_release.outputs.url }}
+      release_notes: ${{ env.RELEASE_NOTES }}
+      previous_tag_commit: ${{ steps.prev_tag.outputs.tag_commit }}
+      nightly_tag_name: ${{ needs.build.outputs.updated_version }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -58,49 +65,9 @@ jobs:
       - name: Generate sha256 files (per APK)
         shell: bash
         run: |
+          set -euo pipefail
           find /tmp/artifacts -type f -name "*.apk" | while read -r f; do
             sha256sum "$f" > "${f}.sha256"
-          done
-
-      - name: Keyless sign each APK with cosign
-        env:
-          COSIGN_EXPERIMENTAL: "true"
-        shell: bash
-        run: |
-          find /tmp/artifacts -type f -name "*.apk" | while read -r f; do
-            # Produces: <apk>.sig and <apk>.pem
-            cosign sign-blob --yes "$f" \
-              --oidc-provider=github-actions \
-              --output-signature "${f}.sig" \
-              --output-certificate "${f}.pem" \
-              --bundle "${f}.sigstore.json"
-          done
-
-      - name: Create provenance attestation (per APK)
-        env:
-          COSIGN_EXPERIMENTAL: "true"
-        shell: bash
-        run: |
-          find /tmp/artifacts -type f -name "*.apk" | while read -r f; do
-            DIGEST="$(sha256sum "$f" | awk '{print $1}')"
-            PRED="$(mktemp)"
-            cat > "$PRED" <<EOF
-          {
-            "repo": "${{ github.repository }}",
-            "workflow": "${{ github.workflow }}",
-            "run_id": "${{ github.run_id }}",
-            "commit": "${{ github.sha }}",
-            "artifact": "$(basename "$f")",
-            "sha256": "$DIGEST"
-          }
-          EOF
-
-            # Produces DSSE envelope JSON attestation
-            cosign attest-blob --yes \
-              --predicate "$PRED" \
-              --type slsaprovenance \
-              --output-attestation "${f}.jsonl" \
-              "$f"
           done
 
       - name: Resolve previous nightly tag commit
@@ -145,19 +112,25 @@ jobs:
           files: |
             /tmp/artifacts/normal/*.apk
             /tmp/artifacts/normal/*.apk.sha256
-            /tmp/artifacts/normal/*.apk.sig
-            /tmp/artifacts/normal/*.apk.pem
-            /tmp/artifacts/normal/*.apk.jsonl
-            /tmp/artifacts/normal/*.apk.sigstore.json
             /tmp/artifacts/fdroid/*.apk
             /tmp/artifacts/fdroid/*.apk.sha256
-            /tmp/artifacts/fdroid/*.apk.sig
-            /tmp/artifacts/fdroid/*.apk.pem
-            /tmp/artifacts/fdroid/*.apk.jsonl
-            /tmp/artifacts/fdroid/*.apk.sigstore.json
           body: |
             Automated Nightly pre-release
 
             [Compare Changes](https://github.com/${{ github.repository }}/compare/${{ steps.prev.outputs.tag_commit }}...${{ github.sha }})
 
             ${{ env.RELEASE_NOTES }}
+    
+    provenance:
+      name: Generate SLSA provenance
+      needs: [release]
+      permissions:
+        actions: read
+        id-token: write
+        contents: write
+      uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
+      with:
+       # base64 of lines in sha256sum format: "<sha256><two spaces><path-or-name>"
+       base64-subjects: "${{ needs.release.outputs.hashes_b64 }}"
+       upload-assets: true
+       upload-tag-name: "${{ needs.release.outputs.nightly_tag_name }}"
