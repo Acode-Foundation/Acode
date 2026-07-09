@@ -301,7 +301,7 @@
       if: ${{ github.repository_owner == 'Acode-Foundation' && (contains(fromJSON('["push", "schedule"]'), github.event_name) || ! inputs.skip_tagging_and_releases) && needs.release.outputs.release_output_url }}
       uses: Acode-Foundation/acode/.github/workflows/community-release-notifier.yml@main
       with:
-         tag_name: ${{ needs.release.outputs.updated_version }}
+         tag_name: ${{ needs.build.outputs.updated_version }}
          url: ${{ needs.release.outputs.release_output_url }}
          body: ${{ needs.release.outputs.RELEASE_NOTES }}
       secrets:
