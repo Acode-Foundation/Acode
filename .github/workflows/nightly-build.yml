@@ -74,7 +74,6 @@
          updated_version: ${{ steps.update-version.outputs.UPDATED_VERSION}}
          NORMAL_APK_PATH: ${{ steps.update-version.outputs.NORMAL_APK_PATH }}
          FDROID_APK_PATH: ${{ steps.update-version.outputs.FDROID_APK_PATH }}
-         RELEASE_NOTES: ${{ env.RELEASE_NOTES }}
          tag_commit: ${{ steps.check-nightly-tag-force-update.outputs.tag_commit }}
          release_required: ${{ steps.check-nightly-tag-force-update.outputs.release_required }}
       steps:
@@ -237,12 +236,13 @@
     release:
       needs: build
       runs-on: ubuntu-latest
-      if: ${{ github.repository_owner == 'Acode-Foundation' && !inputs.is_PR && !inputs.skip_tagging_and_releases && needs.build.outputs.release_output_url && needs.build.outputs.release_required == 'true' }}
+      if: ${{ github.repository_owner == 'Acode-Foundation' && !inputs.is_PR && !inputs.skip_tagging_and_releases && needs.build.outputs.release_required == 'true' }}
       permissions:
         contents: write
       
       outputs:
        release_output_url: ${{ steps.release.outputs.url }}
+       RELEASE_NOTES: ${{ env.RELEASE_NOTES }}
       steps:
         - name: Checkout Repository
           uses: actions/checkout@v7
@@ -301,9 +301,9 @@
       if: ${{ github.repository_owner == 'Acode-Foundation' && (contains(fromJSON('["push", "schedule"]'), github.event_name) || ! inputs.skip_tagging_and_releases) && needs.build.outputs.release_output_url }}
       uses: Acode-Foundation/acode/.github/workflows/community-release-notifier.yml@main
       with:
-         tag_name: ${{ needs.build.outputs.updated_version }}
-         url: ${{ needs.build.outputs.release_output_url }}
-         body: ${{ needs.build.outputs.RELEASE_NOTES }}
+         tag_name: ${{ needs.release.outputs.updated_version }}
+         url: ${{ needs.release.outputs.release_output_url }}
+         body: ${{ needs.release.outputs.RELEASE_NOTES }}
       secrets:
         DISCORD_WEBHOOK_RELEASE_NOTES: ${{ secrets.DISCORD_WEBHOOK_RELEASE_NOTES }}
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
