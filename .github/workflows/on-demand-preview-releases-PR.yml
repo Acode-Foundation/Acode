@@ -71,7 +71,9 @@ jobs:
 
   trigger_builder:
       needs: job_trigger
-      secrets: inherit
+      secrets:
+        KEYSTORE_CONTENT: ${{ secrets.KEYSTORE_CONTENT }}
+        BUILD_JSON_CONTENT: ${{ secrets.BUILD_JSON_CONTENT }}
       uses: Acode-Foundation/acode/.github/workflows/nightly-build.yml@main
       with:
         is_PR: true
