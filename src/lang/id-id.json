@@ -854,5 +854,5 @@
 	"lsp:stopped status": "dihentikan",
 	"lsp:active status": "aktif",
 	"lsp:connecting status": "menghubungkan",
-	"lsp:stop all": "Stop All"
+	"lsp:stop all": "Berhenti Semua"
 }
