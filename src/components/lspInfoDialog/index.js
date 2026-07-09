@@ -149,14 +149,14 @@ async function restartAllServers() {
 		window.editorManager?.restartLsp?.();
 		toast("All servers restarted");
 	} catch (err) {
-		toast("Failed to restart servers");
+		toast(strings["lsp:failed to restart servers"]);
 	}
 }
 
 async function stopAllServers() {
 	const activeClients = getActiveClients();
 	if (!activeClients.length) {
-		toast("No LSP servers are currently running");
+		toast(strings["lsp:no lsp servers are currently running"]);
 		return;
 	}
 
@@ -166,7 +166,7 @@ async function stopAllServers() {
 		await lspClientManager.dispose();
 		toast(`Stopped ${count} LSP server${count > 1 ? "s" : ""}`);
 	} catch (err) {
-		toast("Failed to stop servers");
+		toast(strings["lsp:failed to stop servers"]);
 	}
 }
 
