@@ -74,8 +74,11 @@
 
       outputs:
          release_output_url: ${{ steps.release.outputs.url }} 
-         updated_version: ${{ steps.update-version.outputs.UPDATED_VERSION}} 
+         updated_version: ${{ steps.update-version.outputs.UPDATED_VERSION}}
+         NORMAL_APK_PATH: ${{ steps.update-version.outputs.NORMAL_APK_PATH }}
+         FDROID_APK_PATH: ${{ steps.update-version.outputs.FDROID_APK_PATH }}
          RELEASE_NOTES: ${{ env.RELEASE_NOTES }}
+         tag_commit: ${{ steps.check-nightly-tag-force-update.outputs.tag_commit }}
       steps:
         - name: Fast Fail if secrets are missing
           if: ${{ env.KEYSTORE_CONTENT == '' || env.BUILD_JSON_CONTENT == '' }}
@@ -216,68 +219,80 @@
             rm $STORE_FILE_PATH $BUILD_JSON_PATH
             echo "Keystore and build.json removed successfully."
         
-        - name: Check Nightly Tag and Force Update
-          #if: github.event_name == 'push' && contains(github.event.ref, 'tags/nightly') == false
-          if: ${{ ! inputs.skip_tagging_and_releases }}
+        - name: Check Nightly Tag
+          if: ${{ !inputs.skip_tagging_and_releases && !inputs.is_PR }}
           id: check-nightly-tag-force-update
           run: |
-            # Check if the nightly tag exists and get the commit it points to
             if git show-ref --quiet refs/tags/nightly; then
               TAG_COMMIT=$(git rev-parse nightly)
             else
               TAG_COMMIT=""
             fi
-            
-            # If the current commit is the same as the tag, skip updating the tag
-            if [ "$TAG_COMMIT" != "${{ env.GIT_COMMIT }}" ]; then
-              echo "releaseRequired=true" >> $GITHUB_ENV
-              # export tag commit before updating for change logs comparing. 
-              echo "TAG_COMMIT=$TAG_COMMIT" >> $GITHUB_ENV 
-            
-              git config --global user.name 'GitHub Actions'
-              git config --global user.email 'github-actions@github.com'
-              git tag -f nightly
-              git push origin nightly --force
-            else
-              echo "Nightly tag already points to this commit. Skipping update."
-            fi
 
+            if [ "$TAG_COMMIT" != "${{ env.GIT_COMMIT }}" ]; then
+              echo "release_required=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "release_required=false" >> "$GITHUB_OUTPUT"
+            fi
+            echo "tag_commit=$TAG_COMMIT" >> "$GITHUB_OUTPUT"
+             
+    release:
+      needs: build
+      runs-on: ubuntu-latest
+      if: ${{ github.repository_owner == 'Acode-Foundation' && !inputs.is_PR && !inputs.skip_tagging_and_releases && needs.build.outputs.release_output_url }}
+      permissions:
+        contents: write
+      steps:
+        - name: Checkout Repository
+          uses: actions/checkout@v7
+          with:
+            fetch-depth: 0
+            persist-credentials: true
+
+        - name: Force-update nightly tag
+          run: |
+            git config --global user.name 'GitHub Actions'
+            git config --global user.email 'github-actions@github.com'
+            git tag -f nightly "${{ github.sha }}"
+            git push origin nightly --force
+
+        - name: Download APK artifacts
+          uses: actions/download-artifact@v7
+          with:
+            path: /tmp/artifacts
+        
         # 🚨⚠️ WARNING: the GITHUB_TOKEN under this step, has access to write & read access to Contents, Pull Requests
         # Which is why, it uses a fine-granted token with Read-Only Access to Public Repos Only.
         - name: Generate Release Notes (Experimental)
-          if: ${{ success() && env.releaseRequired == 'true' }}
           id: gen-release-notes
           continue-on-error: true
           run: |
-              RELEASE_NOTES=$(node utils/scripts/generate-release-notes.js ${{ github.repository_owner }} Acode ${{ github.sha }} --format md --from-tag ${{ env.TAG_COMMIT }} --important-only --quiet --changelog-only)
-              {
-                echo "RELEASE_NOTES<<EOF"
-                echo "$RELEASE_NOTES"
-                echo "EOF"
-              } >> $GITHUB_ENV        
-          env: 
+            RELEASE_NOTES=$(node utils/scripts/generate-release-notes.js ${{ github.repository_owner }} Acode ${{ github.sha }} --format md --from-tag ${{ needs.build.outputs.tag_commit }} --important-only --quiet || true)
+            {
+              echo "RELEASE_NOTES<<EOF"
+              echo "$RELEASE_NOTES"
+              echo "EOF"
+            } >> $GITHUB_ENV
+          env:
             GITHUB_TOKEN: ${{ secrets.NIGHTLY_RELEASE_NOTES_GH_TOKEN }}
+
         - name: Release Nightly Version
-#          Only run this step, if not called from another workflow. And a previous step is successful with releasedRequired=true
-          id: release
-          if: ${{ ! inputs.skip_tagging_and_releases && steps.check-nightly-tag-force-update.outcome == 'success' && env.releaseRequired == 'true' && !inputs.is_PR }}
           uses: softprops/action-gh-release@v3
           env:
             FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
           with:
             prerelease: true
-            name: ${{ env.UPDATED_VERSION }}
-            tag_name: ${{ env.UPDATED_VERSION }} 
+            name: ${{ needs.build.outputs.updated_version }}
+            tag_name: ${{ needs.build.outputs.updated_version }}
             files: |
-              ${{ env.NORMAL_APK_PATH }}
-              ${{ env.FDROID_APK_PATH }}
+              /tmp/artifacts/**/acode-debug-normal-*.apk
+              /tmp/artifacts/**/acode-debug-fdroid-*.apk
             body: |
               Automated Nightly (pre-release) Releases for Today
-              
-              [Compare Changes](https://github.com/${{ github.repository }}/compare/${{ env.TAG_COMMIT }}...${{ github.sha }})
+
+              [Compare Changes](https://github.com/${{ github.repository }}/compare/${{ needs.build.outputs.tag_commit }}...${{ github.sha }})
 
               ${{ env.RELEASE_NOTES }}
-             
 
     community-release-notifier:
       needs: build
