@@ -121,16 +121,16 @@ jobs:
 
             ${{ env.RELEASE_NOTES }}
     
-    provenance:
-      name: Generate SLSA provenance
-      needs: [release]
-      permissions:
-        actions: read
-        id-token: write
-        contents: write
-      uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
-      with:
+  provenance:
+    name: Generate SLSA provenance
+    needs: [release]
+    permissions:
+      actions: read
+      id-token: write
+      contents: write
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
+    with:
        # base64 of lines in sha256sum format: "<sha256><two spaces><path-or-name>"
-       base64-subjects: "${{ needs.release.outputs.hashes_b64 }}"
-       upload-assets: true
-       upload-tag-name: "${{ needs.release.outputs.nightly_tag_name }}"
+     base64-subjects: "${{ needs.release.outputs.hashes_b64 }}"
+     upload-assets: true
+     upload-tag-name: "${{ needs.release.outputs.nightly_tag_name }}"
