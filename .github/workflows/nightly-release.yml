@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   build:
-    uses: unschooledgamer/acode/.github/workflows/nightly-build.yml@main
+    uses: unschooledgamer/acode/.github/workflows/nightly-build.yml@fix/on-demand-previews
     permissions:
       contents: read
       pull-requests: read
