@@ -80,7 +80,7 @@ jobs:
       secrets:
         KEYSTORE_CONTENT: ${{ secrets.KEYSTORE_CONTENT }}
         BUILD_JSON_CONTENT: ${{ secrets.BUILD_JSON_CONTENT }}
-      uses: unschooledgamer/acode/.github/workflows/nightly-build.yml@main
+      uses: unschooledgamer/acode/.github/workflows/nightly-build.yml@fix/on-demand-previews
       with:
         is_PR: true
         PR_NUMBER: ${{ github.event.pull_request.number }}
