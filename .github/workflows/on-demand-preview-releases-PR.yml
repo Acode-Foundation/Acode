@@ -28,7 +28,8 @@ jobs:
         && (github.repository_owner == 'Acode-Foundation'
         && (!contains(github.event.pull_request.labels.*.name, 'DO NOT PREVIEW RELEASE') 
         && (contains(github.event.pull_request.labels.*.name, 'Bypass check - PREVIEW RELEASE') 
-        || contains(github.event.pull_request.labels.*.name, 'CI: RUN ON-DEMAND PREVIEW RELEASES')))
+          || contains(github.event.pull_request.labels.*.name, 'CI: RUN ON-DEMAND PREVIEW RELEASES')
+        ))
         )
 
     runs-on: ubuntu-latest
@@ -84,7 +85,6 @@ jobs:
         is_PR: true
         PR_NUMBER: ${{ github.event.pull_request.number }}
         is_trusted_pr: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
-        skip_tagging_and_releases: true
 
   update_Last_Comment:
       needs: [job_trigger,trigger_builder]

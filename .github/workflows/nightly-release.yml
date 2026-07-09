@@ -1,0 +1,156 @@
+name: Nightly Release
+
+on:
+  schedule:
+    # Fire every day at 7:00am UTC (Roughly before EU workday and after US workday)
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    uses: Acode-Foundation/acode/.github/workflows/nightly-build.yml@main
+    permissions:
+      contents: read
+      pull-requests: read
+    secrets:
+      KEYSTORE_CONTENT: ${{ secrets.KEYSTORE_CONTENT }}
+      BUILD_JSON_CONTENT: ${{ secrets.BUILD_JSON_CONTENT }}
+    with:
+      is_PR: false
+      is_trusted_pr: false
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: ${{ github.repository_owner == 'Acode-Foundation' && needs.build.result == 'success' }}
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # Required for tags
+          persist-credentials: true
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v4.1.0
+
+      - name: Generate sha256 files (per APK)
+        shell: bash
+        run: |
+          find /tmp/artifacts -type f -name "*.apk" | while read -r f; do
+            sha256sum "$f" > "${f}.sha256"
+          done
+
+      - name: Keyless sign each APK with cosign
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+        shell: bash
+        run: |
+          find /tmp/artifacts -type f -name "*.apk" | while read -r f; do
+            # Produces: <apk>.sig and <apk>.pem
+            cosign sign-blob --yes "$f" \
+              --output-signature "${f}.sig" \
+              --output-certificate "${f}.pem"
+          done
+
+      - name: Create provenance attestation (per APK)
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+        shell: bash
+        run: |
+          find /tmp/artifacts -type f -name "*.apk" | while read -r f; do
+            DIGEST="$(sha256sum "$f" | awk '{print $1}')"
+            PRED="$(mktemp)"
+            cat > "$PRED" <<EOF
+          {
+            "repo": "${{ github.repository }}",
+            "workflow": "${{ github.workflow }}",
+            "run_id": "${{ github.run_id }}",
+            "commit": "${{ github.sha }}",
+            "artifact": "$(basename "$f")",
+            "sha256": "$DIGEST"
+          }
+          EOF
+
+            # Produces DSSE envelope JSON attestation
+            cosign attest-blob --yes \
+              --predicate "$PRED" \
+              --type slsaprovenance \
+              --output-attestation "${f}.jsonl" \
+              "$f"
+          done
+
+      - name: Resolve previous nightly tag commit
+        id: prev
+        run: |
+          if git show-ref --quiet refs/tags/nightly; then
+            echo "tag_commit=$(git rev-parse nightly)" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag_commit=$(git rev-list --max-parents=0 HEAD)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Move nightly tag
+        run: |
+          git config --global user.name 'GitHub Actions'
+          git config --global user.email 'github-actions@github.com'
+          git tag -f nightly "${GITHUB_SHA}"
+          git push origin refs/tags/nightly --force
+
+      - name: Download normal APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app-debug-${{ github.sha }}
+          path: /tmp/artifacts/normal
+
+      - name: Download fdroid APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app-debug-fdroid-${{ github.sha }}
+          path: /tmp/artifacts/fdroid
+
+      - name: Generate release notes
+        id: notes
+        continue-on-error: true
+        run: |
+          RELEASE_NOTES="$(node utils/scripts/generate-release-notes.js \
+            ${{ github.repository_owner }} Acode ${{ github.sha }} \
+            --format md --from-tag ${{ steps.prev.outputs.tag_commit }} --important-only --quiet || true)"
+          {
+            echo "RELEASE_NOTES<<EOF"
+            echo "$RELEASE_NOTES"
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+        env:
+          GITHUB_TOKEN: ${{ secrets.NIGHTLY_RELEASE_NOTES_GH_TOKEN }}
+
+      - name: Create nightly prerelease
+        uses: softprops/action-gh-release@v2
+        with:
+          prerelease: true
+          tag_name: nightly-${{ github.sha }}
+          name: nightly-${{ github.sha }}
+          files: |
+            /tmp/artifacts/normal/*.apk
+            /tmp/artifacts/normal/*.apk.sha256
+            /tmp/artifacts/normal/*.apk.sig
+            /tmp/artifacts/normal/*.apk.pem
+            /tmp/artifacts/normal/*.apk.jsonl
+            /tmp/artifacts/fdroid/*.apk
+            /tmp/artifacts/fdroid/*.apk.sha256
+            /tmp/artifacts/fdroid/*.apk.sig
+            /tmp/artifacts/fdroid/*.apk.pem
+            /tmp/artifacts/fdroid/*.apk.jsonl
+          body: |
+            Automated Nightly pre-release
+
+            [Compare Changes](https://github.com/${{ github.repository }}/compare/${{ steps.prev.outputs.tag_commit }}...${{ github.sha }})
+
+            ${{ env.RELEASE_NOTES }}
