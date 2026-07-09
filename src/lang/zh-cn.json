@@ -854,5 +854,22 @@
 	"lsp:stopped status": "stopped",
 	"lsp:active status": "active",
 	"lsp:connecting status": "connecting",
-	"lsp:stop all": "Stop All"
+	"lsp:stop all": "Stop All",
+	"lsp:all servers restarted": "All servers restarted",
+	"lsp:language servers": "Language Servers",
+	"lsp:project": "Project",
+	"lsp:capabilities": "Capabilities",
+	"lsp:capabilities initializing": "Initializing...",
+	"lsp:memory": "Memory",
+	"lsp:uptime": "Uptime",
+	"lsp:capabilities completion": "Completion",
+	"lsp:capabilities hover": "Hover",
+	"lsp:capabilities definition": "Go to Definition",
+	"lsp:capabilities references": "Find References",
+	"lsp:capabilities rename": "Rename",
+	"lsp:capabilities format": "Format",
+	"lsp:capabilities signature": "Signature Help",
+	"lsp:capabilities inlay hints": "Inlay Hints",
+	"lsp:capabilities code actions": "Code Actions",
+	"lsp:capabilities diagnostics": "Diagnostics"
 }

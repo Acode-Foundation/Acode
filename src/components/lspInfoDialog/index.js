@@ -162,7 +162,7 @@ async function restartAllServers() {
 	try {
 		await lspClientManager.dispose();
 		window.editorManager?.restartLsp?.();
-		toast("All servers restarted");
+		toast(strings["lsp:all servers restarted"]);
 	} catch (err) {
 		toast(strings["lsp:failed to restart servers"]);
 	}
@@ -208,7 +208,7 @@ function showLspInfoDialog() {
 		<div className="prompt lsp-info-dialog">
 			<div className="title">
 				<span className="icon zap" style={{ marginRight: "8px" }} />
-				Language Servers
+				{strings["lsp:language servers"]}
 			</div>
 			<div className="lsp-dialog-body" />
 		</div>
@@ -335,6 +335,22 @@ function showLspInfoDialog() {
 			capabilities.push("Diagnostics");
 		}
 
+		function getCapabilityLabel(capability) {
+			const map = {
+				Completion: strings["lsp:capabilities completion"],
+				Hover: strings["lsp:capabilities hover"],
+				"Go to Definition": strings["lsp:capabilities definition"],
+				"Find References": strings["lsp:capabilities references"],
+				Rename: strings["lsp:capabilities rename"],
+				Format: strings["lsp:capabilities format"],
+				"Signature Help": strings["lsp:capabilities signature"],
+				"Inlay Hints": strings["lsp:capabilities inlay hints"],
+				"Code Actions": strings["lsp:capabilities code actions"],
+				Diagnostics: strings["lsp:capabilities diagnostics"],
+			};
+			return map[capability] || capability;
+		}
+
 		const logs = getLspLogs(server.id);
 
 		const $details = (
@@ -392,14 +408,18 @@ function showLspInfoDialog() {
 
 				{isRunning && (
 					<div className="lsp-section">
-						<div className="lsp-section-label">Capabilities</div>
+						<div className="lsp-section-label">
+							{strings["lsp:capabilities"]}
+						</div>
 						<div className="lsp-chip-container">
 							{capabilities.length > 0
 								? capabilities.map((cap) => (
-										<span className="lsp-chip">{cap}</span>
+										<span className="lsp-chip">{getCapabilityLabel(cap)}</span>
 									))
 								: !hasCapabilities && (
-										<span className="lsp-chip">Initializing...</span>
+										<span className="lsp-chip">
+											{strings["lsp:capabilities initializing"]}
+										</span>
 									)}
 						</div>
 					</div>
@@ -416,7 +436,7 @@ function showLspInfoDialog() {
 
 				{isRunning && (
 					<div className="lsp-section">
-						<div className="lsp-section-label">Project</div>
+						<div className="lsp-section-label">{strings["lsp:project"]}</div>
 						<div className="lsp-project-path">
 							{clientState?.rootUri || "(workspace folders mode)"}
 						</div>
@@ -428,13 +448,13 @@ function showLspInfoDialog() {
 						<div className="lsp-section-label">Resources</div>
 						<div className="lsp-stats-container">
 							<div className="lsp-stat">
-								<span className="lsp-stat-label">Memory</span>
+								<span className="lsp-stat-label">{strings["lsp:memory"]}</span>
 								<span className="lsp-stat-value" id={`lsp-mem-${server.id}`}>
 									—
 								</span>
 							</div>
 							<div className="lsp-stat">
-								<span className="lsp-stat-label">Uptime</span>
+								<span className="lsp-stat-label">{strings["lsp:uptime"]}</span>
 								<span className="lsp-stat-value" id={`lsp-uptime-${server.id}`}>
 									—
 								</span>

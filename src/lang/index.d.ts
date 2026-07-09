@@ -858,6 +858,23 @@ declare type LangStrings = {
 	"lsp:active status": string;
 	"lsp:connecting status": string;
 	"lsp:stop all": string;
+	"lsp:all servers restarted": string;
+	"lsp:language servers": string;
+	"lsp:project": string;
+	"lsp:capabilities": string;
+	"lsp:capabilities initializing": string;
+	"lsp:memory": string;
+	"lsp:uptime": string;
+	"lsp:capabilities completion": string;
+	"lsp:capabilities hover": string;
+	"lsp:capabilities definition": string;
+	"lsp:capabilities references": string;
+	"lsp:capabilities rename": string;
+	"lsp:capabilities format": string;
+	"lsp:capabilities signature": string;
+	"lsp:capabilities inlay hints": string;
+	"lsp:capabilities code actions": string;
+	"lsp:capabilities diagnostics": string;
 };
 
 declare var strings: LangStrings;
