@@ -298,7 +298,7 @@
     community-release-notifier:
       needs: [build, release]
 #      Run only if push tags, or triggered by a schedule
-      if: ${{ github.repository_owner == 'Acode-Foundation' && (contains(fromJSON('["push", "schedule"]'), github.event_name) || ! inputs.skip_tagging_and_releases) && needs.build.outputs.release_output_url }}
+      if: ${{ github.repository_owner == 'Acode-Foundation' && (contains(fromJSON('["push", "schedule"]'), github.event_name) || ! inputs.skip_tagging_and_releases) && needs.release.outputs.release_output_url }}
       uses: Acode-Foundation/acode/.github/workflows/community-release-notifier.yml@main
       with:
          tag_name: ${{ needs.release.outputs.updated_version }}
