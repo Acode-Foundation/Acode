@@ -51,7 +51,7 @@ function getStatusColor(status) {
 function copyLogsToClipboard(serverId, serverLabel) {
 	const logs = getLspLogs(serverId);
 	if (logs.length === 0) {
-		toast(strings["lsp:no-logs-to-copy"]);
+		toast(strings["lsp:no logs to copy"]);
 		return;
 	}
 
@@ -71,18 +71,18 @@ function copyLogsToClipboard(serverId, serverLabel) {
 
 	if (navigator.clipboard?.writeText) {
 		navigator.clipboard.writeText(header + text).catch(() => {
-			toast(strings["lsp:failed-to-copy"]);
+			toast(strings["lsp:failed to copy"]);
 		});
 	} else if (cordova?.plugins?.clipboard) {
 		cordova.plugins.clipboard.copy(header + text);
 	} else {
-		toast(strings["lsp:clipboard-not-available"]);
+		toast(strings["lsp:clipboard not available"]);
 	}
 }
 
 async function restartServer(serverId) {
 	addLspLog(serverId, "info", "Restart requested by user");
-	toast(strings["lsp:restarting-server"]);
+	toast(strings["lsp:restarting server"]);
 
 	try {
 		const clientState = getClientState(serverId);
@@ -96,7 +96,7 @@ async function restartServer(serverId) {
 		window.editorManager?.restartLsp?.();
 
 		addLspLog(serverId, "info", "Server restarted successfully");
-		toast(strings["lsp:server-restarted"]);
+		toast(strings["lsp:server restarted"]);
 	} catch (err) {
 		addLspLog(serverId, "error", `Restart failed: ${err.message}`);
 		toast(strings["lsp:restart failed"]);
