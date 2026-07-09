@@ -211,6 +211,7 @@
             path: ${{ env.FDROID_APK_PATH }}
 
         - name: remove keystore and build.json
+          if: ${{ !inputs.is_PR || inputs.is_trusted_pr }}
           run: |
             rm $STORE_FILE_PATH $BUILD_JSON_PATH
             echo "Keystore and build.json removed successfully."
