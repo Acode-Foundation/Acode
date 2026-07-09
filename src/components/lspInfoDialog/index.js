@@ -438,14 +438,14 @@ function showLspInfoDialog() {
 					<div className="lsp-section">
 						<div className="lsp-section-label">{strings["lsp:project"]}</div>
 						<div className="lsp-project-path">
-							{clientState?.rootUri || "(workspace folders mode)"}
+							{clientState?.rootUri || strings["lsp:workspace folders mode"]}
 						</div>
 					</div>
 				)}
 
 				{isRunning && (
 					<div className="lsp-section">
-						<div className="lsp-section-label">Resources</div>
+						<div className="lsp-section-label">{strings["lsp:resources"]}</div>
 						<div className="lsp-stats-container">
 							<div className="lsp-stat">
 								<span className="lsp-stat-label">{strings["lsp:memory"]}</span>
@@ -526,7 +526,7 @@ function showLspInfoDialog() {
 				</div>
 				<div className="lsp-logs-container">
 					{logs.length === 0 ? (
-						<div className="lsp-logs-empty">No logs yet</div>
+						<div className="lsp-logs-empty">{strings["lsp:no logs yet"]}</div>
 					) : (
 						logs.slice(-50).map((log) => {
 							const time = log.timestamp.toLocaleTimeString("en-US", {

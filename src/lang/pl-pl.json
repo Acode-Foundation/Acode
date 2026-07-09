@@ -871,5 +871,8 @@
 	"lsp:capabilities signature": "Signature Help",
 	"lsp:capabilities inlay hints": "Inlay Hints",
 	"lsp:capabilities code actions": "Code Actions",
-	"lsp:capabilities diagnostics": "Diagnostics"
+	"lsp:capabilities diagnostics": "Diagnostics",
+	"lsp:workspace folders mode": "(workspace folders mode)",
+	"lsp:resources": "Resources",
+	"lsp:no logs yet": "No logs yet"
 }

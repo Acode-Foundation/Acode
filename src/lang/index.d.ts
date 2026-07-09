@@ -875,6 +875,9 @@ declare type LangStrings = {
 	"lsp:capabilities inlay hints": string;
 	"lsp:capabilities code actions": string;
 	"lsp:capabilities diagnostics": string;
+	"lsp:workspace folders mode": string;
+	"lsp:resources": string;
+	"lsp:no logs yet": string;
 };
 
 declare var strings: LangStrings;

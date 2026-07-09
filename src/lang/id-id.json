@@ -871,5 +871,8 @@
 	"lsp:capabilities signature": "Bantuan Tanda Tangan",
 	"lsp:capabilities inlay hints": "Inlay Hints",
 	"lsp:capabilities code actions": "Tindakan Kode",
-	"lsp:capabilities diagnostics": "Diagnostik"
+	"lsp:capabilities diagnostics": "Diagnostik",
+	"lsp:workspace folders mode": "(mode folder ruang kerja)",
+	"lsp:resources": "Sumber Daya",
+	"lsp:no logs yet": "Belum ada log"
 }
