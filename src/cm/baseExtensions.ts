@@ -1,6 +1,7 @@
 import {
 	acceptCompletion,
 	closeBrackets,
+	closeBracketsKeymap,
 	completionKeymap,
 } from "@codemirror/autocomplete";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
@@ -75,7 +76,12 @@ export default function createBaseExtensions(
 		Prec.highest(keymap.of([{ key: "Tab", run: acceptCompletion }])),
 	);
 	extensions.push(
-		keymap.of([...completionKeymap, ...defaultKeymap, ...historyKeymap]),
+		keymap.of([
+			...(autoCloseBrackets ? closeBracketsKeymap : []),
+			...completionKeymap,
+			...defaultKeymap,
+			...historyKeymap,
+		]),
 	);
 	extensions.push(
 		// This prevents tooltips from being going out of the editor area
