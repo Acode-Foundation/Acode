@@ -810,8 +810,11 @@
 	"day plural": "{count} hari lalu",
 	"hour plural": "{count} jam lalu",
 	"min plural": "{count} menit lalu",
-	"settings-category-builtin-servers": "Server bawaan",
-	"settings-category-plugin-servers": "Server plugin",
+	"settings-category-builtin-servers": "Built-in servers",
+	"settings-category-plugin-servers": "Plugin servers",
+	"new name": "Nama baru",
+	"enter new name": "Masukkan nama baru",
+	"code actions": "Tindakan kode",
 	"active processes": "Proses Aktif",
 	"total memory": "Total Memori",
 	"uptime": "Waktu Aktif",
@@ -879,8 +882,5 @@
 	"lsp:capabilities diagnostics": "Diagnostik",
 	"lsp:workspace folders mode": "(mode folder ruang kerja)",
 	"lsp:resources": "Sumber Daya",
-	"lsp:no logs yet": "Belum ada log",
-	"new name": "Nama baru",
-	"enter new name": "Masukkan nama baru",
-	"code actions": "Tindakan kode"
+	"lsp:no logs yet": "Belum ada log"
 }

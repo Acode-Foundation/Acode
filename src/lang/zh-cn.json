@@ -812,6 +812,9 @@
 	"min plural": "{count} 分钟前",
 	"settings-category-builtin-servers": "内置服务器",
 	"settings-category-plugin-servers": "插件服务器",
+	"new name": "New name",
+	"enter new name": "Enter new name",
+	"code actions": "Code Actions",
 	"active processes": "Active Processes",
 	"total memory": "Total Memory",
 	"uptime": "Uptime",
@@ -879,8 +882,5 @@
 	"lsp:capabilities diagnostics": "Diagnostics",
 	"lsp:workspace folders mode": "(workspace folders mode)",
 	"lsp:resources": "Resources",
-	"lsp:no logs yet": "No logs yet",
-	"new name": "New name",
-	"enter new name": "Enter new name",
-	"code actions": "Code Actions"
+	"lsp:no logs yet": "No logs yet"
 }

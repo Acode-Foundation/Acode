@@ -837,6 +837,7 @@ declare type LangStrings = {
 	"sponsors:join-our-community": string;
 	"sponsors:become-a-sponsor": string;
 	"sponsors:acode-sponsors": string;
+	"sponsors:be-the-first": string;
 	"unable to load sponsors": string;
 	"lsp:clipboard not available": string;
 	"lsp:restarting server": string;
@@ -853,7 +854,6 @@ declare type LangStrings = {
 	"lsp:failed to stop servers": string;
 	"lsp:no lsp servers are currently running": string;
 	"lsp:failed to restart servers": string;
-	"sponsors:be-the-first": string;
 	"lsp:restarting lsp server singular": string;
 	"lsp:restarting lsp server plural": string;
 	"lsp:stopped lsp server singular": string;
