@@ -1,6 +1,13 @@
 import sidebarApps from "sidebarApps";
-import { indentUnit, language as languageFacet } from "@codemirror/language";
-import { search } from "@codemirror/search";
+import {
+	indentUnit,
+	language as languageFacet,
+	bracketMatching,
+	foldGutter,
+	indentOnInput,
+	syntaxHighlighting,
+} from "@codemirror/language";
+import { search, highlightSelectionMatches } from "@codemirror/search";
 import {
 	Compartment,
 	EditorSelection,
@@ -19,6 +26,8 @@ import {
 	keymap,
 	lineNumbers,
 	placeholder,
+	drawSelection,
+	highlightActiveLine,
 } from "@codemirror/view";
 import {
 	abbreviationTracker,
@@ -62,7 +71,7 @@ import {
 } from "cm/modelist";
 import createTouchSelectionMenu from "cm/touchSelectionMenu";
 import "cm/supportedModes";
-import { autocompletion } from "@codemirror/autocomplete";
+import { autocompletion, closeBrackets } from "@codemirror/autocomplete";
 import { serverCompletionSource } from "@codemirror/lsp-client";
 import colorView from "cm/colorView";
 import {
@@ -937,6 +946,10 @@ async function EditorManager($header, $body) {
 	const tagAutoRenameCompartment = new Compartment();
 	// Compartment for read-only toggling
 	const readOnlyCompartment = new Compartment();
+	// Compartment for brackets
+	const bracketCompartment = new Compartment();
+	// Compartment for highlight
+	const highlightCompartment = new Compartment();
 	// Compartment for scrolling past the end of the file
 	const scrollPastEndCompartment = new Compartment();
 	// Compartment for language mode (allows async loading/reconfigure)
@@ -1265,6 +1278,44 @@ async function EditorManager($header, $body) {
 				// Default-on for older settings files that do not have this key yet.
 				const enabled = appSettings?.value?.autoRenameTags !== false;
 				return enabled ? tagAutoRename() : [];
+			},
+		},
+		{
+			keys: ["autoCloseBrackets", "bracketMatching"],
+			compartments: [bracketCompartment],
+			build() {
+				const ext = [];
+
+				if (appSettings.value.autoCloseBrackets !== false) {
+					ext.push(closeBrackets());
+				}
+
+				if (appSettings.value.bracketMatching !== false) {
+					ext.push(bracketMatching());
+				}
+
+				return ext;
+			},
+		},
+		{
+			keys: ["highlightActiveLine", "highlightSelectionMatches"],
+			compartments: [highlightCompartment],
+			build() {
+				const ext = [];
+
+				if (appSettings.value.highlightActiveLine !== false) {
+					ext.push(highlightActiveLine());
+				}
+
+				if (appSettings.value.highlightSelectionMatches !== false) {
+					ext.push(
+						highlightSelectionMatches({
+							minSelectionLength: 1,
+						}),
+					);
+				}
+
+				return ext;
 			},
 		},
 		{
