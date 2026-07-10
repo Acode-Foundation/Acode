@@ -1,5 +1,7 @@
 import { redoDepth, undoDepth } from "@codemirror/commands";
 import quickTools from "components/quickTools";
+import { description } from "components/quickTools/items";
+import { hideTooltip, showTooltip } from "components/tooltip";
 import config from "lib/config";
 import appSettings from "lib/settings";
 import actions, { key } from "./quickTools";
@@ -18,6 +20,7 @@ let startTime;
 let contextmenuTimeout;
 let active = false; // is button already active
 let slide = 0;
+let longPress = false;
 
 /**@type {HTMLElement} */
 let $row;
@@ -37,6 +40,7 @@ function reset() {
 	touchMoved = undefined;
 	contextmenuTimeout = null;
 	active = false;
+	longPress = false;
 }
 
 function clearTouchFeedback() {
@@ -168,6 +172,7 @@ function onclick(e) {
 	e.preventDefault();
 	e.stopPropagation();
 	click(e.target);
+	hideTooltip();
 	clearTimeout(timeout);
 }
 
@@ -189,13 +194,17 @@ function touchstart(e) {
 	e.preventDefault();
 	e.stopPropagation();
 
-	if ($el.dataset.repeat === "true") {
-		contextmenuTimeout = setTimeout(() => {
-			if (touchMoved) return;
+	contextmenuTimeout = setTimeout(() => {
+		if (touchMoved) return;
+
+		longPress = true;
+		showTooltip($el, description($el.dataset.id));
+
+		if ($el.dataset.repeat === "true") {
 			contextmenu = true;
 			oncontextmenu(e);
-		}, CONTEXT_MENU_TIMEOUT);
-	}
+		}
+	}, CONTEXT_MENU_TIMEOUT);
 
 	if ($el.classList.contains("active")) {
 		active = true;
@@ -299,7 +308,7 @@ function touchend(e) {
 		return;
 	}
 
-	if ($touchstart !== $el || contextmenu) {
+	if ($touchstart !== $el || contextmenu || longPress) {
 		touchcancel(e);
 		return;
 	}
@@ -320,6 +329,7 @@ function touchcancel(e) {
 	clearTimeout(timeout);
 	clearTimeout(contextmenuTimeout);
 	clearTouchFeedback();
+	hideTooltip();
 }
 
 /**

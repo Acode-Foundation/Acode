@@ -1,0 +1,24 @@
+.acode-tooltip {
+	position: fixed;
+
+	padding: 6px 10px;
+
+	background: var(--popup-background-color);
+	color: var(--popup-text-color);
+	border: 1px solid var(--popup-border-color);
+	box-shadow: 0 0 4px var(--box-shadow-color);
+	border-radius: var(--popup-border-radius);
+
+	font-size: 12px;
+
+	white-space: nowrap;
+
+	pointer-events: none;
+
+	opacity: 0;
+
+	transform: translateY(5px);
+
+	z-index: 999999;
+}
+
