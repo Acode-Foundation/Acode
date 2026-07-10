@@ -7,7 +7,7 @@ import {
 } from "@codemirror/language";
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import { EditorSelection, EditorState } from "@codemirror/state";
-import { EditorView } from "@codemirror/view";
+import { EditorView, runScopeHandlers } from "@codemirror/view";
 import createBaseExtensions from "cm/baseExtensions";
 import indentGuides from "cm/indentGuides";
 import {
@@ -33,7 +33,7 @@ import { TestRunner } from "./tester";
 export async function runCodeMirrorTests(writeOutput) {
 	const runner = new TestRunner("CodeMirror 6 Editor Tests");
 
-	function createEditor(doc = "", extensions = []) {
+	function createEditor(doc = "", extensions = [], baseExtensionOptions = {}) {
 		const container = document.createElement("div");
 		container.style.width = "500px";
 		container.style.height = "300px";
@@ -42,18 +42,31 @@ export async function runCodeMirrorTests(writeOutput) {
 
 		const state = EditorState.create({
 			doc,
-			extensions: [...createBaseExtensions(), ...extensions],
+			extensions: [
+				...createBaseExtensions(baseExtensionOptions),
+				...extensions,
+			],
 		});
 
 		const view = new EditorView({ state, parent: container });
 		return { view, container };
 	}
 
-	async function withEditor(test, fn, initialDoc = "", extensions = []) {
+	async function withEditor(
+		test,
+		fn,
+		initialDoc = "",
+		extensions = [],
+		baseExtensionOptions = {},
+	) {
 		let view, container;
 
 		try {
-			({ view, container } = createEditor(initialDoc, extensions));
+			({ view, container } = createEditor(
+				initialDoc,
+				extensions,
+				baseExtensionOptions,
+			));
 			test.assert(view != null, "EditorView instance should be created");
 			await new Promise((resolve) => setTimeout(resolve, 100));
 			await fn(view);
@@ -138,6 +151,50 @@ export async function runCodeMirrorTests(writeOutput) {
 		view.destroy();
 		container.remove();
 	});
+
+	runner.test("Backspace deletes an auto-closed bracket pair", async (test) => {
+		await withEditor(
+			test,
+			async (view) => {
+				view.dispatch({ selection: { anchor: 1 } });
+				const handled = runScopeHandlers(
+					view,
+					new KeyboardEvent("keydown", { key: "Backspace" }),
+					"editor",
+				);
+
+				test.assert(
+					handled,
+					"Backspace should be handled between a bracket pair",
+				);
+				test.assertEqual(view.state.doc.toString(), "");
+			},
+			"()",
+		);
+	});
+
+	runner.test(
+		"Backspace behaves normally when auto-close is disabled",
+		async (test) => {
+			await withEditor(
+				test,
+				async (view) => {
+					view.dispatch({ selection: { anchor: 1 } });
+					const handled = runScopeHandlers(
+						view,
+						new KeyboardEvent("keydown", { key: "Backspace" }),
+						"editor",
+					);
+
+					test.assert(handled, "Backspace should retain its default behavior");
+					test.assertEqual(view.state.doc.toString(), ")");
+				},
+				"()",
+				[],
+				{ autoCloseBrackets: false },
+			);
+		},
+	);
 
 	runner.test("State access", async (test) => {
 		await withEditor(test, async (view) => {
