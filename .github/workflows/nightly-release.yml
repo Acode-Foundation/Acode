@@ -69,7 +69,7 @@ jobs:
           set -euo pipefail
           find /tmp/artifacts -type f -name '*.apk' -print0 | sort -z | while IFS= read -r -d '' f; do
             sha256sum "$f"
-          done > /tmp/slsa-subjects.txt
+          done | base64 -w0 > /tmp/base64-subjects.txt
 
           test -s /tmp/slsa-subjects.txt || { echo "No subjects found"; exit 1; }
 
