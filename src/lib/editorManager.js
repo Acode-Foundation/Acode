@@ -3459,6 +3459,22 @@ async function EditorManager($header, $body) {
 		applyOptions(["autoRenameTags"]);
 	});
 
+	appSettings.on("update:autoCloseBrackets", function () {
+		applyOptions(["autoCloseBrackets"]);
+	});
+
+	appSettings.on("update:bracketMatching", function () {
+		applyOptions(["bracketMatching"]);
+	});
+
+	appSettings.on("update:highlightActiveLine", function () {
+		applyOptions(["highlightActiveLine"]);
+	});
+
+	appSettings.on("update:highlightSelectionMatches", function () {
+		applyOptions(["highlightSelectionMatches"]);
+	});
+
 	appSettings.on("update:scrollPastEnd", function () {
 		applyOptions(["scrollPastEnd"]);
 	});
