@@ -7,7 +7,7 @@ import {
 	indentOnInput,
 	syntaxHighlighting,
 } from "@codemirror/language";
-import { search, highlightSelectionMatches } from "@codemirror/search";
+import { highlightSelectionMatches, search } from "@codemirror/search";
 import {
 	Compartment,
 	EditorSelection,
