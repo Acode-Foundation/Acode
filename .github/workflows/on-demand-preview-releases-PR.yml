@@ -9,7 +9,7 @@ on:
 
 # defined at workflow-level as the workflow, Requires these permissions to function.
 permissions:
-  contents: write
+  contents: write # due to nightly workflow complaining, even tho release step isn't executed. 
   pull-requests: write
   # All Pull Requests are issues, but not all issues are Pull Requests (like GitHub says 🙃)
   issues: write
@@ -22,6 +22,10 @@ concurrency:
 jobs:
   job_trigger:
     name: Trigger Preview Release (if conditions met)
+    permissions:
+      contents: read
+      pull_requests: write
+      issues: write
     if: |
         github.event.pull_request.draft == false
         && (github.repository_owner == 'Acode-Foundation'
@@ -39,8 +43,6 @@ jobs:
           clean: false
           fetch-depth: 0
           persist-credentials: false
-          # Checkout pull request HEAD commit instead of merge commit
-          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Remove Manually added PR Label
         if: |
@@ -73,25 +75,43 @@ jobs:
 
   trigger_builder:
       needs: job_trigger
-      secrets: inherit
+      permissions:
+        contents: read
+        pull_requests: read
+        issues: read
+      secrets:
+        KEYSTORE_CONTENT: ${{ secrets.KEYSTORE_CONTENT }}
+        BUILD_JSON_CONTENT: ${{ secrets.BUILD_JSON_CONTENT }}
       uses: Acode-Foundation/acode/.github/workflows/nightly-build.yml@main
       with:
         is_PR: true
         PR_NUMBER: ${{ github.event.pull_request.number }}
+        is_trusted_pr: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
         skip_tagging_and_releases: true
 
   update_Last_Comment:
       needs: [job_trigger,trigger_builder]
+      permissions:
+        contents: read
+
       runs-on: ubuntu-latest
-      if: ${{ github.repository_owner == 'Acode-Foundation' && always() && contains(fromJSON('["failure","cancelled"]'), needs.trigger_builder.result) }}
+      if: ${{ github.repository_owner == 'Acode-Foundation' && always() && contains(fromJSON('["failure","cancelled", "success"]'), needs.trigger_builder.result) }}
       steps:
-#        - name: Checkout code
-#          uses: actions/checkout@v4
-#          with:
-#            clean: false
-#            fetch-depth: 0
+
+        - name: Update Last Comment by bot (If Workflow Triggering succeeded)
+          if: ${{ needs.trigger_builder.result == 'success' && github.event.pull_request.number }}
+          uses: marocchino/sticky-pull-request-comment@v3
+          with:
+             hide_and_recreate: true
+             hide_classify: "OUTDATED"
+             header: on-demand-build-status
+             message: |
+                   Preview Release for this, has been built.
+         
+                   [Click here to view that github actions build](https://github.com/${{ github.repository}}/actions/runs/${{ github.run_id }})
 
         - name: Update Last Comment by bot (if Workflow Triggering failed)
+          if: ${{ needs.trigger_builder.result != 'success' && github.event.pull_request.number }}
           uses: marocchino/sticky-pull-request-comment@v3
           with:
              hide_and_recreate: true
@@ -102,4 +122,4 @@ jobs:
                    status: **${{ needs.trigger_builder.result || 'failure'}}**         
                
                    ---
-                   For Owners: Please [Click here to view that github actions](https://github.com/${{ github.repository}}/actions/runs/${{ github.run_id }})
+                   Please [Click here to view that github actions](https://github.com/${{ github.repository}}/actions/runs/${{ github.run_id }})

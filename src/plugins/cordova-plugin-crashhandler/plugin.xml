@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  id="cordova-plugin-crashhandler"
+  version="1.0.0">
+  <name>CrashHandler</name>
+  <description>Dedicated crash handling plugin for Android</description>
+  <license>MIT</license>
+
+  <platform name="android">
+    <config-file target="res/xml/config.xml" parent="/*">
+      <feature name="CrashHandler">
+        <param name="android-package" value="com.foxdebug.crashhandler.CrashHandler"/>
+        <param name="onload" value="true" />
+      </feature>
+    </config-file>
+
+    <config-file parent="./application" target="AndroidManifest.xml">
+      <activity
+        android:name="com.foxdebug.crashhandler.CrashActivity"
+        android:process=":crash"
+        android:theme="@style/Theme.AppCompat.DayNight.NoActionBar"
+        android:exported="false"
+        android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
+        android:launchMode="singleInstance">
+      </activity>
+    </config-file>
+
+    <source-file src="src/android/CrashHandler.java" target-dir="src/com/foxdebug/crashhandler"/>
+    <source-file src="src/android/CrashActivity.java" target-dir="src/com/foxdebug/crashhandler"/>
+  </platform>
+</plugin>

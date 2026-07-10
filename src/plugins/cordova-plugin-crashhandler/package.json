@@ -1,0 +1,19 @@
+{
+  "name": "cordova-plugin-crashhandler",
+  "version": "1.0.0",
+  "description": "Dedicated Cordova plugin for crash handling in Acode, supporting native and JS crashes even when the app is completely unrecoverable.",
+  "cordova": {
+    "id": "cordova-plugin-crashhandler",
+    "platforms": [
+      "android"
+    ]
+  },
+  "keywords": [
+    "ecosystem:cordova",
+    "cordova-android",
+    "crash",
+    "handler"
+  ],
+  "author": "Rohit Kushvaha",
+  "license": "MIT"
+}
