@@ -879,5 +879,8 @@
 	"lsp:capabilities diagnostics": "Diagnostik",
 	"lsp:workspace folders mode": "(mode folder ruang kerja)",
 	"lsp:resources": "Sumber Daya",
-	"lsp:no logs yet": "Belum ada log"
+	"lsp:no logs yet": "Belum ada log",
+	"new name": "Nama baru",
+	"enter new name": "Masukkan nama baru",
+	"code actions": "Tindakan kode"
 }

@@ -830,7 +830,8 @@
 	"sponsors": "Sponsors",
 	"sponsors:join-our-community": "Join our community of supporters and help shape the future of mobile development",
 	"sponsors:become-a-sponsor": "Become a Sponsor",
-	"sponsors:acode-sponsors": "Acode's Sponsors",
+	"sponsors:acode-sponsors": "Acode's SponsorsAcode's Sponsors",
+	"sponsors:be-the-first": "Be the first {tier} Sponsor!",
 	"unable to load sponsors": "Unable to load sponsors...",
 	"lsp:clipboard not available": "Clipboard not available",
 	"lsp:restarting server": "Restarting server...",
@@ -847,7 +848,6 @@
 	"lsp:failed to stop servers": "Failed to stop servers",
 	"lsp:no lsp servers are currently running": "No LSP servers are currently running",
 	"lsp:failed to restart servers": "Failed to restart servers",
-	"sponsors:be-the-first": "Be the first {tier} Sponsor!",
 	"lsp:restarting lsp server singular": "Restarting {count} LSP server...",
 	"lsp:restarting lsp server plural": "Restarting {count} LSP servers...",
 	"lsp:stopped lsp server singular": "Stopped {count} LSP server",
@@ -879,5 +879,8 @@
 	"lsp:capabilities diagnostics": "Diagnostics",
 	"lsp:workspace folders mode": "(workspace folders mode)",
 	"lsp:resources": "Resources",
-	"lsp:no logs yet": "No logs yet"
+	"lsp:no logs yet": "No logs yet",
+	"new name": "New name",
+	"enter new name": "Enter new name",
+	"code actions": "Code Actions"
 }

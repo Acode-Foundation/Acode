@@ -879,5 +879,8 @@
 	"lsp:capabilities diagnostics": "Diagnostics",
 	"lsp:workspace folders mode": "(workspace folders mode)",
 	"lsp:resources": "Resources",
-	"lsp:no logs yet": "No logs yet"
+	"lsp:no logs yet": "No logs yet",
+	"new name": "New name",
+	"enter new name": "Enter new name",
+	"code actions": "Code Actions"
 }
