@@ -39,7 +39,7 @@ jobs:
       release_notes: ${{ env.RELEASE_NOTES }}
       previous_tag_commit: ${{ steps.prev_tag.outputs.tag_commit }}
       nightly_tag_name: ${{ needs.build.outputs.updated_version }}
-      hashes_b64: ${{ steps.slsa_subjects.outputs.hashes_b64 }}
+      subjects_file: ${{ steps.subjects_file.outputs.handle }}
 
     steps:
       - name: Checkout repository
@@ -63,29 +63,21 @@ jobs:
           name: app-debug-fdroid-${{ github.sha }}
           path: /tmp/artifacts/fdroid
 
-      - name: Generate sha256 files (per APK)
+      - name: Build SLSA subjects file
         shell: bash
         run: |
           set -euo pipefail
+          find /tmp/artifacts -type f -name '*.apk' -print0 | sort -z | while IFS= read -r -d '' f; do
+            sha256sum "$f"
+          done > /tmp/slsa-subjects.txt
 
-          mapfile -d '' apks < <(find /tmp/artifacts -type f -name '*.apk' -print0 | sort -z)
-          if [ "${#apks[@]}" -eq 0 ]; then
-            echo "No APKs found under /tmp/artifacts" >&2
-            exit 1
-          fi
+          test -s /tmp/slsa-subjects.txt || { echo "No subjects found"; exit 1; }
 
-          tmp="$(mktemp)"
-          for f in "${apks[@]}"; do
-            sha="$(sha256sum "$f" | awk '{print $1}')"
-            name="$(basename "$f")"
-            printf '%s  %s\n' "$sha" "$name" >> "$tmp"
-          done
-
-          echo "Subjects:"
-          cat "$tmp"
-
-          b64="$(base64 -w0 "$tmp")"
-          echo "hashes_b64=$b64" >> "$GITHUB_OUTPUT"
+      - name: Create subjects file handle
+        id: subjects_file
+        uses: slsa-framework/slsa-github-generator/actions/generator/generic/create-base64-subjects-from-file@v2.1.0
+        with:
+          path: /tmp/slsa-subjects.txt
 
       - name: Resolve previous nightly tag commit
         id: prev
