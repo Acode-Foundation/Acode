@@ -5,9 +5,9 @@ export let adUnitIdInterstitial = "ca-app-pub-5911839694379275/9570937608"; // P
 export let adUnitIdRewarded = "ca-app-pub-5911839694379275/1633667633"; // Production
 export let initialized = false;
 
-/** @type {import("plugins/admob/esm").BannerAd} */
+/** @type {import("plugins/admob/src/www").BannerAd} */
 export let bannerAd = null;
-/** @type {import("plugins/admob/esm").InterstitialAd} */
+/** @type {import("plugins/admob/src/www").InterstitialAd} */
 export let interstitialAd = null;
 
 export default async function startAd() {

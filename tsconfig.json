@@ -22,5 +22,13 @@
     "types": ["node"]
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "platforms", "www", "www/js/ace/**/*"]
+  "exclude": [
+    "node_modules",
+    "platforms",
+    "www",
+    "www/js/ace/**/*",
+    "src/plugins/admob/esm",
+    "src/plugins/admob/lib",
+    "src/plugins/admob/www"
+  ]
 }
