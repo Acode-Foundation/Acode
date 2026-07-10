@@ -35,9 +35,10 @@ jobs:
       id-token: write
 
     outputs:
+      should_publish: ${{ steps.publish_gate.outputs.should_publish }}
       release_output_url: ${{ steps.gh_release.outputs.url }}
       release_notes: ${{ env.RELEASE_NOTES }}
-      previous_tag_commit: ${{ steps.prev_tag.outputs.tag_commit }}
+      previous_tag_commit: ${{ steps.prev.outputs.tag_commit }}
       nightly_tag_name: ${{ needs.build.outputs.updated_version }}
       subjects_file: ${{ steps.subjects_file.outputs.handle }}
 
@@ -63,7 +64,43 @@ jobs:
           name: app-debug-fdroid-${{ github.sha }}
           path: /tmp/artifacts/fdroid
 
+      - name: Resolve previous nightly tag commit
+        id: prev
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION_TAG="${{ needs.build.outputs.updated_version }}"
+          FALLBACK_TAG="nightly"
+          git fetch --tags --force
+
+          if git show-ref --quiet "refs/tags/${VERSION_TAG}"; then
+            echo "tag_exists=true" >> "$GITHUB_OUTPUT"
+            echo "tag_commit=$(git rev-parse "${VERSION_TAG}")" >> "$GITHUB_OUTPUT"
+          elif git show-ref --quiet "refs/tags/${FALLBACK_TAG}"; then
+            echo "tag_exists=true" >> "$GITHUB_OUTPUT"
+            echo "tag_commit=$(git rev-parse "${FALLBACK_TAG}")" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag_exists=false" >> "$GITHUB_OUTPUT"
+            echo "tag_commit=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Decide whether to publish
+        id: publish_gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ steps.prev.outputs.tag_exists }}" != "true" || "${{ steps.prev.outputs.tag_commit }}" != "${GITHUB_SHA}" ]]; then
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          echo "| should_publish | ${{ steps.publish_gate.outputs.should_publish }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| tag_exists | ${{ steps.prev.outputs.tag_exists }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| tag_commit | ${{ steps.prev.outputs.tag_commit }} |" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Build SLSA subjects file
+        if: steps.publish_gate.outputs.should_publish == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -73,22 +110,22 @@ jobs:
 
           test -s /tmp/slsa-subjects.txt || { echo "No subjects found"; exit 1; }
 
+      - name: Generate per-APK sha256 files
+        shell: bash
+        run: |
+          set -euo pipefail
+          find /tmp/artifacts -type f -name '*.apk' -print0 | while IFS= read -r -d '' f; do
+            sha256sum "$f" > "${f}.sha256"
+          done
+
       - name: Create subjects file handle
         id: subjects_file
         uses: slsa-framework/slsa-github-generator/actions/generator/generic/create-base64-subjects-from-file@v2.1.0
         with:
           path: /tmp/slsa-subjects.txt
 
-      - name: Resolve previous nightly tag commit
-        id: prev
-        run: |
-          if git show-ref --quiet refs/tags/nightly; then
-            echo "tag_commit=$(git rev-parse nightly)" >> "$GITHUB_OUTPUT"
-          else
-            echo "tag_commit=$(git rev-list --max-parents=0 HEAD)" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Move nightly tag
+        if: steps.publish_gate.outputs.should_publish == 'true'
         run: |
           git config --global user.name 'GitHub Actions'
           git config --global user.email 'github-actions@github.com'
@@ -96,6 +133,7 @@ jobs:
           git push origin refs/tags/nightly --force
 
       - name: Generate release notes
+        if: steps.publish_gate.outputs.should_publish == 'true'
         id: notes
         continue-on-error: true
         run: |
@@ -111,13 +149,15 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.NIGHTLY_RELEASE_NOTES_GH_TOKEN }}
 
       - name: Create nightly prerelease
+        if: steps.publish_gate.outputs.should_publish == 'true'
+        id: gh_release
         uses: softprops/action-gh-release@v3
         env:
             FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
         with:
           prerelease: true
-          tag_name: ${{ needs.build.outputs.updated_version}}
-          name: ${{ needs.build.outputs.updated_version}}
+          tag_name: ${{ needs.build.outputs.updated_version }}
+          name: ${{ needs.build.outputs.updated_version }}
           files: |
             /tmp/artifacts/normal/*.apk
             /tmp/artifacts/normal/*.apk.sha256
@@ -133,6 +173,7 @@ jobs:
   provenance:
     name: Generate SLSA provenance
     needs: [release]
+    if: needs.release.outputs.should_publish == 'true'
     permissions:
       actions: read
       id-token: write

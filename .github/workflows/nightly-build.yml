@@ -46,6 +46,7 @@ permissions:
   contents: read
 
 concurrency:
+   # Allow only one workflow per branch.
   group: ${{ github.workflow }}-${{ github.ref_name }}-${{ inputs.is_PR && 'is_PR' || 'not_PR' }}
   cancel-in-progress: true
 
@@ -183,6 +184,14 @@ jobs:
       - name: Cleanup signing files
         if: ${{ !inputs.is_PR || inputs.is_trusted_pr }}
         run: rm -f ${{ env.STORE_FILE_PATH }} ${{ env.BUILD_JSON_PATH }}
+      
+      - name: Post Build - SHA256 signature computation (output)
+        id: sha256
+        run: |
+          echo "normal_apk_sha256=$(sha256sum ${{ env.NORMAL_APK_PATH }} | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+          if [ -f "${{ env.FDROID_APK_PATH }}" ]; then
+            echo "fdroid_apk_sha256=$(sha256sum ${{ env.FDROID_APK_PATH }} | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Post build summary (Table)
         run: |
@@ -193,5 +202,5 @@ jobs:
           echo "| Git Commit | ${{ steps.meta.outputs.git_commit }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Normal APK Artifact Name | ${{ steps.meta.outputs.normal_artifact_name }} |" >> $GITHUB_STEP_SUMMARY
           echo "| F-Droid APK Artifact Name | ${{ steps.meta.outputs.fdroid_artifact_name || 'N/A' }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Normal APK Artifact signature | \`${{ steps.meta.outputs.normal_artifact_name }}.sha256\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| F-Droid APK Artifact signature | \`${{ steps.meta.outputs.fdroid_artifact_name || 'N/A' }}.sha256\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Normal APK Artifact SHA256 | ${{ steps.sha256.outputs.normal_apk_sha256 }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| F-Droid APK Artifact SHA256 | ${{ steps.sha256.outputs.fdroid_apk_sha256 || 'N/A' }} |" >> $GITHUB_STEP_SUMMARY
