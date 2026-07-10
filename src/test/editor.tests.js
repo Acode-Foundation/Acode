@@ -173,25 +173,28 @@ export async function runCodeMirrorTests(writeOutput) {
 		);
 	});
 
-	runner.test("Backspace behaves normally when auto-close is disabled", async (test) => {
-		await withEditor(
-			test,
-			async (view) => {
-				view.dispatch({ selection: { anchor: 1 } });
-				const handled = runScopeHandlers(
-					view,
-					new KeyboardEvent("keydown", { key: "Backspace" }),
-					"editor",
-				);
+	runner.test(
+		"Backspace behaves normally when auto-close is disabled",
+		async (test) => {
+			await withEditor(
+				test,
+				async (view) => {
+					view.dispatch({ selection: { anchor: 1 } });
+					const handled = runScopeHandlers(
+						view,
+						new KeyboardEvent("keydown", { key: "Backspace" }),
+						"editor",
+					);
 
-				test.assert(handled, "Backspace should retain its default behavior");
-				test.assertEqual(view.state.doc.toString(), ")");
-			},
-			"()",
-			[],
-			{ autoCloseBrackets: false },
-		);
-	});
+					test.assert(handled, "Backspace should retain its default behavior");
+					test.assertEqual(view.state.doc.toString(), ")");
+				},
+				"()",
+				[],
+				{ autoCloseBrackets: false },
+			);
+		},
+	);
 
 	runner.test("State access", async (test) => {
 		await withEditor(test, async (view) => {
