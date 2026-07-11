@@ -306,18 +306,20 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 						},
 					);
 
-					const zipName = Url.basename(zipFile).replace(/\.zip$/, "");
+					let zipName = Url.basename(zipFile).replace(/\.zip$/, "");
 					const targetDir = currentDir.url;
-					const extractDir = Url.join(targetDir, zipName);
+					let extractDir = Url.join(targetDir, zipName);
 
 					try {
 						const zipContent = await fsOperation(zipFile).readFile();
 						const zip = await JSZip.loadAsync(zipContent);
 
 						const targetFs = fsOperation(targetDir);
-						if (!(await fsOperation(extractDir).exists())) {
-							await targetFs.createDirectory(zipName);
+						if (await fsOperation(extractDir).exists()) {
+							zipName = `${zipName}_${helpers.uuid()}`;
+							extractDir = Url.join(targetDir, zipName);
 						}
+						await targetFs.createDirectory(zipName);
 
 						const files = Object.keys(zip.files);
 						const total = files.length;
