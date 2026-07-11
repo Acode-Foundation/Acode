@@ -52,17 +52,30 @@ jobs:
       - name: Install cosign
         uses: sigstore/cosign-installer@v4.1.0
 
+      - name: Set Publish Metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "ARTIFACTS_DIR=${{ env.ARTIFACTS_DIR}}" >> $GITHUB_ENV
+          echo "NORMAL_ARTIFACT_NAME=app-debug-${{ github.sha }}" >> $GITHUB_ENV
+          echo "FDROID_ARTIFACT_NAME=app-debug-fdroid-${{ github.sha }}" >> $GITHUB_ENV
+          echo "SUBJECTS_FILE=${{ env.SUBJECTS_FILE }}" >> $GITHUB_ENV
+        env:
+          ARTIFACTS_DIR: ${{ runner.temp }}/artifacts
+          SUBJECTS_FILE: ${{ runner.temp }}/slsa-subjects.txt
+
+
       - name: Download normal APK artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: app-debug-${{ github.sha }}
-          path: /tmp/artifacts/normal
+          path: ${{ env.ARTIFACTS_DIR }}/normal
 
       - name: Download fdroid APK artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: app-debug-fdroid-${{ github.sha }}
-          path: /tmp/artifacts/fdroid
+          path: ${{ env.ARTIFACTS_DIR }}/fdroid
 
       - name: Resolve previous nightly tag commit
         id: prev
@@ -95,7 +108,9 @@ jobs:
             echo "should_publish=false" >> "$GITHUB_OUTPUT"
           fi
 
-          echo "| should_publish | ${{ steps.publish_gate.outputs.should_publish }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Variable | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| --- | --- |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| should_publish | ${{ steps.publish_gate.outputs.should_publish && 'true' || 'false' }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| tag_exists | ${{ steps.prev.outputs.tag_exists }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| tag_commit | ${{ steps.prev.outputs.tag_commit }} |" >> "$GITHUB_STEP_SUMMARY"
 
@@ -104,17 +119,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          find /tmp/artifacts -type f -name '*.apk' -print0 | sort -z | while IFS= read -r -d '' f; do
+          find ${{ env.ARTIFACTS_DIR }} -type f -name '*.apk' -print0 | sort -z | while IFS= read -r -d '' f; do
             sha256sum "$f"
-          done | base64 -w0 > /tmp/slsa-subjects.txt
+          done | base64 -w0 > "${SUBJECTS_FILE}"
 
-          test -s /tmp/slsa-subjects.txt || { echo "No subjects found"; exit 1; }
+          test -s "${SUBJECTS_FILE}" || { echo "No subjects found"; exit 1; }
+        env:
+          ARTIFACTS_DIR: ${{ env.ARTIFACTS_DIR }}
+          SUBJECTS_FILE: ${{ env.SUBJECTS_FILE }}
+          
 
       - name: Generate per-APK sha256 files
         shell: bash
         run: |
           set -euo pipefail
-          find /tmp/artifacts -type f -name '*.apk' -print0 | while IFS= read -r -d '' f; do
+          find ${{ env.ARTIFACTS_DIR }} -type f -name '*.apk' -print0 | while IFS= read -r -d '' f; do
             sha256sum "$f" > "${f}.sha256"
           done
 
@@ -122,7 +141,7 @@ jobs:
         id: subjects_file
         uses: slsa-framework/slsa-github-generator/actions/generator/generic/create-base64-subjects-from-file@v2.1.0
         with:
-          path: /tmp/slsa-subjects.txt
+          path: ${{ env.SUBJECTS_FILE }}
 
       - name: Move nightly tag
         if: steps.publish_gate.outputs.should_publish == 'true'
@@ -159,10 +178,10 @@ jobs:
           tag_name: ${{ needs.build.outputs.updated_version }}
           name: ${{ needs.build.outputs.updated_version }}
           files: |
-            /tmp/artifacts/normal/*.apk
-            /tmp/artifacts/normal/*.apk.sha256
-            /tmp/artifacts/fdroid/*.apk
-            /tmp/artifacts/fdroid/*.apk.sha256
+            ${{ env.ARTIFACTS_DIR }}/normal/*.apk
+            ${{ env.ARTIFACTS_DIR }}/normal/*.apk.sha256
+            ${{ env.ARTIFACTS_DIR }}/fdroid/*.apk
+            ${{ env.ARTIFACTS_DIR }}/fdroid/*.apk.sha256
           body: |
             Automated Nightly pre-release
 
@@ -180,7 +199,24 @@ jobs:
       contents: write
     uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
     with:
-       # base64 of lines in sha256sum format: "<sha256><two spaces><path-or-name>"
      base64-subjects-as-file: "${{ needs.release.outputs.subjects_file }}"
      upload-assets: true
      upload-tag-name: "${{ needs.release.outputs.nightly_tag_name }}"
+     draft-release: false
+  
+  community-release-notifier:
+    name: Notify community of nightly release
+    needs: [release]
+    if: ${{ needs.release.outputs.should_publish == 'true' && (contains(fromJSON('["push", "schedule"]'), github.event_name)) && needs.release.outputs.release_output_url }}
+    permissions:
+      contents: read
+    uses: unschooledgamer/acode/.github/workflows/community-release-notifier.yml@fix/on-demand-previews
+    with:
+      url: ${{ needs.release.outputs.release_output_url }}
+      tag_name: ${{ needs.release.outputs.nightly_tag_name }}
+      body: ${{ needs.release.outputs.release_notes }}
+    secrets:
+        DISCORD_WEBHOOK_RELEASE_NOTES: ${{ secrets.DISCORD_WEBHOOK_RELEASE_NOTES }}
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        TELEGRAM_MESSAGE_THREAD_ID: ${{ secrets.TELEGRAM_MESSAGE_THREAD_ID }}
