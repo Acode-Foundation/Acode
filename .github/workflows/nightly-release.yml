@@ -208,7 +208,7 @@ jobs:
   community-release-notifier:
     name: Notify community of nightly release
     needs: [release]
-    if: ${{ needs.release.outputs.should_publish == 'true' && (contains(fromJSON('["push", "schedule"]'), github.event_name)) && needs.release.outputs.release_output_url }}
+    if: ${{ needs.release.outputs.should_publish == 'true' && needs.release.outputs.release_output_url }}
     permissions:
       contents: read
     uses: unschooledgamer/acode/.github/workflows/community-release-notifier.yml@fix/on-demand-previews
