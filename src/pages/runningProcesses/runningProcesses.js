@@ -233,7 +233,9 @@ export default function RunningProcesses() {
 				>
 					<span className="process-name">{name}</span>
 					<span className="process-pid">{proc.pid}</span>
-					{proc.managed && <span className="process-tag">Managed</span>}
+					{proc.managed && (
+						<span className="process-tag">{text("managed", "Managed")}</span>
+					)}
 					<span className="process-memory">{formatMemory(proc.memory)}</span>
 					{!proc.isSelf && (
 						<span
@@ -251,22 +253,26 @@ export default function RunningProcesses() {
 
 				<div className={`process-item-details ${isExpanded ? "expanded" : ""}`}>
 					<div className="detail-row">
-						<span className="detail-label">Command</span>
+						<span className="detail-label">{text("command", "Command")}</span>
 						<code className="detail-value monospace selectable">
 							{proc.command}
 						</code>
 					</div>
 					<div className="detail-row">
-						<span className="detail-label">PPID (Parent)</span>
+						<span className="detail-label">
+							{text("ppid parent", "PPID (Parent)")}
+						</span>
 						<code className="detail-value">{proc.ppid}</code>
 					</div>
 					<div className="detail-row">
-						<span className="detail-label">Uptime</span>
+						<span className="detail-label">{text("uptime", "Uptime")}</span>
 						<span className="detail-value">{uptime}</span>
 					</div>
 					{proc.managed && (
 						<div className="detail-row highlight">
-							<span className="detail-label">Acode Service</span>
+							<span className="detail-label">
+								{text("acode service", "Acode Service")}
+							</span>
 							<span className="detail-value">
 								{proc.managedType} ({proc.alpine ? "Alpine" : "Android"})
 							</span>
@@ -274,8 +280,10 @@ export default function RunningProcesses() {
 					)}
 					{proc.isSelf && (
 						<div className="detail-row highlight-self">
-							<span className="detail-label">Note</span>
-							<span className="detail-value">Acode main process</span>
+							<span className="detail-label">{text("note", "Note")}</span>
+							<span className="detail-value">
+								{text("acode main process", "Acode main process")}
+							</span>
 						</div>
 					)}
 				</div>
