@@ -423,6 +423,12 @@ function formatMemory(kb) {
 	return `${mb.toFixed(1)} MB`;
 }
 
+function interpolate(str, replacements) {
+	return str.replace(/\{(\w+)\}/g, (match, key) => {
+		return replacements.hasOwnProperty(key) ? replacements[key] : match;
+	});
+}
+
 function formatUptime(startedAt) {
 	if (!startedAt) return text("unknown", "Unknown");
 	const now = Date.now();
@@ -435,19 +441,24 @@ function formatUptime(startedAt) {
 	const diffDays = Math.floor(diffHr / 24);
 
 	if (diffDays > 0) {
-		return text("diff days", "{days}d {hr}h ago")
-			.replace(/\{days\}/g, diffDays)
-			.replace(/\{hr\}/g, diffHr % 24);
+		return interpolate(text("diff days", "{days}d {hr}h ago"), {
+			days: diffDays,
+			hr: diffHr % 24,
+		});
 	}
 	if (diffHr > 0) {
-		return text("diff hr", "{hr}h {min}m ago")
-			.replace(/\{hr\}/g, diffHr)
-			.replace(/\{min\}/g, diffMin % 60);
+		return interpolate(text("diff hr", "{hr}h {min}m ago"), {
+			hr: diffHr,
+			min: diffMin % 60,
+		});
 	}
 	if (diffMin > 0) {
-		return text("diff min", "{min}m {sec}s ago")
-			.replace(/\{min\}/g, diffMin)
-			.replace(/\{sec\}/g, diffSec % 60);
+		return interpolate(text("diff min", "{min}m {sec}s ago"), {
+			min: diffMin,
+			sec: diffSec % 60,
+		});
 	}
-	return text("diff sec", "{sec}s ago").replace(/\{sec\}/g, diffSec);
+	return interpolate(text("diff sec", "{sec}s ago"), {
+		sec: diffSec,
+	});
 }
