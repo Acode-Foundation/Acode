@@ -72,7 +72,7 @@ jobs:
 
     steps:
       - name: Validate required secrets (Fast Fail If missing on nightly builds)
-        if: ${{ !inputs.is_PR || inputs.is_trusted_pr }}
+        if: ${{ !inputs.is_PR  }}
         env:
           KEYSTORE_CONTENT: ${{ secrets.KEYSTORE_CONTENT }}
           BUILD_JSON_CONTENT: ${{ secrets.BUILD_JSON_CONTENT }}
