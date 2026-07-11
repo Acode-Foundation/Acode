@@ -124,7 +124,7 @@ jobs:
           echo "fdroid_artifact_name=app-debug-fdroid-$GIT_COMMIT" >> "$GITHUB_OUTPUT"
 
       - name: Inject signing files
-        if: ${{ !inputs.is_PR || inputs.is_trusted_pr }}
+        if: ${{ !inputs.is_PR  }}
         run: |
           echo "${{ secrets.KEYSTORE_CONTENT }}" | base64 -d > "${{ env.STORE_FILE_PATH }}"
           echo "${{ secrets.BUILD_JSON_CONTENT }}" | base64 -d > "${{ env.BUILD_JSON_PATH }}"
