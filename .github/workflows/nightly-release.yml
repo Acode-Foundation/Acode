@@ -139,6 +139,7 @@ jobs:
 
       - name: Create subjects file handle
         id: subjects_file
+        if: steps.publish_gate.outputs.should_publish == 'true'
         uses: slsa-framework/slsa-github-generator/actions/generator/generic/create-base64-subjects-from-file@v2.1.0
         with:
           path: ${{ env.SUBJECTS_FILE }}
