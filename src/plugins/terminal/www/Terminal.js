@@ -68,12 +68,17 @@ const Terminal = {
                 });
             });
         } else {
-            Executor.start("sh", (type, data) => {
-                //console[type === "stderr" ? "error" : "log"](`[AXS] ${data}`);
-                logger(`${type} ${data}`);
-            }).then(async (uuid) => {
+            try {
+                const uuid = await Executor.start("sh", (type, data) => {
+                    //console[type === "stderr" ? "error" : "log"](`[AXS] ${data}`);
+                    logger(`${type} ${data}`);
+                });
                 await Executor.write(uuid, `source ${filesDir}/init-sandbox.sh ${installing ? "--installing" : ""} ${failsafeArg}; exit`);
-            });
+            } catch (error) {
+                const message = `Failed to start AXS: ${formatError(error)}`;
+                err_logger(message);
+                throw new Error(message);
+            }
         }
     },
 

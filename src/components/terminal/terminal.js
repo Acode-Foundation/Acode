@@ -16,7 +16,6 @@ import {
 	getResolvedKeyBindings,
 	getResolvedKeyBindingsVersion,
 } from "cm/commandRegistry";
-import toast from "components/toast";
 import confirm from "dialogs/confirm";
 import fonts from "lib/fonts";
 import appSettings from "lib/settings";
@@ -704,24 +703,11 @@ export default class TerminalComponent {
 					console.error,
 					terminalValues.failsafeMode,
 				);
-
-				// Check if AXS started with interval polling
-				const maxRetries = 10;
-				let retries = 0;
-				while (retries < maxRetries) {
-					await new Promise((resolve) => setTimeout(resolve, 1000));
-					if (await Terminal.isAxsRunning()) {
-						break;
-					}
-					retries++;
-				}
-
-				// If AXS still not running after retries, throw error
-				if (!(await Terminal.isAxsRunning())) {
-					toast("Failed to start AXS server after multiple attempts");
-					//throw new Error("Failed to start AXS server after multiple attempts");
-				}
 			}
+
+			// A live AXS process does not guarantee that its HTTP listener is ready.
+			// This is especially noticeable during a cold app start.
+			await this.waitForServerReady();
 
 			const requestBody = {
 				cols: this.terminal.cols,
@@ -752,6 +738,46 @@ export default class TerminalComponent {
 			console.error("Failed to create terminal session:", error);
 			throw error;
 		}
+	}
+
+	/**
+	 * Wait until the AXS HTTP server is accepting requests.
+	 * @param {number} maxAttempts - Maximum number of readiness checks
+	 * @param {number} retryDelay - Delay between checks in milliseconds
+	 */
+	async waitForServerReady(maxAttempts = 20, retryDelay = 500) {
+		const statusUrl = `http://127.0.0.1:${this.options.port}/status`;
+
+		for (let attempt = 0; attempt < maxAttempts; attempt++) {
+			try {
+				const response = await new Promise((resolve, reject) => {
+					cordova.plugin.http.sendRequest(
+						statusUrl,
+						{ method: "GET", responseType: "text" },
+						resolve,
+						reject,
+					);
+				});
+
+				if (
+					response.status >= 200 &&
+					response.status < 300 &&
+					response.data?.trim() === "OK"
+				) {
+					return;
+				}
+			} catch {
+				// Connection failures are expected while AXS is binding its port.
+			}
+
+			if (attempt < maxAttempts - 1) {
+				await new Promise((resolve) => setTimeout(resolve, retryDelay));
+			}
+		}
+
+		throw new Error(
+			`AXS terminal server did not become ready on port ${this.options.port}`,
+		);
 	}
 
 	/**
