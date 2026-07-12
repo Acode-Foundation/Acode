@@ -196,6 +196,8 @@ export default class TerminalTouchSelection {
 		this.scrollEndDelay = 100;
 		this.selectionRenderFrame = null;
 		this.selectionResizeTimeout = null;
+		this.orientationResizeTimeout = null;
+		this.resizeSettleDelay = 150;
 
 		this.init();
 	}
@@ -661,13 +663,23 @@ export default class TerminalTouchSelection {
 	}
 
 	onOrientationChange() {
-		// Update cell dimensions and handle positions after orientation change
-		setTimeout(() => {
+		// Keyboard animation emits a burst of window resize events. Only update
+		// handles after the geometry settles, and never resurrect handles while
+		// xterm's selection is temporarily cleared by its resize operation.
+		if (this.orientationResizeTimeout) {
+			clearTimeout(this.orientationResizeTimeout);
+		}
+		this.orientationResizeTimeout = setTimeout(() => {
+			this.orientationResizeTimeout = null;
 			this.updateCellDimensions();
-			if (this.isSelecting) {
+			if (
+				this.isSelecting &&
+				!this.selectionResizeTimeout &&
+				this.terminal.hasSelection()
+			) {
 				this.updateHandlePositions();
 			}
-		}, 100);
+		}, this.resizeSettleDelay);
 	}
 
 	onTerminalScroll() {
@@ -699,6 +711,14 @@ export default class TerminalTouchSelection {
 	onTerminalResize() {
 		// xterm 6 clears its selection on vertical resize. Debounce the keyboard's
 		// intermediate sizes, then restore our range using absolute buffer rows.
+		if (this.isSelecting) {
+			this.hideHandles();
+			this.hideContextMenu(true);
+			if (this.selectionRenderFrame) {
+				cancelAnimationFrame(this.selectionRenderFrame);
+				this.selectionRenderFrame = null;
+			}
+		}
 		if (this.selectionResizeTimeout) {
 			clearTimeout(this.selectionResizeTimeout);
 		}
@@ -732,7 +752,7 @@ export default class TerminalTouchSelection {
 
 			this.hideContextMenu(true);
 			this.finalizeSelection();
-		}, 50);
+		}, this.resizeSettleDelay);
 	}
 
 	startSelection(touch) {
@@ -1287,6 +1307,10 @@ export default class TerminalTouchSelection {
 		if (this.selectionResizeTimeout) {
 			clearTimeout(this.selectionResizeTimeout);
 			this.selectionResizeTimeout = null;
+		}
+		if (this.orientationResizeTimeout) {
+			clearTimeout(this.orientationResizeTimeout);
+			this.orientationResizeTimeout = null;
 		}
 
 		// Clear protection timeout

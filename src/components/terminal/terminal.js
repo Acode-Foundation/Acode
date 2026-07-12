@@ -870,11 +870,12 @@ export default class TerminalComponent {
 	 * Resize terminal
 	 * @param {number} cols - Number of columns
 	 * @param {number} rows - Number of rows
+	 * @param {boolean} force - Send even if these dimensions were requested before
 	 */
-	async resizeTerminal(cols, rows) {
+	async resizeTerminal(cols, rows, force = false) {
 		if (!this.pid || !this.serverMode) return;
 		const resizeKey = `${cols}x${rows}`;
-		if (this.lastRequestedServerSize === resizeKey) return;
+		if (!force && this.lastRequestedServerSize === resizeKey) return;
 		this.lastRequestedServerSize = resizeKey;
 
 		try {
@@ -924,7 +925,11 @@ export default class TerminalComponent {
 				this.terminal.cols !== previousCols ||
 				this.terminal.rows !== previousRows)
 		) {
-			await this.resizeTerminal(this.terminal.cols, this.terminal.rows);
+			await this.resizeTerminal(
+				this.terminal.cols,
+				this.terminal.rows,
+				forceServerSync,
+			);
 		}
 	}
 
