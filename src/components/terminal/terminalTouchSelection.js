@@ -190,7 +190,7 @@ export default class TerminalTouchSelection {
 		this.protectionTimeout = null;
 
 		// Scroll tracking
-		this.scrollElement = null;
+		this.terminalScrollDisposable = null;
 		this.isTerminalScrolling = false;
 		this.scrollEndTimeout = null;
 		this.scrollEndDelay = 100;
@@ -335,13 +335,8 @@ export default class TerminalTouchSelection {
 
 		// Terminal scroll listener
 		this.boundHandlers.terminalScroll = this.onTerminalScroll.bind(this);
-		this.scrollElement =
-			this.terminal.element.querySelector(".xterm-viewport") ||
-			this.terminal.element;
-		this.scrollElement.addEventListener(
-			"scroll",
+		this.terminalScrollDisposable = this.terminal.onScroll(
 			this.boundHandlers.terminalScroll,
-			{ passive: true },
 		);
 
 		// Terminal resize listener (for keyboard events)
@@ -1545,13 +1540,8 @@ export default class TerminalTouchSelection {
 			this.boundHandlers.handleTouchEnd,
 		);
 
-		if (this.scrollElement) {
-			this.scrollElement.removeEventListener(
-				"scroll",
-				this.boundHandlers.terminalScroll,
-			);
-			this.scrollElement = null;
-		}
+		this.terminalScrollDisposable?.dispose();
+		this.terminalScrollDisposable = null;
 		window.removeEventListener(
 			"orientationchange",
 			this.boundHandlers.orientationChange,

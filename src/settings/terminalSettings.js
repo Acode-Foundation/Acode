@@ -114,6 +114,15 @@ export default function terminalSettings() {
 			category: categories.display,
 		},
 		{
+			key: "showScrollbar",
+			text: strings["terminal:show scrollbar"] || "Show Scrollbar",
+			checkbox: terminalValues.showScrollbar !== false,
+			info:
+				strings["info-terminal-show-scrollbar"] ||
+				"Show the xterm scrollbar beside the terminal.",
+			category: categories.display,
+		},
+		{
 			key: "cursorStyle",
 			text: strings["terminal:cursor style"],
 			value: terminalValues.cursorStyle,
@@ -438,6 +447,9 @@ export async function updateActiveTerminals(key, value) {
 				case "scrollback":
 					tab.terminalComponent.terminal.options.scrollback = value;
 					break;
+				case "showScrollbar":
+					tab.terminalComponent.updateScrollbarVisibility(value);
+					break;
 				case "tabStopWidth":
 					tab.terminalComponent.terminal.options.tabStopWidth = value;
 					break;
@@ -450,11 +462,7 @@ export async function updateActiveTerminals(key, value) {
 				case "theme":
 					tab.terminalComponent.terminal.options.theme =
 						TerminalThemeManager.getTheme(value);
-					// Update container background to match new theme
-					if (tab.terminalComponent.container) {
-						tab.terminalComponent.container.style.background =
-							tab.terminalComponent.terminal.options.theme.background;
-					}
+					tab.terminalComponent.updateBackgroundColor();
 					break;
 				case "imageSupport":
 					tab.terminalComponent.updateImageSupport(value);

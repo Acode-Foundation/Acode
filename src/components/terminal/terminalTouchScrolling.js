@@ -2,9 +2,9 @@
  * Terminal Touch Scrolling with Momentum Physics
  * Provides smooth, consistent touch scrolling with inertia across all Android WebView versions.
  *
- * Listens on terminal.element (same as TerminalTouchSelection) because xterm's canvas
- * layers overlay the .xterm-viewport and intercept touch events. Scrolls by directly
- * manipulating viewport.scrollTop — xterm.js syncs from the native scroll event.
+ * Listens on terminal.element (same as TerminalTouchSelection) because renderer
+ * layers intercept touch events. Pixel movement is converted to terminal rows and
+ * sent through xterm's public scroll API so it works with the v6 custom scrollbar.
  */
 
 export default class TerminalTouchScrolling {
@@ -24,6 +24,7 @@ export default class TerminalTouchScrolling {
 
 		this.velocitySamples = [];
 		this.velocity = 0;
+		this.scrollRemainder = 0;
 		this.maxVelocity = 35;
 		this.friction = 0.95;
 		this.minVelocity = 0.1;
@@ -48,9 +49,25 @@ export default class TerminalTouchScrolling {
 		this.attachListeners();
 	}
 
-	getViewport() {
-		if (!this.element) return null;
-		return this.element.querySelector(".xterm-viewport");
+	getCellHeight() {
+		const screen = this.element?.querySelector(".xterm-screen");
+		const screenHeight = screen?.getBoundingClientRect().height || 0;
+		return screenHeight > 0 && this.terminal.rows > 0
+			? screenHeight / this.terminal.rows
+			: this.terminal.options.fontSize *
+					(this.terminal.options.lineHeight || 1);
+	}
+
+	scrollByPixels(deltaY) {
+		const cellHeight = this.getCellHeight();
+		if (!Number.isFinite(cellHeight) || cellHeight <= 0) return;
+
+		this.scrollRemainder += deltaY;
+		const lines = Math.trunc(this.scrollRemainder / cellHeight);
+		if (lines === 0) return;
+
+		this.terminal.scrollLines(lines);
+		this.scrollRemainder -= lines * cellHeight;
 	}
 
 	attachListeners() {
@@ -79,9 +96,9 @@ export default class TerminalTouchScrolling {
 	isSelectionActive() {
 		if (!this.touchSelection) return false;
 		return (
-			this.touchSelection.isSelecting ||
 			this.touchSelection.isHandleDragging ||
-			this.touchSelection.isPinching
+			this.touchSelection.isPinching ||
+			this.touchSelection.isSelectionTouchActive
 		);
 	}
 
@@ -99,6 +116,7 @@ export default class TerminalTouchScrolling {
 		this.didScroll = false;
 		this.velocity = 0;
 		this.velocitySamples = [];
+		this.scrollRemainder = 0;
 	}
 
 	onTouchMove(event) {
@@ -130,10 +148,7 @@ export default class TerminalTouchScrolling {
 			event.preventDefault();
 			this.didScroll = true;
 
-			const viewport = this.getViewport();
-			if (viewport) {
-				viewport.scrollTop += deltaY;
-			}
+			this.scrollByPixels(deltaY);
 		}
 
 		this.lastTouchY = touch.clientY;
@@ -184,10 +199,7 @@ export default class TerminalTouchScrolling {
 				return;
 			}
 
-			const viewport = this.getViewport();
-			if (viewport) {
-				viewport.scrollTop += this.velocity;
-			}
+			this.scrollByPixels(this.velocity);
 			this.velocity *= this.friction;
 
 			this.animationId = requestAnimationFrame(animate);

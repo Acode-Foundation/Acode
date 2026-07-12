@@ -8,6 +8,7 @@ export const DEFAULT_TERMINAL_SETTINGS = {
 	cursorStyle: "block",
 	cursorInactiveStyle: "outline",
 	scrollback: 1000,
+	showScrollbar: true,
 	theme: "dark",
 	tabStopWidth: 4,
 	convertEol: true,

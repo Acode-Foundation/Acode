@@ -557,6 +557,10 @@ export default class TerminalComponent {
 		try {
 			// Open first to ensure a stable renderer is attached
 			this.terminal.open(container);
+			this.updateBackgroundColor();
+			this.updateScrollbarVisibility(
+				getTerminalSettings().showScrollbar !== false,
+			);
 
 			// Renderer selection: 'canvas' (default core), 'webgl', or 'auto'
 			if (
@@ -983,6 +987,29 @@ export default class TerminalComponent {
 		}
 		this.options.theme = { ...this.options.theme, ...theme };
 		this.terminal.options.theme = this.options.theme;
+		this.updateBackgroundColor();
+	}
+
+	/** Keep xterm's viewport chrome aligned with the active theme. */
+	updateBackgroundColor() {
+		const background = this.terminal?.options.theme?.background;
+		if (!background) return;
+
+		if (this.container) this.container.style.background = background;
+		if (this.terminal?.element) {
+			this.terminal.element.style.backgroundColor = background;
+		}
+	}
+
+	/**
+	 * Toggle xterm.js 6's custom scrollbar without disabling scroll APIs.
+	 * @param {boolean} visible Whether the scrollbar should be shown
+	 */
+	updateScrollbarVisibility(visible) {
+		this.terminal?.element?.classList.toggle(
+			"terminal-scrollbar-hidden",
+			visible === false,
+		);
 	}
 
 	/**

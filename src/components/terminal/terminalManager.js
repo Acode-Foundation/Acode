@@ -1005,8 +1005,17 @@ class TerminalManager {
 				touch-action: none;
 			}
 
-			.terminal-content .xterm-viewport {
+			.terminal-content .xterm-viewport,
+			.terminal-content .xterm-scrollable-element {
+				background-color: transparent !important;
 				overscroll-behavior: none;
+			}
+
+			.terminal-content
+				.terminal-scrollbar-hidden
+				.xterm-scrollable-element
+				> .scrollbar.vertical {
+				display: none !important;
 			}
 		`;
 	}
