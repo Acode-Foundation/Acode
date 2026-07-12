@@ -548,13 +548,13 @@ export default function lspServerDetail(serverId) {
 		...page,
 		show(goTo) {
 			baseShow(goTo);
-			const $list = document.querySelector("#settings .main.list");
+			const $list = page.getListElement();
 			refreshVisibleState($list, itemsByKey, serverId).catch(console.error);
 		},
 	};
 
 	async function callback(key, value) {
-		const $list = this?.parentElement;
+		const $list = page.getListElement();
 		const $loader = loader.create("LSP", strings["loading..."]);
 
 		try {

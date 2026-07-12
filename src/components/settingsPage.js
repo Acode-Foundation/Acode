@@ -21,6 +21,7 @@ import searchBar from "./searchbar";
  * @property {(key:string)=>HTMLElement[]} search search for a setting
  * @property {(title:string)=>void} setTitle set title of settings page
  * @property {()=>void} restoreList restore list to original state
+ * @property {()=>HTMLDivElement} getListElement get the page's list element
  */
 
 /**
@@ -114,6 +115,13 @@ export default function settingsPage(
 	$page.append(<div style={{ height: "50vh" }}></div>);
 
 	return {
+		/**
+		 * Get this page's list element.
+		 * @returns {HTMLDivElement}
+		 */
+		getListElement() {
+			return $list;
+		},
 		/**
 		 * Show settings page
 		 * @param {string} goTo Key of setting to scroll to and select
