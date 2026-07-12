@@ -829,5 +829,7 @@
 	"diff sec": "{sec}d lalu",
 	"command": "Perintah",
 	"managed": "Dikelola",
-	"acode service": "Layanan Acode"
+	"acode service": "Layanan Acode",
+	"info-terminal-show-scrollbar": "Show the xterm scrollbar beside the terminal.",
+	"terminal:show scrollbar": "Show Scrollbar"
 }

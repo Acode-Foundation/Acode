@@ -829,5 +829,7 @@
 	"diff sec": "{sec}s ago",
 	"command": "Command",
 	"managed": "Managed",
-	"acode service": "Acode Service"
+	"acode service": "Acode Service",
+	"info-terminal-show-scrollbar": "Show the xterm scrollbar beside the terminal.",
+	"terminal:show scrollbar": "Show Scrollbar"
 }
