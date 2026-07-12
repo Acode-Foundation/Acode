@@ -15,6 +15,7 @@ concurrency:
 
 jobs:
   build:
+        if: ${{ github.repository_owner == 'Acode-Foundation' }}
     uses: unschooledgamer/acode/.github/workflows/nightly-build.yml@fix/on-demand-previews
     permissions:
       contents: read
