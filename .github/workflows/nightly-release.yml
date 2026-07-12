@@ -189,7 +189,7 @@ jobs:
         run: |
           echo "| Variable | Value |" >> "$GITHUB_STEP_SUMMARY"
           echo "| --- | --- |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| should_publish | ${{ steps.publish_gate.outputs.should_publish && 'true' || 'false' }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| should_publish | ${{ steps.publish_gate.outputs.should_publish == 'true' && 'true' || 'false' }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| tag_exists | ${{ steps.prev.outputs.tag_exists }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| tag_commit | ${{ steps.prev.outputs.tag_commit }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| release_output_url | ${{ steps.gh_release.outputs.url || 'N/A' }} |" >> "$GITHUB_STEP_SUMMARY"
