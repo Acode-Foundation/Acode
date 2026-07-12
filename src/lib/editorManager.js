@@ -4766,6 +4766,14 @@ async function EditorManager($header, $body) {
 						applyFileToPaneEditor(file, pane);
 					}
 					pane.editorContainer.style.display = "block";
+
+					$hScrollbar.hideImmediately();
+					$vScrollbar.hideImmediately();
+
+					setVScrollValue();
+					if (!appSettings.value.textWrap) {
+						setHScrollValue();
+					}
 				}
 				if (isPaneTabLayout()) syncGlobalOpenFileListMirror();
 				recordHistory(file);
