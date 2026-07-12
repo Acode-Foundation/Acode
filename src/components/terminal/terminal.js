@@ -73,6 +73,7 @@ export default class TerminalComponent {
 		this.parsedAppKeybindings = [];
 		this.parsedAppKeybindingsVersion = -1;
 		this.boundNativeSelectionMenuHandler = null;
+		this.visibleScrollbarWidth = undefined;
 
 		this.init();
 	}
@@ -1006,10 +1007,33 @@ export default class TerminalComponent {
 	 * @param {boolean} visible Whether the scrollbar should be shown
 	 */
 	updateScrollbarVisibility(visible) {
-		this.terminal?.element?.classList.toggle(
+		if (!this.terminal) return;
+
+		const overviewRuler = { ...this.terminal.options.overviewRuler };
+		if (visible === false) {
+			if (
+				!this.terminal.element?.classList.contains("terminal-scrollbar-hidden")
+			) {
+				this.visibleScrollbarWidth = overviewRuler.width;
+			}
+			// xterm 6 and FitAddon fall back to 14px when width is zero. A tiny,
+			// truthy width removes the gutter while CSS hides the remaining fraction.
+			overviewRuler.width = 0.001;
+		} else if (this.visibleScrollbarWidth === undefined) {
+			delete overviewRuler.width;
+		} else {
+			overviewRuler.width = this.visibleScrollbarWidth;
+		}
+		this.terminal.options.overviewRuler = overviewRuler;
+		this.terminal.element?.classList.toggle(
 			"terminal-scrollbar-hidden",
 			visible === false,
 		);
+
+		requestAnimationFrame(() => {
+			if (!this.terminal) return;
+			this.fitAddon?.fit();
+		});
 	}
 
 	/**

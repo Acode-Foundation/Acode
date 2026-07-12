@@ -17,18 +17,19 @@ export default class TerminalTouchScrolling {
 		this.element = null;
 
 		this.touchStartY = 0;
+		this.lastTouchX = 0;
 		this.lastTouchY = 0;
 		this.lastTouchTime = 0;
 		this.isTouching = false;
 		this.didScroll = false;
+		this.totalMovement = 0;
 
 		this.velocitySamples = [];
 		this.velocity = 0;
 		this.scrollRemainder = 0;
-		this.maxVelocity = 35;
-		this.friction = 0.95;
-		this.minVelocity = 0.1;
-		this.velocityThreshold = 1;
+		this.friction = 0.92;
+		this.minVelocity = 0.5;
+		this.scrollConfirmPixels = 6;
 
 		this.animationId = null;
 		this.boundHandlers = {};
@@ -58,7 +59,23 @@ export default class TerminalTouchScrolling {
 					(this.terminal.options.lineHeight || 1);
 	}
 
-	scrollByPixels(deltaY) {
+	scrollByPixels(deltaY, clientX = this.lastTouchX, clientY = this.lastTouchY) {
+		if (this.terminal.buffer.active.type === "alternate") {
+			const target =
+				this.element?.querySelector(".xterm-screen") || this.element;
+			target?.dispatchEvent(
+				new WheelEvent("wheel", {
+					bubbles: true,
+					cancelable: true,
+					clientX,
+					clientY,
+					deltaY,
+					deltaMode: WheelEvent.DOM_DELTA_PIXEL,
+				}),
+			);
+			return;
+		}
+
 		const cellHeight = this.getCellHeight();
 		if (!Number.isFinite(cellHeight) || cellHeight <= 0) return;
 
@@ -76,7 +93,7 @@ export default class TerminalTouchScrolling {
 		this.boundHandlers.touchStart = this.onTouchStart.bind(this);
 		this.boundHandlers.touchMove = this.onTouchMove.bind(this);
 		this.boundHandlers.touchEnd = this.onTouchEnd.bind(this);
-		this.boundHandlers.touchCancel = this.onTouchEnd.bind(this);
+		this.boundHandlers.touchCancel = this.onTouchCancel.bind(this);
 
 		this.element.addEventListener("touchstart", this.boundHandlers.touchStart, {
 			passive: false,
@@ -110,10 +127,12 @@ export default class TerminalTouchScrolling {
 
 		const touch = event.touches[0];
 		this.touchStartY = touch.clientY;
+		this.lastTouchX = touch.clientX;
 		this.lastTouchY = touch.clientY;
 		this.lastTouchTime = performance.now();
 		this.isTouching = true;
 		this.didScroll = false;
+		this.totalMovement = 0;
 		this.velocity = 0;
 		this.velocitySamples = [];
 		this.scrollRemainder = 0;
@@ -135,22 +154,25 @@ export default class TerminalTouchScrolling {
 		const touch = event.touches[0];
 		const deltaY = this.lastTouchY - touch.clientY;
 		const deltaTime = performance.now() - this.lastTouchTime;
+		this.totalMovement += Math.abs(deltaY);
 
 		if (deltaTime > 0) {
 			const instantVelocity = (deltaY / deltaTime) * 16.67;
 			this.velocitySamples.push(instantVelocity);
-			if (this.velocitySamples.length > 6) {
+			if (this.velocitySamples.length > 5) {
 				this.velocitySamples.shift();
 			}
 		}
 
 		if (Math.abs(deltaY) > 0.5) {
-			event.preventDefault();
-			this.didScroll = true;
-
-			this.scrollByPixels(deltaY);
+			this.scrollByPixels(deltaY, touch.clientX, touch.clientY);
+			if (this.totalMovement > this.scrollConfirmPixels) {
+				event.preventDefault();
+				this.didScroll = true;
+			}
 		}
 
+		this.lastTouchX = touch.clientX;
 		this.lastTouchY = touch.clientY;
 		this.lastTouchTime = performance.now();
 	}
@@ -171,20 +193,24 @@ export default class TerminalTouchScrolling {
 
 		if (this.velocitySamples.length > 0) {
 			this.velocity =
-				this.velocitySamples.reduce((a, b) => a + b, 0) /
-				this.velocitySamples.length;
-
-			this.velocity = Math.max(
-				-this.maxVelocity,
-				Math.min(this.maxVelocity, this.velocity),
-			);
+				(this.velocitySamples.reduce((a, b) => a + b, 0) /
+					this.velocitySamples.length) *
+				1.1;
 		}
 
-		if (Math.abs(this.velocity) > this.velocityThreshold) {
+		if (Math.abs(this.velocity) >= this.minVelocity) {
 			this.startMomentum();
 		}
 
 		this.velocitySamples = [];
+	}
+
+	onTouchCancel() {
+		this.isTouching = false;
+		this.didScroll = false;
+		this.velocitySamples = [];
+		this.scrollRemainder = 0;
+		this.stopMomentum();
 	}
 
 	startMomentum() {
@@ -199,8 +225,8 @@ export default class TerminalTouchScrolling {
 				return;
 			}
 
-			this.scrollByPixels(this.velocity);
 			this.velocity *= this.friction;
+			this.scrollByPixels(this.velocity);
 
 			this.animationId = requestAnimationFrame(animate);
 		};
