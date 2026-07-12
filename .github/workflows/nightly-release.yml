@@ -69,13 +69,13 @@ jobs:
       - name: Download normal APK artifact
         uses: actions/download-artifact@v8
         with:
-          name: app-debug-${{ github.sha }}
+          name: ${{ needs.build.outputs.normal_artifact_name }}
           path: ${{ env.ARTIFACTS_DIR }}/normal
 
       - name: Download fdroid APK artifact
         uses: actions/download-artifact@v8
         with:
-          name: app-debug-fdroid-${{ github.sha }}
+          name: ${{ needs.build.outputs.fdroid_artifact_name }}
           path: ${{ env.ARTIFACTS_DIR }}/fdroid
 
       - name: Resolve previous nightly tag commit
