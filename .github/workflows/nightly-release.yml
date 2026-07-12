@@ -15,8 +15,8 @@ concurrency:
 
 jobs:
   build:
-        if: ${{ github.repository_owner == 'Acode-Foundation' }}
-    uses: unschooledgamer/acode/.github/workflows/nightly-build.yml@fix/on-demand-previews
+    if: ${{ github.repository_owner == 'Acode-Foundation' }}
+    uses: Acode-Foundation/acode/.github/workflows/nightly-build.yml@main
     permissions:
       contents: read
       pull-requests: read
@@ -191,8 +191,8 @@ jobs:
           echo "| Variable | Value |" >> "$GITHUB_STEP_SUMMARY"
           echo "| --- | --- |" >> "$GITHUB_STEP_SUMMARY"
           echo "| should_publish | ${{ steps.publish_gate.outputs.should_publish == 'true' && 'true' || 'false' }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| tag_exists | ${{ steps.prev.outputs.tag_exists }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| tag_commit | ${{ steps.prev.outputs.tag_commit }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| (pre-release versioned/nightly tag) tag_exists | ${{ steps.prev.outputs.tag_exists }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| (pre-release versioned/nightly tag) tag_commit | ${{ steps.prev.outputs.tag_commit }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| release_output_url | ${{ steps.gh_release.outputs.url || 'N/A' }} |" >> "$GITHUB_STEP_SUMMARY"
     
   provenance:
@@ -216,7 +216,7 @@ jobs:
     if: ${{ needs.release.outputs.should_publish == 'true' && needs.release.outputs.release_output_url }}
     permissions:
       contents: read
-    uses: unschooledgamer/acode/.github/workflows/community-release-notifier.yml@fix/on-demand-previews
+    uses: Acode-Foundation/acode/.github/workflows/community-release-notifier.yml@main
     with:
       url: ${{ needs.release.outputs.release_output_url }}
       tag_name: ${{ needs.release.outputs.nightly_tag_name }}
