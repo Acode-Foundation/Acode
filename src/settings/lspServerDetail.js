@@ -254,6 +254,17 @@ function updateItemDisplay($list, itemsByKey, key, value, extras = {}) {
 	}
 }
 
+function getConnectedServerList(serverId, preferredList) {
+	if (preferredList?.isConnected) return preferredList;
+
+	return Array.from(
+		document.querySelectorAll(".detail-settings-list[data-lsp-server-id]"),
+	).find(
+		($list) =>
+			$list.isConnected && $list.dataset.lspServerId === String(serverId),
+	);
+}
+
 async function buildSnapshot(serverId) {
 	const liveServer = lspApi.servers.get(serverId);
 	if (!liveServer) return null;
@@ -541,6 +552,8 @@ export default function lspServerDetail(serverId) {
 			valueInTail: true,
 		},
 	);
+	const $pageList = page.getListElement();
+	$pageList.dataset.lspServerId = String(serverId);
 
 	const baseShow = page.show.bind(page);
 
@@ -548,13 +561,11 @@ export default function lspServerDetail(serverId) {
 		...page,
 		show(goTo) {
 			baseShow(goTo);
-			const $list = page.getListElement();
-			refreshVisibleState($list, itemsByKey, serverId).catch(console.error);
+			refreshVisibleState($pageList, itemsByKey, serverId).catch(console.error);
 		},
 	};
 
 	async function callback(key, value) {
-		const $list = page.getListElement();
 		const $loader = loader.create("LSP", strings["loading..."]);
 
 		try {
@@ -776,7 +787,10 @@ export default function lspServerDetail(serverId) {
 					break;
 			}
 
-			await refreshVisibleState($list, itemsByKey, serverId);
+			const $connectedList = getConnectedServerList(serverId, $pageList);
+			if ($connectedList) {
+				await refreshVisibleState($connectedList, itemsByKey, serverId);
+			}
 		} finally {
 			$loader.destroy();
 		}
