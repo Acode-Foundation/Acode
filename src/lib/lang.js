@@ -190,9 +190,10 @@ const langMap = {
 export default {
 	async set(code) {
 		code = code?.toLowerCase();
-		const lang = langMap[code] || langMap["en-us"];
+		const lang = langMap[code] || langMap[code = "en-us"];
 		const strings = await lang.strings();
 		window.strings = strings.default;
+		window.localStorage["language"] = code;
 	},
 	list: Object.keys(langMap).map((code) => [code, langMap[code].name]),
 	getName(code) {
