@@ -25,7 +25,7 @@ jobs:
       issues: write
     if: |
         github.event.pull_request.draft == false
-        && (github.repository_owner == 'UnschooledGamer'
+        && (github.repository_owner == 'Acode-Foundation'
         && (!contains(github.event.pull_request.labels.*.name, 'DO NOT PREVIEW RELEASE') 
         && (contains(github.event.pull_request.labels.*.name, 'Bypass check - PREVIEW RELEASE') 
           || contains(github.event.pull_request.labels.*.name, 'CI: RUN ON-DEMAND PREVIEW RELEASES')
@@ -80,7 +80,7 @@ jobs:
       secrets:
         KEYSTORE_CONTENT: ${{ secrets.KEYSTORE_CONTENT }}
         BUILD_JSON_CONTENT: ${{ secrets.BUILD_JSON_CONTENT }}
-      uses: unschooledgamer/acode/.github/workflows/nightly-build.yml@fix/on-demand-previews
+      uses: Acode-Foundation/acode/.github/workflows/nightly-build.yml@main
       with:
         is_PR: true
         PR_NUMBER: ${{ github.event.pull_request.number }}
