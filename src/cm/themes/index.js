@@ -2,6 +2,7 @@ import { EditorState } from "@codemirror/state";
 import { oneDark } from "@codemirror/theme-one-dark";
 import aura, { config as auraConfig } from "./aura";
 import ayuDark, { config as ayuDarkConfig } from "./ayuDark";
+import cobalt, { config as cobaltConfig } from "./cobalt";
 import dracula, { config as draculaConfig } from "./dracula";
 import githubDark, { config as githubDarkConfig } from "./githubDark";
 import githubLight, { config as githubLightConfig } from "./githubLight";
@@ -161,6 +162,13 @@ export function removeTheme(id) {
 
 addTheme("one_dark", "One Dark", true, () => [oneDark], oneDarkConfig);
 addTheme(auraConfig.name, "Aura", !!auraConfig.dark, () => aura(), auraConfig);
+addTheme(
+	cobaltConfig.name,
+	"Cobalt",
+	!!cobaltConfig.dark,
+	() => cobalt(),
+	cobaltConfig,
+);
 addTheme(
 	noctisLilacConfig.name,
 	noctisLilacConfig.caption || "Noctis Lilac",
