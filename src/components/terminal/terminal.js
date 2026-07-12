@@ -74,6 +74,7 @@ export default class TerminalComponent {
 		this.parsedAppKeybindingsVersion = -1;
 		this.boundNativeSelectionMenuHandler = null;
 		this.visibleScrollbarWidth = undefined;
+		this.lastRequestedServerSize = null;
 
 		this.init();
 	}
@@ -809,7 +810,7 @@ export default class TerminalComponent {
 
 				// Focus terminal and ensure it's ready
 				this.terminal.focus();
-				this.fit();
+				void this.fitAndResizeTerminal(true);
 
 				if (!settled) {
 					settled = true;
@@ -872,6 +873,9 @@ export default class TerminalComponent {
 	 */
 	async resizeTerminal(cols, rows) {
 		if (!this.pid || !this.serverMode) return;
+		const resizeKey = `${cols}x${rows}`;
+		if (this.lastRequestedServerSize === resizeKey) return;
+		this.lastRequestedServerSize = resizeKey;
 
 		try {
 			await new Promise((resolve, reject) => {
@@ -887,6 +891,9 @@ export default class TerminalComponent {
 				);
 			});
 		} catch (error) {
+			if (this.lastRequestedServerSize === resizeKey) {
+				this.lastRequestedServerSize = null;
+			}
 			console.error("Failed to resize terminal:", error);
 		}
 	}
@@ -897,6 +904,27 @@ export default class TerminalComponent {
 	fit() {
 		if (this.fitAddon) {
 			this.fitAddon.fit();
+		}
+	}
+
+	/**
+	 * Fit the client and immediately synchronize dimensions to the PTY.
+	 * @param {boolean} forceServerSync Sync even when fitting kept the same size
+	 */
+	async fitAndResizeTerminal(forceServerSync = false) {
+		if (!this.terminal || !this.fitAddon) return;
+
+		const previousCols = this.terminal.cols;
+		const previousRows = this.terminal.rows;
+		this.fit();
+
+		if (
+			this.serverMode &&
+			(forceServerSync ||
+				this.terminal.cols !== previousCols ||
+				this.terminal.rows !== previousRows)
+		) {
+			await this.resizeTerminal(this.terminal.cols, this.terminal.rows);
 		}
 	}
 
@@ -1009,7 +1037,9 @@ export default class TerminalComponent {
 	updateScrollbarVisibility(visible) {
 		if (!this.terminal) return;
 
-		const overviewRuler = { ...this.terminal.options.overviewRuler };
+		const overviewRuler = {
+			...(this.terminal.options.overviewRuler ?? {}),
+		};
 		if (visible === false) {
 			if (
 				!this.terminal.element?.classList.contains("terminal-scrollbar-hidden")
@@ -1032,7 +1062,7 @@ export default class TerminalComponent {
 
 		requestAnimationFrame(() => {
 			if (!this.terminal) return;
-			this.fitAddon?.fit();
+			void this.fitAndResizeTerminal();
 		});
 	}
 
