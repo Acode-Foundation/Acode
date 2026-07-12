@@ -49,7 +49,7 @@ on:
 
 jobs:
   notify:
-    #if: github.repository_owner == 'Acode-Foundation'
+    if: github.repository_owner == 'Acode-Foundation'
     runs-on: ubuntu-latest
     steps:
       - name: Prepare release variables
