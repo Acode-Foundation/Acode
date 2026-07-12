@@ -1,5 +1,5 @@
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
-import { EditorView, lineNumbers } from "@codemirror/view";
+import { EditorView } from "@codemirror/view";
 import { tags as t } from "@lezer/highlight";
 
 export const config = {
@@ -120,7 +120,7 @@ export const cobaltHighlightStyle = HighlightStyle.define([
 ]);
 
 export function cobalt() {
-	return [cobaltTheme, syntaxHighlighting(cobaltHighlightStyle), lineNumbers()];
+	return [cobaltTheme, syntaxHighlighting(cobaltHighlightStyle)];
 }
 
 export default cobalt;
