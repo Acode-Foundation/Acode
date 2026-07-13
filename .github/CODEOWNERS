@@ -4,3 +4,4 @@
 .github/workflows/nightly-build.yml @unschooledgamer
 .github/workflows/on-demand-preview-releases-PR.yml @unschooledgamer
 .github/workflows/community-release-notifier.yml @unschooledgamer
+.github/workflows/nightly-release.yml @unschooledgamer

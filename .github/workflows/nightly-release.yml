@@ -1,0 +1,228 @@
+name: Nightly Release
+
+on:
+  schedule:
+    # Fire every day at 7:00am UTC (Roughly before EU workday and after US workday)
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    if: ${{ github.repository_owner == 'Acode-Foundation' }}
+    uses: Acode-Foundation/acode/.github/workflows/nightly-build.yml@main
+    permissions:
+      contents: read
+      pull-requests: read
+    secrets:
+      KEYSTORE_CONTENT: ${{ secrets.KEYSTORE_CONTENT }}
+      BUILD_JSON_CONTENT: ${{ secrets.BUILD_JSON_CONTENT }}
+    with:
+      is_PR: false
+      is_trusted_pr: false
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: ${{ github.repository_owner == 'Acode-Foundation' && needs.build.result == 'success' }}
+    permissions:
+      contents: write
+      id-token: write
+
+    outputs:
+      should_publish: ${{ steps.publish_gate.outputs.should_publish }}
+      release_output_url: ${{ steps.gh_release.outputs.url }}
+      release_notes: ${{ env.RELEASE_NOTES }}
+      previous_tag_commit: ${{ steps.prev.outputs.tag_commit }}
+      nightly_tag_name: ${{ needs.build.outputs.updated_version }}
+      subjects_file: ${{ steps.subjects_file.outputs.handle }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # Required for tags
+          persist-credentials: true
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v4.1.0
+
+      - name: Set Publish Metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "ARTIFACTS_DIR=${{ env.ARTIFACTS_DIR}}" >> $GITHUB_ENV
+          echo "NORMAL_ARTIFACT_NAME=app-debug-${{ github.sha }}" >> $GITHUB_ENV
+          echo "FDROID_ARTIFACT_NAME=app-debug-fdroid-${{ github.sha }}" >> $GITHUB_ENV
+          echo "SUBJECTS_FILE=${{ env.SUBJECTS_FILE }}" >> $GITHUB_ENV
+        env:
+          ARTIFACTS_DIR: ${{ runner.temp }}/artifacts
+          SUBJECTS_FILE: ${{ runner.temp }}/slsa-subjects.txt
+
+
+      - name: Download normal APK artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ needs.build.outputs.normal_artifact_name }}
+          path: ${{ env.ARTIFACTS_DIR }}/normal
+
+      - name: Download fdroid APK artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ needs.build.outputs.fdroid_artifact_name }}
+          path: ${{ env.ARTIFACTS_DIR }}/fdroid
+
+      - name: Resolve previous nightly tag commit
+        id: prev
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION_TAG="${{ needs.build.outputs.updated_version }}"
+          FALLBACK_TAG="nightly"
+          git fetch --tags --force
+
+          if git show-ref --quiet "refs/tags/${VERSION_TAG}"; then
+            echo "tag_exists=true" >> "$GITHUB_OUTPUT"
+            echo "tag_commit=$(git rev-parse "${VERSION_TAG}")" >> "$GITHUB_OUTPUT"
+          elif git show-ref --quiet "refs/tags/${FALLBACK_TAG}"; then
+            echo "tag_exists=true" >> "$GITHUB_OUTPUT"
+            echo "tag_commit=$(git rev-parse "${FALLBACK_TAG}")" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag_exists=false" >> "$GITHUB_OUTPUT"
+            echo "tag_commit=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Decide whether to publish
+        id: publish_gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ steps.prev.outputs.tag_exists }}" != "true" || "${{ steps.prev.outputs.tag_commit }}" != "${GITHUB_SHA}" ]]; then
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build SLSA subjects file
+        if: steps.publish_gate.outputs.should_publish == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          find ${{ env.ARTIFACTS_DIR }} -type f -name '*.apk' -print0 | sort -z | while IFS= read -r -d '' f; do
+            sha256sum "$f"
+          done | base64 -w0 > "${SUBJECTS_FILE}"
+
+          test -s "${SUBJECTS_FILE}" || { echo "No subjects found"; exit 1; }
+        env:
+          ARTIFACTS_DIR: ${{ env.ARTIFACTS_DIR }}
+          SUBJECTS_FILE: ${{ env.SUBJECTS_FILE }}
+          
+
+      - name: Generate per-APK sha256 files
+        shell: bash
+        run: |
+          set -euo pipefail
+          find ${{ env.ARTIFACTS_DIR }} -type f -name '*.apk' -print0 | while IFS= read -r -d '' f; do
+            sha256sum "$f" > "${f}.sha256"
+          done
+
+      - name: Create subjects file handle
+        id: subjects_file
+        if: steps.publish_gate.outputs.should_publish == 'true'
+        uses: slsa-framework/slsa-github-generator/actions/generator/generic/create-base64-subjects-from-file@v2.1.0
+        with:
+          path: ${{ env.SUBJECTS_FILE }}
+
+      - name: Move nightly tag
+        if: steps.publish_gate.outputs.should_publish == 'true'
+        run: |
+          git config --global user.name 'GitHub Actions'
+          git config --global user.email 'github-actions@github.com'
+          git tag -f nightly "${GITHUB_SHA}"
+          git push origin refs/tags/nightly --force
+
+      - name: Generate release notes
+        if: steps.publish_gate.outputs.should_publish == 'true'
+        id: notes
+        continue-on-error: true
+        run: |
+          RELEASE_NOTES="$(node utils/scripts/generate-release-notes.js \
+            ${{ github.repository_owner }} Acode ${{ github.sha }} \
+            --format md --from-tag ${{ steps.prev.outputs.tag_commit }} --important-only --quiet || true)"
+          {
+            echo "RELEASE_NOTES<<EOF"
+            echo "$RELEASE_NOTES"
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+        env:
+          GITHUB_TOKEN: ${{ secrets.NIGHTLY_RELEASE_NOTES_GH_TOKEN }}
+
+      - name: Create nightly prerelease
+        if: steps.publish_gate.outputs.should_publish == 'true'
+        id: gh_release
+        uses: softprops/action-gh-release@v3
+        env:
+            FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+        with:
+          prerelease: true
+          tag_name: ${{ needs.build.outputs.updated_version }}
+          name: ${{ needs.build.outputs.updated_version }}
+          files: |
+            ${{ env.ARTIFACTS_DIR }}/normal/*.apk
+            ${{ env.ARTIFACTS_DIR }}/normal/*.apk.sha256
+            ${{ env.ARTIFACTS_DIR }}/fdroid/*.apk
+            ${{ env.ARTIFACTS_DIR }}/fdroid/*.apk.sha256
+          body: |
+            Automated Nightly pre-release
+
+            [Compare Changes](https://github.com/${{ github.repository }}/compare/${{ steps.prev.outputs.tag_commit }}...${{ github.sha }})
+
+            ${{ env.RELEASE_NOTES }}
+
+      - name: Post Job summary
+        if: always()
+        run: |
+          echo "| Variable | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| --- | --- |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| should_publish | ${{ steps.publish_gate.outputs.should_publish == 'true' && 'true' || 'false' }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| (pre-release versioned/nightly tag) tag_exists | ${{ steps.prev.outputs.tag_exists }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| (pre-release versioned/nightly tag) tag_commit | ${{ steps.prev.outputs.tag_commit }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| release_output_url | ${{ steps.gh_release.outputs.url || 'N/A' }} |" >> "$GITHUB_STEP_SUMMARY"
+    
+  provenance:
+    name: Generate SLSA provenance
+    needs: [release]
+    if: needs.release.outputs.should_publish == 'true'
+    permissions:
+      actions: read
+      id-token: write
+      contents: write
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
+    with:
+     base64-subjects-as-file: "${{ needs.release.outputs.subjects_file }}"
+     upload-assets: true
+     upload-tag-name: "${{ needs.release.outputs.nightly_tag_name }}"
+     draft-release: false
+  
+  community-release-notifier:
+    name: Notify community of nightly release
+    needs: [release]
+    if: ${{ needs.release.outputs.should_publish == 'true' && needs.release.outputs.release_output_url }}
+    permissions:
+      contents: read
+    uses: Acode-Foundation/acode/.github/workflows/community-release-notifier.yml@main
+    with:
+      url: ${{ needs.release.outputs.release_output_url }}
+      tag_name: ${{ needs.release.outputs.nightly_tag_name }}
+      body: ${{ needs.release.outputs.release_notes }}
+    secrets:
+        DISCORD_WEBHOOK_RELEASE_NOTES: ${{ secrets.DISCORD_WEBHOOK_RELEASE_NOTES }}
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        TELEGRAM_MESSAGE_THREAD_ID: ${{ secrets.TELEGRAM_MESSAGE_THREAD_ID }}
