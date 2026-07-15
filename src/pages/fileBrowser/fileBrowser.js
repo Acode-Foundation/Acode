@@ -331,6 +331,9 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 							dir,
 							shouldBeDirAtEnd,
 						) => {
+							if (isCancelled) {
+								throw new Error("Cancelled");
+							}
 							let wantDirEnd = !!shouldBeDirAtEnd;
 							let parts;
 							if (typeof dir === "string") {
@@ -436,8 +439,18 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 							await createFileRecursive(extractDir, correctFile, false);
 
+							if (isCancelled) {
+								throw new Error("Cancelled");
+							}
 							const content = await entry.async("arraybuffer");
+							if (isCancelled) {
+								throw new Error("Cancelled");
+							}
 							await fsOperation(fileUrl).writeFile(content);
+						}
+
+						if (isCancelled) {
+							throw new Error("Cancelled");
 						}
 
 						loadingLoader.destroy();
