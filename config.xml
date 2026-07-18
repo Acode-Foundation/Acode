@@ -45,8 +45,6 @@
         <preference name="FadeSplashScreen" value="false" />
         <preference name="AndroidWindowSplashScreenBehavior" value="icon_preferred" />
 
-
-
         <edit-config file="app/src/main/AndroidManifest.xml" mode="merge"
             target="/manifest/application">
             <application
