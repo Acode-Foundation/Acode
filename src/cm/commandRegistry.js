@@ -1,8 +1,6 @@
 import fsOperation from "fileSystem";
 import * as cmCommands from "@codemirror/commands";
 import {
-	copyLineDown,
-	copyLineUp,
 	cursorCharLeft,
 	cursorCharRight,
 	cursorDocEnd,
@@ -20,7 +18,6 @@ import {
 	deleteCharForward,
 	deleteGroupBackward,
 	deleteGroupForward,
-	deleteLine,
 	deleteLineBoundaryForward,
 	deleteToLineEnd,
 	deleteToLineStart,
@@ -31,8 +28,6 @@ import {
 	insertNewlineAndIndent,
 	lineComment,
 	lineUncomment,
-	moveLineDown,
-	moveLineUp,
 	redo,
 	selectAll,
 	selectCharLeft,
@@ -79,6 +74,13 @@ import {
 } from "@codemirror/lsp-client";
 import { Compartment, EditorSelection } from "@codemirror/state";
 import { keymap } from "@codemirror/view";
+import {
+	copyLineDownFoldAware,
+	copyLineUpFoldAware,
+	deleteLineFoldAware,
+	moveLineDownFoldAware,
+	moveLineUpFoldAware,
+} from "cm/foldAwareLineCommands";
 import {
 	renameSymbol as acodeRenameSymbol,
 	clearDiagnosticsEffect,
@@ -727,7 +729,7 @@ function registerCoreCommands() {
 		run(view) {
 			const resolvedView = resolveView(view);
 			if (!resolvedView) return false;
-			return copyLineDown(resolvedView);
+			return copyLineDownFoldAware(resolvedView);
 		},
 	});
 	addCommand({
@@ -738,7 +740,7 @@ function registerCoreCommands() {
 		run(view) {
 			const resolvedView = resolveView(view);
 			if (!resolvedView) return false;
-			return copyLineDown(resolvedView);
+			return copyLineDownFoldAware(resolvedView);
 		},
 	});
 	addCommand({
@@ -749,7 +751,7 @@ function registerCoreCommands() {
 		run(view) {
 			const resolvedView = resolveView(view);
 			if (!resolvedView) return false;
-			return copyLineUp(resolvedView);
+			return copyLineUpFoldAware(resolvedView);
 		},
 	});
 	addCommand({
@@ -760,7 +762,7 @@ function registerCoreCommands() {
 		run(view) {
 			const resolvedView = resolveView(view);
 			if (!resolvedView) return false;
-			return moveLineDown(resolvedView);
+			return moveLineDownFoldAware(resolvedView);
 		},
 	});
 	addCommand({
@@ -771,7 +773,7 @@ function registerCoreCommands() {
 		run(view) {
 			const resolvedView = resolveView(view);
 			if (!resolvedView) return false;
-			return moveLineUp(resolvedView);
+			return moveLineUpFoldAware(resolvedView);
 		},
 	});
 	addCommand({
@@ -782,7 +784,7 @@ function registerCoreCommands() {
 		run(view) {
 			const resolvedView = resolveView(view);
 			if (!resolvedView) return false;
-			return deleteLine(resolvedView);
+			return deleteLineFoldAware(resolvedView);
 		},
 	});
 	addCommand({

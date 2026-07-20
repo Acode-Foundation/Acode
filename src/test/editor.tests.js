@@ -2,6 +2,8 @@ import { history, isolateHistory, redo, undo } from "@codemirror/commands";
 import {
 	bracketMatching,
 	defaultHighlightStyle,
+	foldEffect,
+	foldedRanges,
 	foldGutter,
 	syntaxHighlighting,
 } from "@codemirror/language";
@@ -9,6 +11,13 @@ import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import { EditorSelection, EditorState } from "@codemirror/state";
 import { EditorView, runScopeHandlers } from "@codemirror/view";
 import createBaseExtensions from "cm/baseExtensions";
+import {
+	copyLineDownFoldAware,
+	copyLineUpFoldAware,
+	deleteLineFoldAware,
+	moveLineDownFoldAware,
+	moveLineUpFoldAware,
+} from "cm/foldAwareLineCommands";
 import indentGuides from "cm/indentGuides";
 import {
 	findQuickToolCommand,
@@ -50,6 +59,18 @@ export async function runCodeMirrorTests(writeOutput) {
 
 		const view = new EditorView({ state, parent: container });
 		return { view, container };
+	}
+
+	function foldLineRange(view, fromLine, toLine) {
+		const from = view.state.doc.line(fromLine).to;
+		const to = view.state.doc.line(toLine).from;
+		view.dispatch({ effects: foldEffect.of({ from, to }) });
+	}
+
+	function countFolds(view) {
+		let count = 0;
+		foldedRanges(view.state).between(0, view.state.doc.length, () => count++);
+		return count;
 	}
 
 	async function withEditor(
@@ -590,6 +611,112 @@ export async function runCodeMirrorTests(writeOutput) {
 			getShortcutAlternatives("Ctrl-Shift-Z|Ctrl-Y").join(","),
 			"Ctrl-Shift-Z,Ctrl-Y",
 		);
+	});
+
+	// =========================================
+	// FOLD-AWARE LINE COMMAND TESTS
+	// =========================================
+
+	const foldedBlock = [
+		"function demo() {",
+		'  console.log("one");',
+		'  console.log("two");',
+		"}",
+	].join("\n");
+
+	function createFoldedBlockEditor() {
+		const editor = createEditor(`before\n${foldedBlock}\nafter`);
+		foldLineRange(editor.view, 2, 5);
+		editor.view.dispatch({
+			selection: EditorSelection.cursor(editor.view.state.doc.line(2).from),
+		});
+		return editor;
+	}
+
+	runner.test("Copy line down copies and preserves a folded block", (test) => {
+		const { view, container } = createFoldedBlockEditor();
+		try {
+			test.assert(copyLineDownFoldAware(view), "Command should be handled");
+			test.assertEqual(
+				view.state.doc.toString(),
+				`before\n${foldedBlock}\n${foldedBlock}\nafter`,
+			);
+			test.assertEqual(countFolds(view), 2);
+		} finally {
+			view.destroy();
+			container.remove();
+		}
+	});
+
+	runner.test("Copy line up copies and preserves a folded block", (test) => {
+		const { view, container } = createFoldedBlockEditor();
+		try {
+			test.assert(copyLineUpFoldAware(view), "Command should be handled");
+			test.assertEqual(
+				view.state.doc.toString(),
+				`before\n${foldedBlock}\n${foldedBlock}\nafter`,
+			);
+			test.assertEqual(countFolds(view), 2);
+		} finally {
+			view.destroy();
+			container.remove();
+		}
+	});
+
+	runner.test(
+		"Move line down moves a folded block past the next visible line",
+		(test) => {
+			const { view, container } = createFoldedBlockEditor();
+			try {
+				test.assert(moveLineDownFoldAware(view), "Command should be handled");
+				test.assertEqual(
+					view.state.doc.toString(),
+					`before\nafter\n${foldedBlock}`,
+				);
+				test.assertEqual(countFolds(view), 1);
+				test.assertEqual(
+					view.state.doc.lineAt(view.state.selection.main.head).number,
+					3,
+				);
+			} finally {
+				view.destroy();
+				container.remove();
+			}
+		},
+	);
+
+	runner.test(
+		"Move line up moves a folded block past the previous visible line",
+		(test) => {
+			const { view, container } = createFoldedBlockEditor();
+			try {
+				test.assert(moveLineUpFoldAware(view), "Command should be handled");
+				test.assertEqual(
+					view.state.doc.toString(),
+					`${foldedBlock}\nbefore\nafter`,
+				);
+				test.assertEqual(countFolds(view), 1);
+				test.assertEqual(
+					view.state.doc.lineAt(view.state.selection.main.head).number,
+					1,
+				);
+			} finally {
+				view.destroy();
+				container.remove();
+			}
+		},
+	);
+
+	runner.test("Remove line deletes an entire folded block", (test) => {
+		const { view, container } = createFoldedBlockEditor();
+		try {
+			test.assert(deleteLineFoldAware(view), "Command should be handled");
+			test.assertEqual(view.state.doc.toString(), "before\nafter");
+			test.assertEqual(countFolds(view), 0);
+		} finally {
+			view.destroy();
+			container.remove();
+		}
 	});
 
 	// =========================================
