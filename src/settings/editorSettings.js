@@ -13,6 +13,9 @@ export default function editorSettings() {
 		indent: strings.indent || "Indent",
 		deepIndent: strings["deep indent"] || "Deep indent",
 	};
+	const wrapPerformanceWarning =
+		strings["settings-info-editor-wrap-performance-warning"] ||
+		"May reduce editor performance with very long lines or large files.";
 	const categories = {
 		scrolling: strings["settings-category-scrolling"],
 		textLayout: strings["settings-category-text-layout"],
@@ -70,7 +73,7 @@ export default function editorSettings() {
 			key: "textWrap",
 			text: strings["text wrap"],
 			checkbox: values.textWrap,
-			info: strings["settings-info-editor-text-wrap"],
+			info: `${strings["settings-info-editor-text-wrap"]} ${wrapPerformanceWarning}`,
 			category: categories.textLayout,
 		},
 		{
@@ -85,9 +88,10 @@ export default function editorSettings() {
 				["indent", wrappingIndentLabels.indent],
 				["deepIndent", wrappingIndentLabels.deepIndent],
 			],
-			info:
+			info: `${
 				strings["settings-info-editor-wrapping-indent"] ||
-				"Choose how far visually wrapped continuation lines are indented.",
+				"Choose how far visually wrapped continuation lines are indented."
+			} ${wrapPerformanceWarning}`,
 			category: categories.textLayout,
 		},
 		{
