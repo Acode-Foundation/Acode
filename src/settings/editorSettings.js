@@ -7,6 +7,12 @@ import scrollSettings from "./scrollSettings";
 export default function editorSettings() {
 	const title = strings["editor settings"];
 	const values = appSettings.value;
+	const wrappingIndentLabels = {
+		none: strings.none || "None",
+		same: strings.same || "Same",
+		indent: strings.indent || "Indent",
+		deepIndent: strings["deep indent"] || "Deep indent",
+	};
 	const categories = {
 		scrolling: strings["settings-category-scrolling"],
 		textLayout: strings["settings-category-text-layout"],
@@ -68,10 +74,20 @@ export default function editorSettings() {
 			category: categories.textLayout,
 		},
 		{
-			key: "hardWrap",
-			text: strings["hard wrap"],
-			checkbox: values.hardWrap,
-			info: strings["settings-info-editor-hard-wrap"],
+			key: "wrappingIndent",
+			text: strings["wrapped line indent"] || "Wrapped line indent",
+			value: values.wrappingIndent || "indent",
+			valueText: (value) =>
+				wrappingIndentLabels[value] || wrappingIndentLabels.indent,
+			select: [
+				["none", wrappingIndentLabels.none],
+				["same", wrappingIndentLabels.same],
+				["indent", wrappingIndentLabels.indent],
+				["deepIndent", wrappingIndentLabels.deepIndent],
+			],
+			info:
+				strings["settings-info-editor-wrapping-indent"] ||
+				"Choose how far visually wrapped continuation lines are indented.",
 			category: categories.textLayout,
 		},
 		{

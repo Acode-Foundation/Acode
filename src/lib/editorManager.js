@@ -72,6 +72,7 @@ import {
 	restoreSelection,
 	setScrollPosition,
 } from "cm/editorUtils";
+import indentedLineWrapping from "cm/indentedLineWrapping";
 import indentGuides from "cm/indentGuides";
 import { lineBreakMarker } from "cm/lineBreakMarker";
 import quickToolsModifierInput from "cm/quickToolsModifierInput";
@@ -1024,7 +1025,11 @@ async function EditorManager($header, $body) {
 	}
 
 	function makeWrapExtension() {
-		return appSettings?.value?.textWrap ? EditorView.lineWrapping : [];
+		return appSettings?.value?.textWrap
+			? indentedLineWrapping({
+					mode: appSettings?.value?.wrappingIndent || "indent",
+				})
+			: [];
 	}
 
 	function makeLineNumberExtension() {
@@ -1181,7 +1186,7 @@ async function EditorManager($header, $body) {
 			},
 		},
 		{
-			keys: ["textWrap"],
+			keys: ["textWrap", "wrappingIndent"],
 			compartments: [wrapCompartment],
 			build() {
 				return makeWrapExtension();
@@ -3368,6 +3373,10 @@ async function EditorManager($header, $body) {
 		applyOptions(["textWrap"]);
 	});
 
+	appSettings.on("update:wrappingIndent", function () {
+		applyOptions(["wrappingIndent"]);
+	});
+
 	function updateEditorIndentationSettings() {
 		applyOptions(["softTab", "tabSize"]);
 	}
@@ -3521,10 +3530,6 @@ async function EditorManager($header, $body) {
 	appSettings.on("update:rtlText", function () {
 		applyOptions(["rtlText"]);
 	});
-
-	// appSettings.on("update:hardWrap", function (_value) {
-	// 	// Not applicable in CodeMirror (Ace-era). No-op for now.
-	// });
 
 	// appSettings.on("update:printMargin", function (_value) {
 	// 	// Not applicable in CodeMirror (Ace-era). No-op for now.
