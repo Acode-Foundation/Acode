@@ -831,5 +831,11 @@
 	"managed": "Dikelola",
 	"acode service": "Layanan Acode",
 	"info-terminal-show-scrollbar": "Show the xterm scrollbar beside the terminal.",
-	"terminal:show scrollbar": "Show Scrollbar"
+	"terminal:show scrollbar": "Show Scrollbar",
+	"wrapped line indent": "Wrapped line indent",
+	"same": "Same",
+	"indent": "Indent",
+	"deep indent": "Deep indent",
+	"settings-info-editor-wrapping-indent": "Choose how far visually wrapped continuation lines are indented.",
+	"settings-info-editor-wrap-performance-warning": "May reduce editor performance with very long lines or large files."
 }

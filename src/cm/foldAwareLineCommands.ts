@@ -208,18 +208,19 @@ function mapRangeIntoBlock(
 function copyFoldedLines(view: EditorView, direction: Direction): boolean {
   const initialState = view.state;
   if (initialState.readOnly) return false;
+  const copyDown = direction > 0;
   const foldIndex = getFoldIndex(initialState);
   const blocks = selectedLineBlocks(initialState, foldIndex);
   if (!blocks.some((block) => blockHasFolds(foldIndex, block))) {
-    return direction < 0 ? copyLineUp(view) : copyLineDown(view);
+    return copyDown ? copyLineDown(view) : copyLineUp(view);
   }
 
   const state = initialState;
   const changes = blocks.map((block) => {
     const text = state.doc.slice(block.from, block.to);
-    return direction < 0
-      ? { from: block.to, insert: lineBreak.append(text) }
-      : { from: block.from, insert: text.append(lineBreak) };
+    return copyDown
+      ? { from: block.from, insert: text.append(lineBreak) }
+      : { from: block.to, insert: lineBreak.append(text) };
   });
   const changeSet = state.changes(changes);
   const mappedRanges: SelectionRange[] = new Array(
@@ -229,23 +230,23 @@ function copyFoldedLines(view: EditorView, direction: Direction): boolean {
 
   for (const block of blocks) {
     const blockLength = block.to - block.from;
-    const mappedBlockFrom = changeSet.mapPos(block.from, -1);
-    const originalFrom =
-      direction < 0 ? mappedBlockFrom : mappedBlockFrom + blockLength + 1;
-    const copyFrom =
-      direction < 0 ? changeSet.mapPos(block.to, -1) + 1 : mappedBlockFrom;
+    const topBlockFrom = changeSet.mapPos(block.from, -1);
+    const bottomBlockFrom = topBlockFrom + blockLength + 1;
+    // Match CodeMirror's native semantics: copy down keeps the selection in
+    // the bottom block, while copy up keeps it in the top block.
+    const selectedBlockFrom = copyDown ? bottomBlockFrom : topBlockFrom;
 
     for (const rangeIndex of block.rangeIndexes) {
       mappedRanges[rangeIndex] = mapRangeIntoBlock(
         state.selection.ranges[rangeIndex],
         block,
-        originalFrom,
+        selectedBlockFrom,
       );
     }
     for (const fold of foldsInBlock(foldIndex, block)) {
       newFolds.push(
-        translatedFold(fold, block.from, originalFrom),
-        translatedFold(fold, block.from, copyFrom),
+        translatedFold(fold, block.from, topBlockFrom),
+        translatedFold(fold, block.from, bottomBlockFrom),
       );
     }
   }

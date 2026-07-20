@@ -831,5 +831,11 @@
 	"diff sec": "{sec}s ago",
 	"command": "Command",
 	"managed": "Managed",
-	"acode service": "Acode Service"
+	"acode service": "Acode Service",
+	"wrapped line indent": "Wrapped line indent",
+	"same": "Same",
+	"indent": "Indent",
+	"deep indent": "Deep indent",
+	"settings-info-editor-wrapping-indent": "Choose how far visually wrapped continuation lines are indented.",
+	"settings-info-editor-wrap-performance-warning": "May reduce editor performance with very long lines or large files."
 }

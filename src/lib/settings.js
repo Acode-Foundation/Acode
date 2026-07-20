@@ -133,7 +133,8 @@ class Settings {
 			fontSize: "12px",
 			cursorWidth: 2,
 			editorTheme: "one_dark",
-			textWrap: true,
+			textWrap: false,
+			wrappingIndent: "indent",
 			softTab: true,
 			tabSize: 2,
 			retryRemoteFsAfterFail: true,
@@ -185,7 +186,6 @@ class Settings {
 			relativeLineNumbers: false,
 			elasticTabstops: false,
 			rtlText: false,
-			hardWrap: false,
 			useTextareaForIME: false,
 			touchMoveThreshold: Math.round((1 / devicePixelRatio) * 10) / 20,
 			quicktoolsItems: [

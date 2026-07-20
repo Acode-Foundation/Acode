@@ -8,7 +8,7 @@ import {
 	syntaxHighlighting,
 } from "@codemirror/language";
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
-import { EditorSelection, EditorState } from "@codemirror/state";
+import { Compartment, EditorSelection, EditorState } from "@codemirror/state";
 import { EditorView, runScopeHandlers } from "@codemirror/view";
 import createBaseExtensions from "cm/baseExtensions";
 import {
@@ -18,6 +18,11 @@ import {
 	moveLineDownFoldAware,
 	moveLineUpFoldAware,
 } from "cm/foldAwareLineCommands";
+import indentedLineWrapping, {
+	DEFAULT_MAX_WRAP_INDENT_COLUMNS,
+	getContinuationIndentColumns,
+	getWrapIndentColumns,
+} from "cm/indentedLineWrapping";
 import indentGuides from "cm/indentGuides";
 import {
 	findQuickToolCommand,
@@ -642,6 +647,10 @@ export async function runCodeMirrorTests(writeOutput) {
 				`before\n${foldedBlock}\n${foldedBlock}\nafter`,
 			);
 			test.assertEqual(countFolds(view), 2);
+			test.assertEqual(
+				view.state.doc.lineAt(view.state.selection.main.head).number,
+				6,
+			);
 		} finally {
 			view.destroy();
 			container.remove();
@@ -657,6 +666,10 @@ export async function runCodeMirrorTests(writeOutput) {
 				`before\n${foldedBlock}\n${foldedBlock}\nafter`,
 			);
 			test.assertEqual(countFolds(view), 2);
+			test.assertEqual(
+				view.state.doc.lineAt(view.state.selection.main.head).number,
+				2,
+			);
 		} finally {
 			view.destroy();
 			container.remove();
@@ -937,6 +950,104 @@ export async function runCodeMirrorTests(writeOutput) {
 		);
 	});
 
+	runner.test("Indented wrapping counts spaces and tab stops", async (test) => {
+		test.assertEqual(getWrapIndentColumns("    value", 4), 4);
+		test.assertEqual(getWrapIndentColumns("\t  value", 4), 6);
+		test.assertEqual(getWrapIndentColumns(" \tvalue", 4), 4);
+		test.assertEqual(getWrapIndentColumns("value", 4), 0);
+		test.assertEqual(
+			getWrapIndentColumns(" ".repeat(100), 4),
+			DEFAULT_MAX_WRAP_INDENT_COLUMNS,
+		);
+	});
+
+	runner.test("Wrapping indent modes match editor behavior", async (test) => {
+		test.assertEqual(getContinuationIndentColumns("value", 4, "none"), 0);
+		test.assertEqual(getContinuationIndentColumns("  value", 4, "same"), 2);
+		test.assertEqual(getContinuationIndentColumns("value", 4, "indent"), 4);
+		test.assertEqual(getContinuationIndentColumns("  value", 4, "indent"), 6);
+		test.assertEqual(
+			getContinuationIndentColumns("  value", 4, "deepIndent"),
+			10,
+		);
+		test.assertEqual(
+			getContinuationIndentColumns("        value", 4, "deepIndent", 12),
+			12,
+			"Continuation indentation should respect its width cap",
+		);
+	});
+
+	runner.test("Default wrapping adds one continuation indent", async (test) => {
+		await withEditor(
+			test,
+			async (view) => {
+				const line = view.dom.querySelector(".cm-line.cm-indented-line-wrap");
+				test.assert(
+					line != null,
+					"Default wrapping should decorate code lines",
+				);
+				test.assertEqual(
+					line.style.getPropertyValue("--cm-wrap-indent").trim(),
+					"4ch",
+				);
+			},
+			"const value = someVeryLongFunctionCall(argument);",
+			[EditorState.tabSize.of(4), indentedLineWrapping()],
+		);
+	});
+
+	runner.test(
+		"Wrapped continuation indent updates with the document",
+		async (test) => {
+			const doc = "\t  const value = someVeryLongFunctionCall(argument);";
+			const tabSizeCompartment = new Compartment();
+			await withEditor(
+				test,
+				async (view) => {
+					const getWrappedLine = () =>
+						view.dom.querySelector(".cm-line.cm-indented-line-wrap");
+
+					test.assert(view.lineWrapping, "Line wrapping should be enabled");
+					let line = getWrappedLine();
+					test.assert(line != null, "Indented line should be decorated");
+					test.assertEqual(
+						line.style.getPropertyValue("--cm-wrap-indent").trim(),
+						"6ch",
+					);
+
+					view.dispatch({
+						effects: tabSizeCompartment.reconfigure(EditorState.tabSize.of(8)),
+					});
+					line = getWrappedLine();
+					test.assert(line != null, "Tab-size changes should retain wrapping");
+					test.assertEqual(
+						line.style.getPropertyValue("--cm-wrap-indent").trim(),
+						"10ch",
+					);
+
+					view.dispatch({ changes: { from: 0, to: 3, insert: "  " } });
+					line = getWrappedLine();
+					test.assert(line != null, "Edited indentation should stay decorated");
+					test.assertEqual(
+						line.style.getPropertyValue("--cm-wrap-indent").trim(),
+						"2ch",
+					);
+
+					view.dispatch({ changes: { from: 0, to: 2, insert: "" } });
+					test.assert(
+						getWrappedLine() == null,
+						"Decoration should be removed when indentation is removed",
+					);
+				},
+				doc,
+				[
+					tabSizeCompartment.of(EditorState.tabSize.of(4)),
+					indentedLineWrapping({ mode: "same" }),
+				],
+			);
+		},
+	);
+
 	runner.test("Focus and blur", async (test) => {
 		await withEditor(test, async (view) => {
 			view.focus();
@@ -1130,8 +1241,6 @@ export async function runCodeMirrorTests(writeOutput) {
 	});
 
 	runner.test("Compartments for dynamic config", async (test) => {
-		const { Compartment } = await import("@codemirror/state");
-
 		const readOnlyComp = new Compartment();
 
 		const container = document.createElement("div");
