@@ -193,8 +193,20 @@ for (const lang of languages as readonly LanguageDescription[]) {
 			normalizedName === "properties" ||
 			modeId === "ini"
 		) {
-			langExtensions.push("gitconfig", "editorconfig", "npmrc", "yarnrc");
-			filenames.push(".gitconfig", ".editorconfig", ".npmrc", ".yarnrc");
+			langExtensions.push(
+				"gitconfig",
+				"gitmodules",
+				"editorconfig",
+				"npmrc",
+				"yarnrc",
+			);
+			filenames.push(
+				".gitconfig",
+				".gitmodules",
+				".editorconfig",
+				".npmrc",
+				".yarnrc",
+			);
 		} else if (normalizedName === "json" || modeId === "json") {
 			langExtensions.push("prettierrc", "hintrc", "eslintrc", "babelrc");
 			filenames.push(".prettierrc", ".hintrc", ".eslintrc", ".babelrc", "bun.lock");

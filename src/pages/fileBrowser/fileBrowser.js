@@ -294,41 +294,163 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 					if (!zipFile) break;
 
+					let isCancelled = false;
 					const loadingLoader = loader.create(
 						strings["loading"],
 						"Importing zip file...",
-						{ timeout: 10000 },
+						{
+							timeout: 10000,
+							oncancel: () => {
+								isCancelled = true;
+							},
+						},
 					);
+
+					let zipName = Url.basename(zipFile).replace(/\.zip$/, "");
+					const targetDir = currentDir.url;
+					let extractDir = Url.join(targetDir, zipName);
 
 					try {
 						const zipContent = await fsOperation(zipFile).readFile();
 						const zip = await JSZip.loadAsync(zipContent);
-						const targetDir = currentDir.url;
-						const targetFs = fsOperation(targetDir);
 
-						// Create folder with zip name
-						const zipName = Url.basename(zipFile).replace(/\.zip$/, "");
-						const extractDir = Url.join(targetDir, zipName);
+						const targetFs = fsOperation(targetDir);
+						if (await fsOperation(extractDir).exists()) {
+							zipName = `${zipName}_${helpers.uuid()}`;
+							extractDir = Url.join(targetDir, zipName);
+						}
 						await targetFs.createDirectory(zipName);
 
 						const files = Object.keys(zip.files);
 						const total = files.length;
 						let current = 0;
 
+						// Internal helper to recursively construct folders or empty files
+						const createFileRecursive = async (
+							parent,
+							dir,
+							shouldBeDirAtEnd,
+						) => {
+							if (isCancelled) {
+								throw new Error("Cancelled");
+							}
+							let wantDirEnd = !!shouldBeDirAtEnd;
+							let parts;
+							if (typeof dir === "string") {
+								if (dir.endsWith("/")) wantDirEnd = true;
+								dir = dir.replace(/\\/g, "/");
+								parts = dir.split("/");
+							} else {
+								parts = dir;
+							}
+							parts = parts.filter((d) => d);
+							const cd = parts.shift();
+							if (!cd) return;
+							const newParent = Url.join(parent, cd);
+
+							const isLast = parts.length === 0;
+							const needDir = !isLast || wantDirEnd;
+							if (!(await fsOperation(newParent).exists())) {
+								if (needDir) {
+									try {
+										await fsOperation(parent).createDirectory(cd);
+									} catch (e) {
+										if (!(await fsOperation(newParent).exists())) throw e;
+									}
+								} else {
+									try {
+										await fsOperation(parent).createFile(cd);
+									} catch (e) {
+										if (!(await fsOperation(newParent).exists())) throw e;
+									}
+								}
+							}
+							if (parts.length) {
+								await createFileRecursive(newParent, parts, wantDirEnd);
+							}
+						};
+
+						const sanitizeZipPath = (p, isDir) => {
+							if (!p) return "";
+							let path = String(p);
+							path = path.replace(/\\/g, "/");
+							path = path.replace(/^[a-zA-Z]+:\/\//, "");
+							path = path.replace(/^\/+/, "");
+							path = path.replace(/^[A-Za-z]:\//, "");
+
+							const parts = path.split("/");
+							const stack = [];
+							for (const part of parts) {
+								if (!part || part === ".") continue;
+								if (part === "..") {
+									if (stack.length) stack.pop();
+									continue;
+								}
+								stack.push(part);
+							}
+							let safe = stack.join("/");
+							if (isDir && safe && !safe.endsWith("/")) safe += "/";
+							return safe;
+						};
+
+						const isUnsafeAbsolutePath = (p) => {
+							if (!p) return false;
+							const s = String(p);
+							if (/^[A-Za-z]:[\\\/]/.test(s)) return true;
+							if (s.startsWith("//")) return true;
+							if (s.startsWith("/")) return true;
+							return false;
+						};
+
 						for (const filePath of files) {
-							const file = zip.files[filePath];
+							if (isCancelled) {
+								throw new Error("Cancelled");
+							}
+
+							const entry = zip.files[filePath];
 							current++;
 
 							loadingLoader.setMessage(
 								`Extracting ${filePath} (${Math.round((current / total) * 100)}%)`,
 							);
 
-							if (file.dir) {
-								await fsOperation(extractDir).createDirectory(filePath);
-							} else {
-								const content = await file.async("arraybuffer");
-								await fsOperation(extractDir).createFile(filePath, content);
+							let correctFile = filePath.replace(/\\/g, "/");
+							const isDirEntry = entry.dir || correctFile.endsWith("/");
+
+							if (isUnsafeAbsolutePath(filePath)) {
+								continue;
 							}
+
+							correctFile = sanitizeZipPath(correctFile, isDirEntry);
+							if (!correctFile) continue;
+
+							const fileUrl = Url.join(extractDir, correctFile);
+
+							if (isDirEntry) {
+								await createFileRecursive(extractDir, correctFile, true);
+								continue;
+							}
+
+							const lastSlash = correctFile.lastIndexOf("/");
+							if (lastSlash !== -1) {
+								const parentRel = correctFile.slice(0, lastSlash + 1);
+								await createFileRecursive(extractDir, parentRel, true);
+							}
+
+							await createFileRecursive(extractDir, correctFile, false);
+
+							if (isCancelled) {
+								throw new Error("Cancelled");
+							}
+							const content = await entry.async("arraybuffer");
+							if (isCancelled) {
+								throw new Error("Cancelled");
+							}
+							await fsOperation(fileUrl).writeFile(content);
+						}
+
+						if (isCancelled) {
+							throw new Error("Cancelled");
 						}
 
 						loadingLoader.destroy();
@@ -336,7 +458,15 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 						reload();
 					} catch (err) {
 						loadingLoader.destroy();
-						helpers.error(err);
+						if (err && err.message === "Cancelled") {
+							try {
+								await fsOperation(extractDir).delete();
+							} catch (deleteErr) {
+								console.error("Cleanup failed:", deleteErr);
+							}
+						} else {
+							helpers.error(err);
+						}
 					}
 					break;
 				}

@@ -51,7 +51,7 @@ jobs:
           persist-credentials: true
 
       - name: Install cosign
-        uses: sigstore/cosign-installer@v4.1.0
+        uses: sigstore/cosign-installer@v4.1.2
 
       - name: Set Publish Metadata
         shell: bash
@@ -154,7 +154,7 @@ jobs:
         run: |
           RELEASE_NOTES="$(node utils/scripts/generate-release-notes.js \
             ${{ github.repository_owner }} Acode ${{ github.sha }} \
-            --format md --from-tag ${{ steps.prev.outputs.tag_commit }} --important-only --quiet || true)"
+            --format md --from-tag ${{ steps.prev.outputs.tag_commit }} --important-only --quiet --changelog-only || true)"
           {
             echo "RELEASE_NOTES<<EOF"
             echo "$RELEASE_NOTES"
