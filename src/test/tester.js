@@ -222,6 +222,7 @@ function createTestRunnerContent() {
 		e.preventDefault();
 		e.stopPropagation();
 		if (currentRunnerState.status !== "running") {
+			registerAllSuites();
 			runTestsInternal();
 		}
 	};
@@ -595,6 +596,7 @@ export function openTestRunnerTab() {
 	if (existingFile) {
 		existingFile.makeActive();
 		if (currentRunnerState.status !== "running") {
+			registerAllSuites();
 			runTestsInternal();
 		}
 		return;
@@ -670,8 +672,9 @@ class TestRunner {
 	/**
 	 * Register a test
 	 */
-	test(testName, testFn) {
-		this.tests.push({ name: testName, fn: testFn });
+	test(testName, testFn, options = {}) {
+		const timeout = typeof options === "number" ? options : options?.timeout;
+		this.tests.push({ name: testName, fn: testFn, timeout });
 		this.suiteState.tests.push({
 			name: testName,
 			status: "pending",
@@ -766,7 +769,7 @@ class TestRunner {
 			try {
 				await delay(50);
 
-				await this._runWithTimeout(test.fn, this, 10000);
+				await this._runWithTimeout(test.fn, this, test.timeout ?? 10000);
 
 				const duration = Math.max(
 					0,
