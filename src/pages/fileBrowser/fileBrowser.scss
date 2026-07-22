@@ -4,7 +4,7 @@
   }
 
   .tile {
-    &[storageType="notification"] {
+    &[data-storage-type="notification"] {
       background-color: rgb(153, 153, 255);
       background-color: var(--primary-color);
       color: rgb(255, 255, 255);
@@ -22,11 +22,11 @@
       position: relative;
       color: rgb(65, 85, 133);
 
-      &[storageType]::after {
+      &[data-storage-type]::after {
         position: absolute;
         top: 50%;
         left: 50%;
-        content: attr(storageType);
+        content: attr(data-storage-type);
         transform: translate(-50%, -50%);
         color: rgb(255, 255, 255);
         font-size: 0.6rem;
