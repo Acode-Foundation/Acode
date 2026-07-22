@@ -1041,11 +1041,9 @@ function getParentUrl(url) {
  * @param {string} entryUrl
  */
 function removeEntryFromOpenFolder(entryUrl) {
-	let handledByTree = false;
 	getOpenFileTrees().forEach((tree) => {
-		handledByTree = tree.removeEntry(entryUrl) || handledByTree;
+		tree.removeEntry(entryUrl);
 	});
-	if (handledByTree) return;
 
 	// Compatibility fallback for a legacy list that may be mounted by a plugin.
 	const filesApp = sidebarApps.get("files");
@@ -1054,11 +1052,12 @@ function removeEntryFromOpenFolder(entryUrl) {
 	);
 
 	$els.forEach(($el) => {
-		const ownerTree =
-			$el?.parentElement?._fileTree ||
-			$el?.parentElement?.parentElement?._fileTree;
+		const ownerTree = getLoadedFileTree($el);
 
-		if (ownerTree) {
+		// Every mounted FileTree was already updated through its model above. Never
+		// mutate a recycled virtual row directly, even when its parent was unloaded.
+		if (ownerTree instanceof FileTree) return;
+		if (ownerTree?.removeEntry) {
 			ownerTree.removeEntry(entryUrl);
 			return;
 		}
@@ -1081,12 +1080,9 @@ function removeEntryFromOpenFolder(entryUrl) {
 function appendEntryToOpenFolder(parentUrl, entryUrl, type) {
 	const isDirectory = type === "folder";
 	const name = Url.basename(entryUrl);
-	let handledByTree = false;
 	getOpenFileTrees().forEach((tree) => {
-		handledByTree =
-			tree.appendEntry(parentUrl, name, entryUrl, isDirectory) || handledByTree;
+		tree.appendEntry(parentUrl, name, entryUrl, isDirectory);
 	});
-	if (handledByTree) return;
 
 	// Compatibility fallback for non-virtual legacy folder lists.
 	const filesApp = sidebarApps.get("files");
@@ -1099,9 +1095,12 @@ function appendEntryToOpenFolder(parentUrl, entryUrl, type) {
 
 		if (!$el.unclasped) return;
 
-		const fileTree = getLoadedFileTree($el);
-		if (fileTree) {
-			fileTree.appendEntry(name, entryUrl, isDirectory);
+		const ownerTree = getLoadedFileTree($el);
+		// An unloaded virtual destination will be read from disk when expanded.
+		// Calling the legacy root-only signature here would corrupt that model.
+		if (ownerTree instanceof FileTree) return;
+		if (ownerTree?.appendEntry) {
+			ownerTree.appendEntry(name, entryUrl, isDirectory);
 			return;
 		}
 
