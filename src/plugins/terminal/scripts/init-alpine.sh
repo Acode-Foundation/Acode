@@ -329,12 +329,12 @@ command_not_found_handle() {
 alias clear='reset'
 
 # Source user configs AFTER defaults (so user can override everything)
-if [ -f "$HOME/.bashrc" ]; then
-    source "$HOME/.bashrc"
-fi
-
 if [ -f /etc/bash/bashrc ]; then
     source /etc/bash/bashrc
+fi
+
+if [ -f "$HOME/.bashrc" ]; then
+    source "$HOME/.bashrc"
 fi
 
 EOF
