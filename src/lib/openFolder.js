@@ -153,11 +153,9 @@ function openFolder(_path, opts = {}) {
 	$root.$title.dataset.url = _path;
 	$root.$title.dataset.name = title;
 
-	$root.$ul.onclick =
-		$root.$ul.oncontextmenu =
-		$root.$title.onclick =
-		$root.$title.oncontextmenu =
-			handleItems;
+	// The root title uses the legacy handler. Rows inside the FileTree use event
+	// delegation owned by FileTree so recycled rows never retain stale closures.
+	$root.$title.onclick = $root.$title.oncontextmenu = handleItems;
 
 	recents.addFolder(_path, opts);
 	sidebarApps.get("files").append($root);
@@ -200,7 +198,10 @@ function openFolder(_path, opts = {}) {
 		});
 	}
 
-	if (listState[_path]) {
+	if (
+		(listState instanceof Map ? listState.get(_path) : listState[_path]) ===
+		true
+	) {
 		$root.expand();
 	}
 
@@ -211,6 +212,10 @@ function openFolder(_path, opts = {}) {
 			e.stopImmediatePropagation();
 		}
 
+		if ($root.$ul?._fileTree) {
+			$root.$ul._fileTree.destroy();
+			$root.$ul._fileTree = null;
+		}
 		if ($root.parentElement) {
 			$root.remove();
 		}
@@ -245,7 +250,7 @@ async function expandList($list) {
 	}
 	$ul.innerHTML = "";
 
-	if (saveState) listState[url] = $list.unclasped;
+	if (saveState) setListStateEntry(listState, url, $list.unclasped);
 	if (!$list.unclasped) return;
 
 	try {
@@ -255,7 +260,7 @@ async function expandList($list) {
 			getEntries: (dirUrl) => fsOperation(dirUrl).lsDir(),
 			expandedState: listState,
 			onExpandedChange: (folderUrl, isExpanded) => {
-				if (saveState) listState[folderUrl] = isExpanded;
+				if (saveState) setListStateEntry(listState, folderUrl, isExpanded);
 			},
 			onFileClick: (fileUrl) => {
 				handleClick("file", fileUrl);
@@ -263,6 +268,7 @@ async function expandList($list) {
 			onContextMenu: (type, itemUrl, name, $target) => {
 				handleContextmenu(type, itemUrl, name, $target);
 			},
+			onError: helpers.error,
 		});
 
 		await fileTree.load(url);
@@ -278,22 +284,6 @@ async function expandList($list) {
 	} finally {
 		stopLoading();
 	}
-}
-
-/**
- * Gets weather the folder is collapsed or not
- * @param {HTMLElement} $el
- * @param {boolean} isFile
- * @returns
- */
-function collapsed($el, isFile) {
-	if (!$el.isConnected) return true;
-	$el = $el.parentElement;
-	if (!isFile) {
-		$el = $el.parentElement;
-	}
-
-	return $el.previousElementSibling.collapsed;
 }
 
 /**
@@ -716,7 +706,7 @@ function execOperation(type, action, url, $target, name) {
 		}
 
 		// Prevent pasting a folder into itself or its subdirectories
-		if (helpers.isDir(clipBoard.$el.dataset.type)) {
+		if (helpers.isDir(clipBoard.type)) {
 			const sourceUrl = Url.parse(clipBoard.url).url;
 			const targetUrl = Url.parse(url).url;
 
@@ -736,16 +726,9 @@ function execOperation(type, action, url, $target, name) {
 			}
 		}
 
-		let CASE = "";
-		const $src = clipBoard.$el;
-		const srcType = $src.dataset.type;
+		const srcType = clipBoard.type;
 		const IS_FILE = helpers.isFile(srcType);
 		const IS_DIR = helpers.isDir(srcType);
-		const srcCollapsed = collapsed($src, IS_FILE);
-
-		CASE += IS_FILE ? 1 : 0;
-		CASE += srcCollapsed ? 1 : 0;
-		CASE += $target.collapsed ? 1 : 0;
 
 		startLoading();
 		try {
@@ -801,90 +784,21 @@ function execOperation(type, action, url, $target, name) {
 			} else {
 				newUrl = await fs.copyTo(url);
 			}
-			const { name: newName } = await fsOperation(newUrl).stat();
 			stopLoading();
-			/**
-			 * CASES:
-			 * CASE 111: src is file and parent is collapsed where target is also collapsed
-			 * CASE 110: src is file and parent is collapsed where target is unclasped
-			 * CASE 101: src is file and parent is unclasped where target is collapsed
-			 * CASE 100: src is file and parent is unclasped where target is also unclasped
-			 * CASE 011: src is directory and parent is collapsed where target is also collapsed
-			 * CASE 001: src is directory and parent is unclasped where target is also collapsed
-			 * CASE 010: src is directory and parent is collapsed where target is also unclasped
-			 * CASE 000: src is directory and parent is unclasped where target is also unclasped
-			 */
 
 			if (clipBoard.action === "cut") {
-				//move
-
 				if (IS_FILE) {
 					const file = editorManager.getFile(clipBoard.url, "uri");
 					if (file) file.uri = newUrl;
 				} else if (IS_DIR) {
 					helpers.updateUriOfAllActiveFiles(clipBoard.url, newUrl);
+					migrateOpenFolderStateUrls(clipBoard.url, newUrl);
 				}
-
-				switch (CASE) {
-					case "111":
-					case "011":
-						break;
-
-					case "110":
-						appendTile($target, createFileTile(newName, newUrl));
-						break;
-
-					case "101":
-						$src.remove();
-						break;
-
-					case "100":
-						appendTile($target, createFileTile(newName, newUrl));
-						$src.remove();
-						break;
-
-					case "001":
-						$src.parentElement.remove();
-						break;
-
-					case "010":
-						appendList($target, createFolderTile(newName, newUrl));
-						break;
-
-					case "000":
-						appendList($target, createFolderTile(newName, newUrl));
-						$src.parentElement.remove();
-						break;
-
-					default:
-						break;
-				}
+				removeEntryFromOpenFolder(clipBoard.url);
 				FileList.remove(clipBoard.url);
-			} else {
-				//copy
-
-				switch (CASE) {
-					case "111":
-					case "101":
-					case "011":
-					case "001":
-						break;
-
-					case "110":
-					case "100":
-						appendTile($target, createFileTile(newName, newUrl));
-						break;
-
-					case "010":
-					case "000":
-						appendList($target, createFolderTile(newName, newUrl));
-						break;
-
-					default:
-						break;
-				}
 			}
 
+			appendEntryToOpenFolder(url, newUrl, IS_DIR ? "folder" : "file");
 			FileList.append(url, newUrl);
 			toast(strings.success);
 			clearClipboard();
@@ -908,7 +822,7 @@ function execOperation(type, action, url, $target, name) {
 				sourceStats.name,
 				data,
 			);
-			appendTile($target, createFileTile(sourceStats.name, insertedFile));
+			appendEntryToOpenFolder(url, insertedFile, "file");
 			FileList.append(url, insertedFile);
 		} catch (error) {
 		} finally {
@@ -917,12 +831,13 @@ function execOperation(type, action, url, $target, name) {
 	}
 
 	async function clipBoardAction() {
+		setOpenFolderEntryCut(clipBoard.url, false);
 		clipBoard.url = url;
 		clipBoard.action = action;
+		clipBoard.type = type;
 		clipBoard.$el = $target;
 
-		if (action === "cut") $target.classList.add("cut");
-		else $target.classList.remove("cut");
+		setOpenFolderEntryCut(url, action === "cut");
 	}
 
 	async function open() {
@@ -934,14 +849,15 @@ function execOperation(type, action, url, $target, name) {
 	}
 
 	function cancelAction() {
-		clipBoard.$el.classList.remove("cut");
 		clearClipboard();
 	}
 
 	function clearClipboard() {
+		setOpenFolderEntryCut(clipBoard.url, false);
 		clipBoard.$el = null;
 		clipBoard.url = null;
 		clipBoard.action = null;
+		clipBoard.type = null;
 	}
 }
 
@@ -987,8 +903,27 @@ function appendList($target, $list) {
  */
 function getLoadedFileTree($el) {
 	return (
-		$el?.$ul?._fileTree || $el?.fileTree || $el?.nextElementSibling?._fileTree
+		$el?.$ul?._fileTree ||
+		$el?.fileTree ||
+		$el?.nextElementSibling?._fileTree ||
+		$el?.closest?.(".file-tree")?._fileTree
 	);
+}
+
+/** Return every currently mounted root FileTree once. */
+function getOpenFileTrees() {
+	const trees = new Set();
+	addedFolder.forEach(({ $node }) => {
+		const tree = getLoadedFileTree($node?.$title);
+		if (tree) trees.add(tree);
+	});
+	return Array.from(trees);
+}
+
+/** Keep cut styling in model state so it survives DOM row recycling. */
+function setOpenFolderEntryCut(url, isCut) {
+	if (!url) return;
+	getOpenFileTrees().forEach((tree) => tree.setCut(url, isCut));
 }
 
 function normalizeUrlPathKey(url) {
@@ -1106,6 +1041,13 @@ function getParentUrl(url) {
  * @param {string} entryUrl
  */
 function removeEntryFromOpenFolder(entryUrl) {
+	let handledByTree = false;
+	getOpenFileTrees().forEach((tree) => {
+		handledByTree = tree.removeEntry(entryUrl) || handledByTree;
+	});
+	if (handledByTree) return;
+
+	// Compatibility fallback for a legacy list that may be mounted by a plugin.
 	const filesApp = sidebarApps.get("files");
 	const $els = Array.from(
 		filesApp.getAll(`[data-url="${CSS.escape(entryUrl)}"]`),
@@ -1137,10 +1079,18 @@ function removeEntryFromOpenFolder(entryUrl) {
  * @param {"file"|"folder"} type
  */
 function appendEntryToOpenFolder(parentUrl, entryUrl, type) {
-	const filesApp = sidebarApps.get("files");
-	const $els = filesApp.getAll(`[data-url="${parentUrl}"]`);
 	const isDirectory = type === "folder";
 	const name = Url.basename(entryUrl);
+	let handledByTree = false;
+	getOpenFileTrees().forEach((tree) => {
+		handledByTree =
+			tree.appendEntry(parentUrl, name, entryUrl, isDirectory) || handledByTree;
+	});
+	if (handledByTree) return;
+
+	// Compatibility fallback for non-virtual legacy folder lists.
+	const filesApp = sidebarApps.get("files");
+	const $els = filesApp.getAll(`[data-url="${parentUrl}"]`);
 
 	Array.from($els).forEach(($el) => {
 		if (!(helpers.isDir($el.dataset.type) || $el.dataset.type === "root")) {
@@ -1168,13 +1118,11 @@ function appendEntryToOpenFolder(parentUrl, entryUrl, type) {
  * @param {string} folderUrl
  */
 async function refreshOpenFolder(folderUrl) {
-	const folder = openFolder.find(folderUrl);
-	if (!folder) return;
-
-	const fileTree = getLoadedFileTree(folder.$node.$title);
-	if (!fileTree) return;
-
-	await fileTree.refreshFolder(folderUrl, areSameOpenFolderUrl);
+	await Promise.all(
+		getOpenFileTrees().map((fileTree) =>
+			fileTree.refreshFolder(folderUrl, areSameOpenFolderUrl),
+		),
+	);
 }
 
 /**
