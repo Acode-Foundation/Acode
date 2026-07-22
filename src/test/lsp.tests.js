@@ -179,7 +179,7 @@ async function testServer(server, test) {
 	);
 
 	if (installation.status === "missing") {
-		test.skip(`${server.label} is not installed`);
+		return test.skip(`${server.label} is not installed`);
 	}
 
 	const provider = await withTimeout(
