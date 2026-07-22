@@ -1,16 +1,13 @@
 import { getIndentUnit, indentUnit } from "@codemirror/language";
 import type { LSPClientExtension } from "@codemirror/lsp-client";
 import {
-  findReferencesKeymap,
-  formatKeymap,
-  jumpToDefinitionKeymap,
   LSPClient,
   LSPPlugin,
   serverCompletion,
   serverDiagnostics,
 } from "@codemirror/lsp-client";
 import { EditorState, Extension, Facet, MapMode } from "@codemirror/state";
-import { EditorView, keymap } from "@codemirror/view";
+import { EditorView } from "@codemirror/view";
 import lspStatusBar from "components/lspStatusBar";
 import notificationManager from "lib/notificationManager";
 import Uri from "utils/Uri";
@@ -19,7 +16,6 @@ import { clearDiagnosticsEffect } from "./diagnostics";
 import { supportsBuiltinFormatting } from "./formattingSupport";
 import { inlayHintsExtension } from "./inlayHints";
 import { addLspLog } from "./logs";
-import { acodeRenameKeymap } from "./rename";
 import { selectRuntimeProvider } from "./runtimeProviders";
 import serverRegistry from "./serverRegistry";
 import {
@@ -212,10 +208,8 @@ function buildBuiltinExtensions(
     hover: includeHover = true,
     completion: includeCompletion = true,
     signature: includeSignature = true,
-    keymaps: includeKeymaps = true,
     diagnostics: includeDiagnostics = true,
     inlayHints: includeInlayHints = false,
-    formatting: includeFormatting = true,
   } = config;
 
   const extensions: Extension[] = [];
@@ -223,18 +217,7 @@ function buildBuiltinExtensions(
 
   if (includeCompletion) extensions.push(serverCompletion());
   if (includeHover) extensions.push(hoverTooltips());
-  if (includeKeymaps) {
-    const bindings = [
-      ...(includeFormatting ? formatKeymap : []),
-      ...acodeRenameKeymap,
-      ...jumpToDefinitionKeymap,
-      ...findReferencesKeymap,
-    ];
-    if (bindings.length) {
-      extensions.push(keymap.of(bindings));
-    }
-  }
-  if (includeSignature) extensions.push(signatureHelp());
+  if (includeSignature) extensions.push(signatureHelp({ keymap: false }));
   if (includeDiagnostics) {
     const diagExt = serverDiagnostics();
     diagnosticsExtension = diagExt;
