@@ -760,20 +760,17 @@ export async function runCodeMirrorTests(writeOutput) {
 	);
 
 	runner.test(
-		"Fold all includes nested blocks and unfold all clears them",
+		"Fold all includes same-line nested blocks and unfold all clears them",
 		async (test) => {
 			await withEditor(
 				test,
 				async (view) => {
 					test.assert(foldAllCodeBlocks(view), "Nested blocks should fold");
-					test.assert(
-						countFolds(view) >= 2,
-						"Fold all should retain both outer and nested folds",
-					);
+					test.assertEqual(countFolds(view), 2);
 					test.assert(unfoldAllCodeBlocks(view), "All folds should unfold");
 					test.assertEqual(countFolds(view), 0);
 				},
-				"function outer() {\n  if (true) {\n    console.log('nested');\n  }\n}",
+				"function outer() { if (true) {\n  console.log('nested');\n} }",
 				[javascript()],
 			);
 		},
