@@ -73,8 +73,8 @@ import encodings, { decode, encode } from "utils/encodings";
 import helpers from "utils/helpers";
 import KeyboardEvent from "utils/keyboardEvent";
 import Url from "utils/Url";
-import webview from "./webview";
 import config from "./config";
+import webview from "./webview";
 
 class Acode {
 	#modules = {};
