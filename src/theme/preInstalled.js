@@ -280,7 +280,7 @@ export function updateSystemTheme(darkTheme) {
 
 	if (appSettings?.value?.appTheme === "system") {
 		apply(system.id);
-		appSettings.update({ editorTheme: system.preferredEditorTheme });
+		appSettings.update({ editorTheme: system.preferredEditorTheme }, false);
 	}
 }
 
