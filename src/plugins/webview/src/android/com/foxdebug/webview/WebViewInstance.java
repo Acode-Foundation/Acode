@@ -3,15 +3,12 @@ package com.foxdebug.webview;
 import android.app.Activity;
 import android.content.DialogInterface;
 import android.graphics.Color;
-import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.Window;
-import android.view.WindowManager;
 import android.webkit.DownloadListener;
 import android.webkit.JavascriptInterface;
 import android.webkit.URLUtil;
@@ -38,38 +35,32 @@ public class WebViewInstance {
 
   final String id;
   final String mode;
-  final String title;
   final int width;
   final int height;
-  final int x;
-  final int y;
   final boolean allowNavigation;
   final boolean allowDownloads;
-  final boolean initiallyVisible;
   final WebViewPlugin plugin;
 
   private WebView webView;
   private FrameLayout container;
+  private Activity activity;
   private boolean isDestroyed = false;
+  private boolean isAttached = false;
 
   WebViewInstance(
-    String id, String mode, String title,
-    int width, int height, int x, int y,
+    String id, String mode,
+    int width, int height,
     boolean allowNavigation, boolean allowDownloads,
-    boolean initiallyVisible,
     Activity activity,
     WebViewPlugin plugin
   ) {
     this.id = id;
     this.mode = mode;
-    this.title = title;
     this.width = width;
     this.height = height;
-    this.x = x;
-    this.y = y;
     this.allowNavigation = allowNavigation;
     this.allowDownloads = allowDownloads;
-    this.initiallyVisible = initiallyVisible;
+    this.activity = activity;
     this.plugin = plugin;
   }
 
@@ -78,6 +69,7 @@ public class WebViewInstance {
   }
 
   void createWebView(Activity activity) {
+    this.activity = activity;
     webView = new WebView(activity);
 
     WebSettings settings = webView.getSettings();
@@ -87,9 +79,7 @@ public class WebViewInstance {
     settings.setDisplayZoomControls(false);
     settings.setLoadWithOverviewMode(true);
     settings.setUseWideViewPort(true);
-    settings.setAllowFileAccess(true);
-    settings.setAllowFileAccessFromFileURLs(true);
-    settings.setAllowUniversalAccessFromFileURLs(true);
+    settings.setAllowFileAccess(false);
 
     webView.setWebViewClient(new InstanceWebViewClient());
     webView.setWebChromeClient(new InstanceWebChromeClient());
@@ -119,34 +109,29 @@ public class WebViewInstance {
     webView.evaluateJavascript(bridgeJs, null);
   }
 
-  void attachToActivity(Activity activity) {
+  void attachToActivity() {
+    if (isAttached || isDestroyed || webView == null || activity == null) return;
+
     container = new FrameLayout(activity);
-
-    FrameLayout.LayoutParams webViewParams = new FrameLayout.LayoutParams(
-      ViewGroup.LayoutParams.MATCH_PARENT,
-      ViewGroup.LayoutParams.MATCH_PARENT
-    );
-
     container.setBackgroundColor(Color.argb(180, 0, 0, 0));
 
+    FrameLayout.LayoutParams webViewParams;
     if (mode.equals("window")) {
-      int w = width > 0 ? width : ViewGroup.LayoutParams.WRAP_CONTENT;
-      int h = height > 0 ? height : ViewGroup.LayoutParams.WRAP_CONTENT;
-
-      webViewParams = new FrameLayout.LayoutParams(
-        w > 0 ? dpToPx(activity, w) : ViewGroup.LayoutParams.MATCH_PARENT,
-        h > 0 ? dpToPx(activity, h) : ViewGroup.LayoutParams.MATCH_PARENT
-      );
+      int w = width > 0 ? dpToPx(activity, width) : ViewGroup.LayoutParams.MATCH_PARENT;
+      int h = height > 0 ? dpToPx(activity, height) : ViewGroup.LayoutParams.MATCH_PARENT;
+      webViewParams = new FrameLayout.LayoutParams(w, h);
       webViewParams.gravity = Gravity.CENTER;
-      webViewParams.setMargins(dpToPx(activity, 16), dpToPx(activity, 48), dpToPx(activity, 16), dpToPx(activity, 48));
-
+      webViewParams.setMargins(
+        dpToPx(activity, 16), dpToPx(activity, 48),
+        dpToPx(activity, 16), dpToPx(activity, 48)
+      );
       container.setOnClickListener(new View.OnClickListener() {
         @Override
         public void onClick(View v) {
-          hideInner();
+          container.setVisibility(View.GONE);
         }
       });
-    } else if (mode.equals("panel")) {
+    } else {
       webViewParams = new FrameLayout.LayoutParams(
         ViewGroup.LayoutParams.MATCH_PARENT,
         height > 0 ? dpToPx(activity, height) : (int)(getScreenHeight(activity) * 0.4)
@@ -154,6 +139,9 @@ public class WebViewInstance {
       webViewParams.gravity = Gravity.BOTTOM;
     }
 
+    if (webView.getParent() != null) {
+      ((ViewGroup) webView.getParent()).removeView(webView);
+    }
     container.addView(webView, webViewParams);
 
     ViewGroup rootView = activity.findViewById(android.R.id.content);
@@ -163,6 +151,8 @@ public class WebViewInstance {
         ViewGroup.LayoutParams.MATCH_PARENT
       ));
     }
+
+    isAttached = true;
   }
 
   void loadURL(String url) {
@@ -215,11 +205,6 @@ public class WebViewInstance {
       callbackContext.error("WebView destroyed");
       return;
     }
-    String escaped = message
-      .replace("\\", "\\\\")
-      .replace("'", "\\'")
-      .replace("\n", "\\n")
-      .replace("\r", "\\r");
 
     String js = "if(window.webview&&window.webview._callbacks){" +
       "var msg=" + safeParseJSON(message) + ";" +
@@ -253,12 +238,19 @@ public class WebViewInstance {
     new Handler(Looper.getMainLooper()).post(new Runnable() {
       @Override
       public void run() {
-        if (isDestroyed || container == null) {
-          if (callbackContext != null) callbackContext.error("Cannot show");
+        if (isDestroyed) {
+          if (callbackContext != null) callbackContext.error("WebView destroyed");
           return;
         }
-        container.setVisibility(View.VISIBLE);
-        if (callbackContext != null) callbackContext.success();
+        if (!isAttached) {
+          attachToActivity();
+        }
+        if (container != null) {
+          container.setVisibility(View.VISIBLE);
+          if (callbackContext != null) callbackContext.success();
+        } else {
+          if (callbackContext != null) callbackContext.error("Cannot show");
+        }
       }
     });
   }
@@ -275,12 +267,6 @@ public class WebViewInstance {
         if (callbackContext != null) callbackContext.success();
       }
     });
-  }
-
-  private void hideInner() {
-    if (container != null) {
-      container.setVisibility(View.GONE);
-    }
   }
 
   void reload(CallbackContext callbackContext) {
@@ -315,6 +301,7 @@ public class WebViewInstance {
         }
         webView = null;
         container = null;
+        isAttached = false;
       }
     });
   }
@@ -340,11 +327,13 @@ public class WebViewInstance {
 
   private class InstanceWebViewClient extends WebViewClient {
     @Override
+    public boolean shouldOverrideUrlLoading(WebView view, String url) {
+      return !allowNavigation;
+    }
+
+    @Override
     public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-      if (!allowNavigation) {
-        return true;
-      }
-      return false;
+      return !allowNavigation;
     }
 
     @Override
@@ -413,11 +402,6 @@ public class WebViewInstance {
     @JavascriptInterface
     public void postMessage(String message) {
       plugin.sendMessageToCordova(id, message);
-    }
-
-    @JavascriptInterface
-    public String getWebViewId() {
-      return id;
     }
   }
 }

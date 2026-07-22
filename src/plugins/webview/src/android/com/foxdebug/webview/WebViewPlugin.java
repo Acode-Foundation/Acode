@@ -101,30 +101,24 @@ public class WebViewPlugin extends CordovaPlugin {
   private void create(JSONObject options, final CallbackContext callbackContext) throws JSONException {
     final String id = generateId();
     final String mode = options.optString("mode", "hidden");
-    final String title = options.optString("title", "WebView");
     final int width = options.optInt("width", 0);
     final int height = options.optInt("height", 0);
-    final int x = options.optInt("x", 0);
-    final int y = options.optInt("y", 0);
     final boolean allowNavigation = options.optBoolean("allowNavigation", true);
     final boolean allowDownloads = options.optBoolean("allowDownloads", false);
-    final boolean visible = options.optBoolean("visible", true);
-
-    final String effectiveMode = visible ? mode : "hidden";
 
     cordova.getActivity().runOnUiThread(new Runnable() {
       @Override
       public void run() {
         try {
           WebViewInstance instance = new WebViewInstance(
-            id, effectiveMode, title,
-            width, height, x, y,
+            id, mode,
+            width, height,
             allowNavigation, allowDownloads,
-            visible, cordova.getActivity(),
+            cordova.getActivity(),
             WebViewPlugin.this
           );
 
-          if (effectiveMode.equals("fullscreen")) {
+          if (mode.equals("fullscreen")) {
             instances.put(id, instance);
             launchFullscreenActivity(id, allowNavigation);
             callbackContext.success(id);
@@ -133,8 +127,8 @@ public class WebViewPlugin extends CordovaPlugin {
 
           instance.createWebView(cordova.getActivity());
 
-          if (effectiveMode.equals("window") || effectiveMode.equals("panel")) {
-            instance.attachToActivity(cordova.getActivity());
+          if (mode.equals("window") || mode.equals("panel")) {
+            instance.attachToActivity();
           }
 
           instances.put(id, instance);
@@ -156,6 +150,10 @@ public class WebViewPlugin extends CordovaPlugin {
 
   public WebViewInstance getInstance(String id) {
     return instances.get(id);
+  }
+
+  public void removeInstance(String id) {
+    instances.remove(id);
   }
 
   private void loadURL(String id, String url, CallbackContext callbackContext) {
