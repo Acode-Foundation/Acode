@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chất AI - App Trò Chuyện AI</title>
+  <style>
+    :root {
+      --bg-color: #fff0f5;
+      --card-bg: #ffffff;
+      --primary-color: #ff69b4;
+      --text-color: #4a4a4a;
+      --bot-msg-bg: #ffe4e1;
+      --user-msg-bg: #ff69b4;
+      --user-msg-text: #ffffff;
+    }
+
+    [data-theme="blue"] {
+      --bg-color: #e6f2ff;
+      --card-bg: #ffffff;
+      --primary-color: #3385ff;
+      --text-color: #2c3e50;
+      --bot-msg-bg: #d6e8ff;
+      --user-msg-bg: #3385ff;
+      --user-msg-text: #ffffff;
+    }
+
+    [data-theme="mono"] {
+      --bg-color: #f4f4f5;
+      --card-bg: #ffffff;
+      --primary-color: #18181b;
+      --text-color: #09090b;
+      --bot-msg-bg: #e4e4e7;
+      --user-msg-bg: #18181b;
+      --user-msg-text: #ffffff;
+    }
+
+    [data-theme="cyan"] {
+      --bg-color: #e6fcf5;
+      --card-bg: #ffffff;
+      --primary-color: #20c997;
+      --text-color: #212529;
+      --bot-msg-bg: #c3fae8;
+      --user-msg-bg: #20c997;
+      --user-msg-text: #ffffff;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background-color: var(--bg-color); color: var(--text-color); display: flex; justify-content: center; height: 100vh; padding: 10px; transition: all 0.3s ease; }
+    .app-container { width: 100%; max-width: 450px; background: var(--card-bg); border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); display: flex; flex-direction: column; overflow: hidden; }
+
+    header { padding: 15px; background: var(--primary-color); color: white; display: flex; justify-content: space-between; align-items: center; }
+    header h1 { font-size: 1.2rem; }
+    .theme-select { padding: 5px 10px; border-radius: 12px; border: none; font-size: 0.85rem; outline: none; cursor: pointer; }
+
+    .bot-section { padding: 10px 15px; border-bottom: 1px solid #eee; display: flex; gap: 10px; align-items: center; overflow-x: auto; }
+    .bot-avatar { width: 45px; height: 45px; border-radius: 50%; background: var(--bot-msg-bg); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer; border: 2px solid transparent; flex-shrink: 0; }
+    .bot-avatar.active { border-color: var(--primary-color); }
+    .btn-add-bot { width: 45px; height: 45px; border-radius: 50%; border: 2px dashed var(--primary-color); background: none; color: var(--primary-color); font-size: 1.5rem; cursor: pointer; flex-shrink: 0; }
+
+    .chat-box { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+    .message { max-width: 75%; padding: 10px 14px; border-radius: 15px; font-size: 0.95rem; line-height: 1.4; word-break: break-word; }
+    .message.bot { background: var(--bot-msg-bg); align-self: flex-start; border-bottom-left-radius: 2px; }
+    .message.user { background: var(--user-msg-bg); color: var(--user-msg-text); align-self: flex-end; border-bottom-right-radius: 2px; }
+
+    .input-area { padding: 12px; border-top: 1px solid #eee; display: flex; gap: 8px; }
+    .input-area input { flex: 1; padding: 10px 15px; border: 1px solid #ddd; border-radius: 20px; outline: none; }
+    .input-area button { background: var(--primary-color); color: white; border: none; padding: 0 18px; border-radius: 20px; cursor: pointer; font-weight: bold; }
+
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); justify-content: center; align-items: center; }
+    .modal-content { background: white; padding: 20px; border-radius: 15px; width: 90%; max-width: 350px; display: flex; flex-direction: column; gap: 10px; }
+    .modal-content input, .modal-content textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 8px; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 5px; }
+    .modal-actions button { padding: 6px 12px; border-radius: 6px; border: none; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+<div class="app-container">
+  <header>
+    <h1 id="chat-title">Chất AI</h1>
+    <select class="theme-select" id="themeSelect">
+      <option value="pink">🌸 Hồng phấn</option>
+      <option value="blue">💙 Xanh dương</option>
+      <option value="mono">🖤 Đen trắng</option>
+      <option value="cyan">💎 Xanh ngọc</option>
+    </select>
+  </header>
+
+  <div class="bot-section" id="botList">
+    <button class="btn-add-bot" id="openModalBtn" title="Tạo Bot Mới">+</button>
+  </div>
+
+  <div class="chat-box" id="chatBox">
+    <div class="message bot">Chào bạn! Mình là AI mặc định. Bạn muốn trò chuyện gì nào?</div>
+  </div>
+
+  <div class="input-area">
+    <input type="text" id="userInput" placeholder="Nhập tin nhắn..." onkeydown="if(event.key==='Enter') sendMessage()">
+    <button onclick="sendMessage()">Gửi</button>
+  </div>
+</div>
+
+<div class="modal" id="botModal">
+  <div class="modal-content">
+    <h3>Tạo Nhân Vật AI Mới</h3>
+    <input type="text" id="botName" placeholder="Tên Bot (VD: Yae Miko, Bạn Thân...)">
+    <input type="text" id="botEmoji" placeholder="Icon đại diện (VD: 🦊, 🤖, 👑)">
+    <textarea id="botPrompt" rows="3" placeholder="Tính cách bot (VD: Thích trêu chọc, nói chuyện ngọt ngào...)"></textarea>
+    <div class="modal-actions">
+      <button onclick="closeModal()">Hủy</button>
+      <button style="background: var(--primary-color); color: white;" onclick="createNewBot()">Tạo Bot</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const themeSelect = document.getElementById('themeSelect');
+  themeSelect.addEventListener('change', (e) => {
+    const theme = e.target.value;
+    if (theme === 'pink') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', theme);
+  });
+
+  let bots = [
+    { id: 1, name: 'AI Mặc Định', emoji: '🤖', prompt: 'Bạn là trợ lý vui vẻ.' }
+  ];
+  let currentBot = bots[0];
+
+  function renderBots() {
+    const botListEl = document.getElementById('botList');
+    const addBtn = document.getElementById('openModalBtn');
+    botListEl.innerHTML = '';
+    
+    bots.forEach(bot => {
+      const avatar = document.createElement('div');
+      avatar.className = `bot-avatar ${bot.id === currentBot.id ? 'active' : ''}`;
+      avatar.innerText = bot.emoji;
+      avatar.title = bot.name;
+      avatar.onclick = () => switchBot(bot);
+      botListEl.appendChild(avatar);
+    });
+    
+    botListEl.appendChild(addBtn);
+  }
+
+  function switchBot(bot) {
+    currentBot = bot;
+    document.getElementById('chat-title').innerText = `${bot.emoji} ${bot.name}`;
+    document.getElementById('chatBox').innerHTML = `
+      <div class="message bot">Xin chào! Mình là ${bot.name}. Hãy nhắn tin với mình nhé!</div>
+    `;
+    renderBots();
+  }
+
+  const modal = document.getElementById('botModal');
+  document.getElementById('openModalBtn').onclick = () => modal.style.display = 'flex';
+  function closeModal() { modal.style.display = 'none'; }
+
+  function createNewBot() {
+    const name = document.getElementById('botName').value.trim();
+    const emoji = document.getElementById('botEmoji').value.trim() || '🤖';
+    const prompt = document.getElementById('botPrompt').value.trim();
+
+    if (!name) return alert('Vui lòng nhập tên cho Bot!');
+
+    const newBot = { id: Date.now(), name, emoji, prompt };
+    bots.push(newBot);
+    
+    document.getElementById('botName').value = '';
+    document.getElementById('botEmoji').value = '';
+    document.getElementById('botPrompt').value = '';
+    
+    closeModal();
+    switchBot(newBot);
+  }
+
+  function sendMessage() {
+    const input = document.getElementById('userInput');
+    const text = input.value.trim();
+    if (!text) return;
+
+    const chatBox = document.getElementById('chatBox');
+
+    const userMsg = document.createElement('div');
+    userMsg.className = 'message user';
+    userMsg.innerText = text;
+    chatBox.appendChild(userMsg);
+
+    input.value = '';
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+    setTimeout(() => {
+      const botMsg = document.createElement('div');
+      botMsg.className = 'message bot';
+      botMsg.innerText = `[${currentBot.name}]: Tớ đã nhận được tin nhắn "${text}".`;
+      chatBox.appendChild(botMsg);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }, 800);
+  }
+
+  renderBots();
+</script>
+
+</body>
+</html>
+
+                                          
