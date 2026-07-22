@@ -231,16 +231,6 @@ _shorten_path() {
 
 PROMPT_COMMAND='_PS1_PATH=$(_shorten_path); _PS1_EXIT=$?'
 
-# Source user configs AFTER defaults (so user can override PROMPT_COMMAND)
-if [ -f "$HOME/.bashrc" ]; then
-    source "$HOME/.bashrc"
-fi
-
-if [ -f /etc/bash/bashrc ]; then
-    source /etc/bash/bashrc
-fi
-
-
 # Display MOTD if available
 if [ -s /etc/acode_motd ]; then
     cat /etc/acode_motd
@@ -337,6 +327,15 @@ command_not_found_handle() {
 
 # Replicate behaviour of termux (non standard)
 alias clear='reset'
+
+# Source user configs AFTER defaults (so user can override everything)
+if [ -f "$HOME/.bashrc" ]; then
+    source "$HOME/.bashrc"
+fi
+
+if [ -f /etc/bash/bashrc ]; then
+    source /etc/bash/bashrc
+fi
 
 EOF
 fi
