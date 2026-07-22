@@ -936,16 +936,16 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				return;
 			}
 
-			let action = $el.getAttribute("action") || $el.dataset.action;
+			let action = $el.dataset.action;
 			if (!action) return;
 
 			let url = $el.dataset.url;
-			let name = $el.dataset.name || $el.getAttribute("name");
-			const idOpenDoc = $el.hasAttribute("open-doc");
-			const uuid = $el.getAttribute("uuid");
-			const type = $el.getAttribute("type");
-			const storageType = $el.getAttribute("storageType");
-			const home = $el.getAttribute("home");
+			let name = $el.dataset.name;
+			const isOpenDoc = $el.dataset.openDoc != null;
+			const uuid = $el.dataset.uuid;
+			const type = $el.dataset.type;
+			const storageType = $el.dataset.storageType;
+			const home = $el.dataset.home;
 			const isDir = ["dir", "directory", "folder"].includes(type);
 
 			if (!url) {
@@ -967,7 +967,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				return;
 			}
 
-			if (!url && action === "open" && isDir && !idOpenDoc && !isContextMenu) {
+			if (!url && action === "open" && isDir && !isOpenDoc && !isContextMenu) {
 				loader.hide();
 				util.addPath(name, uuid).then((res) => {
 					const storage = allStorages.find((storage) => storage.uuid === uuid);
@@ -982,7 +982,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			}
 
 			if (isContextMenu) action = "contextmenu";
-			else if (idOpenDoc) action = "open-doc";
+			else if (isOpenDoc) action = "openDoc";
 
 			switch (action) {
 				case "navigation":
@@ -995,7 +995,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					if (isDir) folder();
 					else if (!$el.hasAttribute("disabled")) file();
 					break;
-				case "open-doc":
+				case "openDoc":
 					openDoc();
 					break;
 			}
@@ -1053,7 +1053,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				if (appSettings.value.vibrateOnTap) {
 					navigator.vibrate(config.VIBRATION_TIME);
 				}
-				if ($el.getAttribute("open-doc") === "true") return;
+				if (isOpenDoc) return;
 
 				const deleteText =
 					currentDir.url === "/" ? strings.remove : strings.delete;
@@ -1380,7 +1380,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 			if (IS_FILE_MODE) {
 				util.pushFolder(allStorages, "Select document", null, {
-					"open-doc": true,
+					openDoc: true,
 					notSelectable: true,
 				});
 			}
@@ -1633,7 +1633,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					className="nav"
 					data-url={url}
 					data-name={displayName}
-					attr-action="navigation"
+					data-action="navigation"
 					attr-text={displayName}
 					tabIndex={-1}
 				></span>,
