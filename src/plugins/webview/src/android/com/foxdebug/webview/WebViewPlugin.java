@@ -126,7 +126,7 @@ public class WebViewPlugin extends CordovaPlugin {
 
           if (effectiveMode.equals("fullscreen")) {
             instances.put(id, instance);
-            launchFullscreenActivity(id, title, allowNavigation, allowDownloads);
+            launchFullscreenActivity(id, allowNavigation);
             callbackContext.success(id);
             return;
           }
@@ -147,14 +147,10 @@ public class WebViewPlugin extends CordovaPlugin {
     });
   }
 
-  private void launchFullscreenActivity(
-    String id, String title, boolean allowNavigation, boolean allowDownloads
-  ) {
+  private void launchFullscreenActivity(String id, boolean allowNavigation) {
     Intent intent = new Intent(cordova.getActivity(), WebViewActivity.class);
     intent.putExtra("webviewId", id);
-    intent.putExtra("title", title);
     intent.putExtra("allowNavigation", allowNavigation);
-    intent.putExtra("allowDownloads", allowDownloads);
     cordova.getActivity().startActivity(intent);
   }
 
