@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chatbot Việt Nam</title>
+    <style>
+        /* CSS Variables cho 4 Theme */
+        :root[data-theme="dark"] {
+            --bg-color: #1e1e2e;
+            --panel-bg: #2b2b3d;
+            --text-color: #f8f8f2;
+            --primary-color: #74c7ec;
+            --user-msg-bg: #45475a;
+            --bot-msg-bg: #313244;
+        }
+        :root[data-theme="light"] {
+            --bg-color: #f5f5f5;
+            --panel-bg: #ffffff;
+            --text-color: #333333;
+            --primary-color: #007bff;
+            --user-msg-bg: #e3f2fd;
+            --bot-msg-bg: #e9ecef;
+        }
+        :root[data-theme="emerald"] {
+            --bg-color: #064e3b;
+            --panel-bg: #047857;
+            --text-color: #ecfdf5;
+            --primary-color: #34d399;
+            --user-msg-bg: #059669;
+            --bot-msg-bg: #065f46;
+        }
+        :root[data-theme="sunset"] {
+            --bg-color: #4c0519;
+            --panel-bg: #881337;
+            --text-color: #fff1f2;
+            --primary-color: #fb7185;
+            --user-msg-bg: #be123c;
+            --bot-msg-bg: #9f1239;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Sidebar Cấu hình */
+        .sidebar {
+            width: 300px;
+            background-color: var(--panel-bg);
+            padding: 20px;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .sidebar h2 { margin-top: 0; }
+        .form-group { display: flex; flex-direction: column; gap: 5px; }
+        .form-group label { font-weight: bold; font-size: 0.9em; }
+        .form-group input, .form-group select, .form-group textarea {
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            background: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        /* Khung Chat */
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            padding: 15px 20px;
+            background-color: var(--panel-bg);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .message {
+            max-width: 70%;
+            padding: 10px 15px;
+            border-radius: 10px;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background-color: var(--user-msg-bg);
+        }
+
+        .message.bot {
+            align-self: flex-start;
+            background-color: var(--bot-msg-bg);
+        }
+
+        .chat-input-area {
+            padding: 15px 20px;
+            background-color: var(--panel-bg);
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input-area input {
+            flex: 1;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            background: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        .chat-input-area button {
+            padding: 10px 20px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <h2>Cấu hình Bot</h2>
+        
+        <div class="form-group">
+            <label for="themeSelect">Chủ đề (Theme):</label>
+            <select id="themeSelect">
+                <option value="dark">Tối (Dark)</option>
+                <option value="light">Sáng (Light)</option>
+                <option value="emerald">Ngọc bảo (Emerald)</option>
+                <option value="sunset">Hoàng hôn (Sunset)</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="botName">Tên Bot:</label>
+            <input type="text" id="botName" value="Trợ lý AI">
+        </div>
+
+        <div class="form-group">
+            <label for="botIcon">Biểu tượng (Icon/Emoji):</label>
+            <input type="text" id="botIcon" value="🤖">
+        </div>
+
+        <div class="form-group">
+            <label for="systemPrompt">Lời nhắc tính cách (System Prompt):</label>
+            <textarea id="systemPrompt" rows="4">Bạn là một trợ lý AI tiếng Việt thân thiện và thông minh.</textarea>
+        </div>
+        
+        <button id="clearHistoryBtn" style="padding: 8px; margin-top: auto; cursor: pointer;">Xóa lịch sử chat</button>
+    </div>
+
+    <div class="chat-container">
+        <div class="chat-header">
+            <span id="headerBotIcon" style="font-size: 1.5em;">🤖</span>
+            <h3 id="headerBotName" style="margin: 0;">Trợ lý AI</h3>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            </div>
+
+        <div class="chat-input-area">
+            <input type="text" id="userInput" placeholder="Nhập tin nhắn..." autocomplete="off">
+            <button id="sendBtn">Gửi</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Các Element DOM
+            const themeSelect = document.getElementById('themeSelect');
+            const botNameInput = document.getElementById('botName');
+            const botIconInput = document.getElementById('botIcon');
+            const systemPromptInput = document.getElementById('systemPrompt');
+            const headerBotName = document.getElementById('headerBotName');
+            const headerBotIcon = document.getElementById('headerBotIcon');
+            const chatMessages = document.getElementById('chatMessages');
+            const userInput = document.getElementById('userInput');
+            const sendBtn = document.getElementById('sendBtn');
+            const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+
+            // 1. Quản lý Theme
+            themeSelect.addEventListener('change', (e) => {
+                document.documentElement.setAttribute('data-theme', e.target.value);
+            });
+            document.documentElement.setAttribute('data-theme', 'dark');
+
+            // 2. Cập nhật Thông tin Bot
+            function updateBotProfile() {
+                headerBotName.textContent = botNameInput.value || 'Trợ lý AI';
+                headerBotIcon.textContent = botIconInput.value || '🤖';
+            }
+            botNameInput.addEventListener('input', updateBotProfile);
+            botIconInput.addEventListener('input', updateBotProfile);
+
+            // 3. Quản lý Lịch sử Chat (LocalStorage)
+            let chatHistory = JSON.parse(localStorage.getItem('ai_chat_history')) || [];
+
+            function renderMessages() {
+                chatMessages.innerHTML = '';
+                chatHistory.forEach(msg => {
+                    appendMessageUI(msg.sender, msg.text);
+                });
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+
+            // An toàn dữ liệu: Dùng textContent để hiển thị nội dung động
+            function appendMessageUI(sender, text) {
+                const msgDiv = document.createElement('div');
+                msgDiv.classList.add('message', sender);
+                msgDiv.textContent = text; // Tránh lỗi XSS & tuân thủ yêu cầu textContent
+                chatMessages.appendChild(msgDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+
+            // 4. Trình xử lý lời nhắc & phản hồi mô phỏng (Prompt Handler)
+            function handleSendMessage() {
+                const text = userInput.value.trim();
+                if (!text) return;
+
+                // Thêm tin nhắn người dùng
+                chatHistory.push({ sender: 'user', text: text });
+                appendMessageUI('user', text);
+                userInput.value = '';
+
+                // Giả lập phản hồi từ Bot dựa trên System Prompt
+                setTimeout(() => {
+                    const prompt = systemPromptInput.value;
+                    const botResponse = `[${botNameInput.value}]: Tôi đã nhận được lời nhắn "${text}". (Hệ thống đang hoạt động với vai trò: "${prompt}")`;
+                    
+                    chatHistory.push({ sender: 'bot', text: botResponse });
+                    appendMessageUI('bot', botResponse);
+                    
+                    // Lưu lịch sử
+                    localStorage.setItem('ai_chat_history', JSON.stringify(chatHistory));
+                }, 600);
+
+                localStorage.setItem('ai_chat_history', JSON.stringify(chatHistory));
+            }
+
+            // Sự kiện gửi
+            sendBtn.addEventListener('click', handleSendMessage);
+            userInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') handleSendMessage();
+            });
+
+            // Xóa lịch sử
+            clearHistoryBtn.addEventListener('click', () => {
+                chatHistory = [];
+                localStorage.removeItem('ai_chat_history');
+                renderMessages();
+            });
+
+            // Khởi tạo ban đầu
+            updateBotProfile();
+            renderMessages();
+        });
+    </script>
+</body>
+  </html>
+  
