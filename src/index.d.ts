@@ -8,7 +8,10 @@ declare const PLUGIN_DIR: string;
 declare const KEYBINDING_FILE: string;
 declare const ANDROID_SDK_INT: number;
 declare const DOES_SUPPORT_THEME: boolean;
-declare const acode: object;
+declare const acode: {
+  webview: AcodeWebViewAPI;
+  [key: string]: unknown;
+};
 
 interface Window {
   ASSETS_DIRECTORY: string;
@@ -106,4 +109,37 @@ interface AcodeFile {
 // Extend globalThis with Executor
 declare global {
   var Executor: Executor | undefined;
+}
+
+interface WebViewOptions {
+  title?: string;
+  mode?: "fullscreen" | "window" | "panel" | "hidden";
+  width?: number;
+  height?: number;
+  x?: number;
+  y?: number;
+  allowNavigation?: boolean;
+  allowDownloads?: boolean;
+  visible?: boolean;
+}
+
+interface AcodeWebView {
+  readonly id: string;
+  readonly options: WebViewOptions;
+  loadURL(url: string): Promise<void>;
+  loadHTML(html: string): Promise<void>;
+  evaluate(js: string): Promise<string>;
+  onMessage(callback: (message: unknown) => void): void;
+  offMessage(callback: (message: unknown) => void): void;
+  on(event: string, callback: (event: string, data?: unknown) => void): void;
+  off(event: string, callback: (event: string, data?: unknown) => void): void;
+  postMessage(message: unknown): Promise<void>;
+  show(): Promise<void>;
+  hide(): Promise<void>;
+  reload(): Promise<void>;
+  destroy(): Promise<void>;
+}
+
+interface AcodeWebViewAPI {
+  create(options?: WebViewOptions): Promise<AcodeWebView>;
 }

@@ -73,6 +73,7 @@ import encodings, { decode, encode } from "utils/encodings";
 import helpers from "utils/helpers";
 import KeyboardEvent from "utils/keyboardEvent";
 import Url from "utils/Url";
+import webview from "./webview";
 import config from "./config";
 
 class Acode {
@@ -396,6 +397,7 @@ class Acode {
 		this.define("selectionMenu", selectionMenu);
 		this.define("sidebarApps", sidebarAppsModule);
 		this.define("terminal", terminalModule);
+		this.define("webview", webview);
 		this.define("codemirror", codemirrorModule);
 		this.define("@codemirror/autocomplete", cmAutocomplete);
 		this.define("@codemirror/commands", cmCommands);
