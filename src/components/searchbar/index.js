@@ -1,4 +1,5 @@
 import "./style.scss";
+import { updateSwitchHandle } from "components/checkbox";
 import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
 
@@ -191,7 +192,12 @@ function searchBar(
 	function cloneSearchItem($item) {
 		const $clone = $item.cloneNode(true);
 		syncCheckboxState($clone, $item);
-		$clone.addEventListener("click", () => {
+		$clone.addEventListener("click", (event) => {
+			// The clone is only a proxy for the backing settings item. In
+			// particular, do not let a cloned label activate its checkbox after
+			// this handler: that would emit a second click and toggle the backing
+			// setting twice.
+			event.preventDefault();
 			$item.addEventListener(
 				"settings-item-interaction-end",
 				(event) => {
@@ -214,15 +220,16 @@ function searchBar(
 	function syncSearchClone($clone, $item) {
 		$clone.className = $item.className;
 		$clone.innerHTML = $item.innerHTML;
-		syncCheckboxState($clone, $item);
+		syncCheckboxState($clone, $item, true);
 	}
 
 	/**
 	 * Sync the checked property of checkbox and radio elements, since cloneNode and innerHTML do not copy/preserve dynamic checked state.
 	 * @param {HTMLElement} $clone
 	 * @param {HTMLElement} $item
+	 * @param {boolean} [animateToggle]
 	 */
-	function syncCheckboxState($clone, $item) {
+	function syncCheckboxState($clone, $item, animateToggle = false) {
 		const $itemCheckbox = $item.querySelector(
 			'input[type="checkbox"], input[type="radio"]',
 		);
@@ -232,6 +239,15 @@ function searchBar(
 			);
 			if ($cloneCheckbox) {
 				$cloneCheckbox.checked = $itemCheckbox.checked;
+
+				// Motion animations update the original switch asynchronously.
+				// A clone does not retain the Checkbox component's update
+				// handler, so apply the shared switch transition explicitly.
+				const $checkbox = $cloneCheckbox.closest(".input-checkbox");
+				const $handle = $checkbox?.querySelector(".handle");
+				if ($handle && $checkbox.classList.contains("switch")) {
+					updateSwitchHandle($handle, $cloneCheckbox.checked, animateToggle);
+				}
 			}
 		}
 	}

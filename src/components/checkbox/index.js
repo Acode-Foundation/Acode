@@ -2,6 +2,32 @@ import "./styles.scss";
 import Ref from "html-tag-js/ref";
 import { animate } from "motion";
 
+export function updateSwitchHandle($handle, checked, animateToggle = true) {
+	if (!$handle) return;
+
+	const targetTransform = checked
+		? "translate3d(1.12rem, 0, 0)"
+		: "translate3d(0, 0, 0)";
+
+	if (animateToggle && !document.body.classList.contains("no-animation")) {
+		animate(
+			$handle,
+			{
+				transform: targetTransform,
+			},
+			{
+				type: "spring",
+				stiffness: 500,
+				damping: 28,
+			},
+		).then(() => {
+			$handle.style.transform = targetTransform;
+		});
+	} else {
+		$handle.style.transform = targetTransform;
+	}
+}
+
 /**
  * @typedef {Object} Checkbox
  * @property {string} text
@@ -58,28 +84,7 @@ function Checkbox(text, checked, name, id, type, ref, size, isSwitch) {
 			) !== null;
 
 		if (isSwitch && $handle.el) {
-			const isChecked = !!$input.el.checked;
-			const targetTransform = isChecked
-				? "translate3d(1.12rem, 0, 0)"
-				: "translate3d(0, 0, 0)";
-
-			if (animateToggle && !document.body.classList.contains("no-animation")) {
-				animate(
-					$handle.el,
-					{
-						transform: targetTransform,
-					},
-					{
-						type: "spring",
-						stiffness: 500,
-						damping: 28,
-					},
-				).then(() => {
-					$handle.el.style.transform = targetTransform;
-				});
-			} else {
-				$handle.el.style.transform = targetTransform;
-			}
+			updateSwitchHandle($handle.el, !!$input.el.checked, animateToggle);
 		}
 	}
 
