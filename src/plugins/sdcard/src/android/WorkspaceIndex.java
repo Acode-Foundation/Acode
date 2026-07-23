@@ -49,6 +49,8 @@ class WorkspaceIndex {
   private static final int EXPLICIT_INCLUDE_READ_LIMIT_BYTES = 128 * 1024 * 1024;
   private static final int SAMPLE_BYTES = 8192;
   private static final int MAX_MATCHES_PER_FILE = 5000;
+  private static final int SEARCH_RESULT_BATCH_SIZE = 12;
+  private static final int SEARCH_RESULT_BATCH_MATCHES = 600;
 
   private static final Set<String> BINARY_EXTENSIONS = new HashSet<>();
   private static final Set<String> TEXT_EXTENSIONS = new HashSet<>();
@@ -665,8 +667,11 @@ class WorkspaceIndex {
     if (overlays == null) overlays = new JSONObject();
     String defaultEncoding = options.optString("defaultEncoding", "UTF-8");
     boolean useIndex = options.optBoolean("useIndex", false);
+    boolean batchResults = options.optBoolean("batchResults", false);
 
     Pattern pattern = compileSearchPattern(search, searchOptions);
+    JSONArray searchResultBatch = new JSONArray();
+    int batchedMatches = 0;
     int total = files.length();
     int processed = 0;
     int lastProgress = -1;
@@ -699,11 +704,7 @@ class WorkspaceIndex {
             overlays,
             defaultEncoding,
             useIndex,
-            allowLargeFile,
-            callback,
-            job.id,
-            total,
-            processed
+            allowLargeFile
           );
       } catch (Exception error) {
         Log.d(TAG, "Skipping unreadable search file " + file.optString("url"), error);
@@ -712,7 +713,6 @@ class WorkspaceIndex {
       }
       if (content == null) {
         processed += 1;
-        sendProgress(callback, job.id, total == 0 ? 100 : (processed * 100) / total);
         continue;
       }
 
@@ -724,14 +724,32 @@ class WorkspaceIndex {
         result.put("text", text);
         send(callback, result, true);
       } else {
-        JSONObject result = searchInContent(job.id, file, content, pattern);
-        if (result != null) send(callback, result, true);
+        JSONObject result = searchInContent(file, content, pattern);
+        if (result != null) {
+          if (batchResults) {
+            searchResultBatch.put(result);
+            batchedMatches += result.getJSONArray("matches").length();
+            if (
+              searchResultBatch.length() >= SEARCH_RESULT_BATCH_SIZE ||
+              batchedMatches >= SEARCH_RESULT_BATCH_MATCHES
+            ) {
+              flushSearchResultBatch(callback, job.id, searchResultBatch);
+              batchedMatches = 0;
+            }
+          } else {
+            JSONObject event = baseEvent(job.id, "search-result");
+            event.put("data", result);
+            send(callback, event, true);
+          }
+        }
       }
 
       processed += 1;
-      sendProgress(callback, job.id, total == 0 ? 100 : (processed * 100) / total);
     }
 
+    if (batchResults) {
+      flushSearchResultBatch(callback, job.id, searchResultBatch);
+    }
     sendProgress(callback, job.id, 100);
     send(callback, baseEvent(job.id, "replace".equals(mode) ? "done-replacing" : "done-searching"), false);
   }
@@ -751,7 +769,6 @@ class WorkspaceIndex {
   }
 
   private JSONObject searchInContent(
-    String id,
     JSONObject file,
     String content,
     Pattern pattern
@@ -817,10 +834,19 @@ class WorkspaceIndex {
     }
     data.put("limited", limited);
     data.put("text", text.toString());
+    return data;
+  }
 
-    JSONObject event = baseEvent(id, "search-result");
-    event.put("data", data);
-    return event;
+  private void flushSearchResultBatch(
+    CallbackContext callback,
+    String id,
+    JSONArray batch
+  ) throws JSONException {
+    if (batch.length() == 0) return;
+    JSONObject event = baseEvent(id, "search-results");
+    event.put("data", new JSONArray(batch.toString()));
+    send(callback, event, true);
+    while (batch.length() > 0) batch.remove(0);
   }
 
   private String getFileContent(
@@ -828,11 +854,7 @@ class WorkspaceIndex {
     JSONObject overlays,
     String defaultEncoding,
     boolean useIndex,
-    boolean allowLargeFile,
-    CallbackContext callback,
-    String jobId,
-    int totalFiles,
-    int processedFiles
+    boolean allowLargeFile
   ) throws Exception {
     String url = file.optString("url");
     if (overlays.has(url)) return overlays.optString(url, "");
@@ -875,11 +897,7 @@ class WorkspaceIndex {
       entry,
       defaultEncoding,
       allowLargeFile ? EXPLICIT_INCLUDE_READ_LIMIT_BYTES : DIRECT_SEARCH_READ_LIMIT_BYTES,
-      allowLargeFile ? EXPLICIT_INCLUDE_READ_LIMIT_BYTES : DIRECT_SEARCH_READ_LIMIT_BYTES,
-      callback,
-      jobId,
-      totalFiles,
-      processedFiles
+      allowLargeFile ? EXPLICIT_INCLUDE_READ_LIMIT_BYTES : DIRECT_SEARCH_READ_LIMIT_BYTES
     );
   }
 
@@ -893,11 +911,7 @@ class WorkspaceIndex {
         entry,
         defaultEncoding,
         INDEX_READ_LIMIT_BYTES,
-        MAX_INDEXED_CHARS,
-        null,
-        null,
-        0,
-        0
+        MAX_INDEXED_CHARS
       );
       if (text == null) return null;
       String encoding = normalizeEncoding(defaultEncoding);
@@ -922,26 +936,14 @@ class WorkspaceIndex {
     FileEntry entry,
     String defaultEncoding,
     int readLimitBytes,
-    int maxChars,
-    CallbackContext callback,
-    String jobId,
-    int totalFiles,
-    int processedFiles
+    int maxChars
   )
     throws Exception {
     if (entry.isDirectory || isBinary(entry) || entry.size > readLimitBytes) {
       return null;
     }
 
-    byte[] bytes = readBytes(
-      entry.url,
-      readLimitBytes + 1,
-      callback,
-      jobId,
-      totalFiles,
-      processedFiles,
-      entry.size
-    );
+    byte[] bytes = readBytes(entry.url, readLimitBytes + 1);
     if (bytes.length > readLimitBytes) return null;
     String encoding = detectEncoding(bytes, defaultEncoding);
     if (isSingleByteEncoding(encoding) && looksBinary(bytes)) return null;
@@ -950,15 +952,7 @@ class WorkspaceIndex {
     return text;
   }
 
-  private byte[] readBytes(
-    String url,
-    int limit,
-    CallbackContext callback,
-    String jobId,
-    int totalFiles,
-    int processedFiles,
-    long fileSize
-  ) throws Exception {
+  private byte[] readBytes(String url, int limit) throws Exception {
     InputStream input = null;
     try {
       if (isSafUrl(url)) {
@@ -972,18 +966,8 @@ class WorkspaceIndex {
       byte[] buffer = new byte[8192];
       int read;
       int total = 0;
-      int lastProgress = -1;
       while ((read = input.read(buffer)) != -1) {
         total += read;
-        if (callback != null && jobId != null && totalFiles > 0) {
-          long denominator = fileSize > 0 ? fileSize : limit;
-          int fileProgress = (int) Math.min(99, (total * 100L) / denominator);
-          int progress = ((processedFiles * 100) + fileProgress) / totalFiles;
-          if (progress != lastProgress) {
-            sendProgress(callback, jobId, progress);
-            lastProgress = progress;
-          }
-        }
         if (total > limit) {
           output.write(buffer, 0, read - (total - limit));
           break;

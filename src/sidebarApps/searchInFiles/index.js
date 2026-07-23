@@ -118,6 +118,10 @@ let searching = false;
 let searchVersion = 0;
 let pendingResultText = "";
 let pendingResultFlush = 0;
+let nativeResultQueue = [];
+let nativeResultCursor = 0;
+let nativeResultFrame = 0;
+let pendingNativeSearchFinishVersion = null;
 let nativeSearchId = null;
 let activeSearchTasks = 0;
 let activeReplaceTasks = 0;
@@ -435,6 +439,61 @@ function appendSearchResult(data) {
 	}
 }
 
+function enqueueNativeSearchResults(batch, version) {
+	if (!Array.isArray(batch) || version !== searchVersion) return;
+	nativeResultQueue.push(...batch);
+	scheduleNativeResultDrain(version);
+}
+
+function scheduleNativeResultDrain(version) {
+	if (nativeResultFrame) return;
+	const schedule =
+		window.requestAnimationFrame || ((callback) => setTimeout(callback, 16));
+	nativeResultFrame = schedule(() => drainNativeSearchResults(version));
+}
+
+function drainNativeSearchResults(version) {
+	nativeResultFrame = 0;
+	if (version !== searchVersion) {
+		clearNativeResultQueue();
+		return;
+	}
+
+	const start = performance.now();
+	let processed = 0;
+	while (
+		nativeResultCursor < nativeResultQueue.length &&
+		processed < 4 &&
+		performance.now() - start < 8
+	) {
+		appendSearchResult(nativeResultQueue[nativeResultCursor++]);
+		processed += 1;
+	}
+
+	if (nativeResultCursor < nativeResultQueue.length) {
+		scheduleNativeResultDrain(version);
+		return;
+	}
+
+	nativeResultQueue = [];
+	nativeResultCursor = 0;
+	if (pendingNativeSearchFinishVersion === version) {
+		pendingNativeSearchFinishVersion = null;
+		void finishSearchTask(version);
+	}
+}
+
+function clearNativeResultQueue() {
+	if (nativeResultFrame) {
+		const cancel = window.cancelAnimationFrame || clearTimeout;
+		cancel(nativeResultFrame);
+	}
+	nativeResultFrame = 0;
+	nativeResultQueue = [];
+	nativeResultCursor = 0;
+	pendingNativeSearchFinishVersion = null;
+}
+
 function groupMatchesForDisplay(matches) {
 	const rows = [];
 	const seen = new Set();
@@ -547,6 +606,7 @@ function onInput(e) {
 	resultOverview.reset();
 	resetResultScroll();
 	clearPendingResultText();
+	clearNativeResultQueue();
 	searchResult.setValue("");
 	removeEvents();
 	if (!$search.value) {
@@ -686,6 +746,7 @@ function sendNativeSearch(
 			overlays: getOpenFileOverlays(),
 			defaultEncoding: settings.value.defaultFileEncoding,
 			useIndex: store.useIndex,
+			batchResults: true,
 		},
 		async (event) => {
 			if (
@@ -705,6 +766,9 @@ function sendNativeSearch(
 				case "search-result":
 					appendSearchResult(event.data);
 					break;
+				case "search-results":
+					enqueueNativeSearchResults(event.data, version);
+					break;
 				case "replace-result":
 					filesReplaced.push(event.file);
 					openFile(event.file.url, {
@@ -714,7 +778,14 @@ function sendNativeSearch(
 					break;
 				case "done-searching":
 					nativeSearchId = null;
-					await finishSearchTask(version);
+					if (
+						nativeResultCursor < nativeResultQueue.length ||
+						nativeResultFrame
+					) {
+						pendingNativeSearchFinishVersion = version;
+					} else {
+						await finishSearchTask(version);
+					}
 					break;
 				case "done-replacing":
 					nativeSearchId = null;
@@ -724,6 +795,7 @@ function sendNativeSearch(
 					console.error(event.error);
 					$error.value = event.error || "Native search failed";
 					nativeSearchId = null;
+					clearNativeResultQueue();
 					await (mode === "replace"
 						? finishReplaceTask(version)
 						: finishSearchTask(version));
@@ -735,6 +807,7 @@ function sendNativeSearch(
 			console.error(error);
 			$error.value = error?.message || String(error);
 			nativeSearchId = null;
+			clearNativeResultQueue();
 			await (mode === "replace"
 				? finishReplaceTask(version)
 				: finishSearchTask(version));

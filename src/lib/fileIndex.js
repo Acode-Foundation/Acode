@@ -142,6 +142,7 @@ export function search(options, onEvent = () => {}) {
 				roots: options?.roots || [],
 				files: options?.files || [],
 				overlays: options?.overlays || {},
+				batchResults: options?.batchResults ?? true,
 				defaultEncoding:
 					options?.defaultEncoding || settings.value.defaultFileEncoding,
 			},
