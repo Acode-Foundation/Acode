@@ -301,13 +301,7 @@ export function lspDiagnosticsUiExtension(includeGutter = true): Extension[] {
 		}),
 	];
 	if (includeGutter) {
-		extensions.splice(
-			1,
-			0,
-			lintGutter({
-				tooltipFilter: diagnosticsTooltipFilter,
-			}),
-		);
+		extensions.splice(1, 0, lintGutter());
 	}
 	return extensions;
 }
