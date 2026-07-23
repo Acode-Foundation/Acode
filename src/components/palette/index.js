@@ -45,12 +45,20 @@ This shows that using keyboardHideStart event is faster than not using it.
  * @param {()=>string} onsSelectCb Callback to call when a hint is selected
  * @param {string} placeholder Placeholder for input
  * @param {function} onremove Callback to call when palette is removed
+ * @param {object} [options]
+ * @param {boolean} [options.dynamic] Regenerate hints when the query changes
  * @returns {void}
  */
 // Track active palette for chaining
 let activePalette = null;
 
-export default function palette(getList, onsSelectCb, placeholder, onremove) {
+export default function palette(
+	getList,
+	onsSelectCb,
+	placeholder,
+	onremove,
+	options = {},
+) {
 	// Store previous palette if exists
 	const previousPalette = activePalette;
 	const isChained = !!previousPalette;
@@ -69,7 +77,7 @@ export default function palette(getList, onsSelectCb, placeholder, onremove) {
 	const $palette = <div id="palette">{$input}</div>;
 
 	// Create a palette with input and hints
-	inputhints($input, generateHints, onSelect);
+	inputhints($input, generateHints, onSelect, options);
 
 	// Only set the darkened theme when this is not a chained palette
 	if (!isChained) {
@@ -137,8 +145,8 @@ export default function palette(getList, onsSelectCb, placeholder, onremove) {
 	 * @param {HintCallback} setHints Set hints callback
 	 * @param {HintModification} hintModification Hint modification object
 	 */
-	async function generateHints(setHints, hintModification) {
-		const list = getList(hintModification);
+	async function generateHints(setHints, hintModification, query) {
+		const list = getList(hintModification, query);
 		const data = list instanceof Promise ? await list : list;
 		setHints(data);
 	}

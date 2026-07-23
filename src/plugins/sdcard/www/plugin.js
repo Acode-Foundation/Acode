@@ -75,6 +75,9 @@ module.exports = {
   workspaceSearch: function (options, onEvent, onFail) {
     cordova.exec(onEvent, onFail, 'SDcard', 'workspace search', [options || {}]);
   },
+  workspaceQuery: function (options, onSuccess, onFail) {
+    cordova.exec(onSuccess, onFail, 'SDcard', 'workspace query', [options || {}]);
+  },
   workspaceCancel: function (id, onSuccess, onFail) {
     cordova.exec(onSuccess, onFail, 'SDcard', 'workspace cancel', [id]);
   },

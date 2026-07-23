@@ -27,9 +27,11 @@ import "./style.scss";
  * @param {HTMLInputElement} $input Input field
  * @param {Array<Hint>|HintCallback} hints Hints or a callback to generate hints
  * @param {(value: string) => void} onSelect Callback to call when a hint is selected
+ * @param {object} [options]
+ * @param {boolean} [options.dynamic] Regenerate hints when input changes
  * @returns {{getSelected: ()=>HTMLLIElement, container: HTMLUListElement}}
  */
-export default function inputhints($input, hints, onSelect) {
+export default function inputhints($input, hints, onSelect, options = {}) {
 	/**@type {HTMLUListElement} */
 	const $ul = <Ul />;
 	const LIMIT = 100;
@@ -38,14 +40,26 @@ export default function inputhints($input, hints, onSelect) {
 	let updateUlTimeout;
 	let pages = 0;
 	let currentHints = [];
+	let hintProvider = null;
+	let dynamicUpdateTimeout = 0;
+	let dynamicUpdateVersion = 0;
 
 	$input.addEventListener("focus", onfocus);
 
 	if (typeof hints === "function") {
 		const cb = hints;
+		hintProvider = cb;
 		hints = [];
 		$ul.content = [<Hint hint={{ value: "", text: strings["loading..."] }} />];
-		cb(setHints, hintModification());
+		const version = ++dynamicUpdateVersion;
+		cb(
+			(list) => {
+				if (!options.dynamic || version === dynamicUpdateVersion)
+					setHints(list);
+			},
+			hintModification(),
+			"",
+		);
 	} else {
 		setHints(hints);
 	}
@@ -139,6 +153,21 @@ export default function inputhints($input, hints, onSelect) {
 	 */
 	function oninput() {
 		const { value: toTest } = this;
+		if (options.dynamic && hintProvider) {
+			clearTimeout(dynamicUpdateTimeout);
+			const version = ++dynamicUpdateVersion;
+			dynamicUpdateTimeout = setTimeout(() => {
+				hintProvider(
+					(list) => {
+						if (version === dynamicUpdateVersion) setHints(list);
+					},
+					hintModification(),
+					toTest,
+				);
+			}, 120);
+			return;
+		}
+
 		const matched = [];
 		const regexp = new RegExp(escapeRegExp(toTest), "i");
 		hints.forEach((hint) => {
@@ -171,6 +200,8 @@ export default function inputhints($input, hints, onSelect) {
 		if (preventUpdate) return;
 
 		clearTimeout(updateUlTimeout);
+		clearTimeout(dynamicUpdateTimeout);
+		dynamicUpdateVersion += 1;
 		$input.removeEventListener("keypress", handleKeypress);
 		$input.removeEventListener("keydown", handleKeydown);
 		$input.removeEventListener("blur", onblur);
@@ -215,6 +246,7 @@ export default function inputhints($input, hints, onSelect) {
 	 * @param {Array<Hint>} list Hint items
 	 */
 	function setHints(list) {
+		pages = 0;
 		if (Array.isArray(list)) {
 			hints = list;
 		} else {

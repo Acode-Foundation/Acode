@@ -291,6 +291,15 @@ interface SDcard {
     onEvent: (event: WorkspaceEvent) => void,
     onFail: (err: any) => void,
   ): void;
+  workspaceQuery(
+    options: any,
+    onSuccess: (result: {
+      entries: any[];
+      cursor: number | null;
+      hasMore: boolean;
+    }) => void,
+    onFail: (err: any) => void,
+  ): void;
   workspaceCancel(
     id: string,
     onSuccess?: (res: 'OK') => void,
