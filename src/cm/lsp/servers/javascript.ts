@@ -5,7 +5,7 @@ import { resolveJsTsLanguageId } from "./shared";
 export const javascriptServers: LspServerManifest[] = [
 	defineServer({
 		id: "typescript",
-		label: "TypeScript / JavaScript",
+		label: "TypeScript / JavaScript (Web Worker)",
 		useWorkspaceFolders: true,
 		languages: [
 			"javascript",
@@ -15,9 +15,30 @@ export const javascriptServers: LspServerManifest[] = [
 			"tsx",
 			"jsx",
 		],
-		transport: {
-			kind: "websocket",
+		runtimes: ["web-worker"],
+		transport: { kind: "external" },
+		enabled: true,
+		clientConfig: {
+			builtinExtensions: {
+				inlayHints: true,
+			},
 		},
+		resolveLanguageId: ({ languageId, languageName }) =>
+			resolveJsTsLanguageId(languageId, languageName),
+	}),
+	defineServer({
+		id: "typescript-stdio",
+		label: "TypeScript / JavaScript (STDIO)",
+		useWorkspaceFolders: true,
+		languages: [
+			"javascript",
+			"javascriptreact",
+			"typescript",
+			"typescriptreact",
+			"tsx",
+			"jsx",
+		],
+		runtimes: ["builtin-alpine"],
 		command: "typescript-language-server",
 		args: ["--stdio"],
 		checkCommand: "which typescript-language-server",
@@ -25,7 +46,7 @@ export const javascriptServers: LspServerManifest[] = [
 			executable: "typescript-language-server",
 			packages: ["typescript-language-server", "typescript"],
 		}),
-		enabled: true,
+		enabled: false,
 		initializationOptions: {
 			provideFormatter: true,
 			hostInfo: "acode",
@@ -62,6 +83,11 @@ export const javascriptServers: LspServerManifest[] = [
 				reportStyleChecksAsWarnings: true,
 			},
 		},
+		clientConfig: {
+			builtinExtensions: {
+				inlayHints: true,
+			},
+		},
 		resolveLanguageId: ({ languageId, languageName }) =>
 			resolveJsTsLanguageId(languageId, languageName),
 	}),
@@ -77,6 +103,7 @@ export const javascriptServers: LspServerManifest[] = [
 			"tsx",
 			"jsx",
 		],
+		runtimes: ["builtin-alpine"],
 		transport: {
 			kind: "websocket",
 		},

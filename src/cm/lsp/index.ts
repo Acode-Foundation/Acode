@@ -88,6 +88,7 @@ export {
 	registerRuntimeProvider,
 	selectRuntimeProvider,
 	unregisterRuntimeProvider,
+	WEB_WORKER_RUNTIME_ID,
 } from "./runtimeProviders";
 export {
 	checkRuntimeServerInstallation,

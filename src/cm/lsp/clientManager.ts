@@ -252,6 +252,8 @@ interface InitContext {
   key: string;
   normalizedRootUri: string | null;
   originalRootUri: string | null;
+  runtimeRootUri: string | null;
+  runtimeOriginalRootUri: string | null;
   originalDocumentUri: string;
   documentUri: string;
   runtimeProvider: LspRuntimeProvider;
@@ -460,6 +462,15 @@ export class LspClientManager {
     }
   }
 
+  async disposeServer(serverId: string): Promise<void> {
+    const normalizedId = safeString(serverId).toLowerCase();
+    if (!normalizedId) return;
+    const states = Array.from(this.#clients.values()).filter(
+      (state) => state.server.id.toLowerCase() === normalizedId,
+    );
+    await Promise.allSettled(states.map((state) => state.dispose()));
+  }
+
   async dispose(): Promise<void> {
     try {
       interface FileWithSession {
@@ -554,7 +565,14 @@ export class LspClientManager {
 
     // If initialization is already in progress, wait for it
     if (this.#pendingClients.has(key)) {
-      return this.#pendingClients.get(key)!;
+      const pending = await this.#pendingClients.get(key)!;
+      if (useWsFolders && normalizedRootUri) {
+        const workspace = pending.client.workspace as AcodeWorkspace | null;
+        if (workspace && !workspace.hasWorkspaceFolder(normalizedRootUri)) {
+          workspace.addWorkspaceFolder(normalizedRootUri);
+        }
+      }
+      return pending;
     }
 
     // Create and track the pending initialization
@@ -562,6 +580,8 @@ export class LspClientManager {
       key,
       normalizedRootUri: useWsFolders ? null : normalizedRootUri,
       originalRootUri: useWsFolders ? null : originalRootUri,
+      runtimeRootUri: normalizedRootUri,
+      runtimeOriginalRootUri: originalRootUri,
       originalDocumentUri: target.originalDocumentUri,
       documentUri,
       runtimeProvider,
@@ -570,7 +590,14 @@ export class LspClientManager {
     this.#pendingClients.set(key, initPromise);
 
     try {
-      return await initPromise;
+      const state = await initPromise;
+      if (useWsFolders && normalizedRootUri) {
+        const workspace = state.client.workspace as AcodeWorkspace | null;
+        if (workspace && !workspace.hasWorkspaceFolder(normalizedRootUri)) {
+          workspace.addWorkspaceFolder(normalizedRootUri);
+        }
+      }
+      return state;
     } finally {
       this.#pendingClients.delete(key);
     }
@@ -585,6 +612,8 @@ export class LspClientManager {
       key,
       normalizedRootUri,
       originalRootUri,
+      runtimeRootUri,
+      runtimeOriginalRootUri,
       originalDocumentUri,
       documentUri,
       runtimeProvider,
@@ -861,8 +890,8 @@ export class LspClientManager {
         uri: documentUri,
         documentUri,
         originalDocumentUri,
-        rootUri: normalizedRootUri ?? null,
-        originalRootUri: originalRootUri ?? undefined,
+        rootUri: runtimeRootUri,
+        originalRootUri: runtimeOriginalRootUri ?? undefined,
         serverId: server.id,
         allowNonTerminalWorkspace:
           this.options.allowNonTerminalWorkspace === true,
@@ -956,6 +985,7 @@ export class LspClientManager {
     const fileRefs = new Map<string, Set<EditorView>>();
     const uriAliases = new Map<string, string>();
     const effectiveRoot = normalizedRootUri ?? originalRootUri ?? null;
+    let disposed = false;
 
     const attach = (
       uri: string,
@@ -1005,6 +1035,9 @@ export class LspClientManager {
     };
 
     const dispose = async (): Promise<void> => {
+      if (disposed) return;
+      disposed = true;
+      this.#clients.delete(key);
       try {
         client.disconnect();
       } catch (error) {
@@ -1015,7 +1048,6 @@ export class LspClientManager {
       } catch (error) {
         console.warn(`Error disposing LSP transport ${server.id}`, error);
       }
-      this.#clients.delete(key);
     };
 
     return {
