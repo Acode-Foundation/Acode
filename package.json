@@ -151,6 +151,7 @@
     "@lezer/common": "^1.5.0",
     "@lezer/highlight": "^1.2.3",
     "@lezer/lr": "^1.4.7",
+    "@tanstack/virtual-core": "^3.17.6",
     "@ungap/custom-elements": "^1.3.0",
     "@xterm/addon-attach": "^0.12.0",
     "@xterm/addon-fit": "^0.11.0",

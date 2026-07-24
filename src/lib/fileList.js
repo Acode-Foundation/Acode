@@ -11,6 +11,8 @@ import settings from "./settings";
 
 const filesTree = {};
 const pendingScans = new Set();
+const activeNativeScans = new Map();
+let initialized = false;
 const events = {
 	"add-file": [],
 	"push-file": [],
@@ -25,9 +27,24 @@ export function initFileList() {
 		editorManager.activeFile.on("loadend", initFileList);
 		return;
 	}
+	if (initialized) return;
+	initialized = true;
 	// editorManager.on('add-folder', onAddFolder);
 	editorManager.on("remove-folder", onRemoveFolder);
 	settings.on("update:excludeFolders:after", refresh);
+	settings.on("update:fileBrowser:after", onFileBrowserSettingsChange);
+}
+
+/** Stop background indexing immediately when automatic file listing is disabled. */
+function onFileBrowserSettingsChange(fileBrowser) {
+	if (fileBrowser?.listFiles !== false) return;
+	for (const cancel of activeNativeScans.values()) cancel();
+}
+
+function isFileListingEnabled(rootUrl) {
+	if (settings.value.fileBrowser?.listFiles === false) return false;
+	const folder = addedFolder.find(({ url }) => url === rootUrl);
+	return folder?.listFiles !== false;
 }
 
 /**
@@ -83,6 +100,7 @@ export async function refresh() {
 
 	await Promise.all(
 		addedFolder.map(async ({ url, title }) => {
+			if (!isFileListingEnabled(url)) return;
 			const tree = await Tree.createRoot(url, title);
 			filesTree[url] = tree;
 			trackScan(getAllFiles(tree));
@@ -263,10 +281,23 @@ function onRemoveFolder({ url }) {
  */
 async function getAllFiles(parent, root, options = {}) {
 	root = root || parent.root;
-	if (!parent.children || !root.isConnected) return;
+	if (
+		!parent.children ||
+		!root.isConnected ||
+		!isFileListingEnabled(root.url)
+	) {
+		return;
+	}
 
 	if (supportsNativeWorkspace(root.url)) {
-		return getAllFilesNative(parent, root, options);
+		try {
+			await getAllFilesNative(parent, root, options);
+		} catch (error) {
+			// Never fall back to recursive JavaScript enumeration here. Walking a large
+			// workspace on WebView's main thread makes the entire app unresponsive.
+			window.log("warn", "Native workspace scan stopped", error);
+		}
+		return;
 	}
 
 	try {
@@ -312,48 +343,57 @@ async function getAllFilesNative(parent, root, options = {}) {
 		const finish = (fn, value) => {
 			if (settled) return;
 			settled = true;
+			activeNativeScans.delete(id);
 			fn(value);
 		};
-
-		const cancelIfDisconnected = () => {
-			if (root.isConnected) return false;
+		const cancel = () => {
 			try {
 				sdcard.workspaceCancel(id);
 			} catch (_) {
-				// ignore cancellation failures
+				// The scan can already have completed on the native thread.
 			}
 			finish(resolve);
+		};
+		activeNativeScans.set(id, cancel);
+
+		const cancelIfDisconnected = () => {
+			if (root.isConnected) return false;
+			cancel();
 			return true;
 		};
 
-		sdcard.workspaceScan(
-			{
-				id,
-				rootUrl: parent.url,
-				title: parent.name,
-				excludeFolders: settings.value.excludeFolders,
-				showHiddenFiles: !!settings.value.fileBrowser?.showHiddenFiles,
-				defaultEncoding: settings.value.defaultFileEncoding,
-				indexContent: !!options.indexContent,
-			},
-			(event) => {
-				if (cancelIfDisconnected()) return;
-				switch (event?.type || event?.action) {
-					case "batch":
-						addNativeEntries(root, event.entries || []);
-						break;
-					case "done":
-						finish(resolve);
-						break;
-					case "error":
-						finish(reject, new Error(event.error || "Native scan failed"));
-						break;
-				}
-			},
-			(error) => {
-				finish(reject, error);
-			},
-		);
+		try {
+			sdcard.workspaceScan(
+				{
+					id,
+					rootUrl: parent.url,
+					title: parent.name,
+					excludeFolders: settings.value.excludeFolders,
+					showHiddenFiles: !!settings.value.fileBrowser?.showHiddenFiles,
+					defaultEncoding: settings.value.defaultFileEncoding,
+					indexContent: !!options.indexContent,
+				},
+				(event) => {
+					if (cancelIfDisconnected()) return;
+					switch (event?.type || event?.action) {
+						case "batch":
+							addNativeEntries(root, event.entries || []);
+							break;
+						case "done":
+							finish(resolve);
+							break;
+						case "error":
+							finish(reject, new Error(event.error || "Native scan failed"));
+							break;
+					}
+				},
+				(error) => {
+					finish(reject, error);
+				},
+			);
+		} catch (error) {
+			finish(reject, error);
+		}
 	});
 }
 
@@ -395,7 +435,12 @@ function emit(event, ...args) {
 
 function trackScan(scan) {
 	pendingScans.add(scan);
-	scan.finally(() => pendingScans.delete(scan));
+	// `finally()` creates a second rejecting promise. Nothing observes that promise,
+	// so a handled native scan failure was still reported as "Uncaught (in promise)".
+	scan.then(
+		() => pendingScans.delete(scan),
+		() => pendingScans.delete(scan),
+	);
 	return scan;
 }
 
@@ -406,7 +451,7 @@ function trackScan(scan) {
  * @param {Tree} root
  */
 async function createChildTree(parent, item, root) {
-	if (!root.isConnected) return;
+	if (!root.isConnected || !isFileListingEnabled(root.url)) return;
 	const { name, url, isDirectory, mime, type, size, modifiedDate } = item;
 	const exists = parent.children.findIndex((child) => child.url === url);
 	if (exists > -1) {
@@ -421,7 +466,7 @@ async function createChildTree(parent, item, root) {
 		size,
 		modifiedDate,
 	);
-	if (!root.isConnected) return;
+	if (!root.isConnected || !isFileListingEnabled(root.url)) return;
 
 	const existingTree = getTree(Object.values(filesTree), file.url);
 
