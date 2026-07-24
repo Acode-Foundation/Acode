@@ -51,6 +51,7 @@ import windowResize from "handlers/windowResize";
 import actionStack from "lib/actionStack";
 import commands from "lib/commands";
 import EditorFile from "lib/editorFile";
+import fileIndex from "lib/fileIndex";
 import files from "lib/fileList";
 import fileTypeHandler from "lib/fileTypeHandler";
 import fonts from "lib/fonts";
@@ -365,7 +366,21 @@ class Acode {
 		this.define("dialogBox", dialog);
 		this.define("prompt", prompt);
 		this.define("intent", intent);
-		this.define("fileList", files);
+		let didWarnAboutFileList = false;
+		const deprecatedFileList = (...args) => {
+			if (!didWarnAboutFileList) {
+				didWarnAboutFileList = true;
+				console.warn(
+					'acode.require("fileList") is deprecated. Use the asynchronous "fileIndex" API. fileList now contains only non-native storage providers.',
+				);
+			}
+			return files(...args);
+		};
+		Object.assign(deprecatedFileList, files);
+		deprecatedFileList.deprecated = true;
+		deprecatedFileList.replacement = "fileIndex";
+		this.define("fileList", deprecatedFileList);
+		this.define("fileIndex", fileIndex);
 		this.define("fs", fsOperation);
 		this.define("confirm", confirm);
 		this.define("helpers", helpers);

@@ -215,9 +215,9 @@ function openFolder(_path, opts = {}) {
 			$root.remove();
 		}
 
+		FileList.remove(_path);
 		const index = addedFolder.findIndex((folder) => folder.url === _path);
 		if (index !== -1) addedFolder.splice(index, 1);
-		FileList.remove(_path);
 		editorManager.emit("update", "remove-folder");
 		editorManager.onupdate("remove-folder", event);
 		editorManager.emit("remove-folder", event);

@@ -8,8 +8,10 @@ import Sidebar, { preventSlide } from "components/sidebar";
 import escapeStringRegexp from "escape-string-regexp";
 import Reactive from "html-tag-js/reactive";
 import Ref from "html-tag-js/ref";
+import fileIndex from "lib/fileIndex";
 import files, { Tree, whenReady as waitForFileList } from "lib/fileList";
 import openFile from "lib/openFile";
+import { addedFolder } from "lib/openFolder";
 import settings from "lib/settings";
 import helpers from "utils/helpers";
 import { createSearchResultView } from "./cmResultView";
@@ -116,6 +118,10 @@ let searching = false;
 let searchVersion = 0;
 let pendingResultText = "";
 let pendingResultFlush = 0;
+let nativeResultQueue = [];
+let nativeResultCursor = 0;
+let nativeResultFrame = 0;
+let pendingNativeSearchFinishVersion = null;
 let nativeSearchId = null;
 let activeSearchTasks = 0;
 let activeReplaceTasks = 0;
@@ -433,6 +439,61 @@ function appendSearchResult(data) {
 	}
 }
 
+function enqueueNativeSearchResults(batch, version) {
+	if (!Array.isArray(batch) || version !== searchVersion) return;
+	nativeResultQueue.push(...batch);
+	scheduleNativeResultDrain(version);
+}
+
+function scheduleNativeResultDrain(version) {
+	if (nativeResultFrame) return;
+	const schedule =
+		window.requestAnimationFrame || ((callback) => setTimeout(callback, 16));
+	nativeResultFrame = schedule(() => drainNativeSearchResults(version));
+}
+
+function drainNativeSearchResults(version) {
+	nativeResultFrame = 0;
+	if (version !== searchVersion) {
+		clearNativeResultQueue();
+		return;
+	}
+
+	const start = performance.now();
+	let processed = 0;
+	while (
+		nativeResultCursor < nativeResultQueue.length &&
+		processed < 4 &&
+		performance.now() - start < 8
+	) {
+		appendSearchResult(nativeResultQueue[nativeResultCursor++]);
+		processed += 1;
+	}
+
+	if (nativeResultCursor < nativeResultQueue.length) {
+		scheduleNativeResultDrain(version);
+		return;
+	}
+
+	nativeResultQueue = [];
+	nativeResultCursor = 0;
+	if (pendingNativeSearchFinishVersion === version) {
+		pendingNativeSearchFinishVersion = null;
+		void finishSearchTask(version);
+	}
+}
+
+function clearNativeResultQueue() {
+	if (nativeResultFrame) {
+		const cancel = window.cancelAnimationFrame || clearTimeout;
+		cancel(nativeResultFrame);
+	}
+	nativeResultFrame = 0;
+	nativeResultQueue = [];
+	nativeResultCursor = 0;
+	pendingNativeSearchFinishVersion = null;
+}
+
 function groupMatchesForDisplay(matches) {
 	const rows = [];
 	const seen = new Set();
@@ -545,6 +606,7 @@ function onInput(e) {
 	resultOverview.reset();
 	resetResultScroll();
 	clearPendingResultText();
+	clearNativeResultQueue();
 	searchResult.setValue("");
 	removeEvents();
 	if (!$search.value) {
@@ -576,10 +638,17 @@ async function searchAll() {
 	if (version !== searchVersion) return;
 
 	const allFiles = files().filter((file) => !helpers.isBinary(file));
-	const forceUrls = new Set();
+	const nativeRoots = addedFolder
+		.filter(({ listFiles }) => listFiles)
+		.map(({ url }) => url)
+		.filter((url) => supportsNativeSearch(url));
+	const nativeOpenFiles = [];
 	editorManager.files.forEach((file) => {
 		if (!file.uri || helpers.isBinary(file.uri)) return;
-		forceUrls.add(file.uri);
+		if (supportsNativeSearch(file.uri)) {
+			nativeOpenFiles.push(new Tree(file.name, file.uri, false));
+			return;
+		}
 		const exists = allFiles.find((f) => f.url === file.uri);
 		if (exists) return;
 
@@ -588,7 +657,7 @@ async function searchAll() {
 
 	const filesToSearch = allFiles;
 
-	if (!filesToSearch.length) {
+	if (!filesToSearch.length && !nativeRoots.length && !nativeOpenFiles.length) {
 		searchResult.setGhostText(strings["no result"], { row: 0, column: 0 });
 		$progress.value = 100;
 		return;
@@ -599,16 +668,20 @@ async function searchAll() {
 	fileNames.length = 0;
 	currentSearchRegex = regex;
 	searchResult.setGhostText(strings["searching..."], { row: 0, column: 0 });
-	const nativeFiles = filesToSearch.filter((file) =>
-		supportsNativeSearch(file.url),
-	);
 	const workerFiles = filesToSearch.filter(
 		(file) => !supportsNativeSearch(file.url),
 	);
 	activeSearchTasks = 0;
-	if (nativeFiles.length) {
+	if (nativeRoots.length || nativeOpenFiles.length) {
 		activeSearchTasks += 1;
-		sendNativeSearch("search", nativeFiles, search, options);
+		sendNativeSearch(
+			"search",
+			nativeOpenFiles,
+			search,
+			options,
+			undefined,
+			nativeRoots,
+		);
 	}
 	if (workerFiles.length) {
 		activeSearchTasks += 1;
@@ -633,6 +706,7 @@ async function readSearchFileContent(uri) {
 
 function supportsNativeSearch(url = "") {
 	return (
+		fileIndex.supports(url) &&
 		typeof sdcard !== "undefined" &&
 		typeof sdcard.workspaceSearch === "function" &&
 		(/^file:/.test(url) || /^content:/.test(url))
@@ -649,7 +723,14 @@ function cancelNativeSearch() {
 	nativeSearchId = null;
 }
 
-function sendNativeSearch(mode, searchFiles, search, options, replace) {
+function sendNativeSearch(
+	mode,
+	searchFiles,
+	search,
+	options,
+	replace,
+	roots = [],
+) {
 	const id = `search-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 	const version = searchVersion;
 	nativeSearchId = id;
@@ -658,12 +739,14 @@ function sendNativeSearch(mode, searchFiles, search, options, replace) {
 			id,
 			mode,
 			files: searchFiles.map((file) => file.toJSON()),
+			roots,
 			search,
 			replace,
 			options,
-			overlays: getOpenFileOverlays(searchFiles),
+			overlays: getOpenFileOverlays(),
 			defaultEncoding: settings.value.defaultFileEncoding,
 			useIndex: store.useIndex,
+			batchResults: true,
 		},
 		async (event) => {
 			if (
@@ -683,6 +766,9 @@ function sendNativeSearch(mode, searchFiles, search, options, replace) {
 				case "search-result":
 					appendSearchResult(event.data);
 					break;
+				case "search-results":
+					enqueueNativeSearchResults(event.data, version);
+					break;
 				case "replace-result":
 					filesReplaced.push(event.file);
 					openFile(event.file.url, {
@@ -692,7 +778,14 @@ function sendNativeSearch(mode, searchFiles, search, options, replace) {
 					break;
 				case "done-searching":
 					nativeSearchId = null;
-					await finishSearchTask(version);
+					if (
+						nativeResultCursor < nativeResultQueue.length ||
+						nativeResultFrame
+					) {
+						pendingNativeSearchFinishVersion = version;
+					} else {
+						await finishSearchTask(version);
+					}
 					break;
 				case "done-replacing":
 					nativeSearchId = null;
@@ -702,6 +795,7 @@ function sendNativeSearch(mode, searchFiles, search, options, replace) {
 					console.error(event.error);
 					$error.value = event.error || "Native search failed";
 					nativeSearchId = null;
+					clearNativeResultQueue();
 					await (mode === "replace"
 						? finishReplaceTask(version)
 						: finishSearchTask(version));
@@ -713,6 +807,7 @@ function sendNativeSearch(mode, searchFiles, search, options, replace) {
 			console.error(error);
 			$error.value = error?.message || String(error);
 			nativeSearchId = null;
+			clearNativeResultQueue();
 			await (mode === "replace"
 				? finishReplaceTask(version)
 				: finishSearchTask(version));
@@ -720,11 +815,10 @@ function sendNativeSearch(mode, searchFiles, search, options, replace) {
 	);
 }
 
-function getOpenFileOverlays(searchFiles) {
-	const supportedUrls = new Set(searchFiles.map(({ url }) => url));
+function getOpenFileOverlays() {
 	const overlays = {};
 	editorManager.files.forEach((file) => {
-		if (!file.uri || !supportedUrls.has(file.uri)) return;
+		if (!file.uri || !supportsNativeSearch(file.uri)) return;
 		if (!file.session?.doc) return;
 		try {
 			overlays[file.uri] = getDocText(file.session.doc);
@@ -743,16 +837,7 @@ async function waitForFileListIfReady() {
 }
 
 function markIndexDirty(urls) {
-	if (
-		typeof sdcard !== "undefined" &&
-		typeof sdcard.workspaceMarkDirty === "function"
-	) {
-		try {
-			sdcard.workspaceMarkDirty(urls);
-		} catch (_) {
-			// ignore native dirty-mark failures
-		}
-	}
+	fileIndex.markDirty(urls).catch(() => {});
 }
 
 function appendSearchResultText(text) {
