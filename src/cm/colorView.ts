@@ -13,7 +13,10 @@ import {
 	openColorPicker,
 	type ColorChipPayload,
 } from "./colorChip";
-import { lspDocumentColorsField } from "./lsp/documentColors";
+import {
+	didReplaceLspDocumentColors,
+	lspDocumentColorsField,
+} from "./lsp/documentColors";
 
 interface DocRange {
 	from: number;
@@ -264,16 +267,11 @@ class ColorViewPlugin {
 	}
 
 	update(update: ViewUpdate): void {
-		const lspChanged =
-			update.startState.field(lspDocumentColorsField, false) !==
-			update.state.field(lspDocumentColorsField, false);
-
 		if (update.docChanged || update.viewportChanged || update.geometryChanged) {
 			this.scheduleDecorations(update);
 		}
 
-		// Rescan when LSP colors arrive/change so regex fills gaps / drops overlaps
-		if (lspChanged) {
+		if (didReplaceLspDocumentColors(update)) {
 			this.pendingView = update.view;
 			this.pendingDirtyRanges = normalizeRanges([
 				...this.pendingDirtyRanges,

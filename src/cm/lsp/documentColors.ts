@@ -18,6 +18,7 @@ import type {
 	TextEdit,
 } from "vscode-languageserver-types";
 import {
+	clamp01,
 	colorChipDecoration,
 	colorChipTheme,
 	cssToLspColor,
@@ -219,9 +220,14 @@ function applyTextEdits(
 	return true;
 }
 
-function clamp01(n: number): number {
-	if (!Number.isFinite(n)) return 0;
-	return Math.min(1, Math.max(0, n));
+const MAX_CONNECT_RETRIES = 30;
+const MAX_CAP_RETRIES = 30;
+
+/** True when a transaction replaced the LSP color list (not just mapped positions). */
+export function didReplaceLspDocumentColors(update: ViewUpdate): boolean {
+	return update.transactions.some((t) =>
+		t.effects.some((e) => e.is(setColors)),
+	);
 }
 
 function createPlugin(config: DocumentColorsConfig) {
@@ -238,6 +244,7 @@ function createPlugin(config: DocumentColorsConfig) {
 			providerKnown = false;
 			hasProvider = false;
 			connectRetries = 0;
+			capRetries = 0;
 
 			constructor(private view: EditorView) {
 				this.schedule(true);
@@ -249,9 +256,7 @@ function createPlugin(config: DocumentColorsConfig) {
 				if (
 					update.viewportChanged ||
 					update.docChanged ||
-					update.transactions.some((t) =>
-						t.effects.some((e) => e.is(setColors)),
-					)
+					didReplaceLspDocumentColors(update)
 				) {
 					this.decorations = buildDecos(
 						colors,
@@ -291,7 +296,8 @@ function createPlugin(config: DocumentColorsConfig) {
 						this.providerKnown = false;
 						this.clearColors();
 					}
-					if (this.connectRetries < 30) {
+					this.capRetries = 0;
+					if (this.connectRetries < MAX_CONNECT_RETRIES) {
 						this.connectRetries++;
 						this.schedule(false);
 					}
@@ -305,12 +311,13 @@ function createPlugin(config: DocumentColorsConfig) {
 					| undefined;
 
 				if (!caps) {
-					if (this.connectRetries < 30) {
-						this.connectRetries++;
+					if (this.capRetries < MAX_CAP_RETRIES) {
+						this.capRetries++;
 						this.schedule(false);
 					}
 					return;
 				}
+				this.capRetries = 0;
 
 				const provider = !!caps.colorProvider;
 				this.providerKnown = true;

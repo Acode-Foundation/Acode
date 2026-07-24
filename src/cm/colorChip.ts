@@ -110,7 +110,7 @@ export async function openColorPicker(seed: string): Promise<string | null> {
 	}
 }
 
-function clamp01(n: number): number {
+export function clamp01(n: number): number {
 	if (!Number.isFinite(n)) return 0;
 	return Math.min(1, Math.max(0, n));
 }

@@ -55,6 +55,7 @@ export type {
 } from "./documentColors";
 export {
 	cssToLspColor,
+	didReplaceLspDocumentColors,
 	documentColorsClientExtension,
 	documentColorsEditorExtension,
 	documentColorsExtension,
