@@ -14,6 +14,7 @@ import Uri from "utils/Uri";
 import Url from "utils/Url";
 import { clearDiagnosticsEffect } from "./diagnostics";
 import { supportsBuiltinFormatting } from "./formattingSupport";
+import { documentColorsExtension } from "./documentColors";
 import { inlayHintsExtension } from "./inlayHints";
 import { addLspLog } from "./logs";
 import { selectRuntimeProvider } from "./runtimeProviders";
@@ -210,6 +211,7 @@ function buildBuiltinExtensions(
     signature: includeSignature = true,
     diagnostics: includeDiagnostics = true,
     inlayHints: includeInlayHints = false,
+    documentColors: includeDocumentColors = true,
   } = config;
 
   const extensions: Extension[] = [];
@@ -226,6 +228,10 @@ function buildBuiltinExtensions(
   if (includeInlayHints) {
     const hintsExt = inlayHintsExtension();
     extensions.push(hintsExt as LSPClientExtension as Extension);
+  }
+  if (includeDocumentColors) {
+    const colorsExt = documentColorsExtension();
+    extensions.push(colorsExt as LSPClientExtension as Extension);
   }
 
   return { extensions, diagnosticsExtension };
@@ -597,6 +603,7 @@ export class LspClientManager {
             diagnostics: builtinConfig.diagnostics !== false,
             inlayHints: builtinConfig.inlayHints === true,
             formatting: builtinConfig.formatting !== false,
+            documentColors: builtinConfig.documentColors !== false,
           })
         : { extensions: [], diagnosticsExtension: null };
 
