@@ -6,6 +6,7 @@ import Checkbox from "components/checkbox";
 import Contextmenu from "components/contextmenu";
 import Page from "components/page";
 import searchBar from "components/searchbar";
+import createTailSpinSvg from "components/tailSpin.js";
 import terminalManager from "components/terminal/terminalManager";
 import alert from "dialogs/alert";
 import confirm from "dialogs/confirm";
@@ -1466,64 +1467,32 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 		/**
 		 * Gets directory for given url for rendering
-		 * @param {String} url
-		 * @param {String} name
-		 * @returns {Promise<{name: String, url: String, list: [], scroll: Number}>}
+		 * @param {string} url
+		 * @returns {Promise<object[]>}
 		 */
-		async function getDir(url, name) {
-			const { fileBrowser } = appSettings.value;
-			let list = [];
-			let error = false;
-
-			if (cachedDir.has(url)) {
-				return cachedDir.get(url);
+		async function getDirList(url) {
+			let list;
+			if (url === "/") {
+				list = await listAllStorages();
 			} else {
-				if (url === "/") {
-					list = await listAllStorages();
-				} else {
-					const id = helpers.uuid();
-					let loaderTimeout = 10000;
-
-					if (["ftp:", "sftp:"].includes(Url.getProtocol(url))) {
-						loaderTimeout = 0;
-					}
-
-					progress[id] = true;
-					const timeout = setTimeout(() => {
-						loader.create(name, strings.loading + "...", {
-							timeout: loaderTimeout,
-							oncancel() {
-								navigate("/", "/");
-								progress[id] = false;
-							},
-						});
-					}, 100);
-
-					const fs = fsOperation(url);
-					try {
-						list = (await fs.lsDir()) ?? [];
-					} catch (err) {
-						if (progress[id]) {
-							helpers.error(err, url);
-						} else {
-							console.error(err);
-						}
-					}
-
-					error = !progress[id];
-
-					delete progress[id];
+				const p1 = fsOperation(url).lsDir();
+				const { promise: p2, reject } = Promise.withResolvers();
+				const timeout = setTimeout(() => {
+					reject(new Error("Directory loading timed out."));
+				}, 15000);
+				try {
+					list = await Promise.race([p1, p2]);
+				} finally {
 					clearTimeout(timeout);
-					loader.destroy();
 				}
-				if (error) return null;
-				return {
-					url,
-					name,
-					scroll: 0,
-					list: helpers.sortDir(list, fileBrowser, mode),
-				};
 			}
+
+			if (list?.length) {
+				const { fileBrowser } = appSettings.value;
+				list = helpers.sortDir(list, fileBrowser, mode);
+			}
+
+			return list ?? [];
 		}
 
 		/**
@@ -1531,21 +1500,14 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		 * @param {String} url
 		 * @param {String} name
 		 */
-		async function navigate(url, name) {
+		function navigate(url, name) {
 			if (typeof url === "object") ({ url, name } = url);
-
-			if (document.getElementById("search-bar")) {
-				hideSearchBar();
-			}
 
 			const inStack = navStack.has(url);
 			if (inStack) navStack.popUntil(url);
+			else navStack.push(url, name);
 
-			const dir = await getDir(url, name);
-			if (dir) {
-				if (!inStack) navStack.push(url, name);
-				render(dir);
-			}
+			renderCurrentDir();
 		}
 
 		/**
@@ -1728,14 +1690,11 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			if (doesReload) reload();
 		}
 
-		function render(dir) {
-			const { url, list, scroll } = dir;
-			const $list = helpers.parseHTML(
-				mustache.render(_list, {
-					msg: strings["empty folder message"],
-					list,
-				}),
-			);
+		/**
+		 * @param {boolean} force
+		 */
+		async function renderCurrentDir(force) {
+			const { url, name } = navStack.get(-1) ?? {};
 
 			if (IS_FOLDER_MODE) $openFolder.disabled = (url || "/") === "/";
 
@@ -1745,25 +1704,76 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 			const $oldList = $content.get("#list");
 			if ($oldList) {
-				const { url } = currentDir;
-				if (url && cachedDir.has(url)) {
-					cachedDir.get(url).scroll = $oldList.scrollTop;
-				}
+				const dir = currentDir;
+				if (dir?.url) dir.scroll = $oldList.scrollTop;
 				$oldList.remove();
 			}
-			$content.append($list);
-			$list.scrollTop = scroll;
+
+			if (force) cachedDir.delete(url);
+			const dir = (!force && url && cachedDir.get(url)) || {
+				url,
+				name,
+				scroll: 0,
+			};
+			const _dir = currentDir;
+			currentDir = dir;
+			updatePasteToggler();
+
+			let $placeholder;
+			let errMsg;
+			let { list } = dir;
+			if (!list) {
+				$placeholder = helpers.parseHTML(mustache.render(_list, {}));
+				$placeholder.classList.add("placeholder");
+				$placeholder.innerHTML = `<span id="spinner">${createTailSpinSvg()}</span>`;
+				$content.appendChild($placeholder);
+
+				try {
+					list = await getDirList(url);
+				} catch (err) {
+					currentDir = _dir;
+					let name = "Error";
+					let code = Number.NaN;
+					let msg = err;
+					if (typeof err === "object") {
+						name = `${err.name ?? ""}` || name;
+						msg = err.message;
+						code = +err.code;
+					}
+					errMsg = name;
+					if (code === code) errMsg += ` (${code})`;
+					if ((msg = `${msg ?? ""}`)) errMsg += `: ${msg}`;
+
+					const url2 = /^(content|file|s?ftp|https?):/.test(url)
+						? helpers.getVirtualPath(url)
+						: url;
+					console.group("Error reading:", url2);
+					if (code === code) console.log("Code:", code);
+					console.error(err);
+					console.groupEnd();
+				}
+				if (abortSignal.aborted) return;
+				dir.list = list;
+			}
+
+			const $list = helpers.parseHTML(
+				mustache.render(_list, {
+					msg: errMsg ?? (!list?.length && strings["empty folder message"]),
+					list,
+				}),
+			);
+
+			if (!$placeholder) $content.appendChild($list);
+			else $placeholder.replaceWith($list);
+
+			$list.scrollTop = +dir.scroll || 0;
 			$list.focus();
 
-			currentDir = dir;
 			cachedDir.set(url, dir);
-			updatePasteToggler();
 		}
 
 		function reload() {
-			const { url, name } = currentDir;
-			cachedDir.delete(url);
-			navigate(url, name);
+			renderCurrentDir(true);
 		}
 
 		/**
