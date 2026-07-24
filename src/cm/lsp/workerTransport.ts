@@ -192,6 +192,22 @@ export function createWorkerTransport(
 				settleReady();
 				addLspLog(serverId, "info", "Web Worker is ready");
 				return;
+			case "error": {
+				const message =
+					typeof data.message === "string" && data.message
+						? data.message
+						: `The ${serverId} worker failed to start`;
+				const error = new Error(message);
+				addLspLog(serverId, "error", message);
+				console.error(`[LSP:${serverId}:worker] ${message}`);
+				if (!disposed) {
+					disposed = true;
+					listeners.clear();
+					worker.terminate();
+				}
+				settleReady(error);
+				return;
+			}
 			case "host-request":
 				void handleHostRequest(data);
 				return;

@@ -368,13 +368,13 @@ export function startWorkerServer(factory: AdapterFactory): void {
 					workerScope.postMessage({ kind: "ready" });
 				},
 				(error) => {
-					sendLog(
-						"error",
-						`Failed to initialize worker: ${
-							error instanceof Error ? error.message : String(error)
-						}`,
-					);
-					throw error;
+					const message =
+						error instanceof Error ? error.message : String(error);
+					sendLog("error", `Failed to initialize worker: ${message}`);
+					// Signal the host immediately, then shut down so we do not
+					// leave a live worker waiting for the host startup timeout.
+					workerScope.postMessage({ kind: "error", message });
+					workerScope.close();
 				},
 			);
 			return;

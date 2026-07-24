@@ -18,6 +18,8 @@ export class NestedLspClient {
 	private readonly versions = new Map<string, number>();
 	private nextRequestId = 0;
 	private ready: Promise<void>;
+	/** Set when the worker fails or is disposed; new requests fail immediately. */
+	private closedError: Error | null = null;
 
 	constructor(
 		url: string,
@@ -32,28 +34,44 @@ export class NestedLspClient {
 			name: `acode-embedded-${config.serverId}-lsp`,
 		});
 		this.ready = new Promise<void>((resolve, reject) => {
-			const timeout = setTimeout(
-				() => reject(new Error(`Timed out starting ${config.serverId} worker`)),
-				10000,
-			);
+			const timeout = setTimeout(() => {
+				const error = new Error(
+					`Timed out starting ${config.serverId} worker`,
+				);
+				this.fail(error);
+				reject(error);
+			}, 10000);
 			this.worker.onmessage = (event: MessageEvent<unknown>) => {
 				const data = event.data;
-				if (
-					data &&
-					typeof data === "object" &&
-					(data as { kind?: unknown }).kind === "ready"
-				) {
-					clearTimeout(timeout);
-					resolve();
-					return;
+				if (data && typeof data === "object") {
+					const kind = (data as { kind?: unknown }).kind;
+					if (kind === "ready") {
+						clearTimeout(timeout);
+						resolve();
+						return;
+					}
+					if (kind === "error") {
+						clearTimeout(timeout);
+						const message =
+							typeof (data as { message?: unknown }).message === "string"
+								? (data as { message: string }).message
+								: "Nested worker failed";
+						const error = new Error(message);
+						this.fail(error);
+						reject(error);
+						return;
+					}
 				}
 				void this.handleMessage(data);
 			};
 			this.worker.onerror = (event) => {
 				clearTimeout(timeout);
-				reject(new Error(event.message || "Nested worker failed"));
+				const error = new Error(event.message || "Nested worker failed");
+				this.fail(error);
+				reject(error);
 			};
 		}).then(async () => {
+			if (this.closedError) throw this.closedError;
 			await this.requestRaw("initialize", {
 				processId: null,
 				rootUri: config.rootUri ?? null,
@@ -66,6 +84,7 @@ export class NestedLspClient {
 
 	async syncDocument(document: TextDocument): Promise<void> {
 		await this.ready;
+		this.throwIfClosed();
 		const previousVersion = this.versions.get(document.uri);
 		if (previousVersion === document.version) return;
 		if (previousVersion === undefined) {
@@ -95,29 +114,50 @@ export class NestedLspClient {
 		document?: TextDocument,
 	): Promise<unknown> {
 		await this.ready;
+		this.throwIfClosed();
 		if (document) await this.syncDocument(document);
 		return this.requestRaw(method, params);
 	}
 
 	closeDocument(uri: string): void {
 		if (!this.versions.delete(uri)) return;
+		if (this.closedError) return;
 		this.notify("textDocument/didClose", {
 			textDocument: { uri },
 		});
 	}
 
 	dispose(): void {
-		for (const request of this.pending.values()) {
-			request.reject(new Error("Nested worker disposed"));
-		}
-		this.pending.clear();
+		this.fail(new Error("Nested worker disposed"));
 		this.versions.clear();
 		this.worker.terminate();
 	}
 
+	private throwIfClosed(): void {
+		if (this.closedError) throw this.closedError;
+	}
+
+	/**
+	 * Marks the client dead, rejects every in-flight request, and blocks new ones.
+	 * Safe to call multiple times (e.g. onerror after ready, then dispose).
+	 */
+	private fail(error: Error): void {
+		if (this.closedError) return;
+		this.closedError = error;
+		for (const request of this.pending.values()) {
+			request.reject(error);
+		}
+		this.pending.clear();
+	}
+
 	private requestRaw(method: string, params: unknown): Promise<unknown> {
+		if (this.closedError) return Promise.reject(this.closedError);
 		const id = ++this.nextRequestId;
 		return new Promise((resolve, reject) => {
+			if (this.closedError) {
+				reject(this.closedError);
+				return;
+			}
 			this.pending.set(id, { resolve, reject });
 			this.worker.postMessage(
 				JSON.stringify({ jsonrpc: "2.0", id, method, params }),
@@ -126,6 +166,7 @@ export class NestedLspClient {
 	}
 
 	private notify(method: string, params: unknown): void {
+		if (this.closedError) return;
 		this.worker.postMessage(JSON.stringify({ jsonrpc: "2.0", method, params }));
 	}
 
@@ -148,6 +189,8 @@ export class NestedLspClient {
 			return;
 		}
 
+		if (this.closedError) return;
+
 		const hostRequest = data as HostRequest | null;
 		if (
 			!hostRequest ||
@@ -158,12 +201,14 @@ export class NestedLspClient {
 		}
 		try {
 			const result = await this.requestFile(hostRequest.uri);
+			if (this.closedError) return;
 			this.worker.postMessage({
 				kind: "host-response",
 				id: hostRequest.id,
 				result,
 			});
 		} catch (error) {
+			if (this.closedError) return;
 			this.worker.postMessage({
 				kind: "host-response",
 				id: hostRequest.id,
