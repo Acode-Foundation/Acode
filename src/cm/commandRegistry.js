@@ -46,13 +46,12 @@ import {
 	selectPageUp,
 	simplifySelection,
 	toggleBlockComment,
+	toggleLineComment,
 	undo,
 } from "@codemirror/commands";
 import {
-	foldAll,
 	foldCode,
 	indentUnit as indentUnitFacet,
-	unfoldAll,
 	unfoldCode,
 } from "@codemirror/language";
 import {
@@ -81,6 +80,12 @@ import {
 	moveLineDownFoldAware,
 	moveLineUpFoldAware,
 } from "cm/foldAwareLineCommands";
+import { foldAllCodeBlocks, unfoldAllCodeBlocks } from "cm/foldingCommands";
+import {
+	canonicalizeKeyBinding,
+	keyBindingsConflict,
+	toCodeMirrorKey,
+} from "cm/keyBindingUtils";
 import {
 	renameSymbol as acodeRenameSymbol,
 	clearDiagnosticsEffect,
@@ -98,7 +103,10 @@ import { showDocumentSymbols } from "components/symbolsPanel";
 import toast from "components/toast";
 import prompt from "dialogs/prompt";
 import actions from "handlers/quickTools";
-import keyBindings from "lib/keyBindings";
+import keyBindings, {
+	APP_KEY_BINDING_NAMES,
+	CODEMIRROR_COMMAND_NAMES,
+} from "lib/keyBindings";
 import settings from "lib/settings";
 import Url from "utils/Url";
 
@@ -130,47 +138,23 @@ let resolvedKeyBindings = keyBindings;
 /** @type {Record<string, any>} */
 let cachedResolvedKeyBindings = {};
 
+/** @type {Record<string, any>} */
+let cachedEffectiveKeyBindings = {};
+
+/** @type {{key: string, command: string, shadowedBy: string}[]} */
+let cachedKeyBindingConflicts = [];
+
 let resolvedKeyBindingsVersion = 0;
 
 /** @type {import("@codemirror/view").KeyBinding[]} */
 let cachedKeymap = [];
 
-const ARROW_KEY_MAP = {
-	left: "ArrowLeft",
-	right: "ArrowRight",
-	up: "ArrowUp",
-	down: "ArrowDown",
-};
-
-const SPECIAL_KEY_MAP = {
-	esc: "Escape",
-	escape: "Escape",
-	return: "Enter",
-	enter: "Enter",
-	space: "Space",
-	del: "Delete",
-	delete: "Delete",
-	backspace: "Backspace",
-	tab: "Tab",
-	home: "Home",
-	end: "End",
-	pageup: "PageUp",
-	pagedown: "PageDown",
-	insert: "Insert",
-};
-
-const MODIFIER_MAP = {
-	ctrl: "Mod",
-	control: "Mod",
-	cmd: "Mod",
-	meta: "Mod",
-	shift: "Shift",
-	alt: "Alt",
-	option: "Alt",
-};
+/** @type {Set<EditorView>} */
+const commandViews = new Set();
 
 const CODEMIRROR_COMMAND_ENTRIES = Object.entries(cmCommands).filter(
-	([, value]) => typeof value === "function",
+	([name, value]) =>
+		typeof value === "function" && CODEMIRROR_COMMAND_NAMES.has(name),
 );
 
 const CODEMIRROR_COMMAND_MAP = new Map(
@@ -955,7 +939,7 @@ function registerCoreCommands() {
 		run(view) {
 			const resolvedView = resolveView(view);
 			if (!resolvedView) return false;
-			return lineComment(resolvedView);
+			return toggleLineComment(resolvedView);
 		},
 	});
 	addCommand({
@@ -1055,7 +1039,7 @@ function registerCoreCommands() {
 		run(view) {
 			const resolvedView = resolveView(view);
 			if (!resolvedView) return false;
-			return foldAll(resolvedView);
+			return foldAllCodeBlocks(resolvedView);
 		},
 	});
 	addCommand({
@@ -1066,7 +1050,7 @@ function registerCoreCommands() {
 		run(view) {
 			const resolvedView = resolveView(view);
 			if (!resolvedView) return false;
-			return unfoldAll(resolvedView);
+			return unfoldAllCodeBlocks(resolvedView);
 		},
 	});
 }
@@ -1531,50 +1515,10 @@ function buildResolvedKeyBindingsSnapshot() {
 	);
 }
 
-function toCodeMirrorKey(combo) {
-	if (!combo) return null;
-	const parts = combo.endsWith("-")
-		? [...combo.slice(0, -1).split("-").filter(Boolean), "-"]
-		: combo
-				.split("-")
-				.map((part) => part.trim())
-				.filter(Boolean);
-	const modifiers = [];
-	let key = null;
-
-	parts.forEach((part, index) => {
-		const lower = part.toLowerCase();
-		if (MODIFIER_MAP[lower]) {
-			const mod = MODIFIER_MAP[lower];
-			if (!modifiers.includes(mod)) modifiers.push(mod);
-			return;
-		}
-
-		if (ARROW_KEY_MAP[lower]) {
-			key = ARROW_KEY_MAP[lower];
-			return;
-		}
-
-		if (SPECIAL_KEY_MAP[lower]) {
-			key = SPECIAL_KEY_MAP[lower];
-			return;
-		}
-
-		if (part.length === 1 && /[a-z]/i.test(part)) {
-			key = part.length === 1 ? part.toLowerCase() : part;
-			return;
-		}
-
-		key = part;
-	});
-
-	if (!key) return modifiers.join("-") || null;
-	return modifiers.length ? `${modifiers.join("-")}-${key}` : key;
-}
-
 function rebuildKeymap() {
-	const bindings = [];
 	cachedResolvedKeyBindings = buildResolvedKeyBindingsSnapshot();
+	const candidates = [];
+	let order = 0;
 	commandMap.forEach((command, name) => {
 		const bindingInfo = resolveBindingInfo(name);
 		command.description =
@@ -1588,16 +1532,89 @@ function rebuildKeymap() {
 		combos.forEach((combo) => {
 			const cmKey = toCodeMirrorKey(combo);
 			if (!cmKey) return;
-			bindings.push({
+			candidates.push({
+				name,
 				key: cmKey,
-				run: (view) => executeCommand(name, view),
-				preventDefault: true,
+				rawKey: combo,
+				order: order++,
+				priority: getBindingPriority(name),
 			});
 		});
 	});
+
+	candidates.sort(
+		(left, right) => right.priority - left.priority || left.order - right.order,
+	);
+
+	const bindings = [];
+	const claimedKeys = new Map();
+	const effectiveKeys = new Map();
+	const conflicts = [];
+	for (const candidate of candidates) {
+		const canonicalKey = canonicalizeKeyBinding(candidate.key);
+		const claimed = Array.from(claimedKeys.entries()).find(([key]) =>
+			keyBindingsConflict(key, canonicalKey),
+		);
+		if (claimed) {
+			const [claimedKey, owner] = claimed;
+			const appCommandShadowsCodeMirrorDefault =
+				APP_KEY_BINDING_NAMES.has(owner) &&
+				CODEMIRROR_COMMAND_NAMES.has(candidate.name) &&
+				candidate.priority === 10;
+			const repeatedKeyForSameCommand =
+				owner === candidate.name && claimedKey === canonicalKey;
+			if (!repeatedKeyForSameCommand && !appCommandShadowsCodeMirrorDefault) {
+				conflicts.push({
+					key: candidate.key,
+					command: candidate.name,
+					shadowedBy: owner,
+				});
+			}
+			continue;
+		}
+
+		claimedKeys.set(canonicalKey, candidate.name);
+		if (!effectiveKeys.has(candidate.name)) {
+			effectiveKeys.set(candidate.name, []);
+		}
+		effectiveKeys.get(candidate.name).push(candidate.rawKey);
+		bindings.push({
+			key: candidate.key,
+			run: (view) => executeCommand(candidate.name, view),
+			preventDefault: true,
+		});
+	}
+
+	cachedEffectiveKeyBindings = Object.fromEntries(
+		Object.entries(cachedResolvedKeyBindings).map(([name, binding]) => [
+			name,
+			{
+				...binding,
+				key: effectiveKeys.get(name)?.join("|") || null,
+			},
+		]),
+	);
+	cachedKeyBindingConflicts = conflicts;
 	cachedKeymap = bindings;
 	resolvedKeyBindingsVersion += 1;
 	return bindings;
+}
+
+function getBindingPriority(name) {
+	if (APP_KEY_BINDING_NAMES.has(name)) return 40;
+	if (!Object.prototype.hasOwnProperty.call(keyBindings, name)) return 30;
+
+	const override = resolvedKeyBindings?.[name];
+	if (
+		override &&
+		typeof override === "object" &&
+		Object.prototype.hasOwnProperty.call(override, "key") &&
+		override.key !== keyBindings[name]?.key
+	) {
+		return 20;
+	}
+
+	return 10;
 }
 
 function resolveCommand(name) {
@@ -1638,6 +1655,14 @@ export function getResolvedKeyBindings() {
 	return cachedResolvedKeyBindings;
 }
 
+export function getEffectiveKeyBindings() {
+	return cachedEffectiveKeyBindings;
+}
+
+export function getKeyBindingConflicts() {
+	return cachedKeyBindingConflicts.map((conflict) => ({ ...conflict }));
+}
+
 export function getResolvedKeyBindingsVersion() {
 	return resolvedKeyBindingsVersion;
 }
@@ -1650,7 +1675,15 @@ export async function setKeyBindings(view) {
 	await loadCustomKeyBindings();
 	const bindings = rebuildKeymap();
 	const resolvedView = resolveView(view);
-	applyCommandKeymap(resolvedView, bindings);
+	if (resolvedView) commandViews.add(resolvedView);
+	for (const knownView of commandViews) {
+		if (!knownView.dom?.isConnected) {
+			commandViews.delete(knownView);
+			continue;
+		}
+		applyCommandKeymap(knownView, bindings);
+	}
+	return getKeyBindingConflicts();
 }
 
 async function loadCustomKeyBindings() {
@@ -1658,23 +1691,29 @@ async function loadCustomKeyBindings() {
 		const bindingsFile = fsOperation(KEYBINDING_FILE);
 		if (await bindingsFile.exists()) {
 			const bindings = await bindingsFile.readFile("json");
-			if (bindings && typeof bindings === "object") {
-				let updated = false;
-				Object.keys(keyBindings).forEach((key) => {
-					if (!(key in bindings)) {
-						bindings[key] = keyBindings[key];
-						updated = true;
-					}
-				});
-				resolvedKeyBindings = bindings;
-				if (updated) {
-					bindingsFile
-						.writeFile(JSON.stringify(bindings, undefined, 2))
-						.catch((error) => {
-							window.log?.("error", "Failed to back-fill new key bindings!");
-							window.log?.("error", error);
-						});
+			if (
+				!bindings ||
+				typeof bindings !== "object" ||
+				Array.isArray(bindings)
+			) {
+				throw new TypeError("Key bindings must be a JSON object");
+			}
+
+			let updated = false;
+			Object.keys(keyBindings).forEach((key) => {
+				if (!(key in bindings)) {
+					bindings[key] = keyBindings[key];
+					updated = true;
 				}
+			});
+			resolvedKeyBindings = bindings;
+			if (updated) {
+				bindingsFile
+					.writeFile(JSON.stringify(bindings, undefined, 2))
+					.catch((error) => {
+						window.log?.("error", "Failed to back-fill new key bindings!");
+						window.log?.("error", error);
+					});
 			}
 		} else {
 			throw new Error("Key binding file not found");
@@ -1791,6 +1830,7 @@ function normalizeExternalKey(bindKey) {
 
 function applyCommandKeymap(view, bindings = cachedKeymap) {
 	if (!view) return;
+	commandViews.add(view);
 	view.dispatch({
 		effects: commandKeymapCompartment.reconfigure(
 			keymap.of(bindings ?? cachedKeymap),

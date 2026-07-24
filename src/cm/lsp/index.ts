@@ -49,6 +49,21 @@ export {
 	supportsDocumentSymbols,
 } from "./documentSymbols";
 export { registerLspFormatter } from "./formatter";
+export type {
+	DocumentColorsConfig,
+	LspDocumentColor,
+} from "./documentColors";
+export {
+	cssToLspColor,
+	didReplaceLspDocumentColors,
+	documentColorsClientExtension,
+	documentColorsEditorExtension,
+	documentColorsExtension,
+	hasColorProvider,
+	lspColorToCss,
+	lspColorToHex,
+	lspDocumentColorsField,
+} from "./documentColors";
 export type { InlayHintsConfig } from "./inlayHints";
 export {
 	inlayHintsClientExtension,
