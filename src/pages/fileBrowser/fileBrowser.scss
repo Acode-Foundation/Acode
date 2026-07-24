@@ -107,6 +107,22 @@
           margin: auto 15px;
         }
       }
+
+      &.placeholder {
+        pointer-events: none;
+        .icon {
+          background-color: #8886;
+          border-radius: 50%;
+          scale: 0.8;
+        }
+        .text span {
+          display: block;
+          background-color: #8886;
+          border-radius: calc(1px / 0);
+          height: 1em;
+          min-width: 1em;
+        }
+      }
     }
   }
   .selection-header {

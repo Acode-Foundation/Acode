@@ -1,0 +1,24 @@
+<li
+  tabindex="1"
+  class="tile {{#placeholder}}placeholder{{/placeholder}} {{#isLink}}symlink{{/isLink}}"
+  action="open"
+  type="{{type}}"
+  name="{{name}}"
+  {{#home}}home="{{.}}"{{/home}}
+  {{#notSelectable}}data-not-selectable{{/notSelectable}}
+  {{#open-doc}}open-doc="true"{{/open-doc}}
+  {{#ftp-account}}ftp-account{{/ftp-account}}
+  {{#disabled}}disabled{{/disabled}}
+  {{#uuid}}uuid="{{uuid}}"{{/uuid}}
+  {{#storageType}}storageType="{{.}}"{{/storageType}}
+>
+  <span
+    class="icon {{icon}} {{#uuid}}user-added-storage{{/uuid}}"
+    {{#storageType}}storageType="{{.}}"{{/storageType}}
+  ></span>
+
+  <div class="text">
+    <span>{{name}}</span>
+  </div>
+  <data-url>{{url}}</data-url>
+</li>
