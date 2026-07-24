@@ -332,7 +332,6 @@ function createPlugin(config: DocumentColorsConfig) {
 
 				lsp.client.sync();
 				const id = ++this.reqId;
-				const docLen = this.view.state.doc.length;
 
 				try {
 					const result = await lsp.client.request<
@@ -344,7 +343,11 @@ function createPlugin(config: DocumentColorsConfig) {
 
 					if (id !== this.reqId) return;
 
-					const stored = this.process(lsp, result ?? [], docLen);
+					const stored = this.process(
+						lsp,
+						result ?? [],
+						this.view.state.doc.length,
+					);
 					this.view.dispatch({ effects: setColors.of(stored) });
 				} catch {
 					/* keep previous chips */
