@@ -43,7 +43,8 @@
       "com.foxdebug.acode.rk.customtabs": {},
       "cordova-plugin-system": {},
       "cordova-plugin-crashhandler": {},
-      "cordova-plugin-advanced-http": {}
+      "cordova-plugin-advanced-http": {},
+      "cordova-plugin-acode-webview": {}
     },
     "platforms": [
       "android"
@@ -84,6 +85,7 @@
     "com.foxdebug.acode.rk.plugin.plugincontext": "file:src/plugins/pluginContext",
     "cordova-android": "^15.0.0",
     "cordova-clipboard": "^1.3.0",
+    "cordova-plugin-acode-webview": "file:src/plugins/webview",
     "cordova-plugin-advanced-http": "file:src/plugins/cordova-plugin-advanced-http",
     "cordova-plugin-browser": "file:src/plugins/browser",
     "cordova-plugin-buildinfo": "file:src/plugins/cordova-plugin-buildinfo",

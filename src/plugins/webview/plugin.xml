@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
+  xmlns:android="http://schemas.android.com/apk/res/android" id="cordova-plugin-acode-webview" version="1.0.0">
+  <name>cordova-plugin-acode-webview</name>
+  <description>Acode WebView Plugin API - Create and manage isolated WebView instances</description>
+  <license>Apache 2.0</license>
+
+  <platform name="android">
+
+    <config-file target="res/xml/config.xml" parent="/*">
+      <feature name="AcodeWebView">
+        <param name="android-package" value="com.foxdebug.webview.WebViewPlugin"/>
+      </feature>
+    </config-file>
+
+    <config-file parent="./application" target="AndroidManifest.xml">
+      <activity android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode" android:name="com.foxdebug.webview.WebViewActivity" android:theme="@style/Theme.App.Activity" android:windowSoftInputMode="adjustResize" android:resizeableActivity="true">
+      </activity>
+    </config-file>
+
+    <source-file src="src/android/com/foxdebug/webview/WebViewPlugin.java" target-dir="src/com/foxdebug/webview"/>
+    <source-file src="src/android/com/foxdebug/webview/WebViewInstance.java" target-dir="src/com/foxdebug/webview"/>
+    <source-file src="src/android/com/foxdebug/webview/WebViewActivity.java" target-dir="src/com/foxdebug/webview"/>
+
+  </platform>
+</plugin>

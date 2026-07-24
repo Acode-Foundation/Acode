@@ -1,0 +1,11 @@
+{
+  "name": "cordova-plugin-acode-webview",
+  "version": "1.0.0",
+  "description": "Acode WebView Plugin API",
+  "main": "",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "Apache-2.0"
+}
