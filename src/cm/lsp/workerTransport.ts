@@ -135,13 +135,11 @@ export function createWorkerTransport(
 
 	const startupTimer = setTimeout(() => {
 		if (readySettled || disposed) return;
-		readySettled = true;
-		const error = new Error(
-			`Timed out starting the ${serverId} worker after ${startupTimeout}ms`,
+		failTransport(
+			new Error(
+				`Timed out starting the ${serverId} worker after ${startupTimeout}ms`,
+			),
 		);
-		addLspLog(serverId, "error", error.message);
-		worker.terminate();
-		rejectReady(error);
 	}, startupTimeout);
 
 	function settleReady(error?: Error): void {
@@ -152,7 +150,29 @@ export function createWorkerTransport(
 		else resolveReady();
 	}
 
+	/**
+	 * Tear down the worker and reject readiness when still pending.
+	 * Safe after `ready` has already resolved (e.g. OOM / post-start crash):
+	 * `settleReady` is then a no-op, but the transport must still close so
+	 * later `send()` calls throw instead of talking to a dead worker.
+	 */
+	function failTransport(error: Error): void {
+		addLspLog(serverId, "error", error.message);
+		console.error(`[LSP:${serverId}:worker]`, error);
+		settleReady(error);
+		if (disposed) return;
+		disposed = true;
+		clearTimeout(startupTimer);
+		listeners.clear();
+		try {
+			worker.terminate();
+		} catch {
+			// Already terminated by the browser (e.g. OOM kill).
+		}
+	}
+
 	function dispatchToListeners(data: string): void {
+		if (disposed) return;
 		for (const listener of listeners) {
 			try {
 				listener(data);
@@ -189,6 +209,7 @@ export function createWorkerTransport(
 	function handleControlMessage(data: WorkerControlMessage): void {
 		switch (data.kind) {
 			case "ready":
+				if (disposed) return;
 				settleReady();
 				addLspLog(serverId, "info", "Web Worker is ready");
 				return;
@@ -197,15 +218,7 @@ export function createWorkerTransport(
 					typeof data.message === "string" && data.message
 						? data.message
 						: `The ${serverId} worker failed to start`;
-				const error = new Error(message);
-				addLspLog(serverId, "error", message);
-				console.error(`[LSP:${serverId}:worker] ${message}`);
-				if (!disposed) {
-					disposed = true;
-					listeners.clear();
-					worker.terminate();
-				}
-				settleReady(error);
+				failTransport(new Error(message));
 				return;
 			}
 			case "host-request":
@@ -233,6 +246,7 @@ export function createWorkerTransport(
 	}
 
 	worker.onmessage = (event: MessageEvent<unknown>) => {
+		if (disposed) return;
 		const data = event.data;
 		if (typeof data === "string") {
 			dispatchToListeners(data);
@@ -243,12 +257,9 @@ export function createWorkerTransport(
 	};
 
 	worker.onerror = (event: ErrorEvent) => {
-		const error = new Error(
-			event.message || `The ${serverId} worker failed to start`,
+		failTransport(
+			new Error(event.message || `The ${serverId} worker failed`),
 		);
-		addLspLog(serverId, "error", error.message);
-		console.error(`[LSP:${serverId}:worker]`, error);
-		settleReady(error);
 	};
 
 	if (options.configure && typeof options.configure === "object") {
@@ -263,6 +274,7 @@ export function createWorkerTransport(
 			worker.postMessage(message);
 		},
 		subscribe(handler: MessageListener): void {
+			if (disposed) return;
 			listeners.add(handler);
 		},
 		unsubscribe(handler: MessageListener): void {
@@ -278,7 +290,11 @@ export function createWorkerTransport(
 			disposed = true;
 			clearTimeout(startupTimer);
 			listeners.clear();
-			worker.terminate();
+			try {
+				worker.terminate();
+			} catch {
+				// Already terminated.
+			}
 		},
 	};
 }
