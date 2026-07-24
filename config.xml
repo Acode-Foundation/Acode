@@ -39,7 +39,11 @@
         <preference name="GradlePluginKotlinEnabled" value="true" />
         <preference name="android-targetSdkVersion" value="36" />
         <preference name="android-minSdkVersion" value="26" />
-
+        <preference name="AutoHideSplashScreen" value="true" />
+        <preference name="SplashScreenDelay" value="0" />
+        <preference name="FadeSplashScreenDuration" value="0" />
+        <preference name="FadeSplashScreen" value="false" />
+        <preference name="AndroidWindowSplashScreenBehavior" value="icon_preferred" />
 
         <edit-config file="app/src/main/AndroidManifest.xml" mode="merge"
             target="/manifest/application">
