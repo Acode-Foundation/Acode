@@ -187,6 +187,10 @@
     "picomatch": "^4.0.4",
     "url-parse": "^1.5.10",
     "vanilla-picker": "^2.12.3",
+    "vscode-css-languageservice": "6.3.10",
+    "vscode-html-languageservice": "5.6.2",
+    "vscode-json-languageservice": "5.7.2",
+    "vscode-languageserver-textdocument": "1.0.12",
     "yargs": "^18.0.0"
   },
   "overrides": {

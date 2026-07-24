@@ -8,6 +8,7 @@ import { getConfiguredRuntimeId } from "./runtimeSettings";
 
 export const BUILTIN_ALPINE_RUNTIME_ID = "builtin-alpine";
 export const EXTERNAL_WEBSOCKET_RUNTIME_ID = "external-websocket";
+export const WEB_WORKER_RUNTIME_ID = "web-worker";
 
 interface RegisterRuntimeProviderOptions {
 	replace?: boolean;
@@ -211,6 +212,7 @@ export function isBuiltinAlpineAccessible(
 
 export default {
 	BUILTIN_ALPINE_RUNTIME_ID,
+	WEB_WORKER_RUNTIME_ID,
 	getRuntimeProvider,
 	inferWorkspaceKind,
 	isBuiltinAlpineAccessible,

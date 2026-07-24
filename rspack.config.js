@@ -13,6 +13,10 @@ module.exports = (env, options) => {
     : '';
 
   const rules = [
+    {
+      test: /typescript[\\/]lib[\\/]lib\..*\.d\.ts$/,
+      type: 'asset/source',
+    },
     // TypeScript/TSX files - Custom JSX loader + SWC
     {
       test: /\.tsx?$/,
@@ -120,12 +124,20 @@ module.exports = (env, options) => {
 
   const main = {
     mode,
+    node: {
+      __dirname: false,
+      __filename: false,
+    },
     entry: {
       boot: './src/boot.js',
       main: './src/main.js',
       console: './src/lib/console.js',
       searchInFilesWorker: './src/sidebarApps/searchInFiles/worker.js',
       searchIndexWorker: './src/sidebarApps/searchInFiles/indexWorker.js',
+      htmlLspWorker: './src/cm/lsp/workers/html.worker.ts',
+      cssLspWorker: './src/cm/lsp/workers/css.worker.ts',
+      jsonLspWorker: './src/cm/lsp/workers/json.worker.ts',
+      typescriptLspWorker: './src/cm/lsp/workers/typescript.worker.ts',
     },
     output: {
       path: path.resolve(__dirname, 'www/build/'),
@@ -135,8 +147,17 @@ module.exports = (env, options) => {
       publicPath: devOrigin ? ''.concat(devOrigin, '/build/') : '/build/',
       clean: !isDev,
     },
+    // TypeScript's Node-only plugin loader uses a dynamic require. It is never
+    // reached by the browser worker, but Rspack cannot prove that statically.
+    ignoreWarnings: [
+      {
+        module: /typescript[\\/]lib[\\/]typescript\.js$/,
+        message: /Critical dependency/,
+      },
+    ],
     module: {
       rules,
+      exprContextCritical: false,
       parser: {
         javascript: {
           exportsPresence: 'error',

@@ -12,7 +12,13 @@ export {
 	servers,
 	unregisterRuntime,
 	upsert,
+	workers,
 } from "./api";
+export type {
+	LspWorkerHostHandler,
+	LspWorkerTransportOptions,
+} from "./api";
+export { createWorkerTransport } from "./workerTransport";
 export { default as clientManager, LspClientManager } from "./clientManager";
 export type { CodeActionItem } from "./codeActions";
 export {
@@ -103,6 +109,7 @@ export {
 	registerRuntimeProvider,
 	selectRuntimeProvider,
 	unregisterRuntimeProvider,
+	WEB_WORKER_RUNTIME_ID,
 } from "./runtimeProviders";
 export {
 	checkRuntimeServerInstallation,

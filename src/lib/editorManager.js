@@ -3291,7 +3291,9 @@ async function EditorManager($header, $body) {
 	lspClientManager.setOptions({
 		resolveRoot: resolveRootUriForContext,
 		onClientIdle: ({ server }) => {
-			if (server?.id) stopManagedServer(server.id);
+			if (!server?.id) return;
+			stopManagedServer(server.id);
+			void lspClientManager.disposeServer(server.id);
 		},
 		displayFile: async (targetUri) => {
 			if (!targetUri) return null;

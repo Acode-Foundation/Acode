@@ -13,6 +13,7 @@ export interface ManagedServerOptions {
 	languages: string[];
 	enabled?: boolean;
 	useWorkspaceFolders?: boolean;
+	runtimes?: string[];
 	command?: string;
 	args?: string[];
 	transport?: Partial<TransportDescriptor>;
@@ -70,6 +71,7 @@ export function defineServer(options: ManagedServerOptions): LspServerManifest {
 		languages,
 		enabled = true,
 		useWorkspaceFolders = false,
+		runtimes,
 		command,
 		args,
 		transport,
@@ -95,6 +97,7 @@ export function defineServer(options: ManagedServerOptions): LspServerManifest {
 		languages,
 		enabled,
 		useWorkspaceFolders,
+		runtimes,
 		transport: {
 			kind: "websocket",
 			...(transport || {}),

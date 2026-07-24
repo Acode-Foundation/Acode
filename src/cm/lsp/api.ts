@@ -31,8 +31,13 @@ import type {
 	LspServerDefinition,
 	LspServerManifest,
 } from "./types";
+import {
+	createWorkerTransport,
+	type LspWorkerTransportOptions,
+} from "./workerTransport";
 
 export { defineBundle, defineServer, installers };
+export type { LspWorkerHostHandler, LspWorkerTransportOptions } from "./workerTransport";
 
 export type LspRegistrationEntry = LspServerManifest | LspServerBundle;
 
@@ -117,6 +122,12 @@ export const runtimes = {
 export const registerRuntime = runtimes.register;
 export const unregisterRuntime = runtimes.unregister;
 
+export const workers = {
+	createTransport(options: LspWorkerTransportOptions) {
+		return createWorkerTransport(options);
+	},
+};
+
 const lspApi = {
 	defineServer,
 	defineBundle,
@@ -126,6 +137,7 @@ const lspApi = {
 	servers,
 	bundles,
 	runtimes,
+	workers,
 	registerRuntimeProvider: registerRuntime,
 	unregisterRuntimeProvider: unregisterRuntime,
 };
