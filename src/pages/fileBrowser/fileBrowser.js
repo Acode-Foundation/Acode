@@ -603,43 +603,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					);
 
 					try {
-						for (const url of selectedItems) {
-							if ((await fsOperation(url).stat()).isDirectory) {
-								if (url.startsWith("content://com.termux.documents/tree/")) {
-									const fs = fsOperation(url);
-									const entries = await fs.lsDir();
-									if (entries.length === 0) {
-										await fs.delete();
-									} else {
-										const deleteRecursively = async (currentUrl) => {
-											const currentFs = fsOperation(currentUrl);
-											const currentEntries = await currentFs.lsDir();
-											for (const entry of currentEntries) {
-												if (entry.isDirectory) {
-													await deleteRecursively(entry.url);
-												} else {
-													await fsOperation(entry.url).delete();
-												}
-											}
-											await currentFs.delete();
-										};
-										await deleteRecursively(url);
-									}
-								} else {
-									await fsOperation(url).delete();
-								}
-								helpers.updateUriOfAllActiveFiles(url);
-								recents.removeFolder(url);
-							} else {
-								const fs = fsOperation(url);
-								await fs.delete();
-								const openedFile = editorManager.getFile(url, "uri");
-								if (openedFile) openedFile.uri = null;
-							}
-							recents.removeFile(url);
-							openFolder.removeItem(url);
-							delete cachedDir[url];
-						}
+						for (const url of selectedItems) await deleteDirOrFile(url);
 						toast(strings.success);
 						reload();
 						isSelectionMode = false;
@@ -686,6 +650,50 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			});
 			reject(err);
 			$page.hide();
+		}
+
+		/**
+		 * @param {string} url
+		 */
+		function isTermuxUrl(url) {
+			url = `${url ?? ""}`;
+			return url.startsWith("content://com.termux.documents/tree/");
+		}
+
+		/**
+		 * @param {string} url
+		 * @param {string} [type]
+		 */
+		async function deleteDirOrFile(url, type) {
+			const fs = fsOperation(url);
+			const isDir = type ? helpers.isDir(type) : (await fs.stat()).isDirectory;
+
+			if (isDir && isTermuxUrl(url)) {
+				const deleteRecursively = async (currentFs) => {
+					const entries = await currentFs.lsDir();
+					if (entries) {
+						for (const entry of entries) {
+							const fs = fsOperation(entry.url);
+							await (entry.isDirectory ? deleteRecursively(fs) : fs.delete());
+						}
+					}
+					await currentFs.delete();
+				};
+				await deleteRecursively(fs);
+			} else {
+				await fs.delete();
+			}
+
+			if (isDir) {
+				helpers.updateUriOfAllActiveFiles(url);
+				recents.removeFolder(url);
+			} else {
+				const openedFile = editorManager.getFile(url, "uri");
+				if (openedFile) openedFile.uri = null;
+			}
+			recents.removeFile(url);
+			openFolder.removeItem(url);
+			delete cachedDir[url];
 		}
 
 		function updateSelectionCount($count) {
@@ -1151,7 +1159,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			}
 
 			async function renameFile(newname) {
-				if (url.startsWith("content://com.termux.documents/tree/")) {
+				if (isTermuxUrl(url)) {
 					if (helpers.isDir(type)) {
 						alert(strings.warning, strings["rename not supported"]);
 						return;
@@ -1203,42 +1211,8 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 			async function removeFile() {
 				try {
-					if (helpers.isDir(type)) {
-						if (url.startsWith("content://com.termux.documents/tree/")) {
-							const fs = fsOperation(url);
-							const entries = await fs.lsDir();
-							if (entries.length === 0) {
-								await fs.delete();
-							} else {
-								const deleteRecursively = async (currentUrl) => {
-									const currentFs = fsOperation(currentUrl);
-									const currentEntries = await currentFs.lsDir();
-									for (const entry of currentEntries) {
-										if (entry.isDirectory) {
-											await deleteRecursively(entry.url);
-										} else {
-											await fsOperation(entry.url).delete();
-										}
-									}
-									await currentFs.delete();
-								};
-								await deleteRecursively(url);
-							}
-						} else {
-							await fsOperation(url).delete();
-						}
-						helpers.updateUriOfAllActiveFiles(url);
-						recents.removeFolder(url);
-					} else {
-						const fs = fsOperation(url);
-						await fs.delete();
-						const openedFile = editorManager.getFile(url, "uri");
-						if (openedFile) openedFile.uri = null;
-					}
-					recents.removeFile(url);
-					openFolder.removeItem(url);
+					await deleteDirOrFile(url, type);
 					toast(strings.success);
-					delete cachedDir[url];
 					reload();
 				} catch (err) {
 					window.log("error", err);
