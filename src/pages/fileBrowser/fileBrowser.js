@@ -1011,15 +1011,12 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				return;
 			}
 
-			if (isContextMenu) action = "contextmenu";
-			else if (isOpenDoc) action = "openDoc";
+			if (isContextMenu) return contextMenuHandler();
+			if (isOpenDoc) action = "openDoc";
 
 			switch (action) {
 				case "navigation":
 					folder();
-					break;
-				case "contextmenu":
-					contextMenuHandler();
 					break;
 				case "open":
 					if (isDir) folder();
@@ -1028,6 +1025,10 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				case "openDoc":
 					openDoc();
 					break;
+				case "prevDir": {
+					const dir = navStack.get(-2);
+					if (dir) navigate(dir);
+				}
 			}
 
 			async function folder() {
@@ -1080,6 +1081,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			}
 
 			async function contextMenuHandler() {
+				if (action === "prevDir") return;
 				if (appSettings.value.vibrateOnTap) {
 					navigator.vibrate(config.VIBRATION_TIME);
 				}
@@ -1727,13 +1729,22 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			currentDir = dir;
 			updatePasteToggler();
 
+			const hasPrevDir = navStack.length >= 2;
 			let $placeholder;
 			let errMsg;
 			let { list } = dir;
 			if (!list) {
-				$placeholder = helpers.parseHTML(mustache.render(_list, {}));
+				$placeholder = helpers.parseHTML(
+					mustache.render(_list, {
+						prevDir: hasPrevDir,
+					}),
+				);
 				$placeholder.classList.add("placeholder");
-				$placeholder.innerHTML = `<span id="spinner">${createTailSpinSvg()}</span>`;
+				$placeholder.insertAdjacentHTML(
+					"beforeend",
+					`<span id="spinner">${createTailSpinSvg()}</span>`,
+				);
+				/** @type {HTMLSpanElement} */
 				$content.appendChild($placeholder);
 
 				try {
@@ -1769,6 +1780,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 			const $list = helpers.parseHTML(
 				mustache.render(_list, {
+					prevDir: hasPrevDir,
 					msg: errMsg ?? (!list?.length && strings["empty folder message"]),
 					list,
 				}),
