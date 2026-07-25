@@ -3290,10 +3290,22 @@ async function EditorManager($header, $body) {
 
 	lspClientManager.setOptions({
 		resolveRoot: resolveRootUriForContext,
-		onClientIdle: ({ server }) => {
-			if (!server?.id) return;
-			stopManagedServer(server.id);
-			void lspClientManager.disposeServer(server.id);
+		onClientIdle: ({ server, dispose }) => {
+			if (!server?.id || typeof dispose !== "function") return;
+			// Dispose only this idle client. disposeServer(server.id) would tear
+			// down every workspace sharing the server id (e.g. web-worker LSPs).
+			void (async () => {
+				await dispose();
+				const stillActive = lspClientManager
+					.getActiveClients()
+					.some(
+						(state) =>
+							state.server?.id?.toLowerCase() === server.id.toLowerCase(),
+					);
+				if (!stillActive) {
+					stopManagedServer(server.id);
+				}
+			})();
 		},
 		displayFile: async (targetUri) => {
 			if (!targetUri) return null;

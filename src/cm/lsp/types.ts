@@ -413,6 +413,8 @@ export interface ClientIdleInfo {
 	server: LspServerDefinition;
 	client: LSPClient;
 	rootUri: string | null;
+	/** Disposes only this idle client instance (not every client for the server id). */
+	dispose: () => Promise<void>;
 }
 
 export interface ClientState {

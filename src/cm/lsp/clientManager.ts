@@ -1074,6 +1074,22 @@ export class LspClientManager {
       logLspInfo(`[LSP:${server.id}] attached to ${uri}${suffix}`);
     };
 
+    const dispose = async (): Promise<void> => {
+      if (disposed) return;
+      disposed = true;
+      this.#clients.delete(key);
+      try {
+        client.disconnect();
+      } catch (error) {
+        console.warn(`Error disconnecting LSP client ${server.id}`, error);
+      }
+      try {
+        await transportHandle.dispose?.();
+      } catch (error) {
+        console.warn(`Error disposing LSP transport ${server.id}`, error);
+      }
+    };
+
     const detach = (uri: string, view?: EditorView): void => {
       const actualUri = uriAliases.get(uri) ?? uri;
       const existing = fileRefs.get(actualUri);
@@ -1100,23 +1116,8 @@ export class LspClientManager {
           server,
           client,
           rootUri: effectiveRoot,
+          dispose,
         });
-      }
-    };
-
-    const dispose = async (): Promise<void> => {
-      if (disposed) return;
-      disposed = true;
-      this.#clients.delete(key);
-      try {
-        client.disconnect();
-      } catch (error) {
-        console.warn(`Error disconnecting LSP client ${server.id}`, error);
-      }
-      try {
-        await transportHandle.dispose?.();
-      } catch (error) {
-        console.warn(`Error disposing LSP transport ${server.id}`, error);
       }
     };
 
