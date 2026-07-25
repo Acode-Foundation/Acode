@@ -46,7 +46,7 @@ interface CompletionData {
 interface RequestParams {
 	position: Position;
 	range?: Range;
-	options: FormattingOptions;
+	options?: FormattingOptions;
 	newName: string;
 	context: CodeActionContext & {
 		triggerKind?: number;
@@ -564,7 +564,7 @@ function format(
 	service: ts.LanguageService,
 	document: TextDocument,
 	range: Range | undefined,
-	options: FormattingOptions,
+	options?: FormattingOptions,
 ): TextEdit[] {
 	const settings = formatSettings(options);
 	const edits = range
@@ -694,7 +694,7 @@ function codeActions(
 	document: TextDocument,
 	range: Range,
 	context: CodeActionContext,
-	options: FormattingOptions,
+	options?: FormattingOptions,
 ): CodeAction[] {
 	const fixes = service.getCodeFixesAtPosition(
 		document.uri,
@@ -830,14 +830,16 @@ function rangeFromSpan(
 	);
 }
 
-function formatSettings(options: FormattingOptions): ts.FormatCodeSettings {
-	const tabSize = options.tabSize ?? 4;
-	const insertSpaces = options.insertSpaces ?? true;
+function formatSettings(
+	options?: FormattingOptions | null,
+): ts.FormatCodeSettings {
+	const tabSize = options?.tabSize ?? 4;
+	const insertSpaces = options?.insertSpaces ?? true;
 	return {
 		tabSize,
 		indentSize: tabSize,
 		convertTabsToSpaces: insertSpaces,
-		trimTrailingWhitespace: options.trimTrailingWhitespace,
+		trimTrailingWhitespace: options?.trimTrailingWhitespace,
 		insertSpaceAfterCommaDelimiter: insertSpaces,
 		insertSpaceAfterSemicolonInForStatements: insertSpaces,
 		insertSpaceBeforeAndAfterBinaryOperators: insertSpaces,
