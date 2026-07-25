@@ -860,6 +860,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				$list
 					.querySelectorAll(".tile:not(.selection-header)")
 					.forEach((item) => {
+						if (item.dataset.notSelectable != null) return;
 						const checkbox = Checkbox("", false);
 						checkbox.onclick = () => {
 							const url = item.querySelector("data-url").textContent;
@@ -912,12 +913,12 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			const $el = e.target;
 
 			if (isSelectionMode) {
-				const checkbox = $el.closest(".tile")?.querySelector(".input-checkbox");
+				const $el2 = $el.closest(".tile");
+				if ($el2?.dataset.notSelectable != null) return;
+				const checkbox = $el2?.querySelector(".input-checkbox");
 				if (checkbox && !$el.closest(".selection-header")) {
 					checkbox.checked = !checkbox.checked;
-					const url = $el
-						.closest(".tile")
-						.querySelector("data-url").textContent;
+					const url = $el2.querySelector("data-url").textContent;
 					if (checkbox.checked) {
 						selectedItems.add(url);
 					} else {
@@ -1394,12 +1395,14 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				util.pushFolder(allStorages, strings["add a storage"], "", {
 					storageType: "notification",
 					uuid: "addstorage",
+					notSelectable: true,
 				});
 			}
 
 			if (IS_FILE_MODE) {
 				util.pushFolder(allStorages, "Select document", null, {
 					"open-doc": true,
+					notSelectable: true,
 				});
 			}
 
