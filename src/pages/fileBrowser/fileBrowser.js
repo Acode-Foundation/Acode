@@ -167,6 +167,8 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			list: [],
 			scroll: 0,
 		};
+		/** @type {AbortController | null} */
+		let _rndrAbortCtrl;
 		/**
 		 * @type {HTMLButtonElement}
 		 */
@@ -627,6 +629,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		};
 
 		$page.onhide = function () {
+			_rndrAbortCtrl?.abort();
 			hideSearchBar();
 			hideAd();
 			actionStack.clearFromMark();
@@ -1646,6 +1649,11 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		 * @param {boolean} force
 		 */
 		async function renderCurrentDir(force) {
+			_rndrAbortCtrl?.abort();
+			const rndrAbortCtrl = new AbortController();
+			const abortSignal = rndrAbortCtrl.signal;
+			_rndrAbortCtrl = rndrAbortCtrl;
+
 			if (document.getElementById("search-bar")) hideSearchBar();
 
 			const { url, name } = navStack.get(-1) ?? {};
@@ -1685,8 +1693,12 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					fg.append(el);
 				}
 				$list.append(fg);
-				dir.list = list = await getDirList(url);
+				list = await getDirList(url);
+				if (abortSignal.aborted) return;
+				dir.list = list;
 			}
+
+			if (_rndrAbortCtrl === rndrAbortCtrl) _rndrAbortCtrl = null;
 
 			for (let l = list?.length, i = 0; i < l; i++) {
 				fg.append(createListItemEl(list[i]));
