@@ -352,8 +352,13 @@ startWorkerServer(async ({ documents, requestFile, rootUri }) => {
 			}
 		},
 
+		// Only wipe the shared semantic program when nothing is open.
+		// cleanupSemanticCache() releases every source file and forces a full
+		// re-analysis of remaining tabs — costly on multi-file mobile sessions.
 		closeDocument() {
-			service.cleanupSemanticCache();
+			if (documents.size === 0) {
+				service.cleanupSemanticCache();
+			}
 		},
 
 		dispose() {

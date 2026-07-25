@@ -288,9 +288,7 @@ startWorkerServer(({ documents, requestFile, rootUri }) => {
 				) {
 					return requestTypeScript(method, params, null);
 				}
-				return jsonService.doResolve(
-					params as Parameters<JsonLanguageService["doResolve"]>[0],
-				);
+				return params;
 			}
 
 			const document = getTextDocument(documents, params);
