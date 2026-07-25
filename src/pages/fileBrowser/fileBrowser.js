@@ -882,7 +882,19 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				if ($openFolder) {
 					$openFolder.disabled = true;
 				}
+
+				if (!actionStack.has("fbSelection")) {
+					actionStack.push({
+						id: "fbSelection",
+						action: () => {
+							isSelectionMode = false;
+							toggleSelectionMode(false);
+						},
+					});
+				}
 			} else {
+				actionStack.remove("fbSelection");
+
 				$list.classList.remove("selection-mode");
 				$list.querySelector(".selection-header")?.remove();
 				$list.querySelectorAll(".input-checkbox").forEach((cb) => cb.remove());
