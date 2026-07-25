@@ -967,6 +967,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 			let url = $el.dataset.url;
 			let name = $el.dataset.name || $el.getAttribute("name");
+			const isOneDirUp = $el.dataset.oneDirUp != null;
 			const idOpenDoc = $el.hasAttribute("open-doc");
 			const uuid = $el.getAttribute("uuid");
 			const type = $el.getAttribute("type");
@@ -993,7 +994,14 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				return;
 			}
 
-			if (!url && action === "open" && isDir && !idOpenDoc && !isContextMenu) {
+			if (
+				!url &&
+				action === "open" &&
+				isDir &&
+				!idOpenDoc &&
+				!isOneDirUp &&
+				!isContextMenu
+			) {
 				loader.hide();
 				util.addPath(name, uuid).then((res) => {
 					const storage = allStorages.find((storage) => storage.uuid === uuid);
@@ -1009,6 +1017,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 			if (isContextMenu) action = "contextmenu";
 			else if (idOpenDoc) action = "open-doc";
+			else if (isOneDirUp) action = "oneDirUp";
 
 			switch (action) {
 				case "navigation":
@@ -1024,6 +1033,10 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				case "open-doc":
 					openDoc();
 					break;
+				case "oneDirUp": {
+					const dir = navStack.get(-2);
+					if (dir) navigate(dir.url, dir.name);
+				}
 			}
 
 			async function folder() {
@@ -1076,6 +1089,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			}
 
 			async function contextMenuHandler() {
+				if (isOneDirUp) return;
 				if (appSettings.value.vibrateOnTap) {
 					navigator.vibrate(config.VIBRATION_TIME);
 				}
@@ -1664,6 +1678,14 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 			const $list = createListEl();
 
+			const oneDirUp =
+				navStack.length >= 2 &&
+				createListItemEl({
+					name: "..",
+					oneDirUp: true,
+					notSelectable: true,
+				});
+
 			if (!$oldList) $content.append($list);
 			else {
 				const dir = currentDir;
@@ -1685,6 +1707,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			let { list } = dir;
 			const fg = new DocumentFragment();
 			if (!list) {
+				if (oneDirUp) fg.append(oneDirUp);
 				let plh = { placeholder: true };
 				for (let i = Math.ceil($list.clientHeight / 45); i-- > 0; ) {
 					const el = createListItemEl(plh);
@@ -1700,6 +1723,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 			if (_rndrAbortCtrl === rndrAbortCtrl) _rndrAbortCtrl = null;
 
+			if (oneDirUp) fg.append(oneDirUp);
 			for (let l = list?.length, i = 0; i < l; i++) {
 				fg.append(createListItemEl(list[i]));
 			}
