@@ -1427,32 +1427,28 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		 * @returns {Promise<object[]>}
 		 */
 		async function getDirList(url) {
-			try {
-				let list;
-				if (url === "/") list = await listAllStorages();
-				else {
-					const p1 = fsOperation(url).lsDir();
-					const { promise: p2, reject } = Promise.withResolvers();
-					const tm = setTimeout(
-						() => reject("Directory loading timed out."),
-						10000,
-					);
-					try {
-						list = await Promise.race([p1, p2]);
-					} finally {
-						clearTimeout(tm);
-					}
+			let list;
+			if (url === "/") list = await listAllStorages();
+			else {
+				const p1 = fsOperation(url).lsDir();
+				const { promise: p2, reject } = Promise.withResolvers();
+				const tm = setTimeout(
+					() => reject("Directory loading timed out."),
+					10000,
+				);
+				try {
+					list = await Promise.race([p1, p2]);
+				} finally {
+					clearTimeout(tm);
 				}
-
-				if (list?.length) {
-					const { fileBrowser } = appSettings.value;
-					list = helpers.sortDir(list, fileBrowser, mode);
-				}
-
-				return list ?? [];
-			} catch (err) {
-				helpers.error(err, url);
 			}
+
+			if (list?.length) {
+				const { fileBrowser } = appSettings.value;
+				list = helpers.sortDir(list, fileBrowser, mode);
+			}
+
+			return list ?? [];
 		}
 
 		/**
@@ -1645,6 +1641,15 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		}
 
 		/**
+		 * @param {string} [msg]
+		 * @returns {HTMLDivElement | null}
+		 */
+		function createPlaceholderEl(msg) {
+			if (!(msg = `${msg ?? ""}`)) return;
+			return <div id="error-or-empty-dir">{msg}</div>;
+		}
+
+		/**
 		 * @returns {HTMLUListElement}
 		 */
 		function createListEl() {
@@ -1704,6 +1709,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 			updatePasteToggler();
 
+			let error;
 			let { list } = dir;
 			const fg = new DocumentFragment();
 			if (!list) {
@@ -1716,7 +1722,19 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					fg.append(el);
 				}
 				$list.append(fg);
-				list = await getDirList(url);
+				try {
+					list = await getDirList(url);
+				} catch (err) {
+					const url2 = /^(content|file|s?ftp|https?):/.test(url)
+						? helpers.getVirtualPath(url)
+						: url;
+					console.group("Error reading directory:", url2);
+					console.error(err);
+					console.groupEnd();
+					let msg = `${err ?? ""}`;
+					if (!msg.startsWith("Error:")) msg = `Error: ${msg}`;
+					error = msg.trim();
+				}
 				if (abortSignal.aborted) return;
 				dir.list = list;
 			}
@@ -1724,8 +1742,14 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			if (_rndrAbortCtrl === rndrAbortCtrl) _rndrAbortCtrl = null;
 
 			if (oneDirUp) fg.append(oneDirUp);
-			for (let l = list?.length, i = 0; i < l; i++) {
-				fg.append(createListItemEl(list[i]));
+			const l = list?.length;
+			if (!l) {
+				const el = createPlaceholderEl(
+					list ? strings["empty folder message"] : error,
+				);
+				if (el) fg.append(el);
+			} else {
+				for (let i = 0; i < l; ) fg.append(createListItemEl(list[i++]));
 			}
 			$list.replaceChildren(fg);
 
