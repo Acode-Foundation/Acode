@@ -287,6 +287,14 @@ interface SDcard {
     onEvent: (event: WorkspaceEvent) => void,
     onFail: (err: any) => void,
   ): void;
+  workspaceUpdate(
+    options: any,
+    onSuccess: (result: {
+      added: number;
+      removed: number;
+    }) => void,
+    onFail: (err: any) => void,
+  ): void;
   workspaceSearch(
     options: any,
     onEvent: (event: WorkspaceEvent) => void,

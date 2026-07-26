@@ -58,21 +58,21 @@ export function scan(root, options = {}) {
 				emit(event);
 				switch (event?.type || event?.action) {
 					case "done":
-						scanIdsByRoot.delete(rootUrl);
+						clearScanId(rootUrl, id);
 						resolve(event);
 						break;
 					case "cancelled":
-						scanIdsByRoot.delete(rootUrl);
+						clearScanId(rootUrl, id);
 						resolve(event);
 						break;
 					case "error":
-						scanIdsByRoot.delete(rootUrl);
+						clearScanId(rootUrl, id);
 						reject(new Error(event.error || "Native scan failed"));
 						break;
 				}
 			},
 			(error) => {
-				scanIdsByRoot.delete(rootUrl);
+				clearScanId(rootUrl, id);
 				reject(normalizeError(error));
 			},
 		);
@@ -86,6 +86,39 @@ export function scan(root, options = {}) {
 	promise.id = id;
 	promise.cancel = () => cancel(id);
 	return promise;
+}
+
+/**
+ * Incrementally refresh changed files or directory subtrees in a native index.
+ * @param {string|object} root
+ * @param {object} changes
+ * @param {{url: string, parentUrl: string}[]} [changes.added]
+ * @param {string[]} [changes.removed]
+ */
+export function update(root, changes = {}) {
+	const rootUrl = typeof root === "string" ? root : root?.url;
+	const title =
+		typeof root === "string" ? changes.title || changes.name : root?.title;
+	if (!supports(rootUrl)) {
+		return Promise.reject(
+			new Error(`Native file index does not support: ${rootUrl}`),
+		);
+	}
+
+	return callNative("workspaceUpdate", [
+		{
+			rootUrl,
+			title,
+			added: changes.added || [],
+			removed: changes.removed || [],
+			excludeFolders: changes.excludeFolders || settings.value.excludeFolders,
+			showHiddenFiles:
+				changes.showHiddenFiles ??
+				!!settings.value.fileBrowser?.showHiddenFiles,
+			defaultEncoding:
+				changes.defaultEncoding || settings.value.defaultFileEncoding,
+		},
+	]);
 }
 
 /**
@@ -215,11 +248,17 @@ export function cancel(id) {
 function cancelRootScan(rootUrl) {
 	const id = scanIdsByRoot.get(rootUrl);
 	if (!id) return;
-	scanIdsByRoot.delete(rootUrl);
+	clearScanId(rootUrl, id);
 	try {
 		sdcard.workspaceCancel(id);
 	} catch (_) {
 		// Ignore cancellation failures; the replacement scan remains authoritative.
+	}
+}
+
+function clearScanId(rootUrl, id) {
+	if (scanIdsByRoot.get(rootUrl) === id) {
+		scanIdsByRoot.delete(rootUrl);
 	}
 }
 
@@ -244,6 +283,7 @@ function normalizeError(error) {
 const fileIndex = {
 	supports,
 	scan,
+	update,
 	query,
 	search,
 	get,

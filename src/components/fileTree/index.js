@@ -373,6 +373,8 @@ export default class FileTree {
 	 * @param {boolean} isDirectory
 	 */
 	appendEntry(name, url, isDirectory) {
+		if (this.entries.some((entry) => entry.url === url)) return;
+
 		const entry = { name, url, isDirectory, isFile: !isDirectory };
 
 		// Insert in sorted position
@@ -399,10 +401,10 @@ export default class FileTree {
 			// Virtual list mode: update items
 			this.virtualList.setItems(this.entries);
 		} else {
-			// Fragment mode: re-render
-			this.destroyChildTrees();
-			this.container.innerHTML = "";
-			this.renderWithFragment();
+			const index = this.entries.findIndex((item) => item.url === url);
+			const $el = this.createEntryElement(entry);
+			const $next = this.container.children[index];
+			this.container.insertBefore($el, $next || null);
 		}
 	}
 

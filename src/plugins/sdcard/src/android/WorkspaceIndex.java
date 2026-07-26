@@ -7,6 +7,7 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.net.Uri;
+import android.os.CancellationSignal;
 import android.provider.DocumentsContract;
 import android.provider.DocumentsContract.Document;
 import android.util.Log;
@@ -200,6 +201,7 @@ class WorkspaceIndex {
 
   private final Context context;
   private final ContentResolver resolver;
+  private final ExecutorService indexExecutor = Executors.newSingleThreadExecutor();
   private final ExecutorService executor = Executors.newFixedThreadPool(2);
   private final Map<String, Job> jobs = new ConcurrentHashMap<>();
   private final DB db;
@@ -215,7 +217,7 @@ class WorkspaceIndex {
     final Job job = new Job(id);
     jobs.put(id, job);
 
-    executor.execute(
+    indexExecutor.execute(
       () -> {
         try {
           runScan(job, options, callback);
@@ -223,6 +225,18 @@ class WorkspaceIndex {
           sendError(callback, id, error);
         } finally {
           jobs.remove(id);
+        }
+      }
+    );
+  }
+
+  void update(JSONObject options, CallbackContext callback) {
+    indexExecutor.execute(
+      () -> {
+        try {
+          callback.success(runUpdate(options));
+        } catch (Exception error) {
+          callback.error(error.getMessage() == null ? error.toString() : error.getMessage());
         }
       }
     );
@@ -260,7 +274,7 @@ class WorkspaceIndex {
 
   void cancel(String id) {
     Job job = jobs.get(id);
-    if (job != null) job.cancelled = true;
+    if (job != null) job.cancel();
   }
 
   void markDirty(JSONArray urls) {
@@ -292,6 +306,11 @@ class WorkspaceIndex {
 
   private void runScan(Job job, JSONObject options, CallbackContext callback)
     throws Exception {
+    if (job.cancelled) {
+      send(callback, baseEvent(job.id, "cancelled"), false);
+      return;
+    }
+
     String rootUrl = options.getString("rootUrl");
     String title = options.optString("title", basename(rootUrl));
     JSONArray exclude = options.optJSONArray("excludeFolders");
@@ -370,6 +389,278 @@ class WorkspaceIndex {
     done.put("dirs", stats.dirs);
     done.put("indexed", stats.indexed);
     send(callback, done, false);
+  }
+
+  private JSONObject runUpdate(JSONObject options) throws Exception {
+    String rootUrl = options.getString("rootUrl");
+    String title = options.optString("title", getWorkspaceTitle(rootUrl));
+    JSONArray removed = options.optJSONArray("removed");
+    JSONArray added = options.optJSONArray("added");
+    JSONArray exclude = options.optJSONArray("excludeFolders");
+    boolean showHiddenFiles = options.optBoolean("showHiddenFiles", false);
+    String defaultEncoding = options.optString("defaultEncoding", "UTF-8");
+    SQLiteDatabase writable = db.getWritableDatabase();
+    int removedCount = 0;
+    int addedCount = 0;
+
+    writable.beginTransaction();
+    try {
+      if (removed != null) {
+        for (int i = 0; i < removed.length(); i++) {
+          String url = removed.optString(i, "");
+          if (url.length() == 0 || rootUrl.equals(url)) continue;
+          removedCount += deleteIndexedSubtree(writable, rootUrl, url);
+        }
+      }
+
+      if (added != null) {
+        for (int i = 0; i < added.length(); i++) {
+          JSONObject change = added.optJSONObject(i);
+          if (change == null) continue;
+          String url = change.optString("url", "");
+          String parentUrl = change.optString("parentUrl", "");
+          if (url.length() == 0 || parentUrl.length() == 0) continue;
+
+          removedCount += deleteIndexedSubtree(writable, rootUrl, url);
+          FileEntry entry = readEntry(rootUrl, parentUrl, url, title);
+          if (entry == null) continue;
+          if (!showHiddenFiles && entry.name.startsWith(".")) continue;
+
+          saveFile(entry);
+          addedCount += 1;
+          if (
+            entry.isDirectory &&
+            !shouldSkipDirectory(rootUrl, entry.url, entry.path, exclude)
+          ) {
+            Job job = new Job("update-" + UUID.randomUUID());
+            ScanStats stats = new ScanStats();
+            if (isSafUrl(url)) {
+              SafUrl rootSafUrl = parseSafUrl(rootUrl);
+              scanSafDir(
+                job,
+                null,
+                rootSafUrl.treeUrl,
+                rootUrl,
+                parseSafUrl(url).docId,
+                url,
+                entry.path,
+                title,
+                exclude,
+                showHiddenFiles,
+                defaultEncoding,
+                false,
+                false,
+                new JSONArray(),
+                stats
+              );
+            } else {
+              scanFileDir(
+                job,
+                null,
+                rootUrl,
+                fileFromUrl(url),
+                url,
+                entry.path,
+                title,
+                exclude,
+                showHiddenFiles,
+                defaultEncoding,
+                false,
+                false,
+                new JSONArray(),
+                stats
+              );
+            }
+            addedCount += stats.files + stats.dirs;
+          }
+        }
+      }
+
+      ContentValues workspace = new ContentValues();
+      workspace.put("root_url", rootUrl);
+      workspace.put("title", title);
+      workspace.put("indexed_at", System.currentTimeMillis());
+      int updated = writable.update(
+        "workspaces",
+        workspace,
+        "root_url = ?",
+        new String[] { rootUrl }
+      );
+      if (updated == 0) writable.insert("workspaces", null, workspace);
+      writable.setTransactionSuccessful();
+    } finally {
+      writable.endTransaction();
+    }
+
+    JSONObject result = new JSONObject();
+    result.put("added", addedCount);
+    result.put("removed", removedCount);
+    return result;
+  }
+
+  private FileEntry readEntry(
+    String rootUrl,
+    String parentUrl,
+    String url,
+    String title
+  ) {
+    String parentPath = getIndexedPath(rootUrl, parentUrl, title);
+    if (isSafUrl(url)) {
+      Cursor cursor = null;
+      try {
+        cursor =
+          resolver.query(
+            formatSafUri(url),
+            new String[] {
+              Document.COLUMN_DISPLAY_NAME,
+              Document.COLUMN_MIME_TYPE,
+              Document.COLUMN_SIZE,
+              Document.COLUMN_LAST_MODIFIED,
+            },
+            null,
+            null,
+            null
+          );
+        if (cursor == null || !cursor.moveToFirst()) return null;
+        String name = cursor.getString(0);
+        String mime = normalizeMime(name, cursor.getString(1));
+        boolean isDirectory = Document.MIME_TYPE_DIR.equals(mime);
+        return new FileEntry(
+          rootUrl,
+          parentUrl,
+          url,
+          name,
+          joinPath(parentPath, name),
+          mime,
+          isDirectory,
+          safeLong(cursor, 2),
+          safeLong(cursor, 3)
+        );
+      } catch (Exception error) {
+        Log.d(TAG, "Unable to refresh SAF index entry " + url, error);
+        return null;
+      } finally {
+        if (cursor != null) cursor.close();
+      }
+    }
+
+    File file = fileFromUrl(url);
+    if (!file.exists()) return null;
+    String name = file.getName();
+    boolean isDirectory = file.isDirectory();
+    return new FileEntry(
+      rootUrl,
+      parentUrl,
+      url,
+      name,
+      joinPath(parentPath, name),
+      isDirectory
+        ? Document.MIME_TYPE_DIR
+        : normalizeMime(name, guessMime(name)),
+      isDirectory,
+      file.length(),
+      file.lastModified()
+    );
+  }
+
+  private String getIndexedPath(
+    String rootUrl,
+    String url,
+    String fallbackTitle
+  ) {
+    if (rootUrl.equals(url)) return fallbackTitle;
+    Cursor cursor = null;
+    try {
+      cursor =
+        db
+          .getReadableDatabase()
+          .query(
+            "files",
+            new String[] { "path" },
+            "root_url = ? AND url = ?",
+            new String[] { rootUrl, url },
+            null,
+            null,
+            null,
+            "1"
+          );
+      if (cursor.moveToFirst()) return cursor.getString(0);
+    } finally {
+      if (cursor != null) cursor.close();
+    }
+    return fallbackTitle;
+  }
+
+  private String getWorkspaceTitle(String rootUrl) {
+    Cursor cursor = null;
+    try {
+      cursor =
+        db
+          .getReadableDatabase()
+          .query(
+            "workspaces",
+            new String[] { "title" },
+            "root_url = ?",
+            new String[] { rootUrl },
+            null,
+            null,
+            null,
+            "1"
+          );
+      if (cursor.moveToFirst()) return cursor.getString(0);
+    } finally {
+      if (cursor != null) cursor.close();
+    }
+    return basename(rootUrl);
+  }
+
+  private int deleteIndexedSubtree(
+    SQLiteDatabase writable,
+    String rootUrl,
+    String url
+  ) {
+    ArrayDeque<String> directories = new ArrayDeque<>();
+    Set<String> visitedDirectories = new HashSet<>();
+    Set<String> urls = new HashSet<>();
+    directories.add(url);
+    urls.add(url);
+
+    while (!directories.isEmpty()) {
+      String parentUrl = directories.removeFirst();
+      if (!visitedDirectories.add(parentUrl)) continue;
+      Cursor cursor = null;
+      try {
+        cursor =
+          writable.query(
+            "files",
+            new String[] { "url", "is_directory" },
+            "root_url = ? AND parent_url = ?",
+            new String[] { rootUrl, parentUrl },
+            null,
+            null,
+            null
+          );
+        while (cursor.moveToNext()) {
+          String childUrl = cursor.getString(0);
+          urls.add(childUrl);
+          if (cursor.getInt(1) != 0) directories.add(childUrl);
+        }
+      } finally {
+        if (cursor != null) cursor.close();
+      }
+    }
+
+    int deleted = 0;
+    for (String entryUrl : urls) {
+      writable.delete("content", "url = ?", new String[] { entryUrl });
+      deleted +=
+        writable.delete(
+          "files",
+          "root_url = ? AND url = ?",
+          new String[] { rootUrl, entryUrl }
+        );
+    }
+    return deleted;
   }
 
   private void scanFileDir(
@@ -474,6 +765,8 @@ class WorkspaceIndex {
       parentDocId
     );
     Cursor cursor = null;
+    CancellationSignal signal = new CancellationSignal();
+    CancellationSignal previousSignal = job.setSignal(signal);
     try {
       try {
         cursor =
@@ -488,7 +781,8 @@ class WorkspaceIndex {
             },
             null,
             null,
-            null
+            null,
+            signal
           );
       } catch (Exception error) {
         Log.d(TAG, "Skipping unreadable SAF directory " + parentUrl, error);
@@ -556,6 +850,7 @@ class WorkspaceIndex {
       Log.d(TAG, "Stopping unreadable SAF directory " + parentUrl, error);
     } finally {
       if (cursor != null) cursor.close();
+      job.restoreSignal(signal, previousSignal);
     }
   }
 
@@ -1465,9 +1760,32 @@ class WorkspaceIndex {
   private static class Job {
     final String id;
     volatile boolean cancelled = false;
+    volatile CancellationSignal signal;
 
     Job(String id) {
       this.id = id;
+    }
+
+    void cancel() {
+      cancelled = true;
+      CancellationSignal activeSignal = signal;
+      if (activeSignal != null) activeSignal.cancel();
+    }
+
+    CancellationSignal setSignal(CancellationSignal nextSignal) {
+      CancellationSignal previousSignal = signal;
+      signal = nextSignal;
+      if (cancelled) nextSignal.cancel();
+      return previousSignal;
+    }
+
+    void restoreSignal(
+      CancellationSignal currentSignal,
+      CancellationSignal previousSignal
+    ) {
+      if (signal != currentSignal) return;
+      signal = previousSignal;
+      if (cancelled && previousSignal != null) previousSignal.cancel();
     }
   }
 

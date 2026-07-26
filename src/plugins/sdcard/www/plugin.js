@@ -72,6 +72,9 @@ module.exports = {
   workspaceScan: function (options, onEvent, onFail) {
     cordova.exec(onEvent, onFail, 'SDcard', 'workspace scan', [options || {}]);
   },
+  workspaceUpdate: function (options, onSuccess, onFail) {
+    cordova.exec(onSuccess, onFail, 'SDcard', 'workspace update', [options || {}]);
+  },
   workspaceSearch: function (options, onEvent, onFail) {
     cordova.exec(onEvent, onFail, 'SDcard', 'workspace search', [options || {}]);
   },

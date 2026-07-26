@@ -474,6 +474,7 @@ export default {
 			};
 		};
 		let firstCreatedPath = null;
+		let firstCreatedParentUri = null;
 		let firstCreatedType = null;
 		let firstTargetUri = uri;
 
@@ -498,6 +499,7 @@ export default {
 
 			if (entry.created && firstCreatedPath === null) {
 				firstCreatedPath = entry.url;
+				firstCreatedParentUri = currentUri;
 				firstCreatedType = expectedType;
 			}
 
@@ -506,6 +508,7 @@ export default {
 
 		return {
 			uri: firstCreatedPath || firstTargetUri,
+			parentUri: firstCreatedParentUri || uri,
 			created: Boolean(firstCreatedPath),
 			type:
 				firstCreatedType || (isFile && parts.length === 1 ? "file" : "folder"),

@@ -42,8 +42,11 @@ export function initFileList() {
 export async function append(parent, child) {
 	const nativeRoot = findNativeRoot(parent);
 	if (nativeRoot) {
-		fileIndex.markDirty([child]).catch(() => {});
-		fileIndex.scan(nativeRoot).catch(logNativeIndexError);
+		fileIndex
+			.update(nativeRoot, {
+				added: [{ url: child, parentUrl: parent }],
+			})
+			.catch(logNativeIndexError);
 		return;
 	}
 
@@ -72,8 +75,9 @@ export function remove(item) {
 				},
 			);
 		} else {
-			fileIndex.markDirty([item]).catch(() => {});
-			fileIndex.scan(nativeRoot).catch(logNativeIndexError);
+			fileIndex
+				.update(nativeRoot, { removed: [item] })
+				.catch(logNativeIndexError);
 		}
 		return;
 	}
@@ -139,8 +143,12 @@ export async function whenReady() {
 export function rename(oldUrl, newUrl) {
 	const nativeRoot = findNativeRoot(oldUrl) || findNativeRoot(newUrl);
 	if (nativeRoot) {
-		fileIndex.markDirty([oldUrl, newUrl]).catch(() => {});
-		fileIndex.scan(nativeRoot).catch(logNativeIndexError);
+		fileIndex
+			.update(nativeRoot, {
+				removed: [oldUrl],
+				added: [{ url: newUrl, parentUrl: Url.dirname(newUrl) }],
+			})
+			.catch(logNativeIndexError);
 		return;
 	}
 
@@ -602,7 +610,8 @@ function normalizeModifiedDate(value) {
 
 function findNativeRoot(url) {
 	if (!url) return null;
-	return addedFolder.find(({ url: rootUrl }) => {
+	return addedFolder.find(({ url: rootUrl, listFiles }) => {
+		if (!listFiles) return false;
 		if (!fileIndex.supports(rootUrl)) return false;
 		const prefix = rootUrl.endsWith("/") ? rootUrl : `${rootUrl}/`;
 		return (
