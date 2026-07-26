@@ -11,8 +11,13 @@ const appThemes = new Map();
 let themeApplied = false;
 let firstTime = true;
 
+const darkModeMediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+let systemThemeWatcherActive = false;
+
 function init() {
 	themes.forEach((theme) => add(theme));
+	updateSystemThemeWatcher(settings.value.appTheme);
+	settings.on("update:appTheme", updateSystemThemeWatcher);
 }
 
 /**
@@ -159,6 +164,45 @@ export function update(theme) {
 	});
 }
 
+function syncSystemTheme(event) {
+	if (settings.value.appTheme.toLowerCase() !== "system") return;
+	const isDark = event ? event.matches : darkModeMediaQuery.matches;
+	updateSystemTheme(isDark);
+}
+
+function startSystemThemeWatcher() {
+	if (systemThemeWatcherActive) return;
+	systemThemeWatcherActive = true;
+	if (typeof darkModeMediaQuery.addEventListener === "function") {
+		darkModeMediaQuery.addEventListener("change", syncSystemTheme);
+	} else {
+		darkModeMediaQuery.addListener(syncSystemTheme);
+	}
+}
+
+function stopSystemThemeWatcher() {
+	if (!systemThemeWatcherActive) return;
+	systemThemeWatcherActive = false;
+	if (typeof darkModeMediaQuery.removeEventListener === "function") {
+		darkModeMediaQuery.removeEventListener("change", syncSystemTheme);
+	} else {
+		darkModeMediaQuery.removeListener(syncSystemTheme);
+	}
+}
+
+/**
+ * Start or stop syncing the app theme with the OS color scheme
+ * @param {string} theme
+ */
+export function updateSystemThemeWatcher(theme) {
+	if (String(theme).toLowerCase() === "system") {
+		startSystemThemeWatcher();
+		syncSystemTheme();
+		return;
+	}
+	stopSystemThemeWatcher();
+}
+
 export default {
 	get applied() {
 		return themeApplied;
@@ -169,4 +213,5 @@ export default {
 	add,
 	apply,
 	update,
+	updateSystemThemeWatcher,
 };
