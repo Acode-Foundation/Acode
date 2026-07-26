@@ -87,7 +87,6 @@ export default class AcodeWorkspace extends Workspace {
 			this.#fileMap.set(uri, file);
 			this.files.push(file);
 			this.client.didOpen(file);
-			schedulePullDiagnostics(this.client, uri, 0);
 		}
 		file.views.add(view);
 		return file;

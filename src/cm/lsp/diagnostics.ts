@@ -378,6 +378,10 @@ export function lspDiagnosticsAutoSyncExtension(
 		class {
 			pending: ReturnType<typeof setTimeout> | null = null;
 
+			constructor() {
+				schedulePullDiagnostics(client, uri, 0);
+			}
+
 			update(update: ViewUpdate): void {
 				if (!update.docChanged) return;
 				if (this.pending != null) clearTimeout(this.pending);
