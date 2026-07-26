@@ -72,6 +72,7 @@ export interface WorkerServerContext {
 	documents: Map<string, TextDocument>;
 	initializationOptions?: Record<string, unknown>;
 	rootUri?: string | null;
+	getProjectVersion(): string;
 	requestFile(uri: string): Promise<string>;
 }
 
@@ -103,6 +104,7 @@ const hostRequests = new Map<
 let adapter: WorkerLanguageAdapter | null = null;
 let serverId = "worker";
 let nextHostRequestId = 0;
+let projectVersion = 0;
 
 function sendJson(message: unknown): void {
 	workerScope.postMessage(JSON.stringify(message));
@@ -224,6 +226,7 @@ function didOpen(params: DidOpenParams): void {
 		item.text,
 	);
 	documents.set(item.uri, document);
+	projectVersion++;
 	scheduleValidation(item.uri);
 }
 
@@ -232,6 +235,7 @@ function didChange(params: DidChangeParams): void {
 	const document = documents.get(identifier.uri);
 	if (!document) return;
 	TextDocument.update(document, params.contentChanges, identifier.version);
+	projectVersion++;
 	scheduleValidation(identifier.uri);
 }
 
@@ -240,7 +244,7 @@ function didClose(params: DidCloseParams): void {
 	const timer = validationTimers.get(uri);
 	if (timer) clearTimeout(timer);
 	validationTimers.delete(uri);
-	documents.delete(uri);
+	if (documents.delete(uri)) projectVersion++;
 	adapter?.closeDocument?.(uri);
 	publishDiagnostics(uri, 0, []);
 }
@@ -360,6 +364,7 @@ export function startWorkerServer(factory: AdapterFactory): void {
 					documents,
 					initializationOptions: data.initializationOptions,
 					rootUri: data.rootUri,
+					getProjectVersion: () => String(projectVersion),
 					requestFile,
 				}),
 			).then(

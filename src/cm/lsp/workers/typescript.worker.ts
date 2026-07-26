@@ -60,6 +60,7 @@ class TypeScriptHost implements ts.LanguageServiceHost {
 	constructor(
 		private readonly documents: Map<string, TextDocument>,
 		private readonly options: ts.CompilerOptions,
+		private readonly projectVersion: () => string,
 	) {}
 
 	getCompilationSettings(): ts.CompilerOptions {
@@ -70,8 +71,8 @@ class TypeScriptHost implements ts.LanguageServiceHost {
 		return "/";
 	}
 
-	getDefaultLibFileName(): string {
-		return "lib.es2022.full.d.ts";
+	getDefaultLibFileName(options: ts.CompilerOptions): string {
+		return ts.getDefaultLibFileName(options);
 	}
 
 	getScriptFileNames(): string[] {
@@ -84,9 +85,7 @@ class TypeScriptHost implements ts.LanguageServiceHost {
 	}
 
 	getProjectVersion(): string {
-		return [...this.documents]
-			.map(([uri, document]) => `${uri}:${document.version}`)
-			.join("|");
+		return this.projectVersion();
 	}
 
 	getScriptSnapshot(fileName: string): ts.IScriptSnapshot | undefined {
@@ -207,9 +206,18 @@ class TypeScriptHost implements ts.LanguageServiceHost {
 	}
 }
 
-startWorkerServer(async ({ documents, requestFile, rootUri }) => {
+startWorkerServer(async ({
+	documents,
+	requestFile,
+	rootUri,
+	getProjectVersion,
+}) => {
 	const compilerOptions = await loadCompilerOptions(rootUri, requestFile);
-	const host = new TypeScriptHost(documents, compilerOptions);
+	const host = new TypeScriptHost(
+		documents,
+		compilerOptions,
+		getProjectVersion,
+	);
 	const service = ts.createLanguageService(
 		host,
 		ts.createDocumentRegistry(true, "/"),
