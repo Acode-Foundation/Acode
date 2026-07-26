@@ -13,7 +13,7 @@ import { WebglAddon } from "@xterm/addon-webgl";
 import { Terminal as Xterm } from "@xterm/xterm";
 import {
 	executeCommand,
-	getResolvedKeyBindings,
+	getEffectiveKeyBindings,
 	getResolvedKeyBindingsVersion,
 } from "cm/commandRegistry";
 import confirm from "dialogs/confirm";
@@ -375,7 +375,7 @@ export default class TerminalComponent {
 
 		const parsedBindings = [];
 
-		Object.entries(getResolvedKeyBindings()).forEach(([name, binding]) => {
+		Object.entries(getEffectiveKeyBindings()).forEach(([name, binding]) => {
 			if (!binding.key) return;
 
 			// Skip editor-only keybindings in terminal
@@ -385,6 +385,11 @@ export default class TerminalComponent {
 			const keys = binding.key.split("|");
 
 			keys.forEach((keyCombo) => {
+				// CodeMirror supports multi-stroke chords, while xterm's keyboard
+				// callback receives one event at a time. Do not misread a chord as
+				// a single malformed terminal shortcut.
+				if (/\s/.test(keyCombo.trim())) return;
+
 				const parts = keyCombo.endsWith("-")
 					? [...keyCombo.slice(0, -1).split("-").filter(Boolean), "-"]
 					: keyCombo.split("-");

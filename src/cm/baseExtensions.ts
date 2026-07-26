@@ -4,7 +4,7 @@ import {
 	closeBracketsKeymap,
 	completionKeymap,
 } from "@codemirror/autocomplete";
-import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import { history } from "@codemirror/commands";
 import {
 	bracketMatching,
 	defaultHighlightStyle,
@@ -79,8 +79,6 @@ export default function createBaseExtensions(
 		keymap.of([
 			...(autoCloseBrackets ? closeBracketsKeymap : []),
 			...completionKeymap,
-			...defaultKeymap,
-			...historyKeymap,
 		]),
 	);
 	extensions.push(

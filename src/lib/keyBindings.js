@@ -4,12 +4,19 @@ import {
 	emacsStyleKeymap,
 	historyKeymap,
 	indentWithTab,
-	standardKeymap,
 } from "@codemirror/commands";
+import {
+	canonicalizeKeyBinding,
+	keyBindingsConflict,
+} from "cm/keyBindingUtils";
 
 const MODIFIER_ORDER = ["Ctrl", "Alt", "Shift", "Cmd"];
+const CODEMIRROR_NON_COMMAND_EXPORTS = new Set([
+	"history",
+	"redoDepth",
+	"undoDepth",
+]);
 const KEYMAP_SOURCES = [
-	...standardKeymap,
 	...defaultKeymap,
 	...historyKeymap,
 	...emacsStyleKeymap,
@@ -307,7 +314,7 @@ const APP_BINDING_CONFIG = [
 	{
 		name: "problems",
 		description: "Show problems",
-		key: null,
+		key: "Ctrl-Shift-M",
 		readOnly: true,
 		editorOnly: true,
 	},
@@ -367,13 +374,13 @@ const APP_BINDING_CONFIG = [
 	{
 		name: "openPluginsPage",
 		description: "Open plugins page",
-		key: null,
+		key: "Ctrl-Shift-X",
 		readOnly: true,
 	},
 	{
 		name: "openFileExplorer",
 		description: "Open file explorer",
-		key: null,
+		key: "Ctrl-Shift-E",
 		readOnly: true,
 	},
 	{
@@ -545,6 +552,13 @@ const APP_BINDING_CONFIG = [
 		editorOnly: true,
 	},
 	{
+		name: "deleteToLineEnd",
+		description: "Delete to line end",
+		key: null,
+		readOnly: false,
+		editorOnly: true,
+	},
+	{
 		name: "togglecomment",
 		description: "Toggle comment",
 		key: "Ctrl-/",
@@ -568,7 +582,7 @@ const APP_BINDING_CONFIG = [
 	{
 		name: "toggleBlockComment",
 		description: "Toggle block comment",
-		key: "Ctrl-Shift-/",
+		key: "Ctrl-Shift-/|Shift-Alt-A",
 		readOnly: false,
 		editorOnly: true,
 	},
@@ -589,7 +603,7 @@ const APP_BINDING_CONFIG = [
 	{
 		name: "simplifySelection",
 		description: "Simplify selection",
-		key: null,
+		key: "Escape",
 		readOnly: true,
 		editorOnly: true,
 	},
@@ -630,9 +644,80 @@ const APP_BINDING_CONFIG = [
 		readOnly: true,
 		editorOnly: true,
 	},
+	{
+		name: "deleteTrailingWhitespace",
+		description: "Delete trailing whitespace",
+		key: null,
+		readOnly: false,
+		editorOnly: true,
+	},
+	{
+		name: "formatDocument",
+		description: "Format document (Language Server)",
+		key: "Alt-Shift-F",
+		readOnly: false,
+		editorOnly: true,
+	},
+	{
+		name: "renameSymbol",
+		description: "Rename symbol (Language Server)",
+		key: null,
+		readOnly: false,
+		editorOnly: true,
+	},
+	{
+		name: "showSignatureHelp",
+		description: "Show signature help",
+		key: "Ctrl-Shift-Space",
+		readOnly: true,
+		editorOnly: true,
+	},
+	{
+		name: "prevSignature",
+		description: "Previous signature",
+		key: "Ctrl-Shift-Up",
+		readOnly: true,
+		editorOnly: true,
+	},
+	{
+		name: "nextSignature",
+		description: "Next signature",
+		key: "Ctrl-Shift-Down",
+		readOnly: true,
+		editorOnly: true,
+	},
+	{
+		name: "jumpToDefinition",
+		description: "Go to definition (Language Server)",
+		key: "F12",
+		readOnly: true,
+		editorOnly: true,
+	},
+	{
+		name: "findReferences",
+		description: "Find all references (Language Server)",
+		key: "Shift-F12",
+		readOnly: true,
+		editorOnly: true,
+	},
+	{
+		name: "nextDiagnostic",
+		description: "Go to next diagnostic",
+		key: "F8",
+		readOnly: true,
+		editorOnly: true,
+	},
+	{
+		name: "previousDiagnostic",
+		description: "Go to previous diagnostic",
+		key: "Shift-F8",
+		readOnly: true,
+		editorOnly: true,
+	},
 ];
 
 const APP_KEY_BINDINGS = buildAppBindings(APP_BINDING_CONFIG);
+export const APP_KEY_BINDING_NAMES = new Set(Object.keys(APP_KEY_BINDINGS));
 const APP_CUSTOM_COMMANDS = new Set(
 	APP_BINDING_CONFIG.filter((config) => !config.action).map(
 		(config) => config.name,
@@ -646,9 +731,13 @@ const FORCE_READ_ONLY = new Set([
 const MUTATING_COMMAND_PATTERN =
 	/^(delete|insert|indent|move|copy|split|transpose|toggle|undo|redo|line|block)/i;
 
-const CODEMIRROR_COMMAND_NAMES = new Set(
+export const CODEMIRROR_COMMAND_NAMES = new Set(
 	Object.entries(cmCommands)
-		.filter(([, value]) => typeof value === "function")
+		.filter(
+			([name, value]) =>
+				typeof value === "function" &&
+				!CODEMIRROR_NON_COMMAND_EXPORTS.has(name),
+		)
 		.map(([name]) => name),
 );
 
@@ -694,7 +783,8 @@ function buildAppBindings(configs) {
 
 function buildCodemirrorKeyBindings(appBindings) {
 	const commandEntries = Object.entries(cmCommands).filter(
-		([, value]) => typeof value === "function",
+		([name, value]) =>
+			CODEMIRROR_COMMAND_NAMES.has(name) && typeof value === "function",
 	);
 	const commandNameByFunction = new Map(
 		commandEntries.map(([name, fn]) => [fn, name]),
@@ -704,10 +794,11 @@ function buildCodemirrorKeyBindings(appBindings) {
 	for (const binding of KEYMAP_SOURCES) {
 		const baseCombos = new Set();
 
+		// Acode's portable Ctrl syntax becomes CodeMirror's Mod at runtime, so
+		// platform-specific mac aliases would only create duplicate bindings here.
 		pushCommandCombo(binding.run, binding.key, "win", baseCombos);
 		pushCommandCombo(binding.run, binding.win, "win", baseCombos);
 		pushCommandCombo(binding.run, binding.linux, "win", baseCombos);
-		pushCommandCombo(binding.run, binding.mac, "mac", baseCombos);
 
 		if (binding.shift) {
 			const shiftName = commandNameByFunction.get(binding.shift);
@@ -718,7 +809,6 @@ function buildCodemirrorKeyBindings(appBindings) {
 							normalizeKey(binding.key, "win"),
 							normalizeKey(binding.win, "win"),
 							normalizeKey(binding.linux, "win"),
-							normalizeKey(binding.mac, "mac"),
 						].filter(Boolean);
 				for (const combo of combos) {
 					addCommandCombo(comboMap, shiftName, ensureModifier(combo, "Shift"));
@@ -727,17 +817,47 @@ function buildCodemirrorKeyBindings(appBindings) {
 		}
 	}
 
-	const result = {};
+	const result = Object.fromEntries(
+		commandEntries
+			.filter(([name]) => !appBindings[name])
+			.map(([name]) => [
+				name,
+				{
+					description: humanizeCommandName(name),
+					key: null,
+					readOnly: inferReadOnly(name),
+					editorOnly: true,
+				},
+			]),
+	);
+	const claimedCombos = new Set();
+	for (const binding of Object.values(appBindings)) {
+		for (const combo of String(binding?.key || "").split("|")) {
+			const normalized = canonicalizeKeyBinding(combo);
+			if (normalized) claimedCombos.add(normalized);
+		}
+	}
+
 	for (const [name, combos] of comboMap.entries()) {
 		if (!combos.size || appBindings[name]) continue;
-		result[name] = {
-			description: humanizeCommandName(name),
-			key: Array.from(combos)
-				.sort((a, b) => a.localeCompare(b))
-				.join("|"),
-			readOnly: inferReadOnly(name),
-			editorOnly: true,
-		};
+		const availableCombos = Array.from(combos)
+			.filter((combo) => {
+				const normalized = canonicalizeKeyBinding(combo);
+				if (!normalized) return false;
+				if (
+					Array.from(claimedCombos).some((claimed) =>
+						keyBindingsConflict(claimed, normalized),
+					)
+				) {
+					return false;
+				}
+				claimedCombos.add(normalized);
+				return true;
+			})
+			.sort((a, b) => a.localeCompare(b));
+		result[name].key = availableCombos.length
+			? availableCombos.join("|")
+			: null;
 	}
 	return result;
 

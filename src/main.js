@@ -637,7 +637,15 @@ async function loadApp() {
 		if (activeFile) editorManager.editor.contentDOM.blur();
 	};
 	sdcard.watchFile(KEYBINDING_FILE, async () => {
-		await setKeyBindings(editorManager.editor);
+		const conflicts = await setKeyBindings(editorManager.editor);
+		if (conflicts.length) {
+			const conflict = conflicts[0];
+			console.warn("Ignored conflicting key bindings", conflicts);
+			toast(
+				`Keybinding conflict: ${conflict.key} is already used by ${conflict.shadowedBy}`,
+			);
+			return;
+		}
 		toast(strings["key bindings updated"]);
 	});
 	//#endregion

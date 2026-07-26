@@ -248,6 +248,8 @@ export interface BuiltinExtensionsConfig {
 	diagnostics?: boolean;
 	inlayHints?: boolean;
 	formatting?: boolean;
+	/** Document color chips via textDocument/documentColor (default true). */
+	documentColors?: boolean;
 }
 
 export interface AcodeClientConfig {

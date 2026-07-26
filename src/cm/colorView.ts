@@ -1,38 +1,30 @@
 import type { Range, Text } from "@codemirror/state";
 import type { DecorationSet, ViewUpdate } from "@codemirror/view";
-import {
-	Decoration,
-	EditorView,
-	ViewPlugin,
-	WidgetType,
-} from "@codemirror/view";
-import pickColor from "dialogs/color";
+import { Decoration, EditorView, ViewPlugin } from "@codemirror/view";
 import color from "utils/color";
 import { colorRegex, isValidColor } from "utils/color/regex";
-
-interface ColorWidgetState {
-	from: number;
-	to: number;
-	colorType: string;
-	alpha?: string;
-	colorRaw: string;
-}
-
-interface ColorWidgetParams extends ColorWidgetState {
-	color: string;
-}
+import {
+	COLOR_CHIP_CLASS,
+	colorChipDecoration,
+	colorChipTheme,
+	findColorChip,
+	getColorChipPayload,
+	isViewEditable,
+	openColorPicker,
+	type ColorChipPayload,
+} from "./colorChip";
+import {
+	didReplaceLspDocumentColors,
+	lspDocumentColorsField,
+} from "./lsp/documentColors";
 
 interface DocRange {
 	from: number;
 	to: number;
 }
 
-// WeakMap to carry state from widget DOM back into handler
-const colorState = new WeakMap<HTMLElement, ColorWidgetState>();
-
 const RGBG = new RegExp(colorRegex.anyGlobal);
 
-const enumColorType = { hex: "hex", rgb: "rgb", hsl: "hsl", named: "named" };
 const MAX_SCAN_CHARS = 20000;
 const MAX_COLOR_CHIPS = 150;
 
@@ -54,7 +46,7 @@ function isAlpha(char: string): boolean {
 	if (!char) return false;
 	const code = char.charCodeAt(0);
 	return (
-		(code >= 65 && code <= 90) || // A-Z
+		(code >= 65 && code <= 90) ||
 		(code >= 97 && code <= 122)
 	);
 }
@@ -115,53 +107,6 @@ function shouldRenderColor(doc: Text, start: number, end: number): boolean {
 	}
 
 	return true;
-}
-
-class ColorWidget extends WidgetType {
-	state: ColorWidgetState;
-	color: string;
-	colorRaw: string;
-
-	constructor({ color, colorRaw, ...state }: ColorWidgetParams) {
-		super();
-		this.state = { ...state, colorRaw }; // from, to, colorType, alpha, original text
-		this.color = color; // hex for input value
-		this.colorRaw = this.state.colorRaw; // original css color string
-	}
-
-	eq(other: ColorWidget): boolean {
-		return (
-			other.state.colorType === this.state.colorType &&
-			other.color === this.color &&
-			other.colorRaw === this.colorRaw &&
-			other.state.from === this.state.from &&
-			other.state.to === this.state.to &&
-			(other.state.alpha || "") === (this.state.alpha || "")
-		);
-	}
-
-	toDOM(): HTMLElement {
-		const wrapper = document.createElement("span");
-		wrapper.className = "cm-color-chip";
-		wrapper.style.display = "inline-block";
-		wrapper.style.width = "0.9em";
-		wrapper.style.height = "0.9em";
-		wrapper.style.borderRadius = "2px";
-		wrapper.style.verticalAlign = "middle";
-		wrapper.style.margin = "0 2px";
-		wrapper.style.boxSizing = "border-box";
-		wrapper.style.border = "1px solid rgba(0,0,0,0.2)";
-		wrapper.style.backgroundColor = this.colorRaw;
-		wrapper.dataset["color"] = this.color;
-		wrapper.dataset["colorraw"] = this.colorRaw;
-		wrapper.style.cursor = "pointer";
-		colorState.set(wrapper, this.state);
-		return wrapper;
-	}
-
-	ignoreEvent(): boolean {
-		return false;
-	}
 }
 
 function normalizeRanges(ranges: readonly DocRange[]): DocRange[] {
@@ -259,40 +204,48 @@ function subtractRanges(
 	return result;
 }
 
+function getLspCoveredRanges(view: EditorView): DocRange[] {
+	const colors = view.state.field(lspDocumentColorsField, false);
+	if (!colors?.length) return [];
+	return colors.map((c) => ({ from: c.from, to: c.to }));
+}
+
 function colorRanges(
 	view: EditorView,
 	ranges: readonly DocRange[],
 ): Range<Decoration>[] {
 	const deco: Range<Decoration>[] = [];
 	const doc = view.state.doc;
+	const lspCovered = getLspCoveredRanges(view);
 	let scannedChars = 0;
+
 	for (const { from, to } of ranges) {
 		if (deco.length >= MAX_COLOR_CHIPS || scannedChars >= MAX_SCAN_CHARS) break;
 		const scanTo = Math.min(to, from + (MAX_SCAN_CHARS - scannedChars));
 		if (scanTo <= from) continue;
 		const text = doc.sliceString(from, scanTo);
 		scannedChars += text.length;
-		// Any color using global matcher from utils (captures named/rgb/rgba/hsl/hsla/hex)
 		RGBG.lastIndex = 0;
 		for (let m: RegExpExecArray | null; (m = RGBG.exec(text)); ) {
 			if (deco.length >= MAX_COLOR_CHIPS) break;
 			const raw = m[2];
 			const start = from + m.index + m[1].length;
 			const end = start + raw.length;
+			// Skip spans already covered by LSP documentColor chips
+			if (lspCovered.length && intersectsRanges(start, end, lspCovered)) {
+				continue;
+			}
 			if (!shouldRenderColor(doc, start, end)) continue;
 			const c = color(raw);
 			const colorHex = c.hex.toString(false);
 			deco.push(
-				Decoration.widget({
-					widget: new ColorWidget({
-						from: start,
-						to: end,
-						color: colorHex,
-						colorRaw: raw,
-						colorType: enumColorType.named,
-					}),
-					side: -1,
-				}).range(start),
+				colorChipDecoration({
+					from: start,
+					to: end,
+					css: raw,
+					pickerSeed: colorHex,
+					source: "regex",
+				}),
 			);
 		}
 	}
@@ -317,10 +270,16 @@ class ColorViewPlugin {
 		if (update.docChanged || update.viewportChanged || update.geometryChanged) {
 			this.scheduleDecorations(update);
 		}
-		const readOnly = update.view.contentDOM.ariaReadOnly === "true";
-		const editable = update.view.contentDOM.contentEditable === "true";
-		const canBeEdited = readOnly === false && editable;
-		this.changePicker(update.view, canBeEdited);
+
+		if (didReplaceLspDocumentColors(update)) {
+			this.pendingView = update.view;
+			this.pendingDirtyRanges = normalizeRanges([
+				...this.pendingDirtyRanges,
+				...update.view.visibleRanges,
+			]);
+			this.visibleRanges = normalizeRanges(update.view.visibleRanges);
+			this.scheduleFlush();
+		}
 	}
 
 	scheduleVisibleRanges(view: EditorView): void {
@@ -379,27 +338,18 @@ class ColorViewPlugin {
 		const visibleRanges = normalizeRanges(view.visibleRanges);
 		const dirtyVisibleRanges = intersectRanges(dirtyRanges, visibleRanges);
 		const add = colorRanges(view, dirtyVisibleRanges);
+		const lspCovered = getLspCoveredRanges(view);
 
 		this.decorations = this.decorations.update({
 			filter: (from, to) =>
 				intersectsRanges(from, to, visibleRanges) &&
-				!intersectsRanges(from, to, dirtyVisibleRanges),
+				!intersectsRanges(from, to, dirtyVisibleRanges) &&
+				// Drop leftover regex chips that LSP now covers
+				!(lspCovered.length && intersectsRanges(from, to, lspCovered)),
 			add,
 			sort: true,
 		});
 		this.visibleRanges = visibleRanges;
-	}
-
-	changePicker(view: EditorView, canBeEdited: boolean): void {
-		const doms = view.contentDOM.querySelectorAll("input[type=color]");
-		doms.forEach((inp) => {
-			const input = inp as HTMLInputElement;
-			if (canBeEdited) {
-				input.removeAttribute("disabled");
-			} else {
-				input.setAttribute("disabled", "");
-			}
-		});
 	}
 
 	destroy(): void {
@@ -413,39 +363,46 @@ class ColorViewPlugin {
 	}
 }
 
-export const colorView = (showPicker = true) =>
+async function handleRegexColorPick(
+	view: EditorView,
+	payload: ColorChipPayload,
+): Promise<void> {
+	const atClick = view.state.doc.sliceString(payload.from, payload.to);
+	if (atClick !== payload.css || !isValidColor(atClick)) return;
+
+	const picked = await openColorPicker(payload.pickerSeed || payload.css);
+	if (!picked) return;
+
+	const current = view.state.doc.sliceString(payload.from, payload.to);
+	if (current !== atClick || !isValidColor(current)) return;
+
+	view.dispatch({
+		changes: { from: payload.from, to: payload.to, insert: picked },
+	});
+}
+
+export const colorView = (showPicker = true) => [
+	colorChipTheme,
 	ViewPlugin.fromClass(ColorViewPlugin, {
 		decorations: (v) => v.decorations,
 		eventHandlers: {
 			click: (e: PointerEvent, view: EditorView): boolean => {
-				const target = e.target as HTMLElement | null;
-				const chip = target?.closest?.(".cm-color-chip") as HTMLElement | null;
+				const chip = findColorChip(e.target);
 				if (!chip) return false;
+
+				const payload = getColorChipPayload(chip);
+				if (!payload || payload.source !== "regex") return false;
+
 				if (!showPicker) return true;
-				// Respect read-only and setting toggle
-				const readOnly = view.contentDOM.ariaReadOnly === "true";
-				const editable = view.contentDOM.contentEditable === "true";
-				const canBeEdited = !readOnly && editable;
-				if (!canBeEdited) return true;
-				const data = colorState.get(chip);
-				if (!data) return false;
+				if (!isViewEditable(view)) return true;
 
-				pickColor(chip.dataset.colorraw || chip.dataset.color || "")
-					.then((picked: string | null) => {
-						if (!picked) return;
-						const current = view.state.doc.sliceString(data.from, data.to);
-						if (current !== data.colorRaw || !isValidColor(current)) return;
-						view.dispatch({
-							changes: { from: data.from, to: data.to, insert: picked },
-						});
-					})
-					.catch(() => {
-						/* ignore */
-					});
-
+				void handleRegexColorPick(view, payload);
 				return true;
 			},
 		},
-	});
+	}),
+];
 
 export default colorView;
+
+export { COLOR_CHIP_CLASS };
