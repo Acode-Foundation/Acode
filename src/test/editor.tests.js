@@ -10,9 +10,11 @@ import { javascript } from "@codemirror/lang-javascript";
 import {
 	bracketMatching,
 	defaultHighlightStyle,
+	foldable,
 	foldEffect,
 	foldedRanges,
 	foldGutter,
+	StreamLanguage,
 	syntaxHighlighting,
 } from "@codemirror/language";
 import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
@@ -751,6 +753,34 @@ export async function runCodeMirrorTests(writeOutput) {
 			test.assertEqual(keyBindings.focusPaneDown.key, "Ctrl-Alt-Down");
 			test.assertEqual(keyBindings.addCursorAbove.key, null);
 			test.assertEqual(keyBindings.addCursorBelow.key, null);
+		},
+	);
+
+	runner.test(
+		"Legacy modes fold indentation while preserving blank lines",
+		(test) => {
+			const streamLanguage = StreamLanguage.define({
+				startState: () => ({}),
+				copyState: (state) => ({ ...state }),
+				token: (stream) => {
+					stream.skipToEnd();
+					return null;
+				},
+			});
+			const state = EditorState.create({
+				doc: "root\n\tchild\n\n\tchild2\nnext",
+				extensions: [
+					...createBaseExtensions(),
+					EditorState.tabSize.of(4),
+					streamLanguage,
+				],
+			});
+			const firstLine = state.doc.line(1);
+			const range = foldable(state, firstLine.from, firstLine.to);
+
+			test.assert(range != null, "Indented lines should be foldable");
+			test.assertEqual(range.from, firstLine.to);
+			test.assertEqual(range.to, state.doc.line(4).to);
 		},
 	);
 

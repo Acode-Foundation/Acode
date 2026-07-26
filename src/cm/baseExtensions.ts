@@ -15,6 +15,7 @@ import {
 import { highlightSelectionMatches } from "@codemirror/search";
 import type { Extension } from "@codemirror/state";
 import { EditorState, Prec } from "@codemirror/state";
+import indentationFolding from "./indentationFolding";
 import {
 	crosshairCursor,
 	drawSelection,
@@ -56,7 +57,7 @@ export default function createBaseExtensions(
 	];
 
 	if (enableHighlightActiveLine) extensions.push(highlightActiveLineGutter());
-	if (codeFolding) extensions.push(foldGutter());
+	if (codeFolding) extensions.push(foldGutter(), indentationFolding);
 	extensions.push(drawSelection());
 	extensions.push(dropCursor());
 	extensions.push(EditorState.allowMultipleSelections.of(true));
