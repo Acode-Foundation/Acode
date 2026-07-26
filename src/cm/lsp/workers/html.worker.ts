@@ -212,39 +212,6 @@ startWorkerServer(({ documents, requestFile, rootUri }) => {
 		async validate(document) {
 			const diagnostics: Diagnostic[] = [];
 			const embedded = getEmbedded(document);
-			const importMapRegion = embedded.regions.regions.find(
-				(region) => region.languageId === "importmap",
-			);
-
-			if (importMapRegion) {
-				const addOrderingDiagnostic = (range: {
-					start: number;
-					end: number;
-				}) => {
-					diagnostics.push({
-						severity: 1,
-						range: {
-							start: document.positionAt(range.start),
-							end: document.positionAt(range.end),
-						},
-						message: "Scripts are not allowed before the import map.",
-						source: "html",
-					});
-				};
-				for (const script of embedded.regions.importedScripts) {
-					if (script.end < importMapRegion.start) {
-						addOrderingDiagnostic(script);
-					}
-				}
-				for (const region of embedded.regions.regions) {
-					if (
-						region.languageId === "javascript" &&
-						region.end < importMapRegion.start
-					) {
-						addOrderingDiagnostic(region);
-					}
-				}
-			}
 
 			if (embedded.css) {
 				diagnostics.push(
@@ -284,7 +251,8 @@ startWorkerServer(({ documents, requestFile, rootUri }) => {
 				if (
 					params &&
 					typeof params === "object" &&
-					(params as { data?: { uri?: unknown } }).data?.uri
+					(params as { data?: { acodeLspProvider?: unknown } }).data
+						?.acodeLspProvider === "typescript"
 				) {
 					return requestTypeScript(method, params, null);
 				}

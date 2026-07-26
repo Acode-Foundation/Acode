@@ -36,6 +36,7 @@ import {
 import libraries from "./typescriptLibs";
 
 interface CompletionData {
+	acodeLspProvider: "typescript";
 	uri: string;
 	offset: number;
 	name: string;
@@ -440,6 +441,7 @@ function completions(
 					commitCharacters:
 						entry.commitCharacters ?? result.defaultCommitCharacters,
 					data: {
+						acodeLspProvider: "typescript",
 						uri: document.uri,
 						offset,
 						name: entry.name,

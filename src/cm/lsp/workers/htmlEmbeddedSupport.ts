@@ -12,15 +12,8 @@ export interface EmbeddedRegion {
 	attributeValue?: boolean;
 }
 
-export interface ImportedScript {
-	start: number;
-	end: number;
-	src: string;
-}
-
 export interface HTMLDocumentRegions {
 	readonly regions: readonly EmbeddedRegion[];
-	readonly importedScripts: readonly ImportedScript[];
 	getEmbeddedDocument(
 		languageId: string,
 		ignoreAttributeValues: boolean,
@@ -35,7 +28,6 @@ export interface HTMLDocumentRegions {
 
 interface CachedRegions {
 	regions: EmbeddedRegion[];
-	importedScripts: ImportedScript[];
 	version: number;
 	expires: number;
 }
@@ -52,7 +44,6 @@ export function getDocumentRegions(
 	document: TextDocument,
 ): HTMLDocumentRegions {
 	const regions: EmbeddedRegion[] = [];
-	const importedScripts: ImportedScript[] = [];
 	const cached = cache.get(document.uri);
 
 	if (
@@ -61,7 +52,6 @@ export function getDocumentRegions(
 		cached.expires > Date.now()
 	) {
 		regions.push(...cached.regions);
-		importedScripts.push(...cached.importedScripts);
 	} else {
 		const scanner = languageService.createScanner(document.getText());
 		let lastTagName = "";
@@ -95,19 +85,6 @@ export function getDocumentRegions(
 					break;
 				case TokenType.AttributeValue:
 					if (
-						lastAttributeName === "src" &&
-						lastTagName.toLowerCase() === "script"
-					) {
-						let src = scanner.getTokenText();
-						if (src[0] === "'" || src[0] === '"') {
-							src = src.slice(1, -1);
-						}
-						importedScripts.push({
-							start: scanner.getTokenOffset(),
-							end: scanner.getTokenEnd(),
-							src,
-						});
-					} else if (
 						lastAttributeName === "type" &&
 						lastTagName.toLowerCase() === "script"
 					) {
@@ -149,7 +126,6 @@ export function getDocumentRegions(
 
 		cache.set(document.uri, {
 			regions,
-			importedScripts,
 			version: document.version,
 			expires: Date.now() + 30000,
 		});
@@ -157,7 +133,6 @@ export function getDocumentRegions(
 
 	return {
 		regions,
-		importedScripts,
 		getEmbeddedDocument: (languageId, ignoreAttributeValues) =>
 			getEmbeddedDocument(
 				document,
