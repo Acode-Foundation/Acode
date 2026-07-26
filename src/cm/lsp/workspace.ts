@@ -3,6 +3,10 @@ import { LSPPlugin, Workspace } from "@codemirror/lsp-client";
 import type { Text, TransactionSpec } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import { getModeForPath } from "cm/modelist";
+import {
+	forgetPullDiagnostics,
+	schedulePullDiagnostics,
+} from "./diagnostics";
 import { addLspLogFor, type LspLogLevel } from "./logs";
 import type { WorkspaceFileUpdate, WorkspaceOptions } from "./types";
 
@@ -83,6 +87,7 @@ export default class AcodeWorkspace extends Workspace {
 			this.#fileMap.set(uri, file);
 			this.files.push(file);
 			this.client.didOpen(file);
+			schedulePullDiagnostics(this.client, uri, 0);
 		}
 		file.views.add(view);
 		return file;
@@ -161,6 +166,7 @@ export default class AcodeWorkspace extends Workspace {
 
 		if (!file.views.size) {
 			this.client.didClose(uri);
+			forgetPullDiagnostics(this.client, uri);
 			this.#removeFileEntry(file);
 		}
 	}
@@ -176,6 +182,7 @@ export default class AcodeWorkspace extends Workspace {
 	connected(): void {
 		for (const file of this.files) {
 			this.client.didOpen(file);
+			schedulePullDiagnostics(this.client, file.uri, 0);
 		}
 	}
 

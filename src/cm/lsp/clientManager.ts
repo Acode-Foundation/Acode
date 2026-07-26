@@ -12,7 +12,11 @@ import lspStatusBar from "components/lspStatusBar";
 import notificationManager from "lib/notificationManager";
 import Uri from "utils/Uri";
 import Url from "utils/Url";
-import { clearDiagnosticsEffect } from "./diagnostics";
+import {
+  clearDiagnosticsEffect,
+  disposePullDiagnostics,
+  lspDiagnosticsAutoSyncExtension,
+} from "./diagnostics";
 import { supportsBuiltinFormatting } from "./formattingSupport";
 import { documentColorsExtension } from "./documentColors";
 import { inlayHintsExtension } from "./inlayHints";
@@ -72,6 +76,22 @@ function pluginKey(
 
 function safeString(value: unknown): string {
   return value != null ? String(value) : "";
+}
+
+function formatInitializationError(error: unknown): string {
+  if (isPlainObject(error)) {
+    const message = safeString(error.message).trim();
+    const code =
+      typeof error.code === "number" || typeof error.code === "string"
+        ? ` (${error.code})`
+        : "";
+    if (message) return `Initialization failed${code}: ${message}`;
+  }
+  const message =
+    error instanceof Error ? error.message : safeString(error).trim();
+  return message
+    ? `Initialization failed: ${message}`
+    : "Initialization failed";
 }
 
 function isSettingsOrKeybindingsFile(
@@ -359,6 +379,14 @@ export class LspClientManager {
           originalUri && originalUri !== normalizedUri ? [originalUri] : [];
         clientState.attach(normalizedUri, view as EditorView, aliases);
         lspExtensions.push(plugin);
+        if (diagnosticsUiExtension) {
+          lspExtensions.push(
+            lspDiagnosticsAutoSyncExtension(
+              clientState.client,
+              normalizedUri,
+            ),
+          );
+        }
       } catch (error) {
         console.error(
           `Failed to initialize LSP client for ${server.id}`,
@@ -632,10 +660,13 @@ export class LspClientManager {
         ? defaultExtensions.filter((ext) => ext !== diagnosticsExtension)
         : defaultExtensions;
 
-    const progressCapabilities: LSPClientExtension = {
+    const clientCapabilities: LSPClientExtension = {
       clientCapabilities: {
         window: {
           workDoneProgress: true,
+        },
+        workspace: {
+          configuration: true,
         },
       },
     };
@@ -644,7 +675,7 @@ export class LspClientManager {
       ...filteredBuiltins,
       ...extraExtensions,
       ...serverExtensions,
-      progressCapabilities,
+      clientCapabilities,
     ];
     clientConfig.extensions = mergedExtensions;
 
@@ -906,6 +937,17 @@ export class LspClientManager {
         client.__acodeLoggedInfo = true;
       }
     } catch (error) {
+      addLspLog(
+        server.id,
+        "error",
+        formatInitializationError(error),
+        error,
+      );
+      try {
+        client?.disconnect();
+      } catch {
+        /* Client may not have finished connecting */
+      }
       if (transportHandle) {
         await transportHandle.dispose?.();
       } else {
@@ -995,6 +1037,7 @@ export class LspClientManager {
     };
 
     const dispose = async (): Promise<void> => {
+      disposePullDiagnostics(client);
       try {
         client.disconnect();
       } catch (error) {

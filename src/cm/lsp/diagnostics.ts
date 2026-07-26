@@ -8,8 +8,11 @@ import {
 	StateEffect,
 	StateField,
 } from "@codemirror/state";
-import { type EditorView, ViewPlugin } from "@codemirror/view";
+import { type EditorView, ViewPlugin, type ViewUpdate } from "@codemirror/view";
+import { addLspLogFor } from "./logs";
 import type {
+	DocumentDiagnosticParams,
+	DocumentDiagnosticReport,
 	LSPClientWithWorkspace,
 	LSPPluginAPI,
 	LspDiagnostic,
@@ -22,6 +25,34 @@ let diagnosticsEventTimer: ReturnType<typeof setTimeout> | null = null;
 let diagnosticsViewCount = 0;
 
 export const LSP_DIAGNOSTICS_EVENT = "acode:lsp-diagnostics-updated";
+const PULL_DIAGNOSTICS_DELAY = 250;
+
+interface PullDiagnosticsState {
+	timers: Map<string, ReturnType<typeof setTimeout>>;
+	generations: Map<string, number>;
+	resultIds: Map<string, string>;
+	failures: Map<string, number>;
+}
+
+const pullDiagnosticsStates = new WeakMap<LSPClient, PullDiagnosticsState>();
+
+function getPullDiagnosticsState(client: LSPClient): PullDiagnosticsState {
+	let state = pullDiagnosticsStates.get(client);
+	if (!state) {
+		state = {
+			timers: new Map(),
+			generations: new Map(),
+			resultIds: new Map(),
+			failures: new Map(),
+		};
+		pullDiagnosticsStates.set(client, state);
+	}
+	return state;
+}
+
+function supportsPullDiagnostics(client: LSPClient): boolean {
+	return !!client.serverCapabilities?.diagnosticProvider;
+}
 
 function isCoarsePointerDevice(): boolean {
 	if (typeof window !== "undefined") {
@@ -170,6 +201,200 @@ function sameDiagnostics(
 	return true;
 }
 
+function applyDiagnostics(
+	client: LSPClient,
+	uri: string,
+	version: number | undefined,
+	rawDiagnostics: RawDiagnostic[],
+): boolean {
+	const clientWithWorkspace = client as unknown as LSPClientWithWorkspace;
+	const file = clientWithWorkspace.workspace.getFile(uri);
+	if (!file || (version != null && version !== file.version)) {
+		return false;
+	}
+	const view = file.getView();
+	if (!view) return false;
+	const plugin = LSPPlugin.get(view) as LSPPluginAPI | null;
+	if (!plugin) return false;
+
+	const diagnostics = collectLspDiagnostics(plugin, rawDiagnostics);
+	const current = view.state.field(lspPublishedDiagnostics, false) ?? [];
+	if (sameDiagnostics(current, diagnostics)) {
+		return true;
+	}
+
+	view.dispatch({
+		effects: storeLspDiagnostics(diagnostics),
+	});
+	scheduleDiagnosticsUpdated();
+	return true;
+}
+
+async function pullDiagnostics(
+	client: LSPClient,
+	uri: string,
+	generation: number,
+): Promise<void> {
+	if (!supportsPullDiagnostics(client)) return;
+
+	client.sync();
+	const clientWithWorkspace = client as unknown as LSPClientWithWorkspace;
+	const file = clientWithWorkspace.workspace.getFile(uri);
+	if (!file) return;
+
+	const state = getPullDiagnosticsState(client);
+	const version = file.version;
+	const provider = client.serverCapabilities?.diagnosticProvider;
+	const params: DocumentDiagnosticParams = {
+		textDocument: { uri },
+	};
+	if (
+		provider &&
+		typeof provider === "object" &&
+		"identifier" in provider &&
+		typeof provider.identifier === "string"
+	) {
+		params.identifier = provider.identifier;
+	}
+	const previousResultId = state.resultIds.get(uri);
+	if (previousResultId !== undefined) {
+		params.previousResultId = previousResultId;
+	}
+
+	try {
+		const report = await client.request<
+			DocumentDiagnosticParams,
+			DocumentDiagnosticReport
+		>("textDocument/diagnostic", params);
+		if (state.generations.get(uri) !== generation) return;
+		state.failures.delete(uri);
+
+		const currentFile = clientWithWorkspace.workspace.getFile(uri);
+		if (!currentFile || currentFile.version !== version) {
+			schedulePullDiagnostics(client, uri, 0);
+			return;
+		}
+
+		if (report.kind === "unchanged") {
+			state.resultIds.set(uri, report.resultId);
+			return;
+		}
+
+		if (typeof report.resultId === "string") {
+			state.resultIds.set(uri, report.resultId);
+		} else {
+			state.resultIds.delete(uri);
+		}
+		applyDiagnostics(client, uri, version, report.items);
+	} catch (error) {
+		if (state.generations.get(uri) === generation) {
+			const message =
+				error instanceof Error ? error.message : String(error);
+			const failures = (state.failures.get(uri) ?? 0) + 1;
+			state.failures.set(uri, failures);
+			if (/timed out/i.test(message) && failures <= 2) {
+				schedulePullDiagnostics(client, uri, failures * 750);
+				return;
+			}
+			addLspLogFor(
+				client,
+				"warn",
+				`Diagnostic pull failed for ${uri}: ${message}`,
+				error,
+			);
+			console.warn(`[LSP:Diagnostics] Pull failed for ${uri}`, error);
+		}
+	}
+}
+
+export function schedulePullDiagnostics(
+	client: LSPClient,
+	uri: string,
+	delay = PULL_DIAGNOSTICS_DELAY,
+): void {
+	if (!supportsPullDiagnostics(client)) {
+		if (client.connected && !client.serverCapabilities) {
+			void client.initializing
+				.then(() => {
+					schedulePullDiagnostics(client, uri, delay);
+				})
+				.catch(() => {});
+		}
+		return;
+	}
+
+	const state = getPullDiagnosticsState(client);
+	const existing = state.timers.get(uri);
+	if (existing != null) clearTimeout(existing);
+
+	const generation = (state.generations.get(uri) ?? 0) + 1;
+	state.generations.set(uri, generation);
+	state.timers.set(
+		uri,
+		setTimeout(() => {
+			state.timers.delete(uri);
+			void pullDiagnostics(client, uri, generation);
+		}, Math.max(0, delay)),
+	);
+}
+
+export function schedulePullDiagnosticsForOpenFiles(
+	client: LSPClient,
+	delay = 0,
+): void {
+	if (!supportsPullDiagnostics(client)) return;
+	for (const file of client.workspace.files) {
+		schedulePullDiagnostics(client, file.uri, delay);
+	}
+}
+
+export function forgetPullDiagnostics(client: LSPClient, uri: string): void {
+	const state = pullDiagnosticsStates.get(client);
+	if (!state) return;
+	const timer = state.timers.get(uri);
+	if (timer != null) clearTimeout(timer);
+	state.timers.delete(uri);
+	state.generations.delete(uri);
+	state.resultIds.delete(uri);
+	state.failures.delete(uri);
+}
+
+export function disposePullDiagnostics(client: LSPClient): void {
+	const state = pullDiagnosticsStates.get(client);
+	if (!state) return;
+	for (const timer of state.timers.values()) {
+		clearTimeout(timer);
+	}
+	state.generations.clear();
+	state.failures.clear();
+	pullDiagnosticsStates.delete(client);
+}
+
+export function lspDiagnosticsAutoSyncExtension(
+	client: LSPClient,
+	uri: string,
+): Extension {
+	return ViewPlugin.fromClass(
+		class {
+			pending: ReturnType<typeof setTimeout> | null = null;
+
+			update(update: ViewUpdate): void {
+				if (!update.docChanged) return;
+				if (this.pending != null) clearTimeout(this.pending);
+				this.pending = setTimeout(() => {
+					this.pending = null;
+					client.sync();
+					schedulePullDiagnostics(client, uri, 0);
+				}, 500);
+			}
+
+			destroy(): void {
+				if (this.pending != null) clearTimeout(this.pending);
+			}
+		},
+	);
+}
+
 function scheduleDiagnosticsUpdated(): void {
 	if (diagnosticsEventTimer != null) return;
 	diagnosticsEventTimer = setTimeout(() => {
@@ -230,7 +455,7 @@ export function lspDiagnosticsClientExtension(): {
 	clientCapabilities: Record<string, unknown>;
 	notificationHandlers: Record<
 		string,
-		(client: LSPClient, params: PublishDiagnosticsParams) => boolean
+		(client: LSPClient, params: unknown) => boolean
 	>;
 } {
 	return {
@@ -242,36 +467,33 @@ export function lspDiagnosticsClientExtension(): {
 					dataSupport: true,
 					versionSupport: true,
 				},
+				diagnostic: {
+					dynamicRegistration: false,
+					relatedDocumentSupport: false,
+				},
+			},
+			workspace: {
+				diagnostics: {
+					refreshSupport: true,
+				},
 			},
 		},
 		notificationHandlers: {
 			"textDocument/publishDiagnostics": (
 				client: LSPClient,
-				params: PublishDiagnosticsParams,
+				rawParams: unknown,
 			): boolean => {
-				const clientWithWorkspace = client as unknown as LSPClientWithWorkspace;
-				const file = clientWithWorkspace.workspace.getFile(params.uri);
-				if (
-					!file ||
-					(params.version != null && params.version !== file.version)
-				) {
-					return true;
-				}
-				const view = file.getView();
-				if (!view) return true;
-				const plugin = LSPPlugin.get(view) as LSPPluginAPI | null;
-				if (!plugin) return true;
-
-				const diagnostics = collectLspDiagnostics(plugin, params.diagnostics);
-				const current = view.state.field(lspPublishedDiagnostics, false) ?? [];
-				if (sameDiagnostics(current, diagnostics)) {
-					return true;
-				}
-
-				view.dispatch({
-					effects: storeLspDiagnostics(diagnostics),
-				});
-				scheduleDiagnosticsUpdated();
+				const params = rawParams as PublishDiagnosticsParams;
+				applyDiagnostics(
+					client,
+					params.uri,
+					params.version,
+					params.diagnostics,
+				);
+				return true;
+			},
+			"workspace/diagnostic/refresh": (client: LSPClient): boolean => {
+				schedulePullDiagnosticsForOpenFiles(client);
 				return true;
 			},
 		},
@@ -316,7 +538,7 @@ interface DiagnosticsExtension {
 	clientCapabilities: Record<string, unknown>;
 	notificationHandlers: Record<
 		string,
-		(client: LSPClient, params: PublishDiagnosticsParams) => boolean
+		(client: LSPClient, params: unknown) => boolean
 	>;
 	editorExtension: Extension[];
 }

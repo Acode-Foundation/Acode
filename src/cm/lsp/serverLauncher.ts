@@ -168,7 +168,7 @@ async function readPortFromFile(filePath: string): Promise<number | null> {
 
 /**
  * Get the port for a running LSP server from the axs port file.
- * @param serverName - The LSP server binary name (e.g., "typescript-language-server")
+ * @param serverName - The LSP server binary name (e.g., "pylsp")
  * @param session - Session ID for port file naming
  */
 export async function getLspPort(
@@ -907,20 +907,35 @@ async function performInstallCheck(
 async function startInteractiveServer(
   command: string,
   serverId: string,
+  logOutput: LauncherConfig["logOutput"] = "all",
 ): Promise<string> {
   const executor = getExecutor();
   const callback: ExecutorCallback = (type, data) => {
+    if (type === "stderr" && /proot warning/i.test(data)) return;
+    if (type === "stdout" && /listening on/i.test(data)) {
+      signalServerReady(serverId);
+    }
+
+    if (logOutput === "warnings-and-errors") {
+      const level = /\b(error|failed|failure|fatal|panic)\b/i.test(data)
+        ? "error"
+        : /\b(warn(?:ing)?|unknown method|disabled|not supported|lacks)\b/i.test(
+              data,
+            )
+          ? "warn"
+          : null;
+      if (!level) return;
+      addLspLog(serverId, level, data);
+      console[level](`[LSP:${serverId}] ${data}`);
+      return;
+    }
+
     if (type === "stderr") {
-      if (/proot warning/i.test(data)) return;
       addLspLog(serverId, "stderr", data);
       console.warn(`[LSP:${serverId}] ${data}`);
     } else if (type === "stdout" && data && data.trim()) {
       addLspLog(serverId, "info", data);
       console.info(`[LSP:${serverId}] ${data}`);
-      // Detect when the axs proxy signals it's listening
-      if (/listening on/i.test(data)) {
-        signalServerReady(serverId);
-      }
     }
   };
   const uuid = await executor.start(command, callback, true);
@@ -1104,7 +1119,11 @@ export async function ensureServerRunning(
   }
 
   try {
-    const uuid = await startInteractiveServer(command, key);
+    const uuid = await startInteractiveServer(
+      command,
+      key,
+      launcher.logOutput,
+    );
 
     // For auto-port discovery, wait for server ready signal then read port
     let discoveredPort: number | undefined;

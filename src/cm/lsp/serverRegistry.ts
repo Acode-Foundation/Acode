@@ -241,6 +241,10 @@ function sanitizeDefinition(
 			versionCommand: rawLauncher.versionCommand,
 			updateCommand: rawLauncher.updateCommand,
 			uninstallCommand: rawLauncher.uninstallCommand,
+			logOutput:
+				rawLauncher.logOutput === "warnings-and-errors"
+					? "warnings-and-errors"
+					: "all",
 			install:
 				rawLauncher.install && typeof rawLauncher.install === "object"
 					? {
@@ -298,6 +302,7 @@ function sanitizeDefinition(
 		languages: sanitizeLanguages(definition.languages),
 		transport: sanitizedTransport,
 		initializationOptions: clone(definition.initializationOptions),
+		workspaceConfiguration: clone(definition.workspaceConfiguration),
 		clientConfig: clone(definition.clientConfig),
 		startupTimeout:
 			typeof definition.startupTimeout === "number"
