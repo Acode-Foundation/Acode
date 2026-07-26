@@ -73,6 +73,45 @@ function createWebSocketTransport(
 
 	const encoder = binaryMode ? new TextEncoder() : null;
 
+	function resolveWorkspaceConfiguration(section: unknown): unknown {
+		const configuration = server.workspaceConfiguration;
+		if (!configuration || typeof section !== "string" || !section.trim()) {
+			return configuration ?? null;
+		}
+
+		let value: unknown = configuration;
+		for (const key of section.split(".")) {
+			if (
+				!value ||
+				typeof value !== "object" ||
+				!Object.prototype.hasOwnProperty.call(value, key)
+			) {
+				return null;
+			}
+			value = (value as Record<string, unknown>)[key];
+		}
+		return value;
+	}
+
+	function sendMessage(message: string): void {
+		if (!socket || socket.readyState !== WebSocket.OPEN) return;
+		if (binaryMode && encoder) {
+			socket.send(encoder.encode(message));
+		} else {
+			socket.send(message);
+		}
+	}
+
+	function notifyListeners(data: string): void {
+		listeners.forEach((listener) => {
+			try {
+				listener(data);
+			} catch (error) {
+				console.error("LSP transport listener failed", error);
+			}
+		});
+	}
+
 	function createSocket(): WebSocket {
 		try {
 			// pylsp's websocket endpoint does not require subprotocol negotiation.
@@ -124,50 +163,69 @@ function createWebSocketTransport(
 			console.debug(`[LSP:${server.id}] <=`, data);
 		}
 
-		// Temporary fix
-		// Intercept server requests that the CodeMirror LSP client doesn't handle
-		// The client only handles notifications, but some servers (e.g., TypeScript)
-		// send requests like window/workDoneProgress/create that need a response
 		try {
 			const msg = JSON.parse(data);
-			if (
-				msg &&
-				typeof msg.id !== "undefined" &&
-				msg.method === "window/workDoneProgress/create"
-			) {
-				// This is a request, respond with success
+			if (msg && typeof msg.id !== "undefined") {
+				let handled = true;
+				let result: unknown = null;
+				switch (msg.method) {
+					case "window/workDoneProgress/create":
+					case "workspace/diagnostic/refresh":
+					case "client/registerCapability":
+					case "client/unregisterCapability":
+						break;
+					case "workspace/configuration":
+						result = Array.isArray(msg.params?.items)
+							? msg.params.items.map(
+									(item: { section?: unknown }) =>
+										resolveWorkspaceConfiguration(item?.section),
+								)
+							: [];
+						break;
+					case "workspace/workspaceFolders": {
+						const rootUri = context.rootUri;
+						result = rootUri
+							? [
+									{
+										uri: rootUri,
+										name:
+											rootUri.replace(/\/$/, "").split("/").pop() ||
+											rootUri,
+									},
+								]
+							: null;
+						break;
+					}
+					default:
+						handled = false;
+				}
+				if (!handled) {
+					notifyListeners(data);
+					return;
+				}
 				const response = JSON.stringify({
 					jsonrpc: "2.0",
 					id: msg.id,
-					result: null,
+					result,
 				});
 				if (context?.debugWebSocket) {
 					console.debug(`[LSP:${server.id}] => (auto-response)`, response);
 				}
-				if (socket && socket.readyState === WebSocket.OPEN) {
-					if (binaryMode && encoder) {
-						socket.send(encoder.encode(response));
-					} else {
-						socket.send(response);
-					}
+				sendMessage(response);
+				if (msg.method === "workspace/diagnostic/refresh") {
+					notifyListeners(
+						JSON.stringify({
+							jsonrpc: "2.0",
+							method: msg.method,
+							params: msg.params ?? {},
+						}),
+					);
 				}
-				// Don't pass this request to listeners since we handled it
-				console.info(
-					`[LSP:${server.id}] Auto-responded to window/workDoneProgress/create`,
-				);
 				return;
 			}
-		} catch (_) {
-			// Not valid JSON or missing fields, pass through normally
-		}
+		} catch (_) {}
 
-		listeners.forEach((listener) => {
-			try {
-				listener(data);
-			} catch (error) {
-				console.error("LSP transport listener failed", error);
-			}
-		});
+		notifyListeners(data);
 	}
 
 	function handleClose(event: CloseEvent): void {

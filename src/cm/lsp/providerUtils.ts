@@ -23,8 +23,10 @@ export interface ManagedServerOptions {
 	versionCommand?: string;
 	updateCommand?: string;
 	uninstallCommand?: string;
+	logOutput?: "all" | "warnings-and-errors";
 	startupTimeout?: number;
 	initializationOptions?: Record<string, unknown>;
+	workspaceConfiguration?: Record<string, unknown>;
 	clientConfig?: LspServerManifest["clientConfig"];
 	resolveLanguageId?: LspServerManifest["resolveLanguageId"];
 	rootUri?: LspServerManifest["rootUri"];
@@ -81,8 +83,10 @@ export function defineServer(options: ManagedServerOptions): LspServerManifest {
 		versionCommand,
 		updateCommand,
 		uninstallCommand,
+		logOutput,
 		startupTimeout,
 		initializationOptions,
+		workspaceConfiguration,
 		clientConfig,
 		resolveLanguageId,
 		rootUri,
@@ -107,6 +111,7 @@ export function defineServer(options: ManagedServerOptions): LspServerManifest {
 			versionCommand,
 			updateCommand,
 			uninstallCommand,
+			logOutput,
 			install: installer,
 			bridge: bridgeCommand
 				? {
@@ -120,6 +125,7 @@ export function defineServer(options: ManagedServerOptions): LspServerManifest {
 		},
 		startupTimeout,
 		initializationOptions,
+		workspaceConfiguration,
 		clientConfig,
 		resolveLanguageId,
 		rootUri,
