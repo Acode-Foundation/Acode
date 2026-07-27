@@ -16,7 +16,9 @@
     "format": "biome format --write",
     "check": "biome check --write",
     "typecheck": "tsc --noEmit",
-    "updateAce": "node ./utils/updateAce.js"
+    "updateAce": "node ./utils/updateAce.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "keywords": [
     "ecosystem:cordova"
@@ -112,6 +114,7 @@
     "terminal": "^0.1.4",
     "ts-loader": "^9.5.7",
     "typescript": "^5.9.3",
+    "vitest": "^4.1.10",
     "vscode-languageserver-types": "^3.17.5",
     "ws": "^8.21.0"
   },
