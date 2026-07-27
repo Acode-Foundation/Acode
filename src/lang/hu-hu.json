@@ -830,6 +830,6 @@
 	"command": "Parancs",
 	"managed": "Kezelt",
 	"acode service": "Acode-szolgáltatás",
-	"info-terminal-show-scrollbar": "Show the xterm scrollbar beside the terminal.",
-	"terminal:show scrollbar": "Show Scrollbar"
+	"info-terminal-show-scrollbar": "Az xterm görgetősávjának megjelenítése a terminál mellett.",
+	"terminal:show scrollbar": "Görgetősáv megjelenítése"
 }
