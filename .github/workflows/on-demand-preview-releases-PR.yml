@@ -25,9 +25,11 @@ jobs:
       issues: write
     if: >-
         github.event.pull_request.draft == false &&
-        github.repository_owner == 'Acode-Foundation' && 
-        (github.event.action == 'labeled' && github.event.label.name == 'CI: RUN ON-DEMAND PREVIEW RELEASES' || 
+        github.repository_owner == 'Acode-Foundation' &&
+        (!contains(github.event.pull_request.labels.*.name, 'DO NOT PREVIEW RELEASE') &&
+          (github.event.action == 'labeled' && github.event.label.name == 'CI: RUN ON-DEMAND PREVIEW RELEASES' ||
           github.event.action == 'synchronize' && github.event.label.name == 'Bypass check - PREVIEW RELEASE')
+        )
 
     runs-on: ubuntu-latest
 
