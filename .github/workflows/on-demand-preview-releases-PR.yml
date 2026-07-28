@@ -1,6 +1,9 @@
 name: On Demand Preview Releases for PR
 #  avoids paths like .md, and anything in .github folder
 on:
+  # This workflow executes PR Code by checkout later
+  # MUST approve the PR Code BEFORE using this workflow on PRs.
+  # Uses this trigger to keep up-to-date execution of the workflow (triggers from Default Branch)
   pull_request_target:
     paths-ignore:
       - '!*.md'
