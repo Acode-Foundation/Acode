@@ -1,5 +1,7 @@
 # Implement to use environment secrets someday, At the moment GH Actions doesn't support those in reusable workflows (ref: https://github.com/actions/runner/issues/1490)
 # at least that's what I found.
+# This workflow executes PR Code when triggered from PR via workflow_call,
+# MUST approve the PR code BEFORE triggering this workflow.
 
 name: Nightly Build
 
@@ -101,6 +103,7 @@ jobs:
           fetch-depth: 0 # Required for tags
           persist-credentials: false
           ref: ${{ (inputs.is_PR && inputs.PR_NUMBER) && github.event.pull_request.head.sha || '' }}
+          allow-unsafe-pr-checkout: ${{ !!(inputs.is_PR && inputs.PR_NUMBER && github.event.pull_request.head.sha) }}
 
       - name: Setup Java
         uses: actions/setup-java@v5
