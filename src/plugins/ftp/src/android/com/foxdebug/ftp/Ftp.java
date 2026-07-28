@@ -227,11 +227,29 @@ public class Ftp extends CordovaPlugin {
                 return;
               }
 
-              FTPFile[] files = ftp.listFiles(path);
+              FTPFile[] files;
+              synchronized (ftp) {
+                files = ftp.listFiles(path);
+              }
               Log.d(
                 "FTP",
                 "FTPClient (" + ftpId + ") Listing files in " + path
               );
+
+              if (files == null) {
+                String reply = ftp.getReplyString();
+                String message = "FTP server returned no directory listing";
+                if (reply != null && !reply.trim().isEmpty()) {
+                  message += ": " + reply.trim();
+                }
+                Log.e(
+                  "FTP",
+                  "FTPClient (" + ftpId + ") path: " + path + " - " + message
+                );
+                callback.error(message);
+                return;
+              }
+
               Log.d(
                 "FTP",
                 "FTPClient (" + ftpId + ") Found " + files.length + " files."
@@ -258,8 +276,11 @@ public class Ftp extends CordovaPlugin {
                     ? linkTarget
                     : joinPath(path, linkTarget);
                   try {
-                    FTPFile[] targetFiles = ftp.listFiles(linkPath);
-                    if (targetFiles.length > 0) {
+                    FTPFile[] targetFiles;
+                    synchronized (ftp) {
+                      targetFiles = ftp.listFiles(linkPath);
+                    }
+                    if (targetFiles != null && targetFiles.length > 0) {
                       FTPFile targetFile = targetFiles[0];
                       jsonFile.put("isFile", targetFile.isFile());
                       jsonFile.put("isDirectory", targetFile.isDirectory());
@@ -340,8 +361,11 @@ public class Ftp extends CordovaPlugin {
               }
 
               // check if file or directory exists
-              FTPFile[] ftpFiles = ftp.listFiles(path);
-              if (ftpFiles.length > 0) {
+              FTPFile[] ftpFiles;
+              synchronized (ftp) {
+                ftpFiles = ftp.listFiles(path);
+              }
+              if (ftpFiles != null && ftpFiles.length > 0) {
                 callback.success(1);
               } else {
                 callback.success(0);
@@ -506,32 +530,38 @@ public class Ftp extends CordovaPlugin {
 
               // get list of files in the parent directory
               String parentPath = getParentPath(oldPath);
-              FTPFile[] ftpFiles = ftp.listFiles(parentPath);
+              synchronized (ftp) {
+                FTPFile[] ftpFiles = ftp.listFiles(parentPath);
+                if (ftpFiles == null) ftpFiles = new FTPFile[0];
 
-              Log.d("FTP", "Renaming " + oldPath + " to " + newPath);
-              ftp.rename(oldPath, newPath);
+                Log.d("FTP", "Renaming " + oldPath + " to " + newPath);
+                ftp.rename(oldPath, newPath);
 
-              // check if file is renamed successfully
-              FTPFile[] newFile = ftp.listFiles(newPath);
-              if (newFile.length > 0) {
-                callback.success(newPath);
-              } else {
+                // check if file is renamed successfully
+                FTPFile[] newFile = ftp.listFiles(newPath);
+                if (newFile != null && newFile.length > 0) {
+                  callback.success(newPath);
+                  return;
+                }
+
                 // get latest list of files in the parent directory
                 FTPFile[] latestFtpFiles = ftp.listFiles(parentPath);
                 // some time src file is renamed and not moved to destination
                 // check if for changed file and rename it original name
                 FTPFile changedFile = null;
-                for (FTPFile file : latestFtpFiles) {
-                  boolean found = false;
-                  for (FTPFile oldFile : ftpFiles) {
-                    if (oldFile.getName().equals(file.getName())) {
-                      found = true;
+                if (latestFtpFiles != null) {
+                  for (FTPFile file : latestFtpFiles) {
+                    boolean found = false;
+                    for (FTPFile oldFile : ftpFiles) {
+                      if (oldFile.getName().equals(file.getName())) {
+                        found = true;
+                        break;
+                      }
+                    }
+                    if (!found) {
+                      changedFile = file;
                       break;
                     }
-                  }
-                  if (!found) {
-                    changedFile = file;
-                    break;
                   }
                 }
 
@@ -542,10 +572,8 @@ public class Ftp extends CordovaPlugin {
                   );
                   ftp.rename(changedFilePath, oldPath);
                 }
-                callback.error("Failed to rename file");
               }
-
-              callback.success();
+              callback.error("Failed to rename file");
             } catch (FTPConnectionClosedException e) {
               callback.error(e.getMessage());
             } catch (IOException e) {
@@ -1078,6 +1106,9 @@ public class Ftp extends CordovaPlugin {
   private void emptyDirectory(String directory, FTPClient client)
     throws FTPConnectionClosedException, IOException {
     FTPFile[] files = client.listFiles(directory);
+    if (files == null) {
+      throw new IOException("FTP server returned no directory listing for " + directory);
+    }
     for (FTPFile file : files) {
       String filename = file.getName();
       if (filename.equals(".") || filename.equals("..")) {

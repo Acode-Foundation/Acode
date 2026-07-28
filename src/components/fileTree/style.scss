@@ -1,75 +1,97 @@
 @use "../../styles/mixins.scss";
 
 .file-tree {
-    --file-tree-indent: 24px;
+	--file-tree-indent: 22px;
+	--file-tree-row-height: 30px;
 
-    min-width: 100%;
-    width: max-content;
+	position: relative;
+	box-sizing: border-box;
+	width: 100% !important;
+	min-width: 100%;
+	padding: 0 !important;
+	overflow: auto !important;
+	overflow-anchor: none;
+	overscroll-behavior: contain;
+	touch-action: pan-x pan-y;
+	-webkit-overflow-scrolling: touch;
+	contain: layout paint style;
 
-    &.virtual-scroll {
-        position: relative;
-        overflow-y: auto;
-        will-change: transform;
-    }
+	.virtual-list-surface,
+	.virtual-list-items {
+		min-width: 100%;
+		width: max-content;
+	}
 
-    // Collapsible folder structure
-    .list.collapsible {
-        &.hidden>ul {
-            display: none;
-        }
+	.file-tree-row {
+		position: relative;
+		display: flex;
+		box-sizing: border-box;
+		height: var(--file-tree-row-height) !important;
+		min-height: var(--file-tree-row-height);
+		min-width: 100%;
+		width: max-content !important;
+		padding-left: calc(var(--file-tree-depth) * var(--file-tree-indent));
+		background-color: transparent;
+		cursor: default;
+		outline: none;
+		contain: layout style;
 
-        >.tile {
-            cursor: pointer;
+		&::before {
+			content: "";
+			position: absolute;
+			inset: 0 auto 0 0;
+			width: calc(var(--file-tree-depth) * var(--file-tree-indent));
+			pointer-events: none;
+			opacity: 0.55;
+			background-image: repeating-linear-gradient(
+				to right,
+				transparent 0,
+				transparent 10px,
+				var(--border-color) 10px,
+				var(--border-color) 11px,
+				transparent 11px,
+				transparent var(--file-tree-indent)
+			);
+		}
 
-            &.loading {
-                @include mixins.bar-loader(30%, 2px);
-            }
-        }
-    }
+		&:active,
+		&:focus,
+		&[aria-selected="true"] {
+			background-color: rgba(0, 0, 0, 0.16);
+		}
 
-    // Folder content with indent
-    ul.folder-content {
-        padding-left: var(--file-tree-indent);
-        position: relative;
-        margin-left: 0;
-        min-width: 100%;
-        width: max-content;
-        overflow-x: visible !important;
-        max-width: none;
-    }
+		&.loading {
+			@include mixins.bar-loader(30%, 2px);
+		}
 
-    // Indent guides
-    &.show-indent-guide {
-        >.list.collapsible>ul.folder-content {
-            &::before {
-                content: "";
-                position: absolute;
-                left: calc(var(--file-tree-indent) / 2);
-                top: 0;
-                height: 100%;
-                width: 1px;
-                background: var(--border-color);
-                z-index: 0;
-            }
-        }
-    }
+		>.icon {
+			height: var(--file-tree-row-height) !important;
+			width: var(--file-tree-row-height) !important;
+			min-width: var(--file-tree-row-height) !important;
+			font-size: 1.08em !important;
+			line-height: var(--file-tree-row-height) !important;
+			background-size: 27px !important;
+		}
 
-    .tile {
-        min-width: 100%;
-        width: max-content;
+		>.folder::before {
+			content: "\e92c";
+		}
 
-        >.text {
-            white-space: nowrap !important;
-            overflow: visible !important;
-            width: max-content !important;
-            text-overflow: clip !important;
-        }
-    }
+		&[aria-expanded="true"]>.folder::before {
+			content: "\e92d";
+		}
 
-    // File items
-    li,
-    [data-type="file"] {
-        min-width: 100%;
-        width: max-content;
-    }
+		>.text {
+			width: max-content !important;
+			min-width: max-content;
+			padding-right: 14px;
+			white-space: nowrap !important;
+			overflow: visible !important;
+			text-overflow: clip !important;
+		}
+
+		>:last-child {
+			display: none;
+		}
+	}
 }

@@ -1,9 +1,14 @@
-.virtual-spacer {
-	width: 100%;
-	pointer-events: none;
-}
-
-.virtual-items {
+.virtual-list-surface {
 	position: relative;
 	min-width: 100%;
+	width: max-content;
+	overflow-anchor: none;
+}
+
+.virtual-list-items {
+	position: absolute;
+	top: 0;
+	left: 0;
+	min-width: 100%;
+	width: max-content;
 }

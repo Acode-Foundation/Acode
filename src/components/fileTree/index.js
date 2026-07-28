@@ -2,23 +2,31 @@ import "./style.scss";
 import tile from "components/tile";
 import VirtualList from "components/virtualList";
 import tag from "html-tag-js";
+import { animate } from "motion";
 import helpers from "utils/helpers";
 import Path from "utils/Path";
 
-const VIRTUALIZATION_THRESHOLD = Number.POSITIVE_INFINITY; // FIX: temporary due to some scrolling issues in VirtualList
 const ITEM_HEIGHT = 30;
+const IDLE_OVERSCAN_ROWS = 32;
+const ACTIVE_OVERSCAN_ROWS = 64;
+const MAX_FLING_OVERSCAN_ROWS = 96;
 
 /**
  * @typedef {object} FileTreeOptions
- * @property {function(string): Promise<Array>} getEntries - Function to get directory entries
- * @property {function(string, string): void} [onFileClick] - File click handler
- * @property {function(string, string, string, HTMLElement): void} [onContextMenu] - Context menu handler
- * @property {Object<string, boolean>} [expandedState] - Map of expanded folder URLs
- * @property {function(string, boolean): void} [onExpandedChange] - Called when folder expanded state changes
+ * @property {function(string): Promise<Array>} getEntries
+ * @property {function(string, string): void} [onFileClick]
+ * @property {function(string, string, string, HTMLElement): void} [onContextMenu]
+ * @property {Object<string, boolean>|Map<string, boolean>} [expandedState]
+ * @property {function(string, boolean): void} [onExpandedChange]
+ * @property {function(any): void} [onError]
  */
 
 /**
- * FileTree component for rendering folder contents with virtual scrolling
+ * A lazy, fully virtualized file tree.
+ *
+ * Directory data stays hierarchical, but rendering uses one flattened array of
+ * visible nodes. Consequently every row has a stable fixed offset regardless of
+ * nesting, and only the viewport plus a small overscan window exists in the DOM.
  */
 export default class FileTree {
 	/**
@@ -27,418 +35,608 @@ export default class FileTree {
 	 */
 	constructor(container, options = {}) {
 		this.container = container;
-		this.container.classList.add("file-tree");
-
 		this.options = options;
-		this.virtualList = null;
 		this.entries = [];
-		this.isLoading = false;
-		this.childTrees = new Map(); // Track child trees for cleanup
-		this.depth = options._depth || 0; // Internal: nesting depth
-	}
+		this.visibleEntries = [];
+		this.visibleIndexByUrl = new Map();
+		this.nodes = new Map();
+		this.currentUrl = null;
+		this.focusedUrl = null;
+		this.selectedUrl = null;
+		this.cutUrl = null;
+		this.loadGeneration = 0;
+		this.pendingDirectoryLoads = [];
+		this.activeDirectoryLoads = 0;
+		this.maxConcurrentDirectoryLoads = 4;
+		this.iconAnimations = new WeakMap();
+		this.destroyed = false;
 
-	/**
-	 * Load and render entries for a directory
-	 * @param {string} url - Directory URL
-	 */
-	async load(url) {
-		if (this.isLoading) return;
-		this.isLoading = true;
-		this.currentUrl = url;
+		this.container.classList.add("file-tree", "virtual-scroll");
+		this.container.setAttribute("role", "tree");
+		this.container.setAttribute("aria-label", "Files");
+		this.container._fileTree = this;
 
-		try {
-			this.clear();
-
-			const entries = await this.options.getEntries(url);
-			this.entries = helpers.sortDir(entries, {
-				sortByName: true,
-				showHiddenFiles: true,
-			});
-
-			if (this.entries.length > VIRTUALIZATION_THRESHOLD) {
-				this.renderVirtualized();
-			} else {
-				this.renderWithFragment();
-			}
-		} finally {
-			this.isLoading = false;
-		}
-	}
-
-	/**
-	 * Render using DocumentFragment for batch DOM updates (small folders)
-	 */
-	renderWithFragment() {
-		const fragment = document.createDocumentFragment();
-
-		for (const entry of this.entries) {
-			const $el = this.createEntryElement(entry);
-			fragment.appendChild($el);
-		}
-
-		this.container.appendChild(fragment);
-	}
-
-	/**
-	 * Render using virtual scrolling (large folders)
-	 */
-	renderVirtualized() {
-		this.container.classList.add("virtual-scroll");
+		this.onClickBound = this.onClick.bind(this);
+		this.onContextMenuBound = this.onContextMenu.bind(this);
+		this.onKeyDownBound = this.onKeyDown.bind(this);
+		this.container.addEventListener("click", this.onClickBound);
+		this.container.addEventListener("contextmenu", this.onContextMenuBound);
+		this.container.addEventListener("keydown", this.onKeyDownBound);
 
 		this.virtualList = new VirtualList(this.container, {
 			itemHeight: ITEM_HEIGHT,
-			buffer: 15,
-			renderItem: (entry, recycledEl) =>
-				this.createEntryElement(entry, recycledEl),
+			overscan: IDLE_OVERSCAN_ROWS,
+			activeOverscan: ACTIVE_OVERSCAN_ROWS,
+			maxOverscan: MAX_FLING_OVERSCAN_ROWS,
+			getItemKey: (entry) => entry.url,
+			renderItem: (entry, recycledEl) => this.renderEntry(entry, recycledEl),
 		});
+		this.virtualList.scrollSurface.setAttribute("role", "presentation");
+		this.virtualList.itemContainer.setAttribute("role", "presentation");
+	}
 
-		this.virtualList.setItems(this.entries);
+	/** Load the root directory. @param {string} url */
+	async load(url) {
+		const generation = ++this.loadGeneration;
+		this.cancelPendingDirectoryLoads();
+		this.currentUrl = url;
+		// FTP and SFTP clients use a single stateful connection. Concurrent list
+		// commands can corrupt the data channel and return a null native array.
+		this.maxConcurrentDirectoryLoads = /^(ftp|sftp):/i.test(url) ? 1 : 4;
+		this.container.scrollTop = 0;
+		this.resetData();
+		this.container.setAttribute("aria-busy", "true");
+
+		try {
+			const entries = await this.options.getEntries(url);
+			if (this.destroyed || generation !== this.loadGeneration) return;
+			this.entries = this.reconcileChildren(url, 0, entries, []);
+			this.rebuildVisibleEntries();
+			this.loadRestoredFolders(this.entries);
+		} finally {
+			if (!this.destroyed && generation === this.loadGeneration) {
+				this.container.removeAttribute("aria-busy");
+			}
+		}
+	}
+
+	/** Sort directory entries using the same ordering as the rest of Acode. */
+	sortEntries(entries) {
+		if (!Array.isArray(entries)) return [];
+		return helpers.sortDir(entries, {
+			sortByName: true,
+			showHiddenFiles: true,
+		});
+	}
+
+	/** Read persisted expanded state from either a Map or a plain object. */
+	isPersistedExpanded(url) {
+		const state = this.options.expandedState;
+		return state instanceof Map
+			? state.get(url) === true
+			: state?.[url] === true;
 	}
 
 	/**
-	 * Create DOM element for a file/folder entry
-	 * @param {object} entry
-	 * @param {HTMLElement} [recycledEl] - Optional recycled element for reuse
-	 * @returns {HTMLElement}
+	 * Reconcile a directory listing while retaining loaded subtrees for unchanged
+	 * folders. This makes refreshes cheap and keeps expansion stable.
 	 */
-	createEntryElement(entry, recycledEl) {
-		const name = entry.name || Path.basename(entry.url);
+	reconcileChildren(parentUrl, depth, rawEntries, previousChildren) {
+		const previousByUrl = new Map(
+			(previousChildren || []).map((entry) => [entry.url, entry]),
+		);
+		const nextChildren = this.sortEntries(rawEntries).map((entry) => {
+			const url = entry.url;
+			const name = entry.name || Path.basename(url);
+			const isDirectory = Boolean(entry.isDirectory);
+			let node = previousByUrl.get(url);
+
+			if (node && node.isDirectory === isDirectory) {
+				node.name = name;
+				node.depth = depth;
+				node.parentUrl = parentUrl;
+				previousByUrl.delete(url);
+			} else {
+				if (node) this.removeNode(node);
+				node = {
+					name,
+					url,
+					isDirectory,
+					isFile: !isDirectory,
+					parentUrl,
+					depth,
+					children: null,
+					expanded: isDirectory && this.isPersistedExpanded(url),
+					loading: false,
+					loadGeneration: 0,
+				};
+			}
+
+			this.nodes.set(url, node);
+			return node;
+		});
+
+		for (const removedNode of previousByUrl.values()) {
+			this.removeNode(removedNode);
+		}
+
+		nextChildren.forEach((node, index) => {
+			node.position = index + 1;
+			node.setSize = nextChildren.length;
+		});
+		return nextChildren;
+	}
+
+	/** Remove a node and every retained descendant from the model. */
+	removeNode(node) {
+		node.loadGeneration++;
+		for (const child of node.children || []) this.removeNode(child);
+		this.nodes.delete(node.url);
+	}
+
+	/** Flatten only expanded nodes into the render list. */
+	rebuildVisibleEntries() {
+		const oldIndex = Math.floor(this.container.scrollTop / ITEM_HEIGHT);
+		const anchor = this.visibleEntries[oldIndex];
+		const anchorOffset = this.container.scrollTop - oldIndex * ITEM_HEIGHT;
+		const visible = [];
+		const visibleIndexByUrl = new Map();
+
+		const append = (entries) => {
+			for (const entry of entries) {
+				visibleIndexByUrl.set(entry.url, visible.length);
+				visible.push(entry);
+				if (entry.isDirectory && entry.expanded && entry.children) {
+					append(entry.children);
+				}
+			}
+		};
+		append(this.entries);
+		this.visibleEntries = visible;
+		this.visibleIndexByUrl = visibleIndexByUrl;
+		if (!visibleIndexByUrl.has(this.focusedUrl)) {
+			this.focusedUrl = visible[0]?.url || null;
+		}
+		this.virtualList.setItems(visible);
+
+		// Keep the first visible row anchored when async children are inserted above
+		// it. This prevents the jump that is especially noticeable during touch scroll.
+		if (anchor) {
+			const nextIndex = visibleIndexByUrl.get(anchor.url);
+			if (nextIndex !== undefined && nextIndex !== oldIndex) {
+				this.container.scrollTop = nextIndex * ITEM_HEIGHT + anchorOffset;
+				this.virtualList.invalidate();
+			}
+		}
+	}
+
+	/** Begin lazy loading folders restored as expanded. */
+	loadRestoredFolders(entries) {
+		for (const entry of entries) {
+			if (entry.isDirectory && entry.expanded) this.ensureChildren(entry);
+		}
+	}
+
+	/** Load a directory once and reveal its children when ready. */
+	async ensureChildren(node, priority = false) {
+		if (!node?.isDirectory || node.children || node.loading || this.destroyed) {
+			return;
+		}
+
+		const generation = ++node.loadGeneration;
+		node.loading = true;
+		this.virtualList.invalidate();
+
+		try {
+			const entries = await this.requestDirectoryEntries(node.url, priority);
+			if (
+				this.destroyed ||
+				generation !== node.loadGeneration ||
+				this.nodes.get(node.url) !== node
+			) {
+				return;
+			}
+
+			node.children = this.reconcileChildren(
+				node.url,
+				node.depth + 1,
+				entries,
+				[],
+			);
+			node.loading = false;
+			this.rebuildVisibleEntries();
+			this.loadRestoredFolders(node.children);
+		} catch (error) {
+			if (generation !== node.loadGeneration || this.destroyed) return;
+			node.loading = false;
+			node.expanded = false;
+			this.options.onExpandedChange?.(node.url, false);
+			this.rebuildVisibleEntries();
+			this.options.onError?.(error);
+		}
+	}
+
+	/**
+	 * Bound directory reads so restoring a large saved tree cannot flood Cordova's
+	 * bridge. Interactive expansions are placed ahead of background restoration.
+	 */
+	requestDirectoryEntries(url, priority = false) {
+		return new Promise((resolve, reject) => {
+			const job = { url, resolve, reject };
+			if (priority) this.pendingDirectoryLoads.unshift(job);
+			else this.pendingDirectoryLoads.push(job);
+			this.pumpDirectoryLoads();
+		});
+	}
+
+	pumpDirectoryLoads() {
+		while (
+			!this.destroyed &&
+			this.activeDirectoryLoads < this.maxConcurrentDirectoryLoads &&
+			this.pendingDirectoryLoads.length
+		) {
+			const job = this.pendingDirectoryLoads.shift();
+			this.activeDirectoryLoads++;
+			Promise.resolve()
+				.then(() => this.options.getEntries(job.url))
+				.then(job.resolve, job.reject)
+				.finally(() => {
+					this.activeDirectoryLoads--;
+					this.pumpDirectoryLoads();
+				});
+		}
+	}
+
+	cancelPendingDirectoryLoads() {
+		for (const job of this.pendingDirectoryLoads.splice(0)) {
+			job.resolve(null);
+		}
+	}
+
+	/** @param {object} entry @param {HTMLElement} [recycledEl] */
+	renderEntry(entry, recycledEl) {
+		const row = recycledEl || this.createRow();
+		const icon = row.firstElementChild;
+		const text = row.children[1];
+		this.resetIconAnimation(icon);
+
+		row.dataset.url = entry.url;
+		row.dataset.name = entry.name;
+		row.dataset.type = entry.isDirectory ? "dir" : "file";
+		row.style.setProperty("--file-tree-depth", entry.depth);
+		row.setAttribute("aria-level", String(entry.depth + 1));
+		row.setAttribute("aria-posinset", String(entry.position));
+		row.setAttribute("aria-setsize", String(entry.setSize));
+		row.setAttribute("aria-selected", String(this.selectedUrl === entry.url));
+		row.tabIndex = this.focusedUrl === entry.url ? 0 : -1;
+		row.classList.toggle("loading", entry.loading);
+		row.classList.toggle("cut", this.cutUrl === entry.url);
 
 		if (entry.isDirectory) {
-			return this.createFolderElement(name, entry.url, recycledEl);
+			row.setAttribute("aria-expanded", String(entry.expanded));
+			row.setAttribute("aria-busy", String(entry.loading));
+			icon.className = "icon folder";
 		} else {
-			return this.createFileElement(name, entry.url, recycledEl);
+			row.removeAttribute("aria-expanded");
+			row.removeAttribute("aria-busy");
+			icon.className = helpers.getIconForFile(entry.name);
 		}
+
+		text.textContent = entry.name;
+		return row;
 	}
 
-	/**
-	 * Create folder element (collapsible)
-	 * @param {string} name
-	 * @param {string} url
-	 * @param {HTMLElement} [recycledEl] - Optional recycled element for reuse
-	 * @returns {HTMLElement}
-	 */
-	createFolderElement(name, url, recycledEl) {
-		// Try to recycle existing folder element
-		if (recycledEl && recycledEl.classList.contains("collapsible")) {
-			const $title = recycledEl.$title;
-			if ($title) {
-				$title.dataset.url = url;
-				$title.dataset.name = name;
-				const textEl = $title.querySelector(".text");
-				if (textEl) textEl.textContent = name;
-
-				// Collapse if expanded and clear children
-				if (!recycledEl.classList.contains("hidden")) {
-					recycledEl.classList.add("hidden");
-					const childTree = this.childTrees.get(recycledEl._folderUrl);
-					if (childTree) {
-						childTree.destroy();
-						this.childTrees.delete(recycledEl._folderUrl);
-					}
-					recycledEl.$ul.innerHTML = "";
-				}
-
-				recycledEl._folderUrl = url;
-				return recycledEl;
-			}
+	/** Stop an animation before its recycled icon is rebound to another entry. */
+	resetIconAnimation(icon) {
+		const animation = this.iconAnimations.get(icon);
+		if (animation) {
+			animation.cancel?.();
+			this.iconAnimations.delete(icon);
 		}
+		icon.style.removeProperty("opacity");
+		icon.style.removeProperty("transform");
+	}
 
-		const $wrapper = tag("div", {
-			className: "list collapsible hidden",
-		});
-		$wrapper._folderUrl = url;
+	/** Animate only the small folder glyph, using compositor-only properties. */
+	animateFolderToggle(url) {
+		if (document.body.classList.contains("no-animation")) return;
+		const icon = this.findElement(url)?.firstElementChild;
+		if (!icon) return;
 
-		const $indicator = tag("span", { className: "icon folder" });
-
-		const $title = tile({
-			lead: $indicator,
-			type: "div",
-			text: name,
-		});
-
-		$title.classList.add("light");
-		$title.dataset.url = url;
-		$title.dataset.name = name;
-		$title.dataset.type = "dir";
-
-		const $content = tag("ul", { className: "scroll folder-content" });
-		$wrapper.append($title, $content);
-
-		// Child file tree for nested folders
-		let childTree = null;
-		$content._fileTree = null;
-
-		const toggle = async () => {
-			const isExpanded = !$wrapper.classList.contains("hidden");
-
-			if (isExpanded) {
-				// Collapse
-				$wrapper.classList.add("hidden");
-
-				if (childTree) {
-					childTree.destroy();
-					this.childTrees.delete(url);
-					childTree = null;
-					$content._fileTree = null;
-				}
-				this.options.onExpandedChange?.(url, false);
-			} else {
-				// Expand
-				$wrapper.classList.remove("hidden");
-				$title.classList.add("loading");
-
-				// Create child tree with incremented depth
-				childTree = new FileTree($content, {
-					...this.options,
-					_depth: this.depth + 1,
-				});
-				this.childTrees.set(url, childTree);
-				$content._fileTree = childTree;
-				try {
-					await childTree.load(url);
-				} finally {
-					$title.classList.remove("loading");
-				}
-				this.options.onExpandedChange?.(url, true);
-			}
+		this.resetIconAnimation(icon);
+		const animation = animate(
+			icon,
+			{
+				opacity: [0.65, 1],
+				transform: ["scale(0.88)", "scale(1)"],
+			},
+			{ duration: 0.14, ease: [0.2, 0, 0, 1] },
+		);
+		this.iconAnimations.set(icon, animation);
+		const cleanup = () => {
+			if (this.iconAnimations.get(icon) !== animation) return;
+			this.iconAnimations.delete(icon);
+			icon.style.removeProperty("opacity");
+			icon.style.removeProperty("transform");
 		};
+		animation.then(cleanup).catch(cleanup);
+	}
 
-		$title.addEventListener("click", (e) => {
-			e.stopPropagation();
-			toggle();
+	createRow() {
+		const row = tile({
+			lead: tag("span", { className: "icon" }),
+			type: "li",
+			text: "",
 		});
+		row.classList.add("file-tree-row");
+		row.setAttribute("role", "treeitem");
+		return row;
+	}
 
-		$title.addEventListener("contextmenu", (e) => {
-			e.stopPropagation();
-			this.options.onContextMenu?.("dir", url, name, $title);
-		});
+	/** Resolve a delegated event to its mounted row. */
+	getEventRow(event) {
+		const target = event.target;
+		if (!(target instanceof Element)) return null;
+		const row = target.closest(".file-tree-row");
+		return row && this.container.contains(row) ? row : null;
+	}
 
-		// Check if folder should be expanded from saved state
-		if (this.options.expandedState?.[url]) {
-			queueMicrotask(() => toggle());
+	onClick(event) {
+		const row = this.getEventRow(event);
+		if (!row) return;
+		event.stopPropagation();
+		this.focusedUrl = row.dataset.url;
+		const entry = this.nodes.get(row.dataset.url);
+		if (!entry) return;
+
+		if (entry.isDirectory) {
+			this.toggle(entry.url);
+		} else {
+			this.selectedUrl = entry.url;
+			this.virtualList.invalidate();
+			this.options.onFileClick?.(entry.url, entry.name);
+		}
+	}
+
+	onContextMenu(event) {
+		const row = this.getEventRow(event);
+		if (!row) return;
+		event.preventDefault();
+		event.stopPropagation();
+		const entry = this.nodes.get(row.dataset.url);
+		if (!entry) return;
+		this.options.onContextMenu?.(
+			entry.isDirectory ? "dir" : "file",
+			entry.url,
+			entry.name,
+			row,
+		);
+	}
+
+	onKeyDown(event) {
+		const row = this.getEventRow(event);
+		if (!row) return;
+		const index = this.visibleIndexByUrl.get(row.dataset.url);
+		if (index === undefined) return;
+		const entry = this.visibleEntries[index];
+		let destination = -1;
+
+		switch (event.key) {
+			case "ArrowDown":
+				destination = Math.min(index + 1, this.visibleEntries.length - 1);
+				break;
+			case "ArrowUp":
+				destination = Math.max(index - 1, 0);
+				break;
+			case "ArrowRight":
+				if (entry.isDirectory && !entry.expanded) this.toggle(entry.url, true);
+				else if (entry.children?.length) destination = index + 1;
+				break;
+			case "ArrowLeft":
+				if (entry.isDirectory && entry.expanded) this.toggle(entry.url, false);
+				else if (entry.parentUrl !== this.currentUrl) {
+					destination = this.visibleIndexByUrl.get(entry.parentUrl) ?? -1;
+				}
+				break;
+			case "Enter":
+			case " ":
+				if (entry.isDirectory) this.toggle(entry.url);
+				else this.options.onFileClick?.(entry.url, entry.name);
+				break;
+			default:
+				return;
 		}
 
-		const defineCollapsibleAccessors = ($el, { includeTitle = true } = {}) => {
-			const properties = {
-				collapsed: { get: () => $wrapper.classList.contains("hidden") },
-				expanded: { get: () => !$wrapper.classList.contains("hidden") },
-				unclasped: { get: () => !$wrapper.classList.contains("hidden") }, // Legacy compatibility
-				$ul: { get: () => $content },
-				fileTree: { get: () => childTree },
-				refresh: {
-					value: () => childTree?.refresh(),
-				},
-				expand: {
-					value: () => !$wrapper.classList.contains("hidden") || toggle(),
-				},
-				collapse: {
-					value: () => $wrapper.classList.contains("hidden") || toggle(),
-				},
-			};
+		event.preventDefault();
+		event.stopPropagation();
+		if (destination !== -1) this.focusEntryAt(destination);
+	}
 
-			if (includeTitle) {
-				properties.$title = { get: () => $title };
+	focusEntryAt(index) {
+		const entry = this.visibleEntries[index];
+		if (!entry) return;
+		this.focusedUrl = entry.url;
+		this.virtualList.scrollToIndex(index);
+		requestAnimationFrame(() => {
+			const row = this.findElement(entry.url);
+			if (!row) return;
+			try {
+				row.focus({ preventScroll: true });
+			} catch {
+				row.focus();
 			}
-
-			Object.defineProperties($el, properties);
-		};
-
-		// Keep nested folders compatible with the legacy collapsableList API.
-		defineCollapsibleAccessors($wrapper);
-		defineCollapsibleAccessors($title, { includeTitle: false });
-
-		return $wrapper;
-	}
-
-	/**
-	 * Create file element (tile)
-	 * @param {string} name
-	 * @param {string} url
-	 * @param {HTMLElement} [recycledEl] - Optional recycled element for reuse
-	 * @returns {HTMLElement}
-	 */
-	createFileElement(name, url, recycledEl) {
-		const iconClass = helpers.getIconForFile(name);
-
-		// Try to recycle existing element
-		if (recycledEl && recycledEl.dataset.type === "file") {
-			recycledEl.dataset.url = url;
-			recycledEl.dataset.name = name;
-			const textEl = recycledEl.querySelector(".text");
-			const iconEl = recycledEl.querySelector("span:first-child");
-			if (textEl) textEl.textContent = name;
-			if (iconEl) iconEl.className = iconClass;
-			return recycledEl;
-		}
-
-		const $tile = tile({
-			lead: tag("span", { className: iconClass }),
-			text: name,
 		});
-
-		$tile.dataset.url = url;
-		$tile.dataset.name = name;
-		$tile.dataset.type = "file";
-
-		$tile.addEventListener("click", (e) => {
-			e.stopPropagation();
-			this.options.onFileClick?.(url, name);
-		});
-
-		$tile.addEventListener("contextmenu", (e) => {
-			e.stopPropagation();
-			this.options.onContextMenu?.("file", url, name, $tile);
-		});
-
-		return $tile;
 	}
 
-	/**
-	 * Clear all rendered content
-	 */
-	clear() {
-		this.destroyChildTrees();
-
-		if (this.virtualList) {
-			this.virtualList.destroy();
-			this.virtualList = null;
-		}
-		this.container.innerHTML = "";
-		this.container.classList.remove("virtual-scroll");
-		this.entries = [];
+	/** Expand or collapse one directory. */
+	toggle(url, force) {
+		const entry = this.nodes.get(url);
+		if (!entry?.isDirectory) return;
+		const expanded = force ?? !entry.expanded;
+		if (entry.expanded === expanded) return;
+		entry.expanded = expanded;
+		this.options.onExpandedChange?.(url, expanded);
+		this.rebuildVisibleEntries();
+		if (expanded) this.ensureChildren(entry, true);
+		this.animateFolderToggle(url);
 	}
 
-	/**
-	 * Destroy the file tree and cleanup
-	 */
-	destroy() {
-		this.clear();
-		this.container.classList.remove("file-tree");
-	}
-
-	/**
-	 * Find an entry element by URL
-	 * @param {string} url
-	 * @returns {HTMLElement|null}
-	 */
 	findElement(url) {
-		return this.container.querySelector(`[data-url="${CSS.escape(url)}"]`);
-	}
-
-	/**
-	 * Refresh the current directory
-	 */
-	async refresh() {
-		if (this.currentUrl) {
-			await this.load(this.currentUrl);
+		for (const row of this.virtualList.itemContainer.children) {
+			if (row.dataset.url === url) return row;
 		}
+		return null;
 	}
 
-	/**
-	 * Refresh a loaded folder in this tree or one of its expanded child trees.
-	 * @param {string} url
-	 * @param {(a: string, b: string) => boolean} [isSameUrl]
-	 * @returns {Promise<boolean>}
-	 */
+	hasEntry(url) {
+		return url === this.currentUrl || this.nodes.has(url);
+	}
+
+	isExpanded(url) {
+		if (url === this.currentUrl) return true;
+		return this.nodes.get(url)?.expanded === true;
+	}
+
+	setCut(url, isCut) {
+		this.cutUrl = isCut ? url : this.cutUrl === url ? null : this.cutUrl;
+		this.virtualList.invalidate();
+	}
+
+	async refresh() {
+		if (!this.currentUrl) return;
+		const url = this.currentUrl;
+		const generation = ++this.loadGeneration;
+		const entries = await this.requestDirectoryEntries(url, true);
+		if (
+			this.destroyed ||
+			generation !== this.loadGeneration ||
+			url !== this.currentUrl
+		) {
+			return;
+		}
+		this.entries = this.reconcileChildren(url, 0, entries, this.entries);
+		this.rebuildVisibleEntries();
+		this.loadRestoredFolders(this.entries);
+	}
+
+	/** Refresh a directory that has already been loaded in this model. */
 	async refreshFolder(url, isSameUrl = (a, b) => a === b) {
 		if (this.currentUrl && isSameUrl(this.currentUrl, url)) {
 			await this.refresh();
 			return true;
 		}
 
-		for (const childTree of this.childTrees.values()) {
-			if (await childTree.refreshFolder(url, isSameUrl)) {
-				return true;
+		const exactNode = this.nodes.get(url);
+		const node = exactNode?.isDirectory
+			? exactNode
+			: Array.from(this.nodes.values()).find(
+					(entry) => entry.isDirectory && isSameUrl(entry.url, url),
+				);
+		if (!node || (!node.children && !node.expanded)) return false;
+
+		const generation = ++node.loadGeneration;
+		node.loading = true;
+		this.virtualList.invalidate();
+		try {
+			const entries = await this.requestDirectoryEntries(node.url, true);
+			if (this.destroyed || generation !== node.loadGeneration) return false;
+			node.children = this.reconcileChildren(
+				node.url,
+				node.depth + 1,
+				entries,
+				node.children || [],
+			);
+			this.loadRestoredFolders(node.children);
+			return true;
+		} finally {
+			if (!this.destroyed && generation === node.loadGeneration) {
+				node.loading = false;
+				this.rebuildVisibleEntries();
 			}
 		}
-
-		return false;
 	}
 
 	/**
-	 * Destroy all expanded child trees and clear their references.
+	 * Append an entry to a loaded directory.
+	 * @returns {boolean} Whether the directory was present and loaded
 	 */
-	destroyChildTrees() {
-		for (const childTree of this.childTrees.values()) {
-			childTree.destroy();
+	appendEntry(parentUrl, name, url, isDirectory) {
+		// Backward compatibility with the old root-only signature.
+		if (arguments.length === 3) {
+			isDirectory = url;
+			url = name;
+			name = parentUrl;
+			parentUrl = this.currentUrl;
 		}
-		this.childTrees.clear();
+
+		let children;
+		let parentNode = null;
+		if (parentUrl === this.currentUrl) children = this.entries;
+		else {
+			parentNode = this.nodes.get(parentUrl);
+			children = parentNode?.children;
+		}
+		if (!children || children.some((entry) => entry.url === url)) return false;
+
+		const rawEntries = children.map((entry) => ({ ...entry }));
+		rawEntries.push({ name, url, isDirectory, isFile: !isDirectory });
+		const reconciled = this.reconcileChildren(
+			parentUrl,
+			parentNode ? parentNode.depth + 1 : 0,
+			rawEntries,
+			children,
+		);
+		if (parentNode) parentNode.children = reconciled;
+		else this.entries = reconciled;
+		this.rebuildVisibleEntries();
+		return true;
 	}
 
-	/**
-	 * Append a new entry to the tree
-	 * @param {string} name
-	 * @param {string} url
-	 * @param {boolean} isDirectory
-	 */
-	appendEntry(name, url, isDirectory) {
-		const entry = { name, url, isDirectory, isFile: !isDirectory };
-
-		// Insert in sorted position
-		if (isDirectory) {
-			// Find first file or end of dirs
-			const insertIndex = this.entries.findIndex((e) => !e.isDirectory);
-			if (insertIndex === -1) {
-				this.entries.push(entry);
-			} else {
-				this.entries.splice(insertIndex, 0, entry);
-			}
-		} else {
-			this.entries.push(entry);
-		}
-
-		// Re-sort entries
-		this.entries = helpers.sortDir(this.entries, {
-			sortByName: true,
-			showHiddenFiles: true,
-		});
-
-		// Update rendering based on mode
-		if (this.virtualList) {
-			// Virtual list mode: update items
-			this.virtualList.setItems(this.entries);
-		} else {
-			// Fragment mode: re-render
-			this.destroyChildTrees();
-			this.container.innerHTML = "";
-			this.renderWithFragment();
-		}
-	}
-
-	/**
-	 * Remove an entry from the tree
-	 * @param {string} url
-	 */
+	/** Remove an entry from whichever loaded directory owns it. */
 	removeEntry(url) {
-		// Update data first
-		const index = this.entries.findIndex((e) => e.url === url);
-		if (index === -1) return;
+		const node = this.nodes.get(url);
+		if (!node) return false;
+		const parent = this.nodes.get(node.parentUrl);
+		const siblings = parent ? parent.children : this.entries;
+		const index = siblings?.findIndex((entry) => entry.url === url) ?? -1;
+		if (index === -1) return false;
+		siblings.splice(index, 1);
+		this.removeNode(node);
+		siblings.forEach((entry, siblingIndex) => {
+			entry.position = siblingIndex + 1;
+			entry.setSize = siblings.length;
+		});
+		this.rebuildVisibleEntries();
+		return true;
+	}
 
-		// Clean up child tree if folder
-		const entry = this.entries[index];
-		if (entry.isDirectory && this.childTrees.has(url)) {
-			this.childTrees.get(url).destroy();
-			this.childTrees.delete(url);
-		}
+	resetData() {
+		for (const entry of this.entries) this.removeNode(entry);
+		this.entries = [];
+		this.visibleEntries = [];
+		this.visibleIndexByUrl.clear();
+		this.nodes.clear();
+		this.virtualList.setItems([]);
+	}
 
-		// Remove from entries
-		this.entries.splice(index, 1);
+	clear() {
+		this.loadGeneration++;
+		this.cancelPendingDirectoryLoads();
+		this.resetData();
+	}
 
-		// Update rendering based on mode
-		if (this.virtualList) {
-			// Virtual list mode: update items
-			this.virtualList.setItems(this.entries);
-		} else {
-			// Fragment mode: remove element directly
-			const $el = this.findElement(url);
-			if ($el) {
-				if ($el.dataset.type === "dir") {
-					$el.closest(".list.collapsible")?.remove();
-				} else {
-					$el.remove();
-				}
-			}
-		}
+	destroy() {
+		if (this.destroyed) return;
+		this.destroyed = true;
+		this.clear();
+		this.virtualList.destroy();
+		this.container.removeEventListener("click", this.onClickBound);
+		this.container.removeEventListener("contextmenu", this.onContextMenuBound);
+		this.container.removeEventListener("keydown", this.onKeyDownBound);
+		this.container.classList.remove("file-tree", "virtual-scroll");
+		this.container.removeAttribute("role");
+		this.container.removeAttribute("aria-label");
+		this.container.removeAttribute("aria-busy");
+		if (this.container._fileTree === this) this.container._fileTree = null;
 	}
 }

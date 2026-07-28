@@ -1,3 +1,4 @@
+import FileTree from "../components/fileTree";
 import {
 	clearModifierState,
 	clearQuickToolsButtonFeedback,
@@ -53,6 +54,88 @@ export async function runSanityTests(writeOutput) {
 		const result = await asyncFunc();
 		test.assertEqual(result, "done", "Async function should work correctly");
 	});
+
+	runner.test(
+		"File tree virtualizes one flattened expanded view",
+		async (test) => {
+			const rootUrl = "memory://workspace";
+			const sourceUrl = `${rootUrl}/src`;
+			const sourceEntries = Array.from({ length: 500 }, (_, index) => ({
+				name: `file-${String(index).padStart(3, "0")}.js`,
+				url: `${sourceUrl}/file-${index}.js`,
+				isFile: true,
+				isDirectory: false,
+			}));
+			const listings = new Map([
+				[
+					rootUrl,
+					[
+						{
+							name: "src",
+							url: sourceUrl,
+							isFile: false,
+							isDirectory: true,
+						},
+						{
+							name: "README.md",
+							url: `${rootUrl}/README.md`,
+							isFile: true,
+							isDirectory: false,
+						},
+					],
+				],
+				[sourceUrl, sourceEntries],
+			]);
+			const container = document.createElement("ul");
+			container.style.cssText =
+				"position:fixed;left:-10000px;top:0;width:280px;height:300px;overflow:auto";
+			document.body.append(container);
+			const tree = new FileTree(container, {
+				getEntries: async (url) => listings.get(url) || [],
+			});
+
+			try {
+				await tree.load(rootUrl);
+				test.assertEqual(tree.visibleEntries.length, 2);
+				tree.toggle(sourceUrl, true);
+				await new Promise((resolve) => setTimeout(resolve, 0));
+				test.assertEqual(tree.visibleEntries.length, 502);
+				test.assert(
+					tree.virtualList.itemContainer.children.length < 100,
+					"Only the viewport and overscan rows should be mounted",
+				);
+				const idleRows = tree.virtualList.itemContainer.children.length;
+				container.dispatchEvent(new Event("touchstart"));
+				const interactionRows = tree.virtualList.itemContainer.children.length;
+				test.assert(
+					interactionRows > idleRows,
+					"Touch should pre-paint the Android interaction guard",
+				);
+				const retainedUrl = tree.visibleEntries[10].url;
+				const retainedRow = tree.findElement(retainedUrl);
+				container.scrollTop = 13 * 30;
+				container.dispatchEvent(new Event("scroll"));
+				await new Promise((resolve) => requestAnimationFrame(resolve));
+				test.assertEqual(
+					tree.findElement(retainedUrl),
+					retainedRow,
+					"Overlapping rows should stay mounted during incremental scrolling",
+				);
+				test.assert(
+					tree.appendEntry(sourceUrl, "new.js", `${sourceUrl}/new.js`, false),
+				);
+				test.assertEqual(tree.visibleEntries.length, 503);
+				test.assert(tree.removeEntry(`${sourceUrl}/new.js`));
+				test.assertEqual(tree.visibleEntries.length, 502);
+
+				tree.toggle(sourceUrl, false);
+				test.assertEqual(tree.visibleEntries.length, 2);
+			} finally {
+				tree.destroy();
+				container.remove();
+			}
+		},
+	);
 
 	// Test 7: Error handling
 	runner.test("Error handling", (test) => {
