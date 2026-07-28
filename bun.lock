@@ -111,6 +111,7 @@
         "com.foxdebug.acode.rk.plugin.plugincontext": "file:src/plugins/pluginContext",
         "cordova-android": "^15.0.0",
         "cordova-clipboard": "^1.3.0",
+        "cordova-plugin-acode-webview": "file:src/plugins/webview",
         "cordova-plugin-advanced-http": "file:src/plugins/cordova-plugin-advanced-http",
         "cordova-plugin-browser": "file:src/plugins/browser",
         "cordova-plugin-buildinfo": "file:src/plugins/cordova-plugin-buildinfo",
@@ -150,6 +151,7 @@
     "@codemirror/search": "^6.7.1",
     "@codemirror/state": "^6.6.0",
     "@codemirror/view": "^6.43.4",
+    "tar": "^7.5.19",
   },
   "packages": {
     "@antfu/install-pkg": ["@antfu/install-pkg@1.1.0", "", { "dependencies": { "package-manager-detector": "^1.3.0", "tinyexec": "^1.0.1" } }, "sha512-MGQsmw10ZyI+EJo45CdSER4zEb+p31LpDAFp2Z3gkSd1yqVZGi0Ebx++YTEMonJy4oChEMLsxZ64j8FH6sSqtQ=="],
@@ -1025,6 +1027,8 @@
     "cordova-fetch": ["cordova-fetch@5.0.0", "", { "dependencies": { "@npmcli/arborist": "^9.1.3", "cordova-common": "^6.0.0", "execa": "^5.1.1", "npm-package-arg": "^13.0.0", "pacote": "^21.0.0", "resolve": "^1.22.10", "semver": "^7.7.2", "which": "^5.0.0" } }, "sha512-fsYnVfx32AOrFO6tw4EkzSig7WjNhze35dKIzdw20zTQetDKEfWA79PpCaoiSeahGi6O2MdnOFabLhEa8se6jg=="],
 
     "cordova-lib": ["cordova-lib@13.0.0", "", { "dependencies": { "cordova-common": "^6.0.0", "cordova-fetch": "^5.0.0", "detect-indent": "^6.1.0", "detect-newline": "^3.1.0", "execa": "^5.1.1", "globby": "^11.1.0", "semver": "^7.7.2", "stringify-package": "^1.0.1", "write-file-atomic": "^7.0.0" } }, "sha512-y8WQ+J6JtiU9C72ujvI3p+ScFJkg0VJwNfaUCqk9nPAssw2C6HltHk+ik/WrLUn6uDmwAM6gmfGUIMU2iVrNxA=="],
+
+    "cordova-plugin-acode-webview": ["cordova-plugin-acode-webview@file:src/plugins/webview", {}],
 
     "cordova-plugin-advanced-http": ["cordova-plugin-advanced-http@file:src/plugins/cordova-plugin-advanced-http", { "devDependencies": { "chai": "4.3.6", "colors": "1.4.0", "cordova": "11.0.0", "mocha": "9.2.2", "umd-tough-cookie": "3.0.0", "wd": "1.14.0", "xml2js": "0.4.23" } }],
 
@@ -2070,7 +2074,7 @@
 
     "tapable": ["tapable@2.3.0", "", {}, "sha512-g9ljZiwki/LfxmQADO3dEY1CbpmXT5Hm2fJ+QaGKwSXUylMybePR7/67YW7jOrrvjEgL1Fmz5kzyAjWVWLlucg=="],
 
-    "tar": ["tar@7.5.15", "", { "dependencies": { "@isaacs/fs-minipass": "^4.0.0", "chownr": "^3.0.0", "minipass": "^7.1.2", "minizlib": "^3.1.0", "yallist": "^5.0.0" } }, "sha512-dzGK0boVlC4W5QFuQN1EFSl3bIDYsk7Tj40U6eIBnK2k/8ml7TZ5agbI5j5+qnoVcAA+rNtBml8SEiLxZpNqRQ=="],
+    "tar": ["tar@7.5.22", "", { "dependencies": { "@isaacs/fs-minipass": "^4.0.0", "chownr": "^3.0.0", "minipass": "^7.1.2", "minizlib": "^3.1.0", "yallist": "^5.0.0" } }, "sha512-MFO/QzvtAOmJbkhOaCTvbGcFN9L9b+JunIsDwaKljSOdcLMea3NJ1k9Usz/rjdfSXTq4dfzfeS7W4p4YOAAHeA=="],
 
     "tar-stream": ["tar-stream@2.2.0", "", { "dependencies": { "bl": "^4.0.3", "end-of-stream": "^1.4.1", "fs-constants": "^1.0.0", "inherits": "^2.0.3", "readable-stream": "^3.1.1" } }, "sha512-ujeqbceABgwMZxEJnk2HDY2DlnUZ+9oEcb1KzTVfYHio0UE6dG71n60d8D2I4qNvleWrrXpmjpt7vZeF1LnMZQ=="],
 
@@ -2952,8 +2956,6 @@
 
     "cordova-plugin-advanced-http/cordova/cordova-create/cordova-fetch/pacote/ssri": ["ssri@8.0.1", "", { "dependencies": { "minipass": "^3.1.1" } }, "sha512-97qShzy1AiyxvPNIkLWoGua7xoQzzPjQ0HAH4B0rWKo7SZ6USuPcrUiAFrws0UH8RrbWmgq3LMTObhPIHbbBeQ=="],
 
-    "cordova-plugin-advanced-http/cordova/cordova-create/cordova-fetch/pacote/tar": ["tar@6.2.1", "", { "dependencies": { "chownr": "^2.0.0", "fs-minipass": "^2.0.0", "minipass": "^5.0.0", "minizlib": "^2.1.1", "mkdirp": "^1.0.3", "yallist": "^4.0.0" } }, "sha512-DZ4yORTwrbTj/7MZYq2w+/ZFdI6OZ/f9SFHR+71gIVUZhOQPHzVCLpvRnPgyaMpfWxxk/4ONva3GQSyNIKRv6A=="],
-
     "cordova-plugin-advanced-http/cordova/cordova-create/cordova-fetch/which/isexe": ["isexe@2.0.0", "", {}, "sha512-RHxMLp9lnKHGHRng9QFhRCMbYAcVpn69smSGcq3f36xjgVVWThj4qqLbTLlq7Ssj8B+fIQ1EuCEGI2lKsyQeIw=="],
 
     "cordova-plugin-advanced-http/cordova/cordova-create/npm-package-arg/hosted-git-info/lru-cache": ["lru-cache@6.0.0", "", { "dependencies": { "yallist": "^4.0.0" } }, "sha512-Jo6dJ04CmSjuznwJSS3pUeWmd/H0ffTlkXXgwZi+eq1UCmqQwCh+eLsYOYCwY991i2Fah4h1BEMCx4qThGbsiA=="],
@@ -2985,8 +2987,6 @@
     "cordova-plugin-advanced-http/cordova/cordova-lib/cordova-fetch/pacote/npm-registry-fetch": ["npm-registry-fetch@11.0.0", "", { "dependencies": { "make-fetch-happen": "^9.0.1", "minipass": "^3.1.3", "minipass-fetch": "^1.3.0", "minipass-json-stream": "^1.0.1", "minizlib": "^2.0.0", "npm-package-arg": "^8.0.0" } }, "sha512-jmlgSxoDNuhAtxUIG6pVwwtz840i994dL14FoNVZisrmZW5kWd63IUTNv1m/hyRSGSqWjCUp/YZlS1BJyNp9XA=="],
 
     "cordova-plugin-advanced-http/cordova/cordova-lib/cordova-fetch/pacote/ssri": ["ssri@8.0.1", "", { "dependencies": { "minipass": "^3.1.1" } }, "sha512-97qShzy1AiyxvPNIkLWoGua7xoQzzPjQ0HAH4B0rWKo7SZ6USuPcrUiAFrws0UH8RrbWmgq3LMTObhPIHbbBeQ=="],
-
-    "cordova-plugin-advanced-http/cordova/cordova-lib/cordova-fetch/pacote/tar": ["tar@6.2.1", "", { "dependencies": { "chownr": "^2.0.0", "fs-minipass": "^2.0.0", "minipass": "^5.0.0", "minizlib": "^2.1.1", "mkdirp": "^1.0.3", "yallist": "^4.0.0" } }, "sha512-DZ4yORTwrbTj/7MZYq2w+/ZFdI6OZ/f9SFHR+71gIVUZhOQPHzVCLpvRnPgyaMpfWxxk/4ONva3GQSyNIKRv6A=="],
 
     "cordova-plugin-advanced-http/cordova/cordova-lib/cordova-fetch/which/isexe": ["isexe@2.0.0", "", {}, "sha512-RHxMLp9lnKHGHRng9QFhRCMbYAcVpn69smSGcq3f36xjgVVWThj4qqLbTLlq7Ssj8B+fIQ1EuCEGI2lKsyQeIw=="],
 
@@ -3023,12 +3023,6 @@
     "cordova-plugin-advanced-http/cordova/cordova-create/cordova-fetch/pacote/npm-registry-fetch/minipass-fetch": ["minipass-fetch@1.4.1", "", { "dependencies": { "minipass": "^3.1.0", "minipass-sized": "^1.0.3", "minizlib": "^2.0.0" }, "optionalDependencies": { "encoding": "^0.1.12" } }, "sha512-CGH1eblLq26Y15+Azk7ey4xh0J/XfJfrCox5LDJiKqI2Q2iwOLOKrlmIaODiSQS8d18jalF6y2K2ePUm0CmShw=="],
 
     "cordova-plugin-advanced-http/cordova/cordova-create/cordova-fetch/pacote/npm-registry-fetch/minizlib": ["minizlib@2.1.2", "", { "dependencies": { "minipass": "^3.0.0", "yallist": "^4.0.0" } }, "sha512-bAxsR8BVfj60DWXHE3u30oHzfl4G7khkSuPW+qvpd7jFRHm7dLxOjUk1EHACJ/hxLY8phGJ0YhYHZo7jil7Qdg=="],
-
-    "cordova-plugin-advanced-http/cordova/cordova-create/cordova-fetch/pacote/tar/minipass": ["minipass@5.0.0", "", {}, "sha512-3FnjYuehv9k6ovOEbyOswadCDPX1piCfhV8ncmYtHOjuPwylVWsghTLo7rabjC3Rx5xD4HDx8Wm1xnMF7S5qFQ=="],
-
-    "cordova-plugin-advanced-http/cordova/cordova-create/cordova-fetch/pacote/tar/minizlib": ["minizlib@2.1.2", "", { "dependencies": { "minipass": "^3.0.0", "yallist": "^4.0.0" } }, "sha512-bAxsR8BVfj60DWXHE3u30oHzfl4G7khkSuPW+qvpd7jFRHm7dLxOjUk1EHACJ/hxLY8phGJ0YhYHZo7jil7Qdg=="],
-
-    "cordova-plugin-advanced-http/cordova/cordova-create/cordova-fetch/pacote/tar/yallist": ["yallist@4.0.0", "", {}, "sha512-3wdGidZyq5PB084XLES5TpOSRA3wjXAlIWMhum2kRcv/41Sn2emQ0dycQW4uZXLejwKvg6EsvbdlVL+FYEct7A=="],
 
     "cordova-plugin-advanced-http/cordova/cordova-create/npm-package-arg/hosted-git-info/lru-cache/yallist": ["yallist@4.0.0", "", {}, "sha512-3wdGidZyq5PB084XLES5TpOSRA3wjXAlIWMhum2kRcv/41Sn2emQ0dycQW4uZXLejwKvg6EsvbdlVL+FYEct7A=="],
 
@@ -3068,12 +3062,6 @@
 
     "cordova-plugin-advanced-http/cordova/cordova-lib/cordova-fetch/pacote/npm-registry-fetch/minizlib": ["minizlib@2.1.2", "", { "dependencies": { "minipass": "^3.0.0", "yallist": "^4.0.0" } }, "sha512-bAxsR8BVfj60DWXHE3u30oHzfl4G7khkSuPW+qvpd7jFRHm7dLxOjUk1EHACJ/hxLY8phGJ0YhYHZo7jil7Qdg=="],
 
-    "cordova-plugin-advanced-http/cordova/cordova-lib/cordova-fetch/pacote/tar/minipass": ["minipass@5.0.0", "", {}, "sha512-3FnjYuehv9k6ovOEbyOswadCDPX1piCfhV8ncmYtHOjuPwylVWsghTLo7rabjC3Rx5xD4HDx8Wm1xnMF7S5qFQ=="],
-
-    "cordova-plugin-advanced-http/cordova/cordova-lib/cordova-fetch/pacote/tar/minizlib": ["minizlib@2.1.2", "", { "dependencies": { "minipass": "^3.0.0", "yallist": "^4.0.0" } }, "sha512-bAxsR8BVfj60DWXHE3u30oHzfl4G7khkSuPW+qvpd7jFRHm7dLxOjUk1EHACJ/hxLY8phGJ0YhYHZo7jil7Qdg=="],
-
-    "cordova-plugin-advanced-http/cordova/cordova-lib/cordova-fetch/pacote/tar/yallist": ["yallist@4.0.0", "", {}, "sha512-3wdGidZyq5PB084XLES5TpOSRA3wjXAlIWMhum2kRcv/41Sn2emQ0dycQW4uZXLejwKvg6EsvbdlVL+FYEct7A=="],
-
     "cordova-plugin-advanced-http/cordova/cordova-create/cordova-fetch/pacote/@npmcli/git/lru-cache/yallist": ["yallist@4.0.0", "", {}, "sha512-3wdGidZyq5PB084XLES5TpOSRA3wjXAlIWMhum2kRcv/41Sn2emQ0dycQW4uZXLejwKvg6EsvbdlVL+FYEct7A=="],
 
     "cordova-plugin-advanced-http/cordova/cordova-create/cordova-fetch/pacote/@npmcli/run-script/node-gyp/glob": ["glob@7.2.3", "", { "dependencies": { "fs.realpath": "^1.0.0", "inflight": "^1.0.4", "inherits": "2", "minimatch": "^3.1.1", "once": "^1.3.0", "path-is-absolute": "^1.0.0" } }, "sha512-nFR0zLpU2YCaRxwoCJvL6UvCH2JFyFVIvwTLsIf21AuHlMskA1hhTdk+LlYJtOlYt9v6dvszD2BGRqBL+iQK9Q=="],
@@ -3095,8 +3083,6 @@
     "cordova-plugin-advanced-http/cordova/cordova-create/cordova-fetch/pacote/npm-registry-fetch/minipass-fetch/minipass-sized": ["minipass-sized@1.0.3", "", { "dependencies": { "minipass": "^3.0.0" } }, "sha512-MbkQQ2CTiBMlA2Dm/5cY+9SWFEN8pzzOXi6rlM5Xxq0Yqbda5ZQy9sU75a673FE9ZK0Zsbr6Y5iP6u9nktfg2g=="],
 
     "cordova-plugin-advanced-http/cordova/cordova-create/cordova-fetch/pacote/npm-registry-fetch/minizlib/yallist": ["yallist@4.0.0", "", {}, "sha512-3wdGidZyq5PB084XLES5TpOSRA3wjXAlIWMhum2kRcv/41Sn2emQ0dycQW4uZXLejwKvg6EsvbdlVL+FYEct7A=="],
-
-    "cordova-plugin-advanced-http/cordova/cordova-create/cordova-fetch/pacote/tar/minizlib/minipass": ["minipass@3.3.6", "", { "dependencies": { "yallist": "^4.0.0" } }, "sha512-DxiNidxSEK+tHG6zOIklvNOwm3hvCrbUrdtzY74U6HKTJxvIDfOUL5W5P2Ghd3DTkhhKPYGqeNUIh5qcM4YBfw=="],
 
     "cordova-plugin-advanced-http/cordova/cordova-lib/cordova-fetch/npm-package-arg/hosted-git-info/lru-cache/yallist": ["yallist@4.0.0", "", {}, "sha512-3wdGidZyq5PB084XLES5TpOSRA3wjXAlIWMhum2kRcv/41Sn2emQ0dycQW4uZXLejwKvg6EsvbdlVL+FYEct7A=="],
 
@@ -3121,8 +3107,6 @@
     "cordova-plugin-advanced-http/cordova/cordova-lib/cordova-fetch/pacote/npm-registry-fetch/minipass-fetch/minipass-sized": ["minipass-sized@1.0.3", "", { "dependencies": { "minipass": "^3.0.0" } }, "sha512-MbkQQ2CTiBMlA2Dm/5cY+9SWFEN8pzzOXi6rlM5Xxq0Yqbda5ZQy9sU75a673FE9ZK0Zsbr6Y5iP6u9nktfg2g=="],
 
     "cordova-plugin-advanced-http/cordova/cordova-lib/cordova-fetch/pacote/npm-registry-fetch/minizlib/yallist": ["yallist@4.0.0", "", {}, "sha512-3wdGidZyq5PB084XLES5TpOSRA3wjXAlIWMhum2kRcv/41Sn2emQ0dycQW4uZXLejwKvg6EsvbdlVL+FYEct7A=="],
-
-    "cordova-plugin-advanced-http/cordova/cordova-lib/cordova-fetch/pacote/tar/minizlib/minipass": ["minipass@3.3.6", "", { "dependencies": { "yallist": "^4.0.0" } }, "sha512-DxiNidxSEK+tHG6zOIklvNOwm3hvCrbUrdtzY74U6HKTJxvIDfOUL5W5P2Ghd3DTkhhKPYGqeNUIh5qcM4YBfw=="],
 
     "cordova-plugin-advanced-http/cordova/cordova-create/cordova-fetch/pacote/@npmcli/run-script/node-gyp/glob/minimatch": ["minimatch@3.1.2", "", { "dependencies": { "brace-expansion": "^1.1.7" } }, "sha512-J7p63hRiAjw1NDEww1W7i37+ByIrOWO5XQQAzZ3VOcL0PNybwpfmV/N05zFAzwQ9USyEcX6t3UO+K5aqBQOIHw=="],
 
