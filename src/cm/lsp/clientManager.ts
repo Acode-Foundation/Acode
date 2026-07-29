@@ -1040,6 +1040,14 @@ export class LspClientManager {
           : normalizedRootUri,
       );
       await waitForInitialization(client.initializing, signal, server.id);
+      // New: push config the same way ALC always did
+      if (server.workspaceConfiguration) {
+        transportHandle.transport.send(JSON.stringify({
+          jsonrpc: "2.0",
+          method: "workspace/didChangeConfiguration",
+          params: { settings: server.workspaceConfiguration },
+        }));
+      };
       if (!client.__acodeLoggedInfo) {
         // Log root URI info to console
         if (normalizedRootUri) {
