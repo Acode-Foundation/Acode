@@ -6,7 +6,6 @@ import confirm from "dialogs/confirm";
 import select from "dialogs/select";
 import actionStack from "lib/actionStack";
 import settings from "lib/settings";
-import { hideAd } from "lib/startAd";
 import ThemeBuilder from "theme/builder";
 import themes from "theme/list";
 import { isValidColor } from "utils/color/regex";
@@ -35,7 +34,6 @@ export default function CustomThemeInclude() {
 
 	$page.onhide = () => {
 		actionStack.remove("custom-theme");
-		hideAd();
 	};
 
 	$page.addEventListener("click", handleClick);

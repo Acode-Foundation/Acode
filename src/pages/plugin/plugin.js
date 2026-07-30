@@ -12,7 +12,7 @@ import customTab from "lib/customTab";
 import installPlugin from "lib/installPlugin";
 import InstallState from "lib/installState";
 import settings from "lib/settings";
-import { hideAd, interstitialAd } from "lib/startAd";
+import { interstitialAd } from "lib/startAd";
 import markdownIt from "markdown-it";
 import anchor from "markdown-it-anchor";
 import markdownItFootnote from "markdown-it-footnote";
@@ -67,7 +67,6 @@ export default async function PluginInclude(
 	});
 
 	$page.onhide = function () {
-		hideAd();
 		actionStack.remove("plugin");
 		loader.removeTitleLoader();
 		cancelled = true;

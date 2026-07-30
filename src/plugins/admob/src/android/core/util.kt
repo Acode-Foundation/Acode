@@ -6,7 +6,6 @@ import android.app.Activity
 import android.content.res.Resources
 import android.os.Bundle
 import android.provider.Settings
-import android.util.DisplayMetrics
 import com.google.ads.mediation.admob.AdMobAdapter
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdSize
@@ -33,44 +32,64 @@ fun buildAdRequest(opts: JSONObject): AdRequest {
     return builder.addNetworkExtrasBundle(AdMobAdapter::class.java, extras).build()
 }
 
-fun buildAdSize(opts: JSONObject, activity: Activity): AdSize {
+fun buildAdSize(
+    opts: JSONObject,
+    activity: Activity,
+    availableWidthInPixels: Int = activity.resources.displayMetrics.widthPixels,
+): AdSize {
+    val density = activity.resources.displayMetrics.density
     val name = "size"
     if (!opts.has(name)) {
-        @Suppress("DEPRECATION")
-        return AdSize.SMART_BANNER
+        return buildAnchoredAdaptiveAdSize(
+            activity,
+            pxToDp(availableWidthInPixels, density),
+        )
     }
     val adSizeObj = opts.optJSONObject(name)
-    val adSize = AdSizeType.getAdSize(opts.optInt(name))
     if (adSizeObj == null) {
-        @Suppress("DEPRECATION")
-        return adSize ?: AdSize.SMART_BANNER
+        val type = AdSizeType.entries.getOrNull(opts.optInt(name))
+        if (type == AdSizeType.SMART_BANNER) {
+            return buildAnchoredAdaptiveAdSize(
+                activity,
+                pxToDp(availableWidthInPixels, density),
+            )
+        }
+        return type?.let(AdSizeType::getAdSize)
+            ?: buildAnchoredAdaptiveAdSize(
+                activity,
+                pxToDp(availableWidthInPixels, density),
+            )
     }
     val adaptive = adSizeObj.optString("adaptive")
-    val w =
-        pxToDp(if (adSizeObj.has("width")) adSizeObj.optInt("width") else Resources.getSystem().displayMetrics.widthPixels)
+    val widthInPixels =
+        if (adSizeObj.has("width")) adSizeObj.optInt("width")
+        else availableWidthInPixels
+    val w = pxToDp(widthInPixels, density)
     if ("inline" == adaptive) {
         if (adSizeObj.has("maxHeight")) {
             return AdSize.getInlineAdaptiveBannerAdSize(
                 w,
-                pxToDp(adSizeObj.optInt("maxHeight"))
+                pxToDp(adSizeObj.optInt("maxHeight"), density)
             )
         }
-    } else {
-        return when (adSizeObj.optString("orientation")) {
-            "portrait" -> AdSize.getPortraitAnchoredAdaptiveBannerAdSize(
-                activity, w
-            )
-
-            "landscape" -> AdSize.getLandscapeAnchoredAdaptiveBannerAdSize(
-                activity, w
-            )
-
-            else -> AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(
-                activity, w
-            )
-        }
+    } else if ("anchored" == adaptive) {
+        return buildAnchoredAdaptiveAdSize(
+            activity,
+            w,
+            adSizeObj.optString("orientation"),
+        )
     }
-    return AdSize(w, pxToDp(adSizeObj.optInt("height")))
+    return AdSize(w, pxToDp(adSizeObj.optInt("height"), density))
+}
+
+private fun buildAnchoredAdaptiveAdSize(
+    activity: Activity,
+    width: Int,
+    orientation: String = "",
+): AdSize = when (orientation) {
+    "portrait" -> AdSize.getLargePortraitAnchoredAdaptiveBannerAdSize(activity, width)
+    "landscape" -> AdSize.getLargeLandscapeAnchoredAdaptiveBannerAdSize(activity, width)
+    else -> AdSize.getLargeAnchoredAdaptiveBannerAdSize(activity, width)
 }
 
 fun optBooleanToInt(opts: JSONObject, name: String, vNull: Int, vTrue: Int, vFalse: Int): Int? {
@@ -147,9 +166,12 @@ fun dpToPx(dp: Double): Double {
     return dp * Resources.getSystem().displayMetrics.density
 }
 
-fun pxToDp(px: Int): Int {
-    val displayMetrics = Resources.getSystem().displayMetrics
-    return (px / (displayMetrics.xdpi / DisplayMetrics.DENSITY_DEFAULT)).roundToInt()
+fun pxToDp(
+    px: Int,
+    density: Float = Resources.getSystem().displayMetrics.density,
+): Int {
+    if (density <= 0f) return px
+    return (px / density).roundToInt()
 }
 
 fun jsonArray2stringList(a: JSONArray?): List<String> {

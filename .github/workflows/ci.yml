@@ -35,6 +35,54 @@ jobs:
       - name: Run Biome
         run: biome ci .
 
+  unit-tests:
+    timeout-minutes: 15
+    name: Unit and dependency checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Use Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            src/plugins/admob/package-lock.json
+            src/plugins/cordova-plugin-advanced-http/package-lock.json
+
+      - name: Use Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.9
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Run JavaScript tests
+        run: npm test
+
+      - name: Run typecheck
+        run: npm run typecheck
+
+      - name: Verify generated AdMob bundle
+        run: |
+          npm run build:admob
+          npm run check:admob-bundle
+          git diff --exit-code -- src/plugins/admob/www/admob.js
+
+      - name: Verify Bun lockfile
+        run: bun install --frozen-lockfile --dry-run
+
+      - name: Reject critical dependency advisories
+        run: |
+          npm audit --package-lock-only --audit-level=critical
+          npm audit --prefix src/plugins/admob --package-lock-only --audit-level=critical
+          npm audit --prefix src/plugins/cordova-plugin-advanced-http --package-lock-only --audit-level=critical
+
   translation-check:
     name: Translation Check (On PR Only)
     timeout-minutes: 5

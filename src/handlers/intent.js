@@ -57,7 +57,7 @@ export default async function HandleIntent(intent = {}) {
 				try {
 					const user = await auth.getLoggedInUser(true);
 					if (user.acode_pro) {
-						hideAd();
+						hideAd(true);
 						config.HAS_PRO = true;
 						const settings = document.querySelector(
 							'[data-action="list-item"][data-key="removeads"',

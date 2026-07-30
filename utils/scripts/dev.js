@@ -124,6 +124,12 @@ function buildSpawnEnv(extra = {}) {
 	return sanitized;
 }
 
+function getAppVariant(args) {
+	return (
+		args.find((arg) => arg.toLowerCase() === "free")?.toLowerCase() || null
+	);
+}
+
 function spawnAsync(command, args, options) {
 	return new Promise((resolve, reject) => {
 		const mergedOptions = {
@@ -500,11 +506,21 @@ async function main() {
 	const args = process.argv.slice(2);
 	const platform =
 		args.find((a) => /^(android|ios|browser)$/i.test(a)) || "android";
+	const appVariant = getAppVariant(args);
 	const target =
 		args.find((a) => a.startsWith("--target="))?.split("=")[1] || null;
 	const emulator = args.includes("--emulator") || args.includes("-e");
 
 	console.log("\n  ⚡ Acode Dev Mode\n");
+
+	if (appVariant) {
+		log("info", `Configuring ${appVariant} app variant...`);
+		await spawnAsync(
+			process.execPath,
+			[path.join(ROOT, "utils", "config.js"), "d", appVariant],
+			{ cwd: ROOT },
+		);
+	}
 
 	const host = getLocalIP();
 	const port = await getFreePort();
@@ -557,7 +573,11 @@ async function main() {
 	});
 }
 
-main().catch((err) => {
-	console.error(err);
-	process.exit(1);
-});
+if (require.main === module) {
+	main().catch((err) => {
+		console.error(err);
+		process.exit(1);
+	});
+}
+
+module.exports = { getAppVariant };

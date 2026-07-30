@@ -60,10 +60,12 @@
   "devDependencies": {
     "chai": "4.3.6",
     "colors": "1.4.0",
-    "cordova": "11.0.0",
+    "cordova": "13.0.0",
     "mocha": "9.2.2",
     "umd-tough-cookie": "3.0.0",
-    "wd": "1.14.0",
     "xml2js": "0.4.23"
+  },
+  "overrides": {
+    "tar": "^7.5.22"
   }
 }

@@ -31,6 +31,10 @@ class RewardedInterstitial(ctx: ExecuteContext) : AdBase(ctx) {
 
                 override fun onAdLoaded(rewardedAd: RewardedInterstitialAd) {
                     mAd = rewardedAd
+                    rewardedAd.onPaidEventListener =
+                        paidEventListener("rewardedInterstitial") {
+                            rewardedAd.responseInfo
+                        }
                     val ssv = buildServerSideVerificationOptions(initOpts)
                     if (ssv != null) {
                         mAd!!.setServerSideVerificationOptions(ssv)

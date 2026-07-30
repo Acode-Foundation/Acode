@@ -42,6 +42,8 @@ class Rewarded(ctx: ExecuteContext) : AdBase(ctx) {
 
             override fun onAdLoaded(rewardedAd: RewardedAd) {
                 mAd = rewardedAd
+                rewardedAd.onPaidEventListener =
+                    paidEventListener("rewarded") { rewardedAd.responseInfo }
                 val ssv = buildServerSideVerificationOptions(initOpts)
                 if (ssv != null) {
                     mAd!!.setServerSideVerificationOptions(ssv)

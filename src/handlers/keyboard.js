@@ -1,4 +1,4 @@
-import { bannerAd } from "lib/startAd";
+import { setBannerKeyboardVisible } from "lib/startAd";
 import {
 	getSystemConfiguration,
 	HARDKEYBOARDHIDDEN_NO,
@@ -212,15 +212,5 @@ function focusBlurEditor(keyboardHidden) {
  * @param {boolean} keyboardHidden
  */
 function toggleBannerAd(keyboardHidden) {
-	const bannerIsActive = !!bannerAd?.active;
-
-	if (
-		!keyboardHidden &&
-		bannerIsActive &&
-		typeof bannerAd?.hide === "function"
-	) {
-		bannerAd.hide();
-	} else if (bannerIsActive && typeof bannerAd?.show === "function") {
-		bannerAd.show();
-	}
+	setBannerKeyboardVisible(!keyboardHidden);
 }

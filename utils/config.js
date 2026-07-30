@@ -1,120 +1,182 @@
-const path = require("node:path");
 const fs = require("node:fs");
+const path = require("node:path");
+const { execFile: execFileCallback } = require("node:child_process");
 const { promisify } = require("node:util");
-const exec = promisify(require("node:child_process").exec);
 
-(async () => {
-	const AD_APP_ID = "ca-app-pub-5911839694379275~4255791238";
-	const CONFIG_ID = /id="([a-z.]+")/;
-	const HTML_ID = /<title>[a-z.]+<\/title>/;
-	const ID_PAID = "com.foxdebug.acode";
-	const ID_FREE = "com.foxdebug.acodefree";
-	const arg = process.argv[2];
-	const arg2 = process.argv[3];
-	const platformsDir = path.resolve(__dirname, "../platforms/");
-	const babelrcpath = path.resolve(__dirname, "../.babelrc");
-	const configpath = path.resolve(__dirname, "../config.xml");
-	const htmlpath = path.resolve(__dirname, "../www/index.html");
-	const logopath = path.resolve(
-		__dirname,
-		"../res/android/values/ic_launcher_background.xml",
-	);
+const execFile = promisify(execFileCallback);
 
-	const logoTextPaid = `<?xml version="1.0" encoding="utf-8"?>
+const ADMOB_PLUGIN_ID = "admob-plus-cordova";
+const ID_PAID = "com.foxdebug.acode";
+const ID_FREE = "com.foxdebug.acodefree";
+const VARIANTS = new Set(["free", "paid"]);
+
+const LOGO_TEXT = {
+	paid: `<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#3a3e54</color>
     <color name="ic_splash_background">#3a3e54</color>
-</resources>`;
-	const logoTextFree = `<?xml version="1.0" encoding="utf-8"?>
+</resources>`,
+	free: `<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#ffffff</color>
     <color name="ic_splash_background">#313131</color>
-</resources>`;
+</resources>`,
+};
 
-	try {
-		let babelrcText = fs.readFileSync(babelrcpath, "utf-8");
-		let config = fs.readFileSync(configpath, "utf-8");
-		let html = fs.readFileSync(htmlpath, "utf-8");
-		let platforms = fs
-			.readdirSync(platformsDir)
-			.filter((file) => !file.startsWith("."));
-		let logo, id, currentId;
-
-		currentId = /id="([a-z.]+)"/.exec(config)[1];
-		babelrc = JSON.parse(babelrcText);
-
-		if (arg === "d") {
-			babelrc.compact = false;
-		} else if (arg === "p") {
-			babelrc.compact = true;
-		}
-
-		if (arg2 === "free") {
-			logo = logoTextFree;
-			id = ID_FREE;
-		} else {
-			logo = logoTextPaid;
-			id = ID_PAID;
-		}
-
-		fs.writeFileSync(babelrcpath, babelrcText, "utf8");
-
-		if (currentId !== id) {
-			const promises = [];
-
-			html = html.replace(HTML_ID, `<title>${id}</title>`);
-			config = config.replace(CONFIG_ID, `id="${id}"`);
-			babelrcText = JSON.stringify(babelrc, undefined, 2);
-
-			fs.writeFileSync(htmlpath, html, "utf8");
-			fs.writeFileSync(logopath, logo, "utf8");
-			fs.writeFileSync(configpath, config, "utf8");
-
-			for (let platform of platforms) {
-				if (!platform) continue;
-
-				promises.push(
-					(async () => {
-						console.log(
-							`|--- Preparing platform ${platform.toUpperCase()} ---|`,
-						);
-
-						if (id === ID_FREE) {
-							console.log(`|--- Installing Admob ---|`);
-							await exec(
-								`cordova plugin add cordova-plugin-consent@2.4.0 --save`,
-							);
-
-							if (
-								!fs.existsSync(path.join(__dirname, "src/plugins/admob/lib"))
-							) {
-								await exec(
-									"cd src/plugins/admob && npm install && npm run build",
-								);
-							}
-
-							await exec("cordova plugin add src/plugins/admob");
-							console.log("DONE! Installing admob-plus-cordova");
-						} else {
-							console.log(`|--- Removing Admob ---|`);
-							await exec(`cordova plugin remove cordova-plugin-consent --save`);
-							await exec(`cordova plugin remove admob-plus-cordova --save`);
-							console.log("DONE! Removing admob-plus-cordova");
-						}
-
-						console.log(`|--- Reinstalling platform ---|`);
-						const { stderr } = await exec(`npm run clean`);
-						if (stderr) console.error(stderr);
-						else console.log("DONE! Reinstalling platform");
-					})(),
-				);
-			}
-
-			await Promise.all(promises);
-		}
-		process.exit(0);
-	} catch (error) {
-		console.error(error);
-		process.exit(1);
+/**
+ * Returns the Cordova operations required to converge the AdMob plugin state.
+ * Free builds always reinstall the vendored plugin so native and web sources
+ * cannot remain stale after a source change.
+ *
+ * @param {{variant:"free"|"paid", bundleExists:boolean, pluginInstalled:boolean}} state
+ */
+function getAdmobSyncPlan({ variant, bundleExists, pluginInstalled }) {
+	if (!VARIANTS.has(variant)) {
+		throw new Error(`Unsupported app variant: ${variant}`);
 	}
-})();
+
+	if (variant === "free" && !bundleExists) {
+		throw new Error(
+			"Missing src/plugins/admob/www/admob.js. Run `npm run build:admob` before building the free app.",
+		);
+	}
+
+	const actions = [];
+	if (pluginInstalled) {
+		actions.push({
+			command: "cordova",
+			args: ["plugin", "remove", ADMOB_PLUGIN_ID, "--nosave"],
+		});
+	}
+
+	if (variant === "free") {
+		actions.push({
+			command: "cordova",
+			args: ["plugin", "add", "src/plugins/admob", "--nosave"],
+		});
+	}
+
+	return actions;
+}
+
+/**
+ * @param {string} command
+ * @param {string[]} args
+ * @param {{cwd:string}} options
+ */
+async function runCommand(command, args, options) {
+	const { stdout, stderr } = await execFile(command, args, {
+		...options,
+		maxBuffer: 10 * 1024 * 1024,
+	});
+	if (stdout) process.stdout.write(stdout);
+	if (stderr) process.stderr.write(stderr);
+}
+
+/**
+ * @param {{
+ *   mode?:string,
+ *   variant?:"free"|"paid",
+ *   rootDir?:string,
+ *   fsImpl?:typeof fs,
+ *   commandRunner?:(command:string,args:string[],options:{cwd:string})=>Promise<void>
+ * }} options
+ */
+async function configureProject({
+	mode = "d",
+	variant = "paid",
+	rootDir = path.resolve(__dirname, ".."),
+	fsImpl = fs,
+	commandRunner = runCommand,
+} = {}) {
+	if (!VARIANTS.has(variant)) {
+		throw new Error(`Unsupported app variant: ${variant}`);
+	}
+
+	const paths = {
+		babel: path.join(rootDir, ".babelrc"),
+		bundle: path.join(rootDir, "src/plugins/admob/www/admob.js"),
+		config: path.join(rootDir, "config.xml"),
+		logo: path.join(rootDir, "res/android/values/ic_launcher_background.xml"),
+		platforms: path.join(rootDir, "platforms"),
+		plugin: path.join(rootDir, "plugins", ADMOB_PLUGIN_ID),
+	};
+
+	const config = fsImpl.readFileSync(paths.config, "utf8");
+	const currentId = /<widget[^>]*?\sid=["']([^"']+)["']/.exec(config)?.[1];
+	if (!currentId) {
+		throw new Error(`Unable to read the widget id from ${paths.config}.`);
+	}
+
+	const targetId = variant === "free" ? ID_FREE : ID_PAID;
+	const identityChanged = currentId !== targetId;
+	const actions = getAdmobSyncPlan({
+		variant,
+		bundleExists: fsImpl.existsSync(paths.bundle),
+		pluginInstalled: fsImpl.existsSync(paths.plugin),
+	});
+
+	const babelConfig = JSON.parse(fsImpl.readFileSync(paths.babel, "utf8"));
+	const compact = mode === "p" || mode === "prod";
+	if (babelConfig.compact !== compact) {
+		babelConfig.compact = compact;
+		fsImpl.writeFileSync(
+			paths.babel,
+			`${JSON.stringify(babelConfig, undefined, 2)}\n`,
+			"utf8",
+		);
+	}
+
+	if (identityChanged) {
+		fsImpl.writeFileSync(
+			paths.config,
+			config.replace(/(<widget[^>]*?\sid=["'])[^"']+(["'])/, `$1${targetId}$2`),
+			"utf8",
+		);
+	}
+
+	fsImpl.writeFileSync(paths.logo, LOGO_TEXT[variant], "utf8");
+
+	for (const action of actions) {
+		console.log(`|--- ${action.command} ${action.args.join(" ")} ---|`);
+		await commandRunner(action.command, action.args, { cwd: rootDir });
+	}
+
+	const hasPlatforms =
+		fsImpl.existsSync(paths.platforms) &&
+		fsImpl
+			.readdirSync(paths.platforms)
+			.some((entry) => entry && !entry.startsWith("."));
+
+	if (identityChanged && hasPlatforms) {
+		console.log("|--- Reinstalling platforms for the new app identity ---|");
+		await commandRunner("npm", ["run", "clean"], { cwd: rootDir });
+	}
+
+	return {
+		actions,
+		identityChanged,
+		targetId,
+	};
+}
+
+async function main() {
+	const mode = process.argv[2] || "d";
+	const variant = process.argv[3] === "free" ? "free" : "paid";
+	await configureProject({ mode, variant });
+}
+
+if (require.main === module) {
+	main().catch((error) => {
+		console.error(error);
+		process.exitCode = 1;
+	});
+}
+
+module.exports = {
+	ADMOB_PLUGIN_ID,
+	ID_FREE,
+	ID_PAID,
+	configureProject,
+	getAdmobSyncPlan,
+};

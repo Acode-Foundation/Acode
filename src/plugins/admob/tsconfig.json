@@ -1,9 +1,16 @@
 {
-  "extends": "cordova-plus/plugin",
   "compilerOptions": {
     "composite": true,
-    "outDir": "www",
-    "rootDir": "src/www"
+    "outDir": "lib",
+    "rootDir": "src/www",
+    "target": "ES2015",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "lib": ["DOM", "ES2015"],
+    "strict": true,
+    "noImplicitAny": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true
   },
   "include": ["./src/www/cordova.d.ts", "./src/www/**/*"]
 }

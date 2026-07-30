@@ -8,6 +8,10 @@ export type CordovaAction =
   | "adShow"
   | "bannerConfig"
   | "configure"
+  | "privacyGatherConsent"
+  | "privacyGetState"
+  | "privacyResetForTesting"
+  | "privacyShowOptions"
   | "ready"
   | "start"
   | "webviewGoto";
@@ -18,12 +22,29 @@ export enum Events {
   adImpression = "admob.ad.impression",
   adLoad = "admob.ad.load",
   adLoadFail = "admob.ad.loadfail",
+  adPaid = "admob.ad.paid",
   adReward = "admob.ad.reward",
   adShow = "admob.ad.show",
   adShowFail = "admob.ad.showfail",
   bannerSize = "admob.banner.size",
   ready = "admob.ready",
 }
+
+export type AdPaidEvent = {
+  adId: string;
+  adUnitId: string;
+  adFormat: string;
+  valueMicros: number;
+  currencyCode: string;
+  precision: number;
+  adSourceName?: string;
+  adSourceId?: string;
+  adSourceInstanceName?: string;
+  adSourceInstanceId?: string;
+  mediationGroupName?: string;
+  mediationABTestName?: string;
+  mediationABTestVariant?: string;
+};
 
 // biome-ignore lint/suspicious/noConstEnum: ignore
 export const enum Platform {

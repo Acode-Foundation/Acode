@@ -9,7 +9,6 @@ import android.util.Log
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.view.ViewTreeObserver
 import android.widget.FrameLayout
 import android.widget.RelativeLayout
 import com.google.android.gms.ads.AdListener
@@ -17,22 +16,18 @@ import com.google.android.gms.ads.AdSize
 import com.google.android.gms.ads.AdView
 import com.google.android.gms.ads.LoadAdError
 import org.json.JSONObject
+import kotlin.math.max
 
 enum class AdSizeType {
     BANNER, LARGE_BANNER, MEDIUM_RECTANGLE, FULL_BANNER, LEADERBOARD, SMART_BANNER;
 
-    companion object {
-        @Suppress("DEPRECATION")
-        fun getAdSize(adSize: Int): AdSize? {
-            return when (values()[adSize]) {
-                BANNER -> AdSize.BANNER
-                LARGE_BANNER -> AdSize.LARGE_BANNER
-                MEDIUM_RECTANGLE -> AdSize.MEDIUM_RECTANGLE
-                FULL_BANNER -> AdSize.FULL_BANNER
-                LEADERBOARD -> AdSize.LEADERBOARD
-                SMART_BANNER -> AdSize.SMART_BANNER
-            }
-        }
+    fun getAdSize(): AdSize? = when (this) {
+        BANNER -> AdSize.BANNER
+        LARGE_BANNER -> AdSize.LARGE_BANNER
+        MEDIUM_RECTANGLE -> AdSize.MEDIUM_RECTANGLE
+        FULL_BANNER -> AdSize.FULL_BANNER
+        LEADERBOARD -> AdSize.LEADERBOARD
+        SMART_BANNER -> null
     }
 }
 
@@ -46,35 +41,142 @@ fun buildOffset(opts: JSONObject): Int? {
     } else null
 }
 
+internal fun resolveBannerBottomMargin(
+    originalMargin: Int,
+    requestedVisible: Boolean,
+    loaded: Boolean,
+    measuredHeight: Int,
+): Int {
+    val bannerHeight =
+        if (requestedVisible && loaded) max(0, measuredHeight) else 0
+    return originalMargin + bannerHeight
+}
+
+internal enum class BannerLoadState {
+    IDLE,
+    LOADING,
+    LOADED,
+    FAILED,
+}
+
+internal class BannerLifecycle {
+    var loadState = BannerLoadState.IDLE
+        private set
+
+    var requestedVisible = false
+        private set
+
+    val isLoaded: Boolean
+        get() = loadState == BannerLoadState.LOADED
+
+    val shouldDisplay: Boolean
+        get() = requestedVisible && isLoaded
+
+    val shouldKeepActive: Boolean
+        get() = requestedVisible &&
+            (loadState == BannerLoadState.LOADING || loadState == BannerLoadState.LOADED)
+
+    fun requestLoad(): Boolean {
+        if (loadState != BannerLoadState.IDLE && loadState != BannerLoadState.FAILED) {
+            return false
+        }
+
+        loadState = BannerLoadState.LOADING
+        return true
+    }
+
+    fun requestShow(): Boolean {
+        requestedVisible = true
+        return requestLoad()
+    }
+
+    fun requestHide() {
+        requestedVisible = false
+    }
+
+    fun markLoaded() {
+        loadState = BannerLoadState.LOADED
+    }
+
+    fun markFailed() {
+        loadState = BannerLoadState.FAILED
+    }
+
+    fun restartLoad() {
+        loadState = BannerLoadState.LOADING
+    }
+
+    fun reset() {
+        requestedVisible = false
+        loadState = BannerLoadState.IDLE
+    }
+}
+
 class Banner(ctx: ExecuteContext) : AdBase(ctx) {
-    private val adSize: AdSize
+    private var adSize: AdSize
     private val gravity: Int
     private val offset: Int?
     private var mAdView: AdView? = null
     private var mRelativeLayout: RelativeLayout? = null
     private var mAdViewOld: AdView? = null
+    private var pendingLoadEventView: AdView? = null
+    private val lifecycle = BannerLifecycle()
+    private var containerWidthInPixels = 0
+    private var marginTarget: View? = null
+    private var originalBottomMargin: Int? = null
+    private var lastReportedWidth = -1
+    private var lastReportedHeight = -1
+
+    private val bannerLayoutChangeListener =
+        View.OnLayoutChangeListener { view, left, top, right, bottom, _, _, _, _ ->
+            val adView = view as? AdView ?: return@OnLayoutChangeListener
+            if (adView !== mAdView || !lifecycle.isLoaded) {
+                return@OnLayoutChangeListener
+            }
+
+            val width = max(0, right - left)
+            val height = max(0, bottom - top)
+            updateWebViewBottomMargin(height)
+            emitMeasuredSize(adView, width, height)
+        }
 
     override val isLoaded: Boolean
-        get() = mAdView != null
+        get() = lifecycle.isLoaded
+
+    override val canShowWhileLoading: Boolean
+        get() = true
 
     init {
-        adSize = buildAdSize(initOpts, ctx.activity)
+        containerWidthInPixels = currentContainerWidth()
+        adSize = buildAdSize(initOpts, ctx.activity, containerWidthInPixels)
         gravity = buildGravity(initOpts)
         offset = buildOffset(initOpts)
     }
 
     override fun load(ctx: ExecuteContext) {
+        startLoadIfNeeded(lifecycle.requestLoad())
+        ctx.resolve()
+    }
+
+    private fun startLoadIfNeeded(shouldLoad: Boolean) {
+        if (!shouldLoad) return
+
         if (mAdView == null) {
             mAdView = createBannerView()
         }
         mAdView!!.loadAd(adRequest)
-        ctx.resolve()
+        if (lifecycle.shouldKeepActive) {
+            mAdView!!.resume()
+        }
     }
 
     private fun createBannerView(): AdView {
         val adView = AdView(plugin.activity)
         adView.adUnitId = adUnitId
         adView.setAdSize(adSize)
+        adView.visibility = View.INVISIBLE
+        adView.addOnLayoutChangeListener(bannerLayoutChangeListener)
+        adView.onPaidEventListener = paidEventListener("banner") { adView.responseInfo }
         adView.adListener = object : AdListener() {
             override fun onAdClicked() {
                 emit(Events.AD_CLICK)
@@ -85,6 +187,15 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
             }
 
             override fun onAdFailedToLoad(error: LoadAdError) {
+                if (adView !== mAdView) return
+
+                lifecycle.markFailed()
+                pendingLoadEventView = null
+                if (mAdViewOld != null) {
+                    removeBannerView(mAdViewOld!!)
+                    mAdViewOld = null
+                }
+                applyBannerVisibility()
                 emit(Events.AD_LOAD_FAIL, error)
             }
 
@@ -93,14 +204,15 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
             }
 
             override fun onAdLoaded() {
+                if (adView !== mAdView) return
+
+                lifecycle.markLoaded()
+                pendingLoadEventView = adView
                 if (mAdViewOld != null) {
                     removeBannerView(mAdViewOld!!)
                     mAdViewOld = null
                 }
-                runJustBeforeBeingDrawn(adView) {
-                    emit(Events.BANNER_SIZE, computeAdSize())
-                }
-                emit(Events.AD_LOAD, computeAdSize())
+                applyBannerVisibility()
             }
 
             override fun onAdOpened() {
@@ -110,59 +222,79 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
         return adView
     }
 
-    private fun computeAdSize(): Map<String, Any> {
-        val width = mAdView!!.width
-        val height = mAdView!!.height
+    private fun computeAdSize(width: Int, height: Int): Map<String, Any> {
+        val density = plugin.activity.resources.displayMetrics.density
         return mapOf(
             "size" to mapOf(
-                "width" to pxToDp(width),
-                "height" to pxToDp(height),
+                "width" to pxToDp(width, density),
+                "height" to pxToDp(height, density),
                 "widthInPixels" to width,
                 "heightInPixels" to height,
             )
         )
     }
 
-    override fun show(ctx: ExecuteContext) {
-        if (mAdView!!.parent == null) {
-            addBannerView()
-        } else if (mAdView!!.visibility == View.GONE) {
-            mAdView!!.resume()
-            mAdView!!.visibility = View.VISIBLE
-            // Re-apply bottom margin in case it was reset by hide()
-            val wvParentView = getParentView(webView)
-            setBottomMargin(wvParentView)
+    private fun emitMeasuredSize(adView: AdView, width: Int, height: Int) {
+        if (width <= 0 || height <= 0) return
+
+        val size = computeAdSize(width, height)
+        if (pendingLoadEventView === adView) {
+            pendingLoadEventView = null
+            emit(Events.AD_LOAD, size)
         }
+
+        if (width == lastReportedWidth && height == lastReportedHeight) return
+        lastReportedWidth = width
+        lastReportedHeight = height
+        emit(Events.BANNER_SIZE, size)
+    }
+
+    override fun show(ctx: ExecuteContext) {
+        startLoadIfNeeded(lifecycle.requestShow())
+        if (mAdView?.parent == null) {
+            addBannerView()
+        }
+        applyBannerVisibility()
         ctx.resolve()
     }
 
     override fun hide(ctx: ExecuteContext) {
-        if (mAdView != null) {
-            mAdView!!.pause()
-            mAdView!!.visibility = View.GONE
-            val wvParentView = getParentView(webView)
-            resetBottomMargin(wvParentView)
-        }
+        lifecycle.requestHide()
+        applyBannerVisibility()
         ctx.resolve()
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        val w = plugin.activity.resources.displayMetrics.widthPixels
-        if (w != screenWidth) {
-            screenWidth = w
-            plugin.activity.runOnUiThread { reloadBannerView() }
+        plugin.activity.runOnUiThread {
+            webView.post {
+                val width = currentContainerWidth()
+                if (width != containerWidthInPixels) {
+                    containerWidthInPixels = width
+                    adSize = buildAdSize(initOpts, plugin.activity, width)
+                    reloadBannerView()
+                } else {
+                    updateWebViewBottomMargin(mAdView?.height ?: 0)
+                }
+            }
         }
     }
 
     private fun reloadBannerView() {
-        if (mAdView == null || mAdView!!.visibility == View.GONE) return
+        if (mAdView == null) return
         pauseBannerViews()
         if (mAdViewOld != null) removeBannerView(mAdViewOld!!)
         mAdViewOld = mAdView
+        mAdViewOld!!.visibility = View.INVISIBLE
+        lifecycle.restartLoad()
+        pendingLoadEventView = null
+        lastReportedWidth = -1
+        lastReportedHeight = -1
+        resetWebViewBottomMargin()
         mAdView = createBannerView()
         mAdView!!.loadAd(adRequest)
         addBannerView()
+        applyBannerVisibility()
     }
 
     override fun onPause(multitasking: Boolean) {
@@ -179,15 +311,12 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
 
     override fun onResume(multitasking: Boolean) {
         super.onResume(multitasking)
-        resumeBannerViews()
-    }
-
-    private fun resumeBannerViews() {
-        if (mAdView != null) mAdView!!.resume()
-        if (mAdViewOld != null) mAdViewOld!!.resume()
+        applyBannerVisibility()
     }
 
     override fun onDestroy() {
+        lifecycle.reset()
+        resetWebViewBottomMargin()
         if (mAdView != null) {
             removeBannerView(mAdView!!)
             mAdView = null
@@ -204,6 +333,7 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
     }
 
     private fun removeBannerView(adView: AdView) {
+        adView.removeOnLayoutChangeListener(bannerLayoutChangeListener)
         removeFromParentView(adView)
         adView.removeAllViews()
         adView.destroy()
@@ -239,7 +369,6 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
             )
             content.addView(mAdView, bannerParams)
         }
-        setBottomMargin(wvParentView)
     }
 
     private fun addBannerViewWithRelativeLayout() {
@@ -270,36 +399,86 @@ class Banner(ctx: ExecuteContext) : AdBase(ctx) {
     private val isPositionTop: Boolean
         get() = gravity == Gravity.TOP
 
-    private fun setBottomMargin(view: View?) {
-        val lp = view?.layoutParams as? FrameLayout.LayoutParams ?: return
-        lp.bottomMargin = adSize.getHeightInPixels(plugin.activity)
-        view.layoutParams = lp
+    private fun applyBannerVisibility() {
+        val adView = mAdView ?: run {
+            resetWebViewBottomMargin()
+            return
+        }
+
+        if (lifecycle.shouldDisplay) {
+            adView.visibility = View.VISIBLE
+            adView.resume()
+            adView.requestLayout()
+            adView.post {
+                if (adView === mAdView && lifecycle.shouldDisplay) {
+                    updateWebViewBottomMargin(adView.height)
+                    emitMeasuredSize(adView, adView.width, adView.height)
+                }
+            }
+        } else {
+            adView.visibility = View.INVISIBLE
+            resetWebViewBottomMargin()
+            if (lifecycle.shouldKeepActive) {
+                adView.resume()
+            } else {
+                adView.pause()
+            }
+        }
     }
 
-    private fun resetBottomMargin(view: View?) {
-        val lp = view?.layoutParams as? FrameLayout.LayoutParams ?: return
-        if (lp.bottomMargin > 0) {
-            lp.bottomMargin = 0
-            view.layoutParams = lp
+    private fun currentContainerWidth(): Int {
+        return sequenceOf(
+            getParentView(webView)?.width,
+            webView.width,
+            plugin.contentView?.width,
+            plugin.activity.resources.displayMetrics.widthPixels,
+        ).firstOrNull { it != null && it > 0 }
+            ?: plugin.activity.resources.displayMetrics.widthPixels
+    }
+
+    private fun updateWebViewBottomMargin(measuredHeight: Int) {
+        if (offset != null) return
+
+        val target = getParentView(webView) ?: return
+        if (marginTarget !== target) {
+            resetWebViewBottomMargin()
+            val params = target.layoutParams as? ViewGroup.MarginLayoutParams ?: return
+            marginTarget = target
+            originalBottomMargin = params.bottomMargin
         }
+
+        val params = target.layoutParams as? ViewGroup.MarginLayoutParams ?: return
+        val originalMargin = originalBottomMargin ?: params.bottomMargin
+        val nextMargin = resolveBannerBottomMargin(
+            originalMargin,
+            lifecycle.requestedVisible,
+            lifecycle.isLoaded,
+            measuredHeight,
+        )
+        if (params.bottomMargin != nextMargin) {
+            params.bottomMargin = nextMargin
+            target.layoutParams = params
+        }
+    }
+
+    private fun resetWebViewBottomMargin() {
+        val target = marginTarget
+        val originalMargin = originalBottomMargin
+        if (target != null && originalMargin != null) {
+            val params = target.layoutParams as? ViewGroup.MarginLayoutParams
+            if (params != null && params.bottomMargin != originalMargin) {
+                params.bottomMargin = originalMargin
+                target.layoutParams = params
+            }
+        }
+
+        marginTarget = null
+        originalBottomMargin = null
     }
 
     companion object {
         private const val TAG = "AdMobPlus.Banner"
 
-        private var screenWidth = 0
         fun destroyParentView() {}
-
-        private fun runJustBeforeBeingDrawn(view: View, runnable: Runnable) {
-            val preDrawListener: ViewTreeObserver.OnPreDrawListener =
-                object : ViewTreeObserver.OnPreDrawListener {
-                    override fun onPreDraw(): Boolean {
-                        view.viewTreeObserver.removeOnPreDrawListener(this)
-                        runnable.run()
-                        return true
-                    }
-                }
-            view.viewTreeObserver.addOnPreDrawListener(preDrawListener)
-        }
     }
 }

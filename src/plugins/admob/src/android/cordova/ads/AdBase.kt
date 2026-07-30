@@ -1,6 +1,7 @@
 package admob.plus.cordova.ads
 
 import admob.plus.cordova.AdMob
+import admob.plus.cordova.Events
 import admob.plus.cordova.ExecuteContext
 import admob.plus.cordova.ads
 import admob.plus.core.buildAdRequest
@@ -8,6 +9,9 @@ import android.content.res.Configuration
 import android.view.View
 import android.view.ViewGroup
 import com.google.android.gms.ads.AdError
+import com.google.android.gms.ads.AdValue
+import com.google.android.gms.ads.OnPaidEventListener
+import com.google.android.gms.ads.ResponseInfo
 import com.google.android.gms.ads.rewarded.RewardItem
 import org.apache.cordova.CordovaWebView
 import org.json.JSONObject
@@ -55,6 +59,9 @@ abstract class AdBase(ctx: ExecuteContext) {
     open val isLoaded: Boolean
         get() = TODO("Not yet implemented")
 
+    open val canShowWhileLoading: Boolean
+        get() = false
+
     open fun load(ctx: ExecuteContext) {
         TODO("Not yet implemented")
     }
@@ -90,5 +97,40 @@ abstract class AdBase(ctx: ExecuteContext) {
                 )
             )
         )
+    }
+
+    fun emitPaidEvent(adFormat: String, value: AdValue, responseInfo: ResponseInfo?) {
+        val data = mutableMapOf<String, Any?>(
+            "adUnitId" to adUnitId,
+            "adFormat" to adFormat,
+            "valueMicros" to value.valueMicros,
+            "currencyCode" to value.currencyCode,
+            "precision" to value.precisionType,
+        )
+        responseInfo?.loadedAdapterResponseInfo?.let { adapter ->
+            data["adSourceName"] = adapter.adSourceName
+            data["adSourceId"] = adapter.adSourceId
+            data["adSourceInstanceName"] = adapter.adSourceInstanceName
+            data["adSourceInstanceId"] = adapter.adSourceInstanceId
+        }
+        responseInfo?.responseExtras?.let { extras ->
+            listOf(
+                "mediation_group_name" to "mediationGroupName",
+                "mediation_ab_test_name" to "mediationABTestName",
+                "mediation_ab_test_variant" to "mediationABTestVariant",
+            ).forEach { (sourceKey, eventKey) ->
+                extras.getString(sourceKey)?.let { data[eventKey] = it }
+            }
+        }
+        emit(Events.AD_PAID, data)
+    }
+
+    fun paidEventListener(
+        adFormat: String,
+        responseInfo: () -> ResponseInfo?,
+    ): OnPaidEventListener = object : OnPaidEventListener {
+        override fun onPaidEvent(value: AdValue) {
+            emitPaidEvent(adFormat, value, responseInfo())
+        }
     }
 }

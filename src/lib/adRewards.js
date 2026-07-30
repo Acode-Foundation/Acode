@@ -2,7 +2,7 @@ import toast from "components/toast";
 import auth from "./auth";
 import config from "./config";
 import secureAdRewardState from "./secureAdRewardState";
-import { adUnitIdRewarded, bannerAd } from "./startAd";
+import { adUnitIdRewarded, hideAd } from "./startAd";
 
 const ONE_HOUR = 60 * 60 * 1000;
 const MAX_TIMEOUT = 2_147_483_647;
@@ -87,10 +87,7 @@ function emitChange() {
 }
 
 function hideActiveBanner() {
-	if (bannerAd?.active) {
-		bannerAd.active = false;
-		bannerAd.hide?.();
-	}
+	hideAd(true);
 }
 
 function notify(title, message, type = "info") {

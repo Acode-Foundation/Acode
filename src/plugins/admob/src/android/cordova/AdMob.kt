@@ -28,11 +28,17 @@ import org.json.JSONObject
 
 private const val TAG = "AdMobPlus"
 
+internal fun shouldDispatchAdShow(
+    isLoaded: Boolean,
+    canShowWhileLoading: Boolean,
+): Boolean = isLoaded || canShowWhileLoading
+
 class AdMob : CordovaPlugin() {
     lateinit var context: CallbackContext
     private var readyCallbackContext: CallbackContext? = null
     private var sdkReady = false
     private val eventQueue: ArrayList<PluginResult> = arrayListOf()
+    private val privacy: Privacy by lazy { Privacy(this) }
 
     private val actions = mapOf(
         Actions.READY to ::executeReady,
@@ -43,6 +49,10 @@ class AdMob : CordovaPlugin() {
         Actions.AD_LOAD to ::executeAdLoad,
         Actions.AD_SHOW to ::executeAdShow,
         Actions.AD_HIDE to ::executeAdHide,
+        Actions.PRIVACY_GATHER_CONSENT to privacy::gatherConsent,
+        Actions.PRIVACY_GET_STATE to privacy::getState,
+        Actions.PRIVACY_RESET_FOR_TESTING to privacy::resetForTesting,
+        Actions.PRIVACY_SHOW_OPTIONS to privacy::showOptions,
         Actions.WEBVIEW_GOTO to ::executeWebviewGoto,
     )
 
@@ -149,7 +159,7 @@ class AdMob : CordovaPlugin() {
     private fun executeAdShow(ctx: ExecuteContext) {
         cordova.activity.runOnUiThread {
             ctx.optAdOrReject()?.let { ad ->
-                if (ad.isLoaded) {
+                if (shouldDispatchAdShow(ad.isLoaded, ad.canShowWhileLoading)) {
                     ad.show(ctx)
                 } else {
                     ctx.resolve(false)

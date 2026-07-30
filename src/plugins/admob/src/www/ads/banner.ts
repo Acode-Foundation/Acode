@@ -9,6 +9,7 @@ export enum AdSizeType {
   MEDIUM_RECTANGLE = 2,
   FULL_BANNER = 3,
   LEADERBOARD = 4,
+  /** @deprecated Use an adaptive BannerSize object instead. */
   SMART_BANNER = 5,
 }
 
@@ -62,12 +63,10 @@ export interface BannerAdOptions extends MobileAdOptions {
 export class BannerAd extends MobileAd<BannerAdOptions> {
   static readonly cls = "BannerAd";
 
-  private _loaded = false;
-
   constructor(opts: BannerAdOptions) {
     super({
       position: "bottom",
-      size: AdSizeType.SMART_BANNER,
+      size: { adaptive: "anchored" },
       ...opts,
     });
   }
@@ -88,14 +87,10 @@ export class BannerAd extends MobileAd<BannerAdOptions> {
 
   public async load() {
     await super.load();
-    this._loaded = true;
   }
 
   public async show() {
-    if (!this._loaded) {
-      await this.load();
-    }
-
+    await this.load();
     return super.show();
   }
 

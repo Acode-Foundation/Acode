@@ -1,5 +1,6 @@
 /esm/
 /lib/
-/www/
+/www/*
+!/www/admob.js
 /scripts/*.js
 /.idea/

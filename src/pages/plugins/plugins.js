@@ -13,7 +13,6 @@ import config from "lib/config";
 import installPlugin from "lib/installPlugin";
 import loadPlugin from "lib/loadPlugin";
 import settings from "lib/settings";
-import { hideAd } from "lib/startAd";
 import FileBrowser from "pages/fileBrowser";
 import Plugin from "pages/plugin";
 import helpers from "utils/helpers";
@@ -233,7 +232,6 @@ export default function PluginsInclude(updates) {
 	});
 
 	$page.onhide = function () {
-		hideAd();
 		actionStack.remove("plugins");
 	};
 
