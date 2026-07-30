@@ -2,7 +2,7 @@ import fsOperation from "fileSystem";
 import auth from "lib/auth";
 import config from "lib/config";
 import openFile from "lib/openFile";
-import { hideAd } from "lib/startAd";
+import { BANNER_SUPPRESSION_REASON, setBannerSuppressed } from "lib/startAd";
 import helpers from "utils/helpers";
 
 const handlers = [];
@@ -57,8 +57,8 @@ export default async function HandleIntent(intent = {}) {
 				try {
 					const user = await auth.getLoggedInUser(true);
 					if (user.acode_pro) {
-						hideAd(true);
 						config.HAS_PRO = true;
+						setBannerSuppressed(BANNER_SUPPRESSION_REASON.PRO, true);
 						const settings = document.querySelector(
 							'[data-action="list-item"][data-key="removeads"',
 						);

@@ -2,9 +2,14 @@
  * Keeps banner intent separate from transient native visibility.
  *
  * Pages register once when they request a banner. The active top page, keyboard
- * state, and forced suspension then determine whether the native banner should
- * be visible.
+ * state, and named suppression reasons then determine whether the native banner
+ * should be visible.
  */
+export const BANNER_SUPPRESSION_REASON = Object.freeze({
+	PRO: "pro",
+	REWARDED_PASS: "rewarded-pass",
+});
+
 export class BannerVisibilityController {
 	#banner = null;
 	#registeredPages = new WeakSet();
@@ -12,7 +17,7 @@ export class BannerVisibilityController {
 	#observePageChanges;
 	#stopObserving = null;
 	#keyboardVisible = false;
-	#suspended = false;
+	#suppressions = new Set();
 	#nativeVisible = false;
 	#scheduledVisible = false;
 	#operation = Promise.resolve();
@@ -42,7 +47,6 @@ export class BannerVisibilityController {
 		}
 
 		this.#registeredPages.add(page);
-		this.#suspended = false;
 		this.#startObserving();
 		this.reconcile();
 	}
@@ -54,16 +58,28 @@ export class BannerVisibilityController {
 		this.reconcile();
 	}
 
-	suspend() {
-		if (this.#suspended && !this.#nativeVisible) return;
-		this.#suspended = true;
+	setSuppressed(reason, suppressed) {
+		if (typeof reason !== "string" || !reason.trim()) {
+			throw new TypeError("Banner suppression reason must be a non-empty string.");
+		}
+
+		const normalizedReason = reason.trim();
+		const shouldSuppress = Boolean(suppressed);
+		const isSuppressed = this.#suppressions.has(normalizedReason);
+		if (isSuppressed === shouldSuppress) return;
+
+		if (shouldSuppress) {
+			this.#suppressions.add(normalizedReason);
+		} else {
+			this.#suppressions.delete(normalizedReason);
+		}
 		this.reconcile();
 	}
 
 	reconcile() {
 		const activePage = this.#getActivePage?.() ?? null;
 		const pageRequestsBanner =
-			!this.#suspended &&
+			this.#suppressions.size === 0 &&
 			activePage !== null &&
 			this.#registeredPages.has(activePage);
 		const shouldShow = pageRequestsBanner && !this.#keyboardVisible;
@@ -121,7 +137,8 @@ export class BannerVisibilityController {
 function getActivePage() {
 	if (typeof document === "undefined") return null;
 	const pages = document.querySelectorAll("wc-page:not(#root)");
-	return [...pages].filter((page) => page.isConnected).at(-1) ?? null;
+	const connectedPages = [...pages].filter((page) => page.isConnected);
+	return connectedPages[connectedPages.length - 1] ?? null;
 }
 
 function observePageChanges(onChange) {

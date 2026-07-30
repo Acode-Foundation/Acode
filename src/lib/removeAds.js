@@ -1,6 +1,6 @@
 import purchaseListener from "handlers/purchase";
 import config from "./config.js";
-import { hideAd } from "./startAd.js";
+import { BANNER_SUPPRESSION_REASON, setBannerSuppressed } from "./startAd.js";
 
 /**
  * Remove ads after purchase
@@ -26,10 +26,10 @@ export default function removeAds() {
 
 		function onpurchase() {
 			resolve(null);
-			hideAd(true);
 			// For caching, later verified so no need to worry about
 			localStorage.setItem("acode_pro", "true");
 			config.HAS_PRO = true;
+			setBannerSuppressed(BANNER_SUPPRESSION_REASON.PRO, true);
 			toast(strings["thank you :)"]);
 		}
 	});

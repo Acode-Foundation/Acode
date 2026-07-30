@@ -2,8 +2,13 @@ import {
 	AdConsentCoordinator,
 	EMPTY_PRIVACY_STATE,
 } from "./adConsentCoordinator.mjs";
-import { bannerVisibilityController } from "./bannerVisibilityController.mjs";
+import {
+	BANNER_SUPPRESSION_REASON,
+	bannerVisibilityController,
+} from "./bannerVisibilityController.mjs";
 import config from "./config";
+
+export { BANNER_SUPPRESSION_REASON };
 
 export let adUnitIdBanner = "ca-app-pub-5911839694379275/9157899592"; // Production
 export let adUnitIdInterstitial = "ca-app-pub-5911839694379275/9570937608"; // Production
@@ -127,16 +132,12 @@ async function initializeAds() {
 }
 
 /**
- * Hides the ad
- * @param {Boolean} [force=false]
+ * Adds or removes one independent reason for hiding banner ads.
+ * @param {string} reason
+ * @param {boolean} suppressed
  */
-export function hideAd(force = false) {
-	if (force) {
-		bannerVisibilityController.suspend();
-		return;
-	}
-
-	bannerVisibilityController.reconcile();
+export function setBannerSuppressed(reason, suppressed) {
+	bannerVisibilityController.setSuppressed(reason, suppressed);
 }
 
 /**

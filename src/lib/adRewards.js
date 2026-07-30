@@ -1,11 +1,14 @@
 import toast from "components/toast";
+import {
+	createRewardStateLifecycle,
+	isRewardPassActive,
+} from "./adRewardBannerPolicy.mjs";
 import auth from "./auth";
 import config from "./config";
 import secureAdRewardState from "./secureAdRewardState";
-import { adUnitIdRewarded, hideAd } from "./startAd";
+import { adUnitIdRewarded, setBannerSuppressed } from "./startAd";
 
 const ONE_HOUR = 60 * 60 * 1000;
-const MAX_TIMEOUT = 2_147_483_647;
 const REWARDED_RESULT_TIMEOUT_MS = 90 * 1000;
 
 const OFFERS = [
@@ -30,7 +33,6 @@ const OFFERS = [
 ];
 
 let state = getDefaultState();
-let expiryTimer = null;
 let activeWatchPromise = null;
 const listeners = new Set();
 
@@ -86,10 +88,6 @@ function emitChange() {
 	});
 }
 
-function hideActiveBanner() {
-	hideAd(true);
-}
-
 function notify(title, message, type = "info") {
 	toast(message, 4000);
 	window.acode?.pushNotification?.(title, message, {
@@ -124,52 +122,27 @@ function normalizeStatus(status) {
 	};
 }
 
-function clearExpiryTimer() {
-	if (expiryTimer) {
-		clearTimeout(expiryTimer);
-		expiryTimer = null;
-	}
-}
-
-async function refreshState({ notifyExpiry = false } = {}) {
-	try {
-		const nextState = normalizeStatus(await secureAdRewardState.getStatus());
+const rewardLifecycle = createRewardStateLifecycle({
+	loadStatus: () => secureAdRewardState.getStatus(),
+	normalizeStatus,
+	getCurrentState: () => state,
+	setCurrentState: (nextState) => {
 		state = nextState;
-		emitChange();
-		scheduleExpiryCheck();
-
-		if (notifyExpiry && nextState.hasPendingExpiryNotice) {
-			notify(
-				"Ad-free pass ended",
-				"Your rewarded ad-free time has expired. You can watch another rewarded ad anytime.",
-				"warning",
-			);
-		}
-
-		return nextState;
-	} catch (error) {
-		console.warn("Failed to refresh rewarded ad state.", error);
-		return state;
-	}
-}
-
-function scheduleExpiryCheck() {
-	clearExpiryTimer();
-	if (!state.adFreeUntil) return;
-
-	const remainingMs = state.adFreeUntil - Date.now();
-	if (remainingMs <= 0) {
-		void refreshState({ notifyExpiry: true });
-		return;
-	}
-
-	expiryTimer = setTimeout(
-		() => {
-			void refreshState({ notifyExpiry: true });
-		},
-		Math.min(remainingMs, MAX_TIMEOUT),
-	);
-}
+	},
+	setBannerSuppressed,
+	emitChange,
+	onRefreshError: (error) =>
+		console.warn("Failed to refresh rewarded ad state.", error),
+	onListenerError: (error) =>
+		console.error("Reward lifecycle listener failed.", error),
+	onExpiryNotice: () => {
+		notify(
+			"Ad-free pass ended",
+			"Your rewarded ad-free time has expired. You can watch another rewarded ad anytime.",
+			"warning",
+		);
+	},
+});
 
 async function getRewardIdentity() {
 	try {
@@ -256,14 +229,14 @@ async function showRewardedStep(offer, step, sessionId) {
 
 export default {
 	async init() {
-		await refreshState({ notifyExpiry: false });
+		await rewardLifecycle.initialize();
 	},
 	onChange(listener) {
 		listeners.add(listener);
 		return () => listeners.delete(listener);
 	},
 	async handleResume() {
-		await refreshState({ notifyExpiry: true });
+		await rewardLifecycle.resume();
 	},
 	getState() {
 		return {
@@ -306,7 +279,7 @@ export default {
 		return expiryDate.toLocaleString();
 	},
 	isAdFreeActive() {
-		return Boolean(state.isActive && state.adFreeUntil > Date.now());
+		return isRewardPassActive(state);
 	},
 	canShowAds() {
 		return Boolean(!config.HAS_PRO && !this.isAdFreeActive());
@@ -345,7 +318,7 @@ export default {
 			throw new Error(this.getRewardedUnavailableReason());
 		}
 
-		await refreshState({ notifyExpiry: false });
+		await rewardLifecycle.refresh({ notifyExpiry: false });
 		const redemptionStatus = this.canRedeemNow();
 		if (!redemptionStatus.ok) {
 			throw new Error(redemptionStatus.reason);
@@ -373,18 +346,13 @@ export default {
 				}
 			}
 
-			const redeemedState = normalizeStatus(
+			const redeemedState = rewardLifecycle.applyStatus(
 				await secureAdRewardState.redeem(offer.id),
 			);
 			const grantedDurationMs =
 				Number(redeemedState.appliedDurationMs) ||
 				Number(redeemedState.grantedDurationMs) ||
 				0;
-
-			state = redeemedState;
-			emitChange();
-			hideActiveBanner();
-			scheduleExpiryCheck();
 
 			notify(
 				"Ad-free pass started",

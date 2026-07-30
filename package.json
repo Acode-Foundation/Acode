@@ -19,9 +19,9 @@
     "check:admob-bundle": "node utils/scripts/checkAdmobBundle.js",
     "test": "npm run test:admob && npm run test:dev && npm run test:config",
     "test:admob": "node --test src/test/admob/*.test.mjs",
-    "test:admob:native": "cd platforms/android && ./gradlew :app:testDebugUnitTest",
+    "test:admob:native": "node utils/scripts/testAdmobNative.js",
     "test:config": "node --test utils/config.test.js utils/scripts/checkAdmobBundle.test.js",
-    "test:dev": "node --test utils/scripts/dev.test.js",
+    "test:dev": "node --test utils/scripts/dev.test.js utils/scripts/testAdmobNative.test.js",
     "typecheck": "tsc --noEmit",
     "updateAce": "node ./utils/updateAce.js"
   },

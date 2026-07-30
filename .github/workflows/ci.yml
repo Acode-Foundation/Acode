@@ -2,8 +2,14 @@ name: CI
 
 on:
   push:
+    branches:
+      - main
   pull_request:
   merge_group:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   spell-check:
@@ -82,6 +88,53 @@ jobs:
           npm audit --package-lock-only --audit-level=critical
           npm audit --prefix src/plugins/admob --package-lock-only --audit-level=critical
           npm audit --prefix src/plugins/cordova-plugin-advanced-http --package-lock-only --audit-level=critical
+
+  admob-native-tests:
+    timeout-minutes: 30
+    name: AdMob Android unit tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Use Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Use Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Use Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.14.2"
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Prepare Android test project
+        run: |
+          npx cordova platform add android --nosave
+          NPM_CONFIG_LEGACY_PEER_DEPS=true npx cordova plugin add src/plugins/admob --nosave
+
+      - name: Run AdMob Android unit tests
+        run: npm run test:admob:native
+
+      - name: Verify native setup kept tracked sources clean
+        run: |
+          git diff --exit-code -- \
+            package.json \
+            package-lock.json \
+            bun.lock \
+            config.xml \
+            res/android/values/ic_launcher_background.xml \
+            src/plugins/admob/www/admob.js
 
   translation-check:
     name: Translation Check (On PR Only)

@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { BannerVisibilityController } from "../../lib/bannerVisibilityController.mjs";
+import {
+	BANNER_SUPPRESSION_REASON,
+	BannerVisibilityController,
+} from "../../lib/bannerVisibilityController.mjs";
 
 function createHarness() {
 	let activePage = null;
@@ -112,22 +115,88 @@ test("temporarily suppresses the banner while the keyboard is visible", async ()
 	assert.deepEqual(harness.calls, ["show", "hide", "show"]);
 });
 
-test("forced suspension survives page and keyboard changes", async () => {
+test("restores the same registered page when reward suppression ends", async () => {
 	const harness = createHarness();
 	const page = {};
 	harness.setActivePage(page);
 	harness.controller.registerPage(page);
 	await harness.controller.whenIdle();
 
-	harness.controller.suspend();
+	harness.controller.setSuppressed(
+		BANNER_SUPPRESSION_REASON.REWARDED_PASS,
+		true,
+	);
+	await harness.controller.whenIdle();
+	assert.equal(harness.banner.active, false);
+
+	harness.controller.setSuppressed(
+		BANNER_SUPPRESSION_REASON.REWARDED_PASS,
+		false,
+	);
+	await harness.controller.whenIdle();
+
+	assert.equal(harness.banner.active, true);
+	assert.deepEqual(harness.calls, ["show", "hide", "show"]);
+});
+
+test("page registration cannot clear an active suppression", async () => {
+	const harness = createHarness();
+	const firstPage = {};
+	const secondPage = {};
+	harness.setActivePage(firstPage);
+	harness.controller.registerPage(firstPage);
+	await harness.controller.whenIdle();
+
+	harness.controller.setSuppressed(
+		BANNER_SUPPRESSION_REASON.REWARDED_PASS,
+		true,
+	);
+	harness.setActivePage(secondPage);
+	harness.controller.registerPage(secondPage);
 	harness.controller.setKeyboardVisible(true);
 	harness.controller.setKeyboardVisible(false);
 	harness.changePage(null);
-	harness.changePage(page);
+	harness.changePage(secondPage);
 	await harness.controller.whenIdle();
 
 	assert.equal(harness.banner.active, false);
 	assert.deepEqual(harness.calls, ["show", "hide"]);
+});
+
+test("keeps overlapping suppressions independent of keyboard state", async () => {
+	const harness = createHarness();
+	const page = {};
+	harness.setActivePage(page);
+	harness.controller.registerPage(page);
+	await harness.controller.whenIdle();
+
+	harness.controller.setKeyboardVisible(true);
+	harness.controller.setSuppressed(BANNER_SUPPRESSION_REASON.PRO, true);
+	harness.controller.setSuppressed(
+		BANNER_SUPPRESSION_REASON.REWARDED_PASS,
+		true,
+	);
+	harness.controller.setSuppressed(
+		BANNER_SUPPRESSION_REASON.REWARDED_PASS,
+		false,
+	);
+	harness.controller.setKeyboardVisible(false);
+	await harness.controller.whenIdle();
+	assert.equal(harness.banner.active, false);
+
+	harness.controller.setSuppressed(BANNER_SUPPRESSION_REASON.PRO, false);
+	await harness.controller.whenIdle();
+
+	assert.equal(harness.banner.active, true);
+	assert.deepEqual(harness.calls, ["show", "hide", "show"]);
+});
+
+test("rejects empty suppression reasons", () => {
+	const harness = createHarness();
+	assert.throws(
+		() => harness.controller.setSuppressed(" ", true),
+		/Banner suppression reason/,
+	);
 });
 
 test("serializes an in-flight show before the latest hide request", async () => {
