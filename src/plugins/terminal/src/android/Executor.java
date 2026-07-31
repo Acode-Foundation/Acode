@@ -315,6 +315,13 @@ public class Executor extends CordovaPlugin {
             return true;
         }
 
+        if (action.equals("setProotDebug")) {
+            boolean enabled = args.getBoolean(0);
+            ProcessManager.prootDebug = enabled;
+            callbackContext.success("PRoot debug " + (enabled ? "enabled" : "disabled"));
+            return true;
+        }
+
         if (action.equals("listProcesses")) {
             if (!isServiceBound || serviceMessenger == null) {
                 callbackContext.success(new org.json.JSONArray());

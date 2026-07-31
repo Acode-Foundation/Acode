@@ -52,6 +52,10 @@ public class BackgroundExecutor extends CordovaPlugin {
             case "loadLibrary":
                 loadLibrary(args.getString(0), callbackContext);
                 return true;
+            case "setProotDebug":
+                ProcessManager.prootDebug = args.getBoolean(0);
+                callbackContext.success("PRoot debug " + (ProcessManager.prootDebug ? "enabled" : "disabled"));
+                return true;
             default:
                 callbackContext.error("Unknown action: " + action);
                 return false;
