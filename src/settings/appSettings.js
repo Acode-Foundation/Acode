@@ -265,6 +265,17 @@ export default function otherSettings() {
 			category: categories.filesSessions,
 		},
 		{
+			key: "useFileOperationExclusions",
+			text:
+				strings["apply exclusions when copying"] ||
+				"Apply exclusions when copying",
+			checkbox: values.useFileOperationExclusions,
+			info:
+				strings["settings-info-app-use-file-operation-exclusions"] ||
+				"Skip files and folders matching the exclusion patterns during copy and paste operations.",
+			category: categories.filesSessions,
+		},
+		{
 			key: "defaultFileEncoding",
 			text: strings["default file encoding"],
 			value: values.defaultFileEncoding,

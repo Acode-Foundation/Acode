@@ -26,6 +26,7 @@ import mimeTypes from "mime-types";
 import mustache from "mustache";
 import filesSettings from "settings/filesSettings";
 import URLParse from "url-parse";
+import copyEntry from "utils/copyEntry";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
 import _addMenu from "./add-menu.hbs";
@@ -726,6 +727,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			);
 
 			let copiedCount = 0;
+			let skippedCount = 0;
 
 			try {
 				for (const url of copiedItems) {
@@ -772,8 +774,15 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 						await fsOperation(possibleConflictUrl).delete();
 					}
 
-					await copyEntry(url, targetDirUrl, name, stat);
-					copiedCount++;
+					const result = await copyEntry(url, targetDirUrl, {
+						name,
+						stat,
+						excludePatterns: appSettings.value.useFileOperationExclusions
+							? appSettings.value.excludeFolders
+							: [],
+					});
+					if (result.url) copiedCount++;
+					skippedCount += result.skipped;
 				}
 			} catch (err) {
 				helpers.error(err);
@@ -781,37 +790,14 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				if (copiedCount) {
 					toast(strings.success);
 					reload();
+				} else if (skippedCount) {
+					toast(strings.skipped);
 				}
+				if (copiedCount || skippedCount) copiedItems = [];
 				loadingDialog.destroy();
 				isPasting = false;
 				updatePasteToggler();
 			}
-		}
-
-		async function copyEntry(sourceUrl, targetDirUrl, name, sourceStat) {
-			const fs = fsOperation(sourceUrl);
-			const stat = sourceStat || (await fs.stat());
-			const entryName = name || stat.name || Url.basename(sourceUrl);
-
-			if (stat.isDirectory) {
-				const newDirUrl =
-					await fsOperation(targetDirUrl).createDirectory(entryName);
-				const entries = await fs.lsDir();
-
-				for (const entry of entries) {
-					await copyEntry(
-						entry.url,
-						newDirUrl,
-						entry.name || Url.basename(entry.url),
-						entry,
-					);
-				}
-
-				return newDirUrl;
-			}
-
-			const content = await fs.readFile();
-			return fsOperation(targetDirUrl).createFile(entryName, content);
 		}
 
 		function isInsideDirectory(sourceUrl, targetUrl) {
