@@ -11,12 +11,13 @@ import Url from "./Url";
  * @param {string} [options.name]
  * @param {object} [options.stat]
  * @param {string[]} [options.excludePatterns]
+ * @param {(entry: {name: string, stat: object}) => Promise<boolean>} [options.onBeforeCopy]
  * @returns {Promise<{url: string|null, copied: number, skipped: number}>}
  */
 export default async function copyEntry(
 	sourceUrl,
 	targetDirUrl,
-	{ name, stat: sourceStat, excludePatterns = [] } = {},
+	{ name, stat: sourceStat, excludePatterns = [], onBeforeCopy } = {},
 ) {
 	if (isExcludedFileOperationPath(sourceUrl, excludePatterns)) {
 		return { url: null, copied: 0, skipped: 1 };
@@ -25,6 +26,13 @@ export default async function copyEntry(
 	const sourceFs = fsOperation(sourceUrl);
 	const stat = sourceStat || (await sourceFs.stat());
 	const entryName = name || stat.name || Url.basename(sourceUrl);
+
+	if (
+		typeof onBeforeCopy === "function" &&
+		(await onBeforeCopy({ name: entryName, stat })) === false
+	) {
+		return { url: null, copied: 0, skipped: 0 };
+	}
 
 	if (!stat.isDirectory) {
 		const content = await sourceFs.readFile();

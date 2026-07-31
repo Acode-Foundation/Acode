@@ -118,4 +118,20 @@ describe("copyEntry", () => {
 			"/target/node_modules/package.json",
 		]);
 	});
+
+	it("does not prepare or replace the target for an excluded source", async () => {
+		const onBeforeCopy = vi.fn();
+		const result = await copyEntry(
+			"/source/node_modules/package.json",
+			"/target",
+			{
+				excludePatterns: ["**/node_modules/**"],
+				onBeforeCopy,
+			},
+		);
+
+		expect(result).toEqual({ url: null, copied: 0, skipped: 1 });
+		expect(onBeforeCopy).not.toHaveBeenCalled();
+		expect(fileSystem.created).toEqual([]);
+	});
 });

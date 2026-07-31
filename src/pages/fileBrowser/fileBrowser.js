@@ -734,45 +734,6 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					const fs = fsOperation(url);
 					const stat = await fs.stat();
 					const name = stat.name || Url.basename(url);
-					const possibleConflictUrl = Url.join(targetDirUrl, name);
-
-					if (stat.isDirectory && isInsideDirectory(url, targetDirUrl)) {
-						alert(
-							strings.warning,
-							strings["cannot paste folder into itself"] ||
-								"Cannot paste a folder into itself",
-						);
-						continue;
-					}
-
-					const doesExist = await fsOperation(possibleConflictUrl).exists();
-					if (doesExist) {
-						if (Url.areSame(url, possibleConflictUrl)) {
-							continue;
-						}
-
-						const targetStat = await fsOperation(possibleConflictUrl).stat();
-						if (stat.isDirectory || targetStat.isDirectory) {
-							alert(
-								strings.warning,
-								strings["folder already exists"] || "Folder already exists",
-							);
-							continue;
-						}
-
-						const confirmation = await confirm(
-							strings.warning,
-							strings["file already exists force named"]
-								? strings["file already exists force named"].replace(
-										"{name}",
-										name,
-									)
-								: `"${name}" already exists in this location.`,
-						);
-						if (!confirmation) continue;
-
-						await fsOperation(possibleConflictUrl).delete();
-					}
 
 					const result = await copyEntry(url, targetDirUrl, {
 						name,
@@ -780,6 +741,47 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 						excludePatterns: appSettings.value.useFileOperationExclusions
 							? appSettings.value.excludeFolders
 							: [],
+						async onBeforeCopy() {
+							if (stat.isDirectory && isInsideDirectory(url, targetDirUrl)) {
+								alert(
+									strings.warning,
+									strings["cannot paste folder into itself"] ||
+										"Cannot paste a folder into itself",
+								);
+								return false;
+							}
+
+							const possibleConflictUrl = Url.join(targetDirUrl, name);
+							if (!(await fsOperation(possibleConflictUrl).exists())) {
+								return true;
+							}
+
+							if (Url.areSame(url, possibleConflictUrl)) return false;
+
+							const targetFs = fsOperation(possibleConflictUrl);
+							const targetStat = await targetFs.stat();
+							if (stat.isDirectory || targetStat.isDirectory) {
+								alert(
+									strings.warning,
+									strings["folder already exists"] || "Folder already exists",
+								);
+								return false;
+							}
+
+							const confirmation = await confirm(
+								strings.warning,
+								strings["file already exists force named"]
+									? strings["file already exists force named"].replace(
+											"{name}",
+											name,
+										)
+									: `"${name}" already exists in this location.`,
+							);
+							if (!confirmation) return false;
+
+							await targetFs.delete();
+							return true;
+						},
 					});
 					if (result.url) copiedCount++;
 					skippedCount += result.skipped;
