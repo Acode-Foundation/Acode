@@ -13,12 +13,13 @@ export function clearModifierState(state, events = {}) {
 }
 
 export function clearQuickToolsButtonFeedback(containers = []) {
-	const visited = new Set();
+	const visitedContainers = new Set();
+	const visitedButtons = new Set();
 	let cleared = 0;
 
 	for (const container of containers) {
-		if (!container || visited.has(container)) continue;
-		visited.add(container);
+		if (!container || visitedContainers.has(container)) continue;
+		visitedContainers.add(container);
 
 		const buttons = [
 			...(container.matches?.(".active, .click, [data-timeout]")
@@ -29,8 +30,8 @@ export function clearQuickToolsButtonFeedback(containers = []) {
 		];
 
 		for (const button of buttons) {
-			if (!button || visited.has(button)) continue;
-			visited.add(button);
+			if (!button || visitedButtons.has(button)) continue;
+			visitedButtons.add(button);
 			if (button.dataset?.timeout) {
 				clearTimeout(Number(button.dataset.timeout));
 				delete button.dataset.timeout;

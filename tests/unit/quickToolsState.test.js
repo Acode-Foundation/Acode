@@ -98,15 +98,14 @@ describe("clearQuickToolsButtonFeedback", () => {
 		expect([...plain.classes]).toEqual(["icon"]);
 	});
 
-	it("skips containers that match themselves", () => {
-		// The implementation marks each container as visited before checking
-		// whether the container itself matches, so the self-match branch never
-		// clears it. This pins the current behavior.
-		const container = fakeContainer([], true);
-		container.dataset = { timeout: "456" };
-		container.classList = fakeButton(["active"]).classList;
+	it("clears containers that match themselves", () => {
+		const container = fakeButton(["active"], 456);
+		container.matches = () => true;
+		container.querySelectorAll = () => [];
 
-		expect(clearQuickToolsButtonFeedback([container])).toBe(0);
+		expect(clearQuickToolsButtonFeedback([container])).toBe(1);
+		expect([...container.classes]).toEqual([]);
+		expect(container.dataset.timeout).toBeUndefined();
 	});
 
 	it("does not process duplicate containers twice", () => {
