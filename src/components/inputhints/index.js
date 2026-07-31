@@ -1,4 +1,5 @@
 import "./style.scss";
+import DOMPurify from "dompurify";
 
 /**
  * @typedef {Object} HintObj
@@ -400,7 +401,7 @@ function Hint({ hint }) {
 			className={active ? "active" : ""}
 			attr-action="hint"
 			attr-value={value}
-			innerHTML={text}
+			innerHTML={DOMPurify.sanitize(text)}
 		></li>
 	);
 }
