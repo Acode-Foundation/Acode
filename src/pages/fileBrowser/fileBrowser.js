@@ -1096,6 +1096,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					case "rename": {
 						let newname = await prompt(strings.rename, name, "text", {
 							match: config.FILE_NAME_REGEX,
+							required: true,
 						});
 
 						newname = helpers.fixFilename(newname);
@@ -1160,40 +1161,25 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			}
 
 			async function renameFile(newname) {
-				if (isTermuxUrl(url)) {
-					if (helpers.isDir(type)) {
-						alert(strings.warning, strings["rename not supported"]);
-						return;
-					} else {
-						// Special handling for Termux content files
-						const fs = fsOperation(url);
-						try {
-							const content = await fs.readFile();
-							const newUrl = Url.join(Url.dirname(url), newname);
-							await fsOperation(Url.dirname(url)).createFile(newname, content);
-							await fs.delete();
-
-							recents.removeFile(url);
-							recents.addFile(newUrl);
-							const file = editorManager.getFile(url, "uri");
-							if (file) {
-								file.uri = newUrl;
-								file.filename = newname;
-							}
-							openFolder.renameItem(url, newUrl, newname);
-							toast(strings.success);
-							reload();
-							return;
-						} catch (err) {
-							window.log("error", err);
-							helpers.error(err);
-							return;
-						}
-					}
-				}
-				const fs = fsOperation(url);
+				let newUrl;
 				try {
-					const newUrl = await fs.renameTo(newname);
+					if (isTermuxUrl(url)) {
+						if (helpers.isDir(type)) {
+							alert(strings.warning, strings["rename not supported"]);
+							return;
+						} else {
+							// Special handling for Termux content files
+							const fs = fsOperation(url);
+							const content = await fs.readFile();
+							const dirname = Url.dirname(url);
+							newUrl = Url.join(dirname, newname);
+							await fsOperation(dirname).createFile(newname, content);
+							await fs.delete();
+						}
+					} else {
+						const fs = fsOperation(url);
+						newUrl = await fs.renameTo(newname);
+					}
 					recents.removeFile(url);
 					recents.addFile(newUrl);
 					const file = editorManager.getFile(url, "uri");
