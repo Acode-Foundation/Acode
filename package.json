@@ -29,7 +29,9 @@
     "plugins": {
       "cordova-clipboard": {},
       "cordova-plugin-device": {},
-      "cordova-plugin-file": {},
+      "cordova-plugin-file": {
+        "ANDROIDX_WEBKIT_VERSION": "1.4.0"
+      },
       "cordova-plugin-server": {},
       "cordova-plugin-ftp": {},
       "cordova-plugin-sdcard": {},
@@ -45,7 +47,9 @@
       "com.foxdebug.acode.rk.customtabs": {},
       "cordova-plugin-system": {},
       "cordova-plugin-crashhandler": {},
-      "cordova-plugin-advanced-http": {},
+      "cordova-plugin-advanced-http": {
+        "ANDROIDBLACKLISTSECURESOCKETPROTOCOLS": "SSLv3,TLSv1"
+      },
       "cordova-plugin-acode-webview": {}
     },
     "platforms": [

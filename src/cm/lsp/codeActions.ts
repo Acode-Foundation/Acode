@@ -14,6 +14,8 @@ import type {
 import type { Position, Range } from "./types";
 import { addLspLogFor } from "./logs";
 import type AcodeWorkspace from "./workspace";
+import { getLspDiagnostics } from "./diagnostics";
+import type { LspDiagnostic } from "./types";
 
 type CodeActionResponse = (CodeAction | Command)[] | null;
 
@@ -38,6 +40,33 @@ const CODE_ACTION_ICONS: Record<string, string> = {
 	"source.organizeImports": "sort",
 	"source.fixAll": "done_all",
 };
+// Add near the top of codeActions.ts, or reuse if something equivalent exists:
+const severityMap: Record<string, number> = {
+  error: 1,
+  warning: 2,
+  info: 3,
+  hint: 4,
+};
+
+function toWireDiagnostics(
+  plugin: LSPPlugin,
+  diagnostics: LspDiagnostic[],
+): Diagnostic[] {
+  return diagnostics.map((d) => ({
+    range: { start: plugin.toPosition(d.from), end: plugin.toPosition(d.to) },
+    message: d.message,
+    severity: severityMap[d.severity] ?? 1,
+    source: d.source,
+  }));
+}
+function comparePositions(a: LspPosition, b: LspPosition): number {
+  if (a.line !== b.line) return a.line - b.line;
+  return a.character - b.character;
+}
+
+function rangesOverlap(a: LspRange, b: LspRange): boolean {
+  return comparePositions(a.start, b.end) <= 0 && comparePositions(b.start, a.end) <= 0;
+}
 
 function getCodeActionIcon(kind?: CodeActionKind): string {
 	if (!kind) return "icon zap";
@@ -299,11 +328,21 @@ export async function fetchCodeActions(
 		start: plugin.toPosition(from),
 		end: plugin.toPosition(to),
 	};
+	
+	const allDiagnostics = getLspDiagnostics(view.state);
+console.log("[CodeAction debug] all diagnostics:", allDiagnostics);
+console.log("[CodeAction debug] requested offsets:", from, to);
+const overlapping = allDiagnostics.filter((d) => d.to >= from && d.from <= to);
+console.log("[CodeAction debug] overlapping after filter:", overlapping);
+  const wireDiagnostics = toWireDiagnostics(plugin, overlapping);
 
 	plugin.client.sync();
 
 	try {
-		const response = await requestCodeActions(plugin, range);
+	  ////const allDiagnostics = view.state.field(lspPublishedDiagnostics, false) ?? [];
+    ////const overlapping = allDiagnostics.filter(d => rangesOverlap(d.range, range)); // range-overlap check needed
+    const response = await requestCodeActions(plugin, range, wireDiagnostics);
+		//const response = await requestCodeActions(plugin, range);
 		if (!response?.length) return [];
 
 		const items: CodeActionItem[] = response.map((item) => {

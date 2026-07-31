@@ -11,6 +11,10 @@ import type {
 	TransportHandle,
 	WebSocketTransportOptions,
 } from "./types";
+//new
+import { LSPPlugin } from "@codemirror/lsp-client";
+import type { TextEdit } from "vscode-languageserver-types";
+import { applyTextEdits } from "./textEditUtils";
 
 const DEFAULT_TIMEOUT = 5000;
 const RECONNECT_BASE_DELAY = 500;
@@ -157,6 +161,45 @@ function createWebSocketTransport(
 		dispatchToListeners(data);
 	}
 
+interface WorkspaceEditParam {
+	changes?: Record<string, TextEdit[]>;
+	documentChanges?: Array<{ textDocument: { uri: string }; edits: TextEdit[] }>;
+}
+
+function applyWorkspaceEditToContext(
+	edit: WorkspaceEditParam | undefined,
+	ctx: TransportContext,
+): { applied: boolean; failureReason?: string } {
+	if (!edit) return { applied: false, failureReason: "No edit provided" };
+	if (!ctx.view || !ctx.uri) {
+		return { applied: false, failureReason: "No active editor view for this document" };
+	}
+
+	const changesByUri: Record<string, TextEdit[]> =
+		edit.changes ??
+		Object.fromEntries(
+			(edit.documentChanges ?? [])
+				.filter((c): c is { textDocument: { uri: string }; edits: TextEdit[] } => "edits" in c)
+				.map((c) => [c.textDocument.uri, c.edits]),
+		);
+
+	const edits = changesByUri[ctx.uri];
+	if (!edits) {
+		return {
+			applied: false,
+			failureReason: `Edit targets ${Object.keys(changesByUri).join(", ") || "no files"}, which is not open here`,
+		};
+	}
+
+	const plugin = LSPPlugin.get(ctx.view);
+	if (!plugin) {
+		return { applied: false, failureReason: "LSP plugin not attached to view" };
+	}
+
+	const applied = applyTextEdits(plugin, ctx.view, edits);
+	return applied ? { applied: true } : { applied: false, failureReason: "Edit produced no changes" };
+}
+
 	function dispatchToListeners(data: string): void {
 		// Debugging aid while stabilising websocket transport
 		if (context?.debugWebSocket) {
@@ -196,6 +239,9 @@ function createWebSocketTransport(
 							: null;
 						break;
 					}
+					case "workspace/applyEdit":
+          	result = applyWorkspaceEditToContext(msg.params?.edit, context);
+          	break;
 					default:
 						handled = false;
 				}

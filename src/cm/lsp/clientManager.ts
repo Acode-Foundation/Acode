@@ -6,7 +6,8 @@ import {
   serverCompletion,
   serverDiagnostics,
 } from "@codemirror/lsp-client";
-import { EditorState, Extension, Facet, MapMode } from "@codemirror/state";
+//import { EditorState, Extension, Facet, MapMode, Text } from "@codemirror/state";
+import { EditorState, Extension, Facet } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import lspStatusBar from "components/lspStatusBar";
 import notificationManager from "lib/notificationManager";
@@ -49,6 +50,10 @@ import type {
   Transport,
 } from "./types";
 import AcodeWorkspace from "./workspace";
+//new
+import { applyTextEdits, safeLspPositionToOffset } from "./textEditUtils";
+
+const LSP_IDLE_GRACE_MS = 45_000; // grace period before a client with no open files is actually disposed
 
 export const lspCompletionEnabled = Facet.define<boolean, boolean>({
   // File-level marker used by the autocomplete override path. If any attached
@@ -129,10 +134,16 @@ function isSettingsOrKeybindingsFile(
 }
 
 function isVerboseLspLoggingEnabled(): boolean {
+  return true; // TEMP: force verbose LSP logging for debugging
+}
+
+/*
+function isVerboseLspLoggingEnabled(): boolean {
   const buildInfo = (globalThis as { BuildInfo?: { debug?: boolean } })
     .BuildInfo;
   return !!buildInfo?.debug;
 }
+*/
 
 function logLspInfo(...args: unknown[]): void {
   if (!isVerboseLspLoggingEnabled()) return;
@@ -491,6 +502,25 @@ export class LspClientManager {
         const plugin = LSPPlugin.get(view);
         if (!plugin) continue;
         plugin.client.sync();
+        console.log(
+  "Current length",
+  view.state.doc.length,
+);
+
+console.log(
+  "Synced length",
+  plugin.syncedDoc.length,
+);
+
+console.log(
+  "Current doc\n",
+  view.state.doc.toString(),
+);
+
+console.log(
+  "Synced doc\n",
+  plugin.syncedDoc.toString(),
+);
         const edits = await state.client.request<
           { textDocument: { uri: string }; options: FormattingOptions },
           TextEdit[] | null
@@ -985,6 +1015,7 @@ export class LspClientManager {
         serverId: server.id,
         allowNonTerminalWorkspace:
           this.options.allowNonTerminalWorkspace === true,
+        //resolveViewForUri: (uri: string) => clientState.getAttachedView?.(uri) ?? null,
       };
       const connection = await runtimeProvider.start(server, runtimeContext);
       const connectionDispose = connection.dispose;
@@ -1013,13 +1044,15 @@ export class LspClientManager {
       connectClient(client, transportHandle.transport, initializationOptions);
       await waitForInitialization(client.initializing, signal, server.id);
       // New: push config the same way ALC always did
-      if (server.workspaceConfiguration) {
-        transportHandle.transport.send(JSON.stringify({
-          jsonrpc: "2.0",
-          method: "workspace/didChangeConfiguration",
-          params: { settings: server.workspaceConfiguration },
-        }));
-      };
+      console.log("### CONFIG PUSH ATTEMPT ###");
+      // Fire after "initialized" — reuse initializationOptions as the config payload,
+      // since that's the field you actually populate via the wizard
+      transportHandle.transport.send(JSON.stringify({
+        jsonrpc: "2.0",
+        method: "workspace/didChangeConfiguration",
+        params: { settings: server.initializationOptions ?? {} },
+      }));
+      console.log("### CONFIG PUSH SENT ###");
       if (!client.__acodeLoggedInfo) {
         // Log root URI info to console
         if (normalizedRootUri) {
@@ -1096,8 +1129,9 @@ export class LspClientManager {
     const uriAliases = new Map<string, string>();
     const effectiveRoot = normalizedRootUri ?? originalRootUri ?? null;
     let disposed = false;
+    let idleTimer: ReturnType<typeof setTimeout> | undefined;
 
-    const attach = (
+    /* const attach = (
       uri: string,
       view: EditorView,
       aliases: string[] = [],
@@ -1112,11 +1146,35 @@ export class LspClientManager {
       }
       const suffix = effectiveRoot ? ` (root ${effectiveRoot})` : "";
       logLspInfo(`[LSP:${server.id}] attached to ${uri}${suffix}`);
-    };
+    }; */
+    const attach = (
+  uri: string,
+  view: EditorView,
+  aliases: string[] = [],
+): void => {
+  if (idleTimer) {
+    clearTimeout(idleTimer);
+    idleTimer = undefined;
+  }
+  const existing = fileRefs.get(uri) ?? new Set();
+  existing.add(view);
+  fileRefs.set(uri, existing);
+  uriAliases.set(uri, uri);
+  for (const alias of aliases) {
+    if (!alias || alias === uri) continue;
+    uriAliases.set(alias, uri);
+  }
+  const suffix = effectiveRoot ? ` (root ${effectiveRoot})` : "";
+  logLspInfo(`[LSP:${server.id}] attached to ${uri}${suffix}`);
+};
 
     const dispose = async (): Promise<void> => {
       if (disposed) return;
       disposed = true;
+      if (idleTimer) {
+    clearTimeout(idleTimer);
+    idleTimer = undefined;
+  }
       disposePullDiagnostics(client);
       this.#clients.delete(key);
       try {
@@ -1153,13 +1211,18 @@ export class LspClientManager {
       }
 
       if (!fileRefs.size) {
-        this.options.onClientIdle?.({
-          server,
-          client,
-          rootUri: effectiveRoot,
-          dispose,
-        });
-      }
+  if (idleTimer) clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => {
+    idleTimer = undefined;
+    if (fileRefs.size) return; // a file reattached during the grace window
+    this.options.onClientIdle?.({
+      server,
+      client,
+      rootUri: effectiveRoot,
+      dispose,
+    });
+  }, LSP_IDLE_GRACE_MS);
+}
     };
 
     return {
@@ -1351,45 +1414,6 @@ interface Change {
   insert: string;
 }
 
-function applyTextEdits(
-  plugin: LSPPlugin,
-  view: EditorView,
-  edits: TextEdit[],
-): boolean {
-  const changes: Change[] = [];
-  for (const edit of edits) {
-    if (!edit?.range) continue;
-    let fromBase: number;
-    let toBase: number;
-    try {
-      fromBase = plugin.fromPosition(edit.range.start, plugin.syncedDoc);
-      toBase = plugin.fromPosition(edit.range.end, plugin.syncedDoc);
-    } catch (_) {
-      continue;
-    }
-    const fromResult = plugin.unsyncedChanges.mapPos(
-      fromBase,
-      1,
-      MapMode.TrackDel,
-    );
-    const toResult = plugin.unsyncedChanges.mapPos(
-      toBase,
-      -1,
-      MapMode.TrackDel,
-    );
-    if (fromResult == null || toResult == null) continue;
-    const insert =
-      typeof edit.newText === "string"
-        ? edit.newText.replace(/\r\n/g, "\n")
-        : "";
-    changes.push({ from: fromResult, to: toResult, insert });
-  }
-  if (!changes.length) return false;
-  changes.sort((a, b) => a.from - b.from || a.to - b.to);
-  view.dispatch({ changes });
-  return true;
-}
-
 function buildFormattingOptions(
   view: EditorView,
   overrides: FormattingOptions = {},
@@ -1428,6 +1452,7 @@ function resolveIndentWidth(unit: string): number {
   }
   return width || 4;
 }
+
 
 const defaultManager = new LspClientManager();
 
