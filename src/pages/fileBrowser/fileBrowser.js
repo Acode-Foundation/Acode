@@ -603,43 +603,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					);
 
 					try {
-						for (const url of selectedItems) {
-							if ((await fsOperation(url).stat()).isDirectory) {
-								if (url.startsWith("content://com.termux.documents/tree/")) {
-									const fs = fsOperation(url);
-									const entries = await fs.lsDir();
-									if (entries.length === 0) {
-										await fs.delete();
-									} else {
-										const deleteRecursively = async (currentUrl) => {
-											const currentFs = fsOperation(currentUrl);
-											const currentEntries = await currentFs.lsDir();
-											for (const entry of currentEntries) {
-												if (entry.isDirectory) {
-													await deleteRecursively(entry.url);
-												} else {
-													await fsOperation(entry.url).delete();
-												}
-											}
-											await currentFs.delete();
-										};
-										await deleteRecursively(url);
-									}
-								} else {
-									await fsOperation(url).delete();
-								}
-								helpers.updateUriOfAllActiveFiles(url);
-								recents.removeFolder(url);
-							} else {
-								const fs = fsOperation(url);
-								await fs.delete();
-								const openedFile = editorManager.getFile(url, "uri");
-								if (openedFile) openedFile.uri = null;
-							}
-							recents.removeFile(url);
-							openFolder.removeItem(url);
-							delete cachedDir[url];
-						}
+						for (const url of selectedItems) await deleteDirOrFile(url);
 						toast(strings.success);
 						reload();
 						isSelectionMode = false;
@@ -686,6 +650,50 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			});
 			reject(err);
 			$page.hide();
+		}
+
+		/**
+		 * @param {string} url
+		 */
+		function isTermuxUrl(url) {
+			url = `${url ?? ""}`;
+			return url.startsWith("content://com.termux.documents/tree/");
+		}
+
+		/**
+		 * @param {string} url
+		 * @param {string} [type]
+		 */
+		async function deleteDirOrFile(url, type) {
+			const fs = fsOperation(url);
+			const isDir = type ? helpers.isDir(type) : (await fs.stat()).isDirectory;
+
+			if (isDir && isTermuxUrl(url)) {
+				const deleteRecursively = async (currentFs) => {
+					const entries = await currentFs.lsDir();
+					if (entries) {
+						for (const entry of entries) {
+							const fs = fsOperation(entry.url);
+							await (entry.isDirectory ? deleteRecursively(fs) : fs.delete());
+						}
+					}
+					await currentFs.delete();
+				};
+				await deleteRecursively(fs);
+			} else {
+				await fs.delete();
+			}
+
+			if (isDir) {
+				helpers.updateUriOfAllActiveFiles(url);
+				recents.removeFolder(url);
+			} else {
+				const openedFile = editorManager.getFile(url, "uri");
+				if (openedFile) openedFile.uri = null;
+			}
+			recents.removeFile(url);
+			openFolder.removeItem(url);
+			delete cachedDir[url];
 		}
 
 		function updateSelectionCount($count) {
@@ -860,6 +868,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				$list
 					.querySelectorAll(".tile:not(.selection-header)")
 					.forEach((item) => {
+						if (item.dataset.notSelectable != null) return;
 						const checkbox = Checkbox("", false);
 						checkbox.onclick = () => {
 							const url = item.querySelector("data-url").textContent;
@@ -882,7 +891,19 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				if ($openFolder) {
 					$openFolder.disabled = true;
 				}
+
+				if (!actionStack.has("fbSelection")) {
+					actionStack.push({
+						id: "fbSelection",
+						action: () => {
+							isSelectionMode = false;
+							toggleSelectionMode(false);
+						},
+					});
+				}
 			} else {
+				actionStack.remove("fbSelection");
+
 				$list.classList.remove("selection-mode");
 				$list.querySelector(".selection-header")?.remove();
 				$list.querySelectorAll(".input-checkbox").forEach((cb) => cb.remove());
@@ -912,12 +933,12 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			const $el = e.target;
 
 			if (isSelectionMode) {
-				const checkbox = $el.closest(".tile")?.querySelector(".input-checkbox");
+				const $el2 = $el.closest(".tile");
+				if ($el2?.dataset.notSelectable != null) return;
+				const checkbox = $el2?.querySelector(".input-checkbox");
 				if (checkbox && !$el.closest(".selection-header")) {
 					checkbox.checked = !checkbox.checked;
-					const url = $el
-						.closest(".tile")
-						.querySelector("data-url").textContent;
+					const url = $el2.querySelector("data-url").textContent;
 					if (checkbox.checked) {
 						selectedItems.add(url);
 					} else {
@@ -1151,7 +1172,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			}
 
 			async function renameFile(newname) {
-				if (url.startsWith("content://com.termux.documents/tree/")) {
+				if (isTermuxUrl(url)) {
 					if (helpers.isDir(type)) {
 						alert(strings.warning, strings["rename not supported"]);
 						return;
@@ -1203,42 +1224,8 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 			async function removeFile() {
 				try {
-					if (helpers.isDir(type)) {
-						if (url.startsWith("content://com.termux.documents/tree/")) {
-							const fs = fsOperation(url);
-							const entries = await fs.lsDir();
-							if (entries.length === 0) {
-								await fs.delete();
-							} else {
-								const deleteRecursively = async (currentUrl) => {
-									const currentFs = fsOperation(currentUrl);
-									const currentEntries = await currentFs.lsDir();
-									for (const entry of currentEntries) {
-										if (entry.isDirectory) {
-											await deleteRecursively(entry.url);
-										} else {
-											await fsOperation(entry.url).delete();
-										}
-									}
-									await currentFs.delete();
-								};
-								await deleteRecursively(url);
-							}
-						} else {
-							await fsOperation(url).delete();
-						}
-						helpers.updateUriOfAllActiveFiles(url);
-						recents.removeFolder(url);
-					} else {
-						const fs = fsOperation(url);
-						await fs.delete();
-						const openedFile = editorManager.getFile(url, "uri");
-						if (openedFile) openedFile.uri = null;
-					}
-					recents.removeFile(url);
-					openFolder.removeItem(url);
+					await deleteDirOrFile(url, type);
 					toast(strings.success);
-					delete cachedDir[url];
 					reload();
 				} catch (err) {
 					window.log("error", err);
@@ -1394,12 +1381,14 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				util.pushFolder(allStorages, strings["add a storage"], "", {
 					storageType: "notification",
 					uuid: "addstorage",
+					notSelectable: true,
 				});
 			}
 
 			if (IS_FILE_MODE) {
 				util.pushFolder(allStorages, "Select document", null, {
 					"open-doc": true,
+					notSelectable: true,
 				});
 			}
 

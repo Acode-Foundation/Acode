@@ -59,6 +59,7 @@ type WorkspaceEvent =
   | { id: string; type: 'status'; action: 'status'; state: string; message: string; progress: number }
   | { id: string; type: 'batch'; action: 'batch'; entries: WorkspaceFileEntry[] }
   | { id: string; type: 'search-result'; action: 'search-result'; data: any }
+  | { id: string; type: 'search-results'; action: 'search-results'; data: any[] }
   | { id: string; type: 'replace-result'; action: 'replace-result'; file: WorkspaceFileEntry; text: string }
   | { id: string; type: 'progress'; action: 'progress'; data: number }
   | { id: string; type: 'done' | 'done-searching' | 'done-replacing' | 'error'; action: string; [key: string]: any };
@@ -286,9 +287,26 @@ interface SDcard {
     onEvent: (event: WorkspaceEvent) => void,
     onFail: (err: any) => void,
   ): void;
+  workspaceUpdate(
+    options: any,
+    onSuccess: (result: {
+      added: number;
+      removed: number;
+    }) => void,
+    onFail: (err: any) => void,
+  ): void;
   workspaceSearch(
     options: any,
     onEvent: (event: WorkspaceEvent) => void,
+    onFail: (err: any) => void,
+  ): void;
+  workspaceQuery(
+    options: any,
+    onSuccess: (result: {
+      entries: any[];
+      cursor: number | null;
+      hasMore: boolean;
+    }) => void,
     onFail: (err: any) => void,
   ): void;
   workspaceCancel(

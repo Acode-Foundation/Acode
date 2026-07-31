@@ -1,6 +1,8 @@
 import palette from "components/palette";
+import fileIndex from "lib/fileIndex";
 import files from "lib/fileList";
 import openFile from "lib/openFile";
+import { addedFolder } from "lib/openFolder";
 import recents from "lib/recents";
 import helpers from "utils/helpers";
 
@@ -12,10 +14,16 @@ import helpers from "utils/helpers";
 let hintsModification;
 
 export default async function findFile() {
-	palette(generateHints, onselect, strings["type filename"], () => {
-		files.off("add-file", onAddFile);
-		files.off("remove-file", onRemoveFile);
-	});
+	palette(
+		generateHints,
+		onselect,
+		strings["type filename"],
+		() => {
+			files.off("add-file", onAddFile);
+			files.off("remove-file", onRemoveFile);
+		},
+		{ dynamic: true },
+	);
 
 	files.on("add-file", onAddFile);
 	files.on("remove-file", onRemoveFile);
@@ -24,22 +32,51 @@ export default async function findFile() {
 	 * Generates hint for inputhints
 	 * @param {HintModification} hints Hint modification object
 	 */
-	async function generateHints(hints) {
+	async function generateHints(hints, query = "") {
 		hintsModification = hints;
 		const list = [];
+		const seen = new Set();
 
 		editorManager.files.forEach((file) => {
 			const { uri, name } = file;
+			if (!matchesQuery(query, name, uri)) return;
 			let { location = "" } = file;
 
 			if (location) {
 				location = helpers.getVirtualPath(location);
 			}
 
+			if (uri) seen.add(uri);
 			list.push(hintItem(name, location, uri));
 		});
 
-		list.push(...files(hintItem));
+		files().forEach((file) => {
+			if (seen.has(file.url)) return;
+			if (!matchesQuery(query, file.name, file.path)) return;
+			seen.add(file.url);
+			list.push(hintItem(file));
+		});
+
+		const nativeRoots = addedFolder
+			.filter(({ listFiles }) => listFiles)
+			.map(({ url }) => url)
+			.filter((url) => fileIndex.supports(url));
+		if (nativeRoots.length) {
+			try {
+				const { entries = [] } = await fileIndex.query({
+					roots: nativeRoots,
+					text: query,
+					limit: 300,
+				});
+				entries.forEach((file) => {
+					if (seen.has(file.url)) return;
+					seen.add(file.url);
+					list.push(hintItem(file));
+				});
+			} catch (error) {
+				console.warn("Unable to query native file index:", error);
+			}
+		}
 		return list;
 	}
 
@@ -47,6 +84,16 @@ export default async function findFile() {
 		if (!value) return;
 		openFile(value);
 	}
+}
+
+function matchesQuery(query, ...values) {
+	if (!query) return true;
+	const normalized = query.toLowerCase();
+	return values.some((value) =>
+		String(value || "")
+			.toLowerCase()
+			.includes(normalized),
+	);
 }
 
 /**

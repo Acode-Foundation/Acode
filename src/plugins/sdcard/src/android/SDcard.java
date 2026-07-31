@@ -171,8 +171,20 @@ public class SDcard extends CordovaPlugin {
           callback
         );
         break;
+      case "workspace update":
+        workspaceIndex.update(
+          args.optJSONObject(0) == null ? new JSONObject() : args.optJSONObject(0),
+          callback
+        );
+        break;
       case "workspace search":
         workspaceIndex.search(
+          args.optJSONObject(0) == null ? new JSONObject() : args.optJSONObject(0),
+          callback
+        );
+        break;
+      case "workspace query":
+        workspaceIndex.query(
           args.optJSONObject(0) == null ? new JSONObject() : args.optJSONObject(0),
           callback
         );
