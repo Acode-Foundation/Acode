@@ -831,5 +831,7 @@
 	"managed": "Dikelola",
 	"acode service": "Layanan Acode",
 	"info-terminal-show-scrollbar": "Show the xterm scrollbar beside the terminal.",
-	"terminal:show scrollbar": "Show Scrollbar"
+	"terminal:show scrollbar": "Show Scrollbar",
+	"apply exclusions when copying": "Apply exclusions when copying",
+	"settings-info-app-use-file-operation-exclusions": "Skip files and folders matching the exclusion patterns during copy and paste operations."
 }

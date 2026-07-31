@@ -831,5 +831,7 @@
 	"managed": "Kezelt",
 	"acode service": "Acode-szolgáltatás",
 	"info-terminal-show-scrollbar": "Az xterm görgetősávjának megjelenítése a terminál mellett.",
-	"terminal:show scrollbar": "Görgetősáv megjelenítése"
+	"terminal:show scrollbar": "Görgetősáv megjelenítése",
+	"apply exclusions when copying": "Apply exclusions when copying",
+	"settings-info-app-use-file-operation-exclusions": "Skip files and folders matching the exclusion patterns during copy and paste operations."
 }

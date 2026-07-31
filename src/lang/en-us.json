@@ -669,6 +669,8 @@
 	"settings-info-app-console": "Choose which debug console integration Acode uses.",
 	"settings-info-app-default-file-encoding": "Default encoding when opening or creating files.",
 	"settings-info-app-exclude-folders": "Skip folders and patterns while searching or scanning.",
+	"apply exclusions when copying": "Apply exclusions when copying",
+	"settings-info-app-use-file-operation-exclusions": "Skip files and folders matching the exclusion patterns during copy and paste operations.",
 	"settings-info-app-floating-button": "Show the floating quick actions button.",
 	"settings-info-app-font-manager": "Install, manage, or remove app fonts.",
 	"settings-info-app-fullscreen": "Hide the system status bar while using Acode.",
