@@ -35,6 +35,9 @@ export default function terminalSettings() {
 
 	const terminalValues = values.terminalSettings;
 
+	Executor.setProotDebug(terminalValues.prootDebug);
+	Executor.BackgroundExecutor.setProotDebug(terminalValues.prootDebug);
+
 	const items = [
 		{
 			key: "all_file_access",
