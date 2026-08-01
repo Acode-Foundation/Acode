@@ -1472,6 +1472,15 @@ function normalizeRootUriForServer(
   if (scheme === "file") {
     return { normalizedRootUri: rootUri, originalRootUri: rootUri };
   }
+  
+  // sftp roots: strip to the bare remote path
+  if (scheme === "sftp") {
+    const fileUri = sftpUriToFileUri(rootUri);
+    if (fileUri) {
+      return { normalizedRootUri: fileUri, originalRootUri: rootUri };
+    }
+    return { normalizedRootUri: null, originalRootUri: rootUri };
+  }
 
   // Try to convert content:// URIs to file:// URIs
   if (scheme === "content") {
@@ -1497,6 +1506,12 @@ function normalizeDocumentUri(uri: string | null | undefined): string | null {
   if (scheme === "file" || scheme === "untitled") {
     return uri;
   }
+  
+  // sftp documents: strip to the bare remote path
+  if (scheme === "sftp") {
+    return sftpUriToFileUri(uri);
+  }
+
 
   // Convert content:// URIs to file:// URIs
   if (scheme === "content") {
@@ -1543,6 +1558,14 @@ function contentUriToFileUri(uri: string): string | null {
         }
         if (!normalized.startsWith("/")) return null;
         return buildFileUri(normalized);
+      case "termux":
+        normalized = normalized.replace(/:+$/, "");
+        if (!normalized) return null;
+        try {
+          normalized = decodeURIComponent(normalized);
+        } catch (_) {
+          // already decoded, or not encoded at all — use as-is
+        }
       case "android.externalstorage":
         normalized = normalized.replace(/:+$/, "");
         if (!normalized) return null;
@@ -1581,6 +1604,17 @@ function contentUriToFileUri(uri: string): string | null {
   } catch (_) {
     return null;
   }
+}
+
+function sftpUriToFileUri(uri: string): string | null {
+  // acode-ls and the LSP process it spawns run on the same remote host
+  // reached via this SFTP connection, so the server needs only the bare
+  // remote path — no scheme, host, port, or credentials.
+  const match = /^sftp:\/\/[^/]*(\/.*)$/.exec(uri);
+  if (!match) return null;
+  const path = match[1].split("?")[0];
+  if (!path) return null;
+  return buildFileUri(path);
 }
 
 function buildFileUri(pathname: string): string | null {
