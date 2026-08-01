@@ -702,6 +702,9 @@ export default class TerminalComponent {
 
 				const terminalValues = values.terminalSettings;
 
+				Executor.setProotDebug(terminalValues.prootDebug);
+				Executor.BackgroundExecutor.setProotDebug(terminalValues.prootDebug);
+
 				await Terminal.startAxs(
 					false,
 					() => {},
