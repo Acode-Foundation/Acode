@@ -9,6 +9,10 @@ import {
 } from "utils/codeHighlight";
 import helpers from "utils/helpers";
 
+import Uri from "utils/Uri";
+import { addedFolder } from "lib/openFolder";
+import toast from "components/toast";
+
 export { clearHighlightCache, sanitize };
 
 export function getFilename(uri) {
@@ -111,7 +115,22 @@ export async function navigateToReference(ref) {
 	Sidebar.hide();
 
 	try {
-		await openFile(ref.uri, { render: true });
+		let targetUri = ref.uri;
+
+		if (
+			targetUri.startsWith("file:///") &&
+			!editorManager.getFile(targetUri, "uri")
+		) {
+			const contentUri = resolveContentUriForFileUri(targetUri);
+			if (contentUri) {
+				targetUri = contentUri;
+			} else {
+				toast("Definition unreachable");
+				return;
+			}
+		}
+
+		await openFile(targetUri, { render: true });
 		const { editor } = editorManager;
 		if (!editor) return;
 
@@ -142,4 +161,53 @@ export function getReferencesStats(references) {
 		refCount,
 		text: `${refCount} reference${refCount !== 1 ? "s" : ""} in ${fileCount} file${fileCount !== 1 ? "s" : ""}`,
 	};
+}
+
+function docIdToRealPath(docId) {
+	const sepIndex = docId.indexOf(":");
+	if (sepIndex === -1) return null;
+	const volume = docId.slice(0, sepIndex);
+	const remainder = docId.slice(sepIndex + 1);
+	const base = volume === "primary" ? "/storage/emulated/0" : `/storage/${volume}`;
+	return remainder ? `${base}/${remainder}` : base;
+}
+
+/**
+ * LSP servers hand back plain file:// uris. Acode tracks externally-added
+ * files by their original content:// SAF uri, so an lsp uri never matches
+ * an open tab directly. Resolve it against the currently added folders
+ * (the only external files Acode can reach without a fresh SAF prompt)
+ * and rebuild the real content:// uri, same docId scheme openFolder.js
+ * already relies on elsewhere in this codebase.
+ */
+export function resolveContentUriForFileUri(fileUri) {
+	if (!fileUri?.startsWith("file:///")) return null;
+	const targetPath = decodeURIComponent(fileUri.slice("file://".length));
+
+	for (const folder of addedFolder) {
+		if (!folder?.url?.startsWith("content:")) continue;
+
+		let parsed;
+		try {
+			parsed = Uri.parse(folder.url);
+		} catch {
+			continue;
+		}
+
+		const rootPath = docIdToRealPath(parsed.docId);
+		if (!rootPath) continue;
+
+		if (targetPath === rootPath) {
+			return Uri.format(parsed.rootUri, parsed.docId);
+		}
+		if (targetPath.startsWith(`${rootPath}/`)) {
+			const suffix = targetPath.slice(rootPath.length); // leading "/"
+			const childDocId = parsed.docId.endsWith("/")
+				? parsed.docId.slice(0, -1) + suffix
+				: parsed.docId + suffix;
+			return Uri.format(parsed.rootUri, childDocId);
+		}
+	}
+
+	return null;
 }
