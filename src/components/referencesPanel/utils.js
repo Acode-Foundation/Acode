@@ -10,6 +10,7 @@ import {
 import helpers from "utils/helpers";
 
 import Uri from "utils/Uri";
+import Url from "utils/Url";
 import { addedFolder } from "lib/openFolder";
 import toast from "components/toast";
 
@@ -172,6 +173,40 @@ function docIdToRealPath(docId) {
 	return remainder ? `${base}/${remainder}` : base;
 }
 
+const CONTENT_AUTHORITY_HANDLERS = {
+	"android.externalstorage": {
+		docIdToPath(docId) {
+			const trimmed = docId.replace(/:+$/, "");
+			const separator = trimmed.indexOf(":");
+			if (separator === -1) return null;
+			const volume = trimmed.slice(0, separator);
+			const remainder = trimmed.slice(separator + 1);
+			if (!remainder) return null;
+			const base =
+				volume === "primary" ? "/storage/emulated/0" : `/storage/${volume}`;
+			return `${base}/${remainder}`;
+		},
+	},
+	termux: {
+		docIdToPath(docId) {
+			let path = docId.replace(/:+$/, "");
+			try {
+				path = decodeURIComponent(path);
+			} catch {
+				// already decoded
+			}
+			return path.startsWith("/") ? path : null;
+		},
+	},
+};
+
+function getContentAuthorityId(contentUri) {
+	const match = /^content:\/\/com\.((?![:<>"/\\|?*]).*?)\.documents\//.exec(
+		contentUri,
+	);
+	return match?.[1] ?? null;
+}
+
 /**
  * LSP servers hand back plain file:// uris. Acode tracks externally-added
  * files by their original content:// SAF uri, so an lsp uri never matches
@@ -185,27 +220,54 @@ export function resolveContentUriForFileUri(fileUri) {
 	const targetPath = decodeURIComponent(fileUri.slice("file://".length));
 
 	for (const folder of addedFolder) {
-		if (!folder?.url?.startsWith("content:")) continue;
+		const rootUrl = folder?.url;
+		if (!rootUrl) continue;
 
-		let parsed;
-		try {
-			parsed = Uri.parse(folder.url);
-		} catch {
+		if (rootUrl.startsWith("content:")) {
+			let parsed;
+			try {
+				parsed = Uri.parse(rootUrl);
+			} catch {
+				continue;
+			}
+			const authorityId = getContentAuthorityId(parsed.rootUri ?? rootUrl);
+			const handler = authorityId && CONTENT_AUTHORITY_HANDLERS[authorityId];
+			if (!handler) continue;
+
+			const rootPath = handler.docIdToPath(parsed.docId);
+			if (!rootPath) continue;
+
+			if (targetPath === rootPath) {
+				return Uri.format(parsed.rootUri, parsed.docId);
+			}
+			if (targetPath.startsWith(`${rootPath}/`)) {
+				const suffix = targetPath.slice(rootPath.length); // leading "/"
+				const childDocId = parsed.docId.endsWith("/")
+					? parsed.docId.slice(0, -1) + suffix
+					: parsed.docId + suffix;
+				return Uri.format(parsed.rootUri, childDocId);
+			}
 			continue;
 		}
 
-		const rootPath = docIdToRealPath(parsed.docId);
-		if (!rootPath) continue;
+		if (rootUrl.startsWith("sftp:")) {
+			let rootPath;
+			try {
+				rootPath = Url.pathname(rootUrl).replace(/\/+$/, "");
+			} catch {
+				continue;
+			}
+			if (!rootPath) continue;
 
-		if (targetPath === rootPath) {
-			return Uri.format(parsed.rootUri, parsed.docId);
-		}
-		if (targetPath.startsWith(`${rootPath}/`)) {
-			const suffix = targetPath.slice(rootPath.length); // leading "/"
-			const childDocId = parsed.docId.endsWith("/")
-				? parsed.docId.slice(0, -1) + suffix
-				: parsed.docId + suffix;
-			return Uri.format(parsed.rootUri, childDocId);
+			if (targetPath === rootPath) return rootUrl;
+			if (targetPath.startsWith(`${rootPath}/`)) {
+				const suffix = targetPath.slice(rootPath.length);
+				const base = rootUrl.slice(
+					0,
+					rootUrl.indexOf(rootPath) + rootPath.length,
+				);
+				return base + suffix;
+			}
 		}
 	}
 
