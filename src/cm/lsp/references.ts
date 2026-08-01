@@ -33,7 +33,7 @@ interface ReferenceParams {
 	context: { includeDeclaration: boolean };
 }
 
-async function fetchLineText(uri: string, line: number): Promise<string> {
+export async function fetchLineText(uri: string, line: number): Promise<string> {
 	try {
 		interface EditorManagerLike {
 			getFile?: (uri: string, type: string) => EditorFileLike | null;
@@ -89,7 +89,7 @@ async function fetchLineText(uri: string, line: number): Promise<string> {
 	return "";
 }
 
-function getWordAtCursor(view: EditorView): string {
+export function getWordAtCursor(view: EditorView): string {
 	const { state } = view;
 	const pos = state.selection.main.head;
 	const word = state.wordAt(pos);
