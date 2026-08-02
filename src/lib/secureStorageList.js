@@ -1,19 +1,13 @@
 /**
- * Secure persistence for the remote-storage list (saved FTP/SFTP servers).
+ * Secure persistence for the saved remote-storage list (FTP/SFTP servers).
  *
- * Historically the list lived in `localStorage.storageList`, which the WebView
- * writes to disk in cleartext — so every saved server password sat unencrypted
- * in `app_webview/.../Local Storage/leveldb`. See issue #2561.
+ * Keeps the list in a native, hardware-backed encrypted store (AES256-GCM, via
+ * the `system.secure*` bridge) instead of localStorage. The in-memory shape is
+ * unchanged, so callers behave the same; only the on-disk storage differs.
  *
- * This module moves the list out of localStorage into a native, hardware-backed
- * encrypted store (AES256-GCM, via the `system.secure*` bridge). The *shape* of
- * the data is unchanged: the in-memory list is identical to what callers used to
- * read from localStorage (including credential-bearing URLs), so nothing
- * downstream needs to change — only where the bytes rest on disk.
- *
- * Access is synchronous (an in-memory cache) so existing synchronous callers
- * keep working. The cache is hydrated once at startup by `hydrate()`, which MUST
- * be awaited early in onDeviceReady, before any UI that reads the list.
+ * Access is synchronous via an in-memory cache, hydrated once at startup by
+ * `hydrate()` — which must be awaited early in onDeviceReady, before any UI
+ * reads the list. See #2561.
  */
 
 const SECURE_KEY = "storageList";
