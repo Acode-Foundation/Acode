@@ -98,6 +98,7 @@ import {
 	getSystemConfiguration,
 	HARDKEYBOARDHIDDEN_NO,
 } from "./systemConfiguration";
+import Url from "utils/Url";
 
 /**
  * Represents an editor manager that handles multiple files and provides various editor configurations and event listeners.
@@ -1512,15 +1513,37 @@ async function EditorManager($header, $body) {
 	}
 
 	function resolveRootUriForContext(context = {}) {
-		const uri = context.uri || context.file?.uri;
-		if (!uri) return null;
-		for (const folder of addedFolder) {
-			const base = typeof folder?.url === "string" ? folder.url : "";
-			if (!base) continue;
-			if (uri.startsWith(base)) return base;
+	const uri = context.uri || context.file?.uri;
+	if (!uri) return null;
+
+	for (const folder of addedFolder) {
+		const base = typeof folder?.url === "string" ? folder.url : "";
+		if (!base) continue;
+
+		// Plain schemes (content://, file://) are stable strings with no
+		// variable auth/port formatting — a literal prefix check is fine.
+		if (uri.startsWith(base)) return base;
+
+		// sftp:// can carry credential/port formatting that legitimately
+		// differs between when a folder was added and when an individual
+		// file's own uri gets built later, even though both point at the
+		// same remote path. Compare the actual remote paths instead of
+		// the raw connection strings.
+		if (uri.startsWith("sftp:") && base.startsWith("sftp:")) {
+			try {
+				const uriPath = Url.pathname(uri);
+				const basePath = Url.pathname(base).replace(/\/+$/, "");
+				if (uriPath === basePath || uriPath.startsWith(`${basePath}/`)) {
+					return base;
+				}
+			} catch (error) {
+				// malformed url, try the next folder
+			}
 		}
-		return uri;
 	}
+
+	return uri;
+}
 
 	function detachActiveLsp(pane = getActivePane(), { invalidate = true } = {}) {
 		if (!pane) return;
