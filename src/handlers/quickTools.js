@@ -438,6 +438,10 @@ function toggleSearch() {
 		activeSearchState = { className, content: $content, footerHeight };
 
 		$toggler.className = "floating icon clearclose";
+		$searchRow1.classList.toggle(
+			"inline-close",
+			!appSettings.value.floatingButton || !$toggler.isConnected,
+		);
 		$footer.content = [$searchRow1, $searchRow2];
 		clearSearchQuickToolsState($content);
 		setRefValue($searchInput, selectedText || "");

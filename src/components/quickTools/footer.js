@@ -45,6 +45,7 @@ export const SearchRow1 = ({ inputRef }) => (
 		<RowItem id="search-prev" icon="arrow_back" action="search-prev" />
 		<RowItem id="search-next" icon="arrow_forward" action="search-next" />
 		<RowItem id="search-settings" icon="settings" action="search-settings" />
+		<RowItem id="close" icon="clearclose" action="toggle" />
 	</div>
 );
 
