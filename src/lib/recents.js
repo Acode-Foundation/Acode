@@ -87,9 +87,11 @@ const recents = {
 				: helpers.getVirtualPath(url);
 			const documentPath = isSafUri ? Uri.getDisplayPath(url, []) : displayPath;
 			const name = Url.basename(displayPath) || Url.basename(documentPath);
-			const location = isSafUri
-				? documentPath
-				: Url.dirname(displayPath)?.replace(/\/$/, "") || "/";
+			const location =
+				Url.dirname(isSafUri ? documentPath : displayPath)?.replace(
+					/\/$/,
+					"",
+				) || "/";
 
 			return { name, location, path: documentPath };
 		};

@@ -72,6 +72,19 @@ describe("Uri.getDisplayPath", () => {
 		).toBe("Pictures/Camera/photo.jpg");
 	});
 
+	it("does not match aliases from a prefix-sharing SAF root", () => {
+		const codesRoot =
+			"content://com.android.externalstorage.documents/tree/primary%3ACodes";
+		const codesBackupRoot =
+			"content://com.android.externalstorage.documents/tree/primary%3ACodesBackup";
+
+		expect(
+			Uri.getDisplayPath(codesBackupRoot, [
+				{ name: "Codes", url: codesRoot },
+			]),
+		).toBe("primary/CodesBackup");
+	});
+
 	it("keeps direct children of a volume-root storage", () => {
 		const rootUri =
 			"content://com.android.externalstorage.documents/tree/primary%3A";

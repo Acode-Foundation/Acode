@@ -100,7 +100,10 @@ export default {
 
 			for (const storage of storages) {
 				const storageUrl = storage.uri ?? storage.url;
-				if (!storageUrl || !url.startsWith(storageUrl)) continue;
+				if (!storageUrl) continue;
+				const isStorageRoot = url === storageUrl;
+				const isStorageDescendant = url.startsWith(`${storageUrl}::`);
+				if (!isStorageRoot && !isStorageDescendant) continue;
 				if (!matchedStorage || storageUrl.length > matchedStorage.url.length) {
 					matchedStorage = { storage, url: storageUrl };
 				}
