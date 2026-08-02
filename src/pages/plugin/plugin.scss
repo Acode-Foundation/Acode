@@ -36,6 +36,7 @@
         .plugin-name {
           font-size: 24px;
           margin-bottom: 0;
+          overflow-wrap: anywhere;
         }
 
         .source-indicator {
@@ -78,6 +79,9 @@
           display: inline-flex;
           align-items: center;
           gap: 4px;
+          min-width: 0;
+          max-width: 100%;
+          overflow-wrap: anywhere;
           vertical-align: middle;
 
           .icon {
@@ -116,6 +120,7 @@
           display: flex;
           align-items: center;
           gap: 4px;
+          min-width: 0;
 
           .metric-value {
             color: var(--primary-text-color);
@@ -144,9 +149,9 @@
         margin-top: 14px;
 
         .keyword {
-          max-width: 100%;
+          max-width: min(220px, 100%);
           padding: 5px 9px;
-          overflow-wrap: anywhere;
+          overflow: hidden;
           border: 1px solid var(--link-text-color);
           border-color: color-mix(in srgb, var(--link-text-color) 25%, transparent);
           border-radius: 999px;
@@ -155,12 +160,14 @@
           color: var(--link-text-color);
           font-size: 12px;
           line-height: 1.25;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
       }
 
       .legacy-editor-warning {
         display: inline-flex;
-        align-items: center;
+        align-items: baseline;
         gap: 6px;
         max-width: 100%;
         margin-top: 12px;
@@ -176,6 +183,7 @@
           flex: 0 0 auto;
           color: var(--error-text-color);
           font-size: 15px;
+          line-height: 1;
         }
       }
     }
@@ -191,9 +199,11 @@
 
       .error {
         display: flex;
+        max-width: 100%;
         color: rgb(255, 185, 92);
         color: var(--error-text-color);
         align-items: center;
+        overflow-wrap: anywhere;
 
         a {
           color: inherit;
@@ -217,6 +227,10 @@
         align-items: center;
         gap: 6px;
         width: fit-content;
+        max-width: 100%;
+        line-height: 1.2;
+        text-align: center;
+        overflow-wrap: anywhere;
 
         &:hover {
           transform: translateY(-1px);
@@ -250,7 +264,7 @@
       display: flex;
       flex-wrap: wrap;
       align-items: flex-start;
-      justify-content: space-between;
+      justify-content: flex-end;
       gap: 8px 20px;
       min-width: 0;
       margin-top: -8px;
@@ -258,8 +272,8 @@
       .info:not(.icon) {
         display: flex;
         flex: 1 1 320px;
-        align-items: flex-start;
-        gap: 5px;
+        align-items: center;
+        gap: 8px;
         min-width: 0;
         color: inherit;
         font-size: 0.8rem;
@@ -269,6 +283,13 @@
 
         .icon {
           flex: 0 0 auto;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 18px;
+          height: 18px;
+          font-size: 15px;
+          line-height: 1;
         }
       }
     }
@@ -472,15 +493,26 @@
 
   @media (max-width: 768px) {
     .plugin-header {
+      position: relative;
       grid-template-columns: 1fr;
       justify-items: center;
       text-align: center;
     }
 
-    .source-indicator {
+    .plugin-header .plugin-info .title-wrapper .source-indicator {
       position: absolute;
-      top: 20px;
-      right: 20px;
+      top: 52px;
+      inset-inline-start: calc(50% + 10px);
+      z-index: 1;
+      max-width: calc(50% - 18px);
+      box-sizing: border-box;
+      box-shadow: 0 2px 8px var(--box-shadow-color);
+
+      span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
     }
 
     .title-wrapper,
@@ -550,9 +582,6 @@
             overflow-wrap: anywhere;
           }
 
-          .source-indicator {
-            position: static;
-          }
         }
 
         .plugin-meta,

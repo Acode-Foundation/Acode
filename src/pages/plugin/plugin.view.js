@@ -177,7 +177,9 @@ export default (props) => {
 					{Array.isArray(keywords) && keywords.length ? (
 						<div className="keywords">
 							{keywords.map((keyword) => (
-								<span className="keyword">{keyword}</span>
+								<span className="keyword" title={keyword}>
+									{keyword}
+								</span>
 							))}
 						</div>
 					) : null}
