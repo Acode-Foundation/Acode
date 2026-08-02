@@ -67,6 +67,23 @@ export default function scrollSettings() {
 				["full", strings.full],
 			],
 		},
+		{
+			key: "leftMargin",
+			text: strings["horizontal scroll margin"],
+			value: values.leftMargin ?? 50,
+			valueText: (size) => `${size}px`,
+			prompt: strings["horizontal scroll margin"],
+			promptType: "number",
+			promptOptions: {
+				required: true,
+				test(value) {
+					if (!/^\d+$/.test(String(value).trim())) return false;
+					const size = Number(value);
+					return Number.isSafeInteger(size) && size >= 0;
+				},
+			},
+			info: strings["settings-info-horizontal-scroll-margin"],
+		},
 	];
 
 	return settingsPage(title, items, callback, undefined, {
@@ -80,7 +97,7 @@ export default function scrollSettings() {
 
 	function callback(key, value) {
 		appSettings.update({
-			[key]: value,
+			[key]: key === "leftMargin" ? Number(value) : value,
 		});
 	}
 }

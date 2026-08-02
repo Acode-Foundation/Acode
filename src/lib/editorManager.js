@@ -76,7 +76,7 @@ import indentGuides from "cm/indentGuides";
 import { lineBreakMarker } from "cm/lineBreakMarker";
 import quickToolsModifierInput from "cm/quickToolsModifierInput";
 import rainbowBrackets, { getRainbowBracketColors } from "cm/rainbowBrackets";
-import scrollPastEndCustom from "cm/scrollPastEnd";
+import scrollPastEndCustom, { horizontalScrollPastEnd } from "cm/scrollPastEnd";
 import {
 	isMultiCursorSelectionActive as resolveMultiCursorSelectionActive,
 	isShiftSelectionActive as resolveShiftSelectionActive,
@@ -1025,7 +1025,10 @@ async function EditorManager($header, $body) {
 	}
 
 	function makeWrapExtension() {
-		return appSettings?.value?.textWrap ? EditorView.lineWrapping : [];
+		if (appSettings?.value?.textWrap) return EditorView.lineWrapping;
+		return horizontalScrollPastEnd(
+			Number(appSettings?.value?.leftMargin ?? 50),
+		);
 	}
 
 	function makeLineNumberExtension() {
@@ -3400,6 +3403,10 @@ async function EditorManager($header, $body) {
 		applyOptions(["textWrap"]);
 	});
 
+	appSettings.on("update:leftMargin", function () {
+		applyOptions(["textWrap"]);
+	});
+
 	function updateEditorIndentationSettings() {
 		applyOptions(["softTab", "tabSize"]);
 	}
@@ -4182,12 +4189,7 @@ async function EditorManager($header, $body) {
 		const touchSelectionController = pane?.touchSelectionController;
 		if (!pane || !editor) return;
 		const settings = appSettings.value;
-		const { leftMargin, textWrap, colorPreview, fontSize, lineHeight } =
-			appSettings.value;
-		const scrollMarginTop = 0;
-		const scrollMarginLeft = 0;
-		const scrollMarginRight = textWrap ? 0 : leftMargin;
-		const scrollMarginBottom = 0;
+		const { colorPreview, fontSize, lineHeight } = appSettings.value;
 
 		let scrollTimeout;
 		let scrollSyncRaf = 0;
@@ -5067,12 +5069,7 @@ async function EditorManager($header, $body) {
 
 			const total = view.scrollDOM.scrollWidth || 0;
 			const viewport = view.scrollDOM.clientWidth || 0;
-			let width = Math.max(total - viewport, 0);
-			if (!appSettings.value.textWrap) {
-				const { leftMargin = 0 } = appSettings.value;
-				width += leftMargin || 0;
-			}
-			return width;
+			return Math.max(total - viewport, 0);
 		} catch (_) {
 			return 0;
 		}
