@@ -833,5 +833,7 @@
 	"diff sec": "{sec}s ago",
 	"command": "Command",
 	"managed": "Managed",
-	"acode service": "Acode Service"
+	"acode service": "Acode Service",
+	"horizontal scroll margin": "Horizontal scroll margin",
+	"settings-info-horizontal-scroll-margin": "Adds empty space after the longest line when word wrap is off. Enter any non-negative whole-pixel value."
 }
