@@ -20,6 +20,7 @@ import openFolder from "lib/openFolder";
 import projects from "lib/projects";
 import recents from "lib/recents";
 import remoteStorage from "lib/remoteStorage";
+import secureStorageList from "lib/secureStorageList";
 import appSettings from "lib/settings";
 import { hideAd } from "lib/startAd";
 import mimeTypes from "mime-types";
@@ -65,7 +66,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 	const state = [];
 	/**@type {Array<Storage>} */
 	const allStorages = [];
-	let storageList = helpers.parseJSON(localStorage.storageList);
+	let storageList = secureStorageList.get();
 	if (!Array.isArray(storageList)) storageList = [];
 
 	let isSelectionMode = false;
@@ -1242,7 +1243,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					}
 					return false;
 				});
-				localStorage.storageList = JSON.stringify(storageList);
+				secureStorageList.set(storageList);
 				reload();
 			}
 
@@ -1251,7 +1252,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					if (storage.uuid === uuid) storage.name = newname;
 					return storage;
 				});
-				localStorage.storageList = JSON.stringify(storageList);
+				secureStorageList.set(storageList);
 				reload();
 			}
 
@@ -1706,7 +1707,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			}
 
 			storageList.push(storage);
-			localStorage.storageList = JSON.stringify(storageList);
+			secureStorageList.set(storageList);
 			if (doesReload) reload();
 		}
 
@@ -1761,7 +1762,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				.addPath()
 				.then((res) => {
 					storageList.push(res);
-					localStorage.storageList = JSON.stringify(storageList);
+					secureStorageList.set(storageList);
 					reload();
 				})
 				.catch((err) => {

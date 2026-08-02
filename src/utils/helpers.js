@@ -4,6 +4,7 @@ import alert from "dialogs/alert";
 import escapeStringRegexp from "escape-string-regexp";
 import adRewards from "lib/adRewards";
 import config from "lib/config";
+import secureStorageList from "lib/secureStorageList";
 import { bannerAd, interstitialAd } from "lib/startAd";
 import { isBinaryFile } from "./binaryExtensions";
 import { isPlayStoreInstall } from "./installSource";
@@ -245,7 +246,7 @@ export default {
 		}
 
 		/**@type {string[]} */
-		const storageList = this.parseJSON(localStorage.storageList);
+		const storageList = secureStorageList.get();
 		if (!Array.isArray(storageList)) return url;
 		const storageListLen = storageList.length;
 

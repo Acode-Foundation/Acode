@@ -1,9 +1,10 @@
 import escapeStringRegexp from "escape-string-regexp";
+import secureStorageList from "lib/secureStorageList";
 import path from "./Path";
 
 function parseStorageList() {
 	try {
-		const storageList = JSON.parse(localStorage.storageList || "[]");
+		const storageList = secureStorageList.get();
 		return Array.isArray(storageList) ? storageList : [];
 	} catch (_) {
 		return [];

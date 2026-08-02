@@ -272,5 +272,44 @@ module.exports = {
         [text1, text2]
       );
     });
+  },
+  /**
+   * Store a secret encrypted at rest (AES256-GCM, hardware-backed key).
+   * Use for credentials that must not sit in cleartext in the WebView's
+   * localStorage. Passing an empty/undefined value clears the key.
+   * @param {string} key
+   * @param {string} value
+   * @returns {Promise<void>}
+   */
+  secureSet: function (key, value) {
+    return new Promise((resolve, reject) => {
+      cordova.exec(resolve, reject, 'System', 'secure-set', [key, value == null ? null : String(value)]);
+    });
+  },
+  /**
+   * Read a secret previously stored with secureSet.
+   * @param {string} key
+   * @returns {Promise<string|null>} the value, or null if absent
+   */
+  secureGet: function (key) {
+    return new Promise((resolve, reject) => {
+      cordova.exec(
+        function (result) { resolve(result == null || result === '' ? null : result); },
+        reject,
+        'System',
+        'secure-get',
+        [key]
+      );
+    });
+  },
+  /**
+   * Remove a stored secret.
+   * @param {string} key
+   * @returns {Promise<void>}
+   */
+  secureRemove: function (key) {
+    return new Promise((resolve, reject) => {
+      cordova.exec(resolve, reject, 'System', 'secure-remove', [key]);
+    });
   }
 };

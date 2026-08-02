@@ -1,4 +1,5 @@
 import loader from "dialogs/loader";
+import secureStorageList from "lib/secureStorageList";
 import { decode, encode, getEncodingName } from "utils/encodings";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
@@ -105,7 +106,7 @@ const externalFs = {
 	},
 
 	async stats(uri) {
-		const storageList = helpers.parseJSON(localStorage.getItem("storageList"));
+		const storageList = secureStorageList.get();
 
 		if (Array.isArray(storageList)) {
 			const storage = storageList.find((s) => s.uri === uri);

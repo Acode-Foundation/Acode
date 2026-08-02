@@ -52,6 +52,7 @@ import notificationManager from "lib/notificationManager";
 import openFolder, { addedFolder } from "lib/openFolder";
 import { registerPrettierFormatter } from "lib/registerPrettierFormatter";
 import restoreFiles from "lib/restoreFiles";
+import secureStorageList from "lib/secureStorageList";
 import settings from "lib/settings";
 import startAd, { hideAd } from "lib/startAd";
 import mustache from "mustache";
@@ -98,6 +99,10 @@ document.addEventListener("menubutton", menuButtonHandler);
 
 async function onDeviceReady() {
 	await initEncodings(); // important to load encodings before anything else
+	// Load saved remote-storage (FTP/SFTP) list from the encrypted native store,
+	// migrating any legacy plaintext localStorage copy. Must run before any UI
+	// that reads the storage list. See issue #2561.
+	await secureStorageList.hydrate();
 
 	const isFreePackage = /(free)$/.test(BuildInfo.packageName);
 	const oldResolveURL = window.resolveLocalFileSystemURL;

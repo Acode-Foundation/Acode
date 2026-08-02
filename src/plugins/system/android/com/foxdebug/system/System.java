@@ -86,6 +86,7 @@ public class System extends CordovaPlugin {
   private CordovaWebView webView;
   private String fileProviderAuthority;
   private RewardPassManager rewardPassManager;
+  private SecureStore secureStore;
 
   public void initialize(CordovaInterface cordova, CordovaWebView webView) {
     super.initialize(cordova, webView);
@@ -93,6 +94,7 @@ public class System extends CordovaPlugin {
     this.activity = cordova.getActivity();
     this.webView = webView;
     this.rewardPassManager = new RewardPassManager(this.context);
+    this.secureStore = new SecureStore(this.context);
     this.activity.runOnUiThread(
       new Runnable() {
         @Override
@@ -216,6 +218,26 @@ public class System extends CordovaPlugin {
         return true;
       case "getFilesDir":
         callbackContext.success(getFilesDir());
+        return true;
+      case "secure-set":
+        // arg1 = key, arg2 = value (empty string clears the key)
+        secureStore.set(arg1, args.isNull(1) ? null : arg2);
+        callbackContext.success();
+        return true;
+      case "secure-get":
+        {
+          String storedValue = secureStore.get(arg1);
+          // success(String) with null would throw; send an explicit empty result
+          if (storedValue == null) {
+            callbackContext.success((String) null);
+          } else {
+            callbackContext.success(storedValue);
+          }
+        }
+        return true;
+      case "secure-remove":
+        secureStore.remove(arg1);
+        callbackContext.success();
         return true;
       case "getRewardStatus":
         callbackContext.success(rewardPassManager.getRewardStatus());
