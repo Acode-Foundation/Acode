@@ -2,6 +2,10 @@ import { EditorState } from "@codemirror/state";
 import { oneDark } from "@codemirror/theme-one-dark";
 import aura, { config as auraConfig } from "./aura";
 import ayuDark, { config as ayuDarkConfig } from "./ayuDark";
+import {
+	configs as catppuccinConfigs,
+	themes as catppuccinThemes,
+} from "./catppuccin";
 import cobalt, { config as cobaltConfig } from "./cobalt";
 import dracula, { config as draculaConfig } from "./dracula";
 import githubDark, { config as githubDarkConfig } from "./githubDark";
@@ -275,6 +279,16 @@ addTheme(
 	() => vscodeDark(),
 	vscodeDarkConfig,
 );
+
+for (const config of catppuccinConfigs) {
+	addTheme(
+		config.name,
+		config.caption,
+		config.dark,
+		() => catppuccinThemes.get(config.name),
+		config,
+	);
+}
 
 export default {
 	getThemes,

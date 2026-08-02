@@ -42,7 +42,7 @@ public class ProcessUtils {
         try {
             long pid = getPid(process);
             if (pid > 0) {
-                Runtime.getRuntime().exec("kill -9 -" + pid);
+                Runtime.getRuntime().exec(new String[]{"kill", "-9", "-" + pid});
             }
         } catch (Exception error) {
             Log.w("ProcessUtils", "Failed to kill process tree.", error);
@@ -54,7 +54,7 @@ public class ProcessUtils {
      * Forcefully kills a single process
      */
     public static void killProcess(int pid) throws IOException, InterruptedException {
-        int exitCode = Runtime.getRuntime().exec("kill -9 " + pid).waitFor();
+        int exitCode = Runtime.getRuntime().exec(new String[]{"kill", "-9", String.valueOf(pid)}).waitFor();
         if (exitCode != 0) {
             throw new IOException("kill -9 " + pid + " exited with code " + exitCode);
         }

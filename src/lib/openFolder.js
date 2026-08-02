@@ -10,6 +10,7 @@ import confirm from "dialogs/confirm";
 import prompt from "dialogs/prompt";
 import select from "dialogs/select";
 import escapeStringRegexp from "escape-string-regexp";
+import copyEntry from "utils/copyEntry";
 import helpers from "utils/helpers";
 import Path from "utils/Path";
 import Uri from "utils/Uri";
@@ -776,7 +777,19 @@ function execOperation(type, action, url, $target, name) {
 					newUrl = await fs.moveTo(url);
 				}
 			} else {
-				newUrl = await fs.copyTo(url);
+				if (appSettings.value.useFileOperationExclusions) {
+					const result = await copyEntry(clipBoard.url, url, {
+						excludePatterns: appSettings.value.excludeFolders,
+					});
+					newUrl = result.url;
+					if (!newUrl) {
+						toast(strings.skipped);
+						clearClipboard();
+						return;
+					}
+				} else {
+					newUrl = await fs.copyTo(url);
+				}
 			}
 			stopLoading();
 

@@ -262,6 +262,12 @@ class Executor {
       exec(resolve, reject, this.ExecutorType, "loadLibrary", [path]);
     });
   }
+
+  setProotDebug(enabled) {
+    return new Promise((resolve, reject) => {
+      exec(resolve, reject, this.ExecutorType, "setProotDebug", [enabled]);
+    });
+  }
 }
 
 //backward compatibility

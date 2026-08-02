@@ -1,7 +1,7 @@
 {
   "name": "com.foxdebug.acode",
   "displayName": "Acode",
-  "version": "1.12.3",
+  "version": "1.12.7",
   "description": "Acode is a code editor for android",
   "scripts": {
     "lang": "node ./utils/lang.js",
@@ -17,13 +17,15 @@
     "format": "biome format --write",
     "check": "biome check --write",
     "check:admob-bundle": "node utils/scripts/checkAdmobBundle.js",
-    "test": "npm run test:admob && npm run test:dev && npm run test:config",
+    "test": "npm run test:unit && npm run test:admob && npm run test:dev && npm run test:config",
     "test:admob": "node --test src/test/admob/*.test.mjs",
     "test:admob:native": "node utils/scripts/testAdmobNative.js",
     "test:config": "node --test utils/config.test.js utils/scripts/checkAdmobBundle.test.js",
     "test:dev": "node --test utils/scripts/dev.test.js utils/scripts/testAdmobNative.test.js",
     "typecheck": "tsc --noEmit",
-    "updateAce": "node ./utils/updateAce.js"
+    "updateAce": "node ./utils/updateAce.js",
+    "test:unit": "vitest run",
+    "test:watch": "vitest"
   },
   "keywords": [
     "ecosystem:cordova"
@@ -119,6 +121,7 @@
     "terminal": "^0.1.4",
     "ts-loader": "^9.5.7",
     "typescript": "^5.9.3",
+    "vitest": "^4.1.10",
     "vscode-languageserver-types": "^3.17.5",
     "ws": "^8.21.0"
   },

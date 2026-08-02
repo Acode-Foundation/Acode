@@ -35,6 +35,9 @@ export default function terminalSettings() {
 
 	const terminalValues = values.terminalSettings;
 
+	Executor.setProotDebug(terminalValues.prootDebug);
+	Executor.BackgroundExecutor.setProotDebug(terminalValues.prootDebug);
+
 	const items = [
 		{
 			key: "all_file_access",
@@ -233,6 +236,13 @@ export default function terminalSettings() {
 			category: categories.maintenance,
 		},
 		{
+			key: "prootDebug",
+			text: "PRoot Debug",
+			checkbox: terminalValues.prootDebug,
+			info: "Enable verbose PRoot logging (PROOT_VERBOSE=2). Useful for debugging sandbox issues.",
+			category: categories.maintenance,
+		},
+		{
 			key: "backup",
 			text: strings.backup,
 			info: strings["info-backup"],
@@ -314,6 +324,17 @@ export default function terminalSettings() {
 						});
 				}
 				return;
+
+			case "prootDebug":
+				appSettings.update({
+					terminalSettings: {
+						...values.terminalSettings,
+						[key]: value,
+					},
+				});
+				Executor.setProotDebug(value);
+				Executor.BackgroundExecutor.setProotDebug(value);
+				break;
 
 			default:
 				appSettings.update({

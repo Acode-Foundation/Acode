@@ -14,6 +14,7 @@ import com.foxdebug.acode.rk.exec.terminal.*;
 public class ProcessManager {
     
     private final Context context;
+    public static boolean prootDebug = false;
     
     public ProcessManager(Context context) {
         this.context = context;
@@ -90,6 +91,10 @@ public class ProcessManager {
         env.put("ANDROID_TZ", tz.getID());
         
         env.put("FDROID", String.valueOf(isFdroidBuild()));
+
+        if (prootDebug) {
+            env.put("PROOT_VERBOSE", "2");
+        }
     }
     
     /**

@@ -1,6 +1,9 @@
 name: On Demand Preview Releases for PR
 #  avoids paths like .md, and anything in .github folder
 on:
+  # This workflow executes PR Code by checkout later
+  # MUST approve the PR Code BEFORE using this workflow on PRs.
+  # Uses this trigger to keep up-to-date execution of the workflow (triggers from Default Branch)
   pull_request_target:
     paths-ignore:
       - '!*.md'
@@ -23,13 +26,12 @@ jobs:
       contents: read
       pull-requests: write
       issues: write
-    if: |
-        github.event.pull_request.draft == false
-        && (github.repository_owner == 'Acode-Foundation'
-        && (!contains(github.event.pull_request.labels.*.name, 'DO NOT PREVIEW RELEASE') 
-        && (contains(github.event.pull_request.labels.*.name, 'Bypass check - PREVIEW RELEASE') 
-          || contains(github.event.pull_request.labels.*.name, 'CI: RUN ON-DEMAND PREVIEW RELEASES')
-        ))
+    if: >-
+        github.event.pull_request.draft == false &&
+        github.repository_owner == 'Acode-Foundation' &&
+        (!contains(github.event.pull_request.labels.*.name, 'DO NOT PREVIEW RELEASE') &&
+          (github.event.action == 'labeled' && github.event.label.name == 'CI: RUN ON-DEMAND PREVIEW RELEASES' ||
+          github.event.action == 'synchronize' && contains(github.event.pull_request.labels.*.name, 'Bypass check - PREVIEW RELEASE'))
         )
 
     runs-on: ubuntu-latest

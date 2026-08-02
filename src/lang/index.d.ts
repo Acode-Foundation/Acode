@@ -672,6 +672,8 @@ declare type LangStrings = {
   "settings-info-app-console": string;
   "settings-info-app-default-file-encoding": string;
   "settings-info-app-exclude-folders": string;
+  "apply exclusions when copying": string;
+  "settings-info-app-use-file-operation-exclusions": string;
   "settings-info-app-floating-button": string;
   "settings-info-app-font-manager": string;
   "settings-info-app-fullscreen": string;
@@ -835,6 +837,8 @@ declare type LangStrings = {
   "command": string;
   "managed": string;
   "acode service": string;
+  "horizontal scroll margin": string;
+  "settings-info-horizontal-scroll-margin": string;
 };
 
 declare var strings: LangStrings;
