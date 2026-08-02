@@ -8,13 +8,17 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 
 /**
- * Small encrypted key/value store for secrets that must not sit in cleartext on
- * disk (e.g. saved SFTP/FTP server credentials, previously kept in the WebView's
- * localStorage.storageList). Values are encrypted at rest with a hardware-backed
- * master key via AndroidX Security-Crypto (AES256-GCM), the same mechanism the
- * auth plugin already uses for the account token.
+ * Encrypted key/value store for secrets that must not sit in cleartext on disk
+ * (saved FTP/SFTP credentials — see #2561). Backed by AndroidX Security-Crypto
+ * (AES256-GCM values, AES256-SIV keys), the same mechanism the auth plugin uses
+ * for the account token.
  *
- * Lazily initialised so a crypto/keystore failure never blocks plugin startup.
+ * If the encrypted store can't be opened (keystore/crypto failure), reads and
+ * writes fail rather than falling back to plaintext. A plaintext fallback would
+ * both re-introduce cleartext credentials and become unreadable once encryption
+ * recovers — EncryptedSharedPreferences encrypts lookup keys, so a literal key
+ * written in fallback mode can't be found again. Failing instead lets the caller
+ * keep its source copy and retry on the next launch.
  */
 public class SecureStore {
 
@@ -27,6 +31,7 @@ public class SecureStore {
         this.context = context.getApplicationContext();
     }
 
+    /** The encrypted preferences, or null if encryption is currently unavailable. */
     private SharedPreferences prefs() {
         if (prefs != null) return prefs;
         try {
@@ -39,38 +44,42 @@ public class SecureStore {
                 EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             );
         } catch (GeneralSecurityException | IOException e) {
-            // Same fallback the existing EncryptedPreferenceManager uses: a private
-            // (app-sandbox) prefs file. Not encrypted, but still off the WebView's
-            // localStorage and unreadable by other apps.
-            prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
+            prefs = null;
         }
         return prefs;
     }
 
     /**
      * Store a value durably. Passing null removes the key.
-     * Uses commit() (not apply()) so the write is on disk before returning:
-     * the JS migration deletes the legacy plaintext copy only after this
-     * resolves, so an unpersisted write here must not report success. See #2561.
-     * @return true if the write reached disk.
+     * Uses commit() (not apply()) so the write is on disk before returning — the
+     * JS migration deletes the legacy plaintext copy only after this reports
+     * success.
+     * @return true if the write reached disk; false if encryption is unavailable.
      */
     public boolean set(String key, String value) {
         if (value == null) {
             return remove(key);
         }
-        return prefs().edit().putString(key, value).commit();
+        SharedPreferences p = prefs();
+        if (p == null) return false;
+        return p.edit().putString(key, value).commit();
     }
 
-    /** Return the stored value, or null if absent. */
+    /** Return the stored value, or null if absent or encryption is unavailable. */
     public String get(String key) {
-        return prefs().getString(key, null);
+        SharedPreferences p = prefs();
+        if (p == null) return null;
+        return p.getString(key, null);
     }
 
     public boolean remove(String key) {
-        return prefs().edit().remove(key).commit();
+        SharedPreferences p = prefs();
+        if (p == null) return false;
+        return p.edit().remove(key).commit();
     }
 
     public boolean contains(String key) {
-        return prefs().contains(key);
+        SharedPreferences p = prefs();
+        return p != null && p.contains(key);
     }
 }
