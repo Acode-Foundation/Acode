@@ -189,8 +189,16 @@ function connectClient(
   client: ExtendedLSPClient,
   transport: Transport,
   initializationOptions?: Record<string, unknown>,
+  rootUri?: string | null,
 ): void {
-  if (!initializationOptions || !Object.keys(initializationOptions).length) {
+  const workspaceFolders = rootUri
+    ? [{ uri: rootUri, name: deriveFolderName(rootUri) }]
+    : undefined;
+
+  if (
+    (!initializationOptions || !Object.keys(initializationOptions).length) &&
+    !workspaceFolders
+  ) {
     client.connect(transport);
     return;
   }
@@ -210,7 +218,8 @@ function connectClient(
     if (method === "initialize" && isPlainObject(params)) {
       params = {
         ...params,
-        initializationOptions,
+        ...(initializationOptions ? { initializationOptions } : {}),
+        ...(workspaceFolders ? { workspaceFolders } : {}),
       } as Params;
     }
     return originalRequestInner<Params, Result>(method, params, mapped);
@@ -220,6 +229,17 @@ function connectClient(
     client.connect(transport);
   } finally {
     patchedClient.requestInner = originalRequestInner;
+  }
+}
+
+function deriveFolderName(uri: string): string {
+  try {
+    const decoded = decodeURIComponent(uri);
+    const trimmed = decoded.replace(/\/+$/, "");
+    const segments = trimmed.split("/").filter(Boolean);
+    return segments[segments.length - 1] || decoded;
+  } catch {
+    return uri;
   }
 }
 
@@ -794,6 +814,16 @@ console.log(
         },
         workspace: {
           configuration: true,
+          applyEdit: true,
+          workspaceFolders: true,
+        },
+        textDocument: {
+          codeAction: {
+            dataSupport: true,
+            resolveSupport: {
+              properties: ["edit"],
+            },
+          },
         },
       },
     };
@@ -1041,7 +1071,12 @@ console.log(
       await waitForInitialization(transportHandle.ready, signal, server.id);
       client = new LSPClient(clientConfig) as ExtendedLSPClient;
       client.__acodeServerId = server.id;
-      connectClient(client, transportHandle.transport, initializationOptions);
+      connectClient(
+  client,
+  transportHandle.transport,
+  initializationOptions,
+  normalizedRootUri,
+);
       await waitForInitialization(client.initializing, signal, server.id);
       // New: push config the same way ALC always did
       console.log("### CONFIG PUSH ATTEMPT ###");
