@@ -33,6 +33,8 @@ let input;
 /** @type {number} */
 let quickToolUsedTimeout = null;
 let activeSearchState = null;
+/** @type {MutationObserver | null} */
+let searchCloseVisibilityObserver = null;
 
 const state = {
 	shift: false,
@@ -438,10 +440,7 @@ function toggleSearch() {
 		activeSearchState = { className, content: $content, footerHeight };
 
 		$toggler.className = "floating icon clearclose";
-		$searchRow1.classList.toggle(
-			"inline-close",
-			!appSettings.value.floatingButton || !$toggler.isConnected,
-		);
+		startSearchCloseVisibilitySync();
 		$footer.content = [$searchRow1, $searchRow2];
 		clearSearchQuickToolsState($content);
 		setRefValue($searchInput, selectedText || "");
@@ -473,6 +472,7 @@ function toggleSearch() {
 					content: $content,
 					footerHeight,
 				};
+				stopSearchCloseVisibilitySync();
 				clearSearchQuickToolsState(restoreState.content);
 				removeSearch();
 				clearQuickToolsButtonFeedback(restoreState.content);
@@ -495,6 +495,36 @@ function toggleSearch() {
 	}
 
 	$searchInput.focus();
+}
+
+function startSearchCloseVisibilitySync() {
+	stopSearchCloseVisibilitySync();
+	syncSearchCloseVisibility();
+
+	const { $toggler } = quickTools;
+	searchCloseVisibilityObserver = new MutationObserver(
+		syncSearchCloseVisibility,
+	);
+	searchCloseVisibilityObserver.observe(root, { childList: true });
+	searchCloseVisibilityObserver.observe($toggler, {
+		attributes: true,
+		attributeFilter: ["class"],
+	});
+}
+
+function stopSearchCloseVisibilitySync() {
+	searchCloseVisibilityObserver?.disconnect();
+	searchCloseVisibilityObserver = null;
+	quickTools.$searchRow1.classList.remove("inline-close");
+}
+
+function syncSearchCloseVisibility() {
+	const { $searchRow1, $toggler } = quickTools;
+	const hasVisibleFloatingClose =
+		appSettings.value.floatingButton &&
+		$toggler.isConnected &&
+		!$toggler.classList.contains("hide");
+	$searchRow1.classList.toggle("inline-close", !hasVisibleFloatingClose);
 }
 
 function toggle() {
