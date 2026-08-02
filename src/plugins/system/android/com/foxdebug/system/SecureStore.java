@@ -47,13 +47,18 @@ public class SecureStore {
         return prefs;
     }
 
-    /** Store a value. Passing null removes the key. */
-    public void set(String key, String value) {
+    /**
+     * Store a value durably. Passing null removes the key.
+     * Uses commit() (not apply()) so the write is on disk before returning:
+     * the JS migration deletes the legacy plaintext copy only after this
+     * resolves, so an unpersisted write here must not report success. See #2561.
+     * @return true if the write reached disk.
+     */
+    public boolean set(String key, String value) {
         if (value == null) {
-            remove(key);
-            return;
+            return remove(key);
         }
-        prefs().edit().putString(key, value).apply();
+        return prefs().edit().putString(key, value).commit();
     }
 
     /** Return the stored value, or null if absent. */
@@ -61,8 +66,8 @@ public class SecureStore {
         return prefs().getString(key, null);
     }
 
-    public void remove(String key) {
-        prefs().edit().remove(key).apply();
+    public boolean remove(String key) {
+        return prefs().edit().remove(key).commit();
     }
 
     public boolean contains(String key) {

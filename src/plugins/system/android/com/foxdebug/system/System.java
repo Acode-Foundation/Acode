@@ -220,9 +220,14 @@ public class System extends CordovaPlugin {
         callbackContext.success(getFilesDir());
         return true;
       case "secure-set":
-        // arg1 = key, arg2 = value (empty string clears the key)
-        secureStore.set(arg1, args.isNull(1) ? null : arg2);
-        callbackContext.success();
+        // arg1 = key, arg2 = value (null clears the key). Report failure if the
+        // durable write did not reach disk, so the JS migration keeps its
+        // fallback copy rather than deleting it. See #2561.
+        if (secureStore.set(arg1, args.isNull(1) ? null : arg2)) {
+          callbackContext.success();
+        } else {
+          callbackContext.error("secure write failed");
+        }
         return true;
       case "secure-get":
         {
