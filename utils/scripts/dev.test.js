@@ -2,12 +2,14 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const { getAppVariant } = require("./dev");
 
-test("recognizes the free app variant", () => {
+test("recognizes the explicit free variant case-insensitively", () => {
 	assert.equal(getAppVariant(["android", "free"]), "free");
 	assert.equal(getAppVariant(["FREE", "--emulator"]), "free");
 });
 
-test("does not change the app variant when free is omitted", () => {
-	assert.equal(getAppVariant([]), null);
-	assert.equal(getAppVariant(["android", "--emulator"]), null);
+test("defaults to paid when free is not specified", () => {
+	assert.equal(getAppVariant([]), "paid");
+	assert.equal(getAppVariant(["android", "--emulator"]), "paid");
+	assert.equal(getAppVariant(["android", "paid"]), "paid");
+	assert.equal(getAppVariant(["PAID", "--emulator"]), "paid");
 });

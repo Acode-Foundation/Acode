@@ -125,9 +125,7 @@ function buildSpawnEnv(extra = {}) {
 }
 
 function getAppVariant(args) {
-	return (
-		args.find((arg) => arg.toLowerCase() === "free")?.toLowerCase() || null
-	);
+	return args.some((arg) => arg.toLowerCase() === "free") ? "free" : "paid";
 }
 
 function spawnAsync(command, args, options) {
