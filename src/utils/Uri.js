@@ -85,6 +85,84 @@ export default {
 		else return rootUri;
 	},
 	/**
+	 * Converts a SAF content URI into a readable path. When the URI belongs to
+	 * an added storage, its configured name is used as the path root.
+	 *
+	 * @param {string} url
+	 * @param {Array<{name?: string, uri?: string, url?: string}>} [storages]
+	 * @returns {string}
+	 */
+	getDisplayPath(url, storages = parseStorageList()) {
+		try {
+			const { docId } = this.parse(url);
+			const document = splitDocId(docId);
+			let matchedStorage = null;
+
+			for (const storage of storages) {
+				const storageUrl = storage.uri ?? storage.url;
+				if (!storageUrl || !url.startsWith(storageUrl)) continue;
+				if (!matchedStorage || storageUrl.length > matchedStorage.url.length) {
+					matchedStorage = { storage, url: storageUrl };
+				}
+			}
+
+			if (matchedStorage) {
+				const root = splitDocId(this.parse(matchedStorage.url).docId);
+				let relativePath = document.path;
+
+				if (
+					document.volume === root.volume &&
+					document.absolute === root.absolute
+				) {
+					if (document.path === root.path) {
+						relativePath = "";
+					} else if (root.path && document.path.startsWith(`${root.path}/`)) {
+						relativePath = document.path.slice(root.path.length + 1);
+					}
+				}
+
+				return [matchedStorage.storage.name || document.volume, relativePath]
+					.filter(Boolean)
+					.join("/");
+			}
+
+			return formatDocumentPath(document) || url;
+		} catch (_) {
+			return url;
+		}
+
+		function splitDocId(docId) {
+			if (docId.startsWith("/")) {
+				return {
+					absolute: true,
+					volume: "",
+					path: docId.replace(/^\/+/, ""),
+				};
+			}
+
+			const colonIndex = docId.indexOf(":");
+			if (colonIndex >= 0) {
+				return {
+					absolute: false,
+					volume: docId.slice(0, colonIndex),
+					path: docId.slice(colonIndex + 1).replace(/^\/+/, ""),
+				};
+			}
+
+			const [volume = "", ...pathParts] = docId.split("/");
+			return {
+				absolute: false,
+				volume,
+				path: pathParts.join("/"),
+			};
+		}
+
+		function formatDocumentPath(document) {
+			if (document.absolute) return `/${document.path}`;
+			return [document.volume, document.path].filter(Boolean).join("/");
+		}
+	},
+	/**
 	 * Gets virtual address by replacing root with name i.e. added in file explorer
 	 * @param {string} url
 	 */

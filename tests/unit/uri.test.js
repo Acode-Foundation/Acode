@@ -64,6 +64,53 @@ describe("Uri.getPrimaryAddress", () => {
 	});
 });
 
+describe("Uri.getDisplayPath", () => {
+	it("uses the storage name and a path relative to its SAF root", () => {
+		const url = `${TREE_URI}::primary:DCIM/Camera/photo.jpg`;
+		expect(
+			Uri.getDisplayPath(url, [{ name: "Pictures", url: TREE_URI }]),
+		).toBe("Pictures/Camera/photo.jpg");
+	});
+
+	it("keeps direct children of a volume-root storage", () => {
+		const rootUri =
+			"content://com.android.externalstorage.documents/tree/primary%3A";
+		const url = `${rootUri}::primary/file.txt`;
+		expect(
+			Uri.getDisplayPath(url, [{ name: "Internal", url: rootUri }]),
+		).toBe("Internal/file.txt");
+	});
+
+	it("falls back to a readable volume and document path", () => {
+		expect(Uri.getDisplayPath(SINGLE_URI, [])).toBe(
+			"primary/DCIM/file.txt",
+		);
+	});
+
+	it("includes the selected folder in a bare primary tree path", () => {
+		const url =
+			"content://com.android.externalstorage.documents/tree/primary%3ACodes";
+		expect(Uri.getDisplayPath(url, [])).toBe("primary/Codes");
+	});
+
+	it("preserves an absolute Termux tree path", () => {
+		const url =
+			"content://com.termux.documents/tree/%2Fdata%2Fdata%2Fcom.termux%2Ffiles%2Fhome";
+		expect(Uri.getDisplayPath(url, [])).toBe(
+			"/data/data/com.termux/files/home",
+		);
+	});
+
+	it("preserves an absolute path appended to a Termux tree", () => {
+		const root =
+			"content://com.termux.documents/tree/%2Fdata%2Fdata%2Fcom.termux%2Ffiles%2Fhome";
+		const url = `${root}::/data/data/com.termux/files/home/acode-site-ui`;
+		expect(Uri.getDisplayPath(url, [])).toBe(
+			"/data/data/com.termux/files/home/acode-site-ui",
+		);
+	});
+});
+
 describe("Uri.getVirtualAddress", () => {
 	it("returns the url unchanged when no storage list is available", () => {
 		const url = `${TREE_URI}::primary:DCIM/foo`;

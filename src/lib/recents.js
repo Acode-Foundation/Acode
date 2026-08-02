@@ -1,6 +1,7 @@
 import select from "dialogs/select";
 import escapeStringRegexp from "escape-string-regexp";
 import helpers from "utils/helpers";
+import Uri from "utils/Uri";
 import Url from "utils/Url";
 
 const recents = {
@@ -78,20 +79,26 @@ const recents = {
 	 */
 	select(extra, type = "all", title = strings["open recent"]) {
 		const all = [];
-		const MAX = 20;
-		const shortName = (name) => {
-			name = helpers.getVirtualPath(name);
+		const pathDetails = (url) => {
+			url = Url.parse(url).url;
+			const isSafUri = /^content:/.test(url);
+			const displayPath = isSafUri
+				? Uri.getDisplayPath(url)
+				: helpers.getVirtualPath(url);
+			const documentPath = isSafUri ? Uri.getDisplayPath(url, []) : displayPath;
+			const name = Url.basename(displayPath) || Url.basename(documentPath);
+			const location = isSafUri
+				? documentPath
+				: Url.dirname(displayPath)?.replace(/\/$/, "") || "/";
 
-			if (name.length > MAX) {
-				return "..." + name.substr(-MAX - 3);
-			}
-			return name;
+			return { name, location, path: documentPath };
 		};
 
 		if (type === "dir" || type === "all") {
 			let dirs = this.folders;
 			for (let dir of dirs) {
 				const { url } = dir;
+				const { name, location, path } = pathDetails(url);
 
 				const dirValue = {
 					type: "dir",
@@ -107,8 +114,11 @@ const recents = {
 
 				all.push({
 					value: dirValue,
-					text: shortName(url),
+					text: name,
+					subText: location,
+					title: path,
 					icon: "folder",
+					className: "recent-entry",
 					tailElement: tailElement,
 					ontailclick: (e) => {
 						const $item = e.currentTarget.closest(".tile");
@@ -123,7 +133,7 @@ const recents = {
 			let files = this.files;
 			for (let file of files) {
 				if (!file) continue;
-				const name = shortName(Url.parse(file).url);
+				const { name, location, path } = pathDetails(Url.parse(file).url);
 
 				const fileValue = {
 					type: "file",
@@ -139,7 +149,10 @@ const recents = {
 				all.push({
 					value: fileValue,
 					text: name,
+					subText: location,
+					title: path,
 					icon: helpers.getIconForFile(name),
+					className: "recent-entry",
 					tailElement: tailElement,
 					ontailclick: (e) => {
 						const $item = e.currentTarget.closest(".tile");
@@ -150,19 +163,22 @@ const recents = {
 			}
 		}
 
-		if (type === "all") all.push(["clear", strings.clear, "icon clearclose"]);
+		if (type === "all") {
+			all.push({
+				value: "clear",
+				text: strings.clear,
+				icon: "clearclose",
+				className: "recent-clear",
+			});
+		}
 
 		if (extra) {
-			extra = extra.map((item) => {
-				item[1] = shortName(item[1]);
-				return item;
-			});
-
 			all.push(...extra);
 		}
 
 		return select(title, all, {
 			textTransform: false,
+			className: "recent-select",
 		});
 	},
 };
