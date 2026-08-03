@@ -151,6 +151,54 @@ function startPluginLanguageLoad(mode: Mode): Promise<Language | null> | null {
 	return load;
 }
 
+function interceptFileLinks(container: HTMLElement, view: EditorView): void {
+	container.addEventListener("click", (event) => {
+		const target = event.target as HTMLElement | null;
+		const anchor = target?.closest?.("a[href]") as HTMLAnchorElement | null;
+		if (!anchor) return;
+
+		const href = anchor.getAttribute("href");
+		if (!href || !href.startsWith("file://")) return;
+
+		event.preventDefault();
+		event.stopPropagation();
+
+		void (async () => {
+			try {
+				const match = /^(file:\/\/[^#]*)(?:#L?(\d+))?/.exec(href);
+				if (!match) return;
+				const [, rawUri, lineStr] = match;
+
+				const { resolveContentUriForFileUri } = await import(
+					"components/referencesPanel/utils"
+				);
+				const resolvedUri = resolveContentUriForFileUri(rawUri) ?? rawUri;
+
+				const openFile = (await import("lib/openFile")).default;
+				await openFile(resolvedUri, { render: true });
+
+				if (lineStr) {
+					const line = Number.parseInt(lineStr, 10);
+					const { editor } = editorManager;
+					if (editor && Number.isFinite(line)) {
+						const doc = editor.state.doc;
+						if (line >= 1 && line <= doc.lines) {
+							const { from } = doc.line(line);
+							editor.dispatch({
+								selection: { anchor: from },
+								effects: EditorView.scrollIntoView(from, { y: "center" }),
+							});
+							editor.focus();
+						}
+					}
+				}
+			} catch (error) {
+				console.error("[LSP:Tooltip] Failed to open file link:", href, error);
+			}
+		})();
+	});
+}
+
 export function resolveLspHoverHighlightLanguage(
 	language: string,
 ): Language | null {
@@ -384,6 +432,7 @@ function lspTooltipSource(
 				const dom = document.createElement("div");
 				dom.className = "cm-lsp-hover-tooltip cm-lsp-documentation";
 				dom.innerHTML = renderTooltipContent(plugin, result.contents);
+				interceptFileLinks(dom, view);
 				return { dom };
 			},
 			above: true,
@@ -575,6 +624,7 @@ function drawSignatureTooltip(
 			const docs = dom.appendChild(document.createElement("div"));
 			docs.className = "cm-lsp-signature-documentation cm-lsp-documentation";
 			docs.innerHTML = plugin.docToHTML(signature.documentation);
+			interceptFileLinks(docs, view);
 		}
 	}
 
