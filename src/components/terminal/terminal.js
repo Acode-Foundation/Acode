@@ -856,13 +856,16 @@ export default class TerminalComponent {
 			};
 
 			websocket.onmessage = (event) => {
-				// Handle text (or text-encoded) exit events. AttachAddon still receives
-				// the same frames via addEventListener and writes PTY output.
-				const payload = this.decodeWebSocketPayload(event?.data);
-				if (payload == null) return;
+				// Lifecycle control (AXS exit JSON) is always a text frame.
+				// Never decode binary frames as exit — ordinary PTY output can
+				// contain the same bytes and must not close the session.
+				// AttachAddon still receives frames via addEventListener for I/O.
+				if (typeof event.data !== "string") return;
+				// Cordova websocket may flag binary payloads even when decoded as string
+				if (event.binary === true) return;
 
 				try {
-					const message = JSON.parse(payload);
+					const message = JSON.parse(event.data);
 					if (message?.type === "exit") {
 						this.processExited = true;
 						this.onProcessExit?.(message.data);
@@ -1275,31 +1278,6 @@ export default class TerminalComponent {
 				this.touchSelection.updateCellDimensions();
 			}, 100);
 		}
-	}
-
-	/**
-	 * Decode a websocket payload to a UTF-8 string when possible.
-	 * Exit control messages may arrive as text or ArrayBuffer depending on
-	 * binaryType / native bridge timing.
-	 * @param {string|ArrayBuffer|ArrayBufferView|null|undefined} data
-	 * @returns {string|null}
-	 */
-	decodeWebSocketPayload(data) {
-		if (typeof data === "string") return data;
-		if (data == null) return null;
-
-		try {
-			if (data instanceof ArrayBuffer) {
-				return new TextDecoder().decode(data);
-			}
-			if (ArrayBuffer.isView(data)) {
-				return new TextDecoder().decode(data);
-			}
-		} catch {
-			return null;
-		}
-
-		return null;
 	}
 
 	/**
