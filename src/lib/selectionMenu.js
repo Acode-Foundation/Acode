@@ -76,6 +76,12 @@ const showLspMenu = async () => {
 			icon: "linkinsert_link",
 			run: lsp.findAllReferences,
 		},
+		capabilities.renameProvider && {
+    	value: "rename",
+    	text: "Rename Symbol",
+    	icon: "edit",
+    	run: lsp.renameSymbol,
+    },
 		lsp.supportsCodeActions(editor) && {
 			value: "codeActions",
 			text: "Code Actions",
