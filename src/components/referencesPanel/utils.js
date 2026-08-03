@@ -187,18 +187,21 @@ const CONTENT_AUTHORITY_HANDLERS = {
 			return `${base}/${remainder}`;
 		},
 	},
-	termux: {
+	"foxdebug.acode": {
 		docIdToPath(docId) {
-			let path = docId.replace(/:+$/, "");
-			try {
-				path = decodeURIComponent(path);
-			} catch {
-				// already decoded
+			let normalized = docId.replace(/:+$/, "");
+			if (!normalized) return null;
+			if (normalized.startsWith("raw:/")) {
+				normalized = normalized.slice(4);
+			} else if (normalized.startsWith("raw:")) {
+				normalized = normalized.slice(4);
 			}
-			return path.startsWith("/") ? path : null;
+			return normalized.startsWith("/") ? normalized : null;
 		},
 	},
 };
+CONTENT_AUTHORITY_HANDLERS["foxdebug.acodefree"] =
+	CONTENT_AUTHORITY_HANDLERS["foxdebug.acode"];
 
 function getContentAuthorityId(contentUri) {
 	const match = /^content:\/\/com\.((?![:<>"/\\|?*]).*?)\.documents\//.exec(
