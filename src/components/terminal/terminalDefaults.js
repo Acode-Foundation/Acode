@@ -19,7 +19,7 @@ export const DEFAULT_TERMINAL_SETTINGS = {
 	failsafeMode: false,
 	prootDebug: false,
 	// Touch selection settings
-	touchSelectionTapHoldDuration: 600,
+	touchSelectionTapHoldDuration: 400,
 	touchSelectionMoveThreshold: 8,
 	touchSelectionHandleSize: 24,
 	touchSelectionHapticFeedback: true,

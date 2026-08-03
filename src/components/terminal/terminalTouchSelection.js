@@ -136,7 +136,7 @@ export default class TerminalTouchSelection {
 		this.terminal = terminal;
 		this.container = container;
 		this.options = {
-			tapHoldDuration: 600,
+			tapHoldDuration: 400,
 			moveThreshold: 8,
 			handleSize: 24,
 			hapticFeedback: true,

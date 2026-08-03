@@ -765,24 +765,64 @@ class TerminalManager {
 			}
 		}, 200);
 
+		// Idempotent end-of-session path. Exit JSON, unexpected disconnect, and
+		// socket errors all funnel here so a missed exit message can't leave a
+		// zombie tab with a dead PTY.
+		let sessionFinished = false;
+		const finishTerminalSession = async ({
+			message = null,
+			showToast = true,
+			errorAlert = null,
+		} = {}) => {
+			if (sessionFinished) return;
+			sessionFinished = true;
+
+			try {
+				terminalComponent.intentionalClose = true;
+				await this.closeTerminal(terminalId, true);
+			} catch (error) {
+				console.error(
+					`Failed to finish terminal session ${terminalId}:`,
+					error,
+				);
+			}
+
+			if (showToast && message) {
+				toast(message);
+			}
+			if (errorAlert) {
+				alert(strings["error"], errorAlert);
+			}
+		};
+
 		// Terminal event handlers
 		terminalComponent.onConnect = () => {
 			console.log(`Terminal ${terminalId} connected`);
 		};
 
-		terminalComponent.onDisconnect = () => {
-			console.log(`Terminal ${terminalId} disconnected`);
+		terminalComponent.onDisconnect = (info = {}) => {
+			console.log(`Terminal ${terminalId} disconnected`, info);
+
+			// User/tab close and dispose intentionally close the socket.
+			if (info.intentional) return;
+
+			// Exit message already drove finishTerminalSession (or is about to).
+			// Still call finish so a race can't leave the tab open; it's idempotent.
+			const message = info.processExited ? null : "Terminal session ended";
+			void finishTerminalSession({
+				message,
+				showToast: !info.processExited,
+			});
 		};
 
 		terminalComponent.onError = (error) => {
 			console.error(`Terminal ${terminalId} error:`, error);
 
-			// Close the terminal and remove the tab
-			this.closeTerminal(terminalId, true);
-
-			// Show alert for connection error
 			const errorMessage = error?.message || "Connection lost";
-			alert(strings["error"], `Terminal connection error: ${errorMessage}`);
+			void finishTerminalSession({
+				showToast: false,
+				errorAlert: `Terminal connection error: ${errorMessage}`,
+			});
 		};
 
 		terminalComponent.onTitleChange = async (title) => {
@@ -811,20 +851,21 @@ class TerminalManager {
 		};
 
 		terminalComponent.onProcessExit = (exitData) => {
-			// Format exit message based on exit code and signal
+			const data = exitData && typeof exitData === "object" ? exitData : {};
 			let message;
-			if (exitData.signal) {
-				message = `Process terminated by signal ${exitData.signal}`;
-			} else if (exitData.exit_code === 0) {
-				message = `Process exited successfully (code ${exitData.exit_code})`;
+			if (data.signal) {
+				message = `Process terminated by signal ${data.signal}`;
+			} else if (data.exit_code === 0 || data.exit_code === "0") {
+				message = `Process exited successfully (code ${data.exit_code})`;
+			} else if (data.exit_code !== undefined && data.exit_code !== null) {
+				message = `Process exited with code ${data.exit_code}`;
+			} else if (typeof exitData === "string" || typeof exitData === "number") {
+				message = `Process exited with code ${exitData}`;
 			} else {
-				message = `Process exited with code ${exitData.exit_code}`;
+				message = "Process exited";
 			}
 
-			this.closeTerminal(terminalId);
-			terminalFile._skipTerminalCloseConfirm = true;
-			terminalFile.remove(true, { ignorePinned: true });
-			toast(message);
+			void finishTerminalSession({ message });
 		};
 
 		// Handle acode CLI open commands (OSC 7777)
@@ -871,18 +912,24 @@ class TerminalManager {
 	/**
 	 * Close a terminal session
 	 * @param {string} terminalId - Terminal ID
+	 * @param {boolean} removeTab - Also remove the editor tab
+	 * @returns {Promise<void>}
 	 */
-	closeTerminal(terminalId, removeTab = false) {
+	async closeTerminal(terminalId, removeTab = false) {
 		const terminal = this.terminals.get(terminalId);
 		if (!terminal) return;
 
 		try {
+			if (terminal.component) {
+				terminal.component.intentionalClose = true;
+			}
+
 			if (terminal.component.serverMode && terminal.component.pid) {
 				this.removePersistedSession(terminal.component.pid);
 			}
 
 			// Cleanup resize observer
-			if (terminal.file._resizeObserver) {
+			if (terminal.file?._resizeObserver) {
 				terminal.file._resizeObserver.disconnect();
 				terminal.file._resizeObserver = null;
 			}
@@ -895,14 +942,14 @@ class TerminalManager {
 			// Dispose terminal component
 			terminal.component.dispose();
 
-			// Remove from map
+			// Remove from map before tab removal so onclose re-entry is a no-op
 			this.terminals.delete(terminalId);
 
 			// Optionally remove the tab as well
 			if (removeTab && terminal.file) {
 				try {
 					terminal.file._skipTerminalCloseConfirm = true;
-					terminal.file.remove(true, { ignorePinned: true });
+					await terminal.file.remove(true, { ignorePinned: true });
 				} catch (removeError) {
 					console.error("Error removing terminal tab:", removeError);
 				}
