@@ -1593,14 +1593,6 @@ function contentUriToFileUri(uri: string): string | null {
         }
         if (!normalized.startsWith("/")) return null;
         return buildFileUri(normalized);
-      case "termux":
-        normalized = normalized.replace(/:+$/, "");
-        if (!normalized) return null;
-        try {
-          normalized = decodeURIComponent(normalized);
-        } catch (_) {
-          // already decoded, or not encoded at all — use as-is
-        }
       case "android.externalstorage":
         normalized = normalized.replace(/:+$/, "");
         if (!normalized) return null;
