@@ -6,6 +6,7 @@ import toast from "components/toast";
 import prompt from "dialogs/prompt";
 import select from "dialogs/select";
 import appSettings from "lib/settings";
+import multiPrompt from "dialogs/multiPrompt";
 import {
 	getServerOverride,
 	isCustomServer,
@@ -295,123 +296,160 @@ export default function lspSettings() {
 			return;
 		}
 
-		if (key === "add_custom_server") {
+			if (key === "add_custom_server") {
 			try {
-				const idInput = await prompt(strings["lsp-server-id"], "", "text");
-				if (idInput === null) return;
+				const USE_WS = true; // default transport; false = STDIO
 
-				const serverId = normalizeServerId(idInput);
+				const result = await multiPrompt(strings["lsp-add-custom-server"], [
+					{
+						id: "serverId",
+						placeholder: strings["lsp-server-id"],
+						type: "text",
+						required: true,
+						value: "",
+					},
+					{
+						id: "label",
+						placeholder: strings["lsp-server-label"],
+						type: "text",
+						value: "",
+					},
+					{
+						id: "languages",
+						placeholder: strings["lsp-language-ids"],
+						type: "text",
+						required: true,
+						value: "",
+					},
+					[
+						"Transport: ",
+						{
+							id: "useWebSocket",
+							placeholder: "WebSocket",
+							name: "transportType",
+							type: "radio",
+							value: USE_WS,
+							onchange() {
+								if (!!this.value) {
+									this.prompt.$body.get("#websocketUrl").hidden = false;
+									this.prompt.$body.get("#binaryCommand").hidden = true;
+									this.prompt.$body.get("#binaryArgs").hidden = true;
+									this.prompt.$body.get("#binaryCommand").value = "";
+								}
+							},
+						},
+						{
+							id: "useStdio",
+							placeholder: "STDIO",
+							name: "transportType",
+							type: "radio",
+							value: !USE_WS,
+							onchange() {
+								if (!!this.value) {
+									this.prompt.$body.get("#websocketUrl").hidden = true;
+									this.prompt.$body.get("#websocketUrl").value = "";
+									this.prompt.$body.get("#binaryCommand").hidden = false;
+									this.prompt.$body.get("#binaryArgs").hidden = false;
+								}
+							},
+						},
+					],
+					{
+						id: "websocketUrl",
+						placeholder: "ws://127.0.0.1:3000/",
+						type: "text",
+						value: "ws://127.0.0.1:3000/",
+						hidden: !USE_WS,
+					},
+					{
+						id: "binaryCommand",
+						placeholder: strings["lsp-binary-command"],
+						type: "text",
+						hidden: USE_WS,
+						value: "",
+					},
+					{
+						id: "binaryArgs",
+						placeholder: strings["lsp-binary-args"],
+						type: "textarea",
+						hidden: USE_WS,
+						value: "[]",
+					},
+				]);
+
+				if (!result) return; // user cancelled
+
+				const serverId = normalizeServerId(result.serverId);
 				if (!serverId) {
 					toast(strings["lsp-error-server-id-required"]);
 					return;
 				}
 
-				const label = await prompt(
-					strings["lsp-server-label"],
-					serverId,
-					"text",
-				);
-				if (label === null) return;
-
-				const languageInput = await prompt(
-					strings["lsp-language-ids"],
-					"",
-					"text",
-				);
-				if (languageInput === null) return;
-				const languages = normalizeLanguages(languageInput);
+				const label = result.label || serverId;
+				const languages = normalizeLanguages(result.languages);
 				if (!languages.length) {
 					toast(strings["lsp-error-language-id-required"]);
 					return;
 				}
 
-				const transportKind = await select(
-					strings.type || "Type",
-					getTransportMethods(),
-				);
-				if (!transportKind) return;
-
 				let transport;
 				let launcher;
 
-				if (transportKind === "websocket") {
-					const websocketUrlInput = await prompt(
-						strings["lsp-websocket-url"] || "WebSocket URL",
-						"ws://127.0.0.1:3000/",
-						"text",
-						{
-							test: (value) => {
-								try {
-									parseWebSocketUrl(value);
-									return true;
-								} catch {
-									return false;
-								}
-							},
-						},
-					);
-					if (websocketUrlInput === null) return;
-
+				if (result.useWebSocket) {
+					const url = String(result.websocketUrl || "").trim();
+					if (!url) {
+						toast(
+							strings["lsp-error-websocket-url-required"] ||
+								"WebSocket URL is required",
+						);
+						return;
+					}
 					transport = {
 						kind: "websocket",
-						url: parseWebSocketUrl(websocketUrlInput),
+						url: parseWebSocketUrl(url),
 					};
 				} else {
-					const binaryCommand = await prompt(
-						strings["lsp-binary-command"],
-						"",
-						"text",
-					);
-					if (binaryCommand === null) return;
-					if (!String(binaryCommand).trim()) {
+					const binaryCommand = String(result.binaryCommand || "").trim();
+					if (!binaryCommand) {
 						toast(strings["lsp-error-binary-command-required"]);
 						return;
 					}
 
-					const argsInput = await prompt(
-						strings["lsp-binary-args"],
-						"[]",
-						"textarea",
-						{
-							test: (value) => {
-								try {
-									parseArgsInput(value);
-									return true;
-								} catch {
-									return false;
-								}
-							},
-						},
-					);
-					if (argsInput === null) return;
+					let parsedArgs;
+					try {
+						parsedArgs = parseArgsInput(result.binaryArgs);
+					} catch (err) {
+						toast(err.message);
+						return;
+					}
 
-					const parsedArgs = parseArgsInput(argsInput);
 					const installer = await promptInstaller(binaryCommand);
 					if (installer === null) return;
+
 					const defaultCheckCommand = buildDefaultCheckCommand(
 						binaryCommand,
 						installer,
 					);
-
 					const checkCommand = await prompt(
 						strings["lsp-check-command-optional"],
 						defaultCheckCommand,
 						"text",
 						{
-							placeholder: defaultCheckCommand || "which my-language-server",
+							placeholder:
+								defaultCheckCommand || "which my-language-server",
 						},
 					);
 					if (checkCommand === null) return;
 
 					transport = {
 						kind: "stdio",
-						command: String(binaryCommand).trim(),
+						command: binaryCommand,
 						args: parsedArgs,
 					};
 					launcher = {
 						bridge: {
 							kind: "axs",
-							command: String(binaryCommand).trim(),
+							command: binaryCommand,
 							args: parsedArgs,
 						},
 						checkCommand: String(checkCommand || "").trim() || undefined,
@@ -440,6 +478,7 @@ export default function lspSettings() {
 			}
 			return;
 		}
+
 
 		if (key.startsWith("server:")) {
 			const id = key.split(":")[1];
