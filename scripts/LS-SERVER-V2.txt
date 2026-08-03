@@ -176,65 +176,50 @@ function proxyServer(websocket, command, args, { callback, seperator } = {}) {
     }
   });
 
-  let handleMessage = (dataString, dataLength) => {
-    if (!dataString) {
-      expectedLength = dataLength;
-      return;
-    }
+ let handleMessage = (dataString, dataLength) => {
+  if (!dataString) {
+    expectedLength = dataLength;
+    return;
+  }
 
-    // If currentMessage matches the local data length, send and return
+  const dataByteLength = Buffer.byteLength(dataString, 'utf8');
+
+  if (
+    dataLength &&
+    (dataByteLength === dataLength || dataByteLength === dataLength - 4)
+  ) {
+    DEBUG && console.log("DSending:", dataString, checkJSON(dataString));
+    return websocket.send(dataString);
+  }
+
+  if (
+    expectedLength &&
+    (dataByteLength === expectedLength || dataByteLength === expectedLength - 4)
+  ) {
+    DEBUG && console.log("ESending:", dataString, checkJSON(dataString));
+    return websocket.send(dataString);
+  }
+
+  if (!dataLength && expectedLength) {
+    dataLength = expectedLength;
+  }
+
+  if (chunks.length >= 1) {
+    const completeMessage = chunks.join("") + dataString;
+    const completeByteLength = Buffer.byteLength(completeMessage, 'utf8');
     if (
-      dataLength &&
-      (
-        dataString.length === dataLength ||
-        dataString.length === dataLength - 4
-      )
+      completeByteLength === dataLength ||
+      completeByteLength === dataLength - 4
     ) {
-      DEBUG && console.log("DSending:", dataString, checkJSON(dataString));
-      return websocket.send(dataString);
+      chunks = [];
+      DEBUG && console.log("Sending:", completeMessage, checkJSON(completeMessage));
+      return websocket.send(completeMessage);
     }
-
-    // If currentMessage matches the expected data length, send and return
-    if (
-      expectedLength &&
-      (
-        dataString.length === expectedLength ||
-        dataString.length === expectedLength - 4
-      )
-    ) {
-      DEBUG && console.log("ESending:", dataString, checkJSON(dataString));
-      return websocket.send(dataString);
-    }
-
-    // If no local data length use global expected length
-    if (!dataLength && expectedLength) {
-      dataLength = expectedLength;
-    }
-
-    // Else check if has previous message
-    if (chunks.length >= 1) {
-      // If previous message, check if current message plus previous messsges
-      // length matches the expected length
-      const completeMessage = chunks.join("") + dataString;
-      if (
-        completeMessage.length === dataLength ||
-        completeMessage.length === dataLength - 4
-      ) {
-        // Reset chunks array and expected length
-        chunks = [];
-        // expectedLength = null;
-
-        DEBUG &&
-          console.log("Sending:", completeMessage, checkJSON(completeMessage));
-        return websocket.send(completeMessage);
-      }
-    } else {
-      // Add the data to the chunks array
-      // and set global length to local length
-      chunks.push(dataString);
-      expectedLength = dataLength;
-    }
-  };
+  } else {
+    chunks.push(dataString);
+    expectedLength = dataLength;
+  }
+};
 
   // Pipe data from the language server stdout to the WebSocket
   stdoutStream.on("data", data => {
