@@ -387,7 +387,7 @@ export class LSPClient {
   /// The caller is responsible for
   /// [synchronizing](#lsp-client.LSPClient.sync) state before the
   /// request and correctly handling state drift caused by local
-  /// changes that happend during the request.
+  /// changes that happened during the request.
   request<Params, Result>(method: string, params: Params): Promise<Result> {
     if (!this.transport) return Promise.reject(new Error("Client not connected"))
     return this.initializing.then(() => this.requestInner<Params, Result>(method, params).promise)
