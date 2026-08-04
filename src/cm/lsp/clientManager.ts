@@ -1035,7 +1035,9 @@ export class LspClientManager {
         client,
         transportHandle.transport,
         initializationOptions,
-        server.useWorkspaceFolders ? null : normalizedRootUri,
+        scope === "workspace" && server.useWorkspaceFolders
+          ? null
+          : normalizedRootUri,
       );
       await waitForInitialization(client.initializing, signal, server.id);
       if (!client.__acodeLoggedInfo) {
