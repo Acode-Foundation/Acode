@@ -23,30 +23,10 @@ export function getLanguageModeRecommendationSearchKeyword(filename) {
 	return keyword;
 }
 
-function getIssueUrl(keyword) {
-	const params = new URLSearchParams({
-		template: "1_feature_request.yml",
-		labels: "new plugin idea,enhancement",
-		title: `Plugin request: ${keyword} syntax highlighting`,
-	});
-
-	return `${config.GITHUB_URL}/issues/new?${params}`;
-}
-
 function formatString(value, replacements) {
 	return String(value || "").replace(/\{(\w+)\}/g, (_, key) => {
 		return replacements[key] ?? "";
 	});
-}
-
-async function openUrl(url) {
-	if (window.cordova?.exec) {
-		const { default: customTab } = await import("./customTab");
-		await customTab(url);
-		return;
-	}
-
-	window.open(url, "_blank", "noopener,noreferrer");
 }
 
 async function openExtensions(keyword) {
@@ -56,6 +36,19 @@ async function openExtensions(keyword) {
 
 function hasPlainTextFallback(modeInfo, filename) {
 	return modeInfo?.name === "text" && !modeInfo.supportsFile(filename);
+}
+
+export function shouldRecommendLanguageModeExtension(filename, modeInfo) {
+	if (!hasPlainTextFallback(modeInfo, filename)) return false;
+
+	const keyword = getLanguageModeRecommendationSearchKeyword(filename);
+	if (!keyword) return false;
+
+	// Probe the normalized extension independently of the original filename.
+	// This prevents a strangely formatted path from producing requests for core
+	// modes such as HTML or Python.
+	const probeFilename = `file.${keyword}`;
+	return hasPlainTextFallback(getModeForPath(probeFilename), probeFilename);
 }
 
 class LanguageModeRecommendations {
@@ -88,7 +81,7 @@ class LanguageModeRecommendations {
 		if (!file || file.type !== "editor") return;
 
 		const filename = file.filename || "";
-		if (!hasPlainTextFallback(modeInfo, filename)) return;
+		if (!shouldRecommendLanguageModeExtension(filename, modeInfo)) return;
 
 		const keyword = getLanguageModeRecommendationSearchKeyword(filename);
 		if (
@@ -116,52 +109,35 @@ class LanguageModeRecommendations {
 		const hasPlugins = await this.getPluginAvailability(keyword);
 		// If a plugin registered the mode while the lookup was pending, suppress
 		// this stale recommendation and leave the keyword eligible for future checks.
-		if (!hasPlainTextFallback(getModeForPath(filename), filename)) return false;
-
-		const displayExt = `.${keyword}`;
-
-		if (hasPlugins) {
-			notificationManager.pushNotification({
-				title: formatString(strings["extension recommendation title"], {
-					extension: displayExt,
-					keyword: `mode:${keyword}`,
-				}),
-				message: formatString(strings["extension recommendation message"], {
-					extension: displayExt,
-					keyword: `mode:${keyword}`,
-				}),
-				icon: "extension",
-				type: "info",
-				action: () => openExtensions(`mode:${keyword}`),
-				actions: [
-					{
-						text: strings["search plugins"],
-						icon: "search",
-						action: () => openExtensions(`mode:${keyword}`),
-					},
-				],
-			});
-			return true;
+		if (
+			!shouldRecommendLanguageModeExtension(filename, getModeForPath(filename))
+		) {
+			return false;
 		}
 
-		const issueUrl = getIssueUrl(keyword);
+		// An unknown extension is not enough evidence that the file contains a
+		// programming language. Stay silent unless the registry has a matching
+		// language-mode plugin to recommend.
+		if (!hasPlugins) return false;
+
+		const displayExt = `.${keyword}`;
 		notificationManager.pushNotification({
-			title: formatString(strings["extension request title"], {
+			title: formatString(strings["extension recommendation title"], {
 				extension: displayExt,
-				keyword,
+				keyword: `mode:${keyword}`,
 			}),
-			message: formatString(strings["extension request message"], {
+			message: formatString(strings["extension recommendation message"], {
 				extension: displayExt,
-				keyword,
+				keyword: `mode:${keyword}`,
 			}),
 			icon: "extension",
-			type: "warning",
-			action: () => openUrl(issueUrl),
+			type: "info",
+			action: () => openExtensions(`mode:${keyword}`),
 			actions: [
 				{
-					text: strings["request plugin"],
-					icon: "open_in_new",
-					action: () => openUrl(issueUrl),
+					text: strings["search plugins"],
+					icon: "search",
+					action: () => openExtensions(`mode:${keyword}`),
 				},
 			],
 		});
