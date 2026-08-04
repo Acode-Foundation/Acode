@@ -38,6 +38,7 @@ import type {
 	MarkupContent,
 } from "vscode-languageserver-types";
 import { getMode, getModeForPath, type Mode } from "../modelist";
+import type AcodeWorkspace from "./workspace";
 
 interface LspClientInternals {
 	config?: {
@@ -163,33 +164,30 @@ function interceptFileLinks(container: HTMLElement, view: EditorView): void {
 		event.preventDefault();
 		event.stopPropagation();
 
+		const plugin = LSPPlugin.get(view);
+		if (!plugin) return;
+		const workspace = plugin.client.workspace as AcodeWorkspace;
+		if (!workspace) return;
+
 		void (async () => {
 			try {
 				const match = /^(file:\/\/[^#]*)(?:#L?(\d+))?/.exec(href);
 				if (!match) return;
 				const [, rawUri, lineStr] = match;
 
-				const { resolveContentUriForFileUri } = await import(
-					"components/referencesPanel/utils"
-				);
-				const resolvedUri = resolveContentUriForFileUri(rawUri) ?? rawUri;
-
-				const openFile = (await import("lib/openFile")).default;
-				await openFile(resolvedUri, { render: true });
+				const targetView = await workspace.displayFile(rawUri);
+				if (!targetView) return;
 
 				if (lineStr) {
 					const line = Number.parseInt(lineStr, 10);
-					const { editor } = editorManager;
-					if (editor && Number.isFinite(line)) {
-						const doc = editor.state.doc;
-						if (line >= 1 && line <= doc.lines) {
-							const { from } = doc.line(line);
-							editor.dispatch({
-								selection: { anchor: from },
-								effects: EditorView.scrollIntoView(from, { y: "center" }),
-							});
-							editor.focus();
-						}
+					const doc = targetView.state.doc;
+					if (Number.isFinite(line) && line >= 1 && line <= doc.lines) {
+						const { from } = doc.line(line);
+						targetView.dispatch({
+							selection: { anchor: from },
+							effects: EditorView.scrollIntoView(from, { y: "center" }),
+						});
+						targetView.focus();
 					}
 				}
 			} catch (error) {
