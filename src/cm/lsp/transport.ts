@@ -167,14 +167,11 @@ interface WorkspaceEditParam {
 	documentChanges?: Array<{ textDocument: { uri: string }; edits: TextEdit[] }>;
 }
 
-function applyWorkspaceEditToContext(
+async function applyWorkspaceEditToContext(
 	edit: WorkspaceEditParam | undefined,
 	ctx: TransportContext,
-): { applied: boolean; failureReason?: string } {
+): Promise<{ applied: boolean; failureReason?: string }> {
 	if (!edit) return { applied: false, failureReason: "No edit provided" };
-	if (!ctx.view || !ctx.uri) {
-		return { applied: false, failureReason: "No active editor view for this document" };
-	}
 
 	const changesByUri: Record<string, TextEdit[]> =
 		edit.changes ??
@@ -184,21 +181,64 @@ function applyWorkspaceEditToContext(
 				.map((c) => [c.textDocument.uri, c.edits]),
 		);
 
-	const edits = changesByUri[ctx.uri];
-	if (!edits) {
+	const uris = Object.keys(changesByUri);
+	if (!uris.length) {
+		return { applied: false, failureReason: "Edit contains no changes" };
+	}
+
+	const workspace = ctx.view
+		? (LSPPlugin.get(ctx.view)?.client.workspace as AcodeWorkspace | undefined)
+		: undefined;
+
+	if (!workspace) {
+		return { applied: false, failureReason: "No workspace available to apply edit" };
+	}
+
+	let appliedCount = 0;
+	const failures: string[] = [];
+
+	for (const uri of uris) {
+		const edits = changesByUri[uri];
+		if (!edits.length) continue;
+
+		let view = workspace.getFile(uri)?.getView();
+		if (!view) {
+			try {
+				view = await workspace.displayFile(uri);
+			} catch (error) {
+				failures.push(uri);
+				continue;
+			}
+		}
+		if (!view) {
+			failures.push(uri);
+			continue;
+		}
+
+		const plugin = LSPPlugin.get(view);
+		if (!plugin) {
+			failures.push(uri);
+			continue;
+		}
+
+		const applied = applyTextEdits(plugin, view, edits);
+		if (applied) appliedCount++;
+		else failures.push(uri);
+	}
+
+	if (appliedCount === 0) {
 		return {
 			applied: false,
-			failureReason: `Edit targets ${Object.keys(changesByUri).join(", ") || "no files"}, which is not open here`,
+			failureReason: `Could not apply edit to: ${failures.join(", ")}`,
 		};
 	}
-
-	const plugin = LSPPlugin.get(ctx.view);
-	if (!plugin) {
-		return { applied: false, failureReason: "LSP plugin not attached to view" };
+	if (failures.length) {
+		return {
+			applied: true,
+			failureReason: `Applied to ${appliedCount} file(s); failed: ${failures.join(", ")}`,
+		};
 	}
-
-	const applied = applyTextEdits(plugin, ctx.view, edits);
-	return applied ? { applied: true } : { applied: false, failureReason: "Edit produced no changes" };
+	return { applied: true };
 }
 
 	function dispatchToListeners(data: string): void {

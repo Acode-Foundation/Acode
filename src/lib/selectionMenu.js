@@ -77,11 +77,11 @@ const showLspMenu = async () => {
 			run: lsp.findAllReferences,
 		},
 		capabilities.renameProvider && {
-    	value: "rename",
-    	text: "Rename Symbol",
-    	icon: "edit",
-    	run: lsp.renameSymbol,
-    },
+			value: "rename",
+			text: "Rename Symbol",
+			icon: "edit",
+			run: lsp.renameSymbol,
+		},
 		lsp.supportsCodeActions(editor) && {
 			value: "codeActions",
 			text: "Code Actions",
@@ -134,11 +134,11 @@ export default function selectionMenu() {
 			"all",
 		),
 		item(
-	() => showLspMenu(),
-	<span className="icon lightbulb" title="LSP Actions"></span>,
-	"all",
-	true,
-),
+			() => showLspMenu(),
+			<span className="icon lightbulb" title="LSP Actions"></span>,
+			"all",
+			true,
+		),
 		...items,
 	].filter(Boolean);
 }
@@ -161,4 +161,3 @@ selectionMenu.exec = (command) => {
 function item(onclick, text, mode = "all", readOnly = false) {
 	return { onclick, text, mode, readOnly };
 }
-

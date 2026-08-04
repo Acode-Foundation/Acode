@@ -1,18 +1,17 @@
 import { EditorView } from "@codemirror/view";
 import Sidebar from "components/sidebar";
+import toast from "components/toast";
 import DOMPurify from "dompurify";
 import openFile from "lib/openFile";
+import { addedFolder } from "lib/openFolder";
 import {
 	clearHighlightCache,
 	highlightLine,
 	sanitize,
 } from "utils/codeHighlight";
 import helpers from "utils/helpers";
-
 import Uri from "utils/Uri";
 import Url from "utils/Url";
-import { addedFolder } from "lib/openFolder";
-import toast from "components/toast";
 
 export { clearHighlightCache, sanitize };
 
@@ -169,7 +168,8 @@ function docIdToRealPath(docId) {
 	if (sepIndex === -1) return null;
 	const volume = docId.slice(0, sepIndex);
 	const remainder = docId.slice(sepIndex + 1);
-	const base = volume === "primary" ? "/storage/emulated/0" : `/storage/${volume}`;
+	const base =
+		volume === "primary" ? "/storage/emulated/0" : `/storage/${volume}`;
 	return remainder ? `${base}/${remainder}` : base;
 }
 

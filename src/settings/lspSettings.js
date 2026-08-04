@@ -3,10 +3,10 @@ import serverRegistry from "cm/lsp/serverRegistry";
 import { builtinServers } from "cm/lsp/servers";
 import settingsPage from "components/settingsPage";
 import toast from "components/toast";
+import multiPrompt from "dialogs/multiPrompt";
 import prompt from "dialogs/prompt";
 import select from "dialogs/select";
 import appSettings from "lib/settings";
-import multiPrompt from "dialogs/multiPrompt";
 import {
 	getServerOverride,
 	isCustomServer,
@@ -296,7 +296,7 @@ export default function lspSettings() {
 			return;
 		}
 
-			if (key === "add_custom_server") {
+		if (key === "add_custom_server") {
 			try {
 				const USE_WS = true; // default transport; false = STDIO
 
@@ -435,8 +435,7 @@ export default function lspSettings() {
 						defaultCheckCommand,
 						"text",
 						{
-							placeholder:
-								defaultCheckCommand || "which my-language-server",
+							placeholder: defaultCheckCommand || "which my-language-server",
 						},
 					);
 					if (checkCommand === null) return;
@@ -478,7 +477,6 @@ export default function lspSettings() {
 			}
 			return;
 		}
-
 
 		if (key.startsWith("server:")) {
 			const id = key.split(":")[1];
