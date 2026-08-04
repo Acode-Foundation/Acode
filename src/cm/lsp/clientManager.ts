@@ -178,8 +178,11 @@ function connectClient(
   client: ExtendedLSPClient,
   transport: Transport,
   initializationOptions?: Record<string, unknown>,
+  rootUri?: string | null,
 ): void {
-  if (!initializationOptions || !Object.keys(initializationOptions).length) {
+  const hasInitializationOptions =
+    !!initializationOptions && Object.keys(initializationOptions).length > 0;
+  if (!hasInitializationOptions && !rootUri) {
     client.connect(transport);
     return;
   }
@@ -199,7 +202,14 @@ function connectClient(
     if (method === "initialize" && isPlainObject(params)) {
       params = {
         ...params,
-        initializationOptions,
+        ...(hasInitializationOptions ? { initializationOptions } : {}),
+        ...(rootUri
+          ? {
+              workspaceFolders: [
+                { uri: rootUri, name: workspaceName(rootUri) },
+              ],
+            }
+          : {}),
       } as Params;
     }
     return originalRequestInner<Params, Result>(method, params, mapped);
@@ -209,6 +219,16 @@ function connectClient(
     client.connect(transport);
   } finally {
     patchedClient.requestInner = originalRequestInner;
+  }
+}
+
+function workspaceName(rootUri: string): string {
+  const trimmed = rootUri.replace(/\/+$/, "");
+  const encodedName = trimmed.slice(trimmed.lastIndexOf("/") + 1);
+  try {
+    return decodeURIComponent(encodedName) || "workspace";
+  } catch {
+    return encodedName || "workspace";
   }
 }
 
@@ -764,6 +784,7 @@ export class LspClientManager {
         },
         workspace: {
           configuration: true,
+          workspaceFolders: true,
         },
       },
     };
@@ -1010,7 +1031,12 @@ export class LspClientManager {
       await waitForInitialization(transportHandle.ready, signal, server.id);
       client = new LSPClient(clientConfig) as ExtendedLSPClient;
       client.__acodeServerId = server.id;
-      connectClient(client, transportHandle.transport, initializationOptions);
+      connectClient(
+        client,
+        transportHandle.transport,
+        initializationOptions,
+        server.useWorkspaceFolders ? null : normalizedRootUri,
+      );
       await waitForInitialization(client.initializing, signal, server.id);
       if (!client.__acodeLoggedInfo) {
         // Log root URI info to console
@@ -1032,7 +1058,13 @@ export class LspClientManager {
           );
         }
         logLspInfo(`[LSP:${server.id}] initialized`);
-        addLspLog(server.id, "info", "Initialized");
+        addLspLog(
+          server.id,
+          "info",
+          normalizedRootUri
+            ? `Initialized workspace ${normalizedRootUri}`
+            : "Initialized without a workspace root",
+        );
         client.__acodeLoggedInfo = true;
       }
     } catch (error) {
