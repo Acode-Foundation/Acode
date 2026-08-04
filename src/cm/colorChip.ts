@@ -1,3 +1,4 @@
+import type { LSPClient } from "@codemirror/lsp-client";
 import { LSPPlugin } from "@codemirror/lsp-client";
 import type { Range } from "@codemirror/state";
 import { Decoration, EditorView, WidgetType } from "@codemirror/view";
@@ -16,6 +17,8 @@ export interface ColorChipPayload {
 	css: string;
 	pickerSeed?: string;
 	source: ColorChipSource;
+	/** Originating provider for LSP color-presentation requests. */
+	lspClient?: LSPClient;
 }
 
 const chipState = new WeakMap<HTMLElement, ColorChipPayload>();
@@ -43,6 +46,7 @@ export class ColorChipWidget extends WidgetType {
 			other.payload.to === this.payload.to &&
 			other.payload.css === this.payload.css &&
 			other.payload.source === this.payload.source &&
+			other.payload.lspClient === this.payload.lspClient &&
 			(other.payload.pickerSeed || "") === (this.payload.pickerSeed || "")
 		);
 	}
@@ -90,14 +94,10 @@ export function isViewEditable(view: EditorView): boolean {
 }
 
 export function hasLspColorProvider(view: EditorView): boolean {
-	const lsp = LSPPlugin.get(view) as {
-		client?: {
-			connected?: boolean;
-			serverCapabilities?: { colorProvider?: boolean | object } | null;
-		};
-	} | null;
-	return !!(
-		lsp?.client?.connected && lsp.client.serverCapabilities?.colorProvider
+	return LSPPlugin.getAll(view, "documentColor").some(
+		(lsp) =>
+			lsp.client.connected &&
+			!!lsp.client.serverCapabilities?.colorProvider,
 	);
 }
 

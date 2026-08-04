@@ -1,5 +1,8 @@
 import { getIndentUnit, indentUnit } from "@codemirror/language";
-import type { LSPClientExtension } from "@codemirror/lsp-client";
+import type {
+  LSPClientExtension,
+  LSPPluginOptions,
+} from "@codemirror/lsp-client";
 import {
   LSPClient,
   LSPPlugin,
@@ -272,6 +275,22 @@ function buildBuiltinExtensions(
   return { extensions, diagnosticsExtension };
 }
 
+function buildPluginOptions(server: LspServerDefinition): LSPPluginOptions {
+  const builtin = server.clientConfig?.builtinExtensions ?? {};
+  return {
+    priority: server.priority,
+    features: {
+      completion: builtin.completion !== false,
+      hover: builtin.hover !== false,
+      signatureHelp: builtin.signature !== false,
+      diagnostics: builtin.diagnostics !== false,
+      formatting: builtin.formatting !== false,
+      inlayHint: builtin.inlayHints === true,
+      documentColor: builtin.documentColors !== false,
+    },
+  };
+}
+
 interface InitContext {
   key: string;
   normalizedRootUri: string | null;
@@ -434,6 +453,7 @@ export class LspClientManager {
         const plugin = clientState.client.plugin(
           normalizedUri,
           targetLanguageId,
+          buildPluginOptions(server),
         );
         if (server.clientConfig?.builtinExtensions?.completion !== false) {
           lspExtensions.push(lspCompletionEnabled.of(true));
@@ -442,14 +462,6 @@ export class LspClientManager {
           originalUri && originalUri !== normalizedUri ? [originalUri] : [];
         clientState.attach(normalizedUri, view as EditorView, aliases);
         lspExtensions.push(plugin);
-        if (diagnosticsUiExtension) {
-          lspExtensions.push(
-            lspDiagnosticsAutoSyncExtension(
-              clientState.client,
-              normalizedUri,
-            ),
-          );
-        }
       } catch (error) {
         console.error(
           `Failed to initialize LSP client for ${server.id}`,
@@ -459,6 +471,7 @@ export class LspClientManager {
     }
 
     if (diagnosticsUiExtension && lspExtensions.length) {
+      lspExtensions.push(lspDiagnosticsAutoSyncExtension());
       lspExtensions.push(...asArray(diagnosticsUiExtension));
     }
 
@@ -508,7 +521,7 @@ export class LspClientManager {
         const capabilities = state.client.serverCapabilities;
         if (!capabilities?.documentFormattingProvider) continue;
         state.attach(normalizedUri, view);
-        const plugin = LSPPlugin.get(view);
+        const plugin = LSPPlugin.get(view, state.client);
         if (!plugin) continue;
         plugin.client.sync();
         const edits = await state.client.request<
@@ -1140,11 +1153,22 @@ export class LspClientManager {
       logLspInfo(`[LSP:${server.id}] attached to ${uri}${suffix}`);
     };
 
+    const clearClientDiagnostics = (view: EditorView): void => {
+      try {
+        view.dispatch({ effects: clearDiagnosticsEffect(client) });
+      } catch {
+        /* View may already be destroyed or may not have diagnostics state. */
+      }
+    };
+
     const dispose = async (): Promise<void> => {
       if (disposed) return;
       disposed = true;
       disposePullDiagnostics(client);
       this.#clients.delete(key);
+      for (const views of fileRefs.values()) {
+        for (const view of views) clearClientDiagnostics(view);
+      }
       try {
         client.disconnect();
       } catch (error) {
@@ -1161,7 +1185,10 @@ export class LspClientManager {
       const actualUri = uriAliases.get(uri) ?? uri;
       const existing = fileRefs.get(actualUri);
       if (!existing) return;
-      if (view) existing.delete(view);
+      if (view) {
+        existing.delete(view);
+        clearClientDiagnostics(view);
+      }
       if (!view || !existing.size) {
         fileRefs.delete(actualUri);
         for (const [alias, target] of uriAliases.entries()) {

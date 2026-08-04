@@ -282,6 +282,8 @@ export interface LspServerManifest {
 	id?: string;
 	label?: string;
 	enabled?: boolean;
+	/** Higher-priority servers own single-provider features such as formatting. */
+	priority?: number;
 	languages?: string[];
 	transport?: TransportDescriptor;
 	initializationOptions?: Record<string, unknown>;
@@ -338,6 +340,7 @@ export interface LspServerDefinition {
 	id: string;
 	label: string;
 	enabled: boolean;
+	priority: number;
 	languages: string[];
 	transport: TransportDescriptor;
 	initializationOptions?: Record<string, unknown>;
@@ -635,6 +638,7 @@ export interface LSPPluginAPI {
 	unsyncedChanges: {
 		mapPos: (pos: number, assoc?: number, mode?: MapMode) => number | null;
 		empty: boolean;
+		newLength: number;
 	};
 	/** Clear pending changes */
 	clear: () => void;

@@ -21,7 +21,7 @@
     "jsx": "preserve",
     "types": ["node"]
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "packages/lsp-client/src/**/*"],
   "exclude": [
     "node_modules",
     "platforms",

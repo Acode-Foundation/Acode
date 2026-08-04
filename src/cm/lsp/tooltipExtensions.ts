@@ -5,6 +5,7 @@ import {
 	language as languageFacet,
 } from "@codemirror/language";
 import { languages } from "@codemirror/language-data";
+import type { LSPClient } from "@codemirror/lsp-client";
 import { LSPPlugin } from "@codemirror/lsp-client";
 import {
 	type Extension,
@@ -368,22 +369,51 @@ function lspTooltipSource(
 	view: EditorView,
 	pos: number,
 ): Promise<Tooltip | null> {
-	const plugin = LSPPlugin.get(view);
-	if (!plugin) return Promise.resolve(null);
+	const plugins = LSPPlugin.getAll(view, "hover").filter(
+		(plugin) =>
+			plugin.client.hasCapability?.("hoverProvider") !== false,
+	);
+	if (!plugins.length) return Promise.resolve(null);
 
-	return hoverRequest(plugin, pos).then(async (result) => {
-		if (!result) return null;
-		await loadHoverContentLanguages(result.contents);
+	return Promise.allSettled(
+		plugins.map((plugin) => hoverRequest(plugin, pos)),
+	).then(async (settled) => {
+		const results: Array<{ plugin: LSPPlugin; result: Hover }> = [];
+		for (let index = 0; index < settled.length; index++) {
+			const item = settled[index];
+			if (item.status === "fulfilled" && item.value) {
+				results.push({ plugin: plugins[index], result: item.value });
+			} else if (item.status === "rejected") {
+				console.warn("[LSP:Hover] Provider failed", item.reason);
+			}
+		}
+		if (!results.length) return null;
+		await Promise.all(
+			results.map(({ result }) => loadHoverContentLanguages(result.contents)),
+		);
+
+		let from = pos;
+		let to = pos;
+		for (const { result } of results) {
+			if (!result.range) continue;
+			from = Math.min(from, fromPosition(view.state.doc, result.range.start));
+			to = Math.max(to, fromPosition(view.state.doc, result.range.end));
+		}
 
 		return {
-			pos: result.range
-				? fromPosition(view.state.doc, result.range.start)
-				: pos,
-			end: result.range ? fromPosition(view.state.doc, result.range.end) : pos,
+			pos: from,
+			end: to,
 			create() {
 				const dom = document.createElement("div");
 				dom.className = "cm-lsp-hover-tooltip cm-lsp-documentation";
-				dom.innerHTML = renderTooltipContent(plugin, result.contents);
+				for (let index = 0; index < results.length; index++) {
+					if (index) dom.appendChild(document.createElement("hr"));
+					const section = dom.appendChild(document.createElement("div"));
+					section.innerHTML = renderTooltipContent(
+						results[index].plugin,
+						results[index].result.contents,
+					);
+				}
 				return { dom };
 			},
 			above: true,
@@ -461,6 +491,7 @@ class SignatureState {
 		readonly data: LspSignatureHelp,
 		readonly active: number,
 		readonly tooltip: Tooltip,
+		readonly client: LSPClient,
 	) {}
 }
 
@@ -468,17 +499,19 @@ const signatureEffect = StateEffect.define<{
 	data: LspSignatureHelp;
 	active: number;
 	pos: number;
+	client: LSPClient;
 } | null>();
 
 function signatureTooltip(
 	data: LspSignatureHelp,
 	active: number,
 	pos: number,
+	client: LSPClient,
 ): Tooltip {
 	return {
 		pos,
 		above: true,
-		create: (view) => drawSignatureTooltip(view, data, active),
+		create: (view) => drawSignatureTooltip(view, data, active, client),
 	};
 }
 
@@ -497,7 +530,9 @@ const signatureState = StateField.define<SignatureState | null>({
 							effect.value.data,
 							effect.value.active,
 							effect.value.pos,
+							effect.value.client,
 						),
+						effect.value.client,
 					);
 				}
 				return null;
@@ -505,10 +540,15 @@ const signatureState = StateField.define<SignatureState | null>({
 		}
 
 		if (value && tr.docChanged) {
-			return new SignatureState(value.data, value.active, {
-				...value.tooltip,
-				pos: tr.changes.mapPos(value.tooltip.pos),
-			});
+			return new SignatureState(
+				value.data,
+				value.active,
+				{
+					...value.tooltip,
+					pos: tr.changes.mapPos(value.tooltip.pos),
+				},
+				value.client,
+			);
 		}
 
 		return value;
@@ -521,6 +561,7 @@ function drawSignatureTooltip(
 	view: EditorView,
 	data: LspSignatureHelp,
 	active: number,
+	client: LSPClient,
 ) {
 	const dom = document.createElement("div");
 	dom.className = "cm-lsp-signature-tooltip";
@@ -570,7 +611,7 @@ function drawSignatureTooltip(
 	}
 
 	if (signature.documentation) {
-		const plugin = LSPPlugin.get(view);
+		const plugin = LSPPlugin.get(view, client);
 		if (plugin) {
 			const docs = dom.appendChild(document.createElement("div"));
 			docs.className = "cm-lsp-signature-documentation cm-lsp-documentation";
@@ -602,7 +643,10 @@ const signaturePlugin = ViewPlugin.fromClass(
 				}
 			}
 
-			const plugin = LSPPlugin.get(update.view);
+			const plugin = LSPPlugin.getAll(update.view, "signatureHelp").find(
+				(candidate) =>
+					candidate.client.hasCapability?.("signatureHelpProvider") !== false,
+			);
 			if (!plugin) return;
 
 			const sigState = update.view.state.field(signatureState);
@@ -700,6 +744,7 @@ const signaturePlugin = ViewPlugin.fromClass(
 								data: result,
 								active,
 								pos: same ? current!.tooltip.pos : request.pos,
+								client: plugin.client,
 							}),
 						});
 					} else if (view.state.field(signatureState, false)) {
@@ -760,7 +805,10 @@ export const showSignatureHelp: Command = (view) => {
 	const field = view.state.field(signatureState);
 	if (!plugin || field === undefined) return false;
 
-	const lspPlugin = LSPPlugin.get(view);
+	const lspPlugin = LSPPlugin.getAll(view, "signatureHelp").find(
+		(candidate) =>
+			candidate.client.hasCapability?.("signatureHelpProvider") !== false,
+	);
 	if (!lspPlugin) return false;
 
 	plugin.startRequest(lspPlugin, {
@@ -780,6 +828,7 @@ export const nextSignature: Command = (view) => {
 				data: field.data,
 				active: field.active + 1,
 				pos: field.tooltip.pos,
+				client: field.client,
 			}),
 		});
 	}
@@ -795,6 +844,7 @@ export const prevSignature: Command = (view) => {
 				data: field.data,
 				active: field.active - 1,
 				pos: field.tooltip.pos,
+				client: field.client,
 			}),
 		});
 	}
@@ -807,7 +857,13 @@ export const signatureKeymap: readonly KeyBinding[] = [
 	{ key: "Mod-Shift-ArrowDown", run: nextSignature },
 ];
 
+const defaultHoverTooltipsExtension: Extension = [
+	hoverTooltip(lspTooltipSource, { hideOnChange: true }),
+	closeHoverOnInteraction,
+];
+
 export function hoverTooltips(config: { hoverTime?: number } = {}): Extension {
+	if (config.hoverTime == null) return defaultHoverTooltipsExtension;
 	return [
 		hoverTooltip(lspTooltipSource, {
 			hideOnChange: true,
