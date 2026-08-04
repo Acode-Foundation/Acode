@@ -69,9 +69,21 @@ class LanguageModeRecommendations {
 				),
 			),
 		)
-			.then((response) => (response.ok ? response.json() : []))
+			.then((response) => {
+				if (!response.ok) {
+					throw new Error(`Plugin registry request failed: ${response.status}`);
+				}
+				return response.json();
+			})
 			.then((plugins) => Array.isArray(plugins) && plugins.length > 0)
-			.catch(() => false);
+			.catch(() => {
+				// Do not let a temporary network or server failure suppress this
+				// recommendation for the rest of the app session.
+				if (this.availabilityCache.get(keyword) === availability) {
+					this.availabilityCache.delete(keyword);
+				}
+				return false;
+			});
 
 		this.availabilityCache.set(keyword, availability);
 		return availability;

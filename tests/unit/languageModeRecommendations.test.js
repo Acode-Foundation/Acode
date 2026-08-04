@@ -62,4 +62,32 @@ describe("language mode recommendations", () => {
 			expect(notificationManager.pushNotification).toHaveBeenCalledOnce();
 		});
 	});
+
+	it.each([
+		["network errors", () => Promise.reject(new Error("offline"))],
+		["server errors", () => Promise.resolve({ ok: false, status: 503 })],
+	])("retries after transient %s", async (_, failedResponse) => {
+		globalThis.fetch = vi
+			.fn()
+			.mockImplementationOnce(failedResponse)
+			.mockResolvedValueOnce({
+				ok: true,
+				json: async () => [{ id: "recovered-language-mode" }],
+			});
+
+		const keyword = `retryable-${crypto.randomUUID()}`;
+		recommend(`test.${keyword}`);
+
+		await vi.waitFor(() => {
+			expect(globalThis.fetch).toHaveBeenCalledOnce();
+		});
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		recommend(`test.${keyword}`);
+
+		await vi.waitFor(() => {
+			expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+			expect(notificationManager.pushNotification).toHaveBeenCalledOnce();
+		});
+	});
 });
