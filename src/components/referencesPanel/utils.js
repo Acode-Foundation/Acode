@@ -254,24 +254,34 @@ export function resolveContentUriForFileUri(fileUri) {
 		}
 
 		if (rootUrl.startsWith("sftp:")) {
-			let rootPath;
-			try {
-				rootPath = Url.pathname(rootUrl).replace(/\/+$/, "");
-			} catch {
-				continue;
-			}
-			if (!rootPath) continue;
-
-			if (targetPath === rootPath) return rootUrl;
-			if (targetPath.startsWith(`${rootPath}/`)) {
-				const suffix = targetPath.slice(rootPath.length);
-				const base = rootUrl.slice(
-					0,
-					rootUrl.indexOf(rootPath) + rootPath.length,
-				);
-				return base + suffix;
-			}
-		}
+    	let parts;
+    	try {
+    		parts = Url.decodeUrl(rootUrl);
+    	} catch {
+    		continue;
+    	}
+    	const rootPath = (parts.pathname || "").replace(/\/+$/, "");
+    	if (!rootPath) continue;
+    
+    	let childPath = null;
+    	if (targetPath === rootPath) {
+    		childPath = rootPath;
+    	} else if (targetPath.startsWith(`${rootPath}/`)) {
+    		childPath = targetPath;
+    	} else {
+    		continue;
+    	}
+    
+    	return Url.formate({
+    		protocol: "sftp:",
+    		hostname: parts.hostname,
+    		username: parts.username,
+    		password: parts.password,
+    		port: parts.port,
+    		path: childPath,
+    		query: parts.query,
+    	});
+    }
 	}
 
 	return null;

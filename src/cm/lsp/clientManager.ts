@@ -191,11 +191,6 @@ function connectClient(
   initializationOptions?: Record<string, unknown>,
   rootUri?: string | null,
 ): void {
-<<<<<<< HEAD
-  const hasInitializationOptions =
-    !!initializationOptions && Object.keys(initializationOptions).length > 0;
-  if (!hasInitializationOptions && !rootUri) {
-=======
   const workspaceFolders = rootUri
     ? [{ uri: rootUri, name: deriveFolderName(rootUri) }]
     : undefined;
@@ -204,7 +199,6 @@ function connectClient(
     (!initializationOptions || !Object.keys(initializationOptions).length) &&
     !workspaceFolders
   ) {
->>>>>>> 6b3c8154 (dev: custom lsp support patches implemententation)
     client.connect(transport);
     return;
   }
@@ -224,19 +218,8 @@ function connectClient(
     if (method === "initialize" && isPlainObject(params)) {
       params = {
         ...params,
-<<<<<<< HEAD
-        ...(hasInitializationOptions ? { initializationOptions } : {}),
-        ...(rootUri
-          ? {
-              workspaceFolders: [
-                { uri: rootUri, name: workspaceName(rootUri) },
-              ],
-            }
-          : {}),
-=======
         ...(initializationOptions ? { initializationOptions } : {}),
         ...(workspaceFolders ? { workspaceFolders } : {}),
->>>>>>> 6b3c8154 (dev: custom lsp support patches implemententation)
       } as Params;
     }
     return originalRequestInner<Params, Result>(method, params, mapped);
@@ -249,15 +232,6 @@ function connectClient(
   }
 }
 
-<<<<<<< HEAD
-function workspaceName(rootUri: string): string {
-  const trimmed = rootUri.replace(/\/+$/, "");
-  const encodedName = trimmed.slice(trimmed.lastIndexOf("/") + 1);
-  try {
-    return decodeURIComponent(encodedName) || "workspace";
-  } catch {
-    return encodedName || "workspace";
-=======
 function deriveFolderName(uri: string): string {
   try {
     const decoded = decodeURIComponent(uri);
@@ -266,7 +240,6 @@ function deriveFolderName(uri: string): string {
     return segments[segments.length - 1] || decoded;
   } catch {
     return uri;
->>>>>>> 6b3c8154 (dev: custom lsp support patches implemententation)
   }
 }
 
@@ -841,9 +814,6 @@ console.log(
         },
         workspace: {
           configuration: true,
-<<<<<<< HEAD
-          workspaceFolders: true,
-=======
           applyEdit: true,
           workspaceFolders: true,
         },
@@ -854,7 +824,6 @@ console.log(
               properties: ["edit"],
             },
           },
->>>>>>> 6b3c8154 (dev: custom lsp support patches implemententation)
         },
       },
     };
@@ -1103,21 +1072,11 @@ console.log(
       client = new LSPClient(clientConfig) as ExtendedLSPClient;
       client.__acodeServerId = server.id;
       connectClient(
-<<<<<<< HEAD
-        client,
-        transportHandle.transport,
-        initializationOptions,
-        scope === "workspace" && server.useWorkspaceFolders
-          ? null
-          : normalizedRootUri,
-      );
-=======
   client,
   transportHandle.transport,
   initializationOptions,
   normalizedRootUri,
 );
->>>>>>> 6b3c8154 (dev: custom lsp support patches implemententation)
       await waitForInitialization(client.initializing, signal, server.id);
       // New: push config the same way ALC always did
       console.log("### CONFIG PUSH ATTEMPT ###");

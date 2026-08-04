@@ -234,7 +234,7 @@ async function applyWorkspaceEditToContext(
 	}
 	if (failures.length) {
 		return {
-			applied: true,
+			applied: false,
 			failureReason: `Applied to ${appliedCount} file(s); failed: ${failures.join(", ")}`,
 		};
 	}
