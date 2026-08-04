@@ -1,9 +1,14 @@
-const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const os = require("node:os");
-const path = require("node:path");
-const test = require("node:test");
-const { validateAdmobBundle } = require("./checkAdmobBundle");
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import { createRequire } from "node:module";
+import os from "node:os";
+import path from "node:path";
+import { onTestFinished, test } from "vitest";
+
+const requireFromTest = createRequire(import.meta.url);
+const { validateAdmobBundle } = requireFromTest(
+	"../../utils/scripts/checkAdmobBundle.js",
+);
 
 function createFixture(bundle) {
 	const rootDir = fs.mkdtempSync(path.join(os.tmpdir(), "acode-admob-bundle-"));
@@ -25,7 +30,7 @@ function createFixture(bundle) {
 	};
 }
 
-test("accepts a self-contained Cordova bundle with the privacy API", (t) => {
+test("accepts a self-contained Cordova bundle with the privacy API", () => {
 	const fixture = createFixture(`
 		const cordova = require("cordova");
 		const channel = require("cordova/channel");
@@ -33,7 +38,7 @@ test("accepts a self-contained Cordova bundle with the privacy API", (t) => {
 		function gatherConsent() {}
 		function showOptions() {}
 	`);
-	t.after(fixture.remove);
+	onTestFinished(fixture.remove);
 
 	assert.deepEqual(validateAdmobBundle(fixture), {
 		bytes: fs.statSync(fixture.bundlePath).size,
@@ -41,13 +46,13 @@ test("accepts a self-contained Cordova bundle with the privacy API", (t) => {
 	});
 });
 
-test("rejects unresolved relative imports", (t) => {
+test("rejects unresolved relative imports", () => {
 	const fixture = createFixture(`
 		require("./ads/base");
 		function gatherConsent() {}
 		function showOptions() {}
 	`);
-	t.after(fixture.remove);
+	onTestFinished(fixture.remove);
 
 	assert.throws(
 		() => validateAdmobBundle(fixture),

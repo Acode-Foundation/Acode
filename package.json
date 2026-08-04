@@ -17,14 +17,9 @@
     "format": "biome format --write",
     "check": "biome check --write",
     "check:admob-bundle": "node utils/scripts/checkAdmobBundle.js",
-    "test": "npm run test:unit && npm run test:admob && npm run test:dev && npm run test:config",
-    "test:admob": "node --test src/test/admob/*.test.mjs",
-    "test:admob:native": "node utils/scripts/testAdmobNative.js",
-    "test:config": "node --test utils/config.test.js utils/scripts/checkAdmobBundle.test.js",
-    "test:dev": "node --test utils/scripts/dev.test.js utils/scripts/testAdmobNative.test.js",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "updateAce": "node ./utils/updateAce.js",
-    "test:unit": "vitest run",
     "test:watch": "vitest"
   },
   "keywords": [

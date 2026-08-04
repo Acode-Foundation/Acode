@@ -109,9 +109,21 @@ module.exports = (env, options) => {
       resourceQuery: { not: [/raw/, /inline/] },
       type: 'asset/resource',
     },
-    // Regular CSS/SCSS files
+    // Regular CSS files do not need Sass processing. Passing icon CSS through
+    // Sass converts escaped private-use code points into literal characters in
+    // production, which Cordova's asset WebView renders as missing glyphs.
     {
-      test: /\.(?<!\.m\.)(sa|sc|c)ss$/,
+      test: /(?<!\.m)\.css$/,
+      type: 'javascript/auto',
+      use: [
+        rspack.CssExtractRspackPlugin.loader,
+        'css-loader',
+        'postcss-loader',
+      ],
+    },
+    // Regular Sass/SCSS files
+    {
+      test: /\.(?<!\.m\.)(sa|sc)ss$/,
       type: 'javascript/auto',
       use: [
         rspack.CssExtractRspackPlugin.loader,

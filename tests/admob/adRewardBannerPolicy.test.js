@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import {
 	createRewardStateLifecycle,
 	isRewardPassActive,
-} from "../../lib/adRewardBannerPolicy.mjs";
-import { BANNER_SUPPRESSION_REASON } from "../../lib/bannerVisibilityController.mjs";
+} from "../../src/lib/adRewardBannerPolicy.mjs";
+import { BANNER_SUPPRESSION_REASON } from "../../src/lib/bannerVisibilityController.mjs";
 
 function createHarness({
 	initialState = { isActive: false, adFreeUntil: 0 },

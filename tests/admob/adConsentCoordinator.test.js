@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import {
 	AdConsentCoordinator,
 	EMPTY_PRIVACY_STATE,
-} from "../../lib/adConsentCoordinator.mjs";
+} from "../../src/lib/adConsentCoordinator.mjs";
 
 function createHarness({
 	gatherState,

@@ -1,8 +1,11 @@
-const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const os = require("node:os");
-const path = require("node:path");
-const test = require("node:test");
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import { createRequire } from "node:module";
+import os from "node:os";
+import path from "node:path";
+import { onTestFinished, test } from "vitest";
+
+const requireFromTest = createRequire(import.meta.url);
 const {
 	ADMOB_PLUGIN_ID,
 	ID_FREE,
@@ -10,7 +13,7 @@ const {
 	LEGACY_CONSENT_PLUGIN_ID,
 	configureProject,
 	getAdmobSyncPlan,
-} = require("./config");
+} = requireFromTest("../../utils/config.js");
 
 const TRACKED_VARIANT_FILES = [
 	"package.json",
@@ -221,12 +224,12 @@ test("plans saved removal only for installed dependency state", () => {
 	);
 });
 
-test("free builds reinstall transient AdMob without changing tracked metadata", async (t) => {
+test("free builds reinstall transient AdMob without changing tracked metadata", async () => {
 	const fixture = createFixture({
 		id: ID_FREE,
 		admobInstalled: true,
 	});
-	t.after(fixture.remove);
+	onTestFinished(fixture.remove);
 	const before = fixture.snapshot();
 	const commands = [];
 
@@ -250,12 +253,12 @@ test("free builds reinstall transient AdMob without changing tracked metadata", 
 	);
 });
 
-test("paid builds remove transient AdMob and refresh changed identity", async (t) => {
+test("paid builds remove transient AdMob and refresh changed identity", async () => {
 	const fixture = createFixture({
 		id: ID_FREE,
 		admobInstalled: true,
 	});
-	t.after(fixture.remove);
+	onTestFinished(fixture.remove);
 	fs.mkdirSync(path.join(fixture.rootDir, "platforms/android"), {
 		recursive: true,
 	});
@@ -275,7 +278,7 @@ test("paid builds remove transient AdMob and refresh changed identity", async (t
 	]);
 });
 
-test("free and paid builds remove installed saved legacy consent", async (t) => {
+test("free and paid builds remove installed saved legacy consent", async () => {
 	for (const variant of ["free", "paid"]) {
 		const fixture = createFixture({
 			id: variant === "free" ? ID_FREE : ID_PAID,
@@ -284,7 +287,7 @@ test("free and paid builds remove installed saved legacy consent", async (t) => 
 			cordovaPlugins: [LEGACY_CONSENT_PLUGIN_ID],
 			configPlugins: [LEGACY_CONSENT_PLUGIN_ID],
 		});
-		t.after(fixture.remove);
+		onTestFinished(fixture.remove);
 		const commands = [];
 
 		await configureProject({
@@ -307,12 +310,12 @@ test("free and paid builds remove installed saved legacy consent", async (t) => 
 	}
 });
 
-test("dependency-only plugin state is removed through npm", async (t) => {
+test("dependency-only plugin state is removed through npm", async () => {
 	const fixture = createFixture({
 		id: ID_PAID,
 		dependencyPlugins: [LEGACY_CONSENT_PLUGIN_ID, ADMOB_PLUGIN_ID],
 	});
-	t.after(fixture.remove);
+	onTestFinished(fixture.remove);
 	const commands = [];
 
 	await configureProject({
@@ -347,13 +350,13 @@ test("dependency-only plugin state is removed through npm", async (t) => {
 	);
 });
 
-test("declaration-only state is cleaned without package commands", async (t) => {
+test("declaration-only state is cleaned without package commands", async () => {
 	const fixture = createFixture({
 		id: ID_PAID,
 		cordovaPlugins: [LEGACY_CONSENT_PLUGIN_ID, ADMOB_PLUGIN_ID],
 		configPlugins: [LEGACY_CONSENT_PLUGIN_ID, ADMOB_PLUGIN_ID],
 	});
-	t.after(fixture.remove);
+	onTestFinished(fixture.remove);
 	const packageLockBefore = fixture.read("package-lock.json");
 	const commands = [];
 
@@ -371,9 +374,9 @@ test("declaration-only state is cleaned without package commands", async (t) => 
 	assert.equal(fixture.read("package-lock.json"), packageLockBefore);
 });
 
-test("repeated free configuration converges to identical tracked files", async (t) => {
+test("repeated free configuration converges to identical tracked files", async () => {
 	const fixture = createFixture({ id: ID_FREE });
-	t.after(fixture.remove);
+	onTestFinished(fixture.remove);
 
 	await configureProject({
 		rootDir: fixture.rootDir,
@@ -400,12 +403,12 @@ test("repeated free configuration converges to identical tracked files", async (
 	);
 });
 
-test("fails when a successful command leaves dependency state behind", async (t) => {
+test("fails when a successful command leaves dependency state behind", async () => {
 	const fixture = createFixture({
 		id: ID_PAID,
 		dependencyPlugins: [ADMOB_PLUGIN_ID],
 	});
-	t.after(fixture.remove);
+	onTestFinished(fixture.remove);
 
 	await assert.rejects(
 		configureProject({

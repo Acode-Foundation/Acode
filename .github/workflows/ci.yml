@@ -124,7 +124,8 @@ jobs:
           NPM_CONFIG_LEGACY_PEER_DEPS=true npx cordova plugin add src/plugins/admob --nosave
 
       - name: Run AdMob Android unit tests
-        run: npm run test:admob:native
+        run: ./gradlew :app:testDebugUnitTest
+        working-directory: platforms/android
 
       - name: Verify native setup kept tracked sources clean
         run: |

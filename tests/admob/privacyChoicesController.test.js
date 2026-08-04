@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import {
 	PRIVACY_CHOICES_KEY,
 	bindPrivacyChoices,
-} from "../../lib/privacyChoicesController.mjs";
+} from "../../src/lib/privacyChoicesController.mjs";
 
 function createHarness() {
 	let listener;

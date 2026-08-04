@@ -1,6 +1,9 @@
-const assert = require("node:assert/strict");
-const test = require("node:test");
-const { getAppVariant } = require("./dev");
+import assert from "node:assert/strict";
+import { createRequire } from "node:module";
+import { test } from "vitest";
+
+const requireFromTest = createRequire(import.meta.url);
+const { getAppVariant } = requireFromTest("../../utils/scripts/dev.js");
 
 test("recognizes the explicit free variant case-insensitively", () => {
 	assert.equal(getAppVariant(["android", "free"]), "free");

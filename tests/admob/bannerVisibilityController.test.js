@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import {
 	BANNER_SUPPRESSION_REASON,
 	BannerVisibilityController,
-} from "../../lib/bannerVisibilityController.mjs";
+} from "../../src/lib/bannerVisibilityController.mjs";
 
 function createHarness() {
 	let activePage = null;

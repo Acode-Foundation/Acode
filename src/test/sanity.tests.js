@@ -1,9 +1,13 @@
+import { getModeForPath } from "../cm/modelist";
 import {
 	clearModifierState,
 	clearQuickToolsButtonFeedback,
 	removeActionStackEntries,
 } from "../handlers/quickToolsState";
-import { getLanguageModeRecommendationSearchKeyword } from "../lib/languageModeRecommendations";
+import {
+	getLanguageModeRecommendationSearchKeyword,
+	shouldRecommendLanguageModeExtension,
+} from "../lib/languageModeRecommendations";
 import { isVersionGreater } from "../utils/version";
 import { TestRunner } from "./tester";
 
@@ -85,6 +89,35 @@ export async function runSanityTests(writeOutput) {
 			getLanguageModeRecommendationSearchKeyword("README"),
 			"",
 			"Extensionless non-dotfiles should not request plugin recommendations",
+		);
+		test.assertEqual(
+			getLanguageModeRecommendationSearchKeyword("example"),
+			"",
+			"Arbitrary extensionless names should not request plugin recommendations",
+		);
+	});
+
+	runner.test("Language mode recommendation candidates", (test) => {
+		test.assert(
+			!shouldRecommendLanguageModeExtension(
+				"example.html ",
+				getModeForPath("example.html "),
+			),
+			"Built-in language extensions should not request plugins",
+		);
+		test.assert(
+			!shouldRecommendLanguageModeExtension(
+				"example.py ",
+				getModeForPath("example.py "),
+			),
+			"Built-in Python support should not request a plugin",
+		);
+		test.assert(
+			shouldRecommendLanguageModeExtension(
+				"example.acode-unknown-mode",
+				getModeForPath("example.acode-unknown-mode"),
+			),
+			"Unknown language extensions should remain eligible for recommendations",
 		);
 	});
 

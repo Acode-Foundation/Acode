@@ -3,11 +3,11 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 import { transformSync } from "@babel/core";
-import test from "node:test";
+import { test } from "vitest";
 
 function loadBannerModule() {
 	const sourcePath = fileURLToPath(
-		new URL("../../plugins/admob/src/www/ads/banner.ts", import.meta.url),
+		new URL("../../src/plugins/admob/src/www/ads/banner.ts", import.meta.url),
 	);
 	const source = readFileSync(sourcePath, "utf8");
 	const { code } = transformSync(source, {
