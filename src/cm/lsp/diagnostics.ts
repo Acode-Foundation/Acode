@@ -61,6 +61,13 @@ function supportsPullDiagnostics(client: LSPClient): boolean {
 	return !!client.serverCapabilities?.diagnosticProvider;
 }
 
+function diagnosticsEnabledForFile(client: LSPClient, uri: string): boolean {
+	const file = client.workspace.getFile(uri);
+	const view = file?.getView();
+	const plugin = view && LSPPlugin.get(view, client);
+	return !!plugin?.featureEnabled("diagnostics");
+}
+
 function isCoarsePointerDevice(): boolean {
 	if (typeof window !== "undefined") {
 		try {
@@ -255,10 +262,13 @@ function applyDiagnostics(
 	}
 	const view = file.getView();
 	if (!view) return false;
-	const plugin = LSPPlugin.get(view, client) as LSPPluginAPI | null;
-	if (!plugin) return false;
+	const plugin = LSPPlugin.get(view, client);
+	if (!plugin || !plugin.featureEnabled("diagnostics")) return false;
 
-	const diagnostics = collectLspDiagnostics(plugin, rawDiagnostics);
+	const diagnostics = collectLspDiagnostics(
+		plugin as unknown as LSPPluginAPI,
+		rawDiagnostics,
+	);
 	const current =
 		view.state.field(lspPublishedDiagnostics, false)?.get(client) ?? [];
 	if (sameDiagnostics(current, diagnostics)) {
@@ -277,7 +287,12 @@ async function pullDiagnostics(
 	uri: string,
 	generation: number,
 ): Promise<void> {
-	if (!supportsPullDiagnostics(client)) return;
+	if (
+		!supportsPullDiagnostics(client) ||
+		!diagnosticsEnabledForFile(client, uri)
+	) {
+		return;
+	}
 
 	client.sync();
 	const clientWithWorkspace = client as unknown as LSPClientWithWorkspace;
@@ -354,6 +369,7 @@ export function schedulePullDiagnostics(
 	uri: string,
 	delay = PULL_DIAGNOSTICS_DELAY,
 ): void {
+	if (!diagnosticsEnabledForFile(client, uri)) return;
 	if (!supportsPullDiagnostics(client)) {
 		if (client.connected && !client.serverCapabilities) {
 			void client.initializing
@@ -435,7 +451,7 @@ export function lspDiagnosticsAutoSyncExtension(): Extension {
 
 			flush(): void {
 				this.pending = null;
-				for (const plugin of LSPPlugin.getAll(this.view)) {
+				for (const plugin of LSPPlugin.getAll(this.view, "diagnostics")) {
 					plugin.client.sync();
 					schedulePullDiagnostics(plugin.client, plugin.uri, 0);
 				}
@@ -477,7 +493,8 @@ function lspLinterSource(view: EditorView): Diagnostic[] {
 	const stored = view.state.field(lspPublishedDiagnostics);
 	const diagnostics: Diagnostic[] = [];
 	for (const [client, items] of stored) {
-		if (LSPPlugin.get(view, client)) diagnostics.push(...items);
+		const plugin = LSPPlugin.get(view, client);
+		if (plugin?.featureEnabled("diagnostics")) diagnostics.push(...items);
 	}
 	return diagnostics;
 }

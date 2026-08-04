@@ -11,6 +11,13 @@ import {
 	serverCompletionSource,
 	serverDiagnostics,
 } from "@codemirror/lsp-client";
+import {
+	getLspDiagnostics,
+	lspDiagnosticsAutoSyncExtension,
+	lspDiagnosticsClientExtension,
+	lspDiagnosticsUiExtension,
+	schedulePullDiagnostics,
+} from "cm/lsp/diagnostics";
 import {afterEach, describe, expect, it, vi} from "vitest";
 
 const views = [];
@@ -18,6 +25,7 @@ const views = [];
 afterEach(() => {
 	while (views.length) views.pop().destroy();
 	document.body.replaceChildren();
+	vi.useRealTimers();
 	vi.restoreAllMocks();
 });
 
@@ -255,5 +263,66 @@ describe("multiple LSP clients on one editor", () => {
 		const remaining = [];
 		forEachDiagnostic(view.state, (item) => remaining.push(item.message));
 		expect(remaining).toEqual(["Tailwind CSS"]);
+	});
+
+	it("does not synchronize a server whose diagnostics feature is disabled", async () => {
+		vi.useFakeTimers();
+		const enabled = client();
+		const disabled = client();
+		enabled.sync = vi.fn();
+		disabled.sync = vi.fn();
+		const uri = "file:///workspace/example.ts";
+		const view = editor("const x = 1", [
+			enabled.plugin(uri, "typescript"),
+			disabled.plugin(uri, "typescript", {
+				features: {diagnostics: false},
+			}),
+			lspDiagnosticsAutoSyncExtension(),
+		]);
+
+		await vi.advanceTimersByTimeAsync(0);
+		expect(enabled.sync).toHaveBeenCalledOnce();
+		expect(disabled.sync).not.toHaveBeenCalled();
+
+		view.dispatch({changes: {from: view.state.doc.length, insert: ";"}});
+		await vi.advanceTimersByTimeAsync(500);
+		expect(enabled.sync).toHaveBeenCalledTimes(2);
+		expect(disabled.sync).not.toHaveBeenCalled();
+	});
+
+	it("rejects pull and push diagnostics from a disabled provider", () => {
+		const disabled = client();
+		disabled.serverCapabilities = {diagnosticProvider: {}};
+		disabled.request = vi.fn();
+		const uri = "file:///workspace/example.ts";
+		const view = editor("const x = 1", [
+			disabled.plugin(uri, "typescript", {
+				features: {diagnostics: false},
+			}),
+			lspDiagnosticsUiExtension(false),
+		]);
+
+		schedulePullDiagnostics(disabled, uri, 0);
+		expect(disabled.request).not.toHaveBeenCalled();
+
+		const publish =
+			lspDiagnosticsClientExtension().notificationHandlers[
+				"textDocument/publishDiagnostics"
+			];
+		publish(disabled, {
+			uri,
+			version: 0,
+			diagnostics: [
+				{
+					message: "must stay hidden",
+					severity: 2,
+					range: {
+						start: {line: 0, character: 6},
+						end: {line: 0, character: 7},
+					},
+				},
+			],
+		});
+		expect(getLspDiagnostics(view.state)).toEqual([]);
 	});
 });
