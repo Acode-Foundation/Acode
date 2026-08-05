@@ -14,8 +14,6 @@ import type {
 import type { Position, Range } from "./types";
 import { addLspLogFor } from "./logs";
 import type AcodeWorkspace from "./workspace";
-import { getLspDiagnostics } from "./diagnostics";
-import type { LspDiagnostic } from "./types";
 
 type CodeActionResponse = (CodeAction | Command)[] | null;
 
@@ -40,33 +38,6 @@ const CODE_ACTION_ICONS: Record<string, string> = {
 	"source.organizeImports": "sort",
 	"source.fixAll": "done_all",
 };
-// Add near the top of codeActions.ts, or reuse if something equivalent exists:
-const severityMap: Record<string, number> = {
-  error: 1,
-  warning: 2,
-  info: 3,
-  hint: 4,
-};
-
-function toWireDiagnostics(
-  plugin: LSPPlugin,
-  diagnostics: LspDiagnostic[],
-): Diagnostic[] {
-  return diagnostics.map((d) => ({
-    range: { start: plugin.toPosition(d.from), end: plugin.toPosition(d.to) },
-    message: d.message,
-    severity: severityMap[d.severity] ?? 1,
-    source: d.source,
-  }));
-}
-function comparePositions(a: LspPosition, b: LspPosition): number {
-  if (a.line !== b.line) return a.line - b.line;
-  return a.character - b.character;
-}
-
-function rangesOverlap(a: LspRange, b: LspRange): boolean {
-  return comparePositions(a.start, b.end) <= 0 && comparePositions(b.start, a.end) <= 0;
-}
 
 function getCodeActionIcon(kind?: CodeActionKind): string {
 	if (!kind) return "icon zap";
@@ -226,12 +197,9 @@ async function applyChangesToFile(
 }
 
 async function applyWorkspaceEdit(
-	view: EditorView,
+	plugin: LSPPlugin,
 	edit: WorkspaceEdit,
 ): Promise<boolean> {
-	const plugin = LSPPlugin.get(view);
-	if (!plugin) return false;
-
 	const workspace = plugin.client.workspace as AcodeWorkspace;
 	if (!workspace) return false;
 
@@ -277,12 +245,9 @@ async function applyWorkspaceEdit(
  * "If both edit and command are supplied, first the edit is applied, then the command is executed"
  */
 async function applyCodeAction(
-	view: EditorView,
+	plugin: LSPPlugin,
 	action: CodeAction,
 ): Promise<boolean> {
-	const plugin = LSPPlugin.get(view);
-	if (!plugin) return false;
-
 	plugin.client.sync();
 
 	// Resolve to get the edit if not already present
@@ -291,7 +256,7 @@ async function applyCodeAction(
 
 	// Step 1: Apply workspace edit if present
 	if (resolved.edit) {
-		success = await applyWorkspaceEdit(view, resolved.edit);
+		success = await applyWorkspaceEdit(plugin, resolved.edit);
 	}
 
 	// Step 2: Execute command if present (after edit per LSP spec)
@@ -312,56 +277,70 @@ export interface CodeActionItem {
 	disabled?: boolean;
 	disabledReason?: string;
 	action: CodeAction | Command;
+	/** Client binding that produced this action; resolution must use it. */
+	plugin: LSPPlugin;
 }
 
 export async function fetchCodeActions(
 	view: EditorView,
 ): Promise<CodeActionItem[]> {
-	const plugin = LSPPlugin.get(view);
-	if (!plugin) return [];
-
-	const capabilities = plugin.client.serverCapabilities;
-	if (!capabilities?.codeActionProvider) return [];
+	const plugins = LSPPlugin.getAll(view, "codeAction").filter(
+		(plugin) => !!plugin.client.serverCapabilities?.codeActionProvider,
+	);
+	if (!plugins.length) return [];
 
 	const { from, to } = view.state.selection.main;
-	const range: LspRange = {
-		start: plugin.toPosition(from),
-		end: plugin.toPosition(to),
-	};
-	
-	const allDiagnostics = getLspDiagnostics(view.state);
-console.log("[CodeAction debug] all diagnostics:", allDiagnostics);
-console.log("[CodeAction debug] requested offsets:", from, to);
-const overlapping = allDiagnostics.filter((d) => d.to >= from && d.from <= to);
-console.log("[CodeAction debug] overlapping after filter:", overlapping);
-  const wireDiagnostics = toWireDiagnostics(plugin, overlapping);
-
-	plugin.client.sync();
-
-	try {
-	  ////const allDiagnostics = view.state.field(lspPublishedDiagnostics, false) ?? [];
-    ////const overlapping = allDiagnostics.filter(d => rangesOverlap(d.range, range)); // range-overlap check needed
-    const response = await requestCodeActions(plugin, range, wireDiagnostics);
-		//const response = await requestCodeActions(plugin, range);
-		if (!response?.length) return [];
-
-		const items: CodeActionItem[] = response.map((item) => {
-			if (isCommand(item)) {
-				return { title: item.title, icon: "terminal", action: item };
-			}
-			return {
-				title: item.title,
-				kind: item.kind,
-				icon: getCodeActionIcon(item.kind),
-				isPreferred: item.isPreferred,
-				disabled: !!item.disabled,
-				disabledReason: item.disabled?.reason,
-				action: item,
+	const settled = await Promise.allSettled(
+		plugins.map(async (plugin): Promise<CodeActionItem[]> => {
+			const range: LspRange = {
+				start: plugin.toPosition(from),
+				end: plugin.toPosition(to),
 			};
-		});
+			plugin.client.sync();
+			const response = await requestCodeActions(plugin, range);
+			if (!response?.length) return [];
+			return response.map((item) => {
+				if (isCommand(item)) {
+					return {
+						title: item.title,
+						icon: "terminal",
+						action: item,
+						plugin,
+					};
+				}
+				return {
+					title: item.title,
+					kind: item.kind,
+					icon: getCodeActionIcon(item.kind),
+					isPreferred: item.isPreferred,
+					disabled: !!item.disabled,
+					disabledReason: item.disabled?.reason,
+					action: item,
+					plugin,
+				};
+			});
+		}),
+	);
 
-		// Sort: preferred first, then quickfixes, then alphabetically
-		items.sort((a, b) => {
+	const items: CodeActionItem[] = [];
+	for (let index = 0; index < settled.length; index++) {
+		const result = settled[index];
+		if (result.status === "fulfilled") {
+			items.push(...result.value);
+		} else {
+			addLspLogFor(
+				plugins[index],
+				"error",
+				"Code action fetch failed",
+				result.reason,
+			);
+			console.error("[LSP:CodeAction] Provider failed:", result.reason);
+		}
+	}
+
+	// Sort: preferred first, then quickfixes, then alphabetically. Stable
+	// sorting preserves server priority for otherwise identical actions.
+	items.sort((a, b) => {
 			if (a.isPreferred && !b.isPreferred) return -1;
 			if (!a.isPreferred && b.isPreferred) return 1;
 			if (a.kind?.startsWith("quickfix") && !b.kind?.startsWith("quickfix"))
@@ -369,21 +348,15 @@ console.log("[CodeAction debug] overlapping after filter:", overlapping);
 			if (!a.kind?.startsWith("quickfix") && b.kind?.startsWith("quickfix"))
 				return 1;
 			return a.title.localeCompare(b.title);
-		});
-
-		return items;
-	} catch (error) {
-		addLspLogFor(plugin, "error", "Code action fetch failed", error);
-		console.error("[LSP:CodeAction] Failed to fetch:", error);
-		return [];
-	}
+	});
+	return items;
 }
 
 export async function executeCodeAction(
 	view: EditorView,
 	item: CodeActionItem,
 ): Promise<boolean> {
-	const plugin = LSPPlugin.get(view);
+	const plugin = LSPPlugin.get(view, item.plugin.client);
 	if (!plugin) return false;
 
 	try {
@@ -395,7 +368,7 @@ export async function executeCodeAction(
 		}
 
 		// Handle CodeAction
-		return applyCodeAction(view, item.action);
+		return applyCodeAction(plugin, item.action);
 	} catch (error) {
 		addLspLogFor(plugin, "error", "Code action execution failed", error);
 		console.error("[LSP:CodeAction] Failed to execute:", error);
@@ -404,8 +377,9 @@ export async function executeCodeAction(
 }
 
 export function supportsCodeActions(view: EditorView): boolean {
-	const plugin = LSPPlugin.get(view);
-	return !!plugin?.client.serverCapabilities?.codeActionProvider;
+	return LSPPlugin.getAll(view, "codeAction").some(
+		(plugin) => !!plugin.client.serverCapabilities?.codeActionProvider,
+	);
 }
 
 export async function showCodeActionsMenu(view: EditorView): Promise<boolean> {

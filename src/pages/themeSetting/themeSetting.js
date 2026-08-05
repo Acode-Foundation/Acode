@@ -15,7 +15,6 @@ import actionStack from "lib/actionStack";
 import config from "lib/config";
 import removeAds from "lib/removeAds";
 import appSettings from "lib/settings";
-import { hideAd } from "lib/startAd";
 import CustomTheme from "pages/customTheme";
 import { updateActiveTerminals } from "settings/terminalSettings";
 import ThemeBuilder from "theme/builder";
@@ -72,7 +71,6 @@ export default function () {
 	});
 
 	$page.onhide = () => {
-		hideAd();
 		actionStack.remove("appTheme");
 	};
 

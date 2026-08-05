@@ -171,13 +171,14 @@ function createPlugin(config: InlayHintsConfig) {
 			}
 
 			async fetch(): Promise<void> {
-				const lsp = LSPPlugin.get(this.view) as LSPPluginAPI | null;
-				if (!lsp?.client.connected) return;
-
-				const caps = lsp.client.serverCapabilities;
-				if (!caps?.inlayHintProvider) return;
-
-				lsp.client.sync();
+				const providers = (
+					LSPPlugin.getAll(this.view, "inlayHint") as readonly LSPPluginAPI[]
+				).filter(
+					(lsp) =>
+						lsp.client.connected &&
+						!!lsp.client.serverCapabilities?.inlayHintProvider,
+				);
+				if (!providers.length) return;
 				const id = ++this.reqId;
 				const doc = this.view.state.doc;
 
@@ -190,25 +191,38 @@ function createPlugin(config: InlayHintsConfig) {
 					doc.lineAt(Math.min(doc.length, to)).number + buf,
 				);
 
-				try {
-					const hints = await lsp.client.request<
-						InlayHintParams,
-						InlayHint[] | null
-					>("textDocument/inlayHint", {
-						textDocument: { uri: lsp.uri },
-						range: {
-							start: lsp.toPosition(doc.line(startLn).from),
-							end: lsp.toPosition(doc.line(endLn).to),
-						},
-					});
-
-					if (id !== this.reqId) return;
-
-					const processed = this.process(lsp, hints ?? [], doc.length);
-					this.view.dispatch({ effects: setHints.of(processed) });
-				} catch {
-					// Non-critical - silently ignore
+				const settled = await Promise.allSettled(
+					providers.map(async (lsp) => {
+						lsp.client.sync();
+						const hints = await lsp.client.request<
+							InlayHintParams,
+							InlayHint[] | null
+						>("textDocument/inlayHint", {
+							textDocument: { uri: lsp.uri },
+							range: {
+								start: lsp.toPosition(doc.line(startLn).from),
+								end: lsp.toPosition(doc.line(endLn).to),
+							},
+						});
+						return this.process(lsp, hints ?? [], doc.length);
+					}),
+				);
+				if (id !== this.reqId) return;
+				const processed: ProcessedHint[] = [];
+				const seen = new Set<string>();
+				for (const result of settled) {
+					if (result.status !== "fulfilled") continue;
+					for (const hint of result.value) {
+						const key = `${hint.pos}:${hint.label}`;
+						if (seen.has(key)) continue;
+						seen.add(key);
+						processed.push(hint);
+					}
 				}
+				processed.sort((a, b) => a.pos - b.pos);
+				this.view.dispatch({
+					effects: setHints.of(processed.slice(0, max)),
+				});
 			}
 
 			process(
@@ -326,10 +340,20 @@ export function inlayHintsClientExtension(): LSPClientExtension {
 	};
 }
 
+let defaultInlayHintsEditorExtension: Extension | null = null;
+
 export function inlayHintsEditorExtension(
 	config: InlayHintsConfig = {},
 ): Extension {
 	if (config.enabled === false) return [];
+	if (!Object.keys(config).length) {
+		defaultInlayHintsEditorExtension ??= [
+			hintsField,
+			createPlugin({}),
+			styles,
+		];
+		return defaultInlayHintsEditorExtension;
+	}
 	return [hintsField, createPlugin(config), styles];
 }
 

@@ -23,6 +23,7 @@
 
     <platform name="android">
         <allow-intent href="market:*" />
+        <preference name="GradlePluginKotlinVersion" value="2.3.0" />
         <preference name="fullscreen" value="false" />
         <preference name="SplashScreen" value="none" />
         <preference name="ShowTitle" value="true" />
@@ -54,7 +55,9 @@
 
         <edit-config file="app/src/main/AndroidManifest.xml" mode="merge"
             target="/manifest/application/activity[@android:name='MainActivity']">
-            <activity android:resizeableActivity="true" />
+            <activity
+                android:resizeableActivity="true"
+                android:windowSoftInputMode="adjustResize" />
         </edit-config>
 
         <config-file parent="./application/activity" target="AndroidManifest.xml">
