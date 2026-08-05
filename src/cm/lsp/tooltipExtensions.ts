@@ -29,6 +29,7 @@ import {
 import { highlightCode } from "@lezer/highlight";
 import type {
 	HoverParams,
+	ServerCapabilities,
 	SignatureHelpContext,
 	SignatureHelpParams,
 } from "vscode-languageserver-protocol";
@@ -44,7 +45,6 @@ interface LspClientInternals {
 	config?: {
 		highlightLanguage?: (language: string) => Language | null | undefined;
 	};
-	hasCapability?: (name: string) => boolean;
 }
 
 const SIGNATURE_TRIGGER_DELAY = 120;
@@ -55,6 +55,13 @@ const pluginHoverLanguageLoads = new WeakMap<
 	Mode,
 	Promise<Language | null>
 >();
+
+function clientHasCapability(
+	client: LSPClient,
+	name: keyof ServerCapabilities,
+): boolean {
+	return !client.serverCapabilities || !!client.serverCapabilities[name];
+}
 
 function normalizeLanguageName(value: string): string {
 	return String(value ?? "")
@@ -350,8 +357,7 @@ function closeHoverIfNeeded(view: EditorView): void {
 }
 
 function hoverRequest(plugin: LSPPlugin, pos: number) {
-	const client = plugin.client as typeof plugin.client & LspClientInternals;
-	if (client.hasCapability?.("hoverProvider") === false) {
+	if (!clientHasCapability(plugin.client, "hoverProvider")) {
 		return Promise.resolve(null);
 	}
 
@@ -370,8 +376,7 @@ function lspTooltipSource(
 	pos: number,
 ): Promise<Tooltip | null> {
 	const plugins = LSPPlugin.getAll(view, "hover").filter(
-		(plugin) =>
-			plugin.client.hasCapability?.("hoverProvider") !== false,
+		(plugin) => clientHasCapability(plugin.client, "hoverProvider"),
 	);
 	if (!plugins.length) return Promise.resolve(null);
 
@@ -448,8 +453,7 @@ function getSignatureHelp(
 	pos: number,
 	context: SignatureHelpContext,
 ) {
-	const client = plugin.client as typeof plugin.client & LspClientInternals;
-	if (client.hasCapability?.("signatureHelpProvider") === false) {
+	if (!clientHasCapability(plugin.client, "signatureHelpProvider")) {
 		return Promise.resolve(null);
 	}
 
@@ -645,7 +649,7 @@ const signaturePlugin = ViewPlugin.fromClass(
 
 			const plugin = LSPPlugin.getAll(update.view, "signatureHelp").find(
 				(candidate) =>
-					candidate.client.hasCapability?.("signatureHelpProvider") !== false,
+					clientHasCapability(candidate.client, "signatureHelpProvider"),
 			);
 			if (!plugin) return;
 
@@ -807,7 +811,7 @@ export const showSignatureHelp: Command = (view) => {
 
 	const lspPlugin = LSPPlugin.getAll(view, "signatureHelp").find(
 		(candidate) =>
-			candidate.client.hasCapability?.("signatureHelpProvider") !== false,
+			clientHasCapability(candidate.client, "signatureHelpProvider"),
 	);
 	if (!lspPlugin) return false;
 

@@ -29,7 +29,9 @@
     "plugins": {
       "cordova-clipboard": {},
       "cordova-plugin-device": {},
-      "cordova-plugin-file": {},
+      "cordova-plugin-file": {
+        "ANDROIDX_WEBKIT_VERSION": "1.4.0"
+      },
       "cordova-plugin-server": {},
       "cordova-plugin-ftp": {},
       "cordova-plugin-sdcard": {},
@@ -147,7 +149,7 @@
     "@codemirror/language-data": "^6.5.2",
     "@codemirror/legacy-modes": "^6.5.3",
     "@codemirror/lint": "^6.9.7",
-    "@codemirror/lsp-client": "file:packages/lsp-client",
+    "@codemirror/lsp-client": "git+https://github.com/Acode-Foundation/codemirror-lsp-client.git#db6930c2b6db67e14978f08ae8f5aeb149d29468",
     "@codemirror/search": "^6.7.1",
     "@codemirror/state": "^6.6.0",
     "@codemirror/theme-one-dark": "^6.1.3",
