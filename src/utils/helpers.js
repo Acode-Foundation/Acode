@@ -4,7 +4,7 @@ import alert from "dialogs/alert";
 import escapeStringRegexp from "escape-string-regexp";
 import adRewards from "lib/adRewards";
 import config from "lib/config";
-import { bannerAd, interstitialAd } from "lib/startAd";
+import { interstitialAd, requestBannerForPage } from "lib/startAd";
 import { isBinaryFile } from "./binaryExtensions";
 import { isPlayStoreInstall } from "./installSource";
 import path from "./Path";
@@ -311,12 +311,10 @@ export default {
 	showAd() {
 		if (!this.canShowAds()) return;
 		if (innerHeight * devicePixelRatio <= 600) return;
-		if (!bannerAd || typeof bannerAd.show !== "function") return;
 
 		const $page = tag.getAll("wc-page:not(#root)").pop();
 		if ($page) {
-			bannerAd.active = true;
-			bannerAd.show();
+			requestBannerForPage($page);
 		}
 	},
 	async toInternalUri(uri) {

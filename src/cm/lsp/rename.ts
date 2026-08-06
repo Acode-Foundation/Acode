@@ -55,7 +55,9 @@ function getPrepareRename(plugin: LSPPlugin, pos: number) {
 
 async function performRename(view: EditorView): Promise<boolean> {
 	const wordRange = view.state.wordAt(view.state.selection.main.head);
-	const plugin = LSPPlugin.get(view);
+	const plugin = LSPPlugin.getAll(view, "rename").find(
+		(candidate) => !!candidate.client.serverCapabilities?.renameProvider,
+	);
 
 	if (!plugin) {
 		return false;
@@ -133,7 +135,7 @@ async function performRename(view: EditorView): Promise<boolean> {
 	}
 
 	try {
-		await doRename(view, String(newName), wordRange.from);
+		await doRename(plugin, String(newName), wordRange.from);
 	} catch (error) {
 		addLspLogFor(plugin, "error", "Rename failed", error);
 		console.error("[LSP:Rename] Rename failed:", error);
@@ -198,13 +200,10 @@ async function applyChangesToFile(
 }
 
 async function doRename(
-	view: EditorView,
+	plugin: LSPPlugin,
 	newName: string,
 	position: number,
 ): Promise<void> {
-	const plugin = LSPPlugin.get(view);
-	if (!plugin) return;
-
 	plugin.client.sync();
 
 	const response = await plugin.client.withMapping((mapping) =>
@@ -265,7 +264,7 @@ async function doRename(
 
 export const renameSymbol: Command = (view) => {
 	performRename(view).catch((error) => {
-		const plugin = LSPPlugin.get(view);
+		const plugin = LSPPlugin.getForFeature(view, "rename");
 		addLspLogFor(plugin, "error", "Rename command failed", error);
 		console.error("[LSP:Rename] Rename command failed:", error);
 	});

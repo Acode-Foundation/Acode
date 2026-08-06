@@ -1,5 +1,13 @@
 # Change Log
 
+## v1.12.8
+
+* fix(terminal): close tab on process end and speed up long-press select by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2587
+* fix(editor): prevent false language mode recommendations by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2621
+* fix(lsp): send workspace folders during initialization by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2623
+* fix(admob): harden consent, banners, and variant builds by @deadlyjack in https://github.com/Acode-Foundation/Acode/pull/2553
+* feat(lsp): add multi-server support to CodeMirror LSP client by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2627
+
 ## v1.12.7
 
 * fix: scroll shift when tab switching by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2329
