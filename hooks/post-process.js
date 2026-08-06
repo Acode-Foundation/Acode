@@ -27,8 +27,8 @@ fs.copyFileSync(gradleFilePath, androidGradleFilePath);
 copyDirRecursively(localResPath, resPath);
 enableLegacyJni();
 enableStaticContext();
+removeLegacyKeyboardWorkaround();
 patchTargetSdkVersion();
-enableKeyboardWorkaround();
 
 function getPackageName() {
   const configPath = path.resolve(__dirname, '../config.xml');
@@ -210,8 +210,8 @@ function enableStaticContext() {
   }
 }
 
-function enableKeyboardWorkaround() {
-  try{
+function removeLegacyKeyboardWorkaround() {
+  try {
     const prefix = execSync('npm prefix').toString().trim();
     const packageName = getPackageName();
     const mainActivityPath = path.join(
@@ -222,50 +222,29 @@ function enableKeyboardWorkaround() {
     );
 
     if (!fs.existsSync(mainActivityPath)) {
-      console.warn('[Cordova Hook] ⚠️ MainActivity.java not found at', mainActivityPath);
       return;
     }
 
-    let content = fs.readFileSync(mainActivityPath, 'utf-8');
-
-    // Skip if already patched
-    if (content.includes('SoftInputAssist')) {
-      console.log('[Cordova Hook] ✅ Keyboard workaround already enabled, skipping');
-      return;
-    }
-
-    // Add import
-    if (!content.includes('import com.foxdebug.system.SoftInputAssist;')) {
-      content = content.replace(
-        /import java.lang.ref.WeakReference;|import org\.apache\.cordova\.\*;/,
-        match =>
-          match + '\nimport com.foxdebug.system.SoftInputAssist;'
+    const content = fs.readFileSync(mainActivityPath, 'utf-8');
+    const updatedContent = content
+      .replace(/\r?\nimport com\.foxdebug\.system\.SoftInputAssist;/, '')
+      .replace(/\r?\n\s*private SoftInputAssist softInputAssist;\r?\n/, '\n')
+      .replace(
+        /\r?\n\s*softInputAssist = new SoftInputAssist\(this\);/,
+        ''
       );
+
+    if (updatedContent !== content) {
+      fs.writeFileSync(mainActivityPath, updatedContent, 'utf-8');
+      console.log('[Cordova Hook] ✅ Removed legacy keyboard workaround');
     }
-
-    // Declare field
-    if (!content.includes('private SoftInputAssist softInputAssist;')) {
-      content = content.replace(
-        /public class MainActivity extends CordovaActivity\s*\{/,
-        match =>
-          match +
-          `\n\n    private SoftInputAssist softInputAssist;\n`
-      );
-    }
-
-    // Initialize in onCreate
-    content = content.replace(
-      /loadUrl\(launchUrl\);/,
-      `loadUrl(launchUrl);\n\n        softInputAssist = new SoftInputAssist(this);`
-    );
-
-    fs.writeFileSync(mainActivityPath, content, 'utf-8');
-    console.log('[Cordova Hook] ✅ Enabled keyboard workaround');
   } catch (err) {
-    console.error('[Cordova Hook] ❌ Failed to enable keyboard workaround:', err.message);
+    console.error(
+      '[Cordova Hook] ❌ Failed to remove legacy keyboard workaround:',
+      err.message
+    );
   }
 }
-
 
 /**
  * Copy directory recursively

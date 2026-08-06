@@ -4,8 +4,8 @@ import alert from "dialogs/alert";
 import escapeStringRegexp from "escape-string-regexp";
 import adRewards from "lib/adRewards";
 import config from "lib/config";
-import secureStorageList from "lib/secureStorageList";
-import { bannerAd, interstitialAd } from "lib/startAd";
+import secureCredentials from "lib/secureCredentials";
+import { interstitialAd, requestBannerForPage } from "lib/startAd";
 import { isBinaryFile } from "./binaryExtensions";
 import { isPlayStoreInstall } from "./installSource";
 import path from "./Path";
@@ -246,20 +246,25 @@ export default {
 		}
 
 		/**@type {string[]} */
-		const storageList = secureStorageList.get();
+		const storageList = this.parseJSON(localStorage.storageList);
 		if (!Array.isArray(storageList)) return url;
 		const storageListLen = storageList.length;
+
+		// Compare with the password stripped from both sides: URLs saved before
+		// the credentials migration still contain `user:pass@` (#2561).
+		const bareUrl = secureCredentials.stripPassword(url);
 
 		for (let i = 0; i < storageListLen; ++i) {
 			const uuid = storageList[i];
 			let storageUrl = Url.parse(uuid.uri || uuid.url || "").url;
 			if (!storageUrl) continue;
+			storageUrl = secureCredentials.stripPassword(storageUrl);
 			if (storageUrl.endsWith("/")) {
 				storageUrl = storageUrl.slice(0, -1);
 			}
 			const regex = new RegExp("^" + escapeStringRegexp(storageUrl));
-			if (regex.test(url)) {
-				url = url.replace(regex, uuid.name);
+			if (regex.test(bareUrl)) {
+				url = bareUrl.replace(regex, uuid.name);
 				break;
 			}
 		}
@@ -312,12 +317,10 @@ export default {
 	showAd() {
 		if (!this.canShowAds()) return;
 		if (innerHeight * devicePixelRatio <= 600) return;
-		if (!bannerAd || typeof bannerAd.show !== "function") return;
 
 		const $page = tag.getAll("wc-page:not(#root)").pop();
 		if ($page) {
-			bannerAd.active = true;
-			bannerAd.show();
+			requestBannerForPage($page);
 		}
 	},
 	async toInternalUri(uri) {

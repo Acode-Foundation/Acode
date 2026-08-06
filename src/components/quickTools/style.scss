@@ -1,6 +1,17 @@
 @use '../../styles/mixins.scss';
 
 #quick-tools {
+  #search_row1 {
+    [data-id="close"] {
+      display: none;
+      flex: 0 0 40px;
+    }
+
+    &.inline-close [data-id="close"] {
+      display: inline-flex;
+    }
+  }
+
   .icon.click:not([disabled]) {
     @include mixins.active-icon;
     transition: all 0.3s ease-in-out;

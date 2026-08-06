@@ -3,7 +3,6 @@ import Page from "components/page";
 import items, { description } from "components/quickTools/items";
 import actionStack from "lib/actionStack";
 import settings from "lib/settings";
-import { hideAd } from "lib/startAd";
 import helpers from "utils/helpers";
 
 let availableToolsScrollTop = 0;
@@ -33,7 +32,6 @@ export default function QuickTools() {
 
 	$page.onhide = () => {
 		actionStack.remove("quicktools-settings");
-		hideAd();
 		availableToolsScrollTop = manager.getScrollTop();
 		// Cleanup manager
 		manager.destroy();

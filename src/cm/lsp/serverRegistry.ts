@@ -299,6 +299,11 @@ function sanitizeDefinition(
 		id,
 		label: definition.label ?? id,
 		enabled: definition.enabled !== false,
+		priority:
+			typeof definition.priority === "number" &&
+			Number.isFinite(definition.priority)
+				? definition.priority
+				: 0,
 		languages: sanitizeLanguages(definition.languages),
 		transport: sanitizedTransport,
 		initializationOptions: clone(definition.initializationOptions),
@@ -417,10 +422,12 @@ export function getServersForLanguage(
 	const langKey = toKey(languageId);
 	if (!langKey) return [];
 
-	return listServers().filter((server) => {
-		if (!includeDisabled && !server.enabled) return false;
-		return server.languages.includes(langKey);
-	});
+	return listServers()
+		.filter((server) => {
+			if (!includeDisabled && !server.enabled) return false;
+			return server.languages.includes(langKey);
+		})
+		.sort((left, right) => right.priority - left.priority);
 }
 
 export function onRegistryChange(listener: RegistryEventListener): () => void {

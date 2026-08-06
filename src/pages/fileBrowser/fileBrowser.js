@@ -20,9 +20,7 @@ import openFolder from "lib/openFolder";
 import projects from "lib/projects";
 import recents from "lib/recents";
 import remoteStorage from "lib/remoteStorage";
-import secureStorageList from "lib/secureStorageList";
 import appSettings from "lib/settings";
-import { hideAd } from "lib/startAd";
 import mimeTypes from "mime-types";
 import mustache from "mustache";
 import filesSettings from "settings/filesSettings";
@@ -66,7 +64,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 	const state = [];
 	/**@type {Array<Storage>} */
 	const allStorages = [];
-	let storageList = secureStorageList.get();
+	let storageList = helpers.parseJSON(localStorage.storageList);
 	if (!Array.isArray(storageList)) storageList = [];
 
 	let isSelectionMode = false;
@@ -631,7 +629,6 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 		$page.onhide = function () {
 			hideSearchBar();
-			hideAd();
 			actionStack.clearFromMark();
 			actionStack.remove("filebrowser");
 			$content.removeEventListener("click", handleClick);
@@ -1243,7 +1240,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					}
 					return false;
 				});
-				secureStorageList.set(storageList);
+				localStorage.storageList = JSON.stringify(storageList);
 				reload();
 			}
 
@@ -1252,7 +1249,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					if (storage.uuid === uuid) storage.name = newname;
 					return storage;
 				});
-				secureStorageList.set(storageList);
+				localStorage.storageList = JSON.stringify(storageList);
 				reload();
 			}
 
@@ -1707,7 +1704,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			}
 
 			storageList.push(storage);
-			secureStorageList.set(storageList);
+			localStorage.storageList = JSON.stringify(storageList);
 			if (doesReload) reload();
 		}
 
@@ -1762,7 +1759,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				.addPath()
 				.then((res) => {
 					storageList.push(res);
-					secureStorageList.set(storageList);
+					localStorage.storageList = JSON.stringify(storageList);
 					reload();
 				})
 				.catch((err) => {

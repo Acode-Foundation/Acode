@@ -137,7 +137,7 @@ export default class AcodeWorkspace extends Workspace {
 		for (const file of this.files) {
 			const view = file.getView();
 			if (!view) continue;
-			const plugin = LSPPlugin.get(view);
+			const plugin = LSPPlugin.get(view, this.client);
 			if (!plugin) continue;
 			const { unsyncedChanges } = plugin;
 			if (unsyncedChanges.empty) continue;

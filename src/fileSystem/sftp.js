@@ -1,3 +1,4 @@
+import secureCredentials from "lib/secureCredentials";
 import settings from "lib/settings";
 import mimeType from "mime-types";
 import { decode, encode } from "utils/encodings";
@@ -592,10 +593,13 @@ Sftp.fromUrl = (url) => {
 		Url.decodeUrl(url);
 	const { keyFile, passPhrase } = query;
 
+	// Secrets are kept in the encrypted store, not in the saved URL (#2561).
+	const stored = secureCredentials.get(url) || {};
+
 	const sftp = new SftpClient(hostname, port || 22, username, {
-		password,
+		password: password || stored.password,
 		keyFile,
-		passPhrase,
+		passPhrase: passPhrase || stored.passPhrase,
 	});
 
 	sftp.setPath(pathname);

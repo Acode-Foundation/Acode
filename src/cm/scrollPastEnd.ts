@@ -2,6 +2,25 @@ import { type Extension } from "@codemirror/state";
 import { EditorView, ViewPlugin, type ViewUpdate } from "@codemirror/view";
 
 /**
+ * Adds space after the longest line so unwrapped text can scroll away from the
+ * right edge of the viewport. CodeMirror's line-wrapping class is placed on the
+ * content element, which lets the same extension disable the extra width when
+ * wrapping is enabled.
+ */
+export function horizontalScrollPastEnd(distance: number): Extension {
+	const width = Number.isFinite(distance)
+		? Math.max(0, Math.round(distance))
+		: 0;
+	if (width === 0) return [];
+
+	return EditorView.theme({
+		".cm-content:not(.cm-lineWrapping)": {
+			paddingRight: `${width}px`,
+		},
+	});
+}
+
+/**
  * Returns an extension that adds a customizable bottom margin to the editor.
  * @param factor The scaling factor for the margin (e.g., 0.25 for small, 0.5 for medium, 1.0 for full).
  */

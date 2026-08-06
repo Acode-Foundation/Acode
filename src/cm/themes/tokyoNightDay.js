@@ -127,7 +127,7 @@ export const tokyoNightDayHighlightStyle = HighlightStyle.define([
 		tag: [t.number, t.changed, t.annotation, t.modifier, t.self, t.namespace],
 		color: config.number,
 	},
-	{ tag: [t.typeName], color: config.type, fontStyle: config.type },
+	{ tag: [t.typeName], color: config.type },
 	{ tag: [t.operator, t.operatorKeyword], color: config.keyword },
 	{ tag: [t.url, t.escape, t.regexp, t.link], color: config.regexp },
 	{ tag: [t.meta, t.comment], color: config.comment },

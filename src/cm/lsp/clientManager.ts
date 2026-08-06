@@ -1,5 +1,8 @@
 import { getIndentUnit, indentUnit } from "@codemirror/language";
-import type { LSPClientExtension } from "@codemirror/lsp-client";
+import type {
+  LSPClientExtension,
+  LSPPluginOptions,
+} from "@codemirror/lsp-client";
 import {
   LSPClient,
   LSPPlugin,
@@ -178,8 +181,11 @@ function connectClient(
   client: ExtendedLSPClient,
   transport: Transport,
   initializationOptions?: Record<string, unknown>,
+  rootUri?: string | null,
 ): void {
-  if (!initializationOptions || !Object.keys(initializationOptions).length) {
+  const hasInitializationOptions =
+    !!initializationOptions && Object.keys(initializationOptions).length > 0;
+  if (!hasInitializationOptions && !rootUri) {
     client.connect(transport);
     return;
   }
@@ -199,7 +205,14 @@ function connectClient(
     if (method === "initialize" && isPlainObject(params)) {
       params = {
         ...params,
-        initializationOptions,
+        ...(hasInitializationOptions ? { initializationOptions } : {}),
+        ...(rootUri
+          ? {
+              workspaceFolders: [
+                { uri: rootUri, name: workspaceName(rootUri) },
+              ],
+            }
+          : {}),
       } as Params;
     }
     return originalRequestInner<Params, Result>(method, params, mapped);
@@ -209,6 +222,16 @@ function connectClient(
     client.connect(transport);
   } finally {
     patchedClient.requestInner = originalRequestInner;
+  }
+}
+
+function workspaceName(rootUri: string): string {
+  const trimmed = rootUri.replace(/\/+$/, "");
+  const encodedName = trimmed.slice(trimmed.lastIndexOf("/") + 1);
+  try {
+    return decodeURIComponent(encodedName) || "workspace";
+  } catch {
+    return encodedName || "workspace";
   }
 }
 
@@ -250,6 +273,22 @@ function buildBuiltinExtensions(
   }
 
   return { extensions, diagnosticsExtension };
+}
+
+function buildPluginOptions(server: LspServerDefinition): LSPPluginOptions {
+  const builtin = server.clientConfig?.builtinExtensions ?? {};
+  return {
+    priority: server.priority,
+    features: {
+      completion: builtin.completion !== false,
+      hover: builtin.hover !== false,
+      signatureHelp: builtin.signature !== false,
+      diagnostics: builtin.diagnostics !== false,
+      formatting: builtin.formatting !== false,
+      inlayHint: builtin.inlayHints === true,
+      documentColor: builtin.documentColors !== false,
+    },
+  };
 }
 
 interface InitContext {
@@ -414,6 +453,7 @@ export class LspClientManager {
         const plugin = clientState.client.plugin(
           normalizedUri,
           targetLanguageId,
+          buildPluginOptions(server),
         );
         if (server.clientConfig?.builtinExtensions?.completion !== false) {
           lspExtensions.push(lspCompletionEnabled.of(true));
@@ -422,14 +462,6 @@ export class LspClientManager {
           originalUri && originalUri !== normalizedUri ? [originalUri] : [];
         clientState.attach(normalizedUri, view as EditorView, aliases);
         lspExtensions.push(plugin);
-        if (diagnosticsUiExtension) {
-          lspExtensions.push(
-            lspDiagnosticsAutoSyncExtension(
-              clientState.client,
-              normalizedUri,
-            ),
-          );
-        }
       } catch (error) {
         console.error(
           `Failed to initialize LSP client for ${server.id}`,
@@ -439,6 +471,7 @@ export class LspClientManager {
     }
 
     if (diagnosticsUiExtension && lspExtensions.length) {
+      lspExtensions.push(lspDiagnosticsAutoSyncExtension());
       lspExtensions.push(...asArray(diagnosticsUiExtension));
     }
 
@@ -488,7 +521,7 @@ export class LspClientManager {
         const capabilities = state.client.serverCapabilities;
         if (!capabilities?.documentFormattingProvider) continue;
         state.attach(normalizedUri, view);
-        const plugin = LSPPlugin.get(view);
+        const plugin = LSPPlugin.get(view, state.client);
         if (!plugin) continue;
         plugin.client.sync();
         const edits = await state.client.request<
@@ -764,6 +797,7 @@ export class LspClientManager {
         },
         workspace: {
           configuration: true,
+          workspaceFolders: true,
         },
       },
     };
@@ -1010,7 +1044,14 @@ export class LspClientManager {
       await waitForInitialization(transportHandle.ready, signal, server.id);
       client = new LSPClient(clientConfig) as ExtendedLSPClient;
       client.__acodeServerId = server.id;
-      connectClient(client, transportHandle.transport, initializationOptions);
+      connectClient(
+        client,
+        transportHandle.transport,
+        initializationOptions,
+        scope === "workspace" && server.useWorkspaceFolders
+          ? null
+          : normalizedRootUri,
+      );
       await waitForInitialization(client.initializing, signal, server.id);
       if (!client.__acodeLoggedInfo) {
         // Log root URI info to console
@@ -1032,7 +1073,13 @@ export class LspClientManager {
           );
         }
         logLspInfo(`[LSP:${server.id}] initialized`);
-        addLspLog(server.id, "info", "Initialized");
+        addLspLog(
+          server.id,
+          "info",
+          normalizedRootUri
+            ? `Initialized workspace ${normalizedRootUri}`
+            : "Initialized without a workspace root",
+        );
         client.__acodeLoggedInfo = true;
       }
     } catch (error) {
@@ -1106,11 +1153,22 @@ export class LspClientManager {
       logLspInfo(`[LSP:${server.id}] attached to ${uri}${suffix}`);
     };
 
+    const clearClientDiagnostics = (view: EditorView): void => {
+      try {
+        view.dispatch({ effects: clearDiagnosticsEffect(client) });
+      } catch {
+        /* View may already be destroyed or may not have diagnostics state. */
+      }
+    };
+
     const dispose = async (): Promise<void> => {
       if (disposed) return;
       disposed = true;
       disposePullDiagnostics(client);
       this.#clients.delete(key);
+      for (const views of fileRefs.values()) {
+        for (const view of views) clearClientDiagnostics(view);
+      }
       try {
         client.disconnect();
       } catch (error) {
@@ -1127,7 +1185,10 @@ export class LspClientManager {
       const actualUri = uriAliases.get(uri) ?? uri;
       const existing = fileRefs.get(actualUri);
       if (!existing) return;
-      if (view) existing.delete(view);
+      if (view) {
+        existing.delete(view);
+        clearClientDiagnostics(view);
+      }
       if (!view || !existing.size) {
         fileRefs.delete(actualUri);
         for (const [alias, target] of uriAliases.entries()) {

@@ -3,6 +3,7 @@ import Ftp from "fileSystem/ftp";
 import Sftp from "fileSystem/sftp";
 import loader from "dialogs/loader";
 import multiPrompt from "dialogs/multiPrompt";
+import secureCredentials from "lib/secureCredentials";
 import URLParse from "url-parse";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
@@ -54,8 +55,12 @@ export default {
 				},
 			});
 
+			// Keep the password in the encrypted store instead of the saved
+			// URL, which lives in plaintext localStorage (#2561).
+			await secureCredentials.set(url, { password });
+
 			const res = {
-				url,
+				url: secureCredentials.stripPassword(url),
 				alias,
 				name: alias,
 				type: "ftp",
@@ -232,10 +237,14 @@ export default {
 			});
 			loader.destroy();
 			await helpers.showInterstitialIfReady();
+
+			// Keep secrets in the encrypted store instead of the saved URL (#2561).
+			await secureCredentials.set(url, { password, passPhrase });
+
 			return {
 				alias,
 				name: alias,
-				url,
+				url: secureCredentials.stripPassword(url),
 				type: "sftp",
 				home,
 			};
@@ -368,6 +377,11 @@ export default {
 	},
 	edit({ name, storageType, url }) {
 		let { username, password, hostname, port, query } = URLParse(url, true);
+
+		// Passwords are no longer kept in the saved URL (#2561), so pull the
+		// stored secret back in to prefill the edit form.
+		const stored = secureCredentials.get(url) || {};
+		if (!password && stored.password) password = stored.password;
 
 		if (username) {
 			username = decodeURIComponent(username);

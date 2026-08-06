@@ -833,5 +833,7 @@
 	"info-terminal-show-scrollbar": "Az xterm görgetősávjának megjelenítése a terminál mellett.",
 	"terminal:show scrollbar": "Görgetősáv megjelenítése",
 	"apply exclusions when copying": "Kizárások használata másoláskor",
-	"settings-info-app-use-file-operation-exclusions": "A kizárási mintáknak megfelelő fájlok és mappák kihagyása másoláskor és beillesztéskor."
+	"settings-info-app-use-file-operation-exclusions": "A kizárási mintáknak megfelelő fájlok és mappák kihagyása másoláskor és beillesztéskor.",
+	"horizontal scroll margin": "Horizontal scroll margin",
+	"settings-info-horizontal-scroll-margin": "Adds empty space after the longest line when word wrap is off. Enter any non-negative whole-pixel value."
 }

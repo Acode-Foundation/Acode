@@ -80,6 +80,7 @@ export default (props) => {
 	if (votesUp || votesDown) {
 		rating = `${Math.round((votesUp / (votesUp + votesDown)) * 100)}%`;
 	}
+	const showPurchaseWarning = !helpers.shouldAllowExternalPurchase();
 
 	const formatUpdatedDate = (dateString) => {
 		if (!dateString) return null;
@@ -173,20 +174,33 @@ export default (props) => {
 							</div>
 						</div>
 					) : null}
+					{Array.isArray(keywords) && keywords.length ? (
+						<div className="keywords">
+							{keywords.map((keyword) => (
+								<span className="keyword" title={keyword}>
+									{keyword}
+								</span>
+							))}
+						</div>
+					) : null}
 					{showEditorSupportWarning ? (
 						<LegacyEditorWarning unsupportedEditor={unsupportedEditor} />
 					) : null}
 				</div>
 				<div className="action-buttons">
 					<Buttons {...props} />
-					{!helpers.shouldAllowExternalPurchase() && (
-						<small className="info">
-							<span className="icon info" />
-							{strings["iap-plugin-purchase-warning"]}
-						</small>
-					)}
 				</div>
-				<MoreInfo {...props} />
+				{showPurchaseWarning || props.purchased ? (
+					<div className="plugin-action-details">
+						{showPurchaseWarning ? (
+							<small className="info">
+								<span className="icon info" />
+								{strings["iap-plugin-purchase-warning"]}
+							</small>
+						) : null}
+						<MoreInfo {...props} />
+					</div>
+				) : null}
 			</div>
 			<TabView id="plugin-tab" disableSwipe={true}>
 				<div className="options" onclick={handleTabClick}>
@@ -202,13 +216,6 @@ export default (props) => {
 				</div>
 				<div className="tab-content">
 					<div id="overview" className="content-section active md">
-						{Array.isArray(keywords) && keywords.length ? (
-							<div className="keywords">
-								{keywords.map((keyword) => (
-									<span className="keyword">{keyword}</span>
-								))}
-							</div>
-						) : null}
 						<section
 							innerHTML={DOMPurify.sanitize(body, { FORBID_TAGS: ["style"] })}
 						/>

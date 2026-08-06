@@ -74,6 +74,9 @@ export default class TerminalComponent {
 		this.boundNativeSelectionMenuHandler = null;
 		this.visibleScrollbarWidth = undefined;
 		this.lastRequestedServerSize = null;
+		// Lifecycle flags so exit/disconnect/error don't race into zombie tabs
+		this.intentionalClose = false;
+		this.processExited = false;
 
 		this.init();
 	}
@@ -336,7 +339,7 @@ export default class TerminalComponent {
 				this.container,
 				{
 					tapHoldDuration:
-						terminalSettings.touchSelectionTapHoldDuration || 600,
+						terminalSettings.touchSelectionTapHoldDuration || 400,
 					moveThreshold: terminalSettings.touchSelectionMoveThreshold || 8,
 					handleSize: terminalSettings.touchSelectionHandleSize || 24,
 					hapticFeedback:
@@ -853,19 +856,23 @@ export default class TerminalComponent {
 			};
 
 			websocket.onmessage = (event) => {
-				// Handle text messages (exit events)
-				if (typeof event.data === "string") {
-					try {
-						const message = JSON.parse(event.data);
-						if (message.type === "exit") {
-							this.onProcessExit?.(message.data);
-							return;
-						}
-					} catch (error) {
-						// Not a JSON message, let attachAddon handle it
+				// Lifecycle control (AXS exit JSON) is always a text frame.
+				// Never decode binary frames as exit — ordinary PTY output can
+				// contain the same bytes and must not close the session.
+				// AttachAddon still receives frames via addEventListener for I/O.
+				if (typeof event.data !== "string") return;
+				// Cordova websocket may flag binary payloads even when decoded as string
+				if (event.binary === true) return;
+
+				try {
+					const message = JSON.parse(event.data);
+					if (message?.type === "exit") {
+						this.processExited = true;
+						this.onProcessExit?.(message.data);
 					}
+				} catch {
+					// Not a JSON control message — terminal I/O is handled by AttachAddon.
 				}
-				// For binary data or non-exit text messages, let attachAddon handle them
 			};
 
 			websocket.onclose = (event) => {
@@ -881,7 +888,12 @@ export default class TerminalComponent {
 					return;
 				}
 
-				this.onDisconnect?.();
+				this.onDisconnect?.({
+					intentional: this.intentionalClose,
+					processExited: this.processExited,
+					code: event?.code,
+					reason: event?.reason,
+				});
 			};
 
 			websocket.onerror = (error) => {
@@ -893,6 +905,9 @@ export default class TerminalComponent {
 					);
 					return;
 				}
+
+				// Ignore teardown noise from intentional close / already-handled exit
+				if (this.intentionalClose || this.processExited) return;
 
 				console.error("WebSocket error:", error);
 				this.onError?.(error);
@@ -1269,8 +1284,15 @@ export default class TerminalComponent {
 	 * Terminate terminal session
 	 */
 	async terminate() {
+		this.intentionalClose = true;
+
 		if (this.websocket) {
-			this.websocket.close();
+			try {
+				this.websocket.close();
+			} catch {
+				// Already closed
+			}
+			this.websocket = null;
 		}
 
 		if (this.pid && this.serverMode) {
@@ -1296,6 +1318,7 @@ export default class TerminalComponent {
 	 * Dispose terminal
 	 */
 	dispose() {
+		this.intentionalClose = true;
 		this.terminate();
 
 		// Dispose touch selection
@@ -1334,7 +1357,7 @@ export default class TerminalComponent {
 
 	// Event handlers (can be overridden)
 	onConnect() {}
-	onDisconnect() {}
+	onDisconnect(_info) {}
 	onError(error) {}
 	onTitleChange(title) {}
 	onBell() {}

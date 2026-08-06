@@ -1,3 +1,4 @@
+import secureCredentials from "lib/secureCredentials";
 import settings from "lib/settings";
 import mimeType from "mime-types";
 import { decode, encode } from "utils/encodings";
@@ -359,10 +360,12 @@ Ftp.fromUrl = (url) => {
 	const { username, password, hostname, pathname, port, query } =
 		Url.decodeUrl(url);
 	const { security, mode } = query;
+	// Secrets are kept in the encrypted store, not in the saved URL (#2561).
+	const stored = secureCredentials.get(url) || {};
 	const ftp = new FtpClient(
 		hostname,
 		username,
-		password,
+		password || stored.password,
 		port || 21,
 		security,
 		mode,

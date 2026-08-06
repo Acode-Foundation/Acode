@@ -13,7 +13,6 @@ import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
 import fonts from "lib/fonts";
 import appSettings from "lib/settings";
-import { hideAd } from "lib/startAd";
 import FileBrowser from "pages/fileBrowser";
 import { updateActiveTerminals } from "settings/terminalSettings";
 import helpers from "utils/helpers";
@@ -44,7 +43,6 @@ export default function fontManager() {
 	});
 
 	$page.onhide = () => {
-		hideAd();
 		actionStack.remove("fontManager");
 	};
 

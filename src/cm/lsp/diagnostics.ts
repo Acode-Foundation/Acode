@@ -20,7 +20,14 @@ import type {
 	RawDiagnostic,
 } from "./types";
 
-const setPublishedDiagnostics = StateEffect.define<LspDiagnostic[]>();
+interface PublishedDiagnosticsUpdate {
+	client?: LSPClient;
+	diagnostics?: LspDiagnostic[];
+	clearAll?: boolean;
+}
+
+const setPublishedDiagnostics =
+	StateEffect.define<PublishedDiagnosticsUpdate>();
 let diagnosticsEventTimer: ReturnType<typeof setTimeout> | null = null;
 let diagnosticsViewCount = 0;
 
@@ -52,6 +59,13 @@ function getPullDiagnosticsState(client: LSPClient): PullDiagnosticsState {
 
 function supportsPullDiagnostics(client: LSPClient): boolean {
 	return !!client.serverCapabilities?.diagnosticProvider;
+}
+
+function diagnosticsEnabledForFile(client: LSPClient, uri: string): boolean {
+	const file = client.workspace.getFile(uri);
+	const view = file?.getView();
+	const plugin = view && LSPPlugin.get(view, client);
+	return !!plugin?.featureEnabled("diagnostics");
 }
 
 function isCoarsePointerDevice(): boolean {
@@ -105,17 +119,52 @@ function clearScheduledDiagnosticsUpdated(): void {
 	diagnosticsEventTimer = null;
 }
 
-const lspPublishedDiagnostics = StateField.define<LspDiagnostic[]>({
-	create(): LspDiagnostic[] {
-		return [];
+const lspPublishedDiagnostics = StateField.define<
+	ReadonlyMap<LSPClient, LspDiagnostic[]>
+>({
+	create(): ReadonlyMap<LSPClient, LspDiagnostic[]> {
+		return new Map();
 	},
-	update(value: LspDiagnostic[], tr): LspDiagnostic[] {
-		for (const effect of tr.effects) {
-			if (effect.is(setPublishedDiagnostics)) {
-				value = effect.value;
+	update(value: ReadonlyMap<LSPClient, LspDiagnostic[]>, tr) {
+		let next = value;
+		if (tr.docChanged && value.size) {
+			next = new Map();
+			for (const [client, diagnostics] of value) {
+				const mapped: LspDiagnostic[] = [];
+				for (const diagnostic of diagnostics) {
+					const from = tr.changes.mapPos(
+						diagnostic.from,
+						1,
+						MapMode.TrackDel,
+					);
+					const to = tr.changes.mapPos(
+						diagnostic.to,
+						-1,
+						MapMode.TrackDel,
+					);
+					if (from != null && to != null) {
+						mapped.push({ ...diagnostic, from, to });
+					}
+				}
+				(next as Map<LSPClient, LspDiagnostic[]>).set(client, mapped);
 			}
 		}
-		return value;
+		for (const effect of tr.effects) {
+			if (effect.is(setPublishedDiagnostics)) {
+				if (effect.value.clearAll) {
+					next = new Map();
+				} else if (effect.value.client) {
+					const updated = new Map(next);
+					if (effect.value.diagnostics?.length) {
+						updated.set(effect.value.client, effect.value.diagnostics);
+					} else {
+						updated.delete(effect.value.client);
+					}
+					next = updated;
+				}
+			}
+		}
+		return next;
 	},
 });
 
@@ -133,8 +182,6 @@ function collectLspDiagnostics(
 	diagnostics: RawDiagnostic[],
 ): LspDiagnostic[] {
 	const items: LspDiagnostic[] = [];
-	const { syncedDoc } = plugin;
-
 	for (const diagnostic of diagnostics) {
 		let from: number;
 		let to: number;
@@ -155,7 +202,7 @@ function collectLspDiagnostics(
 		} catch (_) {
 			continue;
 		}
-		if (to > syncedDoc.length) continue;
+		if (to > plugin.unsyncedChanges.newLength) continue;
 
 		const severity = severities[diagnostic.severity ?? 0] ?? "info";
 		const source = diagnostic.code
@@ -175,9 +222,10 @@ function collectLspDiagnostics(
 }
 
 function storeLspDiagnostics(
+	client: LSPClient,
 	items: LspDiagnostic[],
-): StateEffect<LspDiagnostic[]> {
-	return setPublishedDiagnostics.of(items);
+): StateEffect<PublishedDiagnosticsUpdate> {
+	return setPublishedDiagnostics.of({ client, diagnostics: items });
 }
 
 function sameDiagnostics(
@@ -214,17 +262,21 @@ function applyDiagnostics(
 	}
 	const view = file.getView();
 	if (!view) return false;
-	const plugin = LSPPlugin.get(view) as LSPPluginAPI | null;
-	if (!plugin) return false;
+	const plugin = LSPPlugin.get(view, client);
+	if (!plugin || !plugin.featureEnabled("diagnostics")) return false;
 
-	const diagnostics = collectLspDiagnostics(plugin, rawDiagnostics);
-	const current = view.state.field(lspPublishedDiagnostics, false) ?? [];
+	const diagnostics = collectLspDiagnostics(
+		plugin as unknown as LSPPluginAPI,
+		rawDiagnostics,
+	);
+	const current =
+		view.state.field(lspPublishedDiagnostics, false)?.get(client) ?? [];
 	if (sameDiagnostics(current, diagnostics)) {
 		return true;
 	}
 
 	view.dispatch({
-		effects: storeLspDiagnostics(diagnostics),
+		effects: storeLspDiagnostics(client, diagnostics),
 	});
 	scheduleDiagnosticsUpdated();
 	return true;
@@ -235,7 +287,12 @@ async function pullDiagnostics(
 	uri: string,
 	generation: number,
 ): Promise<void> {
-	if (!supportsPullDiagnostics(client)) return;
+	if (
+		!supportsPullDiagnostics(client) ||
+		!diagnosticsEnabledForFile(client, uri)
+	) {
+		return;
+	}
 
 	client.sync();
 	const clientWithWorkspace = client as unknown as LSPClientWithWorkspace;
@@ -312,6 +369,7 @@ export function schedulePullDiagnostics(
 	uri: string,
 	delay = PULL_DIAGNOSTICS_DELAY,
 ): void {
+	if (!diagnosticsEnabledForFile(client, uri)) return;
 	if (!supportsPullDiagnostics(client)) {
 		if (client.connected && !client.serverCapabilities) {
 			void client.initializing
@@ -370,26 +428,33 @@ export function disposePullDiagnostics(client: LSPClient): void {
 	pullDiagnosticsStates.delete(client);
 }
 
-export function lspDiagnosticsAutoSyncExtension(
-	client: LSPClient,
-	uri: string,
-): Extension {
+export function lspDiagnosticsAutoSyncExtension(): Extension {
 	return ViewPlugin.fromClass(
 		class {
 			pending: ReturnType<typeof setTimeout> | null = null;
+			view: EditorView;
 
-			constructor() {
-				schedulePullDiagnostics(client, uri, 0);
+			constructor(view: EditorView) {
+				this.view = view;
+				this.schedule(0);
 			}
 
 			update(update: ViewUpdate): void {
 				if (!update.docChanged) return;
+				this.schedule(500);
+			}
+
+			schedule(delay: number): void {
 				if (this.pending != null) clearTimeout(this.pending);
-				this.pending = setTimeout(() => {
-					this.pending = null;
-					client.sync();
-					schedulePullDiagnostics(client, uri, 0);
-				}, 500);
+				this.pending = setTimeout(() => this.flush(), delay);
+			}
+
+			flush(): void {
+				this.pending = null;
+				for (const plugin of LSPPlugin.getAll(this.view, "diagnostics")) {
+					plugin.client.sync();
+					schedulePullDiagnostics(plugin.client, plugin.uri, 0);
+				}
 			}
 
 			destroy(): void {
@@ -424,35 +489,14 @@ const diagnosticsLifecyclePlugin = ViewPlugin.fromClass(
 	},
 );
 
-function mapDiagnostics(
-	plugin: LSPPluginAPI,
-	state: EditorState,
-): Diagnostic[] {
-	const stored = state.field(lspPublishedDiagnostics);
-	const changes = plugin.unsyncedChanges;
-	const mapped: Diagnostic[] = [];
-
-	for (const diagnostic of stored) {
-		let from: number | null;
-		let to: number | null;
-		try {
-			from = changes.mapPos(diagnostic.from, 1, MapMode.TrackDel);
-			to = changes.mapPos(diagnostic.to, -1, MapMode.TrackDel);
-		} catch (_) {
-			continue;
-		}
-		if (from != null && to != null) {
-			mapped.push({ ...diagnostic, from, to });
-		}
-	}
-
-	return mapped;
-}
-
 function lspLinterSource(view: EditorView): Diagnostic[] {
-	const plugin = LSPPlugin.get(view) as LSPPluginAPI | null;
-	if (!plugin) return [];
-	return mapDiagnostics(plugin, view.state);
+	const stored = view.state.field(lspPublishedDiagnostics);
+	const diagnostics: Diagnostic[] = [];
+	for (const [client, items] of stored) {
+		const plugin = LSPPlugin.get(view, client);
+		if (plugin?.featureEnabled("diagnostics")) diagnostics.push(...items);
+	}
+	return diagnostics;
 }
 
 export function lspDiagnosticsClientExtension(): {
@@ -552,16 +596,22 @@ export function lspDiagnosticsExtension(
 
 export default lspDiagnosticsExtension;
 
-export function clearDiagnosticsEffect(): StateEffect<LspDiagnostic[]> {
-	return setPublishedDiagnostics.of([]);
+export function clearDiagnosticsEffect(
+	client?: LSPClient,
+): StateEffect<PublishedDiagnosticsUpdate> {
+	return setPublishedDiagnostics.of(
+		client ? { client, diagnostics: [] } : { clearAll: true },
+	);
 }
 
 export function getLspDiagnostics(state: EditorState | null): LspDiagnostic[] {
 	if (!state || typeof state.field !== "function") return [];
 	try {
 		const stored = state.field(lspPublishedDiagnostics, false);
-		if (!stored || !Array.isArray(stored)) return [];
-		return stored.map((diagnostic) => ({ ...diagnostic }));
+		if (!stored) return [];
+		return Array.from(stored.values()).flatMap((diagnostics) =>
+			diagnostics.map((diagnostic) => ({ ...diagnostic })),
+		);
 	} catch (_) {
 		return [];
 	}

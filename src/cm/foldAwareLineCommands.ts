@@ -63,7 +63,7 @@ function getFoldIndex(state: EditorState): FoldIndex {
       blockFrom: state.doc.lineAt(from).from,
       blockTo: state.doc.lineAt(to).to,
     };
-    const previous = groups.at(-1);
+    const previous = groups[groups.length - 1];
     if (previous && fold.blockFrom <= previous.blockTo) {
       previous.blockTo = Math.max(previous.blockTo, fold.blockTo);
       previous.folds.push(fold);
@@ -135,7 +135,7 @@ function selectedLineBlocks(state: EditorState, index: FoldIndex): LineBlock[] {
   const merged: LineBlock[] = [];
 
   for (const block of blocks) {
-    const previous = merged.at(-1);
+    const previous = merged[merged.length - 1];
     if (previous && block.from <= previous.to + 1) {
       previous.to = Math.max(previous.to, block.to);
       previous.rangeIndexes.push(...block.rangeIndexes);

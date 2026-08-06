@@ -837,6 +837,8 @@ declare type LangStrings = {
   "command": string;
   "managed": string;
   "acode service": string;
+  "horizontal scroll margin": string;
+  "settings-info-horizontal-scroll-margin": string;
 };
 
 declare var strings: LangStrings;

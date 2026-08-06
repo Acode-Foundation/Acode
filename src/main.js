@@ -52,9 +52,12 @@ import notificationManager from "lib/notificationManager";
 import openFolder, { addedFolder } from "lib/openFolder";
 import { registerPrettierFormatter } from "lib/registerPrettierFormatter";
 import restoreFiles from "lib/restoreFiles";
-import secureStorageList from "lib/secureStorageList";
+import secureCredentials from "lib/secureCredentials";
 import settings from "lib/settings";
-import startAd, { hideAd } from "lib/startAd";
+import startAd, {
+	BANNER_SUPPRESSION_REASON,
+	setBannerSuppressed,
+} from "lib/startAd";
 import mustache from "mustache";
 import themes from "theme/list";
 import { initHighlighting } from "utils/codeHighlight";
@@ -99,10 +102,10 @@ document.addEventListener("menubutton", menuButtonHandler);
 
 async function onDeviceReady() {
 	await initEncodings(); // important to load encodings before anything else
-	// Load saved remote-storage (FTP/SFTP) list from the encrypted native store,
-	// migrating any legacy plaintext localStorage copy. Must run before any UI
-	// that reads the storage list. See issue #2561.
-	await secureStorageList.hydrate();
+	// Load remote-server secrets from the encrypted native store, migrating any
+	// credentials still embedded in localStorage. Must run before anything
+	// connects to a saved FTP/SFTP server. See issue #2561.
+	await secureCredentials.hydrate();
 
 	const isFreePackage = /(free)$/.test(BuildInfo.packageName);
 	const oldResolveURL = window.resolveLocalFileSystemURL;
@@ -433,7 +436,7 @@ async function onLogin() {
 			config.HAS_PRO = true;
 		}
 		if (config.HAS_PRO) {
-			hideAd(true);
+			setBannerSuppressed(BANNER_SUPPRESSION_REASON.PRO, true);
 		}
 	} catch (error) {
 		console.error(error);
@@ -627,7 +630,6 @@ async function loadApp() {
 	navigator.app.overrideButton("menubutton", true);
 	system.setIntentHandler(intentHandler, intentHandler.onError);
 	system.getCordovaIntent(intentHandler, intentHandler.onError);
-	setTimeout(showTutorials, 1000);
 	settings.on("update:openFileListPos", () => {
 		setMainMenu();
 		setFileMenu();
@@ -883,35 +885,6 @@ function createFileMenu({ top, bottom, toggler }) {
 	});
 
 	return $menu;
-}
-
-async function showTutorials() {
-	if (window.innerWidth > 750) {
-		const [{ default: tutorial }, { default: otherSettings }] =
-			await Promise.all([
-				import(/* webpackChunkName: "tutorial" */ "components/tutorial"),
-				import(/* webpackChunkName: "appSettings" */ "settings/appSettings"),
-			]);
-		tutorial("quicktools-tutorials", (hide) => {
-			const onclick = () => {
-				otherSettings();
-				hide();
-			};
-
-			return (
-				<p>
-					Quicktools has been <strong>disabled</strong> because it seems like
-					you are on a bigger screen and probably using a keyboard. To enable
-					it,{" "}
-					<span className="link" onclick={onclick}>
-						click here
-					</span>{" "}
-					or press <kbd>Ctrl + Shift + P</kbd> and search for{" "}
-					<code>quicktools</code>.
-				</p>
-			);
-		});
-	}
 }
 
 function backButtonHandler() {

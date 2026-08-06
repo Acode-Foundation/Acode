@@ -18,11 +18,6 @@ export const javascriptServers: LspServerManifest[] = [
 		runtimes: ["web-worker"],
 		transport: { kind: "external" },
 		enabled: true,
-		clientConfig: {
-			builtinExtensions: {
-				inlayHints: true,
-			},
-		},
 		resolveLanguageId: ({ languageId, languageName }) =>
 			resolveJsTsLanguageId(languageId, languageName),
 	}),
