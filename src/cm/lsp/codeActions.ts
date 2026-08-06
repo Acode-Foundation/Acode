@@ -14,6 +14,8 @@ import type {
 import type { Position, Range } from "./types";
 import { addLspLogFor } from "./logs";
 import type AcodeWorkspace from "./workspace";
+import { safeLspPositionToOffset } from "./textEditUtils";
+
 
 type CodeActionResponse = (CodeAction | Command)[] | null;
 
@@ -59,13 +61,6 @@ function isCommand(item: CodeAction | Command): item is Command {
 	return (
 		"command" in item && typeof item.command === "string" && !("edit" in item)
 	);
-}
-
-function lspPositionToOffset(
-	doc: { line: (n: number) => { from: number } },
-	pos: Position,
-): number {
-	return doc.line(pos.line + 1).from + pos.character;
 }
 
 async function requestCodeActions(
@@ -156,9 +151,10 @@ async function applyChangesToFile(
 	workspace: AcodeWorkspace,
 	uri: string,
 	changes: LspChange[],
-	mapping: { mapPosition: (uri: string, pos: Position) => number },
+	mapping: { mapPosition: (uri: string, pos: lsp.Position) => number },
 ): Promise<boolean> {
 	const file = workspace.getFile(uri);
+
 	if (file) {
 		const view = file.getView();
 		if (view) {
@@ -185,16 +181,18 @@ async function applyChangesToFile(
 		return false;
 	}
 
+	const doc = displayedView.state.doc;
 	displayedView.dispatch({
 		changes: changes.map((c) => ({
-			from: lspPositionToOffset(displayedView.state.doc, c.range.start),
-			to: lspPositionToOffset(displayedView.state.doc, c.range.end),
+			from: safeLspPositionToOffset(doc, c.range.start),
+			to: safeLspPositionToOffset(doc, c.range.end),
 			insert: c.newText,
 		})),
 		userEvent: "codeAction",
 	});
 	return true;
 }
+
 
 async function applyWorkspaceEdit(
 	plugin: LSPPlugin,

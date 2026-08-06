@@ -9,6 +9,8 @@ import prompt from "dialogs/prompt";
 import type * as lsp from "vscode-languageserver-protocol";
 import { addLspLogFor } from "./logs";
 import type AcodeWorkspace from "./workspace";
+import { safeLspPositionToOffset } from "./textEditUtils";
+
 
 interface RenameParams {
 	newName: string;
@@ -148,55 +150,47 @@ async function performRename(view: EditorView): Promise<boolean> {
 	return true;
 }
 
-function lspPositionToOffset(
-	doc: { line: (n: number) => { from: number } },
-	pos: lsp.Position,
-): number {
-	const line = doc.line(pos.line + 1);
-	return line.from + pos.character;
-}
-
 async function applyChangesToFile(
-	workspace: AcodeWorkspace,
-	uri: string,
-	lspChanges: LspChange[],
-	mapping: { mapPosition: (uri: string, pos: lsp.Position) => number },
+        workspace: AcodeWorkspace,
+        uri: string,
+        lspChanges: LspChange[],
+        mapping: { mapPosition: (uri: string, pos: lsp.Position) => number },
 ): Promise<boolean> {
-	const file = workspace.getFile(uri);
+        const file = workspace.getFile(uri);
 
-	if (file) {
-		const view = file.getView();
-		if (view) {
-			view.dispatch({
-				changes: lspChanges.map((change) => ({
-					from: mapping.mapPosition(uri, change.range.start),
-					to: mapping.mapPosition(uri, change.range.end),
-					insert: change.newText,
-				})),
-				userEvent: "rename",
-			});
-			return true;
-		}
-	}
+        if (file) {
+                const view = file.getView();
+                if (view) {
+                        view.dispatch({
+                                changes: lspChanges.map((change) => ({
+                                        from: mapping.mapPosition(uri, change.range.start),
+                                        to: mapping.mapPosition(uri, change.range.end),
+                                        insert: change.newText,
+                                })),
+                                userEvent: "rename",
+                        });
+                        return true;
+                }
+        }
 
-	const displayedView = await workspace.displayFile(uri);
-	if (!displayedView?.state?.doc) {
-		addLspLogFor(workspace.client, "warn", `Rename could not open file: ${uri}`);
-		console.warn(`[LSP:Rename] Could not open file: ${uri}`);
-		return false;
-	}
+        const displayedView = await workspace.displayFile(uri);
+        if (!displayedView?.state?.doc) {
+                addLspLogFor(workspace.client, "warn", `Rename could not open file: ${uri}`);
+                console.warn(`[LSP:Rename] Could not open file: ${uri}`);
+                return false;
+        }
 
-	const doc = displayedView.state.doc;
-	displayedView.dispatch({
-		changes: lspChanges.map((change) => ({
-			from: lspPositionToOffset(doc, change.range.start),
-			to: lspPositionToOffset(doc, change.range.end),
-			insert: change.newText,
-		})),
-		userEvent: "rename",
-	});
+        const doc = displayedView.state.doc;
+        displayedView.dispatch({
+                changes: lspChanges.map((change) => ({
+                        from: safeLspPositionToOffset(doc, change.range.start),
+                        to: safeLspPositionToOffset(doc, change.range.end),
+                        insert: change.newText,
+                })),
+                userEvent: "rename",
+        });
 
-	return true;
+        return true;
 }
 
 async function doRename(

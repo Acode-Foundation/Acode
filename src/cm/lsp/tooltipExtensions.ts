@@ -1,936 +1,1008 @@
 import {
-	highlightingFor,
-	type Language,
-	LanguageDescription,
-	language as languageFacet,
+  highlightingFor,
+  type Language,
+  LanguageDescription,
+  language as languageFacet,
 } from "@codemirror/language";
-import { languages } from "@codemirror/language-data";
-import type { LSPClient } from "@codemirror/lsp-client";
-import { LSPPlugin } from "@codemirror/lsp-client";
 import {
-	type Extension,
-	Prec,
-	StateEffect,
-	StateField,
+  languages
+} from "@codemirror/language-data";
+import type {
+  LSPClient
+} from "@codemirror/lsp-client";
+import {
+  LSPPlugin
+} from "@codemirror/lsp-client";
+import {
+  type Extension,
+  Prec,
+  StateEffect,
+  StateField,
 } from "@codemirror/state";
 import {
-	type Command,
-	closeHoverTooltips,
-	EditorView,
-	hasHoverTooltips,
-	hoverTooltip,
-	type KeyBinding,
-	keymap,
-	showTooltip,
-	type Tooltip,
-	ViewPlugin,
-	type ViewUpdate,
+  type Command,
+  closeHoverTooltips,
+  EditorView,
+  hasHoverTooltips,
+  hoverTooltip,
+  type KeyBinding,
+  keymap,
+  showTooltip,
+  type Tooltip,
+  ViewPlugin,
+  type ViewUpdate,
 } from "@codemirror/view";
-import { highlightCode } from "@lezer/highlight";
+import {
+  highlightCode
+} from "@lezer/highlight";
 import type {
-	HoverParams,
-	ServerCapabilities,
-	SignatureHelpContext,
-	SignatureHelpParams,
+  HoverParams,
+  ServerCapabilities,
+  SignatureHelpContext,
+  SignatureHelpParams,
 } from "vscode-languageserver-protocol";
 import type {
-	Hover,
-	SignatureHelp as LspSignatureHelp,
-	MarkedString,
-	MarkupContent,
+  Hover,
+  SignatureHelp as LspSignatureHelp,
+  MarkedString,
+  MarkupContent,
 } from "vscode-languageserver-types";
-import { getMode, getModeForPath, type Mode } from "../modelist";
+import {
+  getMode,
+  getModeForPath,
+  type Mode
+} from "../modelist";
 import type AcodeWorkspace from "./workspace";
 
 interface LspClientInternals {
-	config?: {
-		highlightLanguage?: (language: string) => Language | null | undefined;
-	};
+  config?: {
+    highlightLanguage?: (language: string) => Language | null | undefined;
+  };
 }
 
 const SIGNATURE_TRIGGER_DELAY = 120;
 const SIGNATURE_RETRIGGER_DELAY = 250;
-const hoverLanguageLoads = new Map<string, Promise<Language | null>>();
-const pluginHoverLanguages = new WeakMap<Mode, Language>();
-const pluginHoverLanguageLoads = new WeakMap<
-	Mode,
-	Promise<Language | null>
->();
+const hoverLanguageLoads = new Map < string, Promise < Language | null>>();
+const pluginHoverLanguages = new WeakMap < Mode, Language > ();
+const pluginHoverLanguageLoads = new WeakMap <
+Mode,
+Promise < Language | null > > ();
 
 function clientHasCapability(
-	client: LSPClient,
-	name: keyof ServerCapabilities,
+  client: LSPClient,
+  name: keyof ServerCapabilities,
 ): boolean {
-	return !client.serverCapabilities || !!client.serverCapabilities[name];
+  return !client.serverCapabilities || !!client.serverCapabilities[name];
 }
 
 function normalizeLanguageName(value: string): string {
-	return String(value ?? "")
-		.trim()
-		.toLowerCase();
+  return String(value ?? "")
+  .trim()
+  .toLowerCase();
 }
 
 function matchingModeName(a: string, b: string): boolean {
-	const normalizedA = normalizeLanguageName(a);
-	const normalizedB = normalizeLanguageName(b);
-	if (!normalizedA || !normalizedB) return false;
-	if (normalizedA === normalizedB) return true;
+  const normalizedA = normalizeLanguageName(a);
+  const normalizedB = normalizeLanguageName(b);
+  if (!normalizedA || !normalizedB) return false;
+  if (normalizedA === normalizedB) return true;
 
-	const languageA = findLanguageDescription(normalizedA);
-	const languageB = findLanguageDescription(normalizedB);
-	return !!languageA && languageA === languageB;
+  const languageA = findLanguageDescription(normalizedA);
+  const languageB = findLanguageDescription(normalizedB);
+  return !!languageA && languageA === languageB;
 }
 
 function getLanguageCandidates(language: string): string[] {
-	const normalized = normalizeLanguageName(language);
-	if (!normalized) return [];
+  const normalized = normalizeLanguageName(language);
+  if (!normalized) return [];
 
-	const candidates = new Set([normalized]);
-	if (normalized.endsWith("react")) {
-		const withoutReact = normalized.slice(0, -"react".length);
-		if (withoutReact) candidates.add(withoutReact);
-	}
-	return [...candidates];
+  const candidates = new Set([normalized]);
+  if (normalized.endsWith("react")) {
+    const withoutReact = normalized.slice(0, -"react".length);
+    if (withoutReact) candidates.add(withoutReact);
+  }
+  return [...candidates];
 }
 
 function findLanguageDescription(language: string): LanguageDescription | null {
-	for (const candidate of getLanguageCandidates(language)) {
-		const byName = LanguageDescription.matchLanguageName(
-			languages,
-			candidate,
-			false,
-		);
-		if (byName) return byName;
+  for (const candidate of getLanguageCandidates(language)) {
+    const byName = LanguageDescription.matchLanguageName(
+      languages,
+      candidate,
+      false,
+    );
+    if (byName) return byName;
 
-		const byExtension = LanguageDescription.matchFilename(
-			languages,
-			`file.${candidate}`,
-		);
-		if (byExtension) return byExtension;
-	}
-	return null;
+    const byExtension = LanguageDescription.matchFilename(
+      languages,
+      `file.${candidate}`,
+    );
+    if (byExtension) return byExtension;
+  }
+  return null;
 }
 
 function findPluginMode(language: string): Mode | null {
-	for (const candidate of getLanguageCandidates(language)) {
-		const byName = getMode(candidate);
-		if (byName) return byName;
+  for (const candidate of getLanguageCandidates(language)) {
+    const byName = getMode(candidate);
+    if (byName) return byName;
 
-		const byExtension = getModeForPath(`file.${candidate}`);
-		if (byExtension && byExtension.name !== "text") return byExtension;
-	}
-	return null;
+    const byExtension = getModeForPath(`file.${candidate}`);
+    if (byExtension && byExtension.name !== "text") return byExtension;
+  }
+  return null;
 }
 
 function extractLanguage(value: unknown): Language | null {
-	if (!value) return null;
-	if (Array.isArray(value)) {
-		for (const item of value) {
-			const language = extractLanguage(item);
-			if (language) return language;
-		}
-		return null;
-	}
-	if (typeof value !== "object") return null;
+  if (!value) return null;
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const language = extractLanguage(item);
+      if (language) return language;
+    }
+    return null;
+  }
+  if (typeof value !== "object") return null;
 
-	const record = value as Record<string, unknown>;
-	const language = record.language;
-	if (language && typeof language === "object" && "parser" in language) {
-		return language as Language;
-	}
-	return "parser" in record ? (value as Language) : null;
+  const record = value as Record < string,
+  unknown >;
+  const language = record.language;
+  if (language && typeof language === "object" && "parser" in language) {
+    return language as Language;
+  }
+  return "parser" in record ? (value as Language): null;
 }
 
-function startPluginLanguageLoad(mode: Mode): Promise<Language | null> | null {
-	const cached = pluginHoverLanguageLoads.get(mode);
-	if (cached) return cached;
+function startPluginLanguageLoad(mode: Mode): Promise < Language | null > | null {
+  const cached = pluginHoverLanguageLoads.get(mode);
+  if (cached) return cached;
 
-	const loader = mode.getExtension();
-	if (!loader) return null;
+  const loader = mode.getExtension();
+  if (!loader) return null;
 
-	const load = Promise.resolve()
-		.then(() => loader())
-		.then((extension) => {
-			const language = extractLanguage(extension);
-			if (language) pluginHoverLanguages.set(mode, language);
-			return language;
-		})
-		.catch(() => null);
-	pluginHoverLanguageLoads.set(mode, load);
-	return load;
+  const load = Promise.resolve()
+  .then(() => loader())
+  .then((extension) => {
+    const language = extractLanguage(extension);
+    if (language) pluginHoverLanguages.set(mode, language);
+    return language;
+  })
+  .catch(() => null);
+  pluginHoverLanguageLoads.set(mode,
+    load);
+  return load;
 }
 
 function interceptFileLinks(container: HTMLElement, view: EditorView): void {
-	container.addEventListener("click", (event) => {
-		const target = event.target as HTMLElement | null;
-		const anchor = target?.closest?.("a[href]") as HTMLAnchorElement | null;
-		if (!anchor) return;
+  container.addEventListener("click",
+    (event) => {
+      const target = event.target as HTMLElement | null;
+      const anchor = target?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!anchor) return;
 
-		const href = anchor.getAttribute("href");
-		if (!href || !href.startsWith("file://")) return;
+      const href = anchor.getAttribute("href");
+      if (!href || !href.startsWith("file://")) return;
 
-		event.preventDefault();
-		event.stopPropagation();
+      event.preventDefault();
+      event.stopPropagation();
 
-		const plugin = LSPPlugin.get(view);
-		if (!plugin) return;
-		const workspace = plugin.client.workspace as AcodeWorkspace;
-		if (!workspace) return;
+      const plugin = LSPPlugin.get(view);
+      if (!plugin) return;
+      const workspace = plugin.client.workspace as AcodeWorkspace;
+      if (!workspace) return;
 
-		void (async () => {
-			try {
-				const match = /^(file:\/\/[^#]*)(?:#L?(\d+))?/.exec(href);
-				if (!match) return;
-				const [, rawUri, lineStr] = match;
+      void (async () => {
+        try {
+          const match = /^(file:\/\/[^#]*)(?:#L?(\d+))?/.exec(href);
+          if (!match) return;
+          const [,
+            rawUri,
+            lineStr] = match;
 
-				const targetView = await workspace.displayFile(rawUri);
-				if (!targetView) return;
+          const targetView = await workspace.displayFile(rawUri);
+          if (!targetView) return;
 
-				if (lineStr) {
-					const line = Number.parseInt(lineStr, 10);
-					const doc = targetView.state.doc;
-					if (Number.isFinite(line) && line >= 1 && line <= doc.lines) {
-						const { from } = doc.line(line);
-						targetView.dispatch({
-							selection: { anchor: from },
-							effects: EditorView.scrollIntoView(from, { y: "center" }),
-						});
-						targetView.focus();
-					}
-				}
-			} catch (error) {
-				console.error("[LSP:Tooltip] Failed to open file link:", href, error);
-			}
-		})();
-	});
+          if (lineStr) {
+            const line = Number.parseInt(lineStr, 10);
+            const doc = targetView.state.doc;
+            if (Number.isFinite(line) && line >= 1 && line <= doc.lines) {
+              const {
+                from
+              } = doc.line(line);
+              targetView.dispatch({
+                selection: {
+                  anchor: from
+                },
+                effects: EditorView.scrollIntoView(from, {
+                  y: "center"
+                }),
+              });
+              targetView.focus();
+            }
+          }
+        } catch (error) {
+          console.error("[LSP:Tooltip] Failed to open file link:", href, error);
+        }
+      })();
+    });
 }
 
 export function resolveLspHoverHighlightLanguage(
-	language: string,
+  language: string,
 ): Language | null {
-	const description = findLanguageDescription(language);
-	if (description) {
-		if (description.support) return description.support.language;
+  const description = findLanguageDescription(language);
+  if (description) {
+    if (description.support) return description.support.language;
 
-		const key = description.name.toLowerCase();
-		if (!hoverLanguageLoads.has(key)) {
-			hoverLanguageLoads.set(
-				key,
-				description
-					.load()
-					.then((support) => support.language)
-					.catch(() => null),
-			);
-		}
-		return null;
-	}
+    const key = description.name.toLowerCase();
+    if (!hoverLanguageLoads.has(key)) {
+      hoverLanguageLoads.set(
+        key,
+        description
+        .load()
+        .then((support) => support.language)
+        .catch(() => null),
+      );
+    }
+    return null;
+  }
 
-	const mode = findPluginMode(language);
-	if (!mode) return null;
-	const loaded = pluginHoverLanguages.get(mode);
-	if (loaded) return loaded;
-	startPluginLanguageLoad(mode);
-	return null;
+  const mode = findPluginMode(language);
+  if (!mode) return null;
+  const loaded = pluginHoverLanguages.get(mode);
+  if (loaded) return loaded;
+  startPluginLanguageLoad(mode);
+  return null;
 }
 
 export async function loadLspHoverHighlightLanguage(
-	language: string,
-): Promise<Language | null> {
-	const description = findLanguageDescription(language);
-	if (description) {
-		if (description.support) return description.support.language;
+  language: string,
+): Promise < Language | null > {
+  const description = findLanguageDescription(language);
+  if (description) {
+    if (description.support) return description.support.language;
 
-		const key = description.name.toLowerCase();
-		let load = hoverLanguageLoads.get(key);
-		if (!load) {
-			load = description
-				.load()
-				.then((support) => support.language)
-				.catch(() => null);
-			hoverLanguageLoads.set(key, load);
-		}
-		return load;
-	}
+    const key = description.name.toLowerCase();
+    let load = hoverLanguageLoads.get(key);
+    if (!load) {
+      load = description
+      .load()
+      .then((support) => support.language)
+      .catch(() => null);
+      hoverLanguageLoads.set(key, load);
+    }
+    return load;
+  }
 
-	const mode = findPluginMode(language);
-	if (!mode) return null;
-	return pluginHoverLanguages.get(mode) || startPluginLanguageLoad(mode);
+  const mode = findPluginMode(language);
+  if (!mode) return null;
+  return pluginHoverLanguages.get(mode) || startPluginLanguageLoad(mode);
 }
 
 function getFenceLanguage(info: string): string {
-	const trimmed = info.trim();
-	if (!trimmed) return "";
+  const trimmed = info.trim();
+  if (!trimmed) return "";
 
-	if (trimmed.startsWith("{")) {
-		return trimmed.match(/\.([\w+#.-]+)/)?.[1] || "";
-	}
-	return trimmed.split(/\s+/, 1)[0] || "";
+  if (trimmed.startsWith("{")) {
+    return trimmed.match(/\.([\w+#.-]+)/)?.[1] || "";
+  }
+  return trimmed.split(/\s+/, 1)[0] || "";
 }
 
-function collectMarkdownLanguages(markdown: string, result: Set<string>): void {
-	const fencePattern = /^ {0,3}(?:`{3,}|~{3,})[ \t]*([^\n]*)$/gm;
-	for (
-		let match = fencePattern.exec(markdown);
-		match;
-		match = fencePattern.exec(markdown)
-	) {
-		const language = getFenceLanguage(match[1] || "");
-		if (language) result.add(language);
-	}
+function collectMarkdownLanguages(markdown: string, result: Set < string >): void {
+  const fencePattern = /^ {0,3}(?:`{3,}|~{3,})[ \t]*([^\n]*)$/gm;
+  for (
+    let match = fencePattern.exec(markdown);
+    match;
+    match = fencePattern.exec(markdown)
+  ) {
+    const language = getFenceLanguage(match[1] || "");
+    if (language) result.add(language);
+  }
 }
 
 function collectHoverLanguages(
-	contents: Hover["contents"],
-	result = new Set<string>(),
-): Set<string> {
-	if (Array.isArray(contents)) {
-		contents.forEach((content) => collectHoverLanguages(content, result));
-	} else if (typeof contents === "string") {
-		collectMarkdownLanguages(contents, result);
-	} else if ("language" in contents) {
-		if (contents.language) result.add(contents.language);
-	} else if (contents.kind === "markdown") {
-		collectMarkdownLanguages(contents.value, result);
-	}
-	return result;
+  contents: Hover["contents"],
+  result = new Set < string > (),
+): Set < string > {
+  if (Array.isArray(contents)) {
+    contents.forEach((content) => collectHoverLanguages(content, result));
+  } else if (typeof contents === "string") {
+    collectMarkdownLanguages(contents, result);
+  } else if ("language" in contents) {
+    if (contents.language) result.add(contents.language);
+  } else if (contents.kind === "markdown") {
+    collectMarkdownLanguages(contents.value, result);
+  }
+  return result;
 }
 
-async function loadHoverContentLanguages(contents: Hover["contents"]): Promise<void> {
-	const languageTags = collectHoverLanguages(contents);
-	await Promise.all(
-		Array.from(languageTags, (language) =>
-			loadLspHoverHighlightLanguage(language),
-		),
-	);
+async function loadHoverContentLanguages(contents: Hover["contents"]): Promise < void > {
+  const languageTags = collectHoverLanguages(contents);
+  await Promise.all(
+    Array.from(languageTags, (language) =>
+      loadLspHoverHighlightLanguage(language),
+    ),
+  );
 }
 
 function fromPosition(
-	doc: EditorView["state"]["doc"],
-	position: { line: number; character: number },
+  doc: EditorView["state"]["doc"],
+  position: {
+    line: number; character: number
+  },
 ): number {
-	const line = doc.line(position.line + 1);
-	return Math.min(line.to, line.from + position.character);
+  const line = doc.line(position.line + 1);
+  return Math.min(line.to, line.from + position.character);
 }
 
 function escapeHtml(value: string): string {
-	return value.replace(/[&<>"']/g, (match) => {
-		switch (match) {
-			case "&":
-				return "&amp;";
-			case "<":
-				return "&lt;";
-			case ">":
-				return "&gt;";
-			case '"':
-				return "&quot;";
-			default:
-				return "&#39;";
-		}
-	});
+  return value.replace(/[&<>"']/g, (match) => {
+    switch (match) {
+      case "&":
+        return "&amp;";
+      case "<":
+        return "&lt;";
+      case ">":
+        return "&gt;";
+      case '"':
+        return "&quot;";
+      default:
+        return "&#39;";
+    }
+  });
 }
 
 function renderCode(plugin: LSPPlugin, code: MarkedString): string {
-	const client = plugin.client as typeof plugin.client & LspClientInternals;
+  const client = plugin.client as typeof plugin.client & LspClientInternals;
 
-	if (typeof code === "string") {
-		return plugin.docToHTML(code, "markdown");
-	}
+  if (typeof code === "string") {
+    return plugin.docToHTML(code, "markdown");
+  }
 
-	const { language, value } = code;
-	let lang = client.config?.highlightLanguage?.(language || "") ?? undefined;
+  const {
+    language,
+    value
+  } = code;
+  let lang = client.config?.highlightLanguage?.(language || "") ?? undefined;
 
-	if (!lang) {
-		const viewLang = plugin.view.state.facet(languageFacet);
-		if (viewLang && (!language || matchingModeName(viewLang.name, language))) {
-			lang = viewLang;
-		}
-	}
+  if (!lang) {
+    const viewLang = plugin.view.state.facet(languageFacet);
+    if (viewLang && (!language || matchingModeName(viewLang.name, language))) {
+      lang = viewLang;
+    }
+  }
 
-	if (!lang) return escapeHtml(value);
+  if (!lang) return escapeHtml(value);
 
-	let result = "";
-	highlightCode(
-		value,
-		lang.parser.parse(value),
-		{ style: (tags) => highlightingFor(plugin.view.state, tags) },
-		(text, cls) => {
-			result += cls
-				? `<span class="${cls}">${escapeHtml(text)}</span>`
-				: escapeHtml(text);
-		},
-		() => {
-			result += "<br>";
-		},
-	);
-	return result;
+  let result = "";
+  highlightCode(
+    value,
+    lang.parser.parse(value),
+    {
+      style: (tags) => highlightingFor(plugin.view.state, tags)
+    },
+    (text, cls) => {
+      result += cls
+      ? `<span class="${cls}">${escapeHtml(text)}</span>`: escapeHtml(text);
+    },
+    () => {
+      result += "<br>";
+    },
+  );
+  return result;
 }
 
 function renderTooltipContent(
-	plugin: LSPPlugin,
-	value: string | MarkupContent | MarkedString | MarkedString[],
+  plugin: LSPPlugin,
+  value: string | MarkupContent | MarkedString | MarkedString[],
 ): string {
-	if (Array.isArray(value)) {
-		return value.map((item) => renderCode(plugin, item)).join("<br>");
-	}
+  if (Array.isArray(value)) {
+    return value.map((item) => renderCode(plugin, item)).join("<br>");
+  }
 
-	if (
-		typeof value === "string" ||
-		(typeof value === "object" && value != null && "language" in value)
-	) {
-		return renderCode(plugin, value);
-	}
+  if (
+    typeof value === "string" ||
+    (typeof value === "object" && value != null && "language" in value)
+  ) {
+    return renderCode(plugin, value);
+  }
 
-	return plugin.docToHTML(value);
+  return plugin.docToHTML(value);
 }
 
 function isPointerOrTouchSelection(update: ViewUpdate): boolean {
-	return (
-		update.selectionSet &&
-		update.transactions.some(
-			(tr) =>
-				tr.isUserEvent("pointer") ||
-				tr.isUserEvent("select.pointer") ||
-				tr.isUserEvent("touch") ||
-				tr.isUserEvent("select.touch"),
-		)
-	);
+  return (
+    update.selectionSet &&
+    update.transactions.some(
+      (tr) =>
+      tr.isUserEvent("pointer") ||
+      tr.isUserEvent("select.pointer") ||
+      tr.isUserEvent("touch") ||
+      tr.isUserEvent("select.touch"),
+    )
+  );
 }
 
 function closeHoverIfNeeded(view: EditorView): void {
-	if (hasHoverTooltips(view.state)) {
-		view.dispatch({ effects: closeHoverTooltips });
-	}
+  if (hasHoverTooltips(view.state)) {
+    view.dispatch({
+      effects: closeHoverTooltips
+    });
+  }
 }
 
 function hoverRequest(plugin: LSPPlugin, pos: number) {
-	if (!clientHasCapability(plugin.client, "hoverProvider")) {
-		return Promise.resolve(null);
-	}
+  if (!clientHasCapability(plugin.client, "hoverProvider")) {
+    return Promise.resolve(null);
+  }
 
-	plugin.client.sync();
-	return plugin.client.request<HoverParams, Hover | null>(
-		"textDocument/hover",
-		{
-			position: plugin.toPosition(pos),
-			textDocument: { uri: plugin.uri },
-		},
-	);
+  plugin.client.sync();
+  return plugin.client.request < HoverParams,
+  Hover | null > (
+    "textDocument/hover",
+    {
+      position: plugin.toPosition(pos),
+      textDocument: {
+        uri: plugin.uri
+      },
+    },
+  );
 }
 
 function lspTooltipSource(
-	view: EditorView,
-	pos: number,
-): Promise<Tooltip | null> {
-	const plugins = LSPPlugin.getAll(view, "hover").filter(
-		(plugin) => clientHasCapability(plugin.client, "hoverProvider"),
-	);
-	if (!plugins.length) return Promise.resolve(null);
+  view: EditorView,
+  pos: number,
+): Promise < Tooltip | null > {
+  const plugins = LSPPlugin.getAll(view, "hover").filter(
+    (plugin) => clientHasCapability(plugin.client, "hoverProvider"),
+  );
+  if (!plugins.length) return Promise.resolve(null);
 
-	return Promise.allSettled(
-		plugins.map((plugin) => hoverRequest(plugin, pos)),
-	).then(async (settled) => {
-		const results: Array<{ plugin: LSPPlugin; result: Hover }> = [];
-		for (let index = 0; index < settled.length; index++) {
-			const item = settled[index];
-			if (item.status === "fulfilled" && item.value) {
-				results.push({ plugin: plugins[index], result: item.value });
-			} else if (item.status === "rejected") {
-				console.warn("[LSP:Hover] Provider failed", item.reason);
-			}
-		}
-		if (!results.length) return null;
-		await Promise.all(
-			results.map(({ result }) => loadHoverContentLanguages(result.contents)),
-		);
+  return Promise.allSettled(
+    plugins.map((plugin) => hoverRequest(plugin, pos)),
+  ).then(async (settled) => {
+      const results: Array < {
+        plugin: LSPPlugin; result: Hover
+      } > = [];
+      for (let index = 0; index < settled.length; index++) {
+        const item = settled[index];
+        if (item.status === "fulfilled" && item.value) {
+          results.push({
+            plugin: plugins[index], result: item.value
+          });
+        } else if (item.status === "rejected") {
+          console.warn("[LSP:Hover] Provider failed", item.reason);
+        }
+      }
+      if (!results.length) return null;
+      await Promise.all(
+        results.map(({
+          result
+        }) => loadHoverContentLanguages(result.contents)),
+      );
 
-		let from = pos;
-		let to = pos;
-		for (const { result } of results) {
-			if (!result.range) continue;
-			from = Math.min(from, fromPosition(view.state.doc, result.range.start));
-			to = Math.max(to, fromPosition(view.state.doc, result.range.end));
-		}
+      let from = pos;
+      let to = pos;
+      for (const {
+        result
+      } of results) {
+        if (!result.range) continue;
+        from = Math.min(from, fromPosition(view.state.doc, result.range.start));
+        to = Math.max(to, fromPosition(view.state.doc, result.range.end));
+      }
 
-		return {
-			pos: from,
-			end: to,
-			create() {
-				const dom = document.createElement("div");
-				dom.className = "cm-lsp-hover-tooltip cm-lsp-documentation";
-                            for (let index = 0; index < results.length; index++) {
-                                    if (index) dom.appendChild(document.createElement("hr"));
-                                    dom.appendChild(
-                                            renderTooltipContent(
-                                                    plugin,
-                                                    results[index].contents,
-                                            ),
-                                    );
-                            }
-                            interceptFileLinks(dom, view);
+      return {
+        pos: from,
+        end: to,
+        create() {
+          const dom = document.createElement("div");
+          dom.className = "cm-lsp-hover-tooltip cm-lsp-documentation";
+          for (let index = 0; index < results.length; index++) {
+            if (index) dom.appendChild(document.createElement("hr"));
+            const section = dom.appendChild(document.createElement("div"));
+            section.innerHTML = renderTooltipContent(
+              results[index].plugin,
+              results[index].result.contents,
+            );
+          }
 
-				return { dom };
-			},
-			above: true,
-		};
-	});
+          interceptFileLinks(dom, view);
+
+          return {
+            dom
+          };
+        },
+        above: true,
+      };
+    });
 }
 
 const closeHoverOnInteraction = ViewPlugin.fromClass(
-	class {
-		constructor(readonly view: EditorView) {}
-	},
-	{
-		eventObservers: {
-			pointerdown() {
-				closeHoverIfNeeded(this.view);
-			},
-			touchstart() {
-				closeHoverIfNeeded(this.view);
-			},
-			wheel() {
-				closeHoverIfNeeded(this.view);
-			},
-			scroll() {
-				closeHoverIfNeeded(this.view);
-			},
-		},
-	},
+  class {
+    constructor(readonly view: EditorView) {}
+  },
+  {
+    eventObservers: {
+      pointerdown() {
+        closeHoverIfNeeded(this.view);
+      },
+      touchstart() {
+        closeHoverIfNeeded(this.view);
+      },
+      wheel() {
+        closeHoverIfNeeded(this.view);
+      },
+      scroll() {
+        closeHoverIfNeeded(this.view);
+      },
+    },
+  },
 );
 
 function getSignatureHelp(
-	plugin: LSPPlugin,
-	pos: number,
-	context: SignatureHelpContext,
+  plugin: LSPPlugin,
+  pos: number,
+  context: SignatureHelpContext,
 ) {
-	if (!clientHasCapability(plugin.client, "signatureHelpProvider")) {
-		return Promise.resolve(null);
-	}
+  if (!clientHasCapability(plugin.client, "signatureHelpProvider")) {
+    return Promise.resolve(null);
+  }
 
-	plugin.client.sync();
-	return plugin.client.request<SignatureHelpParams, LspSignatureHelp | null>(
-		"textDocument/signatureHelp",
-		{
-			context,
-			position: plugin.toPosition(pos),
-			textDocument: { uri: plugin.uri },
-		},
-	);
+  plugin.client.sync();
+  return plugin.client.request < SignatureHelpParams,
+  LspSignatureHelp | null > (
+    "textDocument/signatureHelp",
+    {
+      context,
+      position: plugin.toPosition(pos),
+      textDocument: {
+        uri: plugin.uri
+      },
+    },
+  );
 }
 
 function sameSignatures(a: LspSignatureHelp, b: LspSignatureHelp): boolean {
-	if (a.signatures.length !== b.signatures.length) return false;
-	return a.signatures.every((signature, index) => {
-		return signature.label === b.signatures[index]?.label;
-	});
+  if (a.signatures.length !== b.signatures.length) return false;
+  return a.signatures.every((signature, index) => {
+    return signature.label === b.signatures[index]?.label;
+  });
 }
 
 function sameActiveParam(
-	a: LspSignatureHelp,
-	b: LspSignatureHelp,
-	active: number,
+  a: LspSignatureHelp,
+  b: LspSignatureHelp,
+  active: number,
 ): boolean {
-	const current = a.signatures[active];
-	const next = b.signatures[active];
-	if (!current || !next) return false;
+  const current = a.signatures[active];
+  const next = b.signatures[active];
+  if (!current || !next) return false;
 
-	return (
-		(current.activeParameter ?? a.activeParameter) ===
-		(next.activeParameter ?? b.activeParameter)
-	);
+  return (
+    (current.activeParameter ?? a.activeParameter) ===
+    (next.activeParameter ?? b.activeParameter)
+  );
 }
 
 class SignatureState {
-	constructor(
-		readonly data: LspSignatureHelp,
-		readonly active: number,
-		readonly tooltip: Tooltip,
-		readonly client: LSPClient,
-	) {}
+  constructor(
+    readonly data: LspSignatureHelp,
+    readonly active: number,
+    readonly tooltip: Tooltip,
+    readonly client: LSPClient,
+  ) {}
 }
 
-const signatureEffect = StateEffect.define<{
-	data: LspSignatureHelp;
-	active: number;
-	pos: number;
-	client: LSPClient;
-} | null>();
+const signatureEffect = StateEffect.define < {
+  data: LspSignatureHelp;
+  active: number;
+  pos: number;
+  client: LSPClient;
+} | null > ();
 
 function signatureTooltip(
-	data: LspSignatureHelp,
-	active: number,
-	pos: number,
-	client: LSPClient,
+  data: LspSignatureHelp,
+  active: number,
+  pos: number,
+  client: LSPClient,
 ): Tooltip {
-	return {
-		pos,
-		above: true,
-		create: (view) => drawSignatureTooltip(view, data, active, client),
-	};
+  return {
+    pos,
+    above: true,
+    create: (view) => drawSignatureTooltip(view, data, active, client),
+  };
 }
 
-const signatureState = StateField.define<SignatureState | null>({
-	create() {
-		return null;
-	},
-	update(value, tr) {
-		for (const effect of tr.effects) {
-			if (effect.is(signatureEffect)) {
-				if (effect.value) {
-					return new SignatureState(
-						effect.value.data,
-						effect.value.active,
-						signatureTooltip(
-							effect.value.data,
-							effect.value.active,
-							effect.value.pos,
-							effect.value.client,
-						),
-						effect.value.client,
-					);
-				}
-				return null;
-			}
-		}
+const signatureState = StateField.define < SignatureState | null > ({
+  create() {
+    return null;
+  },
+  update(value, tr) {
+    for (const effect of tr.effects) {
+      if (effect.is(signatureEffect)) {
+        if (effect.value) {
+          return new SignatureState(
+            effect.value.data,
+            effect.value.active,
+            signatureTooltip(
+              effect.value.data,
+              effect.value.active,
+              effect.value.pos,
+              effect.value.client,
+            ),
+            effect.value.client,
+          );
+        }
+        return null;
+      }
+    }
 
-		if (value && tr.docChanged) {
-			return new SignatureState(
-				value.data,
-				value.active,
-				{
-					...value.tooltip,
-					pos: tr.changes.mapPos(value.tooltip.pos),
-				},
-				value.client,
-			);
-		}
+    if (value && tr.docChanged) {
+      return new SignatureState(
+        value.data,
+        value.active,
+        {
+          ...value.tooltip,
+          pos: tr.changes.mapPos(value.tooltip.pos),
+        },
+        value.client,
+      );
+    }
 
-		return value;
-	},
-	provide: (field) =>
-		showTooltip.from(field, (value) => value?.tooltip ?? null),
+    return value;
+  },
+  provide: (field) =>
+  showTooltip.from(field, (value) => value?.tooltip ?? null),
 });
 
 function drawSignatureTooltip(
-	view: EditorView,
-	data: LspSignatureHelp,
-	active: number,
-	client: LSPClient,
+  view: EditorView,
+  data: LspSignatureHelp,
+  active: number,
+  client: LSPClient,
 ) {
-	const dom = document.createElement("div");
-	dom.className = "cm-lsp-signature-tooltip";
+  const dom = document.createElement("div");
+  dom.className = "cm-lsp-signature-tooltip";
 
-	if (data.signatures.length > 1) {
-		dom.classList.add("cm-lsp-signature-multiple");
-		const num = dom.appendChild(document.createElement("div"));
-		num.className = "cm-lsp-signature-num";
-		num.textContent = `${active + 1}/${data.signatures.length}`;
-	}
+  if (data.signatures.length > 1) {
+    dom.classList.add("cm-lsp-signature-multiple");
+    const num = dom.appendChild(document.createElement("div"));
+    num.className = "cm-lsp-signature-num";
+    num.textContent = `${active + 1}/${data.signatures.length}`;
+  }
 
-	const signature = data.signatures[active];
-	if (!signature) {
-		return { dom };
-	}
+  const signature = data.signatures[active];
+  if (!signature) {
+    return {
+      dom
+    };
+  }
 
-	const sig = dom.appendChild(document.createElement("div"));
-	sig.className = "cm-lsp-signature";
-	let activeFrom = 0;
-	let activeTo = 0;
-	const activeParamIndex = signature.activeParameter ?? data.activeParameter;
-	const activeParam =
-		activeParamIndex != null && signature.parameters
-			? signature.parameters[activeParamIndex]
-			: null;
+  const sig = dom.appendChild(document.createElement("div"));
+  sig.className = "cm-lsp-signature";
+  let activeFrom = 0;
+  let activeTo = 0;
+  const activeParamIndex = signature.activeParameter ?? data.activeParameter;
+  const activeParam =
+  activeParamIndex != null && signature.parameters
+  ? signature.parameters[activeParamIndex]: null;
 
-	if (activeParam && Array.isArray(activeParam.label)) {
-		[activeFrom, activeTo] = activeParam.label;
-	} else if (activeParam) {
-		const found = signature.label.indexOf(activeParam.label as string);
-		if (found > -1) {
-			activeFrom = found;
-			activeTo = found + activeParam.label.length;
-		}
-	}
+  if (activeParam && Array.isArray(activeParam.label)) {
+    [activeFrom,
+      activeTo] = activeParam.label;
+  } else if (activeParam) {
+    const found = signature.label.indexOf(activeParam.label as string);
+    if (found > -1) {
+      activeFrom = found;
+      activeTo = found + activeParam.label.length;
+    }
+  }
 
-	if (activeTo) {
-		sig.appendChild(
-			document.createTextNode(signature.label.slice(0, activeFrom)),
-		);
-		const activeElt = sig.appendChild(document.createElement("span"));
-		activeElt.className = "cm-lsp-active-parameter";
-		activeElt.textContent = signature.label.slice(activeFrom, activeTo);
-		sig.appendChild(document.createTextNode(signature.label.slice(activeTo)));
-	} else {
-		sig.textContent = signature.label;
-	}
+  if (activeTo) {
+    sig.appendChild(
+      document.createTextNode(signature.label.slice(0, activeFrom)),
+    );
+    const activeElt = sig.appendChild(document.createElement("span"));
+    activeElt.className = "cm-lsp-active-parameter";
+    activeElt.textContent = signature.label.slice(activeFrom, activeTo);
+    sig.appendChild(document.createTextNode(signature.label.slice(activeTo)));
+  } else {
+    sig.textContent = signature.label;
+  }
 
-	if (signature.documentation) {
-		const plugin = LSPPlugin.get(view, client);
-		if (plugin) {
-			const docs = dom.appendChild(document.createElement("div"));
-			docs.className = "cm-lsp-signature-documentation cm-lsp-documentation";
-			docs.innerHTML = plugin.docToHTML(signature.documentation);
-			interceptFileLinks(docs, view);
-		}
-	}
+  if (signature.documentation) {
+    const plugin = LSPPlugin.get(view, client);
+    if (plugin) {
+      const docs = dom.appendChild(document.createElement("div"));
+      docs.className = "cm-lsp-signature-documentation cm-lsp-documentation";
+      docs.innerHTML = plugin.docToHTML(signature.documentation);
+      interceptFileLinks(docs, view);
+    }
+  }
 
-	return { dom };
+  return {
+    dom
+  };
 }
 
 const signaturePlugin = ViewPlugin.fromClass(
-	class {
-		activeRequest: { pos: number; drop: boolean } | null = null;
-		delayedRequest = 0;
+  class {
+    activeRequest: {
+      pos: number; drop: boolean
+    } | null = null;
+    delayedRequest = 0;
 
-		constructor(readonly view: EditorView) {}
+    constructor(readonly view: EditorView) {}
 
-		update(update: ViewUpdate) {
-			const pointerOrTouchSelection = isPointerOrTouchSelection(update);
+    update(update: ViewUpdate) {
+      const pointerOrTouchSelection = isPointerOrTouchSelection(update);
 
-			if (this.activeRequest) {
-				if (update.selectionSet) {
-					this.activeRequest.drop = true;
-					this.activeRequest = null;
-				} else if (update.docChanged) {
-					this.activeRequest.pos = update.changes.mapPos(
-						this.activeRequest.pos,
-					);
-				}
-			}
+      if (this.activeRequest) {
+        if (update.selectionSet) {
+          this.activeRequest.drop = true;
+          this.activeRequest = null;
+        } else if (update.docChanged) {
+          this.activeRequest.pos = update.changes.mapPos(
+            this.activeRequest.pos,
+          );
+        }
+      }
 
-			const plugin = LSPPlugin.getAll(update.view, "signatureHelp").find(
-				(candidate) =>
-					clientHasCapability(candidate.client, "signatureHelpProvider"),
-			);
-			if (!plugin) return;
+      const plugin = LSPPlugin.getAll(update.view, "signatureHelp").find(
+        (candidate) =>
+        clientHasCapability(candidate.client, "signatureHelpProvider"),
+      );
+      if (!plugin) return;
 
-			const sigState = update.view.state.field(signatureState);
-			let triggerCharacter = "";
+      const sigState = update.view.state.field(signatureState);
+      let triggerCharacter = "";
 
-			if (
-				update.docChanged &&
-				update.transactions.some((tr) => tr.isUserEvent("input.type"))
-			) {
-				const serverConf =
-					plugin.client.serverCapabilities?.signatureHelpProvider;
-				const triggers = (serverConf?.triggerCharacters || []).concat(
-					(sigState && serverConf?.retriggerCharacters) || [],
-				);
+      if (
+        update.docChanged &&
+        update.transactions.some((tr) => tr.isUserEvent("input.type"))
+      ) {
+        const serverConf =
+        plugin.client.serverCapabilities?.signatureHelpProvider;
+        const triggers = (serverConf?.triggerCharacters || []).concat(
+          (sigState && serverConf?.retriggerCharacters) || [],
+        );
 
-				if (triggers.length) {
-					update.changes.iterChanges((_fromA, _toA, _fromB, _toB, inserted) => {
-						const insertedText = inserted.toString();
-						if (!insertedText) return;
-						for (const trigger of triggers) {
-							if (insertedText.includes(trigger)) {
-								triggerCharacter = trigger;
-							}
-						}
-					});
-				}
-			}
+        if (triggers.length) {
+          update.changes.iterChanges((_fromA, _toA, _fromB, _toB, inserted) => {
+            const insertedText = inserted.toString();
+            if (!insertedText) return;
+            for (const trigger of triggers) {
+              if (insertedText.includes(trigger)) {
+                triggerCharacter = trigger;
+              }
+            }
+          });
+        }
+      }
 
-			if (triggerCharacter) {
-				this.scheduleRequest(
-					plugin,
-					{
-						triggerKind: 2,
-						isRetrigger: !!sigState,
-						triggerCharacter,
-						activeSignatureHelp: sigState?.data,
-					},
-					SIGNATURE_TRIGGER_DELAY,
-				);
-			} else if (sigState && update.selectionSet && !pointerOrTouchSelection) {
-				this.scheduleRequest(
-					plugin,
-					{
-						triggerKind: 3,
-						isRetrigger: true,
-						activeSignatureHelp: sigState.data,
-					},
-					SIGNATURE_RETRIGGER_DELAY,
-				);
-			}
-		}
+      if (triggerCharacter) {
+        this.scheduleRequest(
+          plugin,
+          {
+            triggerKind: 2,
+            isRetrigger: !!sigState,
+            triggerCharacter,
+            activeSignatureHelp: sigState?.data,
+          },
+          SIGNATURE_TRIGGER_DELAY,
+        );
+      } else if (sigState && update.selectionSet && !pointerOrTouchSelection) {
+        this.scheduleRequest(
+          plugin,
+          {
+            triggerKind: 3,
+            isRetrigger: true,
+            activeSignatureHelp: sigState.data,
+          },
+          SIGNATURE_RETRIGGER_DELAY,
+        );
+      }
+    }
 
-		scheduleRequest(
-			plugin: LSPPlugin,
-			context: SignatureHelpContext,
-			delay: number,
-		) {
-			if (this.delayedRequest) {
-				clearTimeout(this.delayedRequest);
-			}
-			this.delayedRequest = window.setTimeout(() => {
-				this.delayedRequest = 0;
-				this.startRequest(plugin, context);
-			}, delay);
-		}
+    scheduleRequest(
+      plugin: LSPPlugin,
+      context: SignatureHelpContext,
+      delay: number,
+    ) {
+      if (this.delayedRequest) {
+        clearTimeout(this.delayedRequest);
+      }
+      this.delayedRequest = window.setTimeout(() => {
+        this.delayedRequest = 0;
+        this.startRequest(plugin, context);
+      }, delay);
+    }
 
-		startRequest(plugin: LSPPlugin, context: SignatureHelpContext) {
-			if (this.delayedRequest) {
-				clearTimeout(this.delayedRequest);
-				this.delayedRequest = 0;
-			}
+    startRequest(plugin: LSPPlugin, context: SignatureHelpContext) {
+      if (this.delayedRequest) {
+        clearTimeout(this.delayedRequest);
+        this.delayedRequest = 0;
+      }
 
-			const { view } = plugin;
-			const pos = view.state.selection.main.head;
+      const {
+        view
+      } = plugin;
+      const pos = view.state.selection.main.head;
 
-			if (this.activeRequest) this.activeRequest.drop = true;
-			const request = (this.activeRequest = { pos, drop: false });
+      if (this.activeRequest) this.activeRequest.drop = true;
+      const request = (this.activeRequest = {
+        pos, drop: false
+      });
 
-			getSignatureHelp(plugin, pos, context).then(
-				(result) => {
-					if (request.drop) return;
+      getSignatureHelp(plugin, pos, context).then(
+        (result) => {
+          if (request.drop) return;
 
-					if (result && result.signatures.length) {
-						const current = view.state.field(signatureState);
-						const same = current && sameSignatures(current.data, result);
-						const active =
-							same && context.triggerKind === 3
-								? current!.active
-								: (result.activeSignature ?? 0);
+          if (result && result.signatures.length) {
+            const current = view.state.field(signatureState);
+            const same = current && sameSignatures(current.data, result);
+            const active =
+            same && context.triggerKind === 3
+            ? current!.active: (result.activeSignature ?? 0);
 
-						if (same && sameActiveParam(current!.data, result, active)) return;
+            if (same && sameActiveParam(current!.data, result, active)) return;
 
-						view.dispatch({
-							effects: signatureEffect.of({
-								data: result,
-								active,
-								pos: same ? current!.tooltip.pos : request.pos,
-								client: plugin.client,
-							}),
-						});
-					} else if (view.state.field(signatureState, false)) {
-						view.dispatch({ effects: signatureEffect.of(null) });
-					}
-				},
-				context.triggerKind === 1
-					? (error) => plugin.reportError("Signature request failed", error)
-					: undefined,
-			);
-		}
+            view.dispatch({
+              effects: signatureEffect.of({
+                data: result,
+                active,
+                pos: same ? current!.tooltip.pos: request.pos,
+                client: plugin.client,
+              }),
+            });
+          } else if (view.state.field(signatureState, false)) {
+            view.dispatch({
+              effects: signatureEffect.of(null)
+            });
+          }
+        },
+        context.triggerKind === 1
+        ? (error) => plugin.reportError("Signature request failed", error): undefined,
+      );
+    }
 
-		close() {
-			if (this.delayedRequest) {
-				clearTimeout(this.delayedRequest);
-				this.delayedRequest = 0;
-			}
-			if (this.activeRequest) {
-				this.activeRequest.drop = true;
-				this.activeRequest = null;
-			}
-			if (this.view.state.field(signatureState, false)) {
-				this.view.dispatch({ effects: signatureEffect.of(null) });
-			}
-		}
+    close() {
+      if (this.delayedRequest) {
+        clearTimeout(this.delayedRequest);
+        this.delayedRequest = 0;
+      }
+      if (this.activeRequest) {
+        this.activeRequest.drop = true;
+        this.activeRequest = null;
+      }
+      if (this.view.state.field(signatureState, false)) {
+        this.view.dispatch({
+          effects: signatureEffect.of(null)
+        });
+      }
+    }
 
-		destroy() {
-			this.close();
-		}
-	},
-	{
-		eventObservers: {
-			pointerdown() {
-				this.close();
-			},
-			touchstart() {
-				this.close();
-			},
-			wheel() {
-				this.close();
-			},
-			scroll() {
-				this.close();
-			},
-		},
-	},
+    destroy() {
+      this.close();
+    }
+  },
+  {
+    eventObservers: {
+      pointerdown() {
+        this.close();
+      },
+      touchstart() {
+        this.close();
+      },
+      wheel() {
+        this.close();
+      },
+      scroll() {
+        this.close();
+      },
+    },
+  },
 );
 
 export const showSignatureHelp: Command = (view) => {
-	let plugin = view.plugin(signaturePlugin);
-	if (!plugin) {
-		view.dispatch({
-			effects: StateEffect.appendConfig.of([signatureState, signaturePlugin]),
-		});
-		plugin = view.plugin(signaturePlugin);
-	}
+  let plugin = view.plugin(signaturePlugin);
+  if (!plugin) {
+    view.dispatch({
+      effects: StateEffect.appendConfig.of([signatureState, signaturePlugin]),
+    });
+    plugin = view.plugin(signaturePlugin);
+  }
 
-	const field = view.state.field(signatureState);
-	if (!plugin || field === undefined) return false;
+  const field = view.state.field(signatureState);
+  if (!plugin || field === undefined) return false;
 
-	const lspPlugin = LSPPlugin.getAll(view, "signatureHelp").find(
-		(candidate) =>
-			clientHasCapability(candidate.client, "signatureHelpProvider"),
-	);
-	if (!lspPlugin) return false;
+  const lspPlugin = LSPPlugin.getAll(view, "signatureHelp").find(
+    (candidate) =>
+    clientHasCapability(candidate.client, "signatureHelpProvider"),
+  );
+  if (!lspPlugin) return false;
 
-	plugin.startRequest(lspPlugin, {
-		triggerKind: 1,
-		activeSignatureHelp: field ? field.data : undefined,
-		isRetrigger: !!field,
-	});
-	return true;
+  plugin.startRequest(lspPlugin, {
+    triggerKind: 1,
+    activeSignatureHelp: field ? field.data: undefined,
+    isRetrigger: !!field,
+  });
+  return true;
 };
 
 export const nextSignature: Command = (view) => {
-	const field = view.state.field(signatureState, false);
-	if (!field) return false;
-	if (field.active < field.data.signatures.length - 1) {
-		view.dispatch({
-			effects: signatureEffect.of({
-				data: field.data,
-				active: field.active + 1,
-				pos: field.tooltip.pos,
-				client: field.client,
-			}),
-		});
-	}
-	return true;
+  const field = view.state.field(signatureState, false);
+  if (!field) return false;
+  if (field.active < field.data.signatures.length - 1) {
+    view.dispatch({
+      effects: signatureEffect.of({
+        data: field.data,
+        active: field.active + 1,
+        pos: field.tooltip.pos,
+        client: field.client,
+      }),
+    });
+  }
+  return true;
 };
 
 export const prevSignature: Command = (view) => {
-	const field = view.state.field(signatureState, false);
-	if (!field) return false;
-	if (field.active > 0) {
-		view.dispatch({
-			effects: signatureEffect.of({
-				data: field.data,
-				active: field.active - 1,
-				pos: field.tooltip.pos,
-				client: field.client,
-			}),
-		});
-	}
-	return true;
+  const field = view.state.field(signatureState, false);
+  if (!field) return false;
+  if (field.active > 0) {
+    view.dispatch({
+      effects: signatureEffect.of({
+        data: field.data,
+        active: field.active - 1,
+        pos: field.tooltip.pos,
+        client: field.client,
+      }),
+    });
+  }
+  return true;
 };
 
-export const signatureKeymap: readonly KeyBinding[] = [
-	{ key: "Mod-Shift-Space", run: showSignatureHelp },
-	{ key: "Mod-Shift-ArrowUp", run: prevSignature },
-	{ key: "Mod-Shift-ArrowDown", run: nextSignature },
+export const signatureKeymap: readonly KeyBinding[] = [{
+  key: "Mod-Shift-Space",
+  run: showSignatureHelp
+},
+  {
+    key: "Mod-Shift-ArrowUp",
+    run: prevSignature
+  },
+  {
+    key: "Mod-Shift-ArrowDown",
+    run: nextSignature
+  },
 ];
 
 const defaultHoverTooltipsExtension: Extension = [
-	hoverTooltip(lspTooltipSource, { hideOnChange: true }),
-	closeHoverOnInteraction,
+  hoverTooltip(lspTooltipSource, {
+    hideOnChange: true
+  }),
+  closeHoverOnInteraction,
 ];
 
-export function hoverTooltips(config: { hoverTime?: number } = {}): Extension {
-	if (config.hoverTime == null) return defaultHoverTooltipsExtension;
-	return [
-		hoverTooltip(lspTooltipSource, {
-			hideOnChange: true,
-			hoverTime: config.hoverTime,
-		}),
-		closeHoverOnInteraction,
-	];
+export function hoverTooltips(config: {
+  hoverTime?: number
+} = {}): Extension {
+  if (config.hoverTime == null) return defaultHoverTooltipsExtension;
+  return [
+    hoverTooltip(lspTooltipSource, {
+      hideOnChange: true,
+      hoverTime: config.hoverTime,
+    }),
+    closeHoverOnInteraction,
+  ];
 }
 
-export function signatureHelp(config: { keymap?: boolean } = {}): Extension {
-	return [
-		signatureState,
-		signaturePlugin,
-		config.keymap === false ? [] : Prec.high(keymap.of(signatureKeymap)),
-	];
+export function signatureHelp(config: {
+  keymap?: boolean
+} = {}): Extension {
+  return [
+    signatureState,
+    signaturePlugin,
+    config.keymap === false ? []: Prec.high(keymap.of(signatureKeymap)),
+  ];
 }
