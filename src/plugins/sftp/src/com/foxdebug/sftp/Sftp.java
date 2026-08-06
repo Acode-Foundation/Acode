@@ -774,4 +774,24 @@ public class Sftp extends CordovaPlugin {
 
     return res;
   }
+  public void forwardPort(JSONArray args, CallbackContext callback) {
+    cordova.getThreadPool().execute(() -> {
+        try {
+            if (ssh == null || !ssh.isConnected()) {
+                callback.error("Not connected");
+                return;
+            }
+            String localHost = args.optString(0, "127.0.0.1");
+            int localPort = args.getInt(1);
+            String remoteHost = args.optString(2, "127.0.0.1");
+            int remotePort = args.getInt(3);
+
+            ssh.startLocalForwarding(localHost, localPort, remoteHost, remotePort);
+            callback.success(localPort);
+        } catch (Exception e) {
+            callback.error(e.getMessage());
+        }
+    });
+}
+
 }

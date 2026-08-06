@@ -51,4 +51,9 @@ module.exports = {
   isConnected: function (onSuccess, onFail) {
     cordova.exec(onSuccess, onFail, 'Sftp', 'isConnected', []);
   }
+  
+  forwardPort: function (localHost, localPort, remoteHost, remotePort, onSuccess, onFail) {
+    cordova.exec(onSuccess, onFail, 'Sftp', 'forwardPort', [localHost, localPort, remoteHost, remotePort]);
+},
+
 };

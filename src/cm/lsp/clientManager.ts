@@ -1091,10 +1091,8 @@ console.log(
   normalizedRootUri,
 );
       await waitForInitialization(client.initializing, signal, server.id);
-      // New: push config the same way ALC always did
       console.log("### CONFIG PUSH ATTEMPT ###");
       // Fire after "initialized" — reuse initializationOptions as the config payload,
-      // since that's the field you actually populate via the wizard
       transportHandle.transport.send(JSON.stringify({
         jsonrpc: "2.0",
         method: "workspace/didChangeConfiguration",
@@ -1184,23 +1182,6 @@ console.log(
     const effectiveRoot = normalizedRootUri ?? originalRootUri ?? null;
     let disposed = false;
     let idleTimer: ReturnType<typeof setTimeout> | undefined;
-
-    /* const attach = (
-      uri: string,
-      view: EditorView,
-      aliases: string[] = [],
-    ): void => {
-      const existing = fileRefs.get(uri) ?? new Set();
-      existing.add(view);
-      fileRefs.set(uri, existing);
-      uriAliases.set(uri, uri);
-      for (const alias of aliases) {
-        if (!alias || alias === uri) continue;
-        uriAliases.set(alias, uri);
-      }
-      const suffix = effectiveRoot ? ` (root ${effectiveRoot})` : "";
-      logLspInfo(`[LSP:${server.id}] attached to ${uri}${suffix}`);
-    }; */
     const attach = (
   uri: string,
   view: EditorView,
@@ -1540,22 +1521,13 @@ function normalizeRootUriForServer(
   if (scheme === "file") {
     return { normalizedRootUri: rootUri, originalRootUri: rootUri };
   }
-  
-  // sftp roots: strip to the bare remote path
-  if (scheme === "sftp") {
-    const fileUri = sftpUriToFileUri(rootUri);
-    if (fileUri) {
-      return { normalizedRootUri: fileUri, originalRootUri: rootUri };
-    }
-    return { normalizedRootUri: null, originalRootUri: rootUri };
-  }
-
   // Try to convert content:// URIs to file:// URIs
   if (scheme === "content") {
     const fileUri = contentUriToFileUri(rootUri);
     if (fileUri) {
       return { normalizedRootUri: fileUri, originalRootUri: rootUri };
     }
+    
     // Can't convert to file:// - server won't work properly
     return { normalizedRootUri: null, originalRootUri: rootUri };
   }
@@ -1667,7 +1639,6 @@ function contentUriToFileUri(uri: string): string | null {
 }
 
 function sftpUriToFileUri(uri: string): string | null {
-  // acode-ls and the LSP process it spawns run on the same remote host
   // reached via this SFTP connection, so the server needs only the bare
   // remote path — no scheme, host, port, or credentials.
   const match = /^sftp:\/\/[^/]*(\/.*)$/.exec(uri);
