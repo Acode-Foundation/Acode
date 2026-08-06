@@ -7,9 +7,11 @@ import auth from "lib/auth";
 import config from "lib/config";
 import customTab from "lib/customTab";
 import openFile from "lib/openFile";
+import { bindPrivacyChoices } from "lib/privacyChoicesController.mjs";
 import removeAds from "lib/removeAds";
 import appSettings from "lib/settings";
 import settings from "lib/settings";
+import { showPrivacyOptions, subscribePrivacyState } from "lib/startAd";
 import openAdRewardsPage from "pages/adRewards";
 import Changelog from "pages/changelog/changelog";
 import plugins from "pages/plugins";
@@ -164,6 +166,21 @@ export default function mainSettings() {
 	];
 
 	if (!config.HAS_PRO) {
+		const aboutIndex = items.findIndex((item) => item.key === "about");
+		items.splice(aboutIndex, 0, {
+			key: "privacyChoices",
+			text: strings["privacy choices"] || "Privacy choices",
+			icon: "tune",
+			info:
+				strings["settings-info-main-privacy-choices"] ||
+				"Manage your advertising privacy choices.",
+			category: categories.aboutAcode,
+			chevron: true,
+			hidden: true,
+		});
+	}
+
+	if (!config.HAS_PRO) {
 		items.push({
 			key: "adRewards",
 			text: strings["earn ad-free time"],
@@ -231,6 +248,14 @@ export default function mainSettings() {
 
 			case "rateapp":
 				rateBox();
+				break;
+
+			case "privacyChoices":
+				try {
+					await showPrivacyOptions();
+				} catch (error) {
+					helpers.error(error);
+				}
 				break;
 
 			case "plugins":
@@ -325,6 +350,12 @@ export default function mainSettings() {
 		pageClassName: "main-settings-page",
 		listClassName: "main-settings-list",
 	});
+	if (!config.HAS_PRO) {
+		bindPrivacyChoices({
+			page,
+			subscribe: subscribePrivacyState,
+		});
+	}
 	page.show();
 
 	appSettings.uiSettings["main-settings"] = page;

@@ -39,7 +39,12 @@ class Native(ctx: ExecuteContext) : AdBase(ctx) {
     override fun load(ctx: ExecuteContext) {
         clear()
         mLoader = AdLoader.Builder(plugin.activity, adUnitId)
-            .forNativeAd { nativeAd -> mAd = nativeAd }
+            .forNativeAd { nativeAd ->
+                nativeAd.setOnPaidEventListener(
+                    paidEventListener("native") { nativeAd.responseInfo }
+                )
+                mAd = nativeAd
+            }
             .withAdListener(object : AdListener() {
                 override fun onAdFailedToLoad(adError: LoadAdError) {
                     emit(Events.AD_LOAD_FAIL, adError)

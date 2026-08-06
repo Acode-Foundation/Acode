@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "composite": false,
+    "declaration": false,
+    "module": "ESNext",
+    "outDir": "./node_modules/.cache/admob-rollup",
+    "sourceMap": false
+  }
+}

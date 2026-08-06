@@ -215,7 +215,10 @@ function flattenSymbols(
 export async function fetchDocumentSymbols(
 	view: EditorView,
 ): Promise<ProcessedSymbol[] | null> {
-	const plugin = LSPPlugin.get(view) as LSPPluginAPI | null;
+	const plugin = LSPPlugin.getAll(view, "documentSymbol").find(
+		(candidate) =>
+			!!candidate.client.serverCapabilities?.documentSymbolProvider,
+	) as LSPPluginAPI | undefined;
 	if (!plugin) {
 		return null;
 	}
@@ -308,12 +311,11 @@ export async function navigateToSymbol(
 }
 
 export function supportsDocumentSymbols(view: EditorView): boolean {
-	const plugin = LSPPlugin.get(view) as LSPPluginAPI | null;
-	if (!plugin?.client.connected) {
-		return false;
-	}
-
-	return !!plugin.client.serverCapabilities?.documentSymbolProvider;
+	return LSPPlugin.getAll(view, "documentSymbol").some(
+		(plugin) =>
+			plugin.client.connected &&
+			!!plugin.client.serverCapabilities?.documentSymbolProvider,
+	);
 }
 
 export interface DocumentSymbolsResult {
