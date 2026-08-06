@@ -1,8 +1,10 @@
 import * as ads from "./ads";
 import { type AdMobConfig, Events, execAsync } from "./common";
+import { Privacy } from "./privacy";
 
 export * from "./ads";
 export * from "./common";
+export * from "./privacy";
 
 export class AdMob {
   public readonly AppOpenAd = ads.AppOpenAd;
@@ -14,6 +16,7 @@ export class AdMob {
   public readonly WebViewAd = ads.WebViewAd;
 
   public readonly Events = Events;
+  public readonly privacy = new Privacy();
 
   private _startPromise: ReturnType<typeof this._start> | undefined;
 

@@ -23,6 +23,8 @@ class Interstitial(ctx: ExecuteContext) : AdBase(ctx) {
         InterstitialAd.load(ctx.activity, adUnitId, adRequest, object : InterstitialAdLoadCallback() {
             override fun onAdLoaded(interstitialAd: InterstitialAd) {
                 mAd = interstitialAd
+                interstitialAd.onPaidEventListener =
+                    paidEventListener("interstitial") { interstitialAd.responseInfo }
                 mAd!!.fullScreenContentCallback = object : FullScreenContentCallback() {
                     override fun onAdDismissedFullScreenContent() {
                         emit(Events.AD_DISMISS)

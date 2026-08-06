@@ -27,6 +27,8 @@ class AppOpen(ctx: ExecuteContext) : AdBase(ctx) {
             object : AppOpenAdLoadCallback() {
                 override fun onAdLoaded(ad: AppOpenAd) {
                     mAd = ad
+                    ad.onPaidEventListener =
+                        paidEventListener("appOpen") { ad.responseInfo }
                     ad.fullScreenContentCallback = object : FullScreenContentCallback() {
                         override fun onAdDismissedFullScreenContent() {
                             clear()
