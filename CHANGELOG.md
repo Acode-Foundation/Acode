@@ -1,5 +1,9 @@
 # Change Log
 
+## v1.12.9
+
+* fix(admob): remove the policy-prohibited interstitial shown while exiting the app
+
 ## v1.12.8
 
 * fix(terminal): close tab on process end and speed up long-press select by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2587

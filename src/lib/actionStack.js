@@ -1,6 +1,5 @@
 import confirm from "dialogs/confirm";
 import appSettings from "lib/settings";
-import helpers from "utils/helpers";
 
 const stack = [];
 let mark = null;
@@ -93,8 +92,6 @@ export default {
 					return;
 				}
 			}
-
-			helpers.showInterstitialIfReady();
 
 			exitApp();
 		}
