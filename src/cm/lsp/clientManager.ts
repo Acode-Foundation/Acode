@@ -9,7 +9,7 @@ import {
   serverCompletion,
   serverDiagnostics,
 } from "@codemirror/lsp-client";
-import { EditorState, Extension, Facet, MapMode } from "@codemirror/state";
+import { EditorState, Extension, Facet } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import lspStatusBar from "components/lspStatusBar";
 import notificationManager from "lib/notificationManager";
@@ -52,6 +52,9 @@ import type {
   Transport,
 } from "./types";
 import AcodeWorkspace from "./workspace";
+import { applyTextEdits } from "./textEditUtils";
+
+const LSP_IDLE_GRACE_MS = 45_000; // grace period before a client with no open files is actually disposed
 
 export const lspCompletionEnabled = Facet.define<boolean, boolean>({
   // File-level marker used by the autocomplete override path. If any attached
@@ -183,9 +186,14 @@ function connectClient(
   initializationOptions?: Record<string, unknown>,
   rootUri?: string | null,
 ): void {
-  const hasInitializationOptions =
-    !!initializationOptions && Object.keys(initializationOptions).length > 0;
-  if (!hasInitializationOptions && !rootUri) {
+  const workspaceFolders = rootUri
+    ? [{ uri: rootUri, name: deriveFolderName(rootUri) }]
+    : undefined;
+
+  if (
+    (!initializationOptions || !Object.keys(initializationOptions).length) &&
+    !workspaceFolders
+  ) {
     client.connect(transport);
     return;
   }
@@ -205,14 +213,8 @@ function connectClient(
     if (method === "initialize" && isPlainObject(params)) {
       params = {
         ...params,
-        ...(hasInitializationOptions ? { initializationOptions } : {}),
-        ...(rootUri
-          ? {
-              workspaceFolders: [
-                { uri: rootUri, name: workspaceName(rootUri) },
-              ],
-            }
-          : {}),
+        ...(initializationOptions ? { initializationOptions } : {}),
+        ...(workspaceFolders ? { workspaceFolders } : {}),
       } as Params;
     }
     return originalRequestInner<Params, Result>(method, params, mapped);
@@ -225,13 +227,14 @@ function connectClient(
   }
 }
 
-function workspaceName(rootUri: string): string {
-  const trimmed = rootUri.replace(/\/+$/, "");
-  const encodedName = trimmed.slice(trimmed.lastIndexOf("/") + 1);
+function deriveFolderName(uri: string): string {
   try {
-    return decodeURIComponent(encodedName) || "workspace";
+    const decoded = decodeURIComponent(uri);
+    const trimmed = decoded.replace(/\/+$/, "");
+    const segments = trimmed.split("/").filter(Boolean);
+    return segments[segments.length - 1] || decoded;
   } catch {
-    return encodedName || "workspace";
+    return uri;
   }
 }
 
@@ -797,7 +800,16 @@ export class LspClientManager {
         },
         workspace: {
           configuration: true,
+          applyEdit: true,
           workspaceFolders: true,
+        },
+        textDocument: {
+          codeAction: {
+            dataSupport: true,
+            resolveSupport: {
+              properties: ["edit"],
+            },
+          },
         },
       },
     };
@@ -1045,14 +1057,20 @@ export class LspClientManager {
       client = new LSPClient(clientConfig) as ExtendedLSPClient;
       client.__acodeServerId = server.id;
       connectClient(
-        client,
-        transportHandle.transport,
-        initializationOptions,
-        scope === "workspace" && server.useWorkspaceFolders
-          ? null
-          : normalizedRootUri,
-      );
+  client,
+  transportHandle.transport,
+  initializationOptions,
+  normalizedRootUri,
+);
       await waitForInitialization(client.initializing, signal, server.id);
+      // Fire after "initialized"
+      // it reuses initializationOptions as the config payload 
+      // For LSPs sometimes requiring config to be sent twice like pylsp)
+      transportHandle.transport.send(JSON.stringify({
+        jsonrpc: "2.0",
+        method: "workspace/didChangeConfiguration",
+        params: { settings: server.initializationOptions ?? {} },
+      }));
       if (!client.__acodeLoggedInfo) {
         // Log root URI info to console
         if (normalizedRootUri) {
@@ -1135,23 +1153,27 @@ export class LspClientManager {
     const uriAliases = new Map<string, string>();
     const effectiveRoot = normalizedRootUri ?? originalRootUri ?? null;
     let disposed = false;
-
+    let idleTimer: ReturnType<typeof setTimeout> | undefined;
     const attach = (
-      uri: string,
-      view: EditorView,
-      aliases: string[] = [],
-    ): void => {
-      const existing = fileRefs.get(uri) ?? new Set();
-      existing.add(view);
-      fileRefs.set(uri, existing);
-      uriAliases.set(uri, uri);
-      for (const alias of aliases) {
-        if (!alias || alias === uri) continue;
-        uriAliases.set(alias, uri);
-      }
-      const suffix = effectiveRoot ? ` (root ${effectiveRoot})` : "";
-      logLspInfo(`[LSP:${server.id}] attached to ${uri}${suffix}`);
-    };
+  uri: string,
+  view: EditorView,
+  aliases: string[] = [],
+): void => {
+  if (idleTimer) {
+    clearTimeout(idleTimer);
+    idleTimer = undefined;
+  }
+  const existing = fileRefs.get(uri) ?? new Set();
+  existing.add(view);
+  fileRefs.set(uri, existing);
+  uriAliases.set(uri, uri);
+  for (const alias of aliases) {
+    if (!alias || alias === uri) continue;
+    uriAliases.set(alias, uri);
+  }
+  const suffix = effectiveRoot ? ` (root ${effectiveRoot})` : "";
+  logLspInfo(`[LSP:${server.id}] attached to ${uri}${suffix}`);
+};
 
     const clearClientDiagnostics = (view: EditorView): void => {
       try {
@@ -1164,6 +1186,10 @@ export class LspClientManager {
     const dispose = async (): Promise<void> => {
       if (disposed) return;
       disposed = true;
+      if (idleTimer) {
+    clearTimeout(idleTimer);
+    idleTimer = undefined;
+  }
       disposePullDiagnostics(client);
       this.#clients.delete(key);
       for (const views of fileRefs.values()) {
@@ -1206,13 +1232,18 @@ export class LspClientManager {
       }
 
       if (!fileRefs.size) {
-        this.options.onClientIdle?.({
-          server,
-          client,
-          rootUri: effectiveRoot,
-          dispose,
-        });
-      }
+  if (idleTimer) clearTimeout(idleTimer);
+  idleTimer = setTimeout(() => {
+    idleTimer = undefined;
+    if (fileRefs.size) return; // a file reattached during the grace window
+    this.options.onClientIdle?.({
+      server,
+      client,
+      rootUri: effectiveRoot,
+      dispose,
+    });
+  }, LSP_IDLE_GRACE_MS);
+}
     };
 
     return {
@@ -1404,45 +1435,6 @@ interface Change {
   insert: string;
 }
 
-function applyTextEdits(
-  plugin: LSPPlugin,
-  view: EditorView,
-  edits: TextEdit[],
-): boolean {
-  const changes: Change[] = [];
-  for (const edit of edits) {
-    if (!edit?.range) continue;
-    let fromBase: number;
-    let toBase: number;
-    try {
-      fromBase = plugin.fromPosition(edit.range.start, plugin.syncedDoc);
-      toBase = plugin.fromPosition(edit.range.end, plugin.syncedDoc);
-    } catch (_) {
-      continue;
-    }
-    const fromResult = plugin.unsyncedChanges.mapPos(
-      fromBase,
-      1,
-      MapMode.TrackDel,
-    );
-    const toResult = plugin.unsyncedChanges.mapPos(
-      toBase,
-      -1,
-      MapMode.TrackDel,
-    );
-    if (fromResult == null || toResult == null) continue;
-    const insert =
-      typeof edit.newText === "string"
-        ? edit.newText.replace(/\r\n/g, "\n")
-        : "";
-    changes.push({ from: fromResult, to: toResult, insert });
-  }
-  if (!changes.length) return false;
-  changes.sort((a, b) => a.from - b.from || a.to - b.to);
-  view.dispatch({ changes });
-  return true;
-}
-
 function buildFormattingOptions(
   view: EditorView,
   overrides: FormattingOptions = {},
@@ -1482,6 +1474,7 @@ function resolveIndentWidth(unit: string): number {
   return width || 4;
 }
 
+
 const defaultManager = new LspClientManager();
 
 export default defaultManager;
@@ -1500,13 +1493,13 @@ function normalizeRootUriForServer(
   if (scheme === "file") {
     return { normalizedRootUri: rootUri, originalRootUri: rootUri };
   }
-
   // Try to convert content:// URIs to file:// URIs
   if (scheme === "content") {
     const fileUri = contentUriToFileUri(rootUri);
     if (fileUri) {
       return { normalizedRootUri: fileUri, originalRootUri: rootUri };
     }
+    
     // Can't convert to file:// - server won't work properly
     return { normalizedRootUri: null, originalRootUri: rootUri };
   }
@@ -1525,6 +1518,12 @@ function normalizeDocumentUri(uri: string | null | undefined): string | null {
   if (scheme === "file" || scheme === "untitled") {
     return uri;
   }
+  
+  // sftp documents: strip to the bare remote path
+  if (scheme === "sftp") {
+    return sftpUriToFileUri(uri);
+  }
+
 
   // Convert content:// URIs to file:// URIs
   if (scheme === "content") {
@@ -1609,6 +1608,16 @@ function contentUriToFileUri(uri: string): string | null {
   } catch (_) {
     return null;
   }
+}
+
+function sftpUriToFileUri(uri: string): string | null {
+  // reached via this SFTP connection, so the server needs only the bare
+  // remote path — no scheme, host, port, or credentials.
+  const match = /^sftp:\/\/[^/]*(\/.*)$/.exec(uri);
+  if (!match) return null;
+  const path = match[1].split("?")[0];
+  if (!path) return null;
+  return buildFileUri(path);
 }
 
 function buildFileUri(pathname: string): string | null {
