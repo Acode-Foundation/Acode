@@ -167,6 +167,7 @@ interface WorkspaceEditParam {
 	| { textDocument: { uri: string }; edits: TextEdit[] }
 	| { kind: "create" | "rename" | "delete"; uri: string
 	}>;
+	documentChanges?: Array<{ textDocument: { uri: string }; edits: TextEdit[] }>;
 }
 
 async function applyWorkspaceEditToContext(
@@ -207,6 +208,16 @@ async function applyWorkspaceEditToContext(
     }
   }
   
+=======
+	const changesByUri: Record<string, TextEdit[]> =
+		edit.changes ??
+		Object.fromEntries(
+			(edit.documentChanges ?? [])
+				.filter((c): c is { textDocument: { uri: string }; edits: TextEdit[] } => "edits" in c)
+				.map((c) => [c.textDocument.uri, c.edits]),
+		);
+
+>>>>>>> cd0ac6e0 (feat(lsp): fixing LspToPosition adding a helper textEditUtils)
 	const uris = Object.keys(changesByUri);
 	if (!uris.length) {
 		return { applied: false, failureReason: "Edit contains no changes" };
@@ -219,10 +230,13 @@ async function applyWorkspaceEditToContext(
 	if (!workspace) {
 		return { applied: false, failureReason: "No workspace available to apply edit" };
 	}
+<<<<<<< HEAD
 	// Workspace boundary check
   const allowedRoots = [ctx.rootUri,
     ctx.originalRootUri].filter(
     (r): r is string => !!r,);
+=======
+>>>>>>> cd0ac6e0 (feat(lsp): fixing LspToPosition adding a helper textEditUtils)
 
 	let appliedCount = 0;
 	const failures: string[] = [];
@@ -230,6 +244,7 @@ async function applyWorkspaceEditToContext(
 	for (const uri of uris) {
 		const edits = changesByUri[uri];
 		if (!edits.length) continue;
+<<<<<<< HEAD
 		
 		// Security: reject edits outside workspace roots
     const inWorkspace =
@@ -241,6 +256,8 @@ async function applyWorkspaceEditToContext(
       failures.push(uri);
       continue;
     }
+=======
+>>>>>>> cd0ac6e0 (feat(lsp): fixing LspToPosition adding a helper textEditUtils)
 
 		let view = workspace.getFile(uri)?.getView();
 		if (!view) {
@@ -254,6 +271,7 @@ async function applyWorkspaceEditToContext(
 		if (!view) {
 			failures.push(uri);
 			continue;
+<<<<<<< HEAD
 		}
 		
 		// Find the plugin belonging to THIS server, not just any plugin
@@ -270,6 +288,16 @@ async function applyWorkspaceEditToContext(
 			continue;
 		}
 
+=======
+		}
+
+		const plugin = LSPPlugin.get(view);
+		if (!plugin) {
+			failures.push(uri);
+			continue;
+		}
+
+>>>>>>> cd0ac6e0 (feat(lsp): fixing LspToPosition adding a helper textEditUtils)
 		const applied = applyTextEdits(plugin, view, edits);
 		if (applied) appliedCount++;
 		else failures.push(uri);
