@@ -9,6 +9,7 @@ import prompt from "dialogs/prompt";
 import type * as lsp from "vscode-languageserver-protocol";
 import { addLspLogFor } from "./logs";
 import type AcodeWorkspace from "./workspace";
+import { lspPositionToOffset } from "./textEditUtils";
 
 interface RenameParams {
 	newName: string;
@@ -146,14 +147,6 @@ async function performRename(view: EditorView): Promise<boolean> {
 	}
 
 	return true;
-}
-
-function lspPositionToOffset(
-	doc: { line: (n: number) => { from: number } },
-	pos: lsp.Position,
-): number {
-	const line = doc.line(pos.line + 1);
-	return line.from + pos.character;
 }
 
 async function applyChangesToFile(

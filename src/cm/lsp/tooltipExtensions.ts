@@ -40,6 +40,7 @@ import type {
 	MarkupContent,
 } from "vscode-languageserver-types";
 import { getMode, getModeForPath, type Mode } from "../modelist";
+import type AcodeWorkspace from "./workspace";
 
 interface LspClientInternals {
 	config?: {
@@ -157,6 +158,60 @@ function startPluginLanguageLoad(mode: Mode): Promise<Language | null> | null {
 		.catch(() => null);
 	pluginHoverLanguageLoads.set(mode, load);
 	return load;
+}
+
+function interceptFileLinks(container: HTMLElement, view: EditorView): void {
+  container.addEventListener("click",
+    (event) => {
+      const target = event.target as HTMLElement | null;
+      const anchor = target?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!anchor) return;
+
+      const href = anchor.getAttribute("href");
+      if (!href || !href.startsWith("file://")) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      const plugin = LSPPlugin.get(view);
+      if (!plugin) return;
+      const workspace = plugin.client.workspace as AcodeWorkspace;
+      if (!workspace) return;
+
+      void (async () => {
+        try {
+          const match = /^(file:\/\/[^#]*)(?:#L?(\d+))?/.exec(href);
+          if (!match) return;
+          const [,
+            rawUri,
+            lineStr] = match;
+
+          const targetView = await workspace.displayFile(rawUri);
+          if (!targetView) return;
+
+          if (lineStr) {
+            const line = Number.parseInt(lineStr, 10);
+            const doc = targetView.state.doc;
+            if (Number.isFinite(line) && line >= 1 && line <= doc.lines) {
+              const {
+                from
+              } = doc.line(line);
+              targetView.dispatch({
+                selection: {
+                  anchor: from
+                },
+                effects: EditorView.scrollIntoView(from, {
+                  y: "center"
+                }),
+              });
+              targetView.focus();
+            }
+          }
+        } catch (error) {
+          console.error("[LSP:Tooltip] Failed to open file link:", href, error);
+        }
+      })();
+    });
 }
 
 export function resolveLspHoverHighlightLanguage(
@@ -419,6 +474,7 @@ function lspTooltipSource(
 						results[index].result.contents,
 					);
 				}
+				interceptFileLinks(dom, view);
 				return { dom };
 			},
 			above: true,
@@ -620,9 +676,9 @@ function drawSignatureTooltip(
 			const docs = dom.appendChild(document.createElement("div"));
 			docs.className = "cm-lsp-signature-documentation cm-lsp-documentation";
 			docs.innerHTML = plugin.docToHTML(signature.documentation);
+				interceptFileLinks(docs, view);
 		}
 	}
-
 	return { dom };
 }
 
