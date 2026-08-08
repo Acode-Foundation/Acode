@@ -31,7 +31,8 @@ import Url from "utils/Url";
 import _addMenu from "./add-menu.hbs";
 import _addMenuHome from "./add-menu-home.hbs";
 import _template from "./fileBrowser.hbs";
-import _list from "./list.hbs";
+import _listItem from "./listItem.hbs";
+import NavStack from "./NavStack";
 import util from "./util";
 
 /**
@@ -57,11 +58,10 @@ import util from "./util";
 function FileBrowserInclude(mode, info, doesOpenLast = true) {
 	mode = mode || "file";
 
+	const navStack = new NavStack();
 	const IS_FOLDER_MODE = ["folder", "both"].includes(mode);
 	const IS_FILE_MODE = ["file", "both"].includes(mode);
 	const storedState = helpers.parseJSON(localStorage.fileBrowserState) || [];
-	/**@type {Array<Location>} */
-	const state = [];
 	/**@type {Array<Storage>} */
 	const allStorages = [];
 	let storageList = helpers.parseJSON(localStorage.storageList);
@@ -159,13 +159,15 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		$selectionMenuToggler.style.display = "none";
 		$pasteToggler.style.display = "none";
 		const progress = {};
-		let cachedDir = {};
+		let cachedDir = new Map();
 		let currentDir = {
 			url: null,
 			name: null,
 			list: [],
 			scroll: 0,
 		};
+		/** @type {AbortController | null} */
+		let _rndrAbortCtrl;
 		/**
 		 * @type {HTMLButtonElement}
 		 */
@@ -236,8 +238,6 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			}
 
 			if (action === "reload") {
-				const { url } = currentDir;
-				if (url in cachedDir) delete cachedDir[url];
 				reload();
 				return;
 			}
@@ -628,6 +628,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		};
 
 		$page.onhide = function () {
+			_rndrAbortCtrl?.abort();
 			hideSearchBar();
 			actionStack.clearFromMark();
 			actionStack.remove("filebrowser");
@@ -636,7 +637,30 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			document.removeEventListener("resume", reload);
 		};
 
+		const saveFileBrowserState = doesOpenLast
+			? () => (localStorage.fileBrowserState = JSON.stringify(navStack))
+			: null;
+		navStack.addEventListener("pop", (ev) => {
+			saveFileBrowserState?.();
+			const { url } = ev.detail;
+			actionStack.remove(url);
+			tag.get(`#${getNavId(url)}`)?.remove();
+		});
+		navStack.addEventListener("push", (ev) => {
+			saveFileBrowserState?.();
+			const { url, name } = ev.detail;
+			const prevDir = navStack.get(-2);
+			if (prevDir && !actionStack.has(url)) {
+				actionStack.push({
+					id: url,
+					action: () => navigate(prevDir),
+				});
+			}
+			pushToNavbar(url, name);
+		});
+
 		if (doesOpenLast && storedState.length) {
+			navStack.push("/", "/");
 			loadStates(storedState);
 			return;
 		}
@@ -941,6 +965,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 			let url = $el.dataset.url;
 			let name = $el.dataset.name || $el.getAttribute("name");
+			const isOneDirUp = $el.dataset.oneDirUp != null;
 			const idOpenDoc = $el.hasAttribute("open-doc");
 			const uuid = $el.getAttribute("uuid");
 			const type = $el.getAttribute("type");
@@ -967,7 +992,14 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				return;
 			}
 
-			if (!url && action === "open" && isDir && !idOpenDoc && !isContextMenu) {
+			if (
+				!url &&
+				action === "open" &&
+				isDir &&
+				!idOpenDoc &&
+				!isOneDirUp &&
+				!isContextMenu
+			) {
 				loader.hide();
 				util.addPath(name, uuid).then((res) => {
 					const storage = allStorages.find((storage) => storage.uuid === uuid);
@@ -983,6 +1015,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 			if (isContextMenu) action = "contextmenu";
 			else if (idOpenDoc) action = "open-doc";
+			else if (isOneDirUp) action = "oneDirUp";
 
 			switch (action) {
 				case "navigation":
@@ -998,6 +1031,10 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				case "open-doc":
 					openDoc();
 					break;
+				case "oneDirUp": {
+					const dir = navStack.get(-2);
+					if (dir) navigate(dir.url, dir.name);
+				}
 			}
 
 			async function folder() {
@@ -1050,6 +1087,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			}
 
 			async function contextMenuHandler() {
+				if (isOneDirUp) return;
 				if (appSettings.value.vibrateOnTap) {
 					navigator.vibrate(config.VIBRATION_TIME);
 				}
@@ -1383,60 +1421,32 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 		/**
 		 * Gets directory for given url for rendering
-		 * @param {String} url
-		 * @param {String} name
-		 * @returns {Promise<{name: String, url: String, list: [], scroll: Number}>}
+		 * @param {string} url
+		 * @returns {Promise<object[]>}
 		 */
-		async function getDir(url, name) {
-			const { fileBrowser } = appSettings.value;
-			let list = [];
-			let error = false;
-
-			if (url in cachedDir) {
-				return cachedDir[url];
-			} else {
-				if (url === "/") {
-					list = await listAllStorages();
-				} else {
-					const id = helpers.uuid();
-
-					progress[id] = true;
-					const timeout = setTimeout(() => {
-						loader.create(name, strings.loading + "...", {
-							timeout: 10000,
-							callback() {
-								loader.destroy();
-								navigate("/", "/");
-								progress[id] = false;
-							},
-						});
-					}, 100);
-
-					const fs = fsOperation(url);
-					try {
-						list = (await fs.lsDir()) ?? [];
-					} catch (err) {
-						if (progress[id]) {
-							helpers.error(err, url);
-						} else {
-							console.error(err);
-						}
-					}
-
-					error = !progress[id];
-
-					delete progress[id];
-					clearTimeout(timeout);
-					loader.destroy();
+		async function getDirList(url) {
+			let list;
+			if (url === "/") list = await listAllStorages();
+			else {
+				const p1 = fsOperation(url).lsDir();
+				const { promise: p2, reject } = Promise.withResolvers();
+				const tm = setTimeout(
+					() => reject("Directory loading timed out."),
+					10000,
+				);
+				try {
+					list = await Promise.race([p1, p2]);
+				} finally {
+					clearTimeout(tm);
 				}
-				if (error) return null;
-				return {
-					url,
-					name,
-					scroll: 0,
-					list: helpers.sortDir(list, fileBrowser, mode),
-				};
 			}
+
+			if (list?.length) {
+				const { fileBrowser } = appSettings.value;
+				list = helpers.sortDir(list, fileBrowser, mode);
+			}
+
+			return list ?? [];
 		}
 
 		/**
@@ -1444,62 +1454,12 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		 * @param {String} url
 		 * @param {String} name
 		 */
-		async function navigate(url, name, assignBackButton = true) {
-			if (document.getElementById("search-bar")) {
-				hideSearchBar();
-			}
-			if (!url) {
-				throw new Error('navigate(url, name): "url" is required.');
-			}
-
-			if (!name) {
-				throw new Error('navigate(url, name): "name" is required.');
-			}
-
-			if (url === "/") {
-				if (IS_FOLDER_MODE) $openFolder.disabled = true;
-			} else {
-				if (IS_FOLDER_MODE) $openFolder.disabled = false;
-			}
-
-			const $nav = tag.get(`#${getNavId(url)}`);
-
-			//If navigate to previous directories, clear the rest navigation
-			if ($nav) {
-				let $topNav;
-				while (($topNav = $navigation.lastChild) !== $nav) {
-					const url = $topNav.dataset.url;
-					actionStack.remove(url);
-					$topNav.remove();
-				}
-
-				while (1) {
-					const location = state.slice(-1)[0];
-					if (!location || location.url === url) break;
-					state.pop();
-				}
-				localStorage.fileBrowserState = JSON.stringify(state);
-
-				const dir = await getDir(url, name);
-				if (dir) {
-					render(dir);
-				}
-				return;
-			}
-
-			const dir = await getDir(url, name);
-			if (dir) {
-				const { url: curl, name: cname } = currentDir;
-				let action;
-				if (doesOpenLast) pushState({ name, url });
-				if (curl && cname && assignBackButton) {
-					action = () => {
-						navigate(curl, cname, false);
-					};
-				}
-				pushToNavbar(name, url, action);
-				render(dir);
-			}
+		function navigate(url, name) {
+			if (typeof url === "object") ({ url, name } = url);
+			const inStack = navStack.has(url);
+			if (inStack) navStack.popUntil(url);
+			else navStack.push(url, name);
+			renderCurrentDir();
 		}
 
 		/**
@@ -1607,12 +1567,11 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		}
 
 		/**
-		 *  Pushes a navigation button to navbar
-		 * @param {String} id
-		 * @param {String} name
-		 * @param {String} url
+		 * Pushes a navigation button to navbar
+		 * @param {string} url
+		 * @param {string} name
 		 */
-		function pushToNavbar(name, url, action) {
+		function pushToNavbar(url, name) {
 			if (!url) return;
 			const displayName = name || Url.basename(url) || url;
 			$navigation.append(
@@ -1627,13 +1586,6 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				></span>,
 			);
 			$navigation.scrollLeft = $navigation.scrollWidth;
-
-			if (action && !actionStack.has(url)) {
-				actionStack.push({
-					id: url,
-					action,
-				});
-			}
 		}
 
 		/**
@@ -1642,37 +1594,15 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		 */
 		function loadStates(states) {
 			if (!Array.isArray(states) || !states.length) return;
-
-			const backNavigation = [];
-			const lastState = states.pop();
-			if (!lastState || !lastState.url) return;
-			const { url } = lastState;
-			const name = lastState.name || Url.basename(url) || url;
-			let { url: lastUrl, name: lastName } = currentDir;
-
 			while (states.length) {
-				const location = states.splice(0, 1)[0];
-				if (!location || !location.url) {
-					continue;
+				try {
+					navStack.push(states.shift());
+				} catch (err) {
+					console.error(err);
 				}
-				const { url, name } = location;
-				let action;
-
-				if (doesOpenLast) pushState({ name, url });
-				if (lastUrl && lastName) {
-					backNavigation.push([lastUrl, lastName]);
-					action = () => {
-						const [url, name] = backNavigation.pop();
-						navigate(url, name, false);
-					};
-				}
-				pushToNavbar(name, url, action);
-				lastUrl = url;
-				lastName = name;
 			}
-
-			currentDir = { url: lastUrl, name: lastName };
-			navigate(url, name);
+			const dir = navStack.get(-1);
+			if (dir) navigate(dir);
 		}
 
 		/**
@@ -1708,47 +1638,126 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			if (doesReload) reload();
 		}
 
-		function render(dir) {
-			const { list, scroll } = dir;
-			const $list = helpers.parseHTML(
-				mustache.render(_list, {
-					msg: strings["empty folder message"],
-					list,
-				}),
-			);
+		/**
+		 * @param {string} [msg]
+		 * @returns {HTMLDivElement | null}
+		 */
+		function createPlaceholderEl(msg) {
+			if (!(msg = `${msg ?? ""}`)) return;
+			return <div id="error-or-empty-dir">{msg}</div>;
+		}
 
-			if (document.getElementById("search-bar")) {
-				hideSearchBar();
-			}
+		/**
+		 * @returns {HTMLUListElement}
+		 */
+		function createListEl() {
+			return <ul className="list" id="list"></ul>;
+		}
+
+		/**
+		 * @param {object} obj
+		 * @returns {HTMLLIElement}
+		 */
+		function createListItemEl(obj) {
+			return helpers.parseHTML(mustache.render(_listItem, obj));
+		}
+
+		/**
+		 * @param {boolean} force
+		 */
+		async function renderCurrentDir(force) {
+			_rndrAbortCtrl?.abort();
+			const rndrAbortCtrl = new AbortController();
+			const abortSignal = rndrAbortCtrl.signal;
+			_rndrAbortCtrl = rndrAbortCtrl;
+
+			if (document.getElementById("search-bar")) hideSearchBar();
+
+			const { url, name } = navStack.get(-1) ?? {};
+			if (IS_FOLDER_MODE) $openFolder.disabled = !url || url === "/";
 
 			const $oldList = $content.get("#list");
-			if ($oldList) {
-				const { url } = currentDir;
-				if (url && cachedDir[url]) {
-					cachedDir[url].scroll = $oldList.scrollTop;
-				}
-				$oldList.remove();
+			if (!url) return void $oldList?.remove();
+
+			const $list = createListEl();
+
+			const oneDirUp =
+				navStack.length >= 2 &&
+				createListItemEl({
+					name: "..",
+					oneDirUp: true,
+					notSelectable: true,
+				});
+
+			if (!$oldList) $content.append($list);
+			else {
+				const dir = currentDir;
+				if (dir) dir.scroll = $oldList.scrollTop;
+				$content.replaceChild($list, $oldList);
 			}
-			$content.append($list);
-			$list.scrollTop = scroll;
 			$list.focus();
 
+			if (force) cachedDir.delete(url);
+			const dir = (!force && url && cachedDir.get(url)) || {
+				url,
+				name,
+				scroll: 0,
+			};
 			currentDir = dir;
-			cachedDir[dir.url] = dir;
+
 			updatePasteToggler();
+
+			let error;
+			let { list } = dir;
+			const fg = new DocumentFragment();
+			if (!list) {
+				if (oneDirUp) fg.append(oneDirUp);
+				let plh = { placeholder: true };
+				for (let i = Math.ceil($list.clientHeight / 45); i-- > 0; ) {
+					const el = createListItemEl(plh);
+					el.querySelector(".text span").style.width =
+						`calc((100% - 5px) * ${Math.random()})`;
+					fg.append(el);
+				}
+				$list.append(fg);
+				try {
+					list = await getDirList(url);
+				} catch (err) {
+					const url2 = /^(content|file|s?ftp|https?):/.test(url)
+						? helpers.getVirtualPath(url)
+						: url;
+					console.group("Error reading directory:", url2);
+					console.error(err);
+					console.groupEnd();
+					let msg = `${err ?? ""}`;
+					if (!msg.startsWith("Error:")) msg = `Error: ${msg}`;
+					error = msg.trim();
+				}
+				if (abortSignal.aborted) return;
+				dir.list = list;
+			}
+
+			if (_rndrAbortCtrl === rndrAbortCtrl) _rndrAbortCtrl = null;
+
+			if (oneDirUp) fg.append(oneDirUp);
+			const l = list?.length;
+			if (!l) {
+				const el = createPlaceholderEl(
+					list ? strings["empty folder message"] : error,
+				);
+				if (el) fg.append(el);
+			} else {
+				for (let i = 0; i < l; ) fg.append(createListItemEl(list[i++]));
+			}
+			$list.replaceChildren(fg);
+
+			if (!list) return;
+			$list.scrollTop = +dir.scroll || 0;
+			cachedDir.set(url, dir);
 		}
 
 		function reload() {
-			const { url, name } = currentDir;
-			delete cachedDir[url];
-			navigate(url, name);
-		}
-
-		function pushState({ url, name }) {
-			if (!url || !name) return;
-			if (state.find((l) => l.url === url)) return;
-			state.push({ url, name });
-			localStorage.fileBrowserState = JSON.stringify(state);
+			renderCurrentDir(true);
 		}
 
 		/**

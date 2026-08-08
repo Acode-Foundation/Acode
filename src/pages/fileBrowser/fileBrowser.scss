@@ -89,6 +89,19 @@
     height: calc(100% - 60px);
     overflow-y: auto;
 
+    > #error-or-empty-dir {
+      width: 100%;
+      height: 100%;
+      font-size: 1.2em;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    &:has(> [data-one-dir-up]) > #error-or-empty-dir {
+      height: calc(100% - 45px);
+    }
+
     .tile {
       &[disabled] {
         .text {
@@ -105,6 +118,22 @@
           border-radius: 4px;
           padding: 5px;
           margin: auto 15px;
+        }
+      }
+
+      &.placeholder {
+        pointer-events: none;
+        .icon {
+          background-color: #8886;
+          border-radius: 50%;
+          scale: 0.8;
+        }
+        .text span {
+          display: block;
+          background-color: #8886;
+          border-radius: calc(1px / 0);
+          height: 1em;
+          min-width: 1em;
         }
       }
     }
