@@ -116,12 +116,12 @@
 * feat(color-picker): add format dropdown, cancel button, and cancellat… by @deadlyjack in https://github.com/Acode-Foundation/Acode/pull/2240
 * fix: pro detection by @deadlyjack in https://github.com/Acode-Foundation/Acode/pull/2248
 * i18n(id): refine translations for a more natural and accurate phrasing by @claycuy in https://github.com/Acode-Foundation/Acode/pull/2239
-* refactor(lsp): decouple runtime execution from built-in Alpine & support custom runtime providers by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2241
+* refactor(lsp): decouple runtime execution from built-in Ubuntu & support custom runtime providers by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2241
 * feat: improve the indexing and search UI/UX and few fallbacks stuff by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2256
 * fix: version parsing failure on nightly tags by @AuDevTist1C in https://github.com/Acode-Foundation/Acode/pull/2249
 * feat: added config proxy by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/2246
 * fix: disable CodeMirror EditContext by default by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2258
-* fix(lsp): check Terminal installation before installing server for builtin Alpine by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2259
+* fix(lsp): check Terminal installation before installing server for builtin Ubuntu by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2259
 * fix(sidebar): preserve state across orientation changes by @Elitex07 in https://github.com/Acode-Foundation/Acode/pull/2219
 * fix: make indent guide stable and close to vscode one by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2266
 * fix(editor): prevent cursor snap after scrollbar drag by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2263
@@ -371,8 +371,8 @@
 * feat: add plugin filtering by author and keywords by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1625
   - Refactored filtering logic to support multi-page results and improved UI feedback for filter actions.
 * Translation: Update hu-hu.json by @summoner001 in https://github.com/Acode-Foundation/Acode/pull/1640
-* fix: init-alpine by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1641
-* fix: ANSI escape sequence in init-alpine by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1643
+* fix: init-ubuntu by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1641
+* fix: ANSI escape sequence in init-ubuntu by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1643
 * chore(i18n): update de-de.json by @Mr-Update in https://github.com/Acode-Foundation/Acode/pull/1648
 * fix: update proot binaries to support 16kb page size by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1649
 * chore(i18n): update id-id.json with new strings by @hyperz111 in https://github.com/Acode-Foundation/Acode/pull/1650
@@ -438,7 +438,7 @@
 
 ## v1.11.5 (963)
 
-* Alpine Linux Backend by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1401
+* Ubuntu Linux Backend by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1401
 * fix: html escaping for console page by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1411
 * Create plugin for native libs by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1413
 * feat: terminal frontend by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1415
@@ -456,14 +456,14 @@
 * fix: quicktools toggler responsiveness(scaling) and migrate biome by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1442
 * chore: update ace to v1.43.2 by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1443
 * feat: add uninstall option in terminal setting and tab subtitle fixes by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1445
-* feat: alpine document provider(exposes terminal public dir to saf picker) by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1444
+* feat: ubuntu document provider(exposes terminal public dir to saf picker) by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1444
 * feat: improved logging + fix terminal installation failure by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1446
 * some terminal related quality improvements by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1449
 	* fix: dont start selection in case of back gesture
 	* remove useless border-radius from terminal container
 	* fix: improve terminal cursor positioning for mobile keyboard events
 	* fix: update terminal container background when theme changes
-* exclude alpine/public while backup by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1450
+* exclude ubuntu/public while backup by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1450
 * Custom port support in Terminal manager by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1459
 * 🌐 i18n(locale): update vietnamese translations by @Nekitori17 in https://github.com/Acode-Foundation/Acode/pull/1461
 * fix: infinite loading when previewing by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1460

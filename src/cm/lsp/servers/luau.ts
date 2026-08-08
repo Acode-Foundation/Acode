@@ -29,7 +29,7 @@ function isGlibcRuntimeError(output: string): boolean {
 
 function getLuauRuntimeFailureMessage(output: string): string {
 	if (isGlibcRuntimeError(output)) {
-		return "Luau release binary requires glibc and is not runnable in this Alpine/musl environment.";
+		return "Luau release binary requires glibc and is not runnable in this Ubuntu/musl environment.";
 	}
 
 	const firstLine = String(output || "")
@@ -157,10 +157,10 @@ export const luauBundle: LspServerBundle = defineBundle({
 			}
 
 			const downloadUrl = `https://github.com/${repo}/releases/latest/download/$ASSET`;
-			const command = `apk add --no-cache curl unzip && ARCH="$(uname -m)" && case "$ARCH" in
+			const command = `apt-get install -y curl unzip && ARCH="$(uname -m)" && case "$ARCH" in
 ${assetCases}
 \t*) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;;
-esac && apk add --no-cache gcompat libstdc++ && TMP_DIR="$(mktemp -d)" && cleanup() { rm -rf "$TMP_DIR"; } && trap cleanup EXIT && curl -fsSL "${downloadUrl}" -o "$TMP_DIR/$ASSET" && unzip -oq "$TMP_DIR/$ASSET" -d "$TMP_DIR" && chmod +x "$TMP_DIR/luau-lsp" && if ! "$TMP_DIR/luau-lsp" --help >/dev/null 2>&1 && ! "$TMP_DIR/luau-lsp" lsp --help >/dev/null 2>&1; then command -v ldd >/dev/null 2>&1 && ldd "$TMP_DIR/luau-lsp" >&2 || true; echo "Luau release binary is not runnable in this environment." >&2; exit 1; fi && install -Dm755 "$TMP_DIR/luau-lsp" ${quoteArg(binaryPath)}`;
+esac && apt-get install -y libstdc++6 && TMP_DIR="$(mktemp -d)" && cleanup() { rm -rf "$TMP_DIR"; } && trap cleanup EXIT && curl -fsSL "${downloadUrl}" -o "$TMP_DIR/$ASSET" && unzip -oq "$TMP_DIR/$ASSET" -d "$TMP_DIR" && chmod +x "$TMP_DIR/luau-lsp" && if ! "$TMP_DIR/luau-lsp" --help >/dev/null 2>&1 && ! "$TMP_DIR/luau-lsp" lsp --help >/dev/null 2>&1; then command -v ldd >/dev/null 2>&1 && ldd "$TMP_DIR/luau-lsp" >&2 || true; echo "Luau release binary is not runnable in this environment." >&2; exit 1; fi && install -Dm755 "$TMP_DIR/luau-lsp" ${quoteArg(binaryPath)}`;
 
 			const loadingDialog = loader.create(
 				label,

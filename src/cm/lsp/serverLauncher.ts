@@ -86,11 +86,11 @@ let cachedFilesDir: string | null = null;
 /**
  * Get candidate Terminal data directories from system.getFilesDir().
  * Newer Terminal builds keep shared runtime state in public. Older builds used
- * alpine/home, and some installs keep it as a symlink for shell compatibility.
+ * ubuntu/home, and some installs keep it as a symlink for shell compatibility.
  */
 async function getTerminalDataDirs(): Promise<string[]> {
   if (cachedFilesDir) {
-    return [`${cachedFilesDir}/public`, `${cachedFilesDir}/alpine/home`];
+    return [`${cachedFilesDir}/public`, `${cachedFilesDir}/ubuntu/home`];
   }
 
   const system = (
@@ -112,7 +112,7 @@ async function getTerminalDataDirs(): Promise<string[]> {
     system.getFilesDir(
       (filesDir: string) => {
         cachedFilesDir = filesDir;
-        resolve([`${filesDir}/public`, `${filesDir}/alpine/home`]);
+        resolve([`${filesDir}/public`, `${filesDir}/ubuntu/home`]);
       },
       (error: string) => reject(new Error(error)),
     );
@@ -336,7 +336,7 @@ function normalizeInstallSpec(server: LspServerDefinition) {
   const kind =
     install.kind ||
     (install.binaryPath ? "manual" : null) ||
-    (install.source === "apk" ? "apk" : null) ||
+    (install.source === "apt" ? "apt" : null) ||
     (install.source === "npm" ? "npm" : null) ||
     (install.source === "pip" ? "pip" : null) ||
     (install.source === "cargo" ? "cargo" : null) ||
@@ -448,9 +448,9 @@ function buildUninstallCommand(server: LspServerDefinition): string | null {
   }
 
   switch (spec.kind) {
-    case "apk":
+    case "apt":
       return spec.packages.length
-        ? `apk del ${spec.packages.map((entry) => quoteArg(entry)).join(" ")}`
+        ? `apt-get remove -y ${spec.packages.map((entry) => quoteArg(entry)).join(" ")}`
         : null;
     case "npm": {
       if (!spec.packages.length) return null;
@@ -489,15 +489,15 @@ function buildInstallCommand(
   }
 
   switch (spec.kind) {
-    case "apk":
+    case "apt":
       return spec.packages.length
-        ? `apk add --no-cache ${spec.packages.map((entry) => quoteArg(entry)).join(" ")}`
+        ? `apt-get install -y ${spec.packages.map((entry) => quoteArg(entry)).join(" ")}`
         : null;
     case "npm": {
       if (!spec.packages.length) return null;
       const npmCommand = spec.npmCommand || "npm";
       const installFlags = spec.global !== false ? "install -g" : "install";
-      return `apk add --no-cache nodejs npm && ${npmCommand} ${installFlags} ${spec.packages.map((entry) => quoteArg(entry)).join(" ")}`;
+      return `apt-get install -y nodejs npm && ${npmCommand} ${installFlags} ${spec.packages.map((entry) => quoteArg(entry)).join(" ")}`;
     }
     case "pip": {
       if (!spec.packages.length) return null;
@@ -506,11 +506,11 @@ function buildInstallCommand(
         spec.breakSystemPackages !== false
           ? "PIP_BREAK_SYSTEM_PACKAGES=1 "
           : "";
-      return `apk add --no-cache python3 py3-pip && ${breakPackages}${pipCommand} install ${spec.packages.map((entry) => quoteArg(entry)).join(" ")}`;
+      return `apt-get install -y python3 python3-pip && ${breakPackages}${pipCommand} install ${spec.packages.map((entry) => quoteArg(entry)).join(" ")}`;
     }
     case "cargo":
       return spec.packages.length
-        ? `apk add --no-cache rust cargo && cargo install ${spec.packages.map((entry) => quoteArg(entry)).join(" ")}`
+        ? `apt-get install -y cargo && cargo install ${spec.packages.map((entry) => quoteArg(entry)).join(" ")}`
         : null;
     case "github-release": {
       if (!spec.repo || !spec.binaryPath) return null;
@@ -522,10 +522,10 @@ function buildInstallCommand(
       const downloadUrl = `https://github.com/${spec.repo}/releases/latest/download/$ASSET`;
 
       if (spec.archiveType === "binary") {
-        return `apk add --no-cache curl && ARCH="$(uname -m)" && case "$ARCH" in\n${caseLines}\n\t*) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;;\nesac && TMP_DIR="$(mktemp -d)" && cleanup() { rm -rf "$TMP_DIR"; } && trap cleanup EXIT && curl -fsSL "${downloadUrl}" -o ${archivePath} && install -Dm755 ${archivePath} ${installTarget}`;
+        return `apt-get install -y curl && ARCH="$(uname -m)" && case "$ARCH" in\n${caseLines}\n\t*) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;;\nesac && TMP_DIR="$(mktemp -d)" && cleanup() { rm -rf "$TMP_DIR"; } && trap cleanup EXIT && curl -fsSL "${downloadUrl}" -o ${archivePath} && install -Dm755 ${archivePath} ${installTarget}`;
       }
 
-      return `apk add --no-cache curl unzip && ARCH="$(uname -m)" && case "$ARCH" in\n${caseLines}\n\t*) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;;\nesac && TMP_DIR="$(mktemp -d)" && cleanup() { rm -rf "$TMP_DIR"; } && trap cleanup EXIT && curl -fsSL "${downloadUrl}" -o ${archivePath} && unzip -oq ${archivePath} -d "$TMP_DIR" && install -Dm755 "$TMP_DIR"/${extractedFile} ${installTarget}`;
+      return `apt-get install -y curl unzip && ARCH="$(uname -m)" && case "$ARCH" in\n${caseLines}\n\t*) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;;\nesac && TMP_DIR="$(mktemp -d)" && cleanup() { rm -rf "$TMP_DIR"; } && trap cleanup EXIT && curl -fsSL "${downloadUrl}" -o ${archivePath} && unzip -oq ${archivePath} -d "$TMP_DIR" && install -Dm755 "$TMP_DIR"/${extractedFile} ${installTarget}`;
     }
     case "manual":
       return null;

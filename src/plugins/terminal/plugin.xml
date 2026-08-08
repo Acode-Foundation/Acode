@@ -35,16 +35,16 @@
 
         <source-file src="src/android/TerminalService.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
         
-        <source-file src="src/android/AlpineDocumentProvider.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
+        <source-file src="src/android/UbuntuDocumentProvider.java" target-dir="src/com/foxdebug/acode/rk/exec/terminal" />
 
         <source-file src="scripts/init-sandbox.sh" target-dir="assets"/>
-        <source-file src="scripts/init-alpine.sh" target-dir="assets"/>
-        <source-file src="scripts/rm-wrapper.sh" target-dir="assets"/>
+
+        <source-file src="scripts/init-ubuntu.sh" target-dir="assets"/>
 
 
         <config-file target="AndroidManifest.xml" parent="./application">
             <provider
-                android:name="com.foxdebug.acode.rk.exec.terminal.AlpineDocumentProvider"
+                android:name="com.foxdebug.acode.rk.exec.terminal.UbuntuDocumentProvider"
                 android:authorities="${applicationId}.documents"
                 android:exported="true"
                 android:grantUriPermissions="true"
