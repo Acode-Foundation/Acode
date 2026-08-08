@@ -89,6 +89,7 @@ import ScrollBar from "components/scrollbar";
 import SideButton, { sideButtonContainer } from "components/sideButton";
 import keyboardHandler, { keydownState } from "handlers/keyboard";
 import { animate } from "motion";
+import Url from "utils/Url";
 import config from "./config";
 import EditorFile from "./editorFile";
 import openFile from "./openFile";
@@ -141,6 +142,25 @@ async function EditorManager($header, $body) {
 	let historyStack = [];
 	let historyIndex = -1;
 	let isNavigatingHistory = false;
+
+	async function resolveDisplayUri(targetUri) {
+		if (!targetUri) return null;
+		const decodedUri = decodeURIComponent(targetUri);
+		if (!decodedUri.startsWith("file:///")) return decodedUri;
+		try {
+			const { resolveContentUriForFileUri } = await import(
+				"components/referencesPanel/utils"
+			);
+			return resolveContentUriForFileUri(decodedUri) ?? decodedUri;
+		} catch (error) {
+			console.warn(
+				"[LSP] Failed to resolve uri for display",
+				decodedUri,
+				error,
+			);
+			return decodedUri;
+		}
+	}
 
 	function warnRecoverable(message, error, key) {
 		if (key) {
@@ -1514,11 +1534,33 @@ async function EditorManager($header, $body) {
 	function resolveRootUriForContext(context = {}) {
 		const uri = context.uri || context.file?.uri;
 		if (!uri) return null;
+
 		for (const folder of addedFolder) {
 			const base = typeof folder?.url === "string" ? folder.url : "";
 			if (!base) continue;
+
+			// Plain schemes (content://, file://) are stable strings with no
+			// variable auth/port formatting — a literal prefix check is fine.
 			if (uri.startsWith(base)) return base;
+
+			// sftp:// can carry credential/port formatting that legitimately
+			// differs between when a folder was added and when an individual
+			// file's own uri gets built later, even though both point at the
+			// same remote path. Compare the actual remote paths instead of
+			// the raw connection strings.
+			if (uri.startsWith("sftp:") && base.startsWith("sftp:")) {
+				try {
+					const uriPath = Url.pathname(uri);
+					const basePath = Url.pathname(base).replace(/\/+$/, "");
+					if (uriPath === basePath || uriPath.startsWith(`${basePath}/`)) {
+						return base;
+					}
+				} catch (error) {
+					// malformed url, try the next folder
+				}
+			}
 		}
+
 		return uri;
 	}
 
@@ -3311,44 +3353,42 @@ async function EditorManager($header, $body) {
 			})();
 		},
 		displayFile: async (targetUri) => {
-			if (!targetUri) return null;
-			// Decode URI components (e.g., %40 -> @) since LSP returns encoded URIs
-			const decodedUri = decodeURIComponent(targetUri);
-			const existing = manager.getFile(decodedUri, "uri");
+			const resolvedUri = await resolveDisplayUri(targetUri);
+			if (!resolvedUri) return null;
+			const existing = manager.getFile(resolvedUri, "uri");
 			if (existing?.type === "editor") {
 				existing.makeActive();
 				return editor;
 			}
 			try {
-				await openFile(decodedUri, { render: true });
-				const opened = manager.getFile(decodedUri, "uri");
+				await openFile(resolvedUri, { render: true });
+				const opened = manager.getFile(resolvedUri, "uri");
 				if (opened?.type === "editor") {
 					opened.makeActive();
 					return editor;
 				}
 			} catch (error) {
-				console.error("[LSP] Failed to open file", decodedUri, error);
+				console.error("[LSP] Failed to open file", resolvedUri, error);
 			}
 			return null;
 		},
 		openFile: async (targetUri) => {
-			if (!targetUri) return null;
-			// Decode URI components (e.g., %40 -> @)
-			const decodedUri = decodeURIComponent(targetUri);
-			const existing = manager.getFile(decodedUri, "uri");
+			const resolvedUri = await resolveDisplayUri(targetUri);
+			if (!resolvedUri) return null;
+			const existing = manager.getFile(resolvedUri, "uri");
 			if (existing?.type === "editor") {
 				existing.makeActive();
 				return editor;
 			}
 			try {
-				await openFile(decodedUri, { render: true });
-				const opened = manager.getFile(decodedUri, "uri");
+				await openFile(resolvedUri, { render: true });
+				const opened = manager.getFile(resolvedUri, "uri");
 				if (opened?.type === "editor") {
 					opened.makeActive();
 					return editor;
 				}
 			} catch (error) {
-				console.error("[LSP] Failed to open file", decodedUri, error);
+				console.error("[LSP] Failed to open file", resolvedUri, error);
 			}
 			return null;
 		},

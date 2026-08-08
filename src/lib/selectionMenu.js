@@ -1,5 +1,18 @@
 import appSettings from "lib/settings";
 
+function suppressResidualTouch(duration = 350) {
+	const swallow = (event) => {
+		event.stopPropagation();
+		event.preventDefault();
+	};
+	document.addEventListener("click", swallow, true);
+	document.addEventListener("pointerup", swallow, true);
+	setTimeout(() => {
+		document.removeEventListener("click", swallow, true);
+		document.removeEventListener("pointerup", swallow, true);
+	}, duration);
+}
+
 const exec = (command) => {
 	const { editor } = editorManager;
 	editor.execCommand(command);
@@ -12,18 +25,82 @@ const exec = (command) => {
 	editor.focus();
 };
 
-const showCodeActions = async () => {
+const showLspMenu = async () => {
+	suppressResidualTouch();
+
 	const { editor } = editorManager;
 	if (!editor) return;
 
+	let lsp;
 	try {
-		const { showCodeActionsMenu, supportsCodeActions } = await import("cm/lsp");
-		if (supportsCodeActions(editor)) {
-			await showCodeActionsMenu(editor);
-		}
+		lsp = await import("cm/lsp");
 	} catch (error) {
-		console.warn("[SelectionMenu] Code actions not available:", error);
+		console.warn("[SelectionMenu] LSP module not available:", error);
+		return;
 	}
+
+	const { LSPPlugin } = await import("@codemirror/lsp-client");
+	const plugin = LSPPlugin.get(editor);
+	if (!plugin) return;
+
+	const capabilities = plugin.client.serverCapabilities || {};
+
+	const actions = [
+		capabilities.definitionProvider && {
+			value: "definition",
+			text: "Go to Definition",
+			icon: "keyboard_arrow_right",
+			run: lsp.goToDefinition,
+		},
+		capabilities.declarationProvider && {
+			value: "declaration",
+			text: "Go to Declaration",
+			icon: "keyboard_arrow_right",
+			run: lsp.goToDeclaration,
+		},
+		capabilities.implementationProvider && {
+			value: "implementation",
+			text: "Go to Implementation",
+			icon: "keyboard_arrow_right",
+			run: lsp.goToImplementation,
+		},
+		capabilities.typeDefinitionProvider && {
+			value: "typeDefinition",
+			text: "Go to Type Definition",
+			icon: "keyboard_arrow_right",
+			run: lsp.goToTypeDefinition,
+		},
+		capabilities.referencesProvider && {
+			value: "references",
+			text: "Find References",
+			icon: "linkinsert_link",
+			run: lsp.findAllReferences,
+		},
+		capabilities.renameProvider && {
+			value: "rename",
+			text: "Rename Symbol",
+			icon: "edit",
+			run: lsp.renameSymbol,
+		},
+		lsp.supportsCodeActions(editor) && {
+			value: "codeActions",
+			text: "Code Actions",
+			icon: "lightbulb",
+			run: lsp.showCodeActionsMenu,
+		},
+	].filter(Boolean);
+
+	if (actions.length === 0) return;
+
+	// Skip the picker entirely if there's only one thing to offer
+	if (actions.length === 1) {
+		await actions[0].run(editor);
+		return;
+	}
+	const { default: select } = await import("dialogs/select");
+	const chosen = await select("LSP Actions", actions).catch(() => null);
+	const action = actions.find((a) => a.value === chosen);
+	if (action) await action.run(editor);
 };
 
 const items = [];
@@ -57,8 +134,8 @@ export default function selectionMenu() {
 			"all",
 		),
 		item(
-			() => showCodeActions(),
-			<span className="icon lightbulb" title="Code Actions"></span>,
+			() => showLspMenu(),
+			<span className="icon lightbulb" title="LSP Actions"></span>,
 			"all",
 			true,
 		),
