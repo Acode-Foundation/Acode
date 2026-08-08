@@ -53,6 +53,7 @@ import openFolder, { addedFolder } from "lib/openFolder";
 import { registerPrettierFormatter } from "lib/registerPrettierFormatter";
 import restoreFiles from "lib/restoreFiles";
 import settings from "lib/settings";
+import { migrateLegacySftpProfiles } from "lib/sftpProfiles";
 import startAd, {
 	BANNER_SUPPRESSION_REASON,
 	setBannerSuppressed,
@@ -265,6 +266,9 @@ async function onDeviceReady() {
 
 	acode.setLoadingMessage("Loading language...");
 	await lang.set(settings.value.lang);
+
+	acode.setLoadingMessage("Securing SFTP profiles...");
+	await migrateLegacySftpProfiles();
 
 	if (settings.value.developerMode) {
 		try {

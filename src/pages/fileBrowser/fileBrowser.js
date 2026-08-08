@@ -21,6 +21,7 @@ import projects from "lib/projects";
 import recents from "lib/recents";
 import remoteStorage from "lib/remoteStorage";
 import appSettings from "lib/settings";
+import { deleteSftpProfile, getSftpProfileId } from "lib/sftpProfiles";
 import mimeTypes from "mime-types";
 import mustache from "mustache";
 import filesSettings from "settings/filesSettings";
@@ -1254,8 +1255,9 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					(removedStorage.storageType === "sftp" ||
 						removedStorage.type === "sftp")
 				) {
+					const profileId = getSftpProfileId(storageUrl);
 					const { username, hostname, port = 22 } = Url.decodeUrl(storageUrl);
-					const connectionID = `${username}@${hostname}:${port}`;
+					const connectionID = profileId || `${username}@${hostname}:${port}`;
 					await new Promise((resolve) => {
 						sftp.isConnected((activeConnectionID) => {
 							if (activeConnectionID !== connectionID) {
@@ -1265,13 +1267,21 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 							sftp.close(resolve, resolve);
 						}, resolve);
 					});
+					const profileStillUsed = storageList.some(
+						(storage) =>
+							storage.uuid !== uuid &&
+							getSftpProfileId(storage.url) === profileId,
+					);
+					if (profileId && !profileStillUsed) {
+						await deleteSftpProfile(profileId);
+					}
 				}
 				storageList = storageList.filter((storage) => {
 					if (storage.uuid !== uuid) {
 						return true;
 					}
 
-					if (storage.url) {
+					if (storage.url && !getSftpProfileId(storage.url)) {
 						const parsedUrl = URLParse(storage.url, true);
 						const keyFile = decodeURIComponent(
 							parsedUrl.query["keyFile"] || "",

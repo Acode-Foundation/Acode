@@ -405,7 +405,7 @@ class TerminalManager {
 						}
 
 						// Show alert for terminal creation failure
-						if (!isReconnecting) {
+						if (!isReconnecting && !error?.reported) {
 							const errorMessage = error?.message || "Unknown error";
 							alert(
 								strings["error"],
@@ -913,8 +913,8 @@ class TerminalManager {
 		// Set up custom title function for terminal
 		const getTerminalTitle = () => {
 			if (terminalComponent.remoteSsh) {
-				const { username, hostname } = terminalComponent.remoteSsh;
-				return `${username}@${hostname}`;
+				const { username, hostname, displayName } = terminalComponent.remoteSsh;
+				return displayName || `${username}@${hostname}`;
 			}
 			if (terminalComponent.pid) {
 				return `PID: ${terminalComponent.pid}`;
@@ -1127,7 +1127,8 @@ class TerminalManager {
 		}
 
 		const { username, password, hostname, port, query } = Url.decodeUrl(url);
-		if (!hostname || !username) {
+		const profileId = hostname?.startsWith("profile-") ? hostname : null;
+		if (!profileId && (!hostname || !username)) {
 			throw new Error("The SFTP storage is missing its host or username");
 		}
 
@@ -1135,14 +1136,16 @@ class TerminalManager {
 			...options,
 			name: options.name || `SSH - ${storageName || hostname}`,
 			serverMode: true,
-			remoteSsh: {
-				hostname,
-				port: port || 22,
-				username,
-				password,
-				keyFile: query?.keyFile,
-				passPhrase: query?.passPhrase,
-			},
+			remoteSsh: profileId
+				? { profileId, displayName: storageName || "SSH" }
+				: {
+						hostname,
+						port: port || 22,
+						username,
+						password,
+						keyFile: query?.keyFile,
+						passPhrase: query?.passPhrase,
+					},
 		});
 	}
 

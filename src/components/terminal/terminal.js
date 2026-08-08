@@ -19,6 +19,7 @@ import {
 import confirm from "dialogs/confirm";
 import fonts from "lib/fonts";
 import appSettings from "lib/settings";
+import { resolveHostKeyError } from "lib/sshHostKey";
 import LigaturesAddon from "./ligatures";
 import {
 	DEFAULT_TERMINAL_SETTINGS,
@@ -978,7 +979,18 @@ export default class TerminalComponent {
 				}
 			};
 
-			const onFailure = (message) => {
+			const onFailure = async (message) => {
+				try {
+					if (!settled && (await resolveHostKeyError(message))) {
+						openShell();
+						return;
+					}
+				} catch (error) {
+					this.isConnected = false;
+					if (!settled) reject(error);
+					else if (!this.intentionalClose) this.onError?.(error);
+					return;
+				}
 				const error = new Error(
 					typeof message === "string" ? message : "Failed to open SSH shell",
 				);
@@ -987,31 +999,46 @@ export default class TerminalComponent {
 				else if (!this.intentionalClose) this.onError?.(error);
 			};
 
-			if (profile.keyFile) {
-				sftp.openShellUsingKeyFile(
+			const openShell = () => {
+				if (profile.profileId) {
+					sftp.openShellUsingProfile(
+						profile.profileId,
+						this.terminal.cols,
+						this.terminal.rows,
+						onEvent,
+						onFailure,
+					);
+					return;
+				}
+
+				if (profile.keyFile) {
+					sftp.openShellUsingKeyFile(
+						profile.hostname,
+						profile.port,
+						profile.username,
+						profile.keyFile,
+						profile.passPhrase || "",
+						this.terminal.cols,
+						this.terminal.rows,
+						onEvent,
+						onFailure,
+					);
+					return;
+				}
+
+				sftp.openShellUsingPassword(
 					profile.hostname,
 					profile.port,
 					profile.username,
-					profile.keyFile,
-					profile.passPhrase || "",
+					profile.password || "",
 					this.terminal.cols,
 					this.terminal.rows,
 					onEvent,
 					onFailure,
 				);
-				return;
-			}
+			};
 
-			sftp.openShellUsingPassword(
-				profile.hostname,
-				profile.port,
-				profile.username,
-				profile.password || "",
-				this.terminal.cols,
-				this.terminal.rows,
-				onEvent,
-				onFailure,
-			);
+			openShell();
 		});
 	}
 
