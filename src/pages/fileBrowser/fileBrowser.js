@@ -21,6 +21,7 @@ import projects from "lib/projects";
 import recents from "lib/recents";
 import remoteStorage from "lib/remoteStorage";
 import appSettings from "lib/settings";
+import { deleteSftpProfile, getSftpProfileId } from "lib/sftpProfiles";
 import mimeTypes from "mime-types";
 import mustache from "mustache";
 import filesSettings from "settings/filesSettings";
@@ -1066,6 +1067,14 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					options.push(["edit", strings.edit, "edit"]);
 				}
 
+				if (storageType === "sftp" && uuid) {
+					options.push([
+						"ssh_terminal",
+						strings["open ssh terminal"] || "Open SSH Terminal",
+						"terminal",
+					]);
+				}
+
 				if (helpers.isFile(type)) {
 					options.push(["info", strings.info, "info"]);
 					options.push(["open_with", strings["open with"], "open_in_browser"]);
@@ -1087,7 +1096,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 						const confirmation = await confirm(strings.warning, message);
 						if (!confirmation) break;
-						deleteFunction();
+						await deleteFunction();
 						break;
 					}
 
@@ -1111,6 +1120,15 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 						if (!storage) break;
 						storage.uuid = uuid;
 						updateStorage(storage);
+						break;
+					}
+
+					case "ssh_terminal": {
+						const { TerminalManager } = await import(
+							/* webpackChunkName: "terminal" */ "components/terminal"
+						);
+						await TerminalManager.createRemoteTerminal({ url, name });
+						$page.hide();
 						break;
 					}
 
@@ -1219,28 +1237,61 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				}
 			}
 
-			function removeStorage() {
-				if (url) {
-					recents.removeFolder(url);
-					recents.removeFile(url);
+			async function removeStorage() {
+				const removedStorage = storageList.find(
+					(storage) => storage.uuid === uuid,
+				);
+				const storageUrl = removedStorage?.url || url;
+
+				if (storageUrl) {
+					recents.removeFolder(storageUrl);
+					recents.removeFile(storageUrl);
+					openFolder.removeFolders(storageUrl);
+					helpers.updateUriOfAllActiveFiles(storageUrl, null);
+				}
+				if (
+					storageUrl &&
+					removedStorage &&
+					(removedStorage.storageType === "sftp" ||
+						removedStorage.type === "sftp")
+				) {
+					const profileId = getSftpProfileId(storageUrl);
+					const { username, hostname, port = 22 } = Url.decodeUrl(storageUrl);
+					const connectionID = profileId || `${username}@${hostname}:${port}`;
+					await new Promise((resolve) => {
+						sftp.isConnected((activeConnectionID) => {
+							if (activeConnectionID !== connectionID) {
+								resolve();
+								return;
+							}
+							sftp.close(resolve, resolve);
+						}, resolve);
+					});
+					const profileStillUsed = storageList.some(
+						(storage) =>
+							storage.uuid !== uuid &&
+							getSftpProfileId(storage.url) === profileId,
+					);
+					if (profileId && !profileStillUsed) {
+						await deleteSftpProfile(profileId);
+					}
 				}
 				storageList = storageList.filter((storage) => {
 					if (storage.uuid !== uuid) {
 						return true;
 					}
 
-					if (storage.url) {
+					if (storage.url && !getSftpProfileId(storage.url)) {
 						const parsedUrl = URLParse(storage.url, true);
 						const keyFile = decodeURIComponent(
 							parsedUrl.query["keyFile"] || "",
 						);
-						if (keyFile) {
-							fsOperation(keyFile).delete();
-						}
+						if (keyFile) fsOperation(keyFile).delete().catch(console.warn);
 					}
 					return false;
 				});
 				localStorage.storageList = JSON.stringify(storageList);
+				acode.exec("save-state");
 				reload();
 			}
 

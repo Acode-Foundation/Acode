@@ -1,10 +1,14 @@
 import settings from "lib/settings";
+import { resolveHostKeyError } from "lib/sshHostKey";
 import mimeType from "mime-types";
 import { decode, encode } from "utils/encodings";
 import helpers from "utils/helpers";
 import Path from "utils/Path";
 import Url from "utils/Url";
 import internalFs from "./internalFs";
+
+let pendingConnection = null;
+let pendingConnectionID = null;
 
 class SftpClient {
 	#MAX_TRY = 3;
@@ -15,11 +19,11 @@ class SftpClient {
 	#password;
 	#keyFile;
 	#passPhrase;
+	#profileID;
 	#base;
 	#connectionID;
 	#path;
 	#stat;
-	#retry = 0;
 
 	/**
 	 *
@@ -29,26 +33,35 @@ class SftpClient {
 	 * @param {{password?: String, passPhrase?: String, keyFile?: String}} authentication
 	 */
 	constructor(hostname, port = 22, username, authentication) {
+		authentication ||= {};
+		this.#profileID = authentication.profileID;
 		this.#hostname = hostname;
 		this.#port = port;
 		this.#username = username;
-		this.#authenticationType = !!authentication.keyFile ? "key" : "password";
+		this.#authenticationType = this.#profileID
+			? "profile"
+			: authentication.keyFile
+				? "key"
+				: "password";
 		this.#keyFile = authentication.keyFile;
 		this.#passPhrase = authentication.passPhrase;
 		this.#password = authentication.password;
-		this.#base = Url.formate({
-			protocol: "sftp:",
-			hostname: this.#hostname,
-			port: this.#port,
-			username: this.#username,
-			password: this.#password,
-			query: {
-				passPhrase: this.#passPhrase,
-				keyFile: this.#keyFile,
-			},
-		});
+		this.#base = this.#profileID
+			? Url.formate({ protocol: "sftp:", hostname: this.#profileID })
+			: Url.formate({
+					protocol: "sftp:",
+					hostname: this.#hostname,
+					port: this.#port,
+					username: this.#username,
+					password: this.#password,
+					query: {
+						passPhrase: this.#passPhrase,
+						keyFile: this.#keyFile,
+					},
+				});
 
-		this.#connectionID = `${this.#username}@${this.#hostname}`;
+		this.#connectionID =
+			this.#profileID || `${this.#username}@${this.#hostname}:${this.#port}`;
 	}
 
 	setPath(path) {
@@ -398,20 +411,66 @@ class SftpClient {
 	}
 
 	async connect() {
-		await new Promise((resolve, reject) => {
-			const retry = (err) => {
-				if (settings.value.retryRemoteFsAfterFail) {
-					if (++this.#retry > this.#MAX_TRY) {
-						this.#retry = 0;
-						reject(err);
-					} else {
-						this.connect().then(resolve).catch(reject);
-					}
-				} else {
-					reject(err);
-				}
-			};
+		if (pendingConnection) {
+			if (pendingConnectionID === this.#connectionID) {
+				return pendingConnection;
+			}
+			try {
+				await pendingConnection;
+			} catch {
+				// The next profile should still get its own connection attempt.
+			}
+			return this.connect();
+		}
 
+		pendingConnectionID = this.#connectionID;
+		pendingConnection = this.#connectWithRetry();
+
+		try {
+			return await pendingConnection;
+		} finally {
+			if (pendingConnectionID === this.#connectionID) {
+				pendingConnection = null;
+				pendingConnectionID = null;
+			}
+		}
+	}
+
+	async #connectWithRetry() {
+		const attempts = settings.value.retryRemoteFsAfterFail
+			? this.#MAX_TRY + 1
+			: 1;
+		let lastError;
+
+		for (let attempt = 0; attempt < attempts; attempt++) {
+			try {
+				return await this.#connectWithHostVerification();
+			} catch (error) {
+				if (error?.nonRetryable) throw error;
+				lastError = error;
+			}
+		}
+
+		throw lastError;
+	}
+
+	async #connectWithHostVerification() {
+		try {
+			return await this.#connectOnce();
+		} catch (error) {
+			if (await resolveHostKeyError(error)) {
+				return this.#connectOnce();
+			}
+			throw error;
+		}
+	}
+
+	#connectOnce() {
+		return new Promise((resolve, reject) => {
+			if (this.#authenticationType === "profile") {
+				sftp.connectUsingProfile(this.#profileID, resolve, reject);
+				return;
+			}
 			if (this.#authenticationType === "key") {
 				sftp.connectUsingKeyFile(
 					this.#hostname,
@@ -420,7 +479,7 @@ class SftpClient {
 					this.#keyFile,
 					this.#passPhrase,
 					resolve,
-					retry,
+					reject,
 				);
 				return;
 			}
@@ -431,7 +490,7 @@ class SftpClient {
 				this.#username,
 				this.#password,
 				resolve,
-				retry,
+				reject,
 			);
 		});
 	}
@@ -590,6 +649,11 @@ function Sftp(host, port, username, authentication) {
 Sftp.fromUrl = (url) => {
 	const { username, password, hostname, pathname, port, query } =
 		Url.decodeUrl(url);
+	if (hostname?.startsWith("profile-")) {
+		const sftp = new SftpClient(null, 22, null, { profileID: hostname });
+		sftp.setPath(pathname);
+		return createFs(sftp);
+	}
 	const { keyFile, passPhrase } = query;
 
 	const sftp = new SftpClient(hostname, port || 22, username, {

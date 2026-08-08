@@ -18,6 +18,21 @@ module.exports = {
     port = Number.parseInt(port);
     cordova.exec(onSuccess, onFail, 'Sftp', 'connectUsingKeyFile', [host, port, username, keyFile, passphrase]);
   },
+  connectUsingProfile: function (profileId, onSuccess, onFail) {
+    cordova.exec(onSuccess, onFail, 'Sftp', 'connectUsingProfile', [profileId]);
+  },
+  saveProfile: function (profileId, host, port, username, authType, password, keyFile, passphrase, onSuccess, onFail) {
+    cordova.exec(onSuccess, onFail, 'Sftp', 'saveProfile', [profileId, host, port, username, authType, password, keyFile, passphrase]);
+  },
+  getProfileInfo: function (profileId, onSuccess, onFail) {
+    cordova.exec(onSuccess, onFail, 'Sftp', 'getProfileInfo', [profileId]);
+  },
+  deleteProfile: function (profileId, onSuccess, onFail) {
+    cordova.exec(onSuccess, onFail, 'Sftp', 'deleteProfile', [profileId]);
+  },
+  trustHost: function (host, algorithm, fingerprint, publicKey, onSuccess, onFail) {
+    cordova.exec(onSuccess, onFail, 'Sftp', 'trustHost', [host, algorithm, fingerprint, publicKey]);
+  },
   getFile: function (filename, localFilename, onSuccess, onFail) {
     cordova.exec(onSuccess, onFail, 'Sftp', 'getFile', [filename, localFilename]);
   },
@@ -50,5 +65,23 @@ module.exports = {
   },
   isConnected: function (onSuccess, onFail) {
     cordova.exec(onSuccess, onFail, 'Sftp', 'isConnected', []);
+  },
+  openShellUsingPassword: function (host, port, username, password, cols, rows, onEvent, onFail) {
+    cordova.exec(onEvent, onFail, 'Sftp', 'openShellUsingPassword', [host, port, username, password, cols, rows]);
+  },
+  openShellUsingKeyFile: function (host, port, username, keyFile, passphrase, cols, rows, onEvent, onFail) {
+    cordova.exec(onEvent, onFail, 'Sftp', 'openShellUsingKeyFile', [host, port, username, keyFile, passphrase, cols, rows]);
+  },
+  openShellUsingProfile: function (profileId, cols, rows, onEvent, onFail) {
+    cordova.exec(onEvent, onFail, 'Sftp', 'openShellUsingProfile', [profileId, cols, rows]);
+  },
+  writeShell: function (sessionId, data, onSuccess, onFail) {
+    cordova.exec(onSuccess, onFail, 'Sftp', 'writeShell', [sessionId, data]);
+  },
+  resizeShell: function (sessionId, cols, rows, onSuccess, onFail) {
+    cordova.exec(onSuccess, onFail, 'Sftp', 'resizeShell', [sessionId, cols, rows]);
+  },
+  closeShell: function (sessionId, onSuccess, onFail) {
+    cordova.exec(onSuccess, onFail, 'Sftp', 'closeShell', [sessionId]);
   }
 };

@@ -44,6 +44,24 @@ export default {
 	},
 
 	/**
+	 * Checks whether a URL is the same as, or nested below, a parent URL.
+	 * Query parameters are ignored and path segment boundaries are preserved.
+	 * @param {string} candidate
+	 * @param {string} parent
+	 * @returns {boolean}
+	 */
+	isSameOrDescendant(candidate, parent) {
+		const normalize = (value) => {
+			value = this.parse(value).url;
+			return value.endsWith("/") ? value.slice(0, -1) : value;
+		};
+		candidate = normalize(candidate);
+		parent = normalize(parent);
+		if (candidate === parent) return true;
+		return candidate.startsWith(`${parent}/`);
+	},
+
+	/**
 	 *
 	 * @param {String} url
 	 * returns the extension of the path, from the last occurrence of the . (period)

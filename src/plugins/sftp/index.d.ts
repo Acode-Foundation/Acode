@@ -17,6 +17,21 @@ interface ExecResult{
   result: String;
 }
 
+interface ShellEvent {
+  type: "ready" | "data" | "exit" | "error";
+  sessionId?: string;
+  data?: string;
+  exitCode?: number;
+  message?: string;
+}
+
+interface SftpProfileInfo {
+  hostname: string;
+  port: number;
+  username: string;
+  authType: "password" | "key";
+}
+
 interface Sftp {
   /**
    * Executes command on ssh-server
@@ -47,6 +62,11 @@ interface Sftp {
    * @param onFail Callback function on error returns error object
    */
   connectUsingKeyFile(host: String, port: Number, username: String, keyFile: String, passphrase: String, onSuccess: () => void, onFail: (err: any) => void): void;
+  connectUsingProfile(profileId: String, onSuccess: () => void, onFail: (err: any) => void): void;
+  saveProfile(profileId: String | null, host: String, port: Number, username: String, authType: String, password: String, keyFile: String, passphrase: String, onSuccess: (profileId: String) => void, onFail: (err: any) => void): void;
+  getProfileInfo(profileId: String, onSuccess: (profile: SftpProfileInfo) => void, onFail: (err: any) => void): void;
+  deleteProfile(profileId: String, onSuccess: () => void, onFail: (err: any) => void): void;
+  trustHost(host: String, algorithm: String, fingerprint: String, publicKey: String, onSuccess: () => void, onFail: (err: any) => void): void;
 
   /**
    * Gets file from the server.
@@ -79,6 +99,12 @@ interface Sftp {
    * @param onFail 
    */
   isConnected(onSuccess: (connectionId: String) => void, onFail: (err: any) => void): void;
+  openShellUsingPassword(host: String, port: Number, username: String, password: String, cols: Number, rows: Number, onEvent: (event: ShellEvent) => void, onFail: (err: any) => void): void;
+  openShellUsingKeyFile(host: String, port: Number, username: String, keyFile: String, passphrase: String, cols: Number, rows: Number, onEvent: (event: ShellEvent) => void, onFail: (err: any) => void): void;
+  openShellUsingProfile(profileId: String, cols: Number, rows: Number, onEvent: (event: ShellEvent) => void, onFail: (err: any) => void): void;
+  writeShell(sessionId: String, data: String, onSuccess: () => void, onFail: (err: any) => void): void;
+  resizeShell(sessionId: String, cols: Number, rows: Number, onSuccess: () => void, onFail: (err: any) => void): void;
+  closeShell(sessionId: String, onSuccess: () => void, onFail: (err: any) => void): void;
 }
 
 declare var sftp: Sftp;

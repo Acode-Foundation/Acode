@@ -1,4 +1,3 @@
-import fsOperation from "fileSystem";
 import Ftp from "fileSystem/ftp";
 import Sftp from "fileSystem/sftp";
 import loader from "dialogs/loader";
@@ -6,6 +5,12 @@ import multiPrompt from "dialogs/multiPrompt";
 import URLParse from "url-parse";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
+import {
+	createSftpProfileUrl,
+	getSftpProfileId,
+	getSftpProfileInfo,
+	saveSftpProfile,
+} from "./sftpProfiles";
 import { interstitialAd } from "./startAd";
 
 export default {
@@ -166,6 +171,7 @@ export default {
 	 */
 	async addSftp(...args) {
 		let stopConnection = false;
+		const existingProfile = args[8] || null;
 
 		const {
 			hostname,
@@ -176,8 +182,27 @@ export default {
 			port,
 			alias,
 			usePassword,
-		} = await prompt(...args);
+		} = await prompt(...args.slice(0, 8));
 		const authType = usePassword ? "password" : "keyFile";
+		const nativeAuthType = usePassword ? "password" : "key";
+
+		if (
+			existingProfile &&
+			!password &&
+			!keyFile &&
+			hostname === existingProfile.hostname &&
+			username === existingProfile.username &&
+			Number.parseInt(port, 10) === existingProfile.port &&
+			nativeAuthType === existingProfile.authType
+		) {
+			return {
+				alias,
+				name: alias,
+				url: existingProfile.url,
+				type: "sftp",
+				home: existingProfile.home,
+			};
+		}
 
 		loader.create(strings["add sftp"], strings["connecting..."], {
 			timeout: 10000,
@@ -199,37 +224,17 @@ export default {
 				return;
 			}
 
-			let localKeyFile = "";
-			if (keyFile) {
-				let fs = fsOperation(keyFile);
-				const text = await fs.readFile("utf8");
-
-				//Original key file sometimes gives permission error
-				//To solve permission error
-				const filename = keyFile.hashCode();
-				localKeyFile = Url.join(DATA_STORAGE, filename);
-				fs = fsOperation(localKeyFile);
-				const exists = await fs.exists();
-				if (exists) {
-					await fs.writeFile(text);
-				} else {
-					let fs = fsOperation(DATA_STORAGE);
-					await fs.createFile(filename, text);
-				}
-			}
-
-			const url = Url.formate({
-				protocol: "sftp:",
+			const profileId = await saveSftpProfile({
+				profileId: existingProfile?.profileId,
 				hostname,
 				username,
+				authType: nativeAuthType,
 				password,
 				port,
-				path: "/",
-				query: {
-					keyFile: localKeyFile,
-					passPhrase,
-				},
+				keyFile,
+				passPhrase,
 			});
+			const url = createSftpProfileUrl(profileId);
 			loader.destroy();
 			await helpers.showInterstitialIfReady();
 			return {
@@ -246,7 +251,7 @@ export default {
 			}
 
 			loader.destroy();
-			await helpers.error(err);
+			if (!err?.reported) await helpers.error(err);
 			return await this.addSftp(
 				hostname,
 				username,
@@ -256,6 +261,7 @@ export default {
 				port,
 				alias,
 				authType,
+				existingProfile,
 			);
 		}
 
@@ -366,7 +372,23 @@ export default {
 			return multiPrompt(strings["add sftp"], inputs);
 		}
 	},
-	edit({ name, storageType, url }) {
+	async edit({ name, storageType, url, home }) {
+		const profileId = getSftpProfileId(url);
+		if (storageType === "sftp" && profileId) {
+			const profile = await getSftpProfileInfo(profileId);
+			return this.addSftp(
+				profile.hostname,
+				profile.username,
+				"",
+				"",
+				"",
+				profile.port,
+				name,
+				profile.authType,
+				{ ...profile, profileId, url, home },
+			);
+		}
+
 		let { username, password, hostname, port, query } = URLParse(url, true);
 
 		if (username) {

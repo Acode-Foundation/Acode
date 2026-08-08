@@ -13,6 +13,7 @@ import openFile from "lib/openFile";
 import openFolder from "lib/openFolder";
 import appSettings from "lib/settings";
 import helpers from "utils/helpers";
+import Url from "utils/Url";
 import TerminalComponent from "./terminal";
 import TerminalTouchSelection from "./terminalTouchSelection";
 
@@ -276,6 +277,7 @@ class TerminalManager {
 			const shouldRender = render !== false;
 			const isServerMode = serverMode !== false;
 			const isReconnecting = reconnecting === true;
+			const isRemoteSsh = !!terminalOptions.remoteSsh;
 
 			const terminalId = `terminal_${++this.terminalCounter}`;
 			const providedName =
@@ -289,7 +291,7 @@ class TerminalManager {
 				: terminalName;
 
 			// Check if terminal is installed before proceeding
-			if (isServerMode) {
+			if (isServerMode && !isRemoteSsh) {
 				const installationResult = await this.checkAndInstallTerminal();
 				if (!installationResult.success) {
 					throw new Error(installationResult.error);
@@ -369,7 +371,11 @@ class TerminalManager {
 
 						this.terminals.set(uniqueId, instance);
 
-						if (terminalComponent.serverMode && terminalComponent.pid) {
+						if (
+							terminalComponent.serverMode &&
+							!terminalComponent.remoteSsh &&
+							terminalComponent.pid
+						) {
 							await this.persistTerminalSession(
 								terminalComponent.pid,
 								terminalName,
@@ -399,7 +405,7 @@ class TerminalManager {
 						}
 
 						// Show alert for terminal creation failure
-						if (!isReconnecting) {
+						if (!isReconnecting && !error?.reported) {
 							const errorMessage = error?.message || "Unknown error";
 							alert(
 								strings["error"],
@@ -831,7 +837,11 @@ class TerminalManager {
 				const formattedTitle = `${titlePrefix} - ${title}`;
 				terminalFile.filename = formattedTitle;
 
-				if (terminalComponent.serverMode && terminalComponent.pid) {
+				if (
+					terminalComponent.serverMode &&
+					!terminalComponent.remoteSsh &&
+					terminalComponent.pid
+				) {
 					await this.persistTerminalSession(
 						terminalComponent.pid,
 						formattedTitle,
@@ -870,6 +880,9 @@ class TerminalManager {
 
 		// Handle acode CLI open commands (OSC 7777)
 		terminalComponent.onOscOpen = async (type, path) => {
+			// OSC 7777 is an Acode-local CLI protocol. Remote hosts must not use it
+			// to request access to paths on the Android device.
+			if (terminalComponent.remoteSsh) return;
 			if (!path) return;
 
 			// Convert proot path
@@ -899,6 +912,10 @@ class TerminalManager {
 
 		// Set up custom title function for terminal
 		const getTerminalTitle = () => {
+			if (terminalComponent.remoteSsh) {
+				const { username, hostname, displayName } = terminalComponent.remoteSsh;
+				return displayName || `${username}@${hostname}`;
+			}
 			if (terminalComponent.pid) {
 				return `PID: ${terminalComponent.pid}`;
 			}
@@ -924,7 +941,11 @@ class TerminalManager {
 				terminal.component.intentionalClose = true;
 			}
 
-			if (terminal.component.serverMode && terminal.component.pid) {
+			if (
+				terminal.component.serverMode &&
+				!terminal.component.remoteSsh &&
+				terminal.component.pid
+			) {
 				this.removePersistedSession(terminal.component.pid);
 			}
 
@@ -1088,6 +1109,43 @@ class TerminalManager {
 		return this.createTerminal({
 			...options,
 			serverMode: true,
+		});
+	}
+
+	/**
+	 * Create an SSH terminal using credentials from an SFTP storage URL.
+	 * @param {string|{url: string, name?: string}} storage - SFTP storage
+	 * @param {object} options - Terminal options
+	 * @returns {Promise<object>} Terminal instance
+	 */
+	async createRemoteTerminal(storage, options = {}) {
+		const url = typeof storage === "string" ? storage : storage?.url;
+		const storageName = typeof storage === "object" ? storage?.name : null;
+
+		if (!url || !/^sftp:/.test(url)) {
+			throw new Error("A valid SFTP storage is required");
+		}
+
+		const { username, password, hostname, port, query } = Url.decodeUrl(url);
+		const profileId = hostname?.startsWith("profile-") ? hostname : null;
+		if (!profileId && (!hostname || !username)) {
+			throw new Error("The SFTP storage is missing its host or username");
+		}
+
+		return this.createTerminal({
+			...options,
+			name: options.name || `SSH - ${storageName || hostname}`,
+			serverMode: true,
+			remoteSsh: profileId
+				? { profileId, displayName: storageName || "SSH" }
+				: {
+						hostname,
+						port: port || 22,
+						username,
+						password,
+						keyFile: query?.keyFile,
+						passPhrase: query?.passPhrase,
+					},
 		});
 	}
 
