@@ -39,6 +39,8 @@ jobs:
     name: Unit Tests (On PR Only)
     timeout-minutes: 10
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     if: github.event_name == 'pull_request'
     steps:
       - name: Checkout Repository
