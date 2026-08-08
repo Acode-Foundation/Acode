@@ -4,11 +4,13 @@ import android.app.Activity;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.net.Uri;
+import android.util.Base64;
 import android.util.Log;
 import androidx.documentfile.provider.DocumentFile;
 import com.sshtools.client.SshClient;
 import com.sshtools.client.SshClient.SshClientBuilder;
 import com.sshtools.client.SshClientContext;
+import com.sshtools.client.SessionChannelNG;
 import com.sshtools.client.sftp.SftpClient;
 import com.sshtools.client.sftp.SftpClient.SftpClientBuilder;
 import com.sshtools.client.sftp.SftpFile;
@@ -20,6 +22,9 @@ import com.sshtools.common.publickey.SshKeyUtils;
 import com.sshtools.common.sftp.SftpFileAttributes;
 import com.sshtools.common.sftp.SftpStatusException;
 import com.sshtools.common.ssh.SshException;
+import com.sshtools.common.ssh.Channel;
+import com.sshtools.common.ssh.ChannelEventListener;
+import com.sshtools.common.ssh.RequestFuture;
 import com.sshtools.common.ssh.components.SshKeyPair;
 import com.sshtools.common.ssh.components.jce.JCEProvider;
 import com.sshtools.common.util.UnsignedInteger32;
@@ -33,13 +38,22 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.nio.ByteBuffer;
 import java.nio.channels.UnresolvedAddressException;
 import java.nio.charset.StandardCharsets;
 import java.security.Security;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.CordovaWebView;
+import org.apache.cordova.PluginResult;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -54,11 +68,105 @@ public class Sftp extends CordovaPlugin {
   private static final long SFTP_MIN_WINDOW_SIZE = 128L * 1024L;
   private static boolean cryptoProviderConfigured;
   private final Object connectionLock = new Object();
+  private final Map<String, RemoteShell> remoteShells = new ConcurrentHashMap<>();
   private SshClient ssh;
   private SftpClient sftp;
   private Context context;
   private Activity activity;
   private String connectionID;
+
+  private final class RemoteShell {
+
+    private final String id;
+    private final SshClient client;
+    private final SessionChannelNG channel;
+    private final CallbackContext streamCallback;
+    private final AtomicBoolean finished = new AtomicBoolean(false);
+    private final ExecutorService inputWriter = Executors.newSingleThreadExecutor();
+
+    private RemoteShell(
+      String id,
+      SshClient client,
+      SessionChannelNG channel,
+      CallbackContext streamCallback
+    ) {
+      this.id = id;
+      this.client = client;
+      this.channel = channel;
+      this.streamCallback = streamCallback;
+    }
+
+    private void sendData(ByteBuffer source) {
+      if (finished.get() || source == null || !source.hasRemaining()) return;
+
+      ByteBuffer data = source.asReadOnlyBuffer();
+      byte[] bytes = new byte[data.remaining()];
+      data.get(bytes);
+      try {
+        JSONObject event = new JSONObject();
+        event.put("type", "data");
+        event.put("data", Base64.encodeToString(bytes, Base64.NO_WRAP));
+        sendShellEvent(streamCallback, event, true);
+      } catch (JSONException e) {
+        finish(null, e.getMessage());
+      }
+    }
+
+    private void finish(Integer exitCode, String error) {
+      if (!finished.compareAndSet(false, true)) return;
+      remoteShells.remove(id, this);
+      inputWriter.shutdownNow();
+
+      try {
+        channel.close();
+      } catch (Exception e) {
+        Log.w(TAG, "Failed to close SSH shell channel " + id, e);
+      }
+      try {
+        client.close();
+      } catch (IOException e) {
+        Log.w(TAG, "Failed to close SSH shell connection " + id, e);
+      }
+
+      try {
+        JSONObject event = new JSONObject();
+        event.put("type", error == null ? "exit" : "error");
+        if (exitCode != null) event.put("exitCode", exitCode);
+        if (error != null) event.put("message", error);
+        sendShellEvent(streamCallback, event, false);
+      } catch (JSONException e) {
+        streamCallback.error(errMessage(e));
+      }
+    }
+
+    private void write(String input, CallbackContext callback) {
+      if (finished.get()) {
+        callback.error("SSH shell is not connected");
+        return;
+      }
+
+      try {
+        inputWriter.execute(
+          new Runnable() {
+            @Override
+            public void run() {
+              try {
+                byte[] data = input.getBytes(StandardCharsets.UTF_8);
+                channel.getOutputStream().write(data);
+                channel.getOutputStream().flush();
+                callback.success();
+              } catch (IOException e) {
+                finish(null, errMessage(e));
+                callback.error(errMessage(e));
+              }
+            }
+          }
+        );
+      } catch (RejectedExecutionException e) {
+        callback.error("SSH shell is not connected");
+      }
+    }
+  }
 
   public void initialize(CordovaInterface cordova, CordovaWebView webView) {
     super.initialize(cordova, webView);
@@ -138,6 +246,263 @@ public class Sftp extends CordovaPlugin {
       }
       return true;
     }
+  }
+
+  private static void sendShellEvent(
+    CallbackContext callback,
+    JSONObject event,
+    boolean keepCallback
+  ) {
+    PluginResult result = new PluginResult(PluginResult.Status.OK, event);
+    result.setKeepCallback(keepCallback);
+    callback.sendPluginResult(result);
+  }
+
+  private void closeRemoteShells() {
+    for (RemoteShell shell : remoteShells.values()) {
+      shell.finish(null, null);
+    }
+    remoteShells.clear();
+  }
+
+  @Override
+  public void onReset() {
+    closeRemoteShells();
+    super.onReset();
+  }
+
+  @Override
+  public void onDestroy() {
+    closeRemoteShells();
+    super.onDestroy();
+  }
+
+  private SshClient buildShellPasswordClient(
+    String host,
+    int port,
+    String username,
+    String password
+  ) throws IOException, SshException, PermissionDeniedException {
+    return SshClientBuilder.create()
+      .withHostname(host)
+      .withPort(port)
+      .withUsername(username)
+      .withPassword(password)
+      .onConfigure(Sftp::configureClient)
+      .build();
+  }
+
+  private SshClient buildShellKeyClient(
+    String host,
+    int port,
+    String username,
+    String keyFile,
+    String passphrase
+  )
+    throws IOException, SshException, PermissionDeniedException, InvalidPassphraseException {
+    DocumentFile file = DocumentFile.fromSingleUri(context, Uri.parse(keyFile));
+    if (file == null) throw new IOException("Could not open key file");
+
+    SshKeyPair keyPair;
+    try (
+      InputStream in = context
+        .getContentResolver()
+        .openInputStream(file.getUri())
+    ) {
+      if (in == null) throw new IOException("Could not open key file");
+      keyPair = SshKeyUtils.getPrivateKey(in, passphrase);
+    }
+
+    return SshClientBuilder.create()
+      .withHostname(host)
+      .withPort(port)
+      .withUsername(username)
+      .withIdentities(keyPair)
+      .onConfigure(Sftp::configureClient)
+      .build();
+  }
+
+  private void openRemoteShell(
+    SshClient shellClient,
+    int columns,
+    int rows,
+    CallbackContext callback
+  ) throws SshException, JSONException, IOException {
+    if (!shellClient.isConnected()) {
+      shellClient.close();
+      throw new IOException("Failed to establish SSH connection");
+    }
+
+    String shellID = UUID.randomUUID().toString();
+    SessionChannelNG channel;
+    try {
+      channel = shellClient.openSessionChannel(true);
+    } catch (SshException e) {
+      shellClient.close();
+      throw e;
+    }
+    RemoteShell shell = new RemoteShell(shellID, shellClient, channel, callback);
+    remoteShells.put(shellID, shell);
+
+    channel.addEventListener(
+      new ChannelEventListener() {
+        @Override
+        public void onChannelDataIn(Channel source, ByteBuffer data) {
+          shell.sendData(data);
+        }
+
+        @Override
+        public void onChannelExtendedData(
+          Channel source,
+          ByteBuffer data,
+          int type
+        ) {
+          shell.sendData(data);
+        }
+
+        @Override
+        public void onChannelClose(Channel source) {
+          int exitCode = channel.getExitCode();
+          shell.finish(
+            exitCode == SessionChannelNG.EXITCODE_NOT_RECEIVED ? null : exitCode,
+            null
+          );
+        }
+
+        @Override
+        public void onChannelError(Channel source, Throwable error) {
+          shell.finish(null, error == null ? "SSH shell error" : error.toString());
+        }
+      }
+    );
+
+    RequestFuture pty = channel
+      .allocatePseudoTerminal("xterm-256color", columns, rows)
+      .waitFor(30000L);
+    if (!pty.isSuccess()) {
+      shell.finish(null, "Remote server rejected PTY allocation");
+      return;
+    }
+    if (shell.finished.get()) return;
+
+    RequestFuture start = channel.startShell().waitFor(30000L);
+    if (!start.isSuccess()) {
+      shell.finish(null, "Remote server rejected the interactive shell");
+      return;
+    }
+    if (shell.finished.get()) return;
+
+    JSONObject ready = new JSONObject();
+    ready.put("type", "ready");
+    ready.put("sessionId", shellID);
+    sendShellEvent(callback, ready, true);
+  }
+
+  public void openShellUsingPassword(JSONArray args, CallbackContext callback) {
+    cordova
+      .getThreadPool()
+      .execute(
+        new Runnable() {
+          public void run() {
+            try {
+              String host = args.optString(0);
+              int port = args.optInt(1, 22);
+              String username = args.optString(2);
+              String password = args.optString(3);
+              int columns = Math.max(1, args.optInt(4, 80));
+              int rows = Math.max(1, args.optInt(5, 24));
+              openRemoteShell(
+                buildShellPasswordClient(
+                  host,
+                  port,
+                  username,
+                  password
+                ),
+                columns,
+                rows,
+                callback
+              );
+            } catch (Exception e) {
+              callback.error("Failed to open SSH shell: " + errMessage(e));
+              Log.e(TAG, "Failed to open SSH shell", e);
+            } catch (OutOfMemoryError e) {
+              callback.error("Not enough memory to open SSH shell");
+              Log.e(TAG, "Not enough memory to open SSH shell", e);
+            }
+          }
+        }
+      );
+  }
+
+  public void openShellUsingKeyFile(JSONArray args, CallbackContext callback) {
+    cordova
+      .getThreadPool()
+      .execute(
+        new Runnable() {
+          public void run() {
+            try {
+              String host = args.optString(0);
+              int port = args.optInt(1, 22);
+              String username = args.optString(2);
+              String keyFile = args.optString(3);
+              String passphrase = args.optString(4);
+              int columns = Math.max(1, args.optInt(5, 80));
+              int rows = Math.max(1, args.optInt(6, 24));
+              openRemoteShell(
+                buildShellKeyClient(
+                  host,
+                  port,
+                  username,
+                  keyFile,
+                  passphrase
+                ),
+                columns,
+                rows,
+                callback
+              );
+            } catch (InvalidPassphraseException e) {
+              callback.error("Invalid passphrase for key file");
+            } catch (Exception e) {
+              callback.error("Failed to open SSH shell: " + errMessage(e));
+              Log.e(TAG, "Failed to open SSH shell", e);
+            } catch (OutOfMemoryError e) {
+              callback.error("Not enough memory to open SSH shell");
+              Log.e(TAG, "Not enough memory to open SSH shell", e);
+            }
+          }
+        }
+      );
+  }
+
+  public void writeShell(JSONArray args, CallbackContext callback) {
+    RemoteShell shell = remoteShells.get(args.optString(0));
+    if (shell == null || shell.finished.get()) {
+      callback.error("SSH shell is not connected");
+      return;
+    }
+    shell.write(args.optString(1), callback);
+  }
+
+  public void resizeShell(JSONArray args, CallbackContext callback) {
+    String shellID = args.optString(0);
+    RemoteShell shell = remoteShells.get(shellID);
+    if (shell == null || shell.finished.get()) {
+      callback.error("SSH shell is not connected");
+      return;
+    }
+    shell.channel.changeTerminalDimensions(
+      Math.max(1, args.optInt(1, 80)),
+      Math.max(1, args.optInt(2, 24)),
+      0,
+      0
+    );
+    callback.success();
+  }
+
+  public void closeShell(JSONArray args, CallbackContext callback) {
+    RemoteShell shell = remoteShells.get(args.optString(0));
+    if (shell != null) shell.finish(null, null);
+    callback.success();
   }
 
   public boolean execute(

@@ -50,5 +50,20 @@ module.exports = {
   },
   isConnected: function (onSuccess, onFail) {
     cordova.exec(onSuccess, onFail, 'Sftp', 'isConnected', []);
+  },
+  openShellUsingPassword: function (host, port, username, password, cols, rows, onEvent, onFail) {
+    cordova.exec(onEvent, onFail, 'Sftp', 'openShellUsingPassword', [host, port, username, password, cols, rows]);
+  },
+  openShellUsingKeyFile: function (host, port, username, keyFile, passphrase, cols, rows, onEvent, onFail) {
+    cordova.exec(onEvent, onFail, 'Sftp', 'openShellUsingKeyFile', [host, port, username, keyFile, passphrase, cols, rows]);
+  },
+  writeShell: function (sessionId, data, onSuccess, onFail) {
+    cordova.exec(onSuccess, onFail, 'Sftp', 'writeShell', [sessionId, data]);
+  },
+  resizeShell: function (sessionId, cols, rows, onSuccess, onFail) {
+    cordova.exec(onSuccess, onFail, 'Sftp', 'resizeShell', [sessionId, cols, rows]);
+  },
+  closeShell: function (sessionId, onSuccess, onFail) {
+    cordova.exec(onSuccess, onFail, 'Sftp', 'closeShell', [sessionId]);
   }
 };

@@ -1066,6 +1066,14 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					options.push(["edit", strings.edit, "edit"]);
 				}
 
+				if (storageType === "sftp" && uuid) {
+					options.push([
+						"ssh_terminal",
+						strings["open ssh terminal"] || "Open SSH Terminal",
+						"terminal",
+					]);
+				}
+
 				if (helpers.isFile(type)) {
 					options.push(["info", strings.info, "info"]);
 					options.push(["open_with", strings["open with"], "open_in_browser"]);
@@ -1111,6 +1119,15 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 						if (!storage) break;
 						storage.uuid = uuid;
 						updateStorage(storage);
+						break;
+					}
+
+					case "ssh_terminal": {
+						const { TerminalManager } = await import(
+							/* webpackChunkName: "terminal" */ "components/terminal"
+						);
+						await TerminalManager.createRemoteTerminal({ url, name });
+						$page.hide();
 						break;
 					}
 
