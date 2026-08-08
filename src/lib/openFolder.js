@@ -1192,9 +1192,10 @@ openFolder.removeItem = (url) => {
 
 openFolder.removeFolders = (url) => {
 	({ url } = Url.parse(url));
-	const regex = new RegExp("^" + escapeStringRegexp(url));
-	addedFolder.forEach((folder) => {
-		if (regex.test(folder.url)) {
+	// remove() mutates addedFolder, so iterate over a snapshot to avoid skipping
+	// adjacent folders that belong to the same remote storage.
+	[...addedFolder].forEach((folder) => {
+		if (Url.isSameOrDescendant(folder.url, url)) {
 			folder.remove();
 		}
 	});

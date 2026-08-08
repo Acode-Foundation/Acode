@@ -8,11 +8,13 @@ import android.util.Log;
 import androidx.documentfile.provider.DocumentFile;
 import com.sshtools.client.SshClient;
 import com.sshtools.client.SshClient.SshClientBuilder;
+import com.sshtools.client.SshClientContext;
 import com.sshtools.client.sftp.SftpClient;
 import com.sshtools.client.sftp.SftpClient.SftpClientBuilder;
 import com.sshtools.client.sftp.SftpFile;
 import com.sshtools.client.sftp.TransferCancelledException;
 import com.sshtools.common.permissions.PermissionDeniedException;
+import com.sshtools.common.policy.FileSystemPolicy;
 import com.sshtools.common.publickey.InvalidPassphraseException;
 import com.sshtools.common.publickey.SshKeyUtils;
 import com.sshtools.common.sftp.SftpFileAttributes;
@@ -20,7 +22,7 @@ import com.sshtools.common.sftp.SftpStatusException;
 import com.sshtools.common.ssh.SshException;
 import com.sshtools.common.ssh.components.SshKeyPair;
 import com.sshtools.common.ssh.components.jce.JCEProvider;
-import com.sshtools.common.util.FileUtils;
+import com.sshtools.common.util.UnsignedInteger32;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -41,12 +43,17 @@ import org.apache.cordova.CordovaWebView;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import java.util.Arrays;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 public class Sftp extends CordovaPlugin {
 
   private static final String TAG = "SFTP";
+  // Maverick's 16 MB default is allocated in full for every SFTP subsystem.
+  // A smaller mobile window prevents connection bursts from exhausting the heap.
+  private static final long SFTP_MAX_WINDOW_SIZE = 1024L * 1024L;
+  private static final long SFTP_MIN_WINDOW_SIZE = 128L * 1024L;
+  private static boolean cryptoProviderConfigured;
+  private final Object connectionLock = new Object();
   private SshClient ssh;
   private SftpClient sftp;
   private Context context;
@@ -58,6 +65,79 @@ public class Sftp extends CordovaPlugin {
     context = cordova.getContext();
     activity = cordova.getActivity();
     System.setProperty("maverick.log.nothread", "true");
+    configureCryptoProvider();
+  }
+
+  private static synchronized void configureCryptoProvider() {
+    if (cryptoProviderConfigured) return;
+
+    Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME);
+    Security.insertProviderAt(new BouncyCastleProvider(), 1);
+    JCEProvider.enableBouncyCastle(true);
+    cryptoProviderConfigured = true;
+  }
+
+  private static void configureClient(SshClientContext sshContext) {
+    FileSystemPolicy policy = sshContext.getPolicy(FileSystemPolicy.class);
+    policy.setSftpMaxWindowSize(
+      new UnsignedInteger32(SFTP_MAX_WINDOW_SIZE)
+    );
+    policy.setSftpMinWindowSize(
+      new UnsignedInteger32(SFTP_MIN_WINDOW_SIZE)
+    );
+    policy.setMaximumNumberofAsyncSFTPRequests(4);
+  }
+
+  private void closeConnectionQuietly() {
+    SftpClient previousSftp = sftp;
+    SshClient previousSsh = ssh;
+    sftp = null;
+    ssh = null;
+    connectionID = null;
+
+    if (previousSftp != null) {
+      try {
+        previousSftp.quit();
+      } catch (SshException e) {
+        Log.w(TAG, "Failed to close the SFTP subsystem", e);
+      }
+    }
+    if (previousSsh != null) {
+      try {
+        previousSsh.close();
+      } catch (IOException e) {
+        Log.w(TAG, "Failed to close the SSH connection", e);
+      }
+    }
+  }
+
+  private boolean establishConnection(
+    SshClientBuilder builder,
+    String newConnectionID
+  ) throws IOException, SshException, PermissionDeniedException {
+    synchronized (connectionLock) {
+      closeConnectionQuietly();
+      ssh = builder.onConfigure(Sftp::configureClient).build();
+      if (!ssh.isConnected()) {
+        closeConnectionQuietly();
+        return false;
+      }
+
+      connectionID = newConnectionID;
+      try {
+        sftp = SftpClientBuilder.create().withClient(ssh).build();
+      } catch (IOException | SshException | PermissionDeniedException e) {
+        closeConnectionQuietly();
+        throw e;
+      }
+
+      try {
+        sftp.getSubsystemChannel().setCharsetEncoding("UTF-8");
+      } catch (UnsupportedEncodingException | SshException e) {
+        Log.w(TAG, "Failed to set UTF-8 encoding, using the default", e);
+      }
+      return true;
+    }
   }
 
   public boolean execute(
@@ -103,37 +183,15 @@ public class Sftp extends CordovaPlugin {
                 TAG,
                 "Connecting to " + host + ":" + port + " as " + username
               );
-              ssh = SshClientBuilder.create()
+              SshClientBuilder builder = SshClientBuilder.create()
                 .withHostname(host)
                 .withPort(port)
                 .withUsername(username)
-                .withPassword(password)
-                .build();
+                .withPassword(password);
 
-              if (ssh.isConnected()) {
-                connectionID = username + "@" + host;
-
-                try {
-                  sftp = SftpClientBuilder.create().withClient(ssh).build();
-                } catch (IOException | SshException e) {
-                  ssh.close();
-                  callback.error(
-                    "Failed to initialize SFTP subsystem: " + errMessage(e)
-                  );
-                  Log.e(TAG, "Failed to initialize SFTP subsystem", e);
-                  return;
-                }
-
-                try {
-                  sftp.getSubsystemChannel().setCharsetEncoding("UTF-8");
-                } catch (UnsupportedEncodingException | SshException e) {
-                  // Fallback to default encoding if UTF-8 fails
-                  Log.w(
-                    TAG,
-                    "Failed to set UTF-8 encoding, falling back to default",
-                    e
-                  );
-                }
+              if (
+                establishConnection(builder, username + "@" + host + ":" + port)
+              ) {
                 callback.success();
                 Log.d(TAG, "Connected successfully to " + connectionID);
                 return;
@@ -155,6 +213,12 @@ public class Sftp extends CordovaPlugin {
             } catch (Exception e) {
               callback.error("Unexpected error: " + errMessage(e));
               Log.e(TAG, "Unexpected error", e);
+            } catch (OutOfMemoryError e) {
+              synchronized (connectionLock) {
+                closeConnectionQuietly();
+              }
+              callback.error("Not enough memory to initialize SFTP");
+              Log.e(TAG, "Not enough memory to initialize SFTP", e);
             }
           }
         }
@@ -179,28 +243,15 @@ public class Sftp extends CordovaPlugin {
               );
               Uri uri = file.getUri();
               ContentResolver contentResolver = context.getContentResolver();
-              InputStream in = contentResolver.openInputStream(uri);
-
-//            for `appDataDirectory`, Ref: https://developer.android.com/reference/android/content/Context#getExternalFilesDir(java.lang.String)
-//            the absolute path to application-specific directory. May return *null* if shared storage is not currently available.
-              File appDataDirectory = context.getExternalFilesDir(null);
-              if (appDataDirectory != null) {
-                com.sshtools.common.logger.Log.getDefaultContext().enableFile(com.sshtools.common.logger.Log.Level.DEBUG, new File(appDataDirectory,"synergy.log"));
-              }
-//            JCEProvider.enableBouncyCastle(false);
-
-              Log.i(TAG, "All Available Security Providers (Security.getProviders() : " + Arrays.toString(Security.getProviders()));
-              Log.i(TAG, "All Available Security Providers for ED25519 (Security.getProviders(\"KeyPairGenerator.Ed25519\"\") : " + Arrays.toString(Security.getProviders("KeyPairGenerator.Ed25519")));
-              Log.i(TAG, "BC Security Provider Name (`Security.getProvider(BouncyCastleProvider.PROVIDER_NAME)`) : " + Security.getProvider(BouncyCastleProvider.PROVIDER_NAME));
-              Security.removeProvider("BC");
-              Security.insertProviderAt(new BouncyCastleProvider(), 1);
-
-              Log.i(TAG, "(After Inserting BC) All Available Security Providers (Security.getProviders() : " + Arrays.toString(Security.getProviders()));
-              Log.i(TAG, "(After Inserting BC) All Available Security Providers for ED25519 (Security.getProviders(\"KeyPairGenerator.Ed25519\"\") : " + Arrays.toString(Security.getProviders("KeyPairGenerator.Ed25519")));
-              Log.i(TAG, "(After Inserting BC) BC Security Provider Name (`Security.getProvider(BouncyCastleProvider.PROVIDER_NAME)`) : " + Security.getProvider(BouncyCastleProvider.PROVIDER_NAME));
 
               SshKeyPair keyPair = null;
-              try {
+              try (
+                InputStream in = contentResolver.openInputStream(uri)
+              ) {
+                if (in == null) {
+                  callback.error("Could not open key file");
+                  return;
+                }
                 keyPair = SshKeyUtils.getPrivateKey(in, passphrase);
               } catch (InvalidPassphraseException e) {
                 callback.error("Invalid passphrase for key file");
@@ -212,36 +263,15 @@ public class Sftp extends CordovaPlugin {
                 return;
               }
 
-              ssh = SshClientBuilder.create()
+              SshClientBuilder builder = SshClientBuilder.create()
                 .withHostname(host)
                 .withPort(port)
                 .withUsername(username)
-                .withIdentities(keyPair)
-                .build();
+                .withIdentities(keyPair);
 
-              if (ssh.isConnected()) {
-                connectionID = username + "@" + host;
-                try {
-                  sftp = SftpClientBuilder.create().withClient(ssh).build();
-                } catch (IOException | SshException e) {
-                  ssh.close();
-                  callback.error(
-                    "Failed to initialize SFTP subsystem: " + errMessage(e)
-                  );
-                  Log.e(TAG, "Failed to initialize SFTP subsystem", e);
-                  return;
-                }
-
-                try {
-                  sftp.getSubsystemChannel().setCharsetEncoding("UTF-8");
-                } catch (UnsupportedEncodingException | SshException e) {
-                  // Fallback to default encoding if UTF-8 fails
-                  Log.w(
-                    TAG,
-                    "Failed to set UTF-8 encoding, falling back to default",
-                    e
-                  );
-                }
+              if (
+                establishConnection(builder, username + "@" + host + ":" + port)
+              ) {
                 callback.success();
                 Log.d(TAG, "Connected successfully to " + connectionID);
                 return;
@@ -266,6 +296,12 @@ public class Sftp extends CordovaPlugin {
             } catch (Exception e) {
               callback.error("Unexpected error: " + errMessage(e));
               Log.e(TAG, "Unexpected error", e);
+            } catch (OutOfMemoryError e) {
+              synchronized (connectionLock) {
+                closeConnectionQuietly();
+              }
+              callback.error("Not enough memory to initialize SFTP");
+              Log.e(TAG, "Not enough memory to initialize SFTP", e);
             }
           }
         }
@@ -728,16 +764,13 @@ public class Sftp extends CordovaPlugin {
       .execute(
         new Runnable() {
           public void run() {
-            try {
-              if (ssh != null) {
-                ssh.close();
-                sftp.quit();
+            synchronized (connectionLock) {
+              if (ssh != null || sftp != null) {
+                closeConnectionQuietly();
                 callback.success();
                 return;
               }
-              callback.error("Not connected");
-            } catch (IOException | SshException e) {
-              callback.error(errMessage(e));
+              callback.success();
             }
           }
         }

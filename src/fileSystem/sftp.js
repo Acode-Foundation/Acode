@@ -6,6 +6,9 @@ import Path from "utils/Path";
 import Url from "utils/Url";
 import internalFs from "./internalFs";
 
+let pendingConnection = null;
+let pendingConnectionID = null;
+
 class SftpClient {
 	#MAX_TRY = 3;
 	#hostname;
@@ -19,7 +22,6 @@ class SftpClient {
 	#connectionID;
 	#path;
 	#stat;
-	#retry = 0;
 
 	/**
 	 *
@@ -48,7 +50,7 @@ class SftpClient {
 			},
 		});
 
-		this.#connectionID = `${this.#username}@${this.#hostname}`;
+		this.#connectionID = `${this.#username}@${this.#hostname}:${this.#port}`;
 	}
 
 	setPath(path) {
@@ -398,20 +400,50 @@ class SftpClient {
 	}
 
 	async connect() {
-		await new Promise((resolve, reject) => {
-			const retry = (err) => {
-				if (settings.value.retryRemoteFsAfterFail) {
-					if (++this.#retry > this.#MAX_TRY) {
-						this.#retry = 0;
-						reject(err);
-					} else {
-						this.connect().then(resolve).catch(reject);
-					}
-				} else {
-					reject(err);
-				}
-			};
+		if (pendingConnection) {
+			if (pendingConnectionID === this.#connectionID) {
+				return pendingConnection;
+			}
+			try {
+				await pendingConnection;
+			} catch {
+				// The next profile should still get its own connection attempt.
+			}
+			return this.connect();
+		}
 
+		pendingConnectionID = this.#connectionID;
+		pendingConnection = this.#connectWithRetry();
+
+		try {
+			return await pendingConnection;
+		} finally {
+			if (pendingConnectionID === this.#connectionID) {
+				pendingConnection = null;
+				pendingConnectionID = null;
+			}
+		}
+	}
+
+	async #connectWithRetry() {
+		const attempts = settings.value.retryRemoteFsAfterFail
+			? this.#MAX_TRY + 1
+			: 1;
+		let lastError;
+
+		for (let attempt = 0; attempt < attempts; attempt++) {
+			try {
+				return await this.#connectOnce();
+			} catch (error) {
+				lastError = error;
+			}
+		}
+
+		throw lastError;
+	}
+
+	#connectOnce() {
+		return new Promise((resolve, reject) => {
 			if (this.#authenticationType === "key") {
 				sftp.connectUsingKeyFile(
 					this.#hostname,
@@ -420,7 +452,7 @@ class SftpClient {
 					this.#keyFile,
 					this.#passPhrase,
 					resolve,
-					retry,
+					reject,
 				);
 				return;
 			}
@@ -431,7 +463,7 @@ class SftpClient {
 				this.#username,
 				this.#password,
 				resolve,
-				retry,
+				reject,
 			);
 		});
 	}
