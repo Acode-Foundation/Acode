@@ -25,7 +25,7 @@ export function createSftpProfileUrl(profileId, pathname = "/") {
 	});
 }
 
-export function saveSftpProfile({
+function saveSftpProfile({
 	profileId = null,
 	hostname,
 	port = 22,
@@ -51,9 +51,23 @@ export function saveSftpProfile({
 	});
 }
 
-export function getSftpProfileInfo(profileId) {
+export function editSftpProfile({
+	profileId = null,
+	hostname = "",
+	port = 22,
+	username = "",
+	authType = "password",
+} = {}) {
 	return new Promise((resolve, reject) => {
-		sftp.getProfileInfo(profileId, resolve, reject);
+		sftp.editProfile(
+			profileId,
+			hostname,
+			Number.parseInt(port, 10) || 22,
+			username,
+			authType,
+			resolve,
+			reject,
+		);
 	});
 }
 
@@ -65,11 +79,12 @@ export function deleteSftpProfile(profileId) {
 
 /**
  * Moves legacy credential-bearing SFTP URLs into encrypted native profiles.
- * A failed individual migration is left untouched so users are never locked out.
+ * Migration fails closed before third-party plugins load if encryption is unavailable.
  */
 export async function migrateLegacySftpProfiles() {
 	const profileCache = new Map();
 	const copiedKeys = new Set();
+	let migrationError = null;
 
 	for (const storageKey of MIGRATED_STORAGE_KEYS) {
 		const raw = localStorage.getItem(storageKey);
@@ -94,6 +109,13 @@ export async function migrateLegacySftpProfiles() {
 		} catch (error) {
 			console.warn("Could not remove migrated SFTP key copy", error);
 		}
+	}
+
+	if (migrationError) {
+		throw new Error(
+			"SFTP credentials could not be moved to encrypted native storage",
+			{ cause: migrationError },
+		);
 	}
 
 	async function migrateValue(value) {
@@ -162,6 +184,7 @@ export async function migrateLegacySftpProfiles() {
 			};
 		} catch (error) {
 			console.warn("Could not migrate legacy SFTP URL", error);
+			migrationError ||= error;
 			return { value, changed: false };
 		}
 	}

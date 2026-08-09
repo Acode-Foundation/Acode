@@ -1,8 +1,10 @@
 package com.foxdebug.sftp;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.ContentResolver;
 import android.content.Context;
+import android.content.Intent;
 import android.net.Uri;
 import android.util.Base64;
 import android.util.Log;
@@ -49,6 +51,7 @@ import java.security.Security;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
@@ -79,10 +82,18 @@ public class Sftp extends CordovaPlugin {
   private Activity activity;
   private String connectionID;
   private SftpSecurityStore securityStore;
+  private SftpProfileEditor profileEditor;
 
   private final class ConnectionSecurity {
 
+    private final String hostname;
+    private final int port;
     private volatile JSONObject failure;
+
+    private ConnectionSecurity(String hostname, int port) {
+      this.hostname = hostname;
+      this.port = port;
+    }
 
     private void configure(SshClientContext sshContext) {
       configureClient(sshContext);
@@ -98,14 +109,24 @@ public class Sftp extends CordovaPlugin {
                 publicKey.getEncoded(),
                 Base64.NO_WRAP
               );
-              JSONObject trusted = securityStore.getKnownHost(host);
+              String endpoint = hostname + ":" + port;
+              JSONObject trusted = securityStore.getKnownHost(endpoint);
               if (trusted == null) {
+                if (
+                  confirmUnknownHost(endpoint, algorithm, fingerprint)
+                ) {
+                  securityStore.trustHost(
+                    endpoint,
+                    algorithm,
+                    fingerprint,
+                    encodedKey
+                  );
+                  return true;
+                }
                 failure = hostKeyFailure(
-                  "HOST_KEY_UNKNOWN",
-                  host,
-                  algorithm,
+                  "HOST_KEY_REJECTED",
+                  endpoint,
                   fingerprint,
-                  encodedKey,
                   null
                 );
                 return false;
@@ -119,16 +140,18 @@ public class Sftp extends CordovaPlugin {
               ) {
                 failure = hostKeyFailure(
                   "HOST_KEY_CHANGED",
-                  host,
-                  algorithm,
+                  endpoint,
                   fingerprint,
-                  encodedKey,
                   expected
                 );
+                showChangedHostKey(endpoint, expected, fingerprint);
                 return false;
               }
               return true;
-            } catch (JSONException e) {
+            } catch (JSONException | InterruptedException e) {
+              if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+              }
               throw new SshException(
                 "Could not verify the SSH host key",
                 SshException.HOST_KEY_ERROR,
@@ -247,6 +270,7 @@ public class Sftp extends CordovaPlugin {
     context = cordova.getContext();
     activity = cordova.getActivity();
     securityStore = new SftpSecurityStore(context);
+    profileEditor = new SftpProfileEditor(this, cordova, activity, securityStore);
     System.setProperty("maverick.log.nothread", "true");
     configureCryptoProvider();
   }
@@ -337,21 +361,79 @@ public class Sftp extends CordovaPlugin {
   private static JSONObject hostKeyFailure(
     String code,
     String host,
-    String algorithm,
     String fingerprint,
-    String publicKey,
     String expectedFingerprint
   ) throws JSONException {
     JSONObject error = new JSONObject();
     error.put("code", code);
     error.put("host", host);
-    error.put("algorithm", algorithm);
     error.put("fingerprint", fingerprint);
-    error.put("publicKey", publicKey);
     if (expectedFingerprint != null) {
       error.put("expectedFingerprint", expectedFingerprint);
     }
     return error;
+  }
+
+  private boolean confirmUnknownHost(
+    String endpoint,
+    String algorithm,
+    String fingerprint
+  ) throws InterruptedException {
+    if (activity == null || activity.isFinishing()) return false;
+
+    CountDownLatch decision = new CountDownLatch(1);
+    AtomicBoolean trusted = new AtomicBoolean(false);
+    activity.runOnUiThread(
+      () -> {
+        AlertDialog dialog = new AlertDialog.Builder(activity)
+          .setTitle("Unknown SSH host")
+          .setMessage(
+            "This is the first connection to " +
+            endpoint +
+            ".\n\nKey type: " +
+            algorithm +
+            "\nFingerprint: " +
+            fingerprint +
+            "\n\nVerify this fingerprint before trusting the host."
+          )
+          .setNegativeButton("Cancel", (ignored, which) -> decision.countDown())
+          .setPositiveButton(
+            "Trust and connect",
+            (ignored, which) -> {
+              trusted.set(true);
+              decision.countDown();
+            }
+          )
+          .create();
+        dialog.setOnCancelListener(ignored -> decision.countDown());
+        dialog.show();
+      }
+    );
+    decision.await();
+    return trusted.get();
+  }
+
+  private void showChangedHostKey(
+    String endpoint,
+    String expectedFingerprint,
+    String receivedFingerprint
+  ) {
+    if (activity == null || activity.isFinishing()) return;
+    activity.runOnUiThread(
+      () ->
+        new AlertDialog.Builder(activity)
+          .setTitle("SSH host key changed")
+          .setMessage(
+            "The identity of " +
+            endpoint +
+            " has changed. The connection was blocked.\n\nExpected: " +
+            expectedFingerprint +
+            "\nReceived: " +
+            receivedFingerprint
+          )
+          .setPositiveButton("Close", null)
+          .show()
+    );
   }
 
   private void closeRemoteShells() {
@@ -371,53 +453,6 @@ public class Sftp extends CordovaPlugin {
   public void onDestroy() {
     closeRemoteShells();
     super.onDestroy();
-  }
-
-  private SshClient buildShellPasswordClient(
-    String host,
-    int port,
-    String username,
-    String password,
-    ConnectionSecurity security
-  ) throws IOException, SshException, PermissionDeniedException {
-    return SshClientBuilder.create()
-      .withHostname(host)
-      .withPort(port)
-      .withUsername(username)
-      .withPassword(password)
-      .onConfigure(security::configure)
-      .build();
-  }
-
-  private SshClient buildShellKeyClient(
-    String host,
-    int port,
-    String username,
-    String keyFile,
-    String passphrase,
-    ConnectionSecurity security
-  )
-    throws IOException, SshException, PermissionDeniedException, InvalidPassphraseException {
-    DocumentFile file = DocumentFile.fromSingleUri(context, Uri.parse(keyFile));
-    if (file == null) throw new IOException("Could not open key file");
-
-    SshKeyPair keyPair;
-    try (
-      InputStream in = context
-        .getContentResolver()
-        .openInputStream(file.getUri())
-    ) {
-      if (in == null) throw new IOException("Could not open key file");
-      keyPair = SshKeyUtils.getPrivateKey(in, passphrase);
-    }
-
-    return SshClientBuilder.create()
-      .withHostname(host)
-      .withPort(port)
-      .withUsername(username)
-      .withIdentities(keyPair)
-      .onConfigure(security::configure)
-      .build();
   }
 
   private SshClientBuilder buildProfileBuilder(JSONObject profile)
@@ -539,103 +574,26 @@ public class Sftp extends CordovaPlugin {
     sendShellEvent(callback, ready, true);
   }
 
-  public void openShellUsingPassword(JSONArray args, CallbackContext callback) {
-    cordova
-      .getThreadPool()
-      .execute(
-        new Runnable() {
-          public void run() {
-            ConnectionSecurity security = new ConnectionSecurity();
-            try {
-              String host = args.optString(0);
-              int port = args.optInt(1, 22);
-              String username = args.optString(2);
-              String password = args.optString(3);
-              int columns = Math.max(1, args.optInt(4, 80));
-              int rows = Math.max(1, args.optInt(5, 24));
-              openRemoteShell(
-                buildShellPasswordClient(
-                  host,
-                  port,
-                  username,
-                  password,
-                  security
-                ),
-                columns,
-                rows,
-                callback
-              );
-            } catch (Exception e) {
-              if (security.report(callback)) return;
-              callback.error("Failed to open SSH shell: " + errMessage(e));
-              Log.e(TAG, "Failed to open SSH shell", e);
-            } catch (OutOfMemoryError e) {
-              callback.error("Not enough memory to open SSH shell");
-              Log.e(TAG, "Not enough memory to open SSH shell", e);
-            }
-          }
-        }
-      );
-  }
-
-  public void openShellUsingKeyFile(JSONArray args, CallbackContext callback) {
-    cordova
-      .getThreadPool()
-      .execute(
-        new Runnable() {
-          public void run() {
-            ConnectionSecurity security = new ConnectionSecurity();
-            try {
-              String host = args.optString(0);
-              int port = args.optInt(1, 22);
-              String username = args.optString(2);
-              String keyFile = args.optString(3);
-              String passphrase = args.optString(4);
-              int columns = Math.max(1, args.optInt(5, 80));
-              int rows = Math.max(1, args.optInt(6, 24));
-              openRemoteShell(
-                buildShellKeyClient(
-                  host,
-                  port,
-                  username,
-                  keyFile,
-                  passphrase,
-                  security
-                ),
-                columns,
-                rows,
-                callback
-              );
-            } catch (InvalidPassphraseException e) {
-              callback.error("Invalid passphrase for key file");
-            } catch (Exception e) {
-              if (security.report(callback)) return;
-              callback.error("Failed to open SSH shell: " + errMessage(e));
-              Log.e(TAG, "Failed to open SSH shell", e);
-            } catch (OutOfMemoryError e) {
-              callback.error("Not enough memory to open SSH shell");
-              Log.e(TAG, "Not enough memory to open SSH shell", e);
-            }
-          }
-        }
-      );
-  }
-
   public void openShellUsingProfile(JSONArray args, CallbackContext callback) {
     cordova
       .getThreadPool()
       .execute(
         new Runnable() {
           public void run() {
-            ConnectionSecurity security = new ConnectionSecurity();
+            ConnectionSecurity security = null;
             try {
               String profileID = args.optString(0);
               int columns = Math.max(1, args.optInt(1, 80));
               int rows = Math.max(1, args.optInt(2, 24));
               JSONObject profile = securityStore.getProfile(profileID);
+              ConnectionSecurity profileSecurity = new ConnectionSecurity(
+                profile.getString("hostname"),
+                profile.optInt("port", 22)
+              );
+              security = profileSecurity;
               openRemoteShell(
                 buildProfileBuilder(profile)
-                  .onConfigure(security::configure)
+                  .onConfigure(profileSecurity::configure)
                   .build(),
                 columns,
                 rows,
@@ -644,7 +602,7 @@ public class Sftp extends CordovaPlugin {
             } catch (InvalidPassphraseException e) {
               callback.error("Invalid passphrase for stored key");
             } catch (Exception e) {
-              if (security.report(callback)) return;
+              if (security != null && security.report(callback)) return;
               callback.error("Failed to open SSH shell: " + errMessage(e));
               Log.e(TAG, "Failed to open SSH shell from profile", e);
             }
@@ -661,6 +619,10 @@ public class Sftp extends CordovaPlugin {
           public void run() {
             try {
               String requestedID = args.optString(0, null);
+              if (requestedID != null && !requestedID.isEmpty()) {
+                callback.error("Legacy profile import cannot replace a saved profile");
+                return;
+              }
               String authType = args.optString(4, "password");
               JSONObject profile = new JSONObject();
               profile.put("hostname", args.getString(1));
@@ -686,36 +648,42 @@ public class Sftp extends CordovaPlugin {
       );
   }
 
-  public void getProfileInfo(JSONArray args, CallbackContext callback) {
-    try {
-      JSONObject profile = securityStore.getProfile(args.optString(0));
-      JSONObject info = new JSONObject();
-      info.put("hostname", profile.getString("hostname"));
-      info.put("port", profile.optInt("port", 22));
-      info.put("username", profile.getString("username"));
-      info.put("authType", profile.optString("authType", "password"));
-      callback.success(info);
-    } catch (Exception e) {
-      callback.error("Could not load SFTP profile: " + errMessage(e));
-    }
+  public void editProfile(JSONArray args, CallbackContext callback) {
+    profileEditor.show(args, callback);
   }
 
   public void deleteProfile(JSONArray args, CallbackContext callback) {
-    securityStore.deleteProfile(args.optString(0));
-    callback.success();
-  }
-
-  public void trustHost(JSONArray args, CallbackContext callback) {
+    String profileID = args.optString(0);
     try {
-      securityStore.trustHost(
-        args.getString(0),
-        args.getString(1),
-        args.getString(2),
-        args.getString(3)
+      JSONObject profile = securityStore.getProfile(profileID);
+      String label = profile.optString("username") + "@" + profile.optString("hostname");
+      activity.runOnUiThread(
+        () -> {
+          AlertDialog confirmation = new AlertDialog.Builder(activity)
+            .setTitle("Delete saved SSH credentials?")
+            .setMessage(
+              "Remove the encrypted SFTP/SSH profile for " + label + "?"
+            )
+            .setNegativeButton(
+              "Cancel",
+              (ignored, which) -> callback.error("Profile deletion was cancelled")
+            )
+            .setPositiveButton(
+              "Delete",
+              (ignored, which) -> {
+                securityStore.deleteProfile(profileID);
+                callback.success();
+              }
+            )
+            .create();
+          confirmation.setOnCancelListener(
+            ignored -> callback.error("Profile deletion was cancelled")
+          );
+          confirmation.show();
+        }
       );
-      callback.success();
     } catch (Exception e) {
-      callback.error("Could not save trusted SSH host: " + errMessage(e));
+      callback.error("Could not delete SFTP profile: " + errMessage(e));
     }
   }
 
@@ -750,11 +718,25 @@ public class Sftp extends CordovaPlugin {
     callback.success();
   }
 
+  @Override
+  public void onActivityResult(int requestCode, int resultCode, Intent data) {
+    if (
+      profileEditor == null ||
+      !profileEditor.onActivityResult(requestCode, resultCode, data)
+    ) {
+      super.onActivityResult(requestCode, resultCode, data);
+    }
+  }
+
   public boolean execute(
     String action,
     JSONArray args,
     CallbackContext callback
   ) {
+    if (!isAllowedAction(action)) {
+      callback.error("SFTP action is not available: " + action);
+      return false;
+    }
     try {
       Method method = getClass()
         .getDeclaredMethod(action, JSONArray.class, CallbackContext.class);
@@ -777,165 +759,32 @@ public class Sftp extends CordovaPlugin {
     return false;
   }
 
-  public void connectUsingPassword(JSONArray args, CallbackContext callback) {
-    cordova
-      .getThreadPool()
-      .execute(
-        new Runnable() {
-          public void run() {
-            ConnectionSecurity security = new ConnectionSecurity();
-            try {
-              String host = args.optString(0);
-              int port = args.optInt(1);
-              String username = args.optString(2);
-              String password = args.optString(3);
-              JCEProvider.enableBouncyCastle(true);
-              Log.d(
-                TAG,
-                "Connecting to " + host + ":" + port + " as " + username
-              );
-              SshClientBuilder builder = SshClientBuilder.create()
-                .withHostname(host)
-                .withPort(port)
-                .withUsername(username)
-                .withPassword(password);
-
-              if (
-                establishConnection(
-                  builder,
-                  username + "@" + host + ":" + port,
-                  security
-                )
-              ) {
-                callback.success();
-                Log.d(TAG, "Connected successfully to " + connectionID);
-                return;
-              }
-
-              if (security.report(callback)) return;
-              callback.error("Failed to establish SSH connection");
-            } catch (UnresolvedAddressException e) {
-              callback.error("Cannot resolve host address");
-              Log.e(TAG, "Cannot resolve host address", e);
-            } catch (PermissionDeniedException e) {
-              callback.error("Authentication failed: " + e.getMessage());
-              Log.e(TAG, "Authentication failed", e);
-            } catch (SshException e) {
-              if (security.report(callback)) return;
-              callback.error("SSH error: " + errMessage(e));
-              Log.e(TAG, "SSH error", e);
-            } catch (IOException e) {
-              callback.error("I/O error: " + errMessage(e));
-              Log.e(TAG, "I/O error", e);
-            } catch (Exception e) {
-              if (security.report(callback)) return;
-              callback.error("Unexpected error: " + errMessage(e));
-              Log.e(TAG, "Unexpected error", e);
-            } catch (OutOfMemoryError e) {
-              synchronized (connectionLock) {
-                closeConnectionQuietly();
-              }
-              callback.error("Not enough memory to initialize SFTP");
-              Log.e(TAG, "Not enough memory to initialize SFTP", e);
-            }
-          }
-        }
-      );
-  }
-
-  public void connectUsingKeyFile(JSONArray args, CallbackContext callback) {
-    cordova
-      .getThreadPool()
-      .execute(
-        new Runnable() {
-          public void run() {
-            ConnectionSecurity security = new ConnectionSecurity();
-            try {
-              String host = args.optString(0);
-              int port = args.optInt(1);
-              String username = args.optString(2);
-              String keyFile = args.optString(3);
-              String passphrase = args.optString(4);
-              DocumentFile file = DocumentFile.fromSingleUri(
-                context,
-                Uri.parse(keyFile)
-              );
-              if (file == null) {
-                callback.error("Could not open key file");
-                return;
-              }
-              Uri uri = file.getUri();
-              ContentResolver contentResolver = context.getContentResolver();
-
-              SshKeyPair keyPair = null;
-              try (
-                InputStream in = contentResolver.openInputStream(uri)
-              ) {
-                if (in == null) {
-                  callback.error("Could not open key file");
-                  return;
-                }
-                keyPair = SshKeyUtils.getPrivateKey(in, passphrase);
-              } catch (InvalidPassphraseException e) {
-                callback.error("Invalid passphrase for key file");
-                Log.e(TAG, "Invalid passphrase for key file", e);
-                return;
-              } catch (IOException e) {
-                callback.error("Could not read key file: " + errMessage(e));
-                Log.e(TAG, "Could not read key file", e);
-                return;
-              }
-
-              SshClientBuilder builder = SshClientBuilder.create()
-                .withHostname(host)
-                .withPort(port)
-                .withUsername(username)
-                .withIdentities(keyPair);
-
-              if (
-                establishConnection(
-                  builder,
-                  username + "@" + host + ":" + port,
-                  security
-                )
-              ) {
-                callback.success();
-                Log.d(TAG, "Connected successfully to " + connectionID);
-                return;
-              }
-
-              if (security.report(callback)) return;
-              callback.error("Failed to establish SSH connection");
-            } catch (UnresolvedAddressException e) {
-              callback.error("Cannot resolve host address");
-              Log.e(TAG, "Cannot resolve host address", e);
-            } catch (PermissionDeniedException e) {
-              callback.error("Authentication failed: " + e.getMessage());
-              Log.e(TAG, "Authentication failed", e);
-            } catch (SshException e) {
-              if (security.report(callback)) return;
-              callback.error("SSH error: " + errMessage(e));
-              Log.e(TAG, "SSH error", e);
-            } catch (IOException e) {
-              callback.error("I/O error: " + errMessage(e));
-              Log.e(TAG, "I/O error", e);
-            } catch (SecurityException e) {
-              callback.error("Security error: " + errMessage(e));
-              Log.e(TAG, "Security error", e);
-            } catch (Exception e) {
-              if (security.report(callback)) return;
-              callback.error("Unexpected error: " + errMessage(e));
-              Log.e(TAG, "Unexpected error", e);
-            } catch (OutOfMemoryError e) {
-              synchronized (connectionLock) {
-                closeConnectionQuietly();
-              }
-              callback.error("Not enough memory to initialize SFTP");
-              Log.e(TAG, "Not enough memory to initialize SFTP", e);
-            }
-          }
-        }
-      );
+  private static boolean isAllowedAction(String action) {
+    switch (action) {
+      case "exec":
+      case "connectUsingProfile":
+      case "saveProfile":
+      case "editProfile":
+      case "deleteProfile":
+      case "getFile":
+      case "putFile":
+      case "lsDir":
+      case "stat":
+      case "mkdir":
+      case "rm":
+      case "createFile":
+      case "rename":
+      case "pwd":
+      case "close":
+      case "isConnected":
+      case "openShellUsingProfile":
+      case "writeShell":
+      case "resizeShell":
+      case "closeShell":
+        return true;
+      default:
+        return false;
+    }
   }
 
   public void connectUsingProfile(JSONArray args, CallbackContext callback) {
@@ -944,15 +793,20 @@ public class Sftp extends CordovaPlugin {
       .execute(
         new Runnable() {
           public void run() {
-            ConnectionSecurity security = new ConnectionSecurity();
+            ConnectionSecurity security = null;
             String profileID = args.optString(0);
             try {
               JSONObject profile = securityStore.getProfile(profileID);
+              ConnectionSecurity profileSecurity = new ConnectionSecurity(
+                profile.getString("hostname"),
+                profile.optInt("port", 22)
+              );
+              security = profileSecurity;
               if (
                 establishConnection(
                   buildProfileBuilder(profile),
                   profileID,
-                  security
+                  profileSecurity
                 )
               ) {
                 callback.success();
@@ -963,7 +817,7 @@ public class Sftp extends CordovaPlugin {
             } catch (InvalidPassphraseException e) {
               callback.error("Invalid passphrase for stored key");
             } catch (Exception e) {
-              if (security.report(callback)) return;
+              if (security != null && security.report(callback)) return;
               callback.error("Failed to connect SFTP profile: " + errMessage(e));
               Log.e(TAG, "Failed to connect SFTP profile", e);
             } catch (OutOfMemoryError e) {

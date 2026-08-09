@@ -7,9 +7,8 @@ import helpers from "utils/helpers";
 import Url from "utils/Url";
 import {
 	createSftpProfileUrl,
+	editSftpProfile,
 	getSftpProfileId,
-	getSftpProfileInfo,
-	saveSftpProfile,
 } from "./sftpProfiles";
 import { interstitialAd } from "./startAd";
 
@@ -166,43 +165,27 @@ export default {
 			]);
 		}
 	},
-	/**
-	 * @param {...any} args [hostname, username, keyFile, password, passphrase, port, name]
-	 */
+	/** Open the native editor so SSH secrets never enter the WebView. */
 	async addSftp(...args) {
 		let stopConnection = false;
 		const existingProfile = args[8] || null;
-
-		const {
-			hostname,
-			username,
-			keyFile,
-			password,
-			passPhrase,
-			port,
-			alias,
-			usePassword,
-		} = await prompt(...args.slice(0, 8));
-		const authType = usePassword ? "password" : "keyFile";
-		const nativeAuthType = usePassword ? "password" : "key";
-
-		if (
-			existingProfile &&
-			!password &&
-			!keyFile &&
-			hostname === existingProfile.hostname &&
-			username === existingProfile.username &&
-			Number.parseInt(port, 10) === existingProfile.port &&
-			nativeAuthType === existingProfile.authType
-		) {
-			return {
-				alias,
-				name: alias,
-				url: existingProfile.url,
-				type: "sftp",
-				home: existingProfile.home,
-			};
-		}
+		const { alias } = await multiPrompt(strings["add sftp"], [
+			{
+				id: "alias",
+				placeholder: strings.name,
+				type: "text",
+				value: args[6] || existingProfile?.name || "",
+				required: true,
+			},
+		]);
+		const profile = await editSftpProfile({
+			profileId: existingProfile?.profileId,
+			hostname: args[0] || "",
+			username: args[1] || "",
+			port: args[5] || 22,
+			authType: args[7] === "keyFile" ? "key" : args[7] || "password",
+		});
+		const url = createSftpProfileUrl(profile.profileId);
 
 		loader.create(strings["add sftp"], strings["connecting..."], {
 			timeout: 10000,
@@ -210,10 +193,8 @@ export default {
 				stopConnection = true;
 			},
 		});
-		const connection = Sftp(hostname, Number.parseInt(port), username, {
-			password,
-			keyFile,
-			passPhrase,
+		const connection = Sftp(null, 22, null, {
+			profileID: profile.profileId,
 		});
 
 		try {
@@ -224,17 +205,6 @@ export default {
 				return;
 			}
 
-			const profileId = await saveSftpProfile({
-				profileId: existingProfile?.profileId,
-				hostname,
-				username,
-				authType: nativeAuthType,
-				password,
-				port,
-				keyFile,
-				passPhrase,
-			});
-			const url = createSftpProfileUrl(profileId);
 			loader.destroy();
 			await helpers.showInterstitialIfReady();
 			return {
@@ -253,140 +223,27 @@ export default {
 			loader.destroy();
 			if (!err?.reported) await helpers.error(err);
 			return await this.addSftp(
-				hostname,
-				username,
-				keyFile,
-				password,
-				passPhrase,
-				port,
-				alias,
-				authType,
-				existingProfile,
-			);
-		}
-
-		function prompt(
-			hostname,
-			username,
-			keyFile,
-			password,
-			passPhrase,
-			port,
-			alias,
-			authType = "password",
-		) {
-			port = port || 22;
-
-			const MODE_PASS = authType === "password";
-			const inputs = [
-				{
-					id: "alias",
-					placeholder: strings.name,
-					type: "text",
-					value: alias ? alias : "",
-					required: true,
-				},
-				{
-					id: "username",
-					placeholder: `${strings.username} (${strings.optional})`,
-					type: "text",
-					value: username,
-				},
-				{
-					id: "hostname",
-					placeholder: strings.hostname,
-					type: "text",
-					required: true,
-					value: hostname,
-				},
-				[
-					"Authentication type: ",
-					{
-						id: "usePassword",
-						placeholder: strings.password,
-						name: "authType",
-						type: "radio",
-						value: MODE_PASS,
-						onchange() {
-							if (!!this.value) {
-								this.prompt.$body.get("#password").hidden = false;
-								this.prompt.$body.get("#keyFile").hidden = true;
-								this.prompt.$body.get("#passPhrase").hidden = true;
-							}
-						},
-					},
-					{
-						id: "useKeyFile",
-						placeholder: strings["key file"],
-						name: "authType",
-						type: "radio",
-						value: !MODE_PASS,
-						onchange() {
-							if (!!this.value) {
-								const $password = this.prompt.$body.get("#password");
-								$password.hidden = true;
-								$password.value = "";
-								this.prompt.$body.get("#keyFile").hidden = false;
-								this.prompt.$body.get("#passPhrase").hidden = false;
-							}
-						},
-					},
-				],
-				{
-					id: "password",
-					placeholder: strings.password,
-					name: "password",
-					type: "password",
-					value: password,
-					hidden: !MODE_PASS,
-				},
-				{
-					id: "keyFile",
-					placeholder: strings["select key file"],
-					name: "keyFile",
-					hidden: MODE_PASS,
-					value: keyFile,
-					type: "text",
-					onclick() {
-						sdcard.openDocumentFile((res) => {
-							this.value = res.uri;
-						});
-					},
-				},
-				{
-					id: "passPhrase",
-					placeholder: `${strings.passphrase} (${strings.optional})`,
-					name: "passPhrase",
-					type: "password",
-					hidden: MODE_PASS,
-					value: passPhrase,
-				},
-				{
-					id: "port",
-					placeholder: `${strings.port} (${strings.optional})`,
-					type: "number",
-					value: port,
-				},
-			];
-
-			return multiPrompt(strings["add sftp"], inputs);
-		}
-	},
-	async edit({ name, storageType, url, home }) {
-		const profileId = getSftpProfileId(url);
-		if (storageType === "sftp" && profileId) {
-			const profile = await getSftpProfileInfo(profileId);
-			return this.addSftp(
 				profile.hostname,
 				profile.username,
 				"",
 				"",
 				"",
 				profile.port,
-				name,
+				alias,
 				profile.authType,
-				{ ...profile, profileId, url, home },
+				{ ...profile, url, home: existingProfile?.home },
 			);
+		}
+	},
+	async edit({ name, storageType, url, home }) {
+		const profileId = getSftpProfileId(url);
+		if (storageType === "sftp" && profileId) {
+			return this.addSftp("", "", "", "", "", 22, name, "password", {
+				profileId,
+				url,
+				home,
+				name,
+			});
 		}
 
 		let { username, password, hostname, port, query } = URLParse(url, true);

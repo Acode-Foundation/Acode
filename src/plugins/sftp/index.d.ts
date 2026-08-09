@@ -40,33 +40,11 @@ interface Sftp {
    * @param onFail 
    */
   exec(command: String, onSucess: (res: ExecResult)=>void, onFail: (err: any) => void): void;
-  /**
-   * Connects to SFTP server
-   * @param host Hostname of the server
-   * @param port port numer
-   * @param username Username 
-   * @param password Password or private key file to authenticate the server
-   * @param onSuccess Callback function on success returns url of copied file/dir
-   * @param onFail Callback function on error returns error object
-   */
-  connectUsingPassoword(host: String, port: Number, username: String, password: String, onSuccess: () => void, onFail: (err: any) => void): void;
-  
-  /**
-   * Connects to SFTP server
-   * @param host Hostname of the server
-   * @param port port numer
-   * @param username Username 
-   * @param keyFile Password or private key file to authenticate the server
-   * @param passphrase Passphrase for keyfile
-   * @param onSuccess Callback function on success returns url of copied file/dir
-   * @param onFail Callback function on error returns error object
-   */
-  connectUsingKeyFile(host: String, port: Number, username: String, keyFile: String, passphrase: String, onSuccess: () => void, onFail: (err: any) => void): void;
+  /** Connects using credentials held by the native profile store. */
   connectUsingProfile(profileId: String, onSuccess: () => void, onFail: (err: any) => void): void;
   saveProfile(profileId: String | null, host: String, port: Number, username: String, authType: String, password: String, keyFile: String, passphrase: String, onSuccess: (profileId: String) => void, onFail: (err: any) => void): void;
-  getProfileInfo(profileId: String, onSuccess: (profile: SftpProfileInfo) => void, onFail: (err: any) => void): void;
+  editProfile(profileId: String | null, host: String, port: Number, username: String, authType: String, onSuccess: (profile: SftpProfileInfo & {profileId: string}) => void, onFail: (err: any) => void): void;
   deleteProfile(profileId: String, onSuccess: () => void, onFail: (err: any) => void): void;
-  trustHost(host: String, algorithm: String, fingerprint: String, publicKey: String, onSuccess: () => void, onFail: (err: any) => void): void;
 
   /**
    * Gets file from the server.
@@ -99,8 +77,6 @@ interface Sftp {
    * @param onFail 
    */
   isConnected(onSuccess: (connectionId: String) => void, onFail: (err: any) => void): void;
-  openShellUsingPassword(host: String, port: Number, username: String, password: String, cols: Number, rows: Number, onEvent: (event: ShellEvent) => void, onFail: (err: any) => void): void;
-  openShellUsingKeyFile(host: String, port: Number, username: String, keyFile: String, passphrase: String, cols: Number, rows: Number, onEvent: (event: ShellEvent) => void, onFail: (err: any) => void): void;
   openShellUsingProfile(profileId: String, cols: Number, rows: Number, onEvent: (event: ShellEvent) => void, onFail: (err: any) => void): void;
   writeShell(sessionId: String, data: String, onSuccess: () => void, onFail: (err: any) => void): void;
   resizeShell(sessionId: String, cols: Number, rows: Number, onSuccess: () => void, onFail: (err: any) => void): void;

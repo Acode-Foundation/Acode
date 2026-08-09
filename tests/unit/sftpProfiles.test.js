@@ -8,6 +8,7 @@ vi.mock("fileSystem", () => ({
 
 import {
 	createSftpProfileUrl,
+	editSftpProfile,
 	getSftpProfileId,
 	migrateLegacySftpProfiles,
 } from "lib/sftpProfiles";
@@ -29,6 +30,30 @@ describe("SFTP secure profiles", () => {
 		expect(url).toBe("sftp://profile-123/project/file.js");
 		expect(getSftpProfileId(url)).toBe("profile-123");
 		expect(getSftpProfileId("sftp://user:secret@example.com/project")).toBeNull();
+	});
+
+	it("opens the native profile editor without passing credentials", async () => {
+		const editProfile = vi.fn((...args) => {
+			args.at(-2)({ profileId: "profile-native" });
+		});
+		globalThis.sftp = { editProfile };
+
+		await editSftpProfile({
+			hostname: "example.com",
+			port: 2222,
+			username: "user",
+			authType: "key",
+		});
+
+		expect(editProfile).toHaveBeenCalledWith(
+			null,
+			"example.com",
+			2222,
+			"user",
+			"key",
+			expect.any(Function),
+			expect.any(Function),
+		);
 	});
 
 	it("migrates repeated credential URLs once and removes credentials", async () => {
@@ -57,7 +82,7 @@ describe("SFTP secure profiles", () => {
 		expect(localStorage.getItem("storageList")).not.toContain("p%40ss");
 	});
 
-	it("keeps an unmigratable legacy URL instead of locking the user out", async () => {
+	it("fails closed when a legacy URL cannot be encrypted", async () => {
 		globalThis.sftp = {
 			saveProfile: (...args) => args.at(-1)("Keystore unavailable"),
 		};
@@ -67,7 +92,9 @@ describe("SFTP secure profiles", () => {
 			JSON.stringify([{ storageType: "sftp", url: legacy }]),
 		);
 
-		await migrateLegacySftpProfiles();
+		await expect(migrateLegacySftpProfiles()).rejects.toThrow(
+			"SFTP credentials could not be moved to encrypted native storage",
+		);
 
 		expect(JSON.parse(localStorage.getItem("storageList"))[0].url).toBe(legacy);
 	});

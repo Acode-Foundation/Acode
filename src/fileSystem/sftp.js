@@ -1,5 +1,4 @@
 import settings from "lib/settings";
-import { resolveHostKeyError } from "lib/sshHostKey";
 import mimeType from "mime-types";
 import { decode, encode } from "utils/encodings";
 import helpers from "utils/helpers";
@@ -12,13 +11,6 @@ let pendingConnectionID = null;
 
 class SftpClient {
 	#MAX_TRY = 3;
-	#hostname;
-	#port;
-	#username;
-	#authenticationType;
-	#password;
-	#keyFile;
-	#passPhrase;
 	#profileID;
 	#base;
 	#connectionID;
@@ -30,38 +22,17 @@ class SftpClient {
 	 * @param {String} hostname
 	 * @param {Number} port
 	 * @param {String} username
-	 * @param {{password?: String, passPhrase?: String, keyFile?: String}} authentication
+	 * @param {{profileID: String}} authentication
 	 */
 	constructor(hostname, port = 22, username, authentication) {
 		authentication ||= {};
 		this.#profileID = authentication.profileID;
-		this.#hostname = hostname;
-		this.#port = port;
-		this.#username = username;
-		this.#authenticationType = this.#profileID
-			? "profile"
-			: authentication.keyFile
-				? "key"
-				: "password";
-		this.#keyFile = authentication.keyFile;
-		this.#passPhrase = authentication.passPhrase;
-		this.#password = authentication.password;
-		this.#base = this.#profileID
-			? Url.formate({ protocol: "sftp:", hostname: this.#profileID })
-			: Url.formate({
-					protocol: "sftp:",
-					hostname: this.#hostname,
-					port: this.#port,
-					username: this.#username,
-					password: this.#password,
-					query: {
-						passPhrase: this.#passPhrase,
-						keyFile: this.#keyFile,
-					},
-				});
+		if (!this.#profileID) {
+			throw new Error("A native SFTP profile is required");
+		}
+		this.#base = Url.formate({ protocol: "sftp:", hostname: this.#profileID });
 
-		this.#connectionID =
-			this.#profileID || `${this.#username}@${this.#hostname}:${this.#port}`;
+		this.#connectionID = this.#profileID;
 	}
 
 	setPath(path) {
@@ -455,43 +426,12 @@ class SftpClient {
 	}
 
 	async #connectWithHostVerification() {
-		try {
-			return await this.#connectOnce();
-		} catch (error) {
-			if (await resolveHostKeyError(error)) {
-				return this.#connectOnce();
-			}
-			throw error;
-		}
+		return this.#connectOnce();
 	}
 
 	#connectOnce() {
 		return new Promise((resolve, reject) => {
-			if (this.#authenticationType === "profile") {
-				sftp.connectUsingProfile(this.#profileID, resolve, reject);
-				return;
-			}
-			if (this.#authenticationType === "key") {
-				sftp.connectUsingKeyFile(
-					this.#hostname,
-					this.#port,
-					this.#username,
-					this.#keyFile,
-					this.#passPhrase,
-					resolve,
-					reject,
-				);
-				return;
-			}
-
-			sftp.connectUsingPassword(
-				this.#hostname,
-				this.#port,
-				this.#username,
-				this.#password,
-				resolve,
-				reject,
-			);
+			sftp.connectUsingProfile(this.#profileID, resolve, reject);
 		});
 	}
 
@@ -640,30 +580,22 @@ class SftpClient {
  * @param {String} host
  * @param {Number} port
  * @param {String} username
- * @param {{password?: String, passPhrase?: String, keyFile?: String}} authentication
+ * @param {{profileID: String}} authentication
  */
 function Sftp(host, port, username, authentication) {
 	return new SftpClient(host, port, username, authentication);
 }
 
 Sftp.fromUrl = (url) => {
-	const { username, password, hostname, pathname, port, query } =
-		Url.decodeUrl(url);
+	const { hostname, pathname } = Url.decodeUrl(url);
 	if (hostname?.startsWith("profile-")) {
 		const sftp = new SftpClient(null, 22, null, { profileID: hostname });
 		sftp.setPath(pathname);
 		return createFs(sftp);
 	}
-	const { keyFile, passPhrase } = query;
-
-	const sftp = new SftpClient(hostname, port || 22, username, {
-		password,
-		keyFile,
-		passPhrase,
-	});
-
-	sftp.setPath(pathname);
-	return createFs(sftp);
+	throw new Error(
+		"Legacy SFTP credentials must be migrated to a native profile",
+	);
 };
 
 Sftp.test = (url) => /^sftp:/.test(url);

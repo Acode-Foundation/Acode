@@ -1126,26 +1126,19 @@ class TerminalManager {
 			throw new Error("A valid SFTP storage is required");
 		}
 
-		const { username, password, hostname, port, query } = Url.decodeUrl(url);
+		const { hostname } = Url.decodeUrl(url);
 		const profileId = hostname?.startsWith("profile-") ? hostname : null;
-		if (!profileId && (!hostname || !username)) {
-			throw new Error("The SFTP storage is missing its host or username");
+		if (!profileId) {
+			throw new Error(
+				"The SFTP storage has not been migrated to a native profile",
+			);
 		}
 
 		return this.createTerminal({
 			...options,
 			name: options.name || `SSH - ${storageName || hostname}`,
 			serverMode: true,
-			remoteSsh: profileId
-				? { profileId, displayName: storageName || "SSH" }
-				: {
-						hostname,
-						port: port || 22,
-						username,
-						password,
-						keyFile: query?.keyFile,
-						passPhrase: query?.passPhrase,
-					},
+			remoteSsh: { profileId, displayName: storageName || "SSH" },
 		});
 	}
 
