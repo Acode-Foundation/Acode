@@ -80,6 +80,15 @@ describe("SFTP secure profiles", () => {
 			"sftp://profile-abcd/project/app.js",
 		);
 		expect(localStorage.getItem("storageList")).not.toContain("p%40ss");
+		expect(localStorage.getItem("sftpNativeProfileMigration")).toBe("1");
+
+		const restoredLegacy = "sftp://other:secret@example.net/";
+		localStorage.setItem("recentFolders", JSON.stringify([restoredLegacy]));
+		await migrateLegacySftpProfiles();
+		expect(saveProfile).toHaveBeenCalledTimes(1);
+		expect(JSON.parse(localStorage.getItem("recentFolders"))[0]).toBe(
+			restoredLegacy,
+		);
 	});
 
 	it("fails closed when a legacy URL cannot be encrypted", async () => {
@@ -97,5 +106,6 @@ describe("SFTP secure profiles", () => {
 		);
 
 		expect(JSON.parse(localStorage.getItem("storageList"))[0].url).toBe(legacy);
+		expect(localStorage.getItem("sftpNativeProfileMigration")).toBeNull();
 	});
 });

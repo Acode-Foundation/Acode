@@ -2,6 +2,8 @@ import fsOperation from "fileSystem";
 import Url from "utils/Url";
 
 const PROFILE_PREFIX = "profile-";
+const MIGRATION_MARKER = "sftpNativeProfileMigration";
+const MIGRATION_VERSION = "1";
 const MIGRATED_STORAGE_KEYS = [
 	"storageList",
 	"folders",
@@ -82,6 +84,8 @@ export function deleteSftpProfile(profileId) {
  * Migration fails closed before third-party plugins load if encryption is unavailable.
  */
 export async function migrateLegacySftpProfiles() {
+	if (localStorage.getItem(MIGRATION_MARKER) === MIGRATION_VERSION) return;
+
 	const profileCache = new Map();
 	const copiedKeys = new Set();
 	let migrationError = null;
@@ -117,6 +121,8 @@ export async function migrateLegacySftpProfiles() {
 			{ cause: migrationError },
 		);
 	}
+
+	localStorage.setItem(MIGRATION_MARKER, MIGRATION_VERSION);
 
 	async function migrateValue(value) {
 		if (typeof value === "string") return migrateUrl(value);
