@@ -10,6 +10,7 @@ import {
 	createSftpProfileUrl,
 	editSftpProfile,
 	getSftpProfileId,
+	getSftpProfileInfo,
 	migrateLegacySftpProfiles,
 } from "lib/sftpProfiles";
 
@@ -32,7 +33,7 @@ describe("SFTP secure profiles", () => {
 		expect(getSftpProfileId("sftp://user:secret@example.com/project")).toBeNull();
 	});
 
-	it("opens the native profile editor without passing credentials", async () => {
+	it("passes transient form credentials to the encrypted native profile store", async () => {
 		const editProfile = vi.fn((...args) => {
 			args.at(-2)({ profileId: "profile-native" });
 		});
@@ -43,6 +44,8 @@ describe("SFTP secure profiles", () => {
 			port: 2222,
 			username: "user",
 			authType: "key",
+			keyFile: "content://private-key",
+			passPhrase: "key secret",
 		});
 
 		expect(editProfile).toHaveBeenCalledWith(
@@ -52,9 +55,29 @@ describe("SFTP secure profiles", () => {
 			"user",
 			"key",
 			"",
+			"content://private-key",
+			"key secret",
 			expect.any(Function),
 			expect.any(Function),
 		);
+	});
+
+	it("reads only non-secret profile metadata from native storage", async () => {
+		const getProfileInfo = vi.fn((profileId, resolve) => {
+			resolve({
+				profileId,
+				hostname: "example.com",
+				port: 22,
+				username: "user",
+				authType: "password",
+			});
+		});
+		globalThis.sftp = { getProfileInfo };
+
+		const profile = await getSftpProfileInfo("profile-native");
+
+		expect(profile).not.toHaveProperty("password");
+		expect(profile).not.toHaveProperty("privateKey");
 	});
 
 	it("migrates repeated credential URLs once and removes credentials", async () => {

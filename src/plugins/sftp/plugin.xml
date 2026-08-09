@@ -22,7 +22,6 @@
         </config-file>
 
         <source-file src="src/com/foxdebug/sftp/Sftp.java" target-dir="src/com/foxdebug/sftp" />
-        <source-file src="src/com/foxdebug/sftp/SftpProfileEditor.java" target-dir="src/com/foxdebug/sftp" />
         <source-file src="src/com/foxdebug/sftp/SftpSecurityStore.java" target-dir="src/com/foxdebug/sftp" />
     </platform>
 

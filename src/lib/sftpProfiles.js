@@ -59,7 +59,9 @@ export function editSftpProfile({
 	port = 22,
 	username = "",
 	authType = "password",
-	alias = "",
+	password = "",
+	keyFile = "",
+	passPhrase = "",
 } = {}) {
 	return new Promise((resolve, reject) => {
 		sftp.editProfile(
@@ -68,10 +70,18 @@ export function editSftpProfile({
 			Number.parseInt(port, 10) || 22,
 			username,
 			authType,
-			alias,
+			password,
+			keyFile,
+			passPhrase,
 			resolve,
 			reject,
 		);
+	});
+}
+
+export function getSftpProfileInfo(profileId) {
+	return new Promise((resolve, reject) => {
+		sftp.getProfileInfo(profileId, resolve, reject);
 	});
 }
 

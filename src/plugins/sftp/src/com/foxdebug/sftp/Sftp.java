@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ContentResolver;
 import android.content.Context;
-import android.content.Intent;
 import android.net.Uri;
 import android.util.Base64;
 import android.util.Log;
@@ -82,7 +81,6 @@ public class Sftp extends CordovaPlugin {
   private Activity activity;
   private String connectionID;
   private SftpSecurityStore securityStore;
-  private SftpProfileEditor profileEditor;
 
   private final class ConnectionSecurity {
 
@@ -270,7 +268,6 @@ public class Sftp extends CordovaPlugin {
     context = cordova.getContext();
     activity = cordova.getActivity();
     securityStore = new SftpSecurityStore(context);
-    profileEditor = new SftpProfileEditor(this, cordova, activity, securityStore);
     System.setProperty("maverick.log.nothread", "true");
     configureCryptoProvider();
   }
@@ -649,7 +646,125 @@ public class Sftp extends CordovaPlugin {
   }
 
   public void editProfile(JSONArray args, CallbackContext callback) {
-    profileEditor.show(args, callback);
+    cordova
+      .getThreadPool()
+      .execute(
+        new Runnable() {
+          public void run() {
+            try {
+              String requestedID = nullableProfileID(args);
+              JSONObject existing = requestedID == null
+                ? null
+                : securityStore.getProfile(requestedID);
+              String hostname = args.getString(1).trim();
+              int port = args.optInt(2, 22);
+              String username = args.getString(3).trim();
+              String authType = args.optString(4, "password");
+              if (hostname.isEmpty()) {
+                throw new IllegalArgumentException("Hostname is required");
+              }
+              if (username.isEmpty()) {
+                throw new IllegalArgumentException("Username is required");
+              }
+              if (port < 1 || port > 65535) {
+                throw new IllegalArgumentException(
+                  "Port must be between 1 and 65535"
+                );
+              }
+
+              JSONObject profile = new JSONObject();
+              profile.put("hostname", hostname);
+              profile.put("port", port);
+              profile.put("username", username);
+              profile.put("authType", authType);
+              if ("key".equals(authType)) {
+                String keyFile = args.optString(6);
+                if (!keyFile.isEmpty()) {
+                  profile.put(
+                    "privateKey",
+                    Base64.encodeToString(readUri(keyFile), Base64.NO_WRAP)
+                  );
+                  profile.put("passphrase", args.optString(7));
+                } else if (
+                  existing != null &&
+                  "key".equals(existing.optString("authType"))
+                ) {
+                  profile.put("privateKey", existing.getString("privateKey"));
+                  profile.put("passphrase", existing.optString("passphrase"));
+                } else {
+                  throw new IllegalArgumentException(
+                    "Select a private key file"
+                  );
+                }
+              } else {
+                String password = args.optString(5);
+                if (
+                  password.isEmpty() &&
+                  existing != null &&
+                  "password".equals(existing.optString("authType"))
+                ) {
+                  password = existing.optString("password");
+                }
+                profile.put("password", password);
+              }
+
+              String profileID = securityStore.saveProfile(
+                requestedID,
+                profile
+              );
+              callback.success(profileInfo(profileID, profile));
+            } catch (Exception e) {
+              callback.error(
+                "Could not securely save SFTP profile: " + errMessage(e)
+              );
+              Log.e(TAG, "Could not save SFTP profile", e);
+            }
+          }
+        }
+      );
+  }
+
+  public void getProfileInfo(JSONArray args, CallbackContext callback) {
+    cordova
+      .getThreadPool()
+      .execute(
+        new Runnable() {
+          public void run() {
+            try {
+              String profileID = args.getString(0);
+              callback.success(
+                profileInfo(profileID, securityStore.getProfile(profileID))
+              );
+            } catch (Exception e) {
+              callback.error("Could not read SFTP profile: " + errMessage(e));
+            }
+          }
+        }
+      );
+  }
+
+  private static JSONObject profileInfo(String profileID, JSONObject profile)
+    throws JSONException {
+    JSONObject info = new JSONObject();
+    info.put("profileId", profileID);
+    info.put("hostname", profile.getString("hostname"));
+    info.put("port", profile.optInt("port", 22));
+    info.put("username", profile.getString("username"));
+    info.put("authType", profile.optString("authType", "password"));
+    return info;
+  }
+
+  private static String nullableProfileID(JSONArray args) {
+    if (args.length() == 0 || args.isNull(0)) return null;
+    String value = args.optString(0, null);
+    if (value == null) return null;
+    value = value.trim();
+    if (
+      value.isEmpty() ||
+      "null".equalsIgnoreCase(value) ||
+      "undefined".equalsIgnoreCase(value)
+    ) return null;
+    return value;
   }
 
   public void deleteProfile(JSONArray args, CallbackContext callback) {
@@ -718,16 +833,6 @@ public class Sftp extends CordovaPlugin {
     callback.success();
   }
 
-  @Override
-  public void onActivityResult(int requestCode, int resultCode, Intent data) {
-    if (
-      profileEditor == null ||
-      !profileEditor.onActivityResult(requestCode, resultCode, data)
-    ) {
-      super.onActivityResult(requestCode, resultCode, data);
-    }
-  }
-
   public boolean execute(
     String action,
     JSONArray args,
@@ -765,6 +870,7 @@ public class Sftp extends CordovaPlugin {
       case "connectUsingProfile":
       case "saveProfile":
       case "editProfile":
+      case "getProfileInfo":
       case "deleteProfile":
       case "getFile":
       case "putFile":

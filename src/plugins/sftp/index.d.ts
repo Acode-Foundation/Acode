@@ -43,7 +43,8 @@ interface Sftp {
   /** Connects using credentials held by the native profile store. */
   connectUsingProfile(profileId: String, onSuccess: () => void, onFail: (err: any) => void): void;
   saveProfile(profileId: String | null, host: String, port: Number, username: String, authType: String, password: String, keyFile: String, passphrase: String, onSuccess: (profileId: String) => void, onFail: (err: any) => void): void;
-  editProfile(profileId: String | null, host: String, port: Number, username: String, authType: String, alias: String, onSuccess: (profile: SftpProfileInfo & {profileId: string, alias: string}) => void, onFail: (err: any) => void): void;
+  editProfile(profileId: String | null, host: String, port: Number, username: String, authType: String, password: String, keyFile: String, passphrase: String, onSuccess: (profile: SftpProfileInfo & {profileId: string}) => void, onFail: (err: any) => void): void;
+  getProfileInfo(profileId: String, onSuccess: (profile: SftpProfileInfo & {profileId: string}) => void, onFail: (err: any) => void): void;
   deleteProfile(profileId: String, onSuccess: () => void, onFail: (err: any) => void): void;
 
   /**

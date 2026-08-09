@@ -9,6 +9,7 @@ import {
 	createSftpProfileUrl,
 	editSftpProfile,
 	getSftpProfileId,
+	getSftpProfileInfo,
 } from "./sftpProfiles";
 import { interstitialAd } from "./startAd";
 
@@ -165,7 +166,7 @@ export default {
 			]);
 		}
 	},
-	/** Open the native editor so SSH secrets never enter the WebView. */
+	/** Persist credentials natively and retain only an opaque profile URL. */
 	async addSftp({
 		hostname = "",
 		username = "",
@@ -175,23 +176,69 @@ export default {
 		existingProfile = null,
 	} = {}) {
 		let stopConnection = false;
-		let profile;
+		if (existingProfile?.profileId) {
+			try {
+				const saved = await getSftpProfileInfo(existingProfile.profileId);
+				hostname = saved.hostname;
+				username = saved.username;
+				port = saved.port;
+				authType = saved.authType;
+			} catch (error) {
+				await helpers.error(error);
+				return null;
+			}
+		}
+
+		let values;
 		try {
-			profile = await editSftpProfile({
-				profileId: existingProfile?.profileId,
+			values = await prompt({
 				hostname,
 				username,
 				port,
-				authType: authType === "keyFile" ? "key" : authType,
 				alias: initialAlias || existingProfile?.name || "",
+				authType: authType === "keyFile" ? "key" : authType,
+				hasSavedKey: existingProfile?.profileId && authType === "key",
+			});
+		} catch {
+			return null;
+		}
+
+		const retryDetails = {
+			hostname: values.hostname,
+			username: values.username,
+			port: values.port,
+			alias: values.alias,
+			authType: values.usePassword ? "password" : "key",
+			existingProfile,
+		};
+		let profile;
+		let saveError;
+		try {
+			profile = await editSftpProfile({
+				profileId: existingProfile?.profileId,
+				hostname: values.hostname,
+				username: values.username,
+				port: values.port,
+				authType: values.usePassword ? "password" : "key",
+				password: values.password,
+				keyFile: values.keyFile,
+				passPhrase: values.passPhrase,
 			});
 		} catch (error) {
-			if (String(error).includes("SFTP profile editing was cancelled")) {
-				return null;
-			}
-			throw error;
+			saveError = error;
+		} finally {
+			// Drop all WebView references as soon as the native store has consumed them.
+			values.password = "";
+			values.keyFile = "";
+			values.passPhrase = "";
 		}
-		const alias = profile.alias;
+		if (saveError) {
+			values = null;
+			await helpers.error(saveError);
+			return this.addSftp(retryDetails);
+		}
+		const alias = values.alias;
+		values = null;
 		const url = createSftpProfileUrl(profile.profileId);
 
 		loader.create(strings["add sftp"], strings["connecting..."], {
@@ -241,6 +288,107 @@ export default {
 					home: existingProfile?.home,
 				},
 			});
+		}
+
+		function prompt({
+			hostname,
+			username,
+			port,
+			alias,
+			authType,
+			hasSavedKey,
+		}) {
+			const usePassword = authType !== "key";
+			return multiPrompt(strings["add sftp"], [
+				{
+					id: "alias",
+					placeholder: strings.name,
+					type: "text",
+					value: alias,
+					required: true,
+				},
+				{
+					id: "username",
+					placeholder: strings.username,
+					type: "text",
+					value: username,
+					required: true,
+				},
+				{
+					id: "hostname",
+					placeholder: strings.hostname,
+					type: "text",
+					value: hostname,
+					required: true,
+				},
+				[
+					"Authentication type: ",
+					{
+						id: "usePassword",
+						placeholder: strings.password,
+						name: "authType",
+						type: "radio",
+						value: usePassword,
+						onchange() {
+							if (!this.checked) return;
+							this.prompt.$body.get("#password").hidden = false;
+							this.prompt.$body.get("#keyFile").hidden = true;
+							this.prompt.$body.get("#passPhrase").hidden = true;
+						},
+					},
+					{
+						id: "useKeyFile",
+						placeholder: strings["key file"],
+						name: "authType",
+						type: "radio",
+						value: !usePassword,
+						onchange() {
+							if (!this.checked) return;
+							const password = this.prompt.$body.get("#password");
+							password.hidden = true;
+							password.value = "";
+							this.prompt.$body.get("#keyFile").hidden = false;
+							this.prompt.$body.get("#passPhrase").hidden = false;
+						},
+					},
+				],
+				{
+					id: "password",
+					placeholder: existingProfile?.profileId
+						? `${strings.password} (leave blank to keep saved)`
+						: strings.password,
+					type: "password",
+					hidden: !usePassword,
+				},
+				{
+					id: "keyFile",
+					placeholder: hasSavedKey
+						? `${strings["select key file"]} (leave blank to keep saved)`
+						: strings["select key file"],
+					type: "text",
+					readOnly: true,
+					sensitive: true,
+					hidden: usePassword,
+					onclick() {
+						sdcard.openDocumentFile((result) => {
+							this.value = result.uri;
+						});
+					},
+				},
+				{
+					id: "passPhrase",
+					placeholder: `${strings.passphrase} (${strings.optional})`,
+					type: "password",
+					hidden: usePassword,
+				},
+				{
+					id: "port",
+					placeholder: strings.port,
+					type: "number",
+					value: port || 22,
+					required: true,
+				},
+			]);
 		}
 	},
 	async edit({ name, storageType, url, home }) {
