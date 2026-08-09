@@ -51,6 +51,7 @@ describe("SFTP secure profiles", () => {
 			2222,
 			"user",
 			"key",
+			"",
 			expect.any(Function),
 			expect.any(Function),
 		);

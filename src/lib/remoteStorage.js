@@ -166,25 +166,32 @@ export default {
 		}
 	},
 	/** Open the native editor so SSH secrets never enter the WebView. */
-	async addSftp(...args) {
+	async addSftp({
+		hostname = "",
+		username = "",
+		port = 22,
+		alias: initialAlias = "",
+		authType = "password",
+		existingProfile = null,
+	} = {}) {
 		let stopConnection = false;
-		const existingProfile = args[8] || null;
-		const { alias } = await multiPrompt(strings["add sftp"], [
-			{
-				id: "alias",
-				placeholder: strings.name,
-				type: "text",
-				value: args[6] || existingProfile?.name || "",
-				required: true,
-			},
-		]);
-		const profile = await editSftpProfile({
-			profileId: existingProfile?.profileId,
-			hostname: args[0] || "",
-			username: args[1] || "",
-			port: args[5] || 22,
-			authType: args[7] === "keyFile" ? "key" : args[7] || "password",
-		});
+		let profile;
+		try {
+			profile = await editSftpProfile({
+				profileId: existingProfile?.profileId,
+				hostname,
+				username,
+				port,
+				authType: authType === "keyFile" ? "key" : authType,
+				alias: initialAlias || existingProfile?.name || "",
+			});
+		} catch (error) {
+			if (String(error).includes("SFTP profile editing was cancelled")) {
+				return null;
+			}
+			throw error;
+		}
+		const alias = profile.alias;
 		const url = createSftpProfileUrl(profile.profileId);
 
 		loader.create(strings["add sftp"], strings["connecting..."], {
@@ -222,27 +229,36 @@ export default {
 
 			loader.destroy();
 			if (!err?.reported) await helpers.error(err);
-			return await this.addSftp(
-				profile.hostname,
-				profile.username,
-				"",
-				"",
-				"",
-				profile.port,
+			return await this.addSftp({
+				hostname: profile.hostname,
+				username: profile.username,
+				port: profile.port,
 				alias,
-				profile.authType,
-				{ ...profile, url, home: existingProfile?.home },
-			);
+				authType: profile.authType,
+				existingProfile: {
+					...profile,
+					url,
+					home: existingProfile?.home,
+				},
+			});
 		}
 	},
 	async edit({ name, storageType, url, home }) {
 		const profileId = getSftpProfileId(url);
 		if (storageType === "sftp" && profileId) {
-			return this.addSftp("", "", "", "", "", 22, name, "password", {
-				profileId,
-				url,
-				home,
-				name,
+			return this.addSftp({
+				alias: name,
+				existingProfile: { profileId, url, home, name },
+			});
+		}
+		if (storageType === "sftp") {
+			const { username, hostname, port, query } = URLParse(url, true);
+			return this.addSftp({
+				hostname,
+				username: username ? decodeURIComponent(username) : "",
+				port: port || 22,
+				alias: name,
+				authType: query?.keyFile ? "key" : "password",
 			});
 		}
 
@@ -274,28 +290,6 @@ export default {
 				port,
 				security,
 				mode,
-			);
-		}
-
-		if (storageType === "sftp") {
-			let { passPhrase, keyFile } = query;
-			if (passPhrase) {
-				passPhrase = decodeURIComponent(passPhrase);
-			}
-
-			if (keyFile) {
-				keyFile = decodeURIComponent(keyFile);
-			}
-
-			return this.addSftp(
-				hostname,
-				username,
-				keyFile,
-				password,
-				passPhrase,
-				port,
-				name,
-				password ? "password" : "key",
 			);
 		}
 

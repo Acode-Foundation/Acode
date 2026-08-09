@@ -67,8 +67,7 @@ final class SftpProfileEditor {
       return;
     }
 
-    String requestedID = args.optString(0, null);
-    if (requestedID != null && requestedID.isEmpty()) requestedID = null;
+    String requestedID = nullableProfileID(args);
     JSONObject existing = requestedID == null
       ? null
       : store.getProfile(requestedID);
@@ -85,12 +84,14 @@ final class SftpProfileEditor {
     String authType = existing == null
       ? args.optString(4, "password")
       : existing.optString("authType", "password");
+    String alias = args.optString(5);
 
     LinearLayout form = new LinearLayout(activity);
     form.setOrientation(LinearLayout.VERTICAL);
     int padding = Math.round(24 * activity.getResources().getDisplayMetrics().density);
     form.setPadding(padding, padding / 2, padding, 0);
 
+    EditText aliasInput = input("Connection name", alias, false);
     EditText hostInput = input("Hostname", hostname, false);
     EditText portInput = input("Port", String.valueOf(port), false);
     portInput.setInputType(InputType.TYPE_CLASS_NUMBER);
@@ -127,6 +128,7 @@ final class SftpProfileEditor {
       true
     );
 
+    form.addView(aliasInput);
     form.addView(hostInput);
     form.addView(portInput);
     form.addView(userInput);
@@ -187,6 +189,7 @@ final class SftpProfileEditor {
               save(
                 profileID,
                 savedProfile,
+                aliasInput,
                 hostInput,
                 portInput,
                 userInput,
@@ -224,6 +227,19 @@ final class SftpProfileEditor {
     return input;
   }
 
+  private static String nullableProfileID(JSONArray args) {
+    if (args.length() == 0 || args.isNull(0)) return null;
+    String value = args.optString(0, null);
+    if (value == null) return null;
+    value = value.trim();
+    if (
+      value.isEmpty() ||
+      "null".equalsIgnoreCase(value) ||
+      "undefined".equalsIgnoreCase(value)
+    ) return null;
+    return value;
+  }
+
   private void selectPrivateKey() {
     Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
     intent.addCategory(Intent.CATEGORY_OPENABLE);
@@ -244,6 +260,7 @@ final class SftpProfileEditor {
   private void save(
     String profileID,
     JSONObject existing,
+    EditText aliasInput,
     EditText hostInput,
     EditText portInput,
     EditText userInput,
@@ -253,6 +270,7 @@ final class SftpProfileEditor {
     CallbackContext callback,
     AtomicBoolean completed
   ) {
+    String alias = aliasInput.getText().toString().trim();
     String hostname = hostInput.getText().toString().trim();
     String username = userInput.getText().toString().trim();
     int port;
@@ -260,6 +278,10 @@ final class SftpProfileEditor {
       port = Integer.parseInt(portInput.getText().toString().trim());
     } catch (NumberFormatException e) {
       portInput.setError("Enter a valid port");
+      return;
+    }
+    if (alias.isEmpty()) {
+      aliasInput.setError("Connection name is required");
       return;
     }
     if (hostname.isEmpty()) {
@@ -329,6 +351,7 @@ final class SftpProfileEditor {
             String savedID = store.saveProfile(profileID, profile);
             JSONObject result = new JSONObject();
             result.put("profileId", savedID);
+            result.put("alias", alias);
             result.put("hostname", hostname);
             result.put("port", port);
             result.put("username", username);

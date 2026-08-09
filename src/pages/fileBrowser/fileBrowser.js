@@ -479,6 +479,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				case "addFtp":
 				case "addSftp": {
 					const storage = await remoteStorage[action]();
+					if (!storage) break;
 					updateStorage(storage);
 					break;
 				}

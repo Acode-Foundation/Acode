@@ -8,8 +8,8 @@ module.exports = {
   saveProfile: function (profileId, host, port, username, authType, password, keyFile, passphrase, onSuccess, onFail) {
     cordova.exec(onSuccess, onFail, 'Sftp', 'saveProfile', [profileId, host, port, username, authType, password, keyFile, passphrase]);
   },
-  editProfile: function (profileId, host, port, username, authType, onSuccess, onFail) {
-    cordova.exec(onSuccess, onFail, 'Sftp', 'editProfile', [profileId, host, port, username, authType]);
+  editProfile: function (profileId, host, port, username, authType, alias, onSuccess, onFail) {
+    cordova.exec(onSuccess, onFail, 'Sftp', 'editProfile', [profileId, host, port, username, authType, alias]);
   },
   deleteProfile: function (profileId, onSuccess, onFail) {
     cordova.exec(onSuccess, onFail, 'Sftp', 'deleteProfile', [profileId]);
