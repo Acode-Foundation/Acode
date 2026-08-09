@@ -835,5 +835,5 @@
 	"apply exclusions when copying": "Kizárások használata másoláskor",
 	"settings-info-app-use-file-operation-exclusions": "A kizárási mintáknak megfelelő fájlok és mappák kihagyása másoláskor és beillesztéskor.",
 	"horizontal scroll margin": "Vízszintes görgetési margó",
-	"settings-info-horizontal-scroll-margin": "A leghosszabb sor után egy Üres hely lesz hozzáadva a képernyő széléhez, ha a sorok tördelése ki van kapcsolva. Adjon meg egy nem negatív egész pixelértéket."
+	"settings-info-horizontal-scroll-margin": "A leghosszabb sor után egy üres hely lesz hozzáadva a képernyő széléhez, ha a sorok tördelése ki van kapcsolva. Adjon meg egy nem negatív egész pixelértéket."
 }
