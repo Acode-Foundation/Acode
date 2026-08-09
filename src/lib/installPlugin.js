@@ -8,13 +8,30 @@ import helpers from "utils/helpers";
 import Url from "utils/Url";
 import { isVersionGreater } from "utils/version";
 import config from "./config";
-import InstallState from "./installState";
 import { loadPluginWithTimeout } from "./loadPlugins";
 
 /** @type {import("dialogs/loader").Loader} */
 let loaderDialog;
 /** @type {Array<() => Promise<void>>} */
 let depsLoaders;
+
+const PLUGIN_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+
+function assertSafePluginId(id) {
+	if (!PLUGIN_ID_PATTERN.test(String(id || ""))) {
+		throw new Error("Invalid plugin id");
+	}
+}
+
+function extractPluginArchive(archiveUrl, pluginDir, manifest) {
+	return new Promise((resolve, reject) => {
+		cordova.exec(resolve, reject, "Tee", "extractPluginArchive", [
+			archiveUrl,
+			pluginDir,
+			manifest,
+		]);
+	});
+}
 
 /**
  * Installs a plugin.
@@ -38,7 +55,9 @@ export default async function installPlugin(
 
 	let pluginDir;
 	let pluginUrl;
-	let state;
+	let archiveUrl;
+	let pluginWasInstalled = false;
+	let extractionComplete = false;
 
 	try {
 		if (!(await fsOperation(PLUGIN_DIR).exists())) {
@@ -164,90 +183,22 @@ export default async function installPlugin(
 			if (!pluginDir) {
 				pluginJson.source = pluginUrl;
 				id = pluginJson.id;
-				pluginDir = Url.join(PLUGIN_DIR, id);
 			}
 
-			state = await InstallState.new(id);
-
-			if (!(await fsOperation(pluginDir).exists())) {
-				await fsOperation(PLUGIN_DIR).createDirectory(id);
-			}
-
-			// Track unsafe absolute entries to skip
-			const ignoredUnsafeEntries = new Set();
-
-			const files = Object.keys(zip.files);
-			const limit = 2;
-
-			async function processFile(file) {
-				try {
-					const entry = zip.files[file];
-
-					let correctFile = file.replace(/\\/g, "/");
-					const isDirEntry = entry.dir || correctFile.endsWith("/");
-
-					if (isUnsafeAbsolutePath(file)) {
-						ignoredUnsafeEntries.add(file);
-						return;
-					}
-
-					correctFile = sanitizeZipPath(correctFile, isDirEntry);
-					if (!correctFile) return;
-
-					const fileUrl = Url.join(pluginDir, correctFile);
-
-					// Handle directory entries
-					if (isDirEntry) {
-						await createFileRecursive(pluginDir, correctFile, true);
-						return;
-					}
-
-					// Ensure parent directory exists
-					const lastSlash = correctFile.lastIndexOf("/");
-					if (lastSlash !== -1) {
-						const parentRel = correctFile.slice(0, lastSlash + 1);
-						await createFileRecursive(pluginDir, parentRel, true);
-					}
-
-					if (!state.exists(correctFile)) {
-						await createFileRecursive(pluginDir, correctFile, false);
-					}
-
-					let data = await entry.async("ArrayBuffer");
-
-					if (file === "plugin.json") {
-						data = JSON.stringify(pluginJson);
-					}
-
-					if (!(await state.isUpdated(correctFile, data))) return;
-
-					await fsOperation(fileUrl).writeFile(data);
-				} catch (error) {
-					console.error(`Error processing file ${file}:`, error);
-				}
-			}
-
-			// Process in batches
-			for (let i = 0; i < files.length; i += limit) {
-				const batch = files.slice(i, i + limit);
-				await Promise.allSettled(batch.map(processFile));
-
-				// Allow UI thread to breathe
-				await new Promise((r) => setTimeout(r, 0));
-			}
-			// Emit a non-blocking warning if any unsafe entries were skipped
-			if (!isDependency && ignoredUnsafeEntries.size) {
-				const sample = Array.from(ignoredUnsafeEntries).slice(0, 3).join(", ");
-				loaderDialog.setMessage(
-					`Skipped ${ignoredUnsafeEntries.size} unsafe archive entr${
-						ignoredUnsafeEntries.size === 1 ? "y" : "ies"
-					} (e.g., ${sample})`,
-				);
-				console.warn(
-					"Plugin installer: skipped unsafe absolute paths in archive:",
-					Array.from(ignoredUnsafeEntries),
-				);
-			}
+			assertSafePluginId(id);
+			pluginDir = Url.join(PLUGIN_DIR, id);
+			pluginWasInstalled = await fsOperation(pluginDir).exists();
+			archiveUrl = Url.join(
+				CACHE_STORAGE,
+				`.plugin-install-${helpers.uuid()}.zip`,
+			);
+			await fsOperation(CACHE_STORAGE).createFile(
+				Url.basename(archiveUrl),
+				plugin,
+			);
+			loaderDialog?.setMessage("Extracting plugin files...");
+			await extractPluginArchive(archiveUrl, pluginDir, JSON.stringify(pluginJson));
+			extractionComplete = true;
 
 			if (isDependency) {
 				depsLoaders.push(async () => {
@@ -260,16 +211,17 @@ export default async function installPlugin(
 				await loadPluginWithTimeout(id, true);
 			}
 
-			await state.save();
-			deleteRedundantFiles(pluginDir, state);
 		}
 	} catch (err) {
 		try {
-			// Clear the install state if installation fails
-			if (state) await state.clear();
-
-			// Delete the plugin directory if it was created
-			if (pluginDir && (await fsOperation(pluginDir).exists())) {
+			// A failed extraction leaves the previous plugin untouched. If a brand
+			// new plugin fails after activation, remove that incomplete install.
+			if (
+				extractionComplete &&
+				!pluginWasInstalled &&
+				pluginDir &&
+				(await fsOperation(pluginDir).exists())
+			) {
 				await fsOperation(pluginDir).delete();
 			}
 		} catch (cleanupError) {
@@ -277,116 +229,15 @@ export default async function installPlugin(
 		}
 		throw err;
 	} finally {
+		if (archiveUrl) {
+			try {
+				await fsOperation(archiveUrl).delete();
+			} catch (_) {}
+		}
 		if (!isDependency) {
 			loaderDialog.destroy();
 		}
 	}
-}
-
-/**
- * Create directory recursively
- * @param {string} parent
- * @param {Array<string> | string} dir
- */
-async function createFileRecursive(parent, dir, shouldBeDirAtEnd) {
-	let wantDirEnd = !!shouldBeDirAtEnd;
-	/** @type {string[]} */
-	let parts;
-	if (typeof dir === "string") {
-		if (dir.endsWith("/")) wantDirEnd = true;
-		dir = dir.replace(/\\/g, "/");
-		parts = dir.split("/");
-	} else {
-		parts = dir;
-	}
-	parts = parts.filter((d) => d);
-	const cd = parts.shift();
-	if (!cd) return;
-	const newParent = Url.join(parent, cd);
-
-	const isLast = parts.length === 0;
-	const needDir = !isLast || wantDirEnd;
-	if (!(await fsOperation(newParent).exists())) {
-		if (needDir) {
-			try {
-				await fsOperation(parent).createDirectory(cd);
-			} catch (e) {
-				// If another concurrent task created it, consider it fine
-				if (!(await fsOperation(newParent).exists())) throw e;
-			}
-		} else {
-			try {
-				await fsOperation(parent).createFile(cd);
-			} catch (e) {
-				if (!(await fsOperation(newParent).exists())) throw e;
-			}
-		}
-	}
-	if (parts.length) {
-		await createFileRecursive(newParent, parts, wantDirEnd);
-	}
-}
-
-/**
- * Sanitize zip entry path to ensure it's relative and safe under pluginDir
- * - Normalizes separators to '/'
- * - Strips leading slashes and Windows drive prefixes (e.g., C:/)
- * - Resolves '.' and '..' segments
- * - Preserves trailing slash for directory entries
- * @param {string} p
- * @param {boolean} isDir
- * @returns {string} sanitized relative path
- */
-function sanitizeZipPath(p, isDir) {
-	if (!p) return "";
-	let path = String(p);
-	// Normalize separators
-	path = path.replace(/\\/g, "/");
-	// Remove URL-like scheme if present accidentally
-	path = path.replace(/^[a-zA-Z]+:\/\//, "");
-	// Strip leading slashes
-	path = path.replace(/^\/+/, "");
-	// Strip Windows drive letter, e.g., C:/
-	path = path.replace(/^[A-Za-z]:\//, "");
-
-	const parts = path.split("/");
-	const stack = [];
-	for (const part of parts) {
-		if (!part || part === ".") continue;
-		if (part === "..") {
-			if (stack.length) stack.pop();
-			continue;
-		}
-		stack.push(part);
-	}
-	let safe = stack.join("/");
-	if (isDir && safe && !safe.endsWith("/")) safe += "/";
-	return safe;
-}
-
-/**
- * Detects unsafe absolute paths in zip entries that should be ignored.
- * Treats leading '/' as absolute, Windows drive roots like 'C:/' as absolute,
- * and common Android/Linux device roots like '/data', '/root', '/system'.
- * @param {string} p
- */
-function isUnsafeAbsolutePath(p) {
-	if (!p) return false;
-	const s = String(p);
-	if (/^[A-Za-z]:[\\\/]/.test(s)) return true; // Windows drive root
-	if (s.startsWith("//")) return true; // network path
-	if (s.startsWith("/")) {
-		return (
-			s.startsWith("/data") ||
-			s.startsWith("/system") ||
-			s.startsWith("/vendor") ||
-			s.startsWith("/storage") ||
-			s.startsWith("/sdcard") ||
-			s.startsWith("/root") ||
-			true // any leading slash is unsafe
-		);
-	}
-	return false;
 }
 
 /**
@@ -493,37 +344,5 @@ async function resolveDep(manifest) {
 		const purchases = await helpers.promisify(iap.getPurchases);
 		const purchase = purchases.find((p) => p.productIds.includes(sku));
 		return purchase;
-	}
-}
-
-/**
- *
- * @param {string} dir
- * @param {Array<string>} files
- */
-async function listFileRecursive(dir, files) {
-	for (const child of await fsOperation(dir).lsDir()) {
-		const fileUrl = Url.join(dir, child.name);
-		if (child.isDirectory) {
-			await listFileRecursive(fileUrl, files);
-		} else {
-			files.push(fileUrl);
-		}
-	}
-}
-
-/**
- *
- * @param {Record<string, boolean>} files
- */
-async function deleteRedundantFiles(pluginDir, state) {
-	/** @type {string[]} */
-	let files = [];
-	await listFileRecursive(pluginDir, files);
-
-	for (const file of files) {
-		if (!state.exists(file.replace(`${pluginDir}/`, ""))) {
-			fsOperation(file).delete();
-		}
 	}
 }

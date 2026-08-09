@@ -15,12 +15,28 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import android.content.Context;
+import android.net.Uri;
 import org.apache.cordova.*;
+
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 //auth plugin
 import com.foxdebug.acode.rk.auth.EncryptedPreferenceManager;
 
 public class Tee extends CordovaPlugin {
+
+    private static final int MAX_ARCHIVE_ENTRIES = 4096;
+    private static final long MAX_ARCHIVE_BYTES = 100L * 1024 * 1024;
+    private static final long MAX_ENTRY_BYTES = 32L * 1024 * 1024;
+    private static final int BUFFER_SIZE = 32 * 1024;
 
     // pluginId : token
     private /*static*/ final Map<String, String> tokenStore = new ConcurrentHashMap<>();
@@ -44,6 +60,11 @@ public class Tee extends CordovaPlugin {
     @Override
     public boolean execute(String action, JSONArray args, CallbackContext callback)
             throws JSONException {
+
+        if ("extractPluginArchive".equals(action)) {
+            extractPluginArchive(args.getString(0), args.getString(1), args.getString(2), callback);
+            return true;
+        }
 
 
         if ("get_secret".equals(action)) {
@@ -124,6 +145,178 @@ public class Tee extends CordovaPlugin {
         }
 
         return false;
+    }
+
+    /**
+     * Extract a downloaded archive in native code. The previous plugin is kept
+     * in place until all archive entries have been streamed to a sibling
+     * staging directory and the directory swap succeeds.
+     */
+    private void extractPluginArchive(
+            final String archiveUri,
+            final String destinationUri,
+            final String manifest,
+            final CallbackContext callback
+    ) {
+        cordova.getThreadPool().execute(new Runnable() {
+            @Override
+            public void run() {
+                File staging = null;
+                File backup = null;
+                File destination = null;
+                try {
+                    File archive = webView.getResourceApi().mapUriToFile(Uri.parse(archiveUri));
+                    destination = webView.getResourceApi().mapUriToFile(Uri.parse(destinationUri));
+                    if (archive == null || !archive.isFile()) {
+                        throw new IOException("Plugin archive is unavailable");
+                    }
+                    if (destination == null || destination.getParentFile() == null) {
+                        throw new IOException("Plugin destination is unavailable");
+                    }
+
+                    File parent = destination.getParentFile().getCanonicalFile();
+                    destination = destination.getCanonicalFile();
+                    if (!destination.getParentFile().equals(parent)) {
+                        throw new IOException("Invalid plugin destination");
+                    }
+                    if (!parent.exists() && !parent.mkdirs()) {
+                        throw new IOException("Unable to create plugin directory");
+                    }
+
+                    staging = new File(
+                            parent,
+                            "." + destination.getName() + ".install-" + UUID.randomUUID()
+                    );
+                    if (!staging.mkdirs()) {
+                        throw new IOException("Unable to create plugin staging directory");
+                    }
+
+                    extractArchive(archive, staging);
+                    writeManifest(staging, manifest);
+
+                    if (destination.exists()) {
+                        backup = new File(
+                                parent,
+                                "." + destination.getName() + ".backup-" + UUID.randomUUID()
+                        );
+                        if (!destination.renameTo(backup)) {
+                            throw new IOException("Unable to stage existing plugin");
+                        }
+                    }
+
+                    if (!staging.renameTo(destination)) {
+                        if (backup != null && backup.exists()) {
+                            backup.renameTo(destination);
+                        }
+                        throw new IOException("Unable to activate plugin");
+                    }
+                    staging = null;
+
+                    if (backup != null) {
+                        deleteRecursively(backup);
+                    }
+                    callback.success();
+                } catch (Exception error) {
+                    callback.error(error.getMessage() == null ? "Plugin extraction failed" : error.getMessage());
+                } finally {
+                    if (staging != null) {
+                        deleteRecursively(staging);
+                    }
+                    if (backup != null && backup.exists() && destination != null && !destination.exists()) {
+                        backup.renameTo(destination);
+                    }
+                }
+            }
+        });
+    }
+
+    private static void extractArchive(File archive, File destination) throws IOException {
+        String destinationPath = destination.getCanonicalPath() + File.separator;
+        int entryCount = 0;
+        long extractedBytes = 0;
+        boolean hasManifest = false;
+        byte[] buffer = new byte[BUFFER_SIZE];
+
+        try (ZipInputStream input = new ZipInputStream(
+                new BufferedInputStream(new FileInputStream(archive))
+        )) {
+            ZipEntry entry;
+            while ((entry = input.getNextEntry()) != null) {
+                entryCount += 1;
+                if (entryCount > MAX_ARCHIVE_ENTRIES) {
+                    throw new IOException("Plugin archive contains too many files");
+                }
+
+                String name = entry.getName().replace('\\', '/');
+                if (name.isEmpty() || name.startsWith("/") || name.matches("^[A-Za-z]:/.*") || name.indexOf('\0') >= 0) {
+                    throw new IOException("Plugin archive contains an unsafe path");
+                }
+
+                File output = new File(destination, name).getCanonicalFile();
+                if (!output.getPath().startsWith(destinationPath)) {
+                    throw new IOException("Plugin archive attempts to write outside its directory");
+                }
+                if ("plugin.json".equals(name)) {
+                    hasManifest = true;
+                }
+
+                if (entry.isDirectory()) {
+                    if (!output.mkdirs() && !output.isDirectory()) {
+                        throw new IOException("Unable to create plugin directory");
+                    }
+                    input.closeEntry();
+                    continue;
+                }
+
+                long declaredSize = entry.getSize();
+                if (declaredSize > MAX_ENTRY_BYTES) {
+                    throw new IOException("Plugin archive contains an oversized file");
+                }
+                File outputParent = output.getParentFile();
+                if (!outputParent.exists() && !outputParent.mkdirs()) {
+                    throw new IOException("Unable to create plugin directory");
+                }
+
+                long entryBytes = 0;
+                try (BufferedOutputStream outputStream = new BufferedOutputStream(
+                        new FileOutputStream(output)
+                )) {
+                    int count;
+                    while ((count = input.read(buffer)) != -1) {
+                        entryBytes += count;
+                        extractedBytes += count;
+                        if (entryBytes > MAX_ENTRY_BYTES || extractedBytes > MAX_ARCHIVE_BYTES) {
+                            throw new IOException("Plugin archive is too large");
+                        }
+                        outputStream.write(buffer, 0, count);
+                    }
+                }
+                input.closeEntry();
+            }
+        }
+
+        if (!hasManifest) {
+            throw new IOException("Plugin archive is missing plugin.json");
+        }
+    }
+
+    private static void writeManifest(File destination, String manifest) throws IOException {
+        try (FileOutputStream output = new FileOutputStream(new File(destination, "plugin.json"))) {
+            output.write(manifest.getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
+    private static void deleteRecursively(File file) {
+        if (file == null || !file.exists()) return;
+        if (file.isDirectory()) {
+            File[] children = file.listFiles();
+            if (children != null) {
+                for (File child : children) {
+                    deleteRecursively(child);
+                }
+            }
+        }
+        file.delete();
     }
 
 
