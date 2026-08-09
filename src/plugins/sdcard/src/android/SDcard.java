@@ -940,23 +940,28 @@ public class SDcard extends CordovaPlugin {
       .execute(
         new Runnable() {
           public void run() {
-            Uri srcUri = Uri.parse(src);
             ContentResolver contentResolver = context.getContentResolver();
             String parentDocId = parentId;
-
-            if (parentDocId == null) {
-              parentDocId = DocumentsContract.getTreeDocumentId(srcUri);
-            }
-
-            Uri childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(
-              srcUri,
-              parentDocId
-            );
-
             JSONArray result = new JSONArray();
             Cursor cursor = null;
 
             try {
+              Uri srcUri = Uri.parse(src);
+
+              if (parentDocId == null) {
+                if (!DocumentsContract.isTreeUri(srcUri)) {
+                  Log.w("sdCard", "Cannot list non-tree URI: " + src);
+                  callback.error("Cannot read directory.");
+                  return;
+                }
+                parentDocId = DocumentsContract.getTreeDocumentId(srcUri);
+              }
+
+              Uri childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(
+                srcUri,
+                parentDocId
+              );
+
               cursor = contentResolver.query(
                 childrenUri,
                 new String[] {
