@@ -302,14 +302,14 @@ public class Sftp extends CordovaPlugin {
     if (previousSftp != null) {
       try {
         previousSftp.quit();
-      } catch (SshException e) {
+      } catch (Exception e) {
         Log.w(TAG, "Failed to close the SFTP subsystem", e);
       }
     }
     if (previousSsh != null) {
       try {
         previousSsh.close();
-      } catch (IOException e) {
+      } catch (Exception e) {
         Log.w(TAG, "Failed to close the SSH connection", e);
       }
     }
@@ -1077,11 +1077,22 @@ public class Sftp extends CordovaPlugin {
       .execute(
         new Runnable() {
           public void run() {
+            SftpClient activeSftp = null;
             try {
               String path = args.optString(0);
-              if (ssh != null && sftp != null) {
+              synchronized (connectionLock) {
+                activeSftp = sftp;
+                if (
+                  ssh == null ||
+                  !ssh.isConnected() ||
+                  activeSftp == null ||
+                  activeSftp.isClosed()
+                ) {
+                  callback.error("Not connected");
+                  return;
+                }
                 JSONArray files = new JSONArray();
-                for (SftpFile file : sftp.ls(path)) {
+                for (SftpFile file : activeSftp.ls(path)) {
                   String filename = file.getFilename();
                   if (filename.equals(".") || filename.equals("..")) {
                     continue;
@@ -1108,11 +1119,11 @@ public class Sftp extends CordovaPlugin {
                     if (permissions.charAt(0) == 'l') {
                       fileInfo.put("isLink", true);
                       try {
-                        String linkTarget = sftp.getSymbolicLinkTarget(
+                        String linkTarget = activeSftp.getSymbolicLinkTarget(
                           file.getAbsolutePath()
                         );
                         fileInfo.put("linkTarget", linkTarget);
-                        SftpFileAttributes linkAttributes = sftp.stat(
+                        SftpFileAttributes linkAttributes = activeSftp.stat(
                           linkTarget
                         );
                         fileInfo.put("isFile", linkAttributes.isFile());
@@ -1138,13 +1149,28 @@ public class Sftp extends CordovaPlugin {
                 callback.success(files);
                 return;
               }
-              callback.error("Not connected");
-            } catch (SftpStatusException | JSONException | SshException e) {
+            } catch (SftpStatusException | JSONException e) {
               callback.error(errMessage(e));
+            } catch (SshException | RuntimeException e) {
+              invalidateSftpConnection(activeSftp, e);
+              callback.error(
+                "SFTP connection was interrupted. Reconnect and try again."
+              );
             }
           }
         }
       );
+  }
+
+  private void invalidateSftpConnection(
+    SftpClient failedSftp,
+    Exception failure
+  ) {
+    synchronized (connectionLock) {
+      if (failedSftp == null || sftp != failedSftp) return;
+      Log.w(TAG, "Invalidating failed SFTP connection", failure);
+      closeConnectionQuietly();
+    }
   }
 
   public void stat(JSONArray args, CallbackContext callback) {
@@ -1412,17 +1438,19 @@ public class Sftp extends CordovaPlugin {
       .execute(
         new Runnable() {
           public void run() {
-            if (
-              ssh != null &&
-              ssh.isConnected() &&
-              sftp != null &&
-              !sftp.isClosed()
-            ) {
-              callback.success(connectionID);
-              return;
-            }
+            synchronized (connectionLock) {
+              if (
+                ssh != null &&
+                ssh.isConnected() &&
+                sftp != null &&
+                !sftp.isClosed()
+              ) {
+                callback.success(connectionID);
+                return;
+              }
 
-            callback.success(0);
+              callback.success(0);
+            }
           }
         }
       );
