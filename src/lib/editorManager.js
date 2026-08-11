@@ -247,6 +247,7 @@ async function EditorManager($header, $body) {
 	const primaryPane = createPaneShell($container);
 	paneLayoutRoot = createPaneNode(primaryPane);
 	$paneRoot.append(paneLayoutRoot.element);
+	applyOpenFileListLayout();
 	const problemButton = SideButton({
 		text: strings.problems,
 		icon: "warningreport_problem",
@@ -3941,8 +3942,8 @@ async function EditorManager($header, $body) {
 	}
 
 	function syncOpenFileList() {
+		applyOpenFileListLayout();
 		if (isPaneTabLayout()) {
-			$paneRoot.classList.remove("hide-pane-tabs");
 			panes.forEach((pane) => {
 				const preserveCurrentTabOrder = !!pane.tabList.querySelector(
 					'[data-editor-tab-dragging="true"]',
@@ -3958,7 +3959,6 @@ async function EditorManager($header, $body) {
 			return;
 		}
 
-		$paneRoot.classList.add("hide-pane-tabs");
 		if (!$openFileList || $openFileList === $globalOpenFileList) {
 			initFileTabContainer();
 		}
@@ -4178,6 +4178,26 @@ async function EditorManager($header, $body) {
 			openFileListPos === appSettings.OPEN_FILE_LIST_POS_HEADER ||
 			openFileListPos === appSettings.OPEN_FILE_LIST_POS_BOTTOM
 		);
+	}
+
+	function applyOpenFileListLayout(
+		openFileListPos = appSettings.value.openFileListPos,
+	) {
+		const showPaneTabs =
+			openFileListPos === appSettings.OPEN_FILE_LIST_POS_HEADER ||
+			openFileListPos === appSettings.OPEN_FILE_LIST_POS_BOTTOM;
+
+		$paneRoot.classList.toggle("hide-pane-tabs", !showPaneTabs);
+		if (openFileListPos === appSettings.OPEN_FILE_LIST_POS_BOTTOM) {
+			$paneRoot.dataset.tabsPosition = "bottom";
+		} else if (openFileListPos === appSettings.OPEN_FILE_LIST_POS_HEADER) {
+			// Header mode is rendered as the pane's top tab bar.
+			$paneRoot.dataset.tabsPosition = "top";
+		} else {
+			// Sidebar mode has no pane tab placement.
+			delete $paneRoot.dataset.tabsPosition;
+		}
+		root.setAttribute("open-file-list-pos", openFileListPos);
 	}
 
 	/**
@@ -4977,10 +4997,6 @@ async function EditorManager($header, $body) {
 		const { openFileListPos } = appSettings.value;
 		if (isPaneTabLayout()) {
 			$openFileList = $globalOpenFileList;
-			$paneRoot.dataset.tabsPosition =
-				openFileListPos === appSettings.OPEN_FILE_LIST_POS_BOTTOM
-					? "bottom"
-					: "top";
 			root.classList.remove("top-bar");
 			syncOpenFileList();
 		} else {
@@ -5000,7 +5016,6 @@ async function EditorManager($header, $body) {
 			syncOpenFileList();
 		}
 
-		root.setAttribute("open-file-list-pos", openFileListPos);
 		manager.emit("int-open-file-list", openFileListPos);
 	}
 
