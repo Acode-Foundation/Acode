@@ -241,6 +241,7 @@ public class Tee extends CordovaPlugin {
 
     private static void extractArchive(File archive, File destination) throws IOException {
         String destinationPath = destination.getCanonicalPath() + File.separator;
+        File manifestFile = new File(destination, "plugin.json").getCanonicalFile();
         int entryCount = 0;
         long extractedBytes = 0;
         boolean hasManifest = false;
@@ -265,7 +266,9 @@ public class Tee extends CordovaPlugin {
                 if (!output.getPath().startsWith(destinationPath)) {
                     throw new IOException("Plugin archive attempts to write outside its directory");
                 }
-                if ("plugin.json".equals(name)) {
+                // JSZip normalizes paths such as "./plugin.json", so compare
+                // the resolved safe path instead of the raw ZIP entry name.
+                if (!entry.isDirectory() && output.equals(manifestFile)) {
                     hasManifest = true;
                 }
 
