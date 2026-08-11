@@ -31,7 +31,7 @@ import Url from "utils/Url";
 import _addMenu from "./add-menu.hbs";
 import _addMenuHome from "./add-menu-home.hbs";
 import _template from "./fileBrowser.hbs";
-import _list from "./list.hbs";
+import _listItem from "./listItem.hbs";
 import util from "./util";
 
 /**
@@ -1720,14 +1720,43 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			if (doesReload) reload();
 		}
 
+		/**
+		 * @param {string} [msg]
+		 * @returns {HTMLDivElement | null}
+		 */
+		function createPlaceholderEl(msg) {
+			return <div id="placeholder">{msg}</div>;
+		}
+
+		/**
+		 * @returns {HTMLUListElement}
+		 */
+		function createListEl() {
+			return <ul className="list" id="list"></ul>;
+		}
+
+		/**
+		 * @param {object} obj
+		 * @returns {HTMLLIElement}
+		 */
+		function createListItemEl(obj) {
+			return helpers.parseHTML(mustache.render(_listItem, obj));
+		}
+
 		function render(dir) {
 			const { list, scroll } = dir;
-			const $list = helpers.parseHTML(
-				mustache.render(_list, {
-					msg: strings["empty folder message"],
-					list,
-				}),
-			);
+			const $list = createListEl();
+
+			if (list.length) {
+				for (const item of list) {
+					const el = createListItemEl(item);
+					$list.appendChild(el);
+				}
+			} else {
+				const msg = strings["empty folder message"];
+				const el = createPlaceholderEl(msg);
+				$list.appendChild(el);
+			}
 
 			if (document.getElementById("search-bar")) {
 				hideSearchBar();
