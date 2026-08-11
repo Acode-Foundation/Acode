@@ -19,12 +19,13 @@ import org.apache.cordova.*;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Enumeration;
 import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
+import java.util.zip.ZipFile;
 
 //auth plugin
 import com.foxdebug.acode.rk.auth.EncryptedPreferenceManager;
@@ -241,17 +242,14 @@ public class Tee extends CordovaPlugin {
 
     private static void extractArchive(File archive, File destination) throws IOException {
         String destinationPath = destination.getCanonicalPath() + File.separator;
-        File manifestFile = new File(destination, "plugin.json").getCanonicalFile();
         int entryCount = 0;
         long extractedBytes = 0;
-        boolean hasManifest = false;
         byte[] buffer = new byte[BUFFER_SIZE];
 
-        try (ZipInputStream input = new ZipInputStream(
-                new BufferedInputStream(new FileInputStream(archive))
-        )) {
-            ZipEntry entry;
-            while ((entry = input.getNextEntry()) != null) {
+        try (ZipFile zipFile = new ZipFile(archive)) {
+            Enumeration<? extends ZipEntry> entries = zipFile.entries();
+            while (entries.hasMoreElements()) {
+                ZipEntry entry = entries.nextElement();
                 entryCount += 1;
                 if (entryCount > MAX_ARCHIVE_ENTRIES) {
                     throw new IOException("Plugin archive contains too many files");
@@ -266,17 +264,10 @@ public class Tee extends CordovaPlugin {
                 if (!output.getPath().startsWith(destinationPath)) {
                     throw new IOException("Plugin archive attempts to write outside its directory");
                 }
-                // JSZip normalizes paths such as "./plugin.json", so compare
-                // the resolved safe path instead of the raw ZIP entry name.
-                if (!entry.isDirectory() && output.equals(manifestFile)) {
-                    hasManifest = true;
-                }
-
                 if (entry.isDirectory()) {
                     if (!output.mkdirs() && !output.isDirectory()) {
                         throw new IOException("Unable to create plugin directory");
                     }
-                    input.closeEntry();
                     continue;
                 }
 
@@ -290,9 +281,12 @@ public class Tee extends CordovaPlugin {
                 }
 
                 long entryBytes = 0;
-                try (BufferedOutputStream outputStream = new BufferedOutputStream(
-                        new FileOutputStream(output)
-                )) {
+                try (
+                        InputStream input = new BufferedInputStream(zipFile.getInputStream(entry));
+                        BufferedOutputStream outputStream = new BufferedOutputStream(
+                                new FileOutputStream(output)
+                        )
+                ) {
                     int count;
                     while ((count = input.read(buffer)) != -1) {
                         entryBytes += count;
@@ -303,13 +297,9 @@ public class Tee extends CordovaPlugin {
                         outputStream.write(buffer, 0, count);
                     }
                 }
-                input.closeEntry();
             }
         }
 
-        if (!hasManifest) {
-            throw new IOException("Plugin archive is missing plugin.json");
-        }
     }
 
     private static void writeManifest(File destination, String manifest) throws IOException {
