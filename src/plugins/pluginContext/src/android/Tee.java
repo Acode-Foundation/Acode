@@ -16,8 +16,6 @@ import android.content.Context;
 import android.net.Uri;
 import org.apache.cordova.*;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -35,7 +33,7 @@ public class Tee extends CordovaPlugin {
     private static final int MAX_ARCHIVE_ENTRIES = 16 * 1024;
     private static final long MAX_ARCHIVE_BYTES = 512L * 1024 * 1024;
     private static final long MAX_ENTRY_BYTES = 128L * 1024 * 1024;
-    private static final int BUFFER_SIZE = 32 * 1024;
+    private static final int BUFFER_SIZE = 64 * 1024;
     private static final Set<String> activeExtractions = ConcurrentHashMap.newKeySet();
 
     // pluginId : token
@@ -241,7 +239,6 @@ public class Tee extends CordovaPlugin {
     }
 
     private static void extractArchive(File archive, File destination) throws IOException {
-        String destinationPath = destination.getCanonicalPath() + File.separator;
         int entryCount = 0;
         long extractedBytes = 0;
         byte[] buffer = new byte[BUFFER_SIZE];
@@ -255,15 +252,9 @@ public class Tee extends CordovaPlugin {
                     throw new IOException("Plugin archive contains too many files");
                 }
 
-                String name = entry.getName().replace('\\', '/');
-                if (name.isEmpty() || name.startsWith("/") || name.matches("^[A-Za-z]:/.*") || name.indexOf('\0') >= 0) {
-                    throw new IOException("Plugin archive contains an unsafe path");
-                }
-
-                File output = new File(destination, name).getCanonicalFile();
-                if (!output.getPath().startsWith(destinationPath)) {
-                    throw new IOException("Plugin archive attempts to write outside its directory");
-                }
+                String name = normalizeArchivePath(entry.getName());
+                if (name == null) continue;
+                File output = new File(destination, name);
                 if (entry.isDirectory()) {
                     if (!output.mkdirs() && !output.isDirectory()) {
                         throw new IOException("Unable to create plugin directory");
@@ -282,10 +273,8 @@ public class Tee extends CordovaPlugin {
 
                 long entryBytes = 0;
                 try (
-                        InputStream input = new BufferedInputStream(zipFile.getInputStream(entry));
-                        BufferedOutputStream outputStream = new BufferedOutputStream(
-                                new FileOutputStream(output)
-                        )
+                        InputStream input = zipFile.getInputStream(entry);
+                        FileOutputStream outputStream = new FileOutputStream(output)
                 ) {
                     int count;
                     while ((count = input.read(buffer)) != -1) {
@@ -300,6 +289,30 @@ public class Tee extends CordovaPlugin {
             }
         }
 
+    }
+
+    /**
+     * The staging directory is newly created for each install, so rejecting
+     * absolute and parent paths is sufficient to keep every output below it.
+     * This avoids a canonical-path filesystem lookup for every archive entry.
+     */
+    private static String normalizeArchivePath(String path) throws IOException {
+        if (path == null) throw new IOException("Plugin archive contains an unsafe path");
+        String rawPath = path.replace('\\', '/');
+        if (rawPath.startsWith("/") || rawPath.matches("^[A-Za-z]:($|/.*)") || rawPath.indexOf('\0') >= 0) {
+            throw new IOException("Plugin archive contains an unsafe path");
+        }
+
+        StringBuilder normalizedPath = new StringBuilder(rawPath.length());
+        for (String segment : rawPath.split("/")) {
+            if (segment.isEmpty() || ".".equals(segment)) continue;
+            if ("..".equals(segment)) {
+                throw new IOException("Plugin archive attempts to write outside its directory");
+            }
+            if (normalizedPath.length() > 0) normalizedPath.append('/');
+            normalizedPath.append(segment);
+        }
+        return normalizedPath.length() == 0 ? null : normalizedPath.toString();
     }
 
     private static void writeManifest(File destination, String manifest) throws IOException {
