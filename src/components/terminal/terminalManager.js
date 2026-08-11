@@ -1126,7 +1126,7 @@ class TerminalManager {
 			throw new Error("A valid SFTP storage is required");
 		}
 
-		const { hostname } = Url.decodeUrl(url);
+		const { hostname, pathname } = Url.decodeUrl(url);
 		const profileId = hostname?.startsWith("profile-") ? hostname : null;
 		if (!profileId) {
 			throw new Error(
@@ -1138,7 +1138,11 @@ class TerminalManager {
 			...options,
 			name: options.name || `SSH - ${storageName || hostname}`,
 			serverMode: true,
-			remoteSsh: { profileId, displayName: storageName || "SSH" },
+			remoteSsh: {
+				profileId,
+				displayName: storageName || "SSH",
+				initialDirectory: pathname || "/",
+			},
 		});
 	}
 

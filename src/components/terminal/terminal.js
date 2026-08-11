@@ -19,6 +19,7 @@ import {
 import confirm from "dialogs/confirm";
 import fonts from "lib/fonts";
 import appSettings from "lib/settings";
+import { quotePosixShellArg } from "utils/shell";
 import LigaturesAddon from "./ligatures";
 import {
 	DEFAULT_TERMINAL_SETTINGS,
@@ -930,27 +931,43 @@ export default class TerminalComponent {
 
 		return new Promise((resolve, reject) => {
 			let settled = false;
+			const finishConnecting = (event) => {
+				this.remoteInputDisposable = this.terminal.onData((data) => {
+					if (!this.isConnected || !this.remoteShellId) return;
+					sftp.writeShell(
+						this.remoteShellId,
+						data,
+						() => {},
+						(error) => this.onError?.(error),
+					);
+				});
+				this.terminal.unicode.activeVersion = "11";
+				this.terminal.focus();
+				void this.fitAndResizeTerminal(true);
+				this.onConnect?.();
+				settled = true;
+				resolve(event.sessionId);
+			};
 			const onEvent = (event) => {
 				switch (event?.type) {
 					case "ready":
 						this.remoteShellId = event.sessionId;
 						this.pid = `ssh:${event.sessionId}`;
 						this.isConnected = true;
-						this.remoteInputDisposable = this.terminal.onData((data) => {
-							if (!this.isConnected || !this.remoteShellId) return;
-							sftp.writeShell(
-								this.remoteShellId,
-								data,
-								() => {},
-								(error) => this.onError?.(error),
-							);
-						});
-						this.terminal.unicode.activeVersion = "11";
-						this.terminal.focus();
-						void this.fitAndResizeTerminal(true);
-						this.onConnect?.();
-						settled = true;
-						resolve(event.sessionId);
+						if (profile.initialDirectory && profile.initialDirectory !== "/") {
+							try {
+								sftp.writeShell(
+									event.sessionId,
+									`cd ${quotePosixShellArg(profile.initialDirectory)}\n`,
+									() => finishConnecting(event),
+									onFailure,
+								);
+							} catch (error) {
+								onFailure(error?.message);
+							}
+							break;
+						}
+						finishConnecting(event);
 						break;
 
 					case "data": {
