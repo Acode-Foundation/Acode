@@ -197,7 +197,11 @@ export default async function installPlugin(
 				plugin,
 			);
 			loaderDialog?.setMessage("Extracting plugin files...");
-			await extractPluginArchive(archiveUrl, pluginDir, JSON.stringify(pluginJson));
+			await extractPluginArchive(
+				archiveUrl,
+				pluginDir,
+				JSON.stringify(pluginJson),
+			);
 			extractionComplete = true;
 
 			if (isDependency) {
@@ -210,7 +214,6 @@ export default async function installPlugin(
 				}
 				await loadPluginWithTimeout(id, true);
 			}
-
 		}
 	} catch (err) {
 		try {

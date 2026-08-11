@@ -10,8 +10,6 @@ import java.util.UUID;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import android.content.Context;
@@ -33,10 +31,11 @@ import com.foxdebug.acode.rk.auth.EncryptedPreferenceManager;
 
 public class Tee extends CordovaPlugin {
 
-    private static final int MAX_ARCHIVE_ENTRIES = 4096;
-    private static final long MAX_ARCHIVE_BYTES = 100L * 1024 * 1024;
-    private static final long MAX_ENTRY_BYTES = 32L * 1024 * 1024;
+    private static final int MAX_ARCHIVE_ENTRIES = 16 * 1024;
+    private static final long MAX_ARCHIVE_BYTES = 512L * 1024 * 1024;
+    private static final long MAX_ENTRY_BYTES = 128L * 1024 * 1024;
     private static final int BUFFER_SIZE = 32 * 1024;
+    private static final Set<String> activeExtractions = ConcurrentHashMap.newKeySet();
 
     // pluginId : token
     private /*static*/ final Map<String, String> tokenStore = new ConcurrentHashMap<>();
@@ -164,6 +163,7 @@ public class Tee extends CordovaPlugin {
                 File staging = null;
                 File backup = null;
                 File destination = null;
+                String destinationPath = null;
                 try {
                     File archive = webView.getResourceApi().mapUriToFile(Uri.parse(archiveUri));
                     destination = webView.getResourceApi().mapUriToFile(Uri.parse(destinationUri));
@@ -182,6 +182,12 @@ public class Tee extends CordovaPlugin {
                     if (!parent.exists() && !parent.mkdirs()) {
                         throw new IOException("Unable to create plugin directory");
                     }
+                    destinationPath = destination.getPath();
+                    if (!activeExtractions.add(destinationPath)) {
+                        throw new IOException("Plugin installation is already in progress");
+                    }
+
+                    restoreInterruptedInstall(parent, destination);
 
                     staging = new File(
                             parent,
@@ -224,6 +230,9 @@ public class Tee extends CordovaPlugin {
                     }
                     if (backup != null && backup.exists() && destination != null && !destination.exists()) {
                         backup.renameTo(destination);
+                    }
+                    if (destinationPath != null) {
+                        activeExtractions.remove(destinationPath);
                     }
                 }
             }
@@ -303,6 +312,37 @@ public class Tee extends CordovaPlugin {
     private static void writeManifest(File destination, String manifest) throws IOException {
         try (FileOutputStream output = new FileOutputStream(new File(destination, "plugin.json"))) {
             output.write(manifest.getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
+    /**
+     * A directory rename cannot be made atomic with replacing an existing
+     * directory. If Android stops the app between the two renames, restore the
+     * most recent backup before beginning another installation.
+     */
+    private static void restoreInterruptedInstall(File parent, File destination) throws IOException {
+        String backupPrefix = "." + destination.getName() + ".backup-";
+        File[] children = parent.listFiles();
+        if (children == null) return;
+
+        File newestBackup = null;
+        for (File child : children) {
+            if (!child.isDirectory() || !child.getName().startsWith(backupPrefix)) continue;
+            if (newestBackup == null || child.lastModified() > newestBackup.lastModified()) {
+                newestBackup = child;
+            }
+        }
+
+        if (!destination.exists() && newestBackup != null) {
+            if (!newestBackup.renameTo(destination)) {
+                throw new IOException("Unable to restore previous plugin installation");
+            }
+        }
+
+        for (File child : children) {
+            if (child.isDirectory() && child.getName().startsWith(backupPrefix)) {
+                deleteRecursively(child);
+            }
         }
     }
 
