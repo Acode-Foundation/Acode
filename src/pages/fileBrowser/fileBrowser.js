@@ -916,15 +916,15 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			/**
 			 * @type {HTMLElement}
 			 */
-			const $el = e.target;
+			const $el = e.target.closest(".tile, .nav");
+			const isTileEl = $el?.classList.contains("tile");
 
 			if (isSelectionMode) {
-				const $el2 = $el.closest(".tile");
-				if ($el2?.dataset.notSelectable != null) return;
-				const checkbox = $el2?.querySelector(".input-checkbox");
+				if (!isTileEl || $el.dataset.notSelectable != null) return;
+				const checkbox = $el.querySelector(".input-checkbox");
 				if (checkbox && !$el.closest(".selection-header")) {
 					checkbox.checked = !checkbox.checked;
-					const url = $el2.querySelector("data-url").textContent;
+					const url = $el.querySelector("data-url").textContent;
 					if (checkbox.checked) {
 						selectedItems.add(url);
 					} else {
@@ -936,7 +936,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				return;
 			}
 
-			let action = $el.getAttribute("action") || $el.dataset.action;
+			let action = $el?.getAttribute("action") || $el?.dataset.action;
 			if (!action) return;
 
 			let url = $el.dataset.url;
