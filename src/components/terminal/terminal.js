@@ -439,17 +439,22 @@ export default class TerminalComponent {
 	setupCopyPasteHandlers() {
 		// Add keyboard event listener to terminal element
 		this.terminal.attachCustomKeyEventHandler((event) => {
+			// xterm.js invokes this handler for both "keydown" and "keyup", so
+			// any side-effecting action must only run once, on keydown, or it
+			// fires twice per keypress (e.g. paste happening twice).
+			const isKeyDown = event.type === "keydown";
+
 			// Check for Ctrl+Shift+C (copy)
 			if (event.ctrlKey && event.shiftKey && event.key === "C") {
 				event.preventDefault();
-				this.copySelection();
+				if (isKeyDown) this.copySelection();
 				return false;
 			}
 
 			// Check for Ctrl+Shift+V (paste)
 			if (event.ctrlKey && event.shiftKey && event.key === "V") {
 				event.preventDefault();
-				this.pasteFromClipboard();
+				if (isKeyDown) this.pasteFromClipboard();
 				return false;
 			}
 
@@ -462,7 +467,7 @@ export default class TerminalComponent {
 				(event.key === "+" || event.key === "=")
 			) {
 				event.preventDefault();
-				this.increaseFontSize();
+				if (isKeyDown) this.increaseFontSize();
 				return false;
 			}
 
@@ -474,7 +479,7 @@ export default class TerminalComponent {
 				event.key === "-"
 			) {
 				event.preventDefault();
-				this.decreaseFontSize();
+				if (isKeyDown) this.decreaseFontSize();
 				return false;
 			}
 
@@ -494,8 +499,13 @@ export default class TerminalComponent {
 						binding.key === eventKey,
 				);
 
-				if (binding && executeCommand(binding.name)) {
-					return false;
+				if (binding) {
+					if (isKeyDown) {
+						this._lastAppKeybindingHandled = executeCommand(binding.name);
+					}
+					if (this._lastAppKeybindingHandled) {
+						return false;
+					}
 				}
 			}
 
