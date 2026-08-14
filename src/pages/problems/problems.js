@@ -1,4 +1,5 @@
 import "./style.scss";
+import { focusEditorIfEditable } from "cm/editorReadOnly";
 import { getLspDiagnostics } from "cm/lsp/diagnostics";
 import Page from "components/page";
 import actionStack from "lib/actionStack";
@@ -82,7 +83,7 @@ export default function Problems() {
 			$page.hide();
 
 			setTimeout(() => {
-				editorManager.editor.focus();
+				focusEditorIfEditable(editorManager.editor);
 			}, 100);
 		}
 	}

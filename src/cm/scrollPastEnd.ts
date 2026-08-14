@@ -14,8 +14,12 @@ export function horizontalScrollPastEnd(distance: number): Extension {
 	if (width === 0) return [];
 
 	return EditorView.theme({
-		".cm-content:not(.cm-lineWrapping)": {
-			paddingRight: `${width}px`,
+		".cm-content:not(.cm-lineWrapping) .cm-line": {
+			boxSizing: "border-box",
+			minWidth: "100%",
+			// Preserve CodeMirror's default 2px line-end padding.
+			paddingRight: `${width + 2}px`,
+			width: "fit-content",
 		},
 	});
 }

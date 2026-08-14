@@ -1332,6 +1332,13 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 						uuid: "terminal-public",
 					});
 				}
+
+				// Migrate any files left in the legacy alpine/home and
+				// alpine/root directories into public/MIGRATE so they are
+				// not hidden after the home/root/public merge.
+				if (typeof Terminal !== "undefined" && Terminal.migrateLegacyHome) {
+					Terminal.migrateLegacyHome();
+				}
 			} catch (err) {
 				console.error("Error while adding public directory", err);
 			}
@@ -1399,11 +1406,16 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					list = await listAllStorages();
 				} else {
 					const id = helpers.uuid();
+					let loaderTimeout = 10000;
+
+					if (["ftp:", "sftp:"].includes(Url.getProtocol(url))) {
+						loaderTimeout = 0;
+					}
 
 					progress[id] = true;
 					const timeout = setTimeout(() => {
 						loader.create(name, strings.loading + "...", {
-							timeout: 10000,
+							timeout: loaderTimeout,
 							callback() {
 								loader.destroy();
 								navigate("/", "/");

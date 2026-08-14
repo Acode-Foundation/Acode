@@ -1,3 +1,4 @@
+import { focusEditorIfEditable } from "cm/editorReadOnly";
 import config from "lib/config";
 import settings from "lib/settings";
 import { animate } from "motion";
@@ -96,7 +97,7 @@ export default function startDrag(e) {
 	const { editor, activeFile } = editorManager;
 
 	if (activeFile.focusedBefore) {
-		editor.focus();
+		focusEditorIfEditable(editor);
 	}
 
 	if (settings.value.vibrateOnTap) {

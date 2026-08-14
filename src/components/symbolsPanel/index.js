@@ -1,4 +1,5 @@
 import "./styles.scss";
+import { focusEditorIfEditable } from "cm/editorReadOnly";
 import { fetchDocumentSymbols, navigateToSymbol } from "cm/lsp";
 import actionStack from "lib/actionStack";
 
@@ -417,7 +418,7 @@ function createSymbolsPanel() {
 		}
 
 		if (state.editorView) {
-			state.editorView.focus();
+			focusEditorIfEditable(state.editorView);
 		}
 	}
 

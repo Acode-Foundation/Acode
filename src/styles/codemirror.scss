@@ -1,3 +1,5 @@
+@use "./mixins.scss";
+
 .editor-container {
   position: relative;
 }
@@ -141,6 +143,10 @@ body.resizing-editor-pane {
   li.tile {
     min-width: min(var(--file-tab-width), 44%);
     max-width: var(--file-tab-width);
+
+    &.loading {
+      @include mixins.bar-loader(30%, 2px);
+    }
   }
 }
 

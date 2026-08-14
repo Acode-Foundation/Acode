@@ -1,10 +1,11 @@
 import { redoDepth, undoDepth } from "@codemirror/commands";
+import { focusEditorIfEditable } from "cm/editorReadOnly";
 import quickTools from "components/quickTools";
 import { description } from "components/quickTools/items";
 import { hideTooltip, showTooltip } from "components/tooltip";
 import config from "lib/config";
 import appSettings from "lib/settings";
-import actions, { key } from "./quickTools";
+import actions, { cancelQuickToolsModifierInput, key } from "./quickTools";
 
 const CONTEXT_MENU_TIMEOUT = 500;
 const MOVE_X_THRESHOLD = 50;
@@ -101,6 +102,7 @@ export default function init() {
 	});
 
 	editorManager.on("editor-state-changed", updateHistoryButtons);
+	editorManager.on("switch-file", cancelQuickToolsModifierInput);
 
 	appSettings.on("update:quicktoolsItems:after", () => {
 		setTimeout(updateHistoryButtons, 100);
@@ -360,7 +362,7 @@ function oncontextmenu(e) {
 	};
 
 	if (activeFile.focused) {
-		editor.focus();
+		focusEditorIfEditable(editor);
 	}
 	dispatchEventWithTimeout();
 }

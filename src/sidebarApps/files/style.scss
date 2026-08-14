@@ -64,6 +64,13 @@
     }
   }
 
+  > .list > .tile[data-type="root"] > .text {
+    min-width: 0;
+    width: auto !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
   /* Add indent guides for folders (excluding first level) */
   .list.collapsible > ul > .collapsible > ul {
     position: relative;
