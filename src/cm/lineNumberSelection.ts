@@ -1,5 +1,6 @@
 import { EditorSelection } from "@codemirror/state";
 import type { BlockInfo, EditorView } from "@codemirror/view";
+import { focusEditorIfEditable } from "cm/editorReadOnly";
 
 type LineInfo = Pick<BlockInfo, "from" | "to"> | null | undefined;
 
@@ -115,7 +116,7 @@ export function handleLineNumberClick(
 			: createLineSelection(range),
 		userEvent: extendSelection ? "select.extend.pointer" : "select.pointer",
 	});
-	view.focus();
+	focusEditorIfEditable(view);
 	return true;
 }
 

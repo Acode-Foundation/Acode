@@ -2,6 +2,10 @@ import fsOperation from "fileSystem";
 // CodeMirror imports for document state management
 import { EditorState } from "@codemirror/state";
 import {
+	focusEditorIfEditable,
+	reconfigureEditorReadOnly,
+} from "cm/editorReadOnly";
+import {
 	clearSelection,
 	getDocText,
 	restoreFolds,
@@ -1419,11 +1423,13 @@ export default class EditorFile {
 						: editorManager.activeFile?.id === this.id
 							? editorManager.editor
 							: null;
-				targetEditor?.dispatch({
-					effects: readOnlyCompartment.reconfigure(
-						EditorState.readOnly.of(readOnly),
-					),
-				});
+				if (targetEditor) {
+					reconfigureEditorReadOnly(
+						targetEditor,
+						readOnlyCompartment,
+						readOnly,
+					);
+				}
 			}
 		} catch (error) {
 			console.warn(
@@ -1512,7 +1518,7 @@ export default class EditorFile {
 		if (this.type === "editor") {
 			editorManager.container.style.display = "block";
 			if (this.focused && editorHadDomFocus && !isTouchDevice()) {
-				editor.focus();
+				focusEditorIfEditable(editor);
 			} else {
 				editor.contentDOM.blur();
 				// Ensure any native DOM selection is cleared on blur to avoid sticky selection handles

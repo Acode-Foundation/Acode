@@ -1,4 +1,5 @@
 import { executeCommand, getRegisteredCommands } from "cm/commandRegistry";
+import { focusEditorIfEditable } from "cm/editorReadOnly";
 import palette from "components/palette";
 import helpers from "utils/helpers";
 
@@ -8,7 +9,7 @@ export default async function commandPalette() {
 	const wasFocused = editor?.hasFocus ?? false;
 
 	palette(generateHints, onselect, strings["type command"], () => {
-		if (wasFocused) editor?.focus();
+		if (wasFocused && editor) focusEditorIfEditable(editor);
 	});
 
 	function generateHints() {

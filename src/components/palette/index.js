@@ -1,4 +1,5 @@
 import "./style.scss";
+import { focusEditorIfEditable } from "cm/editorReadOnly";
 import inputhints from "components/inputhints";
 import keyboardHandler from "handlers/keyboard";
 import actionStack from "lib/actionStack";
@@ -179,7 +180,7 @@ export default function palette(
 		if (!isChained) {
 			const { activeFile, editor } = editorManager;
 			if (activeFile.wasFocused) {
-				editor.focus();
+				focusEditorIfEditable(editor);
 			}
 		}
 

@@ -6,6 +6,7 @@
 
 import { LSPPlugin } from "@codemirror/lsp-client";
 import type { EditorView } from "@codemirror/view";
+import { focusEditorIfEditable } from "cm/editorReadOnly";
 import type {
 	DocumentSymbol,
 	Position,
@@ -302,7 +303,7 @@ export async function navigateToSymbol(
 			scrollIntoView: true,
 		});
 
-		view.focus();
+		focusEditorIfEditable(view);
 		return true;
 	} catch (error) {
 		console.warn("Failed to navigate to symbol:", error);
