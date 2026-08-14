@@ -205,6 +205,7 @@ async function EditorManager($header, $body) {
 		"rename-file": [],
 		"save-file": [],
 		"file-loaded": [],
+		"file-loading-preview": [],
 		"file-content-changed": [],
 		"add-folder": [],
 		"remove-folder": [],
@@ -2828,9 +2829,9 @@ async function EditorManager($header, $body) {
 		}
 	}
 
-	function showLoadingEditor(file) {
+	function showLoadingEditor(file, text = "") {
 		const loadingState = EditorState.create({
-			doc: "",
+			doc: text,
 			extensions: [
 				themeCompartment.of(getConfiguredThemeExtension()),
 				...getBaseExtensionsFromOptions(),
@@ -3667,6 +3668,18 @@ async function EditorManager($header, $body) {
 			applyFileToPaneEditor(file, pane);
 		} else if (manager.activeFile?.id === file.id) {
 			applyFileToEditor(file);
+		}
+	});
+
+	manager.on(["file-loading-preview"], (file, text) => {
+		if (!file || file.type !== "editor" || !file.loading) return;
+		const pane = getFilePane(file);
+		if (!pane?.editor || pane.activeFile?.id !== file.id) return;
+
+		if (pane === getActivePane()) {
+			showLoadingEditor(file, text);
+		} else {
+			withPaneEditorContext(pane, () => showLoadingEditor(file, text));
 		}
 	});
 

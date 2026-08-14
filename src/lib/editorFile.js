@@ -21,6 +21,7 @@ import tag from "html-tag-js";
 import mimeTypes from "mime-types";
 import helpers from "utils/helpers";
 import Path from "utils/Path";
+import { readRemoteFilePreview } from "utils/remoteFilePreview";
 import Url from "utils/Url";
 import config from "./config";
 import { isInitialPluginLoadComplete } from "./loadPlugins";
@@ -1762,6 +1763,8 @@ export default class EditorFile {
 	async #loadText() {
 		if (this.#type !== "editor") return;
 		let value = "";
+		const protocol = this.uri ? Url.getProtocol(this.uri) : "";
+		const isRemoteFile = protocol === "ftp:" || protocol === "sftp:";
 
 		const { cursorPos, scrollLeft, scrollTop, folds, editable } =
 			this.#loadOptions;
@@ -1774,20 +1777,49 @@ export default class EditorFile {
 		}
 		this.loading = true;
 		this.markChanged = false;
+		if (isRemoteFile) this.#setRemoteLoading(true);
 		this.#emit("loadstart", createFileEvent(this));
 
 		try {
 			const cacheFs = fsOperation(this.cacheFile);
-			const cacheExists = await cacheFs.exists();
+			let file = null;
+			let cacheExists;
 			let loadedMtime = this.savedMtime;
 			let savedDoc = null;
 
-			if (cacheExists) {
-				value = await cacheFs.readFile(this.encoding);
+			if (isRemoteFile) {
+				file = fsOperation(this.uri);
+				let transportCache = null;
+				try {
+					const localName = file?.localName;
+					if (localName) {
+						transportCache = fsOperation(localName);
+					}
+				} catch (_error) {
+					// Transport cache access is optional; continue with the remote load.
+				}
+
+				const preview = await readRemoteFilePreview({
+					editorCache: cacheFs,
+					transportCache,
+					encoding: this.encoding,
+				});
+				cacheExists = preview.editorCacheExists;
+				if (cacheExists) value = preview.text;
+
+				if (preview.text !== null) {
+					this.session = EditorState.create({ doc: preview.text });
+					editorManager.emit("file-loading-preview", this, preview.text);
+				}
+			} else {
+				cacheExists = await cacheFs.exists();
+				if (cacheExists) {
+					value = await cacheFs.readFile(this.encoding);
+				}
 			}
 
 			if (this.uri) {
-				const file = fsOperation(this.uri);
+				file ||= fsOperation(this.uri);
 				const fileExists = await file.exists();
 				if (!fileExists && cacheExists) {
 					this.deletedFile = true;
@@ -1842,7 +1874,19 @@ export default class EditorFile {
 			window.log("error", "Unable to load: " + this.filename);
 			window.log("error", error);
 		} finally {
+			if (isRemoteFile) this.#setRemoteLoading(false);
 			this.#emit("loadend", createFileEvent(this));
+		}
+	}
+
+	#setRemoteLoading(loading) {
+		if (!this.#tab) return;
+
+		this.#tab.classList.toggle("loading", loading);
+		if (loading) {
+			this.#tab.setAttribute("aria-busy", "true");
+		} else {
+			this.#tab.removeAttribute("aria-busy");
 		}
 	}
 
