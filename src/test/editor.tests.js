@@ -841,7 +841,10 @@ export async function runCodeMirrorTests(writeOutput) {
 						test.assertEqual(view.state.doc.toString(), doc);
 						test.assertEqual(view.state.selection.main.from, from);
 						test.assertEqual(view.state.selection.main.to, to);
-						test.assert(!view.hasFocus, "Read-only Copy must not focus the editor");
+						test.assert(
+							!view.hasFocus,
+							"Read-only Copy must not focus the editor",
+						);
 
 						quickToolsActions("ctrl");
 						dispatchQuickToolsTextInput("x");
@@ -855,7 +858,10 @@ export async function runCodeMirrorTests(writeOutput) {
 						test.assertEqual(view.state.doc.toString(), doc);
 						test.assertEqual(view.state.selection.main.from, from);
 						test.assertEqual(view.state.selection.main.to, to);
-						test.assert(!view.hasFocus, "Read-only Shift must remain unfocused");
+						test.assert(
+							!view.hasFocus,
+							"Read-only Shift must remain unfocused",
+						);
 					} finally {
 						clipboard.copy = originalCopy;
 						clearQuickToolsModifierState();
