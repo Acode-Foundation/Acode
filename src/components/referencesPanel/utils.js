@@ -1,4 +1,5 @@
 import { EditorView } from "@codemirror/view";
+import { focusEditorIfEditable } from "cm/editorReadOnly";
 import Sidebar from "components/sidebar";
 import DOMPurify from "dompurify";
 import openFile from "lib/openFile";
@@ -128,7 +129,7 @@ export async function navigateToReference(ref) {
 			selection: { anchor: from, head: to },
 			effects: EditorView.scrollIntoView(from, { y: "center" }),
 		});
-		editor.focus();
+		focusEditorIfEditable(editor);
 	} catch (error) {
 		console.error("Failed to navigate to reference:", error);
 	}

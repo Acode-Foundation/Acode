@@ -3,6 +3,7 @@ import {
 	EditorView,
 	type EditorView as CodeMirrorEditorView,
 } from "@codemirror/view";
+import { blurEditorIfReadOnly, focusEditorIfEditable } from "cm/editorReadOnly";
 
 export interface QuickToolsModifierInputContext {
 	from: number;
@@ -38,12 +39,42 @@ export function isSelectedRangeDeletion(
 	return input.from <= selection.from && input.to >= selection.to;
 }
 
+export function canQuickToolsEdit(view: CodeMirrorEditorView): boolean {
+	return !view.state.readOnly;
+}
+
+/** Use the capture input for read-only shortcuts without focusing the editor. */
+export function focusQuickToolsModifierInput(
+	view: CodeMirrorEditorView,
+	captureInput: HTMLElement,
+): boolean {
+	if (!view.state.readOnly) {
+		focusEditorIfEditable(view);
+		return false;
+	}
+	blurEditorIfReadOnly(view, true);
+	captureInput.focus();
+	return true;
+}
+
+/** Close a read-only shortcut capture without disturbing intentional UI focus. */
+export function finishQuickToolsModifierInput(
+	view: CodeMirrorEditorView,
+	captureInput: HTMLElement,
+): boolean {
+	if (!view.state.readOnly) return false;
+	captureInput.blur();
+	blurEditorIfReadOnly(view, true);
+	return true;
+}
+
 export default function quickToolsModifierInput(): Extension {
 	return EditorView.inputHandler.of((view, from, to, text) => {
 		// When a DOM-derived input is handled without changing state, CodeMirror's
 		// DOM observer performs its own view.update([]) reconciliation. Dispatching
 		// here would make that observer think state changed and can leave Android's
 		// native replacement in the content DOM.
-		return !!handleTextInput(view, { from, to, text });
+		const handled = !!handleTextInput(view, { from, to, text });
+		return view.state.readOnly || handled;
 	});
 }

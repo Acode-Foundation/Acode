@@ -1,3 +1,4 @@
+import { focusEditorIfEditable } from "cm/editorReadOnly";
 import appSettings from "lib/settings";
 
 const exec = (command) => {
@@ -9,7 +10,7 @@ const exec = (command) => {
 		editor.setSelection(true);
 		editor.setMenu(true);
 	}
-	editor.focus();
+	focusEditorIfEditable(editor);
 };
 
 const showCodeActions = async () => {

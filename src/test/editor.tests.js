@@ -22,6 +22,10 @@ import { Compartment, EditorSelection, EditorState } from "@codemirror/state";
 import { EditorView, keymap, runScopeHandlers } from "@codemirror/view";
 import createBaseExtensions from "cm/baseExtensions";
 import {
+	createEditorReadOnlyExtension,
+	reconfigureEditorReadOnly,
+} from "cm/editorReadOnly";
+import {
 	copyLineDownFoldAware,
 	copyLineUpFoldAware,
 	deleteLineFoldAware,
@@ -752,6 +756,10 @@ export async function runCodeMirrorTests(writeOutput) {
 				test,
 				async (view) => {
 					const clipboard = cordova?.plugins?.clipboard;
+					test.assert(
+						typeof clipboard?.copy === "function",
+						"Cordova clipboard should be available",
+					);
 					const originalCopy = clipboard.copy;
 					let copied = "";
 
@@ -796,6 +804,68 @@ export async function runCodeMirrorTests(writeOutput) {
 				},
 				doc,
 				[quickToolsModifierInput()],
+			);
+		},
+	);
+
+	runner.test(
+		"Quick tools capture keeps read-only selections unchanged",
+		async (test) => {
+			const doc = 'import { history } from "@codemirror/commands";';
+			const readOnlyCompartment = new Compartment();
+			await withEditor(
+				test,
+				async (view) => {
+					const clipboard = cordova?.plugins?.clipboard;
+					test.assert(
+						typeof clipboard?.copy === "function",
+						"Cordova clipboard should be available",
+					);
+					const originalCopy = clipboard.copy;
+					const from = doc.indexOf("codemirror");
+					const to = from + "codemirror".length;
+					let copied = "";
+
+					try {
+						clipboard.copy = (text) => {
+							copied = text;
+						};
+						view.dispatch({ selection: { anchor: from, head: to } });
+						view.focus();
+						clearQuickToolsModifierState();
+						quickToolsActions("ctrl");
+						reconfigureEditorReadOnly(view, readOnlyCompartment, true);
+
+						dispatchQuickToolsTextInput("c");
+						test.assertEqual(copied, "codemirror");
+						test.assertEqual(view.state.doc.toString(), doc);
+						test.assertEqual(view.state.selection.main.from, from);
+						test.assertEqual(view.state.selection.main.to, to);
+						test.assert(!view.hasFocus, "Read-only Copy must not focus the editor");
+
+						quickToolsActions("ctrl");
+						dispatchQuickToolsTextInput("x");
+						test.assertEqual(view.state.doc.toString(), doc);
+						test.assertEqual(view.state.selection.main.from, from);
+						test.assertEqual(view.state.selection.main.to, to);
+						test.assert(!view.hasFocus, "Read-only Cut must remain unfocused");
+
+						quickToolsActions("shift");
+						dispatchQuickToolsTextInput("b");
+						test.assertEqual(view.state.doc.toString(), doc);
+						test.assertEqual(view.state.selection.main.from, from);
+						test.assertEqual(view.state.selection.main.to, to);
+						test.assert(!view.hasFocus, "Read-only Shift must remain unfocused");
+					} finally {
+						clipboard.copy = originalCopy;
+						clearQuickToolsModifierState();
+					}
+				},
+				doc,
+				[
+					quickToolsModifierInput(),
+					readOnlyCompartment.of(createEditorReadOnlyExtension(false)),
+				],
 			);
 		},
 	);

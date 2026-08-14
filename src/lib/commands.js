@@ -1,5 +1,6 @@
 import fsOperation from "fileSystem";
 import { selectAll } from "@codemirror/commands";
+import { focusEditorIfEditable } from "cm/editorReadOnly";
 import Sidebar from "components/sidebar";
 import confirm from "dialogs/confirm";
 import prompt from "dialogs/prompt";
@@ -565,7 +566,7 @@ export default {
 			);
 			res = await color(defaultColor, () => {
 				if (wasFocused) {
-					editor.focus();
+					focusEditorIfEditable(editor);
 				}
 			});
 		} catch (_) {

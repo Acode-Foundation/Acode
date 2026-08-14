@@ -1,5 +1,6 @@
 import { LSPPlugin } from "@codemirror/lsp-client";
 import { EditorView } from "@codemirror/view";
+import { focusEditorIfEditable } from "cm/editorReadOnly";
 import toast from "components/toast";
 import select from "dialogs/select";
 import type {
@@ -409,7 +410,7 @@ export async function showCodeActionsMenu(view: EditorView): Promise<boolean> {
 			const index = Number.parseInt(String(result), 10);
 			if (!Number.isNaN(index) && index >= 0 && index < items.length) {
 				await executeCodeAction(view, items[index]);
-				view.focus();
+				focusEditorIfEditable(view);
 				return true;
 			}
 		}
@@ -417,7 +418,7 @@ export async function showCodeActionsMenu(view: EditorView): Promise<boolean> {
 		// User cancelled selection
 	}
 
-	view.focus();
+	focusEditorIfEditable(view);
 	return false;
 }
 

@@ -1565,12 +1565,9 @@
   color: #78dc50;
 }
 
-.file_type_typescript:before {
-  content: "\e98a";
-  color: #007acc;
-}
-
-.file_type_ts:before {
+.file_type_typescript:before,
+.file_type_ts:before,
+.file_type_tsx:before {
   content: "\e98a";
   color: #007acc;
 }

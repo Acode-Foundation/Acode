@@ -38,6 +38,12 @@ import {
 	registerExternalCommand,
 	removeExternalCommand,
 } from "cm/commandRegistry";
+import {
+	blurEditorIfReadOnly,
+	createEditorReadOnlyExtension,
+	focusEditorIfEditable,
+	reconfigureEditorReadOnly,
+} from "cm/editorReadOnly";
 import { handleLineNumberClick } from "cm/lineNumberSelection";
 import localWordCompletions, {
 	localWordCompletionSource,
@@ -205,6 +211,7 @@ async function EditorManager($header, $body) {
 		"rename-file": [],
 		"save-file": [],
 		"file-loaded": [],
+		"file-loading-preview": [],
 		"file-content-changed": [],
 		"add-folder": [],
 		"remove-folder": [],
@@ -864,7 +871,7 @@ async function EditorManager($header, $body) {
 				selection: EditorSelection.cursor(pos),
 				userEvent: "select.pointer",
 			});
-			view.focus();
+			focusEditorIfEditable(view);
 			event.preventDefault();
 			return true;
 		},
@@ -1662,7 +1669,7 @@ async function EditorManager($header, $body) {
 				searchExtension: search(),
 				// Ensure read-only can be toggled later via compartment
 				readOnlyExtension: readOnlyCompartment.of(
-					EditorState.readOnly.of(false),
+					createEditorReadOnlyExtension(false),
 				),
 				// Editor options driven by settings via compartments
 				optionExtensions: getBaseExtensionsFromOptions(),
@@ -1848,7 +1855,7 @@ async function EditorManager($header, $body) {
 				selection: { anchor: pos, head: pos },
 				effects: EditorView.scrollIntoView(pos, { y: "center" }),
 			});
-			editor.focus();
+			focusEditorIfEditable(editor);
 			return true;
 		} catch (error) {
 			console.error("Error in gotoLine:", error);
@@ -2178,7 +2185,7 @@ async function EditorManager($header, $body) {
 							selection: { anchor: pos, head: pos },
 							effects: EditorView.scrollIntoView(pos, { y: "center" }),
 						});
-						targetEditor.focus();
+						focusEditorIfEditable(targetEditor);
 						return true;
 					} catch (error) {
 						console.error("Error in gotoLine:", error);
@@ -2815,9 +2822,7 @@ async function EditorManager($header, $body) {
 		}
 		try {
 			const ro = !file.editable || !!file.loading;
-			targetEditor.dispatch({
-				effects: readOnlyCompartment.reconfigure(EditorState.readOnly.of(ro)),
-			});
+			reconfigureEditorReadOnly(targetEditor, readOnlyCompartment, ro);
 			file.session = targetEditor.state;
 		} catch (error) {
 			warnRecoverable(
@@ -2828,20 +2833,20 @@ async function EditorManager($header, $body) {
 		}
 	}
 
-	function showLoadingEditor(file) {
+	function showLoadingEditor(file, text = "") {
 		const loadingState = EditorState.create({
-			doc: "",
+			doc: text,
 			extensions: [
 				themeCompartment.of(getConfiguredThemeExtension()),
 				...getBaseExtensionsFromOptions(),
 				languageCompartment.of([]),
 				lspCompartment.of([]),
-				readOnlyCompartment.of(EditorState.readOnly.of(true)),
-				EditorView.editable.of(false),
+				readOnlyCompartment.of(createEditorReadOnlyExtension(true)),
 				placeholder(`Loading ${file.filename || "file"}...`),
 			],
 		});
 		editor.setState(loadingState);
+		blurEditorIfReadOnly(editor, true);
 		touchSelectionController?.onSessionChanged();
 	}
 
@@ -2971,7 +2976,7 @@ async function EditorManager($header, $body) {
 		// Apply read-only state based on file.editable/loading using Compartment
 		try {
 			const ro = !file.editable || !!file.loading;
-			exts.push(readOnlyCompartment.of(EditorState.readOnly.of(ro)));
+			exts.push(readOnlyCompartment.of(createEditorReadOnlyExtension(ro)));
 		} catch (e) {
 			// safe to ignore; editor will remain editable by default
 		}
@@ -3670,6 +3675,18 @@ async function EditorManager($header, $body) {
 		}
 	});
 
+	manager.on(["file-loading-preview"], (file, text) => {
+		if (!file || file.type !== "editor" || !file.loading) return;
+		const pane = getFilePane(file);
+		if (!pane?.editor || pane.activeFile?.id !== file.id) return;
+
+		if (pane === getActivePane()) {
+			showLoadingEditor(file, text);
+		} else {
+			withPaneEditorContext(pane, () => showLoadingEditor(file, text));
+		}
+	});
+
 	manager.on(
 		["file-content-changed", "rename-file", "save-file", "update:pin-tab"],
 		markGlobalOpenFileListMirrorDirty,
@@ -3680,9 +3697,7 @@ async function EditorManager($header, $body) {
 		if (file?.type !== "editor") return;
 		try {
 			const ro = !file.editable || !!file.loading;
-			editor.dispatch({
-				effects: readOnlyCompartment.reconfigure(EditorState.readOnly.of(ro)),
-			});
+			reconfigureEditorReadOnly(editor, readOnlyCompartment, ro);
 			touchSelectionController?.onStateChanged();
 		} catch (error) {
 			warnRecoverable(
@@ -4221,9 +4236,14 @@ async function EditorManager($header, $body) {
 		function syncScrollUi() {
 			if (pane !== activePane) return;
 			scrollSyncRaf = 0;
+			if (pane.activeFile?.type !== "editor") {
+				$hScrollbar.hideImmediately();
+				$vScrollbar.hideImmediately();
+				return;
+			}
 			editor.requestMeasure({
 				read: () => readScrollMetrics(),
-				write: updateScrollbarsFromMetrics,
+				write: (metrics) => updateScrollbarsFromMetrics(metrics, pane),
 			});
 		}
 
@@ -4262,6 +4282,56 @@ async function EditorManager($header, $body) {
 
 		// Attach native DOM event listeners directly to the editor's contentDOM
 		const contentDOM = editor.contentDOM;
+		let readOnlyNativeContextActive = false;
+		let readOnlyNativeContextResetTimer = null;
+		const isReadOnlyEditor = () => {
+			const activeFile = pane.activeFile;
+			return (
+				editor.state.readOnly ||
+				activeFile?.editable === false ||
+				!!activeFile?.loading
+			);
+		};
+		const clearFileFocusState = () => {
+			const activeFile = pane.activeFile;
+			if (!activeFile) return;
+			activeFile.focused = false;
+			activeFile.focusedBefore = false;
+		};
+		const clearPendingKeyboardHideBlur = () => {
+			if (!pendingKeyboardHideBlur) return;
+			keyboardHandler.off("keyboardHide", pendingKeyboardHideBlur);
+			pendingKeyboardHideBlur = null;
+		};
+		const releaseReadOnlyNativeContext = () => {
+			clearTimeout(readOnlyNativeContextResetTimer);
+			readOnlyNativeContextResetTimer = null;
+			if (!readOnlyNativeContextActive) return;
+			readOnlyNativeContextActive = false;
+			setNativeContextMenuDisabled(false);
+		};
+		const scheduleReadOnlyNativeContextRelease = () => {
+			if (!readOnlyNativeContextActive) return;
+			clearTimeout(readOnlyNativeContextResetTimer);
+			readOnlyNativeContextResetTimer = setTimeout(
+				releaseReadOnlyNativeContext,
+				800,
+			);
+		};
+		function handleContentPointerDown() {
+			if (!isReadOnlyEditor()) return;
+			clearTimeout(readOnlyNativeContextResetTimer);
+			readOnlyNativeContextResetTimer = null;
+			readOnlyNativeContextActive = true;
+			setNativeContextMenuDisabled(true);
+		}
+		function handleDocumentPointerDown(event) {
+			if (!readOnlyNativeContextActive) return;
+			if (event.target instanceof Node && editor.dom.contains(event.target)) {
+				return;
+			}
+			releaseReadOnlyNativeContext();
+		}
 		const isFocused =
 			contentDOM === document.activeElement ||
 			contentDOM.contains(document.activeElement);
@@ -4269,6 +4339,16 @@ async function EditorManager($header, $body) {
 
 		function handleContentFocus(_event) {
 			setActivePane(pane);
+			if (isReadOnlyEditor()) {
+				if (!readOnlyNativeContextActive) {
+					setNativeContextMenuDisabled(false);
+				}
+				clearPendingKeyboardHideBlur();
+				clearFileFocusState();
+				blurEditorIfReadOnly(editor, true);
+				touchSelectionController?.onStateChanged();
+				return;
+			}
 			setNativeContextMenuDisabled(true);
 			const activeFile = pane.activeFile;
 			if (activeFile) {
@@ -4278,17 +4358,18 @@ async function EditorManager($header, $body) {
 		}
 
 		async function handleContentBlur(_event) {
-			setNativeContextMenuDisabled(false);
+			if (!readOnlyNativeContextActive) {
+				setNativeContextMenuDisabled(false);
+			}
 			touchSelectionController?.setMenu(false);
+			if (isReadOnlyEditor()) {
+				clearPendingKeyboardHideBlur();
+				clearFileFocusState();
+				return;
+			}
 			const { hardKeyboardHidden, keyboardHeight } =
 				await getSystemConfiguration();
-			const blur = () => {
-				const activeFile = pane.activeFile;
-				if (activeFile) {
-					activeFile.focused = false;
-					activeFile.focusedBefore = false;
-				}
-			};
+			const blur = clearFileFocusState;
 			if (
 				hardKeyboardHidden === HARDKEYBOARDHIDDEN_NO &&
 				keyboardHeight < 100
@@ -4305,9 +4386,7 @@ async function EditorManager($header, $body) {
 				}
 				blur();
 			};
-			if (pendingKeyboardHideBlur) {
-				keyboardHandler.off("keyboardHide", pendingKeyboardHideBlur);
-			}
+			clearPendingKeyboardHideBlur();
 			pendingKeyboardHideBlur = onKeyboardHide;
 			keyboardHandler.on("keyboardHide", onKeyboardHide);
 		}
@@ -4321,6 +4400,18 @@ async function EditorManager($header, $body) {
 		contentDOM.addEventListener("focus", handleContentFocus);
 		contentDOM.addEventListener("blur", handleContentBlur);
 		contentDOM.addEventListener("keydown", handleContentKeydown);
+		contentDOM.addEventListener("pointerdown", handleContentPointerDown, true);
+		document.addEventListener("pointerdown", handleDocumentPointerDown, true);
+		document.addEventListener(
+			"pointerup",
+			scheduleReadOnlyNativeContextRelease,
+			true,
+		);
+		document.addEventListener(
+			"pointercancel",
+			scheduleReadOnlyNativeContextRelease,
+			true,
+		);
 
 		pane.cleanupEditorListeners = () => {
 			scroller?.removeEventListener("scroll", handleEditorScroll);
@@ -4330,6 +4421,27 @@ async function EditorManager($header, $body) {
 			contentDOM.removeEventListener("focus", handleContentFocus);
 			contentDOM.removeEventListener("blur", handleContentBlur);
 			contentDOM.removeEventListener("keydown", handleContentKeydown);
+			contentDOM.removeEventListener(
+				"pointerdown",
+				handleContentPointerDown,
+				true,
+			);
+			document.removeEventListener(
+				"pointerdown",
+				handleDocumentPointerDown,
+				true,
+			);
+			document.removeEventListener(
+				"pointerup",
+				scheduleReadOnlyNativeContextRelease,
+				true,
+			);
+			document.removeEventListener(
+				"pointercancel",
+				scheduleReadOnlyNativeContextRelease,
+				true,
+			);
+			releaseReadOnlyNativeContext();
 			clearTimeout(scrollTimeout);
 			if (scrollSyncRaf) {
 				cancelAnimationFrame(scrollSyncRaf);
@@ -4565,8 +4677,15 @@ async function EditorManager($header, $body) {
 		};
 	}
 
-	function updateScrollbarsFromMetrics(metrics) {
+	function updateScrollbarsFromMetrics(metrics, sourcePane) {
 		if (!metrics) return;
+		if (sourcePane !== activePane || sourcePane.activeFile?.type !== "editor") {
+			if (sourcePane === activePane) {
+				$hScrollbar.hideImmediately();
+				$vScrollbar.hideImmediately();
+			}
+			return;
+		}
 
 		const maxScrollTop = Math.max(
 			metrics.scrollHeight - metrics.clientHeight,
@@ -4886,6 +5005,8 @@ async function EditorManager($header, $body) {
 		} else {
 			pane.touchSelectionController?.setEnabled(false);
 			pane.editorContainer.style.display = "none";
+			$hScrollbar.hideImmediately();
+			$vScrollbar.hideImmediately();
 			if (file.content) {
 				file.content.style.display = "block";
 				if (file.content.parentElement !== pane.content) {
