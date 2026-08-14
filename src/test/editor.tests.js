@@ -35,6 +35,7 @@ import {
 	keyBindingsConflict,
 	toCodeMirrorKey,
 } from "cm/keyBindingUtils";
+import quickToolsModifierInput from "cm/quickToolsModifierInput";
 import {
 	findQuickToolCommand,
 	getShortcutAlternatives,
@@ -53,6 +54,11 @@ import {
 	addPointerSelectionRange,
 	getEdgeScrollDirections,
 } from "cm/touchSelectionMenu";
+import quickTools from "components/quickTools";
+import quickToolsActions, {
+	clearQuickToolsModifierState,
+	key as quickToolsKey,
+} from "handlers/quickTools";
 import keyBindings, { CODEMIRROR_COMMAND_NAMES } from "lib/keyBindings";
 import { TestRunner } from "./tester";
 
@@ -114,6 +120,27 @@ export async function runCodeMirrorTests(writeOutput) {
 			if (view) view.destroy();
 			if (container) container.remove();
 		}
+	}
+
+	function applyDetectedTextInput(view, { from, to, text }) {
+		let defaultTransaction;
+		const getDefaultTransaction = () => {
+			defaultTransaction ||= view.state.update({
+				changes: { from, to, insert: text },
+				selection: { anchor: from + text.length },
+			});
+			return defaultTransaction;
+		};
+		const handled = view.state
+			.facet(EditorView.inputHandler)
+			.some((handler) => handler(view, from, to, text, getDefaultTransaction));
+		if (!handled) view.dispatch(getDefaultTransaction());
+		return handled;
+	}
+
+	function dispatchQuickToolsTextInput(text) {
+		quickTools.$input.value = text;
+		quickTools.$input.dispatchEvent(new Event("input", { bubbles: true }));
 	}
 
 	// =========================================
@@ -630,6 +657,218 @@ export async function runCodeMirrorTests(writeOutput) {
 			"Ctrl-Shift-Z,Ctrl-Y",
 		);
 	});
+
+	runner.test(
+		"Quick tools Ctrl+C captures Android input outside CodeMirror",
+		async (test) => {
+			const doc = 'import { history } from "@codemirror/commands";';
+			await withEditor(
+				test,
+				async (view) => {
+					const clipboard = cordova?.plugins?.clipboard;
+					test.assert(
+						typeof clipboard?.copy === "function",
+						"Cordova clipboard should be available",
+					);
+					const originalCopy = clipboard.copy;
+					let copied = "";
+
+					try {
+						clipboard.copy = (text) => {
+							copied = text;
+						};
+						clearQuickToolsModifierState();
+						const from = doc.indexOf("codemirror");
+						const to = from + "codemirror".length;
+						view.dispatch({ selection: { anchor: from, head: to } });
+						view.focus();
+						quickToolsActions("ctrl");
+
+						test.assert(quickToolsKey.ctrl, "Ctrl should be armed");
+						test.assert(
+							document.activeElement === quickTools.$input,
+							"Command modifiers should focus the capture input",
+						);
+
+						dispatchQuickToolsTextInput("cc");
+						test.assertEqual(view.state.doc.toString(), doc);
+						test.assertEqual(view.state.selection.main.from, from);
+						test.assertEqual(view.state.selection.main.to, to);
+						test.assert(
+							quickToolsKey.ctrl,
+							"Invalid captured input should leave Ctrl armed",
+						);
+
+						dispatchQuickToolsTextInput("c");
+						test.assertEqual(copied, "codemirror");
+						test.assertEqual(view.state.doc.toString(), doc);
+						test.assertEqual(view.state.selection.main.from, from);
+						test.assertEqual(view.state.selection.main.to, to);
+						test.assert(!quickToolsKey.ctrl, "Ctrl should reset after Copy");
+						test.assert(
+							document.activeElement === view.contentDOM,
+							"Editor focus should be restored before Copy runs",
+						);
+
+						view.dispatch({ selection: { anchor: 0, head: doc.length } });
+						quickToolsActions("ctrl");
+						dispatchQuickToolsTextInput("c");
+						test.assertEqual(copied, doc);
+						test.assertEqual(view.state.doc.toString(), doc);
+						test.assertEqual(view.state.selection.main.from, 0);
+						test.assertEqual(view.state.selection.main.to, doc.length);
+
+						quickToolsActions("shift");
+						test.assert(
+							document.activeElement === view.contentDOM,
+							"Shift-only input should stay in CodeMirror",
+						);
+						quickToolsActions("ctrl");
+						test.assert(
+							document.activeElement === quickTools.$input,
+							"Ctrl+Shift should use the capture input",
+						);
+						quickToolsActions("ctrl");
+						test.assert(
+							document.activeElement === view.contentDOM,
+							"Turning Ctrl off should restore Shift-only editor focus",
+						);
+					} finally {
+						clipboard.copy = originalCopy;
+						clearQuickToolsModifierState();
+					}
+				},
+				doc,
+				[quickToolsModifierInput()],
+			);
+		},
+	);
+
+	runner.test(
+		"Quick tools modifier fallback holds Android split replacements",
+		async (test) => {
+			const doc = 'import { history } from "@codemirror/commands";';
+			await withEditor(
+				test,
+				async (view) => {
+					const clipboard = cordova?.plugins?.clipboard;
+					const originalCopy = clipboard.copy;
+					let copied = "";
+
+					try {
+						clipboard.copy = (text) => {
+							copied = text;
+						};
+						view.dispatch({ selection: { anchor: 0, head: doc.length } });
+						view.focus();
+						clearQuickToolsModifierState();
+						quickToolsActions("ctrl");
+						view.focus();
+
+						test.assert(
+							applyDetectedTextInput(view, {
+								from: 0,
+								to: doc.length,
+								text: "",
+							}),
+							"Queued Android deletion should be held",
+						);
+						test.assertEqual(view.state.doc.toString(), doc);
+						test.assert(quickToolsKey.ctrl, "Ctrl should remain armed");
+
+						test.assert(
+							applyDetectedTextInput(view, {
+								from: 0,
+								to: doc.length,
+								text: "c",
+							}),
+							"Queued Ctrl+C insertion should be handled",
+						);
+						test.assertEqual(copied, doc);
+						test.assertEqual(view.state.doc.toString(), doc);
+						test.assertEqual(view.state.selection.main.from, 0);
+						test.assertEqual(view.state.selection.main.to, doc.length);
+						test.assert(!quickToolsKey.ctrl, "Ctrl should reset after Copy");
+					} finally {
+						clipboard.copy = originalCopy;
+						clearQuickToolsModifierState();
+					}
+				},
+				doc,
+				[quickToolsModifierInput()],
+			);
+		},
+	);
+
+	runner.test(
+		"Quick tools modifier input preserves Copy, Cut, Shift, and multi-selection",
+		async (test) => {
+			const doc = 'import { history } from "@codemirror/commands";';
+			await withEditor(
+				test,
+				async (view) => {
+					const clipboard = cordova?.plugins?.clipboard;
+					const originalCopy = clipboard.copy;
+					let copied = "";
+
+					try {
+						clipboard.copy = (text) => {
+							copied = text;
+						};
+
+						const wordFrom = doc.indexOf("codemirror");
+						const wordTo = wordFrom + "codemirror".length;
+						view.dispatch({ selection: { anchor: wordFrom, head: wordTo } });
+						view.focus();
+						clearQuickToolsModifierState();
+						quickToolsActions("ctrl");
+						dispatchQuickToolsTextInput("c");
+						test.assertEqual(copied, "codemirror");
+						test.assertEqual(view.state.doc.toString(), doc);
+
+						view.dispatch({ selection: { anchor: 0, head: 6 } });
+						quickToolsActions("ctrl");
+						dispatchQuickToolsTextInput("x");
+						test.assertEqual(copied, "import");
+						test.assertEqual(view.state.doc.toString(), doc.slice(6));
+
+						quickToolsActions("ctrl");
+						dispatchQuickToolsTextInput("z");
+						test.assertEqual(view.state.doc.toString(), doc);
+
+						view.dispatch({
+							changes: {
+								from: 0,
+								to: view.state.doc.length,
+								insert: "one two three",
+							},
+							selection: EditorSelection.create([
+								EditorSelection.range(0, 3),
+								EditorSelection.range(8, 13),
+							]),
+						});
+						quickToolsActions("ctrl");
+						dispatchQuickToolsTextInput("c");
+						test.assertEqual(copied, "one\nthree");
+						test.assertEqual(view.state.doc.toString(), "one two three");
+
+						view.dispatch({
+							changes: { from: 0, to: view.state.doc.length, insert: "abc" },
+							selection: { anchor: 1, head: 2 },
+						});
+						quickToolsActions("shift");
+						applyDetectedTextInput(view, { from: 1, to: 2, text: "b" });
+						test.assertEqual(view.state.doc.toString(), "aBc");
+					} finally {
+						clipboard.copy = originalCopy;
+						clearQuickToolsModifierState();
+					}
+				},
+				doc,
+				[quickToolsModifierInput()],
+			);
+		},
+	);
 
 	runner.test("Every CodeMirror command can be assigned a key", (test) => {
 		const missingCommands = Array.from(CODEMIRROR_COMMAND_NAMES).filter(

@@ -1,5 +1,17 @@
 export const modifierKeys = ["shift", "alt", "ctrl", "meta"];
 
+/**
+ * CodeMirror can safely receive Shift-only text because replacing the current
+ * selection is intentional. Command modifiers must capture text outside the
+ * contenteditable so Android keyboards cannot mutate the document first.
+ */
+export function shouldCaptureModifierInput(state, isCodeMirrorTarget) {
+	const hasActiveModifier = modifierKeys.some((key) => Boolean(state[key]));
+	if (!hasActiveModifier) return false;
+	if (!isCodeMirrorTarget) return true;
+	return Boolean(state.ctrl || state.alt || state.meta);
+}
+
 export function clearModifierState(state, events = {}) {
 	let changed = false;
 

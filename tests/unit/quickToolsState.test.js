@@ -4,7 +4,55 @@ import {
 	clearQuickToolsButtonFeedback,
 	modifierKeys,
 	removeActionStackEntries,
+	shouldCaptureModifierInput,
 } from "handlers/quickToolsState";
+
+describe("shouldCaptureModifierInput", () => {
+	const modifiers = (overrides = {}) => ({
+		shift: false,
+		alt: false,
+		ctrl: false,
+		meta: false,
+		...overrides,
+	});
+
+	it("captures command modifiers outside CodeMirror", () => {
+		expect(
+			shouldCaptureModifierInput(modifiers({ shift: true }), false),
+		).toBe(true);
+		expect(
+			shouldCaptureModifierInput(modifiers({ ctrl: true }), false),
+		).toBe(true);
+	});
+
+	it("keeps Shift-only text in CodeMirror", () => {
+		expect(
+			shouldCaptureModifierInput(modifiers({ shift: true }), true),
+		).toBe(false);
+	});
+
+	it.each(["ctrl", "alt", "meta"])(
+		"captures CodeMirror input when %s is active",
+		(key) => {
+			expect(
+				shouldCaptureModifierInput(modifiers({ [key]: true }), true),
+			).toBe(true);
+		},
+	);
+
+	it("captures Shift combined with a command modifier", () => {
+		expect(
+			shouldCaptureModifierInput(
+				modifiers({ shift: true, ctrl: true }),
+				true,
+			),
+		).toBe(true);
+	});
+
+	it("does not capture when every modifier is cleared", () => {
+		expect(shouldCaptureModifierInput(modifiers(), true)).toBe(false);
+	});
+});
 
 describe("clearModifierState", () => {
 	it("clears all modifiers and reports the change", () => {
