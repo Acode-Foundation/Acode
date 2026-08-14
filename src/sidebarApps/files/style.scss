@@ -1,15 +1,21 @@
 .container.files {
-  &:empty {
-    height: 100%;
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  > .open-folder-action {
+    flex: 0 0 44px;
+    min-height: 44px;
+    min-width: 44px;
+    width: calc(100% - 16px);
+    margin: auto 8px;
+    border: 1px solid currentColor;
+    border-radius: 6px;
+    color: inherit;
+    background: transparent;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
 
-    &::after {
-      content: attr(data-msg);
-      font-weight: 600;
-    }
+  &.has-open-projects > .open-folder-action {
+    display: none;
   }
 
   /* Make the container horizontally scrollable */

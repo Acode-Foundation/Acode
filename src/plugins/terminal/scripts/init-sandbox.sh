@@ -3,26 +3,14 @@ export LD_LIBRARY_PATH=$PREFIX
 mkdir -p "$PREFIX/tmp"
 mkdir -p "$PREFIX/alpine/tmp"
 mkdir -p "$PREFIX/public"
-
-SRC1="$PREFIX/alpine/home"
-SRC2="$PREFIX/alpine/root"
-DEST="$PREFIX/public"
-
-mkdir -p "$DEST"
-
-move_all() {
-    SRC="$1"
-
-    [ -d "$SRC" ] || return 0
-
-    # Only continue if directory is not empty
-    [ "$(find "$SRC" -mindepth 1 -maxdepth 1 | head -n 1)" ] || return 0
-
-    find "$SRC" -mindepth 1 -maxdepth 1 -exec mv -f {} "$DEST"/ \;
-}
-
-move_all "$SRC1"
-move_all "$SRC2"
+# v1.12.0 attempted to merge these directories into public at every startup.
+# A same-name directory made mv fail, while startup continued and the remaining
+# files were hidden by the /home -> /public bind. Keep legacy data untouched and
+# expose it explicitly so Acode can offer non-destructive recovery.
+mkdir -p "$PREFIX/alpine/home"
+mkdir -p "$PREFIX/alpine/root"
+mkdir -p "$PREFIX/alpine/legacy-home"
+mkdir -p "$PREFIX/alpine/legacy-root"
 
 export PROOT_TMP_DIR=$PREFIX/tmp
 
@@ -86,6 +74,8 @@ ARGS="$ARGS -b $NATIVE_DIR"
 ARGS="$ARGS -b $PREFIX/public:/public"
 ARGS="$ARGS -b $PREFIX/public:/home"
 ARGS="$ARGS -b $PREFIX/public:/root"
+ARGS="$ARGS -b $PREFIX/alpine/home:/legacy-home"
+ARGS="$ARGS -b $PREFIX/alpine/root:/legacy-root"
 ARGS="$ARGS -b $PREFIX/alpine/tmp:/dev/shm"
 
 

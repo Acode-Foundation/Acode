@@ -10,10 +10,8 @@ import confirm from "dialogs/confirm";
 import prompt from "dialogs/prompt";
 import select from "dialogs/select";
 import escapeStringRegexp from "escape-string-regexp";
-import copyEntry from "utils/copyEntry";
+import transferEntry from "utils/fileTransfer";
 import helpers from "utils/helpers";
-import Path from "utils/Path";
-import Uri from "utils/Uri";
 import Url from "utils/Url";
 import config from "./config";
 import * as FileList from "./fileList";
@@ -21,72 +19,16 @@ import { loadFileBrowser } from "./lazyImports";
 import openFile from "./openFile";
 import recents from "./recents";
 import appSettings from "./settings";
+import {
+	isAcodeTerminalSafUri,
+	isTerminalAccessibleUrl,
+	terminalUrlToProotPath,
+} from "./terminalPaths";
 
 const isTermuxSafUri = (value = "") =>
 	value.startsWith("content://com.termux.documents/tree/");
-const isAcodeTerminalPublicSafUri = (value = "") =>
-	value.startsWith("content://com.foxdebug.acode.documents/tree/");
 const isTerminalSafUri = (value = "") =>
-	isTermuxSafUri(value) || isAcodeTerminalPublicSafUri(value);
-
-const getTerminalPaths = () => {
-	const packageName = window.BuildInfo?.packageName || "com.foxdebug.acode";
-	const dataDir = `/data/user/0/${packageName}`;
-	const alpineRoot = `${dataDir}/files/alpine`;
-	const publicDir = `${dataDir}/files/public`;
-	return { alpineRoot, publicDir, dataDir };
-};
-
-const isTerminalAccessiblePath = (url = "") => {
-	if (isAcodeTerminalPublicSafUri(url)) return true;
-	const { alpineRoot, publicDir } = getTerminalPaths();
-	const cleanUrl = url.replace(/^file:\/\//, "");
-	if (cleanUrl.startsWith(alpineRoot) || cleanUrl.startsWith(publicDir)) {
-		return true;
-	}
-	return false;
-};
-
-const convertToProotPath = (url = "") => {
-	const { alpineRoot, publicDir } = getTerminalPaths();
-	if (isAcodeTerminalPublicSafUri(url)) {
-		try {
-			const { docId } = Uri.parse(url);
-			const cleanDocId = /::/.test(url)
-				? decodeURIComponent(docId || "")
-				: docId || "";
-			if (!cleanDocId) return "/public";
-			if (cleanDocId.startsWith(publicDir)) {
-				return cleanDocId.replace(publicDir, "/public") || "/public";
-			}
-			if (cleanDocId.startsWith("/public")) {
-				return cleanDocId;
-			}
-			if (cleanDocId.startsWith("public:")) {
-				const relativePath = cleanDocId.slice("public:".length);
-				return relativePath ? Path.join("/public", relativePath) : "/public";
-			}
-			const relativePath = cleanDocId
-				.replace(/^\/+/, "")
-				.replace(/^public\//, "");
-			return relativePath ? Path.join("/public", relativePath) : "/public";
-		} catch (error) {
-			console.warn(
-				`Failed to parse public SAF URI for terminal conversion: ${url}`,
-			);
-			return "/public";
-		}
-	}
-	const cleanUrl = url.replace(/^file:\/\//, "");
-	if (cleanUrl.startsWith(publicDir)) {
-		return cleanUrl.replace(publicDir, "/public");
-	}
-	if (cleanUrl.startsWith(alpineRoot)) {
-		return cleanUrl.replace(alpineRoot, "") || "/";
-	}
-	console.warn(`Unrecognized path for terminal conversion: ${url}`);
-	return cleanUrl;
-};
+	isTermuxSafUri(value) || isAcodeTerminalSafUri(value);
 
 /**
  * @typedef {import('../components/collapsableList').Collapsible} Collapsible
@@ -357,7 +299,7 @@ async function handleContextmenu(type, url, name, $target) {
 
 		options.push(NEW_FILE, NEW_FOLDER, OPEN_FOLDER, INSERT_FILE);
 
-		if (isTerminalAccessiblePath(url)) {
+		if (isTerminalAccessibleUrl(url)) {
 			const OPEN_IN_TERMINAL = [
 				"open-in-terminal",
 				strings["open in terminal"] || "Open in Terminal",
@@ -374,7 +316,7 @@ async function handleContextmenu(type, url, name, $target) {
 
 		options.push(NEW_FILE, NEW_FOLDER, INSERT_FILE);
 
-		if (isTerminalAccessiblePath(url)) {
+		if (isTerminalAccessibleUrl(url)) {
 			const OPEN_IN_TERMINAL = [
 				"open-in-terminal",
 				strings["open in terminal"] || "Open in Terminal",
@@ -526,7 +468,7 @@ function execOperation(type, action, url, $target, name) {
 			const { TerminalManager } = await import(
 				/* webpackChunkName: "terminal" */ "components/terminal"
 			);
-			const prootPath = convertToProotPath(url);
+			const prootPath = terminalUrlToProotPath(url);
 			const terminal = await TerminalManager.createTerminal({
 				name: `Terminal - ${name}`,
 				render: true,
@@ -727,7 +669,6 @@ function execOperation(type, action, url, $target, name) {
 
 		startLoading();
 		try {
-			const fs = fsOperation(clipBoard.url);
 			const itemName = Url.basename(clipBoard.url);
 			const possibleConflictUrl = Url.join(url, itemName);
 			const doesExist = await fsOperation(possibleConflictUrl).exists();
@@ -740,56 +681,21 @@ function execOperation(type, action, url, $target, name) {
 				);
 				if (!confirmation) return;
 			}
-			let newUrl;
-			if (clipBoard.action === "cut") {
-				// Special handling for SAF folders backed by terminal providers - move manually due to SAF limitations
-				if (isTerminalSafUri(clipBoard.url) && IS_DIR) {
-					const moveRecursively = async (sourceUrl, targetParentUrl) => {
-						const sourceFs = fsOperation(sourceUrl);
-						const sourceName = Url.basename(sourceUrl);
-						const targetUrl = Url.join(targetParentUrl, sourceName);
-
-						// Create target folder
-						await fsOperation(targetParentUrl).createDirectory(sourceName);
-
-						// Get all entries in source folder
-						const entries = await sourceFs.lsDir();
-
-						// Move all files and folders recursively
-						for (const entry of entries) {
-							if (entry.isDirectory) {
-								await moveRecursively(entry.url, targetUrl);
-							} else {
-								const fileContent = await fsOperation(entry.url).readFile();
-								const fileName = entry.name || Url.basename(entry.url);
-								await fsOperation(targetUrl).createFile(fileName, fileContent);
-								await fsOperation(entry.url).delete();
-							}
-						}
-
-						// Delete the now-empty source folder
-						await sourceFs.delete();
-						return targetUrl;
-					};
-
-					newUrl = await moveRecursively(clipBoard.url, url);
-				} else {
-					newUrl = await fs.moveTo(url);
-				}
-			} else {
-				if (appSettings.value.useFileOperationExclusions) {
-					const result = await copyEntry(clipBoard.url, url, {
-						excludePatterns: appSettings.value.excludeFolders,
-					});
-					newUrl = result.url;
-					if (!newUrl) {
-						toast(strings.skipped);
-						clearClipboard();
-						return;
-					}
-				} else {
-					newUrl = await fs.copyTo(url);
-				}
+			const exclusions =
+				clipBoard.action === "copy" &&
+				appSettings.value.useFileOperationExclusions
+					? appSettings.value.excludeFolders
+					: [];
+			const transfer = await transferEntry(clipBoard.url, url, {
+				operation: clipBoard.action === "cut" ? "move" : "copy",
+				forceRecursive: isTerminalSafUri(clipBoard.url) && IS_DIR,
+				excludePatterns: exclusions,
+			});
+			const newUrl = transfer.url;
+			if (!newUrl) {
+				toast(strings.skipped);
+				clearClipboard();
+				return;
 			}
 			stopLoading();
 

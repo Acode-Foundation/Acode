@@ -16,6 +16,7 @@ function renderFileTreeStyles() {
 	document.head.append(style);
 	document.body.innerHTML = `
 		<div class="container files">
+			<button class="open-folder-action">Open folder</button>
 			<div class="list collapsible">
 				<div class="tile" data-type="root">
 					<span class="text" id="root-folder-name">
@@ -54,5 +55,30 @@ describe("file sidebar label overflow", () => {
 		expect(nestedStyles.width).toBe("max-content");
 		expect(nestedStyles.overflow).toBe("visible");
 		expect(nestedStyles.textOverflow).toBe("clip");
+	});
+
+	it("keeps a touch-sized Open folder action available without projects", () => {
+		const { document, window } = renderFileTreeStyles();
+		const container = document.querySelector(".container.files");
+		const root = container.querySelector(".list");
+		root.remove();
+		const button = container.querySelector(".open-folder-action");
+		const styles = window.getComputedStyle(button);
+
+		expect(styles.display).not.toBe("none");
+		expect(styles.minHeight).toBe("44px");
+		expect(styles.minWidth).toBe("44px");
+	});
+
+	it("hides the Open folder action only when a project root exists", () => {
+		const { document, window } = renderFileTreeStyles();
+		const container = document.querySelector(".container.files");
+		container.classList.add("has-open-projects");
+
+		expect(
+			window.getComputedStyle(
+				document.querySelector(".open-folder-action"),
+			).display,
+		).toBe("none");
 	});
 });

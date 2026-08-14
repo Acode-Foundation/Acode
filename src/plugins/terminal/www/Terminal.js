@@ -455,7 +455,7 @@ const Terminal = {
             }
             const cmd = `
             set -e
-            INCLUDE_FILES="alpine .downloaded .extracted .configured axs"
+            INCLUDE_FILES="alpine public .downloaded .extracted .configured axs"
             if [ "$FDROID" = "true" ]; then
                 INCLUDE_FILES="$INCLUDE_FILES libtalloc.so.2 libproot-xed.so"
             fi

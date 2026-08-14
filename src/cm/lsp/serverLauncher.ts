@@ -85,12 +85,12 @@ let cachedFilesDir: string | null = null;
 
 /**
  * Get candidate Terminal data directories from system.getFilesDir().
- * Newer Terminal builds keep shared runtime state in public. Older builds used
- * alpine/home, and some installs keep it as a symlink for shell compatibility.
+ * Terminal runtime state lives in public. Legacy home is mounted only as a
+ * recovery location and must not be treated as the active HOME.
  */
 async function getTerminalDataDirs(): Promise<string[]> {
   if (cachedFilesDir) {
-    return [`${cachedFilesDir}/public`, `${cachedFilesDir}/alpine/home`];
+    return [`${cachedFilesDir}/public`];
   }
 
   const system = (
@@ -112,7 +112,7 @@ async function getTerminalDataDirs(): Promise<string[]> {
     system.getFilesDir(
       (filesDir: string) => {
         cachedFilesDir = filesDir;
-        resolve([`${filesDir}/public`, `${filesDir}/alpine/home`]);
+        resolve([`${filesDir}/public`]);
       },
       (error: string) => reject(new Error(error)),
     );

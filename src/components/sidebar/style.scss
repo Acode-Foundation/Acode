@@ -465,6 +465,17 @@ body.no-animation {
       color: var(--popup-text-color);
       color: color-mix(in srgb, var(--popup-text-color) 70%, transparent);
     }
+
+    .user-menu-status {
+      margin-top: 8px;
+      font-size: 12px;
+      line-height: 1.35;
+      color: var(--warning-text-color, var(--popup-text-color));
+
+      &.hidden {
+        display: none;
+      }
+    }
   }
 
   .user-menu-item {
@@ -473,6 +484,10 @@ body.no-animation {
     display: flex;
     align-items: center;
     gap: 8px;
+
+    &.hidden {
+      display: none;
+    }
 
     &:hover {
       background-color: var(--active-icon-color);

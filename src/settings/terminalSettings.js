@@ -10,6 +10,7 @@ import confirm from "dialogs/confirm";
 import loader from "dialogs/loader";
 import fonts from "lib/fonts";
 import appSettings from "lib/settings";
+import { showLegacyStorageRecovery } from "lib/terminalRecovery";
 import FileBrowser from "pages/fileBrowser";
 import helpers from "utils/helpers";
 
@@ -243,6 +244,13 @@ export default function terminalSettings() {
 			category: categories.maintenance,
 		},
 		{
+			key: "recoverLegacyStorage",
+			text: "Recover legacy terminal projects",
+			info: "Open retained Home/Root files or import verified copies into Public.",
+			category: categories.maintenance,
+			chevron: true,
+		},
+		{
 			key: "backup",
 			text: strings.backup,
 			info: strings["info-backup"],
@@ -296,6 +304,9 @@ export default function terminalSettings() {
 				return;
 			case "backup":
 				terminalBackup();
+				return;
+			case "recoverLegacyStorage":
+				showLegacyStorageRecovery();
 				return;
 
 			case "restore":

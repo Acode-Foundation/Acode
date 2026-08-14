@@ -57,6 +57,7 @@ import startAd, {
 	BANNER_SUPPRESSION_REASON,
 	setBannerSuppressed,
 } from "lib/startAd";
+import { notifyLegacyStorageRecovery } from "lib/terminalRecovery";
 import mustache from "mustache";
 import themes from "theme/list";
 import { initHighlighting } from "utils/codeHighlight";
@@ -254,7 +255,12 @@ async function onDeviceReady() {
 	}, 1000 * 10);
 
 	acode.setLoadingMessage("Loading settings...");
-	await settings.init();
+	await settings.init({
+		isUpgrade:
+			previousVersionCode != null &&
+			!Number.isNaN(previousVersionCode) &&
+			previousVersionCode !== versionCode,
+	});
 	themes.init();
 	initHighlighting();
 
@@ -653,6 +659,15 @@ async function loadApp() {
 	//#endregion
 
 	notificationManager.init();
+	for (const diagnostic of settings.getDiagnostics()) {
+		notificationManager.pushNotification({
+			title: "Settings recovery",
+			message: diagnostic.message,
+			icon: "warning",
+			type: "warning",
+		});
+	}
+	void notifyLegacyStorageRecovery();
 	window.log("info", "Started app and its services...");
 
 	if (!files.length) {

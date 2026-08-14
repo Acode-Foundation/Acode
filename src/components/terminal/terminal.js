@@ -24,6 +24,7 @@ import {
 	DEFAULT_TERMINAL_SETTINGS,
 	getTerminalSettings,
 } from "./terminalDefaults";
+import { handleTerminalKeyAction } from "./terminalKeyEvent";
 import TerminalThemeManager from "./terminalThemeManager";
 import TerminalTouchScrolling from "./terminalTouchScrolling";
 import TerminalTouchSelection from "./terminalTouchSelection";
@@ -442,20 +443,14 @@ export default class TerminalComponent {
 			// xterm.js invokes this handler for both "keydown" and "keyup", so
 			// any side-effecting action must only run once, on keydown, or it
 			// fires twice per keypress (e.g. paste happening twice).
-			const isKeyDown = event.type === "keydown";
-
 			// Check for Ctrl+Shift+C (copy)
 			if (event.ctrlKey && event.shiftKey && event.key === "C") {
-				event.preventDefault();
-				if (isKeyDown) this.copySelection();
-				return false;
+				return handleTerminalKeyAction(event, () => this.copySelection());
 			}
 
 			// Check for Ctrl+Shift+V (paste)
 			if (event.ctrlKey && event.shiftKey && event.key === "V") {
-				event.preventDefault();
-				if (isKeyDown) this.pasteFromClipboard();
-				return false;
+				return handleTerminalKeyAction(event, () => this.pasteFromClipboard());
 			}
 
 			// Keep terminal font zoom local. Shift variants are handled by app keybindings below.
@@ -466,9 +461,7 @@ export default class TerminalComponent {
 				!event.metaKey &&
 				(event.key === "+" || event.key === "=")
 			) {
-				event.preventDefault();
-				if (isKeyDown) this.increaseFontSize();
-				return false;
+				return handleTerminalKeyAction(event, () => this.increaseFontSize());
 			}
 
 			if (
@@ -478,9 +471,7 @@ export default class TerminalComponent {
 				!event.metaKey &&
 				event.key === "-"
 			) {
-				event.preventDefault();
-				if (isKeyDown) this.decreaseFontSize();
-				return false;
+				return handleTerminalKeyAction(event, () => this.decreaseFontSize());
 			}
 
 			if (event.ctrlKey || event.altKey || event.metaKey) {

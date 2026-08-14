@@ -18,13 +18,26 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Locale;
 import com.foxdebug.acode.R;
 import com.foxdebug.acode.rk.exec.terminal.*;
 
 public class AlpineDocumentProvider extends DocumentsProvider {
-    
     private static final String ALL_MIME_TYPES = "*/*";
+    private static final String TAG = "AlpineDocuments";
+
+    private static class RootSpec {
+        final File directory;
+        final String title;
+        final String summary;
+
+        RootSpec(File directory, String title, String summary) {
+            this.directory = directory;
+            this.title = title;
+            this.summary = summary;
+        }
+    }
 
     
     // The default columns to return information about a root if no specific
@@ -53,30 +66,39 @@ public class AlpineDocumentProvider extends DocumentsProvider {
 
     @Override
     public Cursor queryRoots(String[] projection) {
-        File BASE_DIR = new File(getContext().getFilesDir(),"public");
-        if (!BASE_DIR.exists()) {
-            BASE_DIR.mkdirs();
-        }
-
         MatrixCursor result = new MatrixCursor(
             projection != null ? projection : DEFAULT_ROOT_PROJECTION
         );
         String applicationName = getApplicationLabel();
 
-        MatrixCursor.RowBuilder row = result.newRow();
-        row.add(DocumentsContract.Root.COLUMN_ROOT_ID, getDocIdForFile(BASE_DIR));
-        row.add(DocumentsContract.Root.COLUMN_DOCUMENT_ID, getDocIdForFile(BASE_DIR));
-        row.add(DocumentsContract.Root.COLUMN_SUMMARY, null);
-        row.add(
-            DocumentsContract.Root.COLUMN_FLAGS,
-            DocumentsContract.Root.FLAG_SUPPORTS_CREATE | 
-            DocumentsContract.Root.FLAG_SUPPORTS_SEARCH | 
-            DocumentsContract.Root.FLAG_SUPPORTS_IS_CHILD
-        );
-        row.add(DocumentsContract.Root.COLUMN_TITLE, applicationName);
-        row.add(DocumentsContract.Root.COLUMN_MIME_TYPES, ALL_MIME_TYPES);
-        row.add(DocumentsContract.Root.COLUMN_AVAILABLE_BYTES, BASE_DIR.getFreeSpace());
-        row.add(DocumentsContract.Root.COLUMN_ICON, resolveLauncherIcon());
+        for (RootSpec root : getAllowedRoots()) {
+            boolean isPublic = "Public".equals(root.title);
+            if (!isPublic && !hasChildren(root.directory)) {
+                continue;
+            }
+
+            MatrixCursor.RowBuilder row = result.newRow();
+            row.add(DocumentsContract.Root.COLUMN_ROOT_ID, getDocIdForFile(root.directory));
+            row.add(DocumentsContract.Root.COLUMN_DOCUMENT_ID, getDocIdForFile(root.directory));
+            row.add(DocumentsContract.Root.COLUMN_SUMMARY, root.summary);
+            row.add(
+                DocumentsContract.Root.COLUMN_FLAGS,
+                DocumentsContract.Root.FLAG_SUPPORTS_CREATE |
+                DocumentsContract.Root.FLAG_SUPPORTS_SEARCH |
+                DocumentsContract.Root.FLAG_SUPPORTS_IS_CHILD |
+                DocumentsContract.Root.FLAG_LOCAL_ONLY
+            );
+            row.add(
+                DocumentsContract.Root.COLUMN_TITLE,
+                isPublic ? applicationName + " Public" : root.title
+            );
+            row.add(DocumentsContract.Root.COLUMN_MIME_TYPES, ALL_MIME_TYPES);
+            row.add(
+                DocumentsContract.Root.COLUMN_AVAILABLE_BYTES,
+                root.directory.getFreeSpace()
+            );
+            row.add(DocumentsContract.Root.COLUMN_ICON, resolveLauncherIcon());
+        }
         return result;
     }
 
@@ -102,10 +124,14 @@ public class AlpineDocumentProvider extends DocumentsProvider {
         File[] files = parent.listFiles();
         if (files != null) {
             for (File file : files) {
-                includeFile(result, null, file);
+                try {
+                    includeFile(result, null, file);
+                } catch (FileNotFoundException error) {
+                    Log.w(TAG, "Skipped document outside an allowed root: " + file, error);
+                }
             }
         } else {
-            Log.e("DocumentsProvider", "Unable to list files in " + parentDocumentId);
+            Log.e(TAG, "Unable to list files in " + parentDocumentId);
         }
         return result;
     }
@@ -144,6 +170,13 @@ public class AlpineDocumentProvider extends DocumentsProvider {
         String displayName
     ) throws FileNotFoundException {
         File parent = getFileForDocId(parentDocumentId);
+        if (
+            displayName == null ||
+            displayName.trim().isEmpty() ||
+            displayName.contains(File.separator)
+        ) {
+            throw new FileNotFoundException("Invalid display name: " + displayName);
+        }
         File newFile = new File(parent, displayName);
         int noConflictId = 2;
         while (newFile.exists()) {
@@ -168,6 +201,9 @@ public class AlpineDocumentProvider extends DocumentsProvider {
     @Override
     public void deleteDocument(String documentId) throws FileNotFoundException {
         File file = getFileForDocId(documentId);
+        if (isAllowedRoot(file)) {
+            throw new FileNotFoundException("Cannot delete a terminal storage root");
+        }
         if (!file.delete()) {
             throw new FileNotFoundException("Failed to delete document with id " + documentId);
         }
@@ -176,6 +212,9 @@ public class AlpineDocumentProvider extends DocumentsProvider {
     @Override
     public String renameDocument(String documentId, String displayName) throws FileNotFoundException {
         File file = getFileForDocId(documentId);
+        if (isAllowedRoot(file)) {
+            throw new FileNotFoundException("Cannot rename a terminal storage root");
+        }
         File parent = file.getParentFile();
         if (parent == null) {
             throw new FileNotFoundException("Failed to rename root document with id " + documentId);
@@ -212,14 +251,20 @@ public class AlpineDocumentProvider extends DocumentsProvider {
         String query,
         String[] projection
     ) throws FileNotFoundException {
-        File BASE_DIR = new File(getContext().getFilesDir(),"public");
-        if (!BASE_DIR.exists()) {
-            BASE_DIR.mkdirs();
-        }
         MatrixCursor result = new MatrixCursor(
             projection != null ? projection : DEFAULT_DOCUMENT_PROJECTION
         );
         File parent = getFileForDocId(rootId);
+        File searchRoot;
+        try {
+            searchRoot = getRootForFile(parent);
+        } catch (IOException error) {
+            FileNotFoundException failure = new FileNotFoundException(
+                "Invalid search root: " + rootId
+            );
+            failure.initCause(error);
+            throw failure;
+        }
 
         // This example implementation searches file names for the query and doesn't rank search
         // results, so we can stop as soon as we find a sufficient number of matches.  Other
@@ -235,9 +280,9 @@ public class AlpineDocumentProvider extends DocumentsProvider {
             // through the whole SD card).
             boolean isInsideHome;
             try {
-                isInsideHome = file.getCanonicalPath().startsWith(BASE_DIR.getCanonicalPath());
+                isInsideHome = isWithinRoot(file, searchRoot);
             } catch (IOException e) {
-                isInsideHome = true;
+                isInsideHome = false;
             }
             if (isInsideHome) {
                 if (file.isDirectory()) {
@@ -258,7 +303,13 @@ public class AlpineDocumentProvider extends DocumentsProvider {
 
     @Override
     public boolean isChildDocument(String parentDocumentId, String documentId) {
-        return documentId.startsWith(parentDocumentId);
+        try {
+            File parent = getFileForDocId(parentDocumentId);
+            File child = getFileForDocId(documentId);
+            return isWithinRoot(child, parent);
+        } catch (IOException error) {
+            return false;
+        }
     }
 
     /**
@@ -270,6 +321,7 @@ public class AlpineDocumentProvider extends DocumentsProvider {
      */
     private void includeFile(MatrixCursor result, String docId, File file) throws FileNotFoundException {
         if (docId == null) {
+            file = getFileForDocId(getDocIdForFile(file));
             docId = getDocIdForFile(file);
         } else {
             file = getFileForDocId(docId);
@@ -284,7 +336,7 @@ public class AlpineDocumentProvider extends DocumentsProvider {
             flags = flags | DocumentsContract.Document.FLAG_SUPPORTS_WRITE;
         }
         File parentFile = file.getParentFile();
-        if (parentFile != null && parentFile.canWrite()) {
+        if (!isAllowedRoot(file) && parentFile != null && parentFile.canWrite()) {
             flags = flags | DocumentsContract.Document.FLAG_SUPPORTS_DELETE;
             flags = flags | DocumentsContract.Document.FLAG_SUPPORTS_RENAME;
         }
@@ -341,12 +393,87 @@ public class AlpineDocumentProvider extends DocumentsProvider {
     /**
      * Get the file given a document id (the reverse of {@link #getDocIdForFile}).
      */
-    private static File getFileForDocId(String docId) throws FileNotFoundException {
-        File f = new File(docId);
-        if (!f.exists()) {
-            throw new FileNotFoundException(f.getAbsolutePath() + " not found");
+    private File getFileForDocId(String docId) throws FileNotFoundException {
+        if (docId == null || docId.trim().isEmpty()) {
+            throw new FileNotFoundException("Missing document id");
         }
-        return f;
+
+        try {
+            File file = new File(docId).getCanonicalFile();
+            getRootForFile(file);
+            if (!file.exists()) {
+                throw new FileNotFoundException(file.getAbsolutePath() + " not found");
+            }
+            return file;
+        } catch (IOException error) {
+            FileNotFoundException failure = new FileNotFoundException(
+                "Document is outside the terminal storage roots: " + docId
+            );
+            failure.initCause(error);
+            throw failure;
+        }
+    }
+
+    private List<RootSpec> getAllowedRoots() {
+        Context context = getContext();
+        if (context == null) {
+            return Collections.emptyList();
+        }
+
+        File filesDir = context.getFilesDir();
+        File publicDir = new File(filesDir, "public");
+        if (!publicDir.exists() && !publicDir.mkdirs()) {
+            Log.w(TAG, "Unable to create public terminal directory: " + publicDir);
+        }
+
+        File alpineDir = new File(filesDir, "alpine");
+        return java.util.Arrays.asList(
+            new RootSpec(publicDir, "Public", "Current terminal home"),
+            new RootSpec(
+                new File(alpineDir, "home"),
+                "Legacy Home (Recovery)",
+                "Files retained from the previous terminal home"
+            ),
+            new RootSpec(
+                new File(alpineDir, "root"),
+                "Legacy Root (Recovery)",
+                "Files retained from the previous terminal root"
+            )
+        );
+    }
+
+    private File getRootForFile(File file) throws IOException {
+        for (RootSpec root : getAllowedRoots()) {
+            if (isWithinRoot(file, root.directory)) {
+                return root.directory.getCanonicalFile();
+            }
+        }
+        throw new IOException("Path is outside the allowed roots: " + file);
+    }
+
+    private boolean isAllowedRoot(File file) {
+        try {
+            File canonicalFile = file.getCanonicalFile();
+            for (RootSpec root : getAllowedRoots()) {
+                if (canonicalFile.equals(root.directory.getCanonicalFile())) {
+                    return true;
+                }
+            }
+        } catch (IOException ignored) {
+            // An unresolvable path cannot be an allowed root.
+        }
+        return false;
+    }
+
+    private static boolean isWithinRoot(File file, File root) throws IOException {
+        String filePath = file.getCanonicalPath();
+        String rootPath = root.getCanonicalPath();
+        return filePath.equals(rootPath) || filePath.startsWith(rootPath + File.separator);
+    }
+
+    private static boolean hasChildren(File directory) {
+        File[] children = directory.listFiles();
+        return children != null && children.length > 0;
     }
 
     private static String getMimeType(File file) {

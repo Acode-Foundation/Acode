@@ -247,6 +247,10 @@ async function EditorManager($header, $body) {
 	const primaryPane = createPaneShell($container);
 	paneLayoutRoot = createPaneNode(primaryPane);
 	$paneRoot.append(paneLayoutRoot.element);
+	primaryPane.element.classList.add(
+		"reserve-fullscreen-tabs-left",
+		"reserve-fullscreen-tabs-right",
+	);
 	applyOpenFileListLayout();
 	const problemButton = SideButton({
 		text: strings.problems,
@@ -577,6 +581,34 @@ async function EditorManager($header, $body) {
 		return node.children.flatMap((child) => getOrderedPanes(child));
 	}
 
+	function getTopEdgePane(node, edge) {
+		if (!node) return null;
+		if (node.type === "pane") return node.pane || null;
+		if (!node.children.length) return null;
+
+		if (node.direction === PANE_SPLIT_VERTICAL) {
+			return getTopEdgePane(node.children[0], edge);
+		}
+		const child =
+			edge === "right" ? node.children[node.children.length - 1] : node.children[0];
+		return getTopEdgePane(child, edge);
+	}
+
+	function syncFullscreenTabReservations() {
+		for (const pane of panes) {
+			pane.element.classList.remove(
+				"reserve-fullscreen-tabs-left",
+				"reserve-fullscreen-tabs-right",
+			);
+		}
+		getTopEdgePane(paneLayoutRoot, "left")?.element.classList.add(
+			"reserve-fullscreen-tabs-left",
+		);
+		getTopEdgePane(paneLayoutRoot, "right")?.element.classList.add(
+			"reserve-fullscreen-tabs-right",
+		);
+	}
+
 	function getVisiblePaneRect(pane) {
 		const element = pane?.element;
 		if (!element?.isConnected || element.getClientRects().length === 0) {
@@ -591,6 +623,7 @@ async function EditorManager($header, $body) {
 	function updatePaneLayoutState() {
 		$paneRoot.classList.toggle("multi-pane", panes.length > 1);
 		renderPaneLayout();
+		syncFullscreenTabReservations();
 		updateActivePaneLayoutPath(activePane);
 	}
 

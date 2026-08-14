@@ -100,6 +100,20 @@ class AuthService {
 		}
 	}
 
+	getCachedLoggedInUser() {
+		if (loggedInUser) return loggedInUser;
+		try {
+			const cached = localStorage.getItem(CACHE_USER_KEY);
+			if (!cached) return null;
+			loggedInUser = JSON.parse(cached);
+			return loggedInUser;
+		} catch (error) {
+			localStorage.removeItem(CACHE_USER_KEY);
+			console.error("Unable to read cached user info:", error);
+			return null;
+		}
+	}
+
 	/**
 	 * @param {boolean} forceFetch
 	 * @returns {Promise<User>}
@@ -119,17 +133,15 @@ class AuthService {
 			}
 
 			if (res.status === 401) {
+				loggedInUser = null;
 				localStorage.removeItem(CACHE_USER_KEY);
 				return null;
 			}
 
 			throw new Error("Unable to fetch user Info");
 		} catch (error) {
-			if (CACHE_USER_KEY in localStorage) {
-				try {
-					return JSON.parse(localStorage.getItem(CACHE_USER_KEY));
-				} catch {}
-			}
+			const cachedUser = this.getCachedLoggedInUser();
+			if (cachedUser) return cachedUser;
 			console.error("Unable to fetch user info:", error);
 			throw error;
 		}

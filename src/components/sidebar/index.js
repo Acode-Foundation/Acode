@@ -43,6 +43,9 @@ function create($container, $toggler) {
 	const resizeBar = Ref();
 	const userAvatar = Ref();
 	const userContextMenu = Ref();
+	const userMenuStatus = Ref();
+	const userMenuRetry = Ref();
+	const userMenuLogout = Ref();
 
 	$container = $container || app;
 	let mode = innerWidth > 750 ? "tab" : "phone";
@@ -72,9 +75,25 @@ function create($container, $toggler) {
 				<div className="user-menu-header">
 					<div className="user-menu-name"></div>
 					<div className="user-menu-email"></div>
+					<div ref={userMenuStatus} className="user-menu-status"></div>
 				</div>
 				{/* <div className="user-menu-separator"></div> */}
-				<div className="user-menu-item" onclick={handleLogout}>
+				<div
+					ref={userMenuRetry}
+					className="user-menu-item hidden"
+					onclick={(event) => {
+						event.stopPropagation();
+						refreshUserMenu({ allowLogin: true });
+					}}
+				>
+					<span className="icon refresh"></span>
+					Retry
+				</div>
+				<div
+					ref={userMenuLogout}
+					className="user-menu-item"
+					onclick={handleLogout}
+				>
 					<span className="icon logout"></span>
 					{strings.logout}
 				</div>
@@ -107,63 +126,97 @@ function create($container, $toggler) {
 
 	loginEvents.addListener(updateSidebarAvatar);
 
-	async function handleUserIconClick(e) {
-		try {
-			loader.create(strings["login"], strings["loading..."]);
-			let user = await auth.getLoggedInUser();
+	function handleUserIconClick() {
+		const menu = userContextMenu.el;
+		if (menu.classList.contains("active")) {
+			menu.classList.remove("active");
+			document.removeEventListener("click", handleClickOutside);
+			return;
+		}
 
-			if (!user) {
+		const cachedUser = auth.getCachedLoggedInUser();
+		renderUserMenu(
+			cachedUser,
+			cachedUser ? "Refreshing account…" : "Checking account…",
+		);
+		menu.classList.add("active");
+		setTimeout(
+			() => document.addEventListener("click", handleClickOutside),
+			10,
+		);
+		void refreshUserMenu({ allowLogin: !cachedUser });
+	}
+
+	function renderUserMenu(user, status = "", retry = false) {
+		const menuName = userContextMenu.el.querySelector(".user-menu-name");
+		const menuEmail = userContextMenu.el.querySelector(".user-menu-email");
+		menuName.content = user ? (
+			<div style={{ display: "flex" }}>
+				{user.name}
+				{Boolean(user.verified) && (
+					<span className="icon verified badge"></span>
+				)}
+				{Boolean(user.acode_pro) && <span className="badge">Pro</span>}
+			</div>
+		) : (
+			strings.login
+		);
+		menuEmail.textContent = user?.email || "";
+		userMenuStatus.el.textContent = status;
+		userMenuStatus.el.classList.toggle("hidden", !status);
+		userMenuRetry.el.classList.toggle("hidden", !retry);
+		userMenuLogout.el.classList.toggle("hidden", !user);
+	}
+
+	async function refreshUserMenu({ allowLogin = false } = {}) {
+		const cachedUser = auth.getCachedLoggedInUser();
+		let loginLoaderShown = false;
+		try {
+			const user = await auth.getLoggedInUser(true);
+			if (user) {
+				renderUserMenu(user);
+				return;
+			}
+
+			if (allowLogin) {
+				userContextMenu.el.classList.remove("active");
+				document.removeEventListener("click", handleClickOutside);
 				const confirmation = await confirm(
 					strings.confirm,
 					strings["confirm-login"],
 				);
+				if (!confirmation) return;
 
-				if (!confirmation) {
-					return;
-				}
-
+				loader.create(strings["login"], strings["loading..."]);
 				loader.show();
-
+				loginLoaderShown = true;
 				await auth.login();
-				user = await auth.getLoggedInUser();
-				if (!user) {
-					return;
-				}
-			}
-
-			const menu = userContextMenu.el;
-			const isActive = menu.classList.toggle("active");
-
-			if (isActive) {
-				const menuName = userContextMenu.el.querySelector(".user-menu-name");
-				const menuEmail = userContextMenu.el.querySelector(".user-menu-email");
-
-				if (menuName) {
-					menuName.content = (
-						<div style={{ display: "flex" }}>
-							{user.name}
-							{Boolean(user.verified) && (
-								<span className="icon verified badge"></span>
-							)}
-							{Boolean(user.acode_pro) && <span className="badge">Pro</span>}
-						</div>
+				const loggedIn = await auth.getLoggedInUser(true);
+				if (loggedIn) {
+					renderUserMenu(loggedIn);
+					userContextMenu.el.classList.add("active");
+					setTimeout(
+						() => document.addEventListener("click", handleClickOutside),
+						10,
 					);
 				}
-
-				if (menuEmail) {
-					menuEmail.textContent = user.email || "";
-				}
-
-				setTimeout(() => {
-					document.addEventListener("click", handleClickOutside);
-				}, 10);
-			} else {
-				document.removeEventListener("click", handleClickOutside);
+				return;
 			}
+
+			renderUserMenu(
+				null,
+				"Session expired. Tap Retry to sign in again.",
+				true,
+			);
 		} catch (error) {
 			console.error("Error checking login status:", error);
+			renderUserMenu(
+				cachedUser,
+				"Offline. Check your connection and tap Retry.",
+				true,
+			);
 		} finally {
-			loader.destroy();
+			if (loginLoaderShown) loader.destroy();
 		}
 	}
 

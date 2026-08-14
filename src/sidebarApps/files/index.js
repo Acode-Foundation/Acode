@@ -23,6 +23,14 @@ function initApp(el) {
 	container.classList.add("files");
 	container.setAttribute("data-msg", strings["open folder"]);
 	container.style.overflowX = "auto";
+	container.append(
+		tag("button", {
+			className: "open-folder-action",
+			type: "button",
+			textContent: strings["open folder"],
+			onclick: () => acode.exec("open-folder"),
+		}),
+	);
 	container.addEventListener("click", clickHandler);
 	editorManager.on(
 		["new-file", "int-open-file-list", "remove-file"],
@@ -36,8 +44,13 @@ function initApp(el) {
 			if (fileList) fixHeight(fileList);
 		},
 	);
-	editorManager.on("add-folder", fixHeight);
+	editorManager.on("add-folder", (target) => {
+		updateOpenFolderAction();
+		fixHeight(target);
+	});
+	editorManager.on("remove-folder", updateOpenFolderAction);
 	Sidebar.on("show", onSelected);
+	updateOpenFolderAction();
 }
 
 /**
@@ -57,15 +70,23 @@ function onSelected(el) {
  * @returns
  */
 function clickHandler(e) {
-	if (!container.children.length) {
-		acode.exec("open-folder");
-		return;
-	}
-
 	const { target } = e;
 	if (target.matches(".files>.list>.tile")) {
 		fixHeight(target.parentElement);
 	}
+}
+
+export function hasOpenProjectRoot(element = container) {
+	return Boolean(
+		element?.querySelector(":scope > .list > .tile[data-type='root']"),
+	);
+}
+
+export function updateOpenFolderAction() {
+	container?.classList.toggle(
+		"has-open-projects",
+		hasOpenProjectRoot(container),
+	);
 }
 
 /**

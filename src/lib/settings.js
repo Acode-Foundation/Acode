@@ -110,6 +110,7 @@ class Settings {
 
 	/**@type {{[key: string]: import('components/settingsPage').SettingsPage}} */
 	uiSettings = {};
+	diagnostics = [];
 
 	constructor() {
 		this.#defaultSettings = {
@@ -221,7 +222,7 @@ class Settings {
 		this.value = structuredClone(this.#defaultSettings);
 	}
 
-	async init() {
+	async init({ isUpgrade = false } = {}) {
 		if (this.#initialized) return;
 		this.settingsFile = Url.join(DATA_STORAGE, "settings.json");
 
@@ -235,6 +236,13 @@ class Settings {
 		const fs = fsOperation(this.settingsFile);
 
 		if (!(await fs.exists())) {
+			if (isUpgrade) {
+				this.diagnostics.push({
+					type: "missing-settings",
+					message:
+						"settings.json was missing during an upgrade; defaults were created.",
+				});
+			}
 			await this.#save();
 			this.value = structuredClone(this.#defaultSettings);
 			this.#oldSettings = structuredClone(this.#defaultSettings);
@@ -242,8 +250,9 @@ class Settings {
 			return;
 		}
 
-		const settings = helpers.parseJSON(await fs.readFile("utf8"));
-		if (settings) {
+		const settingsText = await fs.readFile("utf8");
+		const settings = helpers.parseJSON(settingsText);
+		if (settings && typeof settings === "object" && !Array.isArray(settings)) {
 			// make sure that all the settings are present
 			Object.keys(this.#defaultSettings).forEach((setting) => {
 				const value = settings[setting];
@@ -269,7 +278,28 @@ class Settings {
 			return;
 		}
 
+		const backupName = `settings.corrupt-${Date.now()}.json`;
+		let backupUrl = null;
+		try {
+			backupUrl = await fsOperation(DATA_STORAGE).createFile(
+				backupName,
+				settingsText,
+			);
+		} catch (error) {
+			console.error("Unable to preserve corrupt settings file:", error);
+		}
+		this.diagnostics.push({
+			type: "corrupt-settings",
+			message: backupUrl
+				? `Invalid settings were preserved at ${backupUrl}; defaults were restored.`
+				: "settings.json was invalid and defaults were restored; backup failed.",
+			backupUrl,
+		});
 		await this.reset();
+	}
+
+	getDiagnostics() {
+		return this.diagnostics.map((diagnostic) => ({ ...diagnostic }));
 	}
 
 	async #save() {

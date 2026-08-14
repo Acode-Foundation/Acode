@@ -21,48 +21,17 @@ body {
 
     wc-page {
       &#root {
-        &[open-file-list-pos="bottom"] {
-          &[footer-height="1"] {
-            header {
-              bottom: 40px;
-            }
-
-            #sidebar-toggler {
-              bottom: 40px;
-            }
+        .editor-pane-root[data-tabs-position="top"] {
+          .editor-pane.reserve-fullscreen-tabs-left > .editor-pane-tabs {
+            padding-left: 40px;
           }
 
-          &[footer-height="2"] {
-            header {
-              bottom: 80px;
-            }
-
-            #sidebar-toggler {
-              bottom: 80px;
-            }
+          .editor-pane.reserve-fullscreen-tabs-right > .editor-pane-tabs {
+            padding-right: 100px;
           }
 
-          &[footer-height="3"] {
-            header {
-              bottom: 120px;
-            }
-
-            #sidebar-toggler {
-              bottom: 120px;
-            }
-          }
-
-          header {
-            bottom: 0;
-            top: auto !important;
-            z-index: 99;
-          }
-
-          #sidebar-toggler {
-            bottom: 0;
-            top: auto !important;
-            z-index: 99;
-            transition: none !important;
+          .editor-pane-tabs {
+            box-sizing: border-box;
           }
         }
 

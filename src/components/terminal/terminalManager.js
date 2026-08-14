@@ -12,6 +12,7 @@ import EditorFile from "lib/editorFile";
 import openFile from "lib/openFile";
 import openFolder from "lib/openFolder";
 import appSettings from "lib/settings";
+import { prootPathToTerminalUrl } from "lib/terminalPaths";
 import helpers from "utils/helpers";
 import TerminalComponent from "./terminal";
 import TerminalTouchSelection from "./terminalTouchSelection";
@@ -1169,32 +1170,7 @@ class TerminalManager {
 	 * @returns {string} App filesystem path
 	 */
 	convertProotPath(prootPath) {
-		if (!prootPath) return prootPath;
-
-		const packageName = window.BuildInfo?.packageName || "com.foxdebug.acode";
-		const dataDir = `/data/user/0/${packageName}`;
-		const alpineRoot = `${dataDir}/files/alpine`;
-
-		let convertedPath;
-
-		if (prootPath.startsWith("/public")) {
-			// /public -> /data/user/0/com.foxdebug.acode/files/public
-			convertedPath = `file://${dataDir}/files${prootPath}`;
-		} else if (
-			prootPath.startsWith("/sdcard") ||
-			prootPath.startsWith("/storage") ||
-			prootPath.startsWith("/data")
-		) {
-			convertedPath = `file://${prootPath}`;
-		} else if (prootPath.startsWith("/")) {
-			// Everything else is relative to alpine root
-			convertedPath = `file://${alpineRoot}${prootPath}`;
-		} else {
-			convertedPath = prootPath;
-		}
-
-		//console.log(`Path conversion: ${prootPath} -> ${convertedPath}`);
-		return convertedPath;
+		return prootPathToTerminalUrl(prootPath);
 	}
 
 	/**
