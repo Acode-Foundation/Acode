@@ -26,6 +26,7 @@ import { inlayHintsExtension } from "./inlayHints";
 import { addLspLog } from "./logs";
 import { selectRuntimeProvider } from "./runtimeProviders";
 import serverRegistry from "./serverRegistry";
+import { isTailwindCssServer } from "./servers/shared";
 import {
   hoverTooltips,
   resolveLspHoverHighlightLanguage,
@@ -737,11 +738,15 @@ export class LspClientManager {
       scope,
       signal,
     } = initContext;
+    const tailwindCss = isTailwindCssServer(server);
 
     const workspaceOptions = {
       displayFile: this.options.displayFile,
       openFile: this.options.openFile,
       resolveLanguageId: this.options.resolveLanguageId,
+      // Track the first folder advertised during `initialize` so it is not
+      // sent again as a workspace-folder change after the client connects.
+      initialFolders: runtimeRootUri ? [runtimeRootUri] : undefined,
     };
 
     const clientConfig = { ...(server.clientConfig ?? {}) };
@@ -798,6 +803,13 @@ export class LspClientManager {
         workspace: {
           configuration: true,
           workspaceFolders: true,
+          ...(tailwindCss
+            ? {
+                didChangeWatchedFiles: {
+                  dynamicRegistration: true,
+                },
+              }
+            : {}),
         },
       },
     };
@@ -1048,9 +1060,7 @@ export class LspClientManager {
         client,
         transportHandle.transport,
         initializationOptions,
-        scope === "workspace" && server.useWorkspaceFolders
-          ? null
-          : normalizedRootUri,
+        runtimeRootUri,
       );
       await waitForInitialization(client.initializing, signal, server.id);
       if (!client.__acodeLoggedInfo) {
@@ -1076,8 +1086,8 @@ export class LspClientManager {
         addLspLog(
           server.id,
           "info",
-          normalizedRootUri
-            ? `Initialized workspace ${normalizedRootUri}`
+          runtimeRootUri
+            ? `Initialized workspace ${runtimeRootUri}`
             : "Initialized without a workspace root",
         );
         client.__acodeLoggedInfo = true;

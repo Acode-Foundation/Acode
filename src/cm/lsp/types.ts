@@ -519,6 +519,8 @@ export interface WorkspaceOptions {
 	displayFile?: (uri: string) => Promise<EditorView | null>;
 	openFile?: (uri: string) => Promise<EditorView | null>;
 	resolveLanguageId?: (uri: string) => string | null;
+	/** Folders already advertised in `initialize`; do not re-notify. */
+	initialFolders?: string[];
 }
 
 // ============================================================================

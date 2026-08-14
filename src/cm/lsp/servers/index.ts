@@ -3,6 +3,7 @@ import { javascriptBundle, javascriptServers } from "./javascript";
 import { luauBundle, luauServers } from "./luau";
 import { pythonBundle, pythonServers } from "./python";
 import { systemsBundle, systemsServers } from "./systems";
+import { tailwindBundle, tailwindServers } from "./tailwind";
 import { webBundle, webServers } from "./web";
 
 export const builtinServers: LspServerManifest[] = [
@@ -11,6 +12,7 @@ export const builtinServers: LspServerManifest[] = [
 	...luauServers,
 	...webServers,
 	...systemsServers,
+	...tailwindServers,
 ];
 
 export const builtinServerBundles: LspServerBundle[] = [
@@ -19,4 +21,5 @@ export const builtinServerBundles: LspServerBundle[] = [
 	luauBundle,
 	webBundle,
 	systemsBundle,
+	tailwindBundle,
 ];

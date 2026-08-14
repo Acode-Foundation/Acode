@@ -533,7 +533,7 @@ export function documentColorsClientExtension(): LSPClientExtension {
 		clientCapabilities: {
 			textDocument: {
 				colorProvider: {
-					dynamicRegistration: true,
+					dynamicRegistration: false,
 				},
 			},
 		},

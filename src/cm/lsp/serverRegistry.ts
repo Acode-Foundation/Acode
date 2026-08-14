@@ -15,6 +15,11 @@ import type {
 	TransportDescriptor,
 	WebSocketTransportOptions,
 } from "./types";
+import {
+	addJsTsLanguageAliases,
+	isTailwindCssServer,
+	resolveJsTsLanguageId,
+} from "./servers/shared";
 
 const registry = new Map<string, LspServerDefinition>();
 const listeners = new Set<RegistryEventListener>();
@@ -176,6 +181,11 @@ function sanitizeDefinition(
 
 	const id = toKey(definition.id);
 	if (!id) throw new Error("LSP server definition requires a non-empty id");
+	const tailwindCss = isTailwindCssServer(definition);
+	const declaredLanguages = sanitizeLanguages(definition.languages);
+	const languages = tailwindCss
+		? addJsTsLanguageAliases(declaredLanguages)
+		: declaredLanguages;
 
 	const transport: RawTransportDescriptor = definition.transport ?? {};
 	const kind = (transport.kind ?? "stdio") as
@@ -189,7 +199,7 @@ function sanitizeDefinition(
 
 	if (
 		!("languages" in definition) ||
-		!sanitizeLanguages(definition.languages).length
+		!languages.length
 	) {
 		throw new Error(`LSP server ${id} must declare supported languages`);
 	}
@@ -304,7 +314,7 @@ function sanitizeDefinition(
 			Number.isFinite(definition.priority)
 				? definition.priority
 				: 0,
-		languages: sanitizeLanguages(definition.languages),
+		languages,
 		transport: sanitizedTransport,
 		initializationOptions: clone(definition.initializationOptions),
 		workspaceConfiguration: clone(definition.workspaceConfiguration),
@@ -323,7 +333,10 @@ function sanitizeDefinition(
 		resolveLanguageId:
 			typeof definition.resolveLanguageId === "function"
 				? definition.resolveLanguageId
-				: null,
+				: tailwindCss
+					? ({ languageId, languageName }) =>
+							resolveJsTsLanguageId(languageId, languageName)
+					: null,
 		launcher,
 		runtimes: sanitizeRuntimeIds(definition.runtimes),
 		useWorkspaceFolders: definition.useWorkspaceFolders === true,
