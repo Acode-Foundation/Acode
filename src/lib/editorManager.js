@@ -4221,9 +4221,14 @@ async function EditorManager($header, $body) {
 		function syncScrollUi() {
 			if (pane !== activePane) return;
 			scrollSyncRaf = 0;
+			if (pane.activeFile?.type !== "editor") {
+				$hScrollbar.hideImmediately();
+				$vScrollbar.hideImmediately();
+				return;
+			}
 			editor.requestMeasure({
 				read: () => readScrollMetrics(),
-				write: updateScrollbarsFromMetrics,
+				write: (metrics) => updateScrollbarsFromMetrics(metrics, pane),
 			});
 		}
 
@@ -4565,8 +4570,15 @@ async function EditorManager($header, $body) {
 		};
 	}
 
-	function updateScrollbarsFromMetrics(metrics) {
+	function updateScrollbarsFromMetrics(metrics, sourcePane) {
 		if (!metrics) return;
+		if (sourcePane !== activePane || sourcePane.activeFile?.type !== "editor") {
+			if (sourcePane === activePane) {
+				$hScrollbar.hideImmediately();
+				$vScrollbar.hideImmediately();
+			}
+			return;
+		}
 
 		const maxScrollTop = Math.max(
 			metrics.scrollHeight - metrics.clientHeight,
@@ -4886,6 +4898,8 @@ async function EditorManager($header, $body) {
 		} else {
 			pane.touchSelectionController?.setEnabled(false);
 			pane.editorContainer.style.display = "none";
+			$hScrollbar.hideImmediately();
+			$vScrollbar.hideImmediately();
 			if (file.content) {
 				file.content.style.display = "block";
 				if (file.content.parentElement !== pane.content) {
