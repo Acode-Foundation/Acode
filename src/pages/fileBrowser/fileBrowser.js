@@ -1399,11 +1399,16 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					list = await listAllStorages();
 				} else {
 					const id = helpers.uuid();
+					let timeout = 10000;
+
+					if (["ftp:", "sftp:"].includes(Url.getProtocol(url))) {
+						timeout = 0;
+					}
 
 					progress[id] = true;
 					const timeout = setTimeout(() => {
 						loader.create(name, strings.loading + "...", {
-							timeout: 10000,
+							timeout,
 							callback() {
 								loader.destroy();
 								navigate("/", "/");
