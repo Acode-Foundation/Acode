@@ -588,7 +588,7 @@ declare type LangStrings = {
   "lsp-install-info-unknown": string;
   "lsp-install-info-version-available": string;
   "lsp-install-notification": string;
-  "lsp-install-method-apk": string;
+  "lsp-install-method-apt": string;
   "lsp-install-method-cargo": string;
   "lsp-install-method-manual": string;
   "lsp-install-method-npm": string;

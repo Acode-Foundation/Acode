@@ -1173,7 +1173,7 @@ class TerminalManager {
 
 		const packageName = window.BuildInfo?.packageName || "com.foxdebug.acode";
 		const dataDir = `/data/user/0/${packageName}`;
-		const alpineRoot = `${dataDir}/files/alpine`;
+		const ubuntuRoot = `${dataDir}/files/ubuntu`;
 
 		let convertedPath;
 
@@ -1187,8 +1187,8 @@ class TerminalManager {
 		) {
 			convertedPath = `file://${prootPath}`;
 		} else if (prootPath.startsWith("/")) {
-			// Everything else is relative to alpine root
-			convertedPath = `file://${alpineRoot}${prootPath}`;
+			// Everything else is relative to ubuntu root
+			convertedPath = `file://${ubuntuRoot}${prootPath}`;
 		} else {
 			convertedPath = prootPath;
 		}

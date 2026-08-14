@@ -100,11 +100,11 @@ export {
 	stopManagedServer,
 } from "./serverLauncher";
 export {
-	BUILTIN_ALPINE_RUNTIME_ID,
+	BUILTIN_UBUNTU_RUNTIME_ID,
 	EXTERNAL_WEBSOCKET_RUNTIME_ID,
 	getRuntimeProvider,
 	inferWorkspaceKind,
-	isBuiltinAlpineAccessible,
+	isBuiltinUbuntuAccessible,
 	listRuntimeProviders,
 	registerRuntimeProvider,
 	selectRuntimeProvider,
