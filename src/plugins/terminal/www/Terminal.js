@@ -591,14 +591,20 @@ const Terminal = {
 
                 if [ -d "$PREFIX/alpine/home" ] && [ -n "$(find "$PREFIX/alpine/home" -mindepth 1 -maxdepth 1 2>/dev/null | head -n 1)" ]; then
                     mkdir -p "$MIGRATE/home"
-                    cp -a "$PREFIX/alpine/home/." "$MIGRATE/home/"
-                    COPIED=true
+                    if cp -a "$PREFIX/alpine/home/." "$MIGRATE/home/"; then
+                        COPIED=true
+                    else
+                        exit 1
+                    fi
                 fi
 
                 if [ -d "$PREFIX/alpine/root" ] && [ -n "$(find "$PREFIX/alpine/root" -mindepth 1 -maxdepth 1 2>/dev/null | head -n 1)" ]; then
                     mkdir -p "$MIGRATE/root"
-                    cp -a "$PREFIX/alpine/root/." "$MIGRATE/root/"
-                    COPIED=true
+                    if cp -a "$PREFIX/alpine/root/." "$MIGRATE/root/"; then
+                        COPIED=true
+                    else
+                        exit 1
+                    fi
                 fi
 
                 # Mark as migrated so this only runs once
