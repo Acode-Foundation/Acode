@@ -1,7 +1,7 @@
 import { EditorSelection } from "@codemirror/state";
 import {
-	collapseReadOnlySelection,
 	focusEditorIfEditable,
+	placeReadOnlyCursor,
 	resolveReadOnlyContextSelection,
 	shouldCommitReadOnlyTap,
 } from "cm/editorReadOnly";
@@ -384,9 +384,7 @@ class TouchSelectionMenuController {
 
 	#captureReadOnlyTap(event) {
 		this.#readOnlyTapSession = null;
-		if (!this.#enabled || !this.#isReadOnly() || !this.#hasSelection()) {
-			return;
-		}
+		if (!this.#enabled || !this.#isReadOnly()) return;
 		if (!(event.isTrusted && event.isPrimary)) return;
 		if (typeof event.button === "number" && event.button !== 0) return;
 		if (this.#canExtendSelection(event) || this.#canAddSelectionRange(event)) {
@@ -440,7 +438,7 @@ class TouchSelectionMenuController {
 
 		const pos = this.#safePosAtCoords(event.clientX, event.clientY);
 		if (pos == null) return false;
-		if (!collapseReadOnlySelection(this.#view, pos)) return false;
+		if (!placeReadOnlyCursor(this.#view, pos)) return false;
 		this.#menuRequested = false;
 		this.#clearMenuShowTimer();
 		this.#hideMenu(true);

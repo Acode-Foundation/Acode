@@ -63,6 +63,18 @@ const readOnlyFocusGuard = EditorView.domEventHandlers({
 	},
 });
 
+const readOnlyCursor = [
+	EditorView.editorAttributes.of({ class: "cm-read-only" }),
+	EditorView.theme({
+		"&.cm-read-only > .cm-scroller > .cm-cursorLayer": {
+			animation: "none",
+		},
+		"&.cm-read-only > .cm-scroller > .cm-cursorLayer .cm-cursor": {
+			display: "block",
+		},
+	}),
+];
+
 /**
  * Keep CodeMirror's document and DOM editability in sync.
  */
@@ -71,7 +83,12 @@ export function createEditorReadOnlyExtension(readOnly: boolean): Extension {
 		EditorState.readOnly.of(readOnly),
 		EditorView.editable.of(!readOnly),
 		...(readOnly
-			? [readOnlyFocusGuard, readOnlyInputGuard, readOnlyUserChangeFilter]
+			? [
+					readOnlyFocusGuard,
+					readOnlyInputGuard,
+					readOnlyUserChangeFilter,
+					readOnlyCursor,
+				]
 			: []),
 	];
 }
@@ -137,17 +154,17 @@ export function shouldCommitReadOnlyTap(
 	return Math.hypot(end.x - start.x, end.y - start.y) <= maxDistance;
 }
 
-/** Collapse an existing read-only selection without focusing or editing. */
-export function collapseReadOnlySelection(
-	view: EditorView,
-	pos: number,
-): boolean {
-	if (!view.state.readOnly || view.state.selection.main.empty) return false;
+/** Place the visual read-only cursor without focusing or editing. */
+export function placeReadOnlyCursor(view: EditorView, pos: number): boolean {
+	if (!view.state.readOnly) return false;
 	const position = Math.max(0, Math.min(pos, view.state.doc.length));
-	view.dispatch({
-		selection: EditorSelection.cursor(position),
-		userEvent: "select.pointer",
-	});
+	const selection = EditorSelection.single(position);
+	if (!view.state.selection.eq(selection)) {
+		view.dispatch({
+			selection,
+			userEvent: "select.pointer",
+		});
+	}
 	blurEditorIfReadOnly(view, true);
 	return true;
 }

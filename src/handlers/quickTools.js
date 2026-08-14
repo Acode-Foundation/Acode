@@ -34,6 +34,10 @@ import {
 	removeActionStackEntries,
 	shouldCaptureModifierInput,
 } from "./quickToolsState";
+import {
+	captureReadOnlyQuickToolsKey,
+	createReadOnlyQuickToolsCaptureSession,
+} from "./readOnlyQuickToolsCapture";
 
 export let quickToolUsed = false;
 
@@ -44,6 +48,8 @@ let quickToolUsedTimeout = null;
 let activeSearchState = null;
 /** @type {MutationObserver | null} */
 let searchCloseVisibilityObserver = null;
+/** @type {import("./readOnlyQuickToolsCapture").ReadOnlyQuickToolsCaptureSession<EditorView> | null} */
+let readOnlyCaptureSession = null;
 
 const state = {
 	shift: false,
@@ -66,7 +72,16 @@ setQuickToolsModifierInputHandler(handleCodeMirrorQuickToolsTextInput);
  * @typedef {(value: boolean)=>void} QuickToolsEventListener
  */
 
+quickTools.$input.addEventListener("beforeinput", (event) => {
+	handleReadOnlyQuickToolsCaptureEvent(event);
+});
+
+quickTools.$input.addEventListener("compositionend", (event) => {
+	handleReadOnlyQuickToolsCaptureEvent(event);
+});
+
 quickTools.$input.addEventListener("input", (e) => {
+	if (handleReadOnlyQuickToolsCaptureEvent(e)) return;
 	const key = e.target.value.toUpperCase();
 	quickTools.$input.value = "";
 	if (!key || key.length > 1) return;
@@ -98,6 +113,7 @@ quickTools.$input.addEventListener("input", (e) => {
 });
 
 quickTools.$input.addEventListener("keydown", (e) => {
+	if (handleReadOnlyQuickToolsCaptureEvent(e)) return;
 	const { keyCode, key, which } = e;
 	const keyCombination = getKeys({ keyCode, key, which });
 
@@ -245,11 +261,15 @@ export const key = {
 
 export function clearQuickToolsModifierState({ restoreFocus = false } = {}) {
 	const changed = clearModifierState(state, events);
+	if (!restoreFocus || !readOnlyCaptureSession?.consumed) {
+		clearReadOnlyCaptureSession();
+	}
 	if (restoreFocus) restoreQuickToolsTargetFocus();
 	return changed;
 }
 
 export function cancelQuickToolsModifierInput() {
+	clearReadOnlyCaptureSession();
 	const changed = clearQuickToolsModifierState();
 	quickTools.$input.value = "";
 	quickTools.$input.blur();
@@ -284,14 +304,21 @@ export default function actions(action, value) {
 			if (shouldCapture) {
 				$input.value = "";
 				if (codeMirrorView?.state.readOnly) {
+					readOnlyCaptureSession = createReadOnlyQuickToolsCaptureSession(
+						codeMirrorView,
+						getQuickToolsModifierSnapshot(),
+					);
 					focusQuickToolsModifierInput(codeMirrorView, $input);
 				} else {
+					clearReadOnlyCaptureSession();
 					$input.focus();
 				}
 			} else {
+				clearReadOnlyCaptureSession();
 				if (codeMirrorView) focusEditorIfEditable(codeMirrorView);
 			}
 		} else {
+			clearReadOnlyCaptureSession();
 			restoreQuickToolsTargetFocus();
 		}
 
@@ -438,6 +465,67 @@ function getCodeMirrorInputView(target) {
 	return target === view.contentDOM || view.contentDOM.contains(target)
 		? view
 		: null;
+}
+
+function handleReadOnlyQuickToolsCaptureEvent(event) {
+	const session = readOnlyCaptureSession;
+	if (!session) return false;
+
+	const view = session.target;
+	if (
+		!view?.state?.readOnly ||
+		!view.contentDOM?.isConnected ||
+		!view.dom?.isConnected
+	) {
+		cancelQuickToolsModifierInput();
+		preventCaptureInput(event);
+		return true;
+	}
+
+	const result = captureReadOnlyQuickToolsKey(session, {
+		type: event.type,
+		key: event.key,
+		data: event.data,
+		value: quickTools.$input.value,
+		inputType: event.inputType,
+		isComposing: event.isComposing,
+	});
+	readOnlyCaptureSession = result.session;
+
+	if (result.outcome.kind === "pass") return false;
+	if (result.outcome.kind === "pending") {
+		if (!event.isComposing) {
+			quickTools.$input.value = "";
+			if (event.type === "beforeinput") preventCaptureInput(event);
+		}
+		return true;
+	}
+
+	quickTools.$input.value = "";
+	preventCaptureInput(event);
+	if (result.outcome.kind === "duplicate") return true;
+
+	const key = result.outcome.key.toUpperCase();
+	const keyCombination = { key, ...session.modifiers };
+	runCodeMirrorQuickToolsTextKey(view, key, keyCombination);
+	return true;
+}
+
+function preventCaptureInput(event) {
+	if (event.cancelable) event.preventDefault();
+}
+
+function getQuickToolsModifierSnapshot() {
+	return {
+		shiftKey: state.shift,
+		altKey: state.alt,
+		ctrlKey: state.ctrl,
+		metaKey: state.meta,
+	};
+}
+
+function clearReadOnlyCaptureSession() {
+	readOnlyCaptureSession = null;
 }
 
 function runCodeMirrorQuickToolKey(keyCode, keyCombination) {

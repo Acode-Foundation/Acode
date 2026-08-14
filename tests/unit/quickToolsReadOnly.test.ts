@@ -11,6 +11,10 @@ import quickToolsModifierInput, {
 	setQuickToolsModifierInputHandler,
 } from "cm/quickToolsModifierInput";
 import { runQuickToolKey } from "cm/quickToolsNavigation";
+import {
+	captureReadOnlyQuickToolsKey,
+	createReadOnlyQuickToolsCaptureSession,
+} from "handlers/readOnlyQuickToolsCapture";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("utils/keyboardEvent", () => ({
@@ -47,6 +51,58 @@ describe("read-only QuickTools interaction", () => {
 		expect(view.state.selection.main.from).toBe(0);
 		expect(view.state.selection.main.to).toBe(view.state.doc.length);
 		expect(view.state.doc.toString()).toBe(originalDocument);
+		expect(view.hasFocus).toBe(false);
+	});
+
+	it("executes a captured Ctrl+A once across duplicate Android events", () => {
+		const view = createEditor(true, [
+			keymap.of([{ key: "Ctrl-a", run: selectAll }]),
+		]);
+		const captureInput = document.createElement("textarea");
+		document.body.append(captureInput);
+		const originalDocument = view.state.doc.toString();
+		let session = createReadOnlyQuickToolsCaptureSession(view, {
+			ctrlKey: true,
+		});
+		let commandRuns = 0;
+
+		expect(session).not.toBeNull();
+		expect(focusQuickToolsModifierInput(view, captureInput)).toBe(true);
+		if (!session) return;
+
+		for (const event of [
+			{
+				type: "keydown" as const,
+				key: "Process",
+				isComposing: true,
+			},
+			{
+				type: "beforeinput" as const,
+				data: "a",
+				inputType: "insertCompositionText",
+				isComposing: true,
+			},
+			{
+				type: "input" as const,
+				data: "a",
+				value: "a",
+				isComposing: true,
+			},
+			{ type: "compositionend" as const, data: "a" },
+		]) {
+			const result = captureReadOnlyQuickToolsKey(session, event);
+			session = result.session;
+			if (result.outcome.kind !== "key") continue;
+			commandRuns += 1;
+			runQuickToolKey(view, 65, session.modifiers);
+			finishQuickToolsModifierInput(view, captureInput);
+		}
+
+		expect(commandRuns).toBe(1);
+		expect(view.state.selection.main.from).toBe(0);
+		expect(view.state.selection.main.to).toBe(view.state.doc.length);
+		expect(view.state.doc.toString()).toBe(originalDocument);
+		expect(document.activeElement).not.toBe(captureInput);
 		expect(view.hasFocus).toBe(false);
 	});
 

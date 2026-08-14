@@ -1,12 +1,12 @@
 // @vitest-environment happy-dom
 
 import { Compartment, EditorSelection, EditorState } from "@codemirror/state";
-import { EditorView } from "@codemirror/view";
+import { drawSelection, EditorView } from "@codemirror/view";
 import {
-	collapseReadOnlySelection,
 	createEditorReadOnlyExtension,
 	focusEditorIfEditable,
 	isReadOnlyUserChange,
+	placeReadOnlyCursor,
 	reconfigureEditorReadOnly,
 	resolveReadOnlyContextSelection,
 	shouldCommitReadOnlyTap,
@@ -20,11 +20,14 @@ afterEach(() => {
 	document.body.replaceChildren();
 });
 
-function createEditor(readOnly = false) {
+function createEditor(readOnly = false, doc = "read only content") {
 	const compartment = new Compartment();
 	const state = EditorState.create({
-		doc: "read only content",
-		extensions: [compartment.of(createEditorReadOnlyExtension(readOnly))],
+		doc,
+		extensions: [
+			drawSelection(),
+			compartment.of(createEditorReadOnlyExtension(readOnly)),
+		],
 	});
 	const view = new EditorView({ state, parent: document.body });
 	views.push(view);
@@ -37,6 +40,7 @@ function expectEditable(view: EditorView) {
 	expect(view.contentDOM.getAttribute("contenteditable")).toBe("true");
 	expect(view.contentDOM.hasAttribute("aria-readonly")).toBe(false);
 	expect(view.contentDOM.hasAttribute("tabindex")).toBe(false);
+	expect(view.dom.classList.contains("cm-read-only")).toBe(false);
 }
 
 function expectReadOnly(view: EditorView) {
@@ -45,6 +49,7 @@ function expectReadOnly(view: EditorView) {
 	expect(view.contentDOM.getAttribute("contenteditable")).toBe("false");
 	expect(view.contentDOM.getAttribute("aria-readonly")).toBe("true");
 	expect(view.contentDOM.hasAttribute("tabindex")).toBe(false);
+	expect(view.dom.classList.contains("cm-read-only")).toBe(true);
 }
 
 describe("editor read-only configuration", () => {
@@ -65,6 +70,22 @@ describe("editor read-only configuration", () => {
 		expect(view.state.selection.main.from).toBe(0);
 		expect(view.state.selection.main.to).toBe(4);
 		expect(view.state.doc.toString()).toBe(originalDocument);
+	});
+
+	it("reveals CodeMirror's static cursor only in read-only mode", () => {
+		const { compartment, view } = createEditor(true);
+		const cursorLayer = view.dom.querySelector<HTMLElement>(".cm-cursorLayer");
+		expect(cursorLayer).not.toBeNull();
+		const cursor = document.createElement("span");
+		cursor.className = "cm-cursor cm-cursor-primary";
+		cursorLayer!.append(cursor);
+
+		expect(getComputedStyle(cursor).display).toBe("block");
+		expect(view.hasFocus).toBe(false);
+
+		reconfigureEditorReadOnly(view, compartment, false);
+		expect(view.dom.classList.contains("cm-read-only")).toBe(false);
+		expect(getComputedStyle(cursor).display).toBe("none");
 	});
 
 	it("blocks user document changes but permits internal synchronization", () => {
@@ -125,17 +146,33 @@ describe("editor read-only configuration", () => {
 		expect(editable.hasFocus).toBe(true);
 	});
 
-	it("collapses a read-only selection without editing or focusing", () => {
+	it("places a read-only cursor without editing or focusing", () => {
 		const { view } = createEditor(true);
 		view.dispatch({ selection: EditorSelection.range(0, 4) });
 		const originalDocument = view.state.doc.toString();
 
-		expect(collapseReadOnlySelection(view, 7)).toBe(true);
+		expect(placeReadOnlyCursor(view, 7)).toBe(true);
 		expect(view.state.selection.main.empty).toBe(true);
 		expect(view.state.selection.main.head).toBe(7);
 		expect(view.state.doc.toString()).toBe(originalDocument);
 		expect(view.hasFocus).toBe(false);
-		expect(collapseReadOnlySelection(view, 2)).toBe(false);
+
+		expect(placeReadOnlyCursor(view, 2)).toBe(true);
+		expect(view.state.selection.main.head).toBe(2);
+		expect(placeReadOnlyCursor(view, 2)).toBe(true);
+		expect(view.state.doc.toString()).toBe(originalDocument);
+	});
+
+	it("clamps cursor placement in an empty document and declines editable views", () => {
+		const readOnly = createEditor(true, "").view;
+		const editable = createEditor(false).view;
+
+		expect(placeReadOnlyCursor(readOnly, 10)).toBe(true);
+		expect(readOnly.state.selection.main.head).toBe(0);
+		expect(readOnly.hasFocus).toBe(false);
+
+		expect(placeReadOnlyCursor(editable, 5)).toBe(false);
+		expect(editable.state.selection.main.head).toBe(0);
 	});
 
 	it("accepts only uncancelled short primary taps", () => {
