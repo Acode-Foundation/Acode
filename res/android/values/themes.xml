@@ -5,6 +5,5 @@
         <item name="android:colorAccent">@color/teardrop</item>
         <item name="colorControlActivated">@color/teardrop</item>
         <item name="android:colorControlActivated">@color/teardrop</item>
-        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
     </style>
 </resources>

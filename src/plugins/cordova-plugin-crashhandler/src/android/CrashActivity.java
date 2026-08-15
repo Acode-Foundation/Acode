@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.graphics.Color;
+import android.graphics.Insets;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
@@ -18,6 +19,8 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -57,6 +60,7 @@ public class CrashActivity extends Activity {
         super.onCreate(savedInstanceState);
 
         loadThemeColors();
+        configureEdgeToEdge();
         applySystemBarColors();
 
         Intent intent = getIntent();
@@ -103,6 +107,7 @@ public class CrashActivity extends Activity {
                 ViewGroup.LayoutParams.MATCH_PARENT));
         mainScrollView.setBackgroundColor(colorPrimaryBg);
         mainScrollView.setFillViewport(true);
+        applySystemBarInsets(mainScrollView);
 
         LinearLayout rootLayout = new LinearLayout(this);
         rootLayout.setOrientation(LinearLayout.VERTICAL);
@@ -261,6 +266,7 @@ public class CrashActivity extends Activity {
         rootLayout.addView(buttonsLayout);
         mainScrollView.addView(rootLayout);
         setContentView(mainScrollView);
+        mainScrollView.requestApplyInsets();
     }
 
     private void loadThemeColors() {
@@ -358,18 +364,70 @@ public class CrashActivity extends Activity {
                 Color.blue(secondaryText));
     }
 
+    private void configureEdgeToEdge() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            getWindow().setDecorFitsSystemWindows(false);
+        }
+    }
+
+    private void applySystemBarInsets(final View view) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return;
+
+        view.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+            @Override
+            public WindowInsets onApplyWindowInsets(View v, WindowInsets insets) {
+                Insets safeInsets = insets.getInsets(
+                        WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
+                v.setPadding(
+                        safeInsets.left,
+                        safeInsets.top,
+                        safeInsets.right,
+                        safeInsets.bottom);
+                return insets;
+            }
+        });
+    }
+
     private void applySystemBarColors() {
         try {
             Window window = getWindow();
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                window.setStatusBarColor(colorPrimaryBg);
-                window.setNavigationBarColor(colorPrimaryBg);
+            View decorView = window.getDecorView();
+            decorView.setBackgroundColor(colorPrimaryBg);
+
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+                applyLegacySystemBarColor(window, "setStatusBarColor");
+                applyLegacySystemBarColor(window, "setNavigationBarColor");
             }
-            if (!isDarkTheme && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                View decorView = window.getDecorView();
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                WindowInsetsController controller = window.getInsetsController();
+                if (controller != null) {
+                    int appearance =
+                            WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS |
+                            WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
+                    controller.setSystemBarsAppearance(
+                            isDarkTheme ? 0 : appearance,
+                            appearance);
+                }
+            } else {
+                int appearance =
+                        View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR |
+                        View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+                int visibility = decorView.getSystemUiVisibility();
                 decorView.setSystemUiVisibility(
-                        decorView.getSystemUiVisibility() | View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+                        isDarkTheme
+                                ? visibility & ~appearance
+                                : visibility | appearance);
             }
+        } catch (Exception ignored) {}
+    }
+
+    private void applyLegacySystemBarColor(Window window, String methodName) {
+        try {
+            window
+                    .getClass()
+                    .getMethod(methodName, int.class)
+                    .invoke(window, colorPrimaryBg);
         } catch (Exception ignored) {}
     }
 
