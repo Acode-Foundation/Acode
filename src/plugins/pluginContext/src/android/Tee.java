@@ -328,6 +328,7 @@ public class Tee extends CordovaPlugin {
      */
     private static void restoreInterruptedInstall(File parent, File destination) throws IOException {
         String backupPrefix = "." + destination.getName() + ".backup-";
+        String stagingPrefix = "." + destination.getName() + ".install-";
         File[] children = parent.listFiles();
         if (children == null) return;
 
@@ -346,7 +347,9 @@ public class Tee extends CordovaPlugin {
         }
 
         for (File child : children) {
-            if (child.isDirectory() && child.getName().startsWith(backupPrefix)) {
+            if (!child.isDirectory()) continue;
+            String name = child.getName();
+            if (name.startsWith(backupPrefix) || name.startsWith(stagingPrefix)) {
                 deleteRecursively(child);
             }
         }

@@ -187,7 +187,6 @@ export default async function installPlugin(
 
 			assertSafePluginId(id);
 			pluginDir = Url.join(PLUGIN_DIR, id);
-			pluginWasInstalled = await fsOperation(pluginDir).exists();
 			archiveUrl = Url.join(
 				CACHE_STORAGE,
 				`.plugin-install-${helpers.uuid()}.zip`,
@@ -203,6 +202,7 @@ export default async function installPlugin(
 				JSON.stringify(pluginJson),
 			);
 			extractionComplete = true;
+			pluginWasInstalled = await fsOperation(pluginDir).exists();
 
 			if (isDependency) {
 				depsLoaders.push(async () => {
