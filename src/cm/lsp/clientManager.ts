@@ -26,7 +26,6 @@ import { inlayHintsExtension } from "./inlayHints";
 import { addLspLog } from "./logs";
 import { selectRuntimeProvider } from "./runtimeProviders";
 import serverRegistry from "./serverRegistry";
-import { isTailwindCssServer } from "./servers/shared";
 import {
   hoverTooltips,
   resolveLspHoverHighlightLanguage,
@@ -738,7 +737,6 @@ export class LspClientManager {
       scope,
       signal,
     } = initContext;
-    const tailwindCss = isTailwindCssServer(server);
 
     const workspaceOptions = {
       displayFile: this.options.displayFile,
@@ -803,13 +801,6 @@ export class LspClientManager {
         workspace: {
           configuration: true,
           workspaceFolders: true,
-          ...(tailwindCss
-            ? {
-                didChangeWatchedFiles: {
-                  dynamicRegistration: true,
-                },
-              }
-            : {}),
         },
       },
     };
