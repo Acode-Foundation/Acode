@@ -75,8 +75,15 @@ export default function selectionMenu() {
  * @param {boolean} readOnly whether to show the item in readOnly mode
  */
 selectionMenu.add = (onclick, text, mode, readOnly) => {
-	items.push(item(onclick, text, mode, readOnly));
+    const item = item(onclick, text, mode, readOnly);
+	items.push(item);
+	return item;
 };
+
+selectionMenu.remove = (item) => {
+    const i = items.indexOf(item);
+    if (i >= 0) items.splice(i, 1);
+}
 
 selectionMenu.exec = (command) => {
 	exec(command);
