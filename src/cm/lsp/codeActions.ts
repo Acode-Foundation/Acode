@@ -15,6 +15,7 @@ import type {
 import type { Position, Range } from "./types";
 import { addLspLogFor } from "./logs";
 import type AcodeWorkspace from "./workspace";
+import { lspPositionToOffset } from "./textEditUtils";
 
 type CodeActionResponse = (CodeAction | Command)[] | null;
 
@@ -60,13 +61,6 @@ function isCommand(item: CodeAction | Command): item is Command {
 	return (
 		"command" in item && typeof item.command === "string" && !("edit" in item)
 	);
-}
-
-function lspPositionToOffset(
-	doc: { line: (n: number) => { from: number } },
-	pos: Position,
-): number {
-	return doc.line(pos.line + 1).from + pos.character;
 }
 
 async function requestCodeActions(
