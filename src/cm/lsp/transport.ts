@@ -11,6 +11,10 @@ import type {
 	TransportHandle,
 	WebSocketTransportOptions,
 } from "./types";
+import { LSPPlugin } from "@codemirror/lsp-client";
+import type { TextEdit } from "vscode-languageserver-types";
+import { applyTextEdits } from "./textEditUtils";
+import type AcodeWorkspace from "./workspace";
 
 const DEFAULT_TIMEOUT = 5000;
 const RECONNECT_BASE_DELAY = 500;
@@ -157,76 +161,237 @@ function createWebSocketTransport(
 		dispatchToListeners(data);
 	}
 
-	function dispatchToListeners(data: string): void {
-		// Debugging aid while stabilising websocket transport
-		if (context?.debugWebSocket) {
-			console.debug(`[LSP:${server.id}] <=`, data);
+interface WorkspaceEditParam {
+	changes?: Record<string, TextEdit[]>;
+	documentChanges?: Array< 
+	| { textDocument: { uri: string }; edits: TextEdit[] }
+	| { kind: "create" | "rename" | "delete"; uri: string
+	}>;
+}
+
+async function applyWorkspaceEditToContext(
+	edit: WorkspaceEditParam | undefined,
+	ctx: TransportContext,
+): Promise<{ applied: boolean; failureReason?: string }> {
+	if (!edit) return { applied: false, failureReason: "No edit provided" };
+
+	// Reject resource operations explicitly
+  const resourceOps = (edit.documentChanges ?? []).filter(
+    (c): c is {
+      kind: "create" | "rename" | "delete"; uri: string
+    } => "kind" in c,);
+    
+  if (resourceOps.length > 0) {
+    return {
+      applied: false,
+      failureReason: `Resource operations not supported: ${resourceOps.map((o) => o.kind).join(", ")}`,
+    };
+  }
+
+  // Accumulate edits per URI (don't overwrite duplicates)
+  const changesByUri: Record < string,
+  TextEdit[] > = {};
+  if (edit.changes) {
+    for (const [uri, edits] of Object.entries(edit.changes)) {
+      changesByUri[uri] = [...(changesByUri[uri] ?? []),
+        ...edits];
+    }
+  }
+  if (edit.documentChanges) {
+    for (const change of edit.documentChanges) {
+      if ("edits" in change) {
+        const uri = change.textDocument.uri;
+        changesByUri[uri] = [...(changesByUri[uri] ?? []),
+          ...change.edits];
+      }
+    }
+  }
+  
+	const uris = Object.keys(changesByUri);
+	if (!uris.length) {
+		return { applied: false, failureReason: "Edit contains no changes" };
+	}
+
+	const workspace = ctx.view
+		? (LSPPlugin.get(ctx.view)?.client.workspace as AcodeWorkspace | undefined)
+		: undefined;
+
+	if (!workspace) {
+		return { applied: false, failureReason: "No workspace available to apply edit" };
+	}
+	// Workspace boundary check
+  const allowedRoots = [ctx.rootUri,
+    ctx.originalRootUri].filter(
+    (r): r is string => !!r,);
+
+	let appliedCount = 0;
+	const failures: string[] = [];
+
+	for (const uri of uris) {
+		const edits = changesByUri[uri];
+		if (!edits.length) continue;
+		
+		// Security: reject edits outside workspace roots
+    const inWorkspace =
+    !allowedRoots.length ||
+    allowedRoots.some(
+      (root) => uri === root || uri.startsWith(`${root}/`),
+    );
+    if (!inWorkspace) {
+      failures.push(uri);
+      continue;
+    }
+
+		let view = workspace.getFile(uri)?.getView();
+		if (!view) {
+			try {
+				view = await workspace.displayFile(uri);
+			} catch (error) {
+				failures.push(uri);
+				continue;
+			}
+		}
+		if (!view) {
+			failures.push(uri);
+			continue;
+		}
+		
+		// Find the plugin belonging to THIS server, not just any plugin
+    const allPlugins = LSPPlugin.getAll(view);
+    const plugin =
+    allPlugins.find(
+      (p) => (p.client as {
+        __acodeServerId?: string
+      }).__acodeServerId === server.id,
+    ) ?? allPlugins[0];
+
+		if (!plugin) {
+			failures.push(uri);
+			continue;
 		}
 
-		try {
-			const msg = JSON.parse(data);
-			if (msg && typeof msg.id !== "undefined") {
-				let handled = true;
-				let result: unknown = null;
-				switch (msg.method) {
-					case "window/workDoneProgress/create":
-					case "workspace/diagnostic/refresh":
-					case "client/registerCapability":
-					case "client/unregisterCapability":
-						break;
-					case "workspace/configuration":
-						result = Array.isArray(msg.params?.items)
-							? msg.params.items.map(
-									(item: { section?: unknown }) =>
-										resolveWorkspaceConfiguration(item?.section),
-								)
-							: [];
-						break;
-					case "workspace/workspaceFolders": {
-						const rootUri = context.rootUri;
-						result = rootUri
-							? [
-									{
-										uri: rootUri,
-										name:
-											rootUri.replace(/\/$/, "").split("/").pop() ||
-											rootUri,
-									},
-								]
-							: null;
-						break;
-					}
-					default:
-						handled = false;
-				}
-				if (!handled) {
-					notifyListeners(data);
-					return;
-				}
-				const response = JSON.stringify({
-					jsonrpc: "2.0",
-					id: msg.id,
-					result,
-				});
-				if (context?.debugWebSocket) {
-					console.debug(`[LSP:${server.id}] => (auto-response)`, response);
-				}
-				sendMessage(response);
-				if (msg.method === "workspace/diagnostic/refresh") {
-					notifyListeners(
-						JSON.stringify({
+		const applied = applyTextEdits(plugin, view, edits);
+		if (applied) appliedCount++;
+		else failures.push(uri);
+	}
+
+	if (appliedCount === 0) {
+		return {
+			applied: false,
+			failureReason: `Could not apply edit to: ${failures.join(", ")}`,
+		};
+	}
+	if (failures.length) {
+		return {
+			applied: false,
+			failureReason: `Applied to ${appliedCount} file(s); failed: ${failures.join(", ")}`,
+		};
+	}
+	return { applied: true };
+}
+
+	function dispatchToListeners(data: string): void {
+	// Debugging aid while stabilising websocket transport
+	if (context?.debugWebSocket) {
+		console.debug(`[LSP:${server.id}] <=`, data);
+	}
+
+	try {
+		const msg = JSON.parse(data);
+		if (msg && typeof msg.id !== "undefined") {
+			// workspace/applyEdit needs to await file-opening/edit-application,
+			// so it can't go through the synchronous switch below. Handle it
+			// separately and return immediately.
+			if (msg.method === "workspace/applyEdit") {
+				applyWorkspaceEditToContext(msg.params?.edit, context)
+					.then((result) => {
+						const response = JSON.stringify({
 							jsonrpc: "2.0",
-							method: msg.method,
-							params: msg.params ?? {},
-						}),
-					);
-				}
+							id: msg.id,
+							result,
+						});
+						if (context?.debugWebSocket) {
+							console.debug(`[LSP:${server.id}] => (auto-response)`, response);
+						}
+						sendMessage(response);
+					})
+					.catch((error) => {
+						console.error(`[LSP:${server.id}] workspace/applyEdit failed:`, error);
+						sendMessage(
+							JSON.stringify({
+								jsonrpc: "2.0",
+								id: msg.id,
+								result: {
+									applied: false,
+									failureReason: "Internal error applying edit",
+								},
+							}),
+						);
+					});
 				return;
 			}
-		} catch (_) {}
 
-		notifyListeners(data);
-	}
+			let handled = true;
+			let result: unknown = null;
+			switch (msg.method) {
+				case "window/workDoneProgress/create":
+				case "workspace/diagnostic/refresh":
+				case "client/registerCapability":
+				case "client/unregisterCapability":
+					break;
+				case "workspace/configuration":
+					result = Array.isArray(msg.params?.items)
+						? msg.params.items.map(
+								(item: { section?: unknown }) =>
+									resolveWorkspaceConfiguration(item?.section),
+							)
+						: [];
+					break;
+				case "workspace/workspaceFolders": {
+					const rootUri = context.rootUri;
+					result = rootUri
+						? [
+								{
+									uri: rootUri,
+									name:
+										rootUri.replace(/\/$/, "").split("/").pop() ||
+										rootUri,
+								},
+							]
+						: null;
+					break;
+				}
+				default:
+					handled = false;
+			}
+			if (!handled) {
+				notifyListeners(data);
+				return;
+			}
+			const response = JSON.stringify({
+				jsonrpc: "2.0",
+				id: msg.id,
+				result,
+			});
+			if (context?.debugWebSocket) {
+				console.debug(`[LSP:${server.id}] => (auto-response)`, response);
+			}
+			sendMessage(response);
+			if (msg.method === "workspace/diagnostic/refresh") {
+				notifyListeners(
+					JSON.stringify({
+						jsonrpc: "2.0",
+						method: msg.method,
+						params: msg.params ?? {},
+					}),
+				);
+			}
+			return;
+		}
+	} catch (_) {}
+
+	notifyListeners(data);
+}
 
 	function handleClose(event: CloseEvent): void {
 		connected = false;
