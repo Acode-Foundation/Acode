@@ -2,69 +2,69 @@ import { focusEditorIfEditable } from "cm/editorReadOnly";
 import appSettings from "lib/settings";
 
 const exec = (command) => {
-	const { editor } = editorManager;
-	editor.execCommand(command);
+    const { editor } = editorManager;
+    editor.execCommand(command);
 
-	if (command === "selectall") {
-		editor.scrollToRow(Number.POSITIVE_INFINITY);
-		editor.setSelection(true);
-		editor.setMenu(true);
-	}
-	focusEditorIfEditable(editor);
+    if (command === "selectall") {
+        editor.scrollToRow(Number.POSITIVE_INFINITY);
+        editor.setSelection(true);
+        editor.setMenu(true);
+    }
+    focusEditorIfEditable(editor);
 };
 
 const showCodeActions = async () => {
-	const { editor } = editorManager;
-	if (!editor) return;
+    const { editor } = editorManager;
+    if (!editor) return;
 
-	try {
-		const { showCodeActionsMenu, supportsCodeActions } = await import("cm/lsp");
-		if (supportsCodeActions(editor)) {
-			await showCodeActionsMenu(editor);
-		}
-	} catch (error) {
-		console.warn("[SelectionMenu] Code actions not available:", error);
-	}
+    try {
+        const { showCodeActionsMenu, supportsCodeActions } = await import("cm/lsp");
+        if (supportsCodeActions(editor)) {
+            await showCodeActionsMenu(editor);
+        }
+    } catch (error) {
+        console.warn("[SelectionMenu] Code actions not available:", error);
+    }
 };
 
 const items = [];
 
 export default function selectionMenu() {
-	return [
-		item(
-			() => exec("copy"),
-			<span className="icon copy"></span>,
-			"selected",
-			true,
-		),
-		item(() => exec("cut"), <span className="icon cut"></span>, "selected"),
-		item(() => exec("paste"), <span className="icon paste"></span>, "all"),
-		item(
-			() => exec("selectall"),
-			<span className="icon text_format"></span>,
-			"all",
-			true,
-		),
-		appSettings.get("showShareButton") &&
-			item(
-				() => exec("share"),
-				<span className="icon share"></span>,
-				"selected",
-				true,
-			),
-		item(
-			(color) => acode.exec("insert-color", color),
-			<span className="icon color_lenspalette"></span>,
-			"all",
-		),
-		item(
-			() => showCodeActions(),
-			<span className="icon lightbulb" title="Code Actions"></span>,
-			"all",
-			true,
-		),
-		...items,
-	].filter(Boolean);
+    return [
+        item(
+            () => exec("copy"),
+            <span className="icon copy"></span>,
+            "selected",
+            true,
+        ),
+        item(() => exec("cut"), <span className="icon cut"></span>, "selected"),
+        item(() => exec("paste"), <span className="icon paste"></span>, "all"),
+        item(
+            () => exec("selectall"),
+            <span className="icon text_format"></span>,
+            "all",
+            true,
+        ),
+        appSettings.get("showShareButton") &&
+        item(
+            () => exec("share"),
+            <span className="icon share"></span>,
+            "selected",
+            true,
+        ),
+        item(
+            (color) => acode.exec("insert-color", color),
+            <span className="icon color_lenspalette"></span>,
+            "all",
+        ),
+        item(
+            () => showCodeActions(),
+            <span className="icon lightbulb" title="Code Actions"></span>,
+            "all",
+            true,
+        ),
+        ...items,
+    ].filter(Boolean);
 }
 
 /**
@@ -75,20 +75,20 @@ export default function selectionMenu() {
  * @param {boolean} readOnly whether to show the item in readOnly mode
  */
 selectionMenu.add = (onclick, text, mode, readOnly) => {
-    const item = item(onclick, text, mode, readOnly);
-	items.push(item);
-	return item;
+    const menuItem = item(onclick, text, mode, readOnly);
+    items.push(menuItem);
+    return menuItem;
 };
 
 selectionMenu.remove = (item) => {
     const i = items.indexOf(item);
     if (i >= 0) items.splice(i, 1);
-}
+};
 
 selectionMenu.exec = (command) => {
-	exec(command);
+    exec(command);
 };
 
 function item(onclick, text, mode = "all", readOnly = false) {
-	return { onclick, text, mode, readOnly };
+    return { onclick, text, mode, readOnly };
 }
