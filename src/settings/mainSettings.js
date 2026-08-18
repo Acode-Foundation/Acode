@@ -29,6 +29,7 @@ import previewSettings from "./previewSettings";
 import scrollSettings from "./scrollSettings";
 import searchSettings from "./searchSettings";
 import terminalSettings from "./terminalSettings";
+import aiSettings from "./aiSettings";
 
 export default function mainSettings() {
 	const title = strings.settings.capitalize();
@@ -379,7 +380,7 @@ export default function mainSettings() {
 		"preview-settings": previewSettings,
 		"terminal-settings": terminalSettings,
 		"lsp-settings": lspSettings,
-		"ai-settings": () => import("./aiSettings").then(m => m.default),
+		"ai-settings": aiSettings,
 	};
 
 	const instantiated = {};
