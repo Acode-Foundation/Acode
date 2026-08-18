@@ -1,7 +1,5 @@
 import { ViewPlugin, Decoration, WidgetType } from "@codemirror/view";
 import { StateField, StateEffect } from "@codemirror/state";
-import aiService from "utils/ai/AIService";
-import appSettings from "lib/settings";
 
 class GhostTextWidget extends WidgetType {
 	constructor(public text: string) {
@@ -58,27 +56,33 @@ export const aiAutocompletePlugin = ViewPlugin.fromClass(
 		constructor(public view: any) {}
 
 		update(update: any) {
-			if (update.docChanged && appSettings.value.ai?.provider) {
-				clearTimeout(this.timeout);
-				this.view.dispatch({ effects: setGhostText.of(null) });
+			if (update.docChanged) {
+				import("lib/settings").then((mSettings) => {
+					const appSettings = mSettings.default;
+					if (appSettings.value.ai?.provider) {
+						clearTimeout(this.timeout);
+						this.view.dispatch({ effects: setGhostText.of(null) });
 
-				this.timeout = setTimeout(async () => {
-					try {
-						const pos = this.view.state.selection.main.head;
-						const doc = this.view.state.doc.toString();
-						const prefix = doc.slice(0, pos);
-						const suffix = doc.slice(pos);
+						this.timeout = setTimeout(async () => {
+							try {
+								const pos = this.view.state.selection.main.head;
+								const doc = this.view.state.doc.toString();
+								const prefix = doc.slice(0, pos);
+								const suffix = doc.slice(pos);
 
-						const completion = await aiService.completeCode(prefix, suffix);
-						if (completion) {
-							this.view.dispatch({
-								effects: setGhostText.of({ pos, text: completion }),
-							});
-						}
-					} catch (e) {
-						// Ignore errors or log them
+								const { default: aiService } = await import("utils/ai/AIService");
+								const completion = await aiService.completeCode(prefix, suffix);
+								if (completion) {
+									this.view.dispatch({
+										effects: setGhostText.of({ pos, text: completion }),
+									});
+								}
+							} catch (e) {
+								// Ignore errors or log them
+							}
+						}, 1000); // 1s debounce
 					}
-				}, 1000); // 1s debounce
+				}).catch(() => {});
 			}
 		}
 
