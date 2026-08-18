@@ -219,7 +219,7 @@ class AiAgentApp extends Component {
 							onclick=${this.toggleAgentMode}
 							title="${agentMode ? "Switch to Chat mode" : "Switch to Agent mode"}"
 						>
-							<span class="icon ${agentMode ? "adb" : "chat"}"></span>
+							<span class="icon ${agentMode ? "memory" : "chat"}"></span>
 							${agentMode ? "Agent" : "Chat"}
 						</button>
 						<button class="ai-clear-btn" onclick=${this.clearHistory} title="Clear history">
@@ -296,7 +296,7 @@ class AiAgentApp extends Component {
 							rows="1"
 						></textarea>
 						<button class="ai-send-btn" onclick=${this.handleSend} disabled=${isLoading}>
-							<span class="icon ${agentMode ? "adb" : "send"}"></span>
+							<span class="icon send"></span>
 						</button>
 					</div>
 				</div>
