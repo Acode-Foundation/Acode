@@ -1,5 +1,6 @@
 import type { Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
+import { aiAutocomplete } from "./extensions/aiAutocomplete";
 
 interface MainEditorExtensionOptions {
 	emmetExtensions?: Extension[];
@@ -55,9 +56,7 @@ export function createMainEditorExtensions(
 	pushExtension(extensions, options.readOnlyExtension);
 
 	// Add AI Autocomplete
-	import("./extensions/aiAutocomplete").then(m => {
-		extensions.push(m.aiAutocomplete());
-	}).catch(() => {});
+	extensions.push(aiAutocomplete());
 
 	if (options.optionExtensions?.length) {
 		extensions.push(...options.optionExtensions);

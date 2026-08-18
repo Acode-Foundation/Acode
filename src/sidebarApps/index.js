@@ -95,7 +95,7 @@ async function loadApps() {
 	// Add AI Agent icon
 	const $aiIcon = (
 		<span
-			className="icon psychiatry"
+			className="icon acode"
 			title="AI Agent"
 			onclick={() => {
 				import("../pages/aiAgent").then((res) => res.default());
