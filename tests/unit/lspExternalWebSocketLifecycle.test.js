@@ -65,7 +65,10 @@ vi.mock("cm/lsp/tooltipExtensions", () => ({
 	signatureHelp: () => [],
 }));
 
-import {LspClientManager} from "cm/lsp/clientManager";
+import {
+	DEFAULT_CLIENT_IDLE_GRACE_PERIOD_MS,
+	LspClientManager,
+} from "cm/lsp/clientManager";
 import {
 	registerRuntimeProvider,
 	unregisterRuntimeProvider,
@@ -74,7 +77,7 @@ import externalWebSocketRuntimeProvider from "cm/lsp/runtimes/externalWebSocket"
 
 const SERVER_ID = "external-websocket-lifecycle-test";
 const LANGUAGE_ID = "external-websocket-lifecycle-test";
-const DISPOSABLE_RUNTIME_ID = "disposable-lifecycle-test";
+const TRANSPORT_RUNTIME_ID = "transport-lifecycle-test";
 
 class TestWebSocket {
 	static CONNECTING = 0;
@@ -125,9 +128,41 @@ class TestWebSocket {
 	}
 }
 
+class TestTransport {
+	handler = null;
+	disposeCalls = 0;
+
+	send(data) {
+		const message = JSON.parse(data);
+		if (message.method !== "initialize") return;
+		queueMicrotask(() => {
+			this.handler?.(
+				JSON.stringify({
+					jsonrpc: "2.0",
+					id: message.id,
+					result: {capabilities: {}},
+				}),
+			);
+		});
+	}
+
+	subscribe(handler) {
+		this.handler = handler;
+	}
+
+	unsubscribe(handler) {
+		if (this.handler === handler) this.handler = null;
+	}
+
+	dispose() {
+		this.disposeCalls++;
+	}
+}
+
 let originalWebSocket;
 let manager;
 let view;
+let testTransport;
 
 beforeEach(() => {
 	originalWebSocket = globalThis.WebSocket;
@@ -154,14 +189,15 @@ afterEach(async () => {
 	await manager?.dispose();
 	view?.destroy();
 	registry.servers = [];
-	unregisterRuntimeProvider(DISPOSABLE_RUNTIME_ID);
+	unregisterRuntimeProvider(TRANSPORT_RUNTIME_ID);
 	globalThis.WebSocket = originalWebSocket;
 	document.body.replaceChildren();
+	vi.useRealTimers();
 	vi.restoreAllMocks();
 });
 
-describe("external WebSocket LSP lifecycle", () => {
-	it("reuses one client and socket when switching files in a workspace", async () => {
+describe("LSP client idle lifecycle", () => {
+	it("reuses an external WebSocket client when a file attaches during the grace period", async () => {
 		const onClientIdle = vi.fn(({dispose}) => void dispose());
 		manager = new LspClientManager({onClientIdle});
 		const rootUri = "file:///workspace";
@@ -172,7 +208,9 @@ describe("external WebSocket LSP lifecycle", () => {
 			languageId: LANGUAGE_ID,
 			view,
 		});
+		vi.useFakeTimers();
 		manager.detach(`${rootUri}/first.rs`, view);
+		await vi.advanceTimersByTimeAsync(DEFAULT_CLIENT_IDLE_GRACE_PERIOD_MS - 1);
 
 		await manager.getExtensionsForFile({
 			uri: `${rootUri}/second.rs`,
@@ -180,6 +218,7 @@ describe("external WebSocket LSP lifecycle", () => {
 			languageId: LANGUAGE_ID,
 			view,
 		});
+		await vi.advanceTimersByTimeAsync(DEFAULT_CLIENT_IDLE_GRACE_PERIOD_MS + 1);
 
 		expect(onClientIdle).not.toHaveBeenCalled();
 		expect(manager.getActiveClients()).toHaveLength(1);
@@ -187,22 +226,56 @@ describe("external WebSocket LSP lifecycle", () => {
 		expect(TestWebSocket.instances[0].closeCalls).toBe(0);
 	});
 
-	it("preserves eager idle cleanup for runtimes without keep-alive", async () => {
+	it("disposes an unused external WebSocket client after the grace period", async () => {
+		const onClientIdle = vi.fn(({dispose}) => void dispose());
+		manager = new LspClientManager({onClientIdle});
+		const rootUri = "file:///workspace-one";
+		const uri = `${rootUri}/only.rs`;
+
+		await manager.getExtensionsForFile({
+			uri,
+			rootUri,
+			languageId: LANGUAGE_ID,
+			view,
+		});
+		vi.useFakeTimers();
+		manager.detach(uri, view);
+		await vi.advanceTimersByTimeAsync(DEFAULT_CLIENT_IDLE_GRACE_PERIOD_MS - 1);
+
+		expect(onClientIdle).not.toHaveBeenCalled();
+		expect(manager.getActiveClients()).toHaveLength(1);
+		expect(TestWebSocket.instances[0].closeCalls).toBe(0);
+
+		await vi.advanceTimersByTimeAsync(1);
+
+		expect(onClientIdle).toHaveBeenCalledOnce();
+		expect(manager.getActiveClients()).toHaveLength(0);
+		expect(TestWebSocket.instances[0].closeCalls).toBe(1);
+	});
+
+	it("applies the same grace period to other runtimes", async () => {
 		registerRuntimeProvider(
 			{
-				id: DISPOSABLE_RUNTIME_ID,
-				label: "Disposable test runtime",
+				id: TRANSPORT_RUNTIME_ID,
+				label: "Transport test runtime",
 				priority: 100,
 				canHandle: () => true,
-				start: async (server) => ({
-					kind: "websocket",
-					providerId: DISPOSABLE_RUNTIME_ID,
-					url: server.transport.url,
-				}),
+				start: async () => {
+					testTransport = new TestTransport();
+					return {
+						kind: "transport",
+						providerId: TRANSPORT_RUNTIME_ID,
+						transport: {
+							transport: testTransport,
+							ready: Promise.resolve(),
+							dispose: () => testTransport.dispose(),
+						},
+					};
+				},
 			},
 			{replace: true},
 		);
-		registry.servers[0].runtimes = [DISPOSABLE_RUNTIME_ID];
+		registry.servers[0].runtimes = [TRANSPORT_RUNTIME_ID];
 		const onClientIdle = vi.fn(({dispose}) => void dispose());
 		manager = new LspClientManager({onClientIdle});
 		const rootUri = "file:///workspace";
@@ -214,11 +287,19 @@ describe("external WebSocket LSP lifecycle", () => {
 			languageId: LANGUAGE_ID,
 			view,
 		});
+		vi.useFakeTimers();
 		manager.detach(uri, view);
-		await Promise.resolve();
+		await vi.advanceTimersByTimeAsync(DEFAULT_CLIENT_IDLE_GRACE_PERIOD_MS - 1);
+
+		expect(onClientIdle).not.toHaveBeenCalled();
+		expect(manager.getActiveClients()).toHaveLength(1);
+		expect(TestWebSocket.instances).toHaveLength(0);
+		expect(testTransport.disposeCalls).toBe(0);
+
+		await vi.advanceTimersByTimeAsync(1);
 
 		expect(onClientIdle).toHaveBeenCalledOnce();
 		expect(manager.getActiveClients()).toHaveLength(0);
-		expect(TestWebSocket.instances[0].closeCalls).toBe(1);
+		expect(testTransport.disposeCalls).toBe(1);
 	});
 });
