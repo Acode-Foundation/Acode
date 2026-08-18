@@ -91,6 +91,18 @@ async function loadApps() {
 	add(...(await import("./extensions")).default);
 	add(...(await import("./notification")).default);
 	setSponsorSidebarAppVisibility(appSettings.value.showSponsorSidebarApp);
+
+	// Add AI Agent icon
+	const $aiIcon = (
+		<span
+			className="icon psychiatry"
+			title="AI Agent"
+			onclick={() => {
+				import("../pages/aiAgent").then((res) => res.default());
+			}}
+		/>
+	);
+	$apps.append($aiIcon);
 }
 
 /**

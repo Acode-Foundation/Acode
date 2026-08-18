@@ -54,6 +54,11 @@ export function createMainEditorExtensions(
 	pushExtension(extensions, options.searchExtension);
 	pushExtension(extensions, options.readOnlyExtension);
 
+	// Add AI Autocomplete
+	import("./extensions/aiAutocomplete").then(m => {
+		extensions.push(m.aiAutocomplete());
+	}).catch(() => {});
+
 	if (options.optionExtensions?.length) {
 		extensions.push(...options.optionExtensions);
 	}
