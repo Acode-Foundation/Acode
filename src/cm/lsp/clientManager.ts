@@ -1108,6 +1108,7 @@ export class LspClientManager {
       server,
       client,
       transportHandle,
+      keepAliveWhenIdle: runtimeProvider.keepAliveWhenIdle === true,
       normalizedRootUri,
       originalRootUri: scope === "document" ? null : originalRootUri,
     });
@@ -1121,6 +1122,7 @@ export class LspClientManager {
     server: LspServerDefinition;
     client: LSPClient;
     transportHandle: TransportHandle;
+    keepAliveWhenIdle: boolean;
     normalizedRootUri: string | null;
     originalRootUri: string | null;
   }): ClientState {
@@ -1129,6 +1131,7 @@ export class LspClientManager {
       server,
       client,
       transportHandle,
+      keepAliveWhenIdle,
       normalizedRootUri,
       originalRootUri,
     } = params;
@@ -1206,7 +1209,7 @@ export class LspClientManager {
         }
       }
 
-      if (!fileRefs.size) {
+      if (!fileRefs.size && !keepAliveWhenIdle) {
         this.options.onClientIdle?.({
           server,
           client,

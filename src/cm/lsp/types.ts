@@ -140,6 +140,12 @@ export interface LspRuntimeProvider {
 	id: string;
 	label: string;
 	priority?: number;
+	/**
+	 * Keep an initialized client alive while no editor view is attached.
+	 * Externally managed servers can be expensive to initialize and are not
+	 * owned by Acode, so a temporary tab switch must not tear them down.
+	 */
+	keepAliveWhenIdle?: boolean;
 	canHandle: (
 		server: LspServerDefinition,
 		context: LspRuntimeContext,

@@ -16,6 +16,7 @@ export const externalWebSocketRuntimeProvider: LspRuntimeProvider = {
 	id: EXTERNAL_WEBSOCKET_RUNTIME_ID,
 	label: "External WebSocket",
 	priority: -50,
+	keepAliveWhenIdle: true,
 
 	canHandle(server, context) {
 		if (context.runtimeAction && server.launcher) {
