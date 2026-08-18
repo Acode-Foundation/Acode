@@ -1,21 +1,14 @@
+import createTailSpinSvg from "components/tailSpin.js";
 import DOMPurify from "dompurify";
 import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
 import restoreTheme from "lib/restoreTheme";
-import tailSpinSvg from "res/tail-spin.svg?raw";
 
 let loaderIsImmortal = false;
 let onCancelCallback = null;
 let $currentDialog = null;
 let $currentMask = null;
 const titleLoaderId = "__title-loader";
-const tailSpinGradientId = "tail-spin-gradient";
-let tailSpinSvgId = 0;
-
-function createTailSpinSvg() {
-	const gradientId = `${tailSpinGradientId}-${tailSpinSvgId++}`;
-	return tailSpinSvg.split(tailSpinGradientId).join(gradientId);
-}
 
 /**
  * @typedef {object} LoaderOptions
