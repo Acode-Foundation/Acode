@@ -1,45 +1,33 @@
 import appSettings from "lib/settings";
 import OpenAiAdapter from "./OpenAiAdapter";
 import OpenRouterAdapter from "./OpenRouterAdapter";
-import AcodeProAdapter from "./AcodeProAdapter";
 
 class AIService {
 	/**
-	 * Get the active provider adapter based on settings and fallback logic
+	 * Get the active provider adapter based on settings
 	 */
 	async getActiveAdapter() {
 		const settings = appSettings.value.ai;
 
-		// 1. Check Acode Pro first if enabled
-		if (settings.useAcodePro) {
-			// In a real implementation, we would check if the user is logged in
-			// and has an active acode_pro subscription from `auth.getLoggedInUser()`
-			// For now, we will return the adapter and let it throw QUOTA_EXHAUSTED
-			// if they don't have access.
-			return new AcodeProAdapter();
-		}
-
-		// 2. Fallback to direct keys based on provider selection
 		switch (settings.provider) {
 			case "openai":
-				if (!settings.openaiKey) throw new Error("OpenAI Key missing. Please update AI Settings.");
+				if (!settings.openaiKey) throw new Error("OpenAI Key missing. Please go to Settings > AI Settings.");
 				return new OpenAiAdapter(settings.openaiKey);
 			case "openrouter":
-				if (!settings.openRouterKey) throw new Error("OpenRouter Key missing. Please update AI Settings.");
+				if (!settings.openRouterKey) throw new Error("OpenRouter Key missing. Please go to Settings > AI Settings.");
 				return new OpenRouterAdapter(settings.openRouterKey);
-			// Implement gemini and anthropic later
+			// Gemini and Anthropic adapters to be added later
 			default:
-				throw new Error("Selected AI provider is not supported yet.");
+				throw new Error(`Provider "${settings.provider || 'none'}" is not configured. Please go to Settings > AI Settings.`);
 		}
 	}
 
 	/**
-	 * Prompt the user for an API key if quota is exhausted
+	 * Prompt the user to configure API key in settings
 	 */
-	async promptForKey() {
-		// In a real implementation, we can trigger a dialog or redirect to settings
-		alert("Acode Pro AI quota exhausted. Please enter your own API key in Settings > AI Settings.");
-		appSettings.uiSettings["ai-settings"].show();
+	async promptForConfig(message) {
+		alert(message || "Please configure your AI provider in Settings > AI Settings.");
+		appSettings.uiSettings["ai-settings"]?.show();
 	}
 
 	async chat(messages) {
@@ -47,10 +35,7 @@ class AIService {
 			const adapter = await this.getActiveAdapter();
 			return await adapter.chat(messages);
 		} catch (error) {
-			if (error.code === "QUOTA_EXHAUSTED") {
-				await this.promptForKey();
-				throw new Error("Quota exhausted. Switched to fallback.");
-			}
+			await this.promptForConfig(error.message);
 			throw error;
 		}
 	}

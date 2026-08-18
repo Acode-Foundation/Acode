@@ -6,12 +6,6 @@ export default function aiSettings() {
 	const values = appSettings.value.ai;
 	const items = [
 		{
-			key: "useAcodePro",
-			text: strings["use acode pro ai"] || "Use Acode Pro AI",
-			info: "Prioritize using existing Claude/Codex subscription if active",
-			checkbox: values.useAcodePro,
-		},
-		{
 			key: "provider",
 			text: strings["ai provider"] || "AI Provider",
 			value: values.provider,

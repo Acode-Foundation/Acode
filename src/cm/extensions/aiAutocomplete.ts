@@ -1,4 +1,4 @@
-import { ViewPlugin, Decoration, WidgetType } from "@codemirror/view";
+import { ViewPlugin, Decoration, WidgetType, EditorView } from "@codemirror/view";
 import { StateField, StateEffect } from "@codemirror/state";
 
 class GhostTextWidget extends WidgetType {
