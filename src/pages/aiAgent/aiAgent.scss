@@ -37,14 +37,39 @@
 		gap: 6px;
 		font-size: 12px;
 		color: var(--secondary-text-color, #aaa);
-		max-width: calc(100% - 44px);
+		max-width: calc(100% - 120px);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+		.icon { font-size: 14px; opacity: 0.6; }
+	}
 
-		.icon {
-			font-size: 14px;
-			opacity: 0.6;
+	.ai-header-actions {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+	}
+
+	.ai-mode-toggle {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		font-size: 12px;
+		font-weight: 600;
+		background: rgba(255, 255, 255, 0.07);
+		border: 1px solid rgba(255, 255, 255, 0.12);
+		color: var(--secondary-text-color, #aaa);
+		border-radius: 8px;
+		padding: 3px 8px;
+		cursor: pointer;
+		transition: all 0.15s;
+
+		.icon { font-size: 14px; }
+
+		&.active {
+			background: rgba(255, 160, 60, 0.15);
+			border-color: rgba(255, 160, 60, 0.4);
+			color: #ffa03c;
 		}
 	}
 
@@ -56,15 +81,11 @@
 		padding: 4px 6px;
 		border-radius: 6px;
 		transition: background 0.15s;
-
-		&:hover,
-		&:active {
-			background: rgba(255, 255, 255, 0.1);
-		}
-
+		&:hover, &:active { background: rgba(255, 255, 255, 0.1); }
 		.icon { font-size: 18px; }
 	}
 }
+
 
 // ── Messages ──────────────────────────────────────────────────────────────────
 .ai-chat-history {
@@ -277,4 +298,82 @@
 		&:active { transform: scale(0.92); }
 		&:disabled { opacity: 0.4; cursor: default; transform: none; }
 	}
+}
+
+// ── Agent mode input ──────────────────────────────────────────────────────────
+.ai-chat-input.agent-mode {
+	border-top-color: rgba(255, 160, 60, 0.25);
+	background: rgba(255, 160, 60, 0.04);
+
+	.ai-input-row { display: flex; gap: 8px; align-items: flex-end; }
+
+	.agent-hint {
+		font-size: 11px;
+		color: #ffa03c;
+		opacity: 0.8;
+		padding: 0 2px 5px;
+	}
+
+	.ai-send-btn {
+		background: #ffa03c;
+	}
+}
+
+.ai-input-row {
+	display: flex;
+	gap: 8px;
+	align-items: flex-end;
+}
+
+// ── Agent step cards ──────────────────────────────────────────────────────────
+.agent-steps-log {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	margin-bottom: 10px;
+	padding: 8px 10px;
+	background: rgba(0, 0, 0, 0.25);
+	border-radius: 8px;
+	border-left: 2px solid rgba(255, 255, 255, 0.1);
+
+	&.live {
+		border-left-color: #ffa03c;
+	}
+}
+
+.agent-step {
+	display: flex;
+	align-items: flex-start;
+	gap: 7px;
+	font-size: 12.5px;
+	line-height: 1.4;
+	animation: msgIn 0.12s ease-out;
+
+	.step-icon { flex-shrink: 0; font-size: 13px; margin-top: 1px; }
+
+	.step-body {
+		display: flex;
+		flex-direction: column;
+		gap: 1px;
+	}
+
+	.step-label {
+		color: var(--text-color, #e0e0e0);
+		font-weight: 500;
+	}
+
+	.step-arg {
+		font-family: var(--code-font-family, monospace);
+		font-size: 11.5px;
+		color: var(--secondary-text-color, #aaa);
+	}
+
+	.step-error {
+		font-size: 11.5px;
+		color: #f87272;
+	}
+
+	&.tool_start .step-label { opacity: 0.7; }
+	&.tool_done .step-label { color: #6ee7a0; }
+	&.tool_error .step-label { color: #f87272; }
 }

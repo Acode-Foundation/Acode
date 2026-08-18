@@ -71,6 +71,42 @@ export default class OpenAiAdapter extends BaseProvider {
 		return fullText;
 	}
 
+	/**
+	 * Non-streaming chat with tool/function calling support.
+	 * @param {Array} messages
+	 * @param {Array} tools
+	 * @returns {Promise<{content, tool_calls, finish_reason, message}>}
+	 */
+	async chatWithTools(messages, tools) {
+		const res = await fetch(`${this.baseUrl}/chat/completions`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				Authorization: `Bearer ${this.apiKey}`,
+			},
+			body: JSON.stringify({
+				model: this.model,
+				messages,
+				tools,
+				tool_choice: "auto",
+			}),
+		});
+
+		if (!res.ok) {
+			const error = await res.json();
+			throw new Error(error.error?.message || "OpenAI API Error");
+		}
+
+		const data = await res.json();
+		const choice = data.choices[0];
+		return {
+			content: choice.message.content || null,
+			tool_calls: choice.message.tool_calls || null,
+			finish_reason: choice.finish_reason,
+			message: choice.message,
+		};
+	}
+
 	async completeCode(prefix, suffix) {
 		// Use chat-based FIM since /completions is legacy
 		const messages = [

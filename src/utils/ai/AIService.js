@@ -109,6 +109,24 @@ class AIService {
 		}
 	}
 
+	/**
+	 * Run the Agentic Think → Act → Observe loop.
+	 * @param {Array}    messages  - plain user/assistant messages (no system)
+	 * @param {function} onEvent   - called on every agent step event
+	 * @returns {Promise<string>}  - the final assistant text
+	 */
+	async runAgent(messages, onEvent) {
+		try {
+			const adapter = await this.getActiveAdapter();
+			const fullMessages = this.buildMessages(messages);
+			const { runAgentLoop } = await import("./agentLoop");
+			return await runAgentLoop(adapter, fullMessages, onEvent);
+		} catch (error) {
+			await this.promptForConfig(error.message);
+			throw error;
+		}
+	}
+
 	// ─── Conversation History ─────────────────────────────────────────────────
 
 	/**

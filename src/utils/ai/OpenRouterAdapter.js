@@ -73,6 +73,41 @@ export default class OpenRouterAdapter extends BaseProvider {
 		return fullText;
 	}
 
+	/**
+	 * Non-streaming chat with tool/function calling support.
+	 */
+	async chatWithTools(messages, tools) {
+		const res = await fetch(`${this.baseUrl}/chat/completions`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				Authorization: `Bearer ${this.apiKey}`,
+				"HTTP-Referer": "https://acode.foxdebug.com",
+				"X-Title": "Acode",
+			},
+			body: JSON.stringify({
+				model: this.model,
+				messages,
+				tools,
+				tool_choice: "auto",
+			}),
+		});
+
+		if (!res.ok) {
+			const error = await res.json();
+			throw new Error(error.error?.message || "OpenRouter API Error");
+		}
+
+		const data = await res.json();
+		const choice = data.choices[0];
+		return {
+			content: choice.message.content || null,
+			tool_calls: choice.message.tool_calls || null,
+			finish_reason: choice.finish_reason,
+			message: choice.message,
+		};
+	}
+
 	async completeCode(prefix, suffix) {
 		const messages = [
 			{
