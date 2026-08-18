@@ -216,11 +216,9 @@ class Settings {
 			},
 			ai: {
 				provider: "openai",
+				model: "gpt-4o-mini",
 				openaiKey: "",
-				geminiKey: "",
-				anthropicKey: "",
 				openRouterKey: "",
-				useAcodePro: true,
 			},
 			developerMode: false,
 			shiftClickSelection: true,

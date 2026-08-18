@@ -11,10 +11,17 @@ export default function aiSettings() {
 			value: values.provider,
 			select: [
 				["openai", "OpenAI"],
-				["gemini", "Google Gemini"],
-				["anthropic", "Anthropic Claude"],
 				["openrouter", "OpenRouter"],
 			],
+			info: "Select which AI API provider to use",
+		},
+		{
+			key: "model",
+			text: "AI Model",
+			value: values.model || "gpt-4o-mini",
+			prompt: "AI Model (e.g. gpt-4o-mini, anthropic/claude-3-haiku)",
+			promptType: "text",
+			info: "The exact model string to request",
 		},
 		{
 			key: "openaiKey",
@@ -22,20 +29,7 @@ export default function aiSettings() {
 			value: values.openaiKey,
 			prompt: "OpenAI API Key",
 			promptType: "text",
-		},
-		{
-			key: "geminiKey",
-			text: "Gemini API Key",
-			value: values.geminiKey,
-			prompt: "Gemini API Key",
-			promptType: "text",
-		},
-		{
-			key: "anthropicKey",
-			text: "Anthropic API Key",
-			value: values.anthropicKey,
-			prompt: "Anthropic API Key",
-			promptType: "text",
+			info: "Your direct OpenAI API key",
 		},
 		{
 			key: "openRouterKey",
@@ -43,6 +37,7 @@ export default function aiSettings() {
 			value: values.openRouterKey,
 			prompt: "OpenRouter API Key",
 			promptType: "text",
+			info: "Your OpenRouter API key",
 		},
 	];
 
@@ -50,7 +45,8 @@ export default function aiSettings() {
 		preserveOrder: true,
 		pageClassName: "detail-settings-page",
 		listClassName: "detail-settings-list",
-		groupByDefault: true,
+		infoAsDescription: true,
+		valueInTail: true,
 	});
 
 	function callback(key, value) {
