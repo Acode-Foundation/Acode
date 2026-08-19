@@ -35,6 +35,8 @@ public class Tee extends CordovaPlugin {
     private static final long MAX_ENTRY_BYTES = 128L * 1024 * 1024;
     private static final int BUFFER_SIZE = 64 * 1024;
     private static final Set<String> activeExtractions = ConcurrentHashMap.newKeySet();
+    private static final java.util.regex.Pattern ORPHAN_DIR_PATTERN =
+            java.util.regex.Pattern.compile("^\\..+\\.(install|backup)-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
 
     // pluginId : token
     private /*static*/ final Map<String, String> tokenStore = new ConcurrentHashMap<>();
@@ -186,7 +188,7 @@ public class Tee extends CordovaPlugin {
                         throw new IOException("Plugin installation is already in progress");
                     }
 
-                    restoreInterruptedInstall(parent, destination);
+                    boolean recovered = restoreInterruptedInstall(parent, destination);
 
                     staging = new File(
                             parent,
@@ -220,7 +222,9 @@ public class Tee extends CordovaPlugin {
                     if (backup != null) {
                         deleteRecursively(backup);
                     }
-                    callback.success();
+                    JSONObject result = new JSONObject();
+                    result.put("recovered", recovered);
+                    callback.success(result);
                 } catch (Exception error) {
                     callback.error(error.getMessage() == null ? "Plugin extraction failed" : error.getMessage());
                 } finally {
@@ -326,11 +330,11 @@ public class Tee extends CordovaPlugin {
      * directory. If Android stops the app between the two renames, restore the
      * most recent backup before beginning another installation.
      */
-    private static void restoreInterruptedInstall(File parent, File destination) throws IOException {
+    private static boolean restoreInterruptedInstall(File parent, File destination) throws IOException {
+        boolean recovered = false;
         String backupPrefix = "." + destination.getName() + ".backup-";
-        String stagingPrefix = "." + destination.getName() + ".install-";
         File[] children = parent.listFiles();
-        if (children == null) return;
+        if (children == null) return false;
 
         File newestBackup = null;
         for (File child : children) {
@@ -344,15 +348,24 @@ public class Tee extends CordovaPlugin {
             if (!newestBackup.renameTo(destination)) {
                 throw new IOException("Unable to restore previous plugin installation");
             }
+            recovered = true;
         }
 
         for (File child : children) {
             if (!child.isDirectory()) continue;
             String name = child.getName();
-            if (name.startsWith(backupPrefix) || name.startsWith(stagingPrefix)) {
-                deleteRecursively(child);
+            if (!ORPHAN_DIR_PATTERN.matcher(name).matches()) continue;
+            int typeIdx = name.lastIndexOf(".install-");
+            if (typeIdx < 0) typeIdx = name.lastIndexOf(".backup-");
+            if (typeIdx <= 1) continue;
+            String ownerName = name.substring(1, typeIdx);
+            String ownerPath = new File(parent, ownerName).getPath();
+            if (activeExtractions.contains(ownerPath) && !ownerPath.equals(destination.getPath())) {
+                continue;
             }
+            deleteRecursively(child);
         }
+        return recovered;
     }
 
     private static void deleteRecursively(File file) {
