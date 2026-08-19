@@ -714,7 +714,7 @@ const APP_BINDING_CONFIG = [
 		readOnly: true,
 		editorOnly: true,
 	},
-    {
+	{
 		name: "welcomeTab",
 		description: "Find a file",
 		key: "Ctrl-Shift-W",
