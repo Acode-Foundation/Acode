@@ -715,12 +715,11 @@ const APP_BINDING_CONFIG = [
 		editorOnly: true,
 	},
     {
-        name: "welcomeTab",
-        description: "Open Welcome Window Tab",
-        key: "Ctrl-Shift-W",
-        action: "welcome",
-        readOnly: true,
-    },
+		name: "welcomeTab",
+		description: "Find a file",
+		key: "Ctrl-Shift-W",
+		action: "welcome",
+	},
 ];
 
 const APP_KEY_BINDINGS = buildAppBindings(APP_BINDING_CONFIG);
