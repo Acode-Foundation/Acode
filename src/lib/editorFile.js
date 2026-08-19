@@ -23,6 +23,7 @@ import startDrag from "handlers/editorFileTab";
 import actions from "handlers/quickTools";
 import tag from "html-tag-js";
 import mimeTypes from "mime-types";
+import { applyHighlightStyles } from "utils/codeHighlight";
 import helpers from "utils/helpers";
 import Path from "utils/Path";
 import { readRemoteFilePreview } from "utils/remoteFilePreview";
@@ -329,6 +330,7 @@ function maybeRecommendLanguageModeExtension(file, modeInfo) {
  * @property {string} [paneId] target editor pane id
  * @property {object} [pane] target editor pane
  * @property {boolean} [isPanePlaceholder] temporary empty tab for an empty pane
+ * @property {boolean} [highlightStyles] adopt static CodeMirror highlight CSS into the custom tab shadow root
  */
 
 export default class EditorFile {
@@ -588,6 +590,10 @@ export default class EditorFile {
 					// Handle custom stylesheets if provided
 					if (options.stylesheets) {
 						this.#addCustomStyles(options.stylesheets, shadow);
+					}
+
+					if (options.highlightStyles) {
+						applyHighlightStyles(shadow);
 					}
 
 					const content = <div className="tab-page-content" />;

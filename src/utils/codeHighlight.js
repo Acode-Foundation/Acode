@@ -6,9 +6,16 @@ import settings from "lib/settings";
 
 const highlightCache = new Map();
 const MAX_CACHE_SIZE = 500;
+const STYLE_ID = "cm-static-highlight-styles";
+
+export const HIGHLIGHT_CLASS = "cm-highlighted";
+export const REF_PREVIEW_CLASS = "ref-preview";
 
 let styleElement = null;
+let constructedSheet = null;
 let currentThemeId = null;
+let initialized = false;
+const fallbackStyleElements = new Set();
 
 export function sanitize(text) {
 	if (!text) return "";
@@ -40,6 +47,17 @@ function setCache(key, value) {
 		highlightCache.delete(firstKey);
 	}
 	highlightCache.set(key, value);
+}
+
+function canUseConstructedStyleSheets() {
+	return (
+		typeof CSSStyleSheet !== "undefined" &&
+		typeof CSSStyleSheet.prototype.replaceSync === "function"
+	);
+}
+
+function currentEditorThemeId() {
+	return settings?.value?.editorTheme || "one_dark";
 }
 
 /**
@@ -106,25 +124,147 @@ ${selector} .tok-changed { color: ${number}; }
 }
 
 /**
+ * CSS for the current editor theme. Token classes come from Lezer's
+ * `classHighlighter` (e.g. `.tok-keyword`).
+ * @returns {string}
+ */
+export function getHighlightStyles() {
+	const config = getThemeConfig(currentEditorThemeId());
+	const codeBlockStyles = generateStyles(config, `.${HIGHLIGHT_CLASS}`, true);
+	const refPreviewStyles = generateStyles(
+		config,
+		`.${REF_PREVIEW_CLASS}`,
+		false,
+	);
+	return `${codeBlockStyles}\n${refPreviewStyles}`;
+}
+
+function ensureConstructedSheet(css) {
+	if (!canUseConstructedStyleSheets()) return null;
+	if (!constructedSheet) {
+		constructedSheet = new CSSStyleSheet();
+	}
+	constructedSheet.replaceSync(css);
+	return constructedSheet;
+}
+
+function syncFallbackStyleElements(css) {
+	for (const style of fallbackStyleElements) {
+		if (!style.isConnected) {
+			fallbackStyleElements.delete(style);
+			continue;
+		}
+		style.textContent = css;
+	}
+}
+
+function injectDocumentStyleElement(css) {
+	if (typeof document === "undefined") return null;
+	if (!styleElement || !styleElement.isConnected) {
+		styleElement = document.createElement("style");
+		styleElement.id = STYLE_ID;
+		(document.head || document.documentElement).appendChild(styleElement);
+	}
+	styleElement.textContent = css;
+	return styleElement;
+}
+
+/**
+ * Rebuilds the shared highlight stylesheet from the current editor theme.
+ * Constructed-sheet adopters update automatically via `replaceSync`.
+ */
+function syncHighlightStyles() {
+	const css = getHighlightStyles();
+	currentThemeId = currentEditorThemeId();
+	ensureConstructedSheet(css);
+	injectDocumentStyleElement(css);
+	syncFallbackStyleElements(css);
+	return css;
+}
+
+function resolveStyleRoot(root) {
+	if (!root || root === document) return document;
+	if (typeof ShadowRoot !== "undefined" && root instanceof ShadowRoot) {
+		return root;
+	}
+	if (root.shadowRoot) return root.shadowRoot;
+	return root;
+}
+
+function adoptSheet(root, sheet) {
+	if (!sheet || !root || !("adoptedStyleSheets" in root)) return false;
+	const sheets = Array.from(root.adoptedStyleSheets || []);
+	if (sheets.includes(sheet)) return true;
+	try {
+		root.adoptedStyleSheets = [...sheets, sheet];
+		return true;
+	} catch (e) {
+		console.warn("Failed to adopt highlight stylesheet", e);
+		return false;
+	}
+}
+
+function injectFallbackStyle(root, css) {
+	const owner =
+		root === document ? document.head || document.documentElement : root;
+	if (!owner || typeof owner.appendChild !== "function") return null;
+
+	let style = null;
+	if (typeof owner.querySelector === "function") {
+		style = owner.querySelector(`#${STYLE_ID}`);
+	}
+
+	if (!style) {
+		style = document.createElement("style");
+		style.id = STYLE_ID;
+		owner.appendChild(style);
+	}
+
+	style.textContent = css;
+	fallbackStyleElements.add(style);
+	return style;
+}
+
+/**
+ * Shared constructed stylesheet used for document + shadow roots.
+ * @returns {CSSStyleSheet|null}
+ */
+export function getHighlightStyleSheet() {
+	syncHighlightStyles();
+	return constructedSheet;
+}
+
+/**
+ * Applies current-theme highlight CSS to a document or shadow root.
+ * Custom editor tabs opt in with `highlightStyles: true`. Call this
+ * for other shadow roots (dialogs, custom elements) that insert
+ * highlighted HTML.
+ *
+ * Prefers `adoptedStyleSheets` so theme changes update in place.
+ *
+ * @param {Document|ShadowRoot|ParentNode|null} [root=document]
+ * @returns {CSSStyleSheet|HTMLStyleElement|null}
+ */
+export function applyHighlightStyles(root = document) {
+	const css = syncHighlightStyles();
+	const target = resolveStyleRoot(root);
+
+	if (constructedSheet && adoptSheet(target, constructedSheet)) {
+		return constructedSheet;
+	}
+
+	if (target === document) {
+		return styleElement;
+	}
+
+	return injectFallbackStyle(target, css);
+}
+
+/**
  * Injects dynamic CSS for syntax highlighting based on current editor theme
  */
 function injectStyles() {
-	const themeId = settings?.value?.editorTheme || "one_dark";
-	const config = getThemeConfig(themeId);
-
-	// Code blocks need background, references panel uses parent's background
-	const codeBlockStyles = generateStyles(config, ".cm-highlighted", true);
-	const refPreviewStyles = generateStyles(config, ".ref-preview", false);
-	const allStyles = `${codeBlockStyles}\n${refPreviewStyles}`;
-
-	if (!styleElement) {
-		styleElement = document.createElement("style");
-		styleElement.id = "cm-static-highlight-styles";
-		document.head.appendChild(styleElement);
-	}
-
-	styleElement.textContent = allStyles;
-	currentThemeId = themeId;
+	applyHighlightStyles(document);
 }
 
 /**
@@ -193,7 +333,7 @@ async function getParserForLanguage(langName) {
 export async function highlightLine(text, uri, symbolName = null) {
 	if (!text || !text.trim()) return "";
 
-	const themeId = settings?.value?.editorTheme || "one_dark";
+	const themeId = currentEditorThemeId();
 	const cacheKey = `line:${themeId}:${uri}:${text}:${symbolName || ""}`;
 
 	if (highlightCache.has(cacheKey)) {
@@ -250,7 +390,7 @@ export async function highlightLine(text, uri, symbolName = null) {
 export async function highlightCodeBlock(code, language) {
 	if (!code) return "";
 
-	const themeId = settings?.value?.editorTheme || "one_dark";
+	const themeId = currentEditorThemeId();
 	const langKey = (language || "text").toLowerCase();
 
 	const cacheKey = `block:${themeId}:${langKey}:${code}`;
@@ -305,8 +445,11 @@ export function clearHighlightCache() {
 export function initHighlighting() {
 	injectStyles();
 
+	if (initialized) return;
+	initialized = true;
+
 	settings.on("update:editorTheme:after", () => {
-		const newThemeId = settings?.value?.editorTheme || "one_dark";
+		const newThemeId = currentEditorThemeId();
 		if (newThemeId !== currentThemeId) {
 			injectStyles();
 			highlightCache.clear();
@@ -320,4 +463,9 @@ export default {
 	highlightCodeBlock,
 	clearHighlightCache,
 	initHighlighting,
+	applyHighlightStyles,
+	getHighlightStyles,
+	getHighlightStyleSheet,
+	HIGHLIGHT_CLASS,
+	REF_PREVIEW_CLASS,
 };

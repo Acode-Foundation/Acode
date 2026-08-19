@@ -69,6 +69,15 @@ import appSettings from "lib/settings";
 import FileBrowser from "pages/fileBrowser";
 import ThemeBuilder from "theme/builder";
 import themes from "theme/list";
+import {
+	applyHighlightStyles,
+	clearHighlightCache,
+	getHighlightStyleSheet,
+	getHighlightStyles,
+	HIGHLIGHT_CLASS,
+	highlightCodeBlock,
+	highlightLine,
+} from "utils/codeHighlight";
 import Color from "utils/color";
 import encodings, { decode, encode } from "utils/encodings";
 import helpers from "utils/helpers";
@@ -312,6 +321,17 @@ class Acode {
 			},
 		};
 
+		const codeHighlightModule = Object.freeze({
+			highlightLine,
+			highlightCodeBlock,
+			highlight: highlightCodeBlock,
+			clearCache: clearHighlightCache,
+			applyStyles: applyHighlightStyles,
+			getStyles: getHighlightStyles,
+			getStyleSheet: getHighlightStyleSheet,
+			HIGHLIGHT_CLASS,
+		});
+
 		const codemirrorModule = Object.freeze({
 			autocomplete: cmAutocomplete,
 			commands: cmCommands,
@@ -326,6 +346,7 @@ class Acode {
 			search: cmSearch,
 			state: cmState,
 			view: cmView,
+			highlight: codeHighlightModule,
 		});
 
 		const configProxy = new Proxy(config, {
@@ -414,6 +435,7 @@ class Acode {
 		this.define("terminal", terminalModule);
 		this.define("webview", webview);
 		this.define("codemirror", codemirrorModule);
+		this.define("codeHighlight", codeHighlightModule);
 		this.define("@codemirror/autocomplete", cmAutocomplete);
 		this.define("@codemirror/commands", cmCommands);
 		this.define("@codemirror/language", cmLanguage);
