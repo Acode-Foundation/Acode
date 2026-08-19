@@ -332,39 +332,70 @@ public class Tee extends CordovaPlugin {
      */
     private static boolean restoreInterruptedInstall(File parent, File destination) throws IOException {
         boolean recovered = false;
-        String backupPrefix = "." + destination.getName() + ".backup-";
         File[] children = parent.listFiles();
         if (children == null) return false;
 
-        File newestBackup = null;
-        for (File child : children) {
-            if (!child.isDirectory() || !child.getName().startsWith(backupPrefix)) continue;
-            if (newestBackup == null || child.lastModified() > newestBackup.lastModified()) {
-                newestBackup = child;
-            }
-        }
-
-        if (!destination.exists() && newestBackup != null) {
-            if (!newestBackup.renameTo(destination)) {
-                throw new IOException("Unable to restore previous plugin installation");
-            }
-            recovered = true;
-        }
-
+        java.util.Map<String, File> newestBackups = new java.util.HashMap<>();
         for (File child : children) {
             if (!child.isDirectory()) continue;
             String name = child.getName();
             if (!ORPHAN_DIR_PATTERN.matcher(name).matches()) continue;
-            int typeIdx = name.lastIndexOf(".install-");
-            if (typeIdx < 0) typeIdx = name.lastIndexOf(".backup-");
+            int typeIdx = name.lastIndexOf(".backup-");
             if (typeIdx <= 1) continue;
+            
             String ownerName = name.substring(1, typeIdx);
-            String ownerPath = new File(parent, ownerName).getPath();
+            File ownerDest = new File(parent, ownerName);
+            if (ownerDest.exists()) continue;
+            
+            String ownerPath = ownerDest.getPath();
             if (activeExtractions.contains(ownerPath) && !ownerPath.equals(destination.getPath())) {
                 continue;
             }
+
+            File currentBest = newestBackups.get(ownerName);
+            if (currentBest == null || child.lastModified() > currentBest.lastModified()) {
+                newestBackups.put(ownerName, child);
+            }
+        }
+
+        for (java.util.Map.Entry<String, File> entry : newestBackups.entrySet()) {
+            String ownerName = entry.getKey();
+            File backup = entry.getValue();
+            File ownerDest = new File(parent, ownerName);
+            
+            if (!backup.renameTo(ownerDest)) {
+                if (ownerDest.equals(destination)) {
+                    throw new IOException("Unable to restore previous plugin installation");
+                }
+            } else if (ownerDest.equals(destination)) {
+                recovered = true;
+            }
+        }
+
+        for (File child : children) {
+            if (!child.exists() || !child.isDirectory()) continue;
+            String name = child.getName();
+            if (!ORPHAN_DIR_PATTERN.matcher(name).matches()) continue;
+            int typeIdx = name.lastIndexOf(".install-");
+            boolean isBackup = typeIdx < 0;
+            if (isBackup) typeIdx = name.lastIndexOf(".backup-");
+            if (typeIdx <= 1) continue;
+            
+            String ownerName = name.substring(1, typeIdx);
+            File ownerDest = new File(parent, ownerName);
+            String ownerPath = ownerDest.getPath();
+            
+            if (activeExtractions.contains(ownerPath) && !ownerPath.equals(destination.getPath())) {
+                continue;
+            }
+            
+            if (isBackup && !ownerDest.exists()) {
+                continue;
+            }
+            
             deleteRecursively(child);
         }
+        
         return recovered;
     }
 
