@@ -716,7 +716,7 @@ const APP_BINDING_CONFIG = [
 	},
     {
      name: "welcomeTab",
-     description: "Open Welcome Tab",
+     description: "Open Welcome Window Tab",
      key: "Ctrl-Shift-W",
      action: "welcome",
      readOnly: true,
