@@ -150,7 +150,9 @@ function ensureConstructedSheet(css) {
 
 function syncFallbackStyleElements(css) {
 	for (const style of fallbackStyleElements) {
-		if (!style.isConnected) {
+		// `isConnected` is false while a custom-tab host is still detached.
+		// Keep updating those nodes; only drop styles that have been removed.
+		if (!style.parentNode) {
 			fallbackStyleElements.delete(style);
 			continue;
 		}
@@ -193,9 +195,9 @@ function resolveStyleRoot(root) {
 
 function adoptSheet(root, sheet) {
 	if (!sheet || !root || !("adoptedStyleSheets" in root)) return false;
-	const sheets = Array.from(root.adoptedStyleSheets || []);
-	if (sheets.includes(sheet)) return true;
 	try {
+		const sheets = Array.from(root.adoptedStyleSheets || []);
+		if (sheets.includes(sheet)) return true;
 		root.adoptedStyleSheets = [...sheets, sheet];
 		return true;
 	} catch (e) {

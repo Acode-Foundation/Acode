@@ -133,6 +133,33 @@ describe("codeHighlight", () => {
 		expect(shadow.adoptedStyleSheets).toContain(sheet);
 	});
 
+	it("updates fallback styles while the shadow host is still detached", () => {
+		initHighlighting();
+		const host = document.createElement("div");
+		const shadow = host.attachShadow({ mode: "open" });
+		Object.defineProperty(shadow, "adoptedStyleSheets", {
+			configurable: true,
+			get() {
+				throw new Error("adoptedStyleSheets unavailable");
+			},
+			set() {
+				throw new Error("adoptedStyleSheets unavailable");
+			},
+		});
+
+		applyHighlightStyles(shadow);
+		const style = shadow.querySelector("#cm-static-highlight-styles");
+		expect(style).toBeTruthy();
+		expect(style.isConnected).toBe(false);
+		expect(style.textContent).toContain("#c678dd");
+
+		settings.value.editorTheme = "githubLight";
+		for (const listener of themeListeners) listener();
+
+		expect(style.parentNode).toBe(shadow);
+		expect(style.textContent).toContain("#cf222e");
+	});
+
 	it("updates adopted shadow styles when the editor theme changes", () => {
 		initHighlighting();
 		const host = document.createElement("div");
