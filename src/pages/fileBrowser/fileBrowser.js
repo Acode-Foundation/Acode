@@ -160,7 +160,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		$selectionMenuToggler.style.display = "none";
 		$pasteToggler.style.display = "none";
 		const progress = {};
-		let cachedDir = {};
+		let cachedDir = new Map();
 		let currentDir = {
 			url: null,
 			name: null,
@@ -237,8 +237,6 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			}
 
 			if (action === "reload") {
-				const { url } = currentDir;
-				if (url in cachedDir) delete cachedDir[url];
 				reload();
 				return;
 			}
@@ -720,7 +718,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			}
 			recents.removeFile(url);
 			openFolder.removeItem(url);
-			delete cachedDir[url];
+			cachedDir.delete(url);
 		}
 
 		function updateSelectionCount($count) {
@@ -1477,8 +1475,8 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			let list = [];
 			let error = false;
 
-			if (url in cachedDir) {
-				return cachedDir[url];
+			if (cachedDir.has(url)) {
+				return cachedDir.get(url);
 			} else {
 				if (url === "/") {
 					list = await listAllStorages();
@@ -1748,8 +1746,8 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			const $oldList = $content.get("#list");
 			if ($oldList) {
 				const { url } = currentDir;
-				if (url && cachedDir[url]) {
-					cachedDir[url].scroll = $oldList.scrollTop;
+				if (url && cachedDir.has(url)) {
+					cachedDir.get(url).scroll = $oldList.scrollTop;
 				}
 				$oldList.remove();
 			}
@@ -1758,13 +1756,13 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			$list.focus();
 
 			currentDir = dir;
-			cachedDir[url] = dir;
+			cachedDir.set(url, dir);
 			updatePasteToggler();
 		}
 
 		function reload() {
 			const { url, name } = currentDir;
-			delete cachedDir[url];
+			cachedDir.delete(url);
 			navigate(url, name);
 		}
 
