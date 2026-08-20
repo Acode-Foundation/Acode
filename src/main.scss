@@ -92,16 +92,6 @@ body {
     }
   }
 
-  &[data-editor-touched] {
-    #quick-tools {
-      pointer-events: none;
-    }
-
-    .notification-item-container {
-      pointer-events: none;
-    }
-  }
-
   .main {
     position: relative;
   }
@@ -769,5 +759,4 @@ input[type="search"]::-webkit-search-results-decoration {
     }
   }
 }
-
 
