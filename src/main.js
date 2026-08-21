@@ -100,6 +100,20 @@ document.addEventListener("deviceready", onDeviceReady);
 document.addEventListener("backbutton", backButtonHandler);
 document.addEventListener("menubutton", menuButtonHandler);
 
+async function ensurePermission(permission) {
+	try {
+		const granted = await helpers.promisify(system.hasPermission, permission);
+		if (!granted) {
+			await helpers.promisify(system.requestPermission, permission);
+		}
+	} catch (error) {
+		logger.log(
+			"error",
+			`Failed to request permission ${permission}: ${error.message || error}`,
+		);
+	}
+}
+
 async function onDeviceReady() {
 	await initEncodings(); // important to load encodings before anything else
 
@@ -112,14 +126,37 @@ async function onDeviceReady() {
 		dataDirectory,
 	} = cordova.file;
 
+	async function resolveStorageDir(preferred, fallback) {
+		if (!preferred) return fallback;
+		const fs = fsOperation(preferred);
+		if (!fs) return fallback;
+		try {
+			await fs.stat();
+			return preferred;
+		} catch (error) {
+			logger.log(
+				"warn",
+				`Storage dir unavailable (${preferred}), falling back to ${fallback}: ${error.message || error}`,
+			);
+			return fallback;
+		}
+	}
+
 	window.app = document.body;
 	window.root = tag.get("#root");
 	window.addedFolder = addedFolder;
 	window.editorManager = null;
 	window.toast = toast;
 	window.ASSETS_DIRECTORY = Url.join(cordova.file.applicationDirectory, "www");
-	window.DATA_STORAGE = externalDataDirectory || dataDirectory;
-	window.CACHE_STORAGE = externalCacheDirectory || cacheDirectory;
+	window.DATA_STORAGE = await resolveStorageDir(
+		externalDataDirectory,
+		dataDirectory,
+	);
+	window.CACHE_STORAGE = await resolveStorageDir(
+		externalCacheDirectory,
+		cacheDirectory,
+	);
+
 	window.PLUGIN_DIR = Url.join(DATA_STORAGE, "plugins");
 	window.KEYBINDING_FILE = Url.join(DATA_STORAGE, ".key-bindings.json");
 	window.log = logger.log.bind(logger);
@@ -212,9 +249,11 @@ async function onDeviceReady() {
 	await adRewards.init();
 	ensureAceCompatApi();
 
-	system.requestPermission("android.permission.READ_EXTERNAL_STORAGE");
-	system.requestPermission("android.permission.WRITE_EXTERNAL_STORAGE");
-	system.requestPermission("android.permission.POST_NOTIFICATIONS");
+	if (Number.isInteger(window.ANDROID_SDK_INT) && window.ANDROID_SDK_INT < 33) {
+		await ensurePermission("android.permission.READ_EXTERNAL_STORAGE");
+		await ensurePermission("android.permission.WRITE_EXTERNAL_STORAGE");
+	}
+	await ensurePermission("android.permission.POST_NOTIFICATIONS");
 
 	const { versionCode } = BuildInfo;
 
@@ -227,7 +266,22 @@ async function onDeviceReady() {
 	}
 
 	if (!(await fsOperation(PLUGIN_DIR).exists())) {
-		await fsOperation(DATA_STORAGE).createDirectory("plugins");
+		try {
+			await fsOperation(DATA_STORAGE).createDirectory("plugins");
+		} catch (error) {
+			logger.log(
+				"error",
+				`Failed to create plugins directory, falling back to internal storage: ${error.message || error}`,
+			);
+			window.DATA_STORAGE = dataDirectory;
+			window.CACHE_STORAGE = cacheDirectory;
+			window.PLUGIN_DIR = Url.join(window.DATA_STORAGE, "plugins");
+			window.KEYBINDING_FILE = Url.join(
+				window.DATA_STORAGE,
+				".key-bindings.json",
+			);
+			await fsOperation(window.DATA_STORAGE).createDirectory("plugins");
+		}
 	}
 
 	localStorage.versionCode = versionCode;

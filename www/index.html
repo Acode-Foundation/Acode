@@ -141,12 +141,25 @@
         );
       }
 
+      function isStorageError(reason) {
+        if (!reason) return false;
+        return (
+          reason.name === "FileError" ||
+          reason.name === "NotFoundError" ||
+          reason.name === "SecurityError" ||
+          (typeof reason.code === "number" && reason.code >= 1 && reason.code <= 12)
+        );
+      }
+
       function handleStartupError(event) {
         if (!isStartupLoading()) return;
         var message = event && event.message ? event.message : "Startup error";
         setStartupMessage(
-          "Acode failed to start. Update Android System WebView or Chrome. " +
-          message
+          isStorageError(event && event.error)
+            ? "Acode failed to start: storage is unavailable. Try restarting your device, or clearing the app data. " +
+                message
+            : "Acode failed to start. Update Android System WebView or Chrome. " +
+                message
         );
       }
 
@@ -156,8 +169,11 @@
         var message =
           reason && reason.message ? reason.message : "Startup promise failed";
         setStartupMessage(
-          "Acode failed to start. Update Android System WebView or Chrome. " +
-          message
+          isStorageError(reason)
+            ? "Acode failed to start: storage is unavailable. Try restarting your device, or clearing the app data. " +
+                message
+            : "Acode failed to start. Update Android System WebView or Chrome. " +
+                message
         );
       }
 
