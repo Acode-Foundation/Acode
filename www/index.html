@@ -147,7 +147,8 @@
           reason.name === "FileError" ||
           reason.name === "NotFoundError" ||
           reason.name === "SecurityError" ||
-          (typeof reason.code === "number" && reason.code >= 1 && reason.code <= 12)
+          (typeof window.FileError !== "undefined" &&
+            reason instanceof window.FileError)
         );
       }
 
