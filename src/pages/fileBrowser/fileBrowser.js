@@ -6,6 +6,7 @@ import Checkbox from "components/checkbox";
 import Contextmenu from "components/contextmenu";
 import Page from "components/page";
 import searchBar from "components/searchbar";
+import createTailSpinSvg from "components/tailSpin.js";
 import terminalManager from "components/terminal/terminalManager";
 import alert from "dialogs/alert";
 import confirm from "dialogs/confirm";
@@ -33,10 +34,11 @@ import _addMenu from "./add-menu.hbs";
 import _addMenuHome from "./add-menu-home.hbs";
 import _template from "./fileBrowser.hbs";
 import _list from "./list.hbs";
+import NavStack from "./NavStack";
 import util from "./util";
 
 /**
- * @typedef {{url: String, name: String}} Location
+ * @typedef {import("./NavStack.js").Location} Location
  */
 
 /**
@@ -58,11 +60,10 @@ import util from "./util";
 function FileBrowserInclude(mode, info, doesOpenLast = true) {
 	mode = mode || "file";
 
+	const navStack = new NavStack();
 	const IS_FOLDER_MODE = ["folder", "both"].includes(mode);
 	const IS_FILE_MODE = ["file", "both"].includes(mode);
 	const storedState = helpers.parseJSON(localStorage.fileBrowserState) || [];
-	/**@type {Array<Location>} */
-	const state = [];
 	/**@type {Array<Storage>} */
 	const allStorages = [];
 	let storageList = helpers.parseJSON(localStorage.storageList);
@@ -160,13 +161,15 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		$selectionMenuToggler.style.display = "none";
 		$pasteToggler.style.display = "none";
 		const progress = {};
-		let cachedDir = {};
+		let cachedDir = new Map();
 		let currentDir = {
 			url: null,
 			name: null,
 			list: [],
 			scroll: 0,
 		};
+		/** @type {AbortController | null} */
+		let _rndrAbortCtrl;
 		/**
 		 * @type {HTMLButtonElement}
 		 */
@@ -237,8 +240,6 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			}
 
 			if (action === "reload") {
-				const { url } = currentDir;
-				if (url in cachedDir) delete cachedDir[url];
 				reload();
 				return;
 			}
@@ -630,6 +631,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		};
 
 		$page.onhide = function () {
+			_rndrAbortCtrl?.abort();
 			hideSearchBar();
 			actionStack.clearFromMark();
 			actionStack.remove("filebrowser");
@@ -638,7 +640,33 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			document.removeEventListener("resume", reload);
 		};
 
+		/** @type {Map<string, HTMLSpanElement>} */
+		const navBarEls = new Map();
+		const saveFileBrowserState = doesOpenLast
+			? () => (localStorage.fileBrowserState = JSON.stringify(navStack))
+			: null;
+		navStack.addEventListener("update", (ev) => {
+			saveFileBrowserState?.();
+			const { added, removed } = ev.detail;
+			for (const url of removed) {
+				actionStack.remove(url);
+				navBarEls.get(url)?.remove();
+				navBarEls.delete(url);
+			}
+			for (const [url, { name, index: i }] of added) {
+				const prevDir = i && navStack.get(i - 1);
+				if (prevDir && !actionStack.has(url)) {
+					actionStack.push({
+						id: url,
+						action: () => navigate(prevDir),
+					});
+				}
+				pushToNavbar(name, url);
+			}
+		});
+
 		if (doesOpenLast && storedState.length) {
+			navStack.push("/", "/");
 			loadStates(storedState);
 			return;
 		}
@@ -694,7 +722,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			}
 			recents.removeFile(url);
 			openFolder.removeItem(url);
-			delete cachedDir[url];
+			cachedDir.delete(url);
 		}
 
 		function updateSelectionCount($count) {
@@ -983,15 +1011,12 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				return;
 			}
 
-			if (isContextMenu) action = "contextmenu";
-			else if (isOpenDoc) action = "openDoc";
+			if (isContextMenu) return contextMenuHandler();
+			if (isOpenDoc) action = "openDoc";
 
 			switch (action) {
 				case "navigation":
 					folder();
-					break;
-				case "contextmenu":
-					contextMenuHandler();
 					break;
 				case "open":
 					if (isDir) folder();
@@ -1000,6 +1025,10 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				case "openDoc":
 					openDoc();
 					break;
+				case "prevDir": {
+					const dir = navStack.get(-2);
+					if (dir) navigate(dir);
+				}
 			}
 
 			async function folder() {
@@ -1052,6 +1081,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			}
 
 			async function contextMenuHandler() {
+				if (action === "prevDir") return;
 				if (appSettings.value.vibrateOnTap) {
 					navigator.vibrate(config.VIBRATION_TIME);
 				}
@@ -1442,64 +1472,32 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 		/**
 		 * Gets directory for given url for rendering
-		 * @param {String} url
-		 * @param {String} name
-		 * @returns {Promise<{name: String, url: String, list: [], scroll: Number}>}
+		 * @param {string} url
+		 * @returns {Promise<object[]>}
 		 */
-		async function getDir(url, name) {
-			const { fileBrowser } = appSettings.value;
-			let list = [];
-			let error = false;
-
-			if (url in cachedDir) {
-				return cachedDir[url];
+		async function getDirList(url) {
+			let list;
+			if (url === "/") {
+				list = await listAllStorages();
 			} else {
-				if (url === "/") {
-					list = await listAllStorages();
-				} else {
-					const id = helpers.uuid();
-					let loaderTimeout = 10000;
-
-					if (["ftp:", "sftp:"].includes(Url.getProtocol(url))) {
-						loaderTimeout = 0;
-					}
-
-					progress[id] = true;
-					const timeout = setTimeout(() => {
-						loader.create(name, strings.loading + "...", {
-							timeout: loaderTimeout,
-							oncancel() {
-								navigate("/", "/");
-								progress[id] = false;
-							},
-						});
-					}, 100);
-
-					const fs = fsOperation(url);
-					try {
-						list = (await fs.lsDir()) ?? [];
-					} catch (err) {
-						if (progress[id]) {
-							helpers.error(err, url);
-						} else {
-							console.error(err);
-						}
-					}
-
-					error = !progress[id];
-
-					delete progress[id];
+				const p1 = fsOperation(url).lsDir();
+				const { promise: p2, reject } = Promise.withResolvers();
+				const timeout = setTimeout(() => {
+					reject(new Error("Directory loading timed out."));
+				}, 15000);
+				try {
+					list = await Promise.race([p1, p2]);
+				} finally {
 					clearTimeout(timeout);
-					loader.destroy();
 				}
-				if (error) return null;
-				return {
-					url,
-					name,
-					scroll: 0,
-					list: helpers.sortDir(list, fileBrowser, mode),
-				};
 			}
+
+			if (list?.length) {
+				const { fileBrowser } = appSettings.value;
+				list = helpers.sortDir(list, fileBrowser, mode);
+			}
+
+			return list ?? [];
 		}
 
 		/**
@@ -1507,62 +1505,14 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		 * @param {String} url
 		 * @param {String} name
 		 */
-		async function navigate(url, name, assignBackButton = true) {
-			if (document.getElementById("search-bar")) {
-				hideSearchBar();
-			}
-			if (!url) {
-				throw new Error('navigate(url, name): "url" is required.');
-			}
+		function navigate(url, name) {
+			if (typeof url === "object") ({ url, name } = url);
 
-			if (!name) {
-				throw new Error('navigate(url, name): "name" is required.');
-			}
+			const inStack = navStack.has(url);
+			if (inStack) navStack.popUntil(url);
+			else navStack.push(url, name);
 
-			if (url === "/") {
-				if (IS_FOLDER_MODE) $openFolder.disabled = true;
-			} else {
-				if (IS_FOLDER_MODE) $openFolder.disabled = false;
-			}
-
-			const $nav = tag.get(`#${getNavId(url)}`);
-
-			//If navigate to previous directories, clear the rest navigation
-			if ($nav) {
-				let $topNav;
-				while (($topNav = $navigation.lastChild) !== $nav) {
-					const url = $topNav.dataset.url;
-					actionStack.remove(url);
-					$topNav.remove();
-				}
-
-				while (1) {
-					const location = state.slice(-1)[0];
-					if (!location || location.url === url) break;
-					state.pop();
-				}
-				localStorage.fileBrowserState = JSON.stringify(state);
-
-				const dir = await getDir(url, name);
-				if (dir) {
-					render(dir);
-				}
-				return;
-			}
-
-			const dir = await getDir(url, name);
-			if (dir) {
-				const { url: curl, name: cname } = currentDir;
-				let action;
-				if (doesOpenLast) pushState({ name, url });
-				if (curl && cname && assignBackButton) {
-					action = () => {
-						navigate(curl, cname, false);
-					};
-				}
-				pushToNavbar(name, url, action);
-				render(dir);
-			}
+			renderCurrentDir();
 		}
 
 		/**
@@ -1670,33 +1620,29 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		}
 
 		/**
-		 *  Pushes a navigation button to navbar
-		 * @param {String} id
-		 * @param {String} name
-		 * @param {String} url
+		 * Pushes a navigation button to navbar
+		 * @param {string} name
+		 * @param {string} url
 		 */
-		function pushToNavbar(name, url, action) {
-			if (!url) return;
-			const displayName = name || Url.basename(url) || url;
-			$navigation.append(
-				<span
-					id={getNavId(url)}
-					className="nav"
-					data-url={url}
-					data-name={displayName}
-					data-action="navigation"
-					attr-text={displayName}
-					tabIndex={-1}
-				></span>,
-			);
-			$navigation.scrollLeft = $navigation.scrollWidth;
-
-			if (action && !actionStack.has(url)) {
-				actionStack.push({
-					id: url,
-					action,
-				});
+		function pushToNavbar(name, url) {
+			/** @type {HTMLSpanElement} */
+			let el = navBarEls.get(url);
+			if (!el) {
+				el = (
+					<span
+						id={getNavId(url)}
+						className="nav"
+						data-url={url}
+						data-name={name}
+						data-action="navigation"
+						attr-text={name}
+						tabIndex={-1}
+					></span>
+				);
+				navBarEls.set(url, el);
 			}
+			$navigation.append(el);
+			$navigation.scrollLeft = $navigation.scrollWidth;
 		}
 
 		/**
@@ -1705,37 +1651,15 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		 */
 		function loadStates(states) {
 			if (!Array.isArray(states) || !states.length) return;
-
-			const backNavigation = [];
-			const lastState = states.pop();
-			if (!lastState || !lastState.url) return;
-			const { url } = lastState;
-			const name = lastState.name || Url.basename(url) || url;
-			let { url: lastUrl, name: lastName } = currentDir;
-
 			while (states.length) {
-				const location = states.splice(0, 1)[0];
-				if (!location || !location.url) {
-					continue;
+				try {
+					navStack.push(states.shift());
+				} catch (err) {
+					console.error(err);
 				}
-				const { url, name } = location;
-				let action;
-
-				if (doesOpenLast) pushState({ name, url });
-				if (lastUrl && lastName) {
-					backNavigation.push([lastUrl, lastName]);
-					action = () => {
-						const [url, name] = backNavigation.pop();
-						navigate(url, name, false);
-					};
-				}
-				pushToNavbar(name, url, action);
-				lastUrl = url;
-				lastName = name;
 			}
-
-			currentDir = { url: lastUrl, name: lastName };
-			navigate(url, name);
+			const dir = navStack.get(-1);
+			if (dir) navigate(dir);
 		}
 
 		/**
@@ -1771,14 +1695,18 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			if (doesReload) reload();
 		}
 
-		function render(dir) {
-			const { list, scroll } = dir;
-			const $list = helpers.parseHTML(
-				mustache.render(_list, {
-					msg: strings["empty folder message"],
-					list,
-				}),
-			);
+		/**
+		 * @param {boolean} force
+		 */
+		async function renderCurrentDir(force) {
+			_rndrAbortCtrl?.abort();
+			const rndrAbortCtrl = new AbortController();
+			const abortSignal = rndrAbortCtrl.signal;
+			_rndrAbortCtrl = rndrAbortCtrl;
+
+			const { url, name } = navStack.get(-1) ?? {};
+
+			if (IS_FOLDER_MODE) $openFolder.disabled = (url || "/") === "/";
 
 			if (document.getElementById("search-bar")) {
 				hideSearchBar();
@@ -1786,32 +1714,89 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 			const $oldList = $content.get("#list");
 			if ($oldList) {
-				const { url } = currentDir;
-				if (url && cachedDir[url]) {
-					cachedDir[url].scroll = $oldList.scrollTop;
-				}
+				const dir = currentDir;
+				if (dir?.url) dir.scroll = $oldList.scrollTop;
 				$oldList.remove();
 			}
-			$content.append($list);
-			$list.scrollTop = scroll;
+
+			if (force) cachedDir.delete(url);
+			const dir = (!force && url && cachedDir.get(url)) || {
+				url,
+				name,
+				scroll: 0,
+			};
+			const _dir = currentDir;
+			currentDir = dir;
+			updatePasteToggler();
+
+			const hasPrevDir = navStack.length >= 2;
+			let $placeholder;
+			let errMsg;
+			let { list } = dir;
+			if (!list) {
+				$placeholder = helpers.parseHTML(
+					mustache.render(_list, {
+						prevDir: hasPrevDir,
+					}),
+				);
+				$placeholder.classList.add("placeholder");
+				$placeholder.insertAdjacentHTML(
+					"beforeend",
+					`<span id="spinner">${createTailSpinSvg()}</span>`,
+				);
+				/** @type {HTMLSpanElement} */
+				$content.appendChild($placeholder);
+
+				try {
+					list = await getDirList(url);
+				} catch (err) {
+					if (abortSignal.aborted) return;
+					currentDir = _dir;
+					let name = "Error";
+					let code = Number.NaN;
+					let msg = err;
+					if (typeof err === "object") {
+						name = `${err.name ?? ""}` || name;
+						msg = err.message;
+						code = +err.code;
+					}
+					errMsg = name;
+					if (code === code) errMsg += ` (${code})`;
+					if ((msg = `${msg ?? ""}`)) errMsg += `: ${msg}`;
+
+					const url2 = /^(content|file|s?ftp|https?):/.test(url)
+						? helpers.getVirtualPath(url)
+						: url;
+					console.group("Error reading:", url2);
+					if (code === code) console.log("Code:", code);
+					console.error(err);
+					console.groupEnd();
+				}
+				if (abortSignal.aborted) return;
+				dir.list = list;
+			}
+
+			if (_rndrAbortCtrl === rndrAbortCtrl) _rndrAbortCtrl = null;
+
+			const $list = helpers.parseHTML(
+				mustache.render(_list, {
+					prevDir: hasPrevDir,
+					msg: errMsg ?? (!list?.length && strings["empty folder message"]),
+					list,
+				}),
+			);
+
+			if (!$placeholder) $content.appendChild($list);
+			else $placeholder.replaceWith($list);
+
+			$list.scrollTop = +dir.scroll || 0;
 			$list.focus();
 
-			currentDir = dir;
-			cachedDir[dir.url] = dir;
-			updatePasteToggler();
+			cachedDir.set(url, dir);
 		}
 
 		function reload() {
-			const { url, name } = currentDir;
-			delete cachedDir[url];
-			navigate(url, name);
-		}
-
-		function pushState({ url, name }) {
-			if (!url || !name) return;
-			if (state.find((l) => l.url === url)) return;
-			state.push({ url, name });
-			localStorage.fileBrowserState = JSON.stringify(state);
+			renderCurrentDir(true);
 		}
 
 		/**

@@ -89,6 +89,20 @@
     height: calc(100% - 60px);
     overflow-y: auto;
 
+    > :is(#msg, #spinner) {
+      pointer-events: none;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      text-align: center;
+    }
+    &:has(> [data-action="prevDir"]) > :is(#msg, #spinner) {
+      height: calc(100% - 45px);
+    }
+
     .tile {
       &[disabled] {
         .text {

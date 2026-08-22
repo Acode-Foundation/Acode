@@ -1,29 +1,49 @@
-<ul class="list" id="list" empty-msg="{{msg}}">{{#list}}
-  {{#.}}
-  <li
-    tabindex="1"
-    class="tile {{#isLink}}symlink{{/isLink}}"
-    data-action="open"
-    data-type="{{type}}"
-    data-name="{{name}}"
-    {{#home}}data-home="{{.}}"{{/home}}
-    {{#notSelectable}}data-not-selectable{{/notSelectable}}
-    {{#openDoc}}data-open-doc{{/openDoc}}
-    {{#ftpAccount}}data-ftp-account{{/ftpAccount}}
-    {{#uuid}}data-uuid="{{uuid}}"{{/uuid}}
-    {{#storageType}}data-storage-type="{{.}}"{{/storageType}}
-    {{#disabled}}disabled{{/disabled}}
-  >
-    <span
-      class="icon {{icon}} {{#uuid}}user-added-storage{{/uuid}}"
+<ul class="list" id="list">
+  {{#prevDir}}
+    <li
+      tabindex="1"
+      class="tile"
+      data-action="prevDir"
+      data-not-selectable
+    >
+      <span class="icon"></span>
+      <div class="text">
+        <span>..</span>
+      </div>
+    </li>
+  {{/prevDir}}
+  {{^list}}
+    {{#msg}}
+      <div id="msg">{{.}}</div>
+    {{/msg}}
+  {{/list}}
+  {{#list}}
+    {{#.}}
+    <li
+      tabindex="1"
+      class="tile {{#isLink}}symlink{{/isLink}}"
+      data-action="open"
+      data-type="{{type}}"
+      data-name="{{name}}"
+      {{#home}}data-home="{{.}}"{{/home}}
+      {{#notSelectable}}data-not-selectable{{/notSelectable}}
+      {{#oneDirUp}}data-one-dir-up{{/oneDirUp}}
+      {{#openDoc}}data-open-doc{{/openDoc}}
+      {{#ftpAccount}}data-ftp-account{{/ftpAccount}}
+      {{#uuid}}data-uuid="{{.}}"{{/uuid}}
       {{#storageType}}data-storage-type="{{.}}"{{/storageType}}
-    ></span>
+      {{#disabled}}disabled{{/disabled}}
+    >
+      <span
+        class="icon {{icon}} {{#uuid}}user-added-storage{{/uuid}}"
+        {{#storageType}}data-storage-type="{{.}}"{{/storageType}}
+      ></span>
 
-    <div class="text">
-      <span>{{name}}</span>
-    </div>
-    <data-url>{{url}}</data-url>
-  </li>
-  {{/.}}
+      <div class="text">
+        <span>{{name}}</span>
+      </div>
+      <data-url>{{url}}</data-url>
+    </li>
+    {{/.}}
   {{/list}}
 </ul>
