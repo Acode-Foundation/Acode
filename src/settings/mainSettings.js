@@ -29,6 +29,7 @@ import previewSettings from "./previewSettings";
 import scrollSettings from "./scrollSettings";
 import searchSettings from "./searchSettings";
 import terminalSettings from "./terminalSettings";
+import aiSettings from "./aiSettings";
 
 export default function mainSettings() {
 	const title = strings.settings.capitalize();
@@ -104,6 +105,14 @@ export default function mainSettings() {
 				"Language servers",
 			icon: "zap",
 			info: strings["settings-info-main-lsp-settings"],
+			category: categories.customizationTools,
+			chevron: true,
+		},
+		{
+			key: "ai-settings",
+			text: strings["ai settings"] || "AI Settings",
+			icon: "psychiatry", // Use an appropriate material icon like 'psychiatry' or 'smart_toy'
+			info: "Configure AI providers and features",
 			category: categories.customizationTools,
 			chevron: true,
 		},
@@ -231,6 +240,7 @@ export default function mainSettings() {
 			case "preview-settings":
 			case "terminal-settings":
 			case "lsp-settings":
+			case "ai-settings":
 				appSettings.uiSettings[key].show();
 				break;
 
@@ -370,6 +380,7 @@ export default function mainSettings() {
 		"preview-settings": previewSettings,
 		"terminal-settings": terminalSettings,
 		"lsp-settings": lspSettings,
+		"ai-settings": aiSettings,
 	};
 
 	const instantiated = {};
