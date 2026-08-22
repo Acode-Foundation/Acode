@@ -1468,8 +1468,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					const timeout = setTimeout(() => {
 						loader.create(name, strings.loading + "...", {
 							timeout: loaderTimeout,
-							callback() {
-								loader.destroy();
+							oncancel() {
 								navigate("/", "/");
 								progress[id] = false;
 							},

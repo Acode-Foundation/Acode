@@ -53,6 +53,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.cordova.CallbackContext;
@@ -72,8 +74,13 @@ public class Sftp extends CordovaPlugin {
   // A smaller mobile window prevents connection bursts from exhausting the heap.
   private static final long SFTP_MAX_WINDOW_SIZE = 1024L * 1024L;
   private static final long SFTP_MIN_WINDOW_SIZE = 128L * 1024L;
+  private static final long DEFAULT_CONNECT_TIMEOUT_MS = 10000L;
+  private static final long MIN_CONNECT_TIMEOUT_MS = 1000L;
+  private static final long MAX_CONNECT_TIMEOUT_MS = 30000L;
   private static boolean cryptoProviderConfigured;
   private final Object connectionLock = new Object();
+  private final Map<String, ConnectionAttempt> connectionAttempts =
+    new ConcurrentHashMap<>();
   private final Map<String, RemoteShell> remoteShells = new ConcurrentHashMap<>();
   private SshClient ssh;
   private SftpClient sftp;
@@ -81,6 +88,50 @@ public class Sftp extends CordovaPlugin {
   private Activity activity;
   private String connectionID;
   private SftpSecurityStore securityStore;
+
+  private final class ConnectionAttempt {
+
+    private final CallbackContext callback;
+    private final AtomicBoolean cancelled = new AtomicBoolean(false);
+    private final AtomicBoolean completed = new AtomicBoolean(false);
+    private volatile Future<?> future;
+
+    private ConnectionAttempt(CallbackContext callback) {
+      this.callback = callback;
+    }
+
+    private void setFuture(Future<?> future) {
+      this.future = future;
+      if (cancelled.get()) future.cancel(true);
+    }
+
+    private boolean isCancelled() {
+      return cancelled.get();
+    }
+
+    private void cancel() {
+      cancelled.set(true);
+      Future<?> current = future;
+      if (current != null) current.cancel(true);
+      error(connectionCancelledError());
+    }
+
+    private void success() {
+      if (completed.compareAndSet(false, true)) callback.success();
+    }
+
+    private void success(String value) {
+      if (completed.compareAndSet(false, true)) callback.success(value);
+    }
+
+    private void error(String message) {
+      if (completed.compareAndSet(false, true)) callback.error(message);
+    }
+
+    private void error(JSONObject error) {
+      if (completed.compareAndSet(false, true)) callback.error(error);
+    }
+  }
 
   private final class ConnectionSecurity {
 
@@ -162,11 +213,16 @@ public class Sftp extends CordovaPlugin {
     }
 
     private boolean report(CallbackContext callback) {
-      JSONObject error = failure;
-      failure = null;
+      JSONObject error = takeFailure();
       if (error == null) return false;
       callback.error(error);
       return true;
+    }
+
+    private JSONObject takeFailure() {
+      JSONObject error = failure;
+      failure = null;
+      return error;
     }
   }
 
@@ -318,11 +374,16 @@ public class Sftp extends CordovaPlugin {
   private boolean establishConnection(
     SshClientBuilder builder,
     String newConnectionID,
-    ConnectionSecurity security
+    ConnectionSecurity security,
+    ConnectionAttempt attempt
   ) throws IOException, SshException, PermissionDeniedException {
     synchronized (connectionLock) {
       closeConnectionQuietly();
       ssh = builder.onConfigure(security::configure).build();
+      if (attempt.isCancelled()) {
+        closeConnectionQuietly();
+        return false;
+      }
       if (!ssh.isConnected()) {
         closeConnectionQuietly();
         return false;
@@ -334,6 +395,11 @@ public class Sftp extends CordovaPlugin {
       } catch (IOException | SshException | PermissionDeniedException e) {
         closeConnectionQuietly();
         throw e;
+      }
+
+      if (attempt.isCancelled()) {
+        closeConnectionQuietly();
+        return false;
       }
 
       try {
@@ -368,6 +434,17 @@ public class Sftp extends CordovaPlugin {
     if (expectedFingerprint != null) {
       error.put("expectedFingerprint", expectedFingerprint);
     }
+    return error;
+  }
+
+  private static JSONObject connectionCancelledError() {
+    JSONObject error = new JSONObject();
+    try {
+      error.put("code", "SFTP_CONNECT_CANCELLED");
+      error.put("message", "SFTP connection cancelled");
+      error.put("cancelled", true);
+      error.put("nonRetryable", true);
+    } catch (JSONException ignored) {}
     return error;
   }
 
@@ -440,23 +517,40 @@ public class Sftp extends CordovaPlugin {
     remoteShells.clear();
   }
 
+  private void cancelConnectionAttempts() {
+    for (ConnectionAttempt attempt : connectionAttempts.values()) {
+      attempt.cancel();
+    }
+    connectionAttempts.clear();
+  }
+
   @Override
   public void onReset() {
+    cancelConnectionAttempts();
     closeRemoteShells();
     super.onReset();
   }
 
   @Override
   public void onDestroy() {
+    cancelConnectionAttempts();
     closeRemoteShells();
     super.onDestroy();
   }
 
   private SshClientBuilder buildProfileBuilder(JSONObject profile)
     throws IOException, InvalidPassphraseException, JSONException {
+    return buildProfileBuilder(profile, DEFAULT_CONNECT_TIMEOUT_MS);
+  }
+
+  private SshClientBuilder buildProfileBuilder(
+    JSONObject profile,
+    long connectTimeout
+  ) throws IOException, InvalidPassphraseException, JSONException {
     SshClientBuilder builder = SshClientBuilder.create()
       .withHostname(profile.getString("hostname"))
       .withPort(profile.optInt("port", 22))
+      .withConnectTimeout(connectTimeout)
       .withUsername(profile.getString("username"));
 
     if ("key".equals(profile.optString("authType"))) {
@@ -868,6 +962,8 @@ public class Sftp extends CordovaPlugin {
     switch (action) {
       case "exec":
       case "connectUsingProfile":
+      case "testProfile":
+      case "cancelConnection":
       case "saveProfile":
       case "editProfile":
       case "getProfileInfo":
@@ -894,47 +990,112 @@ public class Sftp extends CordovaPlugin {
   }
 
   public void connectUsingProfile(JSONArray args, CallbackContext callback) {
-    cordova
-      .getThreadPool()
-      .execute(
-        new Runnable() {
-          public void run() {
-            ConnectionSecurity security = null;
-            String profileID = args.optString(0);
-            try {
-              JSONObject profile = securityStore.getProfile(profileID);
-              ConnectionSecurity profileSecurity = new ConnectionSecurity(
-                profile.getString("hostname"),
-                profile.optInt("port", 22)
-              );
-              security = profileSecurity;
-              if (
-                establishConnection(
-                  buildProfileBuilder(profile),
-                  profileID,
-                  profileSecurity
-                )
-              ) {
-                callback.success();
-                return;
+    startProfileConnection(args, callback, false);
+  }
+
+  public void testProfile(JSONArray args, CallbackContext callback) {
+    startProfileConnection(args, callback, true);
+  }
+
+  public void cancelConnection(JSONArray args, CallbackContext callback) {
+    ConnectionAttempt attempt = connectionAttempts.get(args.optString(0));
+    if (attempt != null) attempt.cancel();
+    callback.success();
+  }
+
+  private void startProfileConnection(
+    JSONArray args,
+    CallbackContext callback,
+    boolean returnWorkingDirectory
+  ) {
+    String suppliedRequestID = args.optString(1);
+    String requestID = suppliedRequestID.isEmpty()
+      ? UUID.randomUUID().toString()
+      : suppliedRequestID;
+    long requestedTimeout = args.optLong(2, DEFAULT_CONNECT_TIMEOUT_MS);
+    long connectTimeout = Math.max(
+      MIN_CONNECT_TIMEOUT_MS,
+      Math.min(requestedTimeout, MAX_CONNECT_TIMEOUT_MS)
+    );
+    ConnectionAttempt attempt = new ConnectionAttempt(callback);
+    if (connectionAttempts.putIfAbsent(requestID, attempt) != null) {
+      callback.error("An SFTP connection with this request ID is already running");
+      return;
+    }
+
+    FutureTask<Void> task = new FutureTask<Void>(
+      () -> {
+        ConnectionSecurity security = null;
+        String profileID = args.optString(0);
+        try {
+          JSONObject profile = securityStore.getProfile(profileID);
+          ConnectionSecurity profileSecurity = new ConnectionSecurity(
+            profile.getString("hostname"),
+            profile.optInt("port", 22)
+          );
+          security = profileSecurity;
+          if (
+            establishConnection(
+              buildProfileBuilder(profile, connectTimeout),
+              profileID,
+              profileSecurity,
+              attempt
+            )
+          ) {
+            if (attempt.isCancelled()) return null;
+            if (returnWorkingDirectory) {
+              SftpClient activeSftp = sftp;
+              if (activeSftp == null) {
+                attempt.error("SFTP connection was closed before validation");
+              } else {
+                attempt.success(activeSftp.pwd());
               }
-              if (security.report(callback)) return;
-              callback.error("Failed to establish SSH connection");
-            } catch (InvalidPassphraseException e) {
-              callback.error("Invalid passphrase for stored key");
-            } catch (Exception e) {
-              if (security != null && security.report(callback)) return;
-              callback.error("Failed to connect SFTP profile: " + errMessage(e));
-              Log.e(TAG, "Failed to connect SFTP profile", e);
-            } catch (OutOfMemoryError e) {
-              synchronized (connectionLock) {
-                closeConnectionQuietly();
-              }
-              callback.error("Not enough memory to initialize SFTP");
+            } else {
+              attempt.success();
             }
+            return null;
+          }
+          if (attempt.isCancelled()) return null;
+          JSONObject securityError = security.takeFailure();
+          if (securityError != null) {
+            attempt.error(securityError);
+            return null;
+          }
+          attempt.error("Failed to establish SSH connection");
+        } catch (InvalidPassphraseException e) {
+          if (!attempt.isCancelled()) {
+            attempt.error("Invalid passphrase for stored key");
+          }
+        } catch (Exception e) {
+          if (attempt.isCancelled()) return null;
+          JSONObject securityError = security == null
+            ? null
+            : security.takeFailure();
+          if (securityError != null) {
+            attempt.error(securityError);
+            return null;
+          }
+          attempt.error("Failed to connect SFTP profile: " + errMessage(e));
+          Log.e(TAG, "Failed to connect SFTP profile", e);
+        } catch (OutOfMemoryError e) {
+          synchronized (connectionLock) {
+            closeConnectionQuietly();
+          }
+          if (!attempt.isCancelled()) {
+            attempt.error("Not enough memory to initialize SFTP");
           }
         }
-      );
+        return null;
+      }
+    ) {
+      @Override
+      protected void done() {
+        connectionAttempts.remove(requestID, attempt);
+      }
+    };
+
+    attempt.setFuture(task);
+    cordova.getThreadPool().execute(task);
   }
 
   public void exec(JSONArray args, CallbackContext callback) {
