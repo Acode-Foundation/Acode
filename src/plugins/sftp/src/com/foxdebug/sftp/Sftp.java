@@ -1034,22 +1034,42 @@ public class Sftp extends CordovaPlugin {
             profile.optInt("port", 22)
           );
           security = profileSecurity;
-          if (
-            establishConnection(
-              buildProfileBuilder(profile, connectTimeout),
+          SshClientBuilder builder = buildProfileBuilder(
+            profile,
+            connectTimeout
+          );
+          boolean connected;
+          String workingDirectory = null;
+          if (returnWorkingDirectory) {
+            synchronized (connectionLock) {
+              connected = establishConnection(
+                builder,
+                profileID,
+                profileSecurity,
+                attempt
+              );
+              if (connected && !attempt.isCancelled()) {
+                SftpClient activeSftp = sftp;
+                if (activeSftp == null) {
+                  throw new IOException(
+                    "SFTP connection was closed before validation"
+                  );
+                }
+                workingDirectory = activeSftp.pwd();
+              }
+            }
+          } else {
+            connected = establishConnection(
+              builder,
               profileID,
               profileSecurity,
               attempt
-            )
-          ) {
+            );
+          }
+          if (connected) {
             if (attempt.isCancelled()) return null;
             if (returnWorkingDirectory) {
-              SftpClient activeSftp = sftp;
-              if (activeSftp == null) {
-                attempt.error("SFTP connection was closed before validation");
-              } else {
-                attempt.success(activeSftp.pwd());
-              }
+              attempt.success(workingDirectory);
             } else {
               attempt.success();
             }
