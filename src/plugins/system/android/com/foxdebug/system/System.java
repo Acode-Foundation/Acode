@@ -76,6 +76,20 @@ public class System extends CordovaPlugin {
   private static final String TAG = "SystemPlugin";
 
   private CallbackContext requestPermissionCallback;
+  private static final Map<String, String> APP_ICON_ALIASES;
+
+  static {
+    Map<String, String> aliases = new HashMap<>();
+    aliases.put("default", "MainActivityIconDefault");
+    aliases.put("midnight_circuit", "MainActivityIconMidnightCircuit");
+    aliases.put("aurora_pulse", "MainActivityIconAuroraPulse");
+    aliases.put("terminal_glow", "MainActivityIconTerminalGlow");
+    aliases.put("solar_flare", "MainActivityIconSolarFlare");
+    aliases.put("blueprint", "MainActivityIconBlueprint");
+    aliases.put("pixel_party", "MainActivityIconPixelParty");
+    APP_ICON_ALIASES = Collections.unmodifiableMap(aliases);
+  }
+
   private Activity activity;
   private Context context;
   private int REQ_PERMISSIONS = 1;
@@ -158,6 +172,9 @@ public class System extends CordovaPlugin {
             }
           }
         );
+        return true;
+      case "set-app-icon":
+        setAppIcon(arg1, callbackContext);
         return true;
       case "get-cordova-intent":
         getCordovaIntent(callbackContext);
@@ -2183,6 +2200,45 @@ public class System extends CordovaPlugin {
       return;
     }
     webView.setNativeContextMenuDisabled(disabled);
+  }
+
+  /**
+   * Dynamically changes the app icon by toggling activity-alias components.
+   *
+   * <p>The launcher icon is always represented by an activity-alias (including
+   * the default icon) so that the running MainActivity component never has to
+   * be disabled. Disabling the currently running component would make Android
+   * force-stop/restart the app, so only aliases are toggled here.
+   *
+   * @param iconName Icon id (e.g. "midnight_circuit") or "default" to restore
+   *     the original launcher icon.
+   * @param callback Callback invoked with the result.
+   */
+  private void setAppIcon(String iconName, CallbackContext callback) {
+    try {
+      String packageName = context.getPackageName();
+      PackageManager pm = context.getPackageManager();
+      String key = iconName == null ? "default" : iconName.toLowerCase();
+
+      if (!APP_ICON_ALIASES.containsKey(key)) {
+        callback.error("Unknown app icon: " + iconName);
+        return;
+      }
+
+      for (Map.Entry<String, String> entry : APP_ICON_ALIASES.entrySet()) {
+        boolean enabled = entry.getKey().equals(key);
+        pm.setComponentEnabledSetting(
+          new ComponentName(packageName, packageName + "." + entry.getValue()),
+          enabled
+            ? PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+            : PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+          PackageManager.DONT_KILL_APP
+        );
+      }
+      callback.success();
+    } catch (Exception e) {
+      callback.error(e.toString());
+    }
   }
 
   private void extractAsset(

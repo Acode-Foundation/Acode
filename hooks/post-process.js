@@ -29,6 +29,7 @@ enableLegacyJni();
 enableStaticContext();
 removeLegacyKeyboardWorkaround();
 patchTargetSdkVersion();
+stripLauncherFilterFromMainActivity();
 
 function getPackageName() {
   const configPath = path.resolve(__dirname, '../config.xml');
@@ -62,6 +63,43 @@ function getTmpDir() {
     console.log("Error: No usable temporary directory found (TMPDIR or /tmp not accessible).");
     return null;
     // process.exit(1);
+  }
+}
+
+/**
+ * Removes the MAIN/LAUNCHER intent-filter from MainActivity in the generated
+ * AndroidManifest. The launcher role is handled by activity-aliases instead
+ * (see config.xml), so that switching app icons at runtime only toggles aliases
+ * and never disables the running MainActivity component (which would otherwise
+ * force-stop/restart the app).
+ */
+function stripLauncherFilterFromMainActivity() {
+  const prefix = execSync('npm prefix').toString().trim();
+  const manifestPath = path.join(
+    prefix,
+    'platforms/android/app/src/main/AndroidManifest.xml'
+  );
+
+  if (!fs.existsSync(manifestPath)) {
+    console.warn('[Cordova Hook] ⚠️ AndroidManifest.xml not found');
+    return;
+  }
+
+  let content = fs.readFileSync(manifestPath, 'utf-8');
+  const updated = content.replace(
+    /(<activity[^>]*\bname="MainActivity"[^>]*>)\s*<intent-filter[^>]*>\s*<action android:name="android\.intent\.action\.MAIN"[^>]*\/>\s*<category android:name="android\.intent\.category\.LAUNCHER"[^>]*\/>\s*<\/intent-filter>/,
+    '$1'
+  );
+
+  if (updated !== content) {
+    fs.writeFileSync(manifestPath, updated, 'utf-8');
+    console.log(
+      '[Cordova Hook] ✅ Removed launcher intent-filter from MainActivity'
+    );
+  } else {
+    console.log(
+      '[Cordova Hook] ✅ Launcher intent-filter already removed, skipping'
+    );
   }
 }
 

@@ -295,6 +295,13 @@ interface System {
     onSuccess?: () => void,
     onFail?: OnFail,
   ): void;
+  /**
+   * Change the app icon at runtime.
+   * @param iconName Icon id, e.g. "midnight_circuit", or "default" to restore the original icon
+   * @param onSuccess
+   * @param onFail
+   */
+  setAppIcon(iconName: string, onSuccess: OnSuccessBool, onFail: OnFail): void;
 }
 
 interface Window{

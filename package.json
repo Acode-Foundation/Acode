@@ -45,10 +45,10 @@
       "com.foxdebug.acode.rk.exec.proot": {},
       "cordova-plugin-iap": {},
       "com.foxdebug.acode.rk.customtabs": {},
-      "cordova-plugin-system": {},
       "cordova-plugin-crashhandler": {},
       "cordova-plugin-advanced-http": {},
-      "cordova-plugin-acode-webview": {}
+      "cordova-plugin-acode-webview": {},
+      "cordova-plugin-system": {}
     },
     "platforms": [
       "android"

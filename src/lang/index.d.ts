@@ -769,7 +769,10 @@ declare type LangStrings = {
   "pinned tab": string;
   "unpin tab before closing": string;
   "app font": string;
+  "app icon": string;
+  "app icon changed": string;
   "settings-info-app-font-family": string;
+  "settings-info-app-icon": string;
   "unsaved selected tabs warning": string;
   "save selected tabs": string;
   "close selected tabs": string;
