@@ -4,6 +4,7 @@ import Url from "utils/Url";
 import externalFs from "./externalFs";
 import Ftp from "./ftp";
 import internalFs from "./internalFs";
+import { decodeReadRange, validateReadRange } from "./readRange";
 import Sftp from "./sftp";
 
 const fsList = [];
@@ -39,6 +40,7 @@ const fsList = [];
  * @property {() => Promise<boolean>} exists Check if file or directory exists
  * @property {() => Promise<Stat>} stat Get file or directory stat
  * @property {(encoding:string) => Promise<FileContent>} readFile Read file
+ * @property {(start:number, end:number, encoding?:string) => Promise<FileContent>} [readFileRange] Read a half-open byte range without loading the whole file
  * @property {(data:FileContent, encoding: string) => Promise<void>} writeFile Write file content
  * @property {(name:string, data:FileContent) => Promise<string>} createFile Create file and return url of the created file
  * @property {(name:string) => Promise<string>} createDirectory Create directory and return url of the created directory
@@ -93,6 +95,47 @@ fsOperation.extend(
 				}
 
 				return data;
+			},
+			async readFileRange(start, end, encoding) {
+				const range = validateReadRange(start, end);
+				if (range.length === 0) {
+					return decodeReadRange(new ArrayBuffer(0), encoding);
+				}
+
+				const response = await fetch(url, {
+					headers: {
+						Range: `bytes=${range.start}-${range.end - 1}`,
+					},
+				});
+
+				if (response.status !== 206) {
+					await response.body?.cancel();
+					throw new Error("HTTP server does not support byte-range reads");
+				}
+
+				const contentRange = response.headers.get("content-range");
+				const returnedRange = contentRange?.match(/^bytes (\d+)-(\d+)\//i);
+				if (
+					returnedRange &&
+					(Number(returnedRange[1]) !== range.start ||
+						Number(returnedRange[2]) >= range.end)
+				) {
+					await response.body?.cancel();
+					throw new Error("HTTP server returned a different byte range");
+				}
+
+				const contentLength = Number(response.headers.get("content-length"));
+				if (Number.isFinite(contentLength) && contentLength > range.length) {
+					await response.body?.cancel();
+					throw new Error("HTTP server returned more data than requested");
+				}
+
+				const data = await response.arrayBuffer();
+				if (data.byteLength > range.length) {
+					throw new Error("HTTP server returned more data than requested");
+				}
+
+				return decodeReadRange(data, encoding);
 			},
 			async writeFile(content, progress) {
 				return ajax.post(url, {

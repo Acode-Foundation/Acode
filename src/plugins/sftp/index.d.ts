@@ -59,6 +59,8 @@ interface Sftp {
    * @param onFail 
    */
   getFile(filename: String, localFilename: String, onSuccess: (url: String) => void, onFail: (err: any) => void): void;
+  /** Reads the half-open byte range [start, end) directly from the server. */
+  getFileRange(filename: String, start: Number, end: Number, onSuccess: (data: ArrayBuffer) => void, onFail: (err: any) => void): void;
   
   /**
    * Uploaded the file to server

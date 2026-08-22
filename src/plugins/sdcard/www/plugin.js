@@ -44,6 +44,9 @@ module.exports = {
   read: function (filename, onSuccess, onFail) {
     cordova.exec(onSuccess, onFail, 'SDcard', 'read', [filename]);
   },
+  readRange: function (filename, start, end, onSuccess, onFail) {
+    cordova.exec(onSuccess, onFail, 'SDcard', 'readRange', [filename, String(start), String(end)]);
+  },
   readAsText: function (filename, encoding, onSuccess, onFail) {
     cordova.exec(onSuccess, onFail, 'SDcard', 'readAsText', [filename, encoding]);
   },

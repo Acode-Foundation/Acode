@@ -5,6 +5,7 @@ import helpers from "utils/helpers";
 import Path from "utils/Path";
 import Url from "utils/Url";
 import internalFs from "./internalFs";
+import { decodeReadRange, validateReadRange } from "./readRange";
 
 let pendingConnection = null;
 let pendingConnectionID = null;
@@ -207,6 +208,22 @@ class SftpClient {
 					);
 				})();
 			});
+		});
+	}
+
+	/** Read a half-open byte range directly from the remote file. */
+	async readFileRange(start, end) {
+		const range = validateReadRange(start, end);
+		if (range.length === 0) return { data: new ArrayBuffer(0) };
+		await this.#connectIfNotConnected();
+		return new Promise((resolve, reject) => {
+			sftp.getFileRange(
+				this.#safeName(this.#path),
+				range.start,
+				range.end,
+				(data) => resolve({ data }),
+				reject,
+			);
 		});
 	}
 
@@ -585,6 +602,19 @@ class SftpClient {
 		);
 	}
 
+	async #connectIfNotConnected() {
+		return new Promise((resolve, reject) => {
+			sftp.isConnected(async (connectionID) => {
+				try {
+					if (this.#notConnected(connectionID)) await this.connect();
+					resolve();
+				} catch (error) {
+					reject(error);
+				}
+			}, reject);
+		});
+	}
+
 	async #setStat() {
 		if (!this.#stat) {
 			this.#stat = await this.stat();
@@ -634,6 +664,10 @@ function createFs(sftp) {
 			}
 
 			return data;
+		},
+		async readFileRange(start, end, encoding) {
+			const { data } = await sftp.readFileRange(start, end);
+			return decodeReadRange(data, encoding);
 		},
 		async writeFile(content, encoding) {
 			if (typeof content === "string" && encoding) {

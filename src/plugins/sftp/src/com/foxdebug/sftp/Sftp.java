@@ -969,6 +969,7 @@ public class Sftp extends CordovaPlugin {
       case "getProfileInfo":
       case "deleteProfile":
       case "getFile":
+      case "getFileRange":
       case "putFile":
       case "lsDir":
       case "stat":
@@ -1197,6 +1198,56 @@ public class Sftp extends CordovaPlugin {
           }
         }
       );
+  }
+
+  public void getFileRange(JSONArray args, CallbackContext callback) {
+    cordova
+      .getThreadPool()
+      .execute(
+        new Runnable() {
+          public void run() {
+            String filename = args.optString(0);
+            long start = args.optLong(1, -1);
+            long end = args.optLong(2, -1);
+            if (start < 0 || end < start || end - start > Integer.MAX_VALUE) {
+              callback.error("Invalid byte range");
+              return;
+            }
+            if (ssh == null || sftp == null) {
+              callback.error("Not connected");
+              return;
+            }
+
+            try (
+              InputStream inputStream = sftp.getInputStream(filename, start)
+            ) {
+              callback.success(readAtMost(inputStream, end - start));
+            } catch (SftpStatusException | SshException | IOException e) {
+              callback.error("SFTP range read error: " + errMessage(e));
+            }
+          }
+        }
+      );
+  }
+
+  private static byte[] readAtMost(InputStream input, long count)
+    throws IOException {
+    ByteArrayOutputStream output = new ByteArrayOutputStream(
+      (int) Math.min(count, 32768)
+    );
+    byte[] buffer = new byte[32768];
+    long remaining = count;
+    while (remaining > 0) {
+      int bytesRead = input.read(
+        buffer,
+        0,
+        (int) Math.min(buffer.length, remaining)
+      );
+      if (bytesRead == -1) break;
+      output.write(buffer, 0, bytesRead);
+      remaining -= bytesRead;
+    }
+    return output.toByteArray();
   }
 
   public void putFile(JSONArray args, CallbackContext callback) {

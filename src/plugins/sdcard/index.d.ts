@@ -115,6 +115,14 @@ interface SDcard {
     onSuccess: (url: string) => void,
     onFail: (err: any) => void,
   ): void;
+  /** Reads the half-open byte range [start, end) without loading the whole file. */
+  readRange(
+    src: string,
+    start: number,
+    end: number,
+    onSuccess: (data: ArrayBuffer) => void,
+    onFail: (err: any) => void,
+  ): void;
   /**
    * Checks if given file/directory
    * @param src File/Directory url

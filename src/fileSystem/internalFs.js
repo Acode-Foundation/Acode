@@ -3,6 +3,7 @@ import ajax from "lib/ajax";
 import { decode, encode } from "utils/encodings";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
+import { decodeReadRange, validateReadRange } from "./readRange";
 
 const internalFs = {
 	/**
@@ -116,6 +117,35 @@ const internalFs = {
 							}, reject);
 						}
 					})();
+				},
+				reject,
+			);
+		});
+	},
+
+	/**
+	 * Read a half-open byte range without loading the complete file.
+	 * @param {string} filename
+	 * @param {number} start Inclusive byte offset
+	 * @param {number} end Exclusive byte offset
+	 * @returns {Promise<{data: ArrayBuffer}>}
+	 */
+	readFileRange(filename, start, end) {
+		const range = validateReadRange(start, end);
+		if (range.length === 0) {
+			return Promise.resolve({ data: new ArrayBuffer(0) });
+		}
+		return new Promise((resolve, reject) => {
+			reject = setMessage(reject);
+			window.resolveLocalFileSystemURL(
+				filename,
+				(fileEntry) => {
+					fileEntry.file((file) => {
+						const fileReader = new FileReader();
+						fileReader.onerror = () => reject(fileReader.error);
+						fileReader.onload = () => resolve({ data: fileReader.result });
+						fileReader.readAsArrayBuffer(file.slice(range.start, range.end));
+					}, reject);
 				},
 				reject,
 			);
@@ -412,6 +442,10 @@ function createFs(url) {
 			}
 
 			return data;
+		},
+		async readFileRange(start, end, encoding) {
+			const { data } = await internalFs.readFileRange(url, start, end);
+			return decodeReadRange(data, encoding);
 		},
 		async writeFile(content, encoding) {
 			if (typeof content === "string" && encoding) {

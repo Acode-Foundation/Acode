@@ -26,6 +26,9 @@ module.exports = {
   getFile: function (filename, localFilename, onSuccess, onFail) {
     cordova.exec(onSuccess, onFail, 'Sftp', 'getFile', [filename, localFilename]);
   },
+  getFileRange: function (filename, start, end, onSuccess, onFail) {
+    cordova.exec(onSuccess, onFail, 'Sftp', 'getFileRange', [filename, start, end]);
+  },
   putFile: function (filename, localFilename, onSuccess, onFail) {
     cordova.exec(onSuccess, onFail, 'Sftp', 'putFile', [filename, localFilename]);
   },

@@ -2,12 +2,28 @@ import loader from "dialogs/loader";
 import { decode, encode, getEncodingName } from "utils/encodings";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
+import { decodeReadRange, validateReadRange } from "./readRange";
 
 const externalFs = {
 	async readFile(url) {
 		url = await this.formatUri(url);
 		return new Promise((resolve, reject) => {
 			sdcard.read(url, (data) => resolve({ data }), reject);
+		});
+	},
+
+	async readFileRange(url, start, end) {
+		const range = validateReadRange(start, end);
+		if (range.length === 0) return { data: new ArrayBuffer(0) };
+		url = await this.formatUri(url);
+		return new Promise((resolve, reject) => {
+			sdcard.readRange(
+				url,
+				range.start,
+				range.end,
+				(data) => resolve({ data }),
+				reject,
+			);
 		});
 	},
 
@@ -202,6 +218,10 @@ function createFs(url) {
 
 			let { data } = await externalFs.readFile(url);
 			return data;
+		},
+		async readFileRange(start, end, encoding) {
+			const { data } = await externalFs.readFileRange(url, start, end);
+			return decodeReadRange(data, encoding);
 		},
 		async writeFile(content, encoding) {
 			if (typeof content === "string" && encoding) {

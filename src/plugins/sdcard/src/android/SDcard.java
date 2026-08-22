@@ -111,6 +111,14 @@ public class SDcard extends CordovaPlugin {
       case "read":
         readFile(arg1, callback);
         break;
+      case "readRange":
+        readFileRange(
+          arg1,
+          args.optLong(1, -1),
+          args.optLong(2, -1),
+          callback
+        );
+        break;
       case "readAsText":
         readAsText(arg1, arg2, callback);
         break;
@@ -495,6 +503,83 @@ public class SDcard extends CordovaPlugin {
           }
         }
       );
+  }
+
+  private void readFileRange(
+    String filename,
+    long start,
+    long end,
+    CallbackContext callback
+  ) {
+    cordova
+      .getThreadPool()
+      .execute(
+        new Runnable() {
+          public void run() {
+            if (start < 0 || end < start || end - start > Integer.MAX_VALUE) {
+              callback.error("Invalid byte range");
+              return;
+            }
+
+            Uri uri = Uri.parse(formatUri(filename));
+            try (
+              InputStream input = context
+                .getContentResolver()
+                .openInputStream(uri)
+            ) {
+              if (input == null) {
+                callback.error("File not found");
+                return;
+              }
+
+              if (!skipFully(input, start)) {
+                callback.success(new byte[0]);
+                return;
+              }
+
+              callback.success(readAtMost(input, end - start));
+            } catch (Exception e) {
+              callback.error(e.toString());
+            }
+          }
+        }
+      );
+  }
+
+  private static boolean skipFully(InputStream input, long count)
+    throws IOException {
+    long remaining = count;
+    while (remaining > 0) {
+      long skipped = input.skip(remaining);
+      if (skipped > 0) {
+        remaining -= skipped;
+      } else if (input.read() == -1) {
+        return false;
+      } else {
+        remaining--;
+      }
+    }
+    return true;
+  }
+
+  private static byte[] readAtMost(InputStream input, long count)
+    throws IOException {
+    ByteArrayOutputStream output = new ByteArrayOutputStream(
+      (int) Math.min(count, 32768)
+    );
+    byte[] buffer = new byte[32768];
+    long remaining = count;
+    while (remaining > 0) {
+      int bytesRead = input.read(
+        buffer,
+        0,
+        (int) Math.min(buffer.length, remaining)
+      );
+      if (bytesRead == -1) break;
+      output.write(buffer, 0, bytesRead);
+      remaining -= bytesRead;
+    }
+    return output.toByteArray();
   }
 
   private void readAsText(final String filename, final String encoding, final CallbackContext callback) {

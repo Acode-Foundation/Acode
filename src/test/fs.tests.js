@@ -22,6 +22,10 @@ export async function runFsTests(writeOutput) {
 			"createFile should be a function",
 		);
 		test.assert(typeof fs.exists === "function", "exists should be a function");
+		test.assert(
+			typeof fs.readFileRange === "function",
+			"readFileRange should be available for local files",
+		);
 	});
 
 	runner.test(
@@ -51,6 +55,12 @@ export async function runFsTests(writeOutput) {
 					content,
 					"initial content",
 					"Read content should match initial content",
+				);
+				const range = await fileFs.readFileRange(8, 15, "utf-8");
+				test.assertEqual(
+					range,
+					"content",
+					"Range read should return only the requested bytes",
 				);
 
 				// 4. Write new content
