@@ -2,7 +2,6 @@ package com.foxdebug.browser;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.graphics.Color;
 import android.graphics.Insets;
 import android.os.Build;
 import android.os.Bundle;
@@ -75,15 +74,17 @@ public class BrowserActivity extends Activity {
       try {
         // Using reflection makes sure any 5.0+ device will work without having to compile with SDK level 21
 
-        window
-          .getClass()
-          .getMethod("setNavigationBarColor", int.class)
-          .invoke(window, systemBarColor);
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+          window
+            .getClass()
+            .getMethod("setNavigationBarColor", int.class)
+            .invoke(window, systemBarColor);
 
-        window
-          .getClass()
-          .getMethod("setStatusBarColor", int.class)
-          .invoke(window, systemBarColor);
+          window
+            .getClass()
+            .getMethod("setStatusBarColor", int.class)
+            .invoke(window, systemBarColor);
+        }
 
         if (Build.VERSION.SDK_INT < 30) {
           setStatusBarStyle(window);
@@ -95,10 +96,12 @@ public class BrowserActivity extends Activity {
             WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS |
             WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS;
 
-          if (themeType.equals("light")) {
-            controller.setSystemBarsAppearance(appearance, appearance);
-          } else {
-            controller.setSystemBarsAppearance(0, appearance);
+          if (controller != null) {
+            if (themeType.equals("light")) {
+              controller.setSystemBarsAppearance(appearance, appearance);
+            } else {
+              controller.setSystemBarsAppearance(0, appearance);
+            }
           }
         }
       } catch (IllegalArgumentException error) {

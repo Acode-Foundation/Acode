@@ -1745,9 +1745,8 @@ public class System extends CordovaPlugin {
     final Window window = activity.getWindow();
     final View decorView = window.getDecorView();
 
-    // Keep Cordova's BackgroundColor flow for API 36+, but also apply the
-    // window colors directly so OEM variants do not leave stale system-bar
-    // colors behind after a theme switch.
+    // Cordova's SystemBarPlugin owns the system-bar backgrounds. Keep the
+    // window content background and icon contrast synchronized with it.
     window.clearFlags(0x04000000 | 0x08000000); // FLAG_TRANSLUCENT_STATUS | FLAG_TRANSLUCENT_NAVIGATION
     window.addFlags(0x80000000); // FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS
 
@@ -1761,11 +1760,6 @@ public class System extends CordovaPlugin {
     View rootView = activity.findViewById(android.R.id.content);
     if (rootView != null) {
       rootView.setBackgroundColor(this.systemBarColor);
-    }
-
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-      window.setStatusBarColor(this.systemBarColor);
-      window.setNavigationBarColor(this.systemBarColor);
     }
 
     setStatusBarStyle(window);
