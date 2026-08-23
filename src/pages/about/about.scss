@@ -1,134 +1,651 @@
 #about-page {
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 24px;
-  overflow-y: auto;
+	padding: 24px 16px 40px;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	overflow-y: auto;
+	box-sizing: border-box;
 
-  .version-info {
-    text-align: center;
-    margin-bottom: 32px;
+	/*
+	 * Main page content.
+	 * Keeps the About page centered on large screens
+	 * while using the full width on smaller phones.
+	 */
+	.about-content {
+		width: 100%;
+		max-width: 520px;
+	}
 
-    .version-title {
-      font-size: 24px;
-      font-weight: 600;
-      margin-bottom: 4px;
-    }
+	/*
+	 * ==============================
+	 * HEADER
+	 * ==============================
+	 */
 
-    .version-number {
-      color: color-mix(in srgb, var(--primary-text-color) 60%, transparent);
-      font-size: 14px;
-    }
-  }
+	.about-header {
+		width: 100%;
+		max-width: 520px;
 
-  .info-section {
-    width: 100%;
-    max-width: 400px;
-    min-height: fit-content;
-    height: auto;
-    background: color-mix(in srgb,
-        var(--popup-background-color) 20%,
-        transparent);
-    border-radius: 12px;
-    overflow: visible;
-    margin-bottom: 16px;
-    display: flex;
-    flex-direction: column;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
 
-    .info-item {
-      display: flex;
-      align-items: center;
-      padding: 16px;
-      color: var(--secondary-text-color);
-      text-decoration: none;
-      border-bottom: 1px solid var(--border-color);
-      transition: background 0.2s ease;
+		text-align: center;
 
-      &:last-child {
-        border-bottom: none;
-      }
+		margin-bottom: 32px;
+	}
 
-      &:hover {
-        background: color-mix(in srgb,
-            var(--popup-background-color) 40%,
-            transparent);
-      }
+	.about-logo {
+		display: flex;
+		align-items: center;
+		justify-content: center;
 
-      .info-item-icon {
-        width: 24px;
-        height: 24px;
-        margin-right: 12px;
-        display: flex;
-        align-items: center;
-        font-size: 24px;
-      }
+		width: 88px;
+		height: 88px;
 
-      .info-item-text {
-        flex: 1;
-        font-size: 15px;
+		margin-bottom: 18px;
 
-        .info-item-subtext {
-          color: color-mix(in srgb, var(--primary-text-color) 60%, transparent);
-          font-size: 13px;
-          margin-top: 2px;
-        }
-      }
-    }
-  }
+		border-radius: 22px;
 
-  .social-links {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-    width: 100%;
-    max-width: 400px;
+		background: color-mix(
+			in srgb,
+			var(--popup-background-color) 35%,
+			transparent
+		);
 
-    .social-link {
-      display: inline-flex;
-      align-items: center;
-      padding: 12px;
-      background: color-mix(in srgb,
-          var(--popup-background-color) 20%,
-          transparent);
-      border-radius: 12px;
-      color: var(--secondary-text-color);
-      text-decoration: none;
-      transition: all 0.2s ease;
+		box-shadow:
+			0 8px 24px color-mix(
+				in srgb,
+				var(--popup-background-color) 35%,
+				transparent
+			);
 
-      &:hover {
-        background: color-mix(in srgb,
-            var(--popup-background-color) 40%,
-            transparent);
-        transform: translateY(-1px);
-      }
+		overflow: hidden;
 
-      .social-icon {
-        width: 24px;
-        height: 24px;
-        margin-right: 12px;
-        font-size: 24px;
-        display: flex;
-        align-items: center;
-      }
-    }
-  }
+		/*
+		 * Make sure the Logo component doesn't become
+		 * larger than the container.
+		 */
+		> * {
+			max-width: 64px;
+			max-height: 64px;
+		}
+	}
 
-  @supports not (gap: 1px) {
-    > * + * { margin-top: 24px; }
-    .social-links > * { margin-right: 12px; margin-bottom: 12px; }
-  }
+	.about-title {
+		h1 {
+			margin: 0;
 
-  .icon {
-    height: 100%;
-    width: 100%;
-  }
+			color: var(--primary-text-color);
 
-  .foxbiz {
-    background-image: url(./foxbiz.svg);
-  }
+			font-size: 26px;
+			font-weight: 700;
+			line-height: 1.2;
+			letter-spacing: -0.3px;
+		}
+	}
 
-  .discord {
-    background-image: url(./discord.svg);
-  }
-}
+	.about-version {
+		margin-top: 7px;
+
+		color: color-mix(
+			in srgb,
+			var(--primary-text-color) 60%,
+			transparent
+		);
+
+		font-size: 14px;
+		line-height: 1.4;
+	}
+
+	.version-separator {
+		margin: 0 6px;
+
+		opacity: 0.6;
+	}
+
+	/*
+	 * ==============================
+	 * SECTIONS
+	 * ==============================
+	 */
+
+	.about-section {
+		width: 100%;
+		margin-bottom: 28px;
+	}
+
+	.about-section-title {
+		display: flex;
+		align-items: center;
+
+		margin: 0 4px 10px;
+
+		color: var(--primary-text-color);
+
+		font-size: 14px;
+		font-weight: 600;
+		letter-spacing: 0.1px;
+	}
+
+	.about-section-icon {
+		width: 20px;
+		height: 20px;
+
+		margin-right: 8px;
+
+		display: flex;
+		align-items: center;
+		justify-content: center;
+
+		color: var(--secondary-text-color);
+
+		font-size: 17px;
+	}
+
+	/*
+	 * ==============================
+	 * INFORMATION CARD
+	 * ==============================
+	 */
+
+	.info-section {
+		width: 100%;
+
+		display: flex;
+		flex-direction: column;
+
+		background: color-mix(
+			in srgb,
+			var(--popup-background-color) 24%,
+			transparent
+		);
+
+		border: 1px solid color-mix(
+			in srgb,
+			var(--border-color) 55%,
+			transparent
+		);
+
+		border-radius: 16px;
+
+		overflow: hidden;
+
+		box-shadow:
+			0 2px 8px color-mix(
+				in srgb,
+				var(--popup-background-color) 20%,
+				transparent
+			);
+	}
+
+	.info-item {
+		position: relative;
+
+		display: flex;
+		align-items: center;
+
+		min-height: 68px;
+
+		padding: 12px 14px;
+
+		box-sizing: border-box;
+
+		color: var(--primary-text-color);
+		text-decoration: none;
+
+		-webkit-tap-highlight-color: transparent;
+
+		transition:
+			background-color 0.15s ease,
+			transform 0.1s ease;
+
+		&:not(:last-child) {
+			border-bottom: 1px solid color-mix(
+				in srgb,
+				var(--border-color) 55%,
+				transparent
+			);
+		}
+
+		&:hover {
+			background: color-mix(
+				in srgb,
+				var(--popup-background-color) 45%,
+				transparent
+			);
+		}
+
+		&:active {
+			background: color-mix(
+				in srgb,
+				var(--popup-background-color) 65%,
+				transparent
+			);
+
+			transform: scale(0.99);
+		}
+	}
+
+	.info-item-icon {
+		flex: 0 0 42px;
+
+		width: 42px;
+		height: 42px;
+
+		margin-right: 12px;
+
+		display: flex;
+		align-items: center;
+		justify-content: center;
+
+		border-radius: 12px;
+
+		background: color-mix(
+			in srgb,
+			var(--popup-background-color) 45%,
+			transparent
+		);
+
+		color: var(--primary-text-color);
+
+		font-size: 22px;
+
+		overflow: hidden;
+
+		.icon {
+			width: 24px;
+			height: 24px;
+		}
+	}
+
+	.info-item-text {
+		min-width: 0;
+		flex: 1;
+
+		display: flex;
+		flex-direction: column;
+
+		overflow: hidden;
+	}
+
+	.info-item-title {
+		color: var(--primary-text-color);
+
+		font-size: 15px;
+		font-weight: 500;
+		line-height: 20px;
+
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.info-item-subtext {
+		margin-top: 2px;
+
+		color: color-mix(
+			in srgb,
+			var(--primary-text-color) 62%,
+			transparent
+		);
+
+		font-size: 12px;
+		line-height: 17px;
+
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.info-item-package {
+		margin-top: 1px;
+
+		color: color-mix(
+			in srgb,
+			var(--primary-text-color) 42%,
+			transparent
+		);
+
+		font-family: monospace;
+
+		font-size: 10px;
+		line-height: 14px;
+
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.info-item-arrow {
+		flex: 0 0 24px;
+
+		width: 24px;
+		height: 24px;
+
+		margin-left: 8px;
+
+		display: flex;
+		align-items: center;
+		justify-content: center;
+
+		color: color-mix(
+			in srgb,
+			var(--primary-text-color) 45%,
+			transparent
+		);
+
+		font-size: 18px;
+
+		.icon {
+			width: 18px;
+			height: 18px;
+		}
+	}
+
+	/*
+	 * ==============================
+	 * SOCIAL LINKS
+	 * ==============================
+	 */
+
+	.social-links {
+		width: 100%;
+
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+
+		gap: 10px;
+	}
+
+	.social-link {
+		min-width: 0;
+
+		display: flex;
+		align-items: center;
+
+		min-height: 54px;
+
+		padding: 10px 11px;
+
+		box-sizing: border-box;
+
+		border: 1px solid color-mix(
+			in srgb,
+			var(--border-color) 45%,
+			transparent
+		);
+
+		border-radius: 14px;
+
+		background: color-mix(
+			in srgb,
+			var(--popup-background-color) 22%,
+			transparent
+		);
+
+		color: var(--secondary-text-color);
+		text-decoration: none;
+
+		-webkit-tap-highlight-color: transparent;
+
+		transition:
+			background-color 0.15s ease,
+			transform 0.1s ease,
+			border-color 0.15s ease;
+
+		&:hover {
+			background: color-mix(
+				in srgb,
+				var(--popup-background-color) 42%,
+				transparent
+			);
+
+			border-color: color-mix(
+				in srgb,
+				var(--border-color) 75%,
+				transparent
+			);
+		}
+
+		&:active {
+			transform: scale(0.97);
+
+			background: color-mix(
+				in srgb,
+				var(--popup-background-color) 60%,
+				transparent
+			);
+		}
+	}
+
+	.social-icon {
+		flex: 0 0 34px;
+
+		width: 34px;
+		height: 34px;
+
+		margin-right: 9px;
+
+		display: flex;
+		align-items: center;
+		justify-content: center;
+
+		border-radius: 10px;
+
+		background: color-mix(
+			in srgb,
+			var(--popup-background-color) 42%,
+			transparent
+		);
+
+		color: var(--primary-text-color);
+
+		font-size: 19px;
+
+		.icon {
+			width: 20px;
+			height: 20px;
+		}
+	}
+
+	.social-name {
+		min-width: 0;
+		flex: 1;
+
+		color: var(--secondary-text-color);
+
+		font-size: 13px;
+		font-weight: 500;
+
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.social-arrow {
+		flex: 0 0 18px;
+
+		width: 18px;
+		height: 18px;
+
+		margin-left: 5px;
+
+		display: flex;
+		align-items: center;
+		justify-content: center;
+
+		color: color-mix(
+			in srgb,
+			var(--primary-text-color) 38%,
+			transparent
+		);
+
+		.icon {
+			width: 16px;
+			height: 16px;
+		}
+	}
+
+	/*
+	 * ==============================
+	 * FOOTER
+	 * ==============================
+	 */
+
+	.about-footer {
+		width: 100%;
+
+		margin-top: 12px;
+		padding: 24px 16px;
+
+		box-sizing: border-box;
+
+		text-align: center;
+
+		border-top: 1px solid color-mix(
+			in srgb,
+			var(--border-color) 45%,
+			transparent
+		);
+	}
+
+	.about-footer-title {
+		color: var(--primary-text-color);
+
+		font-size: 16px;
+		font-weight: 600;
+	}
+
+	.about-footer-version {
+		margin-top: 4px;
+
+		color: color-mix(
+			in srgb,
+			var(--primary-text-color) 50%,
+			transparent
+		);
+
+		font-size: 12px;
+	}
+
+	.about-footer-text {
+		margin-top: 8px;
+
+		color: color-mix(
+			in srgb,
+			var(--primary-text-color) 42%,
+			transparent
+		);
+
+		font-size: 12px;
+	}
+
+	/*
+	 * ==============================
+	 * ICONS
+	 * ==============================
+	 */
+
+	.icon {
+		display: block;
+
+		width: 100%;
+		height: 100%;
+
+		background-repeat: no-repeat;
+		background-position: center;
+		background-size: contain;
+	}
+
+	.foxbiz {
+		background-image: url(./foxbiz.svg);
+	}
+
+	.discord {
+		background-image: url(./discord.svg);
+	}
+
+	/*
+	 * ==============================
+	 * SMALL PHONES
+	 * ==============================
+	 */
+
+	@media (max-width: 360px) {
+		padding-left: 12px;
+		padding-right: 12px;
+
+		.about-header {
+			margin-bottom: 24px;
+		}
+
+		.about-logo {
+			width: 76px;
+			height: 76px;
+			border-radius: 19px;
+		}
+
+		.about-title h1 {
+			font-size: 23px;
+		}
+
+		.info-item {
+			min-height: 64px;
+			padding: 10px 11px;
+		}
+
+		.info-item-icon {
+			flex-basis: 38px;
+			width: 38px;
+			height: 38px;
+			margin-right: 10px;
+		}
+
+		.social-links {
+			gap: 8px;
+		}
+
+		.social-link {
+			min-height: 50px;
+			padding: 8px;
+		}
+
+		.social-icon {
+			flex-basis: 30px;
+			width: 30px;
+			height: 30px;
+			margin-right: 7px;
+		}
+	}
+
+	/*
+	 * ==============================
+	 * ACCESSIBILITY
+	 * ==============================
+	 */
+
+	@media (prefers-reduced-motion: reduce) {
+		.info-item,
+		.social-link {
+			transition: none;
+		}
+	}
+
+	/*
+	 * ==============================
+	 * OLD BROWSER FALLBACK
+	 * ==============================
+	 */
+
+	@supports not (gap: 1px) {
+		.about-section {
+			margin-bottom: 24px;
+		}
+
+		.social-link {
+			margin-right: 8px;
+			margin-bottom: 8px;
+		}
+	}
+}}
