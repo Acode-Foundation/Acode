@@ -15,6 +15,6 @@
     "@babel/plugin-transform-runtime",
     "@babel/plugin-transform-block-scoping"
   ],
-  "compact": false,
+  "compact": true,
   "sourceMaps": "inline"
 }
