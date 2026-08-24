@@ -87,8 +87,7 @@ export default function AboutInclude() {
 	const openExternalLink = (event) => {
 		event.preventDefault();
 
-		const href =
-			event.currentTarget.getAttribute("href");
+		const href = event.currentTarget.getAttribute("href");
 
 		if (!href) {
 			return;
@@ -112,13 +111,11 @@ export default function AboutInclude() {
 	 */
 	$page.body = (
 		<main id="about-page" className="main scroll">
-
 			{/* ==============================
 			    HEADER
 			    ============================== */}
 
 			<section className="about-header">
-
 				<div className="about-logo">
 					<Logo />
 				</div>
@@ -128,31 +125,23 @@ export default function AboutInclude() {
 
 					<div className="about-version">
 						Version {BuildInfo.version}
-
-						<span className="version-separator">
-							•
-						</span>
-
+						<span className="version-separator">•</span>
 						{BuildInfo.versionCode}
 					</div>
 				</div>
-
 			</section>
 
 			<section className="about-content">
-
 				{/* ==============================
 				    APPLICATION INFORMATION
 				    ============================== */}
 
 				<div className="about-section">
-
 					<div className="about-section-title">
 						Application
 					</div>
 
 					<div className="info-section">
-
 						{/* WebView */}
 
 						<a
@@ -178,9 +167,7 @@ export default function AboutInclude() {
 								</span>
 							</div>
 
-							<div className="info-item-arrow">
-								›
-							</div>
+							<div className="info-item-arrow">›</div>
 						</a>
 
 						{/* Official website */}
@@ -204,9 +191,7 @@ export default function AboutInclude() {
 								</span>
 							</div>
 
-							<div className="info-item-arrow">
-								›
-							</div>
+							<div className="info-item-arrow">›</div>
 						</a>
 
 						{/* Foxbiz website */}
@@ -230,11 +215,8 @@ export default function AboutInclude() {
 								</span>
 							</div>
 
-							<div className="info-item-arrow">
-								›
-							</div>
+							<div className="info-item-arrow">›</div>
 						</a>
-
 					</div>
 				</div>
 
@@ -243,13 +225,11 @@ export default function AboutInclude() {
 				    ============================== */}
 
 				<div className="about-section">
-
 					<div className="about-section-title">
 						Connect with us
 					</div>
 
 					<div className="social-links">
-
 						{socialLinks.map((social) => (
 							<a
 								href={social.href}
@@ -266,12 +246,9 @@ export default function AboutInclude() {
 									{social.name}
 								</span>
 
-								<span className="social-arrow">
-									›
-								</span>
+								<span className="social-arrow">›</span>
 							</a>
 						))}
-
 					</div>
 				</div>
 
@@ -280,7 +257,6 @@ export default function AboutInclude() {
 				    ============================== */}
 
 				<div className="about-footer">
-
 					<div className="about-footer-title">
 						Acode editor
 					</div>
@@ -292,9 +268,7 @@ export default function AboutInclude() {
 					<div className="about-footer-text">
 						A powerful code editor for Android.
 					</div>
-
 				</div>
-
 			</section>
 		</main>
 	);
@@ -306,11 +280,8 @@ export default function AboutInclude() {
 	 * which automatically updates the UI.
 	 */
 	system.getWebviewInfo((res) => {
-		webviewPackageName.value =
-			res?.packageName || "N/A";
-
-		webviewVersionName.value =
-			res?.versionName || "N/A";
+		webviewPackageName.value = res?.packageName || "N/A";
+		webviewVersionName.value = res?.versionName || "N/A";
 	});
 
 	/*
