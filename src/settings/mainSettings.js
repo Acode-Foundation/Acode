@@ -251,10 +251,19 @@ export default function mainSettings() {
 				break;
 
 			case "privacyChoices":
+				loader.create(
+					strings["privacy choices"] || "Privacy Choices",
+					strings["loading..."] || "Loading...",
+				);
 				try {
 					await showPrivacyOptions();
 				} catch (error) {
-					helpers.error(error);
+					console.warn("Unable to open AdMob Privacy Choices:", error);
+					helpers.error(
+						"Unable to open Privacy Choices. Check your connection and try again.",
+					);
+				} finally {
+					loader.destroy();
 				}
 				break;
 

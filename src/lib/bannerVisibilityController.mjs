@@ -10,6 +10,9 @@ export const BANNER_SUPPRESSION_REASON = Object.freeze({
 	REWARDED_PASS: "rewarded-pass",
 });
 
+const DEFAULT_RETRY_DELAY_MS = 500;
+const TRANSIENT_LOAD_ERROR_CODES = new Set([0, 2, 3, 9]);
+
 export class BannerVisibilityController {
 	#banner = null;
 	#registeredPages = new WeakSet();
@@ -20,9 +23,13 @@ export class BannerVisibilityController {
 	#suppressions = new Set();
 	#nativeVisible = false;
 	#scheduledVisible = false;
+	#desiredVisible = false;
 	#operation = Promise.resolve();
 	#revision = 0;
 	#onError;
+	#retryTimer = null;
+	#retryUsed = false;
+	#stopBannerListeners = [];
 
 	constructor({
 		getActivePage,
@@ -35,9 +42,13 @@ export class BannerVisibilityController {
 	}
 
 	setBanner(banner) {
+		this.#stopListeningToBanner();
+		this.#resetRetry();
+		this.#revision++;
 		this.#banner = banner;
 		this.#nativeVisible = false;
 		this.#scheduledVisible = false;
+		this.#listenToBanner(banner);
 		this.reconcile();
 	}
 
@@ -83,6 +94,12 @@ export class BannerVisibilityController {
 			activePage !== null &&
 			this.#registeredPages.has(activePage);
 		const shouldShow = pageRequestsBanner && !this.#keyboardVisible;
+		const eligibilityChanged = shouldShow !== this.#desiredVisible;
+		this.#desiredVisible = shouldShow;
+
+		if (!shouldShow || eligibilityChanged) {
+			this.#resetRetry();
+		}
 
 		if (this.#banner) {
 			this.#banner.active = pageRequestsBanner;
@@ -98,7 +115,12 @@ export class BannerVisibilityController {
 	dispose() {
 		this.#stopObserving?.();
 		this.#stopObserving = null;
+		this.#stopListeningToBanner();
+		this.#resetRetry();
 		this.#banner = null;
+		this.#desiredVisible = false;
+		this.#nativeVisible = false;
+		this.#scheduledVisible = false;
 		this.#revision++;
 	}
 
@@ -107,9 +129,16 @@ export class BannerVisibilityController {
 		this.#stopObserving = this.#observePageChanges(() => this.reconcile());
 	}
 
-	#queueNativeVisibility(shouldShow) {
+	#queueNativeVisibility(shouldShow, isRetry = false) {
 		const banner = this.#banner;
-		if (!banner || shouldShow === this.#scheduledVisible) return;
+		if (
+			!banner ||
+			shouldShow === this.#scheduledVisible ||
+			(shouldShow &&
+				(this.#retryTimer !== null || (this.#retryUsed && !isRetry)))
+		) {
+			return;
+		}
 
 		this.#scheduledVisible = shouldShow;
 		const revision = ++this.#revision;
@@ -124,13 +153,79 @@ export class BannerVisibilityController {
 					} else {
 						await banner.hide?.();
 					}
+					if (revision !== this.#revision || banner !== this.#banner) return;
 					this.#nativeVisible = shouldShow;
 				} catch (error) {
+					if (revision !== this.#revision || banner !== this.#banner) return;
 					this.#nativeVisible = !shouldShow;
 					this.#scheduledVisible = !shouldShow;
 					this.#onError(error);
+					if (shouldShow) this.#scheduleRetry();
 				}
 			});
+	}
+
+	#listenToBanner(banner) {
+		if (typeof banner?.on !== "function") return;
+
+		for (const [eventName, listener] of [
+			["load", () => this.#handleBannerLoad()],
+			["loadfail", (event) => this.#handleBannerLoadFailure(event)],
+		]) {
+			const stopListening = banner.on(eventName, listener);
+			if (typeof stopListening === "function") {
+				this.#stopBannerListeners.push(stopListening);
+			}
+		}
+	}
+
+	#stopListeningToBanner() {
+		for (const stopListening of this.#stopBannerListeners.splice(0)) {
+			stopListening();
+		}
+	}
+
+	#handleBannerLoad() {
+		this.#resetRetry();
+		if (!this.#desiredVisible) return;
+
+		this.#nativeVisible = true;
+		this.#scheduledVisible = true;
+	}
+
+	#handleBannerLoadFailure(event) {
+		this.#nativeVisible = false;
+		this.#scheduledVisible = false;
+		this.#onError(event);
+
+		const errorCode = Number(event?.code);
+		if (TRANSIENT_LOAD_ERROR_CODES.has(errorCode)) {
+			this.#scheduleRetry();
+		} else {
+			this.#retryUsed = true;
+		}
+	}
+
+	#scheduleRetry() {
+		if (!this.#desiredVisible || this.#retryTimer !== null || this.#retryUsed) {
+			return;
+		}
+
+		this.#retryUsed = true;
+		const banner = this.#banner;
+		this.#retryTimer = setTimeout(() => {
+			this.#retryTimer = null;
+			if (!this.#desiredVisible || banner !== this.#banner) return;
+			this.#queueNativeVisibility(true, true);
+		}, DEFAULT_RETRY_DELAY_MS);
+	}
+
+	#resetRetry() {
+		if (this.#retryTimer !== null) {
+			clearTimeout(this.#retryTimer);
+			this.#retryTimer = null;
+		}
+		this.#retryUsed = false;
 	}
 }
 
