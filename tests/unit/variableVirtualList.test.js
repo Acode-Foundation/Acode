@@ -110,6 +110,42 @@ describe("VariableVirtualList", () => {
 		container.remove();
 	});
 
+	it("keeps a pinned footer visible when the viewport height changes", () => {
+		let viewportHeight = 200;
+		const container = document.createElement("div");
+		Object.defineProperties(container, {
+			clientHeight: {
+				configurable: true,
+				get: () => viewportHeight,
+			},
+			scrollHeight: { configurable: true, value: 5304 },
+		});
+		document.body.append(container);
+		const footer = document.createElement("form");
+		footer.getBoundingClientRect = () => ({ height: 104 });
+		const list = new VariableVirtualList(container, { footer });
+		for (let index = 0; index < 100; index++) {
+			list.append(document.createElement("div"));
+		}
+		list.render();
+		expect(container.scrollTop).toBe(5104);
+
+		viewportHeight = 100;
+		list.onResize([
+			{
+				target: container,
+				contentRect: { height: viewportHeight },
+			},
+		]);
+		list.render();
+
+		expect(list.stickToBottom).toBe(true);
+		expect(container.scrollTop).toBe(5204);
+
+		list.destroy();
+		container.remove();
+	});
+
 	it("pre-paints a larger guard before touch momentum starts", () => {
 		const { container, list } = createList();
 		for (let index = 0; index < 1000; index++) {

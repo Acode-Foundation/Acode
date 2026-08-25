@@ -28,6 +28,7 @@ export default class VariableVirtualList {
 		this.dynamicOverscan = overscan;
 		this.footer = footer;
 		this.footerHeight = 0;
+		this.viewportHeight = this.container.clientHeight;
 		this.items = [];
 		this.itemByElement = new WeakMap();
 		this.offsets = [0];
@@ -97,6 +98,7 @@ export default class VariableVirtualList {
 			typeof ResizeObserver === "function"
 				? new ResizeObserver((entries) => this.onResize(entries))
 				: null;
+		this.resizeObserver?.observe(this.container);
 	}
 
 	now() {
@@ -148,7 +150,6 @@ export default class VariableVirtualList {
 	}
 
 	clear() {
-		this.resizeObserver?.disconnect();
 		this.items = [];
 		this.itemByElement = new WeakMap();
 		this.offsets = [0];
@@ -161,7 +162,7 @@ export default class VariableVirtualList {
 		this.itemContainer.replaceChildren();
 		this.container.scrollTop = 0;
 		this.footerHeight = this.getFooterHeight();
-		if (this.footer) this.resizeObserver?.observe(this.footer);
+		this.observeResizeTargets();
 	}
 
 	invalidate() {
@@ -213,17 +214,26 @@ export default class VariableVirtualList {
 		);
 	}
 
+	observeResizeTargets() {
+		if (!this.resizeObserver) return;
+		this.resizeObserver.disconnect();
+		this.resizeObserver.observe(this.container);
+		for (const element of this.itemContainer.children) {
+			this.resizeObserver.observe(element);
+		}
+		if (this.footer) this.resizeObserver.observe(this.footer);
+	}
+
 	render() {
 		if (this.destroyed) return;
 		this.rebuildOffsets();
 		if (!this.items.length) {
-			this.resizeObserver?.disconnect();
-			if (this.footer) this.resizeObserver?.observe(this.footer);
 			this.footerHeight = this.getFooterHeight();
 			this.itemContainer.replaceChildren();
 			this.topSpacer.style.height = "0px";
 			this.bottomSpacer.style.height = "0px";
 			this.renderedRange = { start: 0, end: 0 };
+			this.observeResizeTargets();
 			return;
 		}
 
@@ -231,6 +241,7 @@ export default class VariableVirtualList {
 			1,
 			this.container.clientHeight || window.innerHeight,
 		);
+		this.viewportHeight = viewportHeight;
 		const totalHeight = this.offsets[this.items.length];
 		this.footerHeight = this.getFooterHeight();
 		const targetScrollTop = this.stickToBottom
@@ -246,12 +257,8 @@ export default class VariableVirtualList {
 			) + 1,
 		);
 
-		this.resizeObserver?.disconnect();
 		this.updateMountedRange(start, end);
-		for (const element of this.itemContainer.children) {
-			this.resizeObserver?.observe(element);
-		}
-		if (this.footer) this.resizeObserver?.observe(this.footer);
+		this.observeResizeTargets();
 		this.topSpacer.style.height = `${this.offsets[start]}px`;
 		this.bottomSpacer.style.height = `${Math.max(
 			0,
@@ -317,7 +324,21 @@ export default class VariableVirtualList {
 	onResize(entries) {
 		const wasNearBottom = this.stickToBottom || this.isNearBottom();
 		let footerChanged = false;
+		let viewportChanged = false;
 		for (const entry of entries) {
+			if (entry.target === this.container) {
+				const borderBox = Array.isArray(entry.borderBoxSize)
+					? entry.borderBoxSize[0]
+					: entry.borderBoxSize;
+				const height = Math.ceil(
+					borderBox?.blockSize ||
+						entry.contentRect?.height ||
+						this.container.clientHeight,
+				);
+				viewportChanged = Math.abs(height - this.viewportHeight) >= 1;
+				this.viewportHeight = height;
+				continue;
+			}
 			if (entry.target === this.footer) {
 				const borderBox = Array.isArray(entry.borderBoxSize)
 					? entry.borderBoxSize[0]
@@ -344,7 +365,9 @@ export default class VariableVirtualList {
 			);
 		}
 		if (wasNearBottom) this.stickToBottom = true;
-		if (wasNearBottom && footerChanged) this.scheduleRender();
+		if (viewportChanged || (wasNearBottom && footerChanged)) {
+			this.scheduleRender();
+		}
 	}
 
 	updateHeight(item, measuredHeight) {
