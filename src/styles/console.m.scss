@@ -62,6 +62,29 @@ c-console[standalone] {
   color: #fff;
 }
 
+.__c-context {
+  box-sizing: border-box;
+  max-width: 112px;
+  min-height: 32px;
+  padding: 4px 20px 4px 6px;
+  border: 0;
+  border-radius: 3px;
+  outline: none;
+  background: #414141;
+  color: #d6d3d3;
+  font: inherit;
+  font-size: 0.7rem;
+}
+
+.__c-context:focus-visible {
+  outline: 1px solid #929292;
+  outline-offset: -1px;
+}
+
+.__c-context:disabled {
+  opacity: 0.55;
+}
+
 c-output {
   display: block;
   flex: 1 1 100%;

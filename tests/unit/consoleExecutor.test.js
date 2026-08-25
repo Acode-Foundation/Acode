@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import ConsoleExecutor from "lib/consoleExecutor";
+import ConsoleExecutor from "lib/consoleRuntime";
 
 class FakeWorker {
 	static instances = [];

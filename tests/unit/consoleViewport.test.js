@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
 	applyConsoleViewport,
 	getConsoleViewportRect,
-} from "lib/consoleViewport";
+} from "lib/consoleRuntime";
 
 describe("console visual viewport", () => {
 	it("uses the visual viewport when the mobile keyboard shrinks the screen", () => {

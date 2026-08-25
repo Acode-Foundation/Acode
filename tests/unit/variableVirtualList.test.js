@@ -60,10 +60,15 @@ describe("VariableVirtualList", () => {
 	});
 
 	it("preserves an inline footer outside the virtualized rows", () => {
-		const { container, list } = createList();
+		const container = document.createElement("div");
+		Object.defineProperty(container, "clientHeight", {
+			configurable: true,
+			value: 200,
+		});
+		document.body.append(container);
 		const footer = document.createElement("form");
 		footer.textContent = "REPL prompt";
-		container.append(footer);
+		const list = new VariableVirtualList(container, { footer });
 
 		list.append(document.createElement("div"));
 		list.render();
@@ -72,6 +77,34 @@ describe("VariableVirtualList", () => {
 		list.clear();
 		expect(container.lastElementChild).toBe(footer);
 		expect(footer.isConnected).toBe(true);
+
+		list.destroy();
+		container.remove();
+	});
+
+	it("includes the footer height when pinning and rendering the bottom", () => {
+		const container = document.createElement("div");
+		Object.defineProperties(container, {
+			clientHeight: { configurable: true, value: 200 },
+			scrollHeight: { configurable: true, value: 5304 },
+		});
+		document.body.append(container);
+		const footer = document.createElement("form");
+		footer.getBoundingClientRect = () => ({ height: 104 });
+		const list = new VariableVirtualList(container, {
+			footer,
+			overscan: 0,
+		});
+		for (let index = 0; index < 100; index++) {
+			list.append(document.createElement("div"));
+		}
+
+		list.render();
+
+		expect(list.renderedRange.start).toBe(98);
+		expect(list.renderedRange.end).toBe(100);
+		expect(container.scrollTop).toBe(5104);
+		expect(container.lastElementChild).toBe(footer);
 
 		list.destroy();
 		container.remove();

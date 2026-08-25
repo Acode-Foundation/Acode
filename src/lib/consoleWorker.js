@@ -156,6 +156,8 @@ self.onmessage = ({ data: { id, code } }) => {
 	suppressedInWindow = 0;
 
 	try {
+		// Intentional: this local REPL runs the command in its isolated worker.
+		// codeql[js/code-injection]
 		const value = (0, eval)(code);
 		discardSuppressedMessages();
 		self.postMessage({ type: "result", id, value: snapshot(value) });

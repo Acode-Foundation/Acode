@@ -4,8 +4,11 @@ import { parse } from "acorn";
 import { VariableVirtualList } from "components/virtualList";
 import css from "styles/console.m.scss";
 import loadPolyFill from "utils/polyfill";
-import ConsoleExecutor from "./consoleExecutor";
-import { applyConsoleViewport } from "./consoleViewport";
+import ConsoleExecutor, {
+	applyConsoleViewport,
+	executeConsoleCommand,
+	resolveConsoleExecutionContext,
+} from "./consoleRuntime";
 
 (function () {
 	loadPolyFill.apply(window);
@@ -71,24 +74,53 @@ import { applyConsoleViewport } from "./consoleViewport";
 		},
 		onclick: clearConsole,
 	});
+	const $executionContext = tag("select", {
+		className: "__c-context",
+		attr: {
+			"aria-label": "JavaScript execution context",
+			title: "Choose isolated Worker execution or live page access",
+		},
+		children: [
+			tag("option", {
+				textContent: "Worker",
+				attr: { value: "worker" },
+			}),
+			tag("option", {
+				textContent: "Page (unsafe)",
+				attr: { value: "page" },
+			}),
+		],
+		onchange() {
+			if (this.value !== "page") return;
+			log(
+				"warn",
+				{},
+				"Page mode can access window and document, but it runs on the preview thread and cannot stop infinite code.",
+			);
+		},
+	});
 	const $output = tag("c-output", {
 		attr: {
 			role: "region",
 			"aria-label": "JavaScript console",
 		},
 	});
-	const virtualMessages = new VariableVirtualList($output);
 	const $inputContainer = tag("c-input", {
 		children: [
 			$input,
 			tag("c-input-actions", {
-				children: [$stopExecution, $clearButton, $runButton],
+				children: [
+					...(isStandaloneConsole ? [] : [$executionContext]),
+					$stopExecution,
+					$clearButton,
+					$runButton,
+				],
 			}),
 		],
 	});
-	// Keep the prompt in the transcript flow, after the virtualized messages.
-	// It behaves like a REPL row and naturally moves above the mobile keyboard.
-	$output.append($inputContainer);
+	const virtualMessages = new VariableVirtualList($output, {
+		footer: $inputContainer,
+	});
 	const $toggler = tag("c-toggler", {
 		style: {
 			transform: `translate(2px, ${innerHeight / 2}px)`,
@@ -359,7 +391,7 @@ import { applyConsoleViewport } from "./consoleViewport";
 		$input.value = "";
 		resizeInput();
 		setExecutionState(true);
-		const res = await execute(code);
+		const res = await executeCommand(code);
 		setExecutionState(false);
 
 		if (res.type === "error") {
@@ -373,9 +405,10 @@ import { applyConsoleViewport } from "./consoleViewport";
 	function setExecutionState(running) {
 		isExecuting = running;
 		$console.toggleAttribute("running", running);
-		$stopExecution.hidden = !running;
+		$stopExecution.hidden = !running || $executionContext.value !== "worker";
 		$runButton.hidden = running;
 		$input.disabled = running;
+		$executionContext.disabled = running;
 	}
 
 	function resizeInput() {
@@ -781,8 +814,61 @@ import { applyConsoleViewport } from "./consoleViewport";
 		};
 	}
 
+	function executeCommand(code) {
+		return executeConsoleCommand({
+			context: resolveConsoleExecutionContext(
+				isStandaloneConsole,
+				$executionContext.value,
+			),
+			code,
+			workerExecutor: executor,
+			pageExecutor: execute,
+		});
+	}
+
 	function execute(code) {
-		return executor.execute(code);
+		let res = null;
+		try {
+			const parsed = parse(code, acornOptions).body;
+			res = execParsedCode(parsed);
+		} catch (e) {
+			res = execParsedCode([]);
+		}
+
+		return res;
+
+		function execParsedCode(parsed) {
+			let extra = "";
+			parsed.map((st) => {
+				if (st.type === "VariableDeclaration") {
+					if (["const", "let"].indexOf(st.kind) < 0) return;
+
+					const exCode = code.substring(st.start, st.end) + ";";
+					extra += exCode;
+				}
+			});
+
+			if (extra) {
+				const script = tag("script");
+				script.textContent = extra;
+				document.body.appendChild(script);
+				document.body.removeChild(script);
+				return exec(code);
+			} else {
+				return exec(code);
+			}
+		}
+
+		function exec(code) {
+			let res = null;
+			try {
+				res = { type: "result", value: window.eval(code) };
+			} catch (error) {
+				res = { type: "error", value: error };
+			}
+
+			return res;
+		}
 	}
 
 	function onError(err) {
