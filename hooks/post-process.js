@@ -27,6 +27,7 @@ fs.copyFileSync(gradleFilePath, androidGradleFilePath);
 copyDirRecursively(localResPath, resPath);
 enableLegacyJni();
 enableStaticContext();
+disableSplashFadeOnRealmeAndroid13();
 removeLegacyKeyboardWorkaround();
 patchTargetSdkVersion();
 
@@ -207,6 +208,79 @@ function enableStaticContext() {
     console.log('[Cordova Hook] ✅ Enabled static context');
   } catch (err) {
     console.error('[Cordova Hook] ❌ Failed to patch MainActivity:', err.message);
+  }
+}
+
+function disableSplashFadeOnRealmeAndroid13() {
+  try {
+    const prefix = execSync('npm prefix').toString().trim();
+    const packageName = getPackageName();
+    const mainActivityPath = path.join(
+      prefix,
+      'platforms/android/app/src/main/java',
+      packageName.replace(/\./g, '/'),
+      'MainActivity.java'
+    );
+
+    if (!fs.existsSync(mainActivityPath)) {
+      console.warn('[Cordova Hook] ⚠️ MainActivity.java not found at', mainActivityPath);
+      return;
+    }
+
+    let content = fs.readFileSync(mainActivityPath, 'utf-8');
+
+    if (
+      content.includes('hasBrokenRealmeSplashTransfer()') &&
+      content.includes('preferences.set("FadeSplashScreen", false);')
+    ) {
+      console.log('[Cordova Hook] ✅ realme splash workaround already enabled, skipping');
+      return;
+    }
+
+    if (!content.includes('import android.os.Build;')) {
+      content = content.replace(
+        /import android\.os\.Bundle;/,
+        'import android.os.Build;\nimport android.os.Bundle;'
+      );
+    }
+
+    content = content.replace(
+      /\n\s*@Override\n\s*public void onCreate\(Bundle savedInstanceState\)/,
+      `
+
+    private static boolean hasBrokenRealmeSplashTransfer() {
+        return Build.VERSION.SDK_INT == Build.VERSION_CODES.TIRAMISU
+            && ("realme".equalsIgnoreCase(Build.MANUFACTURER)
+                || "realme".equalsIgnoreCase(Build.BRAND));
+    }
+
+    @Override
+    protected void loadConfig() {
+        super.loadConfig();
+
+        // Some realme Android 13 builds pass a null SurfaceControl while handing the
+        // splash view to an app-provided exit animation. Avoid only that handoff.
+        if (hasBrokenRealmeSplashTransfer()) {
+            preferences.set("FadeSplashScreen", false);
+        }
+    }
+
+    @Override
+    public void onCreate(Bundle savedInstanceState)`
+    );
+
+    if (!content.includes('preferences.set("FadeSplashScreen", false);')) {
+      console.warn('[Cordova Hook] ⚠️ Unable to inject realme splash workaround');
+      return;
+    }
+
+    fs.writeFileSync(mainActivityPath, content, 'utf-8');
+    console.log('[Cordova Hook] ✅ Disabled splash fade on realme Android 13');
+  } catch (err) {
+    console.error(
+      '[Cordova Hook] ❌ Failed to patch realme splash workaround:',
+      err.message
+    );
   }
 }
 
