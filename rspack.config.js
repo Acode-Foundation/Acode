@@ -144,6 +144,7 @@ module.exports = (env, options) => {
       boot: './src/boot.js',
       main: './src/main.js',
       console: './src/lib/console.js',
+      consoleWorker: './src/lib/consoleWorker.js',
       searchInFilesWorker: './src/sidebarApps/searchInFiles/worker.js',
       searchIndexWorker: './src/sidebarApps/searchInFiles/indexWorker.js',
       htmlLspWorker: './src/cm/lsp/workers/html.worker.ts',

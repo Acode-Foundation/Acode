@@ -1,25 +1,94 @@
 import "core-js/stable";
 import "html-tag-js/dist/polyfill";
 import { parse } from "acorn";
+import { VariableVirtualList } from "components/virtualList";
 import css from "styles/console.m.scss";
 import loadPolyFill from "utils/polyfill";
+import ConsoleExecutor from "./consoleExecutor";
+import { applyConsoleViewport } from "./consoleViewport";
 
 (function () {
 	loadPolyFill.apply(window);
 
 	let consoleVisible = false;
+	let isFocused = false;
+	let isExecuting = false;
+	let viewportFrame = null;
+	let viewportObserver = null;
+	const isStandaloneConsole = sessionStorage.getItem("__mode") === "console";
 	const originalConsole = console;
 	const $input = tag("textarea", {
 		id: "__c-input",
+		attr: {
+			rows: "1",
+			placeholder: "Run JavaScript…",
+			"aria-label": "JavaScript console input",
+			spellcheck: "false",
+			autocomplete: "off",
+			autocapitalize: "off",
+		},
+		oninput: resizeInput,
+		onfocus() {
+			isFocused = true;
+			virtualMessages.scrollToBottom();
+		},
 		onblur() {
 			setTimeout(() => {
 				isFocused = false;
 			}, 0);
 		},
 	});
-	const $inputContainer = tag("c-input", {
-		child: $input,
+	const $runButton = tag("button", {
+		className: "__c-action __c-action-primary",
+		textContent: "Run",
+		attr: {
+			type: "button",
+			"aria-label": "Run JavaScript",
+		},
+		onpointerdown(e) {
+			e.preventDefault();
+		},
+		onclick: runInputCode,
 	});
+	const $stopExecution = tag("button", {
+		className: "__c-action __c-action-danger",
+		textContent: "Stop",
+		attr: {
+			type: "button",
+			"aria-label": "Stop JavaScript execution",
+		},
+		onclick() {
+			executor.cancel();
+		},
+	});
+	$stopExecution.hidden = true;
+	const $clearButton = tag("button", {
+		className: "__c-action",
+		textContent: "Clear",
+		attr: {
+			type: "button",
+			"aria-label": "Clear console",
+		},
+		onclick: clearConsole,
+	});
+	const $output = tag("c-output", {
+		attr: {
+			role: "region",
+			"aria-label": "JavaScript console",
+		},
+	});
+	const virtualMessages = new VariableVirtualList($output);
+	const $inputContainer = tag("c-input", {
+		children: [
+			$input,
+			tag("c-input-actions", {
+				children: [$stopExecution, $clearButton, $runButton],
+			}),
+		],
+	});
+	// Keep the prompt in the transcript flow, after the virtualized messages.
+	// It behaves like a REPL row and naturally moves above the mobile keyboard.
+	$output.append($inputContainer);
 	const $toggler = tag("c-toggler", {
 		style: {
 			transform: `translate(2px, ${innerHeight / 2}px)`,
@@ -46,9 +115,13 @@ import loadPolyFill from "utils/polyfill";
 		},
 	});
 	const $console = tag("c-console", {
-		child: $inputContainer,
+		child: $output,
+		attr: {
+			role: "dialog",
+			"aria-label": "JavaScript console",
+		},
 		onclick(e) {
-			const el = e.target;
+			const el = e.target.closest?.("[action]") || e.target;
 			const action = el.getAttribute("action");
 
 			switch (action) {
@@ -64,9 +137,22 @@ import loadPolyFill from "utils/polyfill";
 			}
 		},
 	});
+	if (isStandaloneConsole) {
+		$console.setAttribute("standalone", "");
+		document.documentElement.setAttribute("console-only", "");
+	}
 	const counter = {};
 	const timers = {};
-	let isFocused = false;
+	const executor = new ConsoleExecutor({
+		workerUrl: window.__consoleWorkerScript || "build/consoleWorker.js",
+		onConsole(message) {
+			if (message.action === "clear") {
+				window.console.clear();
+				return;
+			}
+			log(message.level, {}, ...message.args);
+		},
+	});
 
 	if (!window.__objs) window.__objs = {};
 
@@ -77,13 +163,12 @@ import loadPolyFill from "utils/polyfill";
 		window.addEventListener("error", onError);
 		assignCustomConsole();
 
-		if (sessionStorage.getItem("__mode") === "console") {
+		if (isStandaloneConsole) {
 			showConsole();
 			return;
 		}
 
 		tag.get("html").append($toggler);
-		$console.setAttribute("title", "Console");
 		sessionStorage.setItem("__console_available", true);
 		document.addEventListener("showconsole", showConsole);
 		document.addEventListener("hideconsole", hideConsole);
@@ -105,10 +190,7 @@ import loadPolyFill from "utils/polyfill";
 				}
 			},
 			clear() {
-				originalConsole.clear();
-				if (isFocused) $input.focus();
-				$console.textContent = "";
-				$console.appendChild($inputContainer);
+				clearConsole();
 			},
 			count(hash = "default") {
 				originalConsole.count(hash);
@@ -207,35 +289,104 @@ import loadPolyFill from "utils/polyfill";
 	function showConsole() {
 		tag.get("html").append($console);
 		$input.addEventListener("keydown", onCodeInput);
+		if (!isStandaloneConsole) {
+			bindViewportListeners();
+			updateConsoleViewport();
+		}
+		virtualMessages.invalidate();
 	}
 
 	function hideConsole() {
 		$console.remove();
 		$input.removeEventListener("keydown", onCodeInput);
+		unbindViewportListeners();
+	}
+
+	function bindViewportListeners() {
+		window.addEventListener("resize", updateConsoleViewport);
+		window.visualViewport?.addEventListener("resize", updateConsoleViewport);
+		window.visualViewport?.addEventListener("scroll", updateConsoleViewport);
+		if (typeof ResizeObserver === "function") {
+			viewportObserver = new ResizeObserver(updateConsoleViewport);
+			viewportObserver.observe(document.documentElement);
+		}
+	}
+
+	function unbindViewportListeners() {
+		window.removeEventListener("resize", updateConsoleViewport);
+		window.visualViewport?.removeEventListener("resize", updateConsoleViewport);
+		window.visualViewport?.removeEventListener("scroll", updateConsoleViewport);
+		viewportObserver?.disconnect();
+		viewportObserver = null;
+		if (viewportFrame !== null) cancelAnimationFrame(viewportFrame);
+		viewportFrame = null;
+	}
+
+	function updateConsoleViewport() {
+		if (viewportFrame !== null) cancelAnimationFrame(viewportFrame);
+		viewportFrame = requestAnimationFrame(() => {
+			viewportFrame = null;
+			applyConsoleViewport($console);
+			virtualMessages.invalidate();
+		});
 	}
 
 	function onCodeInput(e) {
-		const key = e.key;
 		isFocused = true;
-		if (key === "Enter") {
-			const regex = /[\[|{\(\)\}\]]/g;
-			let code = this.value.trim();
-			let isOdd = (code.length - code.replace(regex, "").length) % 2;
+		if (e.key !== "Enter" || e.shiftKey) return;
 
-			if (!code || isOdd) return;
-			e.preventDefault();
-			e.stopPropagation();
-			e.stopImmediatePropagation();
+		const code = $input.value.trim();
+		const brackets = /[\[|{\(\)\}\]]/g;
+		const isIncomplete =
+			(code.length - code.replace(brackets, "").length) % 2 !== 0;
+		if (!code || isIncomplete) return;
 
-			log("code", {}, code);
-			$input.value = "";
-			const res = execute(code);
-			if (res.type === "error") {
-				log("error", getStack(new Error()), res.value);
-			} else {
-				log("log", getStack(new Error()), res.value);
-			}
+		e.preventDefault();
+		e.stopPropagation();
+		e.stopImmediatePropagation();
+		runInputCode();
+	}
+
+	async function runInputCode() {
+		const code = $input.value.trim();
+		if (!code) return;
+		if (isExecuting) {
+			log("warn", {}, "Another console command is still running.");
+			return;
 		}
+
+		log("code", {}, code);
+		$input.value = "";
+		resizeInput();
+		setExecutionState(true);
+		const res = await execute(code);
+		setExecutionState(false);
+
+		if (res.type === "error") {
+			log("error", getStack(new Error()), res.value);
+		} else {
+			log("log", getStack(new Error()), res.value);
+		}
+		$input.focus();
+	}
+
+	function setExecutionState(running) {
+		isExecuting = running;
+		$console.toggleAttribute("running", running);
+		$stopExecution.hidden = !running;
+		$runButton.hidden = running;
+		$input.disabled = running;
+	}
+
+	function resizeInput() {
+		$input.style.height = "0px";
+		$input.style.height = `${Math.min(120, Math.max(38, $input.scrollHeight))}px`;
+	}
+
+	function clearConsole() {
+		originalConsole.clear();
+		virtualMessages.clear();
+		if (isFocused) $input.focus();
 	}
 
 	function getBody(obj, ...keys) {
@@ -454,7 +605,7 @@ import loadPolyFill from "utils/polyfill";
 			let $msg;
 			if (mode === "code") {
 				$msg = tag("c-code");
-				$msg.textContent = arg.length > 50 ? arg.substring(0, 50) + "..." : arg;
+				$msg.textContent = arg;
 				$msg.setAttribute("data-code", arg);
 				$msg.setAttribute("action", "use code");
 			} else {
@@ -486,11 +637,7 @@ import loadPolyFill from "utils/polyfill";
 			$messages.appendChild($stack);
 		}
 
-		$console.insertBefore($messages, $inputContainer);
-
-		while ($console.childElementCount > 100) {
-			$console.firstElementChild.remove();
-		}
+		virtualMessages.append($messages);
 	}
 
 	/**
@@ -635,48 +782,7 @@ import loadPolyFill from "utils/polyfill";
 	}
 
 	function execute(code) {
-		let res = null;
-		try {
-			const parsed = parse(code, acornOptions).body;
-			res = execParsedCode(parsed);
-		} catch (e) {
-			res = execParsedCode([]);
-		}
-
-		return res;
-
-		function execParsedCode(parsed) {
-			let extra = "";
-			parsed.map((st) => {
-				if (st.type === "VariableDeclaration") {
-					if (["const", "let"].indexOf(st.kind) < 0) return;
-
-					const exCode = code.substring(st.start, st.end) + ";";
-					extra += exCode;
-				}
-			});
-
-			if (extra) {
-				const script = tag("script");
-				script.textContent = extra;
-				document.body.appendChild(script);
-				document.body.removeChild(script);
-				return exec(code);
-			} else {
-				return exec(code);
-			}
-		}
-
-		function exec(code) {
-			let res = null;
-			try {
-				res = { type: "result", value: window.eval(code) };
-			} catch (error) {
-				res = { type: "error", value: error };
-			}
-
-			return res;
-		}
+		return executor.execute(code);
 	}
 
 	function onError(err) {

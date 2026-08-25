@@ -72,6 +72,7 @@ async function run(
 	let EXECUTING_SCRIPT = uuid + "_script.js";
 	const MIMETYPE_HTML = mimeType.lookup("html");
 	const CONSOLE_SCRIPT = uuid + "_console.js";
+	const CONSOLE_WORKER_SCRIPT = uuid + "_console_worker.js";
 	const MARKDOWN_STYLE = uuid + "_md.css";
 	const queue = [];
 
@@ -205,6 +206,11 @@ async function run(
 				sendFileContent(url, reqId, "application/javascript");
 				break;
 
+			case CONSOLE_WORKER_SCRIPT:
+				url = `${ASSETS_DIRECTORY}/build/consoleWorker.js`;
+				sendFileContent(url, reqId, "application/javascript");
+				break;
+
 			case EXECUTING_SCRIPT: {
 				const text = getDocText(activeFile?.session?.doc);
 				sendText(text, reqId, "application/javascript");
@@ -228,6 +234,7 @@ async function run(
 					sendText(
 						mustache.render($_console, {
 							CONSOLE_SCRIPT,
+							CONSOLE_WORKER_SCRIPT,
 							EXECUTING_SCRIPT,
 						}),
 						reqId,
@@ -384,7 +391,8 @@ async function run(
 	 * @param {string} id
 	 */
 	function sendHTML(text, id) {
-		const js = `<!-- Injected code, this is not present in original code --><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		const js = `<!-- Injected code, this is not present in original code --><meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
+    <script class="${uuid}">window.__consoleWorkerScript = "/${CONSOLE_WORKER_SCRIPT}";</script>
     <script class="${uuid}" src="/${CONSOLE_SCRIPT}" crossorigin="anonymous"></script>
     <script class="${uuid}">
       if(window.eruda){

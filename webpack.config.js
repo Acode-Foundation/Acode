@@ -110,6 +110,7 @@ module.exports = (env, options) => {
     entry: {
       main: './src/main.js',
       console: './src/lib/console.js',
+      consoleWorker: './src/lib/consoleWorker.js',
       searchInFilesWorker: './src/sidebarApps/searchInFiles/worker.js',
       searchIndexWorker: './src/sidebarApps/searchInFiles/indexWorker.js',
     },
