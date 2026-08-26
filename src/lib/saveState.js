@@ -14,7 +14,7 @@ export default () => {
 	files.forEach((file) => {
 		if (file.type !== "editor") return;
 		if (file.id === config.DEFAULT_FILE_SESSION) return;
-		if (file.SAFMode === "single") return;
+		if (file.persistInSession === false) return;
 
 		// Selection per file:
 		// - Active file uses live EditorView selection
