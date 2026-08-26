@@ -41,18 +41,6 @@ import ConsoleExecutor, {
 			}, 0);
 		},
 	});
-	const $runButton = tag("button", {
-		className: "__c-action __c-action-primary",
-		textContent: "Run",
-		attr: {
-			type: "button",
-			"aria-label": "Run JavaScript",
-		},
-		onpointerdown(e) {
-			e.preventDefault();
-		},
-		onclick: runInputCode,
-	});
 	const $stopExecution = tag("button", {
 		className: "__c-action __c-action-danger",
 		textContent: "Stop",
@@ -65,15 +53,6 @@ import ConsoleExecutor, {
 		},
 	});
 	$stopExecution.hidden = true;
-	const $clearButton = tag("button", {
-		className: "__c-action",
-		textContent: "Clear",
-		attr: {
-			type: "button",
-			"aria-label": "Clear console",
-		},
-		onclick: clearConsole,
-	});
 	const $executionContext = tag("select", {
 		className: "__c-context",
 		attr: {
@@ -112,8 +91,6 @@ import ConsoleExecutor, {
 				children: [
 					...(isStandaloneConsole ? [] : [$executionContext]),
 					$stopExecution,
-					$clearButton,
-					$runButton,
 				],
 			}),
 		],
@@ -406,7 +383,6 @@ import ConsoleExecutor, {
 		isExecuting = running;
 		$console.toggleAttribute("running", running);
 		$stopExecution.hidden = !running || $executionContext.value !== "worker";
-		$runButton.hidden = running;
 		$input.disabled = running;
 		$executionContext.disabled = running;
 	}
