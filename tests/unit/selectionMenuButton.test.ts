@@ -71,4 +71,19 @@ describe("selection menu button interaction", () => {
 		expect(button.classList.contains("is-pressed")).toBe(false);
 		expect(activate).not.toHaveBeenCalled();
 	});
+
+	it("checks final pointer displacement when no move event is delivered", () => {
+		const button = document.createElement("button");
+		const activate = vi.fn();
+		bindSelectionMenuButton(button, activate);
+
+		button.dispatchEvent(pointerEvent("pointerdown", 7, { x: 10, y: 10 }));
+		button.dispatchEvent(pointerEvent("pointerup", 7, { x: 30, y: 10 }));
+		button.dispatchEvent(
+			new MouseEvent("click", { bubbles: true, cancelable: true, detail: 1 }),
+		);
+
+		expect(button.classList.contains("is-pressed")).toBe(false);
+		expect(activate).not.toHaveBeenCalled();
+	});
 });

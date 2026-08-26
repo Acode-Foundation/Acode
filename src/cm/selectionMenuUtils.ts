@@ -28,6 +28,15 @@ export function bindSelectionMenuButton(
 		pointerStart = null;
 		button.classList.remove("is-pressed");
 	};
+	const pointerMoved = (event: PointerEvent) => {
+		if (!pointerStart) return false;
+		const xDistance = event.clientX - pointerStart.x;
+		const yDistance = event.clientY - pointerStart.y;
+		return (
+			xDistance ** 2 + yDistance ** 2 >
+			POINTER_MOVE_TOLERANCE ** 2
+		);
+	};
 
 	button.addEventListener("pointerdown", (event) => {
 		if (event.isPrimary === false) return;
@@ -45,21 +54,15 @@ export function bindSelectionMenuButton(
 
 	button.addEventListener("pointermove", (event) => {
 		if (event.pointerId !== activePointerId || !pointerStart) return;
-		const xDistance = event.clientX - pointerStart.x;
-		const yDistance = event.clientY - pointerStart.y;
-		if (
-			xDistance ** 2 + yDistance ** 2 >
-			POINTER_MOVE_TOLERANCE ** 2
-		) {
-			clearPointer();
-		}
+		if (pointerMoved(event)) clearPointer();
 	});
 
 	button.addEventListener("pointerup", (event) => {
-		if (event.pointerId !== activePointerId) return;
+		if (event.pointerId !== activePointerId || !pointerStart) return;
+		const moved = pointerMoved(event);
 		clearPointer();
 		stopEvent(event);
-		onActivate(event);
+		if (!moved) onActivate(event);
 	});
 
 	button.addEventListener("pointercancel", clearPointer);
