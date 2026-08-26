@@ -4,10 +4,31 @@ html[console-only] body {
   height: 100%;
   margin: 0;
   overflow: hidden;
-  background: #313131 !important;
+  background: var(--primary-color, #313131) !important;
 }
 
 c-console {
+  --console-background: #313131;
+  --console-background-text: #eee;
+  --console-surface: #313131;
+  --console-surface-text: #eee;
+  --console-control: #414141;
+  --console-control-text: #d6d3d3;
+  --console-active: #555;
+  --console-active-text: #fff;
+  --console-border: rgba(204, 204, 204, 0.35);
+  --console-muted: #aaa;
+  --console-placeholder: #929292;
+  --console-scrollbar: #666;
+  --console-danger: #ff9b9b;
+  --console-danger-fill: #a00000;
+  --console-warning-fill: #ffb95c;
+  --console-error-surface: #422;
+  --console-warning-surface: #633;
+  --console-link: #99f;
+  --console-accent: rgb(120, 105, 225);
+  --console-function: rgb(145, 136, 168);
+  --console-success: rgb(59, 161, 59);
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -19,10 +40,45 @@ c-console {
   min-height: 0;
   overflow: hidden;
   z-index: 99998;
-  background: #313131;
-  color: #eee;
+  background: var(--console-background);
+  color: var(--console-background-text);
   font-family: var(--app-font-family, Verdana, Geneva, Tahoma, sans-serif);
   color-scheme: dark;
+}
+
+html[console-only] c-console {
+  --console-background: var(--primary-color, #313131);
+  --console-background-text: var(--primary-text-color, #eee);
+  --console-surface: var(--secondary-color, var(--primary-color, #313131));
+  --console-surface-text: var(
+    --secondary-text-color,
+    var(--primary-text-color, #eee)
+  );
+  --console-control: var(
+    --popup-background-color,
+    var(--secondary-color, #414141)
+  );
+  --console-control-text: var(
+    --popup-text-color,
+    var(--secondary-text-color, #d6d3d3)
+  );
+  --console-active: var(--active-color, #555);
+  --console-active-text: var(--active-text-color, #fff);
+  --console-border: var(--border-color, rgba(204, 204, 204, 0.35));
+  --console-muted: var(--secondary-text-color, #aaa);
+  --console-placeholder: var(--secondary-text-color, #929292);
+  --console-scrollbar: var(--scrollbar-color, #666);
+  --console-danger: var(--error-text-color, #ff9b9b);
+  --console-danger-fill: var(--danger-color, #a00000);
+  --console-warning-fill: var(--error-text-color, #ffb95c);
+  --console-link: var(--link-text-color, #99f);
+  --console-accent: var(--active-color, rgb(120, 105, 225));
+  --console-function: var(--secondary-text-color, rgb(145, 136, 168));
+  --console-success: var(--success-text-color, rgb(59, 161, 59));
+}
+
+body[theme-type="light"] c-console {
+  color-scheme: light;
 }
 
 // The console-only Activity already resizes its WebView for the keyboard.
@@ -41,18 +97,19 @@ c-console[standalone] {
   border: 0;
   border-radius: 3px;
   background: transparent;
-  color: #d6d3d3;
+  color: var(--console-surface-text);
   font: inherit;
   font-size: 0.76rem;
   touch-action: manipulation;
 }
 
 .__c-action:active {
-  background: #555;
+  background: var(--console-active);
+  color: var(--console-active-text);
 }
 
 .__c-action-danger {
-  color: #ff9b9b;
+  color: var(--console-danger);
 }
 
 .__c-context {
@@ -63,14 +120,14 @@ c-console[standalone] {
   border: 0;
   border-radius: 3px;
   outline: none;
-  background: #414141;
-  color: #d6d3d3;
+  background: var(--console-control);
+  color: var(--console-control-text);
   font: inherit;
   font-size: 0.7rem;
 }
 
 .__c-context:focus-visible {
-  outline: 1px solid #929292;
+  outline: 1px solid var(--console-active);
   outline-offset: -1px;
 }
 
@@ -85,7 +142,7 @@ c-output {
   overflow: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
-  scrollbar-color: #666 transparent;
+  scrollbar-color: var(--console-scrollbar) transparent;
 }
 
 c-output > .variable-virtual-spacer,
@@ -102,14 +159,15 @@ c-input {
   width: 100%;
   min-height: 96px;
   padding: 7px 7px max(8px, env(safe-area-inset-bottom));
-  background: #313131;
+  background: var(--console-surface);
+  color: var(--console-surface-text);
 }
 
 c-input::before {
   content: ">>";
   align-self: flex-start;
   padding-top: 9px;
-  color: #d6d3d3;
+  color: var(--console-accent);
   font: italic 13px/1 "Courier New", Courier, monospace;
 }
 
@@ -128,7 +186,7 @@ c-input::before {
   resize: none;
   overflow-y: auto;
   background: transparent;
-  color: #fff;
+  color: var(--console-surface-text);
   caret-color: currentColor !important;
   font: 13px/1.45 "Courier New", Courier, monospace;
 }
@@ -142,7 +200,8 @@ c-input-actions {
 }
 
 #__c-input::placeholder {
-  color: #929292;
+  color: var(--console-placeholder);
+  opacity: 0.75;
 }
 
 #__c-input:disabled {
@@ -156,17 +215,28 @@ c-message {
   flex-wrap: wrap;
   min-height: 45px;
   padding: 5px 7px 4px;
-  border-bottom: 1px solid rgba(204, 204, 204, 0.35);
-  background: #313131;
+  border-bottom: 1px solid var(--console-border);
+  background: var(--console-surface);
+  color: var(--console-surface-text);
   font-size: 0.9rem;
 }
 
 c-message[log-level="error"] {
-  background: #422;
+  background: var(--console-error-surface);
+  background: color-mix(
+    in srgb,
+    var(--console-danger-fill) 16%,
+    var(--console-surface)
+  );
 }
 
 c-message[log-level="warn"] {
-  background: #633;
+  background: var(--console-warning-surface);
+  background: color-mix(
+    in srgb,
+    var(--console-warning-fill) 20%,
+    var(--console-surface)
+  );
 }
 
 c-text,
@@ -185,7 +255,7 @@ c-code {
   position: relative;
   padding-right: 42px;
   overflow-x: auto;
-  color: #d6d3d3;
+  color: var(--console-surface-text);
   font-family: "Courier New", Courier, monospace;
   white-space: pre-wrap;
   cursor: pointer;
@@ -204,8 +274,8 @@ c-code::after {
   right: 1px;
   padding: 1px 6px;
   border-radius: 3px;
-  background: #666;
-  color: inherit;
+  background: var(--console-active);
+  color: var(--console-active-text);
   font: 0.62rem/1.4 var(--app-font-family, sans-serif);
 }
 
@@ -218,7 +288,8 @@ c-stack {
   min-width: 0;
   margin-top: 3px;
   padding: 3px 4px 0;
-  color: #aaa;
+  color: var(--console-muted);
+  opacity: 0.8;
   font-size: 0.7rem;
 }
 
@@ -236,7 +307,7 @@ c-trace {
 }
 
 c-object {
-  color: #99f;
+  color: var(--console-link);
   text-decoration: underline;
 }
 
@@ -246,28 +317,28 @@ c-line {
 
 c-key {
   margin-right: 5px;
-  color: #c6f;
+  color: var(--console-accent);
   font-size: 0.9rem;
 }
 
 c-text.__c-boolean,
 c-text.__c-number,
 c-text.__c-symbol {
-  color: rgb(120, 105, 225);
+  color: var(--console-accent);
 }
 
 c-text.__c-function {
-  color: rgb(145, 136, 168);
+  color: var(--console-function);
   font-family: "Courier New", Courier, monospace;
 }
 
 c-text.__c-object,
 c-text.__c-undefined {
-  color: rgb(118, 163, 118);
+  color: var(--console-success);
 }
 
 c-text.__c-string {
-  color: rgb(59, 161, 59);
+  color: var(--console-success);
 }
 
 c-text.__c-string:not(.no-quotes)::before {
@@ -316,12 +387,12 @@ c-table {
   display: table;
   width: 100%;
   border-collapse: collapse;
-  color: #d6d3d3;
+  color: var(--console-surface-text);
 }
 
 c-table c-row {
   display: table-row;
-  border-bottom: 1px solid rgba(204, 204, 204, 0.4);
+  border-bottom: 1px solid var(--console-border);
 }
 
 c-table c-cell {

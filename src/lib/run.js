@@ -73,6 +73,7 @@ async function run(
 	const MIMETYPE_HTML = mimeType.lookup("html");
 	const CONSOLE_SCRIPT = uuid + "_console.js";
 	const CONSOLE_WORKER_SCRIPT = uuid + "_console_worker.js";
+	const CONSOLE_THEME_STYLE = uuid + "_console_theme.css";
 	const MARKDOWN_STYLE = uuid + "_md.css";
 	const queue = [];
 
@@ -211,6 +212,14 @@ async function run(
 				sendFileContent(url, reqId, "application/javascript");
 				break;
 
+			case CONSOLE_THEME_STYLE:
+				sendText(
+					document.head.querySelector("style#app-theme")?.textContent || "",
+					reqId,
+					"text/css",
+				);
+				break;
+
 			case EXECUTING_SCRIPT: {
 				const text = getDocText(activeFile?.session?.doc);
 				sendText(text, reqId, "application/javascript");
@@ -235,7 +244,10 @@ async function run(
 						mustache.render($_console, {
 							CONSOLE_SCRIPT,
 							CONSOLE_WORKER_SCRIPT,
+							CONSOLE_THEME_STYLE,
 							EXECUTING_SCRIPT,
+							APP_THEME_TYPE:
+								document.body.getAttribute("theme-type") || "dark",
 						}),
 						reqId,
 						MIMETYPE_HTML,
