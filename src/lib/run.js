@@ -74,6 +74,7 @@ async function run(
 	const CONSOLE_SCRIPT = uuid + "_console.js";
 	const CONSOLE_WORKER_SCRIPT = uuid + "_console_worker.js";
 	const CONSOLE_THEME_STYLE = uuid + "_console_theme.css";
+	const CONSOLE_THEME_STATE = uuid + "_console_theme.json";
 	const MARKDOWN_STYLE = uuid + "_md.css";
 	const queue = [];
 
@@ -213,10 +214,14 @@ async function run(
 				break;
 
 			case CONSOLE_THEME_STYLE:
+				sendText(getConsoleThemeSnapshot().css, reqId, "text/css");
+				break;
+
+			case CONSOLE_THEME_STATE:
 				sendText(
-					document.head.querySelector("style#app-theme")?.textContent || "",
+					JSON.stringify(getConsoleThemeSnapshot()),
 					reqId,
-					"text/css",
+					"application/json",
 				);
 				break;
 
@@ -245,9 +250,9 @@ async function run(
 							CONSOLE_SCRIPT,
 							CONSOLE_WORKER_SCRIPT,
 							CONSOLE_THEME_STYLE,
+							CONSOLE_THEME_STATE,
 							EXECUTING_SCRIPT,
-							APP_THEME_TYPE:
-								document.body.getAttribute("theme-type") || "dark",
+							APP_THEME_TYPE: getConsoleThemeSnapshot().type,
 						}),
 						reqId,
 						MIMETYPE_HTML,
@@ -374,6 +379,13 @@ async function run(
 					break;
 			}
 		}
+	}
+
+	function getConsoleThemeSnapshot() {
+		return {
+			css: document.head.querySelector("style#app-theme")?.textContent || "",
+			type: document.body.getAttribute("theme-type") || "dark",
+		};
 	}
 
 	/**

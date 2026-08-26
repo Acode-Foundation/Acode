@@ -18,7 +18,13 @@ import ConsoleExecutor, {
 	let isExecuting = false;
 	let viewportFrame = null;
 	let viewportObserver = null;
+	let themeSyncTimer = null;
+	let themeSyncPending = false;
+	let themeSignature = null;
 	const isStandaloneConsole = sessionStorage.getItem("__mode") === "console";
+	const themeEndpoint = document.querySelector(
+		'meta[name="acode-console-theme-endpoint"]',
+	)?.content;
 	const originalConsole = console;
 	const $input = tag("textarea", {
 		id: "__c-input",
@@ -149,6 +155,10 @@ import ConsoleExecutor, {
 	if (isStandaloneConsole) {
 		$console.setAttribute("standalone", "");
 		document.documentElement.setAttribute("console-only", "");
+		startThemeSync();
+		window.addEventListener("pagehide", stopThemeSync, {
+			once: true,
+		});
 	}
 	const counter = {};
 	const timers = {};
@@ -181,6 +191,49 @@ import ConsoleExecutor, {
 		sessionStorage.setItem("__console_available", true);
 		document.addEventListener("showconsole", showConsole);
 		document.addEventListener("hideconsole", hideConsole);
+	}
+
+	function startThemeSync() {
+		if (!themeEndpoint || themeSyncTimer !== null) return;
+		void syncTheme();
+		themeSyncTimer = setInterval(syncTheme, 1000);
+	}
+
+	function stopThemeSync() {
+		if (themeSyncTimer === null) return;
+		clearInterval(themeSyncTimer);
+		themeSyncTimer = null;
+	}
+
+	async function syncTheme() {
+		if (themeSyncPending) return;
+		themeSyncPending = true;
+
+		try {
+			const response = await fetch(themeEndpoint, { cache: "no-store" });
+			if (!response.ok) return;
+			const snapshot = await response.json();
+			if (typeof snapshot.css !== "string") return;
+
+			const signature = JSON.stringify([snapshot.type, snapshot.css]);
+			if (signature === themeSignature) return;
+
+			let $theme = document.getElementById("console-live-theme");
+			if (!$theme) {
+				$theme = tag("style", { id: "console-live-theme" });
+				document.head.append($theme);
+			}
+			$theme.textContent = snapshot.css;
+			document.documentElement.setAttribute(
+				"theme-type",
+				snapshot.type === "light" ? "light" : "dark",
+			);
+			themeSignature = signature;
+		} catch {
+			// Keep the last valid theme if the local endpoint is briefly unavailable.
+		} finally {
+			themeSyncPending = false;
+		}
 	}
 
 	function touchmove(e) {

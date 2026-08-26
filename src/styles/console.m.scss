@@ -77,7 +77,7 @@ html[console-only] c-console {
   --console-success: var(--success-text-color, rgb(59, 161, 59));
 }
 
-body[theme-type="light"] c-console {
+html[theme-type="light"] c-console {
   color-scheme: light;
 }
 
