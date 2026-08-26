@@ -22,6 +22,9 @@ import appSettings from "./settings";
 /**@type {Server} */
 let webServer;
 
+// An open console may outlive the server instance that created it.
+const CONSOLE_THEME_STATE = "__acode_console_theme.json";
+
 /**
  * Starts the server and run the active file in browser
  * @param {Boolean} isConsole
@@ -74,7 +77,6 @@ async function run(
 	const CONSOLE_SCRIPT = uuid + "_console.js";
 	const CONSOLE_WORKER_SCRIPT = uuid + "_console_worker.js";
 	const CONSOLE_THEME_STYLE = uuid + "_console_theme.css";
-	const CONSOLE_THEME_STATE = uuid + "_console_theme.json";
 	const MARKDOWN_STYLE = uuid + "_md.css";
 	const queue = [];
 
