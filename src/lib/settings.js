@@ -214,6 +214,12 @@ class Settings {
 					workspaces: {},
 				},
 			},
+			ai: {
+				provider: "openai",
+				model: "gpt-4o-mini",
+				openaiKey: "",
+				openRouterKey: "",
+			},
 			developerMode: false,
 			shiftClickSelection: true,
 			showShareButton: true,
