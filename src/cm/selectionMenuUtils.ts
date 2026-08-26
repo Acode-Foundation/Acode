@@ -9,12 +9,15 @@ export interface SelectionMenuFilterOptions {
 	hasSelection: boolean;
 }
 
+const POINTER_MOVE_TOLERANCE = 8;
+
 /** Preserve editor focus during a pointer press and activate on release. */
 export function bindSelectionMenuButton(
 	button: HTMLButtonElement,
 	onActivate: (event: Event) => void,
 ): void {
 	let activePointerId: number | null = null;
+	let pointerStart: { x: number; y: number } | null = null;
 
 	const stopEvent = (event: Event) => {
 		event.preventDefault();
@@ -22,6 +25,7 @@ export function bindSelectionMenuButton(
 	};
 	const clearPointer = () => {
 		activePointerId = null;
+		pointerStart = null;
 		button.classList.remove("is-pressed");
 	};
 
@@ -29,12 +33,25 @@ export function bindSelectionMenuButton(
 		if (event.isPrimary === false) return;
 		if (event.pointerType === "mouse" && event.button !== 0) return;
 		activePointerId = event.pointerId;
+		pointerStart = { x: event.clientX, y: event.clientY };
 		button.classList.add("is-pressed");
 		stopEvent(event);
 		try {
 			button.setPointerCapture?.(event.pointerId);
 		} catch {
 			// Pointer capture is optional in older Android WebViews.
+		}
+	});
+
+	button.addEventListener("pointermove", (event) => {
+		if (event.pointerId !== activePointerId || !pointerStart) return;
+		const xDistance = event.clientX - pointerStart.x;
+		const yDistance = event.clientY - pointerStart.y;
+		if (
+			xDistance ** 2 + yDistance ** 2 >
+			POINTER_MOVE_TOLERANCE ** 2
+		) {
+			clearPointer();
 		}
 	});
 
