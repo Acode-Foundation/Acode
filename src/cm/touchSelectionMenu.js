@@ -1,3 +1,4 @@
+import { LSPPlugin } from "@codemirror/lsp-client";
 import { EditorSelection } from "@codemirror/state";
 import {
 	focusEditorIfEditable,
@@ -5,8 +6,13 @@ import {
 	resolveReadOnlyContextSelection,
 	shouldCommitReadOnlyTap,
 } from "cm/editorReadOnly";
-import { filterSelectionMenuItems } from "cm/selectionMenuUtils";
+import {
+	bindSelectionMenuButton,
+	filterSelectionMenuItems,
+	partitionSelectionMenuItems,
+} from "cm/selectionMenuUtils";
 import selectionMenu from "lib/selectionMenu";
+import { animate } from "motion";
 
 export { filterSelectionMenuItems } from "cm/selectionMenuUtils";
 
@@ -18,6 +24,7 @@ const MENU_SHOW_DELAY = 120;
 const MENU_CARET_GAP = 10;
 const MENU_SELECTION_GAP = 12;
 const MENU_HANDLE_CLEARANCE = 28;
+const OVERFLOW_GRID_THRESHOLD = 10;
 const TAP_MAX_COLUMN_DELTA = 2;
 const TAP_MAX_POS_DELTA = 2;
 
@@ -127,6 +134,19 @@ function clamp(value, min, max) {
 	return Math.max(min, Math.min(max, value));
 }
 
+function hasCodeActionProvider(view) {
+	return LSPPlugin.getAll(view, "codeAction").some(
+		(plugin) => !!plugin.client.serverCapabilities?.codeActionProvider,
+	);
+}
+
+function animationsDisabled() {
+	return (
+		document.body.classList.contains("no-animation") ||
+		globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+	);
+}
+
 export default function createTouchSelectionMenu(view, options = {}) {
 	return new TouchSelectionMenuController(view, options);
 }
@@ -149,6 +169,11 @@ class TouchSelectionMenuController {
 	#handlingMenuAction = false;
 	#menuShowTimer = null;
 	#tooltipObserver = null;
+	#dismissedSelection = null;
+	#renderedMenuKey = "";
+	#menuAnchor = null;
+	#menuAnimation = null;
+	#viewAnimations = [];
 
 	constructor(view, options = {}) {
 		this.#view = view;
@@ -226,6 +251,7 @@ class TouchSelectionMenuController {
 		this.#pointerSelectionSession = null;
 		this.#readOnlyTapSession = null;
 		this.#pendingPointerSelectionClick = null;
+		this.#dismissedSelection = null;
 		this.#menuRequested = false;
 		this.#isPointerInteracting = false;
 		this.#isScrolling = false;
@@ -238,6 +264,7 @@ class TouchSelectionMenuController {
 	setSelection(value) {
 		if (!this.#enabled) return;
 		if (value) {
+			this.#dismissedSelection = null;
 			this.#menuRequested = true;
 		}
 		this.onStateChanged({
@@ -254,6 +281,7 @@ class TouchSelectionMenuController {
 			this.#hideMenu();
 			return;
 		}
+		this.#dismissedSelection = null;
 		this.#scheduleMenuShow(MENU_SHOW_DELAY);
 	}
 
@@ -279,6 +307,12 @@ class TouchSelectionMenuController {
 	onStateChanged(meta = {}) {
 		if (!this.#enabled) return;
 		if (meta.selectionChanged) this.#cancelReadOnlyTap();
+		if (
+			meta.selectionChanged &&
+			this.#dismissedSelection !== this.#selectionSignature()
+		) {
+			this.#dismissedSelection = null;
+		}
 		if (this.#handlingMenuAction) return;
 		if (!this.#shouldShowMenu()) {
 			if (!this.#hasSelection()) {
@@ -298,6 +332,7 @@ class TouchSelectionMenuController {
 		this.#pointerSelectionSession = null;
 		this.#readOnlyTapSession = null;
 		this.#pendingPointerSelectionClick = null;
+		this.#dismissedSelection = null;
 		this.#menuRequested = false;
 		this.#isPointerInteracting = false;
 		this.#isScrolling = false;
@@ -321,6 +356,7 @@ class TouchSelectionMenuController {
 		}
 		event.preventDefault();
 		event.stopPropagation();
+		this.#dismissedSelection = null;
 		this.#menuRequested = true;
 		this.#scheduleMenuShow(MENU_SHOW_DELAY);
 	};
@@ -337,6 +373,7 @@ class TouchSelectionMenuController {
 			return;
 		}
 		if (target instanceof Node && this.#view.dom.contains(target)) {
+			this.#dismissedSelection = null;
 			this.#capturePointerSelection(event);
 			this.#captureReadOnlyTap(event);
 			this.#isPointerInteracting = true;
@@ -549,6 +586,12 @@ class TouchSelectionMenuController {
 	#shouldShowMenu() {
 		if (this.#isScrolling || this.#isPointerInteracting) return false;
 		if (!this.#view.hasFocus && !this.#isReadOnly()) return false;
+		if (
+			!this.#menuRequested &&
+			this.#dismissedSelection === this.#selectionSignature()
+		) {
+			return false;
+		}
 		return this.#hasSelection() || this.#menuRequested;
 	}
 
@@ -616,52 +659,248 @@ class TouchSelectionMenuController {
 	}
 
 	#showMenu(anchor) {
+		this.#menuAnchor = anchor;
 		const hasSelection = this.#hasSelection();
-		const items = filterSelectionMenuItems(selectionMenu(), {
-			readOnly: this.#isReadOnly(),
-			hasSelection,
-		});
+		const items = filterSelectionMenuItems(
+			selectionMenu({
+				codeActionsAvailable: hasCodeActionProvider(this.#view),
+			}),
+			{
+				readOnly: this.#isReadOnly(),
+				hasSelection,
+			},
+		);
 
-		this.$menu.innerHTML = "";
 		if (!items.length) {
 			this.#menuRequested = false;
 			this.#hideMenu(true);
 			return;
 		}
 
-		items.forEach(({ onclick, text }) => {
-			const $item = document.createElement("div");
-			if (typeof text === "string") {
-				$item.textContent = text;
-			} else if (text instanceof Node) {
-				$item.append(text.cloneNode(true));
-			}
-			let handled = false;
-			const runAction = (event) => {
-				if (handled) return;
-				handled = true;
-				event.preventDefault();
-				event.stopPropagation();
-				this.#handlingMenuAction = true;
-				try {
-					onclick?.();
-				} finally {
-					this.#handlingMenuAction = false;
-					this.#menuRequested = false;
-					this.#hideMenu();
-					focusEditorIfEditable(this.#view);
-				}
-			};
-			$item.addEventListener("pointerdown", runAction);
-			$item.addEventListener("click", runAction);
-			this.$menu.append($item);
-		});
+		const menuKey = `${hasSelection}:${items
+			.map((item) => item.id || this.#getItemLabel(item))
+			.join("|")}`;
+		if (menuKey !== this.#renderedMenuKey) {
+			const groups = partitionSelectionMenuItems(items, { hasSelection });
+			this.#renderMenu(groups.primary, groups.overflow);
+			this.#renderedMenuKey = menuKey;
+		}
 
 		if (!this.$menu.isConnected) {
 			this.#container.append(this.$menu);
 		}
+		const isOpening = !this.#menuActive;
+		this.#positionMenu(anchor);
+		this.#menuActive = true;
+		this.#menuRequested = false;
+		if (isOpening) this.#animateMenuIn();
+	}
+
+	#renderMenu(primaryItems, overflowItems) {
+		this.$menu.replaceChildren();
+		this.$menu.setAttribute("aria-label", "Text selection actions");
+
+		const $primary = document.createElement("div");
+		$primary.className = "cursor-menu__primary";
+		$primary.setAttribute("role", "toolbar");
+		for (const item of primaryItems) {
+			$primary.append(this.#createActionButton(item, false));
+		}
+
+		if (overflowItems.length) {
+			const $overflow = document.createElement("div");
+			$overflow.className = "cursor-menu__overflow";
+			if (overflowItems.length > OVERFLOW_GRID_THRESHOLD) {
+				$overflow.classList.add("cursor-menu__overflow--grid");
+			}
+			$overflow.setAttribute("role", "toolbar");
+			$overflow.setAttribute("aria-label", "More text actions");
+			$overflow.hidden = true;
+
+			const backLabel = globalThis.strings?.back || "Back";
+			const $back = document.createElement("button");
+			$back.type = "button";
+			$back.className = "cursor-menu__action cursor-menu__back";
+			$back.setAttribute("aria-label", backLabel);
+			$back.append(this.#createIcon("arrow_back"));
+
+			const $overflowActions = document.createElement("div");
+			$overflowActions.className = "cursor-menu__overflow-actions";
+			for (const item of overflowItems) {
+				$overflowActions.append(this.#createActionButton(item, true));
+			}
+			$overflow.append($back, $overflowActions);
+
+			const moreLabel = globalThis.strings?.more || "More";
+			const $more = document.createElement("button");
+			$more.type = "button";
+			$more.className = "cursor-menu__action cursor-menu__more";
+			$more.setAttribute("aria-label", moreLabel);
+			$more.setAttribute("aria-expanded", "false");
+			$more.append(this.#createIcon("keyboard_control"));
+			bindSelectionMenuButton($more, () => {
+				$more.setAttribute("aria-expanded", "true");
+				this.#setOverflowExpanded($primary, $overflow, true);
+			});
+			bindSelectionMenuButton($back, () => {
+				$more.setAttribute("aria-expanded", "false");
+				this.#setOverflowExpanded($primary, $overflow, false);
+			});
+
+			$primary.append($more);
+			this.$menu.append($primary, $overflow);
+			return;
+		}
+
+		this.$menu.append($primary);
+	}
+
+	#createActionButton(item, isOverflow) {
+		const $item = document.createElement("button");
+		const label = this.#getItemLabel(item);
+		$item.type = "button";
+		$item.className = `cursor-menu__action${
+			isOverflow ? " cursor-menu__overflow-action" : ""
+		}`;
+		$item.setAttribute("aria-label", label);
+		if (label !== "More action") $item.title = label;
+
+		if (isOverflow) {
+			if (item.text instanceof Node) {
+				$item.append(item.text.cloneNode(true));
+			} else {
+				$item.textContent = label;
+			}
+		} else if (item.text instanceof Node) {
+			$item.append(item.text.cloneNode(true));
+		} else {
+			$item.textContent = label;
+		}
+
+		let handled = false;
+		const runAction = (event) => {
+			if (handled) return;
+			handled = true;
+			event.preventDefault();
+			event.stopPropagation();
+			this.#clearMenuShowTimer();
+			cancelAnimationFrame(this.#stateSyncRaf);
+			this.#stateSyncRaf = 0;
+			this.#handlingMenuAction = true;
+			try {
+				item.onclick?.();
+			} finally {
+				this.#handlingMenuAction = false;
+				this.#menuRequested = false;
+				this.#dismissedSelection = this.#selectionSignature();
+				this.#hideMenu();
+				focusEditorIfEditable(this.#view);
+			}
+		};
+		bindSelectionMenuButton($item, runAction);
+		return $item;
+	}
+
+	#animateMenuIn() {
+		this.#menuAnimation?.cancel?.();
+		if (animationsDisabled()) {
+			this.$menu.style.opacity = "1";
+			this.$menu.style.transform = "none";
+			return;
+		}
+
+		const y = this.$menu.dataset.placement === "above" ? 3 : -3;
+		this.#menuAnimation = animate(
+			this.$menu,
+			{
+				opacity: [0, 1],
+				scale: [0.96, 1],
+				y: [y, 0],
+			},
+			{ duration: 0.14, ease: "easeOut" },
+		);
+	}
+
+	#setOverflowExpanded($primary, $overflow, expanded) {
+		for (const animation of this.#viewAnimations) animation.cancel?.();
+		this.#viewAnimations = [];
+		const initialRect = this.$menu.getBoundingClientRect();
+		const outgoing = expanded ? $primary : $overflow;
+		const incoming = expanded ? $overflow : $primary;
+		const direction = expanded ? 1 : -1;
+		this.$menu.style.width = `${this.$menu.getBoundingClientRect().width}px`;
+		incoming.hidden = false;
+		incoming.style.visibility = "";
+		incoming.style.pointerEvents = "auto";
+		outgoing.style.pointerEvents = "none";
+
+		const usesGrid = $overflow.classList.contains(
+			"cursor-menu__overflow--grid",
+		);
+		const targetHeight =
+			expanded && usesGrid ? $overflow.getBoundingClientRect().height : 40;
+		this.$menu.style.height = `${targetHeight}px`;
+		if (usesGrid && this.#menuAnchor) this.#positionMenu(this.#menuAnchor);
+		const finalRect = this.$menu.getBoundingClientRect();
+
+		const finish = () => {
+			outgoing.hidden = true;
+			outgoing.style.opacity = "";
+			outgoing.style.transform = "";
+			outgoing.style.visibility = "";
+			incoming.style.opacity = "";
+			incoming.style.transform = "";
+			this.$menu.style.height = `${targetHeight}px`;
+			this.$menu.style.transform = "";
+			this.#viewAnimations = [];
+		};
+		if (animationsDisabled()) {
+			finish();
+			return;
+		}
+
+		const outgoingAnimation = animate(
+			outgoing,
+			{ opacity: [1, 0], x: [0, -6 * direction] },
+			{ duration: 0.1, ease: "easeIn" },
+		);
+		const incomingAnimation = animate(
+			incoming,
+			{ opacity: [0, 1], x: [6 * direction, 0] },
+			{ duration: 0.14, ease: "easeOut" },
+		);
+		const animations = [outgoingAnimation, incomingAnimation];
+		if (usesGrid && initialRect.height !== finalRect.height) {
+			animations.push(
+				animate(
+					this.$menu,
+					{
+						height: [initialRect.height, finalRect.height],
+						y: [initialRect.top - finalRect.top, 0],
+					},
+					{ duration: 0.16, ease: "easeOut" },
+				),
+			);
+		}
+		this.#viewAnimations = animations;
+		Promise.allSettled(animations).then(() => {
+			if (this.#viewAnimations !== animations) return;
+			finish();
+		});
+	}
+
+	#positionMenu(anchor) {
+		if (!this.$menu.isConnected) return;
 
 		const containerRect = this.#container.getBoundingClientRect();
+		this.$menu.style.setProperty(
+			"--cursor-menu-max-width",
+			`${Math.max(0, containerRect.width - MENU_MARGIN * 2)}px`,
+		);
+		this.$menu.style.setProperty(
+			"--cursor-menu-grid-max-height",
+			`${Math.max(40, Math.min(240, containerRect.height - MENU_MARGIN * 2))}px`,
+		);
 		this.$menu.style.left = "0px";
 		this.$menu.style.top = "0px";
 		this.$menu.style.visibility = "hidden";
@@ -679,10 +918,11 @@ class TouchSelectionMenuController {
 			containerRect.top + containerRect.height - menuRect.height - MENU_MARGIN;
 		const fitsAbove = topAbove >= minTop;
 		const fitsBelow = topBelow <= maxTop;
+		const placedAbove = fitsAbove || !fitsBelow;
 		const clamped = clampMenuPosition(
 			{
 				left: preferredLeft,
-				top: fitsAbove || !fitsBelow ? topAbove : topBelow,
+				top: placedAbove ? topAbove : topBelow,
 				width: menuRect.width,
 				height: menuRect.height,
 			},
@@ -698,9 +938,29 @@ class TouchSelectionMenuController {
 
 		this.$menu.style.left = `${clamped.left - containerRect.left}px`;
 		this.$menu.style.top = `${clamped.top - containerRect.top}px`;
+		this.$menu.dataset.placement = placedAbove ? "above" : "below";
 		this.$menu.style.visibility = "";
-		this.#menuActive = true;
-		this.#menuRequested = false;
+	}
+
+	#getItemLabel(item) {
+		if (item.label) return item.label;
+		if (typeof item.text === "string" && item.text.trim()) return item.text;
+		if (item.text instanceof Element) {
+			return (
+				item.text.getAttribute("aria-label") ||
+				item.text.getAttribute("title") ||
+				item.text.textContent?.trim() ||
+				"More action"
+			);
+		}
+		return "More action";
+	}
+
+	#createIcon(name) {
+		const $icon = document.createElement("span");
+		$icon.className = `icon ${name}`;
+		$icon.setAttribute("aria-hidden", "true");
+		return $icon;
 	}
 
 	#showMenuDeferred() {
@@ -771,9 +1031,36 @@ class TouchSelectionMenuController {
 
 	#hideMenu(force = false) {
 		if (!force && !this.#menuActive && !this.$menu.isConnected) return;
+		this.#menuAnimation?.cancel?.();
+		for (const animation of this.#viewAnimations) animation.cancel?.();
+		this.#menuAnimation = null;
+		this.#viewAnimations = [];
 		if (this.$menu.isConnected) {
 			this.$menu.remove();
 		}
+		const overflow = this.$menu.querySelector(".cursor-menu__overflow");
+		if (overflow) overflow.hidden = true;
+		if (overflow) {
+			overflow.style.opacity = "";
+			overflow.style.transform = "";
+			overflow.style.pointerEvents = "";
+		}
+		const primary = this.$menu.querySelector(".cursor-menu__primary");
+		if (primary) {
+			primary.hidden = false;
+			primary.style.opacity = "";
+			primary.style.transform = "";
+			primary.style.pointerEvents = "";
+		}
+		this.$menu.style.opacity = "";
+		this.$menu.style.transform = "";
+		this.$menu.style.width = "";
+		this.$menu.style.height = "40px";
+		this.$menu
+			.querySelector(".cursor-menu__more")
+			?.setAttribute("aria-expanded", "false");
+		this.#renderedMenuKey = "";
+		this.#menuAnchor = null;
 		this.#menuActive = false;
 	}
 
@@ -816,5 +1103,11 @@ class TouchSelectionMenuController {
 	#hasSelection() {
 		const selection = this.#view.state.selection.main;
 		return selection.from !== selection.to;
+	}
+
+	#selectionSignature() {
+		return this.#view.state.selection.ranges
+			.map((range) => `${range.anchor}:${range.head}`)
+			.join("|");
 	}
 }
