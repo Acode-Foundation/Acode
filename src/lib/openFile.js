@@ -8,6 +8,7 @@ import { reopenWithNewEncoding } from "palettes/changeEncoding";
 import { decode, detectEncoding } from "utils/encodings";
 import helpers from "utils/helpers";
 import EditorFile from "./editorFile";
+import { promoteSessionPersistence } from "./fileSessionPersistence";
 import fileTypeHandler from "./fileTypeHandler";
 import recents from "./recents";
 import appSettings from "./settings";
@@ -50,9 +51,7 @@ export default async function openFile(file, options = {}) {
 		} = options;
 
 		if (existingFile) {
-			if (persistInSession !== undefined) {
-				existingFile.persistInSession = persistInSession !== false;
-			}
+			promoteSessionPersistence(existingFile, persistInSession);
 			// If file is already opened and new text is provided
 			const incomingDoc =
 				text != null ? Text.of(String(text).split("\n")) : null;

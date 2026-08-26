@@ -12,36 +12,7 @@ const runtime = vi.hoisted(() => {
 
 	return {
 		settings,
-		openFile: vi.fn(async (uri, options = {}) => {
-			const file = {
-				id: `file-${globalThis.editorManager.files.length + 1}`,
-				uri,
-				type: "editor",
-				filename: options.name || uri.split("/").pop(),
-				pinned: false,
-				isUnsaved: false,
-				docVersion: 0,
-				savedVersion: 0,
-				cacheVersion: 0,
-				savedMtime: 1,
-				diskMtime: 1,
-				hasDiskConflict: false,
-				readOnly: false,
-				SAFMode: options.mode,
-				deletedFile: false,
-				session: {
-					selection: { ranges: [{ from: 0, to: 0 }], mainIndex: 0 },
-				},
-				lastScrollTop: 0,
-				lastScrollLeft: 0,
-				editable: true,
-				encoding: "UTF-8",
-				persistInSession: options.persistInSession,
-			};
-
-			globalThis.editorManager.files.push(file);
-			globalThis.editorManager.activeFile = file;
-		}),
+		openFile: vi.fn(),
 	};
 });
 
@@ -74,12 +45,13 @@ vi.mock("utils/helpers", () => ({
 }));
 
 import HandleIntent from "handlers/intent";
+import { promoteSessionPersistence } from "lib/fileSessionPersistence";
 import saveState from "lib/saveState";
 import FileBrowser from "pages/fileBrowser";
 
 describe("file session persistence", () => {
 	beforeEach(() => {
-		runtime.openFile.mockClear();
+		runtime.openFile.mockReset();
 		localStorage.clear();
 		sessionStorage.clear();
 		sessionStorage.setItem("isfilesRestored", "true");
@@ -91,6 +63,18 @@ describe("file session persistence", () => {
 				return this.files.find((file) => file[type] === value);
 			},
 		};
+		runtime.openFile.mockImplementation(async (uri, options = {}) => {
+			const existingFile = globalThis.editorManager.getFile(uri, "uri");
+			if (existingFile) {
+				promoteSessionPersistence(existingFile, options.persistInSession);
+				globalThis.editorManager.activeFile = existingFile;
+				return;
+			}
+
+			const file = createOpenFile(uri, options);
+			globalThis.editorManager.files.push(file);
+			globalThis.editorManager.activeFile = file;
+		});
 	});
 
 	it("persists only a picker document with durable URI access", async () => {
@@ -116,6 +100,10 @@ describe("file session persistence", () => {
 			action: "android.intent.action.VIEW",
 			data: intentUri,
 		});
+		await HandleIntent({
+			action: "android.intent.action.VIEW",
+			data: selectedUri,
+		});
 
 		saveState();
 
@@ -124,4 +112,54 @@ describe("file session persistence", () => {
 		);
 		expect(restoredUris).toEqual([selectedUri]);
 	});
+
+	it("promotes an intent tab when the same document is later selected", async () => {
+		const uri = "content://documents/document/shared";
+
+		await HandleIntent({
+			action: "android.intent.action.VIEW",
+			data: uri,
+		});
+		await FileBrowser.openFile({
+			type: "file",
+			url: uri,
+			name: "shared.js",
+			mode: "single",
+			persistedUriPermission: true,
+		});
+
+		saveState();
+
+		expect(JSON.parse(localStorage.files).map((file) => file.uri)).toEqual([
+			uri,
+		]);
+	});
 });
+
+function createOpenFile(uri, options) {
+	return {
+		id: `file-${globalThis.editorManager.files.length + 1}`,
+		uri,
+		type: "editor",
+		filename: options.name || uri.split("/").pop(),
+		pinned: false,
+		isUnsaved: false,
+		docVersion: 0,
+		savedVersion: 0,
+		cacheVersion: 0,
+		savedMtime: 1,
+		diskMtime: 1,
+		hasDiskConflict: false,
+		readOnly: false,
+		SAFMode: options.mode,
+		deletedFile: false,
+		session: {
+			selection: { ranges: [{ from: 0, to: 0 }], mainIndex: 0 },
+		},
+		lastScrollTop: 0,
+		lastScrollLeft: 0,
+		editable: true,
+		encoding: "UTF-8",
+		persistInSession: options.persistInSession,
+	};
+}
