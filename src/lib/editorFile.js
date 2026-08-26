@@ -330,6 +330,7 @@ function maybeRecommendLanguageModeExtension(file, modeInfo) {
  * @property {string} [paneId] target editor pane id
  * @property {object} [pane] target editor pane
  * @property {boolean} [isPanePlaceholder] temporary empty tab for an empty pane
+ * @property {boolean} [persistInSession] restore the tab in a future app session
  * @property {boolean} [highlightStyles] adopt static CodeMirror highlight CSS into the custom tab shadow root
  */
 
@@ -500,6 +501,7 @@ export default class EditorFile {
 	diskMtime = null;
 	hasDiskConflict = false;
 	isPanePlaceholder = false;
+	persistInSession = true;
 
 	/**
 	 *
@@ -513,6 +515,7 @@ export default class EditorFile {
 		this.hideQuickTools = options?.hideQuickTools || false;
 		this.paneId = options?.paneId || options?.pane?.id || null;
 		this.isPanePlaceholder = !!options?.isPanePlaceholder;
+		this.persistInSession = options?.persistInSession !== false;
 
 		// if options are passed
 		if (options) {

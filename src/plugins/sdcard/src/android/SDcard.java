@@ -266,6 +266,11 @@ public class SDcard extends CordovaPlugin {
     intent.setAction(Intent.ACTION_OPEN_DOCUMENT);
     intent.addCategory(Intent.CATEGORY_OPENABLE);
     intent.setType(mimeType);
+    intent.addFlags(
+      Intent.FLAG_GRANT_READ_URI_PERMISSION |
+        Intent.FLAG_GRANT_WRITE_URI_PERMISSION |
+        Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+    );
     activityResultCallback = callback;
     cordova.startActivityForResult(this, intent, this.OPEN_DOCUMENT);
   }
@@ -409,7 +414,10 @@ public class SDcard extends CordovaPlugin {
             return;
           }
 
-          takePermission(uri);
+          boolean persistedUriPermission = takePermission(
+            uri,
+            data.getFlags()
+          );
           DocumentFile file = DocumentFile.fromSingleUri(context, uri);
           JSONObject res = new JSONObject();
 
@@ -418,6 +426,7 @@ public class SDcard extends CordovaPlugin {
           res.put("filename", file.getName());
           res.put("canWrite", canWrite(file.getUri()));
           res.put("uri", uri.toString());
+          res.put("persistedUriPermission", persistedUriPermission);
           activityResultCallback.success(res);
         } catch (JSONException e) {
           activityResultCallback.error(e.toString());
@@ -447,7 +456,7 @@ public class SDcard extends CordovaPlugin {
           return;
         }
 
-        takePermission(uri);
+        takePermission(uri, data.getFlags());
         DocumentFile file = DocumentFile.fromTreeUri(context, uri);
         if (file != null && file.canWrite()) {
           activityResultCallback.success(uri.toString());
@@ -1152,13 +1161,22 @@ public class SDcard extends CordovaPlugin {
     return documentFile;
   }
 
-  private void takePermission(Uri uri) {
-    contentResolver = context.getContentResolver();
-    contentResolver.takePersistableUriPermission(
-      uri,
-      Intent.FLAG_GRANT_WRITE_URI_PERMISSION |
-      Intent.FLAG_GRANT_READ_URI_PERMISSION
-    );
+  private boolean takePermission(Uri uri, int intentFlags) {
+    int permissionFlags =
+      intentFlags &
+      (Intent.FLAG_GRANT_WRITE_URI_PERMISSION |
+        Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+    if (permissionFlags == 0) return false;
+
+    try {
+      contentResolver = context.getContentResolver();
+      contentResolver.takePersistableUriPermission(uri, permissionFlags);
+      return true;
+    } catch (SecurityException | IllegalArgumentException error) {
+      Log.w("SDcard", "Unable to persist URI permission for " + uri, error);
+      return false;
+    }
   }
 
   public boolean canWrite(Uri uri) {

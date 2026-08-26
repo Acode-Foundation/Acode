@@ -8,6 +8,7 @@ import { reopenWithNewEncoding } from "palettes/changeEncoding";
 import { decode, detectEncoding } from "utils/encodings";
 import helpers from "utils/helpers";
 import EditorFile from "./editorFile";
+import { promoteSessionPersistence } from "./fileSessionPersistence";
 import fileTypeHandler from "./fileTypeHandler";
 import recents from "./recents";
 import appSettings from "./settings";
@@ -22,6 +23,7 @@ import appSettings from "./settings";
  * @property {string} mode
  * @property {string} uri
  * @property {string} paneId
+ * @property {boolean} persistInSession
  */
 
 /**
@@ -37,9 +39,19 @@ export default async function openFile(file, options = {}) {
 
 		/**@type {EditorFile} */
 		const existingFile = editorManager.getFile(uri, "uri");
-		const { cursorPos, render, onsave, text, mode, encoding, paneId } = options;
+		const {
+			cursorPos,
+			render,
+			onsave,
+			text,
+			mode,
+			encoding,
+			paneId,
+			persistInSession,
+		} = options;
 
 		if (existingFile) {
+			promoteSessionPersistence(existingFile, persistInSession);
 			// If file is already opened and new text is provided
 			const incomingDoc =
 				text != null ? Text.of(String(text).split("\n")) : null;
@@ -120,6 +132,7 @@ export default async function openFile(file, options = {}) {
 				savedMtime: helpers.getStatMtime(fileInfo),
 				diskMtime: helpers.getStatMtime(fileInfo),
 				paneId,
+				persistInSession,
 			});
 		};
 

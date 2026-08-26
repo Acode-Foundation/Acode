@@ -62,6 +62,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 	const navStack = new NavStack();
 	const IS_FOLDER_MODE = ["folder", "both"].includes(mode);
 	const IS_FILE_MODE = ["file", "both"].includes(mode);
+	const SELECT_DOCUMENT_LABEL = "Select document";
 	const storedState = helpers.parseJSON(localStorage.fileBrowserState) || [];
 	/**@type {Array<Storage>} */
 	const allStorages = [];
@@ -106,6 +107,16 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		);
 
 		const $search = <span className="icon search" data-action="search"></span>;
+		const $selectDocument = (
+			<span
+				className="icon folder_open"
+				data-action="select-document"
+				title={SELECT_DOCUMENT_LABEL}
+				aria-label={SELECT_DOCUMENT_LABEL}
+				role="button"
+				tabindex="0"
+			></span>
+		);
 		const $lead = <span className="icon clearclose" data-action="close"></span>;
 		const $page = Page(strings["file browser"].capitalize(), {
 			lead: $lead,
@@ -178,8 +189,9 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		$content.addEventListener("click", handleClick);
 		$content.addEventListener("contextmenu", handleContextMenu, true);
 		$page.body = $content;
+		$page.header.append($search);
+		if (IS_FILE_MODE) $page.header.append($selectDocument);
 		$page.header.append(
-			$search,
 			$pasteToggler,
 			$selectionModeToggler,
 			$addMenuToggler,
@@ -222,6 +234,12 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		};
 
 		$pasteToggler.onclick = pasteCopiedItems;
+		$selectDocument.onclick = selectDocument;
+		$selectDocument.onkeydown = (event) => {
+			if (event.key !== "Enter" && event.key !== " ") return;
+			event.preventDefault();
+			selectDocument();
+		};
 
 		$fbMenu.onclick = function (e) {
 			$fbMenu.hide();
@@ -679,6 +697,25 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			$page.hide();
 		}
 
+		function selectDocument() {
+			checkFiles.check = false;
+			sdcard.openDocumentFile(
+				(res) => {
+					res.url = res.uri;
+					resolve({
+						type: "file",
+						...res,
+						name: res.filename,
+						mode: "single",
+					});
+					$page.hide();
+				},
+				(err) => {
+					helpers.error(err);
+				},
+			);
+		}
+
 		/**
 		 * @param {string} url
 		 */
@@ -898,6 +935,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 				$addMenuToggler.style.display = "none";
 				$menuToggler.style.display = "none";
+				$selectDocument.style.display = "none";
 				$selectionMenuToggler.style.display = "";
 				updatePasteToggler();
 
@@ -925,6 +963,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 				$addMenuToggler.style.display = "";
 				$menuToggler.style.display = "";
+				$selectDocument.style.display = "";
 				$selectionMenuToggler.style.display = "none";
 				updatePasteToggler();
 
@@ -1024,7 +1063,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					else if (!$el.hasAttribute("disabled")) file();
 					break;
 				case "openDoc":
-					openDoc();
+					selectDocument();
 					break;
 			}
 
@@ -1330,25 +1369,6 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				localStorage.storageList = JSON.stringify(storageList);
 				reload();
 			}
-
-			function openDoc() {
-				checkFiles.check = false;
-				sdcard.openDocumentFile(
-					(res) => {
-						res.url = res.uri;
-						resolve({
-							type: "file",
-							...res,
-							name: res.filename,
-							mode: "single",
-						});
-						$page.hide();
-					},
-					(err) => {
-						helpers.error(err);
-					},
-				);
-			}
 		}
 
 		function handleContextMenu(e) {
@@ -1457,7 +1477,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			}
 
 			if (IS_FILE_MODE) {
-				util.pushFolder(allStorages, "Select document", null, {
+				util.pushFolder(allStorages, SELECT_DOCUMENT_LABEL, null, {
 					openDoc: true,
 					notSelectable: true,
 				});
