@@ -79,6 +79,43 @@ export default async function installPlugin(
 	let isUpdate = false;
 	/** Whether the staged install has been swapped into pluginDir. */
 	let swapCompleted = false;
+	/**
+	 * Where the previous version was parked during an update's directory
+	 * swap, if it hasn't been deleted yet. Non-null exactly while both the
+	 * old version (here) and the new one (at pluginDir) exist side by
+	 * side - i.e. after the swap but before the replacement has actually
+	 * been confirmed working.
+	 */
+	let backupDir = null;
+
+	/**
+	 * If a previous version is currently parked at backupDir (following an
+	 * update's directory swap), restores it over whatever - if anything -
+	 * is now at pluginDir, and clears backupDir either way. Used both when
+	 * the replacement fails to load (see commitOrRollback below) and as a
+	 * safety net in the outer catch block for any other post-swap failure.
+	 * @param {string} reason short, human-readable cause for the log message
+	 */
+	async function restoreBackupIfAny(reason) {
+		if (!backupDir) return;
+		const failedBackupDir = backupDir;
+		backupDir = null;
+		try {
+			if (await fsOperation(pluginDir).exists()) {
+				await fsOperation(pluginDir).delete();
+			}
+			await fsOperation(failedBackupDir).renameTo(id);
+			// Back to the pre-swap (old, working) version.
+			swapCompleted = false;
+		} catch (rollbackError) {
+			console.error(
+				`Plugin installer: failed to roll back "${id}" after ${reason}; ` +
+					`the previous working copy may still be recoverable at ` +
+					`"${failedBackupDir}".`,
+				rollbackError,
+			);
+		}
+	}
 
 	try {
 		if (!(await fsOperation(PLUGIN_DIR).exists())) {
@@ -338,31 +375,26 @@ export default async function installPlugin(
 			// Extraction into stagingDir fully succeeded (no failed
 			// entries) - swap it into pluginDir now. For an update, the
 			// previous install is moved aside first and only removed once
-			// the new one is confirmed in its place, so a failure during
-			// the swap itself can be rolled back instead of leaving the
-			// plugin missing or half-updated.
+			// the new one is confirmed to actually load below, so a
+			// failure during the swap itself - or a replacement that loads
+			// broken - can both be rolled back instead of leaving the
+			// plugin missing, half-updated, or silently broken with no way
+			// back to the working version.
 			if (isUpdate) {
 				const backupName = `.${id}.bak-${Date.now()}`;
 				await fsOperation(pluginDir).renameTo(backupName);
+				backupDir = Url.join(PLUGIN_DIR, backupName);
+
 				try {
 					await fsOperation(stagingDir).renameTo(id);
 				} catch (swapError) {
-					try {
-						await fsOperation(Url.join(PLUGIN_DIR, backupName)).renameTo(id);
-					} catch (rollbackError) {
-						console.error(
-							`Plugin installer: failed to roll back "${id}" after a failed ` +
-								`update swap; the previous working copy may still be ` +
-								`recoverable at "${backupName}".`,
-							rollbackError,
-						);
-					}
+					await restoreBackupIfAny("a failed update swap");
 					throw swapError;
 				}
 				swapCompleted = true;
-				fsOperation(Url.join(PLUGIN_DIR, backupName))
-					.delete()
-					.catch(() => {});
+				// backupDir is intentionally left set (not deleted yet) -
+				// the previous version stays recoverable until the
+				// replacement has actually been loaded and saved below.
 			} else {
 				await fsOperation(stagingDir).renameTo(id);
 				swapCompleted = true;
@@ -371,15 +403,46 @@ export default async function installPlugin(
 			// itself (renamed in place) - nothing left to clean up there.
 			stagingDir = null;
 
+			/**
+			 * Runs `loadFn` (the actual `loadPluginWithTimeout` call) and,
+			 * only once it succeeds, drops the backup of the previous
+			 * version - this is the one thing that actually proves the
+			 * replacement works. If it fails instead, restores the backup
+			 * so the previous working version comes back instead of being
+			 * left gone alongside a plugin that doesn't load.
+			 *
+			 * Defined per-call (closing over this call's own `backupDir` /
+			 * `pluginDir` / `id`) so it works the same whether the load
+			 * happens inline (the root plugin) or later, deferred via
+			 * `depsLoaders` (a dependency) - each dependency's own
+			 * `installPlugin()` call gets its own independent closure over
+			 * its own backup, so nothing here is shared across plugins.
+			 */
+			async function commitOrRollback(loadFn) {
+				try {
+					await loadFn();
+					if (backupDir) {
+						const finishedBackupDir = backupDir;
+						backupDir = null;
+						fsOperation(finishedBackupDir)
+							.delete()
+							.catch(() => {});
+					}
+				} catch (loadError) {
+					await restoreBackupIfAny("it failed to load");
+					throw loadError;
+				}
+			}
+
 			if (isDependency) {
-				depsLoaders.push(async () => {
-					await loadPluginWithTimeout(id, true);
-				});
+				depsLoaders.push(() =>
+					commitOrRollback(() => loadPluginWithTimeout(id, true)),
+				);
 			} else {
 				for (const loader of depsLoaders) {
 					await loader();
 				}
-				await loadPluginWithTimeout(id, true);
+				await commitOrRollback(() => loadPluginWithTimeout(id, true));
 			}
 
 			await state.save();
@@ -387,9 +450,19 @@ export default async function installPlugin(
 		}
 	} catch (err) {
 		try {
-			// Only discard the persisted install state for outcomes that
-			// don't already have a good, working install on disk.
-			if (state && !swapCompleted) await state.clear();
+			// Post-swap rollback: the directory swap itself succeeded, but
+			// a step after it (loading the replacement, saving state)
+			// failed. Put the previous working version back rather than
+			// leaving a broken replacement installed with the old copy
+			// already gone. (A no-op if commitOrRollback above already
+			// handled this - backupDir is cleared either way it settles.)
+			await restoreBackupIfAny("a post-install step failed");
+
+			// Fresh installs have no prior state worth protecting. Updates
+			// keep whatever state file corresponds to whatever is actually
+			// on disk (the new version if state.save() already ran, or the
+			// restored old version after a successful rollback above).
+			if (state && !isUpdate) await state.clear();
 
 			// The staging directory never held anything but this (possibly
 			// incomplete/failed) attempt, so it's always safe to remove.
@@ -399,13 +472,13 @@ export default async function installPlugin(
 
 			// pluginDir itself is only safe to delete when this was a
 			// fresh install (nothing valuable to lose) that never reached
-			// the swap step. For an update, pluginDir either still holds
-			// the original, untouched working version (failure happened
-			// before or during extraction, which only ever touched
-			// stagingDir) or was already restored by the swap's own
-			// rollback above (failure happened during the swap) - deleting
-			// it here would destroy a working installation instead of
-			// just failing the update.
+			// the swap step. For an update, pluginDir at this point either
+			// still holds the original, untouched working version (failure
+			// happened before or during extraction, which only ever
+			// touched stagingDir), or was just restored by the rollback
+			// above, or - if that rollback itself failed - is left alone
+			// rather than guessed at further; the error logged above
+			// points to where the previous version may still be found.
 			if (
 				!isUpdate &&
 				!swapCompleted &&
