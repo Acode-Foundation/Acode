@@ -73,6 +73,12 @@ export default async function installPlugin(
 	let pluginDir;
 	let pluginUrl;
 	let state;
+	/** Directory extraction writes into; only swapped into pluginDir on full success. */
+	let stagingDir;
+	/** Whether pluginDir already held a working install before this call started. */
+	let isUpdate = false;
+	/** Whether the staged install has been swapped into pluginDir. */
+	let swapCompleted = false;
 
 	try {
 		if (!(await fsOperation(PLUGIN_DIR).exists())) {
@@ -95,6 +101,10 @@ export default async function installPlugin(
 		pluginDir = Url.join(PLUGIN_DIR, id);
 	} else {
 		pluginUrl = id;
+	}
+
+	if (pluginDir) {
+		isUpdate = await fsOperation(pluginDir).exists();
 	}
 
 	try {
@@ -215,18 +225,27 @@ export default async function installPlugin(
 				pluginJson.source = pluginUrl;
 				id = pluginJson.id;
 				pluginDir = Url.join(PLUGIN_DIR, id);
+				isUpdate = await fsOperation(pluginDir).exists();
 			}
 
 			state = await InstallState.new(id);
-
-			if (!(await fsOperation(pluginDir).exists())) {
-				await fsOperation(PLUGIN_DIR).createDirectory(id);
-			}
 
 			// Manifest parsing and any dependency-confirmation dialog above
 			// can take a while (waiting on the user); re-check here so a
 			// cancel during that window stops us before we touch disk.
 			throwIfCancelled();
+
+			// Extract into a fresh staging directory - a sibling of
+			// pluginDir under PLUGIN_DIR - rather than into pluginDir
+			// itself. That way a failed, cancelled, or partially-failed
+			// extraction never touches an existing working install: the
+			// staged result is only swapped into place once extraction has
+			// fully succeeded (see the swap step below). Since staging
+			// always starts empty, every file is written fresh - there is
+			// no previous-install state to diff against here.
+			const stagingName = `.${id}.staging-${Date.now()}`;
+			stagingDir = Url.join(PLUGIN_DIR, stagingName);
+			await fsOperation(PLUGIN_DIR).createDirectory(stagingName);
 
 			// Extract the archive natively instead of looping through zip
 			// entries on the JS thread in hardcoded batches of 2. The
@@ -256,9 +275,9 @@ export default async function installPlugin(
 				// on it and have the native side stop mid-extraction.
 				activeExtraction = PluginInstaller.extractZip(
 					tempZipUrl,
-					pluginDir,
+					stagingDir,
 					JSON.stringify(pluginJson),
-					state.store,
+					{},
 					(done, total) => {
 						if (isDependency || !total) return;
 						loaderDialog.setMessage(
@@ -282,15 +301,11 @@ export default async function installPlugin(
 
 			// Any entry that failed to read/write makes this an incomplete
 			// extraction. Fail the whole install here rather than silently
-			// persisting a checksum store that's missing those entries:
-			// `state.save()` below would record that partial store, and
-			// `deleteRedundantFiles()` would then treat any *previously
-			// installed* copy of that same file as obsolete (since it's no
-			// longer in the store) and delete it - so a single failed file
-			// during an update could silently destroy a working plugin
-			// instead of just leaving it un-updated. Throwing here routes
-			// through the existing catch block below, which clears state
-			// and removes the (incomplete) plugin directory instead.
+			// persisting a checksum store that's missing those entries -
+			// since extraction happened into stagingDir (not pluginDir
+			// itself), throwing here simply routes to the catch block
+			// below, which discards the incomplete staging directory
+			// without ever touching the existing pluginDir.
 			if (failedEntries?.length) {
 				throw new Error(
 					`Failed to extract ${failedEntries.length} file${
@@ -320,6 +335,42 @@ export default async function installPlugin(
 				);
 			}
 
+			// Extraction into stagingDir fully succeeded (no failed
+			// entries) - swap it into pluginDir now. For an update, the
+			// previous install is moved aside first and only removed once
+			// the new one is confirmed in its place, so a failure during
+			// the swap itself can be rolled back instead of leaving the
+			// plugin missing or half-updated.
+			if (isUpdate) {
+				const backupName = `.${id}.bak-${Date.now()}`;
+				await fsOperation(pluginDir).renameTo(backupName);
+				try {
+					await fsOperation(stagingDir).renameTo(id);
+				} catch (swapError) {
+					try {
+						await fsOperation(Url.join(PLUGIN_DIR, backupName)).renameTo(id);
+					} catch (rollbackError) {
+						console.error(
+							`Plugin installer: failed to roll back "${id}" after a failed ` +
+								`update swap; the previous working copy may still be ` +
+								`recoverable at "${backupName}".`,
+							rollbackError,
+						);
+					}
+					throw swapError;
+				}
+				swapCompleted = true;
+				fsOperation(Url.join(PLUGIN_DIR, backupName))
+					.delete()
+					.catch(() => {});
+			} else {
+				await fsOperation(stagingDir).renameTo(id);
+				swapCompleted = true;
+			}
+			// The directory that used to live at stagingDir is now pluginDir
+			// itself (renamed in place) - nothing left to clean up there.
+			stagingDir = null;
+
 			if (isDependency) {
 				depsLoaders.push(async () => {
 					await loadPluginWithTimeout(id, true);
@@ -336,11 +387,31 @@ export default async function installPlugin(
 		}
 	} catch (err) {
 		try {
-			// Clear the install state if installation fails
-			if (state) await state.clear();
+			// Only discard the persisted install state for outcomes that
+			// don't already have a good, working install on disk.
+			if (state && !swapCompleted) await state.clear();
 
-			// Delete the plugin directory if it was created
-			if (pluginDir && (await fsOperation(pluginDir).exists())) {
+			// The staging directory never held anything but this (possibly
+			// incomplete/failed) attempt, so it's always safe to remove.
+			if (stagingDir && (await fsOperation(stagingDir).exists())) {
+				await fsOperation(stagingDir).delete();
+			}
+
+			// pluginDir itself is only safe to delete when this was a
+			// fresh install (nothing valuable to lose) that never reached
+			// the swap step. For an update, pluginDir either still holds
+			// the original, untouched working version (failure happened
+			// before or during extraction, which only ever touched
+			// stagingDir) or was already restored by the swap's own
+			// rollback above (failure happened during the swap) - deleting
+			// it here would destroy a working installation instead of
+			// just failing the update.
+			if (
+				!isUpdate &&
+				!swapCompleted &&
+				pluginDir &&
+				(await fsOperation(pluginDir).exists())
+			) {
 				await fsOperation(pluginDir).delete();
 			}
 		} catch (cleanupError) {

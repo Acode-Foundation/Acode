@@ -51,7 +51,27 @@ export default async function loadPlugins(loadOnlyTheme = false) {
 	}
 
 	try {
-		const plugins = await fsOperation(PLUGIN_DIR).lsDir();
+		const dirEntries = await fsOperation(PLUGIN_DIR).lsDir();
+
+		// Real plugin ids never start with "." - anything that does is
+		// leftover scratch state from an interrupted install/update
+		// (installPlugin.js stages extraction in `.{id}.staging-*` and
+		// backs up the previous version during an update swap in
+		// `.{id}.bak-*`, both siblings of the real plugin directories
+		// here). Normally these are cleaned up as part of the install
+		// flow itself; this is just a safety net for the case where the
+		// app was killed mid-install before that cleanup could run.
+		const plugins = [];
+		for (const entry of dirEntries) {
+			if (Url.basename(entry.url).startsWith(".")) {
+				fsOperation(entry.url)
+					.delete()
+					.catch(() => {});
+				continue;
+			}
+			plugins.push(entry);
+		}
+
 		const results = [];
 
 		if (plugins.length > 0) {
