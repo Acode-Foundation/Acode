@@ -51,7 +51,9 @@
       "cordova-plugin-advanced-http": {},
       "cordova-plugin-acode-webview": {}
     },
-    "platforms": []
+    "platforms": [
+      "android"
+    ]
   },
   "repository": {
     "type": "git",
