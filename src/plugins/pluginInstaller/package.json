@@ -1,0 +1,17 @@
+{
+  "name": "com.foxdebug.acode.rk.plugin.plugininstaller",
+  "version": "1.0.0",
+  "description": "Native (Java) zip extraction for the Acode plugin installer, replacing the hardcoded 2-file JS batching loop.",
+  "cordova": {
+    "id": "com.foxdebug.acode.rk.plugin.plugininstaller",
+    "platforms": [
+      "android"
+    ]
+  },
+  "keywords": [
+    "ecosystem:cordova",
+    "cordova-android"
+  ],
+  "author": "",
+  "license": "MIT"
+}

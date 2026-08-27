@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    id="com.foxdebug.acode.rk.plugin.plugininstaller" version="1.0.0">
+    <name>PluginInstaller</name>
+    <description>Extracts Acode plugin zip archives natively so the installer no longer has to batch file writes on the JS thread.</description>
+    <license>MIT</license>
+    <keywords>cordova,acode,plugin-installer</keywords>
+
+    <js-module name="PluginInstaller" src="www/PluginInstaller.js">
+        <clobbers target="window.PluginInstaller" />
+    </js-module>
+
+    <platform name="android">
+        <config-file parent="/*" target="res/xml/config.xml">
+            <feature name="PluginInstaller">
+                <param name="android-package" value="com.foxdebug.acode.rk.plugininstaller.PluginInstaller" />
+            </feature>
+        </config-file>
+
+        <source-file src="src/android/PluginInstaller.java" target-dir="src/com/foxdebug/acode/rk/plugininstaller" />
+    </platform>
+</plugin>

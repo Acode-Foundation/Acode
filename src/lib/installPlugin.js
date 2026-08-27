@@ -15,6 +15,26 @@ import { loadPluginWithTimeout } from "./loadPlugins";
 let loaderDialog;
 /** @type {Array<() => Promise<void>>} */
 let depsLoaders;
+/** Set by the loader's cancel button; checked at a few safe checkpoints. */
+let installCancelled = false;
+/** The in-flight PluginInstaller.extractZip() promise, if extraction is running. */
+let activeExtraction = null;
+/** The in-flight cordova.plugin.http request id, if an external download is running. */
+let activeHttpReqId = null;
+
+/**
+ * Throws a clearly-labeled cancellation error if the user has hit "Cancel"
+ * on the install loader. Called at points between slow operations
+ * (download, extraction) so the install stops promptly instead of only
+ * noticing after everything has already finished.
+ */
+function throwIfCancelled() {
+	if (installCancelled) {
+		const error = new Error(`${strings.install} ${strings.cancelled}`);
+		error.cancelled = true;
+		throw error;
+	}
+}
 
 /**
  * Installs a plugin.
@@ -30,8 +50,22 @@ export default async function installPlugin(
 	isDependency,
 ) {
 	if (!isDependency) {
+		installCancelled = false;
+		activeExtraction = null;
+		activeHttpReqId = null;
 		loaderDialog = loader.create(name || "Plugin", strings.installing, {
 			timeout: 6000,
+			oncancel: () => {
+				installCancelled = true;
+				if (activeHttpReqId != null) {
+					cordova.plugin.http.abort(
+						activeHttpReqId,
+						() => {},
+						() => {},
+					);
+				}
+				activeExtraction?.cancel?.();
+			},
 		});
 		depsLoaders = [];
 	}
@@ -67,39 +101,55 @@ export default async function installPlugin(
 		if (!isDependency) loaderDialog.show();
 
 		let plugin;
-		if (
-			pluginUrl.includes(config.API_BASE) ||
-			pluginUrl.startsWith("file:") ||
-			pluginUrl.startsWith("content:")
-		) {
-			// Use fsOperation for Acode registry URL
-			plugin = await fsOperation(pluginUrl).readFile(
-				undefined,
-				(loaded, total) => {
-					loaderDialog.setMessage(
-						`${strings.loading} ${((loaded / total) * 100).toFixed(2)}%`,
-					);
-				},
-			);
-		} else {
-			// cordova http plugin for others
-			plugin = await new Promise((resolve, reject) => {
-				cordova.plugin.http.sendRequest(
-					pluginUrl,
-					{
-						method: "GET",
-						responseType: "arraybuffer",
-					},
-					(response) => {
-						resolve(response.data);
-						loaderDialog.setMessage(`${strings.loading} 100%`);
-					},
-					(error) => {
-						reject(error);
+		try {
+			if (
+				pluginUrl.includes(config.API_BASE) ||
+				pluginUrl.startsWith("file:") ||
+				pluginUrl.startsWith("content:")
+			) {
+				// Use fsOperation for Acode registry URL
+				plugin = await fsOperation(pluginUrl).readFile(
+					undefined,
+					(loaded, total) => {
+						loaderDialog.setMessage(
+							`${strings.loading} ${((loaded / total) * 100).toFixed(2)}%`,
+						);
 					},
 				);
-			});
+			} else {
+				// cordova http plugin for others
+				try {
+					plugin = await new Promise((resolve, reject) => {
+						activeHttpReqId = cordova.plugin.http.sendRequest(
+							pluginUrl,
+							{
+								method: "GET",
+								responseType: "arraybuffer",
+							},
+							(response) => {
+								resolve(response.data);
+								loaderDialog.setMessage(`${strings.loading} 100%`);
+							},
+							(error) => {
+								reject(error);
+							},
+						);
+					});
+				} finally {
+					activeHttpReqId = null;
+				}
+			}
+		} catch (downloadError) {
+			// If cancellation is why this failed (e.g. the http request was
+			// aborted), surface our own clean message instead of whatever
+			// low-level error the abort produced.
+			throwIfCancelled();
+			throw downloadError;
 		}
+		// The fsOperation download path above has no abort hook, so a cancel
+		// requested mid-download can't interrupt it - but we stop here,
+		// before any extraction/writes happen, as soon as it settles.
+		throwIfCancelled();
 
 		if (plugin) {
 			const zip = new JSZip();
@@ -173,68 +223,78 @@ export default async function installPlugin(
 				await fsOperation(PLUGIN_DIR).createDirectory(id);
 			}
 
-			// Track unsafe absolute entries to skip
-			const ignoredUnsafeEntries = new Set();
+			// Manifest parsing and any dependency-confirmation dialog above
+			// can take a while (waiting on the user); re-check here so a
+			// cancel during that window stops us before we touch disk.
+			throwIfCancelled();
 
-			const files = Object.keys(zip.files);
-			const limit = 2;
-
-			async function processFile(file) {
-				try {
-					const entry = zip.files[file];
-
-					let correctFile = file.replace(/\\/g, "/");
-					const isDirEntry = entry.dir || correctFile.endsWith("/");
-
-					if (isUnsafeAbsolutePath(file)) {
-						ignoredUnsafeEntries.add(file);
-						return;
-					}
-
-					correctFile = sanitizeZipPath(correctFile, isDirEntry);
-					if (!correctFile) return;
-
-					const fileUrl = Url.join(pluginDir, correctFile);
-
-					// Handle directory entries
-					if (isDirEntry) {
-						await createFileRecursive(pluginDir, correctFile, true);
-						return;
-					}
-
-					// Ensure parent directory exists
-					const lastSlash = correctFile.lastIndexOf("/");
-					if (lastSlash !== -1) {
-						const parentRel = correctFile.slice(0, lastSlash + 1);
-						await createFileRecursive(pluginDir, parentRel, true);
-					}
-
-					if (!state.exists(correctFile)) {
-						await createFileRecursive(pluginDir, correctFile, false);
-					}
-
-					let data = await entry.async("ArrayBuffer");
-
-					if (file === "plugin.json") {
-						data = JSON.stringify(pluginJson);
-					}
-
-					if (!(await state.isUpdated(correctFile, data))) return;
-
-					await fsOperation(fileUrl).writeFile(data);
-				} catch (error) {
-					console.error(`Error processing file ${file}:`, error);
-				}
+			// Extract the archive natively instead of looping through zip
+			// entries on the JS thread in hardcoded batches of 2. The
+			// PluginInstaller Java plugin (src/plugins/pluginInstaller) does
+			// the unzip + disk I/O on Cordova's background thread pool, so
+			// there's no UI thread to babysit and therefore no need for an
+			// arbitrary batch-size limit - the whole archive is extracted in
+			// a single native call.
+			//
+			// The downloaded bytes are staged as a temp file first rather
+			// than base64-encoded through the bridge: that avoids ~33% size
+			// bloat plus holding multiple full copies of a potentially
+			// multi-MB archive in memory at once (ArrayBuffer + base64
+			// string + bridge JSON + decoded native byte[]).
+			const tempZipName = `plugin-install-${state.id}-${Date.now()}.zip`;
+			const tempZipUrl = Url.join(CACHE_STORAGE, tempZipName);
+			if (!(await fsOperation(tempZipUrl).exists())) {
+				await fsOperation(CACHE_STORAGE).createFile(tempZipName, plugin);
+			} else {
+				await fsOperation(tempZipUrl).writeFile(plugin);
 			}
 
-			// Process in batches
-			for (let i = 0; i < files.length; i += limit) {
-				const batch = files.slice(i, i + limit);
-				await Promise.allSettled(batch.map(processFile));
-
-				// Allow UI thread to breathe
-				await new Promise((r) => setTimeout(r, 0));
+			let extraction;
+			try {
+				// Stashed on the module so the loader's `oncancel` handler
+				// (set up when this install started) can call `.cancel()`
+				// on it and have the native side stop mid-extraction.
+				activeExtraction = PluginInstaller.extractZip(
+					tempZipUrl,
+					pluginDir,
+					JSON.stringify(pluginJson),
+					state.store,
+					(done, total) => {
+						if (isDependency || !total) return;
+						loaderDialog.setMessage(
+							`${strings.installing} ${Math.round((done / total) * 100)}%`,
+						);
+					},
+				);
+				extraction = await activeExtraction;
+			} finally {
+				activeExtraction = null;
+				fsOperation(tempZipUrl)
+					.delete()
+					.catch(() => {});
 			}
+
+			const {
+				store: updatedStore,
+				skippedUnsafe,
+				failed: failedEntries,
+			} = extraction;
+
+			state.updatedStore = updatedStore || {};
+
+			// Track unsafe absolute entries that were skipped natively
+			const ignoredUnsafeEntries = new Set(skippedUnsafe || []);
+
+			// Files that failed to read/write (oversized, I/O error, etc).
+			// Extraction continues past these rather than aborting the whole
+			// install, matching the old per-file try/catch behavior.
+			if (failedEntries?.length) {
+				console.warn(
+					"Plugin installer: failed to extract some archive entries:",
+					failedEntries,
+				);
+			}
+
 			// Emit a non-blocking warning if any unsafe entries were skipped
 			if (!isDependency && ignoredUnsafeEntries.size) {
 				const sample = Array.from(ignoredUnsafeEntries).slice(0, 3).join(", ");
@@ -279,114 +339,11 @@ export default async function installPlugin(
 	} finally {
 		if (!isDependency) {
 			loaderDialog.destroy();
+			installCancelled = false;
+			activeExtraction = null;
+			activeHttpReqId = null;
 		}
 	}
-}
-
-/**
- * Create directory recursively
- * @param {string} parent
- * @param {Array<string> | string} dir
- */
-async function createFileRecursive(parent, dir, shouldBeDirAtEnd) {
-	let wantDirEnd = !!shouldBeDirAtEnd;
-	/** @type {string[]} */
-	let parts;
-	if (typeof dir === "string") {
-		if (dir.endsWith("/")) wantDirEnd = true;
-		dir = dir.replace(/\\/g, "/");
-		parts = dir.split("/");
-	} else {
-		parts = dir;
-	}
-	parts = parts.filter((d) => d);
-	const cd = parts.shift();
-	if (!cd) return;
-	const newParent = Url.join(parent, cd);
-
-	const isLast = parts.length === 0;
-	const needDir = !isLast || wantDirEnd;
-	if (!(await fsOperation(newParent).exists())) {
-		if (needDir) {
-			try {
-				await fsOperation(parent).createDirectory(cd);
-			} catch (e) {
-				// If another concurrent task created it, consider it fine
-				if (!(await fsOperation(newParent).exists())) throw e;
-			}
-		} else {
-			try {
-				await fsOperation(parent).createFile(cd);
-			} catch (e) {
-				if (!(await fsOperation(newParent).exists())) throw e;
-			}
-		}
-	}
-	if (parts.length) {
-		await createFileRecursive(newParent, parts, wantDirEnd);
-	}
-}
-
-/**
- * Sanitize zip entry path to ensure it's relative and safe under pluginDir
- * - Normalizes separators to '/'
- * - Strips leading slashes and Windows drive prefixes (e.g., C:/)
- * - Resolves '.' and '..' segments
- * - Preserves trailing slash for directory entries
- * @param {string} p
- * @param {boolean} isDir
- * @returns {string} sanitized relative path
- */
-function sanitizeZipPath(p, isDir) {
-	if (!p) return "";
-	let path = String(p);
-	// Normalize separators
-	path = path.replace(/\\/g, "/");
-	// Remove URL-like scheme if present accidentally
-	path = path.replace(/^[a-zA-Z]+:\/\//, "");
-	// Strip leading slashes
-	path = path.replace(/^\/+/, "");
-	// Strip Windows drive letter, e.g., C:/
-	path = path.replace(/^[A-Za-z]:\//, "");
-
-	const parts = path.split("/");
-	const stack = [];
-	for (const part of parts) {
-		if (!part || part === ".") continue;
-		if (part === "..") {
-			if (stack.length) stack.pop();
-			continue;
-		}
-		stack.push(part);
-	}
-	let safe = stack.join("/");
-	if (isDir && safe && !safe.endsWith("/")) safe += "/";
-	return safe;
-}
-
-/**
- * Detects unsafe absolute paths in zip entries that should be ignored.
- * Treats leading '/' as absolute, Windows drive roots like 'C:/' as absolute,
- * and common Android/Linux device roots like '/data', '/root', '/system'.
- * @param {string} p
- */
-function isUnsafeAbsolutePath(p) {
-	if (!p) return false;
-	const s = String(p);
-	if (/^[A-Za-z]:[\\\/]/.test(s)) return true; // Windows drive root
-	if (s.startsWith("//")) return true; // network path
-	if (s.startsWith("/")) {
-		return (
-			s.startsWith("/data") ||
-			s.startsWith("/system") ||
-			s.startsWith("/vendor") ||
-			s.startsWith("/storage") ||
-			s.startsWith("/sdcard") ||
-			s.startsWith("/root") ||
-			true // any leading slash is unsafe
-		);
-	}
-	return false;
 }
 
 /**
