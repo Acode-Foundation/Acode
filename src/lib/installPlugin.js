@@ -280,20 +280,31 @@ export default async function installPlugin(
 				failed: failedEntries,
 			} = extraction;
 
+			// Any entry that failed to read/write makes this an incomplete
+			// extraction. Fail the whole install here rather than silently
+			// persisting a checksum store that's missing those entries:
+			// `state.save()` below would record that partial store, and
+			// `deleteRedundantFiles()` would then treat any *previously
+			// installed* copy of that same file as obsolete (since it's no
+			// longer in the store) and delete it - so a single failed file
+			// during an update could silently destroy a working plugin
+			// instead of just leaving it un-updated. Throwing here routes
+			// through the existing catch block below, which clears state
+			// and removes the (incomplete) plugin directory instead.
+			if (failedEntries?.length) {
+				throw new Error(
+					`Failed to extract ${failedEntries.length} file${
+						failedEntries.length === 1 ? "" : "s"
+					} from the plugin archive: ${failedEntries.slice(0, 5).join(", ")}${
+						failedEntries.length > 5 ? ", ..." : ""
+					}`,
+				);
+			}
+
 			state.updatedStore = updatedStore || {};
 
 			// Track unsafe absolute entries that were skipped natively
 			const ignoredUnsafeEntries = new Set(skippedUnsafe || []);
-
-			// Files that failed to read/write (oversized, I/O error, etc).
-			// Extraction continues past these rather than aborting the whole
-			// install, matching the old per-file try/catch behavior.
-			if (failedEntries?.length) {
-				console.warn(
-					"Plugin installer: failed to extract some archive entries:",
-					failedEntries,
-				);
-			}
 
 			// Emit a non-blocking warning if any unsafe entries were skipped
 			if (!isDependency && ignoredUnsafeEntries.size) {

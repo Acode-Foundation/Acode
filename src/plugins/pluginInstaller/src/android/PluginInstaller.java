@@ -300,12 +300,28 @@ public class PluginInstaller extends CordovaPlugin {
         return out.toByteArray();
     }
 
+    /**
+     * Writes content via a temp sibling file + atomic rename, so a write
+     * that fails partway through (disk full, I/O error) can never leave a
+     * corrupted, half-written file at the final path - either the previous
+     * content stays untouched, or the new content lands in one atomic swap.
+     */
     private void writeFile(File file, byte[] content) throws IOException {
         File parent = file.getParentFile();
         if (parent != null && !parent.exists()) parent.mkdirs();
 
-        try (FileOutputStream fos = new FileOutputStream(file)) {
+        File tmp = new File(parent, file.getName() + ".part-" + System.nanoTime());
+        try (FileOutputStream fos = new FileOutputStream(tmp)) {
             fos.write(content);
+            fos.getFD().sync();
+        } catch (IOException e) {
+            tmp.delete();
+            throw e;
+        }
+
+        if (!tmp.renameTo(file)) {
+            tmp.delete();
+            throw new IOException("Failed to move extracted file into place: " + file);
         }
     }
 
