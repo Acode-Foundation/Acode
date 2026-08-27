@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	executeConsoleCommand,
+	executeConsoleScript,
 	resolveConsoleExecutionContext,
 } from "lib/consoleRuntime";
 
@@ -48,5 +49,63 @@ describe("console execution context", () => {
 
 		expect(calls).toEqual([["page", 'document.querySelector("main")']]);
 		expect(result.value).toBe("live page");
+	});
+
+	it("loads Run-button scripts and executes them in the worker", async () => {
+		const calls = [];
+		const result = await executeConsoleScript({
+			scriptUrl: "example.js",
+			fetchScript: async (url, options) => {
+				calls.push(["fetch", url, options]);
+				return {
+					ok: true,
+					text: async () => "while (true) {}",
+				};
+			},
+			workerExecutor: {
+				execute(code) {
+					calls.push(["worker", code]);
+					return Promise.resolve({ type: "result" });
+				},
+			},
+		});
+
+		expect(calls).toEqual([
+			["fetch", "example.js", { cache: "no-store" }],
+			["worker", "while (true) {}"],
+		]);
+		expect(result).toEqual({ type: "result" });
+	});
+
+	it("does not load a script for an empty menu console", async () => {
+		let fetched = false;
+		const result = await executeConsoleScript({
+			scriptUrl: null,
+			fetchScript: async () => {
+				fetched = true;
+			},
+		});
+
+		expect(fetched).toBe(false);
+		expect(result).toBeNull();
+	});
+
+	it("returns a console error when a Run-button script cannot be loaded", async () => {
+		let executed = false;
+		const result = await executeConsoleScript({
+			scriptUrl: "missing.js",
+			fetchScript: async () => ({ ok: false, status: 404 }),
+			workerExecutor: {
+				execute() {
+					executed = true;
+				},
+			},
+		});
+
+		expect(executed).toBe(false);
+		expect(result).toMatchObject({
+			type: "error",
+			value: { message: "Failed to load JavaScript file (404)." },
+		});
 	});
 });

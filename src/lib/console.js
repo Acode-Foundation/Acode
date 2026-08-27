@@ -7,6 +7,7 @@ import loadPolyFill from "utils/polyfill";
 import ConsoleExecutor, {
 	applyConsoleViewport,
 	executeConsoleCommand,
+	executeConsoleScript,
 	resolveConsoleExecutionContext,
 } from "./consoleRuntime";
 
@@ -24,6 +25,9 @@ import ConsoleExecutor, {
 	const isStandaloneConsole = sessionStorage.getItem("__mode") === "console";
 	const themeEndpoint = document.querySelector(
 		'meta[name="acode-console-theme-endpoint"]',
+	)?.content;
+	const startupScriptUrl = document.querySelector(
+		'meta[name="acode-console-executing-script"]',
 	)?.content;
 	const originalConsole = console;
 	const $input = tag("textarea", {
@@ -184,6 +188,7 @@ import ConsoleExecutor, {
 
 		if (isStandaloneConsole) {
 			showConsole();
+			void runStartupScript();
 			return;
 		}
 
@@ -203,6 +208,21 @@ import ConsoleExecutor, {
 		if (themeSyncTimer === null) return;
 		clearInterval(themeSyncTimer);
 		themeSyncTimer = null;
+	}
+
+	async function runStartupScript() {
+		if (!startupScriptUrl) return;
+
+		setExecutionState(true);
+		const result = await executeConsoleScript({
+			scriptUrl: startupScriptUrl,
+			workerExecutor: executor,
+		});
+		setExecutionState(false);
+
+		if (result?.type === "error") {
+			log("error", getStack(new Error()), result.value);
+		}
 	}
 
 	async function syncTheme() {

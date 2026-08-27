@@ -184,3 +184,34 @@ export function executeConsoleCommand({
 	if (context === "page") return Promise.resolve(pageExecutor(code));
 	return workerExecutor.execute(code);
 }
+
+/**
+ * Loads a standalone JavaScript file and executes it in the isolated console
+ * worker. The file is fetched first so it is never inserted as a page script.
+ */
+export async function executeConsoleScript({
+	scriptUrl,
+	workerExecutor,
+	fetchScript = globalThis.fetch,
+}) {
+	if (!scriptUrl) return null;
+
+	try {
+		if (typeof fetchScript !== "function") {
+			throw new Error("This WebView cannot load the JavaScript file.");
+		}
+
+		const response = await fetchScript(scriptUrl, { cache: "no-store" });
+		if (!response.ok) {
+			const status = response.status ? ` (${response.status})` : "";
+			throw new Error(`Failed to load JavaScript file${status}.`);
+		}
+
+		return workerExecutor.execute(await response.text());
+	} catch (error) {
+		return {
+			type: "error",
+			value: error instanceof Error ? error : new Error(String(error)),
+		};
+	}
+}

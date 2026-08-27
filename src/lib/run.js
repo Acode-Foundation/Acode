@@ -72,7 +72,7 @@ async function run(
 	let isLoading = false;
 	let filename, pathName, extension;
 	let port = appSettings.value.serverPort;
-	let EXECUTING_SCRIPT = uuid + "_script.js";
+	let EXECUTING_SCRIPT = null;
 	const MIMETYPE_HTML = mimeType.lookup("html");
 	const CONSOLE_SCRIPT = uuid + "_console.js";
 	const CONSOLE_WORKER_SCRIPT = uuid + "_console_worker.js";
