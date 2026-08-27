@@ -122,7 +122,7 @@ export default async function PluginInclude(
 			);
 			const iconData = await fsOperation(iconUrl).readFile();
 			const iconMimeType =
-				mimeTypes.lookup(installedPlugin.icon) || "application/octet-stream";
+				mimeTypes.lookup(installedPlugin.icon) || "image/png";
 			const icon = URL.createObjectURL(
 				new Blob([iconData], { type: iconMimeType }),
 			);
