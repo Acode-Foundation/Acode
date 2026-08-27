@@ -72,10 +72,13 @@ async function run(
 	let isLoading = false;
 	let filename, pathName, extension;
 	let port = appSettings.value.serverPort;
-	let EXECUTING_SCRIPT = null;
+	let shouldExecuteScript = false;
 	const MIMETYPE_HTML = mimeType.lookup("html");
 	const CONSOLE_SCRIPT = uuid + "_console.js";
 	const CONSOLE_WORKER_SCRIPT = uuid + "_console_worker.js";
+	// Keep this route independent of the filename because characters such as
+	// "#" and "?" change how browsers parse a URL.
+	const EXECUTING_SCRIPT = uuid + "_script.js";
 	const CONSOLE_THEME_STYLE = uuid + "_console_theme.css";
 	const MARKDOWN_STYLE = uuid + "_md.css";
 	const queue = [];
@@ -143,7 +146,7 @@ async function run(
 	}
 
 	function runConsole() {
-		if (!isConsole) EXECUTING_SCRIPT = activeFile.filename;
+		if (!isConsole) shouldExecuteScript = true;
 		isConsole = true;
 		target = "inapp";
 		filename = "console.html";
@@ -253,7 +256,7 @@ async function run(
 							CONSOLE_WORKER_SCRIPT,
 							CONSOLE_THEME_STYLE,
 							CONSOLE_THEME_STATE,
-							EXECUTING_SCRIPT,
+							EXECUTING_SCRIPT: shouldExecuteScript ? EXECUTING_SCRIPT : null,
 							APP_THEME_TYPE: getConsoleThemeSnapshot().type,
 						}),
 						reqId,
