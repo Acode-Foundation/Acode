@@ -106,7 +106,7 @@ jobs:
           allow-unsafe-pr-checkout: ${{ !!(inputs.is_PR && inputs.PR_NUMBER && github.event.pull_request.head.sha) }}
 
       - name: Setup Java
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
