@@ -629,12 +629,7 @@ async function loadApp() {
 			$mainMenu.removeEventListener("click", handleMenu);
 			$mainMenu.destroy();
 		}
-		const { openFileListPos, fullscreen } = settings.value;
-		if (openFileListPos === settings.OPEN_FILE_LIST_POS_BOTTOM && fullscreen) {
-			$mainMenu = createMainMenu({ bottom: "6px", toggler: $menuToggler });
-		} else {
-			$mainMenu = createMainMenu({ top: "6px", toggler: $menuToggler });
-		}
+		$mainMenu = createMainMenu({ top: "6px", toggler: $menuToggler });
 		$mainMenu.addEventListener("click", handleMenu);
 	};
 
@@ -643,12 +638,7 @@ async function loadApp() {
 			$fileMenu.removeEventListener("click", handleMenu);
 			$fileMenu.destroy();
 		}
-		const { openFileListPos, fullscreen } = settings.value;
-		if (openFileListPos === settings.OPEN_FILE_LIST_POS_BOTTOM && fullscreen) {
-			$fileMenu = createFileMenu({ bottom: "6px", toggler: $editMenuToggler });
-		} else {
-			$fileMenu = createFileMenu({ top: "6px", toggler: $editMenuToggler });
-		}
+		$fileMenu = createFileMenu({ top: "6px", toggler: $editMenuToggler });
 		$fileMenu.addEventListener("click", handleMenu);
 	};
 
