@@ -56,7 +56,7 @@ jobs:
         id: vars
         env:
           INPUT_TAG: ${{ github.event.release.tag_name || inputs.tag_name }}
-          INPUT_URL: ${{ github.event.release.url || inputs.url }}
+          INPUT_URL: ${{ github.event.release.html_url || inputs.url }}
           INPUT_BODY: ${{ github.event.release.body || inputs.body }}
         run: |
           TAG="$INPUT_TAG"
@@ -68,7 +68,12 @@ jobs:
           # Escape problematic characters for MarkdownV2 (very conservative escaping)
           # We escape: _ * [ ] ( ) ~ ` > # + - = | { } . ! \
           BODY_SAFE=$(printf '%s' "$INPUT_BODY" | \
-            sed 's/[_*[\]()~`>#+=|{}.!\\-]/\\&/g')
+            sed -E \
+                -e 's/^[[:space:]]*##[[:space:]]*//' \
+                -e 's/^[[:space:]]*\*[[:space:]]+/- /' \
+                -e 's/\*\*([^*]*)\*\*/\*\1\*/g' \
+                -e 's/\\!/!/g' \
+                -e 's/@([A-Za-z0-9-]+)/＠\1/g')
           TAG_SAFE=$(printf '%s' "$TAG" | sed 's/[_*[\]()~`>#+=|{}.!\\-]/\\&/g')
 
           if [[ "$TAG" == *"-nightly"* ]]; then
