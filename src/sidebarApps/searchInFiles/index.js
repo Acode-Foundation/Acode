@@ -693,15 +693,27 @@ async function readSearchFileContent(uri) {
 	if (helpers.isBinary(uri)) return "";
 
 	const editorFile = editorManager.getFile(uri, "uri");
-	if (editorFile?.loaded && editorFile.session?.doc) {
+	const editorDocument = getSearchEditorDocument(editorFile);
+	if (editorDocument) {
 		try {
-			return getDocText(editorFile.session.doc);
+			return getDocText(editorDocument);
 		} catch (_) {
 			return "";
 		}
 	}
 
 	return fsOperation(uri).readFile(settings.value.defaultFileEncoding);
+}
+
+function getSearchEditorDocument(file) {
+	const document = file?.session?.doc;
+	if (!document) return null;
+	if (file.loaded) return document;
+
+	// Remote files can expose non-empty unsaved recovery text while their source
+	// is still loading. An inactive restored tab instead has an empty placeholder.
+	if (file.loading && file.isUnsaved && document.length > 0) return document;
+	return null;
 }
 
 function supportsNativeSearch(url = "") {
@@ -819,9 +831,10 @@ function getOpenFileOverlays() {
 	const overlays = {};
 	editorManager.files.forEach((file) => {
 		if (!file.uri || !supportsNativeSearch(file.uri)) return;
-		if (!file.loaded || !file.session?.doc) return;
+		const editorDocument = getSearchEditorDocument(file);
+		if (!editorDocument) return;
 		try {
-			overlays[file.uri] = getDocText(file.session.doc);
+			overlays[file.uri] = getDocText(editorDocument);
 		} catch (_) {
 			// ignore invalid editor docs
 		}
