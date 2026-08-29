@@ -187,6 +187,34 @@ const langMap = {
 	},
 };
 
+const intlLocaleOverrides = {
+	"ir-fa": "fa-IR",
+	"mm-unicode": "my-MM",
+	"mm-zawgyi": "my-MM",
+	"pu-in": "pa-IN",
+};
+const rtlLanguages = new Set(["ar", "fa", "he"]);
+
+export function getIntlLocale(code) {
+	const normalizedCode = code?.toLowerCase();
+	const locale =
+		intlLocaleOverrides[normalizedCode] ||
+		(normalizedCode in langMap
+			? normalizedCode
+			: globalThis.navigator?.language || "en-US");
+
+	try {
+		return Intl.getCanonicalLocales(locale)[0];
+	} catch {
+		return "en-US";
+	}
+}
+
+export function getLocaleDirection(locale) {
+	const language = locale?.split("-")[0]?.toLowerCase();
+	return rtlLanguages.has(language) ? "rtl" : "ltr";
+}
+
 export default {
 	async set(code) {
 		code = code?.toLowerCase();

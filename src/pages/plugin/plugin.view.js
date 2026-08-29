@@ -6,13 +6,27 @@ import dayjsRelativeTime from "dayjs/esm/plugin/relativeTime";
 import dayjsUpdateLocale from "dayjs/esm/plugin/updateLocale";
 import dayjsUtc from "dayjs/esm/plugin/utc";
 import alert from "dialogs/alert";
+import confirm from "dialogs/confirm";
 import DOMPurify from "dompurify";
 import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
 import auth, { loginEvents } from "lib/auth";
 import config from "lib/config";
+import { getIntlLocale, getLocaleDirection } from "lib/lang";
+import settings from "lib/settings";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
+import {
+	formatReviewDate,
+	getRatingClass,
+	getRatingLabel,
+	hasReviewChanged,
+	partitionPluginReviews,
+	REVIEW_MAX_COMMENT_LENGTH,
+	resolveReviewAvatarUrl,
+	updateReviewStats,
+	validateReviewDraft,
+} from "./reviewUtils";
 
 dayjs.extend(dayjsRelativeTime);
 dayjs.extend(dayjsUtc);
@@ -68,7 +82,16 @@ export default (props) => {
 		unsupportedEditor,
 	} = props;
 
-	let rating = "unrated";
+	let reviewStats = {
+		votesUp: Number(votesUp) || 0,
+		votesDown: Number(votesDown) || 0,
+		commentCount: Number(commentCount) || 0,
+	};
+	let rating = getRatingLabel(reviewStats.votesUp, reviewStats.votesDown);
+	const getRatingText = () =>
+		rating === "unrated" ? strings["plugin-review:unrated"] : rating;
+	const ratingValueRef = Ref();
+	const commentCountRef = Ref();
 
 	const keywords =
 		typeof keywordsRaw === "string" ? JSON.parse(keywordsRaw) : keywordsRaw;
@@ -77,10 +100,14 @@ export default (props) => {
 			? JSON.parse(contributorsRaw)
 			: contributorsRaw;
 
-	if (votesUp || votesDown) {
-		rating = `${Math.round((votesUp / (votesUp + votesDown)) * 100)}%`;
-	}
 	const showPurchaseWarning = !helpers.shouldAllowExternalPurchase();
+	const applyReviewStats = (nextStats) => {
+		reviewStats = nextStats;
+		rating = getRatingLabel(reviewStats.votesUp, reviewStats.votesDown);
+		ratingValueRef.textContent = getRatingText();
+		ratingValueRef.className = getRatingClass(rating);
+		commentCountRef.textContent = reviewStats.commentCount;
+	};
 
 	const formatUpdatedDate = (dateString) => {
 		if (!dateString) return null;
@@ -158,18 +185,25 @@ export default (props) => {
 							</div>
 							<div className="metric">
 								<i className="icon like-solid"></i>
-								<span
-									className={`rating-value ${rating === "unrated" ? "" : rating.replace("%", "") >= 80 ? "rating-high" : rating.replace("%", "") >= 50 ? "rating-medium" : "rating-low"}`}
-								>
-									{rating}
+								<span ref={ratingValueRef} className={getRatingClass(rating)}>
+									{getRatingText()}
 								</span>
 							</div>
 							<div
 								className="metric"
-								onclick={showReviews.bind(null, id, author)}
+								onclick={() =>
+									showReviews({
+										pluginId: id,
+										author,
+										stats: reviewStats,
+										onStatsChange: applyReviewStats,
+									})
+								}
 							>
 								<i className="icon chat_bubble"></i>
-								<span className="metric-value">{commentCount}</span>
+								<span ref={commentCountRef} className="metric-value">
+									{reviewStats.commentCount}
+								</span>
 								<span>{strings.reviews}</span>
 							</div>
 						</div>
@@ -449,10 +483,28 @@ function Version({
 	);
 }
 
-async function showReviews(pluginId, author) {
+async function showReviews({ pluginId, author, stats, onStatsChange }) {
+	const locale = getIntlLocale(settings.value?.lang);
 	const mask = Ref();
 	const body = Ref();
+	const composer = Ref();
 	const container = Ref();
+	const state = {
+		busy: false,
+		closed: false,
+		draftComment: "",
+		draftDirty: false,
+		draftVote: 0,
+		editorError: "",
+		expanded: false,
+		reviewListError: null,
+		reviews: [],
+		resumeDraftAfterSignIn: false,
+		stats: { ...stats },
+		user: null,
+		userReview: null,
+	};
+	let removeDragListeners = () => {};
 
 	actionStack.push({
 		id: "reviews",
@@ -468,50 +520,574 @@ async function showReviews(pluginId, author) {
 		></span>,
 	);
 	app.append(
-		<div ref={container} className="reviews-container">
-			<div className="reviews-header" ontouchstart={ontouchstart}></div>
-			<div className="write-review">
-				<a
-					style={{ textDecoration: "none", display: "flex" }}
-					href={Url.join(config.API_BASE, `../plugin/${pluginId}/comments`)}
-				>
-					<span className="icon edit"></span>
-					<span className="title">Review</span>
-				</a>
+		<div
+			ref={container}
+			className="reviews-container"
+			role="dialog"
+			aria-modal="true"
+			aria-label={strings["plugin-review:dialog-label"]}
+			dir={getLocaleDirection(locale)}
+		>
+			<div className="reviews-header" ontouchstart={ontouchstart}>
+				<span className="reviews-drag-handle"></span>
+				<strong>{strings.reviews}</strong>
+				<button
+					type="button"
+					className="reviews-close icon clearclose"
+					aria-label={strings.close}
+					title={strings.close}
+					onclick={closeReviews}
+				></button>
 			</div>
+			<div ref={composer} className="review-composer loading"></div>
 			<div ref={body} className="reviews-body loading"></div>
 		</div>,
 	);
 
-	try {
-		const reviews = await fsOperation(
-			config.API_BASE,
-			`/comments/${pluginId}`,
-		).readFile("json");
-		if (!reviews.length) {
-			body.style.textAlign = "center";
-			body.textContent = "No reviews yet";
+	await initialize();
+
+	async function initialize() {
+		composer.el.classList.add("loading");
+		body.el.classList.add("loading");
+		state.reviewListError = null;
+
+		const [reviewsResult, userResult] = await Promise.allSettled([
+			loadReviews(),
+			auth.getLoggedInUser(),
+		]);
+		if (state.closed) return;
+
+		if (reviewsResult.status === "fulfilled") {
+			state.reviews = reviewsResult.value;
+		} else {
+			state.reviewListError = reviewsResult.reason;
+		}
+
+		if (userResult.status === "fulfilled") {
+			state.user = userResult.value;
+			if (state.user) {
+				const { ownReview: listedReview } = partitionPluginReviews(
+					state.reviews,
+					null,
+					state.user.id,
+				);
+				try {
+					state.userReview = (await loadUserReview()) || listedReview || null;
+				} catch {
+					state.userReview = listedReview || null;
+				}
+			}
+		} else {
+			state.editorError = strings["plugin-review:account-check-failed"];
+		}
+
+		composer.el.classList.remove("loading");
+		body.el.classList.remove("loading");
+		renderComposer();
+		renderReviews();
+	}
+
+	function renderComposer({ focus = false } = {}) {
+		if (state.closed) return;
+		composer.el.classList.remove("loading");
+		composer.el.classList.remove("review-composer-hidden");
+
+		if (!state.user) {
+			const errorMessage = state.editorError;
+			composer.el.replaceChildren(
+				<div className="review-sign-in review-entry-surface">
+					<span
+						className="review-avatar icon user-round"
+						aria-hidden="true"
+					></span>
+					<div className="review-sign-in-content">
+						<button
+							type="button"
+							className="review-add-button"
+							disabled={state.busy}
+							onclick={signIn}
+						>
+							{state.busy
+								? strings["loading..."]
+								: strings["plugin-review:sign-in"]}
+						</button>
+						{errorMessage ? (
+							<small className="review-error">{errorMessage}</small>
+						) : null}
+					</div>
+				</div>,
+			);
 			return;
 		}
 
-		reviews.forEach((review) => {
-			if (!review.comment) return;
-			review.author = author;
-			body.append(<Review {...review} />);
+		if (!state.expanded && state.userReview) {
+			composer.el.replaceChildren();
+			composer.el.classList.add("review-composer-hidden");
+			return;
+		}
+
+		if (!state.expanded) {
+			composer.el.replaceChildren(
+				<div className="review-add-row review-entry-surface">
+					<ReviewAvatar user={state.user} />
+					<button
+						type="button"
+						className="review-add-button"
+						onclick={openEditor}
+					>
+						{state.userReview
+							? strings["plugin-review:edit"]
+							: strings["plugin-review:add"]}
+					</button>
+				</div>,
+			);
+			return;
+		}
+
+		const textarea = Ref();
+		const counter = Ref();
+		const error = Ref();
+		const saveButton = Ref();
+		const upButton = Ref();
+		const upIcon = Ref();
+		const downButton = Ref();
+		const downIcon = Ref();
+
+		composer.el.replaceChildren(
+			<div className="review-editor review-entry-surface">
+				<div className="review-editor-main">
+					<ReviewAvatar user={state.user} />
+					<div className="review-editor-fields">
+						<textarea
+							ref={textarea}
+							rows="1"
+							maxlength={REVIEW_MAX_COMMENT_LENGTH}
+							placeholder={strings["plugin-review:placeholder"]}
+							aria-label={strings["plugin-review:input-label"]}
+							oninput={(event) => {
+								state.draftComment = event.target.value;
+								state.draftDirty = true;
+								state.editorError = "";
+								autosizeReviewInput(event.target);
+								updateEditorState();
+							}}
+						>
+							{state.draftComment}
+						</textarea>
+						<div className="review-editor-meta">
+							<small ref={error} className="review-error"></small>
+							<small ref={counter} className="review-counter"></small>
+						</div>
+					</div>
+				</div>
+				<div className="review-editor-actions">
+					<div
+						className="review-vote-actions"
+						role="group"
+						aria-label={strings["plugin-review:vote-group-label"]}
+					>
+						<button
+							ref={upButton}
+							type="button"
+							className="review-vote-button"
+							aria-label={strings["plugin-review:thumbs-up"]}
+							onclick={() => toggleVote(1)}
+						>
+							<span ref={upIcon} className="icon like"></span>
+						</button>
+						<button
+							ref={downButton}
+							type="button"
+							className="review-vote-button review-vote-down"
+							aria-label={strings["plugin-review:thumbs-down"]}
+							onclick={() => toggleVote(-1)}
+						>
+							<span ref={downIcon} className="icon like"></span>
+						</button>
+					</div>
+					<div className="review-form-actions">
+						{state.userReview ? (
+							<button
+								type="button"
+								className="review-delete-button icon delete_outline"
+								aria-label={strings["plugin-review:delete"]}
+								title={strings["plugin-review:delete"]}
+								disabled={state.busy}
+								onclick={deleteReview}
+							></button>
+						) : null}
+						<button
+							type="button"
+							className="review-cancel-button"
+							disabled={state.busy}
+							onclick={cancelEditor}
+						>
+							{strings.cancel}
+						</button>
+						<button
+							ref={saveButton}
+							type="button"
+							className="review-save-button"
+							onclick={saveReview}
+						>
+							{state.userReview ? strings.update : strings.save}
+						</button>
+					</div>
+				</div>
+			</div>,
+		);
+
+		textarea.el.value = state.draftComment;
+		autosizeReviewInput(textarea.el);
+		updateEditorState();
+		if (focus) requestAnimationFrame(() => textarea.el.focus());
+
+		function toggleVote(vote) {
+			state.draftVote = state.draftVote === vote ? 0 : vote;
+			state.draftDirty = true;
+			state.editorError = "";
+			updateEditorState();
+		}
+
+		function updateEditorState() {
+			const validation = validateReviewDraft({
+				comment: state.draftComment,
+				vote: state.draftVote,
+			});
+			const unchanged = !hasReviewChanged(state.userReview, validation);
+			const validationMessage =
+				state.draftDirty && validation.errorKey
+					? getReviewString(validation.errorKey, {
+							max: REVIEW_MAX_COMMENT_LENGTH,
+						})
+					: "";
+
+			counter.textContent = `${state.draftComment.length}/${REVIEW_MAX_COMMENT_LENGTH}`;
+			error.textContent = state.editorError || validationMessage;
+			upButton.el.classList.toggle("selected", state.draftVote === 1);
+			downButton.el.classList.toggle("selected", state.draftVote === -1);
+			upButton.el.setAttribute("aria-pressed", state.draftVote === 1);
+			downButton.el.setAttribute("aria-pressed", state.draftVote === -1);
+			upIcon.className = `icon ${state.draftVote === 1 ? "like-solid" : "like"}`;
+			downIcon.className = `icon ${state.draftVote === -1 ? "like-solid" : "like"}`;
+			saveButton.disabled = Boolean(
+				validation.errorKey || unchanged || state.busy,
+			);
+			saveButton.textContent = state.busy
+				? strings["loading..."]
+				: state.userReview
+					? strings.update
+					: strings.save;
+		}
+	}
+
+	function renderReviews() {
+		if (state.closed) return;
+		body.el.classList.remove("loading");
+
+		if (state.reviewListError) {
+			body.el.replaceChildren(
+				<div className="reviews-state">
+					<span>{strings["plugin-review:load-failed"]}</span>
+					<button type="button" onclick={retryReviews}>
+						{strings["plugin-review:retry"]}
+					</button>
+				</div>,
+			);
+			return;
+		}
+
+		const { ownReview, communityReviews } = partitionPluginReviews(
+			state.reviews,
+			state.userReview,
+			state.user?.id,
+		);
+		const showOwnReview = Boolean(ownReview && !state.expanded);
+
+		if (!showOwnReview && !communityReviews.length && !state.expanded) {
+			body.el.replaceChildren(
+				<div className="reviews-state reviews-empty">
+					<span className="icon chat_bubble"></span>
+					<strong>{strings["plugin-review:empty-title"]}</strong>
+					<small>{strings["plugin-review:empty-description"]}</small>
+				</div>,
+			);
+			return;
+		}
+
+		const sections = [];
+		if (showOwnReview) {
+			sections.push(
+				<section className="reviews-section own-review-section">
+					<div className="reviews-section-label">
+						{strings["plugin-review:yours"]}
+					</div>
+					<div className="reviews-card own-review-card">
+						<Review
+							{...ownReview}
+							name={ownReview.name || state.user?.name}
+							github={ownReview.github || state.user?.github}
+							avatar_url={ownReview.avatar_url || state.user?.avatar_url}
+							author={author}
+							isOwn={true}
+							onEdit={openEditor}
+							locale={locale}
+						/>
+					</div>
+				</section>,
+			);
+		}
+
+		sections.push(
+			<section className="reviews-section community-reviews-section">
+				<div className="reviews-section-label">
+					{strings["plugin-review:community"]}
+				</div>
+				{communityReviews.length ? (
+					<div className="reviews-card">
+						{communityReviews.map((review) => (
+							<Review {...review} author={author} locale={locale} />
+						))}
+					</div>
+				) : (
+					<div className="reviews-card reviews-community-empty">
+						<small>{strings["plugin-review:no-other-reviews"]}</small>
+					</div>
+				)}
+			</section>,
+		);
+
+		body.el.replaceChildren(...sections);
+	}
+
+	function openEditor() {
+		state.draftComment = state.userReview?.comment || "";
+		state.draftVote = state.userReview?.vote || 0;
+		state.draftDirty = false;
+		state.editorError = "";
+		state.expanded = true;
+		state.resumeDraftAfterSignIn = false;
+		renderComposer({ focus: true });
+		renderReviews();
+	}
+
+	function cancelEditor() {
+		if (state.busy) return;
+		state.expanded = false;
+		state.editorError = "";
+		state.resumeDraftAfterSignIn = false;
+		renderComposer();
+		renderReviews();
+	}
+
+	async function signIn() {
+		if (state.busy) return;
+		state.busy = true;
+		state.editorError = "";
+		renderComposer();
+
+		try {
+			await auth.login();
+			const user = await auth.getLoggedInUser(true);
+			if (!user) {
+				state.busy = false;
+				state.editorError = strings["plugin-review:login-incomplete"];
+				renderComposer();
+				return;
+			}
+			state.user = user;
+			const { ownReview: listedReview } = partitionPluginReviews(
+				state.reviews,
+				null,
+				state.user.id,
+			);
+			state.userReview = await loadUserReview().catch(
+				() => listedReview || null,
+			);
+			state.busy = false;
+			if (state.resumeDraftAfterSignIn) {
+				state.resumeDraftAfterSignIn = false;
+				state.editorError = "";
+				state.expanded = true;
+				renderComposer({ focus: true });
+				renderReviews();
+			} else {
+				openEditor();
+			}
+		} catch {
+			state.busy = false;
+			state.editorError = strings["plugin-review:sign-in-failed"];
+			renderComposer();
+		}
+	}
+
+	async function saveReview() {
+		if (state.busy) return;
+		const review = validateReviewDraft({
+			comment: state.draftComment,
+			vote: state.draftVote,
 		});
-	} catch (error) {
-		body.textContent = error.message;
-	} finally {
-		body.classList.remove("loading");
+		if (review.errorKey || !hasReviewChanged(state.userReview, review)) return;
+
+		state.busy = true;
+		state.editorError = "";
+		renderComposer();
+
+		try {
+			const result = await requestJson(Url.join(config.API_BASE, "comment"), {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					plugin_id: pluginId,
+					comment: review.comment,
+					vote: review.vote,
+				}),
+			});
+			const previousReview = state.userReview;
+			state.userReview = {
+				...previousReview,
+				id: result.id,
+				plugin_id: pluginId,
+				user_id: state.user.id,
+				name: state.user.name,
+				github: state.user.github,
+				comment: result.comment,
+				vote: result.vote,
+				updated_at: new Date().toISOString(),
+			};
+			state.reviews = [
+				state.userReview,
+				...state.reviews.filter(
+					(item) =>
+						item.id !== state.userReview.id && item.user_id !== state.user.id,
+				),
+			];
+			state.stats = updateReviewStats(
+				state.stats,
+				previousReview,
+				state.userReview,
+			);
+			onStatsChange(state.stats);
+			state.busy = false;
+			state.expanded = false;
+			state.editorError = "";
+			state.resumeDraftAfterSignIn = false;
+			renderComposer();
+			renderReviews();
+			toast(strings.success);
+		} catch (error) {
+			state.busy = false;
+			if (error.status === 401) {
+				state.user = null;
+				state.expanded = false;
+				state.resumeDraftAfterSignIn = true;
+				state.editorError = strings["plugin-review:session-expired-review"];
+				renderComposer();
+			} else {
+				state.editorError = strings["plugin-review:save-failed"];
+				renderComposer({ focus: true });
+			}
+		}
+	}
+
+	async function deleteReview() {
+		if (state.busy || !state.userReview?.id) return;
+		const approved = await confirm(
+			strings.delete,
+			strings["plugin-review:delete-confirmation"],
+			false,
+			{
+				direction: getLocaleDirection(locale),
+				aboveOverlay: true,
+			},
+		);
+		if (!approved || state.closed) return;
+
+		state.busy = true;
+		state.editorError = "";
+		renderComposer();
+
+		try {
+			const previousReview = state.userReview;
+			await requestJson(
+				Url.join(config.API_BASE, "comment", previousReview.id),
+				{
+					method: "DELETE",
+					headers: { "Content-Type": "application/json" },
+				},
+			);
+			state.reviews = state.reviews.filter(
+				(item) =>
+					item.id !== previousReview.id && item.user_id !== state.user.id,
+			);
+			state.stats = updateReviewStats(state.stats, previousReview, null);
+			onStatsChange(state.stats);
+			state.userReview = null;
+			state.busy = false;
+			state.expanded = false;
+			renderComposer();
+			renderReviews();
+			toast(strings.success);
+		} catch (error) {
+			state.busy = false;
+			if (error.status === 401) {
+				state.user = null;
+				state.expanded = false;
+				state.editorError = strings["plugin-review:session-expired-continue"];
+				renderComposer();
+			} else {
+				state.editorError = strings["plugin-review:delete-failed"];
+				renderComposer({ focus: true });
+			}
+		}
+	}
+
+	async function retryReviews() {
+		body.el.classList.add("loading");
+		state.reviewListError = null;
+		try {
+			state.reviews = await loadReviews();
+		} catch (error) {
+			state.reviewListError = error;
+		} finally {
+			renderReviews();
+		}
+	}
+
+	function loadReviews() {
+		return fsOperation(config.API_BASE, `/comments/${pluginId}`).readFile(
+			"json",
+		);
+	}
+
+	async function loadUserReview() {
+		const review = await requestJson(
+			Url.join(config.API_BASE, "user", "comment", pluginId),
+		);
+		return review?.id ? review : null;
+	}
+
+	async function requestJson(url, options) {
+		const response = await fetch(url, options);
+		const result = await response.json().catch(() => ({}));
+		if (!response.ok) {
+			const error = new Error();
+			error.status = response.status;
+			throw error;
+		}
+		return result;
 	}
 
 	function closeReviews() {
+		if (state.closed) return;
+		state.closed = true;
+		removeDragListeners();
 		actionStack.remove("reviews");
-		container.classList.add("hide");
+		container.el.classList.add("hide");
 
 		setTimeout(() => {
-			mask.el.remove();
-			container.el.remove();
+			mask.el?.remove();
+			container.el?.remove();
 		}, 300);
 	}
 
@@ -519,32 +1095,38 @@ async function showReviews(pluginId, author) {
 	 * @param {TouchEvent} e
 	 */
 	function ontouchstart(e) {
+		if (state.closed || e.touches.length !== 1) return;
+		removeDragListeners();
 		const { clientY } = e.touches[0];
 		const { top } = container.el.getBoundingClientRect();
 		const y = clientY - top;
 		let dy = 0;
 
-		container.style.transition = "none";
+		container.el.style.transition = "none";
 		document.addEventListener("touchmove", ontouchmove);
 		document.addEventListener("touchend", ontouchend);
 		document.addEventListener("touchcancel", ontouchend);
+		removeDragListeners = () => {
+			document.removeEventListener("touchmove", ontouchmove);
+			document.removeEventListener("touchend", ontouchend);
+			document.removeEventListener("touchcancel", ontouchend);
+		};
 
 		function ontouchmove(e) {
+			if (e.touches.length !== 1) return;
 			const { clientY } = e.touches[0];
 			dy = clientY - top - y;
 
 			if (dy < 0) dy = 0;
 
-			container.style.transform = `translateY(${dy}px)`;
+			container.el.style.transform = `translateY(${dy}px)`;
 		}
 
 		function ontouchend() {
-			document.removeEventListener("touchmove", ontouchmove);
-			document.removeEventListener("touchend", ontouchend);
-			document.removeEventListener("touchcancel", ontouchcancel);
+			removeDragListeners();
 			if (dy < 100) {
-				container.style.transition = "transform 0.3s ease-in-out";
-				container.style.transform = "translateY(0)";
+				container.el.style.transition = "transform 0.3s ease-in-out";
+				container.el.style.transform = "translateY(0)";
 				return;
 			}
 			closeReviews();
@@ -552,50 +1134,102 @@ async function showReviews(pluginId, author) {
 	}
 }
 
+function ReviewAvatar({ user, className = "review-avatar" }) {
+	const avatarUrl = resolveReviewAvatarUrl(user);
+	return (
+		<span className={`${className} icon user-round`} aria-hidden="true">
+			{avatarUrl ? (
+				<img
+					src={avatarUrl}
+					alt=""
+					onerror={(event) => event.currentTarget.remove()}
+				/>
+			) : null}
+		</span>
+	);
+}
+
+function autosizeReviewInput(textarea) {
+	textarea.style.height = "auto";
+	textarea.style.height = `${Math.min(textarea.scrollHeight, 144)}px`;
+}
+
+function getReviewString(key, replacements = {}) {
+	let value = strings[key] || key;
+	for (const [name, replacement] of Object.entries(replacements)) {
+		value = value.replaceAll(`{${name}}`, String(replacement));
+	}
+	return value;
+}
+
 function Review({
 	name,
 	github,
+	avatar_url: avatarUrl,
+	updated_at: updatedAt,
 	vote,
 	comment,
 	author,
 	author_reply: authorReply,
+	isOwn,
+	onEdit,
+	locale,
 }) {
-	let dp = Url.join(config.API_BASE, `../user.png`);
-	let voteImage = Ref();
-	let review = Ref();
-
-	if (github) {
-		dp = `https://avatars.githubusercontent.com/${github}`;
-	}
-
-	if (vote === 1) {
-		voteImage.style.backgroundImage = `url(${Url.join(config.API_BASE, `../thumbs-up.gif`)})`;
-	} else if (vote === -1) {
-		voteImage.style.backgroundImage = `url(${Url.join(config.API_BASE, `../thumbs-down.gif`)})`;
-	}
-
-	if (authorReply) {
-		setTimeout(() => {
-			review.append(
+	const reviewDate = formatReviewDate(updatedAt, Date.now(), locale);
+	const hasComment = typeof comment === "string" && Boolean(comment.trim());
+	return (
+		<article className={`review ${isOwn ? "own-review" : ""}`}>
+			<div title={name} className="review-author">
+				<ReviewAvatar
+					user={{ avatar_url: avatarUrl, github }}
+					className="user-profile"
+				/>
+				<span className="review-author-identity">
+					<span className="user-name">
+						{name}
+						{isOwn ? <small>{strings["plugin-review:you"]}</small> : null}
+					</span>
+					{reviewDate ? (
+						<time datetime={reviewDate.dateTime} title={reviewDate.title}>
+							{reviewDate.relative}
+						</time>
+					) : null}
+				</span>
+				{vote ? (
+					<span
+						className={`review-vote-indicator ${vote === -1 ? "down" : "up"}`}
+						aria-label={
+							vote === -1
+								? strings["plugin-review:thumbs-down"]
+								: strings["plugin-review:thumbs-up"]
+						}
+					>
+						<span className="icon like-solid"></span>
+					</span>
+				) : null}
+				{isOwn ? (
+					<button
+						type="button"
+						className="review-edit-button icon edit"
+						aria-label={strings["plugin-review:edit-action"]}
+						title={strings["plugin-review:edit-action"]}
+						onclick={onEdit}
+					></button>
+				) : null}
+			</div>
+			{hasComment ? (
+				<p className="review-body">{comment}</p>
+			) : isOwn && Number(vote) === 1 ? (
+				<p className="review-body review-vote-only">
+					{strings["plugin-review:recommended"]}
+				</p>
+			) : null}
+			{authorReply ? (
 				<p className="author-reply" data-author={author}>
 					{authorReply}
-				</p>,
-			);
-		}, 0);
-	}
-
-	return (
-		<div ref={review} className="review">
-			<div title={name} className="review-author">
-				<span
-					style={{ backgroundImage: `url(${dp})` }}
-					className="user-profile"
-				></span>
-				<span className="user-name">{name}</span>
-				<span ref={voteImage} className="vote"></span>
-			</div>
-			<p className="review-body">{comment}</p>
-		</div>
+				</p>
+			) : null}
+		</article>
 	);
 }
 
