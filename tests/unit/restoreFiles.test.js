@@ -28,11 +28,11 @@ describe("restored file loading", () => {
 		runtime.instances.length = 0;
 	});
 
-	it("waits for every restored tab and activates the last tab by default", async () => {
+	it("waits for every local tab and activates the last tab by default", async () => {
 		let completed = false;
 		const restoration = restoreFiles([
-			{ id: "one", filename: "one.js" },
-			{ id: "two", filename: "two.js" },
+			{ id: "one", filename: "one.js", uri: "file:///one.js" },
+			{ id: "two", filename: "two.js", uri: "file:///two.js" },
 		]).then(() => {
 			completed = true;
 		});
@@ -52,4 +52,19 @@ describe("restored file loading", () => {
 		await restoration;
 		expect(completed).toBe(true);
 	});
+
+	it.each(["ftp", "sftp", "http", "https"])(
+		"does not block startup on an unresolved %s tab",
+		async (protocol) => {
+			await restoreFiles([
+				{
+					id: "remote",
+					filename: "remote.js",
+					uri: `${protocol}://example.com/remote.js`,
+				},
+			]);
+
+			expect(runtime.instances).toHaveLength(1);
+		},
+	);
 });

@@ -146,6 +146,27 @@ describe("file session persistence", () => {
 
 		expect(JSON.parse(localStorage.files)[0].folds).toEqual(file.restoredFolds);
 	});
+
+	it("keeps the restored cursor while a remote tab is still loading", () => {
+		const file = createOpenFile("sftp://example.com/restored.js", {});
+		file.loaded = false;
+		file.loading = true;
+		file.restoredSelection = {
+			ranges: [{ from: 25, to: 25 }],
+			mainIndex: 0,
+		};
+		file.lastScrollTop = 120;
+		file.lastScrollLeft = 8;
+		globalThis.editorManager.files.push(file);
+		globalThis.editorManager.activeFile = file;
+
+		saveState();
+
+		const savedFile = JSON.parse(localStorage.files)[0];
+		expect(savedFile.cursorPos).toEqual(file.restoredSelection);
+		expect(savedFile.scrollTop).toBe(120);
+		expect(savedFile.scrollLeft).toBe(8);
+	});
 });
 
 function createOpenFile(uri, options) {

@@ -518,6 +518,7 @@ export default class EditorFile {
 	persistInSession = true;
 	lastScrollTop = 0;
 	lastScrollLeft = 0;
+	restoredSelection = null;
 	restoredFolds = null;
 
 	/**
@@ -725,6 +726,7 @@ export default class EditorFile {
 			this.lastScrollLeft = Number.isFinite(options?.scrollLeft)
 				? options.scrollLeft
 				: 0;
+			this.restoredSelection = options?.cursorPos || null;
 			this.restoredFolds = options?.folds || null;
 		}
 
@@ -1895,6 +1897,7 @@ export default class EditorFile {
 				EditorState.create({ doc: value }),
 				cursorPos,
 			);
+			this.restoredSelection = null;
 			this.__cmSessionReady = false;
 			this.__cmLanguageReady = false;
 			this.__cmLanguageSignature = null;

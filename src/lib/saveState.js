@@ -20,7 +20,9 @@ export default () => {
 		// - Active file uses live EditorView selection
 		// - Inactive files use their persisted EditorState selection
 		let cursorPos;
-		if (activeFile?.id === file.id) {
+		if (!file.loaded && file.restoredSelection) {
+			cursorPos = file.restoredSelection;
+		} else if (activeFile?.id === file.id) {
 			cursorPos = getSelection(editor);
 		} else {
 			const sel = file.session?.selection;
@@ -39,7 +41,12 @@ export default () => {
 		// - Active file uses live scroll from EditorView
 		// - Inactive files use lastScrollTop/Left captured on tab switch
 		let scrollTop, scrollLeft;
-		if (activeFile?.id === file.id) {
+		if (!file.loaded) {
+			scrollTop =
+				typeof file.lastScrollTop === "number" ? file.lastScrollTop : 0;
+			scrollLeft =
+				typeof file.lastScrollLeft === "number" ? file.lastScrollLeft : 0;
+		} else if (activeFile?.id === file.id) {
 			const sp = getScrollPosition(editor);
 			scrollTop = sp.scrollTop;
 			scrollLeft = sp.scrollLeft;
