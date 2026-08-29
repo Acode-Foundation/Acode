@@ -693,7 +693,7 @@ async function readSearchFileContent(uri) {
 	if (helpers.isBinary(uri)) return "";
 
 	const editorFile = editorManager.getFile(uri, "uri");
-	if (editorFile?.session?.doc) {
+	if (editorFile?.loaded && editorFile.session?.doc) {
 		try {
 			return getDocText(editorFile.session.doc);
 		} catch (_) {
@@ -819,7 +819,7 @@ function getOpenFileOverlays() {
 	const overlays = {};
 	editorManager.files.forEach((file) => {
 		if (!file.uri || !supportsNativeSearch(file.uri)) return;
-		if (!file.session?.doc) return;
+		if (!file.loaded || !file.session?.doc) return;
 		try {
 			overlays[file.uri] = getDocText(file.session.doc);
 		} catch (_) {
