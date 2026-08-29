@@ -72,7 +72,7 @@ export default () => {
 			editable: file.editable,
 			encoding: file.encoding,
 			render: activeFile?.id === file.id,
-			folds: getAllFolds(file.session),
+			folds: file.restoredFolds ?? getAllFolds(file.session),
 		};
 
 		if (settings.rememberFiles || fileJson.isUnsaved)

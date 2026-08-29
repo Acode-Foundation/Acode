@@ -3018,9 +3018,14 @@ async function EditorManager($header, $body) {
 		// Restore folds from previous state if available
 		try {
 			const folds = prevState ? getAllFolds(prevState) : [];
+			if (!folds.length && file.restoredFolds?.length) {
+				folds.push(...file.restoredFolds);
+			}
 			if (folds && folds.length) {
 				restoreFolds(editor, folds);
+				file.session = editor.state;
 			}
+			file.restoredFolds = null;
 		} catch (error) {
 			warnRecoverable(
 				"Failed to restore folded regions from previous session state.",
