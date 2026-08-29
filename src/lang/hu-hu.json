@@ -847,7 +847,7 @@
 	"plugin-review:thumbs-up": "Tetszik",
 	"plugin-review:thumbs-down": "Nem tetszik",
 	"plugin-review:delete": "Megjegyzés törlése",
-	"plugin-review:load-failed": "Nem sikerült betölteni a megjeghyzéseket.",
+	"plugin-review:load-failed": "Nem sikerült betölteni a megjegyzéseket.",
 	"plugin-review:retry": "Újrapróbálkozás",
 	"plugin-review:empty-title": "Még nincsenek megjegyzések",
 	"plugin-review:empty-description": "Ossza meg elsőként a tapasztalatait.",
@@ -866,6 +866,6 @@
 	"plugin-review:recommended": "Bővítmény ajánlása",
 	"plugin-review:error-max-length": "A megjegyzés szövege legfeljebb {max} karakter lehet.",
 	"plugin-review:error-downvote-comment": "Írja meg a fejlesztőknek, hogy min lehetne javítani.",
-	"plugin-review:error-empty": "Adjon hozzá megjegyzést, vagy válassza a „Tetszik” lehetőséget.",
+	"plugin-review:error-empty": "Adjon hozzá megjegyzést vagy válassza a „Tetszik” lehetőséget.",
 	"plugin-review:unrated": "Még nem értékelte senki"
 }
