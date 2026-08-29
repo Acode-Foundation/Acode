@@ -482,7 +482,8 @@ textarea {
   left: 0;
   width: max-content;
   max-width: var(--cursor-menu-max-width);
-  height: 40px;
+  height: auto;
+  min-height: 40px;
   margin: 0;
   padding: 0;
   box-sizing: border-box;
@@ -503,12 +504,8 @@ textarea {
 
   &__primary {
     display: flex;
-    height: 100%;
+    height: 40px;
     align-items: stretch;
-
-    &[hidden] {
-      visibility: hidden;
-    }
   }
 
   &__action {
@@ -558,27 +555,21 @@ textarea {
   }
 
   &__overflow {
-    position: absolute;
-    inset: 0;
-    z-index: 1;
     display: flex;
-    height: 100%;
+    width: max-content;
+    max-width: var(--cursor-menu-max-width);
+    height: 40px;
     min-width: 0;
     color: inherit;
     background-color: inherit;
     border-radius: var(--popup-border-radius);
 
-    &[hidden] {
-      visibility: hidden;
-    }
-
     &--grid {
-      inset: 0 auto auto 0;
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
       grid-auto-rows: 40px;
       align-content: start;
-      width: 100%;
+      width: min(250px, var(--cursor-menu-max-width));
       height: max-content;
       max-height: var(--cursor-menu-grid-max-height);
       overflow-x: hidden;
@@ -593,6 +584,11 @@ textarea {
     }
   }
 
+  &__primary[hidden],
+  &__overflow[hidden] {
+    display: none;
+  }
+
   &__back {
     flex: 0 0 50px;
     border-inline-end: solid 1px var(--border-color);
@@ -601,7 +597,7 @@ textarea {
   &__overflow-actions {
     display: flex;
     min-width: 0;
-    flex: 1;
+    flex: 0 1 auto;
     overflow-x: auto;
     overflow-y: hidden;
     overscroll-behavior-x: contain;

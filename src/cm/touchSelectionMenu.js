@@ -174,6 +174,7 @@ class TouchSelectionMenuController {
 	#menuAnchor = null;
 	#menuAnimation = null;
 	#viewAnimations = [];
+	#overflowExpanded = false;
 
 	constructor(view, options = {}) {
 		this.#view = view;
@@ -680,7 +681,8 @@ class TouchSelectionMenuController {
 		const menuKey = `${hasSelection}:${items
 			.map((item) => item.id || this.#getItemLabel(item))
 			.join("|")}`;
-		if (menuKey !== this.#renderedMenuKey) {
+		const menuChanged = menuKey !== this.#renderedMenuKey;
+		if (menuChanged) {
 			const groups = partitionSelectionMenuItems(items, { hasSelection });
 			this.#renderMenu(groups.primary, groups.overflow);
 			this.#renderedMenuKey = menuKey;
@@ -689,6 +691,8 @@ class TouchSelectionMenuController {
 		if (!this.$menu.isConnected) {
 			this.#container.append(this.$menu);
 		}
+		this.$menu.style.removeProperty("width");
+		this.$menu.style.removeProperty("height");
 		const isOpening = !this.#menuActive;
 		this.#positionMenu(anchor);
 		this.#menuActive = true;
@@ -697,6 +701,11 @@ class TouchSelectionMenuController {
 	}
 
 	#renderMenu(primaryItems, overflowItems) {
+		for (const animation of this.#viewAnimations) animation.cancel?.();
+		this.#viewAnimations = [];
+		this.#overflowExpanded = false;
+		this.$menu.style.removeProperty("width");
+		this.$menu.style.removeProperty("height");
 		this.$menu.replaceChildren();
 		this.$menu.setAttribute("aria-label", "Text selection actions");
 
@@ -822,68 +831,121 @@ class TouchSelectionMenuController {
 	}
 
 	#setOverflowExpanded($primary, $overflow, expanded) {
+		if (expanded === this.#overflowExpanded) return;
+		const initialRect = this.$menu.getBoundingClientRect();
+		this.#menuAnimation?.cancel?.();
+		this.#menuAnimation = null;
 		for (const animation of this.#viewAnimations) animation.cancel?.();
 		this.#viewAnimations = [];
-		const initialRect = this.$menu.getBoundingClientRect();
-		const outgoing = expanded ? $primary : $overflow;
+		$primary.hidden = this.#overflowExpanded;
+		$overflow.hidden = !this.#overflowExpanded;
+		const outgoing = this.#overflowExpanded ? $overflow : $primary;
 		const incoming = expanded ? $overflow : $primary;
 		const direction = expanded ? 1 : -1;
-		this.$menu.style.width = `${this.$menu.getBoundingClientRect().width}px`;
-		incoming.hidden = false;
-		incoming.style.visibility = "";
-		incoming.style.pointerEvents = "auto";
+		for (const $view of [$primary, $overflow]) {
+			$view.style.opacity = "";
+			$view.style.transform = "";
+			$view.style.visibility = "";
+			$view.style.position = "";
+			$view.style.inset = "";
+			$view.style.pointerEvents = "";
+			$view.style.transformOrigin = "";
+		}
+		this.#overflowExpanded = expanded;
+		outgoing.style.position = "absolute";
+		outgoing.style.inset = "0 auto auto 0";
 		outgoing.style.pointerEvents = "none";
-
-		const usesGrid = $overflow.classList.contains(
-			"cursor-menu__overflow--grid",
-		);
-		const targetHeight =
-			expanded && usesGrid ? $overflow.getBoundingClientRect().height : 40;
-		this.$menu.style.height = `${targetHeight}px`;
-		if (usesGrid && this.#menuAnchor) this.#positionMenu(this.#menuAnchor);
+		incoming.hidden = false;
+		this.$menu.style.removeProperty("width");
+		this.$menu.style.removeProperty("height");
+		this.$menu.style.transform = "";
+		if (this.#menuAnchor) this.#positionMenu(this.#menuAnchor);
 		const finalRect = this.$menu.getBoundingClientRect();
+		const menuScaleX = finalRect.width
+			? initialRect.width / finalRect.width
+			: 1;
+		const menuScaleY = finalRect.height
+			? initialRect.height / finalRect.height
+			: 1;
+		const viewScaleX = menuScaleX ? 1 / menuScaleX : 1;
+		const viewScaleY = menuScaleY ? 1 / menuScaleY : 1;
+		this.$menu.style.transformOrigin = "left top";
+		for (const $view of [outgoing, incoming]) {
+			$view.style.transformOrigin = "left top";
+		}
 
+		const clearMenuGeometry = () => {
+			this.$menu.style.removeProperty("width");
+			this.$menu.style.removeProperty("height");
+			this.$menu.style.transform = "";
+			this.$menu.style.transformOrigin = "";
+		};
 		const finish = () => {
 			outgoing.hidden = true;
-			outgoing.style.opacity = "";
-			outgoing.style.transform = "";
-			outgoing.style.visibility = "";
-			incoming.style.opacity = "";
-			incoming.style.transform = "";
-			this.$menu.style.height = `${targetHeight}px`;
-			this.$menu.style.transform = "";
+			for (const $view of [$primary, $overflow]) {
+				$view.style.opacity = "";
+				$view.style.transform = "";
+				$view.style.position = "";
+				$view.style.inset = "";
+				$view.style.pointerEvents = "";
+				$view.style.transformOrigin = "";
+			}
+			clearMenuGeometry();
 			this.#viewAnimations = [];
 		};
+
 		if (animationsDisabled()) {
 			finish();
 			return;
 		}
-
 		const outgoingAnimation = animate(
 			outgoing,
-			{ opacity: [1, 0], x: [0, -6 * direction] },
-			{ duration: 0.1, ease: "easeIn" },
+			{
+				opacity: [1, 0],
+				x: [0, -6 * direction],
+				scaleX: [viewScaleX, 1],
+				scaleY: [viewScaleY, 1],
+			},
+			{ duration: 0.12, ease: "easeIn" },
 		);
 		const incomingAnimation = animate(
 			incoming,
-			{ opacity: [0, 1], x: [6 * direction, 0] },
-			{ duration: 0.14, ease: "easeOut" },
+			{
+				opacity: [0, 1],
+				x: [6 * direction, 0],
+				scaleX: [viewScaleX, 1],
+				scaleY: [viewScaleY, 1],
+			},
+			{ duration: 0.18, ease: "easeOut" },
 		);
 		const animations = [outgoingAnimation, incomingAnimation];
-		if (usesGrid && initialRect.height !== finalRect.height) {
+		if (
+			initialRect.width !== finalRect.width ||
+			initialRect.height !== finalRect.height ||
+			initialRect.left !== finalRect.left ||
+			initialRect.top !== finalRect.top
+		) {
 			animations.push(
 				animate(
 					this.$menu,
 					{
-						height: [initialRect.height, finalRect.height],
+						x: [initialRect.left - finalRect.left, 0],
 						y: [initialRect.top - finalRect.top, 0],
+						scaleX: [menuScaleX, 1],
+						scaleY: [menuScaleY, 1],
 					},
-					{ duration: 0.16, ease: "easeOut" },
+					{
+						duration: 0.18,
+						ease: [0.2, 0, 0, 1],
+						onComplete: clearMenuGeometry,
+					},
 				),
 			);
 		}
 		this.#viewAnimations = animations;
-		Promise.allSettled(animations).then(() => {
+		Promise.allSettled(
+			animations.map((animation) => animation.finished ?? animation),
+		).then(() => {
 			if (this.#viewAnimations !== animations) return;
 			finish();
 		});
@@ -1044,6 +1106,9 @@ class TouchSelectionMenuController {
 			overflow.style.opacity = "";
 			overflow.style.transform = "";
 			overflow.style.pointerEvents = "";
+			overflow.style.position = "";
+			overflow.style.inset = "";
+			overflow.style.transformOrigin = "";
 		}
 		const primary = this.$menu.querySelector(".cursor-menu__primary");
 		if (primary) {
@@ -1051,15 +1116,20 @@ class TouchSelectionMenuController {
 			primary.style.opacity = "";
 			primary.style.transform = "";
 			primary.style.pointerEvents = "";
+			primary.style.position = "";
+			primary.style.inset = "";
+			primary.style.transformOrigin = "";
 		}
 		this.$menu.style.opacity = "";
 		this.$menu.style.transform = "";
-		this.$menu.style.width = "";
-		this.$menu.style.height = "40px";
+		this.$menu.style.transformOrigin = "";
+		this.$menu.style.removeProperty("width");
+		this.$menu.style.removeProperty("height");
 		this.$menu
 			.querySelector(".cursor-menu__more")
 			?.setAttribute("aria-expanded", "false");
 		this.#renderedMenuKey = "";
+		this.#overflowExpanded = false;
 		this.#menuAnchor = null;
 		this.#menuActive = false;
 	}
