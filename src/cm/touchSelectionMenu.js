@@ -140,6 +140,31 @@ function hasCodeActionProvider(view) {
 	);
 }
 
+function hasLspActions(view) {
+	const capabilities = [
+		["definition", "definitionProvider"],
+		["declaration", "declarationProvider"],
+		["implementation", "implementationProvider"],
+		["typeDefinition", "typeDefinitionProvider"],
+		["references", "referencesProvider"],
+	];
+	if (
+		capabilities.some(([feature, capability]) =>
+			LSPPlugin.getAll(view, feature).some(
+				(plugin) => !!plugin.client.serverCapabilities?.[capability],
+			),
+		)
+	) {
+		return true;
+	}
+	return (
+		!view.state.readOnly &&
+		LSPPlugin.getAll(view, "rename").some(
+			(plugin) => !!plugin.client.serverCapabilities?.renameProvider,
+		)
+	);
+}
+
 function animationsDisabled() {
 	return (
 		document.body.classList.contains("no-animation") ||
@@ -665,6 +690,7 @@ class TouchSelectionMenuController {
 		const items = filterSelectionMenuItems(
 			selectionMenu({
 				codeActionsAvailable: hasCodeActionProvider(this.#view),
+				lspActionsAvailable: hasLspActions(this.#view),
 			}),
 			{
 				readOnly: this.#isReadOnly(),

@@ -22,6 +22,7 @@ import type {
 	Position,
 } from "vscode-languageserver-types";
 import type { LSPPluginAPI } from "./types";
+import { safeLspPositionToOffset } from "./positionUtils";
 
 // ============================================================================
 // Types
@@ -238,7 +239,7 @@ function createPlugin(config: InlayHintsConfig) {
 
 					let pos: number;
 					try {
-						pos = lsp.fromPosition(h.position, lsp.syncedDoc);
+						pos = safeLspPositionToOffset(lsp.syncedDoc, h.position);
 						const mapped = lsp.unsyncedChanges.mapPos(pos);
 						if (mapped === null) continue;
 						pos = mapped;

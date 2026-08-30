@@ -36,6 +36,7 @@ import {
 	type ColorChipPayload,
 } from "../colorChip";
 import type { LSPPluginAPI } from "./types";
+import { safeLspPositionToOffset } from "./positionUtils";
 
 export interface DocumentColorsConfig {
 	enabled?: boolean;
@@ -178,8 +179,8 @@ function mapLspRange(
 	let from: number;
 	let to: number;
 	try {
-		const fromBase = lsp.fromPosition(range.start, lsp.syncedDoc);
-		const toBase = lsp.fromPosition(range.end, lsp.syncedDoc);
+		const fromBase = safeLspPositionToOffset(lsp.syncedDoc, range.start);
+		const toBase = safeLspPositionToOffset(lsp.syncedDoc, range.end);
 		const fromMapped = lsp.unsyncedChanges.mapPos(
 			fromBase,
 			1,

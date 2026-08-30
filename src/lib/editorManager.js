@@ -1850,13 +1850,7 @@ async function EditorManager($header, $body) {
 			const col = Math.max(0, Math.min(targetColumn, docLine.length));
 			const pos = docLine.from + col;
 
-			// Move cursor and scroll into view
-			editor.dispatch({
-				selection: { anchor: pos, head: pos },
-				effects: EditorView.scrollIntoView(pos, { y: "center" }),
-			});
-			focusEditorIfEditable(editor);
-			return true;
+			return revealEditorRange(editor, pos);
 		} catch (error) {
 			console.error("Error in gotoLine:", error);
 			return false;
@@ -2181,12 +2175,7 @@ async function EditorManager($header, $body) {
 						const col = Math.max(0, Math.min(targetColumn, docLine.length));
 						const pos = docLine.from + col;
 
-						targetEditor.dispatch({
-							selection: { anchor: pos, head: pos },
-							effects: EditorView.scrollIntoView(pos, { y: "center" }),
-						});
-						focusEditorIfEditable(targetEditor);
-						return true;
+						return revealEditorRange(targetEditor, pos);
 					} catch (error) {
 						console.error("Error in gotoLine:", error);
 						return false;
@@ -3192,6 +3181,9 @@ async function EditorManager($header, $body) {
 		hasUnsavedFiles,
 		getEditorHeight,
 		getEditorWidth,
+		revealRange(from, to = from, options) {
+			return revealEditorRange(manager.editor, from, to, options);
+		},
 		header: $header,
 		openPreviousEditorFromHistory,
 		openNextEditorFromHistory,
@@ -3450,6 +3442,45 @@ async function EditorManager($header, $body) {
 		file.lastScrollTop = editor.scrollDOM?.scrollTop ?? 0;
 		file.lastScrollLeft = editor.scrollDOM?.scrollLeft ?? 0;
 		applyFileToEditor(file, { forceRecreate: true });
+	}
+
+	/**
+	 * Reveal an editor range after a file switch.
+	 *
+	 * File activation restores the tab's saved viewport over two animation
+	 * frames and a short timeout. Explicit navigation must cancel that work or
+	 * it can overwrite CodeMirror's scrollIntoView effect while leaving the new
+	 * selection in place.
+	 */
+	function revealEditorRange(
+		targetEditor,
+		from,
+		to = from,
+		{ y = "center", userEvent = "select.reveal" } = {},
+	) {
+		if (!targetEditor) return false;
+
+		try {
+			const length = targetEditor.state.doc.length;
+			const anchor = Math.max(0, Math.min(Number(from) || 0, length));
+			const head = Math.max(0, Math.min(Number(to) || 0, length));
+
+			if (targetEditor === editor) {
+				cancelPendingScrollRestore();
+				clearScrollbarScrollLock();
+			}
+
+			targetEditor.dispatch({
+				selection: { anchor, head },
+				effects: EditorView.scrollIntoView(anchor, { y }),
+				userEvent,
+			});
+			focusEditorIfEditable(targetEditor);
+			return true;
+		} catch (error) {
+			console.error("Error revealing editor range:", error);
+			return false;
+		}
 	}
 
 	appSettings.on("update:tabSize", function () {
