@@ -59,6 +59,7 @@ class WebView {
 		this._messageCallbacks = [];
 		this._eventCallbacks = [];
 		this._destroyed = false;
+		this._destroyPromise = null;
 
 		instances.set(id, this);
 	}
@@ -126,11 +127,21 @@ class WebView {
 
 	async destroy() {
 		this._checkDestroyed();
-		await nativeBridge.destroy(this.id);
-		this._destroyed = true;
-		instances.delete(this.id);
-		this._messageCallbacks = [];
-		this._eventCallbacks = [];
+		if (!this._destroyPromise) {
+			this._destroyPromise = (async () => {
+				await nativeBridge.destroy(this.id);
+				this._destroyed = true;
+				instances.delete(this.id);
+				this._messageCallbacks = [];
+				this._eventCallbacks = [];
+			})();
+		}
+
+		try {
+			await this._destroyPromise;
+		} finally {
+			this._destroyPromise = null;
+		}
 	}
 
 	_checkDestroyed() {
