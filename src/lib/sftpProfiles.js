@@ -153,13 +153,13 @@ export async function migrateLegacySftpProfiles() {
 	localStorage.setItem(MIGRATION_MARKER, MIGRATION_VERSION);
 	return { failures, removedReferences, recoveredFiles };
 
-	async function migrateValue(value, storageKey) {
+	async function migrateValue(value, storageKey, folderProfileId = null) {
 		if (typeof value === "string") return migrateUrl(value);
 		if (Array.isArray(value)) {
 			let changed = false;
 			const next = [];
 			for (const item of value) {
-				const migrated = await migrateValue(item, storageKey);
+				const migrated = await migrateValue(item, storageKey, folderProfileId);
 				changed ||= migrated.changed;
 				if (migrated.value !== REMOVE_VALUE) next.push(migrated.value);
 			}
@@ -169,12 +169,20 @@ export async function migrateLegacySftpProfiles() {
 			let changed = false;
 			const next = {};
 			let recoverFile = false;
+			const nestedFolderProfileId =
+				storageKey === "folders"
+					? getSftpProfileId(value.url) || folderProfileId
+					: null;
 			for (const [key, item] of Object.entries(value)) {
-				const migratedKey = await migrateUrl(key);
+				const migratedKey = await migrateUrl(key, folderProfileId);
 				changed ||= migratedKey.changed;
 				if (migratedKey.value === REMOVE_VALUE) continue;
 
-				const migrated = await migrateValue(item, storageKey);
+				const migrated = await migrateValue(
+					item,
+					storageKey,
+					nestedFolderProfileId,
+				);
 				changed ||= migrated.changed;
 				if (migrated.value === REMOVE_VALUE) {
 					if (key === "uri" && storageKey === "files" && value.isUnsaved) {
@@ -200,7 +208,7 @@ export async function migrateLegacySftpProfiles() {
 		return { value, changed: false };
 	}
 
-	async function migrateUrl(value) {
+	async function migrateUrl(value, preferredProfileId = null) {
 		if (!/^sftp:/i.test(value) || getSftpProfileId(value)) {
 			return { value, changed: false };
 		}
@@ -216,6 +224,12 @@ export async function migrateLegacySftpProfiles() {
 			const keyFile = normalizeLegacyValue(query?.keyFile);
 			const passPhrase = normalizeLegacyValue(query?.passPhrase);
 			if (keyFile) copiedKeys.add(keyFile);
+			if (preferredProfileId) {
+				return {
+					value: createSftpProfileUrl(preferredProfileId, pathname || "/"),
+					changed: true,
+				};
+			}
 			const authType = keyFile ? "key" : "password";
 			const signature = JSON.stringify({
 				hostname,

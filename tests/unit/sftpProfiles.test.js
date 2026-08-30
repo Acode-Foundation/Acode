@@ -118,9 +118,10 @@ describe("SFTP secure profiles", () => {
 		);
 	});
 
-	it("migrates SFTP URLs used as folder expansion-state keys", async () => {
+	it("reuses the folder profile for legacy expansion-state keys", async () => {
+		const saveProfile = vi.fn();
 		globalThis.sftp = {
-			saveProfile: (...args) => args.at(-2)("profile-folder"),
+			saveProfile,
 		};
 		const expandedFolder =
 			"sftp://user:secret@example.com/project/src/components";
@@ -138,31 +139,53 @@ describe("SFTP secure profiles", () => {
 
 		const folders = JSON.parse(localStorage.getItem("folders"));
 		expect(folders[0].opts.listState).toEqual({
-			"sftp://profile-folder/project/src/components": true,
+			"sftp://profile-existing/project/src/components": true,
 		});
+		expect(saveProfile).not.toHaveBeenCalled();
 		expect(localStorage.getItem("folders")).not.toContain("secret");
 	});
 
-	it("drops folder expansion-state keys when their profile cannot migrate", async () => {
-		globalThis.sftp = {
-			saveProfile: (...args) => args.at(-1)("Keystore unavailable"),
-		};
-		const expandedFolder = "sftp://user:secret@example.com/project/src";
+	it("uses one new profile for a legacy folder and its expansion state", async () => {
+		const saveProfile = vi.fn((...args) => args.at(-2)("profile-folder"));
+		globalThis.sftp = { saveProfile };
+		const root = "sftp://user:secret@example.com/project";
+		const expandedFolder = `${root}/src`;
 		localStorage.setItem(
 			"folders",
 			JSON.stringify([
 				{
-					url: "sftp://profile-existing/project",
+					url: root,
 					opts: { listState: { [expandedFolder]: true } },
 				},
 			]),
 		);
 
-		const result = await migrateLegacySftpProfiles();
+		await migrateLegacySftpProfiles();
 
 		const folders = JSON.parse(localStorage.getItem("folders"));
-		expect(folders[0].opts.listState).toEqual({});
-		expect(localStorage.getItem("folders")).not.toContain("secret");
+		expect(folders[0]).toMatchObject({
+			url: "sftp://profile-folder/project",
+			opts: {
+				listState: { "sftp://profile-folder/project/src": true },
+			},
+		});
+		expect(saveProfile).toHaveBeenCalledTimes(1);
+	});
+
+	it("drops URL-shaped object keys when their profile cannot migrate", async () => {
+		globalThis.sftp = {
+			saveProfile: (...args) => args.at(-1)("Keystore unavailable"),
+		};
+		const legacyKey = "sftp://user:secret@example.com/project/src";
+		localStorage.setItem(
+			"fileBrowserState",
+			JSON.stringify([{ [legacyKey]: true }]),
+		);
+
+		const result = await migrateLegacySftpProfiles();
+
+		expect(JSON.parse(localStorage.getItem("fileBrowserState"))).toEqual([{}]);
+		expect(localStorage.getItem("fileBrowserState")).not.toContain("secret");
 		expect(result).toMatchObject({
 			removedReferences: 1,
 			failures: [
