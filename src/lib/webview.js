@@ -126,8 +126,8 @@ class WebView {
 
 	async destroy() {
 		this._checkDestroyed();
-		this._destroyed = true;
 		await nativeBridge.destroy(this.id);
+		this._destroyed = true;
 		instances.delete(this.id);
 		this._messageCallbacks = [];
 		this._eventCallbacks = [];
