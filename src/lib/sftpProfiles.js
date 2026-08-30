@@ -3,7 +3,7 @@ import Url from "utils/Url";
 
 const PROFILE_PREFIX = "profile-";
 const MIGRATION_MARKER = "sftpNativeProfileMigration";
-const MIGRATION_VERSION = "1";
+const MIGRATION_VERSION = "2";
 const MIGRATED_STORAGE_KEYS = [
 	"storageList",
 	"folders",
@@ -12,11 +12,20 @@ const MIGRATED_STORAGE_KEYS = [
 	"recentFolders",
 	"fileBrowserState",
 ];
+const REMOVE_VALUE = Symbol("remove-value");
 
 export function getSftpProfileId(url) {
-	if (!/^sftp:/.test(url || "")) return null;
-	const { hostname } = Url.decodeUrl(url);
-	return hostname?.startsWith(PROFILE_PREFIX) ? hostname : null;
+	if (!/^sftp:/i.test(url || "")) return null;
+	try {
+		const { hostname, username, password, query } = Url.decodeUrl(url);
+		const hasLegacyCredentials =
+			username || password || query?.keyFile || query?.passPhrase;
+		return hostname?.startsWith(PROFILE_PREFIX) && !hasLegacyCredentials
+			? hostname
+			: null;
+	} catch {
+		return null;
+	}
 }
 
 export function createSftpProfileUrl(profileId, pathname = "/") {
@@ -93,28 +102,42 @@ export function deleteSftpProfile(profileId) {
 
 /**
  * Moves legacy credential-bearing SFTP URLs into encrypted native profiles.
- * Migration fails closed before third-party plugins load if encryption is unavailable.
+ * Profiles that cannot be encrypted are removed before third-party plugins load.
+ * Unsaved editor tabs keep their cache and are restored as local recovery tabs.
  */
 export async function migrateLegacySftpProfiles() {
-	if (localStorage.getItem(MIGRATION_MARKER) === MIGRATION_VERSION) return;
+	if (localStorage.getItem(MIGRATION_MARKER) === MIGRATION_VERSION) {
+		return { failures: [], removedReferences: 0, recoveredFiles: 0 };
+	}
 
 	const profileCache = new Map();
 	const copiedKeys = new Set();
-	let migrationError = null;
+	const failures = [];
+	let removedReferences = 0;
+	let recoveredFiles = 0;
 
 	for (const storageKey of MIGRATED_STORAGE_KEYS) {
 		const raw = localStorage.getItem(storageKey);
-		if (!raw) continue;
+		if (!raw || !/sftp:/i.test(raw)) continue;
 		let value;
+		let isJson = true;
 		try {
 			value = JSON.parse(raw);
 		} catch {
-			continue;
+			value = raw;
+			isJson = false;
 		}
 
-		const migrated = await migrateValue(value);
+		const migrated = await migrateValue(value, storageKey);
 		if (migrated.changed) {
-			localStorage.setItem(storageKey, JSON.stringify(migrated.value));
+			if (migrated.value === REMOVE_VALUE) {
+				localStorage.removeItem(storageKey);
+			} else {
+				localStorage.setItem(
+					storageKey,
+					isJson ? JSON.stringify(migrated.value) : migrated.value,
+				);
+			}
 		}
 	}
 
@@ -127,34 +150,46 @@ export async function migrateLegacySftpProfiles() {
 		}
 	}
 
-	if (migrationError) {
-		throw new Error(
-			"SFTP credentials could not be moved to encrypted native storage",
-			{ cause: migrationError },
-		);
-	}
-
 	localStorage.setItem(MIGRATION_MARKER, MIGRATION_VERSION);
+	return { failures, removedReferences, recoveredFiles };
 
-	async function migrateValue(value) {
+	async function migrateValue(value, storageKey) {
 		if (typeof value === "string") return migrateUrl(value);
 		if (Array.isArray(value)) {
 			let changed = false;
 			const next = [];
 			for (const item of value) {
-				const migrated = await migrateValue(item);
+				const migrated = await migrateValue(item, storageKey);
 				changed ||= migrated.changed;
-				next.push(migrated.value);
+				if (migrated.value !== REMOVE_VALUE) next.push(migrated.value);
 			}
 			return { value: next, changed };
 		}
 		if (value && typeof value === "object") {
 			let changed = false;
 			const next = {};
+			let recoverFile = false;
 			for (const [key, item] of Object.entries(value)) {
-				const migrated = await migrateValue(item);
+				const migrated = await migrateValue(item, storageKey);
 				changed ||= migrated.changed;
+				if (migrated.value === REMOVE_VALUE) {
+					if (key === "uri" && storageKey === "files" && value.isUnsaved) {
+						recoverFile = true;
+						continue;
+					}
+					if (key === "url" || key === "uri") {
+						return { value: REMOVE_VALUE, changed: true };
+					}
+					continue;
+				}
 				next[key] = migrated.value;
+			}
+			if (recoverFile) {
+				next.uri = null;
+				next.filename = `Recovered ${value.filename || "remote file"}`;
+				next.isUnsaved = true;
+				next.deletedFile = true;
+				recoveredFiles++;
 			}
 			return { value: next, changed };
 		}
@@ -162,16 +197,21 @@ export async function migrateLegacySftpProfiles() {
 	}
 
 	async function migrateUrl(value) {
-		if (!/^sftp:/.test(value) || getSftpProfileId(value)) {
+		if (!/^sftp:/i.test(value) || getSftpProfileId(value)) {
 			return { value, changed: false };
 		}
 
+		let credentials;
 		try {
+			credentials = Url.decodeUrl(value);
 			const { username, password, hostname, pathname, port, query } =
-				Url.decodeUrl(value);
-			if (!hostname || !username) return { value, changed: false };
+				credentials;
+			if (!hostname || !username) {
+				throw new Error("The saved SFTP address is incomplete");
+			}
 			const keyFile = normalizeLegacyValue(query?.keyFile);
 			const passPhrase = normalizeLegacyValue(query?.passPhrase);
+			if (keyFile) copiedKeys.add(keyFile);
 			const authType = keyFile ? "key" : "password";
 			const signature = JSON.stringify({
 				hostname,
@@ -182,30 +222,73 @@ export async function migrateLegacySftpProfiles() {
 				passPhrase,
 			});
 
-			let profileId = profileCache.get(signature);
-			if (!profileId) {
-				profileId = await saveSftpProfile({
-					hostname,
-					port: port || 22,
-					username,
-					authType,
-					password: password || "",
-					keyFile,
-					passPhrase,
-				});
-				profileCache.set(signature, profileId);
-				if (keyFile) copiedKeys.add(keyFile);
+			let cachedProfile = profileCache.get(signature);
+			if (!cachedProfile) {
+				try {
+					const profileId = await saveSftpProfile({
+						hostname,
+						port: port || 22,
+						username,
+						authType,
+						password: password || "",
+						keyFile,
+						passPhrase,
+					});
+					cachedProfile = { profileId };
+				} catch (error) {
+					cachedProfile = {
+						error,
+						failure: createFailure(error, credentials),
+					};
+					failures.push(cachedProfile.failure);
+				}
+				profileCache.set(signature, cachedProfile);
+			}
+			if (cachedProfile.error) {
+				removedReferences++;
+				return { value: REMOVE_VALUE, changed: true };
 			}
 			return {
-				value: createSftpProfileUrl(profileId, pathname || "/"),
+				value: createSftpProfileUrl(cachedProfile.profileId, pathname || "/"),
 				changed: true,
 			};
 		} catch (error) {
 			console.warn("Could not migrate legacy SFTP URL", error);
-			migrationError ||= error;
-			return { value, changed: false };
+			const failure = createFailure(error, credentials);
+			failures.push(failure);
+			removedReferences++;
+			return { value: REMOVE_VALUE, changed: true };
 		}
 	}
+}
+
+function createFailure(error, credentials = {}) {
+	credentials ||= {};
+	const sensitiveValues = [
+		credentials.password,
+		credentials.query?.passPhrase,
+		credentials.query?.keyFile,
+	].filter(Boolean);
+	return {
+		hostname: credentials.hostname || "unknown host",
+		username: credentials.username || "unknown user",
+		message: sanitizeError(error, sensitiveValues),
+	};
+}
+
+function sanitizeError(error, sensitiveValues) {
+	let message = error?.message || String(error || "Unknown migration error");
+	if (error?.cause) {
+		const cause = error.cause?.message || String(error.cause);
+		if (cause && !message.includes(cause)) message += `: ${cause}`;
+	}
+	message = message.replace(/sftp:\/\/[^\s"'<>]+/gi, "sftp://[redacted]");
+	for (const value of sensitiveValues) {
+		for (const secret of [String(value), encodeURIComponent(String(value))]) {
+			if (secret) message = message.split(secret).join("[redacted]");
+		}
+	}
+	return message;
 }
 
 function normalizeLegacyValue(value) {

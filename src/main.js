@@ -28,6 +28,7 @@ import Contextmenu from "components/contextmenu";
 import Sidebar from "components/sidebar";
 import tile from "components/tile";
 import toast from "components/toast";
+import alert from "dialogs/alert";
 import confirm from "dialogs/confirm";
 import intentHandler, { processPendingIntents } from "handlers/intent";
 import keyboardHandler, { keydownState } from "handlers/keyboard";
@@ -322,7 +323,15 @@ async function onDeviceReady() {
 	await lang.set(settings.value.lang);
 
 	acode.setLoadingMessage("Securing SFTP profiles...");
-	await migrateLegacySftpProfiles();
+	const sftpMigration = await migrateLegacySftpProfiles();
+	if (sftpMigration.failures.length) {
+		for (const failure of sftpMigration.failures) {
+			logger.log(
+				"error",
+				`SFTP profile migration failed for ${failure.username}@${failure.hostname}: ${failure.message}`,
+			);
+		}
+	}
 
 	if (settings.value.developerMode) {
 		try {
@@ -335,6 +344,9 @@ async function onDeviceReady() {
 
 	try {
 		await loadApp();
+		if (sftpMigration.failures.length) {
+			showSftpMigrationReport(sftpMigration);
+		}
 	} catch (error) {
 		window.log("error", error);
 		toast(`Error: ${error.message}`);
@@ -479,6 +491,36 @@ async function onDeviceReady() {
 			);
 		})
 		.catch(console.error);
+}
+
+function showSftpMigrationReport({
+	failures,
+	removedReferences,
+	recoveredFiles,
+}) {
+	const details = failures
+		.map(
+			({ username, hostname, message }) =>
+				`${escapeHtml(username)}@${escapeHtml(hostname)}: ${escapeHtml(message)}`,
+		)
+		.join("<br>");
+	const recoveryMessage = recoveredFiles
+		? `<br><br>${recoveredFiles} unsaved remote file${recoveredFiles === 1 ? " was" : "s were"} kept as a recovery tab.`
+		: "";
+
+	alert(
+		"Some SFTP connections were removed",
+		`Acode could not move ${failures.length} saved SFTP connection${failures.length === 1 ? "" : "s"} into encrypted storage. The affected connection data and ${removedReferences} saved reference${removedReferences === 1 ? " were" : "s were"} removed so Acode could start safely. Please add the connection${failures.length === 1 ? "" : "s"} again.<br><br>${details}${recoveryMessage}`,
+	);
+}
+
+function escapeHtml(value) {
+	return String(value)
+		.replaceAll("&", "&amp;")
+		.replaceAll("<", "&lt;")
+		.replaceAll(">", "&gt;")
+		.replaceAll('"', "&quot;")
+		.replaceAll("'", "&#039;");
 }
 
 async function onLogin() {
