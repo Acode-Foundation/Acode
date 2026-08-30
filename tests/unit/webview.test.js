@@ -44,4 +44,28 @@ describe("WebView lifecycle", () => {
 			"WebView has been destroyed",
 		);
 	});
+
+	it("shares native destruction between concurrent callers", async () => {
+		let resolveDestroy;
+		nativeBridge.destroy.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					resolveDestroy = resolve;
+				}),
+		);
+		const webview = await webviewAPI.create();
+
+		const firstDestroy = webview.destroy();
+		const secondDestroy = webview.destroy();
+
+		expect(nativeBridge.destroy).toHaveBeenCalledTimes(1);
+		resolveDestroy();
+		await expect(Promise.all([firstDestroy, secondDestroy])).resolves.toEqual([
+			undefined,
+			undefined,
+		]);
+		await expect(webview.evaluate("1 + 1")).rejects.toThrow(
+			"WebView has been destroyed",
+		);
+	});
 });
