@@ -170,6 +170,10 @@ export async function migrateLegacySftpProfiles() {
 			const next = {};
 			let recoverFile = false;
 			for (const [key, item] of Object.entries(value)) {
+				const migratedKey = await migrateUrl(key);
+				changed ||= migratedKey.changed;
+				if (migratedKey.value === REMOVE_VALUE) continue;
+
 				const migrated = await migrateValue(item, storageKey);
 				changed ||= migrated.changed;
 				if (migrated.value === REMOVE_VALUE) {
@@ -182,7 +186,7 @@ export async function migrateLegacySftpProfiles() {
 					}
 					continue;
 				}
-				next[key] = migrated.value;
+				next[migratedKey.value] = migrated.value;
 			}
 			if (recoverFile) {
 				next.uri = null;
