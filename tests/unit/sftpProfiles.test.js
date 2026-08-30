@@ -149,13 +149,14 @@ describe("SFTP secure profiles", () => {
 		const saveProfile = vi.fn((...args) => args.at(-2)("profile-folder"));
 		globalThis.sftp = { saveProfile };
 		const root = "sftp://user:secret@example.com/project";
-		const expandedFolder = `${root}/src`;
+		const expandedFolder =
+			"sftp://user:stale-secret@example.com/project/src";
 		localStorage.setItem(
 			"folders",
 			JSON.stringify([
 				{
-					url: root,
 					opts: { listState: { [expandedFolder]: true } },
+					url: root,
 				},
 			]),
 		);

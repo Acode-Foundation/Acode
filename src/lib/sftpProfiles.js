@@ -169,11 +169,16 @@ export async function migrateLegacySftpProfiles() {
 			let changed = false;
 			const next = {};
 			let recoverFile = false;
-			const nestedFolderProfileId =
+			let nestedFolderProfileId =
 				storageKey === "folders"
 					? getSftpProfileId(value.url) || folderProfileId
 					: null;
-			for (const [key, item] of Object.entries(value)) {
+			const entries = Object.entries(value);
+			if (storageKey === "folders") {
+				const urlIndex = entries.findIndex(([key]) => key === "url");
+				if (urlIndex > 0) entries.unshift(entries.splice(urlIndex, 1)[0]);
+			}
+			for (const [key, item] of entries) {
 				const migratedKey = await migrateUrl(key, folderProfileId);
 				changed ||= migratedKey.changed;
 				if (migratedKey.value === REMOVE_VALUE) continue;
@@ -193,6 +198,10 @@ export async function migrateLegacySftpProfiles() {
 						return { value: REMOVE_VALUE, changed: true };
 					}
 					continue;
+				}
+				if (storageKey === "folders" && key === "url") {
+					nestedFolderProfileId =
+						getSftpProfileId(migrated.value) || nestedFolderProfileId;
 				}
 				next[migratedKey.value] = migrated.value;
 			}
