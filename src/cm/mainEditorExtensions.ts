@@ -1,4 +1,5 @@
 import type { Extension } from "@codemirror/state";
+import { viewportPriorityParsing } from "@codemirror/language";
 import { EditorView } from "@codemirror/view";
 import searchMatchHighlighter from "./searchMatchHighlighter";
 
@@ -27,10 +28,14 @@ export const fixedHeightTheme = EditorView.theme({
 	".cm-scroller": {
 		height: "100%",
 		overflow: "auto",
-		willChange: "transform",
-		contentVisibility: "auto",
 	},
 });
+
+export const renderingPerformanceExtensions: Extension[] = [
+	EditorView.viewportBuffer.of({ maxAhead: 4, settleDelay: 120 }),
+	EditorView.controlledTouchScroll.of({ maxAhead: 4, settleDelay: 120 }),
+	viewportPriorityParsing({ sliceMs: 4, approximate: "outer-language" }),
+];
 
 export function createMainEditorExtensions(
 	options: MainEditorExtensionOptions = {},
@@ -47,6 +52,7 @@ export function createMainEditorExtensions(
 	pushExtension(extensions, options.commandKeymapExtension);
 	pushExtension(extensions, options.themeExtension);
 	extensions.push(fixedHeightTheme);
+	extensions.push(...renderingPerformanceExtensions);
 	pushExtension(extensions, options.pointerCursorVisibilityExtension);
 	pushExtension(extensions, options.shiftClickSelectionExtension);
 	pushExtension(extensions, options.multiCursorSelectionExtension);
