@@ -1,4 +1,7 @@
-const cordovaExec = cordova.exec.bind(cordova);
+// `cordova.exec` is mapped asynchronously while Cordova starts. Importing this
+// module can happen before that mapping completes, so use Cordova's internal
+// module loader, which is available as soon as cordova.js has been evaluated.
+const cordovaExec = cordova.require("cordova/exec");
 
 const exec = (resolve, reject, action, args) =>
 	cordovaExec(resolve, reject, "Tee", action, args);
