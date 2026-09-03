@@ -117,7 +117,7 @@ export default async function openFile(file, options = {}) {
 		const fs = fsOperation(uri);
 		const fileInfo = await fs.stat();
 		const name = fileInfo.name || file.filename || uri;
-		const readOnly = fileInfo.canWrite ? false : true;
+		const readOnly = fileInfo.canWrite === false;
 		const createEditor = (isUnsaved, text, detectedEncoding) => {
 			new EditorFile(name, {
 				uri,
