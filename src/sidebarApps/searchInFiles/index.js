@@ -377,7 +377,7 @@ async function onWorkerMessage(e) {
 				startedWorkers.reduce((acc, { progress = 0 }) => acc + progress, 0) /
 					startedWorkers.length,
 			);
-			$progress.value = progress;
+			$progress.value = Math.min(progress, 99);
 			break;
 		}
 
@@ -538,6 +538,7 @@ async function finishSearchTask(version = searchVersion) {
 		searchResult.setGhostText(strings["no result"], { row: 0, column: 0 });
 	}
 
+	$progress.value = 100;
 	searching = false;
 	nativeSearchId = null;
 	$indexStatus.value = "";
@@ -773,7 +774,7 @@ function sendNativeSearch(
 					$indexStatus.value = event.message || "";
 					break;
 				case "progress":
-					$progress.value = event.data || 0;
+					$progress.value = Math.min(event.data || 0, 99);
 					break;
 				case "search-result":
 					appendSearchResult(event.data);
