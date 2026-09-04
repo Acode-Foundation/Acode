@@ -62,7 +62,7 @@ export default function Sponsor(onclose) {
 					);
 					let msg = "";
 					if (rejectedPromise) {
-						msg = "Something went wrong.\n";
+						msg = `${strings["sponsor:something-went-wrong"]}\n`;
 						msg += `Error: ${rejectedPromise.reason}\n`;
 						msg += `Code: ${rejectedPromise.value.resCode}`;
 					} else {
@@ -73,7 +73,7 @@ export default function Sponsor(onclose) {
 							msg = `<img src="${url}" class="donate-image" />`;
 						}
 
-						msg += "<br><p>Thank you for supporting Acode!</p>";
+						msg += `<br><p>${strings["sponsor:thank-you"]}</p>`;
 					}
 
 					const order = settledPromises[0].value;
@@ -150,8 +150,10 @@ export default function Sponsor(onclose) {
 			<div id="sponsor-page" className="main">
 				<div className="header">
 					<Logo />
-					<h1>Sponsor Acode</h1>
-					<p className="subtitle">Support the future of mobile coding</p>
+					<h1>{strings["sponsor:sponsor-acode"]}</h1>
+					<p className="subtitle">
+						{strings["sponsor:support-future-mobile-coding"]}
+					</p>
 				</div>
 				<div className="tiers">
 					{products.map((product) => (
@@ -161,7 +163,9 @@ export default function Sponsor(onclose) {
 									<span className={`tier-icon ${product.productId}`}></span>
 									{onlyTitle(product.title)}
 								</div>
-								<div className="tier-price">{product.price}/Month</div>
+								<div className="tier-price">
+									{product.price}/{strings["sponsor:month"]}
+								</div>
 							</div>
 							<div
 								className="tier-description"

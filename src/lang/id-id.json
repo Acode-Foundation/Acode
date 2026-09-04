@@ -871,5 +871,11 @@
 	"sponsor:page-title": "Sponsor Acode",
 	"sponsor:cta-text": "Bergabunglah dengan komunitas pendukung kami dan bantu bentuk masa depan pengembangan mobile",
 	"sponsor:cta-button": "Jadi Sponsor",
-	"sponsor:be-the-first": "Jadi Sponsor {tier} yang pertama!"
+	"sponsor:be-the-first": "Jadi Sponsor {tier} yang pertama!",
+	"sponsor:sponsors": "Sponsor",
+	"sponsor:thank-you": "Terima kasih telah mendukung Acode!",
+	"sponsor:something-went-wrong": "Terjadi kesalahan.",
+	"sponsor:sponsor-acode": "Sponsor Acode",
+	"sponsor:support-future-mobile-coding": "Dukung masa depan pengembangan mobile",
+	"sponsor:month": "Bulan"
 }

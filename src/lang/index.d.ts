@@ -875,6 +875,12 @@ declare type LangStrings = {
   "sponsor:cta-text": string;
   "sponsor:cta-button": string;
   "sponsor:be-the-first": string;
+  "sponsor:sponsors": string;
+  "sponsor:thank-you": string;
+  "sponsor:something-went-wrong": string;
+  "sponsor:sponsor-acode": string;
+  "sponsor:support-future-mobile-coding": string;
+  "sponsor:month": string;
 };
 
 declare var strings: LangStrings;

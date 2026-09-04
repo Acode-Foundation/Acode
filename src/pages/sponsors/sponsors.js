@@ -15,7 +15,7 @@ function getEmptyMessage(tier) {
 }
 
 export default function Sponsors() {
-	const page = Page("Sponsors");
+	const page = Page(strings["sponsor:sponsors"]);
 	const titaniumSponsors = Ref();
 	const platinumSponsors = Ref();
 	const goldSponsors = Ref();
