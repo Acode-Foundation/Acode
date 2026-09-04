@@ -867,5 +867,9 @@
 	"plugin-review:error-max-length": "അവലോകനം {max} അക്ഷരങ്ങളോ അതിൽ കുറവോ ആയിരിക്കണം.",
 	"plugin-review:error-downvote-comment": "എന്താണ് മെച്ചപ്പെടുത്താനാകുന്നതെന്ന് ഡെവലപ്പറോട് പറയുക.",
 	"plugin-review:error-empty": "ഒരു അഭിപ്രായം ചേർക്കുക അല്ലെങ്കിൽ ഇഷ്ടപ്പെട്ടു തിരഞ്ഞെടുക്കുക.",
-	"plugin-review:unrated": "വിലയിരുത്തിയിട്ടില്ല"
+	"plugin-review:unrated": "വിലയിരുത്തിയിട്ടില്ല",
+	"sponsor:page-title": "Acode's Sponsors",
+	"sponsor:cta-text": "Join our community of supporters and help shape the future of mobile development",
+	"sponsor:cta-button": "Become a Sponsor",
+	"sponsor:be-the-first": "Be the first {tier} Sponsor!"
 }

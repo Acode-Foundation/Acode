@@ -867,5 +867,9 @@
 	"plugin-review:error-max-length": "Отзыв должен содержать не более {max} символов.",
 	"plugin-review:error-downvote-comment": "Расскажите разработчику, что можно улучшить.",
 	"plugin-review:error-empty": "Добавьте комментарий или выберите «Нравится».",
-	"plugin-review:unrated": "Нет оценок"
+	"plugin-review:unrated": "Нет оценок",
+	"sponsor:page-title": "Acode's Sponsors",
+	"sponsor:cta-text": "Join our community of supporters and help shape the future of mobile development",
+	"sponsor:cta-button": "Become a Sponsor",
+	"sponsor:be-the-first": "Be the first {tier} Sponsor!"
 }

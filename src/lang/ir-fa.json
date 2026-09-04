@@ -867,5 +867,9 @@
 	"plugin-review:error-max-length": "نظر باید حداکثر {max} نویسه باشد.",
 	"plugin-review:error-downvote-comment": "به توسعه‌دهنده بگویید چه چیزی می‌تواند بهتر شود.",
 	"plugin-review:error-empty": "یک دیدگاه بنویسید یا «پسندیدم» را انتخاب کنید.",
-	"plugin-review:unrated": "بدون امتیاز"
+	"plugin-review:unrated": "بدون امتیاز",
+	"sponsor:page-title": "Acode's Sponsors",
+	"sponsor:cta-text": "Join our community of supporters and help shape the future of mobile development",
+	"sponsor:cta-button": "Become a Sponsor",
+	"sponsor:be-the-first": "Be the first {tier} Sponsor!"
 }

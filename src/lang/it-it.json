@@ -867,5 +867,9 @@
 	"plugin-review:error-max-length": "La recensione deve contenere al massimo {max} caratteri.",
 	"plugin-review:error-downvote-comment": "Spiega allo sviluppatore cosa potrebbe essere migliorato.",
 	"plugin-review:error-empty": "Aggiungi un commento o scegli Mi piace.",
-	"plugin-review:unrated": "Non valutato"
+	"plugin-review:unrated": "Non valutato",
+	"sponsor:page-title": "Acode's Sponsors",
+	"sponsor:cta-text": "Join our community of supporters and help shape the future of mobile development",
+	"sponsor:cta-button": "Become a Sponsor",
+	"sponsor:be-the-first": "Be the first {tier} Sponsor!"
 }
