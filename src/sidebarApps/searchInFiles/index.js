@@ -1,6 +1,5 @@
 import "./styles.scss";
 import fsOperation from "fileSystem";
-import { EditorView } from "@codemirror/view";
 import autosize from "autosize";
 import { getDocText } from "cm/editorUtils";
 import Checkbox from "components/checkbox";
@@ -15,6 +14,7 @@ import { addedFolder } from "lib/openFolder";
 import settings from "lib/settings";
 import helpers from "utils/helpers";
 import { createSearchResultView } from "./cmResultView";
+import navigateToResult from "./navigateToResult";
 
 // Local highlight sources
 const words = [];
@@ -1121,27 +1121,13 @@ async function onCursorChange(line) {
 	const result = results[line];
 	if (!result) return;
 	const { file, position } = result;
-	if (!position) {
-		// header line clicked; CM view folding not implemented yet
-		return;
-	}
+	const url = filesSearched[file]?.url;
+	if (!position || !url) return;
 
 	rememberResultScroll();
 	Sidebar.hide();
-	const { url } = filesSearched[file];
-	await openFile(url, { render: true });
-	const { editor } = editorManager;
 	try {
-		// Compute offsets from row/column (rows from worker are 0-based)
-		const doc = editor.state.doc;
-		const startLine = doc.line(position.start.row + 1);
-		const endLine = doc.line(position.end.row + 1);
-		const from = Math.min(startLine.from + position.start.column, startLine.to);
-		const to = Math.min(endLine.from + position.end.column, endLine.to);
-		editor.dispatch({
-			selection: { anchor: from, head: to },
-			effects: EditorView.scrollIntoView(from, { y: "center" }),
-		});
+		await navigateToResult(url, position);
 	} catch (error) {
 		console.warn(`Failed to focus search result at line ${line}.`, error);
 	}
