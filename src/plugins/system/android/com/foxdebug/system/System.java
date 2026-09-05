@@ -103,6 +103,19 @@ public class System extends CordovaPlugin {
     );
   }
 
+  @Override
+  public void onReset() {
+    super.onReset();
+    StreamHttp.cancelAll();
+    intentHandler = null;
+  }
+
+  @Override
+  public void onDestroy() {
+    StreamHttp.cancelAll();
+    super.onDestroy();
+  }
+
   public boolean execute(
     String action,
     final JSONArray args,
@@ -143,6 +156,21 @@ public class System extends CordovaPlugin {
         break;
       case "get-configuration":
         getConfiguration(callbackContext);
+        return true;
+      case "http-stream-start":
+        httpStreamStart(args, callbackContext);
+        return true;
+      case "http-stream-pause":
+        StreamHttp.pause(arg1);
+        callbackContext.success();
+        return true;
+      case "http-stream-resume":
+        StreamHttp.resume(arg1);
+        callbackContext.success();
+        return true;
+      case "http-stream-cancel":
+        StreamHttp.cancel(arg1);
+        callbackContext.success();
         return true;
       case "set-input-type":
         setInputType(arg1);
@@ -636,6 +664,52 @@ public class System extends CordovaPlugin {
       extension
     );
     return mimeType != null ? mimeType : "application/octet-stream";
+  }
+
+  /**
+   * Starts a streaming HTTP request. The response body is delivered to
+   * JavaScript incrementally as base64 encoded chunks.
+   *
+   * <p>Args:
+   * <ol>
+   *   <li>requestId - unique id used for pause/resume/cancel</li>
+   *   <li>url</li>
+   *   <li>options JSON object:
+   *     method, headers, body, bodyIsBase64, followRedirects,
+   *     connectTimeout, readTimeout, chunkSize</li>
+   * </ol>
+   */
+  private void httpStreamStart(JSONArray args, CallbackContext callbackContext) {
+    try {
+      final String requestId = args.getString(0);
+      final String url = args.getString(1);
+      final JSONObject options = args.getJSONObject(2);
+
+      final String method = options.optString("method", "GET");
+      final JSONObject headers = options.optJSONObject("headers");
+      final String body = options.isNull("body") ? null : options.optString("body");
+      final boolean bodyIsBase64 = options.optBoolean("bodyIsBase64", false);
+      final boolean followRedirects = options.optBoolean("followRedirects", true);
+      final int connectTimeout = options.optInt("connectTimeout", 30000);
+      final int readTimeout = options.optInt("readTimeout", 0);
+      final int chunkSize = options.optInt("chunkSize", 0);
+
+      StreamHttp.start(
+        requestId,
+        url,
+        method,
+        headers,
+        body,
+        bodyIsBase64,
+        followRedirects,
+        connectTimeout,
+        readTimeout,
+        chunkSize,
+        callbackContext
+      );
+    } catch (Exception e) {
+      callbackContext.error("Failed to start stream: " + e.getMessage());
+    }
   }
 
   private void getConfiguration(CallbackContext callback) {

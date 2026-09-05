@@ -272,5 +272,140 @@ module.exports = {
         [text1, text2]
       );
     });
+  },
+  /**
+   * Make an HTTP request and receive the response body as a WHATWG
+   * `ReadableStream` of `Uint8Array` chunks, as bytes arrive from the server.
+   *
+   * The native layer does not buffer the whole response and performs no SSE /
+   * provider specific parsing; it simply forwards raw byte chunks. Chunk
+   * boundaries are arbitrary and may split multi-byte UTF-8 characters or SSE
+   * frames. The consumer is responsible for decoding / parsing the stream.
+   *
+   * @param {string} url - Request URL
+   * @param {Object} [options]
+   * @param {string} [options.method="GET"] - HTTP method
+   * @param {Object<string,string>} [options.headers] - Request headers
+   * @param {string} [options.body] - Request body. Sent as UTF-8 text unless
+   *   `bodyIsBase64` is set, in which case it is decoded from base64.
+   * @param {boolean} [options.bodyIsBase64=false]
+   * @param {boolean} [options.followRedirects=true]
+   * @param {number} [options.connectTimeout=30000] - Connect timeout in ms
+   * @param {number} [options.readTimeout=0] - Read timeout in ms (0 = none)
+   * @param {number} [options.chunkSize=8192] - Requested native chunk size in bytes
+   * @returns {Promise<Response>} Resolves with a `Response` whose `body` is a
+   *   `ReadableStream` delivering `Uint8Array` chunks. A 4xx/5xx HTTP status
+   *   is a normal response (not a rejected promise); only transport failures
+   *   reject. Cancelling the returned stream's reader cancels the underlying
+   *   native HTTP request.
+   */
+  httpStream: function (url, options) {
+    options = options || {};
+
+    return new Promise(function (resolve, reject) {
+      var requestId = "httpStream_" + Date.now() + "_" + Math.random().toString(36).slice(2, 10);
+      var controller = null;
+      var headersReceived = false;
+      var paused = false;
+      var terminal = false;
+
+      var stream = new ReadableStream({
+        start: function (c) {
+          controller = c;
+        },
+        pull: function () {
+          if (paused && !terminal) {
+            paused = false;
+            cordova.exec(null, null, 'System', 'http-stream-resume', [requestId]);
+          }
+        },
+        cancel: function () {
+          cordova.exec(null, null, 'System', 'http-stream-cancel', [requestId]);
+        }
+      }, {
+        highWaterMark: 65536,
+        size: function (chunk) {
+          return chunk.byteLength;
+        }
+      });
+
+      function fail(err) {
+        if (terminal) return;
+        terminal = true;
+        if (headersReceived && controller) {
+          controller.error(err);
+        } else {
+          reject(err);
+        }
+      }
+
+      cordova.exec(
+        function (event) {
+          if (!event || typeof event !== 'object' || terminal) return;
+
+          switch (event.type) {
+            case 'headers': {
+              headersReceived = true;
+              var status = event.status;
+              var cannotHaveBody = status === 204 || status === 205 || status === 304;
+              var response;
+              if (cannotHaveBody) {
+                response = new Response(null, {
+                  status: status,
+                  statusText: event.statusText || '',
+                  headers: new Headers(event.headers || {})
+                });
+              } else {
+                response = new Response(stream, {
+                  status: status,
+                  statusText: event.statusText || '',
+                  headers: new Headers(event.headers || {})
+                });
+              }
+              if (event.url) {
+                Object.defineProperty(response, 'url', { value: event.url, configurable: true });
+              }
+              resolve(response);
+              break;
+            }
+            case 'data': {
+              if (controller && event.chunk) {
+                controller.enqueue(base64ToBytes(event.chunk));
+                var desired = controller.desiredSize;
+                if (desired !== null && desired < 0 && !paused) {
+                  paused = true;
+                  cordova.exec(null, null, 'System', 'http-stream-pause', [requestId]);
+                }
+              }
+              break;
+            }
+            case 'complete': {
+              terminal = true;
+              if (controller) controller.close();
+              break;
+            }
+            case 'error': {
+              fail(new Error(event.message || 'Stream failed'));
+              break;
+            }
+          }
+        },
+        function (err) {
+          fail(typeof err === 'string' ? new Error(err) : err);
+        },
+        'System',
+        'http-stream-start',
+        [requestId, url, options]
+      );
+    });
   }
 };
+
+function base64ToBytes(base64) {
+  var binary = atob(base64);
+  var bytes = new Uint8Array(binary.length);
+  for (var i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
