@@ -284,6 +284,20 @@ interface System {
     onFail: OnFail,
   ): void;
   /**
+   * Extract a .tar.xz archive to a destination directory
+   * @param sourcePath
+   * @param destinationPath
+   * @param onSuccess
+   * @param onFail
+   */
+  extractTarXz(
+    sourcePath: string,
+    destinationPath: string,
+    onSuccess: () => void,
+    onFail: OnFail,
+  ): void;
+
+  /**
    * Enable/disable native WebView long-press context behavior.
    * Use this when rendering a custom editor context menu.
    * @param disabled

@@ -563,7 +563,7 @@
 	"lsp-install-info-unknown": "無法自動檢查安裝狀態。",
 	"lsp-install-info-version-available": "可用版本：{version}",
 	"lsp-install-notification": "{server} 未安裝。點擊安裝。",
-	"lsp-install-method-apk": "APK 包",
+	"lsp-install-method-apt": "APT 包",
 	"lsp-install-method-cargo": "Cargo 包",
 	"lsp-install-method-manual": "手動二進制",
 	"lsp-install-method-npm": "npm 包",

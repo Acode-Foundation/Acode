@@ -103,9 +103,9 @@ public class TerminalService extends Service {
             switch (msg.what) {
                 case MSG_START_PROCESS:
                     String cmd = bundle.getString("cmd");
-                    String alpine = bundle.getString("alpine");
+                    String ubuntu = bundle.getString("ubuntu");
                     clientMessengers.put(id, clientMessenger);
-                    startProcess(id, cmd, "true".equals(alpine));
+                    startProcess(id, cmd, "true".equals(ubuntu));
                     break;
                 case MSG_WRITE_TO_PROCESS:
                     String input = bundle.getString("input");
@@ -119,9 +119,9 @@ public class TerminalService extends Service {
                     break;
                 case MSG_EXEC:
                     String execCmd = bundle.getString("cmd");
-                    String execAlpine = bundle.getString("alpine");
+                    String execUbuntu = bundle.getString("ubuntu");
                     clientMessengers.put(id, clientMessenger);
-                    exec(id, execCmd, "true".equals(execAlpine));
+                    exec(id, execCmd, "true".equals(execUbuntu));
                     break;
                 case MSG_LIST_PROCESSES:
                     listProcesses(id, clientMessenger);
@@ -158,16 +158,16 @@ public class TerminalService extends Service {
         }
     }
 
-    private void startProcess(String pid, String cmd, boolean useAlpine) {
+    private void startProcess(String pid, String cmd, boolean useUbuntu) {
         threadPool.execute(() -> {
             try {
-                ProcessBuilder builder = processManager.createProcessBuilder(cmd, useAlpine);
+                ProcessBuilder builder = processManager.createProcessBuilder(cmd, useUbuntu);
                 Process process = builder.start();
                 
                 long pidVal = ProcessUtils.getPid(process);
                 processes.put(pid, process);
                 processInputs.put(pid, process.getOutputStream());
-                processDetails.put(pid, new ProcessDetails(cmd, useAlpine, pidVal));
+                processDetails.put(pid, new ProcessDetails(cmd, useUbuntu, pidVal));
                 
                 // Stream stdout
                 threadPool.execute(() -> 
@@ -200,10 +200,10 @@ public class TerminalService extends Service {
         });
     }
 
-    private void exec(String execId, String cmd, boolean useAlpine) {
+    private void exec(String execId, String cmd, boolean useUbuntu) {
         threadPool.execute(() -> {
             try {
-                ProcessManager.ExecResult result = processManager.executeCommand(cmd, useAlpine);
+                ProcessManager.ExecResult result = processManager.executeCommand(cmd, useUbuntu);
                 
                 if (result.isSuccess()) {
                     sendExecResultToClient(execId, true, result.stdout);
@@ -288,7 +288,7 @@ public class TerminalService extends Service {
                 JSONObject item = new JSONObject();
                 item.put("id", id);
                 item.put("command", details.command);
-                item.put("alpine", details.alpine);
+                item.put("ubuntu", details.ubuntu);
                 item.put("startedAt", details.startedAt);
                 item.put("pid", details.pid);
                 result.put(item);
@@ -338,13 +338,13 @@ public class TerminalService extends Service {
 
     private static class ProcessDetails {
         final String command;
-        final boolean alpine;
+        final boolean ubuntu;
         final long startedAt;
         final long pid;
 
-        ProcessDetails(String command, boolean alpine, long pid) {
+        ProcessDetails(String command, boolean ubuntu, long pid) {
             this.command = command;
-            this.alpine = alpine;
+            this.ubuntu = ubuntu;
             this.startedAt = System.currentTimeMillis();
             this.pid = pid;
         }

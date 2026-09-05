@@ -81,7 +81,7 @@ interface RawBridgeConfig {
 function sanitizeInstallKind(
 	value: unknown,
 ):
-	| "apk"
+	| "apt"
 	| "npm"
 	| "pip"
 	| "cargo"
@@ -90,7 +90,7 @@ function sanitizeInstallKind(
 	| "shell"
 	| undefined {
 	switch (value) {
-		case "apk":
+		case "apt":
 		case "npm":
 		case "pip":
 		case "cargo":

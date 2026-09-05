@@ -32,23 +32,23 @@ const isTerminalSafUri = (value = "") =>
 const getTerminalPaths = () => {
 	const packageName = window.BuildInfo?.packageName || "com.foxdebug.acode";
 	const dataDir = `/data/user/0/${packageName}`;
-	const alpineRoot = `${dataDir}/files/alpine`;
+	const ubuntuRoot = `${dataDir}/files/ubuntu`;
 	const publicDir = `${dataDir}/files/public`;
-	return { alpineRoot, publicDir, dataDir };
+	return { ubuntuRoot, publicDir, dataDir };
 };
 
 const isTerminalAccessiblePath = (url = "") => {
 	if (isAcodeTerminalPublicSafUri(url)) return true;
-	const { alpineRoot, publicDir } = getTerminalPaths();
+	const { ubuntuRoot, publicDir } = getTerminalPaths();
 	const cleanUrl = url.replace(/^file:\/\//, "");
-	if (cleanUrl.startsWith(alpineRoot) || cleanUrl.startsWith(publicDir)) {
+	if (cleanUrl.startsWith(ubuntuRoot) || cleanUrl.startsWith(publicDir)) {
 		return true;
 	}
 	return false;
 };
 
 const convertToProotPath = (url = "") => {
-	const { alpineRoot, publicDir } = getTerminalPaths();
+	const { ubuntuRoot, publicDir } = getTerminalPaths();
 	if (isAcodeTerminalPublicSafUri(url)) {
 		try {
 			const { docId } = Uri.parse(url);
@@ -81,8 +81,8 @@ const convertToProotPath = (url = "") => {
 	if (cleanUrl.startsWith(publicDir)) {
 		return cleanUrl.replace(publicDir, "/public");
 	}
-	if (cleanUrl.startsWith(alpineRoot)) {
-		return cleanUrl.replace(alpineRoot, "") || "/";
+	if (cleanUrl.startsWith(ubuntuRoot)) {
+		return cleanUrl.replace(ubuntuRoot, "") || "/";
 	}
 	console.warn(`Unrecognized path for terminal conversion: ${url}`);
 	return cleanUrl;
