@@ -715,8 +715,8 @@ const APP_BINDING_CONFIG = [
 		editorOnly: true,
 	},
 	{
-		name: "welcomeTab",
-		description: "Find a file",
+		name: "acode:showWelcome",
+		description: "Show Welcome",
 		key: "Ctrl-Shift-W",
 		action: "welcome",
 	},
