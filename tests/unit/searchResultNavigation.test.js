@@ -52,7 +52,8 @@ describe("project search result navigation", () => {
 		};
 		vi.stubGlobal("editorManager", manager);
 		openFile.mockReset();
-		openFile.mockImplementation(async (uri) => {
+		openFile.mockImplementation(async (uri, { signal }) => {
+			if (signal.aborted) return;
 			const file = files.get(uri) || addFile(uri);
 			activate(file);
 		});
@@ -65,7 +66,10 @@ describe("project search result navigation", () => {
 		async (existing) => {
 			if (existing) addFile("target");
 			expect(await navigateToResult("target", match)).toBe(true);
-			expect(openFile).toHaveBeenCalledWith("target", { render: true });
+			expect(openFile).toHaveBeenCalledWith("target", {
+				render: true,
+				signal: expect.any(AbortSignal),
+			});
 			expect(manager.revealRange).toHaveBeenCalledWith(8, 11, {
 				y: "center",
 				userEvent: "select.search",
@@ -92,16 +96,19 @@ describe("project search result navigation", () => {
 		expect(manager.revealRange).toHaveBeenCalledWith(8, 11, expect.anything());
 	});
 
-	it("keeps the latest result active when an earlier file opens slowly", async () => {
+	it("reveals the latest result without waiting for an obsolete open", async () => {
 		const opening = deferred();
-		openFile.mockImplementationOnce(async (uri) => {
+		openFile.mockImplementationOnce(async (uri, { signal }) => {
 			await opening.promise;
-			activate(addFile(uri));
+			if (!signal.aborted) activate(addFile(uri));
 		});
 		const first = navigateToResult("slow", match);
 		await vi.waitFor(() => expect(openFile).toHaveBeenCalledTimes(1));
 		const skipped = navigateToResult("intermediate", match);
 		const last = navigateToResult("latest", match);
+		await expect(last).resolves.toBe(true);
+		expect(manager.activeFile.uri).toBe("latest");
+		expect(openFile.mock.calls[0][1].signal.aborted).toBe(true);
 		opening.resolve();
 
 		expect(await Promise.all([first, skipped, last])).toEqual([
@@ -109,9 +116,42 @@ describe("project search result navigation", () => {
 			false,
 			true,
 		]);
-		expect(openFile.mock.calls.map(([uri]) => uri)).toEqual(["slow", "latest"]);
+		expect(openFile.mock.calls.map(([uri]) => uri)).toEqual([
+			"slow",
+			"intermediate",
+			"latest",
+		]);
 		expect(manager.activeFile.uri).toBe("latest");
 		expect(manager.revealRange).toHaveBeenCalledTimes(1);
+	});
+
+	it("reveals another file while an obsolete restored tab is still loading", async () => {
+		const file = addFile("slow");
+		const loading = deferred();
+		file.loaded = false;
+		file.loading = true;
+		file.load.mockImplementation(() => loading.promise);
+		const first = navigateToResult("slow", match);
+		await vi.waitFor(() => expect(file.load).toHaveBeenCalled());
+
+		await expect(navigateToResult("latest", match)).resolves.toBe(true);
+		expect(manager.activeFile.uri).toBe("latest");
+		file.loaded = true;
+		file.loading = false;
+		loading.resolve();
+		await expect(first).resolves.toBe(false);
+		expect(manager.activeFile.uri).toBe("latest");
+		expect(manager.revealRange).toHaveBeenCalledTimes(1);
+	});
+
+	it("ignores late failures from an obsolete open", async () => {
+		const opening = deferred();
+		openFile.mockImplementationOnce(() => opening.promise);
+		const first = navigateToResult("slow", match);
+		await expect(navigateToResult("latest", match)).resolves.toBe(true);
+		opening.reject(new Error("Obsolete read failed"));
+		await expect(first).resolves.toBe(false);
+		expect(manager.activeFile.uri).toBe("latest");
 	});
 
 	it("uses the latest match when the same file is still loading", async () => {
