@@ -217,6 +217,7 @@ class Settings {
 			developerMode: false,
 			shiftClickSelection: true,
 			showShareButton: true,
+			appIcon: "default",
 		};
 		this.value = structuredClone(this.#defaultSettings);
 	}
