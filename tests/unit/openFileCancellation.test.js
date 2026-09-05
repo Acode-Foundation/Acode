@@ -36,9 +36,20 @@ describe("openFile cancellation", () => {
 	let createEditor;
 	let recents;
 	let controller;
+	let titleLoader;
+	let loaderVisible;
 
 	beforeEach(() => {
 		controller = new AbortController();
+		loaderVisible = false;
+		titleLoader = {
+			showTitleLoader: vi.fn(() => {
+				loaderVisible = true;
+			}),
+			removeTitleLoader: vi.fn(() => {
+				loaderVisible = false;
+			}),
+		};
 		manager = { getFile: vi.fn(), activeFile: null };
 		stat = vi.fn().mockResolvedValue({ name: "target.txt", length: 10 });
 		readFile = vi.fn().mockResolvedValue("bytes");
@@ -56,7 +67,7 @@ describe("openFile cancellation", () => {
 			"dialogs/alert": {},
 			"dialogs/confirm": {},
 			"dialogs/loader": {
-				default: { showTitleLoader: vi.fn(), removeTitleLoader: vi.fn() },
+				default: titleLoader,
 			},
 			"palettes/changeEncoding": {},
 			"utils/encodings": { decode, detectEncoding },
@@ -139,5 +150,74 @@ describe("openFile cancellation", () => {
 		waiting.resolve();
 		await opening;
 		expect(createEditor).not.toHaveBeenCalled();
+	});
+
+	it("keeps the latest loader visible when an aborted earlier read settles", async () => {
+		const obsoleteRead = deferred();
+		const latestRead = deferred();
+		readFile.mockReturnValueOnce(obsoleteRead.promise);
+		readFile.mockReturnValueOnce(latestRead.promise);
+		const obsolete = openFile("obsolete", { signal: controller.signal });
+		await vi.waitFor(() => expect(readFile).toHaveBeenCalledTimes(1));
+		controller.abort();
+		const latest = openFile("latest");
+		await vi.waitFor(() => expect(readFile).toHaveBeenCalledTimes(2));
+		expect(loaderVisible).toBe(true);
+		const removals = titleLoader.removeTitleLoader.mock.calls.length;
+
+		obsoleteRead.resolve("obsolete bytes");
+		await obsolete;
+		expect(loaderVisible).toBe(true);
+		expect(titleLoader.removeTitleLoader).toHaveBeenCalledTimes(removals);
+		latestRead.resolve("latest bytes");
+		await latest;
+		expect(loaderVisible).toBe(false);
+	});
+
+	it.each([0, 1])(
+		"keeps the indicator until both concurrent opens finish (first to finish: %s)",
+		async (first) => {
+			const reads = [deferred(), deferred()];
+			readFile.mockReturnValueOnce(reads[0].promise);
+			readFile.mockReturnValueOnce(reads[1].promise);
+			const opens = [openFile("one"), openFile("two")];
+			await vi.waitFor(() => expect(readFile).toHaveBeenCalledTimes(2));
+			reads[first].resolve("bytes");
+			await opens[first];
+			expect(loaderVisible).toBe(true);
+			expect(titleLoader.removeTitleLoader).not.toHaveBeenCalled();
+			reads[1 - first].resolve("bytes");
+			await opens[1 - first];
+			expect(loaderVisible).toBe(false);
+			expect(titleLoader.removeTitleLoader).toHaveBeenCalledOnce();
+		},
+	);
+
+	it("releases a cancelled open's loader without waiting for its read", async () => {
+		const reading = deferred();
+		readFile.mockReturnValueOnce(reading.promise);
+		const opening = openFile("target", { signal: controller.signal });
+		await vi.waitFor(() => expect(readFile).toHaveBeenCalledOnce());
+		expect(loaderVisible).toBe(true);
+		controller.abort();
+		expect(loaderVisible).toBe(false);
+		expect(titleLoader.removeTitleLoader).toHaveBeenCalledOnce();
+		reading.resolve("bytes");
+		await opening;
+		expect(titleLoader.removeTitleLoader).toHaveBeenCalledOnce();
+	});
+
+	it("does not hide another open's loader when activating an existing tab", async () => {
+		const reading = deferred();
+		readFile.mockReturnValueOnce(reading.promise);
+		const opening = openFile("loading");
+		await vi.waitFor(() => expect(readFile).toHaveBeenCalledOnce());
+		manager.getFile.mockReturnValue({ makeActive: vi.fn() });
+		await openFile("existing");
+		expect(loaderVisible).toBe(true);
+		expect(titleLoader.removeTitleLoader).not.toHaveBeenCalled();
+		reading.resolve("bytes");
+		await opening;
+		expect(loaderVisible).toBe(false);
 	});
 });

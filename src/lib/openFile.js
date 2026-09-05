@@ -13,6 +13,8 @@ import fileTypeHandler from "./fileTypeHandler";
 import recents from "./recents";
 import appSettings from "./settings";
 
+let loadingFileCount = 0;
+
 /**
  * @typedef {object} FileOptions
  * @property {string} text
@@ -36,6 +38,7 @@ import appSettings from "./settings";
 export default async function openFile(file, options = {}) {
 	const { signal } = options;
 	if (signal?.aborted) return;
+	let releaseTitleLoader;
 	try {
 		let uri = typeof file === "string" ? file : file.uri;
 		if (!uri) return;
@@ -115,7 +118,7 @@ export default async function openFile(file, options = {}) {
 			return;
 		}
 
-		loader.showTitleLoader();
+		releaseTitleLoader = acquireTitleLoader(signal);
 		const settings = appSettings.value;
 		const fs = fsOperation(uri);
 		const fileInfo = await fs.stat();
@@ -478,8 +481,24 @@ export default async function openFile(file, options = {}) {
 	} catch (error) {
 		if (!signal?.aborted) console.error(error);
 	} finally {
-		loader.removeTitleLoader();
+		releaseTitleLoader?.();
 	}
+}
+
+/** Keep the shared indicator visible while any file open still needs it. */
+function acquireTitleLoader(signal) {
+	if (loadingFileCount++ === 0) loader.showTitleLoader();
+	let released = false;
+	const release = () => {
+		// An aborted filesystem call may settle much later. Release immediately
+		// on abort, and make its eventual finally block a no-op.
+		if (released) return;
+		released = true;
+		signal?.removeEventListener("abort", release);
+		if (--loadingFileCount === 0) loader.removeTitleLoader();
+	};
+	signal?.addEventListener("abort", release, { once: true });
+	return release;
 }
 
 /**
