@@ -2,6 +2,15 @@ android {
     packagingOptions {
         pickFirst 'META-INF/versions/9/OSGI-INF/MANIFEST.MF'
     }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'),
+                rootProject.file('../../proguard-rules.pro')
+        }
+    }
 }
 
 configurations {
