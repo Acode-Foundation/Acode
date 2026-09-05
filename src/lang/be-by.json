@@ -867,5 +867,15 @@
 	"plugin-review:error-max-length": "Водгук павінен змяшчаць не больш за {max} сімвалаў.",
 	"plugin-review:error-downvote-comment": "Раскажыце распрацоўшчыку, што можна палепшыць.",
 	"plugin-review:error-empty": "Дадайце каментарый або выберыце «Падабаецца».",
-	"plugin-review:unrated": "Без ацэнкі"
+	"plugin-review:unrated": "Без ацэнкі",
+	"sponsor:page-title": "Acode's Sponsors",
+	"sponsor:cta-text": "Join our community of supporters and help shape the future of mobile development",
+	"sponsor:cta-button": "Become a Sponsor",
+	"sponsor:be-the-first": "Be the first {tier} Sponsor!",
+	"sponsor:sponsors": "Sponsors",
+	"sponsor:thank-you": "Thank you for supporting Acode!",
+	"sponsor:something-went-wrong": "Something went wrong.",
+	"sponsor:sponsor-acode": "Sponsor Acode",
+	"sponsor:support-future-mobile-coding": "Support the future of mobile coding",
+	"sponsor:month": "Month"
 }

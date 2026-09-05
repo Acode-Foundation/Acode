@@ -867,5 +867,15 @@
 	"plugin-review:error-max-length": "הביקורת צריכה להכיל עד {max} תווים.",
 	"plugin-review:error-downvote-comment": "ספר למפתח מה אפשר לשפר.",
 	"plugin-review:error-empty": "הוסף תגובה או בחר באהבתי.",
-	"plugin-review:unrated": "ללא דירוג"
+	"plugin-review:unrated": "ללא דירוג",
+	"sponsor:page-title": "Acode's Sponsors",
+	"sponsor:cta-text": "Join our community of supporters and help shape the future of mobile development",
+	"sponsor:cta-button": "Become a Sponsor",
+	"sponsor:be-the-first": "Be the first {tier} Sponsor!",
+	"sponsor:sponsors": "Sponsors",
+	"sponsor:thank-you": "Thank you for supporting Acode!",
+	"sponsor:something-went-wrong": "Something went wrong.",
+	"sponsor:sponsor-acode": "Sponsor Acode",
+	"sponsor:support-future-mobile-coding": "Support the future of mobile coding",
+	"sponsor:month": "Month"
 }

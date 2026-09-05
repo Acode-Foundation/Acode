@@ -7,8 +7,15 @@ import config from "lib/config";
 import Sponsor from "pages/sponsor";
 import helpers from "utils/helpers";
 
+function getEmptyMessage(tier) {
+	return strings["sponsor:be-the-first"].replace(
+		"{tier}",
+		tier.charAt(0).toUpperCase() + tier.slice(1),
+	);
+}
+
 export default function Sponsors() {
-	const page = Page("Sponsors");
+	const page = Page(strings["sponsor:sponsors"]);
 	const titaniumSponsors = Ref();
 	const platinumSponsors = Ref();
 	const goldSponsors = Ref();
@@ -30,16 +37,14 @@ export default function Sponsors() {
 	page.body = (
 		<div id="sponsors-page">
 			<div className="cta-section">
-				<p class="cta-text">
-					Join our community of supporters and help shape the future of mobile
-					development
-				</p>
+				<p class="cta-text">{strings["sponsor:cta-text"]}</p>
 				<button class="cta-button" onclick={() => Sponsor(render)}>
-					Become a Sponsor <span className="icon favorite"></span>
+					{strings["sponsor:cta-button"]}{" "}
+					<span className="icon favorite"></span>
 				</button>
 			</div>
 			<div className="sponsors-container">
-				<h2>Acode's Sponsors</h2>
+				<h2>{strings["sponsor:page-title"]}</h2>
 				<div className="sponsors-list" onclick={handleLinkClick}>
 					<div className="tier">
 						<div className="tier-name">
@@ -47,7 +52,7 @@ export default function Sponsors() {
 						</div>
 						<div
 							className="sponsors"
-							data-empty-message="Be the first Titanium Sponsor!"
+							data-empty-message={getEmptyMessage("titanium")}
 							ref={titaniumSponsors}
 						></div>
 					</div>
@@ -57,7 +62,7 @@ export default function Sponsors() {
 						</div>
 						<div
 							className="sponsors"
-							data-empty-message="Be the first Platinum Sponsor!"
+							data-empty-message={getEmptyMessage("platinum")}
 							ref={platinumSponsors}
 						></div>
 					</div>
@@ -67,7 +72,7 @@ export default function Sponsors() {
 						</div>
 						<div
 							className="sponsors"
-							data-empty-message="Be the first Gold Sponsor!"
+							data-empty-message={getEmptyMessage("gold")}
 							ref={goldSponsors}
 						></div>
 					</div>
@@ -77,7 +82,7 @@ export default function Sponsors() {
 						</div>
 						<div
 							className="sponsors"
-							data-empty-message="Be the first Silver Sponsor!"
+							data-empty-message={getEmptyMessage("silver")}
 							ref={silverSponsors}
 						></div>
 					</div>
@@ -87,7 +92,7 @@ export default function Sponsors() {
 						</div>
 						<div
 							className="sponsors"
-							data-empty-message="Be the first Bronze Sponsor!"
+							data-empty-message={getEmptyMessage("bronze")}
 							ref={bronzeSponsors}
 						></div>
 					</div>
@@ -97,7 +102,7 @@ export default function Sponsors() {
 						</div>
 						<div
 							className="sponsors"
-							data-empty-message="Be the first Crystal Sponsor!"
+							data-empty-message={getEmptyMessage("crystal")}
 							ref={crystalSponsors}
 						></div>
 					</div>

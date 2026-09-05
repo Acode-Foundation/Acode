@@ -867,5 +867,15 @@
 	"plugin-review:error-max-length": "レビューは {max} 文字以内で入力してください。",
 	"plugin-review:error-downvote-comment": "改善してほしい点を開発者に伝えてください。",
 	"plugin-review:error-empty": "コメントを追加するか、高評価を選んでください。",
-	"plugin-review:unrated": "未評価"
+	"plugin-review:unrated": "未評価",
+	"sponsor:page-title": "Acode's Sponsors",
+	"sponsor:cta-text": "Join our community of supporters and help shape the future of mobile development",
+	"sponsor:cta-button": "Become a Sponsor",
+	"sponsor:be-the-first": "Be the first {tier} Sponsor!",
+	"sponsor:sponsors": "Sponsors",
+	"sponsor:thank-you": "Thank you for supporting Acode!",
+	"sponsor:something-went-wrong": "Something went wrong.",
+	"sponsor:sponsor-acode": "Sponsor Acode",
+	"sponsor:support-future-mobile-coding": "Support the future of mobile coding",
+	"sponsor:month": "Month"
 }

@@ -867,5 +867,15 @@
 	"plugin-review:error-max-length": "Ulasan harus terdiri dari {max} karakter atau kurang.",
 	"plugin-review:error-downvote-comment": "Beri tahu developer apa yang dapat ditingkatkan.",
 	"plugin-review:error-empty": "Tambahkan komentar atau pilih Suka.",
-	"plugin-review:unrated": "Belum dinilai"
+	"plugin-review:unrated": "Belum dinilai",
+	"sponsor:page-title": "Sponsor Acode",
+	"sponsor:cta-text": "Bergabunglah dengan komunitas pendukung kami dan bantu bentuk masa depan pengembangan mobile",
+	"sponsor:cta-button": "Jadi Sponsor",
+	"sponsor:be-the-first": "Jadi Sponsor {tier} yang pertama!",
+	"sponsor:sponsors": "Sponsor",
+	"sponsor:thank-you": "Terima kasih telah mendukung Acode!",
+	"sponsor:something-went-wrong": "Terjadi kesalahan.",
+	"sponsor:sponsor-acode": "Sponsor Acode",
+	"sponsor:support-future-mobile-coding": "Dukung masa depan pengembangan mobile",
+	"sponsor:month": "Bulan"
 }

@@ -867,5 +867,15 @@
 	"plugin-review:error-max-length": "Review must be {max} characters or less.",
 	"plugin-review:error-downvote-comment": "Tell the developer what could be improved.",
 	"plugin-review:error-empty": "Add a comment or choose thumbs up.",
-	"plugin-review:unrated": "Unrated"
+	"plugin-review:unrated": "Unrated",
+	"sponsor:page-title": "Acode's Sponsors",
+	"sponsor:cta-text": "Join our community of supporters and help shape the future of mobile development",
+	"sponsor:cta-button": "Become a Sponsor",
+	"sponsor:be-the-first": "Be the first {tier} Sponsor!",
+	"sponsor:sponsors": "Sponsors",
+	"sponsor:thank-you": "Thank you for supporting Acode!",
+	"sponsor:something-went-wrong": "Something went wrong.",
+	"sponsor:sponsor-acode": "Sponsor Acode",
+	"sponsor:support-future-mobile-coding": "Support the future of mobile coding",
+	"sponsor:month": "Month"
 }

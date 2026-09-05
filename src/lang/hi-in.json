@@ -867,5 +867,15 @@
 	"plugin-review:error-max-length": "समीक्षा {max} वर्णों या उससे कम की होनी चाहिए।",
 	"plugin-review:error-downvote-comment": "डेवलपर को बताएँ कि क्या बेहतर किया जा सकता है।",
 	"plugin-review:error-empty": "टिप्पणी जोड़ें या पसंद चुनें।",
-	"plugin-review:unrated": "अभी रेटिंग नहीं"
+	"plugin-review:unrated": "अभी रेटिंग नहीं",
+	"sponsor:page-title": "Acode's Sponsors",
+	"sponsor:cta-text": "Join our community of supporters and help shape the future of mobile development",
+	"sponsor:cta-button": "Become a Sponsor",
+	"sponsor:be-the-first": "Be the first {tier} Sponsor!",
+	"sponsor:sponsors": "Sponsors",
+	"sponsor:thank-you": "Thank you for supporting Acode!",
+	"sponsor:something-went-wrong": "Something went wrong.",
+	"sponsor:sponsor-acode": "Sponsor Acode",
+	"sponsor:support-future-mobile-coding": "Support the future of mobile coding",
+	"sponsor:month": "Month"
 }

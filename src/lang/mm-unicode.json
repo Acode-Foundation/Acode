@@ -867,5 +867,15 @@
 	"plugin-review:error-max-length": "သုံးသပ်ချက်သည် စာလုံးရေ {max} လုံး သို့မဟုတ် ထိုထက်နည်းရမည်။",
 	"plugin-review:error-downvote-comment": "မည်သည့်အရာကို ပိုကောင်းအောင်လုပ်နိုင်ကြောင်း developer ကို ပြောပါ။",
 	"plugin-review:error-empty": "မှတ်ချက်ထည့်ပါ သို့မဟုတ် ကြိုက်သည်ကို ရွေးပါ။",
-	"plugin-review:unrated": "အဆင့်မသတ်မှတ်ရသေးပါ"
+	"plugin-review:unrated": "အဆင့်မသတ်မှတ်ရသေးပါ",
+	"sponsor:page-title": "Acode's Sponsors",
+	"sponsor:cta-text": "Join our community of supporters and help shape the future of mobile development",
+	"sponsor:cta-button": "Become a Sponsor",
+	"sponsor:be-the-first": "Be the first {tier} Sponsor!",
+	"sponsor:sponsors": "Sponsors",
+	"sponsor:thank-you": "Thank you for supporting Acode!",
+	"sponsor:something-went-wrong": "Something went wrong.",
+	"sponsor:sponsor-acode": "Sponsor Acode",
+	"sponsor:support-future-mobile-coding": "Support the future of mobile coding",
+	"sponsor:month": "Month"
 }
