@@ -26,6 +26,7 @@ extend-exclude = [
     "src/lang/it-it.json",
     "src/lang/ja-jp.json",
     "src/lang/ko-kr.json",
+    "src/lang/ln-ln.json",
     "src/lang/ml-in.json",
     "src/lang/mm-unicode.json",
     "src/lang/mm-zawgyi.json",
