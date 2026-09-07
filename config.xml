@@ -86,7 +86,7 @@
         </config-file>
 
         <hook type="before_prepare" src="hooks/restore-cordova-resources.js" />
-        <hook type="before_prepare" src="hooks/modify-java-files.js" />
+        <hook type="after_prepare" src="hooks/modify-java-files.js" />
         <hook type="after_prepare" src="hooks/post-process.js" />
     </platform>
     <preference name="AndroidBlacklistSecureSocketProtocols" value="SSLv3,TLSv1" />
