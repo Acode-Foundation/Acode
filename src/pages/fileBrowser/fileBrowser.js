@@ -60,6 +60,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 	const IS_FOLDER_MODE = ["folder", "both"].includes(mode);
 	const IS_FILE_MODE = ["file", "both"].includes(mode);
+	const SELECT_DOCUMENT_LABEL = "Select document";
 	const storedState = helpers.parseJSON(localStorage.fileBrowserState) || [];
 	/**@type {Array<Location>} */
 	const state = [];
@@ -106,6 +107,16 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		);
 
 		const $search = <span className="icon search" data-action="search"></span>;
+		const $selectDocument = (
+			<span
+				className="icon folder_open"
+				data-action="select-document"
+				title={SELECT_DOCUMENT_LABEL}
+				aria-label={SELECT_DOCUMENT_LABEL}
+				role="button"
+				tabindex="0"
+			></span>
+		);
 		const $lead = <span className="icon clearclose" data-action="close"></span>;
 		const $page = Page(strings["file browser"].capitalize(), {
 			lead: $lead,
@@ -160,7 +171,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		$selectionMenuToggler.style.display = "none";
 		$pasteToggler.style.display = "none";
 		const progress = {};
-		let cachedDir = {};
+		let cachedDir = new Map();
 		let currentDir = {
 			url: null,
 			name: null,
@@ -178,8 +189,9 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		$content.addEventListener("click", handleClick);
 		$content.addEventListener("contextmenu", handleContextMenu, true);
 		$page.body = $content;
+		$page.header.append($search);
+		if (IS_FILE_MODE) $page.header.append($selectDocument);
 		$page.header.append(
-			$search,
 			$pasteToggler,
 			$selectionModeToggler,
 			$addMenuToggler,
@@ -222,6 +234,12 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		};
 
 		$pasteToggler.onclick = pasteCopiedItems;
+		$selectDocument.onclick = selectDocument;
+		$selectDocument.onkeydown = (event) => {
+			if (event.key !== "Enter" && event.key !== " ") return;
+			event.preventDefault();
+			selectDocument();
+		};
 
 		$fbMenu.onclick = function (e) {
 			$fbMenu.hide();
@@ -237,8 +255,6 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			}
 
 			if (action === "reload") {
-				const { url } = currentDir;
-				if (url in cachedDir) delete cachedDir[url];
 				reload();
 				return;
 			}
@@ -653,6 +669,25 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			$page.hide();
 		}
 
+		function selectDocument() {
+			checkFiles.check = false;
+			sdcard.openDocumentFile(
+				(res) => {
+					res.url = res.uri;
+					resolve({
+						type: "file",
+						...res,
+						name: res.filename,
+						mode: "single",
+					});
+					$page.hide();
+				},
+				(err) => {
+					helpers.error(err);
+				},
+			);
+		}
+
 		/**
 		 * @param {string} url
 		 */
@@ -694,7 +729,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			}
 			recents.removeFile(url);
 			openFolder.removeItem(url);
-			delete cachedDir[url];
+			cachedDir.delete(url);
 		}
 
 		function updateSelectionCount($count) {
@@ -872,6 +907,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 				$addMenuToggler.style.display = "none";
 				$menuToggler.style.display = "none";
+				$selectDocument.style.display = "none";
 				$selectionMenuToggler.style.display = "";
 				updatePasteToggler();
 
@@ -899,6 +935,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 				$addMenuToggler.style.display = "";
 				$menuToggler.style.display = "";
+				$selectDocument.style.display = "";
 				$selectionMenuToggler.style.display = "none";
 				updatePasteToggler();
 
@@ -998,7 +1035,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					else if (!$el.hasAttribute("disabled")) file();
 					break;
 				case "openDoc":
-					openDoc();
+					selectDocument();
 					break;
 			}
 
@@ -1304,25 +1341,6 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				localStorage.storageList = JSON.stringify(storageList);
 				reload();
 			}
-
-			function openDoc() {
-				checkFiles.check = false;
-				sdcard.openDocumentFile(
-					(res) => {
-						res.url = res.uri;
-						resolve({
-							type: "file",
-							...res,
-							name: res.filename,
-							mode: "single",
-						});
-						$page.hide();
-					},
-					(err) => {
-						helpers.error(err);
-					},
-				);
-			}
 		}
 
 		function handleContextMenu(e) {
@@ -1431,7 +1449,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			}
 
 			if (IS_FILE_MODE) {
-				util.pushFolder(allStorages, "Select document", null, {
+				util.pushFolder(allStorages, SELECT_DOCUMENT_LABEL, null, {
 					openDoc: true,
 					notSelectable: true,
 				});
@@ -1451,8 +1469,8 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			let list = [];
 			let error = false;
 
-			if (url in cachedDir) {
-				return cachedDir[url];
+			if (cachedDir.has(url)) {
+				return cachedDir.get(url);
 			} else {
 				if (url === "/") {
 					list = await listAllStorages();
@@ -1468,8 +1486,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					const timeout = setTimeout(() => {
 						loader.create(name, strings.loading + "...", {
 							timeout: loaderTimeout,
-							callback() {
-								loader.destroy();
+							oncancel() {
 								navigate("/", "/");
 								progress[id] = false;
 							},
@@ -1788,8 +1805,8 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			const $oldList = $content.get("#list");
 			if ($oldList) {
 				const { url } = currentDir;
-				if (url && cachedDir[url]) {
-					cachedDir[url].scroll = $oldList.scrollTop;
+				if (url && cachedDir.has(url)) {
+					cachedDir.get(url).scroll = $oldList.scrollTop;
 				}
 				$oldList.remove();
 			}
@@ -1798,13 +1815,13 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			$list.focus();
 
 			currentDir = dir;
-			cachedDir[dir.url] = dir;
+			cachedDir.set(dir.url, dir);
 			updatePasteToggler();
 		}
 
 		function reload() {
 			const { url, name } = currentDir;
-			delete cachedDir[url];
+			cachedDir.delete(url);
 			navigate(url, name);
 		}
 

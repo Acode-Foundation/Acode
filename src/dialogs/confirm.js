@@ -10,7 +10,7 @@ let nextConfirmId = 0;
  * @param {string} titleText Title text
  * @param {string} [message] Alert message
  * @param {boolean} [isHTML] Whether the message is HTML
- * @param {{checkboxText?: string, returnState?: boolean, signal?: AbortSignal}} [options]
+ * @param {{checkboxText?: string, returnState?: boolean, signal?: AbortSignal, direction?: "ltr" | "rtl", aboveOverlay?: boolean}} [options]
  * @returns {Promise<boolean | {confirmed: boolean, checked: boolean}>}
  */
 function confirm(titleText, message, isHTML, options = {}) {
@@ -59,7 +59,8 @@ function confirm(titleText, message, isHTML, options = {}) {
 			onclick: cancel,
 		});
 		const confirmDiv = tag("div", {
-			className: "prompt confirm",
+			className: `prompt confirm${options.aboveOverlay ? " above-overlay" : ""}`,
+			dir: options.direction,
 			children: [
 				titleSpan,
 				messageSpan,

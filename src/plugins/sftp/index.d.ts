@@ -42,6 +42,10 @@ interface Sftp {
   exec(command: String, onSucess: (res: ExecResult)=>void, onFail: (err: any) => void): void;
   /** Connects using credentials held by the native profile store. */
   connectUsingProfile(profileId: String, onSuccess: () => void, onFail: (err: any) => void): void;
+  /** Tests a profile once and returns its remote working directory. */
+  testProfile(profileId: String, requestId: String, timeout: Number, onSuccess: (home: String) => void, onFail: (err: any) => void): void;
+  /** Cancels an in-flight profile connection or test. */
+  cancelConnection(requestId: String, onSuccess: () => void, onFail: (err: any) => void): void;
   saveProfile(profileId: String | null, host: String, port: Number, username: String, authType: String, password: String, keyFile: String, passphrase: String, onSuccess: (profileId: String) => void, onFail: (err: any) => void): void;
   editProfile(profileId: String | null, host: String, port: Number, username: String, authType: String, password: String, keyFile: String, passphrase: String, onSuccess: (profile: SftpProfileInfo & {profileId: string}) => void, onFail: (err: any) => void): void;
   getProfileInfo(profileId: String, onSuccess: (profile: SftpProfileInfo & {profileId: string}) => void, onFail: (err: any) => void): void;

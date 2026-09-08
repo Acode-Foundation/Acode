@@ -407,6 +407,23 @@ class SftpClient {
 		}
 	}
 
+	/**
+	 * Tests a profile once without the normal remote-filesystem retry policy.
+	 * @param {string} requestID Native request ID used for cancellation
+	 */
+	testConnection(requestID) {
+		return new Promise((resolve, reject) => {
+			sftp.testProfile(this.#profileID, requestID, 10000, resolve, reject);
+		});
+	}
+
+	/** Cancel an in-flight profile test. */
+	cancelConnection(requestID) {
+		return new Promise((resolve) => {
+			sftp.cancelConnection(requestID, resolve, resolve);
+		});
+	}
+
 	async #connectWithRetry() {
 		const attempts = settings.value.retryRemoteFsAfterFail
 			? this.#MAX_TRY + 1

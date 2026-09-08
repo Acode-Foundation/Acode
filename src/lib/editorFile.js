@@ -1,17 +1,11 @@
 import fsOperation from "fileSystem";
 // CodeMirror imports for document state management
-import { EditorState } from "@codemirror/state";
+import { EditorSelection, EditorState } from "@codemirror/state";
 import {
 	focusEditorIfEditable,
 	reconfigureEditorReadOnly,
 } from "cm/editorReadOnly";
-import {
-	clearSelection,
-	getDocText,
-	restoreFolds,
-	restoreSelection,
-	setScrollPosition,
-} from "cm/editorUtils";
+import { clearSelection, getDocText } from "cm/editorUtils";
 import { getMode, getModeForPath } from "cm/modelist";
 import quickTools from "components/quickTools";
 import Sidebar from "components/sidebar";
@@ -36,6 +30,25 @@ import saveFile from "./saveFile";
 import appSettings from "./settings";
 
 let mainCSSStyleSheet = null;
+
+function restoreSessionSelection(state, selection) {
+	if (!selection?.ranges?.length) return state;
+
+	const docLength = state.doc.length;
+	const ranges = selection.ranges.map((range) => {
+		const from = Math.max(0, Math.min(docLength, range.from | 0));
+		const to = Math.max(0, Math.min(docLength, range.to | 0));
+		return EditorSelection.range(from, to);
+	});
+	const mainIndex =
+		selection.mainIndex >= 0 && selection.mainIndex < ranges.length
+			? selection.mainIndex
+			: 0;
+
+	return state.update({
+		selection: EditorSelection.create(ranges, mainIndex),
+	}).state;
+}
 
 function getMainCSSStyleSheet() {
 	if (mainCSSStyleSheet) return mainCSSStyleSheet;
@@ -330,6 +343,7 @@ function maybeRecommendLanguageModeExtension(file, modeInfo) {
  * @property {string} [paneId] target editor pane id
  * @property {object} [pane] target editor pane
  * @property {boolean} [isPanePlaceholder] temporary empty tab for an empty pane
+ * @property {boolean} [persistInSession] restore the tab in a future app session
  * @property {boolean} [highlightStyles] adopt static CodeMirror highlight CSS into the custom tab shadow root
  */
 
@@ -445,6 +459,7 @@ export default class EditorFile {
 	 * contains information about cursor position, scroll left, scroll top, folds.
 	 */
 	#loadOptions;
+	#loadPromise = null;
 	/**
 	 * Weather file is changed and needs to be saved
 	 * @type {boolean}
@@ -500,6 +515,11 @@ export default class EditorFile {
 	diskMtime = null;
 	hasDiskConflict = false;
 	isPanePlaceholder = false;
+	persistInSession = true;
+	lastScrollTop = 0;
+	lastScrollLeft = 0;
+	restoredSelection = null;
+	restoredFolds = null;
 
 	/**
 	 *
@@ -513,6 +533,7 @@ export default class EditorFile {
 		this.hideQuickTools = options?.hideQuickTools || false;
 		this.paneId = options?.paneId || options?.pane?.id || null;
 		this.isPanePlaceholder = !!options?.isPanePlaceholder;
+		this.persistInSession = options?.persistInSession !== false;
 
 		// if options are passed
 		if (options) {
@@ -699,6 +720,14 @@ export default class EditorFile {
 				folds: options?.folds,
 				editable,
 			};
+			this.lastScrollTop = Number.isFinite(options?.scrollTop)
+				? options.scrollTop
+				: 0;
+			this.lastScrollLeft = Number.isFinite(options?.scrollLeft)
+				? options.scrollLeft
+				: 0;
+			this.restoredSelection = options?.cursorPos || null;
+			this.restoredFolds = options?.folds || null;
 		}
 
 		this.#onFilePosChange = () => {
@@ -1554,8 +1583,8 @@ export default class EditorFile {
 		this.#tab.classList.add("active");
 		this.#tab.scrollIntoView();
 
-		if (this.type === "editor" && !this.loaded && !this.loading) {
-			this.#loadText();
+		if (this.type === "editor" && !this.loaded) {
+			void this.load();
 		}
 
 		syncQuickToolsVisibility(this);
@@ -1635,6 +1664,20 @@ export default class EditorFile {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Load this file's document into its stored editor session.
+	 * Reuses an in-flight load so session restoration can safely preload tabs.
+	 */
+	load() {
+		if (this.type !== "editor" || this.loaded) return Promise.resolve(this);
+		if (this.#loadPromise) return this.#loadPromise;
+
+		this.#loadPromise = this.#loadText().finally(() => {
+			this.#loadPromise = null;
+		});
+		return this.#loadPromise;
 	}
 
 	/**
@@ -1778,9 +1821,7 @@ export default class EditorFile {
 		const protocol = this.uri ? Url.getProtocol(this.uri) : "";
 		const isRemoteFile = protocol === "ftp:" || protocol === "sftp:";
 
-		const { cursorPos, scrollLeft, scrollTop, folds, editable } =
-			this.#loadOptions;
-		const { editor } = editorManager;
+		const { cursorPos, editable } = this.#loadOptions;
 
 		this.#loadOptions = null;
 
@@ -1852,7 +1893,11 @@ export default class EditorFile {
 
 			const isUnsaved = this.isUnsaved;
 			this.markChanged = false;
-			this.session = EditorState.create({ doc: value });
+			this.session = restoreSessionSelection(
+				EditorState.create({ doc: value }),
+				cursorPos,
+			);
+			this.restoredSelection = null;
 			this.__cmSessionReady = false;
 			this.__cmLanguageReady = false;
 			this.__cmLanguageSignature = null;
@@ -1871,13 +1916,6 @@ export default class EditorFile {
 
 			setTimeout(() => {
 				this.#emit("load", createFileEvent(this));
-				if (cursorPos) {
-					restoreSelection(editor, cursorPos);
-				}
-				if (scrollTop || scrollLeft) {
-					setScrollPosition(editor, scrollTop, scrollLeft);
-				}
-				restoreFolds(editor, folds);
 			}, 0);
 		} catch (error) {
 			this.#emit("loaderror", createFileEvent(this));

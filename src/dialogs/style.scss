@@ -49,6 +49,14 @@
     z-index: 113;
   }
 
+  &.above-overlay {
+    z-index: 1001;
+
+    & + .mask {
+      z-index: 1000;
+    }
+  }
+
   &.multi {
     textarea:not(:first-of-type) {
       margin-top: 20px;

@@ -1,5 +1,5 @@
-import { EditorView } from "@codemirror/view";
 import { focusEditorIfEditable } from "cm/editorReadOnly";
+import { safeLspPositionToOffset } from "cm/lsp/positionUtils";
 import Sidebar from "components/sidebar";
 import DOMPurify from "dompurify";
 import openFile from "lib/openFile";
@@ -117,19 +117,22 @@ export async function navigateToReference(ref) {
 		if (!editor) return;
 
 		const doc = editor.state.doc;
-		const startLine = doc.line(ref.range.start.line + 1);
-		const endLine = doc.line(ref.range.end.line + 1);
-		const from = Math.min(
-			startLine.from + ref.range.start.character,
-			startLine.to,
-		);
-		const to = Math.min(endLine.from + ref.range.end.character, endLine.to);
+		const from = safeLspPositionToOffset(doc, ref.range.start);
+		const to = safeLspPositionToOffset(doc, ref.range.end);
 
-		editor.dispatch({
-			selection: { anchor: from, head: to },
-			effects: EditorView.scrollIntoView(from, { y: "center" }),
-		});
-		focusEditorIfEditable(editor);
+		if (typeof editorManager.revealRange === "function") {
+			editorManager.revealRange(from, to, {
+				y: "center",
+				userEvent: "select.definition",
+			});
+		} else {
+			editor.dispatch({
+				selection: { anchor: from, head: to },
+				scrollIntoView: true,
+				userEvent: "select.definition",
+			});
+			focusEditorIfEditable(editor);
+		}
 	} catch (error) {
 		console.error("Failed to navigate to reference:", error);
 	}

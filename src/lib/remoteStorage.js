@@ -35,7 +35,7 @@ export default {
 		try {
 			loader.create(strings["add ftp"], strings["connecting..."], {
 				timeout: 10000,
-				callback() {
+				oncancel() {
 					stopConnection = true;
 				},
 			});
@@ -176,6 +176,8 @@ export default {
 		existingProfile = null,
 	} = {}) {
 		let stopConnection = false;
+		let connection;
+		const connectionRequestID = `add-sftp-${helpers.uuid()}`;
 		if (existingProfile?.profileId) {
 			try {
 				const saved = await getSftpProfileInfo(existingProfile.profileId);
@@ -242,17 +244,21 @@ export default {
 		const url = createSftpProfileUrl(profile.profileId);
 
 		loader.create(strings["add sftp"], strings["connecting..."], {
-			timeout: 10000,
-			callback() {
+			timeout: 0,
+			oncancel() {
 				stopConnection = true;
+				connection?.cancelConnection(connectionRequestID);
 			},
 		});
-		const connection = Sftp(null, 22, null, {
+		connection = Sftp(null, 22, null, {
 			profileID: profile.profileId,
 		});
 
 		try {
-			const [home] = await Promise.all([connection.pwd(), loadAd()]);
+			const [home] = await Promise.all([
+				connection.testConnection(connectionRequestID),
+				loadAd(),
+			]);
 
 			if (stopConnection) {
 				stopConnection = false;

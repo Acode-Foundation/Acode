@@ -24,6 +24,7 @@ import { supportsBuiltinFormatting } from "./formattingSupport";
 import { documentColorsExtension } from "./documentColors";
 import { inlayHintsExtension } from "./inlayHints";
 import { addLspLog } from "./logs";
+import { safeLspPositionToOffset } from "./positionUtils";
 import { selectRuntimeProvider } from "./runtimeProviders";
 import serverRegistry from "./serverRegistry";
 import {
@@ -804,6 +805,14 @@ export class LspClientManager {
           configuration: true,
           workspaceFolders: true,
         },
+        textDocument: {
+          codeAction: {
+            dataSupport: true,
+            resolveSupport: {
+              properties: ["edit"],
+            },
+          },
+        },
       },
     };
 
@@ -1436,12 +1445,8 @@ function applyTextEdits(
     if (!edit?.range) continue;
     let fromBase: number;
     let toBase: number;
-    try {
-      fromBase = plugin.fromPosition(edit.range.start, plugin.syncedDoc);
-      toBase = plugin.fromPosition(edit.range.end, plugin.syncedDoc);
-    } catch (_) {
-      continue;
-    }
+    fromBase = safeLspPositionToOffset(plugin.syncedDoc, edit.range.start);
+    toBase = safeLspPositionToOffset(plugin.syncedDoc, edit.range.end);
     const fromResult = plugin.unsyncedChanges.mapPos(
       fromBase,
       1,

@@ -718,7 +718,7 @@ class Acode {
 	}
 
 	get exitAppMessage() {
-		const numFiles = editorManager.hasUnsavedFiles();
+		const numFiles = editorManager?.hasUnsavedFiles?.() ?? 0;
 		if (numFiles) {
 			return strings["unsaved files close app"];
 		}

@@ -61,4 +61,16 @@ describe("built-in editor themes", () => {
 			).not.toThrow();
 		}
 	});
+
+	it("keeps active-line backgrounds translucent so selections remain visible", () => {
+		for (const { id } of getThemes()) {
+			const activeLine = getThemeConfig(id).activeLine;
+			if (!activeLine) continue;
+
+			expect(activeLine, `${id} active line`).toMatch(/^#[\da-f]{8}$/i);
+			expect(Number.parseInt(activeLine.slice(-2), 16), `${id} active line`).toBeLessThan(
+				255,
+			);
+		}
+	});
 });

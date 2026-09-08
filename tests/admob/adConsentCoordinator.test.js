@@ -9,6 +9,7 @@ function createHarness({
 	gatherState,
 	previousState = EMPTY_PRIVACY_STATE,
 	gatherError,
+	showOptions,
 }) {
 	let gatherCalls = 0;
 	let getStateCalls = 0;
@@ -25,6 +26,7 @@ function createHarness({
 			return previousState;
 		},
 		async showOptions() {
+			if (showOptions) return showOptions();
 			return gatherState;
 		},
 	};
@@ -141,12 +143,12 @@ test("deduplicates consent collection and ad initialization", async () => {
 	assert.equal(harness.initializeCalls, 1);
 });
 
-test("updates privacy-option visibility and keeps ads single-started", async () => {
+test("hides a stale privacy-option entry and keeps ads single-started", async () => {
 	const harness = createHarness({
 		gatherState: {
-			consentStatus: "notRequired",
+			consentStatus: "obtained",
 			canRequestAds: true,
-			privacyOptionsRequired: false,
+			privacyOptionsRequired: true,
 		},
 	});
 	const states = [];
@@ -154,15 +156,15 @@ test("updates privacy-option visibility and keeps ads single-started", async () 
 
 	await harness.coordinator.start();
 	harness.privacy.showOptions = async () => ({
-		consentStatus: "obtained",
+		consentStatus: "notRequired",
 		canRequestAds: true,
-		privacyOptionsRequired: true,
+		privacyOptionsRequired: false,
 	});
 	await harness.coordinator.showPrivacyOptions();
 	unsubscribe();
 
 	assert.equal(harness.initializeCalls, 1);
-	assert.equal(states.at(-1).privacyOptionsRequired, true);
+	assert.equal(states.at(-1).privacyOptionsRequired, false);
 });
 
 test("normalizes an invalid native state instead of starting ads", async () => {
@@ -176,4 +178,63 @@ test("normalizes an invalid native state instead of starting ads", async () => {
 
 	assert.deepEqual(await harness.coordinator.start(), EMPTY_PRIVACY_STATE);
 	assert.equal(harness.initializeCalls, 0);
+});
+
+test("deduplicates concurrent privacy-option requests", async () => {
+	let resolveOptions;
+	let showOptionsCalls = 0;
+	const optionsResult = new Promise((resolve) => {
+		resolveOptions = resolve;
+	});
+	const harness = createHarness({
+		gatherState: {
+			consentStatus: "obtained",
+			canRequestAds: true,
+			privacyOptionsRequired: true,
+		},
+		showOptions() {
+			showOptionsCalls++;
+			return optionsResult;
+		},
+	});
+	await harness.coordinator.start();
+
+	const firstRequest = harness.coordinator.showPrivacyOptions();
+	const secondRequest = harness.coordinator.showPrivacyOptions();
+	assert.equal(firstRequest, secondRequest);
+	resolveOptions({
+		consentStatus: "obtained",
+		canRequestAds: true,
+		privacyOptionsRequired: false,
+	});
+
+	assert.deepEqual(await firstRequest, {
+		consentStatus: "obtained",
+		canRequestAds: true,
+		privacyOptionsRequired: false,
+	});
+	assert.equal(showOptionsCalls, 1);
+});
+
+test("preserves consent state when privacy options reject", async () => {
+	const gatherState = {
+		consentStatus: "obtained",
+		canRequestAds: true,
+		privacyOptionsRequired: true,
+	};
+	const optionsError = new Error("native failure");
+	const harness = createHarness({
+		gatherState,
+		showOptions: async () => {
+			throw optionsError;
+		},
+	});
+	await harness.coordinator.start();
+
+	await assert.rejects(
+		harness.coordinator.showPrivacyOptions(),
+		(error) => error === optionsError,
+	);
+	assert.deepEqual(harness.coordinator.state, gatherState);
+	assert.equal(harness.initializeCalls, 1);
 });

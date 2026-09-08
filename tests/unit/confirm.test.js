@@ -1,4 +1,6 @@
-import { Window } from "happy-dom";
+// @vitest-environment happy-dom
+
+import tag from "html-tag-js";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 vi.mock("lib/settings", () => ({
 	default: { value: { confirmOnExit: false } },
@@ -9,23 +11,14 @@ vi.mock("components/checkbox", () => ({
 }));
 import confirm from "dialogs/confirm";
 import actionStack from "lib/actionStack";
-let window;
 beforeEach(() => {
 	vi.useFakeTimers();
 	vi.clearAllMocks();
 	actionStack.setMark();
-	window = new Window();
-	vi.stubGlobal("document", window.document);
-	vi.stubGlobal("app", window.document.body);
+	document.body.replaceChildren();
+	vi.stubGlobal("app", document.body);
 	vi.stubGlobal("strings", { ok: "OK", cancel: "Cancel" });
-	vi.stubGlobal("tag", (name, options) => {
-		const el = document.createElement(name);
-		for (const [key, value] of Object.entries(options)) {
-			if (key === "children") el.append(...value);
-			else if (value !== undefined) el[key] = value;
-		}
-		return el;
-	});
+	vi.stubGlobal("tag", tag);
 });
 afterEach(() => {
 	actionStack.clearFromMark();
@@ -33,7 +26,7 @@ afterEach(() => {
 	vi.restoreAllMocks();
 	vi.useRealTimers();
 	vi.unstubAllGlobals();
-	window.happyDOM.cancelAsync();
+	document.body.replaceChildren();
 });
 it.each([
 	"back",
@@ -44,10 +37,25 @@ it.each([
 	const result = confirm("Icon", "Watch?", false, {
 		signal: controller.signal,
 	});
+	expect(document.querySelector(".confirm").className).toBe("prompt confirm");
 	if (method === "back") await actionStack.pop();
 	if (method === "cancel") document.querySelector("button").click();
 	if (method === "abort") controller.abort();
 	await expect(result).resolves.toBe(false);
+	vi.runAllTimers();
+	expect(app.children.length).toBe(0);
+	expect(actionStack.length).toBe(0);
+});
+it("applies the overlay layer without losing RTL and resolves true", async () => {
+	const result = confirm("Delete", "Delete this review?", false, {
+		direction: "rtl",
+		aboveOverlay: true,
+	});
+	const dialog = document.querySelector(".confirm");
+	expect(dialog.className).toBe("prompt confirm above-overlay");
+	expect(dialog.dir).toBe("rtl");
+	dialog.querySelectorAll("button")[1].click();
+	await expect(result).resolves.toBe(true);
 	vi.runAllTimers();
 	expect(app.children.length).toBe(0);
 	expect(actionStack.length).toBe(0);
