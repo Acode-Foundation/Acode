@@ -6,6 +6,7 @@ import vm from "node:vm";
 import { expect, it } from "vitest";
 
 const require = createRequire(import.meta.url);
+const { parse } = require("elementtree");
 const hook = fs.readFileSync(
 	new URL("../../hooks/post-process.js", import.meta.url),
 	"utf8",
@@ -20,7 +21,27 @@ it("refreshes stale System plugin Java alongside icons on repeated Android prepa
 		return target;
 	};
 	try {
-		write("config.xml", '<widget id="com.foxdebug.acode" />');
+		write(
+			"config.xml",
+			fs.readFileSync(new URL("../../config.xml", import.meta.url), "utf8"),
+		);
+		const manifest = write(
+			"platforms/android/app/src/main/AndroidManifest.xml",
+			`
+			<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+				<application>
+					<activity android:name="MainActivity">
+						<intent-filter>
+							<action android:name="android.intent.action.MAIN" />
+							<category android:name="android.intent.category.LAUNCHER" />
+						</intent-filter>
+					</activity>
+					<activity-alias android:name=".MainActivityIconDefault" android:targetActivity=".MainActivity" />
+					<activity-alias android:name=".MainActivityIconDefault" android:targetActivity="com.foxdebug.system.LauncherActivity" />
+					<activity-alias android:name="other.Alias" android:targetActivity="other.Activity" />
+				</application>
+			</manifest>`,
+		);
 		write("build-extras.gradle", "// build configuration");
 		write("res/android/drawable/ic_acode_pro.xml", "<vector />");
 		const source = write(
@@ -31,6 +52,9 @@ it("refreshes stale System plugin Java alongside icons on repeated Android prepa
 			"platforms/android/app/src/main/java/com/foxdebug/system/System.java",
 			'aliases.put("default", "MainActivityIconDefault");',
 		);
+		const launcher =
+			"src/plugins/system/android/com/foxdebug/system/LauncherActivity.java";
+		write(launcher, "// launcher routing");
 		const unrelated = write(
 			"platforms/android/app/src/main/java/other/Plugin.java",
 			"// other plugin",
@@ -52,11 +76,41 @@ it("refreshes stale System plugin Java alongside icons on repeated Android prepa
 				},
 			});
 		prepare();
+		const preparedManifest = fs.readFileSync(manifest, "utf8");
+		const application = parse(preparedManifest).find("application");
+		const aliases = application.findall("activity-alias");
+		expect(aliases).toHaveLength(9);
+		expect(aliases[0].get("android:name")).toBe("other.Alias");
+		expect(
+			aliases
+				.slice(1)
+				.every(
+					(alias) =>
+						alias.get("android:targetActivity") ===
+						"com.foxdebug.system.LauncherActivity",
+				),
+		).toBe(true);
+		expect(application.getchildren()[2].get("android:name")).toBe(
+			"com.foxdebug.system.LauncherActivity",
+		);
+		expect(application.find("activity").findall("intent-filter")).toHaveLength(
+			0,
+		);
+		expect(
+			fs.readFileSync(
+				path.join(
+					root,
+					"platforms/android/app/src/main/java/com/foxdebug/system/LauncherActivity.java",
+				),
+				"utf8",
+			),
+		).toBe(fs.readFileSync(path.join(root, launcher), "utf8"));
 		expect(fs.readFileSync(generated, "utf8")).toBe(
 			fs.readFileSync(source, "utf8"),
 		);
 		fs.appendFileSync(source, "\n// subsequent native edit");
 		prepare();
+		expect(fs.readFileSync(manifest, "utf8")).toBe(preparedManifest);
 		expect(fs.readFileSync(generated, "utf8")).toBe(
 			fs.readFileSync(source, "utf8"),
 		);
@@ -73,4 +127,55 @@ it("refreshes stale System plugin Java alongside icons on repeated Android prepa
 	} finally {
 		fs.rmSync(root, { recursive: true, force: true });
 	}
+});
+
+it("preserves all launcher aliases while routing them through the registered launcher activity", () => {
+	const config = parse(
+		fs.readFileSync(new URL("../../config.xml", import.meta.url), "utf8"),
+	);
+	const application = config
+		.findall(".//config-file")
+		.find((element) => element.findall("activity-alias").length);
+	const children = application.getchildren();
+	const launcher = children[0];
+	expect(launcher.tag).toBe("activity");
+	expect(launcher.attrib).toMatchObject({
+		"android:name": "com.foxdebug.system.LauncherActivity",
+		"android:noHistory": "true",
+		"android:relinquishTaskIdentity": "true",
+		"android:theme": "@android:style/Theme.NoDisplay",
+	});
+	const aliases = application.findall("activity-alias");
+	expect(aliases.map((alias) => alias.get("android:name"))).toEqual([
+		".MainActivityIconDefault",
+		".MainActivityIconPro",
+		".MainActivityIconMidnightCircuit",
+		".MainActivityIconAuroraPulse",
+		".MainActivityIconTerminalGlow",
+		".MainActivityIconSolarFlare",
+		".MainActivityIconBlueprint",
+		".MainActivityIconPixelParty",
+	]);
+	for (const [index, alias] of aliases.entries()) {
+		expect(alias.get("android:targetActivity")).toBe(
+			launcher.get("android:name"),
+		);
+		expect(alias.get("android:enabled")).toBe(index === 0 ? "true" : "false");
+		expect(alias.get("android:exported")).toBe("true");
+	}
+	const plugin = parse(
+		fs.readFileSync(
+			new URL("../../src/plugins/system/plugin.xml", import.meta.url),
+			"utf8",
+		),
+	);
+	expect(
+		plugin
+			.findall(".//source-file")
+			.some(
+				(file) =>
+					file.get("src") ===
+					"android/com/foxdebug/system/LauncherActivity.java",
+			),
+	).toBe(true);
 });

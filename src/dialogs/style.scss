@@ -64,7 +64,8 @@
   }
 
   &.confirm,
-  &.alert {
+  &.alert,
+  &.app-icon-dialog {
     .title {
       text-transform: uppercase;
     }
@@ -212,10 +213,9 @@
     z-index: 111;
     background-color: rgb(0, 0, 0);
     opacity: 0.4;
-    animation: mask-enter 180ms ease-out forwards;
 
-    ~ .mask {
-      opacity: 0;
+    &:has(~ .prompt:not(.hide) + .mask) {
+      opacity: 0 !important;
     }
   }
 
@@ -226,8 +226,6 @@
     opacity: 0 !important;
 
     & + .mask {
-      animation: none;
-      transition: opacity 180ms ease-in-out;
       opacity: 0 !important;
     }
   }

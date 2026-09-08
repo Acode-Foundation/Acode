@@ -7,6 +7,7 @@ import restoreTheme from "lib/restoreTheme";
 let loaderIsImmortal = false;
 let onCancelCallback = null;
 let cancelButtonTimeout = null;
+let destroyTimeout = null;
 let $currentDialog = null;
 let $currentMask = null;
 const titleLoaderId = "__title-loader";
@@ -39,16 +40,18 @@ function create(titleText, message = "", options = {}) {
 		titleText = "";
 	}
 
-	const $oldLoader = tag.get("#__loader");
-	const $oldMask = tag.get("#__loader-mask");
-
-	if ($oldLoader) $oldLoader.remove();
+	clearTimeout(destroyTimeout);
+	destroyTimeout = null;
+	const replacingActiveLoader =
+		$currentDialog && !$currentDialog.classList.contains("hide");
+	$currentDialog?.remove();
+	$currentMask?.remove();
 
 	const $message = Ref();
 	const $titleSpan = Ref();
 
-	const $mask = $oldMask || <span className="mask" id="__loader-mask"></span>;
-	const $dialog = $oldLoader || (
+	const $mask = <span className="mask" id="__loader-mask"></span>;
+	const $dialog = (
 		<div className="prompt alert" id="__loader">
 			<strong ref={$titleSpan} className="title">
 				{titleText}
@@ -82,11 +85,11 @@ function create(titleText, message = "", options = {}) {
 		}, options.timeout);
 	}
 
-	if (!$oldLoader) {
-		actionStack.freeze();
-		document.body.append($dialog, $mask);
-		restoreTheme(true);
-	}
+	$currentDialog = $dialog;
+	$currentMask = $mask;
+	actionStack.freeze();
+	document.body.append($dialog, $mask);
+	if (!replacingActiveLoader) restoreTheme(true);
 
 	return {
 		setTitle(title) {
@@ -124,23 +127,24 @@ function createTitleLoader() {
  * Removes the loader from DOM permanently
  */
 function destroy() {
-	const loaderDiv = tag.get("#__loader");
-	const mask = tag.get("#__loader-mask");
+	const loaderDiv = $currentDialog;
+	const mask = $currentMask;
 	clearTimeout(cancelButtonTimeout);
 	cancelButtonTimeout = null;
 	onCancelCallback = null;
+	if (!loaderDiv || loaderDiv.classList.contains("hide")) return;
 	restoreTheme();
 
-	if (!loaderDiv && !mask) {
+	loaderDiv.classList.add("hide");
+	destroyTimeout = setTimeout(() => {
+		// A newer loader must retain its dialog and Back/Escape lock.
+		if ($currentDialog !== loaderDiv) return;
+		destroyTimeout = null;
+		loaderDiv.remove();
+		mask?.remove();
+		$currentDialog = null;
+		$currentMask = null;
 		actionStack.unfreeze();
-		return;
-	}
-
-	loaderDiv?.classList.add("hide");
-	setTimeout(() => {
-		actionStack.unfreeze();
-		if (loaderDiv?.isConnected) loaderDiv.remove();
-		if (mask?.isConnected) mask.remove();
 	}, 300);
 }
 
@@ -148,30 +152,19 @@ function destroy() {
  * Hides the loading dialog box temporarily and can be restored using show method
  */
 function hide() {
-	const loaderDiv = tag.get("#__loader");
-	const mask = tag.get("#__loader-mask");
-
-	if (loaderDiv) {
-		$currentDialog = loaderDiv;
-		loaderDiv.remove();
-	}
-	if (mask) {
-		$currentMask = mask;
-		mask.remove();
-	}
+	$currentDialog?.remove();
+	$currentMask?.remove();
 }
 
 /**
  * Shows previously hidden dialog box.
  */
 function show() {
-	if ($currentDialog) {
+	if ($currentDialog && !$currentDialog.isConnected) {
 		app.append($currentDialog);
-		$currentDialog = null;
 	}
-	if ($currentMask) {
+	if ($currentMask && !$currentMask.isConnected) {
 		app.append($currentMask);
-		$currentMask = null;
 	}
 }
 

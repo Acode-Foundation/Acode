@@ -2,6 +2,7 @@
 const path = require('path');
 const fs = require('fs');
 const { execSync } = require('child_process');
+const { parse } = require('elementtree');
 
 const buildFilePath = path.resolve(__dirname, '../build.json');
 const copyToPath = path.resolve(__dirname, '../platforms/android/build.json');
@@ -37,6 +38,30 @@ disableSplashFadeOnRealmeAndroid13();
 removeLegacyKeyboardWorkaround();
 patchTargetSdkVersion();
 stripLauncherFilterFromMainActivity();
+syncLauncherActivities();
+
+// Cordova can retain old aliases when their targetActivity changes. Replace
+// only our launcher entries, keeping the target activity before its aliases.
+function syncLauncherActivities() {
+  const config = parse(fs.readFileSync(path.resolve(__dirname, '../config.xml'), 'utf8'));
+  const launcherConfig = config.findall('.//config-file').find(element =>
+    element.findall('activity').some(activity =>
+      activity.get('android:name') === 'com.foxdebug.system.LauncherActivity'
+    )
+  );
+  const manifestPath = path.resolve(__dirname, '../platforms/android/app/src/main/AndroidManifest.xml');
+  if (!launcherConfig || !fs.existsSync(manifestPath)) return;
+
+  const manifest = parse(fs.readFileSync(manifestPath, 'utf8'));
+  const application = manifest.find('application');
+  const entries = launcherConfig.getchildren();
+  const names = new Set(entries.map(entry => entry.get('android:name')));
+  for (const entry of [...application.getchildren()]) {
+    if (names.has(entry.get('android:name'))) application.remove(entry);
+  }
+  for (const entry of entries) application.append(entry);
+  fs.writeFileSync(manifestPath, manifest.write({ indent: 4 }), 'utf8');
+}
 
 function getPackageName() {
   const configPath = path.resolve(__dirname, '../config.xml');
@@ -76,9 +101,8 @@ function getTmpDir() {
 /**
  * Removes the MAIN/LAUNCHER intent-filter from MainActivity in the generated
  * AndroidManifest. The launcher role is handled by activity-aliases instead
- * (see config.xml), so that switching app icons at runtime only toggles aliases
- * and never disables the running MainActivity component (which would otherwise
- * force-stop/restart the app).
+ * (see config.xml). They forward through LauncherActivity so the editor runs
+ * under its stable MainActivity component when an icon alias is disabled.
  */
 function stripLauncherFilterFromMainActivity() {
   const prefix = execSync('npm prefix').toString().trim();

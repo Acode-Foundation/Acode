@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
 	toast: vi.fn(),
 	error: vi.fn(),
 	pass: false,
+	external: false,
 }));
 vi.mock("components/toast", () => ({ default: mocks.toast }));
 vi.mock("dialogs/confirm", () => ({ default: mocks.confirm }));
@@ -22,31 +23,38 @@ vi.mock("lib/removeAds", () => ({ requestProPurchase: mocks.purchase }));
 vi.mock("utils/helpers", () => ({
 	default: {
 		error: mocks.error,
+		shouldAllowExternalPurchase: () => mocks.external,
 		promisify: (fn, ...args) =>
 			new Promise((resolve, reject) => fn(...args, resolve, reject)),
 	},
 }));
-import createAppIconSelection from "lib/appIconSelection";
+import selectAppIcon from "lib/appIconSelection";
 
 function harness() {
 	const controller = new AbortController();
 	const onBusy = vi.fn();
+	const onLoading = vi.fn();
 	const onChange = vi.fn();
 	return {
 		controller,
 		onBusy,
+		onLoading,
 		onChange,
-		select: createAppIconSelection({
-			signal: controller.signal,
-			onBusy,
-			onChange,
-		}),
+		select(iconId) {
+			return selectAppIcon(iconId, {
+				signal: controller.signal,
+				onBusy,
+				onLoading,
+				onChange,
+			});
+		},
 	};
 }
 beforeEach(() => {
 	vi.clearAllMocks();
 	mocks.config.HAS_PRO = false;
 	mocks.pass = false;
+	mocks.external = false;
 	mocks.settings.value.appIcon = "default";
 	mocks.settings.update.mockImplementation(async ({ appIcon }) => {
 		mocks.settings.value.appIcon = appIcon;
@@ -64,16 +72,24 @@ beforeEach(() => {
 });
 
 describe("icon selection", () => {
-	it("opens Pro purchase without watching an ad or applying the locked icon", async () => {
+	it.each([
+		false,
+		true,
+	])("opens Pro purchase with external checkout %s", async (external) => {
+		mocks.external = external;
 		mocks.pass = true;
 		const h = harness();
 		mocks.purchase.mockImplementation(async () => {
+			expect(h.onLoading.mock.calls).toEqual(external ? [] : [[true]]);
 			mocks.config.HAS_PRO = true;
 		});
 		await h.select("pro");
 		expect(mocks.purchase).toHaveBeenCalledOnce();
 		expect(mocks.reward).not.toHaveBeenCalled();
 		expect(system.setAppIcon).not.toHaveBeenCalled();
+		expect(h.onLoading.mock.calls).toEqual(
+			external ? [[false]] : [[true], [false]],
+		);
 		await h.select("pro");
 		expect(system.setAppIcon).toHaveBeenCalledWith(
 			"pro",
@@ -89,7 +105,17 @@ describe("icon selection", () => {
 		mocks.settings.value.appIcon = "pixel_party";
 		mocks.config.HAS_PRO = kind === "paid";
 		mocks.pass = kind === "pass";
-		await harness().select(kind === "default" ? "default" : "midnight_circuit");
+		const h = harness();
+		const pending = h.select(
+			kind === "default"
+				? "default"
+				: kind === "paid"
+					? "pro"
+					: "midnight_circuit",
+		);
+		expect(h.onLoading).toHaveBeenCalledExactlyOnceWith(true);
+		await pending;
+		expect(h.onLoading.mock.calls).toEqual([[true], [false]]);
 		expect(mocks.confirm).not.toHaveBeenCalled();
 		expect(mocks.reward).not.toHaveBeenCalled();
 		expect(mocks.settings.update).toHaveBeenCalledOnce();
@@ -100,6 +126,7 @@ describe("icon selection", () => {
 		await h.select("default");
 		await h.select("unknown");
 		expect(h.onBusy).not.toHaveBeenCalled();
+		expect(h.onLoading).not.toHaveBeenCalled();
 		let confirm;
 		mocks.confirm.mockImplementation(
 			() =>
@@ -111,10 +138,19 @@ describe("icon selection", () => {
 		await h.select("solar_flare");
 		expect(mocks.confirm).toHaveBeenCalledOnce();
 		expect(mocks.reward).not.toHaveBeenCalled();
+		expect(h.onBusy).toHaveBeenCalledExactlyOnceWith(true);
+		expect(h.onLoading).not.toHaveBeenCalled();
+		mocks.reward.mockImplementation(async () => {
+			expect(h.onLoading).toHaveBeenCalledExactlyOnceWith(true);
+			await h.select("solar_flare");
+			return true;
+		});
 		confirm(true);
 		await first;
 		expect(system.setAppIcon.mock.calls[0][0]).toBe("pixel_party");
 		expect(h.onBusy.mock.calls).toEqual([[true], [false]]);
+		expect(h.onLoading.mock.calls).toEqual([[true], [false]]);
+		expect(mocks.reward).toHaveBeenCalledOnce();
 		expect(mocks.toast).toHaveBeenCalledTimes(1);
 	});
 	it.each([
@@ -137,7 +173,57 @@ describe("icon selection", () => {
 		expect(mocks.settings.update).not.toHaveBeenCalled();
 		expect(mocks.toast).not.toHaveBeenCalledWith("Changed");
 		expect(h.onBusy).toHaveBeenLastCalledWith(false);
+		expect(h.onLoading.mock.calls).toEqual(
+			kind === "decline" ? [[false]] : [[true], [false]],
+		);
 		if (kind === "decline") expect(mocks.reward).not.toHaveBeenCalled();
+		if (kind === "load failure" || kind === "native failure") {
+			expect(mocks.error).toHaveBeenCalledOnce();
+		} else {
+			expect(mocks.error).not.toHaveBeenCalled();
+		}
+		if (kind === "incomplete")
+			expect(mocks.toast).toHaveBeenCalledWith("Incomplete");
+	});
+	it("shows success only after the native change has been persisted", async () => {
+		mocks.pass = true;
+		let applied, persisted;
+		system.setAppIcon.mockImplementation((id, success) => {
+			applied = success;
+		});
+		mocks.settings.update.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					persisted = resolve;
+				}),
+		);
+		const h = harness();
+		const pending = h.select("pixel_party");
+		expect(mocks.toast).not.toHaveBeenCalled();
+		applied();
+		await vi.waitFor(() => expect(persisted).toBeTypeOf("function"));
+		expect(h.onChange).not.toHaveBeenCalled();
+		expect(mocks.toast).not.toHaveBeenCalled();
+		persisted();
+		await pending;
+		expect(h.onChange).toHaveBeenCalledOnce();
+		expect(mocks.toast).toHaveBeenCalledExactlyOnceWith("Changed");
+	});
+	it.each([
+		"pro",
+		"pass",
+	])("rechecks %s access after confirmation before loading", async (kind) => {
+		const h = harness();
+		mocks.confirm.mockImplementation(async () => {
+			expect(h.onLoading).not.toHaveBeenCalled();
+			mocks.config.HAS_PRO = kind === "pro";
+			mocks.pass = kind === "pass";
+			return true;
+		});
+		await h.select("pixel_party");
+		expect(mocks.reward).not.toHaveBeenCalled();
+		expect(system.setAppIcon).toHaveBeenCalledOnce();
+		expect(h.onLoading.mock.calls).toEqual([[true], [false]]);
 	});
 	it("ignores a reward received after leaving the picker", async () => {
 		let finish;
@@ -156,6 +242,7 @@ describe("icon selection", () => {
 		expect(system.setAppIcon).not.toHaveBeenCalled();
 		expect(h.onChange).not.toHaveBeenCalled();
 		expect(mocks.toast).not.toHaveBeenCalled();
+		expect(h.onLoading).toHaveBeenCalledExactlyOnceWith(true);
 	});
 	it("does not apply after leaving during confirmation", async () => {
 		const h = harness();
@@ -166,5 +253,29 @@ describe("icon selection", () => {
 		await h.select("pixel_party");
 		expect(mocks.reward).not.toHaveBeenCalled();
 		expect(system.setAppIcon).not.toHaveBeenCalled();
+		expect(h.onLoading).not.toHaveBeenCalled();
+	});
+	it("keeps a reopened picker locked until an earlier native change is persisted", async () => {
+		mocks.config.HAS_PRO = true;
+		let applied;
+		system.setAppIcon.mockImplementationOnce((id, success) => {
+			applied = success;
+		});
+		const previous = harness();
+		const pending = previous.select("pixel_party");
+		previous.controller.abort();
+		const reopened = harness();
+		await reopened.select("solar_flare");
+		expect(system.setAppIcon).toHaveBeenCalledOnce();
+		expect(reopened.onBusy).not.toHaveBeenCalled();
+		applied();
+		await pending;
+		expect(mocks.settings.value.appIcon).toBe("pixel_party");
+		expect(previous.onChange).not.toHaveBeenCalled();
+		expect(previous.onLoading).toHaveBeenCalledExactlyOnceWith(true);
+		expect(mocks.toast).not.toHaveBeenCalled();
+		await reopened.select("solar_flare");
+		expect(mocks.settings.value.appIcon).toBe("solar_flare");
+		expect(reopened.onChange).toHaveBeenCalledOnce();
 	});
 });

@@ -2206,10 +2206,9 @@ public class System extends CordovaPlugin {
   /**
    * Dynamically changes the app icon by toggling activity-alias components.
    *
-   * <p>The launcher icon is always represented by an activity-alias (including
-   * the default icon) so that the running MainActivity component never has to
-   * be disabled. Disabling the currently running component would make Android
-   * force-stop/restart the app, so only aliases are toggled here.
+   * <p>The aliases target LauncherActivity, which forwards to MainActivity and
+   * finishes. Android can finish activities launched through a disabled alias
+   * even with DONT_KILL_APP, so the editor must run under its own component.
    *
    * @param iconName Icon id (e.g. "midnight_circuit") or "default" to restore
    *     the original launcher icon.
@@ -2226,13 +2225,24 @@ public class System extends CordovaPlugin {
         return;
       }
 
-      for (Map.Entry<String, String> entry : APP_ICON_ALIASES.entrySet()) {
-        boolean enabled = entry.getKey().equals(key);
+      ComponentName selected = new ComponentName(
+        packageName, packageName + "." + APP_ICON_ALIASES.get(key)
+      );
+      // Keep a launcher entry available throughout the switch.
+      if (pm.getComponentEnabledSetting(selected) != PackageManager.COMPONENT_ENABLED_STATE_ENABLED) {
         pm.setComponentEnabledSetting(
-          new ComponentName(packageName, packageName + "." + entry.getValue()),
-          enabled
-            ? PackageManager.COMPONENT_ENABLED_STATE_ENABLED
-            : PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+          selected,
+          PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+          PackageManager.DONT_KILL_APP
+        );
+      }
+      for (Map.Entry<String, String> entry : APP_ICON_ALIASES.entrySet()) {
+        if (entry.getKey().equals(key)) continue;
+        ComponentName component = new ComponentName(packageName, packageName + "." + entry.getValue());
+        if (pm.getComponentEnabledSetting(component) == PackageManager.COMPONENT_ENABLED_STATE_DISABLED) continue;
+        pm.setComponentEnabledSetting(
+          component,
+          PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
           PackageManager.DONT_KILL_APP
         );
       }

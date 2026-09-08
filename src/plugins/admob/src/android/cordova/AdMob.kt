@@ -226,13 +226,28 @@ class AdMob : CordovaPlugin() {
         }
     }
 
+    override fun onReset() {
+        clearAdState()
+        super.onReset()
+    }
+
     override fun onDestroy() {
-        readyCallbackContext = null
-        for (ad in ads.toMap().values) {
-            ad.onDestroy()
-        }
-        Banner.destroyParentView()
+        clearAdState()
         super.onDestroy()
+    }
+
+    private fun clearAdState() {
+        readyCallbackContext = null
+        eventQueue.clear()
+        val previousAds = synchronized(ads) {
+            ads.values.toList().also { ads.clear() }
+        }
+        cordova.activity.runOnUiThread {
+            for (ad in previousAds) {
+                ad.onDestroy()
+            }
+            Banner.destroyParentView()
+        }
     }
 
     companion object {

@@ -1,87 +1,137 @@
+import "dialogs/style.scss";
 import "./appIconSetting.scss";
-import Page from "components/page";
 import loader from "dialogs/loader";
-import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
-import createAppIconSelection from "lib/appIconSelection";
+import selectAppIcon from "lib/appIconSelection";
 import { APP_ICONS } from "lib/appIcons";
+import restoreTheme from "lib/restoreTheme";
 import appSettings from "lib/settings";
-import helpers from "utils/helpers";
+
+let activeDialog;
+let nextDialogId = 0;
 
 export default function appIconSetting() {
-	const title = strings["app icon"] || "App icon";
-	const $page = Page(title);
-	const $list = Ref();
+	if (activeDialog) return activeDialog;
+	const actionId = `app-icon-${++nextDialogId}`;
+	const previousFocus = document.activeElement;
 	const controller = new AbortController();
-	let busy = false;
-	const selectIcon = createAppIconSelection({
+	const current = appSettings.value.appIcon || "default";
+	let loading = false;
+	let resolve;
+	const closed = new Promise((res) => {
+		resolve = res;
+	});
+	const $list = (
+		<div className="app-icon-list message scroll">
+			{APP_ICONS.map((icon) => (
+				<button
+					className={`app-icon-item${icon.id === current ? " current" : ""}`}
+					data-icon={icon.id}
+					type="button"
+					aria-label={icon.label}
+					aria-pressed={String(icon.id === current)}
+				>
+					<span className="app-icon-preview">
+						<img src={icon.image} alt="" />
+					</span>
+				</button>
+			))}
+		</div>
+	);
+	const $close = <button type="button">{strings.close}</button>;
+	const $dialog = (
+		<div
+			className="prompt app-icon-dialog"
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby={`${actionId}-title`}
+		>
+			<strong className="title" id={`${actionId}-title`}>
+				{strings["app icon"] || "App icon"}
+			</strong>
+			{$list}
+			<div className="button-container">{$close}</div>
+		</div>
+	);
+	const $mask = <span className="mask" />;
+	const selectionOptions = {
 		signal: controller.signal,
 		onBusy(value) {
-			busy = value;
-			if (value) loader.showTitleLoader();
-			else loader.removeTitleLoader();
-			$list.el.setAttribute("aria-busy", String(value));
-			for (const button of $list.el.querySelectorAll("button")) {
+			$list.setAttribute("aria-busy", String(value));
+			if (value && $list.contains(document.activeElement)) $close.focus();
+			for (const button of $list.querySelectorAll("button")) {
 				button.disabled = value;
 			}
 		},
-		onChange: renderIcons,
-	});
-	let resolve;
-	$page.classList.add("app-icon-page");
-
-	actionStack.push({
-		id: "appIcon",
-		action: () => {
-			$page.hide();
+		onLoading(value) {
+			if (loading === value) return;
+			loading = value;
+			$dialog.inert = value;
+			if (value) loader.create(strings["app icon"], strings["loading..."]);
+			else loader.destroy();
 		},
-	});
-
-	$page.onhide = () => {
-		controller.abort();
-		loader.removeTitleLoader();
-		$page.removeEventListener("click", clickHandler);
-		actionStack.remove("appIcon");
-		resolve();
+		onChange: close,
 	};
 
-	$page.body = <div ref={$list} className="app-icon-list list scroll"></div>;
+	activeDialog = closed;
+	$list.addEventListener("click", clickHandler);
+	$close.addEventListener("click", close);
+	$mask.addEventListener("click", close);
+	$dialog.addEventListener("keydown", keyHandler);
+	actionStack.push({ id: actionId, action: close });
+	app.append($dialog, $mask);
+	restoreTheme(true);
+	($list.querySelector(".current") || $close).focus();
+	return closed;
 
-	app.append($page);
-	renderIcons();
-	helpers.showAd();
-
-	$page.addEventListener("click", clickHandler);
-
-	return new Promise((res) => {
-		resolve = res;
-	});
-
-	function renderIcons() {
-		const current = appSettings.value.appIcon || "default";
-		$list.el.content = APP_ICONS.map((icon) => {
-			const isCurrent = icon.id === current;
-			return (
-				<button
-					className={`app-icon-item ${isCurrent ? "current" : ""}`}
-					data-icon={icon.id}
-					type="button"
-					disabled={busy}
-					aria-pressed={String(isCurrent)}
-				>
-					<span className="app-icon-preview">
-						<img src={icon.image} alt={icon.label} loading="lazy" />
-					</span>
-					<span className="app-icon-name">{icon.label}</span>
-				</button>
-			);
-		});
+	function close() {
+		if (controller.signal.aborted) return;
+		controller.abort();
+		if (loading) loader.destroy();
+		actionStack.remove(actionId);
+		$list.removeEventListener("click", clickHandler);
+		$close.removeEventListener("click", close);
+		$mask.removeEventListener("click", close);
+		$dialog.removeEventListener("keydown", keyHandler);
+		$dialog.classList.add("hide");
+		$dialog.inert = true;
+		restoreTheme();
+		setTimeout(
+			() => {
+				$dialog.remove();
+				$mask.remove();
+				activeDialog = undefined;
+				if (previousFocus?.isConnected) previousFocus.focus();
+				resolve();
+			},
+			document.body.classList.contains("no-animation") ? 0 : 180,
+		);
 	}
 
-	async function clickHandler(e) {
+	function clickHandler(e) {
 		const $target = e.target.closest("[data-icon]");
-		if (!$target) return;
-		const iconId = $target.dataset.icon;
-		await selectIcon(iconId);
+		if ($target) selectAppIcon($target.dataset.icon, selectionOptions);
+	}
+
+	function keyHandler(e) {
+		if (e.key === "Escape") {
+			e.preventDefault();
+			e.stopPropagation();
+			actionStack.pop();
+		} else if (e.key === "Tab") {
+			// A confirmation may be open while focus still belongs to the picker.
+			const prompts = document.querySelectorAll(".prompt:not(.hide)");
+			if (prompts[prompts.length - 1] !== $dialog) return;
+			const buttons = $dialog.querySelectorAll("button:not(:disabled)");
+			const first = buttons[0];
+			const last = buttons[buttons.length - 1];
+			if (e.shiftKey && e.target === first) {
+				e.preventDefault();
+				last.focus();
+			} else if (!e.shiftKey && e.target === last) {
+				e.preventDefault();
+				first.focus();
+			}
+		}
 	}
 }

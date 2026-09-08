@@ -6,13 +6,12 @@ import loader from "dialogs/loader";
 import select from "dialogs/select";
 import actions from "handlers/quickTools";
 import actionStack from "lib/actionStack";
-import { getAppIconLabel } from "lib/appIcons";
 import config from "lib/config";
 import fonts from "lib/fonts";
 import lang from "lib/lang";
 import openFile from "lib/openFile";
 import appSettings from "lib/settings";
-import appIconSetting from "pages/appIconSetting";
+import appIconSetting, { preloadAppIconSetting } from "pages/appIconSetting";
 import FontManager from "pages/fontManager";
 import QuickToolsSettings from "pages/quickTools";
 import encodings, { getEncoding } from "utils/encodings";
@@ -21,6 +20,7 @@ import { isPlayStoreInstall } from "utils/installSource";
 import Url from "utils/Url";
 
 export default function otherSettings() {
+	preloadAppIconSetting();
 	const values = appSettings.value;
 	const title = strings["app settings"].capitalize();
 	const installedFromPlayStore = isPlayStoreInstall();
@@ -69,8 +69,6 @@ export default function otherSettings() {
 		{
 			key: "appIcon",
 			text: strings["app icon"] || "App icon",
-			value: values.appIcon || "default",
-			valueText: (value) => getAppIconLabel(value),
 			info:
 				strings["settings-info-app-icon"] ||
 				"Choose the app icon displayed on your device.",
@@ -405,18 +403,7 @@ export default function otherSettings() {
 				return;
 
 			case "appIcon":
-				await appIconSetting();
-				{
-					const item = items.find((i) => i.key === "appIcon");
-					if (item) item.value = appSettings.value.appIcon || "default";
-					const $value = this.get(".setting-trailing-value");
-					if ($value) {
-						$value.textContent = getAppIconLabel(
-							appSettings.value.appIcon || "default",
-						);
-					}
-				}
-				return;
+				return appIconSetting();
 
 			case "appFont":
 				await fonts.setAppFont(value);

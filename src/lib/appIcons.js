@@ -47,8 +47,3 @@ export const APP_ICONS = [
 ];
 
 export const APP_ICON_IDS = APP_ICONS.map((icon) => icon.id);
-
-export function getAppIconLabel(id) {
-	const icon = APP_ICONS.find((item) => item.id === id);
-	return icon ? icon.label : APP_ICONS[0].label;
-}
