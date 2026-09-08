@@ -59,6 +59,18 @@ type FileAction = 'VIEW' | 'EDIT' | 'SEND' | 'RUN';
 type OnFail = (err: string) => void;
 type OnSuccessBool = (res: boolean) => void;
 
+interface HttpStreamOptions {
+  method?: string;
+  headers?: Record<string, string>;
+  body?: string;
+  bodyIsBase64?: boolean;
+  followRedirects?: boolean;
+  connectTimeout?: number;
+  readTimeout?: number;
+  chunkSize?: number;
+  signal?: AbortSignal;
+}
+
 interface System {
   /**
    * Get information about current webview
@@ -296,6 +308,21 @@ interface System {
     onFail?: OnFail,
   ): void;
   /**
+   * Perform an HTTP request and stream the response body to JavaScript.
+   *
+   * The response body is exposed as a WHATWG `ReadableStream` of `Uint8Array`
+   * chunks. The native layer does not buffer the whole response and performs
+   * no SSE/provider specific parsing. A 4xx/5xx status is a normal response;
+   * only transport failures reject the promise. Cancelling the returned
+   * stream's reader (or aborting `options.signal`) cancels the underlying
+   * native HTTP request.
+   *
+   * @param url Request URL
+   * @param options Request options
+   * @returns A `Response` whose `body` is a `ReadableStream` of `Uint8Array` chunks
+   */
+  httpStream(url: string, options?: HttpStreamOptions): Promise<Response>;
+  /*
    * Change the app icon at runtime.
    * @param iconName Icon id, e.g. "midnight_circuit", or "default" to restore the original icon
    * @param onSuccess
