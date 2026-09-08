@@ -1,0 +1,77 @@
+name: Congrats
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  check-author:
+    runs-on: ubuntu-latest
+    if: github.repository_owner == 'acode-foundation' && github.event.head_commit.message != ''
+    outputs:
+      should_congratulate: ${{ steps.check.outputs.should_congratulate }}
+    steps:
+      - name: Check PR author
+        id: check
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          github-token: ${{ secrets.CONGRATSBOT_GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo;
+            const sha = context.sha;
+
+            // Find the merged PR associated with this push commit
+            const { data: prs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+              owner,
+              repo,
+              commit_sha: sha,
+            });
+
+            const mergedPr = prs.find(pr => pr.merged_at !== null);
+
+            if (!mergedPr) {
+              core.info('No merged PR found for this push.');
+              core.setOutput('should_congratulate', 'false');
+              return;
+            }
+
+            const author = mergedPr.user;
+
+            // Skip bots
+            if (author.type === 'Bot') {
+              core.info(`Skipping bot user: ${author.login}`);
+              core.setOutput('should_congratulate', 'false');
+              return;
+            }
+
+            // Check organization membership in team slug 'acode'
+            try {
+              await github.rest.teams.getMembershipForUserInOrg({
+                org: owner,
+                team_slug: 'acode',
+                username: author.login,
+              });
+
+              core.info(`User ${author.login} is a member of team 'acode'. Skipping congrats.`);
+              core.setOutput('should_congratulate', 'false');
+            } catch (error) {
+              if (error.status === 404) {
+                core.info(`User ${author.login} is not a member of team 'acode'. Sending congrats.`);
+                core.setOutput('should_congratulate', 'true');
+              } else {
+                core.setFailed(`Error checking team membership: ${error.message}`);
+              }
+            }
+
+  congrats:
+    needs: check-author
+    if: needs.check-author.outputs.should_congratulate == 'true'
+    uses: UnschooledGamer/automation/.github/workflows/congratsbot.yml@patch-1 # patch-1 for now
+    with:
+      EMOJIS: 🎉,🎊,🧑‍🚀,🥳,🙌,🚀,🦀,🔥,🚢
+    secrets:
+      DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_CONGRATS }}

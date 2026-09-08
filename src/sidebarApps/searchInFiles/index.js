@@ -1,6 +1,5 @@
 import "./styles.scss";
 import fsOperation from "fileSystem";
-import { EditorView } from "@codemirror/view";
 import autosize from "autosize";
 import { getDocText } from "cm/editorUtils";
 import Checkbox from "components/checkbox";
@@ -15,6 +14,7 @@ import { addedFolder } from "lib/openFolder";
 import settings from "lib/settings";
 import helpers from "utils/helpers";
 import { createSearchResultView } from "./cmResultView";
+import navigateToResult from "./navigateToResult";
 
 // Local highlight sources
 const words = [];
@@ -377,7 +377,7 @@ async function onWorkerMessage(e) {
 				startedWorkers.reduce((acc, { progress = 0 }) => acc + progress, 0) /
 					startedWorkers.length,
 			);
-			$progress.value = progress;
+			$progress.value = Math.min(progress, 99);
 			break;
 		}
 
@@ -538,6 +538,7 @@ async function finishSearchTask(version = searchVersion) {
 		searchResult.setGhostText(strings["no result"], { row: 0, column: 0 });
 	}
 
+	$progress.value = 100;
 	searching = false;
 	nativeSearchId = null;
 	$indexStatus.value = "";
@@ -693,15 +694,27 @@ async function readSearchFileContent(uri) {
 	if (helpers.isBinary(uri)) return "";
 
 	const editorFile = editorManager.getFile(uri, "uri");
-	if (editorFile?.session?.doc) {
+	const editorDocument = getSearchEditorDocument(editorFile);
+	if (editorDocument) {
 		try {
-			return getDocText(editorFile.session.doc);
+			return getDocText(editorDocument);
 		} catch (_) {
 			return "";
 		}
 	}
 
 	return fsOperation(uri).readFile(settings.value.defaultFileEncoding);
+}
+
+function getSearchEditorDocument(file) {
+	const document = file?.session?.doc;
+	if (!document) return null;
+	if (file.loaded) return document;
+
+	// Remote files can expose non-empty unsaved recovery text while their source
+	// is still loading. An inactive restored tab instead has an empty placeholder.
+	if (file.loading && file.isUnsaved && document.length > 0) return document;
+	return null;
 }
 
 function supportsNativeSearch(url = "") {
@@ -761,7 +774,7 @@ function sendNativeSearch(
 					$indexStatus.value = event.message || "";
 					break;
 				case "progress":
-					$progress.value = event.data || 0;
+					$progress.value = Math.min(event.data || 0, 99);
 					break;
 				case "search-result":
 					appendSearchResult(event.data);
@@ -819,9 +832,10 @@ function getOpenFileOverlays() {
 	const overlays = {};
 	editorManager.files.forEach((file) => {
 		if (!file.uri || !supportsNativeSearch(file.uri)) return;
-		if (!file.session?.doc) return;
+		const editorDocument = getSearchEditorDocument(file);
+		if (!editorDocument) return;
 		try {
-			overlays[file.uri] = getDocText(file.session.doc);
+			overlays[file.uri] = getDocText(editorDocument);
 		} catch (_) {
 			// ignore invalid editor docs
 		}
@@ -1107,27 +1121,13 @@ async function onCursorChange(line) {
 	const result = results[line];
 	if (!result) return;
 	const { file, position } = result;
-	if (!position) {
-		// header line clicked; CM view folding not implemented yet
-		return;
-	}
+	const url = filesSearched[file]?.url;
+	if (!position || !url) return;
 
 	rememberResultScroll();
 	Sidebar.hide();
-	const { url } = filesSearched[file];
-	await openFile(url, { render: true });
-	const { editor } = editorManager;
 	try {
-		// Compute offsets from row/column (rows from worker are 0-based)
-		const doc = editor.state.doc;
-		const startLine = doc.line(position.start.row + 1);
-		const endLine = doc.line(position.end.row + 1);
-		const from = Math.min(startLine.from + position.start.column, startLine.to);
-		const to = Math.min(endLine.from + position.end.column, endLine.to);
-		editor.dispatch({
-			selection: { anchor: from, head: to },
-			effects: EditorView.scrollIntoView(from, { y: "center" }),
-		});
+		await navigateToResult(url, position);
 	} catch (error) {
 		console.warn(`Failed to focus search result at line ${line}.`, error);
 	}

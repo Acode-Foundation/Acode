@@ -55,7 +55,7 @@ const recents = {
 	removeFolder(url) {
 		({ url } = Url.parse(url));
 		this.folders = this.folders.filter((folder) => {
-			return !new RegExp("^" + escapeStringRegexp(folder.url)).test(url);
+			return !Url.isSameOrDescendant(folder.url, url);
 		});
 	},
 

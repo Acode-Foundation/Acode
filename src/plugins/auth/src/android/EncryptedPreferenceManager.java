@@ -8,18 +8,33 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 
 public class EncryptedPreferenceManager {
-    private SharedPreferences sharedPreferences;
+    private final SharedPreferences sharedPreferences;
 
     /**
      * @param context  The Android Context
      * @param prefName The custom name for your preference file (e.g., "user_session")
      */
     public EncryptedPreferenceManager(Context context, String prefName) {
+        this(context, prefName, true);
+    }
+
+    /**
+     * @param context                The Android Context
+     * @param prefName               The custom name for your preference file
+     * @param allowPlaintextFallback Whether storage may fall back to ordinary
+     *                               SharedPreferences when encryption is unavailable
+     */
+    public EncryptedPreferenceManager(
+            Context context,
+            String prefName,
+            boolean allowPlaintextFallback
+    ) {
+        SharedPreferences preferences;
         try {
             String masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC);
 
             // EncryptedSharedPreferences handles encryption of both Keys and Values
-            sharedPreferences = EncryptedSharedPreferences.create(
+            preferences = EncryptedSharedPreferences.create(
                     prefName,
                     masterKeyAlias,
                     context,
@@ -27,15 +42,24 @@ public class EncryptedPreferenceManager {
                     EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
             );
         } catch (GeneralSecurityException | IOException e) {
-            // Fallback to standard private preferences if hardware-backed encryption fails
-            sharedPreferences = context.getSharedPreferences(prefName, Context.MODE_PRIVATE);
+            if (!allowPlaintextFallback) {
+                throw new IllegalStateException("Encrypted preferences are unavailable", e);
+            }
+
+            // Preserve the existing behavior for legacy callers unless strict mode is requested.
+            preferences = context.getSharedPreferences(prefName, Context.MODE_PRIVATE);
         }
+        sharedPreferences = preferences;
     }
 
     // --- Reusable Methods ---
 
     public void setString(String key, String value) {
         sharedPreferences.edit().putString(key, value).apply();
+    }
+
+    public boolean setStringSync(String key, String value) {
+        return sharedPreferences.edit().putString(key, value).commit();
     }
 
     public String getString(String key, String defaultValue) {
@@ -60,6 +84,10 @@ public class EncryptedPreferenceManager {
 
     public void remove(String key) {
         sharedPreferences.edit().remove(key).apply();
+    }
+
+    public boolean removeSync(String key) {
+        return sharedPreferences.edit().remove(key).commit();
     }
 
     public boolean exists(String key) {

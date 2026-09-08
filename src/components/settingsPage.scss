@@ -60,6 +60,11 @@ wc-page.main-settings-page {
 	.main-settings-list>.list-item,
 	.settings-section-card>.list-item {
 		display: flex;
+
+		&[hidden] {
+			display: none;
+		}
+
 		width: 100%;
 		min-height: 64px;
 		margin: 0;

@@ -322,6 +322,13 @@ interface System {
    * @returns A `Response` whose `body` is a `ReadableStream` of `Uint8Array` chunks
    */
   httpStream(url: string, options?: HttpStreamOptions): Promise<Response>;
+  /*
+   * Change the app icon at runtime.
+   * @param iconName Icon id, e.g. "midnight_circuit", or "default" to restore the original icon
+   * @param onSuccess
+   * @param onFail
+   */
+  setAppIcon(iconName: string, onSuccess: OnSuccessBool, onFail: OnFail): void;
 }
 
 interface Window{

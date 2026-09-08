@@ -1,6 +1,8 @@
 import "./style.scss";
 import tag from "html-tag-js";
 
+export { default as VariableVirtualList } from "./variable";
+
 /**
  * @typedef {object} VirtualListOptions
  * @property {number} [itemHeight=30] - Height of each item in pixels

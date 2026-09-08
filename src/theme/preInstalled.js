@@ -243,8 +243,9 @@ export function getSystemEditorTheme(darkTheme) {
 /**
  * Update the system theme based on the user's preference.
  * @param {boolean} darkTheme Whether the user prefers a dark theme.
+ * @param {boolean} applyTheme Whether to apply the refreshed theme immediately.
  */
-export function updateSystemTheme(darkTheme) {
+export function updateSystemTheme(darkTheme, applyTheme = true) {
 	if (darkTheme) {
 		system.type = "dark";
 		system.primaryColor = "rgb(35, 39, 42)";
@@ -278,7 +279,7 @@ export function updateSystemTheme(darkTheme) {
 
 	system.preferredEditorTheme = getSystemEditorTheme(darkTheme);
 
-	if (appSettings?.value?.appTheme === "system") {
+	if (applyTheme && appSettings?.value?.appTheme === "system") {
 		apply(system.id);
 		appSettings.update({ editorTheme: system.preferredEditorTheme }, false);
 	}

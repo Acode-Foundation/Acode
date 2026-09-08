@@ -58,6 +58,9 @@ export default class AcodeWorkspace extends Workspace {
 		this.#versions = Object.create(null) as Record<string, number>;
 		this.#workspaceFolders = new Set();
 		this.options = options;
+		for (const folder of options.initialFolders ?? []) {
+			if (folder) this.#workspaceFolders.add(folder);
+		}
 	}
 
 	#log(level: LspLogLevel, message: string, details?: unknown): void {

@@ -85,6 +85,32 @@ describe("Url.safe", () => {
 	});
 });
 
+describe("Url.isSameOrDescendant", () => {
+	it("matches a remote root and its descendants", () => {
+		expect(
+			Url.isSameOrDescendant(
+				"sftp://user@host:22/project/src?keyFile=secret",
+				"sftp://user@host:22/project",
+			),
+		).toBe(true);
+		expect(
+			Url.isSameOrDescendant(
+				"sftp://user@host:22/project/",
+				"sftp://user@host:22/project",
+			),
+		).toBe(true);
+	});
+
+	it("preserves path segment boundaries", () => {
+		expect(
+			Url.isSameOrDescendant(
+				"sftp://user@host:22/project-copy",
+				"sftp://user@host:22/project",
+			),
+		).toBe(false);
+	});
+});
+
 describe("Url.formate", () => {
 	it("builds a url from its parts", () => {
 		expect(

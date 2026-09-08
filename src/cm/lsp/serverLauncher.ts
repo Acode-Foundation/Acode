@@ -781,7 +781,7 @@ export async function installServer(
       icon: "zap",
       loading: () => loading,
       title: displayLabel,
-      message: `${actionLabel}ing ${displayLabel}...`,
+      message: `${isUpdate ? "Updating" : "Installing"} ${displayLabel}...`,
     });
     await runForegroundCommand(command);
     resetInstallState(server.id);

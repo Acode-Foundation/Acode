@@ -714,6 +714,12 @@ const APP_BINDING_CONFIG = [
 		readOnly: true,
 		editorOnly: true,
 	},
+	{
+		name: "acode:showWelcome",
+		description: "Show Welcome",
+		key: "Ctrl-Shift-W",
+		action: "welcome",
+	},
 ];
 
 const APP_KEY_BINDINGS = buildAppBindings(APP_BINDING_CONFIG);

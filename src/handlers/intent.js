@@ -17,11 +17,14 @@ const pendingIntents = [];
  * @param {Intent} intent
  */
 export default async function HandleIntent(intent = {}) {
-	const type = intent.action.split(".").slice(-1)[0];
+	const type = intent.action?.split(".").slice(-1)[0];
 
 	if (["SEND", "VIEW", "EDIT"].includes(type)) {
 		/**@type {string} */
-		const url = intent.fileUri || intent.data;
+		const url =
+			intent.fileUri ||
+			intent.data ||
+			intent.extras?.["android.intent.extra.STREAM"];
 		if (!url) return;
 
 		if (url.startsWith("acode://")) {
@@ -72,19 +75,19 @@ export default async function HandleIntent(intent = {}) {
 			return;
 		}
 
+		const options = {
+			mode: "single",
+			render: true,
+			persistInSession: false,
+		};
+
 		if (sessionStorage.getItem("isfilesRestored") === "true") {
-			await openFile(url, {
-				mode: "single",
-				render: true,
-			});
+			await openFile(url, options);
 		} else {
 			// Store the intent for later processing when files are restored
 			pendingIntents.push({
 				url,
-				options: {
-					mode: "single",
-					render: true,
-				},
+				options,
 			});
 		}
 	}

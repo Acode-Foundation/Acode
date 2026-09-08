@@ -21,6 +21,7 @@ import projects from "lib/projects";
 import recents from "lib/recents";
 import remoteStorage from "lib/remoteStorage";
 import appSettings from "lib/settings";
+import { deleteSftpProfile, getSftpProfileId } from "lib/sftpProfiles";
 import mimeTypes from "mime-types";
 import mustache from "mustache";
 import filesSettings from "settings/filesSettings";
@@ -59,6 +60,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 	const IS_FOLDER_MODE = ["folder", "both"].includes(mode);
 	const IS_FILE_MODE = ["file", "both"].includes(mode);
+	const SELECT_DOCUMENT_LABEL = "Select document";
 	const storedState = helpers.parseJSON(localStorage.fileBrowserState) || [];
 	/**@type {Array<Location>} */
 	const state = [];
@@ -105,6 +107,16 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		);
 
 		const $search = <span className="icon search" data-action="search"></span>;
+		const $selectDocument = (
+			<span
+				className="icon folder_open"
+				data-action="select-document"
+				title={SELECT_DOCUMENT_LABEL}
+				aria-label={SELECT_DOCUMENT_LABEL}
+				role="button"
+				tabindex="0"
+			></span>
+		);
 		const $lead = <span className="icon clearclose" data-action="close"></span>;
 		const $page = Page(strings["file browser"].capitalize(), {
 			lead: $lead,
@@ -159,7 +171,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		$selectionMenuToggler.style.display = "none";
 		$pasteToggler.style.display = "none";
 		const progress = {};
-		let cachedDir = {};
+		let cachedDir = new Map();
 		let currentDir = {
 			url: null,
 			name: null,
@@ -177,8 +189,9 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		$content.addEventListener("click", handleClick);
 		$content.addEventListener("contextmenu", handleContextMenu, true);
 		$page.body = $content;
+		$page.header.append($search);
+		if (IS_FILE_MODE) $page.header.append($selectDocument);
 		$page.header.append(
-			$search,
 			$pasteToggler,
 			$selectionModeToggler,
 			$addMenuToggler,
@@ -221,6 +234,12 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		};
 
 		$pasteToggler.onclick = pasteCopiedItems;
+		$selectDocument.onclick = selectDocument;
+		$selectDocument.onkeydown = (event) => {
+			if (event.key !== "Enter" && event.key !== " ") return;
+			event.preventDefault();
+			selectDocument();
+		};
 
 		$fbMenu.onclick = function (e) {
 			$fbMenu.hide();
@@ -236,8 +255,6 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			}
 
 			if (action === "reload") {
-				const { url } = currentDir;
-				if (url in cachedDir) delete cachedDir[url];
 				reload();
 				return;
 			}
@@ -478,6 +495,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				case "addFtp":
 				case "addSftp": {
 					const storage = await remoteStorage[action]();
+					if (!storage) break;
 					updateStorage(storage);
 					break;
 				}
@@ -651,6 +669,25 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			$page.hide();
 		}
 
+		function selectDocument() {
+			checkFiles.check = false;
+			sdcard.openDocumentFile(
+				(res) => {
+					res.url = res.uri;
+					resolve({
+						type: "file",
+						...res,
+						name: res.filename,
+						mode: "single",
+					});
+					$page.hide();
+				},
+				(err) => {
+					helpers.error(err);
+				},
+			);
+		}
+
 		/**
 		 * @param {string} url
 		 */
@@ -692,7 +729,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			}
 			recents.removeFile(url);
 			openFolder.removeItem(url);
-			delete cachedDir[url];
+			cachedDir.delete(url);
 		}
 
 		function updateSelectionCount($count) {
@@ -870,6 +907,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 				$addMenuToggler.style.display = "none";
 				$menuToggler.style.display = "none";
+				$selectDocument.style.display = "none";
 				$selectionMenuToggler.style.display = "";
 				updatePasteToggler();
 
@@ -897,6 +935,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 				$addMenuToggler.style.display = "";
 				$menuToggler.style.display = "";
+				$selectDocument.style.display = "";
 				$selectionMenuToggler.style.display = "none";
 				updatePasteToggler();
 
@@ -936,16 +975,16 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				return;
 			}
 
-			let action = $el.getAttribute("action") || $el.dataset.action;
+			let action = $el.dataset.action;
 			if (!action) return;
 
 			let url = $el.dataset.url;
-			let name = $el.dataset.name || $el.getAttribute("name");
-			const idOpenDoc = $el.hasAttribute("open-doc");
-			const uuid = $el.getAttribute("uuid");
-			const type = $el.getAttribute("type");
-			const storageType = $el.getAttribute("storageType");
-			const home = $el.getAttribute("home");
+			let name = $el.dataset.name;
+			const isOpenDoc = $el.dataset.openDoc != null;
+			const uuid = $el.dataset.uuid;
+			const type = $el.dataset.type;
+			const storageType = $el.dataset.storageType;
+			const home = $el.dataset.home;
 			const isDir = ["dir", "directory", "folder"].includes(type);
 
 			if (!url) {
@@ -967,7 +1006,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				return;
 			}
 
-			if (!url && action === "open" && isDir && !idOpenDoc && !isContextMenu) {
+			if (!url && action === "open" && isDir && !isOpenDoc && !isContextMenu) {
 				loader.hide();
 				util.addPath(name, uuid).then((res) => {
 					const storage = allStorages.find((storage) => storage.uuid === uuid);
@@ -982,7 +1021,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			}
 
 			if (isContextMenu) action = "contextmenu";
-			else if (idOpenDoc) action = "open-doc";
+			else if (isOpenDoc) action = "openDoc";
 
 			switch (action) {
 				case "navigation":
@@ -995,8 +1034,8 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					if (isDir) folder();
 					else if (!$el.hasAttribute("disabled")) file();
 					break;
-				case "open-doc":
-					openDoc();
+				case "openDoc":
+					selectDocument();
 					break;
 			}
 
@@ -1053,7 +1092,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				if (appSettings.value.vibrateOnTap) {
 					navigator.vibrate(config.VIBRATION_TIME);
 				}
-				if ($el.getAttribute("open-doc") === "true") return;
+				if (isOpenDoc) return;
 
 				const deleteText =
 					currentDir.url === "/" ? strings.remove : strings.delete;
@@ -1064,6 +1103,14 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 				if (/s?ftp/.test(storageType)) {
 					options.push(["edit", strings.edit, "edit"]);
+				}
+
+				if (storageType === "sftp" && uuid) {
+					options.push([
+						"ssh_terminal",
+						strings["open ssh terminal"] || "Open SSH Terminal",
+						"terminal",
+					]);
 				}
 
 				if (helpers.isFile(type)) {
@@ -1087,7 +1134,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 						const confirmation = await confirm(strings.warning, message);
 						if (!confirmation) break;
-						deleteFunction();
+						await deleteFunction();
 						break;
 					}
 
@@ -1111,6 +1158,15 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 						if (!storage) break;
 						storage.uuid = uuid;
 						updateStorage(storage);
+						break;
+					}
+
+					case "ssh_terminal": {
+						const { TerminalManager } = await import(
+							/* webpackChunkName: "terminal" */ "components/terminal"
+						);
+						await TerminalManager.createRemoteTerminal({ url, name });
+						$page.hide();
 						break;
 					}
 
@@ -1219,28 +1275,61 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				}
 			}
 
-			function removeStorage() {
-				if (url) {
-					recents.removeFolder(url);
-					recents.removeFile(url);
+			async function removeStorage() {
+				const removedStorage = storageList.find(
+					(storage) => storage.uuid === uuid,
+				);
+				const storageUrl = removedStorage?.url || url;
+
+				if (storageUrl) {
+					recents.removeFolder(storageUrl);
+					recents.removeFile(storageUrl);
+					openFolder.removeFolders(storageUrl);
+					helpers.updateUriOfAllActiveFiles(storageUrl, null);
+				}
+				if (
+					storageUrl &&
+					removedStorage &&
+					(removedStorage.storageType === "sftp" ||
+						removedStorage.type === "sftp")
+				) {
+					const profileId = getSftpProfileId(storageUrl);
+					const { username, hostname, port = 22 } = Url.decodeUrl(storageUrl);
+					const connectionID = profileId || `${username}@${hostname}:${port}`;
+					await new Promise((resolve) => {
+						sftp.isConnected((activeConnectionID) => {
+							if (activeConnectionID !== connectionID) {
+								resolve();
+								return;
+							}
+							sftp.close(resolve, resolve);
+						}, resolve);
+					});
+					const profileStillUsed = storageList.some(
+						(storage) =>
+							storage.uuid !== uuid &&
+							getSftpProfileId(storage.url) === profileId,
+					);
+					if (profileId && !profileStillUsed) {
+						await deleteSftpProfile(profileId);
+					}
 				}
 				storageList = storageList.filter((storage) => {
 					if (storage.uuid !== uuid) {
 						return true;
 					}
 
-					if (storage.url) {
+					if (storage.url && !getSftpProfileId(storage.url)) {
 						const parsedUrl = URLParse(storage.url, true);
 						const keyFile = decodeURIComponent(
 							parsedUrl.query["keyFile"] || "",
 						);
-						if (keyFile) {
-							fsOperation(keyFile).delete();
-						}
+						if (keyFile) fsOperation(keyFile).delete().catch(console.warn);
 					}
 					return false;
 				});
 				localStorage.storageList = JSON.stringify(storageList);
+				acode.exec("save-state");
 				reload();
 			}
 
@@ -1251,25 +1340,6 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				});
 				localStorage.storageList = JSON.stringify(storageList);
 				reload();
-			}
-
-			function openDoc() {
-				checkFiles.check = false;
-				sdcard.openDocumentFile(
-					(res) => {
-						res.url = res.uri;
-						resolve({
-							type: "file",
-							...res,
-							name: res.filename,
-							mode: "single",
-						});
-						$page.hide();
-					},
-					(err) => {
-						helpers.error(err);
-					},
-				);
 			}
 		}
 
@@ -1379,8 +1449,8 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			}
 
 			if (IS_FILE_MODE) {
-				util.pushFolder(allStorages, "Select document", null, {
-					"open-doc": true,
+				util.pushFolder(allStorages, SELECT_DOCUMENT_LABEL, null, {
+					openDoc: true,
 					notSelectable: true,
 				});
 			}
@@ -1399,8 +1469,8 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			let list = [];
 			let error = false;
 
-			if (url in cachedDir) {
-				return cachedDir[url];
+			if (cachedDir.has(url)) {
+				return cachedDir.get(url);
 			} else {
 				if (url === "/") {
 					list = await listAllStorages();
@@ -1416,8 +1486,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					const timeout = setTimeout(() => {
 						loader.create(name, strings.loading + "...", {
 							timeout: loaderTimeout,
-							callback() {
-								loader.destroy();
+							oncancel() {
 								navigate("/", "/");
 								progress[id] = false;
 							},
@@ -1633,7 +1702,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					className="nav"
 					data-url={url}
 					data-name={displayName}
-					attr-action="navigation"
+					data-action="navigation"
 					attr-text={displayName}
 					tabIndex={-1}
 				></span>,
@@ -1736,8 +1805,8 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			const $oldList = $content.get("#list");
 			if ($oldList) {
 				const { url } = currentDir;
-				if (url && cachedDir[url]) {
-					cachedDir[url].scroll = $oldList.scrollTop;
+				if (url && cachedDir.has(url)) {
+					cachedDir.get(url).scroll = $oldList.scrollTop;
 				}
 				$oldList.remove();
 			}
@@ -1746,13 +1815,13 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			$list.focus();
 
 			currentDir = dir;
-			cachedDir[dir.url] = dir;
+			cachedDir.set(dir.url, dir);
 			updatePasteToggler();
 		}
 
 		function reload() {
 			const { url, name } = currentDir;
-			delete cachedDir[url];
+			cachedDir.delete(url);
 			navigate(url, name);
 		}
 

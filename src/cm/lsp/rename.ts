@@ -8,6 +8,7 @@ import {
 import prompt from "dialogs/prompt";
 import type * as lsp from "vscode-languageserver-protocol";
 import { addLspLogFor } from "./logs";
+import { safeLspPositionToOffset } from "./positionUtils";
 import type AcodeWorkspace from "./workspace";
 
 interface RenameParams {
@@ -99,12 +100,24 @@ async function performRename(view: EditorView): Promise<boolean> {
 				) {
 					initialValue = word;
 				} else if ("start" in prepareResult && "end" in prepareResult) {
-					const from = plugin.fromPosition(prepareResult.start);
-					const to = plugin.fromPosition(prepareResult.end);
+					const from = safeLspPositionToOffset(
+						view.state.doc,
+						prepareResult.start,
+					);
+					const to = safeLspPositionToOffset(
+						view.state.doc,
+						prepareResult.end,
+					);
 					initialValue = view.state.sliceDoc(from, to);
 				} else if ("range" in prepareResult && prepareResult.range) {
-					const from = plugin.fromPosition(prepareResult.range.start);
-					const to = plugin.fromPosition(prepareResult.range.end);
+					const from = safeLspPositionToOffset(
+						view.state.doc,
+						prepareResult.range.start,
+					);
+					const to = safeLspPositionToOffset(
+						view.state.doc,
+						prepareResult.range.end,
+					);
 					initialValue = view.state.sliceDoc(from, to);
 				}
 			}
@@ -148,19 +161,11 @@ async function performRename(view: EditorView): Promise<boolean> {
 	return true;
 }
 
-function lspPositionToOffset(
-	doc: { line: (n: number) => { from: number } },
-	pos: lsp.Position,
-): number {
-	const line = doc.line(pos.line + 1);
-	return line.from + pos.character;
-}
-
 async function applyChangesToFile(
 	workspace: AcodeWorkspace,
 	uri: string,
 	lspChanges: LspChange[],
-	mapping: { mapPosition: (uri: string, pos: lsp.Position) => number },
+	mapping: { mapPos: (uri: string, pos: number, assoc?: number) => number },
 ): Promise<boolean> {
 	const file = workspace.getFile(uri);
 
@@ -169,8 +174,16 @@ async function applyChangesToFile(
 		if (view) {
 			view.dispatch({
 				changes: lspChanges.map((change) => ({
-					from: mapping.mapPosition(uri, change.range.start),
-					to: mapping.mapPosition(uri, change.range.end),
+					from: mapping.mapPos(
+						uri,
+						safeLspPositionToOffset(file.doc, change.range.start),
+						1,
+					),
+					to: mapping.mapPos(
+						uri,
+						safeLspPositionToOffset(file.doc, change.range.end),
+						-1,
+					),
 					insert: change.newText,
 				})),
 				userEvent: "rename",
@@ -189,8 +202,8 @@ async function applyChangesToFile(
 	const doc = displayedView.state.doc;
 	displayedView.dispatch({
 		changes: lspChanges.map((change) => ({
-			from: lspPositionToOffset(doc, change.range.start),
-			to: lspPositionToOffset(doc, change.range.end),
+			from: safeLspPositionToOffset(doc, change.range.start),
+			to: safeLspPositionToOffset(doc, change.range.end),
 			insert: change.newText,
 		})),
 		userEvent: "rename",

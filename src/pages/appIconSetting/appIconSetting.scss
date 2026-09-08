@@ -1,0 +1,89 @@
+wc-page.app-icon-page {
+	background: var(--secondary-color);
+
+	.app-icon-list {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
+		gap: 0.9rem;
+		width: 100%;
+		max-width: 48rem;
+		margin: 0 auto;
+		padding: 1rem 1rem 5.5rem;
+		box-sizing: border-box;
+	}
+
+	.app-icon-item {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 0.6rem;
+		margin: 0;
+		padding: 1rem 0.75rem;
+		border: none;
+		border-radius: 1rem;
+		background: transparent;
+		cursor: pointer;
+		font-family: inherit;
+		transition: background-color 140ms ease;
+
+		&:focus,
+		&:active {
+			background: color-mix(
+				in srgb,
+				var(--secondary-color),
+				var(--popup-text-color) 4%
+			);
+		}
+
+		&.current {
+			background: color-mix(in srgb, var(--secondary-color), var(--active-color) 10%);
+		}
+
+		&.current .app-icon-preview {
+			box-shadow: 0 0 0 2px var(--active-color);
+		}
+	}
+
+	.app-icon-preview {
+		display: block;
+		width: 4.2rem;
+		height: 4.2rem;
+		border-radius: 0.9rem;
+		overflow: hidden;
+		background: var(--popup-background-color);
+		box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+
+		img {
+			display: block;
+			width: 100%;
+			height: 100%;
+			object-fit: contain;
+		}
+	}
+
+	.app-icon-name {
+		display: block;
+		font-size: 0.85rem;
+		line-height: 1.3;
+		font-weight: 600;
+		color: var(--popup-text-color);
+		text-align: center;
+		word-break: break-word;
+	}
+
+	.app-icon-check {
+		position: absolute;
+		top: 0.4rem;
+		right: 0.4rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 1.2rem;
+		height: 1.2rem;
+		border-radius: 50%;
+		background: var(--active-color);
+		color: var(--button-text-color);
+		font-size: 0.8rem;
+	}
+}

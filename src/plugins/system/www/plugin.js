@@ -231,6 +231,15 @@ module.exports = {
       [String(!!disabled)]
     );
   },
+  /**
+   * Change the app icon at runtime.
+   * @param iconName Icon id, e.g. "midnight_circuit", or "default" to restore the original icon
+   * @param onSuccess
+   * @param onFail
+   */
+  setAppIcon: function (iconName, onSuccess, onFail) {
+    cordova.exec(onSuccess, onFail, 'System', 'set-app-icon', [iconName]);
+  },
   getGlobalSetting: function (key, onSuccess, onFail) {
     cordova.exec(onSuccess, onFail, 'System', 'get-global-setting', [key]);
   },

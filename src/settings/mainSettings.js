@@ -1,14 +1,11 @@
 import settingsPage from "components/settingsPage";
 import confirm from "dialogs/confirm";
-import loader from "dialogs/loader";
 import rateBox from "dialogs/rateBox";
 import actionStack from "lib/actionStack";
-import auth from "lib/auth";
 import config from "lib/config";
-import customTab from "lib/customTab";
 import openFile from "lib/openFile";
 import { bindPrivacyChoices } from "lib/privacyChoicesController.mjs";
-import removeAds from "lib/removeAds";
+import { requestProPurchase } from "lib/removeAds";
 import appSettings from "lib/settings";
 import settings from "lib/settings";
 import { showPrivacyOptions, subscribePrivacyState } from "lib/startAd";
@@ -251,10 +248,19 @@ export default function mainSettings() {
 				break;
 
 			case "privacyChoices":
+				loader.create(
+					strings["privacy choices"] || "Privacy Choices",
+					strings["loading..."] || "Loading...",
+				);
 				try {
 					await showPrivacyOptions();
 				} catch (error) {
-					helpers.error(error);
+					console.warn("Unable to open AdMob Privacy Choices:", error);
+					helpers.error(
+						"Unable to open Privacy Choices. Check your connection and try again.",
+					);
+				} finally {
+					loader.destroy();
 				}
 				break;
 
@@ -289,48 +295,7 @@ export default function mainSettings() {
 
 			case "removeads":
 				try {
-					if (!helpers.shouldAllowExternalPurchase()) {
-						await removeAds();
-						this.remove();
-						break;
-					}
-
-					loader.create(strings.login, strings["loading..."]);
-
-					try {
-						let user = await auth.getLoggedInUser();
-						if (!user) {
-							const confirmation = await confirm(
-								strings.confirm,
-								strings["confirm-login"],
-							);
-
-							if (!confirmation) {
-								return;
-							}
-
-							loader.show();
-							await auth.login();
-
-							user = await auth.getLoggedInUser();
-						}
-
-						if (!user) {
-							throw new Error("Unable to fetch user");
-						}
-
-						if (user.acode_pro) {
-							this.remove();
-							return;
-						}
-					} catch (error) {
-						helpers.error(error);
-						return;
-					} finally {
-						loader.destroy();
-					}
-
-					customTab(`${config.BASE_URL}/pro?redirect=app`).catch(helpers.error);
+					if (await requestProPurchase()) this.remove();
 				} catch (error) {
 					helpers.error(error);
 				}

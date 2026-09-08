@@ -45,6 +45,7 @@ class AdMob : CordovaPlugin() {
         Actions.START to ::executeStart,
         Actions.CONFIGURE to ::executeConfigure,
         Actions.AD_CREATE to ::executeAdCreate,
+        Actions.AD_DESTROY to ::executeAdDestroy,
         Actions.AD_IS_LOADED to ::executeAdIsLoaded,
         Actions.AD_LOAD to ::executeAdLoad,
         Actions.AD_SHOW to ::executeAdShow,
@@ -138,6 +139,14 @@ class AdMob : CordovaPlugin() {
                 ctx.resolve()
             } ?: ctx.reject("ad cls is not supported")
         } ?: ctx.reject("ad cls is missing")
+    }
+
+    private fun executeAdDestroy(ctx: ExecuteContext) {
+        val id = ctx.optId() ?: return ctx.reject("id is required")
+        cordova.activity.runOnUiThread {
+            ads[id]?.onDestroy()
+            ctx.resolve()
+        }
     }
 
     private fun executeAdIsLoaded(ctx: ExecuteContext) {

@@ -335,6 +335,11 @@ async function handleContextmenu(type, url, name, $target) {
 		strings["install as plugin"] || "Install as Plugin",
 		"extension",
 	];
+	const OPEN_SSH_TERMINAL = [
+		"open-ssh-terminal",
+		strings["open ssh terminal"] || "Open SSH Terminal",
+		"terminal",
+	];
 
 	let options;
 
@@ -364,6 +369,8 @@ async function handleContextmenu(type, url, name, $target) {
 				"terminal",
 			];
 			options.push(OPEN_IN_TERMINAL);
+		} else if (/^sftp:/.test(url)) {
+			options.push(OPEN_SSH_TERMINAL);
 		}
 	} else if (type === "root") {
 		options = [];
@@ -381,6 +388,8 @@ async function handleContextmenu(type, url, name, $target) {
 				"terminal",
 			];
 			options.push(OPEN_IN_TERMINAL);
+		} else if (/^sftp:/.test(url)) {
+			options.push(OPEN_SSH_TERMINAL);
 		}
 
 		options.push(CLOSE_FOLDER);
@@ -401,7 +410,7 @@ async function handleContextmenu(type, url, name, $target) {
 
 /**
  * @param {"dir"|"file"|"root"} type
- * @param {"copy"|"cut"|"delete"|"rename"|"paste"|"new file"|"new folder"|"cancel"|"open-folder"|"install-plugin"} action
+ * @param {"copy"|"cut"|"delete"|"rename"|"paste"|"new file"|"new folder"|"cancel"|"open-folder"|"install-plugin"|"open-in-terminal"|"open-ssh-terminal"|"copy-relative-path"} action
  * @param {string} url target url
  * @param {HTMLElement} $target target element
  * @param {string} name Name of file or folder
@@ -446,6 +455,9 @@ function execOperation(type, action, url, $target, name) {
 
 		case "open-in-terminal":
 			return openInTerminal();
+
+		case "open-ssh-terminal":
+			return openSshTerminal();
 
 		case "copy-relative-path":
 			return copyRelativePath();
@@ -554,6 +566,19 @@ function execOperation(type, action, url, $target, name) {
 			console.error("Failed to open terminal:", error);
 			const errorMsg = error.message || "Unknown error occurred";
 			toast(`Failed to open terminal: ${errorMsg}`);
+		}
+	}
+
+	async function openSshTerminal() {
+		try {
+			const { TerminalManager } = await import(
+				/* webpackChunkName: "terminal" */ "components/terminal"
+			);
+			await TerminalManager.createRemoteTerminal({ url, name });
+			Sidebar.hide();
+		} catch (error) {
+			console.error("Failed to open SSH terminal:", error);
+			toast(`Failed to open SSH terminal: ${error.message || "Unknown error"}`);
 		}
 	}
 
@@ -1192,9 +1217,10 @@ openFolder.removeItem = (url) => {
 
 openFolder.removeFolders = (url) => {
 	({ url } = Url.parse(url));
-	const regex = new RegExp("^" + escapeStringRegexp(url));
-	addedFolder.forEach((folder) => {
-		if (regex.test(folder.url)) {
+	// remove() mutates addedFolder, so iterate over a snapshot to avoid skipping
+	// adjacent folders that belong to the same remote storage.
+	[...addedFolder].forEach((folder) => {
+		if (Url.isSameOrDescendant(folder.url, url)) {
 			folder.remove();
 		}
 	});

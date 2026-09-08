@@ -3,20 +3,20 @@
   <li
     tabindex="1"
     class="tile {{#isLink}}symlink{{/isLink}}"
-    action="open"
-    type="{{type}}"
-    name="{{name}}"
-    {{#home}}home="{{.}}"{{/home}}
+    data-action="open"
+    data-type="{{type}}"
+    data-name="{{name}}"
+    {{#home}}data-home="{{.}}"{{/home}}
     {{#notSelectable}}data-not-selectable{{/notSelectable}}
-    {{#open-doc}}open-doc="true"{{/open-doc}}
-    {{#ftp-account}}ftp-account{{/ftp-account}}
+    {{#openDoc}}data-open-doc{{/openDoc}}
+    {{#ftpAccount}}data-ftp-account{{/ftpAccount}}
+    {{#uuid}}data-uuid="{{uuid}}"{{/uuid}}
+    {{#storageType}}data-storage-type="{{.}}"{{/storageType}}
     {{#disabled}}disabled{{/disabled}}
-    {{#uuid}}uuid="{{uuid}}"{{/uuid}}
-    {{#storageType}}storageType="{{.}}"{{/storageType}}
   >
     <span
       class="icon {{icon}} {{#uuid}}user-added-storage{{/uuid}}"
-      {{#storageType}}storageType="{{.}}"{{/storageType}}
+      {{#storageType}}data-storage-type="{{.}}"{{/storageType}}
     ></span>
 
     <div class="text">

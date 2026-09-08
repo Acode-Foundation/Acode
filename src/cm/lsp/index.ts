@@ -90,6 +90,16 @@ export {
 	findAllReferencesInTab,
 } from "./references";
 export {
+	goToDeclaration,
+	goToDefinition,
+	goToImplementation,
+	goToTypeDefinition,
+	jumpToDeclaration,
+	jumpToDefinition,
+	jumpToImplementation,
+	jumpToTypeDefinition,
+} from "./definition";
+export {
 	acodeRenameExtension,
 	acodeRenameKeymap,
 	renameSymbol,

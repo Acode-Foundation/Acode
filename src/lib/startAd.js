@@ -63,7 +63,9 @@ export function subscribePrivacyState(listener) {
 }
 
 export async function showPrivacyOptions() {
-	if (!canUseAdmob()) return getPrivacyState();
+	if (!canUseAdmob()) {
+		throw new Error("AdMob Privacy Choices are unavailable.");
+	}
 	return getConsentCoordinator().showPrivacyOptions();
 }
 

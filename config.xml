@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
-<widget id="com.foxdebug.acode" android-versionCode="1007" version="1.13.1"
+<widget id="com.foxdebug.acode" android-versionCode="1009" version="1.13.3"
     xmlns="http://www.w3.org/ns/widgets"
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:cdv="http://cordova.apache.org/ns/1.0">
@@ -76,6 +76,120 @@
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="acode" />
             </intent-filter>
+        </config-file>
+
+        <config-file target="AndroidManifest.xml" parent="./application">
+            <activity-alias
+                android:name=".MainActivityIconDefault"
+                android:enabled="true"
+                android:exported="true"
+                android:icon="@mipmap/ic_launcher"
+                android:roundIcon="@mipmap/ic_launcher_round"
+                android:label="@string/app_name"
+                android:targetActivity=".MainActivity">
+                <intent-filter>
+                    <action android:name="android.intent.action.MAIN" />
+                    <category android:name="android.intent.category.LAUNCHER" />
+                </intent-filter>
+            </activity-alias>
+
+            <activity-alias
+                android:name=".MainActivityIconPro"
+                android:enabled="false"
+                android:exported="true"
+                android:icon="@mipmap/ic_acode_pro"
+                android:roundIcon="@mipmap/ic_acode_pro_round"
+                android:label="@string/app_name"
+                android:targetActivity=".MainActivity">
+                <intent-filter>
+                    <action android:name="android.intent.action.MAIN" />
+                    <category android:name="android.intent.category.LAUNCHER" />
+                </intent-filter>
+            </activity-alias>
+
+            <activity-alias
+                android:name=".MainActivityIconMidnightCircuit"
+                android:enabled="false"
+                android:exported="true"
+                android:icon="@mipmap/ic_acode_midnight_circuit"
+                android:roundIcon="@mipmap/ic_acode_midnight_circuit_round"
+                android:label="@string/app_name"
+                android:targetActivity=".MainActivity">
+                <intent-filter>
+                    <action android:name="android.intent.action.MAIN" />
+                    <category android:name="android.intent.category.LAUNCHER" />
+                </intent-filter>
+            </activity-alias>
+
+            <activity-alias
+                android:name=".MainActivityIconAuroraPulse"
+                android:enabled="false"
+                android:exported="true"
+                android:icon="@mipmap/ic_acode_aurora_pulse"
+                android:roundIcon="@mipmap/ic_acode_aurora_pulse_round"
+                android:label="@string/app_name"
+                android:targetActivity=".MainActivity">
+                <intent-filter>
+                    <action android:name="android.intent.action.MAIN" />
+                    <category android:name="android.intent.category.LAUNCHER" />
+                </intent-filter>
+            </activity-alias>
+
+            <activity-alias
+                android:name=".MainActivityIconTerminalGlow"
+                android:enabled="false"
+                android:exported="true"
+                android:icon="@mipmap/ic_acode_terminal_glow"
+                android:roundIcon="@mipmap/ic_acode_terminal_glow_round"
+                android:label="@string/app_name"
+                android:targetActivity=".MainActivity">
+                <intent-filter>
+                    <action android:name="android.intent.action.MAIN" />
+                    <category android:name="android.intent.category.LAUNCHER" />
+                </intent-filter>
+            </activity-alias>
+
+            <activity-alias
+                android:name=".MainActivityIconSolarFlare"
+                android:enabled="false"
+                android:exported="true"
+                android:icon="@mipmap/ic_acode_solar_flare"
+                android:roundIcon="@mipmap/ic_acode_solar_flare_round"
+                android:label="@string/app_name"
+                android:targetActivity=".MainActivity">
+                <intent-filter>
+                    <action android:name="android.intent.action.MAIN" />
+                    <category android:name="android.intent.category.LAUNCHER" />
+                </intent-filter>
+            </activity-alias>
+
+            <activity-alias
+                android:name=".MainActivityIconBlueprint"
+                android:enabled="false"
+                android:exported="true"
+                android:icon="@mipmap/ic_acode_blueprint"
+                android:roundIcon="@mipmap/ic_acode_blueprint_round"
+                android:label="@string/app_name"
+                android:targetActivity=".MainActivity">
+                <intent-filter>
+                    <action android:name="android.intent.action.MAIN" />
+                    <category android:name="android.intent.category.LAUNCHER" />
+                </intent-filter>
+            </activity-alias>
+
+            <activity-alias
+                android:name=".MainActivityIconPixelParty"
+                android:enabled="false"
+                android:exported="true"
+                android:icon="@mipmap/ic_acode_pixel_party"
+                android:roundIcon="@mipmap/ic_acode_pixel_party_round"
+                android:label="@string/app_name"
+                android:targetActivity=".MainActivity">
+                <intent-filter>
+                    <action android:name="android.intent.action.MAIN" />
+                    <category android:name="android.intent.category.LAUNCHER" />
+                </intent-filter>
+            </activity-alias>
         </config-file>
 
         <config-file target="AndroidManifest.xml" parent="/manifest">

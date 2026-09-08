@@ -836,11 +836,14 @@ function ListItem({
 					});
 
 				const { default: installPlugin } = await import("lib/installPlugin");
-				await installPlugin(
-					id,
-					remotePlugin.name,
-					purchaseToken ? purchaseToken : undefined,
-				);
+				await Promise.all([
+					loadAd(),
+					installPlugin(
+						id,
+						remotePlugin.name,
+						purchaseToken ? purchaseToken : undefined,
+					),
+				]);
 
 				const searchInput = container.querySelector('input[name="search-ext"]');
 				if (searchInput) {
@@ -862,6 +865,7 @@ function ListItem({
 				if (!$installed.collapsed) {
 					$installed.ontoggle();
 				}
+				await helpers.showInterstitialIfReady();
 
 				async function getPurchase(sku) {
 					const purchases = await helpers.promisify(iap.getPurchases);
@@ -910,14 +914,11 @@ function ListItem({
 	return $el;
 }
 
-async function loadAd(el) {
+async function loadAd() {
 	if (!helpers.canShowAds()) return;
 	try {
 		if (!(await interstitialAd?.isLoaded())) {
-			const oldText = el.textContent;
-			el.textContent = strings["loading..."];
 			await interstitialAd?.load();
-			el.textContent = oldText;
 		}
 	} catch (error) {
 		console.error(error);
@@ -929,7 +930,7 @@ async function uninstall(id) {
 		const pluginDir = Url.join(PLUGIN_DIR, id);
 		const state = await InstallState.new(id);
 		await Promise.all([
-			loadAd(this),
+			loadAd(),
 			fsOperation(pluginDir).delete(),
 			state.delete(state.storeUrl),
 		]);

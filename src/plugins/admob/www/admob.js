@@ -81,6 +81,7 @@ function execAsync(action, args) {
 class MobileAd {
     constructor(opts) {
         var _a;
+        this._destroyed = false;
         this.opts = opts;
         this.id = (_a = opts.id) !== null && _a !== void 0 ? _a : opts.adUnitId;
         MobileAd.allAds[this.id] = this;
@@ -137,17 +138,38 @@ class MobileAd {
             return execAsync("adHide", [{ id: this.id }]);
         });
     }
+    destroy() {
+        if (this._destroyPromise)
+            return this._destroyPromise;
+        this._destroyed = true;
+        if (MobileAd.allAds[this.id] === this)
+            delete MobileAd.allAds[this.id];
+        this._destroyPromise = (() => __awaiter(this, void 0, void 0, function* () {
+            // Creation may already be in flight; dispose only after it settles.
+            if (this._initPromise) {
+                yield this._initPromise;
+                yield execAsync("adDestroy", [{ id: this.id }]);
+            }
+        }))();
+        return this._destroyPromise;
+    }
     init() {
-        var _a;
         return __awaiter(this, void 0, void 0, function* () {
+            var _a;
+            if (this._destroyed)
+                throw new Error("Ad is destroyed");
             // biome-ignore lint/suspicious/noAssignInExpressions: <explanation>
-            return ((_a = this._initPromise) !== null && _a !== void 0 ? _a : (this._initPromise = this._init()));
+            yield ((_a = this._initPromise) !== null && _a !== void 0 ? _a : (this._initPromise = this._init()));
+            if (this._destroyed)
+                throw new Error("Ad is destroyed");
         });
     }
     _init() {
-        var _a;
         return __awaiter(this, void 0, void 0, function* () {
+            var _a;
             yield admob.start();
+            if (this._destroyed)
+                return;
             const cls = (_a = this.constructor.cls) !== null && _a !== void 0 ? _a : this.constructor.name;
             return execAsync("adCreate", [Object.assign(Object.assign({}, this.opts), { id: this.id, cls })]);
         });
@@ -317,6 +339,10 @@ class RewardedAd extends MobileAd {
     }
     show() {
         return super.show();
+    }
+    /** Release an Android rewarded ad after dismissal or before presentation. */
+    destroy() {
+        return super.destroy();
     }
 }
 RewardedAd.cls = "RewardedAd";

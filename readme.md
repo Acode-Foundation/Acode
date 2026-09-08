@@ -15,6 +15,8 @@ Welcome to Acode Editor - a powerful and versatile code editing tool designed sp
 - Edit and create websites, and instantly preview them in a browser.
 - Seamlessly modify source files for various languages like Python, Java, JavaScript, and more.
 - Built-in javascript console
+- S/FTP and SSH terminal integration
+- Built-in terminal(Alpine)
 - Enjoy multi-language editing support with easy management tools.
 - Enjoy a large collections of community plugins to enhance your coding experience.
 

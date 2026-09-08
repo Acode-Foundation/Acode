@@ -1,234 +1,344 @@
-c-toggler {
-  background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAQAAABKfvVzAAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGXRFWHRTb2Z0d2FyZQB3d3cuaW5rc2NhcGUub3Jnm+48GgAAAE9JREFUOMtjYBh0gBHO+k+cSkYilcPVMpHqpIHRwIgUFERp+I8SekQ5CY8WXH7AqYWJyGglqIERV3QykaYcV7DiSSwsODw8yJIGdTPQIAQAg9gKJl7UINwAAAAASUVORK5CYII=);
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: 24px;
+html[console-only],
+html[console-only] body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--primary-color, #313131) !important;
+}
+
+c-console {
+  --console-background: #313131;
+  --console-background-text: #eee;
+  --console-surface: #313131;
+  --console-surface-text: #eee;
+  --console-control: #414141;
+  --console-control-text: #d6d3d3;
+  --console-active: #555;
+  --console-active-text: #fff;
+  --console-border: rgba(204, 204, 204, 0.35);
+  --console-muted: #aaa;
+  --console-placeholder: #929292;
+  --console-scrollbar: #666;
+  --console-danger: #ff9b9b;
+  --console-danger-fill: #a00000;
+  --console-warning-fill: #ffb95c;
+  --console-error-surface: #422;
+  --console-warning-surface: #633;
+  --console-link: #99f;
+  --console-accent: rgb(120, 105, 225);
+  --console-function: rgb(145, 136, 168);
+  --console-success: rgb(59, 161, 59);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
   position: fixed;
-  top: 0;
-  left: 0;
-  height: 30px;
-  width: 30px;
-  background-color: #fff;
-  transform-origin: center;
-  border-radius: 50%;
-  box-shadow: -2px 2px 8px rgba(0, 0, 0, .4);
-  z-index: 99999;
-  opacity: 0.5;
+  top: var(--console-viewport-top, 0);
+  left: var(--console-viewport-left, 0);
+  width: var(--console-viewport-width, 100vw);
+  height: var(--console-viewport-height, 100dvh);
+  min-height: 0;
+  overflow: hidden;
+  z-index: 99998;
+  background: var(--console-background);
+  color: var(--console-background-text);
+  font-family: var(--app-font-family, Verdana, Geneva, Tahoma, sans-serif);
+  color-scheme: dark;
+}
+
+html[console-only] c-console {
+  --console-background: var(--primary-color, #313131);
+  --console-background-text: var(--primary-text-color, #eee);
+  --console-surface: var(--secondary-color, var(--primary-color, #313131));
+  --console-surface-text: var(
+    --secondary-text-color,
+    var(--primary-text-color, #eee)
+  );
+  --console-control: var(
+    --popup-background-color,
+    var(--secondary-color, #414141)
+  );
+  --console-control-text: var(
+    --popup-text-color,
+    var(--secondary-text-color, #d6d3d3)
+  );
+  --console-active: var(--active-color, #555);
+  --console-active-text: var(--active-text-color, #fff);
+  --console-border: var(--border-color, rgba(204, 204, 204, 0.35));
+  --console-muted: var(--secondary-text-color, #aaa);
+  --console-placeholder: var(--secondary-text-color, #929292);
+  --console-scrollbar: var(--scrollbar-color, #666);
+  --console-danger: var(--error-text-color, #ff9b9b);
+  --console-danger-fill: var(--danger-color, #a00000);
+  --console-warning-fill: var(--error-text-color, #ffb95c);
+  --console-link: var(--link-text-color, #99f);
+  --console-accent: var(--active-color, rgb(120, 105, 225));
+  --console-function: var(--secondary-text-color, rgb(145, 136, 168));
+  --console-success: var(--success-text-color, rgb(59, 161, 59));
+}
+
+html[theme-type="light"] c-console {
+  color-scheme: light;
+}
+
+// The console-only Activity already resizes its WebView for the keyboard.
+// Filling that layout directly avoids stale visualViewport pixels after the
+// keyboard closes; the floating page overlay still uses measured CSS variables.
+c-console[standalone] {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+}
+
+.__c-action {
+  min-height: 32px;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--console-surface-text);
+  font: inherit;
+  font-size: 0.76rem;
+  touch-action: manipulation;
+}
+
+.__c-action:active {
+  background: var(--console-active);
+  color: var(--console-active-text);
+}
+
+.__c-action-danger {
+  color: var(--console-danger);
+}
+
+.__c-context {
+  box-sizing: border-box;
+  max-width: 112px;
+  min-height: 32px;
+  padding: 4px 20px 4px 6px;
+  border: 0;
+  border-radius: 3px;
+  outline: none;
+  background: var(--console-control);
+  color: var(--console-control-text);
+  font: inherit;
+  font-size: 0.7rem;
+}
+
+.__c-context:focus-visible {
+  outline: 1px solid var(--console-active);
+  outline-offset: -1px;
+}
+
+.__c-context:disabled {
+  opacity: 0.55;
+}
+
+c-output {
+  display: block;
+  flex: 1 1 100%;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--console-scrollbar) transparent;
+}
+
+c-output > .variable-virtual-spacer,
+c-output > .variable-virtual-items {
+  display: block;
+  width: 100%;
+}
+
+c-input {
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  width: 100%;
+  min-height: 96px;
+  padding: 7px 7px max(8px, env(safe-area-inset-bottom));
+  background: var(--console-surface);
+  color: var(--console-surface-text);
+}
+
+c-input::before {
+  content: ">>";
+  align-self: flex-start;
+  padding-top: 9px;
+  color: var(--console-accent);
+  font: italic 13px/1 "Courier New", Courier, monospace;
+}
+
+#__c-input {
+  box-sizing: border-box;
+  display: block;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 82px;
+  max-height: 120px;
+  margin: 0;
+  padding: 7px 3px;
+  border: 0;
+  outline: none;
+  resize: none;
+  overflow-y: auto;
+  background: transparent;
+  color: var(--console-surface-text);
+  caret-color: currentColor !important;
+  font: 13px/1.45 "Courier New", Courier, monospace;
+}
+
+c-input-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  padding-bottom: 2px;
+}
+
+#__c-input::placeholder {
+  color: var(--console-placeholder);
+  opacity: 0.75;
+}
+
+#__c-input:disabled {
+  opacity: 0.55;
+}
+
+c-message {
+  box-sizing: border-box;
+  display: flex;
+  position: relative;
+  flex-wrap: wrap;
+  min-height: 45px;
+  padding: 5px 7px 4px;
+  border-bottom: 1px solid var(--console-border);
+  background: var(--console-surface);
+  color: var(--console-surface-text);
+  font-size: 0.9rem;
+}
+
+c-message[log-level="error"] {
+  background: var(--console-error-surface);
+  background: color-mix(
+    in srgb,
+    var(--console-danger-fill) 16%,
+    var(--console-surface)
+  );
+}
+
+c-message[log-level="warn"] {
+  background: var(--console-warning-surface);
+  background: color-mix(
+    in srgb,
+    var(--console-warning-fill) 20%,
+    var(--console-surface)
+  );
+}
+
+c-text,
+c-code {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  padding: 2px 4px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  font: 0.9rem/1.45 Verdana, Geneva, Tahoma, sans-serif;
+}
+
+c-code {
+  position: relative;
+  padding-right: 42px;
+  overflow-x: auto;
+  color: var(--console-surface-text);
+  font-family: "Courier New", Courier, monospace;
+  white-space: pre-wrap;
+  cursor: pointer;
+}
+
+c-code::before {
+  content: ">>";
+  padding-right: 5px;
+  font-style: italic;
+}
+
+c-code::after {
+  content: "use";
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--console-active);
+  color: var(--console-active-text);
+  font: 0.62rem/1.4 var(--app-font-family, sans-serif);
+}
+
+c-stack {
+  box-sizing: border-box;
+  display: flex;
+  flex: 1 0 100%;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  margin-top: 3px;
+  padding: 3px 4px 0;
+  color: var(--console-muted);
+  opacity: 0.8;
+  font-size: 0.7rem;
+}
+
+c-date,
+c-trace {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+c-trace {
+  direction: rtl;
+  text-align: right;
 }
 
 c-object {
-  color: #9999ff;
+  color: var(--console-link);
   text-decoration: underline;
-}
-
-c-toggler:active {
-  box-shadow: -1px 1px 4px rgba(0, 0, 0, .4)
 }
 
 c-line {
   display: block;
 }
 
-c-console {
-  box-sizing: border-box;
-  overflow-y: auto;
-  position: fixed;
-  top: 0;
-  left: 0;
-  height: 100vh;
-  width: 100vw;
-  background-color: #313131;
-  z-index: 99998;
-  color: #eeeeee;
-  font-family: var(--app-font-family);
-}
-
-c-console[title] {
-  padding-top: 65px;
-  animation: --page-transition .1s ease 1;
-}
-
-c-console br:last-of-type {
-  display: none;
-}
-
-c-console textarea {
-  color: white;
-  caret-color: currentColor !important;
-  background-color: inherit;
-}
-
-c-input {
-  display: flex;
-  width: 100%;
-  height: fit-content;
-}
-
-c-input::before {
-  content: '>>';
-  margin: 0 5px;
-  height: 100%;
-}
-
-#__c-input {
-  width: 100%;
-  border: none;
-  resize: none;
-  height: 200px;
-  position: relative;
-  background-color: transparent;
-  overflow: visible;
-}
-
-#__c-input:focus {
-  outline: none;
-}
-
-c-console[title]::before {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  background-color: inherit;
-  z-index: 999999;
-  content: attr(title);
-  display: flex;
-  height: 44px;
-  align-items: center;
-  justify-content: center;
-  font-family: Verdana, Geneva, Tahoma, sans-serif;
-  font-weight: 900;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, .2);
-  margin-bottom: 10px;
-  color: white;
-  font-size: medium;
-}
-
-c-message {
-  position: relative;
-  display: flex;
-  border-bottom: solid 1px rgba(204, 204, 204, 0.4);
-  margin-bottom: 35px;
-  font-size: .9rem;
-  flex-wrap: wrap;
-}
-
-c-code {
-  position: relative;
-  color: rgb(214, 211, 211);
-  font-size: 1em;
-  font-family: 'Courier New', Courier, monospace;
-  overflow-x: auto;
-  white-space: pre;
-  margin-bottom: 0px;
-  border: 'none';
-}
-
-c-code::after {
-  content: 'use';
-  background-color: #666;
-  color: inherit;
-  border-radius: 4px;
-  padding: 0 0.4rem;
-  font-size: 0.6rem;
-}
-
-c-code::before {
-  content: '>>';
-  padding: 0 5px;
-  font-style: italic;
-}
-
 c-key {
+  margin-right: 5px;
+  color: var(--console-accent);
   font-size: 0.9rem;
-  color: #cc66ff;
 }
 
-c-message[log-level=error] {
-  border-bottom: solid 1px rgba(255, 255, 255, 0.4);
-  background-color: #422;
-  color: inherit;
-}
-
-c-message[log-level=error]::after {
-  background-color: #cc4343;
-  color: inherit
-}
-
-c-message[log-level=warn] {
-  border-bottom: solid 1px rgba(255, 255, 255, 0.4);
-  background-color: #633;
-  color: inherit;
-}
-
-c-message[log-level=warn]::after {
-  background-color: #cc6969;
-  color: inherit
-}
-
-c-stack:not(:empty) {
-  content: attr(data-stack);
-  font-family: Verdana, Geneva, Tahoma, sans-serif;
-  position: absolute;
-  top: 100%;
-  right: 0;
-  display: flex;
-  height: 20px;
-  align-items: center;
-  justify-content: space-between;
-  width: 100vw;
-  background-color: inherit;
-  padding: 0 5px;
-  box-sizing: border-box;
-  font-size: .8rem;
-  color: inherit;
-}
-
-c-text {
-  padding: 2px;
-  white-space: pre;
-  font-family: Verdana, Geneva, Tahoma, sans-serif;
-  overflow: auto;
-  box-sizing: border-box;
-  max-width: 100vw;
-  font-size: 0.9rem;
-  width: 100%;
-  padding-left: 10px;
-  white-space: break-spaces;
-}
-
-c-text.__c-boolean {
-  color: rgb(130, 80, 177);
-}
-
-c-text.__c-number {
-  color: rgb(97, 88, 221);
-}
-
+c-text.__c-boolean,
+c-text.__c-number,
 c-text.__c-symbol {
-  color: rgb(111, 89, 172);
+  color: var(--console-accent);
 }
 
 c-text.__c-function {
-  color: rgb(145, 136, 168);
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 0.9rem;
-}
-
-c-text.__c-function::before {
-  content: 'ƒ';
-  margin: 0 2px;
-  font-style: italic;
-  color: #9999ff;
+  color: var(--console-function);
+  font-family: "Courier New", Courier, monospace;
 }
 
 c-text.__c-object,
 c-text.__c-undefined {
-  color: rgb(118, 163, 118);
+  color: var(--console-success);
 }
 
 c-text.__c-string {
-  color: rgb(59, 161, 59);
+  color: var(--console-success);
 }
 
 c-text.__c-string:not(.no-quotes)::before {
@@ -241,34 +351,32 @@ c-text.__c-string:not(.no-quotes)::after {
   margin-left: 2px;
 }
 
-c-message.error c-text {
-  overflow: unset;
-  white-space: pre-wrap;
-  word-break: break-word;
-  color: white;
-}
-
 c-group {
   display: none;
   margin-left: 14px;
 }
 
-c-type[type="body-toggler"].__show-data+c-group {
+c-type[type="body-toggler"] {
+  cursor: pointer;
+  user-select: none;
+}
+
+c-type[type="body-toggler"].__show-data + c-group {
   display: block;
 }
 
 c-type[type="body-toggler"]::before {
   display: inline-block;
-  content: '▸';
-  margin-right: 2.5px;
+  content: "▸";
+  margin-right: 3px;
 }
 
 c-type[type="body-toggler"]::after {
-  content: '{...}';
+  content: " {…}";
 }
 
 c-type[type="body-toggler"].__show-data::before {
-  content: '▾';
+  content: "▾";
 }
 
 c-type[type="body-toggler"].__show-data::after {
@@ -279,43 +387,47 @@ c-table {
   display: table;
   width: 100%;
   border-collapse: collapse;
-  border-spacing: 0;
-  font-size: 0.9rem;
-  color: rgb(214, 211, 211);
-  border: solid 1px rgba(204, 204, 204, 0.4);
+  color: var(--console-surface-text);
 }
 
 c-table c-row {
   display: table-row;
-  border-bottom: solid 1px rgba(204, 204, 204, 0.4);
-}
-
-c-table c-row:last-child {
-  border-bottom: none;
-}
-
-c-table c-row:first-child {
-  font-weight: bold;
+  border-bottom: 1px solid var(--console-border);
 }
 
 c-table c-cell {
   display: table-cell;
   padding: 5px;
-  border-bottom: solid 1px rgba(204, 204, 204, 0.4);
 }
 
-c-table c-cell:not(:last-child) {
-  border-left: solid 1px rgba(204, 204, 204, 0.4);
+c-toggler {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  z-index: 99999;
+  opacity: 0.5;
+  background-color: #fff;
+  background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAQAAABKfvVzAAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAGXRFWHRTb2Z0d2FyZQB3d3cuaW5rc2NhcGUub3Jnm+48GgAAAE9JREFUOMtjYBh0gBHO+k+cSkYilcPVMpHqpIHRwIgUFERp+I8SekQ5CY8WXH7AqYWJyGglqIERV3QykaYcV7DiSSwsODw8yJIGdTPQIAQAg9gKJl7UINwAAAAASUVORK5CYII=);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 24px;
+  box-shadow: -2px 2px 8px rgba(0, 0, 0, 0.4);
+  touch-action: none;
 }
 
-@keyframes --page-transition {
-  0% {
-    opacity: 0;
-    transform: translate3d(0, 50%, 0)
-  }
+c-toggler:active {
+  opacity: 0.8;
+}
 
-  100% {
-    opacity: 1;
-    transform: translate3d(0, 0, 0)
+[hidden] {
+  display: none !important;
+}
+
+@supports not (height: 100dvh) {
+  c-console {
+    height: var(--console-viewport-height, 100vh);
   }
 }

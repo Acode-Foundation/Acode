@@ -1,4 +1,3 @@
-import fsOperation from "fileSystem";
 import Ftp from "fileSystem/ftp";
 import Sftp from "fileSystem/sftp";
 import loader from "dialogs/loader";
@@ -6,6 +5,12 @@ import multiPrompt from "dialogs/multiPrompt";
 import URLParse from "url-parse";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
+import {
+	createSftpProfileUrl,
+	editSftpProfile,
+	getSftpProfileId,
+	getSftpProfileInfo,
+} from "./sftpProfiles";
 import { interstitialAd } from "./startAd";
 
 export default {
@@ -30,7 +35,7 @@ export default {
 		try {
 			loader.create(strings["add ftp"], strings["connecting..."], {
 				timeout: 10000,
-				callback() {
+				oncancel() {
 					stopConnection = true;
 				},
 			});
@@ -161,75 +166,105 @@ export default {
 			]);
 		}
 	},
-	/**
-	 * @param {...any} args [hostname, username, keyFile, password, passphrase, port, name]
-	 */
-	async addSftp(...args) {
+	/** Persist credentials natively and retain only an opaque profile URL. */
+	async addSftp({
+		hostname = "",
+		username = "",
+		port = 22,
+		alias: initialAlias = "",
+		authType = "password",
+		existingProfile = null,
+	} = {}) {
 		let stopConnection = false;
+		let connection;
+		const connectionRequestID = `add-sftp-${helpers.uuid()}`;
+		if (existingProfile?.profileId) {
+			try {
+				const saved = await getSftpProfileInfo(existingProfile.profileId);
+				hostname = saved.hostname;
+				username = saved.username;
+				port = saved.port;
+				authType = saved.authType;
+			} catch (error) {
+				await helpers.error(error);
+				return null;
+			}
+		}
 
-		const {
-			hostname,
-			username,
-			keyFile,
-			password,
-			passPhrase,
-			port,
-			alias,
-			usePassword,
-		} = await prompt(...args);
-		const authType = usePassword ? "password" : "keyFile";
+		let values;
+		try {
+			values = await prompt({
+				hostname,
+				username,
+				port,
+				alias: initialAlias || existingProfile?.name || "",
+				authType: authType === "keyFile" ? "key" : authType,
+				hasSavedKey: existingProfile?.profileId && authType === "key",
+			});
+		} catch {
+			return null;
+		}
+
+		const retryDetails = {
+			hostname: values.hostname,
+			username: values.username,
+			port: values.port,
+			alias: values.alias,
+			authType: values.usePassword ? "password" : "key",
+			existingProfile,
+		};
+		let profile;
+		let saveError;
+		try {
+			profile = await editSftpProfile({
+				profileId: existingProfile?.profileId,
+				hostname: values.hostname,
+				username: values.username,
+				port: values.port,
+				authType: values.usePassword ? "password" : "key",
+				password: values.password,
+				keyFile: values.keyFile,
+				passPhrase: values.passPhrase,
+			});
+		} catch (error) {
+			saveError = error;
+		} finally {
+			// Drop all WebView references as soon as the native store has consumed them.
+			values.password = "";
+			values.keyFile = "";
+			values.passPhrase = "";
+		}
+		if (saveError) {
+			values = null;
+			await helpers.error(saveError);
+			return this.addSftp(retryDetails);
+		}
+		const alias = values.alias;
+		values = null;
+		const url = createSftpProfileUrl(profile.profileId);
 
 		loader.create(strings["add sftp"], strings["connecting..."], {
-			timeout: 10000,
-			callback() {
+			timeout: 0,
+			oncancel() {
 				stopConnection = true;
+				connection?.cancelConnection(connectionRequestID);
 			},
 		});
-		const connection = Sftp(hostname, Number.parseInt(port), username, {
-			password,
-			keyFile,
-			passPhrase,
+		connection = Sftp(null, 22, null, {
+			profileID: profile.profileId,
 		});
 
 		try {
-			const [home] = await Promise.all([connection.pwd(), loadAd()]);
+			const [home] = await Promise.all([
+				connection.testConnection(connectionRequestID),
+				loadAd(),
+			]);
 
 			if (stopConnection) {
 				stopConnection = false;
 				return;
 			}
 
-			let localKeyFile = "";
-			if (keyFile) {
-				let fs = fsOperation(keyFile);
-				const text = await fs.readFile("utf8");
-
-				//Original key file sometimes gives permission error
-				//To solve permission error
-				const filename = keyFile.hashCode();
-				localKeyFile = Url.join(DATA_STORAGE, filename);
-				fs = fsOperation(localKeyFile);
-				const exists = await fs.exists();
-				if (exists) {
-					await fs.writeFile(text);
-				} else {
-					let fs = fsOperation(DATA_STORAGE);
-					await fs.createFile(filename, text);
-				}
-			}
-
-			const url = Url.formate({
-				protocol: "sftp:",
-				hostname,
-				username,
-				password,
-				port,
-				path: "/",
-				query: {
-					keyFile: localKeyFile,
-					passPhrase,
-				},
-			});
 			loader.destroy();
 			await helpers.showInterstitialIfReady();
 			return {
@@ -246,52 +281,51 @@ export default {
 			}
 
 			loader.destroy();
-			await helpers.error(err);
-			return await this.addSftp(
-				hostname,
-				username,
-				keyFile,
-				password,
-				passPhrase,
-				port,
+			if (!err?.reported) await helpers.error(err);
+			return await this.addSftp({
+				hostname: profile.hostname,
+				username: profile.username,
+				port: profile.port,
 				alias,
-				authType,
-			);
+				authType: profile.authType,
+				existingProfile: {
+					...profile,
+					url,
+					home: existingProfile?.home,
+				},
+			});
 		}
 
-		function prompt(
+		function prompt({
 			hostname,
 			username,
-			keyFile,
-			password,
-			passPhrase,
 			port,
 			alias,
-			authType = "password",
-		) {
-			port = port || 22;
-
-			const MODE_PASS = authType === "password";
-			const inputs = [
+			authType,
+			hasSavedKey,
+		}) {
+			const usePassword = authType !== "key";
+			return multiPrompt(strings["add sftp"], [
 				{
 					id: "alias",
 					placeholder: strings.name,
 					type: "text",
-					value: alias ? alias : "",
+					value: alias,
 					required: true,
 				},
 				{
 					id: "username",
-					placeholder: `${strings.username} (${strings.optional})`,
+					placeholder: strings.username,
 					type: "text",
 					value: username,
+					required: true,
 				},
 				{
 					id: "hostname",
 					placeholder: strings.hostname,
 					type: "text",
-					required: true,
 					value: hostname,
+					required: true,
 				},
 				[
 					"Authentication type: ",
@@ -300,13 +334,12 @@ export default {
 						placeholder: strings.password,
 						name: "authType",
 						type: "radio",
-						value: MODE_PASS,
+						value: usePassword,
 						onchange() {
-							if (!!this.value) {
-								this.prompt.$body.get("#password").hidden = false;
-								this.prompt.$body.get("#keyFile").hidden = true;
-								this.prompt.$body.get("#passPhrase").hidden = true;
-							}
+							if (!this.checked) return;
+							this.prompt.$body.get("#password").hidden = false;
+							this.prompt.$body.get("#keyFile").hidden = true;
+							this.prompt.$body.get("#passPhrase").hidden = true;
 						},
 					},
 					{
@@ -314,59 +347,75 @@ export default {
 						placeholder: strings["key file"],
 						name: "authType",
 						type: "radio",
-						value: !MODE_PASS,
+						value: !usePassword,
 						onchange() {
-							if (!!this.value) {
-								const $password = this.prompt.$body.get("#password");
-								$password.hidden = true;
-								$password.value = "";
-								this.prompt.$body.get("#keyFile").hidden = false;
-								this.prompt.$body.get("#passPhrase").hidden = false;
-							}
+							if (!this.checked) return;
+							const password = this.prompt.$body.get("#password");
+							password.hidden = true;
+							password.value = "";
+							this.prompt.$body.get("#keyFile").hidden = false;
+							this.prompt.$body.get("#passPhrase").hidden = false;
 						},
 					},
 				],
 				{
 					id: "password",
-					placeholder: strings.password,
-					name: "password",
+					placeholder: existingProfile?.profileId
+						? `${strings.password} (leave blank to keep saved)`
+						: strings.password,
 					type: "password",
-					value: password,
-					hidden: !MODE_PASS,
+					hidden: !usePassword,
 				},
 				{
 					id: "keyFile",
-					placeholder: strings["select key file"],
-					name: "keyFile",
-					hidden: MODE_PASS,
-					value: keyFile,
+					placeholder: hasSavedKey
+						? `${strings["select key file"]} (leave blank to keep saved)`
+						: strings["select key file"],
 					type: "text",
+					readOnly: true,
+					sensitive: true,
+					hidden: usePassword,
 					onclick() {
-						sdcard.openDocumentFile((res) => {
-							this.value = res.uri;
+						sdcard.openDocumentFile((result) => {
+							this.value = result.uri;
 						});
 					},
 				},
 				{
 					id: "passPhrase",
 					placeholder: `${strings.passphrase} (${strings.optional})`,
-					name: "passPhrase",
 					type: "password",
-					hidden: MODE_PASS,
-					value: passPhrase,
+					hidden: usePassword,
 				},
 				{
 					id: "port",
-					placeholder: `${strings.port} (${strings.optional})`,
+					placeholder: strings.port,
 					type: "number",
-					value: port,
+					value: port || 22,
+					required: true,
 				},
-			];
-
-			return multiPrompt(strings["add sftp"], inputs);
+			]);
 		}
 	},
-	edit({ name, storageType, url }) {
+	async edit({ name, storageType, url, home }) {
+		const profileId = getSftpProfileId(url);
+		if (storageType === "sftp" && profileId) {
+			return this.addSftp({
+				alias: name,
+				existingProfile: { profileId, url, home, name },
+			});
+		}
+		if (storageType === "sftp") {
+			const { username, hostname, port, query } = URLParse(url, true);
+			return this.addSftp({
+				hostname,
+				username: username ? decodeURIComponent(username) : "",
+				port: port || 22,
+				alias: name,
+				authType: query?.keyFile ? "key" : "password",
+			});
+		}
+
 		let { username, password, hostname, port, query } = URLParse(url, true);
 
 		if (username) {
@@ -395,28 +444,6 @@ export default {
 				port,
 				security,
 				mode,
-			);
-		}
-
-		if (storageType === "sftp") {
-			let { passPhrase, keyFile } = query;
-			if (passPhrase) {
-				passPhrase = decodeURIComponent(passPhrase);
-			}
-
-			if (keyFile) {
-				keyFile = decodeURIComponent(keyFile);
-			}
-
-			return this.addSftp(
-				hostname,
-				username,
-				keyFile,
-				password,
-				passPhrase,
-				port,
-				name,
-				password ? "password" : "key",
 			);
 		}
 
