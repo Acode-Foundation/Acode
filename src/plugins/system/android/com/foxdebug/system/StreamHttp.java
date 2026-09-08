@@ -16,6 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.PluginResult;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -260,10 +261,14 @@ public class StreamHttp implements Runnable {
           if (read == buffer.length) {
             buffer = new byte[chunkSize];
           }
-          sendData(chunk);
+          // Reserve credit before publishing: ack() can only race against
+          // chunks JavaScript has already received, so incrementing here keeps
+          // the subtraction in ack() from ever clamping a not-yet-accounted
+          // reservation to zero and silently exhausting the credit window.
           synchronized (creditLock) {
             pendingBytes += read;
           }
+          sendData(chunk);
         }
       }
 
@@ -348,7 +353,7 @@ public class StreamHttp implements Runnable {
   }
 
   // True when the chunk has no byte below 0x20, i.e. nothing the JSON encoder
-  // is forced to escape (\uXXXX) into a larger payload.
+  // is forced to escape (as a U+XXXX sequence) into a larger payload.
   private static boolean jsonSafe(byte[] chunk) {
     for (byte b : chunk) {
       if ((b & 0xFF) < 0x20) return false;
