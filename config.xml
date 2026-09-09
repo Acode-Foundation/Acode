@@ -196,6 +196,118 @@
                     <category android:name="android.intent.category.LAUNCHER" />
                 </intent-filter>
             </activity-alias>
+
+            <activity-alias
+                android:name=".MainActivityIconPrism"
+                android:enabled="false"
+                android:exported="true"
+                android:icon="@mipmap/ic_acode_prism"
+                android:roundIcon="@mipmap/ic_acode_prism_round"
+                android:label="@string/app_name"
+                android:targetActivity="com.foxdebug.system.LauncherActivity">
+                <intent-filter>
+                    <action android:name="android.intent.action.MAIN" />
+                    <category android:name="android.intent.category.LAUNCHER" />
+                </intent-filter>
+            </activity-alias>
+
+            <activity-alias
+                android:name=".MainActivityIconPorcelain"
+                android:enabled="false"
+                android:exported="true"
+                android:icon="@mipmap/ic_acode_porcelain"
+                android:roundIcon="@mipmap/ic_acode_porcelain_round"
+                android:label="@string/app_name"
+                android:targetActivity="com.foxdebug.system.LauncherActivity">
+                <intent-filter>
+                    <action android:name="android.intent.action.MAIN" />
+                    <category android:name="android.intent.category.LAUNCHER" />
+                </intent-filter>
+            </activity-alias>
+
+            <activity-alias
+                android:name=".MainActivityIconTangerine"
+                android:enabled="false"
+                android:exported="true"
+                android:icon="@mipmap/ic_acode_tangerine"
+                android:roundIcon="@mipmap/ic_acode_tangerine_round"
+                android:label="@string/app_name"
+                android:targetActivity="com.foxdebug.system.LauncherActivity">
+                <intent-filter>
+                    <action android:name="android.intent.action.MAIN" />
+                    <category android:name="android.intent.category.LAUNCHER" />
+                </intent-filter>
+            </activity-alias>
+
+            <activity-alias
+                android:name=".MainActivityIconTidal"
+                android:enabled="false"
+                android:exported="true"
+                android:icon="@mipmap/ic_acode_tidal"
+                android:roundIcon="@mipmap/ic_acode_tidal_round"
+                android:label="@string/app_name"
+                android:targetActivity="com.foxdebug.system.LauncherActivity">
+                <intent-filter>
+                    <action android:name="android.intent.action.MAIN" />
+                    <category android:name="android.intent.category.LAUNCHER" />
+                </intent-filter>
+            </activity-alias>
+
+            <activity-alias
+                android:name=".MainActivityIconLilac"
+                android:enabled="false"
+                android:exported="true"
+                android:icon="@mipmap/ic_acode_lilac"
+                android:roundIcon="@mipmap/ic_acode_lilac_round"
+                android:label="@string/app_name"
+                android:targetActivity="com.foxdebug.system.LauncherActivity">
+                <intent-filter>
+                    <action android:name="android.intent.action.MAIN" />
+                    <category android:name="android.intent.category.LAUNCHER" />
+                </intent-filter>
+            </activity-alias>
+
+            <activity-alias
+                android:name=".MainActivityIconVolt"
+                android:enabled="false"
+                android:exported="true"
+                android:icon="@mipmap/ic_acode_volt"
+                android:roundIcon="@mipmap/ic_acode_volt_round"
+                android:label="@string/app_name"
+                android:targetActivity="com.foxdebug.system.LauncherActivity">
+                <intent-filter>
+                    <action android:name="android.intent.action.MAIN" />
+                    <category android:name="android.intent.category.LAUNCHER" />
+                </intent-filter>
+            </activity-alias>
+
+            <activity-alias
+                android:name=".MainActivityIconCobalt"
+                android:enabled="false"
+                android:exported="true"
+                android:icon="@mipmap/ic_acode_cobalt"
+                android:roundIcon="@mipmap/ic_acode_cobalt_round"
+                android:label="@string/app_name"
+                android:targetActivity="com.foxdebug.system.LauncherActivity">
+                <intent-filter>
+                    <action android:name="android.intent.action.MAIN" />
+                    <category android:name="android.intent.category.LAUNCHER" />
+                </intent-filter>
+            </activity-alias>
+
+            <activity-alias
+                android:name=".MainActivityIconGlacier"
+                android:enabled="false"
+                android:exported="true"
+                android:icon="@mipmap/ic_acode_glacier"
+                android:roundIcon="@mipmap/ic_acode_glacier_round"
+                android:label="@string/app_name"
+                android:targetActivity="com.foxdebug.system.LauncherActivity">
+                <intent-filter>
+                    <action android:name="android.intent.action.MAIN" />
+                    <category android:name="android.intent.category.LAUNCHER" />
+                </intent-filter>
+            </activity-alias>
         </config-file>
 
         <config-file target="AndroidManifest.xml" parent="/manifest">

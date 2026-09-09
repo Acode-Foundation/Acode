@@ -1,6 +1,9 @@
 .prompt.app-icon-dialog {
 	// Keep the existing confirmation dialogs and their masks above the picker.
 	z-index: 111;
+	width: calc(100vw - 32px);
+	max-width: 28rem;
+	box-sizing: border-box;
 
 	& + .mask {
 		z-index: 110;
@@ -11,14 +14,20 @@
 		flex-shrink: 0;
 	}
 
+	> .button-container {
+		margin-top: 0.5rem;
+	}
+
 	.app-icon-list {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
-		gap: 0.9rem;
+		grid-template-columns: repeat(auto-fill, minmax(5.25rem, 1fr));
+		gap: 0.5rem;
+		align-content: start;
 		width: 100%;
 		min-height: 0;
 		overflow-y: auto;
 		margin: 0 auto;
+		padding: 0.75rem;
 		box-sizing: border-box;
 	}
 
@@ -28,7 +37,7 @@
 		align-items: center;
 		justify-content: center;
 		margin: 0;
-		padding: 1rem 0.75rem;
+		padding: 0.5rem;
 		border: none;
 		border-radius: 1rem;
 		background: transparent;
@@ -46,11 +55,26 @@
 		}
 
 		&.current {
-			background: color-mix(in srgb, var(--secondary-color), var(--active-color) 10%);
+			background: transparent;
 		}
 
-		&.current .app-icon-preview {
-			box-shadow: 0 0 0 2px var(--active-color);
+		&.current::after {
+			content: "\e9ab";
+			position: absolute;
+			top: 0;
+			left: calc(50% + 2.1rem);
+			transform: translateX(-50%);
+			display: grid;
+			place-items: center;
+			width: max(20px, 1.4rem);
+			height: max(20px, 1.4rem);
+			box-sizing: border-box;
+			border: 2px solid var(--popup-background-color);
+			border-radius: 50%;
+			background: var(--active-color);
+			color: #fff;
+			font: max(12px, 1rem) / 1 "code-editor-icon";
+			pointer-events: none;
 		}
 
 		&[data-icon="default"] .app-icon-preview {

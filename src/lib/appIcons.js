@@ -44,6 +44,22 @@ export const APP_ICONS = [
 		label: "Pixel Party",
 		image: "icons/ic_acode_pixel_party.svg",
 	},
+	{ id: "prism", label: "Prism", image: "icons/ic_acode_prism.svg" },
+	{
+		id: "porcelain",
+		label: "Porcelain",
+		image: "icons/ic_acode_porcelain.svg",
+	},
+	{
+		id: "tangerine",
+		label: "Tangerine",
+		image: "icons/ic_acode_tangerine.svg",
+	},
+	{ id: "tidal", label: "Tidal", image: "icons/ic_acode_tidal.svg" },
+	{ id: "lilac", label: "Lilac", image: "icons/ic_acode_lilac.svg" },
+	{ id: "volt", label: "Volt", image: "icons/ic_acode_volt.svg" },
+	{ id: "cobalt", label: "Cobalt", image: "icons/ic_acode_cobalt.svg" },
+	{ id: "glacier", label: "Glacier", image: "icons/ic_acode_glacier.svg" },
 ];
 
 export const APP_ICON_IDS = APP_ICONS.map((icon) => icon.id);

@@ -79,7 +79,7 @@ it("refreshes stale System plugin Java alongside icons on repeated Android prepa
 		const preparedManifest = fs.readFileSync(manifest, "utf8");
 		const application = parse(preparedManifest).find("application");
 		const aliases = application.findall("activity-alias");
-		expect(aliases).toHaveLength(9);
+		expect(aliases).toHaveLength(17);
 		expect(aliases[0].get("android:name")).toBe("other.Alias");
 		expect(
 			aliases
@@ -155,6 +155,14 @@ it("preserves all launcher aliases while routing them through the registered lau
 		".MainActivityIconSolarFlare",
 		".MainActivityIconBlueprint",
 		".MainActivityIconPixelParty",
+		".MainActivityIconPrism",
+		".MainActivityIconPorcelain",
+		".MainActivityIconTangerine",
+		".MainActivityIconTidal",
+		".MainActivityIconLilac",
+		".MainActivityIconVolt",
+		".MainActivityIconCobalt",
+		".MainActivityIconGlacier",
 	]);
 	for (const [index, alias] of aliases.entries()) {
 		expect(alias.get("android:targetActivity")).toBe(

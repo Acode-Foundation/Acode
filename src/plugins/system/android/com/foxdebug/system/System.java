@@ -88,6 +88,14 @@ public class System extends CordovaPlugin {
     aliases.put("solar_flare", "MainActivityIconSolarFlare");
     aliases.put("blueprint", "MainActivityIconBlueprint");
     aliases.put("pixel_party", "MainActivityIconPixelParty");
+    aliases.put("prism", "MainActivityIconPrism");
+    aliases.put("porcelain", "MainActivityIconPorcelain");
+    aliases.put("tangerine", "MainActivityIconTangerine");
+    aliases.put("tidal", "MainActivityIconTidal");
+    aliases.put("lilac", "MainActivityIconLilac");
+    aliases.put("volt", "MainActivityIconVolt");
+    aliases.put("cobalt", "MainActivityIconCobalt");
+    aliases.put("glacier", "MainActivityIconGlacier");
     APP_ICON_ALIASES = Collections.unmodifiableMap(aliases);
   }
 
