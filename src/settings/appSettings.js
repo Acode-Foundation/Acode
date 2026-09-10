@@ -11,7 +11,6 @@ import fonts from "lib/fonts";
 import lang from "lib/lang";
 import openFile from "lib/openFile";
 import appSettings from "lib/settings";
-import appIconSetting, { preloadAppIconSetting } from "pages/appIconSetting";
 import FontManager from "pages/fontManager";
 import QuickToolsSettings from "pages/quickTools";
 import encodings, { getEncoding } from "utils/encodings";
@@ -20,7 +19,6 @@ import { isPlayStoreInstall } from "utils/installSource";
 import Url from "utils/Url";
 
 export default function otherSettings() {
-	preloadAppIconSetting();
 	const values = appSettings.value;
 	const title = strings["app settings"].capitalize();
 	const installedFromPlayStore = isPlayStoreInstall();
@@ -65,15 +63,6 @@ export default function otherSettings() {
 			checkbox: values.fullscreen,
 			info: strings["settings-info-app-fullscreen"],
 			category: categories.interface,
-		},
-		{
-			key: "appIcon",
-			text: strings["app icon"] || "App icon",
-			info:
-				strings["settings-info-app-icon"] ||
-				"Choose the app icon displayed on your device.",
-			category: categories.interface,
-			chevron: true,
 		},
 		{
 			key: "uiZoom",
@@ -401,9 +390,6 @@ export default function otherSettings() {
 			case "fontManager":
 				FontManager();
 				return;
-
-			case "appIcon":
-				return appIconSetting();
 
 			case "appFont":
 				await fonts.setAppFont(value);

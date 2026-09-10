@@ -2,6 +2,7 @@ import settingsPage from "components/settingsPage";
 import confirm from "dialogs/confirm";
 import rateBox from "dialogs/rateBox";
 import actionStack from "lib/actionStack";
+import { APP_ICONS } from "lib/appIcons";
 import config from "lib/config";
 import openFile from "lib/openFile";
 import { bindPrivacyChoices } from "lib/privacyChoicesController.mjs";
@@ -10,6 +11,7 @@ import appSettings from "lib/settings";
 import settings from "lib/settings";
 import { showPrivacyOptions, subscribePrivacyState } from "lib/startAd";
 import openAdRewardsPage from "pages/adRewards";
+import appIconSetting, { preloadAppIconSetting } from "pages/appIconSetting";
 import Changelog from "pages/changelog/changelog";
 import plugins from "pages/plugins";
 import Sponsors from "pages/sponsors";
@@ -28,10 +30,13 @@ import searchSettings from "./searchSettings";
 import terminalSettings from "./terminalSettings";
 
 export default function mainSettings() {
+	preloadAppIconSetting();
 	const title = strings.settings.capitalize();
 	const categories = {
 		core: strings["settings-category-core"],
-		customizationTools: strings["settings-category-customization-tools"],
+		customization:
+			strings["settings-category-customization"] || "Customization",
+		tools: strings["settings-category-tools"] || "Tools",
 		maintenance: strings["settings-category-maintenance"],
 		aboutAcode: strings["settings-category-about-acode"],
 		supportAcode: strings["settings-category-support-acode"],
@@ -70,19 +75,29 @@ export default function mainSettings() {
 			chevron: true,
 		},
 		{
-			key: "formatter",
-			text: strings.formatter,
-			icon: "spellcheck",
-			info: strings["settings-info-main-formatter"],
-			category: categories.customizationTools,
-			chevron: true,
-		},
-		{
 			key: "theme",
 			text: strings.theme,
 			icon: "color_lenspalette",
 			info: strings["settings-info-main-theme"],
-			category: categories.customizationTools,
+			category: categories.customization,
+			chevron: true,
+		},
+		{
+			key: "appIcon",
+			text: strings["app icon"] || "App icon",
+			image: getAppIconImage(),
+			info:
+				strings["settings-info-app-icon"] ||
+				"Choose the app icon displayed on your device.",
+			category: categories.customization,
+			chevron: true,
+		},
+		{
+			key: "formatter",
+			text: strings.formatter,
+			icon: "spellcheck",
+			info: strings["settings-info-main-formatter"],
+			category: categories.tools,
 			chevron: true,
 		},
 		{
@@ -90,7 +105,7 @@ export default function mainSettings() {
 			text: strings["plugins"],
 			icon: "extension",
 			info: strings["settings-info-main-plugins"],
-			category: categories.customizationTools,
+			category: categories.tools,
 			chevron: true,
 		},
 		{
@@ -101,7 +116,7 @@ export default function mainSettings() {
 				"Language servers",
 			icon: "zap",
 			info: strings["settings-info-main-lsp-settings"],
-			category: categories.customizationTools,
+			category: categories.tools,
 			chevron: true,
 		},
 		{
@@ -235,6 +250,9 @@ export default function mainSettings() {
 				themeSetting();
 				break;
 
+			case "appIcon":
+				return appIconSetting();
+
 			case "about":
 				About();
 				break;
@@ -315,6 +333,14 @@ export default function mainSettings() {
 		pageClassName: "main-settings-page",
 		listClassName: "main-settings-list",
 	});
+	const $appIcon = page
+		.getListElement()
+		.querySelector('[data-key="appIcon"] > .icon img');
+	const updateAppIcon = () => {
+		$appIcon.src = getAppIconImage();
+	};
+	appSettings.on("update:appIcon", updateAppIcon);
+	page.onClose(() => appSettings.off("update:appIcon", updateAppIcon));
 	if (!config.HAS_PRO) {
 		bindPrivacyChoices({
 			page,
@@ -367,4 +393,10 @@ export default function mainSettings() {
 			enumerable: false,
 		});
 	}
+}
+
+function getAppIconImage() {
+	return (
+		APP_ICONS.find(({ id }) => id === appSettings.value.appIcon) || APP_ICONS[0]
+	).image;
 }

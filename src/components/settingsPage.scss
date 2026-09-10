@@ -114,6 +114,10 @@ wc-page.main-settings-page {
 			color: color-mix(in srgb, var(--secondary-text-color), transparent 18%);
 		}
 
+		&[data-key="appIcon"] > .icon > img[src$="/ic_acode_default.svg"] {
+			background: #3a3e54;
+		}
+
 		>.container {
 			flex: 1;
 			display: flex;
