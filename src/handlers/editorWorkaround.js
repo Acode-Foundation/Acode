@@ -16,12 +16,12 @@ document.addEventListener("compositionstart", setKeyboardInput, true);
 let touched = false;
 
 function setTouched() {
-        if (touched) return;
-        touched = true;
-        interactionGuard.markActive();
-        requestAnimationFrame(() => {
-                touched = false;
-        });
+	if (touched) return;
+	touched = true;
+	interactionGuard.markActive();
+	requestAnimationFrame(() => {
+		touched = false;
+	});
 }
 
 document.addEventListener(
