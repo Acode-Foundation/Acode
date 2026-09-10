@@ -2229,18 +2229,25 @@ public class System extends CordovaPlugin {
       PackageManager pm = context.getPackageManager();
       String key = iconName == null ? "default" : iconName.toLowerCase();
 
-      if (!APP_ICON_ALIASES.containsKey(key)) {
+      String targetAlias = APP_ICON_ALIASES.get(key);
+      if (targetAlias == null) {
         callback.error("Unknown app icon: " + iconName);
         return;
       }
 
+      pm.setComponentEnabledSetting(
+        new ComponentName(packageName, packageName + "." + targetAlias),
+        PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+        PackageManager.DONT_KILL_APP
+      );
+
       for (Map.Entry<String, String> entry : APP_ICON_ALIASES.entrySet()) {
-        boolean enabled = entry.getKey().equals(key);
+        if (entry.getKey().equals(key)) {
+          continue;
+        }
         pm.setComponentEnabledSetting(
           new ComponentName(packageName, packageName + "." + entry.getValue()),
-          enabled
-            ? PackageManager.COMPONENT_ENABLED_STATE_ENABLED
-            : PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+          PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
           PackageManager.DONT_KILL_APP
         );
       }
