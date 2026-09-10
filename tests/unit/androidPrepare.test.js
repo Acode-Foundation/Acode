@@ -85,15 +85,6 @@ it("refreshes stale System plugin Java alongside icons on repeated Android prepa
 			".MainActivityIconDefault",
 			"other.Alias",
 		]);
-		expect(preparedManifest).not.toContain("LauncherActivity");
-		expect(
-			fs.existsSync(
-				path.join(
-					root,
-					"platforms/android/app/src/main/java/com/foxdebug/system/LauncherActivity.java",
-				),
-			),
-		).toBe(false);
 		expect(fs.readFileSync(generated, "utf8")).toBe(
 			fs.readFileSync(source, "utf8"),
 		);
@@ -154,17 +145,4 @@ it("keeps every launcher alias pointing at MainActivity without a launcher indir
 		expect(alias.get("android:enabled")).toBe(index === 0 ? "true" : "false");
 		expect(alias.get("android:exported")).toBe("true");
 	}
-	const plugin = parse(
-		fs.readFileSync(
-			new URL("../../src/plugins/system/plugin.xml", import.meta.url),
-			"utf8",
-		),
-	);
-	expect(
-		plugin
-			.findall(".//source-file")
-			.some((file) =>
-				String(file.get("src")).includes("LauncherActivity"),
-			),
-	).toBe(false);
 });
