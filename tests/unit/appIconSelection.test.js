@@ -115,7 +115,8 @@ describe("icon selection", () => {
 					? "pro"
 					: "midnight_circuit",
 		);
-		expect(h.onLoading).toHaveBeenCalledExactlyOnceWith(true);
+		// The exit warning is confirmed before any loader is shown.
+		expect(h.onLoading).not.toHaveBeenCalled();
 		await pending;
 		expect(h.onLoading.mock.calls).toEqual([[true], [false]]);
 		// The app-exit warning is still shown before the icon is applied.
@@ -215,6 +216,7 @@ describe("icon selection", () => {
 		);
 		const h = harness();
 		const pending = h.select("pixel_party");
+		await vi.waitFor(() => expect(applied).toBeTypeOf("function"));
 		expect(mocks.toast).not.toHaveBeenCalled();
 		applied();
 		await vi.waitFor(() => expect(persisted).toBeTypeOf("function"));
@@ -279,6 +281,7 @@ describe("icon selection", () => {
 		});
 		const previous = harness();
 		const pending = previous.select("pixel_party");
+		await vi.waitFor(() => expect(applied).toBeTypeOf("function"));
 		previous.controller.abort();
 		const reopened = harness();
 		await reopened.select("solar_flare");

@@ -120,6 +120,8 @@ beforeEach(() => {
 	vi.stubGlobal("tag", tag);
 	vi.stubGlobal("strings", {
 		"app icon": "App icon",
+		"app icon change warning":
+			"The app will exit after the app icon is changed.",
 		"loading...": "Loading...",
 		"app icon changed": "Changed",
 		"confirm app icon reward": "Watch?",
@@ -194,6 +196,16 @@ it("opens while previews are pending and falls back when decoding is unavailable
 	await h.preloadAppIconSetting();
 	expect(h.images).toHaveLength(APP_ICONS.length);
 });
+
+function pendingConfirm() {
+	const dialogs = document.querySelectorAll(".prompt.confirm:not(.hide)");
+	return dialogs[dialogs.length - 1];
+}
+
+function confirmSelection(accept = true) {
+	const buttons = pendingConfirm().querySelectorAll(".button-container button");
+	buttons[accept ? 1 : 0].click();
+}
 
 function dialogHarness() {
 	const trigger = document.createElement("button");
@@ -283,6 +295,11 @@ it("opens one complete grid and closes only after native success, preserving the
 	});
 	const pending = h.click();
 	expect(h.dialog.classList.contains("hide")).toBe(false);
+	// The exit warning is confirmed before the loader is shown.
+	expect(pendingConfirm()).toBeTruthy();
+	expect(h.loader.create).not.toHaveBeenCalled();
+	confirmSelection();
+	await vi.waitFor(() => expect(applied).toBeTypeOf("function"));
 	expect(h.loader.create).toHaveBeenCalledExactlyOnceWith("App icon", "Loading...");
 	expect(h.dialog.inert).toBe(true);
 	expect(document.querySelector("#__loader button")).toBeNull();
@@ -310,7 +327,9 @@ it.each([
 ])("keeps a reopened picker's loader active across old cleanup until %s", async (outcome) => {
 	mocks.config.HAS_PRO = true;
 	const h = dialogHarness();
-	await h.click();
+	const first = h.click();
+	confirmSelection();
+	await first;
 	const previousLoader = document.querySelector("#__loader");
 	expect(previousLoader.classList.contains("hide")).toBe(true);
 	await vi.advanceTimersByTimeAsync(180);
@@ -323,6 +342,8 @@ it.each([
 		finish = () => (outcome === "success" ? success() : failure("Failed"));
 	});
 	const pending = h.click("solar_flare");
+	confirmSelection();
+	await vi.waitFor(() => expect(finish).toBeTypeOf("function"));
 	try {
 		const currentLoader = document.querySelector("#__loader");
 		expect(currentLoader).not.toBeNull();
@@ -429,7 +450,10 @@ it("locks tiles before confirmation and shows the loader through reward and appl
 	expect(h.loader.create).not.toHaveBeenCalled();
 	expect(h.loader.destroy).not.toHaveBeenCalled();
 	expect(mocks.reward).not.toHaveBeenCalled();
-	app.querySelectorAll(".confirm button")[1].click();
+	// The exit warning comes first, then the rewarded-ad prompt.
+	confirmSelection();
+	await vi.waitFor(() => expect(pendingConfirm()).toBeTruthy());
+	confirmSelection();
 	await vi.waitFor(() => expect(reward).toBeTypeOf("function"));
 	h.click("solar_flare");
 	expect(mocks.reward).toHaveBeenCalledOnce();
@@ -507,14 +531,18 @@ it.each([
 	const h = dialogHarness();
 	const images = [...h.dialog.querySelectorAll("img")];
 	const pending = h.click(outcome === "purchase" ? "pro" : "pixel_party");
-	if (outcome !== "purchase") {
-		expect(actionStack.length).toBe(2);
-		expect(h.loader.create).not.toHaveBeenCalled();
-		if (outcome === "back") await actionStack.pop();
-		else
-			app
-				.querySelectorAll(".confirm button")
-				[outcome === "cancel" ? 0 : 1].click();
+	// Every selection first confirms the exit warning.
+	expect(actionStack.length).toBe(2);
+	expect(h.loader.create).not.toHaveBeenCalled();
+	if (outcome === "back") {
+		await actionStack.pop();
+	} else {
+		confirmSelection(outcome !== "cancel");
+		if (outcome === "reward failure" || outcome === "native failure") {
+			// Rewarded-ad icons ask for the ad after the exit warning.
+			await vi.waitFor(() => expect(pendingConfirm()).toBeTruthy());
+			confirmSelection();
+		}
 	}
 	await pending;
 	vi.runAllTimers();
@@ -532,7 +560,9 @@ it.each([
 	for (const [i, image] of [...h.dialog.querySelectorAll("img")].entries())
 		expect(image).toBe(images[i]);
 	mocks.config.HAS_PRO = true;
-	await h.click();
+	const applied = h.click();
+	confirmSelection();
+	await applied;
 	vi.runAllTimers();
 	await h.closed;
 	expect(mocks.settings.value.appIcon).toBe("pixel_party");
@@ -544,7 +574,9 @@ it("leaves the external Pro flow's loader under its own control", async () => {
 	mocks.purchase.mockImplementation(async () => {
 		h.loader.create("Login", "Loading...");
 	});
-	await h.click("pro");
+	const pending = h.click("pro");
+	confirmSelection();
+	await pending;
 	expect(h.loader.create).toHaveBeenCalledExactlyOnceWith("Login", "Loading...");
 	expect(h.loader.destroy).not.toHaveBeenCalled();
 	expect(h.dialog.inert).toBe(false);
@@ -567,7 +599,9 @@ it("cleans up a pending reward and ignores late callbacks after reopening", asyn
 	);
 	const h = dialogHarness();
 	const pending = h.click();
-	app.querySelectorAll(".confirm button")[1].click();
+	confirmSelection();
+	await vi.waitFor(() => expect(pendingConfirm()).toBeTruthy());
+	confirmSelection();
 	await vi.waitFor(() => expect(reward).toBeTypeOf("function"));
 	expect(h.loader.create).toHaveBeenCalledOnce();
 	h.selection.onChange();
