@@ -37,7 +37,6 @@ it("refreshes stale System plugin Java alongside icons on repeated Android prepa
 						</intent-filter>
 					</activity>
 					<activity-alias android:name=".MainActivityIconDefault" android:targetActivity=".MainActivity" />
-					<activity-alias android:name=".MainActivityIconDefault" android:targetActivity="com.foxdebug.system.LauncherActivity" />
 					<activity-alias android:name="other.Alias" android:targetActivity="other.Activity" />
 				</application>
 			</manifest>`,
@@ -52,9 +51,6 @@ it("refreshes stale System plugin Java alongside icons on repeated Android prepa
 			"platforms/android/app/src/main/java/com/foxdebug/system/System.java",
 			'aliases.put("default", "MainActivityIconDefault");',
 		);
-		const launcher =
-			"src/plugins/system/android/com/foxdebug/system/LauncherActivity.java";
-		write(launcher, "// launcher routing");
 		const unrelated = write(
 			"platforms/android/app/src/main/java/other/Plugin.java",
 			"// other plugin",
@@ -78,33 +74,26 @@ it("refreshes stale System plugin Java alongside icons on repeated Android prepa
 		prepare();
 		const preparedManifest = fs.readFileSync(manifest, "utf8");
 		const application = parse(preparedManifest).find("application");
-		const aliases = application.findall("activity-alias");
-		expect(aliases).toHaveLength(17);
-		expect(aliases[0].get("android:name")).toBe("other.Alias");
-		expect(
-			aliases
-				.slice(1)
-				.every(
-					(alias) =>
-						alias.get("android:targetActivity") ===
-						"com.foxdebug.system.LauncherActivity",
-				),
-		).toBe(true);
-		expect(application.getchildren()[2].get("android:name")).toBe(
-			"com.foxdebug.system.LauncherActivity",
-		);
+		// The editor activity keeps its own component: the launcher filter is
+		// stripped and aliases target it directly, with no launcher indirection.
 		expect(application.find("activity").findall("intent-filter")).toHaveLength(
 			0,
 		);
+		const aliases = application.findall("activity-alias");
+		expect(aliases).toHaveLength(2);
+		expect(aliases.map((alias) => alias.get("android:name"))).toEqual([
+			".MainActivityIconDefault",
+			"other.Alias",
+		]);
+		expect(preparedManifest).not.toContain("LauncherActivity");
 		expect(
-			fs.readFileSync(
+			fs.existsSync(
 				path.join(
 					root,
 					"platforms/android/app/src/main/java/com/foxdebug/system/LauncherActivity.java",
 				),
-				"utf8",
 			),
-		).toBe(fs.readFileSync(path.join(root, launcher), "utf8"));
+		).toBe(false);
 		expect(fs.readFileSync(generated, "utf8")).toBe(
 			fs.readFileSync(source, "utf8"),
 		);
@@ -129,7 +118,7 @@ it("refreshes stale System plugin Java alongside icons on repeated Android prepa
 	}
 });
 
-it("preserves all launcher aliases while routing them through the registered launcher activity", () => {
+it("keeps every launcher alias pointing at MainActivity without a launcher indirection", () => {
 	const config = parse(
 		fs.readFileSync(new URL("../../config.xml", import.meta.url), "utf8"),
 	);
@@ -137,14 +126,10 @@ it("preserves all launcher aliases while routing them through the registered lau
 		.findall(".//config-file")
 		.find((element) => element.findall("activity-alias").length);
 	const children = application.getchildren();
-	const launcher = children[0];
-	expect(launcher.tag).toBe("activity");
-	expect(launcher.attrib).toMatchObject({
-		"android:name": "com.foxdebug.system.LauncherActivity",
-		"android:noHistory": "true",
-		"android:relinquishTaskIdentity": "true",
-		"android:theme": "@android:style/Theme.NoDisplay",
-	});
+	expect(children.map((child) => child.tag)).toEqual(
+		children.map(() => "activity-alias"),
+	);
+	expect(children.some((child) => child.tag === "activity")).toBe(false);
 	const aliases = application.findall("activity-alias");
 	expect(aliases.map((alias) => alias.get("android:name"))).toEqual([
 		".MainActivityIconDefault",
@@ -165,9 +150,7 @@ it("preserves all launcher aliases while routing them through the registered lau
 		".MainActivityIconGlacier",
 	]);
 	for (const [index, alias] of aliases.entries()) {
-		expect(alias.get("android:targetActivity")).toBe(
-			launcher.get("android:name"),
-		);
+		expect(alias.get("android:targetActivity")).toBe(".MainActivity");
 		expect(alias.get("android:enabled")).toBe(index === 0 ? "true" : "false");
 		expect(alias.get("android:exported")).toBe("true");
 	}
@@ -180,10 +163,8 @@ it("preserves all launcher aliases while routing them through the registered lau
 	expect(
 		plugin
 			.findall(".//source-file")
-			.some(
-				(file) =>
-					file.get("src") ===
-					"android/com/foxdebug/system/LauncherActivity.java",
+			.some((file) =>
+				String(file.get("src")).includes("LauncherActivity"),
 			),
-	).toBe(true);
+	).toBe(false);
 });

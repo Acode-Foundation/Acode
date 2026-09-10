@@ -834,6 +834,7 @@
 	"terminal:failsafe": "Mode FailSafe",
 	"app icon": "App icon",
 	"app icon changed": "App icon changed",
+	"app icon change warning": "The app will exit after the app icon is changed.",
 	"settings-info-app-icon": "Choose the app icon displayed on your device.",
 	"confirm app icon reward": "Watch one rewarded ad to apply this app icon?",
 	"rewarded ad unavailable": "Rewarded ads are unavailable right now. Please try again.",

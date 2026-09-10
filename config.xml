@@ -79,12 +79,6 @@
         </config-file>
 
         <config-file target="AndroidManifest.xml" parent="./application">
-            <activity
-                android:name="com.foxdebug.system.LauncherActivity"
-                android:exported="false"
-                android:noHistory="true"
-                android:relinquishTaskIdentity="true"
-                android:theme="@android:style/Theme.NoDisplay" />
             <activity-alias
                 android:name=".MainActivityIconDefault"
                 android:enabled="true"
@@ -92,7 +86,7 @@
                 android:icon="@mipmap/ic_launcher"
                 android:roundIcon="@mipmap/ic_launcher_round"
                 android:label="@string/app_name"
-                android:targetActivity="com.foxdebug.system.LauncherActivity">
+                android:targetActivity=".MainActivity">
                 <intent-filter>
                     <action android:name="android.intent.action.MAIN" />
                     <category android:name="android.intent.category.LAUNCHER" />
@@ -106,7 +100,7 @@
                 android:icon="@mipmap/ic_acode_pro"
                 android:roundIcon="@mipmap/ic_acode_pro_round"
                 android:label="@string/app_name"
-                android:targetActivity="com.foxdebug.system.LauncherActivity">
+                android:targetActivity=".MainActivity">
                 <intent-filter>
                     <action android:name="android.intent.action.MAIN" />
                     <category android:name="android.intent.category.LAUNCHER" />
@@ -120,7 +114,7 @@
                 android:icon="@mipmap/ic_acode_midnight_circuit"
                 android:roundIcon="@mipmap/ic_acode_midnight_circuit_round"
                 android:label="@string/app_name"
-                android:targetActivity="com.foxdebug.system.LauncherActivity">
+                android:targetActivity=".MainActivity">
                 <intent-filter>
                     <action android:name="android.intent.action.MAIN" />
                     <category android:name="android.intent.category.LAUNCHER" />
@@ -134,7 +128,7 @@
                 android:icon="@mipmap/ic_acode_aurora_pulse"
                 android:roundIcon="@mipmap/ic_acode_aurora_pulse_round"
                 android:label="@string/app_name"
-                android:targetActivity="com.foxdebug.system.LauncherActivity">
+                android:targetActivity=".MainActivity">
                 <intent-filter>
                     <action android:name="android.intent.action.MAIN" />
                     <category android:name="android.intent.category.LAUNCHER" />
@@ -148,7 +142,7 @@
                 android:icon="@mipmap/ic_acode_terminal_glow"
                 android:roundIcon="@mipmap/ic_acode_terminal_glow_round"
                 android:label="@string/app_name"
-                android:targetActivity="com.foxdebug.system.LauncherActivity">
+                android:targetActivity=".MainActivity">
                 <intent-filter>
                     <action android:name="android.intent.action.MAIN" />
                     <category android:name="android.intent.category.LAUNCHER" />
@@ -162,7 +156,7 @@
                 android:icon="@mipmap/ic_acode_solar_flare"
                 android:roundIcon="@mipmap/ic_acode_solar_flare_round"
                 android:label="@string/app_name"
-                android:targetActivity="com.foxdebug.system.LauncherActivity">
+                android:targetActivity=".MainActivity">
                 <intent-filter>
                     <action android:name="android.intent.action.MAIN" />
                     <category android:name="android.intent.category.LAUNCHER" />
@@ -176,7 +170,7 @@
                 android:icon="@mipmap/ic_acode_blueprint"
                 android:roundIcon="@mipmap/ic_acode_blueprint_round"
                 android:label="@string/app_name"
-                android:targetActivity="com.foxdebug.system.LauncherActivity">
+                android:targetActivity=".MainActivity">
                 <intent-filter>
                     <action android:name="android.intent.action.MAIN" />
                     <category android:name="android.intent.category.LAUNCHER" />
@@ -190,7 +184,7 @@
                 android:icon="@mipmap/ic_acode_pixel_party"
                 android:roundIcon="@mipmap/ic_acode_pixel_party_round"
                 android:label="@string/app_name"
-                android:targetActivity="com.foxdebug.system.LauncherActivity">
+                android:targetActivity=".MainActivity">
                 <intent-filter>
                     <action android:name="android.intent.action.MAIN" />
                     <category android:name="android.intent.category.LAUNCHER" />
@@ -204,7 +198,7 @@
                 android:icon="@mipmap/ic_acode_prism"
                 android:roundIcon="@mipmap/ic_acode_prism_round"
                 android:label="@string/app_name"
-                android:targetActivity="com.foxdebug.system.LauncherActivity">
+                android:targetActivity=".MainActivity">
                 <intent-filter>
                     <action android:name="android.intent.action.MAIN" />
                     <category android:name="android.intent.category.LAUNCHER" />
@@ -218,7 +212,7 @@
                 android:icon="@mipmap/ic_acode_porcelain"
                 android:roundIcon="@mipmap/ic_acode_porcelain_round"
                 android:label="@string/app_name"
-                android:targetActivity="com.foxdebug.system.LauncherActivity">
+                android:targetActivity=".MainActivity">
                 <intent-filter>
                     <action android:name="android.intent.action.MAIN" />
                     <category android:name="android.intent.category.LAUNCHER" />
@@ -232,7 +226,7 @@
                 android:icon="@mipmap/ic_acode_tangerine"
                 android:roundIcon="@mipmap/ic_acode_tangerine_round"
                 android:label="@string/app_name"
-                android:targetActivity="com.foxdebug.system.LauncherActivity">
+                android:targetActivity=".MainActivity">
                 <intent-filter>
                     <action android:name="android.intent.action.MAIN" />
                     <category android:name="android.intent.category.LAUNCHER" />
@@ -246,7 +240,7 @@
                 android:icon="@mipmap/ic_acode_tidal"
                 android:roundIcon="@mipmap/ic_acode_tidal_round"
                 android:label="@string/app_name"
-                android:targetActivity="com.foxdebug.system.LauncherActivity">
+                android:targetActivity=".MainActivity">
                 <intent-filter>
                     <action android:name="android.intent.action.MAIN" />
                     <category android:name="android.intent.category.LAUNCHER" />
@@ -260,7 +254,7 @@
                 android:icon="@mipmap/ic_acode_lilac"
                 android:roundIcon="@mipmap/ic_acode_lilac_round"
                 android:label="@string/app_name"
-                android:targetActivity="com.foxdebug.system.LauncherActivity">
+                android:targetActivity=".MainActivity">
                 <intent-filter>
                     <action android:name="android.intent.action.MAIN" />
                     <category android:name="android.intent.category.LAUNCHER" />
@@ -274,7 +268,7 @@
                 android:icon="@mipmap/ic_acode_volt"
                 android:roundIcon="@mipmap/ic_acode_volt_round"
                 android:label="@string/app_name"
-                android:targetActivity="com.foxdebug.system.LauncherActivity">
+                android:targetActivity=".MainActivity">
                 <intent-filter>
                     <action android:name="android.intent.action.MAIN" />
                     <category android:name="android.intent.category.LAUNCHER" />
@@ -288,7 +282,7 @@
                 android:icon="@mipmap/ic_acode_cobalt"
                 android:roundIcon="@mipmap/ic_acode_cobalt_round"
                 android:label="@string/app_name"
-                android:targetActivity="com.foxdebug.system.LauncherActivity">
+                android:targetActivity=".MainActivity">
                 <intent-filter>
                     <action android:name="android.intent.action.MAIN" />
                     <category android:name="android.intent.category.LAUNCHER" />
@@ -302,7 +296,7 @@
                 android:icon="@mipmap/ic_acode_glacier"
                 android:roundIcon="@mipmap/ic_acode_glacier_round"
                 android:label="@string/app_name"
-                android:targetActivity="com.foxdebug.system.LauncherActivity">
+                android:targetActivity=".MainActivity">
                 <intent-filter>
                     <action android:name="android.intent.action.MAIN" />
                     <category android:name="android.intent.category.LAUNCHER" />

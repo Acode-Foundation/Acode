@@ -719,6 +719,7 @@
 	"app font": "Шрифт програми",
 	"app icon": "App icon",
 	"app icon changed": "App icon changed",
+	"app icon change warning": "The app will exit after the app icon is changed.",
 	"settings-info-app-font-family": "Виберіть шрифт, який буде використовуватися в інтерфейсі програми.",
 	"settings-info-app-icon": "Choose the app icon displayed on your device.",
 	"lsp-transport-method-stdio": "STDIO (запуск бінарної команди)",

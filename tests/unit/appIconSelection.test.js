@@ -64,6 +64,8 @@ beforeEach(() => {
 	mocks.purchase.mockResolvedValue(false);
 	vi.stubGlobal("strings", {
 		"app icon": "App icon",
+		"app icon change warning":
+			"The app will exit after the app icon is changed.",
 		"confirm app icon reward": "Watch?",
 		"app icon changed": "Changed",
 		"rewarded ad incomplete": "Incomplete",
@@ -116,10 +118,20 @@ describe("icon selection", () => {
 		expect(h.onLoading).toHaveBeenCalledExactlyOnceWith(true);
 		await pending;
 		expect(h.onLoading.mock.calls).toEqual([[true], [false]]);
-		expect(mocks.confirm).not.toHaveBeenCalled();
+		// The app-exit warning is still shown before the icon is applied.
+		expect(mocks.confirm).toHaveBeenCalledOnce();
 		expect(mocks.reward).not.toHaveBeenCalled();
 		expect(mocks.settings.update).toHaveBeenCalledOnce();
 		expect(mocks.toast).toHaveBeenCalledWith("Changed");
+	});
+	it("warns that the app will exit before applying an icon", async () => {
+		const h = harness();
+		await h.select("pixel_party");
+		expect(mocks.confirm.mock.calls[0][0]).toBe("App icon");
+		expect(mocks.confirm.mock.calls[0][1]).toBe(
+			"The app will exit after the app icon is changed.",
+		);
+		expect(system.setAppIcon).toHaveBeenCalledOnce();
 	});
 	it("ignores current/unknown icons and serializes confirmation and reward", async () => {
 		const h = harness();
@@ -127,11 +139,11 @@ describe("icon selection", () => {
 		await h.select("unknown");
 		expect(h.onBusy).not.toHaveBeenCalled();
 		expect(h.onLoading).not.toHaveBeenCalled();
-		let confirm;
+		const confirms = [];
 		mocks.confirm.mockImplementation(
 			() =>
 				new Promise((resolve) => {
-					confirm = resolve;
+					confirms.push(resolve);
 				}),
 		);
 		const first = h.select("pixel_party");
@@ -145,8 +157,12 @@ describe("icon selection", () => {
 			await h.select("solar_flare");
 			return true;
 		});
-		confirm(true);
+		// The exit warning is confirmed first, then the rewarded-ad prompt.
+		confirms[0](true);
+		await vi.waitFor(() => expect(confirms).toHaveLength(2));
+		confirms[1](true);
 		await first;
+		expect(mocks.confirm).toHaveBeenCalledTimes(2);
 		expect(system.setAppIcon.mock.calls[0][0]).toBe("pixel_party");
 		expect(h.onBusy.mock.calls).toEqual([[true], [false]]);
 		expect(h.onLoading.mock.calls).toEqual([[true], [false]]);

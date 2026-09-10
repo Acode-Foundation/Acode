@@ -719,6 +719,7 @@
 	"app font": "Font Aplikasi",
 	"app icon": "App icon",
 	"app icon changed": "App icon changed",
+	"app icon change warning": "The app will exit after the app icon is changed.",
 	"settings-info-app-font-family": "Pilih font yang digunakan di seluruh antarmuka aplikasi.",
 	"settings-info-app-icon": "Choose the app icon displayed on your device.",
 	"lsp-transport-method-stdio": "STDIO (luncurkan perintah biner)",

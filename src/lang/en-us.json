@@ -768,6 +768,7 @@
 	"app font": "App font",
 	"app icon": "App icon",
 	"app icon changed": "App icon changed",
+	"app icon change warning": "The app will exit after the app icon is changed.",
 	"settings-info-app-font-family": "Choose the font used across the app interface.",
 	"settings-info-app-icon": "Choose the app icon displayed on your device.",
 	"unsaved selected tabs warning": "Some selected tabs are not saved. Choose what to do.",

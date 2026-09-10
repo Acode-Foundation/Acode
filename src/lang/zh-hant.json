@@ -719,6 +719,7 @@
 	"app font": "應用字體",
 	"app icon": "App icon",
 	"app icon changed": "App icon changed",
+	"app icon change warning": "The app will exit after the app icon is changed.",
 	"settings-info-app-font-family": "選擇在應用介面中使用的字體。",
 	"settings-info-app-icon": "Choose the app icon displayed on your device.",
 	"lsp-transport-method-stdio": "STDIO（啟動可執行命令）",

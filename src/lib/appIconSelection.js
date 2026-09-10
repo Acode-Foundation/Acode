@@ -22,6 +22,16 @@ export default async function selectAppIcon(
 	selecting = true;
 	onBusy(true);
 	try {
+		// Applying an icon toggles the launcher alias, which restarts the app.
+		// Warn before any purchase or rewarded ad so the user can back out.
+		const proceed = await confirm(
+			strings["app icon"],
+			strings["app icon change warning"] ||
+				"The app will exit after the app icon is changed.",
+			false,
+			{ signal },
+		);
+		if (!proceed || signal.aborted) return;
 		if (icon.requiresPro && !config.HAS_PRO) {
 			// External checkout manages its own login loader and confirmation.
 			if (!helpers.shouldAllowExternalPurchase()) onLoading(true);
