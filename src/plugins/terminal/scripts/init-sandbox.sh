@@ -77,6 +77,14 @@ ARGS="$ARGS -b $PREFIX/alpine/tmp:/dev/shm"
 # link to the underlying inode and therefore returns true for those descriptors,
 # which is why it does not filter them out.  Test the link target the same way
 # realpath(3) does instead.
+#
+# Probe through this shell's own pid ($$), not /proc/self: readlink(1) runs as a
+# child process, so for fd 2 its /proc/self/fd/2 is the /dev/null of the
+# `2>/dev/null` redirect below rather than the stderr proot inherits.  $$ is
+# unchanged by the exec at the end of this script, so it always names the
+# process proot will run as.
+SELF_PID=$$
+
 can_bind() {
     # Directories (e.g. /proc/self/fd) are canonicalizable as-is.
     if [ -d "$1" ]; then
@@ -93,19 +101,19 @@ can_bind() {
     esac
 }
 
-if can_bind /proc/self/fd; then
+if can_bind "/proc/$SELF_PID/fd"; then
   ARGS="$ARGS -b /proc/self/fd:/dev/fd"
 fi
 
-if can_bind /proc/self/fd/0; then
+if can_bind "/proc/$SELF_PID/fd/0"; then
   ARGS="$ARGS -b /proc/self/fd/0:/dev/stdin"
 fi
 
-if can_bind /proc/self/fd/1; then
+if can_bind "/proc/$SELF_PID/fd/1"; then
   ARGS="$ARGS -b /proc/self/fd/1:/dev/stdout"
 fi
 
-if can_bind /proc/self/fd/2; then
+if can_bind "/proc/$SELF_PID/fd/2"; then
   ARGS="$ARGS -b /proc/self/fd/2:/dev/stderr"
 fi
 
