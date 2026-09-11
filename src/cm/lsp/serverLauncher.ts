@@ -40,6 +40,13 @@ const STATUS_FAILED: InstallStatus = "failed";
 
 const DONT_ASK_TERMINAL_REQUIRED_FOR_LSP = "dontAskTerminalRequiredForLsp";
 
+// PRoot prints `can't sanitize binding "/proc/self/fd/N"` when one of the
+// session's stdio descriptors is a pipe/socket and therefore cannot be
+// canonicalized (see init-sandbox.sh).  Drop only that known, harmless message
+// so genuine proot warnings are still surfaced in the LSP log.
+const PROOT_FD_BINDING_WARNING =
+  /can'?t sanitize binding "\/proc\/self\/fd(?:\/[012])?"/i;
+
 let alreadyInformed = false;
 
 function getTerminalRequiredMessage(): string {
@@ -911,7 +918,7 @@ async function startInteractiveServer(
 ): Promise<string> {
   const executor = getExecutor();
   const callback: ExecutorCallback = (type, data) => {
-    if (type === "stderr" && /proot warning/i.test(data)) return;
+    if (type === "stderr" && PROOT_FD_BINDING_WARNING.test(data)) return;
     if (type === "stdout" && /listening on/i.test(data)) {
       signalServerReady(serverId);
     }

@@ -154,18 +154,19 @@ function formatStartupTimeoutValue(timeout) {
 		: strings["lsp-default"];
 }
 
+// PRoot prints `can't sanitize binding "/proc/self/fd/N"` when one of the
+// session's stdio descriptors is a pipe/socket and therefore cannot be
+// canonicalized (see init-sandbox.sh).  Drop only that known, harmless message
+// so genuine proot warnings still reach the UI.
+const PROOT_FD_BINDING_WARNING =
+	/can'?t sanitize binding "\/proc\/self\/fd(?:\/[012])?"/i;
+
 function sanitizeInstallMessage(message) {
 	const lines = String(message || "")
 		.split("\n")
 		.map((line) => line.trim())
 		.filter(Boolean)
-		.filter(
-			(line) =>
-				!/^proot warning:/i.test(line) &&
-				!line.includes(`"/proc/self/fd/0"`) &&
-				!line.includes(`"/proc/self/fd/1"`) &&
-				!line.includes(`"/proc/self/fd/2"`),
-		);
+		.filter((line) => !PROOT_FD_BINDING_WARNING.test(line));
 
 	return lines.join(" ");
 }
