@@ -78,6 +78,7 @@ import {
 	restoreSelection,
 	setScrollPosition,
 } from "cm/editorUtils";
+import { indentedLineWrapping } from "cm/indentedLineWrapping";
 import indentGuides from "cm/indentGuides";
 import { lineBreakMarker } from "cm/lineBreakMarker";
 import quickToolsModifierInput from "cm/quickToolsModifierInput";
@@ -1033,7 +1034,7 @@ async function EditorManager($header, $body) {
 	}
 
 	function makeWrapExtension() {
-		if (appSettings?.value?.textWrap) return EditorView.lineWrapping;
+		if (appSettings?.value?.textWrap) return indentedLineWrapping();
 		return horizontalScrollPastEnd(
 			Number(appSettings?.value?.leftMargin ?? 50),
 		);
