@@ -22,6 +22,10 @@ export function wrappedIndentColumns(
 ): number {
 	// Unindented/minified lines need no tab scan, even when they are megabytes long.
 	if (limit <= 0 || (text[0] !== " " && text[0] !== "\t")) return 0;
+	// Include content tabs deliberately: negative text-indent changes the origin
+	// of every tab stop on the first visual row. For "  key\tvalue", using 2ch
+	// shifts "value" left by two columns in Chromium; 4ch preserves its position.
+	// The extra continuation indent is the tradeoff for keeping tab alignment.
 	const hasTabs = text.includes("\t");
 	const step = hasTabs ? tabSize : 1;
 	const cap = Math.max(0, Math.floor(limit / step) * step);
@@ -160,7 +164,8 @@ const plugin = ViewPlugin.fromClass(
  * Browser-native soft wrapping, with no widgets, replacement text, or input
  * handlers. Line attributes leave CodeMirror's text/selection/composition DOM
  * under its own control. `ch` tracks font changes without rounding tab stops.
- * Mixed tab/space indents round up to a tab stop; oversized indents are capped
+ * Lines containing tabs round their indent up to a tab stop, including when
+ * tabs occur after the leading whitespace. Oversized indents are capped
  * at half the available columns so narrow panes still have room for content.
  */
 export function indentedLineWrapping(): Extension {

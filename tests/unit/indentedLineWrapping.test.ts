@@ -12,7 +12,7 @@ describe("wrapped line indentation", () => {
 		expect(wrappedIndentColumns(" \t  code", 4, 40)).toBe(8);
 		expect(wrappedIndentColumns("\t code", 8, 40)).toBe(16);
 	});
-	it("preserves tab stops even when a tab appears after the indentation", () => {
+	it("rounds space indentation to preserve content tab alignment", () => {
 		expect(wrappedIndentColumns("  key\tvalue", 4, 40)).toBe(4);
 	});
 	it("caps deep indentation without introducing fractional tab stops", () => {
