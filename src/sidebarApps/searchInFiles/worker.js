@@ -3,7 +3,9 @@ import picomatch from "picomatch/posix";
 import { isBinaryFile } from "utils/binaryExtensions";
 
 const resolvers = {};
+let requestId = 0;
 const MAX_CONCURRENT_FILE_READS = 2;
+const RESULT_BATCH_SIZE = 200;
 
 self.onmessage = (ev) => {
 	const { action, data, error, id } = ev.data;
@@ -16,6 +18,7 @@ self.onmessage = (ev) => {
 			processFiles(data, "replace");
 			break;
 
+		case "result-ack":
 		case "get-file": {
 			if (!resolvers[id]) return;
 			const cb = resolvers[id];
@@ -86,13 +89,21 @@ function processFiles(data, mode = "search") {
 			return;
 		}
 
-		getFile(file.url, (res, err) => {
+		getFile(file.url, async (res, err) => {
 			if (err) {
 				finishOne();
 				return;
 			}
 
-			process({ file, content: res, search, replace, options });
+			self.postMessage({ action: "processing" });
+			await process({
+				file,
+				content: res,
+				search,
+				replace,
+				options,
+			});
+			self.postMessage({ action: "processed" });
 			finishOne();
 		});
 	}
@@ -105,37 +116,54 @@ function processFiles(data, mode = "search") {
  * @param {string} arg.content - The file content.
  * @param {RegExp} arg.search - The string to search for.
  */
-function searchInFile({ file, content, search }) {
-	const matches = [];
-
-	let text = `${file.name}`;
-	let match;
-
-	if (text.length > 30) {
-		text = `...${text.slice(-30)}`;
+async function searchInFile({ file, content, search }) {
+	let matches = [];
+	search = new RegExp(search.source, search.flags);
+	async function flush() {
+		if (!matches.length) return;
+		const batch = matches;
+		matches = [];
+		await new Promise((resolve) => {
+			const id = ++requestId;
+			resolvers[id] = resolve;
+			self.postMessage({
+				action: "search-result",
+				id,
+				data: { file, matches: batch },
+			});
+		});
+		self.postMessage({ action: "processing" });
 	}
-
+	let cursor = 0;
+	let row = 0;
+	let column = 0;
+	function positionAt(offset) {
+		while (cursor < offset) {
+			if (content[cursor++] === "\n") {
+				row++;
+				column = 0;
+			} else column++;
+		}
+		return { row, column };
+	}
+	search.lastIndex = 0;
+	let match;
 	while ((match = search.exec(content))) {
-		const [word] = match;
+		const word = match[0];
 		const start = match.index;
 		const end = start + word.length;
-		const position = {
-			start: getLineColumn(content, start),
-			end: getLineColumn(content, end),
-		};
+		const position = { start: positionAt(start), end: positionAt(end) };
 		const [line, renderText] = getSurrounding(content, word, start, end);
-		text += `\n\t${line.trim()}`;
-		matches.push({ match: word, position, renderText, line: line.trim() });
+		matches.push({ match: word.slice(0, 160), position, renderText, line });
+		if (matches.length >= RESULT_BATCH_SIZE) await flush();
+		if (!search.global && !search.sticky) break;
+		if (!word.length) {
+			// AdvanceStringIndex: don't restart inside a Unicode surrogate pair.
+			search.lastIndex =
+				end + (search.unicode && content.codePointAt(end) > 0xffff ? 2 : 1);
+		}
 	}
-
-	self.postMessage({
-		action: "search-result",
-		data: {
-			file,
-			matches,
-			text,
-		},
-	});
+	await flush();
 }
 
 /**
@@ -164,61 +192,19 @@ function replaceInFile({ file, content, search, replace }) {
  */
 function getSurrounding(content, word, start, end) {
 	const max = 160;
-	let lineStart = start;
-	while (lineStart > 0) {
-		const previous = content[lineStart - 1];
-		if (previous === "\n" || previous === "\r") break;
-		lineStart--;
-	}
-
-	let lineEnd = end;
-	while (lineEnd < content.length) {
-		const current = content[lineEnd];
-		if (current === "\n" || current === "\r") break;
-		lineEnd++;
-	}
-
-	let snippetStart = lineStart;
-	let snippetEnd = lineEnd;
-	if (lineEnd - lineStart > max) {
-		const matchLength = Math.max(1, end - start);
-		const remaining = Math.max(0, max - matchLength);
-		const left = Math.floor(remaining / 2);
-		const right = remaining - left;
-		snippetStart = Math.max(lineStart, start - left);
-		snippetEnd = Math.min(lineEnd, end + right);
-	}
-
-	let line = content.substring(snippetStart, snippetEnd).trim();
-	if (snippetStart > lineStart) line = `...${line}`;
-	if (snippetEnd < lineEnd) line = `${line}...`;
-
-	return [line, word].map((text) => text.replace(/[\r\n]+/g, " ⏎ "));
-}
-
-/**
- * Determines the line and column numbers for a given position in the file.
- *
- * @param {string} file - The file content as a string.
- * @param {number} position - The position in the file for which line and column
- * numbers are to be determined.
- *
- * @returns {Object} An object with 'line' and 'column' properties, representing
- * the line and column numbers respectively for the given position.
- *
- * @example
- *
- * const file = 'Hello, this is a test.\nAnother test is here.';
- * const position = 15;
- * const lineColumn = getLineColumn(file, position);
- *
- * // lineColumn: { line: 1, column: 16 }
- */
-function getLineColumn(file, position) {
-	const lines = file.substring(0, position).split("\n");
-	const lineNumber = lines.length - 1;
-	const columnNumber = lines[lineNumber].length;
-	return { row: lineNumber, column: columnNumber };
+	const remaining = Math.max(0, max - (end - start));
+	let left = start;
+	const leftLimit = Math.max(0, start - Math.floor(remaining / 2));
+	while (left > leftLimit && !/[\r\n]/.test(content[left - 1])) left--;
+	let right = Math.min(end, start + max);
+	const rightLimit = Math.min(content.length, start + max - (start - left));
+	while (right < rightLimit && !/[\r\n]/.test(content[right])) right++;
+	let line = content.slice(left, right).trim();
+	if (left > 0 && !/[\r\n]/.test(content[left - 1])) line = `...${line}`;
+	if (right < content.length && !/[\r\n]/.test(content[right])) line += "...";
+	return [line, word.slice(0, max)].map((text) =>
+		text.replace(/[\r\n]+/g, " ⏎ "),
+	);
 }
 
 /**
@@ -227,7 +213,7 @@ function getLineColumn(file, position) {
  * @param {function} cb
  */
 function getFile(url, cb) {
-	const id = Number.parseInt(Date.now() + Math.random() * 1000000);
+	const id = ++requestId;
 	resolvers[id] = cb;
 	self.postMessage({
 		action: "get-file",

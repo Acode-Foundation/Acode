@@ -316,16 +316,32 @@ async function onWorkerMessage(e) {
 	}
 
 	switch (action) {
+		case "processing":
+			clearTimeout(e.target.searchWatchdog);
+			e.target.searchWatchdog = setTimeout(() => {
+				if (version !== searchVersion) return;
+				$error.value = "Search timed out; simplify the expression";
+				terminateWorker(false);
+				if (replacing) finishReplaceTask(version);
+				else finishSearchTask(version);
+			}, 2000);
+			break;
+		case "processed":
+			clearTimeout(e.target.searchWatchdog);
+			break;
 		case "get-file": {
 			let readError;
 
 			let content = "";
 			try {
-				content = await readSearchFileContent(data);
+				content = await withTimeout(readSearchFileContent(data), 30000);
+				if (content === TIMEOUT) throw new Error("File read timed out");
 			} catch (er) {
-				readError = er;
+				readError = er?.message || String(er);
+				if (version === searchVersion) $error.value = readError;
 			}
 
+			if (version !== searchVersion) return;
 			e.target.postMessage({
 				id,
 				action: "get-file",
@@ -336,7 +352,9 @@ async function onWorkerMessage(e) {
 		}
 
 		case "search-result": {
+			clearTimeout(e.target.searchWatchdog);
 			appendSearchResult(data);
+			e.target.postMessage({ action: "result-ack", id });
 			break;
 		}
 
@@ -388,30 +406,26 @@ async function onWorkerMessage(e) {
 
 function appendSearchResult(data) {
 	const { file, matches, limited } = data;
-
+	const hasResults = results.length > 0;
 	if (!matches.length) return;
-	if (filesSearched.find((item) => item.url === file.url)) return;
-
-	filesSearched.push(Tree.fromJSON(file));
-	if (filesSearched.length === 1) {
-		searchResult.setValue("");
+	let index = filesSearched.findIndex((item) => item.url === file.url);
+	if (index < 0) {
+		index = filesSearched.length;
+		filesSearched.push(Tree.fromJSON(file));
+		if (filesSearched.length === 1) searchResult.setValue("");
+		resultOverview.filesCount += 1;
+		fileNames.push({ name: file.name, path: file.path, count: 0 });
 	}
-	resultOverview.filesCount += 1;
+	fileNames[index].count += matches.length;
 	resultOverview.matchesCount += matches.length;
 	$resultOverview.innerHTML = searchResultText(
 		resultOverview.filesCount,
 		resultOverview.matchesCount,
 	);
-
-	const index = filesSearched.length - 1;
+	const continuation =
+		results.length && results[results.length - 1].file === index;
 	const displayRows = groupMatchesForDisplay(matches);
-	results.push({
-		file: index,
-		match: null,
-		position: null,
-	});
-
-	fileNames.push({ name: file.name, path: file.path, count: matches.length });
+	if (!continuation) results.push({ file: index, match: null, position: null });
 	for (const result of matches) {
 		result.file = index;
 		if (words.length < MAX_HL_WORDS) {
@@ -419,24 +433,11 @@ function appendSearchResult(data) {
 			if (!words.includes(token)) words.push(token);
 		}
 	}
-	for (const { result } of displayRows) {
-		results.push(result);
-	}
-	if (limited) {
-		results.push({
-			file: index,
-			match: null,
-			position: null,
-			notice: true,
-		});
-	}
-
-	const text = formatSearchResultText(file, displayRows, limited);
-	if (fileNames.length > 1) {
-		appendSearchResultText(`\n${text}`);
-	} else {
-		appendSearchResultText(text);
-	}
+	for (const { result } of displayRows) results.push(result);
+	if (limited)
+		results.push({ file: index, match: null, position: null, notice: true });
+	const text = formatSearchResultText(file, displayRows, limited, continuation);
+	appendSearchResultText(`${hasResults ? "\n" : ""}${text}`);
 }
 
 function enqueueNativeSearchResults(batch, version) {
@@ -510,8 +511,13 @@ function groupMatchesForDisplay(matches) {
 	return rows;
 }
 
-function formatSearchResultText(file, displayRows, limited) {
-	const lines = [file.name];
+function formatSearchResultText(
+	file,
+	displayRows,
+	limited,
+	continuation = false,
+) {
+	const lines = continuation ? [] : [file.name];
 	for (const { result, preview } of displayRows) {
 		const row = result.position?.start?.row;
 		const lineNumber = Number.isInteger(row) ? `${row + 1}: ` : "";
@@ -632,12 +638,11 @@ async function searchAll() {
 		return;
 	}
 
-	addEvents();
-
 	const version = searchVersion;
-	await waitForFileListIfReady();
+	await waitForFileListIfReady(version);
 	if (version !== searchVersion) return;
 
+	addEvents();
 	const allFiles = files().filter((file) => !helpers.isBinary(file));
 	const nativeRoots = addedFolder
 		.filter(({ listFiles }) => listFiles)
@@ -843,11 +848,15 @@ function getOpenFileOverlays() {
 	return overlays;
 }
 
-async function waitForFileListIfReady() {
-	const result = await withTimeout(waitForFileList(), FILE_LIST_WAIT_TIMEOUT);
+async function waitForFileListIfReady(version) {
+	const ready = waitForFileList();
+	const result = await withTimeout(ready, FILE_LIST_WAIT_TIMEOUT);
+	if (version !== searchVersion) return;
 	if (result === TIMEOUT) {
 		$indexStatus.value = "Scanning project files...";
+		await ready;
 	}
+	if (version === searchVersion) $indexStatus.value = "";
 }
 
 function markIndexDirty(urls) {
@@ -879,10 +888,13 @@ function clearPendingResultText() {
 const TIMEOUT = Symbol("timeout");
 
 function withTimeout(promise, ms) {
+	let timer;
 	return Promise.race([
 		promise,
-		new Promise((resolve) => setTimeout(() => resolve(TIMEOUT), ms)),
-	]);
+		new Promise((resolve) => {
+			timer = setTimeout(() => resolve(TIMEOUT), ms);
+		}),
+	]).finally(() => clearTimeout(timer));
 }
 
 /**
@@ -958,6 +970,11 @@ function sendMessage(action, files, search, options, replace) {
  */
 function onErrorMessage(e) {
 	console.error(e);
+	if (e.target.searchVersion !== searchVersion) return;
+	$error.value = e.message || "Search worker failed";
+	terminateWorker(false);
+	if (replacing) void finishReplaceTask(searchVersion);
+	else void finishSearchTask(searchVersion);
 }
 
 /**
@@ -966,7 +983,10 @@ function onErrorMessage(e) {
  * @param {boolean} [initializeNewWorkers=true] - Whether to initialize new workers after terminating the existing ones.
  */
 function terminateWorker(initializeNewWorkers = true) {
-	workers.forEach((worker) => worker.terminate());
+	workers.forEach((worker) => {
+		clearTimeout(worker.searchWatchdog);
+		worker.terminate();
+	});
 	workers.length = 0;
 
 	if (!initializeNewWorkers) return;
