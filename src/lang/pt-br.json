@@ -876,5 +876,10 @@
 	"plugin-review:error-max-length": "A avaliação deve ter no máximo {max} caracteres.",
 	"plugin-review:error-downvote-comment": "Diga ao desenvolvedor o que pode ser melhorado.",
 	"plugin-review:error-empty": "Adicione um comentário ou escolha Gostei.",
-	"plugin-review:unrated": "Sem avaliação"
+	"plugin-review:unrated": "Sem avaliação",
+	"wrapped line indent": "Word wrap indentation",
+	"wrap-indent-same": "Same",
+	"wrap-indent-indent": "Indent (+1 level)",
+	"wrap-indent-deep": "Deep indent (+2 levels)",
+	"settings-info-editor-wrapping-indent": "Choose whether wrapped text starts at the left edge, matches the original line's indentation, or is indented further. Each extra level uses your tab size."
 }

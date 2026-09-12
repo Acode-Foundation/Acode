@@ -876,5 +876,10 @@
 	"plugin-review:error-max-length": "Recenze může mít nejvýše {max} znaků.",
 	"plugin-review:error-downvote-comment": "Sdělte vývojáři, co by se dalo zlepšit.",
 	"plugin-review:error-empty": "Přidejte komentář nebo zvolte Líbí se mi.",
-	"plugin-review:unrated": "Nehodnoceno"
+	"plugin-review:unrated": "Nehodnoceno",
+	"wrapped line indent": "Word wrap indentation",
+	"wrap-indent-same": "Same",
+	"wrap-indent-indent": "Indent (+1 level)",
+	"wrap-indent-deep": "Deep indent (+2 levels)",
+	"settings-info-editor-wrapping-indent": "Choose whether wrapped text starts at the left edge, matches the original line's indentation, or is indented further. Each extra level uses your tab size."
 }

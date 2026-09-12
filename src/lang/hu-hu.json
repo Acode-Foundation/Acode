@@ -876,5 +876,10 @@
 	"plugin-review:error-max-length": "A megjegyzés szövege legfeljebb {max} karakter lehet.",
 	"plugin-review:error-downvote-comment": "Írja meg a fejlesztőknek, hogy min lehetne javítani.",
 	"plugin-review:error-empty": "Adjon hozzá megjegyzést vagy válassza a „Tetszik” lehetőséget.",
-	"plugin-review:unrated": "Még nem értékelte senki"
+	"plugin-review:unrated": "Még nem értékelte senki",
+	"wrapped line indent": "Word wrap indentation",
+	"wrap-indent-same": "Same",
+	"wrap-indent-indent": "Indent (+1 level)",
+	"wrap-indent-deep": "Deep indent (+2 levels)",
+	"settings-info-editor-wrapping-indent": "Choose whether wrapped text starts at the left edge, matches the original line's indentation, or is indented further. Each extra level uses your tab size."
 }

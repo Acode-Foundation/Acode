@@ -876,5 +876,10 @@
 	"plugin-review:error-max-length": "समीक्षा {max} वर्णों या उससे कम की होनी चाहिए।",
 	"plugin-review:error-downvote-comment": "डेवलपर को बताएँ कि क्या बेहतर किया जा सकता है।",
 	"plugin-review:error-empty": "टिप्पणी जोड़ें या पसंद चुनें।",
-	"plugin-review:unrated": "अभी रेटिंग नहीं"
+	"plugin-review:unrated": "अभी रेटिंग नहीं",
+	"wrapped line indent": "Word wrap indentation",
+	"wrap-indent-same": "Same",
+	"wrap-indent-indent": "Indent (+1 level)",
+	"wrap-indent-deep": "Deep indent (+2 levels)",
+	"settings-info-editor-wrapping-indent": "Choose whether wrapped text starts at the left edge, matches the original line's indentation, or is indented further. Each extra level uses your tab size."
 }

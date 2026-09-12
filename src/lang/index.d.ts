@@ -95,6 +95,11 @@ declare type LangStrings = {
   "success": string;
   "tab size": string;
   "text wrap": string;
+  "wrapped line indent": string;
+  "wrap-indent-same": string;
+  "wrap-indent-indent": string;
+  "wrap-indent-deep": string;
+  "settings-info-editor-wrapping-indent": string;
   "theme": string;
   "title-listfiles": string;
   "ui zoom": string;
@@ -772,6 +777,7 @@ declare type LangStrings = {
   "app font": string;
   "app icon": string;
   "app icon changed": string;
+  "app icon change warning": string;
   "settings-info-app-font-family": string;
   "settings-info-app-icon": string;
   "unsaved selected tabs warning": string;
