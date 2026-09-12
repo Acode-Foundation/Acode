@@ -34,7 +34,7 @@ export default {
 	 * @param {string} filename
 	 */
 	getIconForFile(filename) {
-		return fileIcons.getIconClass({ kind: "file", name: filename });
+		return fileIcons.icon({ kind: "file", name: filename });
 	},
 	/**
 	 * Gets icon according to folder name and expansion state
@@ -42,7 +42,7 @@ export default {
 	 * @param {{expanded?: boolean, isRoot?: boolean}} [options]
 	 */
 	getIconForFolder(name, options = {}) {
-		return fileIcons.getIconClass({
+		return fileIcons.icon({
 			kind: "folder",
 			name,
 			expanded: options.expanded,

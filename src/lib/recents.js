@@ -119,7 +119,7 @@ const recents = {
 					text: name,
 					subText: location,
 					title: path,
-					icon: "folder",
+					fileIcon: { name, kind: "folder" },
 					className: "recent-entry",
 					tailElement: tailElement,
 					ontailclick: (e) => {
@@ -153,7 +153,7 @@ const recents = {
 					text: name,
 					subText: location,
 					title: path,
-					icon: helpers.getIconForFile(name),
+					fileIcon: { name, kind: "file" },
 					className: "recent-entry",
 					tailElement: tailElement,
 					ontailclick: (e) => {

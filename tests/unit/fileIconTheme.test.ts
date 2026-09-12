@@ -86,6 +86,7 @@ describe("plugin icon themes", () => {
 
 	it("does not apply inactive plugin themes", () => {
 		fileIcons.register({
+			pluginId: "test.plugin",
 			id: "other-icons",
 			name: "Other",
 			icons: {
@@ -100,6 +101,7 @@ describe("plugin icon themes", () => {
 
 	it("resolves SVG packs from an icons folder like VS Code iconPath", () => {
 		fileIcons.register({
+			pluginId: "test.plugin",
 			id: "pack",
 			name: "Pack",
 			icons: "https://example.com/icons/",
@@ -110,13 +112,14 @@ describe("plugin icon themes", () => {
 		});
 		fileIcons.use("pack", { persist: false });
 
-		expect(fileIcons.icon("app.js")).toContain("file-icon--pack--javascript");
-		expect(fileIcons.icon({ kind: "folder", name: "src" })).toContain(
-			"file-icon--pack--folder-src",
+		expect(fileIcons.resolve("app.js").iconId).toBe("javascript");
+		expect(fileIcons.resolve({ kind: "folder", name: "src" }).iconId).toBe(
+			"folder-src",
 		);
 		expect(
-			fileIcons.icon({ kind: "folder", name: "other", expanded: true }),
-		).toContain("file-icon--pack--folder-open");
+			fileIcons.resolve({ kind: "folder", name: "other", expanded: true })
+				.iconId,
+		).toBe("folder-open");
 	});
 
 	it("falls back to the built-in theme when the active plugin unregisters", () => {
@@ -170,17 +173,9 @@ describe("plugin icon themes", () => {
 		]);
 	});
 
-	it("lets user overrides win over theme associations", () => {
-		fileIcons.setOverride({
-			kind: "file",
-			name: "package.json",
-			icon: "webpack",
-		});
-		expect(fileIcons.resolve("package.json").iconId).toBe("webpack");
-	});
-
 	it("rejects invalid themes without replacing a previous valid version", () => {
 		fileIcons.register({
+			pluginId: "test.plugin",
 			id: "stable-icons",
 			name: "Stable",
 			icons: { js: { className: "icon stable-js" } },
@@ -189,7 +184,8 @@ describe("plugin icon themes", () => {
 		fileIcons.use("stable-icons", { persist: false });
 
 		expect(() =>
-			fileIcons.update("stable-icons", {
+			fileIcons.register({
+				pluginId: "test.plugin",
 				id: "stable-icons",
 				fileExtensions: { js: "js" },
 				icons: { js: { src: "javascript:alert(1)" } },
@@ -199,16 +195,121 @@ describe("plugin icon themes", () => {
 		expect(fileIcons.icon("app.js")).toBe("icon stable-js");
 	});
 
-	it("lets later associations win when keys collide", () => {
+	it("rejects conflicting normalized associations", () => {
+		expect(() =>
+			fileIcons.register({
+				id: "duplicates",
+				pluginId: "test.plugin",
+				icons: { a: { className: "a" }, b: { className: "b" } },
+				fileExtensions: { js: "a", JS: "b" },
+			}),
+		).toThrow(/Conflicting fileExtension/);
+	});
+});
+
+describe("theme contract", () => {
+	const theme = (id = "test") => ({
+		id,
+		pluginId: "test.plugin",
+		icons: {
+			closed: { className: "custom-closed" },
+			open: { className: "custom-open" },
+		},
+		folder: "closed",
+	});
+
+	it("inherits a custom closed folder for expanded and root folders", () => {
+		fileIcons.register(theme());
+		fileIcons.use("test", { persist: false });
+		for (const isRoot of [false, true]) {
+			expect(
+				fileIcons.icon({
+					kind: "folder",
+					name: "other",
+					expanded: true,
+					isRoot,
+				}),
+			).toBe("custom-closed");
+		}
+	});
+
+	it("honors explicit expanded and root icons", () => {
 		fileIcons.register({
-			id: "dup-icons",
-			fileExtensions: { js: "js", JS: "javascript" },
-			icons: {
-				js: { className: "a" },
-				javascript: { className: "b" },
-			},
+			...theme(),
+			folderExpanded: "open",
+			rootFolder: "closed",
 		});
-		fileIcons.use("dup-icons", { persist: false });
-		expect(fileIcons.resolve("app.js").iconId).toBe("javascript");
+		fileIcons.use("test", { persist: false });
+		expect(
+			fileIcons.icon({ kind: "folder", name: "other", expanded: true }),
+		).toBe("custom-open");
+		expect(
+			fileIcons.icon({
+				kind: "folder",
+				name: "other",
+				expanded: true,
+				isRoot: true,
+			}),
+		).toBe("custom-closed");
+	});
+
+	it("does not let an obsolete disposal remove its replacement", () => {
+		const old = fileIcons.register(theme());
+		const current = fileIcons.register({ ...theme(), name: "Replacement" });
+		old.dispose();
+		expect(fileIcons.list().find((t) => t.id === "test")?.name).toBe(
+			"Replacement",
+		);
+		current.dispose();
+		current.dispose();
+		expect(fileIcons.list().some((t) => t.id === "test")).toBe(false);
+	});
+
+	it("rejects another plugin replacing the same id", () => {
+		fileIcons.register(theme());
+		expect(() =>
+			fileIcons.register({ ...theme(), pluginId: "other.plugin" }),
+		).toThrow(/another plugin/);
+	});
+
+	it("reports missing references and unsupported fields", () => {
+		expect(() =>
+			fileIcons.register({ ...theme(), fileExtensions: { js: "missing" } }),
+		).toThrow(/fileExtensions.js.*missing/);
+		expect(() =>
+			fileIcons.register({ ...theme(), label: "Alias" } as never),
+		).toThrow(/theme.label/);
+		expect(() =>
+			fileIcons.register({
+				...theme(),
+				icons: { bad: { src: "file:///bad.svg", light: "file:///light.svg" } },
+			} as never),
+		).toThrow(/icons.bad.light/);
+	});
+
+	it("requires ownership for automatic cleanup", () => {
+		expect(() => fileIcons.register({ id: "missing-owner" } as never)).toThrow(
+			/pluginId/,
+		);
+	});
+
+	it("does not treat a dotfile as an extension", () => {
+		fileIcons.register({ ...theme(), fileExtensions: { env: "open" } });
+		fileIcons.use("test", { persist: false });
+		expect(fileIcons.resolve(".env").source).toBe("default");
+		expect(fileIcons.resolve("project.env").iconId).toBe("open");
+	});
+
+	it("does not infer undeclared open assets", () => {
+		fileIcons.register({
+			id: "directory",
+			pluginId: "test.plugin",
+			icons: "file:///icons/",
+			folderNames: { src: "source" },
+		});
+		fileIcons.use("directory", { persist: false });
+		expect(
+			fileIcons.resolve({ kind: "folder", name: "src", expanded: true }).iconId,
+		).toBe("source");
 	});
 });

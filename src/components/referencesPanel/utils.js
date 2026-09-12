@@ -87,7 +87,11 @@ export function createReferenceItem(item, options = {}) {
 				onclick={() => onToggleFile?.(item.uri)}
 			>
 				<span className="icon chevron keyboard_arrow_down" />
-				<span className={`${iconClass} file-icon`} />
+				<span
+					className={`${iconClass} file-icon`}
+					data-file-icon-name={item.fileName}
+					data-file-icon-extra="file-icon"
+				/>
 				<span className="file-name">{sanitize(item.fileName)}</span>
 				<span className="ref-count">{item.count}</span>
 			</div>

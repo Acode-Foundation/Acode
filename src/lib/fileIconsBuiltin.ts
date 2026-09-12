@@ -219,16 +219,14 @@ function createFileExtensions() {
 export function createBuiltinTheme() {
 	return {
 		id: BUILTIN_THEME_ID,
-		label: "Acode",
+		name: "Builtin",
 		schemaVersion: SCHEMA_VERSION,
 		fileNames: createFileNames(),
 		fileExtensions: createFileExtensions(),
-		defaults: {
-			file: "file",
-			folder: "folder",
-			folderExpanded: "folder",
-			rootFolder: "folder",
-			rootFolderExpanded: "folder",
-		},
+		file: "file",
+		folder: "folder",
+		folderExpanded: "folder",
+		rootFolder: "folder",
+		rootFolderExpanded: "folder",
 	};
 }

@@ -10,23 +10,15 @@ const UNSAFE_SRC_RE = /[\s"'()\\]/;
 
 export type IconKind = "file" | "folder";
 export type IconMatchSource =
-	| "override"
 	| "fileName"
 	| "fileExtension"
 	| "languageId"
 	| "folderName"
 	| "default";
 
-export interface IconDefinition {
-	className?: string;
-	expandedClassName?: string;
-	src?: string;
-	expandedSrc?: string;
-	light?: string;
-	dark?: string;
-	monochrome?: boolean;
-	iconPath?: string;
-}
+export type IconDefinition =
+	| { src: string; monochrome?: boolean; className?: never }
+	| { className: string; src?: never; monochrome?: never };
 
 export interface IconAssociations {
 	fileNames?: Record<string, string>;
@@ -48,14 +40,9 @@ export interface IconDefaults {
 export interface FileIconTheme extends IconAssociations, IconDefaults {
 	id: string;
 	name?: string;
-	label?: string;
 	schemaVersion?: number;
-	pluginId?: string;
-	baseUrl?: string;
-	icons?: string | Record<string, IconDefinition | string>;
-	iconDefinitions?: Record<string, IconDefinition | string>;
-	associations?: IconAssociations;
-	defaults?: IconDefaults;
+	pluginId: string;
+	icons?: string | Record<string, IconDefinition>;
 }
 
 export interface IconResource {
@@ -64,7 +51,6 @@ export interface IconResource {
 	languageId?: string;
 	expanded?: boolean;
 	isRoot?: boolean;
-	appearance?: "dark" | "light";
 }
 
 export interface IconHandle {
@@ -78,7 +64,7 @@ export interface IconHandle {
 
 export interface IconThemeInfo {
 	id: string;
-	label: string;
+	name: string;
 	available: boolean;
 	pluginId: string | null;
 }
@@ -86,13 +72,13 @@ export interface IconThemeInfo {
 export interface ActiveIconTheme {
 	id: string;
 	preferredId: string;
-	label: string;
+	name: string;
 	available: boolean;
 }
 
 interface CompiledTheme {
 	id: string;
-	label: string;
+	name: string;
 	pluginId: string | null;
 	schemaVersion: number;
 	icons: Map<string, IconDefinition>;
@@ -105,23 +91,10 @@ interface CompiledTheme {
 	defaults: Required<IconDefaults>;
 }
 
-interface RegisterOptions {
-	builtin?: boolean;
-	pluginId?: string;
-	silent?: boolean;
-}
-
 interface IconThemeSettings {
 	value?: { iconTheme?: string };
 	on?: (event: string, callback: (value: unknown) => void) => void;
 	update?: (showToast?: boolean) => void;
-}
-
-interface OverrideRule {
-	kind?: IconKind;
-	name: string;
-	icon: string;
-	caseSensitive?: boolean;
 }
 
 type NormalizedResource = IconResource & { kind: IconKind; name: string };
@@ -168,22 +141,6 @@ function joinUrl(base: string, path: string): string {
 	return `${String(base).replace(/\/?$/, "/")}${rel.replace(/^\//, "")}`;
 }
 
-function resolveAssetPath(
-	path: string,
-	iconsDir: string | null,
-	baseUrl?: string,
-): string {
-	const value = path.trim();
-	if (!value) return "";
-	if (
-		/^(https?:|data:|blob:|file:|content:)/i.test(value) ||
-		value.startsWith("/")
-	) {
-		return value;
-	}
-	return joinUrl(iconsDir || baseUrl || "", value);
-}
-
 function getDocument(): Document | null {
 	return typeof document !== "undefined" ? document : null;
 }
@@ -209,152 +166,83 @@ export function buildBuiltinFolderClass(_folderId?: string): string {
 	return "icon folder";
 }
 
+const ASSOCIATION_FIELDS = [
+	"fileNames",
+	"fileExtensions",
+	"languageIds",
+	"folderNames",
+	"folderNamesExpanded",
+] as const;
+const DEFAULT_FIELDS = [
+	"file",
+	"folder",
+	"folderExpanded",
+	"rootFolder",
+	"rootFolderExpanded",
+] as const;
+const THEME_FIELDS = new Set<string>([
+	"id",
+	"name",
+	"schemaVersion",
+	"pluginId",
+	"icons",
+	...ASSOCIATION_FIELDS,
+	...DEFAULT_FIELDS,
+]);
+
+function assertFields(value: object, allowed: Set<string>, path: string): void {
+	for (const key of Object.keys(value)) {
+		if (!allowed.has(key)) throw new Error(`${path}.${key} is not supported`);
+	}
+}
+
 function iconIdFromAssoc(value: unknown): string {
-	if (typeof value === "string") return value;
-	if (
-		value &&
-		typeof value === "object" &&
-		"icon" in value &&
-		typeof value.icon === "string"
-	) {
-		return value.icon;
+	if (typeof value !== "string" || !value.trim()) {
+		throw new Error("Association values must be non-empty icon ids");
 	}
-	throw new Error("Association values must be icon ids");
+	return value;
 }
 
-function collectIconIds(theme: FileIconTheme): Set<string> {
-	const ids = new Set<string>();
+type ThemeInput = Omit<FileIconTheme, "pluginId"> & { pluginId?: string };
+
+function prepareTheme(input: ThemeInput): ThemeInput {
+	assertFields(input, THEME_FIELDS, "theme");
+	if (typeof input.icons !== "string") return input;
+	const icons: Record<string, IconDefinition> = Object.create(null);
 	const add = (value: unknown) => {
-		if (typeof value === "string" && value) ids.add(value);
-	};
-	const addMap = (map?: Record<string, string>) => {
-		if (!map) return;
-		for (const value of Object.values(map)) add(value);
-	};
-	addMap(theme.fileNames);
-	addMap(theme.fileExtensions);
-	addMap(theme.languageIds);
-	addMap(theme.folderNames);
-	addMap(theme.folderNamesExpanded);
-	addMap(theme.associations?.fileNames);
-	addMap(theme.associations?.fileExtensions);
-	addMap(theme.associations?.languageIds);
-	addMap(theme.associations?.folderNames);
-	addMap(theme.associations?.folderNamesExpanded);
-	add(theme.file);
-	add(theme.folder);
-	add(theme.folderExpanded);
-	add(theme.rootFolder);
-	add(theme.rootFolderExpanded);
-	add(theme.defaults?.file);
-	add(theme.defaults?.folder);
-	add(theme.defaults?.folderExpanded);
-	add(theme.defaults?.rootFolder);
-	add(theme.defaults?.rootFolderExpanded);
-	return ids;
-}
-
-function folderIconIds(theme: FileIconTheme): Set<string> {
-	const ids = new Set<string>();
-	const add = (value?: string) => {
-		if (value) ids.add(value);
-	};
-	const addMap = (map?: Record<string, string>) => {
-		if (!map) return;
-		for (const value of Object.values(map)) add(value);
-	};
-	addMap(theme.folderNames);
-	addMap(theme.folderNamesExpanded);
-	addMap(theme.associations?.folderNames);
-	addMap(theme.associations?.folderNamesExpanded);
-	add(theme.folder);
-	add(theme.folderExpanded);
-	add(theme.rootFolder);
-	add(theme.rootFolderExpanded);
-	add(theme.defaults?.folder);
-	add(theme.defaults?.folderExpanded);
-	add(theme.defaults?.rootFolder);
-	add(theme.defaults?.rootFolderExpanded);
-	return ids;
-}
-
-function fromVsCodeIcon(
-	def: IconDefinition | string,
-	iconsDir: string | null,
-	baseUrl?: string,
-): IconDefinition | string {
-	if (typeof def === "string") {
-		if (isSafeSrc(def)) return resolveAssetPath(def, iconsDir, baseUrl);
-		return def;
-	}
-	const iconPath = def.iconPath || def.src;
-	if (!iconPath) return def;
-	const next: IconDefinition = {
-		src: resolveAssetPath(iconPath, iconsDir, baseUrl),
-	};
-	if (def.expandedSrc) {
-		next.expandedSrc = resolveAssetPath(def.expandedSrc, iconsDir, baseUrl);
-	}
-	if (def.light) next.light = resolveAssetPath(def.light, iconsDir, baseUrl);
-	if (def.dark) next.dark = resolveAssetPath(def.dark, iconsDir, baseUrl);
-	if (def.className) next.className = def.className;
-	if (def.expandedClassName) next.expandedClassName = def.expandedClassName;
-	if (def.monochrome) next.monochrome = true;
-	return next;
-}
-
-export function prepareTheme(input: FileIconTheme): FileIconTheme {
-	const theme: FileIconTheme = { ...input };
-	if (typeof theme.name === "string" && !theme.label) {
-		theme.label = theme.name;
-	}
-
-	let iconsDir: string | null = null;
-	if (typeof theme.icons === "string") {
-		iconsDir = theme.icons.replace(/\/?$/, "/");
-		theme.icons = {};
-	} else if (
-		theme.icons &&
-		typeof theme.icons === "object" &&
-		!Array.isArray(theme.icons)
-	) {
-		theme.icons = { ...theme.icons };
-	} else {
-		theme.icons = {};
-	}
-
-	if (typeof theme.baseUrl === "string" && !iconsDir) {
-		iconsDir = joinUrl(theme.baseUrl, "icons/");
-	}
-
-	const icons = theme.icons;
-	if (theme.iconDefinitions) {
-		for (const [id, def] of Object.entries(theme.iconDefinitions)) {
-			icons[id] = fromVsCodeIcon(def, iconsDir, theme.baseUrl);
+		const id = iconIdFromAssoc(value);
+		if (!/^[a-zA-Z0-9_-]+$/.test(id)) {
+			throw new Error(
+				`Icon id '${id}' must use letters, digits, underscores or hyphens with an icons directory`,
+			);
 		}
+		icons[id] = { src: joinUrl(input.icons as string, `${id}.svg`) };
+	};
+	for (const field of ASSOCIATION_FIELDS) {
+		if (input[field])
+			for (const value of Object.values(input[field]!)) add(value);
 	}
-
-	const folders = folderIconIds(theme);
-	for (const id of collectIconIds(theme)) {
-		if (icons[id] || !iconsDir) continue;
-		const def: IconDefinition = { src: joinUrl(iconsDir, `${id}.svg`) };
-		if (
-			!id.endsWith("-open") &&
-			(id.startsWith("folder") || folders.has(id))
-		) {
-			def.expandedSrc = joinUrl(iconsDir, `${id}-open.svg`);
-		}
-		icons[id] = def;
-	}
-
-	return theme;
+	for (const field of DEFAULT_FIELDS) if (input[field]) add(input[field]);
+	return { ...input, icons };
 }
 
 function normalizeAssocKey(key: string, kind: string): string {
-	const value = String(key ?? "").trim();
+	const value = String(key ?? "");
 	if (!value) throw new Error(`Empty ${kind} association`);
-	if (kind === "fileExtension") return value.replace(/^\./, "").toLowerCase();
-	if (kind === "languageId" || kind === "folderName") return value.toLowerCase();
+	if (kind === "fileExtension") {
+		if (
+			value.startsWith(".") ||
+			value.endsWith(".") ||
+			value.includes("..") ||
+			/[\s/\\]/.test(value)
+		)
+			throw new Error(
+				`Invalid fileExtension '${key}'; omit leading dots and paths`,
+			);
+		return value.toLowerCase();
+	}
+	if (kind === "languageId" || kind === "folderName")
+		return value.toLowerCase();
 	return value;
 }
 
@@ -375,13 +263,20 @@ function addAssociations(
 					rawKey,
 					kind === "fileExtension" ? "fileExtension" : "fileName",
 				);
-		map.set(key, iconIdFromAssoc(rawValue));
+		const iconId = iconIdFromAssoc(rawValue);
+		if (map.has(key) && map.get(key) !== iconId) {
+			throw new Error(
+				`Conflicting ${kind} association '${rawKey}' (normalized to '${key}')`,
+			);
+		}
+		map.set(key, iconId);
 	}
 }
 
-function assetClassName(themeId: string, iconId: string, variant = ""): string {
-	const suffix = variant ? `-${variant}` : "";
-	return `file-icon--${sanitizeClassToken(themeId)}--${sanitizeClassToken(iconId)}${suffix}`;
+function assetClassName(themeId: string, iconId: string): string {
+	const encode = (value: string) =>
+		Array.from(value, (char) => char.codePointAt(0)!.toString(16)).join("_");
+	return `file-icon--${encode(themeId)}--${encode(iconId)}`;
 }
 
 function cssForSrc(
@@ -397,41 +292,35 @@ function cssForSrc(
 }
 
 function normalizeIconDef(id: string, def: unknown): IconDefinition {
-	if (typeof def === "string") {
-		return isSafeSrc(def) ? { src: def.trim() } : { className: def };
-	}
 	if (!def || typeof def !== "object" || Array.isArray(def)) {
-		throw new Error(`Invalid icon definition '${id}'`);
+		throw new Error(`icons.${id} must be an object with src or className`);
 	}
+	assertFields(def, new Set(["src", "className", "monochrome"]), `icons.${id}`);
 	const rec = def as IconDefinition;
-	const normalized: IconDefinition = {};
-	if (typeof rec.className === "string" && rec.className.trim()) {
-		normalized.className = rec.className.trim();
-	}
-	if (typeof rec.expandedClassName === "string" && rec.expandedClassName.trim()) {
-		normalized.expandedClassName = rec.expandedClassName.trim();
-	}
-	for (const key of ["src", "expandedSrc", "light", "dark"] as const) {
-		const value = rec[key];
-		if (value == null) continue;
-		if (!isSafeSrc(value)) {
-			throw new Error(`Unsafe icon asset for '${id}.${key}'`);
-		}
-		normalized[key] = value.trim();
-	}
-	if (rec.monochrome) normalized.monochrome = true;
+	if (!!rec.src === !!rec.className)
+		throw new Error(`icons.${id} needs exactly one of src or className`);
+	if (rec.src && !isSafeSrc(rec.src))
+		throw new Error(`Unsafe icon asset for 'icons.${id}.src'`);
 	if (
-		!normalized.className &&
-		!normalized.src &&
-		!normalized.light &&
-		!normalized.dark
+		rec.className &&
+		(typeof rec.className !== "string" || !rec.className.trim())
 	) {
-		throw new Error(`Icon '${id}' needs className or src`);
+		throw new Error(`icons.${id}.className must be a non-empty string`);
 	}
-	return normalized;
+	if (
+		rec.monochrome !== undefined &&
+		(typeof rec.monochrome !== "boolean" || !rec.src)
+	) {
+		throw new Error(
+			`icons.${id}.monochrome requires src and must be a boolean`,
+		);
+	}
+	return rec.src
+		? { src: rec.src.trim(), monochrome: rec.monochrome }
+		: { className: rec.className!.trim() };
 }
 
-function compileTheme(input: FileIconTheme): CompiledTheme {
+function compileTheme(input: ThemeInput): CompiledTheme {
 	if (!input || typeof input !== "object" || Array.isArray(input)) {
 		throw new Error("Icon theme must be an object");
 	}
@@ -452,7 +341,6 @@ function compileTheme(input: FileIconTheme): CompiledTheme {
 		}
 	}
 
-	const associations = theme.associations || {};
 	const fileNames = new Map<string, string>();
 	const fileNamesCi = new Map<string, string>();
 	const fileExtensions = new Map<string, string>();
@@ -460,39 +348,55 @@ function compileTheme(input: FileIconTheme): CompiledTheme {
 	const folderNames = new Map<string, string>();
 	const folderNamesExpanded = new Map<string, string>();
 
-	addAssociations(fileNames, theme.fileNames || associations.fileNames, "fileName");
+	addAssociations(fileNames, theme.fileNames, "fileName");
 	for (const [key, iconId] of fileNames) {
 		const lower = key.toLowerCase();
-		if (!fileNamesCi.has(lower)) fileNamesCi.set(lower, iconId);
+		if (fileNamesCi.has(lower) && fileNamesCi.get(lower) !== iconId)
+			throw new Error(`Conflicting fileName association '${key}'`);
+		fileNamesCi.set(lower, iconId);
 	}
-	addAssociations(
-		fileExtensions,
-		theme.fileExtensions || associations.fileExtensions,
-		"fileExtension",
-		{ caseInsensitive: true },
-	);
-	addAssociations(
-		languageIds,
-		theme.languageIds || associations.languageIds,
-		"languageId",
-		{ caseInsensitive: true },
-	);
-	addAssociations(
-		folderNames,
-		theme.folderNames || associations.folderNames,
-		"folderName",
-		{ caseInsensitive: true },
-	);
+	addAssociations(fileExtensions, theme.fileExtensions, "fileExtension", {
+		caseInsensitive: true,
+	});
+	addAssociations(languageIds, theme.languageIds, "languageId", {
+		caseInsensitive: true,
+	});
+	addAssociations(folderNames, theme.folderNames, "folderName", {
+		caseInsensitive: true,
+	});
 	addAssociations(
 		folderNamesExpanded,
-		theme.folderNamesExpanded || associations.folderNamesExpanded,
+		theme.folderNamesExpanded,
 		"folderName",
 		{ caseInsensitive: true },
 	);
 
+	if (id !== BUILTIN_THEME_ID) {
+		if (typeof theme.pluginId !== "string" || !theme.pluginId.trim())
+			throw new Error("theme.pluginId is required");
+		if (
+			theme.icons !== undefined &&
+			(!theme.icons ||
+				typeof theme.icons !== "object" ||
+				Array.isArray(theme.icons))
+		)
+			throw new Error("theme.icons must be a directory URL or definition map");
+		for (const field of ASSOCIATION_FIELDS) {
+			for (const [key, iconId] of Object.entries(theme[field] || {})) {
+				if (!icons.has(iconId))
+					throw new Error(
+						`${field}.${key} references unknown icon '${iconId}'`,
+					);
+			}
+		}
+		for (const field of DEFAULT_FIELDS) {
+			if (theme[field] !== undefined && !icons.has(theme[field]!))
+				throw new Error(`${field} references unknown icon '${theme[field]}'`);
+		}
+	}
 	return {
 		id,
-		label: String(theme.label || theme.name || id),
+		name: String(theme.name || id),
 		pluginId: theme.pluginId || null,
 		schemaVersion,
 		icons,
@@ -503,16 +407,15 @@ function compileTheme(input: FileIconTheme): CompiledTheme {
 		folderNames,
 		folderNamesExpanded,
 		defaults: {
-			file: theme.defaults?.file || theme.file || "file",
-			folder: theme.defaults?.folder || theme.folder || "folder",
-			folderExpanded:
-				theme.defaults?.folderExpanded || theme.folderExpanded || "folder",
-			rootFolder: theme.defaults?.rootFolder || theme.rootFolder || "folder",
+			file: theme.file || "file",
+			folder: theme.folder || "folder",
+			folderExpanded: theme.folderExpanded || theme.folder || "folder",
+			rootFolder: theme.rootFolder || theme.folder || "folder",
 			rootFolderExpanded:
-				theme.defaults?.rootFolderExpanded ||
 				theme.rootFolderExpanded ||
-				theme.defaults?.rootFolder ||
 				theme.rootFolder ||
+				theme.folderExpanded ||
+				theme.folder ||
 				"folder",
 		},
 	};
@@ -524,7 +427,7 @@ function matchExtension(
 ): string | undefined {
 	const lower = name.toLowerCase();
 	const parts = lower.split(".");
-	if (parts.length < 2) return undefined;
+	if (parts.length < 2 || (parts.length === 2 && !parts[0])) return undefined;
 	for (let i = 1; i < parts.length; i++) {
 		const ext = parts.slice(i).join(".");
 		if (ext && extensions.has(ext)) return extensions.get(ext);
@@ -541,19 +444,19 @@ function lastExtension(name: string): string {
 }
 
 class FileIconRegistry {
-	#themes = new Map<string, FileIconTheme>();
 	#compiled = new Map<string, CompiledTheme>();
-	#overrides = new Map<string, OverrideRule>();
-	#listeners = new Set<(info: { activeId: string; preferredId: string }) => void>();
+	#listeners = new Set<
+		(info: { activeId: string; preferredId: string }) => void
+	>();
 	#activeId = BUILTIN_THEME_ID;
 	#preferredId = BUILTIN_THEME_ID;
+	#assetStates = new Map<string, "loading" | "ready" | "failed">();
+	#assetRefreshQueued = false;
 	#settings: IconThemeSettings | null = null;
 
 	constructor() {
-		this.#putTheme(createBuiltinTheme() as FileIconTheme, {
-			builtin: true,
-			silent: true,
-		});
+		const builtin = compileTheme(createBuiltinTheme());
+		this.#compiled.set(builtin.id, builtin);
 		this.#activeId = BUILTIN_THEME_ID;
 		this.#preferredId = BUILTIN_THEME_ID;
 	}
@@ -572,67 +475,37 @@ class FileIconRegistry {
 		if (typeof id === "string" && id) this.use(id, { persist: false });
 	}
 
-	/**
-	 * Register or replace an icon theme. If `icons` is a folder URL, referenced
-	 * ids resolve to `<icons>/<id>.svg` (and `<id>-open.svg` for folders).
-	 */
-	register(theme: FileIconTheme, options: RegisterOptions = {}): { dispose: () => void } {
+	/** Register a complete theme, replacing only a theme with the same owner. */
+	register(theme: FileIconTheme): { dispose: () => void } {
 		const compiled = compileTheme(theme);
-		if (compiled.id === BUILTIN_THEME_ID && !options.builtin) {
+		if (compiled.id === BUILTIN_THEME_ID)
 			throw new Error("Cannot replace the built-in icon theme");
+		const previous = this.#compiled.get(compiled.id);
+		if (previous && previous.pluginId !== compiled.pluginId)
+			throw new Error(`Icon theme '${compiled.id}' belongs to another plugin`);
+		this.#compiled.set(compiled.id, compiled);
+		if (compiled.id === this.#preferredId) {
+			this.#activate(compiled.id);
+			this.#emitChange();
 		}
-		if (this.#themes.has(compiled.id) && compiled.id !== BUILTIN_THEME_ID) {
-			this.update(compiled.id, theme);
-			return { dispose: () => this.unregister(compiled.id) };
-		}
-		this.#putTheme(theme, options);
-		return { dispose: () => this.unregister(compiled.id) };
-	}
-
-	/** @deprecated Use register() */
-	registerTheme(theme: FileIconTheme, options: RegisterOptions = {}) {
-		return this.register(theme, options);
-	}
-
-	update(id: string, theme: FileIconTheme): void {
-		if (id === BUILTIN_THEME_ID) {
-			throw new Error("Cannot update the built-in icon theme");
-		}
-		if (!this.#themes.has(id)) {
-			throw new Error(`Icon theme '${id}' is not registered`);
-		}
-		const previous = this.#compiled.get(id);
-		this.#putTheme(
-			{
-				...theme,
-				id,
-				pluginId: theme.pluginId || previous?.pluginId || undefined,
+		return {
+			dispose: () => {
+				if (this.#compiled.get(compiled.id) === compiled)
+					this.unregister(compiled.id);
 			},
-			{},
-		);
-	}
-
-	/** @deprecated Use update() */
-	updateTheme(id: string, theme: FileIconTheme): void {
-		this.update(id, theme);
+		};
 	}
 
 	unregister(id: string): boolean {
 		if (id === BUILTIN_THEME_ID) return false;
-		if (!this.#themes.has(id)) return false;
-		this.#themes.delete(id);
+		if (!this.#compiled.has(id)) return false;
 		this.#compiled.delete(id);
 		this.#removeThemeStyles(id);
 		if (this.#activeId === id) {
-			this.#activeId = BUILTIN_THEME_ID;
+			this.#activate(BUILTIN_THEME_ID);
 			this.#emitChange();
 		}
 		return true;
-	}
-
-	/** @deprecated Use unregister() */
-	unregisterTheme(id: string): boolean {
-		return this.unregister(id);
 	}
 
 	unregisterByPlugin(pluginId: string): void {
@@ -647,7 +520,7 @@ class FileIconRegistry {
 		for (const compiled of this.#compiled.values()) {
 			list.push({
 				id: compiled.id,
-				label: compiled.label,
+				name: compiled.name,
 				available: true,
 				pluginId: compiled.pluginId,
 			});
@@ -655,7 +528,7 @@ class FileIconRegistry {
 		if (this.#preferredId && !this.#compiled.has(this.#preferredId)) {
 			list.push({
 				id: this.#preferredId,
-				label: this.#preferredId,
+				name: this.#preferredId,
 				available: false,
 				pluginId: null,
 			});
@@ -663,24 +536,14 @@ class FileIconRegistry {
 		return list;
 	}
 
-	/** @deprecated Use list() */
-	listThemes(): IconThemeInfo[] {
-		return this.list();
-	}
-
 	active(): ActiveIconTheme {
 		const compiled = this.#compiled.get(this.#activeId);
 		return {
 			id: this.#activeId,
 			preferredId: this.#preferredId,
-			label: compiled?.label || this.#activeId,
+			name: compiled?.name || this.#activeId,
 			available: this.#compiled.has(this.#preferredId),
 		};
-	}
-
-	/** @deprecated Use active() */
-	getActiveTheme(): ActiveIconTheme {
-		return this.active();
 	}
 
 	use(id: string, options: { persist?: boolean } = {}): ActiveIconTheme {
@@ -691,43 +554,10 @@ class FileIconRegistry {
 		this.#preferredId = next;
 		const resolved = this.#compiled.has(next) ? next : BUILTIN_THEME_ID;
 		const activeChanged = resolved !== this.#activeId;
-		this.#activeId = resolved;
+		if (activeChanged) this.#activate(resolved);
 		if (persist) this.#persistPreferred(next);
 		if (preferredChanged || activeChanged) this.#emitChange();
 		return this.active();
-	}
-
-	/** @deprecated Use use() */
-	setPreferredTheme(id: string, options: { persist?: boolean } = {}) {
-		return this.use(id, options);
-	}
-
-	/** @deprecated Use use() */
-	setActiveTheme(id: string) {
-		return this.use(id);
-	}
-
-	setOverride(rule: OverrideRule): { dispose: () => void } {
-		if (!rule || typeof rule.name !== "string" || !rule.name) {
-			throw new Error("Override name is required");
-		}
-		const kind = rule.kind === "folder" ? "folder" : "file";
-		this.#overrides.set(overrideKey(kind, rule.name, rule.caseSensitive !== false), {
-			icon: String(rule.icon || ""),
-			kind,
-			name: rule.name,
-			caseSensitive: rule.caseSensitive !== false,
-		});
-		this.#emitChange();
-		return { dispose: () => this.removeOverride(rule) };
-	}
-
-	removeOverride(rule: Pick<OverrideRule, "kind" | "name" | "caseSensitive">): boolean {
-		if (!rule?.name) return false;
-		const kind = rule.kind === "folder" ? "folder" : "file";
-		return this.#overrides.delete(
-			overrideKey(kind, rule.name, rule.caseSensitive !== false),
-		);
 	}
 
 	resolve(resource: IconResource | string): IconHandle {
@@ -745,7 +575,7 @@ class FileIconRegistry {
 				themeId: BUILTIN_THEME_ID,
 			};
 		}
-		const languageId = input.languageId || inferLanguageId(input.name);
+		const languageId = input.languageId;
 		if (input.kind === "folder") {
 			return this.#resolveFolder(input, compiled, builtin);
 		}
@@ -761,10 +591,6 @@ class FileIconRegistry {
 		return this.resolve(resource).className;
 	}
 
-	getIconClass(resource: IconResource | string): string {
-		return this.icon(resource);
-	}
-
 	onChange(
 		listener: (info: { activeId: string; preferredId: string }) => void,
 	): () => void {
@@ -773,18 +599,17 @@ class FileIconRegistry {
 		return () => this.#listeners.delete(listener);
 	}
 
-	onDidChange(
-		listener: (info: { activeId: string; preferredId: string }) => void,
-	): () => void {
-		return this.onChange(listener);
-	}
-
-	refreshRenderedIcons(): void {
-		const doc = getDocument();
-		if (!doc) return;
+	refreshRenderedIcons(root: ParentNode | null = getDocument()): void {
+		if (!root) return;
 
 		const apply = () => {
-			for (const $tile of doc.querySelectorAll<HTMLElement>(
+			for (const icon of root.querySelectorAll<HTMLElement>(
+				"[data-file-icon-name]",
+			)) {
+				icon.className =
+					`${this.icon({ name: icon.dataset.fileIconName || "", kind: icon.dataset.fileIconKind === "folder" ? "folder" : "file" })} ${icon.dataset.fileIconExtra || ""}`.trim();
+			}
+			for (const $tile of root.querySelectorAll<HTMLElement>(
 				'[data-type="file"][data-name]',
 			)) {
 				applyLeadClass(
@@ -793,7 +618,7 @@ class FileIconRegistry {
 				);
 			}
 
-			for (const $tile of doc.querySelectorAll<HTMLElement>(
+			for (const $tile of root.querySelectorAll<HTMLElement>(
 				'[data-type="dir"][data-name], [data-type="root"][data-name]',
 			)) {
 				const expanded = !$tile
@@ -810,42 +635,27 @@ class FileIconRegistry {
 				);
 			}
 
-			this.#refreshEditorTabs();
+			if (root === getDocument()) this.#refreshEditorTabs();
 		};
 
 		apply();
-		if (typeof requestAnimationFrame === "function") {
-			requestAnimationFrame(apply);
-		}
 	}
 
 	resetForTests(): void {
-		for (const id of [...this.#themes.keys()]) {
+		for (const id of [...this.#compiled.keys()]) {
 			if (id !== BUILTIN_THEME_ID) this.unregister(id);
 		}
-		this.#overrides.clear();
 		this.#listeners.clear();
 		this.#preferredId = BUILTIN_THEME_ID;
 		this.#activeId = BUILTIN_THEME_ID;
 		this.#settings = null;
 	}
 
-	#putTheme(theme: FileIconTheme, options: RegisterOptions): CompiledTheme {
-		const compiled = compileTheme(theme);
-		if (options.pluginId && !compiled.pluginId) {
-			compiled.pluginId = options.pluginId;
-		}
-		this.#themes.set(compiled.id, { ...theme, pluginId: compiled.pluginId || undefined });
-		this.#compiled.set(compiled.id, compiled);
-		this.#applyThemeStyles(compiled);
-
-		const becameActive =
-			compiled.id === this.#preferredId && this.#activeId !== compiled.id;
-		if (becameActive) this.#activeId = compiled.id;
-		if (!options.silent && (becameActive || compiled.id === this.#activeId)) {
-			this.#emitChange();
-		}
-		return compiled;
+	#activate(id: string): void {
+		this.#removeThemeStyles(this.#activeId);
+		this.#assetStates = new Map();
+		this.#activeId = id;
+		this.#applyThemeStyles(this.#compiled.get(id)!);
 	}
 
 	#persistPreferred(id: string): void {
@@ -906,17 +716,6 @@ class FileIconRegistry {
 		languageId?: string,
 	): IconHandle {
 		const name = input.name;
-		const override = this.#matchOverride("file", name);
-		if (override) {
-			return this.#handleFromIcon(
-				compiled,
-				builtin,
-				override.icon,
-				"override",
-				input,
-				languageId,
-			);
-		}
 
 		const exact = compiled.fileNames.get(name);
 		if (exact) {
@@ -953,6 +752,7 @@ class FileIconRegistry {
 			);
 		}
 
+		languageId ||= inferLanguageId(name);
 		const langKey = languageId ? languageId.toLowerCase() : "";
 		if (langKey && compiled.languageIds.has(langKey)) {
 			return this.#handleFromIcon(
@@ -992,17 +792,6 @@ class FileIconRegistry {
 		compiled: CompiledTheme,
 		builtin: CompiledTheme,
 	): IconHandle {
-		const override = this.#matchOverride("folder", input.name);
-		if (override) {
-			return this.#handleFromIcon(
-				compiled,
-				builtin,
-				override.icon,
-				"override",
-				input,
-			);
-		}
-
 		const key = input.name.toLowerCase();
 		if (input.expanded && compiled.folderNamesExpanded.has(key)) {
 			return this.#handleFromIcon(
@@ -1035,13 +824,6 @@ class FileIconRegistry {
 		return this.#handleFromIcon(compiled, builtin, defaultId, "default", input);
 	}
 
-	#matchOverride(kind: IconKind, name: string): OverrideRule | undefined {
-		return (
-			this.#overrides.get(overrideKey(kind, name, true)) ||
-			this.#overrides.get(overrideKey(kind, name, false))
-		);
-	}
-
 	#handleFromIcon(
 		compiled: CompiledTheme,
 		builtin: CompiledTheme,
@@ -1067,6 +849,18 @@ class FileIconRegistry {
 				themeId: compiled.id,
 				expanded: input.expanded,
 			};
+		}
+
+		if (
+			compiled.id !== BUILTIN_THEME_ID &&
+			input.kind === "folder" &&
+			input.expanded
+		) {
+			return this.#resolveFolder(
+				{ ...input, expanded: false },
+				compiled,
+				builtin,
+			);
 		}
 
 		if (compiled.id !== BUILTIN_THEME_ID && source !== "default") {
@@ -1117,26 +911,56 @@ class FileIconRegistry {
 		input: NormalizedResource,
 		languageId?: string,
 	): string {
-		if (def) {
-			if (input.kind === "folder" && input.expanded) {
-				if (def.expandedClassName) return def.expandedClassName;
-				if (def.expandedSrc) {
-					return `icon ${assetClassName(compiled.id, iconId, "expanded")}`;
-				}
-			}
-			if (def.className) return def.className;
-			if (def.src || def.light || def.dark) {
-				return `icon ${assetClassName(compiled.id, iconId)}`;
-			}
+		if (def?.className) return def.className;
+		if (def?.src && this.#assetReady(compiled, def.src)) {
+			return `icon ${assetClassName(compiled.id, iconId)}`;
 		}
 
 		if (compiled.id === BUILTIN_THEME_ID) {
 			if (input.kind === "folder") return buildBuiltinFolderClass();
-			if (iconId === "file") return buildBuiltinFileClass("default", languageId);
+			if (iconId === "file")
+				return buildBuiltinFileClass("default", languageId);
 			return buildBuiltinFileClass(iconId, languageId);
 		}
 
 		return "";
+	}
+
+	#assetReady(compiled: CompiledTheme, src: string): boolean {
+		if (typeof Image === "undefined") return true;
+		const state = this.#assetStates.get(src);
+		if (state) return state === "ready";
+		this.#assetStates.set(src, "loading");
+		const image = new Image();
+		const states = this.#assetStates;
+		const finish = (ready: boolean) => {
+			image.onload = image.onerror = null;
+			if (
+				this.#compiled.get(compiled.id) !== compiled ||
+				this.#activeId !== compiled.id ||
+				this.#assetStates !== states
+			)
+				return;
+			states.set(src, ready ? "ready" : "failed");
+			if (!ready)
+				console.warn(
+					`[fileIcons] Theme '${compiled.id}' could not load '${src}'; using fallback`,
+				);
+			if (!this.#assetRefreshQueued) {
+				this.#assetRefreshQueued = true;
+				const refresh = () => {
+					this.#assetRefreshQueued = false;
+					this.#emitChange();
+				};
+				if (typeof requestAnimationFrame === "function")
+					requestAnimationFrame(refresh);
+				else queueMicrotask(refresh);
+			}
+		};
+		image.onload = () => finish(true);
+		image.onerror = () => finish(false);
+		image.src = src;
+		return false;
 	}
 
 	#applyThemeStyles(compiled: CompiledTheme): void {
@@ -1145,24 +969,19 @@ class FileIconRegistry {
 
 		const rules: string[] = [];
 		for (const [iconId, def] of compiled.icons) {
-			const src = pickSrc(def);
-			if (src) {
-				rules.push(
-					cssForSrc(assetClassName(compiled.id, iconId), src, !!def.monochrome),
-				);
-			}
-			if (def.expandedSrc) {
+			if (def.src)
 				rules.push(
 					cssForSrc(
-						assetClassName(compiled.id, iconId, "expanded"),
-						def.expandedSrc,
+						assetClassName(compiled.id, iconId),
+						def.src,
 						!!def.monochrome,
 					),
 				);
-			}
 		}
 
-		let style = doc.head.querySelector(`style[data-file-icon="${compiled.id}"]`);
+		let style = doc.head.querySelector(
+			`style[data-file-icon="${compiled.id}"]`,
+		);
 		if (!rules.length) {
 			style?.remove();
 			return;
@@ -1182,15 +1001,9 @@ class FileIconRegistry {
 	}
 }
 
-function overrideKey(
-	kind: IconKind,
-	name: string,
-	caseSensitive: boolean,
-): string {
-	return `${kind}:${caseSensitive ? name : name.toLowerCase()}`;
-}
-
-function normalizeResource(resource: IconResource | string): NormalizedResource {
+function normalizeResource(
+	resource: IconResource | string,
+): NormalizedResource {
 	if (typeof resource === "string") {
 		return { kind: "file", name: basename(resource) };
 	}
@@ -1206,19 +1019,23 @@ function applyLeadClass($tile: HTMLElement, className: string): void {
 	const $lead =
 		$tile.querySelector<HTMLElement>(":scope > span:first-child") ||
 		($tile.firstElementChild as HTMLElement | null);
-	if (!$lead || $lead.classList.contains("text") || $lead.classList.contains("tail")) {
+	if (
+		!$lead ||
+		$lead.classList.contains("text") ||
+		$lead.classList.contains("tail")
+	) {
 		return;
 	}
 	$lead.className = className;
 }
 
-function pickSrc(def: IconDefinition, appearance?: "dark" | "light"): string {
-	if (appearance === "light" && def.light) return def.light;
-	if (appearance === "dark" && def.dark) return def.dark;
-	return def.src || def.dark || def.light || "";
-}
-
 const fileIcons = new FileIconRegistry();
+
+export const fileIconApi = Object.freeze({
+	register: fileIcons.register.bind(fileIcons),
+	icon: fileIcons.icon.bind(fileIcons),
+	onChange: fileIcons.onChange.bind(fileIcons),
+});
 
 export { BUILTIN_THEME_ID, SCHEMA_VERSION };
 export default fileIcons;

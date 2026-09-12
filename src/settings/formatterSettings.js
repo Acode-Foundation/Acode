@@ -1,7 +1,6 @@
 import { getModes } from "cm/modelist";
 import settingsPage from "components/settingsPage";
 import appSettings from "lib/settings";
-import helpers from "utils/helpers";
 
 export default function formatterSettings(languageName) {
 	const title = strings.formatter;
@@ -28,7 +27,7 @@ export default function formatterSettings(languageName) {
 			return {
 				key: name,
 				text: caption,
-				icon: helpers.getIconForFile(`sample.${sampleExt}`),
+				fileIcon: { name: `sample.${sampleExt}` },
 				value: formatterID,
 				valueText: (value) => {
 					const formatter = formatters.find(({ id }) => id === value);

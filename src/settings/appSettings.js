@@ -229,7 +229,7 @@ export default function otherSettings() {
 		},
 		{
 			key: "iconTheme",
-			text: strings["icon theme"] || "Icon theme",
+			text: strings["icon pack"] || "Icon pack",
 			value: values.iconTheme || "builtin",
 			get select() {
 				return fileIcons
@@ -237,17 +237,17 @@ export default function otherSettings() {
 					.map((theme) => [
 						theme.id,
 						theme.available === false
-							? `${theme.label} (${strings.unavailable || "unavailable"})`
-							: theme.label,
+							? `${theme.name} (${strings.unavailable || "unavailable"})`
+							: theme.name,
 					]);
 			},
 			valueText: (value) => {
 				const theme = fileIcons.list().find((entry) => entry.id === value);
-				return theme?.label || value || "Acode";
+				return theme?.name || value || "Builtin";
 			},
 			info:
-				strings["settings-info-icon-theme"] ||
-				"Choose how files and folders are shown in the explorer and file lists. Plugin icon themes become available after they load.",
+				strings["settings-info-icon-pack"] ||
+				"Choose how files and folders are shown in the explorer and file lists. Plugin icon packs become available after they load.",
 			category: categories.interface,
 		},
 		{

@@ -125,16 +125,19 @@ export function createSearchResultView(
 	}
 
 	class FileIconWidget extends WidgetType {
-		constructor(className) {
+		constructor(className, name) {
 			super();
 			this.className = className;
+			this.name = name;
 		}
 		eq(other) {
-			return other.className === this.className;
+			return other.className === this.className && other.name === this.name;
 		}
 		toDOM() {
 			const span = document.createElement("span");
-			span.className = `${this.className} cm-fileIcon`;
+			span.className = `${helpers.getIconForFile(this.name)} cm-fileIcon`;
+			span.dataset.fileIconName = this.name;
+			span.dataset.fileIconExtra = "cm-fileIcon";
 			return span;
 		}
 		ignoreEvent() {
@@ -171,7 +174,7 @@ export function createSearchResultView(
 			const iconClass = helpers.getIconForFile(fname);
 			builder.push(
 				Decoration.widget({
-					widget: new FileIconWidget(iconClass),
+					widget: new FileIconWidget(iconClass, fname),
 					side: -1,
 				}).range(header.from),
 			);
