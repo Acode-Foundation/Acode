@@ -28,9 +28,12 @@ export function wrappedIndentColumns(
 ): number {
 	const extra =
 		mode === "indent" ? tabSize : mode === "deepIndent" ? 2 * tabSize : 0;
-	// Unindented/minified lines need no tab scan, even when they are megabytes long.
 	if (mode === "none" || limit <= 0) return 0;
-	if (!extra && text[0] !== " " && text[0] !== "\t") return 0;
+	if (text[0] !== " " && text[0] !== "\t") {
+		// Extra levels are whole tab stops, so content tabs cannot affect them.
+		// Keep the width cap tab-aligned too, avoiding a scan even in narrow panes.
+		return Math.min(extra, Math.floor(limit / tabSize) * tabSize);
+	}
 	// Include content tabs deliberately: negative text-indent changes the origin
 	// of every tab stop on the first visual row. For "  key\tvalue", using 2ch
 	// shifts "value" left by two columns in Chromium; 4ch preserves its position.
