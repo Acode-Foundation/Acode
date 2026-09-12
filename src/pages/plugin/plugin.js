@@ -323,6 +323,9 @@ export default async function PluginInclude(
 				const purchase = await getPurchase(product.productId);
 				await fetch(Url.join(config.API_BASE, "plugin/order"), {
 					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+					},
 					body: JSON.stringify({
 						id: plugin.id,
 						token: purchase?.purchaseToken,
@@ -382,6 +385,9 @@ export default async function PluginInclude(
 			$button.textContent = strings["loading..."];
 			const res = await fetch(Url.join(config.API_BASE, "plugin/refund"), {
 				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
 				body: JSON.stringify({
 					id: plugin.id,
 					package: BuildInfo.packageName,

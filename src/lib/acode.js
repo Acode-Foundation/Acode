@@ -658,6 +658,9 @@ class Acode {
 										const purchase = await getPurchase(product.productId);
 										await fetch(Url.join(config.API_BASE, "plugin/order"), {
 											method: "POST",
+											headers: {
+												"Content-Type": "application/json",
+											},
 											body: JSON.stringify({
 												id: remotePlugin.id,
 												token: purchase?.purchaseToken,
