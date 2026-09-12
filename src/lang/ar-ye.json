@@ -876,5 +876,10 @@
 	"plugin-review:error-max-length": "يجب ألا يتجاوز التقييم {max} حرفًا.",
 	"plugin-review:error-downvote-comment": "أخبر المطوّر بما يمكن تحسينه.",
 	"plugin-review:error-empty": "أضف تعليقًا أو اختر «أعجبني».",
-	"plugin-review:unrated": "غير مقيّم"
+	"plugin-review:unrated": "غير مقيّم",
+	"wrapped line indent": "Word wrap indentation",
+	"wrap-indent-same": "Same",
+	"wrap-indent-indent": "Indent (+1 level)",
+	"wrap-indent-deep": "Deep indent (+2 levels)",
+	"settings-info-editor-wrapping-indent": "Choose whether wrapped text starts at the left edge, matches the original line's indentation, or is indented further. Each extra level uses your tab size."
 }

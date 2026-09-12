@@ -1,6 +1,7 @@
 import {
 	EditorState,
 	type Extension,
+	Facet,
 	RangeSetBuilder,
 	StateEffect,
 } from "@codemirror/state";
@@ -13,15 +14,26 @@ import {
 } from "@codemirror/view";
 
 const wrapWidth = StateEffect.define<number>();
+export type WrappingIndent = "none" | "same" | "indent" | "deepIndent";
+const wrappingIndent = Facet.define<WrappingIndent, WrappingIndent>({
+	combine: (values) => values[0] ?? "same",
+});
 
 /** Keep tab stops on the first visual row unchanged by the negative indent. */
 export function wrappedIndentColumns(
 	text: string,
 	tabSize: number,
 	limit: number,
+	mode: WrappingIndent = "same",
 ): number {
-	// Unindented/minified lines need no tab scan, even when they are megabytes long.
-	if (limit <= 0 || (text[0] !== " " && text[0] !== "\t")) return 0;
+	const extra =
+		mode === "indent" ? tabSize : mode === "deepIndent" ? 2 * tabSize : 0;
+	if (mode === "none" || limit <= 0) return 0;
+	if (text[0] !== " " && text[0] !== "\t") {
+		// Extra levels are whole tab stops, so content tabs cannot affect them.
+		// Keep the width cap tab-aligned too, avoiding a scan even in narrow panes.
+		return Math.min(extra, Math.floor(limit / tabSize) * tabSize);
+	}
 	// Include content tabs deliberately: negative text-indent changes the origin
 	// of every tab stop on the first visual row. For "  key\tvalue", using 2ch
 	// shifts "value" left by two columns in Chromium; 4ch preserves its position.
@@ -36,7 +48,7 @@ export function wrappedIndentColumns(
 		else break;
 		if (columns >= cap) return cap;
 	}
-	return Math.min(cap, Math.ceil(columns / step) * step);
+	return Math.min(cap, Math.ceil((columns + extra) / step) * step);
 }
 
 interface CachedIndent {
@@ -51,6 +63,7 @@ function decorate(
 ): { decorations: DecorationSet; cache: Map<number, CachedIndent> } {
 	const builder = new RangeSetBuilder<Decoration>();
 	const tabSize = view.state.facet(EditorState.tabSize);
+	const mode = view.state.facet(wrappingIndent);
 	const cache = new Map<number, CachedIndent>();
 	const styles = new Map<number, Decoration>();
 	let lastLine = -1;
@@ -60,7 +73,7 @@ function decorate(
 			if (line.from > lastLine) {
 				let entry = previous.get(line.from);
 				if (!entry || entry.text !== line.text) {
-					const columns = wrappedIndentColumns(line.text, tabSize, limit);
+					const columns = wrappedIndentColumns(line.text, tabSize, limit, mode);
 					let decoration = columns ? styles.get(columns) : null;
 					if (columns && !decoration) {
 						decoration = Decoration.line({
@@ -133,7 +146,10 @@ const plugin = ViewPlugin.fromClass(
 			const tabSizeChanged =
 				update.startState.facet(EditorState.tabSize) !==
 				update.state.facet(EditorState.tabSize);
-			if (changed || tabSizeChanged) {
+			const modeChanged =
+				update.startState.facet(wrappingIndent) !==
+				update.state.facet(wrappingIndent);
+			if (changed || tabSizeChanged || modeChanged) {
 				this.cache.clear();
 			} else if (update.docChanged) {
 				// Keep unchanged visible lines cached when earlier edits shift them.
@@ -148,7 +164,8 @@ const plugin = ViewPlugin.fromClass(
 				changed ||
 				update.docChanged ||
 				update.viewportChanged ||
-				tabSizeChanged
+				tabSizeChanged ||
+				modeChanged
 			) {
 				const result = decorate(update.view, this.limit, this.cache);
 				this.decorations = result.decorations;
@@ -168,9 +185,13 @@ const plugin = ViewPlugin.fromClass(
  * tabs occur after the leading whitespace. Oversized indents are capped
  * at half the available columns so narrow panes still have room for content.
  */
-export function indentedLineWrapping(): Extension {
+export function indentedLineWrapping(mode: WrappingIndent = "same"): Extension {
+	if (mode === "none") return EditorView.lineWrapping;
+	// Settings imported from older or manually edited files may be invalid.
+	if (mode !== "indent" && mode !== "deepIndent") mode = "same";
 	return [
 		EditorView.lineWrapping,
+		wrappingIndent.of(mode),
 		plugin,
 		EditorView.baseTheme({
 			".cm-line.cm-wrap-indent": {
