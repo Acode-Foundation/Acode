@@ -1,10 +1,16 @@
+// @vitest-environment happy-dom
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
+import { createSearchResultView } from "sidebarApps/searchInFiles/cmResultView";
+vi.mock("lib/settings", () => ({ default: { value: {} } }));
+vi.mock("utils/helpers", () => ({
+	default: { getIconForFile: (name) => `icon-${name}` },
+}));
 
 it("appends interleaved batches without losing matches or counting files twice", () => {
 	const source = readFileSync(
-		new URL("../../src/sidebarApps/searchInFiles/index.js", import.meta.url),
+		`${process.cwd()}/src/sidebarApps/searchInFiles/index.js`,
 		"utf8",
 	);
 	let text = "";
@@ -58,4 +64,23 @@ it("appends interleaved batches without losing matches or counting files twice",
 	expect(context.results.filter((r) => r.position).map((r) => r.file)).toEqual([
 		0, 0, 1, 0,
 	]);
+	const container = document.createElement("div");
+	document.body.append(container);
+	const resultView = createSearchResultView(container, {
+		getFileInfo: (line) => context.fileNames[context.results[line]?.file],
+		getWords: () => [],
+	});
+	try {
+		resultView.setValue(text);
+		expect(
+			[...container.querySelectorAll(".cm-fileCount")].map(
+				(el) => el.textContent,
+			),
+		).toEqual(["3", "1", "3"]);
+		expect(container.querySelectorAll(".icon-a")).toHaveLength(2);
+		expect(container.querySelectorAll(".icon-b")).toHaveLength(1);
+	} finally {
+		resultView.view.destroy();
+		container.remove();
+	}
 });

@@ -15,11 +15,11 @@ import helpers from "utils/helpers";
  * @param {object} opts
  * @param {(lineIndex:number)=>void} opts.onLineClick
  * @param {()=>string[]} opts.getWords - returns list of words to highlight
- * @param {()=>string[]} opts.getFileNames - returns list of filenames (used to style header lines)
+ * @param {(lineIndex:number)=>object} opts.getFileInfo - file metadata for a result row
  */
 export function createSearchResultView(
 	container,
-	{ onLineClick, getWords, getFileNames, getRegex },
+	{ onLineClick, getWords, getFileInfo, getRegex },
 ) {
 	let view;
 	let isGhostText = false;
@@ -145,15 +145,11 @@ export function createSearchResultView(
 	function buildGroupDecos(state) {
 		const doc = state.doc;
 		const folded = state.field(foldState, false) || new Set();
-		// No removed groups
-		const fns =
-			(typeof getFileNames === "function" ? getFileNames() : []) || [];
-		if (isGhostText || !fns.length || doc.length === 0 || doc.lines === 0)
+		if (isGhostText || doc.length === 0 || doc.lines === 0)
 			return Decoration.none;
 
 		const builder = [];
 		// Build header chevrons and collapses per group
-		let groupIndex = 0;
 		eachGroup(doc, ({ start, end }) => {
 			const header = doc.line(start);
 			const key = start - 1;
@@ -163,9 +159,7 @@ export function createSearchResultView(
 				Decoration.line({ class: "cm-fileName" }).range(header.from),
 			);
 			// File icon
-			const fileNames =
-				(typeof getFileNames === "function" ? getFileNames() : []) || [];
-			const fileInfo = fileNames[groupIndex] || {};
+			const fileInfo = getFileInfo?.(key) || {};
 			const fname =
 				typeof fileInfo === "string" ? fileInfo : fileInfo.name || "";
 			const iconClass = helpers.getIconForFile(fname);
@@ -210,7 +204,6 @@ export function createSearchResultView(
 					}).range(first.from),
 				);
 			}
-			groupIndex++;
 		});
 
 		return Decoration.set(builder, true);

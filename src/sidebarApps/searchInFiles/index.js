@@ -42,6 +42,8 @@ const $progress = Reactive();
 const $indexStatus = Reactive("");
 
 const FILE_LIST_WAIT_TIMEOUT = 250;
+const FILE_LIST_MAX_WAIT = 5000;
+let pendingDiscoveryVersion = null;
 const SEARCH_WORKER_COUNT = 1;
 
 const resultOverview = {
@@ -144,7 +146,7 @@ $container.onref = ($el) => {
 	searchResult = createSearchResultView($el, {
 		onLineClick: onCursorChange,
 		getWords: () => words,
-		getFileNames: () => fileNames,
+		getFileInfo: (line) => fileNames[results[line]?.file],
 		getRegex: () => currentSearchRegex,
 	});
 	searchResult.view.scrollDOM?.addEventListener(
@@ -850,13 +852,30 @@ function getOpenFileOverlays() {
 
 async function waitForFileListIfReady(version) {
 	const ready = waitForFileList();
-	const result = await withTimeout(ready, FILE_LIST_WAIT_TIMEOUT);
+	pendingDiscoveryVersion = version;
+	let result = await withTimeout(ready, FILE_LIST_WAIT_TIMEOUT);
 	if (version !== searchVersion) return;
 	if (result === TIMEOUT) {
 		$indexStatus.value = "Scanning project files...";
-		await ready;
+		result = await withTimeout(
+			ready,
+			FILE_LIST_MAX_WAIT - FILE_LIST_WAIT_TIMEOUT,
+		);
 	}
-	if (version === searchVersion) $indexStatus.value = "";
+	if (version !== searchVersion) return;
+	$indexStatus.value = "";
+	if (result !== TIMEOUT) {
+		pendingDiscoveryVersion = null;
+		return;
+	}
+	$error.value =
+		"Project scan is still running; search results may be incomplete.";
+	void ready.then(() => {
+		if (version !== searchVersion) return;
+		pendingDiscoveryVersion = null;
+		$error.value =
+			"Project scan finished; search again to include newly discovered files.";
+	});
 }
 
 function markIndexDirty(urls) {
@@ -1157,6 +1176,13 @@ async function onCursorChange(line) {
  * When a file is added or removed from the file list
  * @param {import('lib/fileList').Tree} tree
  */
+function onFileAdded(tree) {
+	// Discovery emits add-file for every entry. After a timeout, retain the
+	// snapshot results instead of repeatedly clearing them as entries arrive.
+	if (pendingDiscoveryVersion === searchVersion) return;
+	onFileUpdate(tree);
+}
+
 function onFileUpdate(tree) {
 	if (!tree || tree?.children) return;
 	markIndexDirty([tree.url]);
@@ -1198,7 +1224,7 @@ function resetResultScroll() {
  * Add event listeners to file changes
  */
 function addEvents() {
-	files.on("add-file", onFileUpdate);
+	files.on("add-file", onFileAdded);
 	files.on("remove-file", onFileUpdate);
 	files.on("add-folder", onInput);
 	files.on("remove-folder", onInput);
@@ -1211,7 +1237,7 @@ function addEvents() {
  * Remove event listeners to file changes
  */
 function removeEvents() {
-	files.off("add-file", onFileUpdate);
+	files.off("add-file", onFileAdded);
 	files.off("remove-file", onFileUpdate);
 	files.off("add-folder", onInput);
 	files.off("remove-folder", onInput);
