@@ -2,8 +2,8 @@ import Checkbox from "components/checkbox";
 import tile from "components/tile";
 import DOMPurify from "dompurify";
 import actionStack from "lib/actionStack";
-import restoreTheme from "lib/restoreTheme";
 import fileIcons from "lib/fileIcons";
+import restoreTheme from "lib/restoreTheme";
 
 /**
  * @typedef {object} SelectOptions

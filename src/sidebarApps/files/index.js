@@ -1,7 +1,7 @@
 import "./style.scss";
 import Sidebar from "components/sidebar";
-import settings from "lib/settings";
 import fileIcons from "lib/fileIcons";
+import settings from "lib/settings";
 
 /**@type {HTMLElement} */
 let container;
