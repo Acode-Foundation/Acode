@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import fileIcons, { fileIconApi } from "lib/fileIcons";
+import fileIcons from "lib/fileIcons";
 
 const requests: FakeImage[] = [];
 class FakeImage {
@@ -115,6 +115,10 @@ describe("icon assets", () => {
 	});
 
 	it("exposes only the supported plugin surface", () => {
-		expect(Object.keys(fileIconApi)).toEqual(["register", "icon", "onChange"]);
+		expect(
+			Object.keys(
+				fileIcons.bindPlugin(document.createElement("script"), "test.plugin"),
+			),
+		).toEqual(["register", "icon", "onChange"]);
 	});
 });

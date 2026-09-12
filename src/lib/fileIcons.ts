@@ -444,6 +444,50 @@ function lastExtension(name: string): string {
 }
 
 class FileIconRegistry {
+	#pluginScopes = new Map<string, { active: boolean }>();
+	#scriptApis = new WeakMap<
+		HTMLScriptElement,
+		ReturnType<FileIconRegistry["bindPlugin"]>
+	>();
+
+	/** Called by the loader before executing a plugin script. */
+	bindPlugin(script: HTMLScriptElement, pluginId: string) {
+		const previous = this.#pluginScopes.get(pluginId);
+		if (previous) throw new Error(`Plugin '${pluginId}' is already bound`);
+		const scope = { active: true };
+		this.#pluginScopes.set(pluginId, scope);
+		const assertActive = () => {
+			if (!scope.active)
+				throw new Error(`Icon API for plugin '${pluginId}' has been unloaded`);
+		};
+		const api = Object.freeze({
+			register: (
+				pack: Omit<FileIconTheme, "pluginId"> & { pluginId?: string },
+			) => {
+				assertActive();
+				if (pack.pluginId !== undefined && pack.pluginId !== pluginId) {
+					throw new Error(
+						`Icon pack pluginId must match loading plugin '${pluginId}'`,
+					);
+				}
+				return this.register({ ...pack, pluginId });
+			},
+			icon: this.icon.bind(this),
+			onChange: this.onChange.bind(this),
+		});
+		this.#scriptApis.set(script, api);
+		return api;
+	}
+
+	getPluginApi(script: HTMLScriptElement | null) {
+		const api = script && this.#scriptApis.get(script);
+		if (!api)
+			throw new Error(
+				'Require "fileIcons" in the plugin main script, or use options.fileIcons in the init callback',
+			);
+		return api;
+	}
+
 	#compiled = new Map<string, CompiledTheme>();
 	#listeners = new Set<
 		(info: { activeId: string; preferredId: string }) => void
@@ -510,6 +554,9 @@ class FileIconRegistry {
 
 	unregisterByPlugin(pluginId: string): void {
 		if (!pluginId) return;
+		const scope = this.#pluginScopes.get(pluginId);
+		if (scope) scope.active = false;
+		this.#pluginScopes.delete(pluginId);
 		for (const [id, compiled] of [...this.#compiled]) {
 			if (compiled.pluginId === pluginId) this.unregister(id);
 		}
@@ -642,6 +689,8 @@ class FileIconRegistry {
 	}
 
 	resetForTests(): void {
+		for (const id of this.#pluginScopes.keys()) this.unregisterByPlugin(id);
+		this.#scriptApis = new WeakMap();
 		for (const id of [...this.#compiled.keys()]) {
 			if (id !== BUILTIN_THEME_ID) this.unregister(id);
 		}
@@ -1030,12 +1079,6 @@ function applyLeadClass($tile: HTMLElement, className: string): void {
 }
 
 const fileIcons = new FileIconRegistry();
-
-export const fileIconApi = Object.freeze({
-	register: fileIcons.register.bind(fileIcons),
-	icon: fileIcons.icon.bind(fileIcons),
-	onChange: fileIcons.onChange.bind(fileIcons),
-});
 
 export { BUILTIN_THEME_ID, SCHEMA_VERSION };
 export default fileIcons;

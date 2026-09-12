@@ -51,7 +51,7 @@ import windowResize from "handlers/windowResize";
 import actionStack from "lib/actionStack";
 import commands from "lib/commands";
 import EditorFile from "lib/editorFile";
-import fileIcons, { fileIconApi } from "lib/fileIcons";
+import fileIcons from "lib/fileIcons";
 import fileIndex from "lib/fileIndex";
 import files from "lib/fileList";
 import fileTypeHandler from "lib/fileTypeHandler";
@@ -404,7 +404,6 @@ class Acode {
 		deprecatedFileList.replacement = "fileIndex";
 		this.define("fileList", deprecatedFileList);
 		this.define("fileIndex", fileIndex);
-		this.define("fileIcons", fileIconApi);
 		this.define("fs", fsOperation);
 		this.define("confirm", confirm);
 		this.define("helpers", helpers);
@@ -560,6 +559,8 @@ class Acode {
 	}
 
 	require(module) {
+		if (module.toLowerCase() === "fileicons")
+			return fileIcons.getPluginApi(document.currentScript);
 		return this.#modules[module.toLowerCase()];
 	}
 

@@ -3,6 +3,7 @@ import Page from "components/page";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
 import actionStack from "./actionStack";
+import fileIcons from "./fileIcons";
 import generatePluginContext, { connect } from "./pluginContext";
 
 export default async function loadPlugin(pluginId, justInstalled = false) {
@@ -48,7 +49,10 @@ export default async function loadPlugin(pluginId, justInstalled = false) {
 			<script id={`${pluginId}-mainScript`} src={mainUrl}></script>
 		);
 
+		const iconApi = fileIcons.bindPlugin($script, pluginId);
+
 		$script.onerror = (error) => {
+			fileIcons.unregisterByPlugin(pluginId);
 			reject(
 				new Error(
 					`Failed to load script for plugin ${pluginId}: ${error.message || error}`,
@@ -77,6 +81,7 @@ export default async function loadPlugin(pluginId, justInstalled = false) {
 				}
 
 				await acode.initPlugin(pluginId, baseUrl, $page, {
+					fileIcons: iconApi,
 					cacheFileUrl: await helpers.toInternalUri(cacheFile),
 					cacheFile: fsOperation(cacheFile),
 					firstInit: justInstalled,
@@ -88,6 +93,7 @@ export default async function loadPlugin(pluginId, justInstalled = false) {
 
 				resolve();
 			} catch (error) {
+				fileIcons.unregisterByPlugin(pluginId);
 				reject(error);
 			}
 		};
