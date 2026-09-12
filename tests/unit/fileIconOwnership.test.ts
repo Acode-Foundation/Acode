@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import fileIcons from "lib/fileIcons";
 
 afterEach(() => fileIcons.resetForTests());
@@ -60,4 +60,59 @@ it("does not offer an unscoped registration API outside plugin execution", () =>
 	expect(() =>
 		fileIcons.getPluginApi(document.createElement("script")),
 	).toThrow(/plugin main script/);
+});
+
+it("removes plugin listeners before pack teardown emits a change", () => {
+	const api = fileIcons.bindPlugin(document.createElement("script"), "owner");
+	api.register({ id: "owner.icons" });
+	fileIcons.use("owner.icons", { persist: false });
+	const listener = vi.fn();
+	api.onChange(listener);
+	const internal = vi.fn();
+	const offInternal = fileIcons.onChange(internal);
+	fileIcons.unregisterByPlugin("owner");
+	expect(internal).toHaveBeenCalledTimes(1);
+	expect(listener).not.toHaveBeenCalled();
+	fileIcons.use("missing", { persist: false });
+	expect(listener).not.toHaveBeenCalled();
+	expect(() => api.onChange(listener)).toThrow(/unloaded/);
+	offInternal();
+});
+
+it("cleans listener-only scopes on failed init and isolates reloaded subscriptions", () => {
+	const listener = vi.fn();
+	const old = fileIcons.bindPlugin(document.createElement("script"), "owner");
+	const staleUnsubscribe = old.onChange(listener);
+	// The loader uses this same teardown path when initialization fails.
+	fileIcons.unregisterByPlugin("owner");
+	const current = fileIcons.bindPlugin(
+		document.createElement("script"),
+		"owner",
+	);
+	const off = current.onChange(listener);
+	staleUnsubscribe();
+	staleUnsubscribe();
+	fileIcons.use("missing", { persist: false });
+	expect(listener).toHaveBeenCalledTimes(1);
+	off();
+	off();
+	fileIcons.use("builtin", { persist: false });
+	expect(listener).toHaveBeenCalledTimes(1);
+});
+
+it("preserves another plugin's subscription to the same callback", () => {
+	const listener = vi.fn();
+	const first = fileIcons.bindPlugin(document.createElement("script"), "first");
+	const second = fileIcons.bindPlugin(
+		document.createElement("script"),
+		"second",
+	);
+	first.onChange(listener);
+	second.onChange(listener);
+	fileIcons.unregisterByPlugin("first");
+	fileIcons.use("missing", { persist: false });
+	expect(listener).toHaveBeenCalledTimes(1);
+	fileIcons.unregisterByPlugin("second");
+	fileIcons.use("builtin", { persist: false });
+	expect(listener).toHaveBeenCalledTimes(1);
 });

@@ -444,7 +444,10 @@ function lastExtension(name: string): string {
 }
 
 class FileIconRegistry {
-	#pluginScopes = new Map<string, { active: boolean }>();
+	#pluginScopes = new Map<
+		string,
+		{ active: boolean; subscriptions: Set<() => void> }
+	>();
 	#scriptApis = new WeakMap<
 		HTMLScriptElement,
 		ReturnType<FileIconRegistry["bindPlugin"]>
@@ -454,7 +457,7 @@ class FileIconRegistry {
 	bindPlugin(script: HTMLScriptElement, pluginId: string) {
 		const previous = this.#pluginScopes.get(pluginId);
 		if (previous) throw new Error(`Plugin '${pluginId}' is already bound`);
-		const scope = { active: true };
+		const scope = { active: true, subscriptions: new Set<() => void>() };
 		this.#pluginScopes.set(pluginId, scope);
 		const assertActive = () => {
 			if (!scope.active)
@@ -473,7 +476,18 @@ class FileIconRegistry {
 				return this.register({ ...pack, pluginId });
 			},
 			icon: this.icon.bind(this),
-			onChange: this.onChange.bind(this),
+			onChange: (listener: Parameters<FileIconRegistry["onChange"]>[0]) => {
+				assertActive();
+				if (typeof listener !== "function") return () => {};
+				// Each subscription gets its own callback, even when plugins share a function.
+				const off = this.onChange((info) => listener(info));
+				const unsubscribe = () => {
+					off();
+					scope.subscriptions.delete(unsubscribe);
+				};
+				scope.subscriptions.add(unsubscribe);
+				return unsubscribe;
+			},
 		});
 		this.#scriptApis.set(script, api);
 		return api;
@@ -555,7 +569,11 @@ class FileIconRegistry {
 	unregisterByPlugin(pluginId: string): void {
 		if (!pluginId) return;
 		const scope = this.#pluginScopes.get(pluginId);
-		if (scope) scope.active = false;
+		if (scope) {
+			scope.active = false;
+			// Removing the active pack emits a change; detach plugin code first.
+			for (const unsubscribe of scope.subscriptions) unsubscribe();
+		}
 		this.#pluginScopes.delete(pluginId);
 		for (const [id, compiled] of [...this.#compiled]) {
 			if (compiled.pluginId === pluginId) this.unregister(id);
