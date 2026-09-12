@@ -259,6 +259,7 @@ export default class FileTree {
 	 * @returns {HTMLElement}
 	 */
 	createFileElement(name, url, recycledEl) {
+		// Resolve here so icon plugins that replace helpers.getIconForFile still apply.
 		const iconClass = helpers.getIconForFile(name);
 
 		// Try to recycle existing element
