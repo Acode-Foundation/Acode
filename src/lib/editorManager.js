@@ -1034,7 +1034,8 @@ async function EditorManager($header, $body) {
 	}
 
 	function makeWrapExtension() {
-		if (appSettings?.value?.textWrap) return indentedLineWrapping();
+		if (appSettings?.value?.textWrap)
+			return indentedLineWrapping(appSettings.value.wrappingIndent);
 		return horizontalScrollPastEnd(
 			Number(appSettings?.value?.leftMargin ?? 50),
 		);
@@ -1194,7 +1195,7 @@ async function EditorManager($header, $body) {
 			},
 		},
 		{
-			keys: ["textWrap"],
+			keys: ["textWrap", "wrappingIndent"],
 			compartments: [wrapCompartment],
 			build() {
 				return makeWrapExtension();
@@ -3410,6 +3411,9 @@ async function EditorManager($header, $body) {
 	appSettings.on("update:textWrap", function () {
 		updateMargin();
 		applyOptions(["textWrap"]);
+	});
+	appSettings.on("update:wrappingIndent", function () {
+		applyOptions(["wrappingIndent"]);
 	});
 
 	appSettings.on("update:leftMargin", function () {

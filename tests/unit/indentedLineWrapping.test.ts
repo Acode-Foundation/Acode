@@ -21,4 +21,20 @@ describe("wrapped line indentation", () => {
 		expect(wrappedIndentColumns("\tcode", 4, 3)).toBe(0);
 		expect(wrappedIndentColumns("  code", 4, 0)).toBe(0);
 	});
+	it("adds one or two tab-sized levels to wrapped continuations", () => {
+		expect(wrappedIndentColumns("code", 2, 40, "indent")).toBe(2);
+		expect(wrappedIndentColumns("code", 2, 40, "deepIndent")).toBe(4);
+		expect(wrappedIndentColumns("  code", 2, 40, "indent")).toBe(4);
+		expect(wrappedIndentColumns("  code", 2, 40, "deepIndent")).toBe(6);
+		expect(wrappedIndentColumns("  code", 4, 40, "deepIndent")).toBe(10);
+	});
+	it("disables continuation indentation in none mode", () => {
+		expect(wrappedIndentColumns("\t  code", 4, 40, "none")).toBe(0);
+	});
+	it("keeps tab alignment and the width cap with extra indentation", () => {
+		expect(wrappedIndentColumns("  key\tvalue", 4, 40, "indent")).toBe(8);
+		expect(wrappedIndentColumns("key\tvalue", 4, 40, "deepIndent")).toBe(8);
+		expect(wrappedIndentColumns("  key\tvalue", 4, 7, "deepIndent")).toBe(4);
+		expect(wrappedIndentColumns("    code", 4, 7, "deepIndent")).toBe(7);
+	});
 });

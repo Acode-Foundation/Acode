@@ -7,6 +7,12 @@ import scrollSettings from "./scrollSettings";
 export default function editorSettings() {
 	const title = strings["editor settings"];
 	const values = appSettings.value;
+	const wrappingIndentOptions = [
+		["none", strings.none],
+		["same", strings["wrap-indent-same"]],
+		["indent", strings["wrap-indent-indent"]],
+		["deepIndent", strings["wrap-indent-deep"]],
+	];
 	const categories = {
 		scrolling: strings["settings-category-scrolling"],
 		textLayout: strings["settings-category-text-layout"],
@@ -65,6 +71,17 @@ export default function editorSettings() {
 			text: strings["text wrap"],
 			checkbox: values.textWrap,
 			info: strings["settings-info-editor-text-wrap"],
+			category: categories.textLayout,
+		},
+		{
+			key: "wrappingIndent",
+			text: strings["wrapped line indent"],
+			value: values.wrappingIndent ?? "same",
+			valueText: (value) =>
+				wrappingIndentOptions.find(([key]) => key === value)?.[1] ??
+				wrappingIndentOptions[1][1],
+			select: wrappingIndentOptions,
+			info: strings["settings-info-editor-wrapping-indent"],
 			category: categories.textLayout,
 		},
 		{
