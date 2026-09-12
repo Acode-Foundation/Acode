@@ -26,6 +26,7 @@ interface ModeIndex {
 	sorted: Mode[];
 	namedChecks: NamedCheck[];
 	extensions: Map<string, Mode>;
+	rankByMode: Map<Mode, number>;
 }
 
 let modeIndex: ModeIndex | null = null;
@@ -216,8 +217,13 @@ function getModeIndex(): ModeIndex {
 	});
 
 	const sorted = ranked.map((entry) => entry.mode);
+	const rankByMode = new Map<Mode, number>();
 	const namedChecks: NamedCheck[] = [];
 	const extensions = new Map<string, Mode>();
+
+	for (let rank = 0; rank < sorted.length; rank++) {
+		rankByMode.set(sorted[rank], rank);
+	}
 
 	for (const { mode } of ranked) {
 		if (mode.extensions) {
@@ -245,21 +251,30 @@ function getModeIndex(): ModeIndex {
 		}
 	}
 
-	modeIndex = { sorted, namedChecks, extensions };
+	modeIndex = { sorted, namedChecks, extensions, rankByMode };
 	return modeIndex;
 }
 
 function findModeByExtension(
 	fileNameLower: string,
 	extensions: Map<string, Mode>,
+	rankByMode: Map<Mode, number>,
 ): Mode | undefined {
+	let best: Mode | undefined;
+	let bestRank = Number.POSITIVE_INFINITY;
 	let dot = fileNameLower.indexOf(".");
 	while (dot >= 0 && dot < fileNameLower.length - 1) {
 		const mode = extensions.get(fileNameLower.slice(dot + 1));
-		if (mode) return mode;
+		if (mode) {
+			const rank = rankByMode.get(mode) ?? Number.POSITIVE_INFINITY;
+			if (rank < bestRank) {
+				best = mode;
+				bestRank = rank;
+			}
+		}
 		dot = fileNameLower.indexOf(".", dot + 1);
 	}
-	return undefined;
+	return best;
 }
 
 function resolveModeForPath(fileName: string): Mode {
@@ -286,7 +301,11 @@ function resolveModeForPath(fileName: string): Mode {
 		}
 	}
 
-	const byExtension = findModeByExtension(fileNameLower, index.extensions);
+	const byExtension = findModeByExtension(
+		fileNameLower,
+		index.extensions,
+		index.rankByMode,
+	);
 	if (byExtension?.supportsFile?.(fileName)) return byExtension;
 
 	for (const mode of index.sorted) {

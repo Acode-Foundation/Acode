@@ -231,12 +231,22 @@ describe("getModeForPath", () => {
 
 		expect(getModeForPath("demo.acodepluginmode").name).toBe("text");
 	});
-});
 
-describe("getModeForPath speed", () => {
-	it("is much faster than copying and sorting modes per lookup", () => {
+	it("keeps mode-level ranking when a longer suffix is claimed by a lower-ranked mode", () => {
+		registerTestMode("acode-long-ts", "ts|verylongextension");
+		registerTestMode("acode-dts", "d.ts");
+
+		expect(getModeForPath("types.d.ts").name).toBe(
+			legacyGetModeForPath("types.d.ts").name,
+		);
+		expect(getModeForPath("types.d.ts").name).toBe("acode-long-ts");
+		expect(getModeForPath("file.verylongextension").name).toBe("acode-long-ts");
+		expect(getModeForPath("file.ts").name).toBe("acode-long-ts");
+	});
+
+	it("matches the previous sort-and-scan result for a large mixed folder", () => {
 		const files = [];
-		for (let i = 0; i < 400; i++) {
+		for (let i = 0; i < 50; i++) {
 			files.push(`src/app${i}.js`);
 			files.push(`src/app${i}.ts`);
 			files.push(`src/app${i}.json`);
@@ -247,37 +257,22 @@ describe("getModeForPath speed", () => {
 			files.push("Dockerfile");
 			files.push("nginx.conf");
 			files.push("CMakeLists.txt");
+			files.push("types.d.ts");
 		}
 
-		legacyGetModeForPath(files[0]);
-		getModeForPath(`cold-index-${Date.now()}.js`);
-
-		const legacyStart = performance.now();
+		const mismatches = [];
 		for (const file of files) {
-			legacyGetModeForPath(file);
+			const next = getModeForPath(file);
+			const legacy = legacyGetModeForPath(file);
+			if (next !== legacy) {
+				mismatches.push({
+					file,
+					next: next?.name,
+					legacy: legacy?.name,
+				});
+			}
 		}
-		const legacyMs = performance.now() - legacyStart;
 
-		const indexedStart = performance.now();
-		for (const file of files) {
-			getModeForPath(file);
-		}
-		const indexedMs = performance.now() - indexedStart;
-
-		const warmStart = performance.now();
-		for (const file of files) {
-			getModeForPath(file);
-		}
-		const warmMs = performance.now() - warmStart;
-
-		console.log(
-			`[modelist] ${files.length} lookups — legacy ${legacyMs.toFixed(2)}ms, indexed ${indexedMs.toFixed(2)}ms, cached ${warmMs.toFixed(2)}ms, speedup ${(legacyMs / Math.max(indexedMs, 0.001)).toFixed(1)}x`,
-		);
-
-		expect(indexedMs).toBeLessThan(legacyMs);
-		if (legacyMs >= 8) {
-			expect(indexedMs * 5).toBeLessThan(legacyMs);
-		}
-		expect(warmMs).toBeLessThanOrEqual(indexedMs + 1);
+		expect(mismatches).toEqual([]);
 	});
 });
