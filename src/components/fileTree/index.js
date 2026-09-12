@@ -2,6 +2,7 @@ import "./style.scss";
 import tile from "components/tile";
 import VirtualList from "components/virtualList";
 import tag from "html-tag-js";
+import fileIcons from "lib/fileIcons";
 import helpers from "utils/helpers";
 import Path from "utils/Path";
 
@@ -35,6 +36,7 @@ export default class FileTree {
 		this.isLoading = false;
 		this.childTrees = new Map(); // Track child trees for cleanup
 		this.depth = options._depth || 0; // Internal: nesting depth
+		this._offIcons = fileIcons.onChange(() => this.applyIcons());
 	}
 
 	/**
@@ -127,6 +129,12 @@ export default class FileTree {
 				$title.dataset.name = name;
 				const textEl = $title.querySelector(".text");
 				if (textEl) textEl.textContent = name;
+				const iconEl = $title.querySelector("span:first-child");
+				if (iconEl) {
+					iconEl.className = helpers.getIconForFolder(name, {
+						expanded: false,
+					});
+				}
 
 				// Collapse if expanded and clear children
 				if (!recycledEl.classList.contains("hidden")) {
@@ -149,7 +157,9 @@ export default class FileTree {
 		});
 		$wrapper._folderUrl = url;
 
-		const $indicator = tag("span", { className: "icon folder" });
+		const $indicator = tag("span", {
+			className: helpers.getIconForFolder(name, { expanded: false }),
+		});
 
 		const $title = tile({
 			lead: $indicator,
@@ -175,6 +185,9 @@ export default class FileTree {
 			if (isExpanded) {
 				// Collapse
 				$wrapper.classList.add("hidden");
+				$indicator.className = helpers.getIconForFolder(name, {
+					expanded: false,
+				});
 
 				if (childTree) {
 					childTree.destroy();
@@ -186,6 +199,9 @@ export default class FileTree {
 			} else {
 				// Expand
 				$wrapper.classList.remove("hidden");
+				$indicator.className = helpers.getIconForFolder(name, {
+					expanded: true,
+				});
 				$title.classList.add("loading");
 
 				// Create child tree with incremented depth
@@ -314,8 +330,34 @@ export default class FileTree {
 	 * Destroy the file tree and cleanup
 	 */
 	destroy() {
+		this._offIcons?.();
+		this._offIcons = null;
 		this.clear();
 		this.container.classList.remove("file-tree");
+	}
+
+	applyIcons() {
+		for (const $file of this.container.querySelectorAll(
+			':scope > [data-type="file"][data-name]',
+		)) {
+			const $icon = $file.querySelector(":scope > span:first-child");
+			if ($icon) {
+				$icon.className = helpers.getIconForFile($file.dataset.name);
+			}
+		}
+
+		for (const $folder of this.container.querySelectorAll(
+			'[data-type="dir"][data-name]',
+		)) {
+			const $icon = $folder.querySelector(":scope > span:first-child");
+			if (!$icon) continue;
+			const expanded = !$folder
+				.closest(".collapsible")
+				?.classList.contains("hidden");
+			$icon.className = helpers.getIconForFolder($folder.dataset.name, {
+				expanded,
+			});
+		}
 	}
 
 	/**

@@ -10,6 +10,7 @@ import confirm from "dialogs/confirm";
 import prompt from "dialogs/prompt";
 import select from "dialogs/select";
 import escapeStringRegexp from "escape-string-regexp";
+import fileIcons from "lib/fileIcons";
 import copyEntry from "utils/copyEntry";
 import helpers from "utils/helpers";
 import Path from "utils/Path";
@@ -142,8 +143,12 @@ function openFolder(_path, opts = {}) {
 
 	const $root = collapsableList(title, "folder", {
 		allCaps: true,
-		ontoggle: () => expandList($root),
+		ontoggle: () => {
+			setFolderLeadIcon($root, title, { isRoot: true });
+			expandList($root);
+		},
 	});
+	setFolderLeadIcon($root, title, { isRoot: true });
 	const $text = $root.$title.get(":scope>span.text");
 
 	$root.id = "r" + _path.hashCode();
@@ -1157,15 +1162,37 @@ async function refreshRenamedEntryInOpenFolders(
  */
 function createFolderTile(name, url) {
 	const $list = collapsableList(name, "folder", {
-		ontoggle: () => expandList($list),
+		ontoggle: () => {
+			setFolderLeadIcon($list, name);
+			expandList($list);
+		},
 	});
 	const { $title } = $list;
 	$title.dataset.url = url;
 	$title.dataset.name = name;
 	$title.dataset.type = "dir";
+	setFolderLeadIcon($list, name);
 
 	return $list;
 }
+
+function setFolderLeadIcon($list, name, options = {}) {
+	const $icon = $list.$title?.firstElementChild;
+	if (!$icon) return;
+	$icon.className = helpers.getIconForFolder(name, {
+		expanded: $list.unclasped,
+		isRoot: options.isRoot,
+	});
+}
+
+fileIcons.onChange(() => {
+	for (const folder of addedFolder) {
+		const $list = folder.$node;
+		const name = $list?.$title?.dataset?.name;
+		if (!$list || !name) continue;
+		setFolderLeadIcon($list, name, { isRoot: true });
+	}
+});
 
 /**
  * Create a file tile

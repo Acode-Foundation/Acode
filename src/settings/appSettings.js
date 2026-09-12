@@ -7,6 +7,7 @@ import select from "dialogs/select";
 import actions from "handlers/quickTools";
 import actionStack from "lib/actionStack";
 import config from "lib/config";
+import fileIcons from "lib/fileIcons";
 import fonts from "lib/fonts";
 import lang from "lib/lang";
 import openFile from "lib/openFile";
@@ -225,6 +226,29 @@ export default function otherSettings() {
 			info: strings["settings-info-app-font-manager"],
 			category: categories.fonts,
 			chevron: true,
+		},
+		{
+			key: "iconTheme",
+			text: strings["icon theme"] || "Icon theme",
+			value: values.iconTheme || "builtin",
+			get select() {
+				return fileIcons
+					.list()
+					.map((theme) => [
+						theme.id,
+						theme.available === false
+							? `${theme.label} (${strings.unavailable || "unavailable"})`
+							: theme.label,
+					]);
+			},
+			valueText: (value) => {
+				const theme = fileIcons.list().find((entry) => entry.id === value);
+				return theme?.label || value || "Acode";
+			},
+			info:
+				strings["settings-info-icon-theme"] ||
+				"Choose how files and folders are shown in the explorer and file lists. Plugin icon themes become available after they load.",
+			category: categories.interface,
 		},
 		{
 			key: "rememberFiles",
