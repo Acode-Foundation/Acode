@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import VariableVirtualList from "components/virtualList/variable";
 
 function createList() {
@@ -14,6 +14,176 @@ function createList() {
 }
 
 describe("VariableVirtualList", () => {
+	it.each([
+		0, 360,
+	])("covers jumps, reversals, and list edges with %i pixel overscan", (overscan) => {
+		const container = document.createElement("div");
+		Object.defineProperties(container, {
+			clientHeight: { value: 200 },
+			scrollHeight: { value: 52000 },
+		});
+		document.body.append(container);
+		const list = new VariableVirtualList(container, { overscan });
+		for (let i = 0; i < 1000; i++) list.append(document.createElement("div"));
+		for (const offset of [0, 10, 10000, 12000, 11999, 500, 51800, 40000, 0]) {
+			container.scrollTop = offset;
+			list.onScroll();
+			expect(list.offsets[list.renderedRange.start]).toBeLessThanOrEqual(
+				container.scrollTop,
+			);
+			expect(list.offsets[list.renderedRange.end]).toBeGreaterThanOrEqual(
+				container.scrollTop + 200,
+			);
+		}
+		list.clear();
+		expect(list.scrollDirection).toBe(0);
+		list.destroy();
+		container.remove();
+	});
+
+	it("extends clean offsets without reading previous message heights", () => {
+		const { container, list } = createList();
+		for (let i = 0; i < 100; i++) list.append(document.createElement("div"));
+		const offsets = list.offsets;
+		const heightRead = vi.fn(() => 52);
+		for (const item of list.items)
+			Object.defineProperty(item, "height", { get: heightRead });
+		for (let i = 0; i < 100; i++) list.append(document.createElement("div"));
+		list.rebuildOffsets();
+		expect(heightRead).not.toHaveBeenCalled();
+		expect(list.offsets).toBe(offsets);
+		expect(list.offsets).toHaveLength(201);
+		expect(list.offsets[200]).toBe(10400);
+		list.destroy();
+		container.remove();
+	});
+
+	it("reconciles appended offsets after height changes and after clearing", () => {
+		const { container, list } = createList();
+		list.append(document.createElement("div"));
+		list.append(document.createElement("div"));
+		list.updateHeight(list.items[0], 100);
+		list.append(document.createElement("div"));
+		list.append(document.createElement("div"));
+		list.rebuildOffsets();
+		expect(list.offsets).toEqual([0, 100, 152, 204, 256]);
+		list.append(document.createElement("div"));
+		expect(list.offsets).toEqual([0, 100, 152, 204, 256, 308]);
+		list.clear();
+		list.append(document.createElement("div"));
+		expect(list.offsets).toEqual([0, 52]);
+		list.destroy();
+		container.remove();
+	});
+
+	it("moves overscan ahead of scrolling and refills immediately on reversal", () => {
+		const { container, list } = createList();
+		Object.defineProperty(container, "scrollHeight", { value: 52000 });
+		for (let i = 0; i < 1000; i++) list.append(document.createElement("div"));
+		list.stickToBottom = false;
+		container.scrollTop = 20000;
+		list.onTouchStart();
+		const symmetricCount = list.mountedCount;
+		vi.spyOn(list, "now").mockReturnValue(list.lastScrollTime + 32);
+		const margins = () => ({
+			before: container.scrollTop - list.offsets[list.renderedRange.start],
+			after:
+				list.offsets[list.renderedRange.end] -
+				container.scrollTop -
+				container.clientHeight,
+		});
+		container.scrollTop += 10;
+		list.onScroll();
+		expect(margins().after).toBeGreaterThan(margins().before * 2);
+		expect(list.mountedCount).toBeLessThan(symmetricCount);
+		const mounted = vi.spyOn(list, "updateMountedRange");
+		container.scrollTop -= 10;
+		list.onScroll();
+		expect(mounted).toHaveBeenCalledOnce();
+		expect(margins().before).toBeGreaterThan(margins().after * 2);
+		expect(margins().after).toBeGreaterThanOrEqual(list.overscan);
+		list.onTouchStart();
+		expect(Math.abs(margins().before - margins().after)).toBeLessThan(52);
+		list.destroy();
+		container.remove();
+	});
+
+	it("retains resize observations for overlapping rows and releases removed rows", () => {
+		const { container, list } = createList();
+		const observe = vi.spyOn(list.resizeObserver, "observe");
+		const unobserve = vi.spyOn(list.resizeObserver, "unobserve");
+		const disconnect = vi.spyOn(list.resizeObserver, "disconnect");
+		for (let index = 0; index < 200; index++) {
+			list.append(document.createElement("div"));
+		}
+		list.stickToBottom = false;
+		container.scrollTop = 1000;
+		list.render();
+		const previous = new Set(list.itemContainer.children);
+		observe.mockClear();
+
+		list.render();
+		expect(observe).not.toHaveBeenCalled();
+		expect(unobserve).not.toHaveBeenCalled();
+		expect(disconnect).not.toHaveBeenCalled();
+
+		container.scrollTop += 104;
+		list.render();
+		const current = new Set(list.itemContainer.children);
+		expect(observe.mock.calls.map(([element]) => element)).toEqual(
+			[...current].filter((element) => !previous.has(element)),
+		);
+		expect(unobserve.mock.calls.map(([element]) => element)).toEqual(
+			[...previous].filter((element) => !current.has(element)),
+		);
+		unobserve.mockClear();
+		list.clear();
+		expect(unobserve).toHaveBeenCalledTimes(current.size);
+		list.destroy();
+		container.remove();
+	});
+
+	it("leaves buffered rows untouched until the viewport approaches their edge", () => {
+		const { container, list } = createList();
+		Object.defineProperty(container, "scrollHeight", { value: 52000 });
+		for (let index = 0; index < 1000; index++) {
+			list.append(document.createElement("div"));
+		}
+		list.stickToBottom = false;
+		container.scrollTop = 10000;
+		list.onScroll();
+		list.onTouchStart();
+		container.scrollTop += 20;
+		list.onScroll();
+		const mounted = vi.spyOn(list, "updateMountedRange");
+		const initialRange = { ...list.renderedRange };
+		container.scrollTop += 20;
+		list.onScroll();
+		expect(mounted).not.toHaveBeenCalled();
+		expect(list.renderedRange).toEqual(initialRange);
+
+		container.scrollTop += 2000;
+		list.onScroll();
+		expect(mounted).toHaveBeenCalledOnce();
+		expect(list.offsets[list.renderedRange.start]).toBeLessThan(
+			container.scrollTop,
+		);
+		expect(list.offsets[list.renderedRange.end]).toBeGreaterThan(
+			container.scrollTop + container.clientHeight,
+		);
+
+		mounted.mockClear();
+		list.updateHeight(list.items[list.renderedRange.start], 120);
+		list.onScroll();
+		expect(mounted).toHaveBeenCalledOnce();
+		mounted.mockClear();
+		list.append(document.createElement("div"));
+		list.onScroll();
+		expect(mounted).toHaveBeenCalledOnce();
+		list.destroy();
+		container.remove();
+	});
+
 	it("retains all items while mounting only the viewport window", () => {
 		const { container, list } = createList();
 		const elements = Array.from({ length: 1000 }, (_, index) => {

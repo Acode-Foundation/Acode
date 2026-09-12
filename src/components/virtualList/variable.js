@@ -34,13 +34,16 @@ export default class VariableVirtualList {
 		this.offsets = [0];
 		this.offsetsDirty = false;
 		this.renderedRange = { start: 0, end: 0 };
+		this.renderedItemCount = 0;
 		this.frame = null;
 		this.stickToBottom = true;
 		this.lastScrollTop = this.container.scrollTop;
 		this.lastScrollTime = this.now();
+		this.scrollDirection = 0;
 		this.touching = false;
 		this.releaseTimer = null;
 		this.destroyed = false;
+		this.observedItems = new Set();
 
 		this.topSpacer = document.createElement("div");
 		this.topSpacer.className = "variable-virtual-spacer";
@@ -59,7 +62,11 @@ export default class VariableVirtualList {
 			this.stickToBottom = this.isNearBottom();
 			const now = this.now();
 			const elapsed = Math.max(8, now - this.lastScrollTime);
-			const distance = Math.abs(this.container.scrollTop - this.lastScrollTop);
+			const delta = this.container.scrollTop - this.lastScrollTop;
+			const direction = Math.sign(delta) || this.scrollDirection;
+			const directionChanged = direction !== this.scrollDirection;
+			this.scrollDirection = direction;
+			const distance = Math.abs(delta);
 			const projectedDistance = distance * (32 / elapsed);
 			this.dynamicOverscan = Math.min(
 				this.maxOverscan,
@@ -69,13 +76,17 @@ export default class VariableVirtualList {
 			this.lastScrollTime = now;
 			// Scroll rendering is intentionally synchronous. Android WebView can move
 			// the compositor several rows before the next animation frame.
-			this.render();
+			// Refill immediately on reversal, before relying on the smaller rear buffer.
+			this.render(!directionChanged);
 			this.scheduleOverscanRelease();
 		};
 		this.onTouchStart = () => {
 			this.touching = true;
 			this.clearOverscanRelease();
 			this.dynamicOverscan = this.activeOverscan;
+			this.scrollDirection = 0;
+			this.lastScrollTop = this.container.scrollTop;
+			this.lastScrollTime = this.now();
 			// Pre-paint the fling guard before compositor scrolling begins.
 			this.render();
 		};
@@ -99,6 +110,7 @@ export default class VariableVirtualList {
 				? new ResizeObserver((entries) => this.onResize(entries))
 				: null;
 		this.resizeObserver?.observe(this.container);
+		if (this.footer) this.resizeObserver?.observe(this.footer);
 	}
 
 	now() {
@@ -115,6 +127,7 @@ export default class VariableVirtualList {
 				this.releaseTimer = null;
 				if (this.destroyed || this.touching) return;
 				this.dynamicOverscan = this.overscan;
+				this.scrollDirection = 0;
 				this.render();
 			},
 			500,
@@ -144,7 +157,11 @@ export default class VariableVirtualList {
 		};
 		this.items.push(item);
 		this.itemByElement.set(element, item);
-		this.offsetsDirty = true;
+		// Existing offsets remain valid on append. Height changes still take the
+		// rebuild path, including any messages appended before that rebuild.
+		if (!this.offsetsDirty) {
+			this.offsets.push(this.offsets[this.offsets.length - 1] + item.height);
+		}
 		if (wasNearBottom || this.items.length === 1) this.stickToBottom = true;
 		this.scheduleRender();
 	}
@@ -155,12 +172,16 @@ export default class VariableVirtualList {
 		this.offsets = [0];
 		this.offsetsDirty = false;
 		this.renderedRange = { start: 0, end: 0 };
+		this.renderedItemCount = 0;
 		this.stickToBottom = true;
 		this.dynamicOverscan = this.overscan;
+		this.scrollDirection = 0;
 		this.topSpacer.style.height = "0px";
 		this.bottomSpacer.style.height = "0px";
 		this.itemContainer.replaceChildren();
 		this.container.scrollTop = 0;
+		this.lastScrollTop = 0;
+		this.lastScrollTime = this.now();
 		this.footerHeight = this.getFooterHeight();
 		this.observeResizeTargets();
 	}
@@ -216,17 +237,56 @@ export default class VariableVirtualList {
 
 	observeResizeTargets() {
 		if (!this.resizeObserver) return;
-		this.resizeObserver.disconnect();
-		this.resizeObserver.observe(this.container);
-		for (const element of this.itemContainer.children) {
-			this.resizeObserver.observe(element);
+		const mountedItems = new Set(this.itemContainer.children);
+		for (const element of this.observedItems) {
+			if (!mountedItems.has(element)) this.resizeObserver.unobserve(element);
 		}
-		if (this.footer) this.resizeObserver.observe(this.footer);
+		for (const element of mountedItems) {
+			if (!this.observedItems.has(element))
+				this.resizeObserver.observe(element);
+		}
+		this.observedItems = mountedItems;
 	}
 
-	render() {
+	getOverscan() {
+		const ahead = this.dynamicOverscan;
+		// Keep a rear guard for abrupt reversals, while spending most of the
+		// active buffer on the direction the reader is moving toward.
+		const behind = Math.max(this.overscan, ahead / 4);
+		return {
+			before: this.scrollDirection > 0 ? behind : ahead,
+			after: this.scrollDirection < 0 ? behind : ahead,
+		};
+	}
+
+	render(scrollOnly = false) {
 		if (this.destroyed) return;
+		const overscan = this.getOverscan();
+		// Keep the mounted window stable while there is still a safety buffer on
+		// both sides. Touch start and scheduled data/measurement updates always
+		// render, so this shortcut cannot hide appended or resized content.
+		if (
+			scrollOnly &&
+			!this.offsetsDirty &&
+			!this.stickToBottom &&
+			this.renderedItemCount === this.items.length
+		) {
+			const { start, end } = this.renderedRange;
+			const scrollTop = this.container.scrollTop;
+			if (
+				end > start &&
+				this.container.clientHeight === this.viewportHeight &&
+				(start === 0 ||
+					scrollTop >= this.offsets[start] + overscan.before / 2) &&
+				(end === this.items.length ||
+					scrollTop + this.viewportHeight <=
+						this.offsets[end] - overscan.after / 2)
+			) {
+				return;
+			}
+		}
 		this.rebuildOffsets();
+		this.renderedItemCount = this.items.length;
 		if (!this.items.length) {
 			this.footerHeight = this.getFooterHeight();
 			this.itemContainer.replaceChildren();
@@ -248,13 +308,11 @@ export default class VariableVirtualList {
 			? Math.max(0, totalHeight + this.footerHeight - viewportHeight)
 			: this.container.scrollTop;
 		const start = this.findIndexAt(
-			Math.max(0, targetScrollTop - this.dynamicOverscan),
+			Math.max(0, targetScrollTop - overscan.before),
 		);
 		const end = Math.min(
 			this.items.length,
-			this.findIndexAt(
-				targetScrollTop + viewportHeight + this.dynamicOverscan,
-			) + 1,
+			this.findIndexAt(targetScrollTop + viewportHeight + overscan.after) + 1,
 		);
 
 		this.updateMountedRange(start, end);
@@ -399,6 +457,7 @@ export default class VariableVirtualList {
 		this.frame = null;
 		this.clearOverscanRelease();
 		this.resizeObserver?.disconnect();
+		this.observedItems.clear();
 		this.container.removeEventListener("scroll", this.onScroll);
 		this.container.removeEventListener("touchstart", this.onTouchStart);
 		this.container.removeEventListener("touchend", this.onTouchEnd);
