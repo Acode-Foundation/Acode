@@ -180,7 +180,7 @@
 	"dark": "Dark",
 	"file browser": "File Browser",
 	"icon pack": "Icon pack",
-	"settings-info-icon-pack": "Choose how files and folders are shown in the explorer and file lists. Plugin icon packs become available after they load.",
+	"settings-info-icon-pack": "Choose the icons used for files and folders in the explorer and file lists across the app.",
 	"unavailable": "unavailable",
 	"operation not permitted": "Operation not permitted",
 	"no such file or directory": "No such file or directory",

@@ -182,6 +182,9 @@ declare type LangStrings = {
   "light": string;
   "dark": string;
   "file browser": string;
+  "icon pack": string;
+  "settings-info-icon-pack": string;
+  "unavailable": string;
   "operation not permitted": string;
   "no such file or directory": string;
   "input/output error": string;

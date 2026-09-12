@@ -229,7 +229,7 @@ export default function otherSettings() {
 		},
 		{
 			key: "iconTheme",
-			text: strings["icon pack"] || "Icon pack",
+			text: strings["icon pack"],
 			value: values.iconTheme || "builtin",
 			get select() {
 				return fileIcons
@@ -245,9 +245,7 @@ export default function otherSettings() {
 				const theme = fileIcons.list().find((entry) => entry.id === value);
 				return theme?.name || value || "Builtin";
 			},
-			info:
-				strings["settings-info-icon-pack"] ||
-				"Choose how files and folders are shown in the explorer and file lists. Plugin icon packs become available after they load.",
+			info: strings["settings-info-icon-pack"],
 			category: categories.interface,
 		},
 		{
