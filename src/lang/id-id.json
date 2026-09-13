@@ -881,5 +881,5 @@
 	"wrap-indent-same": "Sama",
 	"wrap-indent-indent": "Indentasi (+1 level)",
 	"wrap-indent-deep": "Indentasi dalam (+2 level)",
-	"settings-info-editor-wrapping-indent": "Pilih apakah teks terbungkus dimulai dari tepi kiri, mengikuti indentasi baris asli, atau di-indentasi lebih jauh. Setiap level tambahan menggunakan ukuran tab kamu."
+	"settings-info-editor-wrapping-indent": "Pilih apakah teks terbungkus dimulai dari tepi kiri, mengikuti indentasi baris asli, atau di-indentasi lebih jauh. Setiap level tambahan menggunakan ukuran tab Anda."
 }
