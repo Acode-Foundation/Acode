@@ -2,6 +2,15 @@ android {
     packagingOptions {
         pickFirst 'META-INF/versions/9/OSGI-INF/MANIFEST.MF'
     }
+    buildTypes {
+        release {
+            //might cause ClassNotFoundException errors
+            //to fix those errors you need to either put @Keep on the class/feild or add a entry in progrud rules file
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
 }
 
 configurations {

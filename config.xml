@@ -314,6 +314,11 @@
         <hook type="before_prepare" src="hooks/restore-cordova-resources.js" />
         <hook type="before_prepare" src="hooks/modify-java-files.js" />
         <hook type="after_prepare" src="hooks/post-process.js" />
+
+
+
+        <resource-file src="build-extras.gradle" target="app/build-extras.gradle" />
+        <resource-file src="proguard-rules.pro" target="app/proguard-rules.pro" />
     </platform>
     <preference name="AndroidBlacklistSecureSocketProtocols" value="SSLv3,TLSv1" />
 </widget>
