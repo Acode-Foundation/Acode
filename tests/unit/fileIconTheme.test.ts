@@ -313,3 +313,44 @@ describe("theme contract", () => {
 		).toBe("source");
 	});
 });
+
+describe("extension scanning edge cases", () => {
+	it.each([
+		["button.test.ts", "test"],
+		["BUTTON.TEST.TS", "test"],
+		["button.other.ts", "ts"],
+		[".config.test.ts", "test"],
+		[".test.ts", "test"],
+		["button..ts", "ts"],
+		[".ts", "plain"],
+		["README", "plain"],
+		["button.ts.", "plain"],
+		[".", "plain"],
+		["..", "plain"],
+		["", "plain"],
+	])("resolves %j to %s", (name, expected) => {
+		fileIcons.register({
+			id: "scan",
+			pluginId: "test.plugin",
+			icons: {
+				test: { className: "test" },
+				ts: { className: "ts" },
+				plain: { className: "plain" },
+			},
+			fileExtensions: { "test.ts": "test", ts: "ts" },
+			file: "plain",
+		});
+		fileIcons.use("scan", { persist: false });
+		expect(fileIcons.icon(name)).toBe(expected);
+	});
+
+	it.each([
+		["file.UNLISTED", "unlisted"],
+		["file..UNLISTED", "unlisted"],
+		[".UNLISTED", "default"],
+		["file.UNLISTED.", "default"],
+		["extensionless", "default"],
+	])("keeps the built-in last-extension fallback for %j", (name, expected) => {
+		expect(fileIcons.resolve(name).iconId).toBe(expected);
+	});
+});

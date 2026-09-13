@@ -426,21 +426,22 @@ function matchExtension(
 	extensions: Map<string, string>,
 ): string | undefined {
 	const lower = name.toLowerCase();
-	const parts = lower.split(".");
-	if (parts.length < 2 || (parts.length === 2 && !parts[0])) return undefined;
-	for (let i = 1; i < parts.length; i++) {
-		const ext = parts.slice(i).join(".");
-		if (ext && extensions.has(ext)) return extensions.get(ext);
+	let dot = lower.indexOf(".");
+	// A standalone dotfile has no extension; compound dotfiles still do.
+	if (dot === 0 && lower.indexOf(".", 1) === -1) return undefined;
+	for (; dot !== -1; dot = lower.indexOf(".", dot + 1)) {
+		const ext = lower.slice(dot + 1);
+		if (!ext) continue;
+		const iconId = extensions.get(ext);
+		if (iconId !== undefined) return iconId;
 	}
 	return undefined;
 }
 
 function lastExtension(name: string): string {
 	const lower = name.toLowerCase();
-	if (lower.startsWith(".") && lower.indexOf(".", 1) === -1) return "";
-	const parts = lower.split(".");
-	if (parts.length < 2) return "";
-	return parts[parts.length - 1] || "";
+	const dot = lower.lastIndexOf(".");
+	return dot > 0 ? lower.slice(dot + 1) : "";
 }
 
 class FileIconRegistry {
