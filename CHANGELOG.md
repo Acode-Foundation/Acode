@@ -1,5 +1,17 @@
 # Change Log
 
+## v1.13.5
+
+* fix(terminal): stop proot "can't sanitize binding" fd warnings by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/2878
+* fix(editor): preserve indentation on soft-wrapped lines by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2880
+* feat(editor): add context menu for closing file tabs by @TonyGeez in https://github.com/Acode-Foundation/Acode/pull/2863
+* perf(editor): index language modes instead of sorting on every lookup by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2881
+* feat: improve console virtualisation by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2882
+* fix(search): prevent discovery restarts and stream results efficiently by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2883
+* feat(editor): add configurable word wrap indentation by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2886
+* fix: API calls throwing internal server errors by @deadlyjack in https://github.com/Acode-Foundation/Acode/pull/2888
+* fix(editor): add monaco-style punctuation wrap opportunities by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2890
+
 ## v1.13.4
 
 * fix: prevent Cordova exec startup race by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2851

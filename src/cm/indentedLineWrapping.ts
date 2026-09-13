@@ -12,6 +12,7 @@ import {
 	ViewPlugin,
 	type ViewUpdate,
 } from "@codemirror/view";
+import { punctuationWrapping } from "./punctuationWrapping";
 
 const wrapWidth = StateEffect.define<number>();
 export type WrappingIndent = "none" | "same" | "indent" | "deepIndent";
@@ -178,19 +179,19 @@ const plugin = ViewPlugin.fromClass(
 );
 
 /**
- * Browser-native soft wrapping, with no widgets, replacement text, or input
- * handlers. Line attributes leave CodeMirror's text/selection/composition DOM
- * under its own control. `ch` tracks font changes without rounding tab stops.
+ * Browser-native soft wrapping with punctuation break opportunities.
+ * Line attributes provide indentation; `ch` tracks font changes without rounding tab stops.
  * Lines containing tabs round their indent up to a tab stop, including when
  * tabs occur after the leading whitespace. Oversized indents are capped
  * at half the available columns so narrow panes still have room for content.
  */
 export function indentedLineWrapping(mode: WrappingIndent = "same"): Extension {
-	if (mode === "none") return EditorView.lineWrapping;
+	if (mode === "none") return [EditorView.lineWrapping, punctuationWrapping];
 	// Settings imported from older or manually edited files may be invalid.
 	if (mode !== "indent" && mode !== "deepIndent") mode = "same";
 	return [
 		EditorView.lineWrapping,
+		punctuationWrapping,
 		wrappingIndent.of(mode),
 		plugin,
 		EditorView.baseTheme({
