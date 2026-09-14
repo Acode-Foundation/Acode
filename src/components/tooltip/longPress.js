@@ -73,7 +73,8 @@ export function installIconTooltips(root, show, hide) {
 	function click(event) {
 		if (
 			event.detail &&
-			suppressed?.target === targetOf(event) &&
+			suppressed &&
+			suppressed.target === targetOf(event) &&
 			Date.now() < suppressed.until
 		) {
 			event.preventDefault();

@@ -372,8 +372,9 @@ async function onDeviceReady() {
 				}
 				editorManager.reapplyActiveFile();
 				if (activeFile?.uri) {
-					// Re-emit file-loaded event
-					editorManager.emit("file-loaded", activeFile);
+					if (activeFile.loaded && !activeFile.loading) {
+						editorManager.emit("file-loaded", activeFile);
+					}
 					// Re-emit switch-file event
 					editorManager.emit("switch-file", activeFile);
 				}

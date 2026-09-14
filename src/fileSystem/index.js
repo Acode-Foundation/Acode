@@ -61,6 +61,9 @@ export default function fsOperation(...url) {
 	return fsList.find((fs) => fs.test(url))?.fs(url);
 }
 
+// Check registration without constructing a transport or opening a file.
+fsOperation.hasProvider = (url) => fsList.some((fs) => fs.test(url));
+
 fsOperation.extend = (test, fs) => {
 	fsList.push({ test, fs });
 };

@@ -4,6 +4,10 @@ const runtime = vi.hoisted(() => ({
 	instances: [],
 }));
 
+vi.mock("fileSystem", () => ({
+	default: { hasProvider: (uri) => !uri.startsWith("plugin:") },
+}));
+
 vi.mock("lib/editorFile", () => ({
 	default: class MockEditorFile {
 		constructor(filename, options) {
@@ -53,7 +57,7 @@ describe("restored file loading", () => {
 		expect(completed).toBe(true);
 	});
 
-	it.each(["ftp", "sftp", "http", "https"])(
+	it.each(["ftp", "sftp", "http", "https", "gh", "plugin"])(
 		"does not block startup on an unresolved %s tab",
 		async (protocol) => {
 			await restoreFiles([

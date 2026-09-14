@@ -34,6 +34,91 @@ function fixture() {
 		);
 	return { root, owner, button, icon, show, hide, send };
 }
+
+function click(target, detail = 1) {
+	const event = new MouseEvent("click", {
+		bubbles: true,
+		composed: true,
+		cancelable: true,
+		detail,
+	});
+	target.dispatchEvent(event);
+	return event;
+}
+
+it.each([
+	["plain content", false],
+	["plain content", true],
+	["unlabeled control", false],
+	["unlabeled control", true],
+	["quicktools", false],
+	["quicktools", true],
+])("passes ordinary clicks on %s (Shadow DOM: %s) without browser errors", (kind, shadow) => {
+	const f = fixture();
+	const container = document.createElement("div");
+	container.innerHTML =
+		kind === "plain content"
+			? "<div>Content</div>"
+			: "<button><svg></svg></button>";
+	if (kind === "quicktools") {
+		container.id = "quick-tools";
+		container.firstChild.setAttribute("aria-label", "Quicktool");
+	}
+	(shadow ? f.root : document.body).append(container);
+	const target = container.querySelector("svg") || container.firstChild;
+	const activated = vi.fn();
+	container.firstChild.addEventListener("click", activated);
+	const errors = vi.fn((event) => event.preventDefault());
+	window.addEventListener("error", errors);
+	try {
+		for (const type of ["pointerdown", "pointerup"]) {
+			target.dispatchEvent(
+				new PointerEvent(type, {
+					bubbles: true,
+					composed: true,
+					pointerId: 1,
+					button: 0,
+				}),
+			);
+		}
+		expect(click(target).defaultPrevented).toBe(false);
+		expect(activated).toHaveBeenCalledOnce();
+		expect(errors).not.toHaveBeenCalled();
+		expect(f.show).not.toHaveBeenCalled();
+	} finally {
+		window.removeEventListener("error", errors);
+	}
+});
+
+it.each([
+	"expired",
+	"keyboard",
+	"programmatic",
+	"different target",
+])("allows %s clicks after a long press and clears suppression", async (kind) => {
+	const f = fixture(),
+		activated = vi.fn();
+	f.button.addEventListener("click", activated);
+	f.send("pointerdown");
+	await vi.advanceTimersByTimeAsync(500);
+	f.send("pointerup");
+	if (kind === "expired") await vi.advanceTimersByTimeAsync(750);
+	if (kind === "programmatic") f.button.click();
+	else if (kind === "different target") {
+		const other = document.createElement("button");
+		document.body.append(other);
+		other.addEventListener("click", activated);
+		expect(click(other).defaultPrevented).toBe(false);
+	} else {
+		expect(click(f.icon, kind === "keyboard" ? 0 : 1).defaultPrevented).toBe(
+			false,
+		);
+	}
+	expect(activated).toHaveBeenCalledOnce();
+	expect(click(f.icon).defaultPrevented).toBe(false);
+	expect(activated).toHaveBeenCalledTimes(2);
+});
+
 it("reads metadata through Shadow DOM and consumes the release click without activating the icon", async () => {
 	const f = fixture(),
 		clicked = vi.fn();
@@ -49,25 +134,11 @@ it("reads metadata through Shadow DOM and consumes the release click without act
 		"<b>Existing description</b>",
 	);
 	f.send("pointerup");
-	f.icon.dispatchEvent(
-		new MouseEvent("click", {
-			bubbles: true,
-			composed: true,
-			cancelable: true,
-			detail: 1,
-		}),
-	);
+	expect(click(f.icon).defaultPrevented).toBe(true);
 	expect(clicked).not.toHaveBeenCalled();
 	f.send("pointerdown");
 	f.send("pointerup");
-	f.icon.dispatchEvent(
-		new MouseEvent("click", {
-			bubbles: true,
-			composed: true,
-			cancelable: true,
-			detail: 1,
-		}),
-	);
+	expect(click(f.icon).defaultPrevented).toBe(false);
 	expect(clicked).toHaveBeenCalledOnce();
 });
 it("cancels scrolling, movement, extra touches and removal; leaves stock quicktools alone", async () => {

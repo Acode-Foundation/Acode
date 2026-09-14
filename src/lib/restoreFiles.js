@@ -1,3 +1,4 @@
+import fsOperation from "fileSystem";
 import EditorFile from "./editorFile";
 
 /**
@@ -9,6 +10,7 @@ export default async function restoreFiles(files) {
 	const localLoads = [];
 
 	files.forEach((file, index) => {
+		const waitsForProvider = file.uri && !fsOperation.hasProvider(file.uri);
 		const render =
 			file.render || (!hasRenderedFile && index === files.length - 1);
 		const options = {
@@ -19,7 +21,7 @@ export default async function restoreFiles(files) {
 		const restoredFile = new EditorFile(file.filename, options);
 		const load = Promise.resolve(restoredFile.load?.());
 
-		if (isRemoteUri(file.uri)) {
+		if (isRemoteUri(file.uri) || waitsForProvider) {
 			void load.catch((error) => {
 				console.warn(`Failed to preload restored file: ${file.uri}`, error);
 			});
@@ -32,10 +34,10 @@ export default async function restoreFiles(files) {
 	// Finish restoring local documents before startup persistence is enabled.
 	// Otherwise the temporary empty sessions can overwrite saved cursor state,
 	// and the first visit to an inactive local tab visibly flashes a loading editor.
-	// Remote tabs keep preloading without blocking the rest of app startup.
+	// Remote and plugin tabs must not block the plugin startup they depend on.
 	await Promise.all(localLoads);
 }
 
 function isRemoteUri(uri) {
-	return /^(?:https?|s?ftp):/i.test(uri || "");
+	return /^(?:https?|s?ftp|gh):/i.test(uri || "");
 }

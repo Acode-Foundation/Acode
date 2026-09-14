@@ -25,7 +25,10 @@ import Path from "utils/Path";
 import { readRemoteFilePreview } from "utils/remoteFilePreview";
 import Url from "utils/Url";
 import config from "./config";
-import { isInitialPluginLoadComplete } from "./loadPlugins";
+import {
+	isInitialPluginLoadComplete,
+	waitForInitialPluginLoad,
+} from "./loadPlugins";
 import openFolder from "./openFolder";
 import run from "./run";
 import saveFile from "./saveFile";
@@ -1199,6 +1202,8 @@ export default class EditorFile {
 	}
 
 	async writeToCache() {
+		// A tab switch can flush a restored tab before its document is ready.
+		if (!this.loaded || this.loading || !this.#tab) return;
 		const writeVersion = this.docVersion;
 		const text = getDocText(this.session.doc);
 		const fs = fsOperation(this.cacheFile);
@@ -1839,7 +1844,8 @@ export default class EditorFile {
 		if (this.#type !== "editor") return;
 		let value = "";
 		const protocol = this.uri ? Url.getProtocol(this.uri) : "";
-		const isRemoteFile = protocol === "ftp:" || protocol === "sftp:";
+		const isTransportFile = protocol === "ftp:" || protocol === "sftp:";
+		const isRemoteFile = isTransportFile || protocol === "gh:";
 
 		const { cursorPos, editable } = this.#loadOptions;
 
@@ -1861,7 +1867,7 @@ export default class EditorFile {
 			let savedDoc = null;
 
 			if (isRemoteFile) {
-				file = fsOperation(this.uri);
+				file = isTransportFile ? fsOperation(this.uri) : null;
 				let transportCache = null;
 				try {
 					const localName = file?.localName;
@@ -1877,11 +1883,11 @@ export default class EditorFile {
 					transportCache,
 					encoding: this.encoding,
 				});
+				if (!this.#tab) return;
 				cacheExists = preview.editorCacheExists;
 				if (cacheExists) value = preview.text;
 
 				if (preview.text !== null) {
-					this.session = EditorState.create({ doc: preview.text });
 					editorManager.emit("file-loading-preview", this, preview.text);
 				}
 			} else {
@@ -1892,6 +1898,13 @@ export default class EditorFile {
 			}
 
 			if (this.uri) {
+				if (
+					!fsOperation.hasProvider(this.uri) &&
+					!isInitialPluginLoadComplete()
+				) {
+					await waitForInitialPluginLoad();
+				}
+				if (!this.#tab) return;
 				file ||= fsOperation(this.uri);
 				const fileExists = await file.exists();
 				if (!fileExists && cacheExists) {
@@ -1911,6 +1924,7 @@ export default class EditorFile {
 				}
 			}
 
+			if (!this.#tab) return;
 			const isUnsaved = this.isUnsaved;
 			this.markChanged = false;
 			this.session = restoreSessionSelection(
@@ -1938,6 +1952,7 @@ export default class EditorFile {
 				this.#emit("load", createFileEvent(this));
 			}, 0);
 		} catch (error) {
+			if (!this.#tab) return;
 			this.#emit("loaderror", createFileEvent(this));
 			this.remove(false, { ignorePinned: true });
 			toast(`Unable to load: ${this.filename}`);
