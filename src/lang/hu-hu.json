@@ -882,7 +882,7 @@
 	"wrap-indent-indent": "Behúzás (+1 szint)",
 	"wrap-indent-deep": "Mély behúzás (+2 szint)",
 	"settings-info-editor-wrapping-indent": "Válassza ki, hogy a tördelt szövegek a képernyő bal szélétől kezdődjenek-e, az eredeti sor behúzását kövessék-e, vagy még jobban legyenek-e behúzva. Minden további behúzási szint a tabulátor méretét veszi alapul.",
-  "icon pack": "Icon pack",
+	"icon pack": "Icon pack",
 	"settings-info-icon-pack": "Choose the icons used for files and folders in the explorer and file lists across the app.",
 	"unavailable": "unavailable"
 }

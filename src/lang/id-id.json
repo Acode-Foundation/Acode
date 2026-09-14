@@ -882,7 +882,7 @@
 	"wrap-indent-indent": "Indentasi (+1 level)",
 	"wrap-indent-deep": "Indentasi dalam (+2 level)",
 	"settings-info-editor-wrapping-indent": "Pilih apakah teks terbungkus dimulai dari tepi kiri, mengikuti indentasi baris asli, atau di-indentasi lebih jauh. Setiap level tambahan menggunakan ukuran tab Anda.",
-  "icon pack": "Icon pack",
+	"icon pack": "Icon pack",
 	"settings-info-icon-pack": "Choose the icons used for files and folders in the explorer and file lists across the app.",
 	"unavailable": "unavailable"
 }
