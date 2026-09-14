@@ -208,3 +208,5 @@ Many font editing software and web-based tools exist for this purpose. Some of t
 To create plugins for Acode:
 - [Plugin Starter Repository](https://github.com/Acode-Foundation/acode-plugin)
 - [Plugin Documentation](https://docs.acode.app/)
+- [Custom editor quicktools API](docs/quicktools-adapter.md)
+- [Custom-tab Save and Save As](docs/file-save-events.md)

@@ -11,7 +11,11 @@
 
 	font-size: 12px;
 
-	white-space: nowrap;
+	white-space: normal;
+	overflow-wrap: anywhere;
+	overflow: hidden;
+	box-sizing: border-box;
+	line-height: 1.4;
 
 	pointer-events: none;
 
@@ -21,4 +25,7 @@
 
 	z-index: 999999;
 }
-
+.acode-tooltip-description {
+	margin-top: 3px;
+	opacity: 0.8;
+}

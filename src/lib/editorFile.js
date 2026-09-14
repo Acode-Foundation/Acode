@@ -15,6 +15,7 @@ import confirm from "dialogs/confirm";
 import DOMPurify from "dompurify";
 import startDrag from "handlers/editorFileTab";
 import actions from "handlers/quickTools";
+import quickToolsAdapters from "lib/quickToolsAdapter";
 import { openTabContextMenuOnRelease } from "handlers/tabContextMenu";
 import tag from "html-tag-js";
 import mimeTypes from "mime-types";
@@ -61,9 +62,9 @@ function getMainCSSStyleSheet() {
 	return null;
 }
 
-function syncQuickToolsVisibility(file) {
+export function syncQuickToolsVisibility(file) {
 	const { $toggler } = quickTools;
-	const hideForFile = !!file?.hideQuickTools;
+	const hideForFile = !quickToolsAdapters.visible(file);
 
 	clearTimeout($toggler._hideTimeout);
 	if (hideForFile || !appSettings.value.floatingButton) {
@@ -461,6 +462,7 @@ export default class EditorFile {
 	 */
 	#loadOptions;
 	#loadPromise = null;
+	#pendingSave = null;
 	/**
 	 * Weather file is changed and needs to be saved
 	 * @type {boolean}
@@ -1441,7 +1443,6 @@ export default class EditorFile {
 	 * @returns {Promise<boolean>} true if file is saved, false if not.
 	 */
 	save() {
-		if (this.type !== "editor") return Promise.resolve(false);
 		return this.#save(false);
 	}
 
@@ -1450,8 +1451,17 @@ export default class EditorFile {
 	 * @returns {Promise<boolean>} true if file is saved, false if not.
 	 */
 	saveAs() {
-		if (this.type !== "editor") return Promise.resolve(false);
 		return this.#save(true);
+	}
+
+	/** Custom tabs opt into the standard save controls through their save event. */
+	get canSave() {
+		return (
+			!!this.#tab &&
+			(this.type === "editor" ||
+				typeof this.onsave === "function" ||
+				this.#events.save.length > 0)
+		);
 	}
 
 	setReadOnly(value) {
@@ -1964,10 +1974,39 @@ export default class EditorFile {
 	// }
 
 	#save(as) {
-		const event = createFileEvent(this);
-		this.#emit("save", event);
+		if (!this.canSave) return Promise.resolve(false);
+		if (this.type === "editor") return this.#dispatchSave(as);
+		if (this.#pendingSave) return this.#pendingSave;
+		// Set the promise before dispatch so re-entrant requests also share it.
+		this.#pendingSave = Promise.resolve()
+			.then(() => (this.canSave ? this.#dispatchSave(as) : false))
+			.finally(() => {
+				this.#pendingSave = null;
+			});
+		return this.#pendingSave;
+	}
 
-		if (event.defaultPrevented) return Promise.resolve(false);
+	#dispatchSave(as) {
+		const event = new SaveFileEvent(this, as);
+		try {
+			this.#emit("save", event);
+		} catch (error) {
+			// A later observer can fail after a handler has supplied a promise.
+			event.response?.catch(() => {});
+			return Promise.reject(error);
+		} finally {
+			event.finishDispatch();
+		}
+		if (event.response)
+			return event.response.then((saved) => {
+				if (!saved || !this.#tab) return false;
+				editorManager.onupdate("save-file");
+				editorManager.emit("update", "save-file");
+				editorManager.emit("save-file", this);
+				return true;
+			});
+		if (event.defaultPrevented || this.type !== "editor")
+			return Promise.resolve(false);
 		return Promise.all([this.flushCacheWrite(), saveFile(this, as)]);
 	}
 
@@ -2126,5 +2165,28 @@ class FileEvent {
 	}
 	get defaultPrevented() {
 		return this.#defaultPrevented;
+	}
+}
+
+class SaveFileEvent extends FileEvent {
+	#dispatching = true;
+	#response;
+	saveAs;
+	constructor(file, saveAs) {
+		super(file);
+		this.saveAs = saveAs;
+	}
+	/** Claim this save synchronously; resolve true only after a successful write. */
+	respondWith(result) {
+		if (!this.#dispatching || this.#response)
+			throw new Error("respondWith must be called once during the save event.");
+		this.preventDefault();
+		this.#response = Promise.resolve(result).then((saved) => saved === true);
+	}
+	get response() {
+		return this.#response;
+	}
+	finishDispatch() {
+		this.#dispatching = false;
 	}
 }

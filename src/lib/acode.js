@@ -84,6 +84,7 @@ import helpers from "utils/helpers";
 import KeyboardEvent from "utils/keyboardEvent";
 import Url from "utils/Url";
 import config from "./config";
+import quickToolsAdapters from "./quickToolsAdapter";
 import webview from "./webview";
 
 class Acode {
@@ -1030,6 +1031,11 @@ class Acode {
 		const command = registerExternalCommand(descriptor);
 		this.#refreshCommandBindings();
 		return command;
+	}
+
+	/** Register input, selection and availability handlers for one custom tab. */
+	registerQuickToolsAdapter(tab, adapter) {
+		return quickToolsAdapters.register(tab, adapter);
 	}
 
 	removeCommand(name) {

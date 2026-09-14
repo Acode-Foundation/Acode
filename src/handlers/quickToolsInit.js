@@ -6,6 +6,9 @@ import { hideTooltip, showTooltip } from "components/tooltip";
 import config from "lib/config";
 import appSettings from "lib/settings";
 import actions, { cancelQuickToolsModifierInput, key } from "./quickTools";
+import quickToolsAdapters from "lib/quickToolsAdapter";
+import { watchQuickToolsOverlays } from "lib/quickToolsOverlays";
+import { syncQuickToolsVisibility } from "lib/editorFile";
 
 const CONTEXT_MENU_TIMEOUT = 500;
 const MOVE_X_THRESHOLD = 50;
@@ -56,6 +59,41 @@ function clearTouchFeedback() {
  */
 export default function init() {
 	const { $footer, $toggler, $input } = quickTools;
+	let adapterWasActive = false,
+		visible;
+	const refreshAdapter = () => {
+		const hasAdapter = quickToolsAdapters.has();
+		if (!hasAdapter && !adapterWasActive) {
+			visible = undefined;
+			return;
+		}
+		adapterWasActive = hasAdapter;
+		const nextVisible = quickToolsAdapters.visible();
+		if (visible !== nextVisible) {
+			visible = nextVisible;
+			syncQuickToolsVisibility(editorManager.activeFile);
+		}
+		updateHistoryButtons();
+	};
+	const cancelAdapterInput = () => {
+		clearTimeout(timeout);
+		touchcancel();
+		reset();
+		cancelQuickToolsModifierInput();
+		quickToolsAdapters.cancel();
+	};
+	quickToolsAdapters.subscribe((change) => {
+		if (change?.cancelled && change.tab === editorManager.activeFile)
+			cancelAdapterInput();
+		refreshAdapter();
+	});
+	watchQuickToolsOverlays(quickToolsAdapters, cancelAdapterInput);
+	$footer.addEventListener(
+		"pointerdown",
+		() => quickToolsAdapters.capture(),
+		true,
+	);
+	$footer.addEventListener("keydown", () => quickToolsAdapters.capture(), true);
 
 	$toggler.addEventListener("click", (e) => {
 		e.preventDefault();
@@ -102,7 +140,11 @@ export default function init() {
 	});
 
 	editorManager.on("editor-state-changed", updateHistoryButtons);
-	editorManager.on("switch-file", cancelQuickToolsModifierInput);
+	editorManager.on("switch-file", () => {
+		if (adapterWasActive || quickToolsAdapters.has()) cancelAdapterInput();
+		else cancelQuickToolsModifierInput();
+		quickToolsAdapters.sync();
+	});
 
 	appSettings.on("update:quicktoolsItems:after", () => {
 		setTimeout(updateHistoryButtons, 100);
@@ -361,7 +403,7 @@ function oncontextmenu(e) {
 		timeout = setTimeout(dispatchEventWithTimeout, time);
 	};
 
-	if (activeFile.focused) {
+	if (activeFile.focused && !quickToolsAdapters.has()) {
 		focusEditorIfEditable(editor);
 	}
 	dispatchEventWithTimeout();
@@ -413,6 +455,15 @@ function updateQuickToolsState() {
 }
 
 function updateHistoryButtons() {
+	if (quickToolsAdapters.has()) {
+		for (const command of ["undo", "redo"]) {
+			updateHistoryButton(
+				command,
+				!quickToolsAdapters.available({ type: "command", command }),
+			);
+		}
+		return;
+	}
 	const { editor, activeFile } = editorManager;
 	const disabled = !editor || activeFile?.type !== "editor";
 

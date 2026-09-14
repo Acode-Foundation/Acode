@@ -1,25 +1,45 @@
 import "./style.scss";
 import { animate } from "motion";
+import { installIconTooltips } from "./longPress";
 
 let tooltip;
 let rafId = null;
+let animation;
+let icons;
+
+export function initIconTooltips() {
+	icons ||= installIconTooltips(document, showTooltip, hideTooltip);
+	return icons.dismiss;
+}
 
 function createTooltip() {
 	if (tooltip) return tooltip;
 
 	tooltip = document.createElement("div");
 	tooltip.className = "acode-tooltip";
+	tooltip.setAttribute("role", "tooltip");
 	document.body.appendChild(tooltip);
 
 	return tooltip;
 }
 
-export function showTooltip(target, text) {
+export function showTooltip(target, text, description) {
 	if (!target || !text) return;
 
 	const $tooltip = createTooltip();
 
-	$tooltip.textContent = text;
+	animation?.stop();
+	$tooltip.replaceChildren();
+	const label = document.createElement("div");
+	label.textContent = text;
+	$tooltip.append(label);
+	if (description) {
+		const detail = document.createElement("div");
+		detail.className = "acode-tooltip-description";
+		detail.textContent = description;
+		$tooltip.append(detail);
+	}
+	$tooltip.removeAttribute("aria-hidden");
 
 	const rect = target.getBoundingClientRect();
 
@@ -27,18 +47,32 @@ export function showTooltip(target, text) {
 		cancelAnimationFrame(rafId);
 	}
 	rafId = requestAnimationFrame(() => {
+		const viewport = window.visualViewport;
+		const x = viewport?.offsetLeft || 0,
+			y = viewport?.offsetTop || 0;
+		const visibleWidth = viewport?.width || window.innerWidth;
+		const visibleHeight = viewport?.height || window.innerHeight;
+		$tooltip.style.maxWidth = `${Math.max(0, visibleWidth - 16)}px`;
+		$tooltip.style.maxHeight = `${Math.max(0, visibleHeight - 16)}px`;
 		const width = $tooltip.offsetWidth;
 		const height = $tooltip.offsetHeight;
 
 		const left = Math.max(
-			8,
+			x + 8,
 			Math.min(
-				window.innerWidth - width - 8,
+				x + visibleWidth - width - 8,
 				rect.left + rect.width / 2 - width / 2,
 			),
 		);
 
-		const top = Math.max(8, rect.top - height - 10);
+		const above = rect.top - height - 10;
+		const top = Math.max(
+			y + 8,
+			Math.min(
+				y + visibleHeight - height - 8,
+				above >= y + 8 ? above : rect.bottom + 10,
+			),
+		);
 
 		$tooltip.style.left = `${left}px`;
 		$tooltip.style.top = `${top}px`;
@@ -48,7 +82,7 @@ export function showTooltip(target, text) {
 			rafId = null;
 			return;
 		}
-		animate(
+		animation = animate(
 			$tooltip,
 			{
 				opacity: 1,
@@ -64,6 +98,8 @@ export function showTooltip(target, text) {
 
 export function hideTooltip() {
 	if (!tooltip) return;
+	animation?.stop();
+	tooltip.setAttribute("aria-hidden", "true");
 
 	if (rafId !== null) {
 		cancelAnimationFrame(rafId);
@@ -74,7 +110,7 @@ export function hideTooltip() {
 		tooltip.style.transform = "translateY(5px)";
 		return;
 	}
-	animate(
+	animation = animate(
 		tooltip,
 		{
 			opacity: 0,

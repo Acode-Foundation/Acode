@@ -24,6 +24,7 @@ import {
 import { runQuickToolKey } from "cm/quickToolsNavigation";
 import quickTools from "components/quickTools";
 import actionStack from "lib/actionStack";
+import quickToolsAdapters from "lib/quickToolsAdapter";
 import searchHistory from "lib/searchHistory";
 import appSettings from "lib/settings";
 import searchSettings from "settings/searchSettings";
@@ -50,6 +51,74 @@ let activeSearchState = null;
 let searchCloseVisibilityObserver = null;
 /** @type {import("./readOnlyQuickToolsCapture").ReadOnlyQuickToolsCaptureSession<EditorView> | null} */
 let readOnlyCaptureSession = null;
+let adapterCapture = null;
+
+function adapterAction(action, value) {
+	if (action === "insert") return { type: "text", text: String(value ?? "") };
+	if (action === "key") {
+		const event = KeyboardEvent("keydown", getKeys({ keyCode: Number(value) }));
+		return { type: "key", key: event.key, ...getQuickToolsModifierSnapshot() };
+	}
+	if (action === "command" || action === "search")
+		return {
+			type: "command",
+			command: action === "search" ? "find" : String(value),
+		};
+	if (["shift", "ctrl", "alt", "meta"].includes(action))
+		return { type: "modifier", key: action };
+	return null;
+}
+
+function handleAdapterCapture(event) {
+	if (!adapterCapture) return false;
+	if (
+		adapterCapture.target !== editorManager.activeFile ||
+		!quickToolsAdapters.has()
+	) {
+		adapterCapture = null;
+		return true;
+	}
+	const result = captureReadOnlyQuickToolsKey(adapterCapture, {
+		type: event.type,
+		key: event.key,
+		data: event.data,
+		value: quickTools.$input.value,
+		inputType: event.inputType,
+		isComposing: event.isComposing,
+	});
+	adapterCapture = result.session;
+	if (result.outcome.kind === "pass") {
+		if (event.type !== "keydown") return false;
+		if (["Shift", "Control", "Alt", "Meta", "Process"].includes(event.key))
+			return true;
+		quickToolsAdapters.dispatch({
+			type: "key",
+			key: event.key,
+			...adapterCapture.modifiers,
+		});
+	} else if (result.outcome.kind === "key") {
+		const modifiers = adapterCapture.modifiers;
+		const shiftOnly =
+			modifiers.shiftKey &&
+			!modifiers.ctrlKey &&
+			!modifiers.altKey &&
+			!modifiers.metaKey;
+		quickToolsAdapters.dispatch({
+			type: "key",
+			key: shiftOnly
+				? mapQuickToolShiftText(result.outcome.key)
+				: result.outcome.key,
+			...modifiers,
+		});
+	} else {
+		if (result.outcome.kind === "duplicate") event.preventDefault();
+		return true;
+	}
+	if (!event.isComposing) quickTools.$input.value = "";
+	event.preventDefault();
+	clearQuickToolsModifierState();
+	return true;
+}
 
 const state = {
 	shift: false,
@@ -73,14 +142,17 @@ setQuickToolsModifierInputHandler(handleCodeMirrorQuickToolsTextInput);
  */
 
 quickTools.$input.addEventListener("beforeinput", (event) => {
+	if (handleAdapterCapture(event)) return;
 	handleReadOnlyQuickToolsCaptureEvent(event);
 });
 
 quickTools.$input.addEventListener("compositionend", (event) => {
+	if (handleAdapterCapture(event)) return;
 	handleReadOnlyQuickToolsCaptureEvent(event);
 });
 
 quickTools.$input.addEventListener("input", (e) => {
+	if (handleAdapterCapture(e)) return;
 	if (handleReadOnlyQuickToolsCaptureEvent(e)) return;
 	const key = e.target.value.toUpperCase();
 	quickTools.$input.value = "";
@@ -113,6 +185,7 @@ quickTools.$input.addEventListener("input", (e) => {
 });
 
 quickTools.$input.addEventListener("keydown", (e) => {
+	if (handleAdapterCapture(e)) return;
 	if (handleReadOnlyQuickToolsCaptureEvent(e)) return;
 	const { keyCode, key, which } = e;
 	const keyCombination = getKeys({ keyCode, key, which });
@@ -269,6 +342,7 @@ export function clearQuickToolsModifierState({ restoreFocus = false } = {}) {
 }
 
 export function cancelQuickToolsModifierInput() {
+	adapterCapture = null;
 	clearReadOnlyCaptureSession();
 	const changed = clearQuickToolsModifierState();
 	quickTools.$input.value = "";
@@ -290,6 +364,34 @@ export default function actions(action, value) {
 
 	const { editor } = editorManager;
 	const { $input, $replaceInput } = quickTools;
+	const routed = quickToolsAdapters.has() && adapterAction(action, value);
+	if (routed) {
+		if (routed.type === "command" && routed.command === "openCommandPalette")
+			return executeCommand("openCommandPalette", editor);
+		if (!quickToolsAdapters.available(routed)) return false;
+		if (routed.type === "modifier") {
+			quickToolsAdapters.capture();
+			state[action] = !state[action];
+			events[action].forEach((cb) => cb(state[action]));
+			if (Object.values(state).some(Boolean)) {
+				adapterCapture = {
+					target: editorManager.activeFile,
+					modifiers: getQuickToolsModifierSnapshot(),
+					consumed: false,
+				};
+				$input.value = "";
+				$input.focus();
+			} else {
+				cancelQuickToolsModifierInput();
+				quickToolsAdapters.focus();
+			}
+			return state[action];
+		}
+		const handled = quickToolsAdapters.dispatch(routed);
+		if (routed.type !== "key" || !routed.key.startsWith("Arrow"))
+			clearQuickToolsModifierState();
+		return handled;
+	}
 
 	if (Object.keys(state).includes(action)) {
 		setInput();
@@ -736,7 +838,7 @@ function setHeight(height = 1, save = true) {
 	const { editor, activeFile } = editorManager;
 
 	// If active file has hideQuickTools, force height to 0 and don't save
-	if (activeFile?.hideQuickTools) {
+	if (!quickToolsAdapters.visible(activeFile)) {
 		height = 0;
 		save = false;
 	}
@@ -937,6 +1039,10 @@ function getFooterHeight() {
 }
 
 function focusEditor() {
+	if (quickToolsAdapters.has()) {
+		quickToolsAdapters.focus();
+		return;
+	}
 	const { editor, activeFile } = editorManager;
 	if (!activeFile?.focused) {
 		return;
@@ -1047,6 +1153,10 @@ function dismissReadOnlyQuickToolsInput(view) {
 }
 
 function restoreQuickToolsTargetFocus() {
+	if (quickToolsAdapters.has()) {
+		quickToolsAdapters.focus();
+		return;
+	}
 	const codeMirrorView = getCodeMirrorInputView(input);
 	if (codeMirrorView) {
 		if (dismissReadOnlyQuickToolsInput(codeMirrorView)) return;

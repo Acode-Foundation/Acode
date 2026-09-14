@@ -78,7 +78,7 @@ function resolveExactFile(referenceFile) {
 
 export function canSaveFile(file = editorManager.activeFile) {
 	return (
-		file?.type === "editor" &&
+		(file?.type === "editor" || file?.canSave === true) &&
 		typeof file.save === "function" &&
 		typeof file.saveAs === "function"
 	);
@@ -139,8 +139,11 @@ async function closeTabs(files, options = {}) {
 	}
 
 	for (const file of [...closableFiles]) {
-		if (save) {
-			await file.save();
+		if (save && file.isUnsaved) {
+			if (!canSaveFile(file)) return false;
+			const saved = await file.save();
+			if (saved === false || file.hasUnsavedChanges?.() || file.isUnsaved)
+				return false;
 		}
 
 		await file.remove(true, { silentPinned: true });
@@ -206,10 +209,14 @@ export default {
 			strings["save all changes warning"],
 		);
 		if (!doSave) return;
-		editorManager.files.forEach((file) => {
-			file.save();
-			file.isUnsaved = false;
-		});
+		for (const file of [...editorManager.files]) {
+			if (!file.isUnsaved) continue;
+			if (!canSaveFile(file)) return false;
+			const saved = await file.save();
+			if (saved === false || file.hasUnsavedChanges?.() || file.isUnsaved)
+				return false;
+		}
+		return true;
 	},
 	"close-current-tab"() {
 		editorManager.activeFile?.remove();
@@ -493,8 +500,8 @@ export default {
 		try {
 			const { activeFile } = editorManager;
 			if (!canSaveFile(activeFile)) return;
-			await activeFile.save();
-			if (showToast) {
+			const saved = await activeFile.save();
+			if (showToast && (activeFile.type === "editor" || saved === true)) {
 				toast(strings["file saved"]);
 			}
 		} catch (error) {
@@ -505,8 +512,8 @@ export default {
 		try {
 			const { activeFile } = editorManager;
 			if (!canSaveFile(activeFile)) return;
-			await activeFile.saveAs();
-			if (showToast) {
+			const saved = await activeFile.saveAs();
+			if (showToast && (activeFile.type === "editor" || saved === true)) {
 				toast(strings["file saved"]);
 			}
 		} catch (error) {
