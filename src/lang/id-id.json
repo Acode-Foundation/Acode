@@ -877,12 +877,12 @@
 	"plugin-review:error-downvote-comment": "Beri tahu developer apa yang dapat ditingkatkan.",
 	"plugin-review:error-empty": "Tambahkan komentar atau pilih Suka.",
 	"plugin-review:unrated": "Belum dinilai",
-	"wrapped line indent": "Word wrap indentation",
-	"wrap-indent-same": "Same",
-	"wrap-indent-indent": "Indent (+1 level)",
-	"wrap-indent-deep": "Deep indent (+2 levels)",
-	"settings-info-editor-wrapping-indent": "Choose whether wrapped text starts at the left edge, matches the original line's indentation, or is indented further. Each extra level uses your tab size.",
-	"icon pack": "Icon pack",
+	"wrapped line indent": "Indentasi baris terbungkus",
+	"wrap-indent-same": "Sama",
+	"wrap-indent-indent": "Indentasi (+1 level)",
+	"wrap-indent-deep": "Indentasi dalam (+2 level)",
+	"settings-info-editor-wrapping-indent": "Pilih apakah teks terbungkus dimulai dari tepi kiri, mengikuti indentasi baris asli, atau di-indentasi lebih jauh. Setiap level tambahan menggunakan ukuran tab Anda.",
+  "icon pack": "Icon pack",
 	"settings-info-icon-pack": "Choose the icons used for files and folders in the explorer and file lists across the app.",
 	"unavailable": "unavailable"
 }
