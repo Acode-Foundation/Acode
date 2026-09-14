@@ -17,13 +17,18 @@ export function createQuickToolsAdapterRegistry(
 	const notify = (change) => listeners.forEach((listener) => listener(change));
 	const current = () => entries.get(getActiveTab());
 	function cancel(entry) {
-		if (!entry) return;
-		entry.controller.abort();
-		entry.controller = new AbortController();
-		entry.queue = Promise.resolve();
-		entry.pending = 0;
-		entry.selection = undefined;
-		entry.adapter.cancel?.();
+		if (!entry || entry.cancelling) return;
+		entry.cancelling = true;
+		try {
+			entry.controller.abort();
+			entry.controller = new AbortController();
+			entry.queue = Promise.resolve();
+			entry.pending = 0;
+			entry.selection = undefined;
+			entry.adapter.cancel?.();
+		} finally {
+			entry.cancelling = false;
+		}
 	}
 	const valid = (entry, signal) =>
 		!signal.aborted &&
@@ -57,6 +62,7 @@ export function createQuickToolsAdapterRegistry(
 				queue: Promise.resolve(),
 				pending: 0,
 				selection: undefined,
+				cancelling: false,
 			};
 			entries.set(tab, entry);
 			const unsubscribe = adapter.subscribe(() => {

@@ -121,5 +121,28 @@ describe("custom-tab quicktools", () => {
 		expect(signal.aborted).toBe(false);
 		expect(f.adapter.cancel).not.toHaveBeenCalled();
 	});
+	it.each([{ busy: true }, { enabled: false }])("guards cancellation that publishes state %o and permits later cancellation", async (state) => {
+		const f = setup();
+		f.registry.dispatch(insert);
+		await settle();
+		const signal = f.adapter.execute.mock.calls[0][1].signal;
+		f.adapter.cancel.mockImplementation(() => f.state(state));
+		expect(() => f.registry.cancel()).not.toThrow();
+		expect(signal.aborted).toBe(true);
+		expect(f.adapter.cancel).toHaveBeenCalledOnce();
+		f.state({ enabled: true, busy: false });
+		f.registry.dispatch(insert);
+		await settle();
+		expect(f.adapter.execute).toHaveBeenCalledTimes(2);
+		f.registry.cancel();
+		expect(f.adapter.cancel).toHaveBeenCalledTimes(2);
+	});
+	it("releases the cancellation guard if the plugin throws", () => {
+		const f = setup();
+		f.adapter.cancel.mockImplementationOnce(() => { throw Error("plugin failure"); });
+		expect(() => f.registry.cancel()).toThrow("plugin failure");
+		expect(() => f.registry.cancel()).not.toThrow();
+		expect(f.adapter.cancel).toHaveBeenCalledTimes(2);
+	});
 
 });

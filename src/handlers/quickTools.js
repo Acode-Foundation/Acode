@@ -69,10 +69,11 @@ function adapterAction(action, value) {
 	return null;
 }
 
-function finishAdapterCapture() {
+function finishAdapterCapture({ focus = true } = {}) {
 	const restoreFocus =
-		(adapterCapture && !adapterCapture.consumed) ||
-		document.activeElement === quickTools.$input;
+		focus &&
+		((adapterCapture && !adapterCapture.consumed) ||
+			document.activeElement === quickTools.$input);
 	// Blurring may emit composition events synchronously. Keep an inert guard
 	// for those events without leaving the hidden input as the typing target.
 	if (adapterCapture) adapterCapture.consumed = true;
@@ -357,9 +358,11 @@ export function clearQuickToolsModifierState({ restoreFocus = false } = {}) {
 	return changed;
 }
 
-export function cancelQuickToolsModifierInput() {
+export function cancelQuickToolsModifierInput({
+	preserveCapture = false,
+} = {}) {
 	adapterCapture = null;
-	quickToolsAdapters.discardCapture();
+	if (!preserveCapture) quickToolsAdapters.discardCapture();
 	clearReadOnlyCaptureSession();
 	const changed = clearQuickToolsModifierState();
 	quickTools.$input.value = "";
@@ -383,8 +386,18 @@ export default function actions(action, value) {
 	const { $input, $replaceInput } = quickTools;
 	const routed = quickToolsAdapters.has() && adapterAction(action, value);
 	if (routed) {
-		if (routed.type === "command" && routed.command === "openCommandPalette")
-			return executeCommand("openCommandPalette", editor);
+		if (
+			routed.type === "command" &&
+			[
+				"saveFile",
+				"saveFileAs",
+				"saveAllChanges",
+				"openCommandPalette",
+			].includes(routed.command)
+		) {
+			finishAdapterCapture({ focus: false });
+			return executeCommand(routed.command, editor);
+		}
 		if (!quickToolsAdapters.available(routed)) {
 			if (!Object.values(state).some(Boolean))
 				quickToolsAdapters.discardCapture();

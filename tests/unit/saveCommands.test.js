@@ -66,3 +66,46 @@ it.each([false, true, "failure"])("save-and-close keeps edits after an unsuccess
 	expect(file.remove).not.toHaveBeenCalled();
 	expect(file.isUnsaved).toBe(true);
 });
+
+it.each([0, 1, 2])("skips an unsavable dirty tab at position %s while saving eligible tabs", async position => {
+	for (const command of ["save-all-changes", "close-all-tabs"]) {
+		const unsupported = tab("unsupported", "terminal"), one = tab("one"), two = tab("two", "editor");
+		const files = [one, two];
+		files.splice(position, 0, unsupported);
+		const f = setup(files);
+		expect(await f.default[command]()).toBe(false);
+		expect(unsupported.save).not.toHaveBeenCalled();
+		expect(unsupported.remove).not.toHaveBeenCalled();
+		expect(unsupported.isUnsaved).toBe(true);
+		for (const file of [one, two]) {
+			expect(file.save).toHaveBeenCalledOnce();
+			expect(file.isUnsaved).toBe(false);
+			expect(file.remove).toHaveBeenCalledTimes(command === "close-all-tabs" ? 1 : 0);
+		}
+	}
+});
+
+it.each([false, true, "failure"])("still stops after a savable write fails or remains dirty (%s)", async outcome => {
+	for (const command of ["save-all-changes", "close-all-tabs"]) {
+		const unsupported = tab("unsupported", "terminal"), failed = tab("failed"), later = tab("later", "editor");
+		const f = setup([unsupported, failed, later]);
+		if (outcome === "failure") failed.save.mockRejectedValueOnce(Error("disk full"));
+		else failed.save.mockResolvedValueOnce(outcome);
+		const saving = f.default[command]();
+		if (outcome === "failure") await expect(saving).rejects.toThrow("disk full");
+		else expect(await saving).toBe(false);
+		expect(failed.remove).not.toHaveBeenCalled();
+		expect(later.save).not.toHaveBeenCalled();
+		expect(later.remove).not.toHaveBeenCalled();
+	}
+});
+
+it("keeps pinned tabs untouched by save-and-close and reports complete success for eligible tabs", async () => {
+	const pinned = tab("pinned"), file = tab("file");
+	pinned.pinned = true;
+	const f = setup([pinned, file]);
+	expect(await f.default["close-all-tabs"]()).toBe(true);
+	expect(pinned.save).not.toHaveBeenCalled();
+	expect(pinned.remove).not.toHaveBeenCalled();
+	expect(file.remove).toHaveBeenCalledOnce();
+});

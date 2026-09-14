@@ -138,9 +138,13 @@ async function closeTabs(files, options = {}) {
 		}
 	}
 
+	let complete = true;
 	for (const file of [...closableFiles]) {
 		if (save && file.isUnsaved) {
-			if (!canSaveFile(file)) return false;
+			if (!canSaveFile(file)) {
+				complete = false;
+				continue;
+			}
 			const saved = await file.save();
 			if (saved === false || file.hasUnsavedChanges?.() || file.isUnsaved)
 				return false;
@@ -149,7 +153,7 @@ async function closeTabs(files, options = {}) {
 		await file.remove(true, { silentPinned: true });
 	}
 
-	return true;
+	return complete;
 }
 
 export default {
@@ -160,7 +164,7 @@ export default {
 		await runAllTests();
 	},
 	async "close-all-tabs"() {
-		await closeTabs(editorManager.files);
+		return closeTabs(editorManager.files);
 	},
 	/**
 	 * Close every tab shown in the same tab group (pane tab bar) as the
@@ -186,19 +190,19 @@ export default {
 		return closeTabs(files);
 	},
 	async "close-tabs-to-left"(referenceFile) {
-		await closeTabs(
+		return closeTabs(
 			getTabsRelativeToFile("left", referenceFile),
 			getTabCloseSelectionOptions(),
 		);
 	},
 	async "close-tabs-to-right"(referenceFile) {
-		await closeTabs(
+		return closeTabs(
 			getTabsRelativeToFile("right", referenceFile),
 			getTabCloseSelectionOptions(),
 		);
 	},
 	async "close-other-tabs"(referenceFile) {
-		await closeTabs(
+		return closeTabs(
 			getTabsRelativeToFile("others", referenceFile),
 			getTabCloseSelectionOptions(),
 		);
@@ -209,14 +213,18 @@ export default {
 			strings["save all changes warning"],
 		);
 		if (!doSave) return;
+		let complete = true;
 		for (const file of [...editorManager.files]) {
 			if (!file.isUnsaved) continue;
-			if (!canSaveFile(file)) return false;
+			if (!canSaveFile(file)) {
+				complete = false;
+				continue;
+			}
 			const saved = await file.save();
 			if (saved === false || file.hasUnsavedChanges?.() || file.isUnsaved)
 				return false;
 		}
-		return true;
+		return complete;
 	},
 	"close-current-tab"() {
 		editorManager.activeFile?.remove();

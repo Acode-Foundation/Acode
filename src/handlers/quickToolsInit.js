@@ -81,19 +81,18 @@ export default function init() {
 		}
 		updateHistoryButtons();
 	};
-	const cancelAdapterInput = () => {
+	const clearAdapterInput = ({ preserveCapture = false } = {}) => {
 		clearTimeout(timeout);
-		touchcancel();
+		touchcancel(undefined, { preserveCapture });
 		reset();
-		cancelQuickToolsModifierInput();
-		quickToolsAdapters.cancel();
+		cancelQuickToolsModifierInput({ preserveCapture });
 	};
 	quickToolsAdapters.subscribe((change) => {
 		if (change?.cancelled && change.tab === editorManager.activeFile)
-			cancelAdapterInput();
+			clearAdapterInput();
 		refreshAdapter();
 	});
-	watchQuickToolsOverlays(quickToolsAdapters, cancelAdapterInput);
+	watchQuickToolsOverlays(quickToolsAdapters, clearAdapterInput);
 	const capture = () => {
 		discardAdapterCapture();
 		quickToolsAdapters.capture();
@@ -159,7 +158,10 @@ export default function init() {
 
 	editorManager.on("editor-state-changed", updateHistoryButtons);
 	editorManager.on("switch-file", () => {
-		if (adapterWasActive || quickToolsAdapters.has()) cancelAdapterInput();
+		// activeFile already points to the incoming tab. Only sync cancels the
+		// outgoing adapter; UI cleanup must preserve the incoming selection.
+		if (adapterWasActive || quickToolsAdapters.has())
+			clearAdapterInput({ preserveCapture: true });
 		else cancelQuickToolsModifierInput();
 		quickToolsAdapters.sync();
 	});

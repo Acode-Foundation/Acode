@@ -1,10 +1,18 @@
 // @vitest-environment happy-dom
 import { afterEach, expect, it, vi } from "vitest";
+import { loadSourceModule } from "../helpers/loadSourceModule";
 
 function mockQuickTools() {
-	vi.doMock("components/quickTools", () => {
+	vi.doMock("components/quickTools", async () => {
 		const $footer = document.createElement("footer");
 		$footer.innerHTML = `<div><button data-id="search" data-action="search">Search</button><button data-id="move" data-action="command" data-value="movelinesup">Move</button><button data-id="undo">Undo</button><button data-id="redo">Redo</button></div><div></div>`;
+		const { default: items } = await vi.importActual(
+			"components/quickTools/items",
+		);
+		const { id, action, value } = items.find((item) => item.id === "save");
+		const save = document.createElement("button");
+		Object.assign(save.dataset, { id, action, value });
+		$footer.children[0].append(save);
 		return {
 			default: {
 				$footer,
@@ -92,13 +100,15 @@ async function setup(triggerMode = "click") {
 	const { default: actions, key } = await import("handlers/quickTools");
 	const { default: stack } = await import("lib/actionStack");
 	settings.value = { ...settings.value, quickToolsTriggerMode: triggerMode };
-	const switchTab = (tab) => {
+	const switchTab = (tab, beforeNotify = () => {}) => {
 		manager.activeFile = tab;
+		beforeNotify();
 		listeners.get("switch-file").forEach((fn) => fn());
 	};
 	init();
 	vi.runOnlyPendingTimers();
 	return {
+		manager,
 		tools,
 		registry,
 		settings,
@@ -109,6 +119,172 @@ async function setup(triggerMode = "click") {
 		stack,
 	};
 }
+
+// Run the real host command mapping, replacing unrelated editor integrations.
+function hostCommands(manager, exec) {
+	const dependencies = Object.fromEntries(
+		[
+			"fileSystem",
+			"@codemirror/commands",
+			"@codemirror/language",
+			"@codemirror/lint",
+			"@codemirror/lsp-client",
+			"@codemirror/view",
+			"cm/editorReadOnly",
+			"cm/foldAwareLineCommands",
+			"cm/foldingCommands",
+			"cm/lsp",
+			"cm/lsp/references",
+			"components/symbolsPanel",
+			"components/toast",
+			"dialogs/prompt",
+			"handlers/quickTools",
+			"lib/settings",
+			"utils/Url",
+		].map((id) => [id, {}]),
+	);
+	return loadSourceModule(
+		"src/cm/commandRegistry.js",
+		{
+			...dependencies,
+			"@codemirror/state": { Compartment: class {} },
+			"cm/keyBindingUtils": { toCodeMirrorKey: () => null },
+			"lib/keyBindings": {
+				__esModule: true,
+				default: {},
+				APP_KEY_BINDING_NAMES: new Set(),
+				CODEMIRROR_COMMAND_NAMES: new Set(),
+			},
+		},
+		{ editorManager: manager, acode: { exec } },
+	);
+}
+
+it.each([
+	true,
+	false,
+])("routes the stock Save button through the host with canHandle=%s", async (supported) => {
+	const f = await adaptedSetup();
+	f.adapter.canHandle = () => supported;
+	const save = vi.fn();
+	f.manager.activeFile.save = save;
+	const exec = vi.fn(() => f.manager.activeFile.save());
+	const { executeCommand } = await import("cm/commandRegistry");
+	executeCommand.mockImplementation(
+		hostCommands(f.manager, exec).executeCommand,
+	);
+	f.tools.$footer.querySelector('[data-id="save"]').click();
+	await vi.advanceTimersByTimeAsync(0);
+	expect(exec).toHaveBeenCalledExactlyOnceWith("save");
+	expect(save).toHaveBeenCalledOnce();
+	expect(f.adapter.execute).not.toHaveBeenCalled();
+});
+
+it.each([
+	["saveFileAs", "save-as"],
+	["saveAllChanges", "save-all-changes"],
+	["openCommandPalette", "command-palette"],
+])("routes %s outside adapter availability", async (command, host) => {
+	const f = await adaptedSetup();
+	f.setState({ busy: true });
+	f.adapter.canHandle = () => false;
+	const exec = vi.fn();
+	const { executeCommand } = await import("cm/commandRegistry");
+	executeCommand.mockImplementation(
+		hostCommands(f.manager, exec).executeCommand,
+	);
+	expect(f.actions("command", command)).toBe(true);
+	expect(exec).toHaveBeenCalledExactlyOnceWith(host);
+	expect(f.adapter.execute).not.toHaveBeenCalled();
+});
+
+it("finishes capture before host Save without cancelling queued edits or refocusing over a dialog", async () => {
+	const f = await adaptedSetup();
+	f.actions("ctrl");
+	f.actions("key", 39);
+	const { executeCommand } = await import("cm/commandRegistry");
+	const dialogInput = document.createElement("input");
+	executeCommand.mockImplementation(() => {
+		expect(f.key.ctrl).toBe(false);
+		expect(document.activeElement).not.toBe(f.tools.$input);
+		document.body.append(dialogInput);
+		dialogInput.focus();
+		return true;
+	});
+	f.tools.$footer.querySelector('[data-id="save"]').click();
+	f.tools.$input.dispatchEvent(
+		new InputEvent("beforeinput", { data: "s", cancelable: true }),
+	);
+	await vi.advanceTimersByTimeAsync(0);
+	expect(f.adapter.execute).toHaveBeenCalledExactlyOnceWith(
+		expect.objectContaining({ key: "ArrowRight", ctrlKey: true }),
+		expect.any(Object),
+	);
+	expect(f.adapter.cancel).not.toHaveBeenCalled();
+	expect(f.adapter.focus).not.toHaveBeenCalled();
+	expect(document.activeElement).toBe(dialogInput);
+});
+
+it("cancels only outgoing tabs through the switch handler and preserves incoming work and capture", async () => {
+	const f = await adaptedSetup();
+	const first = f.manager.activeFile,
+		second = { type: "docs" },
+		code = { type: "editor" };
+	const next = {
+		...f.adapter,
+		cancel: vi.fn(),
+		execute: vi.fn(),
+		captureSelection: () => 20,
+		restoreSelection: vi.fn(),
+	};
+	cleanups.push(f.registry.register(second, next));
+	f.switchTab(code);
+	expect(f.adapter.cancel).toHaveBeenCalledOnce();
+	f.switchTab(first);
+	expect(f.adapter.cancel).toHaveBeenCalledOnce();
+	f.actions("ctrl");
+	f.switchTab(second, () => {
+		// Earlier switch listeners can enqueue work and capture before quicktools cleanup.
+		f.registry.dispatch({ type: "text", text: "a" });
+		f.registry.capture();
+	});
+	f.registry.dispatch({ type: "text", text: "b" });
+	await vi.advanceTimersByTimeAsync(0);
+	expect(f.key.ctrl).toBe(false);
+	expect(f.adapter.cancel).toHaveBeenCalledTimes(2);
+	expect(next.cancel).not.toHaveBeenCalled();
+	expect(next.execute.mock.calls.map(([action]) => action.text)).toEqual([
+		"a",
+		"b",
+	]);
+	expect(next.restoreSelection).toHaveBeenCalledExactlyOnceWith(20);
+	expect(
+		next.execute.mock.calls.every(([, { signal }]) => !signal.aborted),
+	).toBe(true);
+	f.switchTab(code);
+	expect(next.cancel).toHaveBeenCalledOnce();
+});
+
+it.each([
+	"busy",
+	"disabled",
+	"overlay",
+	"disposal",
+])("does not repeat registry cancellation during %s UI cleanup", async (transition) => {
+	const f = await adaptedSetup();
+	f.actions("ctrl");
+	if (transition === "busy") f.setState({ busy: true });
+	if (transition === "disabled") f.setState({ enabled: false });
+	if (transition === "disposal") f.dispose();
+	if (transition === "overlay") {
+		const overlay = document.createElement("div");
+		overlay.className = "prompt";
+		document.body.append(overlay);
+	}
+	await vi.advanceTimersByTimeAsync(0);
+	expect(f.adapter.cancel).toHaveBeenCalledOnce();
+	expect(f.key.ctrl).toBe(false);
+});
 
 it("keeps stock items and preferences intact through adapter state and tab changes", async () => {
 	const { tools, registry, settings, syncQuickToolsVisibility, switchTab } =
