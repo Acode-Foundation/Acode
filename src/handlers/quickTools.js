@@ -69,6 +69,20 @@ function adapterAction(action, value) {
 	return null;
 }
 
+function finishAdapterCapture() {
+	const restoreFocus =
+		(adapterCapture && !adapterCapture.consumed) ||
+		document.activeElement === quickTools.$input;
+	// Blurring may emit composition events synchronously. Keep an inert guard
+	// for those events without leaving the hidden input as the typing target.
+	if (adapterCapture) adapterCapture.consumed = true;
+	clearQuickToolsModifierState();
+	quickToolsAdapters.discardCapture();
+	quickTools.$input.value = "";
+	quickTools.$input.blur();
+	if (restoreFocus) quickToolsAdapters.focus();
+}
+
 function handleAdapterCapture(event) {
 	if (!adapterCapture) return false;
 	if (
@@ -111,12 +125,14 @@ function handleAdapterCapture(event) {
 			...modifiers,
 		});
 	} else {
-		if (result.outcome.kind === "duplicate") event.preventDefault();
+		if (result.outcome.kind === "duplicate") {
+			quickTools.$input.value = "";
+			event.preventDefault();
+		}
 		return true;
 	}
-	if (!event.isComposing) quickTools.$input.value = "";
 	event.preventDefault();
-	clearQuickToolsModifierState();
+	finishAdapterCapture();
 	return true;
 }
 
@@ -343,6 +359,7 @@ export function clearQuickToolsModifierState({ restoreFocus = false } = {}) {
 
 export function cancelQuickToolsModifierInput() {
 	adapterCapture = null;
+	quickToolsAdapters.discardCapture();
 	clearReadOnlyCaptureSession();
 	const changed = clearQuickToolsModifierState();
 	quickTools.$input.value = "";
@@ -368,7 +385,11 @@ export default function actions(action, value) {
 	if (routed) {
 		if (routed.type === "command" && routed.command === "openCommandPalette")
 			return executeCommand("openCommandPalette", editor);
-		if (!quickToolsAdapters.available(routed)) return false;
+		if (!quickToolsAdapters.available(routed)) {
+			if (!Object.values(state).some(Boolean))
+				quickToolsAdapters.discardCapture();
+			return false;
+		}
 		if (routed.type === "modifier") {
 			quickToolsAdapters.capture();
 			state[action] = !state[action];
@@ -389,7 +410,7 @@ export default function actions(action, value) {
 		}
 		const handled = quickToolsAdapters.dispatch(routed);
 		if (routed.type !== "key" || !routed.key.startsWith("Arrow"))
-			clearQuickToolsModifierState();
+			finishAdapterCapture();
 		return handled;
 	}
 

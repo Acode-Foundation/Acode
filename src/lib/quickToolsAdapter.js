@@ -120,10 +120,18 @@ export function createQuickToolsAdapterRegistry(
 			// Capture failures are reported by dispatch, without an unhandled rejection.
 			entry.selection.catch(() => {});
 		},
+		discardCapture() {
+			// Dispatched actions already own their snapshots. Leave their queue intact.
+			const entry = current();
+			if (entry) entry.selection = undefined;
+		},
 		dispatch(action) {
 			const entry = current();
 			if (!entry) return false;
-			if (!this.available(action)) return true;
+			if (!this.available(action)) {
+				this.discardCapture();
+				return true;
+			}
 			const signal = entry.controller.signal,
 				selection = entry.selection;
 			entry.selection = undefined;

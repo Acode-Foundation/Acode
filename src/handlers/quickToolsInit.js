@@ -4,11 +4,11 @@ import quickTools from "components/quickTools";
 import { description } from "components/quickTools/items";
 import { hideTooltip, showTooltip } from "components/tooltip";
 import config from "lib/config";
-import appSettings from "lib/settings";
-import actions, { cancelQuickToolsModifierInput, key } from "./quickTools";
+import { syncQuickToolsVisibility } from "lib/editorFile";
 import quickToolsAdapters from "lib/quickToolsAdapter";
 import { watchQuickToolsOverlays } from "lib/quickToolsOverlays";
-import { syncQuickToolsVisibility } from "lib/editorFile";
+import appSettings from "lib/settings";
+import actions, { cancelQuickToolsModifierInput, key } from "./quickTools";
 
 const CONTEXT_MENU_TIMEOUT = 500;
 const MOVE_X_THRESHOLD = 50;
@@ -53,6 +53,12 @@ function clearTouchFeedback() {
 	}
 }
 
+function discardAdapterCapture() {
+	// Modifier sequences keep their selection until a key is dispatched.
+	if (!key.shift && !key.ctrl && !key.alt && !key.meta)
+		quickToolsAdapters.discardCapture();
+}
+
 /**
  * Initialize quick tools
  * @param {HTMLElement} $footer
@@ -88,12 +94,24 @@ export default function init() {
 		refreshAdapter();
 	});
 	watchQuickToolsOverlays(quickToolsAdapters, cancelAdapterInput);
-	$footer.addEventListener(
-		"pointerdown",
-		() => quickToolsAdapters.capture(),
-		true,
-	);
-	$footer.addEventListener("keydown", () => quickToolsAdapters.capture(), true);
+	const capture = () => {
+		discardAdapterCapture();
+		quickToolsAdapters.capture();
+	};
+	$footer.addEventListener("pointerdown", capture, true);
+	$footer.addEventListener("keydown", capture, true);
+	$footer.addEventListener("pointercancel", discardAdapterCapture, true);
+	$footer.addEventListener("scroll", discardAdapterCapture, true);
+	const leaveQuickTools = (event) => {
+		if (!quickToolsAdapters.has()) return;
+		const path = event.composedPath();
+		if (path.includes($footer) || path.includes($input)) return;
+		quickToolsAdapters.discardCapture();
+		if (key.shift || key.ctrl || key.alt || key.meta)
+			cancelQuickToolsModifierInput();
+	};
+	document.addEventListener("pointerdown", leaveQuickTools, true);
+	document.addEventListener("focusin", leaveQuickTools, true);
 
 	$toggler.addEventListener("click", (e) => {
 		e.preventDefault();
@@ -189,6 +207,7 @@ export default function init() {
 
 function onwheel(e) {
 	e.preventDefault();
+	discardAdapterCapture();
 	const $el = e.target;
 	const { $row1, $row2 } = quickTools;
 	let $row;
@@ -208,6 +227,7 @@ function onclick(e) {
 	reset();
 
 	if (e.target.disabled) {
+		discardAdapterCapture();
 		e.preventDefault();
 		e.stopPropagation();
 		return;
@@ -344,11 +364,10 @@ function touchend(e) {
 		}
 
 		$row.scrollLeft = scroll;
-		touchcancel(e);
-
-		if ($el === $touchstart && performance.now() - startTime < 100) {
-			click($el);
-		}
+		const shouldClick =
+			$el === $touchstart && performance.now() - startTime < 100;
+		touchcancel(e, { preserveCapture: shouldClick });
+		if (shouldClick) click($el);
 		return;
 	}
 
@@ -357,7 +376,7 @@ function touchend(e) {
 		return;
 	}
 
-	touchcancel(e);
+	touchcancel(e, { preserveCapture: true });
 	click($el);
 }
 
@@ -365,7 +384,7 @@ function touchend(e) {
  *
  * @param {TouchEvent} e
  */
-function touchcancel(e) {
+function touchcancel(e, { preserveCapture = false } = {}) {
 	document.removeEventListener("keyup", touchcancel);
 	document.removeEventListener("touchend", touchend);
 	document.removeEventListener("touchcancel", touchcancel);
@@ -374,6 +393,7 @@ function touchcancel(e) {
 	clearTimeout(contextmenuTimeout);
 	clearTouchFeedback();
 	hideTooltip();
+	if (!preserveCapture) discardAdapterCapture();
 }
 
 /**
@@ -414,7 +434,10 @@ function oncontextmenu(e) {
  * @param {HTMLElement} $el
  */
 function click($el) {
-	if ($el.disabled) return;
+	if ($el.disabled) {
+		discardAdapterCapture();
+		return;
+	}
 
 	$el.classList.add("click");
 	clearTimeout($el.dataset.timeout);
@@ -427,7 +450,10 @@ function click($el) {
 	}
 
 	const { action } = $el.dataset;
-	if (!action) return;
+	if (!action) {
+		discardAdapterCapture();
+		return;
+	}
 
 	let { value } = $el.dataset;
 
@@ -435,7 +461,11 @@ function click($el) {
 		value = $el.value;
 	}
 
-	actions(action, value);
+	try {
+		actions(action, value);
+	} finally {
+		discardAdapterCapture();
+	}
 }
 
 function scheduleUpdateQuickToolsState() {

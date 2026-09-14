@@ -103,5 +103,23 @@ describe("custom-tab quicktools", () => {
 		f.registry.focus(); f.registry.cancel(); await settle();
 		expect(f.adapter.focus).not.toHaveBeenCalled();
 	});
+	it("discards unused captures without cancelling an already queued edit", async () => {
+		const f = setup(); let finish, caret = 3;
+		f.adapter.captureSelection.mockImplementation(() => caret);
+		f.adapter.restoreSelection.mockImplementation(value => { caret = value; });
+		f.adapter.execute.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+		f.registry.capture(); f.registry.dispatch(insert);
+		await settle();
+		const signal = f.adapter.execute.mock.calls[0][1].signal;
+		f.registry.capture(); f.registry.discardCapture();
+		finish(); await settle();
+		caret = 20;
+		f.registry.capture(); f.registry.dispatch(insert);
+		await settle();
+		expect(f.adapter.restoreSelection.mock.calls).toEqual([[3], [20]]);
+		expect(f.adapter.execute).toHaveBeenCalledTimes(2);
+		expect(signal.aborted).toBe(false);
+		expect(f.adapter.cancel).not.toHaveBeenCalled();
+	});
 
 });

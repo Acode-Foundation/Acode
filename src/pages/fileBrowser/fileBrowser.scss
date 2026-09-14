@@ -3,20 +3,20 @@
     display: none;
   }
 
-  .tile {
-    > .icon:first-child {
-      --file-icon-size: 24px;
-      font-size: var(--file-icon-size);
-      background-size: var(--file-icon-size);
-      background-position: center;
+  #list .tile > .icon:first-child {
+    --file-icon-size: 24px;
+    font-size: var(--file-icon-size);
+    background-size: var(--file-icon-size);
+    background-position: center;
 
-      > svg, > img {
-        width: var(--file-icon-size);
-        height: var(--file-icon-size);
-        object-fit: contain;
-      }
+    > svg, > img {
+      width: var(--file-icon-size);
+      height: var(--file-icon-size);
+      object-fit: contain;
     }
+  }
 
+  .tile {
     &[data-storage-type="notification"] {
       background-color: rgb(153, 153, 255);
       background-color: var(--primary-color);
