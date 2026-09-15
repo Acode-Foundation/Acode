@@ -31,6 +31,7 @@ function setup() {
 		"./saveFile": write,
 	}, { document, window, tag, editorManager: manager });
 	EditorFile.prototype.setMode = vi.fn(); // Language setup is unrelated to save routing.
+	EditorFile.prototype.writeToCache = vi.fn(async () => {});
 	const file = (type = "docs") => new EditorFile("test.txt", {
 		id: String(manager.files.length), type, content: document.createElement("div"), render: false, text: "original",
 	});
@@ -93,7 +94,7 @@ it("preserves text fallback and existing cancellation/listener ordering", async 
 	file.flushCacheWrite = vi.fn(async () => {});
 	expect(file.canSave).toBe(true);
 	await file.saveAs();
-	expect(f.write).toHaveBeenCalledWith(file, true);
+	expect(f.write).toHaveBeenCalledWith(file, true, { automatic: false, savedDoc: file.session.doc });
 	const cancel = e => e.preventDefault(), observe = vi.fn();
 	file.onsave = cancel;
 	file.on("save", observe);

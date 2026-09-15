@@ -13,8 +13,8 @@ function setup(files) {
 	return { ...module, manager, toast, error };
 }
 function tab(id, type = "docs") {
-	const file = { id, type, canSave: type === "docs", isUnsaved: true, remove: vi.fn(async () => true) };
-	file.save = vi.fn(async () => { file.isUnsaved = false; return type === "editor" ? [undefined, undefined] : true; });
+	const file = { id, type, canSave: type === "docs" || type === "editor", isUnsaved: true, remove: vi.fn(async () => true) };
+	file.save = vi.fn(async () => { file.isUnsaved = false; return true; });
 	file.saveAs = vi.fn(async () => true);
 	file.hasUnsavedChanges = () => file.isUnsaved;
 	return file;
@@ -38,6 +38,16 @@ it("does not report custom-tab success on cancellation or failure", async () => 
 	await f.default.save(true); await f.default.save(true);
 	expect(f.toast).not.toHaveBeenCalled(); expect(f.error).toHaveBeenCalledOnce();
 	await f.default.save(true); expect(f.toast).toHaveBeenCalledOnce();
+});
+it("does not save pending editors or report a cancelled editor save as successful", async () => {
+	const file = tab("pending", "editor"), f = setup([file]);
+	file.canSave = false;
+	await f.default.save(true); await f.default["save-as"](true);
+	expect(file.save).not.toHaveBeenCalled(); expect(file.saveAs).not.toHaveBeenCalled();
+	file.canSave = true;
+	file.save.mockResolvedValue(false); file.saveAs.mockResolvedValue(false);
+	await f.default.save(true); await f.default["save-as"](true);
+	expect(f.toast).not.toHaveBeenCalled();
 });
 it("saves sequentially without clearing flags and stops at cancellation or newer edits", async () => {
 	const one = tab("one"), two = tab("two"), code = tab("code", "editor");
@@ -67,11 +77,11 @@ it.each([false, true, "failure"])("save-and-close keeps edits after an unsuccess
 	expect(file.isUnsaved).toBe(true);
 });
 
-it.each([0, 1, 2])("skips an unsavable dirty tab at position %s while saving eligible tabs", async position => {
+it.each(["terminal", "editor"])("skips an unsavable dirty %s while saving eligible tabs", async type => {
 	for (const command of ["save-all-changes", "close-all-tabs"]) {
-		const unsupported = tab("unsupported", "terminal"), one = tab("one"), two = tab("two", "editor");
-		const files = [one, two];
-		files.splice(position, 0, unsupported);
+		const unsupported = tab("unsupported", type), one = tab("one"), two = tab("two", "editor");
+		unsupported.canSave = false;
+		const files = [unsupported, one, two];
 		const f = setup(files);
 		expect(await f.default[command]()).toBe(false);
 		expect(unsupported.save).not.toHaveBeenCalled();

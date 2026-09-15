@@ -98,7 +98,7 @@ import SideButton, { sideButtonContainer } from "components/sideButton";
 import keyboardHandler, { keydownState } from "handlers/keyboard";
 import { animate } from "motion";
 import config from "./config";
-import EditorFile from "./editorFile";
+import EditorFile, { AUTO_SAVE } from "./editorFile";
 import openFile from "./openFile";
 import { addedFolder } from "./openFolder";
 import appSettings from "./settings";
@@ -3706,7 +3706,7 @@ async function EditorManager($header, $body) {
 				if (file.uri && file.isUnsaved && autosave) {
 					timers.autosaveTimeout = setTimeout(() => {
 						timers.autosaveTimeout = null;
-						file.save()?.catch?.((error) => {
+						file.save(AUTO_SAVE)?.catch?.((error) => {
 							warnRecoverable(
 								`Failed to autosave ${file.filename || file.uri}`,
 								error,

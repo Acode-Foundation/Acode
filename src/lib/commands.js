@@ -79,6 +79,7 @@ function resolveExactFile(referenceFile) {
 export function canSaveFile(file = editorManager.activeFile) {
 	return (
 		(file?.type === "editor" || file?.canSave === true) &&
+		file.canSave !== false &&
 		typeof file.save === "function" &&
 		typeof file.saveAs === "function"
 	);
@@ -509,7 +510,7 @@ export default {
 			const { activeFile } = editorManager;
 			if (!canSaveFile(activeFile)) return;
 			const saved = await activeFile.save();
-			if (showToast && (activeFile.type === "editor" || saved === true)) {
+			if (showToast && saved === true) {
 				toast(strings["file saved"]);
 			}
 		} catch (error) {
@@ -521,7 +522,7 @@ export default {
 			const { activeFile } = editorManager;
 			if (!canSaveFile(activeFile)) return;
 			const saved = await activeFile.saveAs();
-			if (showToast && (activeFile.type === "editor" || saved === true)) {
+			if (showToast && saved === true) {
 				toast(strings["file saved"]);
 			}
 		} catch (error) {

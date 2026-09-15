@@ -2,7 +2,12 @@
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
 import { parse } from "@babel/parser";
-import { Compartment, EditorSelection, EditorState } from "@codemirror/state";
+import {
+	Compartment,
+	EditorSelection,
+	EditorState,
+	Text,
+} from "@codemirror/state";
 import { EditorView, placeholder } from "@codemirror/view";
 import {
 	blurEditorIfReadOnly,
@@ -31,18 +36,24 @@ const managerBody = parse(managerSource, {
 function setup() {
 	vi.useFakeTimers();
 	const cache = new Map([["file:///local.js", "local content"]]);
-	const read = vi.fn(async (uri) => cache.get(uri));
+	const read = vi.fn(async (uri, encoding) => {
+		const value = cache.get(uri);
+		return ArrayBuffer.isView(value)
+			? new TextDecoder(encoding).decode(value)
+			: value;
+	});
 	const write = vi.fn(async (uri, text) => cache.set(uri, text));
+	const stat = vi.fn(async () => ({}));
 	const remote = {
 		exists: async () => true,
-		stat: async () => ({}),
+		stat,
 		readFile: vi.fn(async () => "remote content"),
 	};
 	const remoteFactory = vi.fn(() => remote);
 	const localFs = (uri) => ({
 		exists: async () => cache.has(uri),
 		readFile: (encoding) => read(uri, encoding),
-		stat: async () => ({}),
+		stat,
 		writeFile: (text) => write(uri, text),
 		createFile: (name, text) => write(`${uri}/${name}`, text),
 		delete: async () => cache.delete(uri),
@@ -76,6 +87,7 @@ function setup() {
 	const { default: fs, onProviderRegistered } = filesystem;
 	const settings = { value: {}, on: vi.fn(), off: vi.fn() };
 	const manager = {
+		TIMEOUT_VALUE: 0,
 		files: [],
 		activeFile: null,
 		header: {},
@@ -96,9 +108,12 @@ function setup() {
 	);
 	const toast = vi.fn(),
 		log = vi.fn();
+	const confirm = vi.fn(async () => false);
+	const error = vi.fn();
 	const helpers = {
 		normalizeMtime: (value) => value ?? null,
-		getStatMtime: () => null,
+		getStatMtime: (value) => value?.modifiedDate ?? null,
+		error,
 		getIconForFile: () => "file",
 		getVirtualPath: (value) => value,
 		fixFilename: (value) => value,
@@ -110,11 +125,16 @@ function setup() {
 		"src/lib/saveFile.js",
 		{
 			fileSystem: filesystem,
+			"@codemirror/state": { Text },
 			"cm/editorUtils": { getDocText: (doc) => doc.toString() },
 			"components/toast": toast,
+			"dialogs/confirm": confirm,
 			"dialogs/prompt": async () => "",
 			"dialogs/select": {},
-			"lib/recents": { select: selectLocation },
+			"lib/recents": {
+				select: selectLocation,
+				addFolder: vi.fn(),
+			},
 			"pages/fileBrowser": {},
 			"utils/helpers": helpers,
 			"utils/Url": url,
@@ -142,7 +162,7 @@ function setup() {
 			"lib/quickToolsAdapter",
 		].map((id) => [id, {}]),
 	);
-	const { default: EditorFile } = loadSourceModule(
+	const { default: EditorFile, AUTO_SAVE } = loadSourceModule(
 		"src/lib/editorFile.js",
 		{
 			...unused,
@@ -188,6 +208,10 @@ function setup() {
 		{ fileSystem: filesystem, "./editorFile": EditorFile },
 	);
 	return {
+		AUTO_SAVE,
+		confirm,
+		error,
+		stat,
 		cache,
 		read,
 		write,
@@ -259,7 +283,7 @@ it("restores populated and empty recovery caches as usable documents for every f
 			expect(file[key]).toBe(record[key]);
 		expect(file.lastScrollTop).toBe(120);
 		expect(file.canSave).toBe(true);
-		expect(f.read).toHaveBeenCalledWith(file.cacheFile, "utf-16le");
+		expect(f.read).toHaveBeenCalledWith(file.cacheFile, "utf-8");
 	}
 	const github = f.manager.activeFile;
 	await github.save();
@@ -271,6 +295,9 @@ it("restores populated and empty recovery caches as usable documents for every f
 	await github.writeToCache();
 	expect(f.cache.get(github.cacheFile)).toBe("new offline edit");
 	expect(github.isUnsaved).toBe(true);
+	await vi.advanceTimersByTimeAsync(65000);
+	expect(github.tab).not.toBeNull();
+	expect(f.cache.get(github.cacheFile)).toBe("new offline edit");
 	f.fs.extend((uri) => /^(gh|plugin):/.test(uri), f.remoteFactory);
 	await vi.runAllTimersAsync();
 	expect(f.remoteFactory).not.toHaveBeenCalled();
@@ -304,6 +331,8 @@ it("keeps uncached tabs idle, then resumes only matching open files without bloc
 		{ id: "closing", filename: "closing.js", uri: "custom://closing" },
 	]);
 	const [pending, closed, missing, local, http, closing] = f.manager.files;
+	await local.flushCacheWrite();
+	f.write.mockClear();
 	expect(local.session.doc.toString()).toBe("local content");
 	expect(http.loading).toBe(true);
 	const firstAttempt = pending.load();
@@ -340,9 +369,230 @@ it("keeps uncached tabs idle, then resumes only matching open files without bloc
 	expect(f.manager.activeFile).toBe(local);
 	expect(missing.loaded).toBe(false);
 	expect(missing.loading).toBe(false);
-	expect(f.cache.has(pending.cacheFile)).toBe(false);
+	await pending.flushCacheWrite();
+	expect(f.cache.get(pending.cacheFile)).toBe("remote content");
 	expect(f.toast).not.toHaveBeenCalled();
 	expect(f.log).not.toHaveBeenCalled();
+});
+
+it("caches unchanged and empty documents from both opening paths, then restores without source reads", async () => {
+	for (const supplied of [false, true]) {
+		for (const text of ["café", ""]) {
+			const f = setup();
+			f.cache.set("file:///local.js", text);
+			const record = {
+				id: "initial",
+				uri: "file:///local.js",
+				filename: "local.js",
+				encoding: "utf-16le",
+				isUnsaved: false,
+			};
+			await f.restoreFiles([{ ...record, ...(supplied ? { text } : {}) }]);
+			const file = f.manager.files[0];
+			await file.flushCacheWrite();
+			expect(f.cache.get(file.cacheFile)).toBe(text);
+			expect(file.isUnsaved).toBe(false);
+			await file.flushCacheWrite();
+			expect(f.write).toHaveBeenCalledOnce();
+			// Recovery bytes are UTF-8 even when the original file uses UTF-16.
+			const reopened = setup();
+			reopened.cache.set(file.cacheFile, new TextEncoder().encode(text));
+			await reopened.restoreFiles([record]);
+			const restored = reopened.manager.files[0];
+			expect(restored.session.doc.toString()).toBe(text);
+			expect(restored.encoding).toBe("utf-16le");
+			expect(reopened.read.mock.calls.map(([uri]) => uri)).toEqual([
+				file.cacheFile,
+			]);
+			expect(reopened.write).not.toHaveBeenCalled();
+		}
+	}
+});
+
+it("retries a failed initial cache write and removes an in-flight cache when its tab closes", async () => {
+	const f = setup();
+	f.write.mockRejectedValueOnce(Error("disk full"));
+	await f.restoreFiles([
+		{ id: "retry", uri: "file:///local.js", filename: "local.js" },
+	]);
+	await vi.runAllTimersAsync();
+	const file = f.manager.files[0];
+	expect(f.cache.has(file.cacheFile)).toBe(false);
+	expect(file.cacheVersion).not.toBe(file.docVersion);
+	await file.flushCacheWrite();
+	expect(f.cache.get(file.cacheFile)).toBe("local content");
+	let finish;
+	f.write.mockImplementationOnce(
+		(uri, text) =>
+			new Promise((resolve) => {
+				finish = () => {
+					f.cache.set(uri, text);
+					resolve();
+				};
+			}),
+	);
+	file.session.setValue("new edit");
+	const writing = file.flushCacheWrite();
+	await vi.waitFor(() => expect(finish).toBeTypeOf("function"));
+	await file.remove(true);
+	finish();
+	await writing;
+	await vi.runAllTimersAsync();
+	expect(f.cache.has(file.cacheFile)).toBe(false);
+	expect(file.session).toBeNull();
+});
+
+it("checks a clean cache before saving, cancels safely, and shares overlapping overwrite requests", async () => {
+	const f = setup();
+	f.cache.set("file:///cache/stale", "old text");
+	f.cache.set("file:///local.js", "external changes");
+	await f.restoreFiles([
+		{
+			id: "stale",
+			uri: "file:///local.js",
+			filename: "local.js",
+			isUnsaved: false,
+		},
+	]);
+	const file = f.manager.files[0];
+	expect(await file.save()).toBe(false);
+	expect(f.cache.get(file.uri)).toBe("external changes");
+	expect(f.cache.get(file.cacheFile)).toBe("old text");
+	expect(file.hasDiskConflict).toBe(true);
+	expect(file.isSaving).toBe(false);
+	f.confirm.mockClear();
+	expect(await file.save(f.AUTO_SAVE)).toBe(false);
+	expect(f.confirm).not.toHaveBeenCalled();
+	let approve;
+	f.confirm.mockImplementationOnce(
+		() =>
+			new Promise((resolve) => {
+				approve = resolve;
+			}),
+	);
+	const saving = file.save();
+	expect(file.save()).toBe(saving);
+	await vi.waitFor(() => expect(approve).toBeTypeOf("function"));
+	approve(true);
+	expect(await saving).toBe(true);
+	expect(f.confirm).toHaveBeenCalledOnce();
+	expect(f.cache.get(file.uri)).toBe("old text");
+	expect(file.isUnsaved).toBe(false);
+	expect(file.hasDiskConflict).toBe(false);
+});
+
+it("verifies dirty recovery metadata and preserves unverifiable edits", async () => {
+	for (const mtime of [10, 20, null]) {
+		const f = setup();
+		f.stat.mockResolvedValue({ modifiedDate: mtime });
+		f.cache.set("file:///cache/dirty", "recovered edits");
+		await f.restoreFiles([
+			{
+				id: "dirty",
+				uri: "file:///local.js",
+				filename: "local.js",
+				isUnsaved: true,
+				savedMtime: 10,
+			},
+		]);
+		const file = f.manager.files[0];
+		expect(await file.save()).toBe(mtime === 10);
+		expect(f.confirm).toHaveBeenCalledTimes(mtime === 10 ? 0 : 1);
+		expect(f.cache.get(file.uri)).toBe(
+			mtime === 10 ? "recovered edits" : "local content",
+		);
+		expect(f.cache.get(file.cacheFile)).toBe("recovered edits");
+	}
+});
+
+it("allows unchanged-source edits and stops failed or obsolete source verification", async () => {
+	const f = setup();
+	f.cache.set("file:///local.js", "local\r\ncontent");
+	await f.restoreFiles([
+		{ id: "safe", uri: "file:///local.js", filename: "local.js" },
+	]);
+	const file = f.manager.files[0];
+	await file.flushCacheWrite();
+	file.session.setValue("my edit");
+	expect(await file.save(f.AUTO_SAVE)).toBe(true);
+	expect(f.confirm).not.toHaveBeenCalled();
+	expect(f.cache.get(file.uri)).toBe("my edit");
+	f.read.mockRejectedValueOnce(Error("offline"));
+	expect(await file.save()).toBe(false);
+	expect(f.error).toHaveBeenCalledOnce();
+	let finish;
+	f.read.mockImplementationOnce(
+		() =>
+			new Promise((resolve) => {
+				finish = resolve;
+			}),
+	);
+	const saving = file.save();
+	await vi.waitFor(() => expect(finish).toBeTypeOf("function"));
+	await file.remove(true);
+	const writes = f.write.mock.calls.length;
+	finish("my edit");
+	expect(await saving).toBe(false);
+	expect(f.write).toHaveBeenCalledTimes(writes);
+	await vi.runAllTimersAsync();
+	expect(f.cache.has(file.cacheFile)).toBe(false);
+});
+
+it("continues resume checks past unavailable, failing, and read-only HTTP providers", async () => {
+	const f = setup();
+	f.cache.set("file:///cache/offline", "cached");
+	f.cache.set("file:///cache/broken", "cached");
+	f.cache.set("file:///cache/http", "remote content");
+	await f.restoreFiles([
+		{
+			id: "local",
+			uri: "file:///local.js",
+			filename: "local.js",
+			encoding: "utf-8",
+		},
+		{
+			id: "http",
+			uri: "https://example/file",
+			filename: "file",
+			readOnly: true,
+		},
+		{ id: "broken", uri: "broken://file", filename: "file" },
+		{
+			id: "offline",
+			uri: "disabled://file",
+			filename: "file",
+			isUnsaved: true,
+		},
+		{ id: "pending", uri: "disabled://pending", filename: "pending" },
+	]);
+	await Promise.all(f.manager.files.map((file) => file.load()));
+	f.fs.extend(
+		(uri) => uri.startsWith("broken:"),
+		() => ({
+			exists: async () => {
+				throw Error("offline");
+			},
+		}),
+	);
+	const warn = vi.fn();
+	const { default: checkFiles } = loadSourceModule(
+		"src/lib/checkFiles.js",
+		{
+			fileSystem: f.fs,
+			"@codemirror/state": { Text },
+			"dialogs/alert": vi.fn(),
+			"dialogs/confirm": f.confirm,
+			"utils/helpers": { getStatMtime: () => null },
+		},
+		{ editorManager: f.manager, strings: {}, console: { warn } },
+	);
+	f.read.mockClear();
+	await checkFiles();
+	expect(warn).toHaveBeenCalledOnce();
+	expect(f.read).toHaveBeenCalledWith("file:///local.js", "utf-8");
+	expect(f.confirm).not.toHaveBeenCalled();
+	expect(f.cache.get("file:///cache/offline")).toBe("cached");
+	expect(f.manager.files.every((file) => file.tab)).toBe(true);
 });
 
 it.each(["cached text", "", undefined])(
