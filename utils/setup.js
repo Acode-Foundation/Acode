@@ -1,7 +1,8 @@
 // setup acode for the first time
-// 1. install dependencies
-// 2. add cordova platform android@10.2
-// 3. install cordova plugins
+// 1. initialize git submodules (codemirror-lsp-client)
+// 2. install dependencies
+// 3. add cordova platform android@10.2
+// 4. install cordova plugins
 // cordova-plugin-buildinfo
 // cordova-plugin-device
 // cordova-plugin-file
@@ -14,6 +15,7 @@ const PLATFORM_FILES = [".DS_Store"];
 const PACKAGE_MANAGERS = new Set(["bun", "npm", "pnpm", "yarn"]);
 const ID_PAID = "com.foxdebug.acode";
 const ADMOB_PLUGIN_DIR = "admob";
+const LSP_CLIENT_DIR = "codemirror-lsp-client";
 
 function isPaidVersion() {
 	const configPath = path.join(__dirname, "../config.xml");
@@ -60,6 +62,29 @@ function installDependencies() {
 	}
 }
 
+function initSubmodules() {
+	const submodulePath = path.join(__dirname, "..", LSP_CLIENT_DIR);
+
+	try {
+		execSync("git submodule update --init --recursive", { stdio: "inherit" });
+	} catch (error) {
+		// Not a git checkout (e.g. source archive) but the sources are already
+		// there, so the local "file:" dependency can still be installed.
+		if (fs.existsSync(path.join(submodulePath, "package.json"))) {
+			console.warn(
+				`Failed to update git submodules. Using the existing ${LSP_CLIENT_DIR} checkout.`,
+			);
+			return;
+		}
+
+		throw new Error(
+			`Unable to initialize the ${LSP_CLIENT_DIR} submodule. Run "git submodule update --init --recursive" manually and try again.`,
+			{ cause: error },
+		);
+	}
+}
+
+initSubmodules();
 installDependencies();
 try {
 	execSync("cordova platform add android", { stdio: "inherit" });
