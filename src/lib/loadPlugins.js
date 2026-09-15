@@ -37,10 +37,6 @@ const PLUGIN_LOAD_TIMEOUT = 15000;
 const PLUGIN_DISABLE_TIMEOUT = 60000;
 let pluginDisabledUpdateQueue = Promise.resolve();
 let initialPluginLoadComplete = false;
-let resolveInitialPluginLoad;
-const initialPluginLoad = new Promise((resolve) => {
-	resolveInitialPluginLoad = resolve;
-});
 
 class PluginLoadTimeoutError extends Error {
 	constructor() {
@@ -50,6 +46,10 @@ class PluginLoadTimeoutError extends Error {
 }
 
 export default async function loadPlugins(loadOnlyTheme = false) {
+	if (!loadOnlyTheme) {
+		initialPluginLoadComplete = false;
+	}
+
 	try {
 		const plugins = await fsOperation(PLUGIN_DIR).lsDir();
 		const results = [];
@@ -118,17 +118,12 @@ export default async function loadPlugins(loadOnlyTheme = false) {
 	} finally {
 		if (!loadOnlyTheme) {
 			initialPluginLoadComplete = true;
-			resolveInitialPluginLoad();
 		}
 	}
 }
 
 export function isInitialPluginLoadComplete() {
 	return initialPluginLoadComplete;
-}
-
-export function waitForInitialPluginLoad() {
-	return initialPluginLoad;
 }
 
 export async function loadPluginWithTimeout(pluginId, justInstalled = false) {

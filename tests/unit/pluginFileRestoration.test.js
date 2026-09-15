@@ -19,77 +19,112 @@ afterEach(() => {
 	document.body.replaceChildren();
 });
 
-it("waits for the provider without blocking local files, losing recovery data, or reviving closed tabs", async () => {
+const managerSource = readFileSync("src/lib/editorManager.js", "utf8");
+const managerBody = parse(managerSource, {
+	sourceType: "module",
+	plugins: ["jsx"],
+}).program.body.find(
+	(node) =>
+		node.type === "FunctionDeclaration" && node.id.name === "EditorManager",
+).body.body;
+
+function setup() {
 	vi.useFakeTimers();
-	let finishPluginLoad;
-	const ready = new Promise((resolve) => {
-		finishPluginLoad = resolve;
-	});
-	let registered = false;
-	const cache = new Map([
-		["file:///local.js", "local content"],
-		["file:///cache/repo", "unsaved edit"],
-	]);
-	const write = vi.fn();
+	const cache = new Map([["file:///local.js", "local content"]]);
+	const read = vi.fn(async (uri) => cache.get(uri));
+	const write = vi.fn(async (uri, text) => cache.set(uri, text));
 	const remote = {
 		exists: async () => true,
 		stat: async () => ({}),
 		readFile: vi.fn(async () => "remote content"),
 	};
-	const fs = (uri) =>
-		uri.startsWith("gh:")
-			? registered
-				? remote
-				: undefined
-			: {
-					exists: async () => cache.has(uri),
-					readFile: async () => cache.get(uri),
-					stat: async () => ({}),
-					writeFile: write,
-					createFile: write,
-					delete: async () => cache.delete(uri),
-					lsDir: async () => [{ url: "file:///plugins/github" }],
-				};
-	fs.hasProvider = (uri) => !uri.startsWith("gh:") || registered;
+	const remoteFactory = vi.fn(() => remote);
+	const localFs = (uri) => ({
+		exists: async () => cache.has(uri),
+		readFile: (encoding) => read(uri, encoding),
+		stat: async () => ({}),
+		writeFile: (text) => write(uri, text),
+		createFile: (name, text) => write(`${uri}/${name}`, text),
+		delete: async () => cache.delete(uri),
+	});
 	const url = {
 		join: (...parts) => parts.join("/"),
 		basename: (value) => value.split("/").at(-1),
 		getProtocol: (value) => `${value.split(":")[0]}:`,
 	};
+	const filesystem = loadSourceModule("src/fileSystem/index.js", {
+		"lib/ajax": { get: remote.readFile },
+		"utils/encodings": { decode: (value) => value },
+		"utils/Url": url,
+		"./internalFs": {
+			test: (uri) => uri.startsWith("file:"),
+			createFs: localFs,
+		},
+		"./externalFs": {
+			test: (uri) => uri.startsWith("content:"),
+			createFs: localFs,
+		},
+		"./ftp": {
+			test: (uri) => uri.startsWith("ftp:"),
+			fromUrl: remoteFactory,
+		},
+		"./sftp": {
+			test: (uri) => uri.startsWith("sftp:"),
+			fromUrl: remoteFactory,
+		},
+	});
+	const { default: fs, onProviderRegistered } = filesystem;
 	const settings = { value: {}, on: vi.fn(), off: vi.fn() };
-	const acode = {};
-	const plugins = loadSourceModule(
-		"src/lib/loadPlugins.js",
-		{
-			"../fileSystem": fs,
-			"../utils/Url": url,
-			"./settings": settings,
-			"./loadPlugin": async () => {
-				await ready;
-				registered = true;
-			},
-		},
-		{
-			acode,
-			PLUGIN_DIR: "file:///plugins",
-			window: { log: vi.fn() },
-			toast: vi.fn(),
-			strings: {},
-		},
-	);
-	acode[plugins.onPluginLoadCallback] = vi.fn();
-	acode[plugins.onPluginsLoadCompleteCallback] = vi.fn();
 	const manager = {
 		files: [],
 		activeFile: null,
 		header: {},
 		emit: vi.fn(),
 		onupdate: vi.fn(),
-		getFile: (id) => manager.files.find((file) => file.id === id),
+		getFile: (id, key = "id") => manager.files.find((file) => file[key] === id),
 		addFile: (file) => manager.files.push(file),
 	};
-	const toast = vi.fn();
-	const log = vi.fn();
+	// Use the actual registration handler, with the same registry used by EditorFile.
+	const registration = managerBody.find(
+		(node) =>
+			node.type === "ExpressionStatement" &&
+			node.expression.callee?.name === "onProviderRegistered",
+	);
+	vm.runInNewContext(
+		managerSource.slice(registration.start, registration.end),
+		{ onProviderRegistered, manager, console },
+	);
+	const toast = vi.fn(),
+		log = vi.fn();
+	const helpers = {
+		normalizeMtime: (value) => value ?? null,
+		getStatMtime: () => null,
+		getIconForFile: () => "file",
+		getVirtualPath: (value) => value,
+		fixFilename: (value) => value,
+	};
+	const selectLocation = vi.fn(async () => ({
+		val: { url: "file:///export" },
+	}));
+	const { default: saveFile } = loadSourceModule(
+		"src/lib/saveFile.js",
+		{
+			fileSystem: filesystem,
+			"cm/editorUtils": { getDocText: (doc) => doc.toString() },
+			"components/toast": toast,
+			"dialogs/prompt": async () => "",
+			"dialogs/select": {},
+			"lib/recents": { select: selectLocation },
+			"pages/fileBrowser": {},
+			"utils/helpers": helpers,
+			"utils/Url": url,
+			"./config": {},
+			"./editorFile": {},
+			"./openFolder": {},
+			"./settings": settings,
+		},
+		{ editorManager: manager, strings: {} },
+	);
 	const unused = Object.fromEntries(
 		[
 			"components/quickTools",
@@ -111,7 +146,7 @@ it("waits for the provider without blocking local files, losing recovery data, o
 		"src/lib/editorFile.js",
 		{
 			...unused,
-			fileSystem: fs,
+			fileSystem: filesystem,
 			"@codemirror/state": { EditorState, EditorSelection },
 			"cm/editorUtils": { getDocText: (doc) => doc.toString() },
 			"cm/modelist": {
@@ -129,16 +164,11 @@ it("waits for the provider without blocking local files, losing recovery data, o
 			"html-tag-js": tag,
 			"utils/Url": url,
 			"utils/remoteFilePreview": { readRemoteFilePreview },
-			"utils/helpers": {
-				normalizeMtime: () => null,
-				getStatMtime: () => null,
-				getIconForFile: () => "file",
-				getVirtualPath: (value) => value,
-			},
+			"utils/helpers": helpers,
 			"./config": { DEFAULT_FILE_SESSION: "default" },
-			"./loadPlugins": plugins,
+			"./loadPlugins": { isInitialPluginLoadComplete: () => false },
 			"./settings": settings,
-			"./saveFile": vi.fn(),
+			"./saveFile": saveFile,
 		},
 		{
 			document,
@@ -155,64 +185,171 @@ it("waits for the provider without blocking local files, losing recovery data, o
 	};
 	const { default: restoreFiles } = loadSourceModule(
 		"src/lib/restoreFiles.js",
-		{ fileSystem: fs, "./editorFile": EditorFile },
+		{ fileSystem: filesystem, "./editorFile": EditorFile },
 	);
+	return {
+		cache,
+		read,
+		write,
+		remote,
+		remoteFactory,
+		fs,
+		manager,
+		toast,
+		log,
+		selectLocation,
+		restoreFiles,
+	};
+}
 
-	await restoreFiles([
+it("restores populated and empty recovery caches as usable documents for every filesystem", async () => {
+	const f = setup();
+	const records = [
+		"file",
+		"content",
+		"ftp",
+		"sftp",
+		"https",
+		"gh",
+		"plugin",
+	].map((protocol, index) => {
+		const text = index % 2 ? "unsaved content" : "";
+		f.cache.set(`file:///cache/${protocol}`, text);
+		return {
+			id: protocol,
+			filename: "file.js",
+			uri: `${protocol}://example/file.js`,
+			render: protocol === "gh",
+			isUnsaved: !!text,
+			docVersion: 7,
+			savedVersion: text ? 4 : 7,
+			cacheVersion: 7,
+			savedMtime: 100,
+			diskMtime: 200,
+			hasDiskConflict: !!text,
+			pinned: true,
+			editable: protocol !== "https",
+			encoding: "utf-16le",
+			scrollTop: 120,
+			cursorPos: { ranges: [{ from: text ? 5 : 0, to: text ? 5 : 0 }] },
+		};
+	});
+	await f.restoreFiles(records);
+	await Promise.all(f.manager.files.map((file) => file.load()));
+	for (const [index, file] of f.manager.files.entries()) {
+		const record = records[index];
+		expect(file.loaded).toBe(true);
+		expect(file.loading).toBe(false);
+		expect(file.session.doc.toString()).toBe(f.cache.get(file.cacheFile));
+		expect(file.session.selection.main.head).toBe(
+			record.cursorPos.ranges[0].to,
+		);
+		for (const key of [
+			"isUnsaved",
+			"docVersion",
+			"savedVersion",
+			"cacheVersion",
+			"savedMtime",
+			"diskMtime",
+			"hasDiskConflict",
+			"pinned",
+			"editable",
+			"encoding",
+		])
+			expect(file[key]).toBe(record[key]);
+		expect(file.lastScrollTop).toBe(120);
+		expect(file.canSave).toBe(true);
+		expect(f.read).toHaveBeenCalledWith(file.cacheFile, "utf-16le");
+	}
+	const github = f.manager.activeFile;
+	await github.save();
+	expect(f.toast).toHaveBeenCalledWith("File provider unavailable");
+	await github.saveAs(); // Cancelling the filename prompt still proves Save As is available.
+	expect(f.selectLocation).toHaveBeenCalledOnce();
+	github.session = EditorState.create({ doc: "new offline edit" });
+	github.markEdited();
+	await github.writeToCache();
+	expect(f.cache.get(github.cacheFile)).toBe("new offline edit");
+	expect(github.isUnsaved).toBe(true);
+	f.fs.extend((uri) => /^(gh|plugin):/.test(uri), f.remoteFactory);
+	await vi.runAllTimersAsync();
+	expect(f.remoteFactory).not.toHaveBeenCalled();
+	expect(f.remote.readFile).not.toHaveBeenCalled();
+	expect(f.log).not.toHaveBeenCalled();
+});
+
+it("keeps uncached tabs idle, then resumes only matching open files without blocking local restoration", async () => {
+	const f = setup();
+	let finish;
+	const response = new Promise((resolve) => {
+		finish = resolve;
+	});
+	f.remote.readFile.mockReturnValue(response);
+	await f.restoreFiles([
 		{
-			id: "repo",
-			filename: "repo.js",
-			uri: "gh://repo/example@main/repo.js",
-			isUnsaved: true,
+			id: "pending",
+			filename: "pending.js",
+			uri: "custom://pending",
 			cursorPos: { ranges: [{ from: 5, to: 5 }] },
 		},
-		{ id: "closed", filename: "closed.js", uri: "gh://gist/123/closed.js" },
+		{ id: "closed", filename: "closed.js", uri: "custom://closed" },
+		{ id: "missing", filename: "missing.js", uri: "disabled://missing" },
 		{
 			id: "local",
 			filename: "local.js",
 			uri: "file:///local.js",
 			render: true,
 		},
+		{ id: "http", filename: "remote.js", uri: "https://example/remote.js" },
+		{ id: "closing", filename: "closing.js", uri: "custom://closing" },
 	]);
-	const [repo, closed, local] = manager.files;
-	expect(log.mock.calls).toEqual([]);
+	const [pending, closed, missing, local, http, closing] = f.manager.files;
 	expect(local.session.doc.toString()).toBe("local content");
-	expect(repo.loaded).toBe(false);
-	expect(manager.emit).toHaveBeenCalledWith(
-		"file-loading-preview",
-		repo,
-		"unsaved edit",
-	);
-	expect(remote.readFile).not.toHaveBeenCalled();
-	await repo.writeToCache();
-	expect(write).not.toHaveBeenCalled();
-	const closedLoad = closed.load();
+	expect(http.loading).toBe(true);
+	const firstAttempt = pending.load();
+	await firstAttempt;
+	expect(pending.load()).not.toBe(firstAttempt); // No promise is waiting for a plugin.
+	await pending.load();
+	expect(pending.loaded).toBe(false);
+	expect(pending.loading).toBe(false);
+	await pending.writeToCache();
+	expect(await pending.save()).toBe(false);
+	expect(await pending.saveAs()).toBe(false);
+	expect(f.write).not.toHaveBeenCalled();
+	expect(f.selectLocation).not.toHaveBeenCalled();
 	await closed.remove(true);
-	const loading = plugins.default();
-	finishPluginLoad();
-	await loading;
-	await Promise.all([repo.load(), closedLoad]);
-	expect(repo.session.doc.toString()).toBe("unsaved edit");
-	expect(repo.session.selection.main.head).toBe(5);
-	expect(repo.isUnsaved).toBe(true);
-	expect(cache.get("file:///cache/repo")).toBe("unsaved edit");
+	await vi.advanceTimersByTimeAsync(65000);
+	expect(pending.tab).not.toBeNull();
+	expect(missing.tab).not.toBeNull();
+	f.fs.extend((uri) => uri.startsWith("custom:"), f.remoteFactory);
+	f.fs.extend((uri) => uri.startsWith("custom:"), f.remoteFactory);
+	await vi.advanceTimersByTimeAsync(0);
+	expect(f.remote.readFile).toHaveBeenCalledTimes(3);
+	expect(pending.loading).toBe(true);
+	const completion = Promise.all([pending.load(), http.load(), closing.load()]);
+	await closing.remove(true);
+	finish("remote content");
+	await completion;
+	expect(pending.session.doc.toString()).toBe("remote content");
+	expect(pending.session.selection.main.head).toBe(5);
+	expect(pending.loading).toBe(false);
+	expect(pending.loaded).toBe(true);
 	expect(closed.session).toBeNull();
-	expect(remote.readFile).toHaveBeenCalledOnce();
-	expect(manager.activeFile).toBe(local);
-	expect(toast).not.toHaveBeenCalled();
+	expect(closing.session).toBeNull();
+	expect(http.session.doc.toString()).toBe("remote content");
+	expect(f.manager.activeFile).toBe(local);
+	expect(missing.loaded).toBe(false);
+	expect(missing.loading).toBe(false);
+	expect(f.cache.has(pending.cacheFile)).toBe(false);
+	expect(f.toast).not.toHaveBeenCalled();
+	expect(f.log).not.toHaveBeenCalled();
 });
 
 it.each(["cached text", "", undefined])(
 	"keeps the loading view for cache %j until the session is ready",
 	(cached) => {
-		const source = readFileSync("src/lib/editorManager.js", "utf8");
-		const body = parse(source, {
-			sourceType: "module",
-			plugins: ["jsx"],
-		}).program.body.find(
-			(node) =>
-				node.type === "FunctionDeclaration" && node.id.name === "EditorManager",
-		).body.body;
+		const source = managerSource;
+		const body = managerBody;
 		const names = [
 			"showLoadingEditor",
 			"applyFileToEditor",
@@ -225,7 +362,7 @@ it.each(["cached text", "", undefined])(
 			type: "editor",
 			filename: "file.js",
 			loaded: false,
-			loading: true,
+			loading: false,
 			session: EditorState.create(),
 			__cmSessionReady: true,
 			__cmExtensionSignature: "test",

@@ -68,6 +68,7 @@ import {
 } from "cm/modelist";
 import createTouchSelectionMenu from "cm/touchSelectionMenu";
 import "cm/supportedModes";
+import { onProviderRegistered } from "fileSystem";
 import { autocompletion } from "@codemirror/autocomplete";
 import { serverCompletionSource } from "@codemirror/lsp-client";
 import colorView from "cm/colorView";
@@ -3721,6 +3722,20 @@ async function EditorManager($header, $body) {
 	}
 
 	// Register critical listeners
+	onProviderRegistered((test) => {
+		for (const file of manager.files) {
+			if (
+				file.type === "editor" &&
+				file.tab &&
+				!file.loaded &&
+				file.uri &&
+				test(file.uri)
+			) {
+				void file.load().catch(console.error);
+			}
+		}
+	});
+
 	manager.on(["file-loaded"], (file) => {
 		if (!file || file.type !== "editor") return;
 		const pane = getFilePane(file);
@@ -3753,7 +3768,7 @@ async function EditorManager($header, $body) {
 		const file = manager.activeFile;
 		if (file?.type !== "editor") return;
 		try {
-			const ro = !file.editable || !!file.loading;
+			const ro = !file.editable || !file.loaded || file.loading;
 			reconfigureEditorReadOnly(editor, readOnlyCompartment, ro);
 			touchSelectionController?.onStateChanged();
 		} catch (error) {

@@ -1,4 +1,3 @@
-import fsOperation from "fileSystem";
 import EditorFile from "./editorFile";
 
 /**
@@ -10,7 +9,6 @@ export default async function restoreFiles(files) {
 	const localLoads = [];
 
 	files.forEach((file, index) => {
-		const waitsForProvider = file.uri && !fsOperation.hasProvider(file.uri);
 		const render =
 			file.render || (!hasRenderedFile && index === files.length - 1);
 		const options = {
@@ -21,7 +19,7 @@ export default async function restoreFiles(files) {
 		const restoredFile = new EditorFile(file.filename, options);
 		const load = Promise.resolve(restoredFile.load?.());
 
-		if (isRemoteUri(file.uri) || waitsForProvider) {
+		if (file.uri && !/^(?:file|content):/i.test(file.uri)) {
 			void load.catch((error) => {
 				console.warn(`Failed to preload restored file: ${file.uri}`, error);
 			});
@@ -36,8 +34,4 @@ export default async function restoreFiles(files) {
 	// and the first visit to an inactive local tab visibly flashes a loading editor.
 	// Remote and plugin tabs must not block the plugin startup they depend on.
 	await Promise.all(localLoads);
-}
-
-function isRemoteUri(uri) {
-	return /^(?:https?|s?ftp|gh):/i.test(uri || "");
 }

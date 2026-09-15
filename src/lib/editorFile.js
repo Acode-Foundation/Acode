@@ -1,4 +1,4 @@
-import fsOperation from "fileSystem";
+import fsOperation, { hasProvider } from "fileSystem";
 // CodeMirror imports for document state management
 import { EditorSelection, EditorState } from "@codemirror/state";
 import {
@@ -25,10 +25,7 @@ import Path from "utils/Path";
 import { readRemoteFilePreview } from "utils/remoteFilePreview";
 import Url from "utils/Url";
 import config from "./config";
-import {
-	isInitialPluginLoadComplete,
-	waitForInitialPluginLoad,
-} from "./loadPlugins";
+import { isInitialPluginLoadComplete } from "./loadPlugins";
 import openFolder from "./openFolder";
 import run from "./run";
 import saveFile from "./saveFile";
@@ -1463,6 +1460,7 @@ export default class EditorFile {
 	get canSave() {
 		return (
 			!!this.#tab &&
+			(this.type !== "editor" || (this.loaded && !this.loading)) &&
 			(this.type === "editor" ||
 				typeof this.onsave === "function" ||
 				this.#events.save.length > 0)
@@ -1488,7 +1486,7 @@ export default class EditorFile {
 					reconfigureEditorReadOnly(
 						targetEditor,
 						readOnlyCompartment,
-						readOnly,
+						readOnly || !this.loaded || this.loading,
 					);
 				}
 			}
@@ -1696,7 +1694,8 @@ export default class EditorFile {
 	 * Reuses an in-flight load so session restoration can safely preload tabs.
 	 */
 	load() {
-		if (this.type !== "editor" || this.loaded) return Promise.resolve(this);
+		if (this.type !== "editor" || this.loaded || !this.#tab)
+			return Promise.resolve(this);
 		if (this.#loadPromise) return this.#loadPromise;
 
 		this.#loadPromise = this.#loadText().finally(() => {
@@ -1845,29 +1844,31 @@ export default class EditorFile {
 		let value = "";
 		const protocol = this.uri ? Url.getProtocol(this.uri) : "";
 		const isTransportFile = protocol === "ftp:" || protocol === "sftp:";
-		const isRemoteFile = isTransportFile || protocol === "gh:";
-
 		const { cursorPos, editable } = this.#loadOptions;
-
-		this.#loadOptions = null;
-
-		if (!editable) {
-			this.setReadOnly(true);
-		}
-		this.loading = true;
-		this.markChanged = false;
-		if (isRemoteFile) this.#setRemoteLoading(true);
-		this.#emit("loadstart", createFileEvent(this));
+		let started = false;
 
 		try {
 			const cacheFs = fsOperation(this.cacheFile);
+			const cacheExists = await cacheFs.exists();
+			if (!this.#tab) return;
+			if (cacheExists) value = await cacheFs.readFile(this.encoding);
+			if (!this.#tab) return;
+
+			// An uncached tab stays idle until its filesystem registers.
+			if (!cacheExists && this.uri && !hasProvider(this.uri)) return;
+
+			started = true;
+			this.loading = true;
+			this.markChanged = false;
+			this.#setRemoteLoading(true);
+			this.#emit("loadstart", createFileEvent(this));
+			if (!this.#tab) return;
 			let file = null;
-			let cacheExists;
 			let loadedMtime = this.savedMtime;
 			let savedDoc = null;
 
-			if (isRemoteFile) {
-				file = isTransportFile ? fsOperation(this.uri) : null;
+			if (!cacheExists && isTransportFile) {
+				file = fsOperation(this.uri);
 				let transportCache = null;
 				try {
 					const localName = file?.localName;
@@ -1884,41 +1885,25 @@ export default class EditorFile {
 					encoding: this.encoding,
 				});
 				if (!this.#tab) return;
-				cacheExists = preview.editorCacheExists;
-				if (cacheExists) value = preview.text;
 
 				if (preview.text !== null) {
 					editorManager.emit("file-loading-preview", this, preview.text);
 				}
-			} else {
-				cacheExists = await cacheFs.exists();
-				if (cacheExists) {
-					value = await cacheFs.readFile(this.encoding);
-				}
 			}
 
-			if (this.uri) {
-				if (
-					!fsOperation.hasProvider(this.uri) &&
-					!isInitialPluginLoadComplete()
-				) {
-					await waitForInitialPluginLoad();
-				}
-				if (!this.#tab) return;
+			if (!this.#tab) return;
+			if (!cacheExists && this.uri) {
 				file ||= fsOperation(this.uri);
-				const fileExists = await file.exists();
-				if (!fileExists && cacheExists) {
-					this.deletedFile = true;
-					this.isUnsaved = true;
-				} else if (fileExists) {
-					const stat = await file.stat().catch(() => null);
+				const fileExists = file.exists ? await file.exists() : true;
+				if (!this.#tab) return;
+				if (fileExists) {
+					const stat = await file.stat?.().catch(() => null);
+					if (!this.#tab) return;
 					loadedMtime = helpers.getStatMtime(stat);
 					const diskValue = await file.readFile(this.encoding);
 					savedDoc = EditorState.create({ doc: diskValue }).doc;
-					if (!cacheExists) {
-						value = diskValue;
-					}
-				} else if (!cacheExists && !fileExists) {
+					value = diskValue;
+				} else {
 					window.log("error", "unable to load file");
 					throw new Error("Unable to load file");
 				}
@@ -1935,7 +1920,13 @@ export default class EditorFile {
 			this.__cmSessionReady = false;
 			this.__cmLanguageReady = false;
 			this.__cmLanguageSignature = null;
-			this.markLoaded({ mtime: loadedMtime, isUnsaved, savedDoc });
+			if (cacheExists) {
+				// Recovery data is the document, not a newly verified disk snapshot.
+				this.#savedDoc = isUnsaved ? null : this.#rawSession.doc;
+			} else {
+				this.markLoaded({ mtime: loadedMtime, isUnsaved, savedDoc });
+			}
+			this.#loadOptions = null;
 			this.markChanged = true;
 			this.loaded = true;
 			this.loading = false;
@@ -1949,7 +1940,7 @@ export default class EditorFile {
 			}
 
 			setTimeout(() => {
-				this.#emit("load", createFileEvent(this));
+				if (this.#tab) this.#emit("load", createFileEvent(this));
 			}, 0);
 		} catch (error) {
 			if (!this.#tab) return;
@@ -1959,8 +1950,11 @@ export default class EditorFile {
 			window.log("error", "Unable to load: " + this.filename);
 			window.log("error", error);
 		} finally {
-			if (isRemoteFile) this.#setRemoteLoading(false);
-			this.#emit("loadend", createFileEvent(this));
+			this.loading = false;
+			if (started && this.#tab) {
+				this.#setRemoteLoading(false);
+				this.#emit("loadend", createFileEvent(this));
+			}
 		}
 	}
 

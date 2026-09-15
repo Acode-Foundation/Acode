@@ -1,5 +1,6 @@
-import fsOperation from "fileSystem";
+import fsOperation, { hasProvider } from "fileSystem";
 import { getDocText } from "cm/editorUtils";
+import toast from "components/toast";
 import prompt from "dialogs/prompt";
 import select from "dialogs/select";
 import recents from "lib/recents";
@@ -22,7 +23,11 @@ const SELECT_FOLDER = "select-folder";
  */
 async function saveFile(file, isSaveAs = false) {
 	// If file is loading, return
-	if (file.loading) return;
+	if (!file.loaded || file.loading) return;
+	if (!isSaveAs && file.uri && !hasProvider(file.uri)) {
+		toast(strings["file provider unavailable"] || "File provider unavailable");
+		return;
+	}
 
 	/**
 	 * If set, new file needs to be created
