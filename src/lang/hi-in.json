@@ -563,7 +563,7 @@
 	"lsp-install-info-unknown": "इंस्टॉलेशन स्थिति स्वतः जाँची नहीं जा सकी।",
 	"lsp-install-info-version-available": "वर्ज़न {version} उपलब्ध है।",
 	"lsp-install-notification": "{server} स्थापित नहीं है। स्थापित करने के लिए टैप करें।",
-	"lsp-install-method-apk": "APK पैकेज",
+	"lsp-install-method-apt": "APT पैकेज",
 	"lsp-install-method-cargo": "कार्गो क्रेट",
 	"lsp-install-method-manual": "मैनुअल बाइनरी",
 	"lsp-install-method-npm": "npm पैकेज",

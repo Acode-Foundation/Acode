@@ -563,7 +563,7 @@
 	"lsp-install-info-unknown": "Status pemasangan tidak dapat diperiksa secara otomatis.",
 	"lsp-install-info-version-available": "Versi {version} tersedia.",
 	"lsp-install-notification": "{server} belum terpasang. Ketuk untuk memasang.",
-	"lsp-install-method-apk": "Paket APK",
+	"lsp-install-method-apt": "Paket APT",
 	"lsp-install-method-cargo": "Crate Cargo",
 	"lsp-install-method-manual": "Biner manual",
 	"lsp-install-method-npm": "Paket npm",
