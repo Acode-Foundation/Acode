@@ -1,0 +1,12 @@
+{
+  "view": {
+    "version": "6.43.9",
+    "commit": "d4e1656e1a0060f562695df93cb1775c0cdee24f",
+    "repository": "https://code.haverbeke.berlin/codemirror/view.git"
+  },
+  "language": {
+    "version": "6.12.4",
+    "commit": "89974ce5d39539ce6c5cfea5278443fa9381cbf2",
+    "repository": "https://code.haverbeke.berlin/codemirror/language.git"
+  }
+}

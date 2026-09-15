@@ -1,5 +1,8 @@
+import { viewportPriorityParsing } from "@codemirror/language";
 import type { Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
+import { keyboardInput } from "./keyboardInput";
+import { keyboardScroll } from "./keyboardScroll";
 import searchMatchHighlighter from "./searchMatchHighlighter";
 
 interface MainEditorExtensionOptions {
@@ -14,6 +17,8 @@ interface MainEditorExtensionOptions {
 	quickToolsModifierInputExtension?: Extension;
 	searchExtension?: Extension;
 	readOnlyExtension?: Extension;
+	/** Override with [] to compare upstream rendering without rebuilding packages. */
+	renderingExtensions?: readonly Extension[];
 	optionExtensions?: Extension[];
 }
 
@@ -27,10 +32,18 @@ export const fixedHeightTheme = EditorView.theme({
 	".cm-scroller": {
 		height: "100%",
 		overflow: "auto",
-		willChange: "transform",
-		contentVisibility: "auto",
 	},
 });
+
+export const renderingPerformanceExtensions: Extension[] = [
+	EditorView.viewportBuffer.of({ maxAhead: 2, settleDelay: 120 }),
+	EditorView.controlledTouchScroll.of({
+		maxAhead: 2,
+		settleDelay: 120,
+		waitForRendering: false,
+	}),
+	viewportPriorityParsing({ sliceMs: 4, approximate: "outer-language" }),
+];
 
 export function createMainEditorExtensions(
 	options: MainEditorExtensionOptions = {},
@@ -47,6 +60,10 @@ export function createMainEditorExtensions(
 	pushExtension(extensions, options.commandKeymapExtension);
 	pushExtension(extensions, options.themeExtension);
 	extensions.push(fixedHeightTheme);
+	extensions.push(keyboardScroll, keyboardInput);
+	extensions.push(
+		...(options.renderingExtensions ?? renderingPerformanceExtensions),
+	);
 	pushExtension(extensions, options.pointerCursorVisibilityExtension);
 	pushExtension(extensions, options.shiftClickSelectionExtension);
 	pushExtension(extensions, options.multiCursorSelectionExtension);

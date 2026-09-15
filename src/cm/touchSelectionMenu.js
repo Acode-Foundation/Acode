@@ -1,11 +1,6 @@
 import { LSPPlugin } from "@codemirror/lsp-client";
 import { EditorSelection } from "@codemirror/state";
-import {
-	focusEditorIfEditable,
-	placeReadOnlyCursor,
-	resolveReadOnlyContextSelection,
-	shouldCommitReadOnlyTap,
-} from "cm/editorReadOnly";
+import { focusEditorIfEditable } from "cm/editorReadOnly";
 import {
 	bindSelectionMenuButton,
 	filterSelectionMenuItems,
@@ -186,7 +181,6 @@ class TouchSelectionMenuController {
 	#isScrolling = false;
 	#isPointerInteracting = false;
 	#pointerSelectionSession = null;
-	#readOnlyTapSession = null;
 	#pendingPointerSelectionClick = null;
 	#menuActive = false;
 	#menuRequested = false;
@@ -219,7 +213,6 @@ class TouchSelectionMenuController {
 		const root = this.#view.dom;
 		root.addEventListener("contextmenu", this.#onContextMenu, true);
 		document.addEventListener("pointerdown", this.#onGlobalPointerDown, true);
-		document.addEventListener("pointermove", this.#onGlobalPointerMove, true);
 		document.addEventListener("pointerup", this.#onGlobalPointerUp, true);
 		document.addEventListener("pointercancel", this.#onGlobalPointerUp, true);
 
@@ -252,11 +245,6 @@ class TouchSelectionMenuController {
 		);
 		document.removeEventListener("pointerup", this.#onGlobalPointerUp, true);
 		document.removeEventListener(
-			"pointermove",
-			this.#onGlobalPointerMove,
-			true,
-		);
-		document.removeEventListener(
 			"pointercancel",
 			this.#onGlobalPointerUp,
 			true,
@@ -265,7 +253,6 @@ class TouchSelectionMenuController {
 		cancelAnimationFrame(this.#stateSyncRaf);
 		this.#stateSyncRaf = 0;
 		this.#pointerSelectionSession = null;
-		this.#readOnlyTapSession = null;
 		this.#pendingPointerSelectionClick = null;
 		this.#tooltipObserver?.disconnect();
 		this.#hideMenu(true);
@@ -275,7 +262,6 @@ class TouchSelectionMenuController {
 		this.#enabled = !!enabled;
 		if (this.#enabled) return;
 		this.#pointerSelectionSession = null;
-		this.#readOnlyTapSession = null;
 		this.#pendingPointerSelectionClick = null;
 		this.#dismissedSelection = null;
 		this.#menuRequested = false;
@@ -320,7 +306,6 @@ class TouchSelectionMenuController {
 		if (this.#isScrolling) return;
 		this.#clearMenuShowTimer();
 		this.#isScrolling = true;
-		this.#cancelReadOnlyTap();
 		this.#hideMenu();
 	}
 
@@ -332,7 +317,6 @@ class TouchSelectionMenuController {
 
 	onStateChanged(meta = {}) {
 		if (!this.#enabled) return;
-		if (meta.selectionChanged) this.#cancelReadOnlyTap();
 		if (
 			meta.selectionChanged &&
 			this.#dismissedSelection !== this.#selectionSignature()
@@ -356,7 +340,6 @@ class TouchSelectionMenuController {
 	onSessionChanged() {
 		if (!this.#enabled) return;
 		this.#pointerSelectionSession = null;
-		this.#readOnlyTapSession = null;
 		this.#pendingPointerSelectionClick = null;
 		this.#dismissedSelection = null;
 		this.#menuRequested = false;
@@ -369,17 +352,9 @@ class TouchSelectionMenuController {
 	#onContextMenu = (event) => {
 		if (!this.#enabled) return;
 		if (this.#isIgnoredPointerTarget(event.target)) return;
-		this.#cancelReadOnlyTap();
-		if (this.#isReadOnly()) {
-			const pos = this.#safePosAtCoords(event.clientX, event.clientY);
-			if (pos != null) {
-				const range = resolveReadOnlyContextSelection(this.#view.state, pos);
-				this.#view.dispatch({
-					selection: EditorSelection.create([range]),
-					userEvent: "select.pointer",
-				});
-			}
-		}
+		// Read-only text uses the browser's selection handles and Copy/Select All
+		// menu. Preventing this event can suppress Android selection entirely.
+		if (this.#isReadOnly()) return;
 		event.preventDefault();
 		event.stopPropagation();
 		this.#dismissedSelection = null;
@@ -390,47 +365,32 @@ class TouchSelectionMenuController {
 	#onGlobalPointerDown = (event) => {
 		const target = event.target;
 		if (this.$menu.contains(target)) {
-			this.#readOnlyTapSession = null;
 			return;
 		}
 		if (this.#isIgnoredPointerTarget(target)) {
 			this.#pointerSelectionSession = null;
-			this.#readOnlyTapSession = null;
 			return;
 		}
 		if (target instanceof Node && this.#view.dom.contains(target)) {
 			this.#dismissedSelection = null;
 			this.#capturePointerSelection(event);
-			this.#captureReadOnlyTap(event);
+			// Native read-only taps must not be replaced by cursor placement that
+			// clears document.getSelection() and dismisses selection handles.
 			this.#isPointerInteracting = true;
 			this.#clearMenuShowTimer();
 			return;
 		}
 		this.#pointerSelectionSession = null;
-		this.#readOnlyTapSession = null;
 		this.#isPointerInteracting = false;
 		this.#menuRequested = false;
 		this.#hideMenu();
 	};
 
-	#onGlobalPointerMove = (event) => {
-		const session = this.#readOnlyTapSession;
-		if (!session || session.pointerId !== event.pointerId) return;
-		if (
-			Math.hypot(event.clientX - session.x, event.clientY - session.y) >
-			TAP_MAX_DISTANCE
-		) {
-			this.#cancelReadOnlyTap();
-		}
-	};
-
 	#onGlobalPointerUp = (event) => {
 		if (event.type === "pointerup") {
 			this.#commitPointerSelection(event);
-			this.#commitReadOnlyTap(event);
 		} else {
 			this.#pointerSelectionSession = null;
-			this.#readOnlyTapSession = null;
 		}
 		if (!this.#isPointerInteracting) return;
 		this.#isPointerInteracting = false;
@@ -444,76 +404,6 @@ class TouchSelectionMenuController {
 		}
 		this.#hideMenu();
 	};
-
-	#captureReadOnlyTap(event) {
-		this.#readOnlyTapSession = null;
-		if (!this.#enabled || !this.#isReadOnly()) return;
-		if (!(event.isTrusted && event.isPrimary)) return;
-		if (typeof event.button === "number" && event.button !== 0) return;
-		if (this.#canExtendSelection(event) || this.#canAddSelectionRange(event)) {
-			return;
-		}
-
-		this.#readOnlyTapSession = {
-			pointerId: event.pointerId,
-			x: event.clientX,
-			y: event.clientY,
-			timeStamp: event.timeStamp,
-			isPrimary: event.isPrimary,
-			button: event.button,
-			selection: this.#view.state.selection,
-			cancelled: false,
-		};
-	}
-
-	#cancelReadOnlyTap() {
-		if (this.#readOnlyTapSession) {
-			this.#readOnlyTapSession.cancelled = true;
-		}
-	}
-
-	#commitReadOnlyTap(event) {
-		const session = this.#readOnlyTapSession;
-		this.#readOnlyTapSession = null;
-		if (!session || !this.#enabled || !this.#isReadOnly()) return false;
-		if (!this.#view.state.selection.eq(session.selection)) return false;
-		if (
-			!shouldCommitReadOnlyTap(
-				session,
-				{
-					pointerId: event.pointerId,
-					x: event.clientX,
-					y: event.clientY,
-					timeStamp: event.timeStamp,
-					isPrimary: event.isPrimary,
-					button: event.button,
-				},
-				{ maxDelay: TAP_MAX_DELAY, maxDistance: TAP_MAX_DISTANCE },
-			)
-		) {
-			return false;
-		}
-		const target = event.target;
-		if (!(target instanceof Node) || !this.#view.dom.contains(target)) {
-			return false;
-		}
-		if (this.#isIgnoredPointerTarget(target)) return false;
-
-		const pos = this.#safePosAtCoords(event.clientX, event.clientY);
-		if (pos == null) return false;
-		if (!placeReadOnlyCursor(this.#view, pos)) return false;
-		this.#menuRequested = false;
-		this.#clearMenuShowTimer();
-		this.#hideMenu(true);
-		try {
-			document.getSelection()?.removeAllRanges();
-		} catch (error) {
-			console.warn("Failed to clear native read-only selection.", error);
-		}
-		event.preventDefault();
-		focusEditorIfEditable(this.#view);
-		return true;
-	}
 
 	#capturePointerSelection(event) {
 		if (!this.#canHandlePointerSelection(event)) {
@@ -610,6 +500,7 @@ class TouchSelectionMenuController {
 	}
 
 	#shouldShowMenu() {
+		if (this.#isReadOnly()) return false;
 		if (this.#isScrolling || this.#isPointerInteracting) return false;
 		if (!this.#view.hasFocus && !this.#isReadOnly()) return false;
 		if (

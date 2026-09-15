@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const runtime = vi.hoisted(() => ({
 	instances: [],
+	languageLoads: [],
 }));
 
 vi.mock("lib/editorFile", () => ({
@@ -9,6 +10,10 @@ vi.mock("lib/editorFile", () => ({
 		constructor(filename, options) {
 			this.filename = filename;
 			this.options = options;
+			this.currentLanguageExtension = () => {
+				runtime.languageLoads.push(filename);
+				return [];
+			};
 			this.loaded = new Promise((resolve) => {
 				this.resolveLoad = resolve;
 			});
@@ -26,6 +31,7 @@ import restoreFiles from "lib/restoreFiles";
 describe("restored file loading", () => {
 	beforeEach(() => {
 		runtime.instances.length = 0;
+		runtime.languageLoads.length = 0;
 	});
 
 	it("waits for every local tab and activates the last tab by default", async () => {
@@ -38,6 +44,7 @@ describe("restored file loading", () => {
 		});
 
 		expect(runtime.instances).toHaveLength(2);
+		expect(runtime.languageLoads).toEqual(["two.js"]);
 		expect(runtime.instances.map((file) => file.options.render)).toEqual([
 			false,
 			true,
@@ -53,18 +60,20 @@ describe("restored file loading", () => {
 		expect(completed).toBe(true);
 	});
 
-	it.each(["ftp", "sftp", "http", "https"])(
-		"does not block startup on an unresolved %s tab",
-		async (protocol) => {
-			await restoreFiles([
-				{
-					id: "remote",
-					filename: "remote.js",
-					uri: `${protocol}://example.com/remote.js`,
-				},
-			]);
+	it.each([
+		"ftp",
+		"sftp",
+		"http",
+		"https",
+	])("does not block startup on an unresolved %s tab", async (protocol) => {
+		await restoreFiles([
+			{
+				id: "remote",
+				filename: "remote.js",
+				uri: `${protocol}://example.com/remote.js`,
+			},
+		]);
 
-			expect(runtime.instances).toHaveLength(1);
-		},
-	);
+		expect(runtime.instances).toHaveLength(1);
+	});
 });

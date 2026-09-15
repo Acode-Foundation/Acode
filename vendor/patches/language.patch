@@ -1,0 +1,700 @@
+diff --git a/package.json b/package.json
+index a2c2906..560a2db 100644
+--- a/package.json
++++ b/package.json
+@@ -24,6 +24,11 @@
+   "types": "dist/index.d.ts",
+   "module": "dist/index.js",
+   "sideEffects": false,
++  "files": [
++    "dist",
++    "CHANGELOG.md",
++    "UPSTREAM.md"
++  ],
+   "license": "MIT",
+   "dependencies": {
+     "@codemirror/state": "^6.0.0",
+diff --git a/src/highlight.ts b/src/highlight.ts
+index a1b2c67..0459e2d 100644
+--- a/src/highlight.ts
++++ b/src/highlight.ts
+@@ -3,7 +3,9 @@ import {Tag, tags, tagHighlighter, Highlighter, highlightTree} from "@lezer/high
+ import {StyleSpec, StyleModule} from "style-mod"
+ import {EditorView, ViewPlugin, ViewUpdate, Decoration, DecorationSet} from "@codemirror/view"
+ import {EditorState, Prec, Facet, Extension, RangeSetBuilder} from "@codemirror/state"
+-import {syntaxTree, Language, languageDataProp} from "./language"
++import {syntaxTree, Language, language, languageDataProp, viewportPriorityTree, viewportPriorityTrees,
++        viewportPriorityParsingFailed, viewportPriorityParsingPending,
++        ViewportPriorityTree} from "./language"
+ 
+ /// A highlight style associates CSS styles with highlighting
+ /// [tags](https://lezer.codemirror.net/docs/ref#highlight.Tag).
+@@ -154,41 +156,219 @@ export interface TagStyle {
+ 
+ class TreeHighlighter {
+   decorations: DecorationSet
++  decoratedFrom: number
+   decoratedTo: number
+   tree: Tree
+   markCache: {[cls: string]: Decoration} = Object.create(null)
++  provisionalVersion = -1
++  usedProvisional = false
++  mappedFallback = false
++  fallbackExpired = false
++  fallbackGeneration = 0
++  fallbackTimer = -1
+ 
+-  constructor(view: EditorView) {
++  constructor(readonly view: EditorView) {
+     this.tree = syntaxTree(view.state)
+     this.decorations = this.buildDeco(view, getHighlighters(view.state))
++    this.decoratedFrom = view.viewport.from
+     this.decoratedTo = view.viewport.to
++    let provisional = viewportPriorityTree(view)
++    this.provisionalVersion = provisional?.version ?? -1
++    this.usedProvisional = !!provisional
++    this.publishControlledCoverage(view)
+   }
+ 
+   update(update: ViewUpdate) {
+     let tree = syntaxTree(update.state), highlighters = getHighlighters(update.state)
+     let styleChange = highlighters != getHighlighters(update.startState)
+-    let {viewport} = update.view, decoratedToMapped = update.changes.mapPos(this.decoratedTo, 1)
+-    if (tree.length < viewport.to && !styleChange && tree.type == this.tree.type && decoratedToMapped >= viewport.to) {
++    let provisional = viewportPriorityTree(update.view)
++    let provisionalFailed = viewportPriorityParsingFailed(update.view)
++    let provisionalVersion = provisional?.version ?? -1
++    let {viewport} = update.view
++    let decoratedFromMapped = update.changes.mapPos(this.decoratedFrom, -1)
++    let decoratedToMapped = update.changes.mapPos(this.decoratedTo, 1)
++    let sameLanguage = update.startState.facet(language) == update.state.facet(language)
++    let retainMapped = retainMappedHighlighting(
++      update.docChanged, this.usedProvisional, this.fallbackExpired,
++      sameLanguage, styleChange,
++      tree.length, viewport.from, viewport.to, decoratedFromMapped, decoratedToMapped)
++    if (retainMapped) {
++      this.tree = tree
+       this.decorations = this.decorations.map(update.changes)
++      this.decoratedFrom = decoratedFromMapped
++      this.decoratedTo = decoratedToMapped
++      this.provisionalVersion = -1
++      this.usedProvisional = this.mappedFallback = true
++      this.scheduleFallbackExpiry(update.view)
++    } else if (retainMappedHighlightingWhileParsing(
++                 this.mappedFallback, this.fallbackExpired, sameLanguage, styleChange,
++                 !!provisional, provisionalFailed, tree.length, viewport.from, viewport.to,
++                 decoratedFromMapped, decoratedToMapped)) {
++      // Canonical parsing may publish several incomplete trees while an edit's
++      // replacement provisional tree is still pending. Keep the mapped visual
++      // state through those updates instead of rebuilding a plain viewport.
++      this.tree = tree
++      if (!update.changes.empty) this.decorations = this.decorations.map(update.changes)
++      this.decoratedFrom = decoratedFromMapped
+       this.decoratedTo = decoratedToMapped
+-    } else if (tree != this.tree || update.viewportChanged || styleChange) {
++    } else if (retainHighlightingDuringControlledPreparation(
++                 !!(update.view as any).viewState?.controlledScrollActive,
++                 this.usedProvisional, sameLanguage, styleChange, !!provisional,
++                 provisionalFailed, tree.length, viewport.to)) {
++      // A rolling corridor first expands the DOM, then publishes its
++      // provisional parse. Retain decorations for the already safe range so
++      // preparing the next chunk cannot flash the current viewport plain.
++      this.tree = tree
++    } else if (!this.mappedFallback && tree.length < viewport.to && !styleChange &&
++               provisionalVersion == this.provisionalVersion && tree.type == this.tree.type &&
++               decoratedFromMapped <= viewport.from && decoratedToMapped >= viewport.to) {
++      this.decorations = this.decorations.map(update.changes)
++      this.decoratedFrom = decoratedFromMapped
++      this.decoratedTo = decoratedToMapped
++    } else if (this.mappedFallback && this.fallbackExpired ||
++               provisionalFailed ||
++               tree != this.tree || update.viewportChanged || styleChange ||
++               provisionalVersion != this.provisionalVersion) {
+       this.tree = tree
+       this.decorations = this.buildDeco(update.view, highlighters)
++      this.decoratedFrom = viewport.from
+       this.decoratedTo = viewport.to
++      this.provisionalVersion = provisionalVersion
++      this.usedProvisional = !!provisional
++      this.clearFallback()
++    }
++    this.publishControlledCoverage(
++      update.view, styleChange || !sameLanguage || provisionalFailed)
++  }
++
++  private scheduleFallbackExpiry(view: EditorView) {
++    if (this.fallbackTimer > -1) clearTimeout(this.fallbackTimer)
++    let generation = ++this.fallbackGeneration
++    this.fallbackExpired = false
++    this.fallbackTimer = setTimeout(() => {
++      this.fallbackTimer = -1
++      if (generation != this.fallbackGeneration || !this.mappedFallback) return
++      if (viewportPriorityParsingPending(view)) {
++        this.scheduleFallbackExpiry(view)
++        return
++      }
++      this.fallbackExpired = true
++      view.dispatch({})
++    }, 5000) as any
++  }
++
++  private clearFallback() {
++    this.mappedFallback = this.fallbackExpired = false
++    this.fallbackGeneration++
++    if (this.fallbackTimer > -1) clearTimeout(this.fallbackTimer)
++    this.fallbackTimer = -1
++  }
++
++  private publishControlledCoverage(view: EditorView, invalidate = false) {
++    let controller = (view as any).controlledTouchScrollController
++    if (!view.state.facet(language) || !getHighlighters(view.state)) {
++      controller?.onHighlightCoverageRemoved?.()
++      return
++    }
++    let {viewport} = view
++    let coveredTo = Math.max(viewport.from, this.tree.length)
++    for (let tree of viewportPriorityTrees(view)) {
++      if (tree.from <= coveredTo) coveredTo = Math.max(coveredTo, tree.to)
+     }
++    let complete = coveredTo >= viewport.to ||
++      (this.mappedFallback && this.decoratedFrom <= viewport.from && this.decoratedTo >= viewport.to)
++    if (complete) controller?.onHighlightCoverageReady?.()
++    else if (invalidate) controller?.onHighlightCoverageInvalidated?.()
++  }
++
++  destroy() {
++    this.clearFallback()
++    ;(this.view as any).controlledTouchScrollController?.onHighlightCoverageRemoved?.()
+   }
+ 
+   buildDeco(view: EditorView, highlighters: readonly Highlighter[] | null) {
+-    if (!highlighters || !this.tree.length) return Decoration.none
++    if (!highlighters) return Decoration.none
+ 
+     let builder = new RangeSetBuilder<Decoration>()
++    let provisionalTrees = viewportPriorityTrees(view)
+     for (let {from, to} of view.visibleRanges) {
+-      highlightTree(this.tree, highlighters, (from, to, style) => {
+-        builder.add(from, to, this.markCache[style] || (this.markCache[style] = Decoration.mark({class: style})))
+-      }, from, to)
++      let canonicalTo = Math.min(to, this.tree.length)
++      if (from < canonicalTo) this.addTreeHighlights(builder, this.tree, highlighters, from, canonicalTo)
++      for (let provisional of provisionalTrees) {
++        let priority = provisionalHighlightRange(from, to, this.tree.length, provisional.from, provisional.to)
++        if (priority)
++          this.addTreeHighlights(builder, provisional.tree, outerLanguageHighlighters(provisional, highlighters),
++                                 priority.from - provisional.from, priority.to - provisional.from,
++                                 provisional.from)
++      }
+     }
+     return builder.finish()
+   }
++
++  private addTreeHighlights(builder: RangeSetBuilder<Decoration>, tree: Tree,
++                            highlighters: readonly Highlighter[], from: number, to: number,
++                            offset = 0) {
++    highlightTree(tree, highlighters, (from, to, style) => {
++      builder.add(from + offset, to + offset,
++                  this.markCache[style] || (this.markCache[style] = Decoration.mark({class: style})))
++    }, from, to)
++  }
++}
++
++/// @internal
++export function retainMappedHighlighting(docChanged: boolean, usedProvisional: boolean,
++                                         fallbackExpired: boolean, sameLanguage: boolean,
++                                         styleChanged: boolean, canonicalLength: number,
++                                         viewportFrom: number, viewportTo: number,
++                                         decoratedFrom: number, decoratedTo: number) {
++  return docChanged && usedProvisional && !fallbackExpired && sameLanguage && !styleChanged &&
++    canonicalLength < viewportTo && decoratedFrom <= viewportFrom && decoratedTo >= viewportTo
++}
++
++/// @internal
++export function retainMappedHighlightingWhileParsing(mappedFallback: boolean,
++                                                      fallbackExpired: boolean,
++                                                      sameLanguage: boolean,
++                                                      styleChanged: boolean,
++                                                      hasPublishedProvisional: boolean,
++                                                      provisionalFailed: boolean,
++                                                      canonicalLength: number,
++                                                      viewportFrom: number, viewportTo: number,
++                                                      decoratedFrom: number, decoratedTo: number) {
++  return mappedFallback && !fallbackExpired && sameLanguage && !styleChanged &&
++    !hasPublishedProvisional && !provisionalFailed && canonicalLength < viewportTo &&
++    decoratedFrom <= viewportFrom && decoratedTo >= viewportTo
++}
++
++/// @internal
++export function retainHighlightingDuringControlledPreparation(controlledActive: boolean,
++                                                               usedProvisional: boolean,
++                                                               sameLanguage: boolean,
++                                                               styleChanged: boolean,
++                                                               hasPublishedProvisional: boolean,
++                                                               provisionalFailed: boolean,
++                                                               canonicalLength: number,
++                                                               viewportTo: number) {
++  return controlledActive && usedProvisional && sameLanguage && !styleChanged &&
++    !hasPublishedProvisional && !provisionalFailed && canonicalLength < viewportTo
++}
++
++/// @internal
++export function provisionalHighlightRange(from: number, to: number, canonicalLength: number,
++                                           provisionalFrom: number, provisionalTo: number) {
++  let priorityFrom = Math.max(from, Math.min(to, canonicalLength), provisionalFrom)
++  let priorityTo = Math.min(to, provisionalTo)
++  return priorityFrom < priorityTo ? {from: priorityFrom, to: priorityTo} : null
++}
++
++/// @internal
++export function outerLanguageHighlighters(provisional: ViewportPriorityTree,
++                                          highlighters: readonly Highlighter[]): readonly Highlighter[] {
++  let top = provisional.tree.topNode.type
++  return highlighters.map(highlighter => ({
++    style: highlighter.style,
++    scope: (type: NodeType) => type == top && (!highlighter.scope || highlighter.scope(type))
++  }))
+ }
+ 
+ const treeHighlighter = Prec.high(ViewPlugin.fromClass(TreeHighlighter, {
+diff --git a/src/index.ts b/src/index.ts
+index 88410d5..8ff31fc 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -1,7 +1,8 @@
+ export {language, Language, LRLanguage, Sublanguage, sublanguageProp, defineLanguageFacet,
+         syntaxTree, ensureSyntaxTree, languageDataProp,
+         ParseContext, LanguageSupport, LanguageDescription,
+-        syntaxTreeAvailable, syntaxParserRunning, forceParsing, DocInput} from "./language"
++        syntaxTreeAvailable, syntaxParserRunning, forceParsing, DocInput,
++        viewportPriorityParsing, ViewportPriorityParsingConfig} from "./language"
+ 
+ export {IndentContext, getIndentUnit, indentString, indentOnInput, indentService, getIndentation, indentRange, indentUnit,
+         TreeIndentContext, indentNodeProp, delimitedIndent, continuedIndent, flatIndent} from "./indent"
+diff --git a/src/language.ts b/src/language.ts
+index 146cfa5..11cbfc9 100644
+--- a/src/language.ts
++++ b/src/language.ts
+@@ -248,6 +248,41 @@ export function syntaxParserRunning(view: EditorView) {
+   return view.plugin(parseWorker)?.isWorking() || false
+ }
+ 
++/// Configuration for viewport-priority provisional parsing.
++export interface ViewportPriorityParsingConfig {
++  /// Cooperative budget for initial, edit, background, and provisional parse
++  /// slices. Individual parser advances and tree finalization cannot be
++  /// preempted. Provisional work uses at most 2 ms per slice during gestures.
++  sliceMs?: number,
++  /// Provisional trees only apply highlighting from the outer language.
++  approximate: "outer-language"
++}
++
++interface ResolvedViewportPriorityParsing {
++  sliceMs: number,
++  approximate: "outer-language"
++}
++
++const viewportPriorityParsingFacet = Facet.define<ViewportPriorityParsingConfig,
++                                                   ResolvedViewportPriorityParsing | null>({
++  combine(values) {
++    if (!values.length) return null
++    let value = values[0]
++    return {
++      sliceMs: Math.max(1, Math.min(8, Number.isFinite(value.sliceMs) ? value.sliceMs! : 4)),
++      approximate: "outer-language"
++    }
++  }
++})
++
++/// Enable temporary viewport-priority highlighting while the canonical parser
++/// is still working through an earlier part of a large document. The
++/// provisional tree is never exposed through `syntaxTree` or other language
++/// services.
++export function viewportPriorityParsing(config: ViewportPriorityParsingConfig): Extension {
++  return viewportPriorityParsingFacet.of(config)
++}
++
+ /// Lezer-style
+ /// [`Input`](https://lezer.codemirror.net/docs/ref#common.Input)
+ /// object for a [`Text`](#state.Text) object.
+@@ -538,14 +573,16 @@ class LanguageState {
+     // state updates with parse work beyond the viewport.
+     let upto = this.context.treeLen == tr.startState.doc.length ? undefined
+       : Math.max(tr.changes.mapPos(this.context.treeLen), newCx.viewport.to)
+-    if (!newCx.work(Work.Apply, upto)) newCx.takeTree()
++    let budget = tr.state.facet(viewportPriorityParsingFacet)?.sliceMs ?? Work.Apply
++    if (!newCx.work(budget, upto)) newCx.takeTree()
+     return new LanguageState(newCx)
+   }
+ 
+   static init(state: EditorState) {
+     let vpTo = Math.min(Work.InitViewport, state.doc.length)
+     let parseState = ParseContext.create(state.facet(language)!.parser, state, {from: 0, to: vpTo})
+-    if (!parseState.work(Work.Apply, vpTo)) parseState.takeTree()
++    let budget = state.facet(viewportPriorityParsingFacet)?.sliceMs ?? Work.Apply
++    if (!parseState.work(budget, vpTo)) parseState.takeTree()
+     return new LanguageState(parseState)
+   }
+ }
+@@ -559,32 +596,85 @@ Language.state = StateField.define<LanguageState>({
+   }
+ })
+ 
+-let requestIdle = (callback: (deadline?: IdleDeadline) => void) => {
+-  let timeout = setTimeout(() => callback(), Work.MaxPause)
++let requestIdle = (callback: (deadline?: IdleDeadline) => void, shortSlices = false) => {
++  let timeout = setTimeout(() => callback(), shortSlices ? 16 : Work.MaxPause)
+   return () => clearTimeout(timeout)
+ }
+ 
+-if (typeof requestIdleCallback != "undefined") requestIdle = (callback: (deadline?: IdleDeadline) => void) => {
++if (typeof requestIdleCallback != "undefined") requestIdle = (callback: (deadline?: IdleDeadline) => void, shortSlices = false) => {
++  let pause = shortSlices ? 16 : Work.MinPause
+   let idle = -1, timeout = setTimeout(() => {
+-    idle = requestIdleCallback(callback, {timeout: Work.MaxPause - Work.MinPause})
+-  }, Work.MinPause)
++    idle = requestIdleCallback(callback, {timeout: Work.MaxPause - pause})
++  }, pause)
+   return () => idle < 0 ? clearTimeout(timeout) : cancelIdleCallback(idle)
+ }
+ 
+ const isInputPending = typeof navigator != "undefined" && (navigator as any).scheduling?.isInputPending
+   ? () => (navigator as any).scheduling.isInputPending() : null
+ 
+-const parseWorker = ViewPlugin.fromClass(class ParseWorker {
++const ProvisionalEditDebounce = 50
++const ProvisionalDebug = Symbol.for("@codemirror/language.viewportPriorityDebug")
++
++interface ProvisionalParse {
++  generation: number,
++  doc: Text,
++  language: Language,
++  from: number,
++  to: number,
++  parse: PartialParse | null,
++  tree: Tree | null,
++  published: boolean,
++  failed: boolean
++}
++
++/// @internal
++export function provisionalParseIsCurrent(task: ProvisionalParse | null, generation: number,
++                                          doc: Text, lang: Language | null, destroyed: boolean) {
++  return !!task?.parse && !destroyed && task.generation == generation &&
++    task.doc == doc && task.language == lang
++}
++
++export interface ViewportPriorityTree {
++  tree: Tree,
++  from: number,
++  to: number,
++  version: number,
++  approximate: "outer-language"
++}
++
++/// @internal
++export class ParseWorker {
+   working: (() => void) | null = null
+   workScheduled = 0
+   // End of the current time chunk
+   chunkEnd = -1
+   // Milliseconds of budget left for this chunk
+   chunkBudget = -1
++  provisional: ProvisionalParse | null = null
++  provisionalTimer = -1
++  provisionalGeneration = 0
++  provisionalVersion = 0
++  // Completed windows survive viewport changes. Only document/language changes
++  // invalidate these visual trees; canonical syntax state remains independent.
++  provisionalCache: ViewportPriorityTree[] = []
++  destroyed = false
+ 
+   constructor(readonly view: EditorView) {
+     this.work = this.work.bind(this)
++    this.workProvisional = this.workProvisional.bind(this)
+     this.scheduleWork()
++    this.restartProvisional()
++    Object.defineProperty(this.view, ProvisionalDebug, {
++      configurable: true,
++      value: () => ({
++        generation: this.provisionalGeneration,
++        version: this.provisionalVersion,
++        pending: !!this.provisional?.parse,
++        published: this.provisionalCache.length > 0,
++        cachedWindows: this.provisionalCache.length,
++        failed: !!this.provisional?.failed
++      })
++    })
+   }
+ 
+   update(update: ViewUpdate) {
+@@ -595,19 +685,208 @@ const parseWorker = ViewPlugin.fromClass(class ParseWorker {
+       if (this.view.hasFocus) this.chunkBudget += Work.ChangeBonus
+       this.scheduleWork()
+     }
++    let languageChanged = update.startState.facet(language) != update.state.facet(language)
++    if (update.docChanged || languageChanged)
++      this.clearProvisional()
++    this.restartProvisional(update.docChanged ? ProvisionalEditDebounce : 0)
++    if (update.viewportChanged && !update.docChanged && !languageChanged) this.workProvisional(false)
+     this.checkAsyncSchedule(cx)
+   }
+ 
++  private provisionalRanges() {
++    let ranges = this.view.visibleRanges
++    if (!ranges.length) return []
++    let doc = this.view.state.doc, size = 128
++    let first = Math.floor((doc.lineAt(ranges[0].from).number - 1) / size)
++    let last = Math.floor((doc.lineAt(ranges[ranges.length - 1].to).number - 1) / size)
++    let result: {from: number, to: number}[] = []
++    let add = (block: number) => {
++      let line = block * size + 1
++      if (line < 1 || line > doc.lines) return
++      let end = Math.min(doc.lines, line + size - 1)
++      result.push({from: doc.line(line).from,
++                   to: end == doc.lines ? doc.length : doc.line(end + 1).from})
++    }
++    // Finish stable windows instead of restarting on each pixel of movement.
++    // Visible windows come first, followed by two windows in each direction.
++    for (let block = first; block <= last; block++) add(block)
++    for (let ahead = 1; ahead <= 2; ahead++) {
++      add(last + ahead)
++      add(first - ahead)
++    }
++    return result.filter(range => range.from < range.to).slice(0, 12)
++  }
++
++  private clearProvisional(notify = false, keepCache = false) {
++    if (this.provisionalTimer > -1) clearTimeout(this.provisionalTimer)
++    this.provisionalTimer = -1
++    this.provisionalGeneration++
++    let hadTree = this.provisionalCache.length > 0
++    this.provisional = null
++    if (!keepCache) this.provisionalCache = []
++    if (notify && hadTree) this.provisionalVersion++
++  }
++
++  private restartProvisional(delay = 0) {
++    let config = this.view.state.facet(viewportPriorityParsingFacet)
++    let lang = this.view.state.facet(language)
++    let cx = this.view.state.field(Language.state).context
++    if (!config || !lang) {
++      this.clearProvisional(true)
++      return
++    }
++    let ranges = this.provisionalRanges()
++    let missing = ranges.filter(range => !cx.isDone(range.to) &&
++      !this.provisionalCache.some(tree => tree.from == range.from && tree.to == range.to))
++    let current = this.provisional
++    if (current && current.doc == this.view.state.doc && current.language == lang &&
++        missing.some(range => range.from == current.from && range.to == current.to)) return
++    if (!current && !missing.length) return
++    this.clearProvisional(false, true)
++    let range = missing[0]
++    if (!range) return
++
++    let generation = ++this.provisionalGeneration
++    try {
++      this.provisional = {
++        generation,
++        doc: this.view.state.doc,
++        language: lang,
++        from: range.from,
++        to: range.to,
++        parse: lang.parser.startParse(new DocInput(this.view.state.doc), [], [range]),
++        tree: null,
++        published: false,
++        failed: false
++      }
++      this.scheduleProvisional(delay)
++    } catch (error) {
++      this.provisional = {
++        generation,
++        doc: this.view.state.doc,
++        language: lang,
++        from: range.from,
++        to: range.to,
++        parse: null,
++        tree: null,
++        published: false,
++        failed: true
++      }
++      this.provisionalTimer = setTimeout(() => {
++        this.provisionalTimer = -1
++        if (!this.destroyed && this.provisional?.generation == generation && this.provisional.failed)
++          this.view.dispatch({})
++      }, 0) as any
++      logException(this.view.state, error, "viewport-priority parse")
++    }
++  }
++
++  private scheduleProvisional(delay = 0) {
++    if (this.provisionalTimer > -1 || !this.provisional || this.destroyed) return
++    this.provisionalTimer = setTimeout(this.workProvisional, Math.max(0, delay)) as any
++  }
++
++  private renderCritical() {
++    return !!(this.view as any).controlledTouchScrollController?.renderCritical
++  }
++
++  private publishProvisional(task: ProvisionalParse, notify: boolean) {
++    task.published = true
++    this.provisionalVersion++
++    this.provisionalCache.push({tree: task.tree!, from: task.from, to: task.to,
++      version: this.provisionalVersion, approximate: "outer-language"})
++    // Keep every requested window before nearby history. Character distance
++    // alone can evict a requested window containing an unusually long line,
++    // causing it to be parsed repeatedly without ever staying in the cache.
++    let wanted = new Set(this.provisionalRanges().map(range => range.from))
++    let center = (this.view.viewport.from + this.view.viewport.to) / 2
++    this.provisionalCache.sort((a, b) =>
++      Number(wanted.has(b.from)) - Number(wanted.has(a.from)) ||
++      Math.abs((a.from + a.to) / 2 - center) - Math.abs((b.from + b.to) / 2 - center))
++    this.provisionalCache.length = Math.min(this.provisionalCache.length, 12)
++    if (notify) {
++      this.view.dispatch({})
++      this.restartProvisional()
++    } else {
++      let generation = task.generation
++      this.provisionalTimer = setTimeout(() => {
++        this.provisionalTimer = -1
++        if (!this.destroyed && this.provisional?.generation == generation && this.provisional.published) {
++          this.view.dispatch({})
++          this.restartProvisional()
++        }
++      }, 0) as any
++    }
++  }
++
++  private workProvisional(notify = true) {
++    if (this.provisionalTimer > -1) clearTimeout(this.provisionalTimer)
++    this.provisionalTimer = -1
++    let task = this.provisional
++    let config = this.view.state.facet(viewportPriorityParsingFacet)
++    if (task?.tree && !task.published) {
++      if (isInputPending?.()) this.scheduleProvisional(16)
++      else this.publishProvisional(task, notify)
++      return
++    }
++    if (!config || !provisionalParseIsCurrent(task, this.provisionalGeneration, this.view.state.doc,
++                                              this.view.state.facet(language), this.destroyed)) return
++
++    // Keep canonical parsing deferred during gestures, but prepare visual
++    // windows in short slices so input and momentum can continue between them.
++    if (isInputPending?.()) {
++      this.scheduleProvisional(16)
++      return
++    }
++
++    let clock = this.view.win.performance
++    let end = clock.now() + (this.renderCritical() ? Math.min(2, config.sliceMs) : config.sliceMs)
++    let tree: Tree | null = null
++    do {
++      tree = task.parse.advance()
++      if (tree || notify && isInputPending && isInputPending()) break
++    } while (clock.now() < end)
++
++    if (tree) {
++      task.tree = tree
++      task.parse = null
++      if (isInputPending?.()) this.scheduleProvisional(16)
++      else this.publishProvisional(task, notify)
++    } else {
++      this.scheduleProvisional(this.renderCritical() ? 16 : 0)
++    }
++  }
++
++  viewportTree(): ViewportPriorityTree | null {
++    let trees = this.viewportTrees()
++    let tree = trees.find(tree => tree.to > this.view.viewport.from && tree.from < this.view.viewport.to)
++    return tree ? {...tree, version: this.provisionalVersion} : null
++  }
++
++  viewportTrees(): readonly ViewportPriorityTree[] {
++    return this.provisionalCache.slice().sort((a, b) => a.from - b.from)
++  }
++
++  provisionalPending() {
++    return !!(this.provisionalTimer > -1 || this.provisional?.parse ||
++      this.provisional?.tree && !this.provisional.published)
++  }
++
+   scheduleWork() {
+     if (this.working) return
+     let {state} = this.view, field = state.field(Language.state)
+     if (field.tree != field.context.tree || !field.context.isDone(state.doc.length))
+-      this.working = requestIdle(this.work)
++      this.working = requestIdle(this.work, !!state.facet(viewportPriorityParsingFacet))
+   }
+ 
+   work(deadline?: IdleDeadline) {
+     this.working = null
+ 
++    if (this.renderCritical()) {
++      this.scheduleWork()
++      return
++    }
++
+     let now = Date.now()
+     if (this.chunkEnd < now && (this.chunkEnd < 0 || this.view.hasFocus)) { // Start a new chunk
+       this.chunkEnd = now + Work.ChunkTime
+@@ -617,11 +896,13 @@ const parseWorker = ViewPlugin.fromClass(class ParseWorker {
+ 
+     let {state, viewport: {to: vpTo}} = this.view, field = state.field(Language.state)
+     if (field.tree == field.context.tree && field.context.isDone(vpTo + Work.MaxParseAhead)) return
++    let config = state.facet(viewportPriorityParsingFacet)
+     let endTime = Date.now() + Math.min(
+-      this.chunkBudget, Work.Slice, deadline && !isInputPending ? Math.max(Work.MinSlice, deadline.timeRemaining() - 5) : 1e9)
++      this.chunkBudget, config?.sliceMs ?? Work.Slice,
++      deadline && !isInputPending ? Math.max(config ? 0 : Work.MinSlice, deadline.timeRemaining() - 5) : 1e9)
+     let viewportFirst = field.context.treeLen < vpTo && state.doc.length > vpTo + 1000
+     let done = field.context.work(() => {
+-      return isInputPending && isInputPending() || Date.now() > endTime
++      return this.renderCritical() || isInputPending && isInputPending() || Date.now() > endTime
+     } , vpTo + (viewportFirst ? 0 : Work.MaxParseAhead))
+     this.chunkBudget -= Date.now() - now
+     if (done || this.chunkBudget <= 0) {
+@@ -644,16 +925,41 @@ const parseWorker = ViewPlugin.fromClass(class ParseWorker {
+   }
+ 
+   destroy() {
++    this.destroyed = true
+     if (this.working) this.working()
++    this.clearProvisional()
++    delete (this.view as any)[ProvisionalDebug]
+   }
+ 
+   isWorking() {
+-    return !!(this.working || this.workScheduled > 0)
++    return !!(this.working || this.workScheduled > 0 || this.provisionalTimer > -1 || this.provisional?.parse)
+   }
+-}, {
++}
++
++const parseWorker = ViewPlugin.fromClass(ParseWorker, {
+   eventHandlers: {focus() { this.scheduleWork() }}
+ })
+ 
++/// @internal
++export function viewportPriorityTree(view: EditorView): ViewportPriorityTree | null {
++  return view.plugin(parseWorker)?.viewportTree() || null
++}
++
++/// @internal
++export function viewportPriorityTrees(view: EditorView): readonly ViewportPriorityTree[] {
++  return view.plugin(parseWorker)?.viewportTrees() || []
++}
++
++/// @internal
++export function viewportPriorityParsingPending(view: EditorView) {
++  return !!view.plugin(parseWorker)?.provisionalPending()
++}
++
++/// @internal
++export function viewportPriorityParsingFailed(view: EditorView) {
++  return !!view.plugin(parseWorker)?.provisional?.failed
++}
++
+ /// The facet used to associate a language with an editor state. Used
+ /// by `Language` object's `extension` property (so you don't need to
+ /// manually wrap your languages in this). Can be used to access the

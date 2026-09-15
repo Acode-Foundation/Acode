@@ -12,6 +12,10 @@ extend-exclude = [
     "*.gradle",
     "plugins",
     "platforms",
+    # Preserve upstream CodeMirror source and generated patch text verbatim.
+    "vendor/codemirror-view",
+    "vendor/codemirror-language",
+    "vendor/patches",
     "src/lang/ar-ye.json",
     "src/lang/be-by.json",
     "src/lang/bn-bd.json",

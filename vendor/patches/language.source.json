@@ -1,0 +1,19 @@
+{
+  "src/README.md": "b3c702f037db1fd960c8c4f4e314824ab0c0a733b413fbd6cb2d6ee0483d1c26",
+  "src/fold.ts": "ec7061e1b10ecb4a39fc7603b8ad646af5e767b247566b3494926081b4729cf5",
+  "src/highlight.ts": "bcc913a77ba7723c64108432318aa4a747c378e3409e0688d258267eb4d311cc",
+  "src/indent.ts": "423b4c60b50b6c5161a5868a6b22c65b2f8474540de182bd3ce350163544c51a",
+  "src/index.ts": "dca647920ae446dfd90cfd7250e0dc884db9821c688c56f715b85add2f26689f",
+  "src/isolate.ts": "186fcdfbe53f8c2f947dea2930aa90ab2796c1aae4447c7fedbb9feadb6a3ba6",
+  "src/language.ts": "c360fc0be12f1c5a62cec63f712a905934c173ca43c707918a61dc629d181ae6",
+  "src/matchbrackets.ts": "9fac1aeebc54c33448704325d873f8f4875b9d5dfb7df23dc1451ca95daac05a",
+  "src/stream-parser.ts": "6026cd335f82ea9dacd075f228da93cdfa065403c4d3c9f24ab370b23a32c6c0",
+  "src/stringstream.ts": "7e57c6b1eac26b4dd0b09cfe5846d9fcbfad5e9dc5c862fe95e81b300608f1ca",
+  "test/test-fold.ts": "2669d721e5172ad5f6e7ed0d5b93d1817a3f6c727b89259ec7c772a1bfaaefcf",
+  "test/test-stream-parser.ts": "a7b440f62182ce786439e2da60b265133666be5061b6f24bd0a94c948a624aaa",
+  "test/test-syntax.ts": "2e6d8fb3f801eee826241fb9c903b98a96a71ae1f1a0522b05f025b0736915ee",
+  "LICENSE": "05c6130cda97e7600ca91427a41e8a065efcf82365fc0293e7de80faec494c07",
+  "README.md": "bc86fda6c103d012afb0458947e4c2e8f05866ba478e8963e6d6a2efec5c0346",
+  "CHANGELOG.md": "3ca3da0bbeb4affc22ec3c372d8c1ff9793938224407f8d195015e88e89f1255",
+  "package.json": "6f3c02460c4007b06885378d42bd777980a157ed6ad6561b6c35e3385379a392"
+}

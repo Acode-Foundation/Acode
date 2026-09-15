@@ -1,3 +1,4 @@
+import { preloadFileLanguage } from "cm/fileLanguage";
 import EditorFile from "./editorFile";
 
 /**
@@ -17,6 +18,11 @@ export default async function restoreFiles(files) {
 			emitUpdate: false,
 		};
 		const restoredFile = new EditorFile(file.filename, options);
+		if (render) {
+			void preloadFileLanguage(restoredFile).catch((error) => {
+				console.warn(`Failed to preload language for ${file.filename}`, error);
+			});
+		}
 		const load = Promise.resolve(restoredFile.load?.());
 
 		if (isRemoteUri(file.uri)) {

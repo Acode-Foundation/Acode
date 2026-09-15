@@ -2,11 +2,12 @@ import {
 	Compartment,
 	EditorSelection,
 	EditorState,
-	Transaction,
 	type Extension,
 	type SelectionRange,
+	Transaction,
 } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
+import { showEditorKeyboard } from "./keyboardInput";
 
 interface PointerTapSnapshot {
 	pointerId: number;
@@ -66,6 +67,10 @@ const readOnlyFocusGuard = EditorView.domEventHandlers({
 const readOnlyCursor = [
 	EditorView.editorAttributes.of({ class: "cm-read-only" }),
 	EditorView.theme({
+		"&.cm-read-only .cm-content": {
+			userSelect: "text",
+			WebkitUserSelect: "text",
+		},
 		"&.cm-read-only > .cm-scroller > .cm-cursorLayer": {
 			animation: "none",
 		},
@@ -133,6 +138,7 @@ export function focusEditorIfEditable(view: EditorView): boolean {
 		return false;
 	}
 	view.focus();
+	showEditorKeyboard(view);
 	return true;
 }
 
