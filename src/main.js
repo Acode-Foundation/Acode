@@ -28,6 +28,7 @@ import Contextmenu from "components/contextmenu";
 import Sidebar from "components/sidebar";
 import tile from "components/tile";
 import toast from "components/toast";
+import { initIconTooltips } from "components/tooltip";
 import alert from "dialogs/alert";
 import confirm from "dialogs/confirm";
 import intentHandler, { processPendingIntents } from "handlers/intent";
@@ -375,8 +376,9 @@ async function onDeviceReady() {
 				}
 				editorManager.reapplyActiveFile();
 				if (activeFile?.uri) {
-					// Re-emit file-loaded event
-					editorManager.emit("file-loaded", activeFile);
+					if (activeFile.loaded && !activeFile.loading) {
+						editorManager.emit("file-loaded", activeFile);
+					}
 					// Re-emit switch-file event
 					editorManager.emit("switch-file", activeFile);
 				}
@@ -708,6 +710,7 @@ async function loadApp() {
 	//#region Add event listeners
 	initModes();
 	quickToolsInit();
+	editorManager.on("switch-file", initIconTooltips());
 	sidebarApps.init($sidebar);
 	await sidebarApps.loadApps();
 	editorManager.onupdate = onEditorUpdate;

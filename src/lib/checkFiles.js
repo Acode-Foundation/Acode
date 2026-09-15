@@ -26,19 +26,12 @@ export default async function checkFiles() {
 	/** @type {{ editor: import('@codemirror/view').EditorView }} */
 	const { editor } = editorManager;
 
-	recursiveFileCheck([...files]);
-
-	/**
-	 * Checks if the file has been changed
-	 * @param {EditorFile[]} files List of files to check
-	 */
-	async function recursiveFileCheck(files) {
-		const file = files.pop();
-		await checkFile(file);
-		if (files.length) {
-			recursiveFileCheck(files);
+	for (const file of [...files].reverse()) {
+		try {
+			await checkFile(file);
+		} catch (error) {
+			console.warn("Failed to check file", error);
 		}
-		return;
 	}
 
 	/**
@@ -51,11 +44,14 @@ export default async function checkFiles() {
 	 * @returns {Promise<void>}
 	 */
 	async function checkFile(file) {
-		if (file === undefined || !file.loaded || file.loading) return;
+		if (file?.type !== "editor" || !file.tab || !file.loaded || file.loading)
+			return;
 
 		if (file.uri) {
 			const fs = fsOperation(file.uri);
-			const exists = await fs.exists();
+			if (!fs) return;
+			const exists = fs.exists ? await fs.exists() : true;
+			if (!file.tab) return;
 
 			if (!exists && !file.readOnly) {
 				file.isUnsaved = true;
@@ -74,7 +70,8 @@ export default async function checkFiles() {
 
 			let mtime = null;
 			if (file.hasVersionMetadata && file.savedMtime != null) {
-				const stat = await fs.stat().catch(() => null);
+				const stat = await fs.stat?.().catch(() => null);
+				if (!file.tab) return;
 				mtime = helpers.getStatMtime(stat);
 				if (mtime != null) {
 					if (mtime === file.savedMtime) return;
@@ -104,6 +101,7 @@ export default async function checkFiles() {
 			if (file.isUnsaved) return;
 
 			const text = await fs.readFile(file.encoding);
+			if (!file.tab) return;
 			const diskDoc = Text.of(String(text ?? "").split("\n"));
 			const currentDoc = file.session?.doc;
 
@@ -114,7 +112,7 @@ export default async function checkFiles() {
 						file.filename + strings["file changed"],
 					);
 
-					if (!confirmation) return;
+					if (!confirmation || !file.tab) return;
 
 					const cursorPos = editor.getCursorPosition();
 					editorManager.getFile(file.id, "id")?.makeActive();
@@ -126,7 +124,7 @@ export default async function checkFiles() {
 					} finally {
 						file.markChanged = true;
 					}
-					await file.writeToCache();
+					await file.flushCacheWrite();
 					editor.gotoLine(cursorPos.row, cursorPos.column);
 				} catch (error) {
 					// ignore

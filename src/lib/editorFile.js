@@ -1,4 +1,4 @@
-import fsOperation from "fileSystem";
+import fsOperation, { hasProvider } from "fileSystem";
 // CodeMirror imports for document state management
 import { EditorSelection, EditorState } from "@codemirror/state";
 import {
@@ -17,6 +17,7 @@ import startDrag from "handlers/editorFileTab";
 import actions from "handlers/quickTools";
 import { openTabContextMenuOnRelease } from "handlers/tabContextMenu";
 import tag from "html-tag-js";
+import quickToolsAdapters from "lib/quickToolsAdapter";
 import mimeTypes from "mime-types";
 import { applyHighlightStyles } from "utils/codeHighlight";
 import helpers from "utils/helpers";
@@ -31,6 +32,8 @@ import saveFile from "./saveFile";
 import appSettings from "./settings";
 
 let mainCSSStyleSheet = null;
+// Internal save origin; plugin save events keep their existing shape.
+export const AUTO_SAVE = Symbol("auto-save");
 
 function restoreSessionSelection(state, selection) {
 	if (!selection?.ranges?.length) return state;
@@ -61,9 +64,9 @@ function getMainCSSStyleSheet() {
 	return null;
 }
 
-function syncQuickToolsVisibility(file) {
+export function syncQuickToolsVisibility(file) {
 	const { $toggler } = quickTools;
-	const hideForFile = !!file?.hideQuickTools;
+	const hideForFile = !quickToolsAdapters.visible(file);
 
 	clearTimeout($toggler._hideTimeout);
 	if (hideForFile || !appSettings.value.floatingButton) {
@@ -461,6 +464,7 @@ export default class EditorFile {
 	 */
 	#loadOptions;
 	#loadPromise = null;
+	#pendingSave = null;
 	/**
 	 * Weather file is changed and needs to be saved
 	 * @type {boolean}
@@ -469,6 +473,7 @@ export default class EditorFile {
 	#hasVersionMetadata = false;
 	#cacheWriteTimer = null;
 	#cacheWritePromise = null;
+	#hasCache = false;
 	#savedDoc = null;
 	/**
 	 * Whether to show run button or not
@@ -772,6 +777,7 @@ export default class EditorFile {
 		}
 
 		if (options?.render ?? true) this.render();
+		if (this.loaded) void this.scheduleCacheWrite(0);
 	}
 
 	get type() {
@@ -1099,7 +1105,7 @@ export default class EditorFile {
 		const normalizedMtime = helpers.normalizeMtime(mtime);
 		this.docVersion = isUnsaved ? 1 : 0;
 		this.savedVersion = isUnsaved ? 0 : this.docVersion;
-		this.cacheVersion = isUnsaved ? this.docVersion : this.savedVersion;
+		this.cacheVersion = -1;
 		this.savedMtime = normalizedMtime;
 		this.diskMtime = normalizedMtime;
 		this.hasDiskConflict = false;
@@ -1152,43 +1158,40 @@ export default class EditorFile {
 	}
 
 	scheduleCacheWrite(delay = 1500) {
-		if (this.type !== "editor") return Promise.resolve();
-		if (this.cacheVersion === this.docVersion && this.#hasVersionMetadata) {
+		if (
+			this.type !== "editor" ||
+			this.id === config.DEFAULT_FILE_SESSION ||
+			!this.canSave
+		)
+			return Promise.resolve();
+		if (this.#hasCache && this.cacheVersion === this.docVersion) {
 			return this.#cacheWritePromise || Promise.resolve();
 		}
 		if (this.#cacheWriteTimer) clearTimeout(this.#cacheWriteTimer);
-		if (delay <= 0) {
-			this.#cacheWriteTimer = null;
-			this.#cacheWritePromise = this.writeToCache().finally(() => {
-				this.#cacheWritePromise = null;
-			});
-			return this.#cacheWritePromise;
-		}
+		if (delay <= 0) return this.flushCacheWrite();
 		this.#cacheWriteTimer = setTimeout(() => {
 			this.#cacheWriteTimer = null;
-			this.#cacheWritePromise = this.writeToCache().finally(() => {
-				this.#cacheWritePromise = null;
-			});
+			void this.flushCacheWrite();
 		}, delay);
 		return Promise.resolve();
 	}
 
 	async flushCacheWrite() {
+		if (
+			this.type !== "editor" ||
+			this.id === config.DEFAULT_FILE_SESSION ||
+			!this.canSave
+		)
+			return;
 		if (this.#cacheWriteTimer) {
 			clearTimeout(this.#cacheWriteTimer);
 			this.#cacheWriteTimer = null;
-			if (!this.#cacheWritePromise) {
-				this.#cacheWritePromise = this.writeToCache().finally(() => {
-					this.#cacheWritePromise = null;
-				});
-			}
 		}
-		if (this.#cacheWritePromise) await this.#cacheWritePromise;
-		if (this.cacheVersion !== this.docVersion) {
-			if (this.#cacheWriteTimer) {
-				clearTimeout(this.#cacheWriteTimer);
-				this.#cacheWriteTimer = null;
-			}
+		if (this.#cacheWritePromise) {
+			await this.#cacheWritePromise;
+			return this.flushCacheWrite();
+		}
+		if (!this.#hasCache || this.cacheVersion !== this.docVersion) {
 			this.#cacheWritePromise = this.writeToCache().finally(() => {
 				this.#cacheWritePromise = null;
 			});
@@ -1197,20 +1200,22 @@ export default class EditorFile {
 	}
 
 	async writeToCache() {
+		// A tab switch can flush a restored tab before its document is ready.
+		if (!this.loaded || this.loading || !this.#tab) return;
 		const writeVersion = this.docVersion;
 		const text = getDocText(this.session.doc);
-		const fs = fsOperation(this.cacheFile);
 
 		try {
-			if (!(await fs.exists())) {
+			const fs = fsOperation(this.cacheFile);
+			const exists = await fs.exists();
+			if (!this.#tab) return;
+			if (!exists) {
 				await fsOperation(CACHE_STORAGE).createFile(this.id, text);
-				this.cacheVersion = writeVersion;
-				this.#hasVersionMetadata = true;
-				if (this.docVersion !== writeVersion) this.scheduleCacheWrite();
-				return;
+			} else {
+				await fs.writeFile(text);
 			}
-
-			await fs.writeFile(text);
+			if (!this.#tab) return;
+			this.#hasCache = true;
 			this.cacheVersion = writeVersion;
 			this.#hasVersionMetadata = true;
 			if (this.docVersion !== writeVersion) this.scheduleCacheWrite();
@@ -1440,9 +1445,8 @@ export default class EditorFile {
 	 * Saves the file.
 	 * @returns {Promise<boolean>} true if file is saved, false if not.
 	 */
-	save() {
-		if (this.type !== "editor") return Promise.resolve(false);
-		return this.#save(false);
+	save(origin) {
+		return this.#save(false, origin === AUTO_SAVE);
 	}
 
 	/**
@@ -1450,8 +1454,18 @@ export default class EditorFile {
 	 * @returns {Promise<boolean>} true if file is saved, false if not.
 	 */
 	saveAs() {
-		if (this.type !== "editor") return Promise.resolve(false);
 		return this.#save(true);
+	}
+
+	/** Custom tabs opt into the standard save controls through their save event. */
+	get canSave() {
+		return (
+			!!this.#tab &&
+			(this.type !== "editor" || (this.loaded && !this.loading)) &&
+			(this.type === "editor" ||
+				typeof this.onsave === "function" ||
+				this.#events.save.length > 0)
+		);
 	}
 
 	setReadOnly(value) {
@@ -1473,7 +1487,7 @@ export default class EditorFile {
 					reconfigureEditorReadOnly(
 						targetEditor,
 						readOnlyCompartment,
-						readOnly,
+						readOnly || !this.loaded || this.loading,
 					);
 				}
 			}
@@ -1681,7 +1695,8 @@ export default class EditorFile {
 	 * Reuses an in-flight load so session restoration can safely preload tabs.
 	 */
 	load() {
-		if (this.type !== "editor" || this.loaded) return Promise.resolve(this);
+		if (this.type !== "editor" || this.loaded || !this.#tab)
+			return Promise.resolve(this);
 		if (this.#loadPromise) return this.#loadPromise;
 
 		this.#loadPromise = this.#loadText().finally(() => {
@@ -1829,28 +1844,32 @@ export default class EditorFile {
 		if (this.#type !== "editor") return;
 		let value = "";
 		const protocol = this.uri ? Url.getProtocol(this.uri) : "";
-		const isRemoteFile = protocol === "ftp:" || protocol === "sftp:";
-
+		const isTransportFile = protocol === "ftp:" || protocol === "sftp:";
 		const { cursorPos, editable } = this.#loadOptions;
-
-		this.#loadOptions = null;
-
-		if (!editable) {
-			this.setReadOnly(true);
-		}
-		this.loading = true;
-		this.markChanged = false;
-		if (isRemoteFile) this.#setRemoteLoading(true);
-		this.#emit("loadstart", createFileEvent(this));
+		let started = false;
 
 		try {
 			const cacheFs = fsOperation(this.cacheFile);
+			const cacheExists = await cacheFs.exists();
+			if (!this.#tab) return;
+			if (cacheExists) value = await cacheFs.readFile("utf-8");
+			if (!this.#tab) return;
+			this.#hasCache = cacheExists;
+
+			// An uncached tab stays idle until its filesystem registers.
+			if (!cacheExists && this.uri && !hasProvider(this.uri)) return;
+
+			started = true;
+			this.loading = true;
+			this.markChanged = false;
+			this.#setRemoteLoading(true);
+			this.#emit("loadstart", createFileEvent(this));
+			if (!this.#tab) return;
 			let file = null;
-			let cacheExists;
 			let loadedMtime = this.savedMtime;
 			let savedDoc = null;
 
-			if (isRemoteFile) {
+			if (!cacheExists && isTransportFile) {
 				file = fsOperation(this.uri);
 				let transportCache = null;
 				try {
@@ -1867,40 +1886,32 @@ export default class EditorFile {
 					transportCache,
 					encoding: this.encoding,
 				});
-				cacheExists = preview.editorCacheExists;
-				if (cacheExists) value = preview.text;
+				if (!this.#tab) return;
 
 				if (preview.text !== null) {
-					this.session = EditorState.create({ doc: preview.text });
 					editorManager.emit("file-loading-preview", this, preview.text);
-				}
-			} else {
-				cacheExists = await cacheFs.exists();
-				if (cacheExists) {
-					value = await cacheFs.readFile(this.encoding);
 				}
 			}
 
-			if (this.uri) {
+			if (!this.#tab) return;
+			if (!cacheExists && this.uri) {
 				file ||= fsOperation(this.uri);
-				const fileExists = await file.exists();
-				if (!fileExists && cacheExists) {
-					this.deletedFile = true;
-					this.isUnsaved = true;
-				} else if (fileExists) {
-					const stat = await file.stat().catch(() => null);
+				const fileExists = file.exists ? await file.exists() : true;
+				if (!this.#tab) return;
+				if (fileExists) {
+					const stat = await file.stat?.().catch(() => null);
+					if (!this.#tab) return;
 					loadedMtime = helpers.getStatMtime(stat);
 					const diskValue = await file.readFile(this.encoding);
 					savedDoc = EditorState.create({ doc: diskValue }).doc;
-					if (!cacheExists) {
-						value = diskValue;
-					}
-				} else if (!cacheExists && !fileExists) {
+					value = diskValue;
+				} else {
 					window.log("error", "unable to load file");
 					throw new Error("Unable to load file");
 				}
 			}
 
+			if (!this.#tab) return;
 			const isUnsaved = this.isUnsaved;
 			this.markChanged = false;
 			this.session = restoreSessionSelection(
@@ -1911,10 +1922,17 @@ export default class EditorFile {
 			this.__cmSessionReady = false;
 			this.__cmLanguageReady = false;
 			this.__cmLanguageSignature = null;
-			this.markLoaded({ mtime: loadedMtime, isUnsaved, savedDoc });
+			if (cacheExists) {
+				// Recovery data is the document, not a newly verified disk snapshot.
+				this.#savedDoc = isUnsaved ? null : this.#rawSession.doc;
+			} else {
+				this.markLoaded({ mtime: loadedMtime, isUnsaved, savedDoc });
+			}
+			this.#loadOptions = null;
 			this.markChanged = true;
 			this.loaded = true;
 			this.loading = false;
+			if (!cacheExists) void this.scheduleCacheWrite(0);
 
 			const { activeFile, emit } = editorManager;
 			const pane = editorManager.getFilePane?.(this);
@@ -1925,17 +1943,21 @@ export default class EditorFile {
 			}
 
 			setTimeout(() => {
-				this.#emit("load", createFileEvent(this));
+				if (this.#tab) this.#emit("load", createFileEvent(this));
 			}, 0);
 		} catch (error) {
+			if (!this.#tab) return;
 			this.#emit("loaderror", createFileEvent(this));
 			this.remove(false, { ignorePinned: true });
 			toast(`Unable to load: ${this.filename}`);
 			window.log("error", "Unable to load: " + this.filename);
 			window.log("error", error);
 		} finally {
-			if (isRemoteFile) this.#setRemoteLoading(false);
-			this.#emit("loadend", createFileEvent(this));
+			this.loading = false;
+			if (started && this.#tab) {
+				this.#setRemoteLoading(false);
+				this.#emit("loadend", createFileEvent(this));
+			}
 		}
 	}
 
@@ -1963,12 +1985,43 @@ export default class EditorFile {
 	// 	editorManager.editor._emit("scrollleft", e);
 	// }
 
-	#save(as) {
-		const event = createFileEvent(this);
-		this.#emit("save", event);
+	#save(as, automatic = false) {
+		if (!this.canSave) return Promise.resolve(false);
+		if (this.#pendingSave) return this.#pendingSave;
+		// Set the promise before dispatch so re-entrant requests also share it.
+		this.#pendingSave = Promise.resolve()
+			.then(() => (this.canSave ? this.#dispatchSave(as, automatic) : false))
+			.finally(() => {
+				this.#pendingSave = null;
+			});
+		return this.#pendingSave;
+	}
 
-		if (event.defaultPrevented) return Promise.resolve(false);
-		return Promise.all([this.flushCacheWrite(), saveFile(this, as)]);
+	#dispatchSave(as, automatic) {
+		const event = new SaveFileEvent(this, as);
+		try {
+			this.#emit("save", event);
+		} catch (error) {
+			// A later observer can fail after a handler has supplied a promise.
+			event.response?.catch(() => {});
+			return Promise.reject(error);
+		} finally {
+			event.finishDispatch();
+		}
+		if (event.response)
+			return event.response.then((saved) => {
+				if (!saved || !this.#tab) return false;
+				editorManager.onupdate("save-file");
+				editorManager.emit("update", "save-file");
+				editorManager.emit("save-file", this);
+				return true;
+			});
+		if (event.defaultPrevented || this.type !== "editor")
+			return Promise.resolve(false);
+		return Promise.all([
+			this.flushCacheWrite(),
+			saveFile(this, as, { automatic, savedDoc: this.#savedDoc }),
+		]).then(([, saved]) => saved === true);
 	}
 
 	#run(file) {
@@ -2012,10 +2065,11 @@ export default class EditorFile {
 			clearTimeout(this.#cacheWriteTimer);
 			this.#cacheWriteTimer = null;
 		}
-		this.#cacheWritePromise = null;
 		this.#savedDoc = null;
 		if (this.type === "editor") {
-			this.#removeCache();
+			void Promise.resolve(this.#cacheWritePromise).then(() =>
+				this.#removeCache(),
+			);
 			// CodeMirror EditorState doesn't need explicit cleanup
 			this.session = null;
 		} else if (this.content) {
@@ -2126,5 +2180,28 @@ class FileEvent {
 	}
 	get defaultPrevented() {
 		return this.#defaultPrevented;
+	}
+}
+
+class SaveFileEvent extends FileEvent {
+	#dispatching = true;
+	#response;
+	saveAs;
+	constructor(file, saveAs) {
+		super(file);
+		this.saveAs = saveAs;
+	}
+	/** Claim this save synchronously; resolve true only after a successful write. */
+	respondWith(result) {
+		if (!this.#dispatching || this.#response)
+			throw new Error("respondWith must be called once during the save event.");
+		this.preventDefault();
+		this.#response = Promise.resolve(result).then((saved) => saved === true);
+	}
+	get response() {
+		return this.#response;
+	}
+	finishDispatch() {
+		this.#dispatching = false;
 	}
 }

@@ -78,7 +78,8 @@ function resolveExactFile(referenceFile) {
 
 export function canSaveFile(file = editorManager.activeFile) {
 	return (
-		file?.type === "editor" &&
+		(file?.type === "editor" || file?.canSave === true) &&
+		file.canSave !== false &&
 		typeof file.save === "function" &&
 		typeof file.saveAs === "function"
 	);
@@ -138,15 +139,22 @@ async function closeTabs(files, options = {}) {
 		}
 	}
 
+	let complete = true;
 	for (const file of [...closableFiles]) {
-		if (save) {
-			await file.save();
+		if (save && file.isUnsaved) {
+			if (!canSaveFile(file)) {
+				complete = false;
+				continue;
+			}
+			const saved = await file.save();
+			if (saved === false || file.hasUnsavedChanges?.() || file.isUnsaved)
+				return false;
 		}
 
 		await file.remove(true, { silentPinned: true });
 	}
 
-	return true;
+	return complete;
 }
 
 export default {
@@ -157,7 +165,7 @@ export default {
 		await runAllTests();
 	},
 	async "close-all-tabs"() {
-		await closeTabs(editorManager.files);
+		return closeTabs(editorManager.files);
 	},
 	/**
 	 * Close every tab shown in the same tab group (pane tab bar) as the
@@ -183,19 +191,19 @@ export default {
 		return closeTabs(files);
 	},
 	async "close-tabs-to-left"(referenceFile) {
-		await closeTabs(
+		return closeTabs(
 			getTabsRelativeToFile("left", referenceFile),
 			getTabCloseSelectionOptions(),
 		);
 	},
 	async "close-tabs-to-right"(referenceFile) {
-		await closeTabs(
+		return closeTabs(
 			getTabsRelativeToFile("right", referenceFile),
 			getTabCloseSelectionOptions(),
 		);
 	},
 	async "close-other-tabs"(referenceFile) {
-		await closeTabs(
+		return closeTabs(
 			getTabsRelativeToFile("others", referenceFile),
 			getTabCloseSelectionOptions(),
 		);
@@ -206,10 +214,18 @@ export default {
 			strings["save all changes warning"],
 		);
 		if (!doSave) return;
-		editorManager.files.forEach((file) => {
-			file.save();
-			file.isUnsaved = false;
-		});
+		let complete = true;
+		for (const file of [...editorManager.files]) {
+			if (!file.isUnsaved) continue;
+			if (!canSaveFile(file)) {
+				complete = false;
+				continue;
+			}
+			const saved = await file.save();
+			if (saved === false || file.hasUnsavedChanges?.() || file.isUnsaved)
+				return false;
+		}
+		return complete;
 	},
 	"close-current-tab"() {
 		editorManager.activeFile?.remove();
@@ -493,8 +509,8 @@ export default {
 		try {
 			const { activeFile } = editorManager;
 			if (!canSaveFile(activeFile)) return;
-			await activeFile.save();
-			if (showToast) {
+			const saved = await activeFile.save();
+			if (showToast && saved === true) {
 				toast(strings["file saved"]);
 			}
 		} catch (error) {
@@ -505,8 +521,8 @@ export default {
 		try {
 			const { activeFile } = editorManager;
 			if (!canSaveFile(activeFile)) return;
-			await activeFile.saveAs();
-			if (showToast) {
+			const saved = await activeFile.saveAs();
+			if (showToast && saved === true) {
 				toast(strings["file saved"]);
 			}
 		} catch (error) {

@@ -35,7 +35,7 @@ export default function TabView({ id, disableSwipe = false }, children) {
 				if (!activeRect.width) return;
 				const targetLeft = activeRect.left - optionsRect.left;
 				const targetWidth = activeRect.width;
-				const targetTransform = `translate3d(${targetLeft}px, 0, 0)`;
+				const targetTransform = `translateX(${targetLeft}px)`;
 				$indicator.style.width = `${targetWidth}px`;
 				if (document.body.classList.contains("no-animation")) {
 					$indicator.style.transform = targetTransform;

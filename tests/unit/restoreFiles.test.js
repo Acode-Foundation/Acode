@@ -53,7 +53,7 @@ describe("restored file loading", () => {
 		expect(completed).toBe(true);
 	});
 
-	it.each(["ftp", "sftp", "http", "https"])(
+	it.each(["ftp", "sftp", "http", "https", "gh", "plugin", "custom"])(
 		"does not block startup on an unresolved %s tab",
 		async (protocol) => {
 			await restoreFiles([
