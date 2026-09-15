@@ -843,8 +843,8 @@
 	"settings-info-horizontal-scroll-margin": "A leghosszabb sor után egy üres hely lesz hozzáadva a képernyő széléhez, ha a sorok tördelése ki van kapcsolva. Adjon meg egy nem negatív egész pixelértéket.",
 	"confirm app icon reward": "Megtekint egy hirdetést az alkalmazásikon beállításának feloldásához?",
 	"rewarded ad unavailable": "A jutalomért megtekinthető hirdetések jelenleg nem érhetők el. Próbálja újra később.",
-	"rewarded ad failed": "A hirdetést nem sikerült befejezni. Próbáld újra.",
-	"rewarded ad incomplete": "Nézd végig a hirdetést a jutalom megszerzéséhez.",
+	"rewarded ad failed": "Nem sikerült befejezni a hirdetés megtekintését. Próbálja újra.",
+	"rewarded ad incomplete": "Nézze végig a hirdetést a jutalom megszerzéséhez.",
 	"plugin-review:dialog-label": "Bővítményértékelések",
 	"plugin-review:account-check-failed": "Nem sikerült ellenőrizni a fiókját. Próbálja újra.",
 	"plugin-review:sign-in": "Megjegyzés írásához be kell jelentkezni",
@@ -882,7 +882,7 @@
 	"wrap-indent-indent": "Behúzás (+1 szint)",
 	"wrap-indent-deep": "Mély behúzás (+2 szint)",
 	"settings-info-editor-wrapping-indent": "Válassza ki, hogy a tördelt szövegek a képernyő bal szélétől kezdődjenek-e, az eredeti sor behúzását kövessék-e, vagy még jobban legyenek-e behúzva. Minden további behúzási szint a tabulátor méretét veszi alapul.",
-	"icon pack": "Icon pack",
-	"settings-info-icon-pack": "Choose the icons used for files and folders in the explorer and file lists across the app.",
-	"unavailable": "unavailable"
+	"icon pack": "Ikoncsomag",
+	"settings-info-icon-pack": "Válassza ki a fájlokhoz és a mappákhoz használandó ikonokat a fájlkezelőben és az alkalmazás egészében megjelenő fájllistákban.",
+	"unavailable": "nem érhető el"
 }
