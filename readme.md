@@ -8,18 +8,18 @@
 
 ## • Overview
 
-Welcome to Acode Editor - a powerful and versatile code editing tool designed specifically for Android devices. Whether you're working on HTML, CSS, JavaScript, or other programming languages, Acode empowers you to code on-the-go with confidence. Under the hood it runs on Cordova with the Ace editor engine, and it ships as two editions from one codebase — free and Pro (unlocked via in-app purchase) — with a separate F-Droid build that strips out proprietary dependencies.
+Welcome to Acode Editor - a powerful and versatile code editing tool designed specifically for Android devices. Whether you're working on HTML, CSS, JavaScript, or other programming languages, Acode empowers you to code on-the-go with confidence. Under the hood it runs on Cordova with a CodeMirror 6 editor engine (exposed to plugins through an Ace-compatible API layer), and it ships as two editions from one codebase - free and Pro (unlocked via in-app purchase) - with a separate F-Droid build that strips out proprietary dependencies.
 
 ## • Features
 
 **Editor core**
-- Ace-based editor with syntax highlighting for 100+ programming and markup languages
+- CodeMirror 6-based editor with syntax highlighting for 100+ programming and markup languages
 - Dozens of built-in colour themes, plus a font manager for installing and using custom fonts
 - Command Palette (`Ctrl+Shift+P`) and full keyboard-shortcut support (`Ctrl+S` to save, and more) for external/Bluetooth keyboards
 - Fast fuzzy file finder (`Ctrl+P`) with startup file caching for instant results, even in large projects
 - Search & replace across every file in a project, not just the open one
 - Customizable Quick Tools row above the keyboard
-- Local word completion — autocomplete suggestions drawn from the current file
+- Local word completion - autocomplete suggestions drawn from the current file
 - Rename, move, and manage files directly from the in-app file browser
 
 **Preview & debugging**
@@ -29,15 +29,15 @@ Welcome to Acode Editor - a powerful and versatile code editing tool designed sp
 
 **Terminal & servers**
 - Built-in terminal (Alpine) with its own terminal service that can keep running in the background, independent of the app's lifecycle
-- Multiple terminal tabs, `.initrc` support for custom shell startup, and pre-installed CLI tools such as `fd`, `rg` (ripgrep), `fzf`, and `jq`
+- Multiple terminal tabs, `/initrc` support for custom shell startup, and pre-installed CLI tools such as `fd`, `rg` (ripgrep), `fzf`, and `jq`
 - S/FTP and SSH terminal integration, including ED25519 key support, with resilient connection handling for stalled connections
 
 **Connectivity & sync**
-- GitHub integration for syncing projects, including previewing files by GitHub URI
-- Acode account/cloud sync for purchases and settings across devices
+- Acode account for restoring purchase entitlement across devices
+- Manual settings backup and restore
 
 **Extensibility**
-- Enjoy a large collection of community plugins, backed by a first-party Plugin Store — 30+ plugins and growing, each showing version and last-updated info
+- Enjoy a large collection of community plugins, backed by a first-party Plugin Store - 30+ plugins and growing, each showing version and last-updated info
 - Plugin API that exposes editor internals so plugins can extend the editor deeply
 - Multi-language editing support with easy management tools
 
@@ -82,10 +82,10 @@ Acode is built from one codebase into several variants using the project's build
 yarn build <free|paid> <p|prod|d|dev> [fdroid] <apk/bundle>
 ```
 
-- `free` / `paid` — selects the edition (paid unlocks Pro features via in-app purchase)
-- `p`/`prod` or `d`/`dev` — production or development build
-- `fdroid` (optional flag) — produces the F-Droid-compatible build with proprietary dependencies removed; omit it for the regular Play Store build
-- `apk` or `bundle` — output format
+- `free` / `paid` - selects the build artifact: the `paid` build unlocks Pro features directly, with no purchase required for that package. An in-app purchase is a separate upgrade path that unlocks Pro inside the `free` package
+- `p`/`prod` or `d`/`dev` - production or development build
+- `fdroid` (optional flag) - produces the F-Droid-compatible build with proprietary dependencies removed; omit it for the regular Play Store build
+- `apk` or `bundle` - output format
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for full environment setup and build instructions.
 
