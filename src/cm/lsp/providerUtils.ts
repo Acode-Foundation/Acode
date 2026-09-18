@@ -135,15 +135,15 @@ export function defineServer(options: ManagedServerOptions): LspServerManifest {
 }
 
 export const installers = {
-	apk(options: {
+	apt(options: {
 		packages: string[];
 		executable: string;
 		label?: string;
 		source?: string;
 	}): LauncherInstallConfig {
 		return {
-			kind: "apk",
-			source: options.source || "apk",
+			kind: "apt",
+			source: options.source || "apt",
 			label: options.label,
 			executable: options.executable,
 			packages: options.packages,

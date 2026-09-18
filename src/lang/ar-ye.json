@@ -563,7 +563,7 @@
 	"lsp-install-info-unknown": "تعذر التحقق من حالة التثبيت تلقائياً.",
 	"lsp-install-info-version-available": "الإصدار {version} متاح.",
 	"lsp-install-notification": "{server} غير مثبت. اضغط للتثبيت.",
-	"lsp-install-method-apk": "حزمة APK",
+	"lsp-install-method-apt": "حزمة APT",
 	"lsp-install-method-cargo": "حزمة Cargo",
 	"lsp-install-method-manual": "ملف ثنائي يدوي",
 	"lsp-install-method-npm": "حزمة npm",

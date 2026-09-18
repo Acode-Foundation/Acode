@@ -41,11 +41,11 @@ type ExecutorCallback = (
 ) => void;
 
 interface Executor {
-  execute: (command: string, alpine: boolean) => Promise<string>;
+  execute: (command: string, ubuntu: boolean) => Promise<string>;
   start: (
     command: string,
     callback: ExecutorCallback,
-    alpine: boolean,
+    ubuntu: boolean,
   ) => Promise<string>;
   write: (uuid: string, input: string) => Promise<void>;
   stop: (uuid: string) => Promise<void>;
@@ -67,7 +67,7 @@ interface ExecutorProcess {
   id: string;
   pid: number;
   command: string;
-  alpine: boolean;
+  ubuntu: boolean;
   startedAt: number;
   background: boolean;
 }

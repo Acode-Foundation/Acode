@@ -563,7 +563,7 @@
 	"lsp-install-info-unknown": "A telepítési állapot automatikus ellenőrzése nem lehetséges.",
 	"lsp-install-info-version-available": "A {version} verzió elérhető.",
 	"lsp-install-notification": "A(z) {server} nincs telepítve. Koppintson a telepítéshez.",
-	"lsp-install-method-apk": "APK-csomag",
+	"lsp-install-method-apt": "APT-csomag",
 	"lsp-install-method-cargo": "Cargo-crate",
 	"lsp-install-method-manual": "Kézi bináris",
 	"lsp-install-method-npm": "npm-csomag",
