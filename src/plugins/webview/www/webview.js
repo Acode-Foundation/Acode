@@ -74,6 +74,37 @@ function destroy(id) {
   });
 }
 
+/**
+ * Overrides the User-Agent for an existing WebView instance.
+ * @param {string} id
+ * @param {string} userAgent non-empty User-Agent string
+ */
+function setUserAgent(id, userAgent) {
+  return new Promise((resolve, reject) => {
+    cordova.exec(resolve, reject, SERVICE, "setUserAgent", [id, userAgent]);
+  });
+}
+
+/**
+ * create() options:
+ *   mode            "hidden" | "fullscreen" (default "hidden")
+ *   title           string (default "")
+ *   allowNavigation boolean (default true)
+ *   allowDownloads  boolean (default false)
+ *   visible         boolean (default true)
+ *   incognito       boolean (default true) — never serve from the HTTP cache;
+ *                   clears navigation history and form data on destroy.
+ *                   Cookies stay shared with the host app (platform limit).
+ *   userAgent       string (optional) — custom User-Agent for the instance
+ *
+ * Events delivered via setMessageCallback payloads ({ id, event, data }):
+ *   pageStarted     { url }
+ *   pageFinished    { url, title }
+ *   progressChanged { progress }            // 0..100
+ *   loadError       { url, code, description }
+ *   titleChanged    { title }
+ */
+
 export default {
   setMessageCallback,
   create,
@@ -85,4 +116,5 @@ export default {
   hide,
   reload,
   destroy,
+  setUserAgent,
 };

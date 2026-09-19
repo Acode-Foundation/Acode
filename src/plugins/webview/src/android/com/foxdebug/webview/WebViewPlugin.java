@@ -69,6 +69,9 @@ public class WebViewPlugin extends CordovaPlugin {
         case "reload":
           reload(args.getString(0), callbackContext);
           return true;
+        case "setUserAgent":
+          setUserAgent(args.getString(0), args.getString(1), callbackContext);
+          return true;
         case "destroy":
           destroy(args.getString(0), callbackContext);
           return true;
@@ -94,6 +97,10 @@ public class WebViewPlugin extends CordovaPlugin {
     final boolean allowNavigation = options.optBoolean("allowNavigation", true);
     final boolean allowDownloads = options.optBoolean("allowDownloads", false);
     final boolean visible = options.optBoolean("visible", true);
+    final boolean incognito = options.optBoolean("incognito", true);
+    // optString() turns an explicit JSON null into the literal "null" string;
+    // isNull() covers both a missing key and a real null.
+    final String userAgent = options.isNull("userAgent") ? null : options.optString("userAgent", null);
 
     cordova.getActivity().runOnUiThread(new Runnable() {
       @Override
@@ -101,6 +108,7 @@ public class WebViewPlugin extends CordovaPlugin {
         WebViewInstance instance = new WebViewInstance(
           id, mode, title,
           allowNavigation, allowDownloads,
+          incognito, userAgent,
           WebViewPlugin.this
         );
         instances.put(id, instance);
@@ -194,6 +202,12 @@ public class WebViewPlugin extends CordovaPlugin {
     WebViewInstance instance = getInstance(id);
     if (instance == null) { callbackContext.error("WebView not found: " + id); return; }
     instance.reload(callbackContext);
+  }
+
+  private void setUserAgent(String id, String userAgent, CallbackContext callbackContext) {
+    WebViewInstance instance = getInstance(id);
+    if (instance == null) { callbackContext.error("WebView not found: " + id); return; }
+    instance.setUserAgent(userAgent, callbackContext);
   }
 
   private void destroy(String id, final CallbackContext callbackContext) {

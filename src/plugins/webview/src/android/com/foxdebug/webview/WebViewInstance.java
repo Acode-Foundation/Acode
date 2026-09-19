@@ -19,6 +19,7 @@ import android.webkit.JavascriptInterface;
 import android.webkit.URLUtil;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -65,7 +66,14 @@ public class WebViewInstance {
   final String title;
   final boolean allowNavigation;
   final boolean allowDownloads;
+  final boolean incognito;
   final WebViewPlugin plugin;
+
+  /**
+   * Custom User-Agent override, or null for the system default. Applied when
+   * the WebView is created and updated via {@link #setUserAgent}.
+   */
+  String userAgent;
 
   private WebView webView;
   /** The activity hosting this instance in fullscreen mode, while alive. */
@@ -78,6 +86,7 @@ public class WebViewInstance {
   WebViewInstance(
     String id, String mode, String title,
     boolean allowNavigation, boolean allowDownloads,
+    boolean incognito, String userAgent,
     WebViewPlugin plugin
   ) {
     this.id = id;
@@ -85,6 +94,8 @@ public class WebViewInstance {
     this.title = title;
     this.allowNavigation = allowNavigation;
     this.allowDownloads = allowDownloads;
+    this.incognito = incognito;
+    this.userAgent = (userAgent == null || userAgent.isEmpty()) ? null : userAgent;
     this.plugin = plugin;
   }
 
@@ -132,6 +143,20 @@ public class WebViewInstance {
     settings.setDisplayZoomControls(false);
     settings.setLoadWithOverviewMode(true);
     settings.setUseWideViewPort(true);
+
+    if (incognito) {
+      // Never serve from the HTTP cache. Note: Android WebView exposes no
+      // per-view "don't store" mode, and its disk cache is shared with the
+      // host app, so we deliberately do NOT clear it here — wiping it would
+      // evict the main app WebView's cache too. History and form data are
+      // per-view and are cleared on destroy() below. Cookies live in the
+      // app-wide CookieManager singleton (shared with the host app), so
+      // per-instance cookie incognito is not possible on this platform.
+      settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
+    }
+    if (userAgent != null) {
+      settings.setUserAgentString(userAgent);
+    }
 
     webView.setWebViewClient(new InstanceWebViewClient());
     webView.setWebChromeClient(new InstanceWebChromeClient());
@@ -269,6 +294,34 @@ public class WebViewInstance {
       @Override
       public void run() {
         webView.loadDataWithBaseURL(null, html, "text/html", "UTF-8", null);
+        callbackContext.success();
+      }
+    });
+  }
+
+  /**
+   * Overrides the User-Agent for this instance. Takes effect immediately
+   * when the WebView exists; otherwise it is stored and applied when the
+   * WebView is created (fullscreen instances are created lazily).
+   */
+  void setUserAgent(final String ua, final CallbackContext callbackContext) {
+    if (isDestroyed) {
+      callbackContext.error("WebView has been destroyed");
+      return;
+    }
+    if (ua == null || ua.trim().isEmpty()) {
+      callbackContext.error("User agent must not be empty");
+      return;
+    }
+    userAgent = ua;
+    if (webView == null) {
+      callbackContext.success();
+      return;
+    }
+    runOnUiThread(new Runnable() {
+      @Override
+      public void run() {
+        webView.getSettings().setUserAgentString(userAgent);
         callbackContext.success();
       }
     });
@@ -441,6 +494,13 @@ public class WebViewInstance {
           webView.setDownloadListener(null);
           webView.setWebChromeClient(null);
           webView.setWebViewClient(null);
+          // Incognito cleanup: per-view state only. The shared disk cache
+          // and the app-wide cookies are intentionally left alone (see
+          // createWebView() for why).
+          if (incognito) {
+            webView.clearHistory();
+            webView.clearFormData();
+          }
           webView.loadUrl("about:blank");
           webView.destroy();
         }
@@ -499,6 +559,13 @@ public class WebViewInstance {
       super.onPageStarted(view, url, favicon);
       // Best effort: gets the bridge in before the page's own scripts run.
       injectBridge(view);
+      try {
+        JSONObject data = new JSONObject();
+        data.put("url", url != null ? url : "");
+        plugin.sendEventToCordova(id, "pageStarted", data);
+      } catch (JSONException e) {
+        Log.e(TAG, "onPageStarted error", e);
+      }
     }
 
     @Override
@@ -506,9 +573,63 @@ public class WebViewInstance {
       super.onPageFinished(view, url);
       WebViewInstance.this.onPageFinished(view);
     }
+
+    @Override
+    public void onReceivedError(
+      WebView view, WebResourceRequest request, WebResourceError error
+    ) {
+      super.onReceivedError(view, request, error);
+      // Sub-resource failures are noise here; only the main frame matters.
+      if (request != null && !request.isForMainFrame()) return;
+      Uri url = request != null ? request.getUrl() : null;
+      int code = error != null ? error.getErrorCode() : -1;
+      CharSequence description = error != null ? error.getDescription() : null;
+      sendLoadError(
+        url != null ? url.toString() : null,
+        code,
+        description != null ? description.toString() : null
+      );
+    }
+
+    @SuppressWarnings("deprecation")
+    @Override
+    public void onReceivedError(
+      WebView view, int errorCode, String description, String failingUrl
+    ) {
+      super.onReceivedError(view, errorCode, description, failingUrl);
+      // Legacy API cannot tell sub-resource failures apart, so only report
+      // when the failing URL matches the page being loaded.
+      String current = view.getUrl();
+      if (failingUrl == null || !failingUrl.equals(current)) return;
+      sendLoadError(failingUrl, errorCode, description);
+    }
+
+    private void sendLoadError(String url, int code, String description) {
+      try {
+        JSONObject data = new JSONObject();
+        data.put("url", url != null ? url : "");
+        data.put("code", code);
+        data.put("description", description != null ? description : "");
+        plugin.sendEventToCordova(id, "loadError", data);
+      } catch (JSONException e) {
+        Log.e(TAG, "onReceivedError error", e);
+      }
+    }
   }
 
   private class InstanceWebChromeClient extends WebChromeClient {
+    @Override
+    public void onProgressChanged(WebView view, int newProgress) {
+      super.onProgressChanged(view, newProgress);
+      try {
+        JSONObject data = new JSONObject();
+        data.put("progress", newProgress);
+        plugin.sendEventToCordova(id, "progressChanged", data);
+      } catch (JSONException e) {
+        Log.e(TAG, "onProgressChanged error", e);
+      }
+    }
+
     @Override
     public void onReceivedTitle(WebView view, String pageTitle) {
       super.onReceivedTitle(view, pageTitle);
