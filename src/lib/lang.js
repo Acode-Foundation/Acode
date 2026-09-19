@@ -191,6 +191,12 @@ const langMap = {
 			return await import("../lang/ln-ln.json");
 		},
 	},
+	"az-az": {
+		name: "Azərbaycanca",
+		async strings() {
+			return await import("../lang/az-az.json");
+		},
+	},
 };
 
 const intlLocaleOverrides = {

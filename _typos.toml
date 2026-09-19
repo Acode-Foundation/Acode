@@ -13,6 +13,7 @@ extend-exclude = [
     "plugins",
     "platforms",
     "src/lang/ar-ye.json",
+    "src/lang/az-az.json",
     "src/lang/be-by.json",
     "src/lang/bn-bd.json",
     "src/lang/cs-cz.json",
