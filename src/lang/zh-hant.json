@@ -877,12 +877,12 @@
 	"plugin-review:error-downvote-comment": "告訴開發者哪些地方可以改進。",
 	"plugin-review:error-empty": "新增留言或選擇「讚」。",
 	"plugin-review:unrated": "尚未評分",
-	"wrapped line indent": "Word wrap indentation",
-	"wrap-indent-same": "Same",
-	"wrap-indent-indent": "Indent (+1 level)",
-	"wrap-indent-deep": "Deep indent (+2 levels)",
-	"settings-info-editor-wrapping-indent": "Choose whether wrapped text starts at the left edge, matches the original line's indentation, or is indented further. Each extra level uses your tab size.",
-	"icon pack": "Icon pack",
-	"settings-info-icon-pack": "Choose the icons used for files and folders in the explorer and file lists across the app.",
-	"unavailable": "unavailable"
+	"wrapped line indent": "換行縮排",
+	"wrap-indent-same": "與首行對齊",
+	"wrap-indent-indent": "縮排（+1 級）",
+	"wrap-indent-deep": "深度縮排（+2 級）",
+	"settings-info-editor-wrapping-indent": "選擇換行後的文字是靠左對齊、保持原行的縮排，還是進一步向內縮排。每增加一級縮排將遵循您設定的製表符寬度。",
+	"icon pack": "圖標包",
+	"settings-info-icon-pack": "選擇檔案總管及整個應用程式檔案列表中檔案和文件夾所使用的圖標。",
+	"unavailable": "不可用"
 }
