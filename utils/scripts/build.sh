@@ -3,6 +3,7 @@
 app="paid"
 mode="d"
 fdroidFlag=""
+noTerminalFlag=""
 packageType="apk"  # New default: apk or aar
 webpackmode="development"
 cordovamode=""
@@ -18,6 +19,13 @@ for arg in "$@"; do
             ;;
         "fdroid")
             fdroidFlag="fdroid"
+            ;;
+        # Omit the embedded terminal rootfs (~90MB with Ubuntu) from the APK.
+        # For rapid dev-test iteration on capped connections; the terminal is
+        # unavailable in such builds. Example:
+        #   npm run build paid dev apk no-terminal
+        "no-terminal")
+            noTerminalFlag="no-terminal"
             ;;
         "apk"|"bundle")
             packageType="$arg"
@@ -57,13 +65,25 @@ else
     echo "false" > "$tmpdir/fdroid.bool"
   fi
 
-  # Add only if the src exists and not already installed
-  if [ -d "src/plugins/proot" ] && [ ! -d "plugins/com.foxdebug.acode.rk.exec.proot" ]; then
+  # Add only if the src exists and not already installed.
+  # Skipped for no-terminal builds: the rootfs is omitted (see below).
+  if [ "$noTerminalFlag" != "no-terminal" ] && [ -d "src/plugins/proot" ] && [ ! -d "plugins/com.foxdebug.acode.rk.exec.proot" ]; then
     cordova plugin add src/plugins/proot/
   fi
 
   if [ -d "src/plugins/iap" ] && [ ! -d "plugins/cordova-plugin-iap" ]; then
     cordova plugin add src/plugins/iap/
+  fi
+fi
+
+# Dev-test builds can skip the embedded terminal rootfs (see #2897): with the
+# proot plugin removed, the heavy per-arch rootfs assets are never copied into
+# the APK, keeping it small for capped connections and fast CI iteration.
+# A subsequent normal build re-adds the plugin via the block above.
+if [ "$noTerminalFlag" = "no-terminal" ]; then
+  echo "Building without embedded terminal assets: the terminal will be unavailable in this APK."
+  if [ -d "plugins/com.foxdebug.acode.rk.exec.proot" ]; then
+    cordova plugin remove com.foxdebug.acode.rk.exec.proot
   fi
 fi
 
