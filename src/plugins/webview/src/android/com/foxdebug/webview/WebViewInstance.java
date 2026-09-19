@@ -578,7 +578,12 @@ public class WebViewInstance {
     public void onReceivedError(
       WebView view, WebResourceRequest request, WebResourceError error
     ) {
-      super.onReceivedError(view, request, error);
+      // Do NOT call super.onReceivedError(view, request, error): the base
+      // implementation forwards main-frame errors to the deprecated
+      // onReceivedError() below via virtual dispatch, which would emit a
+      // second, duplicate loadError for the same failure. This modern
+      // callback is the canonical path (minSdk is 26, so API 23+ is
+      // guaranteed); it emits directly and exactly once.
       // Sub-resource failures are noise here; only the main frame matters.
       if (request != null && !request.isForMainFrame()) return;
       Uri url = request != null ? request.getUrl() : null;
@@ -597,6 +602,9 @@ public class WebViewInstance {
       WebView view, int errorCode, String description, String failingUrl
     ) {
       super.onReceivedError(view, errorCode, description, failingUrl);
+      // Fallback for API < 23 only. On current targets the modern callback
+      // above is the entry point and never delegates here, so this path
+      // cannot double-emit.
       // Legacy API cannot tell sub-resource failures apart, so only report
       // when the failing URL matches the page being loaded.
       String current = view.getUrl();

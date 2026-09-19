@@ -125,6 +125,11 @@ class WebView {
 		await nativeBridge.reload(this.id);
 	}
 
+	async setUserAgent(userAgent) {
+		this._checkDestroyed();
+		await nativeBridge.setUserAgent(this.id, userAgent);
+	}
+
 	async destroy() {
 		this._checkDestroyed();
 		if (!this._destroyPromise) {
@@ -168,6 +173,8 @@ const webviewAPI = {
 			allowNavigation: options.allowNavigation !== false,
 			allowDownloads: options.allowDownloads === true,
 			visible: options.visible !== false,
+			incognito: options.incognito !== false,
+			userAgent: options.userAgent || null,
 		});
 
 		return new WebView(id, options);
