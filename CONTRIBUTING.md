@@ -10,7 +10,7 @@ Thank you for your interest in contributing to Acode! This guide will help you g
 
 2. Clone and open the repository:
    ```bash
-   git clone https://github.com/Acode-Foundation/Acode.git
+   git clone --recurse-submodules https://github.com/Acode-Foundation/Acode.git
    code Acode
    ```
 
@@ -35,7 +35,7 @@ If your editor doesn't support DevContainers, you can use Docker directly:
 
 ```bash
 # Clone the repository
-git clone https://github.com/Acode-Foundation/Acode.git
+git clone --recurse-submodules https://github.com/Acode-Foundation/Acode.git
 cd Acode
 
 # Build the Docker image from our Dockerfile
@@ -109,7 +109,7 @@ Some more environment variables, check [cordova docs](https://cordova.apache.org
 
 ```bash
 # Clone the repository
-git clone https://github.com/Acode-Foundation/Acode.git
+git clone --recurse-submodules https://github.com/Acode-Foundation/Acode.git
 cd Acode
 
 # Install dependencies and set up Cordova
@@ -120,6 +120,10 @@ pnpm run build paid dev apk # or pnpm run build p d
 ```
 
 The APK will be at: `platforms/android/app/build/outputs/apk/debug/app-debug.apk`
+
+> [!NOTE]
+> `@codemirror/lsp-client` comes from the `codemirror-lsp-client` git submodule and is installed as a local `file:` dependency.
+> If you cloned without `--recurse-submodules`, `setup` initializes the submodule for you; you can also run `git submodule update --init --recursive` manually.
 
 
 ## 📝 Contribution Guidelines

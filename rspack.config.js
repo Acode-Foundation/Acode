@@ -42,8 +42,11 @@ module.exports = (env, options) => {
       test: /\.m?js$/,
       oneOf: [
         // Node modules - use builtin:swc-loader only
+        // The codemirror-lsp-client submodule is installed through a "file:"
+        // dependency, so it resolves to its real path outside node_modules. It
+        // still ships pre-built code and must not go through the source loaders.
         {
-          include: /node_modules/,
+          include: /[\\/](?:node_modules|codemirror-lsp-client)[\\/]/,
           use: [
             {
               loader: 'builtin:swc-loader',

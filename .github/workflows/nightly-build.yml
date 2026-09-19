@@ -102,6 +102,7 @@ jobs:
         with:
           fetch-depth: 0 # Required for tags
           persist-credentials: false
+          submodules: recursive
           ref: ${{ (inputs.is_PR && inputs.PR_NUMBER) && github.event.pull_request.head.sha || '' }}
           allow-unsafe-pr-checkout: ${{ !!(inputs.is_PR && inputs.PR_NUMBER && github.event.pull_request.head.sha) }}
 

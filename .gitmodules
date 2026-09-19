@@ -1,0 +1,3 @@
+[submodule "codemirror-lsp-client"]
+	path = codemirror-lsp-client
+	url = https://github.com/Acode-Foundation/codemirror-lsp-client
