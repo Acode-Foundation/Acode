@@ -49,7 +49,9 @@ const loginEvents = {
  */
 function secureUserObject(user) {
 	if (!user) return null;
-
+    
+	const secured = { ...user }; 
+	
 	// Array with String Properties of Object
     const textProperties = [
 		"name", "role", "email", "github", "website",
@@ -64,6 +66,27 @@ function secureUserObject(user) {
 	});
 
 	return secured;
+}
+
+/** Function to unmask the user object properties
+ * so the interface can read them safely without crashing.
+ */
+export function getDecryptedUser(user) {
+	if (!user) return null;
+	const decrypted = { ...user };
+
+	const textProperties = [
+		"name", "role", "email", "github", "website",
+		"avatar_url", "pro_purchased_at", "created_at", "updated_at"
+	];
+
+	textProperties.forEach(prop => {
+		if (Array.isArray(decrypted[prop])) {
+			decrypted[prop] = unmaskCredential(decrypted[prop]);
+		}
+	});
+
+	return decrypted;
 }
 
 class AuthService {
@@ -128,7 +151,7 @@ class AuthService {
 	 * @returns {Promise<User>}
 	 */
 	async getLoggedInUser(forceFetch = false) {
-		if (loggedInUser && !forceFetch) return loggedInUser;
+		if (loggedInUser && !forceFetch) return getDecryptedUser(loggedInUser);
 
 		try {
 			const res = await fetch(`${config.API_BASE}/login`);
@@ -139,7 +162,7 @@ class AuthService {
 			   localStorage.setItem(CACHE_USER_KEY, JSON.stringify(loggedInUser));
 			   clearTimeout(cacheTimeout);
 			   cacheTimeout = setTimeout(() => (loggedInUser = null), 600_000);
-			   return loggedInUser;
+			   return getDecryptedUser(loggedInUser);
 			}
 
 			if (res.status === 401) {
