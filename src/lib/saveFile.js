@@ -172,11 +172,22 @@ async function saveFile(
 		}
 
 		if (appSettings.value.formatOnSave) {
-			editorManager.activeFile.markChanged = false;
+			// Formatters operate on the active editor document. If the user
+			// switched tabs while an async save step was pending, formatting
+			// here would rewrite the wrong file, so only format when the file
+			// being saved is the active one.
+			file.markChanged = false;
 			try {
-				acode.exec("format", false);
+				if (editorManager.activeFile === file) {
+					// Await the formatter so the write below captures the
+					// formatted document. A failed format aborts the save;
+					// `null` means no formatter is configured, which is not
+					// a failure.
+					const formatted = await acode.exec("format", false);
+					if (formatted === false) return false;
+				}
 			} finally {
-				editorManager.activeFile.markChanged = true;
+				file.markChanged = true;
 			}
 		}
 

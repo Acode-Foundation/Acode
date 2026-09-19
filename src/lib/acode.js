@@ -826,6 +826,13 @@ class Acode {
 		appSettings.update(false);
 	}
 
+	/**
+	 * Formats the active file with the configured formatter.
+	 * @param {boolean} [selectIfNull] open the formatter picker when no formatter is configured
+	 * @returns {Promise<boolean|null>} `true` when formatting ran, `false`
+	 * when the formatter failed, `null` when no formatter is configured
+	 * (not a failure; callers should not treat it as one)
+	 */
 	async format(selectIfNull = true) {
 		const file = editorManager.activeFile;
 		if (!file || file.type !== "editor") return false;
@@ -858,7 +865,9 @@ class Acode {
 			} else {
 				toast(strings["please select a formatter"]);
 			}
-			return false;
+			// No formatter configured: not a failure, so report `null`
+			// instead of `false` (both are falsy for existing callers).
+			return null;
 		}
 
 		try {

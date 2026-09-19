@@ -727,6 +727,7 @@ export default {
 			// Restore cursor position after formatting (pos.row is now 1-based)
 			editor.gotoLine(pos.row, pos.column);
 		}
+		return didFormat;
 	},
 	async eol() {
 		if (editorManager.activeFile?.type !== "editor") return;
