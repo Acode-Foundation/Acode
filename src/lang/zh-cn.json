@@ -877,12 +877,12 @@
 	"plugin-review:error-downvote-comment": "告诉开发者哪些地方可以改进。",
 	"plugin-review:error-empty": "添加评论或选择“赞”。",
 	"plugin-review:unrated": "暂无评分",
-	"wrapped line indent": "Word wrap indentation",
-	"wrap-indent-same": "Same",
-	"wrap-indent-indent": "Indent (+1 level)",
-	"wrap-indent-deep": "Deep indent (+2 levels)",
-	"settings-info-editor-wrapping-indent": "Choose whether wrapped text starts at the left edge, matches the original line's indentation, or is indented further. Each extra level uses your tab size.",
-	"icon pack": "Icon pack",
-	"settings-info-icon-pack": "Choose the icons used for files and folders in the explorer and file lists across the app.",
-	"unavailable": "unavailable"
+	"wrapped line indent": "折行缩进",
+	"wrap-indent-same": "与首行对齐",
+	"wrap-indent-indent": "缩进（+1 级）",
+	"wrap-indent-deep": "深度缩进（+2 级）",
+	"settings-info-editor-wrapping-indent": "选择折行后的文本是从行首靠左对齐、保持原行的缩进，还是进一步向内缩进。每增加一级缩进将遵循您设定的制表符宽度。",
+	"icon pack": "图标包",
+	"settings-info-icon-pack": "选择资源管理器及整个应用文件列表中文件和文件夹所使用的图标。",
+	"unavailable": "不可用"
 }
