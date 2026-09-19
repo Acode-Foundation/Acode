@@ -1,4 +1,5 @@
 import config from "./config";
+import { maskCredential, unmaskCredential } from "../security/security";
 
 /**
  * @typedef {object} User
@@ -42,6 +43,28 @@ const loginEvents = {
 		this.listeners.delete(callback);
 	},
 };
+
+/** Function for get the object of user under the Server,
+ * clone the structure and mask in the Strings.
+ */
+function secureUserObject(user) {
+	if (!user) return null;
+
+	// Array with String Properties of Object
+    const textProperties = [
+		"name", "role", "email", "github", "website",
+		"avatar_url", "pro_purchased_at", "created_at", "updated_at"
+	];
+
+	// Apply the Mask
+	textProperties.forEach(prop => {
+		if (typeof secured[prop] === "string") {
+			secured[prop] = maskCredential(secured[prop]);
+		}
+	});
+
+	return secured;
+}
 
 class AuthService {
 	#loginCallbacks = new Set();
@@ -111,11 +134,12 @@ class AuthService {
 			const res = await fetch(`${config.API_BASE}/login`);
 
 			if (res.ok) {
-				loggedInUser = await res.json();
-				localStorage.setItem(CACHE_USER_KEY, JSON.stringify(loggedInUser));
-				clearTimeout(cacheTimeout);
-				cacheTimeout = setTimeout(() => (loggedInUser = null), 600_000);
-				return loggedInUser;
+		       const rawuser = await res.json();
+			   loggedInUser = secureUserObject(rawuser);
+			   localStorage.setItem(CACHE_USER_KEY, JSON.stringify(loggedInUser));
+			   clearTimeout(cacheTimeout);
+			   cacheTimeout = setTimeout(() => (loggedInUser = null), 600_000);
+			   return loggedInUser;
 			}
 
 			if (res.status === 401) {
