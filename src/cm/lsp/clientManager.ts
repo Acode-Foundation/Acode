@@ -538,6 +538,13 @@ export class LspClientManager {
           plugin.client.sync();
           return true;
         }
+        // The user may have switched tabs while the formatting request was
+        // in flight; never apply this file's edits to another file's
+        // document. Abort without writing instead.
+        const em = (globalThis as Record<string, unknown>).editorManager as
+          | { activeFile?: unknown }
+          | undefined;
+        if (em && file && em.activeFile !== file) return false;
         const applied = applyTextEdits(plugin, view, edits);
         if (applied) {
           plugin.client.sync();

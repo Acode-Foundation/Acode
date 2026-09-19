@@ -117,6 +117,29 @@ async function saveFile(
 	let saved = false;
 
 	try {
+		if (appSettings.value.formatOnSave) {
+			// Format the in-memory content BEFORE creating/reassigning the
+			// save target below: a failed format aborts the save before any
+			// file creation, URI reassignment, or recents update happens.
+			// Formatters operate on the active editor document. If the user
+			// switched tabs while an async save step was pending, formatting
+			// here would rewrite the wrong file, so only format when the file
+			// being saved is the active one.
+			file.markChanged = false;
+			try {
+				if (editorManager.activeFile === file) {
+					// Await the formatter so the write below captures the
+					// formatted document. A failed format aborts the save;
+					// `null` means no formatter is configured, which is not
+					// a failure.
+					const formatted = await acode.exec("format", false);
+					if (formatted === false) return false;
+				}
+			} finally {
+				file.markChanged = true;
+			}
+		}
+
 		if (isSaveAs || newUrl) {
 			// if save as or new file
 			const fileUri = Url.join(newUrl, file.filename);
@@ -168,26 +191,6 @@ async function saveFile(
 					`${file.filename}: the source has changed or its saved version could not be verified. Overwrite it with this document?`,
 				);
 				if (!overwrite || !isCurrent()) return false;
-			}
-		}
-
-		if (appSettings.value.formatOnSave) {
-			// Formatters operate on the active editor document. If the user
-			// switched tabs while an async save step was pending, formatting
-			// here would rewrite the wrong file, so only format when the file
-			// being saved is the active one.
-			file.markChanged = false;
-			try {
-				if (editorManager.activeFile === file) {
-					// Await the formatter so the write below captures the
-					// formatted document. A failed format aborts the save;
-					// `null` means no formatter is configured, which is not
-					// a failure.
-					const formatted = await acode.exec("format", false);
-					if (formatted === false) return false;
-				}
-			} finally {
-				file.markChanged = true;
 			}
 		}
 

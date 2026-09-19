@@ -98,6 +98,11 @@ export async function formatActiveFileWithPrettier() {
 
 		if (formatted === source) return true;
 
+		// The user may have switched tabs while the config/format awaits
+		// resolved; never dispatch into a document that is no longer this
+		// file's. Abort without writing instead.
+		if (editorManager?.activeFile !== file) return false;
+
 		editor.dispatch({
 			changes: {
 				from: 0,

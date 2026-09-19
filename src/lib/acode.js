@@ -871,8 +871,16 @@ class Acode {
 		}
 
 		try {
-			await formatter.format();
-			return true;
+			// Propagate the formatter's own result instead of assuming
+			// success: formatters resolve `false` for handled failures
+			// (e.g. Prettier failing to parse, LSP reporting failure).
+			const didFormat = (await formatter.format()) !== false;
+			// The formatter dispatches through the shared editor view; if
+			// the user switched tabs while it was awaiting, its edits may
+			// have targeted the wrong document, so report failure instead
+			// of success and let callers abort.
+			if (editorManager.activeFile !== file) return false;
+			return didFormat;
 		} catch (error) {
 			helpers.error(error);
 			return false;
