@@ -27,6 +27,7 @@ let loadingFileCount = 0;
  * @property {string} paneId
  * @property {boolean} persistInSession
  * @property {AbortSignal} signal Discard an obsolete open before activating its file.
+ * @property {boolean} external Receive an Android file intent; report failures to the batch and require document handlers.
  */
 
 /**
@@ -146,6 +147,15 @@ export default async function openFile(file, options = {}) {
 
 		// Check for registered file handlers
 		const customHandler = fileTypeHandler.getFileHandler(name);
+		const needsDocumentHandler =
+			options.external &&
+			/\.(pdf|docx|dotx|xlsx|xls|ods|pptx|ppsx|potx)$/i.test(name);
+		if (needsDocumentHandler && !customHandler) {
+			throw Object.assign(new Error("Document handler unavailable"), {
+				code: "DOCUMENT_HANDLER_UNAVAILABLE",
+				filename: name,
+			});
+		}
 		if (customHandler) {
 			try {
 				await customHandler.handleFile({
@@ -167,6 +177,14 @@ export default async function openFile(file, options = {}) {
 			} catch (error) {
 				if (signal?.aborted) return;
 				console.error(`File handler '${customHandler.id}' failed:`, error);
+				if (options.external) {
+					throw Object.assign(
+						new Error("Document handler failed", { cause: error }),
+						{
+							filename: name,
+						},
+					);
+				}
 				// Continue with default handling if custom handler fails
 			}
 		}
@@ -436,6 +454,8 @@ export default async function openFile(file, options = {}) {
 		// Else open a new file
 		// Checks for valid file
 		if (fileInfo.length * 0.000001 > settings.maxFileSize) {
+			if (options.external)
+				throw Object.assign(new Error("File too large"), { filename: name });
 			return alert(
 				strings.error.toUpperCase(),
 				strings["file too large"].replace(
@@ -445,6 +465,13 @@ export default async function openFile(file, options = {}) {
 			);
 		}
 
+		if (
+			options.external &&
+			(helpers.isBinary(name) ||
+				helpers.isBinary({ name, mime: fileInfo.mime || fileInfo.type }))
+		) {
+			throw Object.assign(new Error("Unsupported file"), { filename: name });
+		}
 		if (helpers.isBinary(uri)) {
 			const confirmation = await confirm(strings.info, strings["binary file"]);
 			if (!confirmation || signal?.aborted) return;
@@ -479,6 +506,7 @@ export default async function openFile(file, options = {}) {
 		if (mode !== "single") recents.addFile(uri);
 		return;
 	} catch (error) {
+		if (options.external && !signal?.aborted) throw error;
 		if (!signal?.aborted) console.error(error);
 	} finally {
 		releaseTitleLoader?.();

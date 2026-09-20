@@ -66,6 +66,7 @@ import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.CordovaWebView;
+import org.apache.cordova.CordovaWebViewImpl;
 import org.apache.cordova.PluginResult;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -179,6 +180,28 @@ public class System extends CordovaPlugin {
         break;
       case "get-configuration":
         getConfiguration(callbackContext);
+        return true;
+      case "set-fullscreen-back-handler":
+        final boolean fullscreenBackHandler = args.getBoolean(0);
+        activity.runOnUiThread(() -> {
+          try {
+            ((CordovaWebViewImpl) webView).setFullscreenBackHandler(fullscreenBackHandler);
+            callbackContext.success();
+          } catch (RuntimeException error) {
+            callbackContext.error(error.getMessage());
+          }
+        });
+        return true;
+      case "set-fullscreen-orientation":
+        final String orientation = args.isNull(0) ? null : args.getString(0);
+        activity.runOnUiThread(() -> {
+          try {
+            ((CordovaWebViewImpl) webView).setFullscreenOrientation(orientation);
+            callbackContext.success();
+          } catch (RuntimeException error) {
+            callbackContext.error(error.getMessage());
+          }
+        });
         return true;
       case "http-stream-start":
         httpStreamStart(args, callbackContext);
@@ -2015,11 +2038,55 @@ public class System extends CordovaPlugin {
       json.put("data", intent.getDataString());
       json.put("type", intent.getType());
       json.put("package", intent.getPackage());
+      json.put("uris", getIntentUris(intent));
       json.put("extras", getExtrasJson(intent.getExtras()));
-    } catch (JSONException e) {
+    } catch (JSONException | RuntimeException e) {
       e.printStackTrace();
     }
     return json;
+  }
+
+  private JSONArray getIntentUris(Intent intent) {
+    Set<Uri> uris = new LinkedHashSet<>();
+    String action = intent.getAction();
+    if (Intent.ACTION_VIEW.equals(action) || Intent.ACTION_EDIT.equals(action)) {
+      if (intent.getData() != null) uris.add(intent.getData());
+    } else if (!Intent.ACTION_SEND.equals(action) && !Intent.ACTION_SEND_MULTIPLE.equals(action)) {
+      return new JSONArray();
+    }
+    try {
+      Object stream = intent.getExtras() == null ? null : intent.getExtras().get(Intent.EXTRA_STREAM);
+      if (stream instanceof Uri) uris.add((Uri) stream);
+      else if (stream instanceof ArrayList<?>) {
+        for (Object item : (ArrayList<?>) stream) {
+          if (item instanceof Uri) uris.add((Uri) item);
+        }
+      }
+    } catch (RuntimeException error) {
+      Log.w(TAG, "Unable to read shared streams", error);
+    }
+    ClipData clip = intent.getClipData();
+    if (clip != null) {
+      for (int i = 0; i < clip.getItemCount(); i++) {
+        Uri uri = clip.getItemAt(i).getUri();
+        if (uri != null) uris.add(uri);
+      }
+    }
+    JSONArray result = new JSONArray();
+    for (Uri uri : uris) {
+      if (!"content".equals(uri.getScheme()) && !"file".equals(uri.getScheme())) continue;
+      result.put(uri.toString());
+      int grants = intent.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+      if ("content".equals(uri.getScheme()) && grants != 0 &&
+          (intent.getFlags() & Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION) != 0) {
+        try {
+          context.getContentResolver().takePersistableUriPermission(uri, grants);
+        } catch (SecurityException | IllegalArgumentException ignored) {
+          // Temporary access remains valid when a provider cannot persist the grant.
+        }
+      }
+    }
+    return result;
   }
 
   private JSONObject getExtrasJson(Bundle extras) {
@@ -2042,7 +2109,7 @@ public class System extends CordovaPlugin {
             json.put(key, (Boolean) value);
           } else if (value instanceof Bundle) {
             json.put(key, getExtrasJson((Bundle) value));
-          } else {
+          } else if (value != null) {
             json.put(key, value.toString());
           }
         } catch (JSONException e) {

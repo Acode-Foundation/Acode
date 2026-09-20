@@ -386,6 +386,8 @@ async function onDeviceReady() {
 				window.log("error", "Failed to load plugins!");
 				window.log("error", error);
 				toast("Failed to load plugins!");
+			} finally {
+				void processPendingIntents().catch(intentHandler.onError);
 			}
 			applySettings.afterRender();
 

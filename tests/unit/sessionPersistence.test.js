@@ -25,12 +25,14 @@ vi.mock("cm/editorUtils", () => ({
 	})),
 }));
 vi.mock("dialogs/alert", () => ({ default: vi.fn() }));
+vi.mock("dialogs/select", () => ({ default: vi.fn() }));
 vi.mock("fileSystem", () => ({ default: vi.fn() }));
 vi.mock("lib/auth", () => ({ default: {} }));
 vi.mock("lib/config", () => ({
 	default: { DEFAULT_FILE_SESSION: "default-session" },
 }));
 vi.mock("lib/openFile", () => ({ default: runtime.openFile }));
+vi.mock("lib/loadPlugins", () => ({ isInitialPluginLoadComplete: () => true }));
 vi.mock("lib/openFolder", () => ({
 	default: vi.fn(),
 	addedFolder: [],

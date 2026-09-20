@@ -104,6 +104,9 @@ declare type LangStrings = {
   "title-listfiles": string;
   "ui zoom": string;
   "unable to delete file": string;
+  "document plugin required": string;
+  "shared files unavailable": string;
+  "invalid shared file": string;
   "unable to open file": string;
   "unable to open folder": string;
   "unable to save file": string;

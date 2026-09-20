@@ -1,16 +1,19 @@
 import fsOperation from "fileSystem";
+import select from "dialogs/select";
 import auth from "lib/auth";
 import config from "lib/config";
+import { isInitialPluginLoadComplete } from "lib/loadPlugins";
 import openFile from "lib/openFile";
 import { BANNER_SUPPRESSION_REASON, setBannerSuppressed } from "lib/startAd";
 import helpers from "utils/helpers";
 
 const handlers = [];
 /**
- * Queue to store intents that arrive before files are restored
- * @type {Array<{url: string, options: object}>}
+ * Batches wait for restored files and plugin handlers, then open sequentially.
+ * @type {Array<{uris: string[], invalid: boolean}>}
  */
 const pendingIntents = [];
+let opening;
 
 /**
  *
@@ -19,15 +22,13 @@ const pendingIntents = [];
 export default async function HandleIntent(intent = {}) {
 	const type = intent.action?.split(".").slice(-1)[0];
 
-	if (["SEND", "VIEW", "EDIT"].includes(type)) {
+	if (["SEND", "SEND_MULTIPLE", "VIEW", "EDIT"].includes(type)) {
 		/**@type {string} */
 		const url =
 			intent.fileUri ||
 			intent.data ||
 			intent.extras?.["android.intent.extra.STREAM"];
-		if (!url) return;
-
-		if (url.startsWith("acode://")) {
+		if (typeof url === "string" && url.startsWith("acode://")) {
 			const path = url.replace("acode://", "");
 			const [module, action, value] = path.split("/");
 
@@ -75,21 +76,26 @@ export default async function HandleIntent(intent = {}) {
 			return;
 		}
 
-		const options = {
-			mode: "single",
-			render: true,
-			persistInSession: false,
-		};
-
-		if (sessionStorage.getItem("isfilesRestored") === "true") {
-			await openFile(url, options);
-		} else {
-			// Store the intent for later processing when files are restored
-			pendingIntents.push({
-				url,
-				options,
-			});
-		}
+		const incoming = intent.uris?.length
+			? intent.uris
+			: Array.isArray(url)
+				? url
+				: url == null
+					? []
+					: [url];
+		if (!Array.isArray(incoming) || !incoming.length) return;
+		const uris = [
+			...new Set(
+				incoming.filter(
+					(uri) => typeof uri === "string" && /^(content|file):\/\//i.test(uri),
+				),
+			),
+		];
+		pendingIntents.push({
+			uris,
+			invalid: incoming.some((uri) => !uris.includes(uri)),
+		});
+		await processPendingIntents();
 	}
 }
 
@@ -106,23 +112,73 @@ export function removeIntentHandler(handler) {
 	if (index > -1) handlers.splice(index, 1);
 }
 
-/**
- * Process all pending intents that were queued before files were restored.
- * This function is called after isfilesRestored is set to true in main.js.
- * @returns {Promise<void>}
- */
+/** Drain only after both startup phases, including a partially failed plugin load. */
 export async function processPendingIntents() {
-	if (sessionStorage.getItem("isfilesRestored") !== "true") return;
-
-	// Process all pending intents
-	while (pendingIntents.length > 0) {
-		const pendingIntent = pendingIntents.shift();
-		try {
-			await openFile(pendingIntent.url, pendingIntent.options);
-		} catch (error) {
-			helpers.error(error);
+	if (
+		sessionStorage.getItem("isfilesRestored") !== "true" ||
+		!isInitialPluginLoadComplete()
+	)
+		return;
+	if (opening) return opening;
+	opening = (async () => {
+		while (pendingIntents.length) {
+			const { uris, invalid } = pendingIntents.shift();
+			const failures = invalid
+				? [{ filename: strings["invalid shared file"] }]
+				: [];
+			for (const uri of uris) {
+				try {
+					await openFile(uri, {
+						mode: "single",
+						render: true,
+						persistInSession: false,
+						external: true,
+					});
+				} catch (error) {
+					console.error("Unable to open incoming file", error);
+					failures.push({
+						code: error?.code,
+						filename: error?.filename || uri,
+					});
+				}
+			}
+			if (failures.length)
+				await reportFailures(failures).catch(HandleIntent.onError);
 		}
-	}
+	})().finally(() => {
+		opening = undefined;
+	});
+	return opening;
+}
+
+async function reportFailures(failures) {
+	const needsPlugin = failures.some(
+		(error) => error.code === "DOCUMENT_HANDLER_UNAVAILABLE",
+	);
+	const explanation = needsPlugin
+		? strings["document plugin required"]
+		: strings["shared files unavailable"];
+	// The select dialog supports rich text. Build its message as text so
+	// provider filenames cannot introduce markup or links.
+	const message = document.createElement("p");
+	message.style.cssText =
+		"white-space:pre-wrap;overflow-wrap:anywhere;margin:0";
+	message.textContent = `${explanation}\n\n${failures.map((error) => error.filename).join("\n")}`;
+	const answer = await new Promise((resolve, reject) => {
+		select(
+			strings["unable to open file"],
+			[
+				{ text: message.outerHTML, disabled: true },
+				...(needsPlugin ? [{ value: "plugins", text: strings.plugins }] : []),
+				{ value: "close", text: needsPlugin ? strings.cancel : strings.ok },
+			],
+			{
+				default: needsPlugin ? "plugins" : "close",
+				onCancel: () => resolve(null),
+			},
+		).then(resolve, reject);
+	});
+	if (answer === "plugins") acode.exec("open", "plugins");
 }
 
 class IntentEvent {

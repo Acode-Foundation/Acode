@@ -28,6 +28,7 @@ interface FileShortcut {
 }
 
 interface Intent {
+  uris?: string[];
   action: string;
   data: string;
   type: string;
