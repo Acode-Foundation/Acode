@@ -19,8 +19,8 @@ module.exports = function prepareImmersiveFullscreen(context) {
   const original = fs.readFileSync(webViewPath, "utf8");
   const newline = original.includes("\r\n") ? "\r\n" : "\n";
 
-  // Rebuild our blocks on every prepare, including when only the controller
-  // changes. No stale version flag and no duplicate fields or lifecycle calls.
+  // Markers delimit our generated blocks so each prepare can replace them safely,
+  // including when only the controller changes.
   let source = original
     .replace(/\r\n/g, "\n")
     .replace(
@@ -33,7 +33,7 @@ module.exports = function prepareImmersiveFullscreen(context) {
     );
   }
 
-  function insert(name, anchor, lines, before = false) {
+  function insert(name, anchor, code, before = false) {
     const matches = [...source.matchAll(new RegExp(anchor.source, "gm"))];
     if (matches.length !== 1) {
       throw new Error(
@@ -43,7 +43,7 @@ module.exports = function prepareImmersiveFullscreen(context) {
     const indent = matches[0][1];
     const block = [
       `// ACODE_FULLSCREEN_BEGIN ${name}`,
-      ...lines,
+      ...code.trim().split("\n"),
       `// ACODE_FULLSCREEN_END ${name}`,
     ]
       .map((line) => indent + line)
@@ -53,94 +53,102 @@ module.exports = function prepareImmersiveFullscreen(context) {
     );
   }
 
-  insert("field", /^([ \t]*)private View mCustomView;[ \t]*$/m, [
-    "private ImmersiveFullscreen immersiveFullscreen;",
-    "private boolean fullscreenPaused;",
-    "private boolean fullscreenBackHandlerEnabled;",
-    "",
-    "public void setFullscreenBackHandler(boolean enabled) {",
-    "    if (enabled && (mCustomView == null || !mCustomView.isAttachedToWindow() || fullscreenPaused)) {",
-    '        throw new IllegalStateException("Back handler requires foreground fullscreen.");',
-    "    }",
-    "    fullscreenBackHandlerEnabled = enabled;",
-    "}",
-    "",
-    "// Called on the UI thread by Acode's System plugin. null releases the override.",
-    "public void setFullscreenOrientation(String orientation) {",
-    "    if (orientation == null) {",
-    "        if (immersiveFullscreen != null) immersiveFullscreen.unlockOrientation();",
-    "        return;",
-    "    }",
-    "    if (immersiveFullscreen == null) {",
-    '        throw new IllegalStateException("Orientation requires foreground fullscreen.");',
-    "    }",
-    "    immersiveFullscreen.lockOrientation(orientation);",
-    "}",
-  ]);
+  // System calls these setters on the UI thread; null releases the orientation override.
+  insert(
+    "field",
+    /^([ \t]*)private View mCustomView;[ \t]*$/m,
+    `
+private ImmersiveFullscreen immersiveFullscreen;
+private boolean fullscreenPaused;
+private boolean fullscreenBackHandlerEnabled;
+
+public void setFullscreenBackHandler(boolean enabled) {
+    if (enabled && (mCustomView == null || !mCustomView.isAttachedToWindow() || fullscreenPaused)) {
+        throw new IllegalStateException("Back handler requires foreground fullscreen.");
+    }
+    fullscreenBackHandlerEnabled = enabled;
+}
+
+public void setFullscreenOrientation(String orientation) {
+    if (orientation == null) {
+        if (immersiveFullscreen != null) immersiveFullscreen.unlockOrientation();
+        return;
+    }
+    if (immersiveFullscreen == null) {
+        throw new IllegalStateException("Orientation requires foreground fullscreen.");
+    }
+    immersiveFullscreen.lockOrientation(orientation);
+}
+`,
+  );
+  // CoreAndroid's message channel accepts only Cordova's built-in events.
   insert(
     "back",
     /(?<=if \(isBackButton && mCustomView != null\) \{\n)^([ \t]*)hideCustomView\(\);\n[ \t]*return true;[ \t]*$/m,
-    [
-      "if (fullscreenBackHandlerEnabled) {",
-      // CoreAndroid's message channel accepts only Cordova's built-in events.
-      `    engine.evaluateJavascript("cordova.fireDocumentEvent('fullscreenbackbutton');", null);`,
-      "    return true;",
-      "}",
-    ],
+    `
+if (fullscreenBackHandlerEnabled) {
+    engine.evaluateJavascript("cordova.fireDocumentEvent('fullscreenbackbutton');", null);
+    return true;
+}
+`,
     true,
   );
-  insert("enter", /^([ \t]*)parent\.bringToFront\(\);[ \t]*$/m, [
-    "fullscreenBackHandlerEnabled = false;",
-    "immersiveFullscreen = new ImmersiveFullscreen(cordova.getActivity(), !fullscreenPaused, () -> fullscreenBackHandlerEnabled = false);",
-    "immersiveFullscreen.enter(wrapperView);",
-  ]);
+  insert(
+    "enter",
+    /^([ \t]*)parent\.bringToFront\(\);[ \t]*$/m,
+    `
+fullscreenBackHandlerEnabled = false;
+immersiveFullscreen = new ImmersiveFullscreen(cordova.getActivity(), !fullscreenPaused, () -> fullscreenBackHandlerEnabled = false);
+immersiveFullscreen.enter(wrapperView);
+`,
+  );
   insert(
     "exit",
     /^([ \t]*)mCustomView\.setVisibility\(View\.GONE\);[ \t]*$/m,
-    [
-      "fullscreenBackHandlerEnabled = false;",
-      "if (immersiveFullscreen != null) {",
-      "    immersiveFullscreen.exit();",
-      "    immersiveFullscreen = null;",
-      "}",
-    ],
+    `
+fullscreenBackHandlerEnabled = false;
+if (immersiveFullscreen != null) {
+    immersiveFullscreen.exit();
+    immersiveFullscreen = null;
+}
+`,
     true,
   );
   insert(
     "pause",
     /^([ \t]*)pluginManager\.onPause\(keepRunning\);[ \t]*$/m,
-    [
-      "fullscreenPaused = true;",
-      "if (immersiveFullscreen != null) immersiveFullscreen.pause();",
-    ],
+    `
+fullscreenPaused = true;
+if (immersiveFullscreen != null) immersiveFullscreen.pause();
+`,
     true,
   );
   insert(
     "resume",
     /^([ \t]*)this\.pluginManager\.onResume\(keepRunning\);[ \t]*$/m,
-    [
-      "fullscreenPaused = false;",
-      "if (immersiveFullscreen != null) immersiveFullscreen.resume();",
-    ],
+    `
+fullscreenPaused = false;
+if (immersiveFullscreen != null) immersiveFullscreen.resume();
+`,
     true,
   );
   insert(
     "reset",
     /^([ \t]*)pluginManager\.onReset\(\);[ \t]*$/m,
-    [
-      "fullscreenBackHandlerEnabled = false;",
-      "if (immersiveFullscreen != null) immersiveFullscreen.unlockOrientation();",
-    ],
+    `
+fullscreenBackHandlerEnabled = false;
+if (immersiveFullscreen != null) immersiveFullscreen.unlockOrientation();
+`,
     true,
   );
+  // Release fullscreen while the WebView and its callback are still alive.
   insert(
     "destroy",
     /^([ \t]*)engine\.destroy\(\);[ \t]*$/m,
-    [
-      "// Release fullscreen while the WebView and its callback are still alive.",
-      "fullscreenBackHandlerEnabled = false;",
-      "hideCustomView();",
-    ],
+    `
+fullscreenBackHandlerEnabled = false;
+hideCustomView();
+`,
     true,
   );
 
