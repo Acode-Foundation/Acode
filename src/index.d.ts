@@ -10,6 +10,9 @@ declare const ANDROID_SDK_INT: number;
 declare const DOES_SUPPORT_THEME: boolean;
 declare const acode: {
   webview: AcodeWebViewAPI;
+  require(module: "fullscreen"): AcodeFullscreenAPI;
+  require(module: "orientation"): AcodeOrientationAPI;
+  require(module: string): unknown;
   [key: string]: unknown;
 };
 
@@ -171,4 +174,21 @@ interface AcodeWebView {
 
 interface AcodeWebViewAPI {
   create(options?: WebViewOptions): Promise<AcodeWebView>;
+}
+
+interface AcodeFullscreenAPI {
+  /**
+   * Claim Back for the current browser fullscreen owner, or release with null.
+   * The callback must explicitly exit fullscreen when desired.
+   * Resolves when the native request is accepted.
+   */
+  setBackHandler(callback: (() => void | Promise<void>) | null): Promise<void>;
+}
+
+/** Fullscreen-scoped orientation requests resolve on native acceptance. */
+interface AcodeOrientationAPI {
+  /** Requires a foreground browser fullscreen session. */
+  lock(mode: "landscape" | "portrait"): Promise<void>;
+  /** Restores the previous orientation policy, if overridden. */
+  unlock(): Promise<void>;
 }
