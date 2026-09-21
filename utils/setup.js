@@ -185,14 +185,15 @@ function main() {
 		const pluginPath = path.join(__dirname, "../src/plugins", plugin);
 		if (!fs.lstatSync(pluginPath).isDirectory()) return;
 		if (shouldSkipAdmob && plugin === ADMOB_PLUGIN_DIR) return;
-		execSync(`cordova plugin add ./src/plugins/${plugin}`, { stdio: "inherit" });
+		execSync(`cordova plugin add ./src/plugins/${plugin}`, {
+			stdio: "inherit",
+		});
 	});
 }
 
 if (require.main === module) {
 	main();
 }
-
 
 //used in tests
 module.exports = {
