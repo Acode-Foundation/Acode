@@ -133,8 +133,9 @@ The APK will be at: `platforms/android/app/build/outputs/apk/debug/app-debug.apk
 git submodule and is installed as a local `file:` dependency.
 
 Before installing dependencies, `pnpm run setup` reads `.gitmodules` and verifies that
-every submodule it declares has actually been cloned. An uninitialized submodule is left
-as an empty (or missing) directory, so setup stops with:
+every submodule it declares has actually been cloned — a directory only counts as cloned
+when it contains at least one non-hidden file. An empty, missing, or partial checkout (for
+example one holding only `.git` or `node_modules`) therefore stops setup with:
 
 ```
 The following submodule(s) are not checked out (empty or absent):

@@ -92,21 +92,22 @@ function parseGitmodules(content) {
 	return submodules.filter((submodule) => submodule.path);
 }
 
-// An uninitialized submodule leaves its directory empty (or absent), so a
-// non-empty directory means the sources were cloned.
+// An uninitialized submodule leaves its directory empty (or absent), and a
+// partial checkout may hold only `.git` or `node_modules`. Require at least one
+// non-hidden regular file so those are rejected before dependencies are
+// installed, without hardcoding a file name for every submodule.
 function hasSubmoduleSources(repoRoot, submodule) {
 	const submodulePath = path.join(repoRoot, submodule.path);
 
 	let entries;
 	try {
-		entries = fs.readdirSync(submodulePath);
+		entries = fs.readdirSync(submodulePath, { withFileTypes: true });
 	} catch (error) {
 		if (error.code === "ENOENT") return false;
 		throw error;
 	}
 
-	// A stray .DS_Store must not be mistaken for a real checkout.
-	return entries.some((entry) => !PLATFORM_FILES.includes(entry));
+	return entries.some((entry) => entry.isFile() && !entry.name.startsWith("."));
 }
 
 function findMissingSubmodules(repoRoot = REPO_ROOT) {

@@ -38,20 +38,32 @@ test("parses submodule path, name and url from .gitmodules", () => {
 	]);
 });
 
-test("treats a missing, empty or .DS_Store-only directory as not checked out", () => {
+test("treats a missing, empty or partial directory as not checked out", () => {
 	const repoRoot = makeRepoRoot();
 	const submodule = { path: "codemirror-lsp-client" };
+	const submodulePath = path.join(repoRoot, submodule.path);
 
 	try {
 		assert.equal(hasSubmoduleSources(repoRoot, submodule), false);
 
-		fs.mkdirSync(path.join(repoRoot, submodule.path));
+		fs.mkdirSync(submodulePath);
 		assert.equal(hasSubmoduleSources(repoRoot, submodule), false);
 
-		fs.writeFileSync(path.join(repoRoot, submodule.path, ".DS_Store"), "");
+		// A partial checkout holding only .git, .DS_Store or node_modules is
+		// not usable by the local "file:" dependency.
+		fs.writeFileSync(
+			path.join(submodulePath, ".git"),
+			"gitdir: ../.git/modules/codemirror-lsp-client",
+		);
 		assert.equal(hasSubmoduleSources(repoRoot, submodule), false);
 
-		fs.writeFileSync(path.join(repoRoot, submodule.path, "package.json"), "{}");
+		fs.writeFileSync(path.join(submodulePath, ".DS_Store"), "");
+		assert.equal(hasSubmoduleSources(repoRoot, submodule), false);
+
+		fs.mkdirSync(path.join(submodulePath, "node_modules"));
+		assert.equal(hasSubmoduleSources(repoRoot, submodule), false);
+
+		fs.writeFileSync(path.join(submodulePath, "package.json"), "{}");
 		assert.equal(hasSubmoduleSources(repoRoot, submodule), true);
 	} finally {
 		fs.rmSync(repoRoot, { recursive: true, force: true });
