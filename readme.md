@@ -36,6 +36,8 @@ Acode/
 |- www/   - Public documents, compiled files, and HTML templates
 |
 |- utils/ - CLI tools for building, string manipulation, and more
+|
+|- codemirror-lsp-client/ - Git submodule providing @codemirror/lsp-client (clone with --recurse-submodules)
 </pre>
 
 ## • Multi-language Support

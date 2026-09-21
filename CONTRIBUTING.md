@@ -122,9 +122,41 @@ pnpm run build paid dev apk # or pnpm run build p d
 The APK will be at: `platforms/android/app/build/outputs/apk/debug/app-debug.apk`
 
 > [!NOTE]
-> `@codemirror/lsp-client` comes from the `codemirror-lsp-client` git submodule and is installed as a local `file:` dependency.
-> If you cloned without `--recurse-submodules`, `setup` initializes the submodule for you; you can also run `git submodule update --init --recursive` manually.
+> `@codemirror/lsp-client` comes from the `codemirror-lsp-client` git submodule and is installed as a local `file:` dependency, so the submodule must be cloned before `setup` runs. If it isn't, `setup` stops with a missing-submodules error — see [Troubleshooting](#-troubleshooting).
 
+## 🔧 Troubleshooting
+
+### `setup` fails: submodules are not checked out
+
+`@codemirror/lsp-client` is not fetched from a registry. It comes from the
+[`codemirror-lsp-client`](https://github.com/Acode-Foundation/codemirror-lsp-client)
+git submodule and is installed as a local `file:` dependency.
+
+Before installing dependencies, `pnpm run setup` reads `.gitmodules` and verifies that
+every submodule it declares has actually been cloned. An uninitialized submodule is left
+as an empty (or missing) directory, so setup stops with:
+
+```
+The following submodule(s) are not checked out (empty or absent):
+```
+
+To fix it, initialize the submodules from the repository root and re-run setup:
+
+```bash
+git submodule update --init --recursive
+pnpm run setup
+```
+
+This usually means the repository was cloned without `--recurse-submodules`. Cloning with
+submodules avoids the problem entirely:
+
+```bash
+git clone --recurse-submodules https://github.com/Acode-Foundation/Acode.git
+```
+
+> [!NOTE]
+> The check is skipped when `.gitmodules` is absent (for example an unpacked source
+> archive) or declares no submodules, so those setups are unaffected.
 
 ## 📝 Contribution Guidelines
 
