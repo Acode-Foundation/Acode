@@ -92,6 +92,7 @@ export default (props) => {
 		rating === "unrated" ? strings["plugin-review:unrated"] : rating;
 	const ratingValueRef = Ref();
 	const commentCountRef = Ref();
+	const hasReviews = votesUp !== undefined;
 
 	const keywords =
 		typeof keywordsRaw === "string" ? JSON.parse(keywordsRaw) : keywordsRaw;
@@ -108,6 +109,13 @@ export default (props) => {
 		ratingValueRef.className = getRatingClass(rating);
 		commentCountRef.textContent = reviewStats.commentCount;
 	};
+	const openReviews = () =>
+		showReviews({
+			pluginId: id,
+			author,
+			stats: reviewStats,
+			onStatsChange: applyReviewStats,
+		});
 
 	const formatUpdatedDate = (dateString) => {
 		if (!dateString) return null;
@@ -124,7 +132,10 @@ export default (props) => {
 	};
 
 	return (
-		<div className="main" id="plugin">
+		<div
+			className={`main${hasReviews ? " has-reviews-button" : ""}`}
+			id="plugin"
+		>
 			<div className="plugin-header">
 				<div
 					className="plugin-icon"
@@ -170,7 +181,7 @@ export default (props) => {
 							{license || "Unknown"}
 						</span>
 					</div>
-					{votesUp !== undefined ? (
+					{hasReviews ? (
 						<div className="metrics-row">
 							<div className="metric">
 								<span className="icon save_alt"></span>
@@ -189,17 +200,7 @@ export default (props) => {
 									{getRatingText()}
 								</span>
 							</div>
-							<div
-								className="metric"
-								onclick={() =>
-									showReviews({
-										pluginId: id,
-										author,
-										stats: reviewStats,
-										onStatsChange: applyReviewStats,
-									})
-								}
-							>
+							<div className="metric" onclick={openReviews}>
 								<i className="icon chat_bubble"></i>
 								<span ref={commentCountRef} className="metric-value">
 									{reviewStats.commentCount}
@@ -305,6 +306,17 @@ export default (props) => {
 					></div>
 				</div>
 			</TabView>
+			{hasReviews ? (
+				<button
+					type="button"
+					className="plugin-reviews-button"
+					aria-label={strings["plugin-review:dialog-label"]}
+					onclick={openReviews}
+				>
+					<span className="icon chat_bubble" aria-hidden="true"></span>
+					<span>{strings.reviews}</span>
+				</button>
+			) : null}
 		</div>
 	);
 };

@@ -7,6 +7,48 @@
   margin: 0 auto;
   box-sizing: border-box;
 
+  &.has-reviews-button #plugin-tab .tab-content {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom));
+  }
+
+  .plugin-reviews-button {
+    position: fixed;
+    inset-inline-end: calc(20px + max(env(safe-area-inset-left), env(safe-area-inset-right)));
+    bottom: calc(20px + env(safe-area-inset-bottom));
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-width: 48px;
+    min-height: 48px;
+    max-width: calc(100% - 40px - env(safe-area-inset-left) - env(safe-area-inset-right));
+    padding: 12px 20px;
+    box-sizing: border-box;
+    border: none;
+    border-radius: 24px;
+    background: var(--button-background-color);
+    color: var(--button-text-color);
+    box-shadow: 0 4px 12px var(--box-shadow-color);
+    font: inherit;
+    font-weight: 500;
+    line-height: 1.25;
+    text-transform: capitalize;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid var(--button-background-color);
+      outline-offset: 4px;
+    }
+
+    .icon {
+      flex: 0 0 20px;
+      width: 20px;
+      height: 20px;
+      font-size: 20px;
+    }
+  }
+
   .plugin-header {
     display: grid;
     grid-template-columns: auto 1fr auto;
