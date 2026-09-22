@@ -687,9 +687,9 @@ class FileIconRegistry {
 			for (const $tile of root.querySelectorAll<HTMLElement>(
 				'[data-type="dir"][data-name], [data-type="root"][data-name]',
 			)) {
-				const expanded = !$tile
-					.closest(".collapsible")
-					?.classList.contains("hidden");
+				const $collapsible = $tile.closest<HTMLElement>(".collapsible");
+				const expanded =
+					$collapsible !== null && !$collapsible.classList.contains("hidden");
 				applyLeadClass(
 					$tile,
 					this.icon({
@@ -1094,7 +1094,21 @@ function applyLeadClass($tile: HTMLElement, className: string): void {
 	) {
 		return;
 	}
-	$lead.className = className;
+
+	// Some consumers add structural classes around the resolved icon class.
+	// Keep those classes when a late-loading plugin refreshes an existing row.
+	// In particular, File Browser relies on `icon` for sizing and
+	// `user-added-storage` for its storage-specific colour.
+	const structuralClasses = ["icon", "user-added-storage"].filter((name) =>
+		$lead.classList.contains(name),
+	);
+	const resolvedClasses = new Set(className.split(/\s+/).filter(Boolean));
+	const missingStructuralClasses = structuralClasses.filter(
+		(name) => !resolvedClasses.has(name),
+	);
+	$lead.className = [className, ...missingStructuralClasses]
+		.filter(Boolean)
+		.join(" ");
 }
 
 const fileIcons = new FileIconRegistry();
