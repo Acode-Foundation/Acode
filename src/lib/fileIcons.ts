@@ -1097,8 +1097,9 @@ function applyLeadClass($tile: HTMLElement, className: string): void {
 
 	// Some consumers add structural classes around the resolved icon class.
 	// Keep those classes when a late-loading plugin refreshes an existing row.
-	// In particular, File Browser relies on `icon` for sizing and
-	// `user-added-storage` for its storage-specific colour.
+	// File Browser uses `icon` for sizing. `user-added-storage` is its colour
+	// hook, and it must survive after the builtin `folder` glyph class is
+	// replaced. Keeping `folder` would also paint the icon-font glyph.
 	const structuralClasses = ["icon", "user-added-storage"].filter((name) =>
 		$lead.classList.contains(name),
 	);

@@ -54,10 +54,12 @@
 
       &.folder {
         color: rgb(206, 206, 53);
+      }
 
-        &.user-added-storage {
-          color: rgb(53, 101, 206);
-        }
+      // Plugin icon themes replace the builtin `folder` glyph class.
+      // Storage colour has to match `user-added-storage` on its own.
+      &.user-added-storage {
+        color: rgb(53, 101, 206);
       }
 
       &.code {

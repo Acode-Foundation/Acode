@@ -134,30 +134,41 @@ describe("codeHighlight", () => {
 	});
 
 	it("updates fallback styles while the shadow host is still detached", () => {
-		initHighlighting();
-		const host = document.createElement("div");
-		const shadow = host.attachShadow({ mode: "open" });
-		Object.defineProperty(shadow, "adoptedStyleSheets", {
-			configurable: true,
-			get() {
-				throw new Error("adoptedStyleSheets unavailable");
-			},
-			set() {
-				throw new Error("adoptedStyleSheets unavailable");
-			},
-		});
+		const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+		try {
+			initHighlighting();
+			const host = document.createElement("div");
+			const shadow = host.attachShadow({ mode: "open" });
+			Object.defineProperty(shadow, "adoptedStyleSheets", {
+				configurable: true,
+				get() {
+					throw new Error("adoptedStyleSheets unavailable");
+				},
+				set() {
+					throw new Error("adoptedStyleSheets unavailable");
+				},
+			});
 
-		applyHighlightStyles(shadow);
-		const style = shadow.querySelector("#cm-static-highlight-styles");
-		expect(style).toBeTruthy();
-		expect(style.isConnected).toBe(false);
-		expect(style.textContent).toContain("#c678dd");
+			applyHighlightStyles(shadow);
+			const style = shadow.querySelector("#cm-static-highlight-styles");
+			expect(style).toBeTruthy();
+			expect(style.isConnected).toBe(false);
+			expect(style.textContent).toContain("#c678dd");
 
-		settings.value.editorTheme = "githubLight";
-		for (const listener of themeListeners) listener();
+			settings.value.editorTheme = "githubLight";
+			for (const listener of themeListeners) listener();
 
-		expect(style.parentNode).toBe(shadow);
-		expect(style.textContent).toContain("#cf222e");
+			expect(style.parentNode).toBe(shadow);
+			expect(style.textContent).toContain("#cf222e");
+			expect(warn).toHaveBeenCalledWith(
+				"Failed to adopt highlight stylesheet",
+				expect.objectContaining({
+					message: "adoptedStyleSheets unavailable",
+				}),
+			);
+		} finally {
+			warn.mockRestore();
+		}
 	});
 
 	it("updates adopted shadow styles when the editor theme changes", () => {
