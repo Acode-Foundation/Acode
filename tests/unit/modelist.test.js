@@ -147,6 +147,30 @@ function registerTestMode(name, extensions, options) {
 }
 
 describe("getModeForPath", () => {
+	it("loads Markdown with extended GFM syntax", async () => {
+		const markdownMode = getModeForPath("README.md");
+		const loadMarkdown = markdownMode.getExtension();
+		expect(loadMarkdown).toEqual(expect.any(Function));
+
+		const support = await loadMarkdown();
+		const tree = support.language.parser.parse(
+			[
+				"~~Strikethrough~~",
+				"",
+				"- [x] Completed task",
+				"",
+				"| Column 1 | Column 2 |",
+				"|----------|----------|",
+				"| A        | B        |",
+			].join("\n"),
+		);
+		const syntax = tree.toString();
+
+		expect(syntax).toContain("Strikethrough");
+		expect(syntax).toContain("TaskMarker");
+		expect(syntax).toContain("Table");
+	});
+
 	it("matches the previous sort-and-scan result for built-in modes", () => {
 		const paths = collectParityPaths();
 		expect(paths.length).toBeGreaterThan(100);
