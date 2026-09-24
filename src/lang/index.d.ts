@@ -761,7 +761,18 @@ declare type LangStrings = {
   "settings-info-main-remove-ads": string;
   "settings-info-main-reset": string;
   "settings-info-main-sponsors": string;
+  "settings-info-main-support": string;
   "settings-info-main-terminal-settings": string;
+  "support-new-ticket": string;
+  "support-new-ticket-info": string;
+  "support-view-tickets": string;
+  "support-view-tickets-info": string;
+  "support-feature-request": string;
+  "support-feature-request-info": string;
+  "support-question": string;
+  "support-question-info": string;
+  "support-contact": string;
+  "support-contact-info": string;
   "settings-info-main-theme": string;
   "settings-info-preview-disable-cache": string;
   "settings-info-preview-host": string;
