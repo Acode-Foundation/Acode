@@ -45,8 +45,18 @@ export function toCodeMirrorKey(combo) {
 	return strokes.length ? strokes.join(" ") : null;
 }
 
+// Conflict checks compare every binding with every other one each time the
+// keymap is rebuilt (once per registered command), so cache the parsed form.
+const canonicalKeyCache = new Map();
+
 export function canonicalizeKeyBinding(combo) {
-	return toCodeMirrorKey(combo)?.toLowerCase() || null;
+	if (typeof combo !== "string") {
+		return toCodeMirrorKey(combo)?.toLowerCase() || null;
+	}
+	if (canonicalKeyCache.has(combo)) return canonicalKeyCache.get(combo);
+	const canonicalKey = toCodeMirrorKey(combo)?.toLowerCase() || null;
+	canonicalKeyCache.set(combo, canonicalKey);
+	return canonicalKey;
 }
 
 /**
