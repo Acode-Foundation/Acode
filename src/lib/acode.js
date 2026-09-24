@@ -34,7 +34,12 @@ import Page from "components/page";
 import palette from "components/palette";
 import settingsPage from "components/settingsPage";
 import SideButton from "components/sideButton";
-import { TerminalManager, TerminalThemeManager } from "components/terminal";
+import {
+	getLoadedTerminalManager,
+	loadTerminalManager,
+} from "components/terminal/loader";
+import TerminalThemeManager from "components/terminal/terminalThemeManager";
+import TerminalTouchSelection from "components/terminal/terminalTouchSelection";
 import toast from "components/toast";
 import tutorial from "components/tutorial";
 import alert from "dialogs/alert";
@@ -294,20 +299,24 @@ class Acode {
 		};
 
 		const terminalTouchSelectionMoreOptions = {
-			add: (option) => TerminalManager.addTouchSelectionMoreOption(option),
-			remove: (id) => TerminalManager.removeTouchSelectionMoreOption(id),
-			list: () => TerminalManager.getTouchSelectionMoreOptions(),
+			add: (option) => TerminalTouchSelection.addMoreOption(option),
+			remove: (id) => TerminalTouchSelection.removeMoreOption(id),
+			list: () => TerminalTouchSelection.getMoreOptions(),
 		};
 
 		const terminalModule = {
-			create: (options) => TerminalManager.createTerminal(options),
-			createLocal: (options) => TerminalManager.createLocalTerminal(options),
-			createServer: (options) => TerminalManager.createServerTerminal(options),
-			get: (id) => TerminalManager.getTerminal(id),
-			getAll: () => TerminalManager.getAllTerminals(),
+			create: async (options) =>
+				(await loadTerminalManager()).createTerminal(options),
+			createLocal: async (options) =>
+				(await loadTerminalManager()).createLocalTerminal(options),
+			createServer: async (options) =>
+				(await loadTerminalManager()).createServerTerminal(options),
+			// No terminal can exist before the manager has loaded.
+			get: (id) => getLoadedTerminalManager()?.getTerminal(id) ?? null,
+			getAll: () => getLoadedTerminalManager()?.getAllTerminals() ?? new Map(),
 			write: (id, data) => this.#secureTerminalWrite(id, data),
-			clear: (id) => TerminalManager.clearTerminal(id),
-			close: (id) => TerminalManager.closeTerminal(id),
+			clear: (id) => getLoadedTerminalManager()?.clearTerminal(id),
+			close: async (id) => (await loadTerminalManager()).closeTerminal(id),
 			moreOptions: terminalTouchSelectionMoreOptions,
 			touchSelection: {
 				moreOptions: terminalTouchSelectionMoreOptions,
@@ -551,7 +560,7 @@ class Acode {
 		}
 
 		// If all security checks pass, proceed with writing
-		return TerminalManager.writeToTerminal(id, data);
+		return getLoadedTerminalManager()?.writeToTerminal(id, data);
 	}
 
 	/**

@@ -8,6 +8,8 @@ import "styles/overrideAceStyle.scss";
 import "styles/wideScreen.scss";
 // Editor tabs use a shadow root that only links build/main.css.
 import "pages/welcome/welcome.scss";
+// Terminal code loads on demand; keep its styles in main.css as before.
+import "@xterm/xterm/css/xterm.css";
 
 import "lib/polyfill";
 import "cm/supportedModes";
@@ -26,6 +28,7 @@ import {
 } from "cm/modelist";
 import Contextmenu from "components/contextmenu";
 import Sidebar from "components/sidebar";
+import { loadTerminalManager } from "components/terminal/loader";
 import tile from "components/tile";
 import toast from "components/toast";
 import { initIconTooltips } from "components/tooltip";
@@ -61,6 +64,7 @@ import startAd, {
 	BANNER_SUPPRESSION_REASON,
 	setBannerSuppressed,
 } from "lib/startAd";
+import startupPerf from "lib/startupPerf";
 import mustache from "mustache";
 import themes from "theme/list";
 import { initHighlighting } from "utils/codeHighlight";
@@ -72,6 +76,8 @@ import Url from "utils/Url";
 import $_fileMenu from "views/file-menu.hbs";
 import $_menu from "views/menu.hbs";
 import auth, { loginEvents } from "./lib/auth";
+
+startupPerf.mark("main.js evaluated");
 
 const oldPreventDefault = TouchEvent.prototype.preventDefault;
 const previousVersionCode = Number.parseInt(localStorage.versionCode, 10);
@@ -118,8 +124,7 @@ async function ensurePermission(permission) {
 }
 
 async function onDeviceReady() {
-	await initEncodings(); // important to load encodings before anything else
-
+	startupPerf.mark("deviceready");
 	const isFreePackage = /(free)$/.test(BuildInfo.packageName);
 	const oldResolveURL = window.resolveLocalFileSystemURL;
 	const {
@@ -145,26 +150,34 @@ async function onDeviceReady() {
 		}
 	}
 
+	// Start the Play Billing check first so it runs alongside the rest of
+	// startup instead of blocking it.
+	config.HAS_PRO = !isFreePackage || localStorage.acode_pro === "true";
+	const proPurchaseCheck = verifyProPurchase(isFreePackage);
+
+	// These native calls are independent, so run them together.
+	const [dataStorage, cacheStorage, installSource, androidSdkInt] =
+		await Promise.all([
+			resolveStorageDir(externalDataDirectory, dataDirectory),
+			resolveStorageDir(externalCacheDirectory, cacheDirectory),
+			getInstallSource(),
+			getAndroidSdkInt(),
+			initEncodings(), // important to load encodings before anything else
+		]);
+	startupPerf.mark("native startup info");
+
 	window.app = document.body;
 	window.root = tag.get("#root");
 	window.addedFolder = addedFolder;
 	window.editorManager = null;
 	window.toast = toast;
 	window.ASSETS_DIRECTORY = Url.join(cordova.file.applicationDirectory, "www");
-	window.DATA_STORAGE = await resolveStorageDir(
-		externalDataDirectory,
-		dataDirectory,
-	);
-	window.CACHE_STORAGE = await resolveStorageDir(
-		externalCacheDirectory,
-		cacheDirectory,
-	);
+	window.DATA_STORAGE = dataStorage;
+	window.CACHE_STORAGE = cacheStorage;
 
 	window.PLUGIN_DIR = Url.join(DATA_STORAGE, "plugins");
 	window.KEYBINDING_FILE = Url.join(DATA_STORAGE, ".key-bindings.json");
 	window.log = logger.log.bind(logger);
-
-	config.HAS_PRO = !isFreePackage;
 
 	// Capture synchronous errors
 	window.addEventListener("error", (event) => {
@@ -179,14 +192,6 @@ async function onDeviceReady() {
 		);
 	});
 
-	let installSource = INSTALL_SOURCE_PLAY;
-
-	try {
-		installSource = await helpers.promisify(system.getInstaller);
-	} catch (error) {
-		console.error(error);
-	}
-
 	Object.defineProperty(window, "appInstallSource", {
 		get() {
 			return installSource;
@@ -198,39 +203,7 @@ async function onDeviceReady() {
 		enumerable: false,
 	});
 
-	try {
-		await helpers.promisify(iap.startConnection).catch((e) => {
-			window.log("error", "connection error");
-			window.log("error", e);
-		});
-
-		if (localStorage.acode_pro === "true") {
-			config.HAS_PRO = true;
-		}
-
-		if (navigator.onLine) {
-			const purchases = await helpers.promisify(iap.getPurchases);
-			const isPro = purchases.find((p) =>
-				p.productIds.includes("acode_pro_new"),
-			);
-			if (isPro) {
-				config.HAS_PRO = true;
-			} else {
-				config.HAS_PRO = !isFreePackage;
-			}
-		}
-	} catch (error) {
-		window.log("error", "Purchase error");
-		window.log("error", error);
-	}
-
-	try {
-		window.ANDROID_SDK_INT = await new Promise((resolve, reject) =>
-			system.getAndroidVersion(resolve, reject),
-		);
-	} catch (error) {
-		window.ANDROID_SDK_INT = Number.parseInt(device.version);
-	}
+	window.ANDROID_SDK_INT = androidSdkInt;
 	window.DOES_SUPPORT_THEME = (() => {
 		const $testEl = (
 			<div
@@ -313,6 +286,7 @@ async function onDeviceReady() {
 
 	acode.setLoadingMessage("Loading settings...");
 	await settings.init();
+	startupPerf.mark("settings");
 	fileIcons.bindSettings(settings);
 	fileIcons.syncFromSettings();
 	themes.init();
@@ -325,6 +299,7 @@ async function onDeviceReady() {
 
 	acode.setLoadingMessage("Loading language...");
 	await lang.set(settings.value.lang);
+	startupPerf.mark("language");
 
 	acode.setLoadingMessage("Securing SFTP profiles...");
 	const sftpMigration = await migrateLegacySftpProfiles();
@@ -348,6 +323,7 @@ async function onDeviceReady() {
 
 	try {
 		await loadApp();
+		startupPerf.mark("loadApp");
 		if (sftpMigration.failures.length) {
 			showSftpMigrationReport(sftpMigration);
 		}
@@ -355,58 +331,16 @@ async function onDeviceReady() {
 		window.log("error", error);
 		toast(`Error: ${error.message}`);
 	} finally {
-		setTimeout(async () => {
-			document.body.removeAttribute("data-small-msg");
-			app.classList.remove("loading", "splash");
-
-			// load plugins
-			try {
-				await loadPlugins();
-				fileIcons.refreshRenderedIcons();
-				// Ensure at least one sidebar app is active after all plugins are loaded
-				// This handles cases where the stored section was from an uninstalled plugin
-				sidebarApps.ensureActiveApp();
-
-				// Re-emit events for active file after plugins are loaded
-				const { activeFile } = editorManager;
-				for (const file of editorManager.files) {
-					if (file?.type === "editor") {
-						file.setMode();
-					}
-				}
-				editorManager.reapplyActiveFile();
-				if (activeFile?.uri) {
-					if (activeFile.loaded && !activeFile.loading) {
-						editorManager.emit("file-loaded", activeFile);
-					}
-					// Re-emit switch-file event
-					editorManager.emit("switch-file", activeFile);
-				}
-			} catch (error) {
-				window.log("error", "Failed to load plugins!");
-				window.log("error", error);
-				toast("Failed to load plugins!");
-			} finally {
-				void processPendingIntents().catch(intentHandler.onError);
-			}
-			applySettings.afterRender();
-
-			// Check login status before emitting events
-			try {
-				const user = await auth.getLoggedInUser();
-				if (user) {
-					if (Boolean(user.acode_pro)) {
-						config.HAS_PRO = true;
-					}
-					loginEvents.emit();
-				}
-			} catch (error) {
-				console.error("Error checking login status:", error);
-			}
-
-			fetchPromotions();
-			startAd();
-		}, 500);
+		// Only the purchase check can upgrade a non-Pro user, so settle it before
+		// the UI is usable; otherwise paid themes could be treated as locked.
+		if (!config.HAS_PRO) {
+			await proPurchaseCheck;
+			startupPerf.mark("pro purchase check");
+		}
+		// Reveal the app once it has rendered a frame, then load the rest.
+		requestAnimationFrame(() =>
+			requestAnimationFrame(() => void onAppRendered(proPurchaseCheck)),
+		);
 	}
 
 	await promptUpdateCheckConsent();
@@ -499,6 +433,124 @@ async function onDeviceReady() {
 			);
 		})
 		.catch(console.error);
+}
+
+async function getInstallSource() {
+	try {
+		return await helpers.promisify(system.getInstaller);
+	} catch (error) {
+		console.error(error);
+		return INSTALL_SOURCE_PLAY;
+	}
+}
+
+async function getAndroidSdkInt() {
+	try {
+		return await new Promise((resolve, reject) =>
+			system.getAndroidVersion(resolve, reject),
+		);
+	} catch (error) {
+		return Number.parseInt(device.version);
+	}
+}
+
+/**
+ * Confirms Pro status against Play purchases.
+ * Only a change made here is applied, so an upgrade from another source
+ * (e.g. a login that finished first) is never downgraded.
+ * @param {boolean} isFreePackage
+ */
+async function verifyProPurchase(isFreePackage) {
+	const initialHasPro = config.HAS_PRO;
+	try {
+		await helpers.promisify(iap.startConnection).catch((e) => {
+			logger.log("error", "connection error");
+			logger.log("error", e);
+		});
+
+		if (!navigator.onLine) return;
+
+		const purchases = await helpers.promisify(iap.getPurchases);
+		const isPro = purchases.find((p) => p.productIds.includes("acode_pro_new"));
+		if (isPro) {
+			config.HAS_PRO = true;
+			// Lets the next launch skip waiting for this check.
+			localStorage.acode_pro = "true";
+		} else if (config.HAS_PRO === initialHasPro) {
+			config.HAS_PRO = !isFreePackage;
+		}
+	} catch (error) {
+		logger.log("error", "Purchase error");
+		logger.log("error", error);
+	}
+}
+
+/**
+ * Hides the splash and loads everything that is not needed for the first
+ * frame: plugins, login state and ads.
+ * @param {Promise<void>} proPurchaseCheck
+ */
+async function onAppRendered(proPurchaseCheck) {
+	document.body.removeAttribute("data-small-msg");
+	app.classList.remove("loading", "splash");
+	startupPerf.mark("splash hidden");
+
+	// load plugins
+	try {
+		// Plugins may use the synchronous terminal APIs, so have them ready.
+		await loadTerminalManager().catch((error) => {
+			console.error("Failed to load terminal module:", error);
+		});
+		await loadPlugins();
+		fileIcons.refreshRenderedIcons();
+		// Ensure at least one sidebar app is active after all plugins are loaded
+		// This handles cases where the stored section was from an uninstalled plugin
+		sidebarApps.ensureActiveApp();
+
+		// Re-emit events for active file after plugins are loaded
+		const { activeFile } = editorManager;
+		for (const file of editorManager.files) {
+			if (file?.type === "editor") {
+				file.setMode();
+			}
+		}
+		editorManager.reapplyActiveFile();
+		if (activeFile?.uri) {
+			if (activeFile.loaded && !activeFile.loading) {
+				editorManager.emit("file-loaded", activeFile);
+			}
+			// Re-emit switch-file event
+			editorManager.emit("switch-file", activeFile);
+		}
+	} catch (error) {
+		window.log("error", "Failed to load plugins!");
+		window.log("error", error);
+		toast("Failed to load plugins!");
+	} finally {
+		void processPendingIntents().catch(intentHandler.onError);
+	}
+	startupPerf.mark("plugins loaded");
+	applySettings.afterRender();
+
+	// The purchase result must be applied before login can upgrade to Pro.
+	await proPurchaseCheck;
+
+	// Check login status before emitting events
+	try {
+		const user = await auth.getLoggedInUser();
+		if (user) {
+			if (Boolean(user.acode_pro)) {
+				config.HAS_PRO = true;
+			}
+			loginEvents.emit();
+		}
+	} catch (error) {
+		console.error("Error checking login status:", error);
+	}
+
+	fetchPromotions();
+	startAd();
+	startupPerf.report();
 }
 
 function showSftpMigrationReport({
@@ -673,6 +725,7 @@ async function loadApp() {
 	const folders = helpers.parseJSON(localStorage.folders);
 	const files = helpers.parseJSON(localStorage.files) || [];
 	const editorManager = await EditorManager($header, $main);
+	startupPerf.mark("loadApp: editor manager");
 
 	const setMainMenu = () => {
 		if ($mainMenu) {
@@ -715,6 +768,7 @@ async function loadApp() {
 	editorManager.on("switch-file", initIconTooltips());
 	sidebarApps.init($sidebar);
 	await sidebarApps.loadApps();
+	startupPerf.mark("loadApp: sidebar apps");
 	editorManager.onupdate = onEditorUpdate;
 	root.on("show", mainPageOnShow);
 	app.addEventListener("click", onClickApp);
@@ -769,6 +823,7 @@ async function loadApp() {
 		window.log("error", error);
 		toast("Failed to load theme plugins!");
 	}
+	startupPerf.mark("loadApp: theme plugins");
 
 	acode.setLoadingMessage("Loading folders...");
 	if (Array.isArray(folders)) {
@@ -799,11 +854,12 @@ async function loadApp() {
 		onEditorUpdate(undefined, false);
 	}
 
+	startupPerf.mark("loadApp: files restored");
 	acode.exec("save-state");
 	initFileList();
 
-	import(/* webpackChunkName: "terminal" */ "components/terminal").then(
-		({ TerminalManager }) => {
+	loadTerminalManager().then(
+		(TerminalManager) => {
 			TerminalManager.restorePersistedSessions().catch((error) => {
 				console.error("Terminal restoration failed:", error);
 			});
