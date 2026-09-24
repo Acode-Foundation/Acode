@@ -757,7 +757,27 @@ export default class TerminalComponent {
 				throw new Error(`HTTP error! status: ${response.status}`);
 			}
 
-			this.pid = response.data.trim();
+			// AXS answers a failed spawn with HTTP 200 and a JSON error body, so the
+			// status check above is not enough. Without this guard the error text is
+			// used as a pid and the real cause only shows up later as a confusing
+			// "WebSocket handshake 404" against /terminals/%7B%22error%22...%7D.
+			const pid = String(response.data ?? "").trim();
+			if (!/^\d+$/.test(pid)) {
+				let message = pid;
+				try {
+					const parsed = JSON.parse(pid);
+					if (parsed?.error) message = parsed.error;
+				} catch {
+					// Not JSON — fall back to the raw body.
+				}
+				throw new Error(
+					message
+						? `Failed to create terminal session: ${message}`
+						: "Failed to create terminal session: empty response from AXS",
+				);
+			}
+
+			this.pid = pid;
 			return this.pid;
 		} catch (error) {
 			console.error("Failed to create terminal session:", error);
