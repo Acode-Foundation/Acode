@@ -27,7 +27,6 @@ export const fixedHeightTheme = EditorView.theme({
 	".cm-scroller": {
 		height: "100%",
 		overflow: "auto",
-		willChange: "transform",
 		contentVisibility: "auto",
 	},
 });
