@@ -151,16 +151,6 @@ let cachedKeymap = [];
 /** @type {Set<EditorView>} */
 const commandViews = new Set();
 
-/**
- * Commands are often registered in bursts (a plugin adding several at once),
- * so the keymap is rebuilt lazily on the next read instead of per command.
- */
-let keymapDirty = true;
-
-/** @type {Set<EditorView>} views waiting for the updated keymap */
-const pendingKeymapViews = new Set();
-let keymapRefreshScheduled = false;
-
 const CODEMIRROR_COMMAND_ENTRIES = Object.entries(cmCommands).filter(
 	([name, value]) =>
 		typeof value === "function" && CODEMIRROR_COMMAND_NAMES.has(name),
@@ -174,6 +164,7 @@ registerCoreCommands();
 registerLspCommands();
 registerLintCommands();
 registerCommandsFromKeyBindings();
+rebuildKeymap();
 
 function registerCoreCommands() {
 	addCommand({
@@ -1523,34 +1514,19 @@ function buildResolvedKeyBindingsSnapshot() {
 	);
 }
 
-/**
- * Resolve a command's effective description and key from the bindings.
- * @returns {string|null} the key source
- */
-function syncCommandBinding(command, name) {
-	const bindingInfo = resolveBindingInfo(name);
-	command.description = bindingInfo?.description || command.defaultDescription;
-	command.key =
-		bindingInfo && Object.prototype.hasOwnProperty.call(bindingInfo, "key")
-			? bindingInfo.key
-			: (command.defaultKey ?? null);
-	return command.key;
-}
-
-function invalidateKeymap() {
-	keymapDirty = true;
-}
-
-function ensureKeymap() {
-	if (keymapDirty) rebuildKeymap();
-}
-
 function rebuildKeymap() {
 	cachedResolvedKeyBindings = buildResolvedKeyBindingsSnapshot();
 	const candidates = [];
 	let order = 0;
 	commandMap.forEach((command, name) => {
-		const keySource = syncCommandBinding(command, name);
+		const bindingInfo = resolveBindingInfo(name);
+		command.description =
+			bindingInfo?.description || command.defaultDescription;
+		const keySource =
+			bindingInfo && Object.prototype.hasOwnProperty.call(bindingInfo, "key")
+				? bindingInfo.key
+				: (command.defaultKey ?? null);
+		command.key = keySource;
 		const combos = parseKeyString(keySource);
 		combos.forEach((combo) => {
 			const cmKey = toCodeMirrorKey(combo);
@@ -1575,15 +1551,9 @@ function rebuildKeymap() {
 	const conflicts = [];
 	for (const candidate of candidates) {
 		const canonicalKey = canonicalizeKeyBinding(candidate.key);
-		// First conflicting claim in insertion order, without copying the map
-		// for every candidate.
-		let claimed = null;
-		for (const entry of claimedKeys) {
-			if (keyBindingsConflict(entry[0], canonicalKey)) {
-				claimed = entry;
-				break;
-			}
-		}
+		const claimed = Array.from(claimedKeys.entries()).find(([key]) =>
+			keyBindingsConflict(key, canonicalKey),
+		);
 		if (claimed) {
 			const [claimedKey, owner] = claimed;
 			const appCommandShadowsCodeMirrorDefault =
@@ -1626,7 +1596,6 @@ function rebuildKeymap() {
 	cachedKeyBindingConflicts = conflicts;
 	cachedKeymap = bindings;
 	resolvedKeyBindingsVersion += 1;
-	keymapDirty = false;
 	return bindings;
 }
 
@@ -1674,7 +1643,6 @@ export function executeCommand(name, view, args) {
 }
 
 export function getRegisteredCommands() {
-	ensureKeymap();
 	return Array.from(commandMap.values()).map((command) => ({
 		name: command.name,
 		description: command.description || command.defaultDescription,
@@ -1683,27 +1651,22 @@ export function getRegisteredCommands() {
 }
 
 export function getResolvedKeyBindings() {
-	ensureKeymap();
 	return cachedResolvedKeyBindings;
 }
 
 export function getEffectiveKeyBindings() {
-	ensureKeymap();
 	return cachedEffectiveKeyBindings;
 }
 
 export function getKeyBindingConflicts() {
-	ensureKeymap();
 	return cachedKeyBindingConflicts.map((conflict) => ({ ...conflict }));
 }
 
 export function getResolvedKeyBindingsVersion() {
-	ensureKeymap();
 	return resolvedKeyBindingsVersion;
 }
 
 export function getCommandKeymapExtension() {
-	ensureKeymap();
 	return commandKeymapCompartment.of(keymap.of(cachedKeymap));
 }
 
@@ -1791,11 +1754,9 @@ export function registerExternalCommand(descriptor = {}) {
 	const stored = commandMap.get(name);
 	if (stored) {
 		stored.key = normalized.key ?? stored.key;
-		// The returned command reflects its final binding right away.
-		syncCommandBinding(stored, name);
 	}
 
-	invalidateKeymap();
+	rebuildKeymap();
 	return stored;
 }
 
@@ -1804,34 +1765,13 @@ export function removeExternalCommand(name) {
 	const exists = commandMap.has(name);
 	if (!exists) return false;
 	commandMap.delete(name);
-	invalidateKeymap();
+	rebuildKeymap();
 	return true;
 }
 
-/**
- * Apply the current keymap to a view. Calls made in the same task are applied
- * together in a microtask, which always runs before the next key event.
- */
 export function refreshCommandKeymap(view) {
 	const resolvedView = resolveView(view);
-	if (!resolvedView) return;
-	pendingKeymapViews.add(resolvedView);
-	if (keymapRefreshScheduled) return;
-	keymapRefreshScheduled = true;
-	Promise.resolve().then(flushKeymapRefresh);
-}
-
-function flushKeymapRefresh() {
-	keymapRefreshScheduled = false;
-	const views = Array.from(pendingKeymapViews);
-	pendingKeymapViews.clear();
-	for (const view of views) {
-		try {
-			applyCommandKeymap(view);
-		} catch (error) {
-			console.error("Failed to apply command keymap", error);
-		}
-	}
+	applyCommandKeymap(resolvedView);
 }
 
 function normalizeExternalCommand(descriptor) {
@@ -1887,9 +1827,8 @@ function normalizeExternalKey(bindKey) {
 	return combos.length ? combos.join("|") : null;
 }
 
-function applyCommandKeymap(view, bindings) {
+function applyCommandKeymap(view, bindings = cachedKeymap) {
 	if (!view) return;
-	ensureKeymap();
 	commandViews.add(view);
 	view.dispatch({
 		effects: commandKeymapCompartment.reconfigure(

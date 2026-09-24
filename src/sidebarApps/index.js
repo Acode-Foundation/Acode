@@ -86,16 +86,10 @@ function init($el) {
  * Loads all sidebar apps.
  */
 async function loadApps() {
-	// Fetch the app chunks in parallel but add them in their original order.
-	const appModules = [
-		import("./files"),
-		import("./searchInFiles"),
-		import("./extensions"),
-		import("./notification"),
-	];
-	for (const appModule of appModules) {
-		add(...(await appModule).default);
-	}
+	add(...(await import("./files")).default);
+	add(...(await import("./searchInFiles")).default);
+	add(...(await import("./extensions")).default);
+	add(...(await import("./notification")).default);
 	setSponsorSidebarAppVisibility(appSettings.value.showSponsorSidebarApp);
 }
 

@@ -1,7 +1,7 @@
 import settings from "lib/settings";
+import mimeType from "mime-types";
 import { decode, encode } from "utils/encodings";
 import helpers from "utils/helpers";
-import loadMimeTypes from "utils/mimeTypes";
 import Path from "utils/Path";
 import Url from "utils/Url";
 import internalFs from "./internalFs";
@@ -44,8 +44,7 @@ class SftpClient {
 	 * @param {String} filename
 	 * @param {boolean} stat
 	 */
-	async lsDir(filename = this.#path) {
-		const mimeType = await loadMimeTypes();
+	lsDir(filename = this.#path) {
 		return new Promise((resolve, reject) => {
 			sftp.isConnected(async (connectionID) => {
 				(async () => {
@@ -460,7 +459,6 @@ class SftpClient {
 	async stat() {
 		if (this.#stat) return this.#stat;
 
-		const mimeType = await loadMimeTypes();
 		return new Promise((resolve, reject) => {
 			sftp.isConnected(async (connectionID) => {
 				(async () => {

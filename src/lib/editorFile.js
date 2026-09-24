@@ -18,16 +18,16 @@ import actions from "handlers/quickTools";
 import { openTabContextMenuOnRelease } from "handlers/tabContextMenu";
 import tag from "html-tag-js";
 import quickToolsAdapters from "lib/quickToolsAdapter";
+import mimeTypes from "mime-types";
 import { applyHighlightStyles } from "utils/codeHighlight";
 import helpers from "utils/helpers";
-import loadMimeTypes from "utils/mimeTypes";
 import Path from "utils/Path";
 import { readRemoteFilePreview } from "utils/remoteFilePreview";
 import Url from "utils/Url";
 import config from "./config";
 import { isInitialPluginLoadComplete } from "./loadPlugins";
 import openFolder from "./openFolder";
-import runLazily from "./runLazily";
+import run from "./run";
 import saveFile from "./saveFile";
 import appSettings from "./settings";
 
@@ -1788,10 +1788,7 @@ export default class EditorFile {
 	async #fileAction(action, mimeType) {
 		try {
 			const uri = await this.#getShareableUri();
-			if (!mimeType) {
-				const mimeTypes = await loadMimeTypes();
-				mimeType = mimeTypes.lookup(this.name) || "text/plain";
-			}
+			if (!mimeType) mimeType = mimeTypes.lookup(this.name) || "text/plain";
 			system.fileAction(
 				uri,
 				this.filename,
@@ -2031,7 +2028,7 @@ export default class EditorFile {
 		const event = createFileEvent(this);
 		this.#emit("run", event);
 		if (event.defaultPrevented) return;
-		void runLazily(false, appSettings.value.previewMode, file);
+		run(false, appSettings.value.previewMode, file);
 	}
 
 	#updateTab() {

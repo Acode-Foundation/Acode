@@ -16,7 +16,7 @@ import EditorFile from "./editorFile";
 import { loadFileBrowser } from "./lazyImports";
 import openFile from "./openFile";
 import openFolder from "./openFolder";
-import runLazily from "./runLazily";
+import run from "./run";
 import saveState from "./saveState";
 import appSettings from "./settings";
 import showFileInfo from "./showFileInfo";
@@ -287,7 +287,7 @@ export default {
 		resolveReferenceFile(referenceFile)?.togglePinned?.();
 	},
 	console() {
-		void runLazily(true, "inapp");
+		run(true, "inapp");
 	},
 	"check-files"() {
 		if (!appSettings.value.checkFiles) return;
