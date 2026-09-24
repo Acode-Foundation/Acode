@@ -30,14 +30,16 @@ const CONSOLE_THEME_STATE = "__acode_console_theme.json";
  * @param {Boolean} isConsole
  * @param {"inapp"|"browser"} target
  * @param {Boolean} runFile
+ * @param {EditorFile} [file] file to run, captured when the run was requested
  */
 async function run(
 	isConsole = false,
 	target = appSettings.value.previewMode,
 	runFile = false,
+	file = editorManager.activeFile,
 ) {
 	/** @type {EditorFile} */
-	const activeFile = isConsole ? null : editorManager.activeFile;
+	const activeFile = isConsole ? null : file;
 
 	if (!isConsole && Url.extname(activeFile?.filename || "") === ".md") {
 		if (!(await activeFile?.canRun())) return;
