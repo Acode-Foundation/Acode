@@ -201,14 +201,63 @@ export function encode(text, charset) {
 	return execEncode(text, charset);
 }
 
+const ENCODINGS_CACHE_KEY = "availableEncodingsCache";
+
+/**
+ * The available charsets only change with the Android runtime, so the list is
+ * cached per app build and OS version instead of being rebuilt natively (and
+ * sent over the bridge) on every launch.
+ */
+function getEncodingsCacheId() {
+	return [
+		globalThis.BuildInfo?.versionCode,
+		globalThis.device?.version,
+		globalThis.device?.model,
+	].join("|");
+}
+
+function setEncodings(map) {
+	Object.keys(map).forEach((key) => {
+		const encoding = map[key];
+		encodings[key] = encoding;
+	});
+}
+
+function readCachedEncodings() {
+	try {
+		const cached = JSON.parse(localStorage.getItem(ENCODINGS_CACHE_KEY));
+		if (cached?.id !== getEncodingsCacheId()) return null;
+		const { map } = cached;
+		if (!map || typeof map !== "object" || !map["UTF-8"]) return null;
+		return map;
+	} catch {
+		return null;
+	}
+}
+
+function writeCachedEncodings(map) {
+	try {
+		localStorage.setItem(
+			ENCODINGS_CACHE_KEY,
+			JSON.stringify({ id: getEncodingsCacheId(), map }),
+		);
+	} catch (error) {
+		console.warn("Unable to cache available encodings", error);
+	}
+}
+
 export async function initEncodings() {
+	const cachedMap = readCachedEncodings();
+	if (cachedMap) {
+		setEncodings(cachedMap);
+		return;
+	}
+
 	return new Promise((resolve, reject) => {
 		cordova.exec(
 			(map) => {
-				Object.keys(map).forEach((key) => {
-					const encoding = map[key];
-					encodings[key] = encoding;
-				});
+				setEncodings(map);
+				writeCachedEncodings(map);
 				resolve();
 			},
 			(error) => {
