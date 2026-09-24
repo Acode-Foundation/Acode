@@ -3,9 +3,6 @@
 // main.js is never imported directly; it's loaded dynamically so the dev server
 // can serve a freshly compiled version on every reload.
 
-// TEMPORARY startup instrumentation (see src/lib/startupPerf.js)
-performance.mark?.("startup:boot.js");
-
 const DEV_MODE = typeof __DEV_MODE__ !== "undefined" && __DEV_MODE__;
 const DEV_HOST = typeof __DEV_HOST__ !== "undefined" ? __DEV_HOST__ : "";
 const DEV_PORT = typeof __DEV_PORT__ !== "undefined" ? __DEV_PORT__ : "";
