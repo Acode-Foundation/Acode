@@ -73,9 +73,10 @@ class TerminalManager {
 			if (!component || component.intentionalClose || component.processExited) {
 				return;
 			}
+			// Remote SSH uses a different transport; local WS reconnect
+			// always refuses it and would only burn retries + show a warning.
+			if (component.remoteSsh || !component.serverMode) return;
 			if (
-				component.serverMode &&
-				!component.remoteSsh &&
 				component.isConnected &&
 				component.websocket?.readyState === WebSocket.OPEN
 			) {
@@ -1042,12 +1043,30 @@ class TerminalManager {
 		}
 		if (
 			terminalComponent.serverMode &&
+			!terminalComponent.remoteSsh &&
 			terminalComponent.isConnected &&
 			terminalComponent.websocket?.readyState === WebSocket.OPEN
 		) {
 			return true;
 		}
+		// Competing callers (onDisconnect, onError, resume) must share one
+		// retry loop so a second caller never burns attempts on "in progress".
+		if (terminalComponent._reconnectLoopPromise) {
+			return terminalComponent._reconnectLoopPromise;
+		}
 
+		terminalComponent._reconnectLoopPromise = this._runReconnectLoop(
+			terminalComponent,
+			terminalId,
+		);
+		try {
+			return await terminalComponent._reconnectLoopPromise;
+		} finally {
+			terminalComponent._reconnectLoopPromise = null;
+		}
+	}
+
+	async _runReconnectLoop(terminalComponent, terminalId) {
 		const maxAttempts = terminalComponent.maxReconnectAttempts || 5;
 		const baseDelay = 400;
 
@@ -1088,6 +1107,8 @@ class TerminalManager {
 		try {
 			if (terminal.component) {
 				terminal.component.intentionalClose = true;
+				terminal.component._reconnectPromise = null;
+				terminal.component._reconnectLoopPromise = null;
 			}
 
 			if (

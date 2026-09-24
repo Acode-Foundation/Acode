@@ -1,14 +1,23 @@
 import settingsPage from "components/settingsPage";
 import config from "lib/config";
 
+const BUG_TEMPLATE = "0_bug_report.yml";
+const FEATURE_TEMPLATE = "1_feature_request.yml";
+const DISCUSSIONS_URL = `${config.GITHUB_URL}/discussions`;
+const CHOOSE_ISSUE_URL = `${config.GITHUB_URL}/issues/new/choose`;
+
 /**
- * Build a prefilled GitHub issue URL for support tickets / bug reports.
- * @param {string} title
- * @param {string} body
+ * Build a GitHub issue URL that opens a repository issue-form template.
+ * Blank issues are disabled on this repo, so links must select a template.
+ * @param {string} template - Issue template file name under .github/ISSUE_TEMPLATE
+ * @param {Record<string, string>} [fields] - Prefilled form fields (by id/title)
  * @returns {string}
  */
-export function buildTicketUrl(title, body) {
-	const params = new URLSearchParams({ title, body });
+export function buildTicketUrl(template, fields = {}) {
+	const params = new URLSearchParams({ template });
+	for (const [key, value] of Object.entries(fields)) {
+		if (value) params.set(key, value);
+	}
 	return `${config.GITHUB_URL}/issues/new?${params.toString()}`;
 }
 
@@ -28,70 +37,6 @@ export function getTicketEnvironment(eol = "\n") {
 	].join(eol);
 }
 
-function bugReportBody() {
-	return [
-		"### Describe the bug",
-		"",
-		"A clear description of what went wrong.",
-		"",
-		"### Steps to reproduce",
-		"",
-		"1.",
-		"2.",
-		"3.",
-		"",
-		"### Expected behavior",
-		"",
-		"",
-		"### Environment",
-		"",
-		"```",
-		getTicketEnvironment(),
-		"```",
-		"",
-		"### Additional context",
-		"",
-		"Logs, screenshots, or a screen recording (optional).",
-	].join("\n");
-}
-
-function featureRequestBody() {
-	return [
-		"### Feature request",
-		"",
-		"Describe the feature and why it would help.",
-		"",
-		"### Proposed solution",
-		"",
-		"",
-		"### Alternatives considered",
-		"",
-		"",
-		"### Environment",
-		"",
-		"```",
-		getTicketEnvironment(),
-		"```",
-	].join("\n");
-}
-
-function questionBody() {
-	return [
-		"### Question",
-		"",
-		"Ask anything about using Acode.",
-		"",
-		"### What you already tried",
-		"",
-		"",
-		"### Environment",
-		"",
-		"```",
-		getTicketEnvironment(),
-		"```",
-	].join("\n");
-}
-
 export default function help() {
 	const title = strings.support || "Support";
 	const items = [
@@ -101,7 +46,27 @@ export default function help() {
 			info:
 				strings["support-new-ticket-info"] ||
 				"Report a bug or request a feature on GitHub.",
-			link: buildTicketUrl("", ""),
+			link: CHOOSE_ISSUE_URL,
+			chevron: true,
+		},
+		{
+			key: "bug_report",
+			text: strings.bug_report,
+			info:
+				strings["support-new-ticket-info"] ||
+				"Report a bug or request a feature on GitHub.",
+			link: buildTicketUrl(BUG_TEMPLATE, {
+				environment: getTicketEnvironment("\n"),
+			}),
+			chevron: true,
+		},
+		{
+			key: "feature_request",
+			text: strings["support-feature-request"] || "Request a feature",
+			info:
+				strings["support-feature-request-info"] ||
+				"Suggest an improvement for Acode.",
+			link: buildTicketUrl(FEATURE_TEMPLATE),
 			chevron: true,
 		},
 		{
@@ -114,21 +79,12 @@ export default function help() {
 			chevron: true,
 		},
 		{
-			key: "feature_request",
-			text: strings["support-feature-request"] || "Request a feature",
-			info:
-				strings["support-feature-request-info"] ||
-				"Suggest an improvement for Acode.",
-			link: buildTicketUrl("[Feature]: ", featureRequestBody()),
-			chevron: true,
-		},
-		{
 			key: "question",
 			text: strings["support-question"] || "Ask a question",
 			info:
 				strings["support-question-info"] ||
 				"Get help from the community and maintainers.",
-			link: buildTicketUrl("[Question]: ", questionBody()),
+			link: DISCUSSIONS_URL,
 			chevron: true,
 		},
 		{
@@ -140,12 +96,6 @@ export default function help() {
 			link: `mailto:${config.FEEDBACK_EMAIL}?subject=${encodeURIComponent(
 				"support - Acode editor",
 			)}&body=${encodeURIComponent(getTicketEnvironment("\n"))}`,
-			chevron: true,
-		},
-		{
-			key: "bug_report",
-			text: strings.bug_report,
-			link: buildTicketUrl("[Bug]: ", bugReportBody()),
 			chevron: true,
 		},
 		{
