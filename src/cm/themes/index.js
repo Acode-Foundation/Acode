@@ -116,6 +116,19 @@ function resolveThemeEntryExtensions(theme, fallbackExtensions) {
 }
 
 export function addTheme(id, caption, isDark, getExtension, config = null) {
+	return registerTheme(id, caption, isDark, getExtension, config, true);
+}
+
+/**
+ * Registers a bundled theme. These are known to be valid, so the up-front
+ * validation (which builds every theme's extensions at startup) is skipped;
+ * they are still validated when applied.
+ */
+function addBuiltInTheme(id, caption, isDark, getExtension, config = null) {
+	return registerTheme(id, caption, isDark, getExtension, config, false);
+}
+
+function registerTheme(id, caption, isDark, getExtension, config, validate) {
 	const key = String(id || "")
 		.trim()
 		.toLowerCase();
@@ -129,7 +142,7 @@ export function addTheme(id, caption, isDark, getExtension, config = null) {
 		config: config || null,
 	};
 
-	if (!validateThemeExtensions(key, theme.getExtension())) {
+	if (validate && !validateThemeExtensions(key, theme.getExtension())) {
 		return false;
 	}
 
@@ -164,115 +177,127 @@ export function removeTheme(id) {
 	themes.delete(String(id).toLowerCase());
 }
 
-addTheme("one_dark", "One Dark", true, () => [oneDark], oneDarkConfig);
-addTheme(auraConfig.name, "Aura", !!auraConfig.dark, () => aura(), auraConfig);
-addTheme(
+addBuiltInTheme("one_dark", "One Dark", true, () => [oneDark], oneDarkConfig);
+addBuiltInTheme(
+	auraConfig.name,
+	"Aura",
+	!!auraConfig.dark,
+	() => aura(),
+	auraConfig,
+);
+addBuiltInTheme(
 	cobaltConfig.name,
 	"Cobalt",
 	!!cobaltConfig.dark,
 	() => cobalt(),
 	cobaltConfig,
 );
-addTheme(
+addBuiltInTheme(
 	noctisLilacConfig.name,
 	noctisLilacConfig.caption || "Noctis Lilac",
 	!!noctisLilacConfig.dark,
 	() => noctisLilac(),
 	noctisLilacConfig,
 );
-addTheme(
+addBuiltInTheme(
 	draculaConfig.name,
 	"Dracula",
 	!!draculaConfig.dark,
 	() => dracula(),
 	draculaConfig,
 );
-addTheme(nordConfig.name, "Nord", !!nordConfig.dark, () => nord(), nordConfig);
-addTheme(
+addBuiltInTheme(
+	nordConfig.name,
+	"Nord",
+	!!nordConfig.dark,
+	() => nord(),
+	nordConfig,
+);
+addBuiltInTheme(
 	gruvboxDarkConfig.name,
 	"Gruvbox Dark",
 	!!gruvboxDarkConfig.dark,
 	() => gruvboxDark(),
 	gruvboxDarkConfig,
 );
-addTheme(
+addBuiltInTheme(
 	ayuDarkConfig.name,
 	"Ayu Dark",
 	!!ayuDarkConfig.dark,
 	() => ayuDark(),
 	ayuDarkConfig,
 );
-addTheme(
+addBuiltInTheme(
 	materialPalenightConfig.name,
 	"Material Palenight",
 	!!materialPalenightConfig.dark,
 	() => materialPalenight(),
 	materialPalenightConfig,
 );
-addTheme(
+addBuiltInTheme(
 	githubDarkConfig.name,
 	"GitHub Dark",
 	!!githubDarkConfig.dark,
 	() => githubDark(),
 	githubDarkConfig,
 );
-addTheme(
+addBuiltInTheme(
 	githubLightConfig.name,
 	"GitHub Light",
 	!!githubLightConfig.dark,
 	() => githubLight(),
 	githubLightConfig,
 );
-addTheme(
+addBuiltInTheme(
 	solarizedDarkConfig.name,
 	"Solarized Dark",
 	!!solarizedDarkConfig.dark,
 	() => solarizedDark(),
 	solarizedDarkConfig,
 );
-addTheme(
+addBuiltInTheme(
 	solarizedLightConfig.name,
 	"Solarized Light",
 	!!solarizedLightConfig.dark,
 	() => solarizedLight(),
 	solarizedLightConfig,
 );
-addTheme(
+addBuiltInTheme(
 	tokyoNightDayConfig.name,
 	"Tokyo Night Day",
 	!!tokyoNightDayConfig.dark,
 	() => tokyoNightDay(),
 	tokyoNightDayConfig,
 );
-addTheme(
+addBuiltInTheme(
 	tokyoNightConfig.name,
 	"Tokyo Night",
 	!!tokyoNightConfig.dark,
 	() => tokyoNight(),
 	tokyoNightConfig,
 );
-addTheme(
+addBuiltInTheme(
 	tomorrowNightConfig.name,
 	"Tomorrow Night",
 	!!tomorrowNightConfig.dark,
 	() => tomorrowNight(),
 	tomorrowNightConfig,
 );
-addTheme(
+addBuiltInTheme(
 	tomorrowNightBrightConfig.name,
 	"Tomorrow Night Bright",
 	!!tomorrowNightBrightConfig.dark,
 	() => tomorrowNightBright(),
 	tomorrowNightBrightConfig,
 );
-addTheme(
+addBuiltInTheme(
 	monokaiConfig.name,
 	"Monokai",
 	!!monokaiConfig.dark,
 	() => monokai(),
 	monokaiConfig,
 );
-addTheme(
+addBuiltInTheme(
 	vscodeDarkConfig.name,
 	"VS Code Dark",
 	!!vscodeDarkConfig.dark,
@@ -281,7 +306,7 @@ addTheme(
 );
 
 for (const config of catppuccinConfigs) {
-	addTheme(
+	addBuiltInTheme(
 		config.name,
 		config.caption,
 		config.dark,
