@@ -26,6 +26,7 @@
         <preference name="GradlePluginKotlinVersion" value="2.3.0" />
         <preference name="fullscreen" value="false" />
         <preference name="SplashScreen" value="none" />
+        <preference name="FadeSplashScreenDuration" value="150" />
         <preference name="ShowTitle" value="true" />
         <preference name="DisallowOverscroll" value="true" />
         <preference name="BackgroundColor" value="0xFF313131" />
