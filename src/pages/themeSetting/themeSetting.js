@@ -8,7 +8,7 @@ import { basicSetup, EditorView } from "codemirror";
 import Page from "components/page";
 import searchBar from "components/searchbar";
 import TabView from "components/tabView";
-import TerminalThemeManager from "components/terminal/terminalThemeManager";
+import { TerminalThemeManager } from "components/terminal";
 import alert from "dialogs/alert";
 import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";

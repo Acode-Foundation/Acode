@@ -1,7 +1,9 @@
 import fsOperation from "fileSystem";
 import settingsPage from "components/settingsPage";
-import { DEFAULT_TERMINAL_SETTINGS } from "components/terminal/terminalDefaults";
-import TerminalThemeManager from "components/terminal/terminalThemeManager";
+import {
+	DEFAULT_TERMINAL_SETTINGS,
+	TerminalThemeManager,
+} from "components/terminal";
 import toast from "components/toast";
 import alert from "dialogs/alert";
 import confirm from "dialogs/confirm";

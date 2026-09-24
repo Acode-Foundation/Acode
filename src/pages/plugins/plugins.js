@@ -673,9 +673,9 @@ export default function PluginsInclude(updates) {
 		$list.owned.setAttribute("empty-msg", strings["loading..."]);
 
 		let iapPurchases = [];
-		const disabledMap = settings.value.pluginsDisabled || {};
 		if (helpers.isIapAvailable()) {
 			iapPurchases = await helpers.promisify(iap.getPurchases);
+			const disabledMap = settings.value.pluginsDisabled || {};
 
 			iapPurchases.forEach(async ({ productIds }) => {
 				const [sku] = productIds;

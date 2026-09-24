@@ -12,16 +12,6 @@ module.exports = (env, options) => {
     ? ''.concat(devProto, '://', devHost, ':', devPort)
     : '';
 
-  // Match the oldest WebView the app supports (MIN_WEBVIEW_MAJOR in
-  // www/index.html) instead of plain ES2015, so native async/await, classes
-  // and spread are kept. `entry` mode rewrites `import "core-js/stable"` to
-  // only the polyfills that WebView still needs.
-  const swcEnv = {
-    targets: 'chrome >= 67',
-    mode: 'entry',
-    coreJs: require('core-js/package.json').version,
-  };
-
   const rules = [
     {
       test: /typescript[\\/]lib[\\/]lib\..*\.d\.ts$/,
@@ -40,8 +30,8 @@ module.exports = (env, options) => {
                 syntax: 'typescript',
                 tsx: false,
               },
+              target: 'es2015',
             },
-            env: swcEnv,
           },
         },
         path.resolve(__dirname, 'utils/custom-loaders/html-tag-jsx-loader.js'),
@@ -65,8 +55,8 @@ module.exports = (env, options) => {
                   parser: {
                     syntax: 'ecmascript',
                   },
+                  target: 'es2015',
                 },
-                env: swcEnv,
               },
             },
           ],
@@ -82,8 +72,8 @@ module.exports = (env, options) => {
                     syntax: 'ecmascript',
                     jsx: false,
                   },
+                  target: 'es2015',
                 },
-                env: swcEnv,
               },
             },
             path.resolve(__dirname, 'utils/custom-loaders/html-tag-jsx-loader.js'),

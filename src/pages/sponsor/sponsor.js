@@ -242,7 +242,6 @@ async function handlePurchase(productId, title) {
 		});
 	}
 
-	// multiPrompt rejects when the dialog is cancelled.
 	result = await multiPrompt(onlyTitle(title), [
 		{
 			placeholder: "Name",
@@ -265,7 +264,7 @@ async function handlePurchase(productId, title) {
 			type: "checkbox",
 			value: true,
 		},
-	]).catch(() => null);
+	]);
 
 	if (!result) {
 		return;
