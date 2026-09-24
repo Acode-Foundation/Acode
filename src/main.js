@@ -64,7 +64,6 @@ import startAd, {
 	BANNER_SUPPRESSION_REASON,
 	setBannerSuppressed,
 } from "lib/startAd";
-import startupPerf from "lib/startupPerf";
 import mustache from "mustache";
 import themes from "theme/list";
 import { initHighlighting } from "utils/codeHighlight";
@@ -77,7 +76,11 @@ import $_fileMenu from "views/file-menu.hbs";
 import $_menu from "views/menu.hbs";
 import auth, { loginEvents } from "./lib/auth";
 
-startupPerf.mark("main.js evaluated");
+/**
+ * Settles once the startup purchase check can no longer change Pro status.
+ * Plugins wait for it so they initialize with the final value.
+ */
+let proStatusReady = Promise.resolve();
 
 const oldPreventDefault = TouchEvent.prototype.preventDefault;
 const previousVersionCode = Number.parseInt(localStorage.versionCode, 10);
@@ -124,7 +127,6 @@ async function ensurePermission(permission) {
 }
 
 async function onDeviceReady() {
-	startupPerf.mark("deviceready");
 	const isFreePackage = /(free)$/.test(BuildInfo.packageName);
 	const oldResolveURL = window.resolveLocalFileSystemURL;
 	const {
@@ -154,6 +156,8 @@ async function onDeviceReady() {
 	// startup instead of blocking it.
 	config.HAS_PRO = !isFreePackage || localStorage.acode_pro === "true";
 	const proPurchaseCheck = verifyProPurchase(isFreePackage);
+	// Paid builds are always Pro, so only a free build's check can change it.
+	proStatusReady = isFreePackage ? proPurchaseCheck : Promise.resolve();
 
 	// These native calls are independent, so run them together.
 	const [dataStorage, cacheStorage, installSource, androidSdkInt] =
@@ -164,7 +168,6 @@ async function onDeviceReady() {
 			getAndroidSdkInt(),
 			initEncodings(), // important to load encodings before anything else
 		]);
-	startupPerf.mark("native startup info");
 
 	window.app = document.body;
 	window.root = tag.get("#root");
@@ -286,7 +289,6 @@ async function onDeviceReady() {
 
 	acode.setLoadingMessage("Loading settings...");
 	await settings.init();
-	startupPerf.mark("settings");
 	fileIcons.bindSettings(settings);
 	fileIcons.syncFromSettings();
 	themes.init();
@@ -299,7 +301,6 @@ async function onDeviceReady() {
 
 	acode.setLoadingMessage("Loading language...");
 	await lang.set(settings.value.lang);
-	startupPerf.mark("language");
 
 	acode.setLoadingMessage("Securing SFTP profiles...");
 	const sftpMigration = await migrateLegacySftpProfiles();
@@ -323,7 +324,6 @@ async function onDeviceReady() {
 
 	try {
 		await loadApp();
-		startupPerf.mark("loadApp");
 		if (sftpMigration.failures.length) {
 			showSftpMigrationReport(sftpMigration);
 		}
@@ -335,7 +335,6 @@ async function onDeviceReady() {
 		// the UI is usable; otherwise paid themes could be treated as locked.
 		if (!config.HAS_PRO) {
 			await proPurchaseCheck;
-			startupPerf.mark("pro purchase check");
 		}
 		// Reveal the app once it has rendered a frame, then load the rest.
 		requestAnimationFrame(() =>
@@ -493,7 +492,6 @@ async function verifyProPurchase(isFreePackage) {
 async function onAppRendered(proPurchaseCheck) {
 	document.body.removeAttribute("data-small-msg");
 	app.classList.remove("loading", "splash");
-	startupPerf.mark("splash hidden");
 
 	// load plugins
 	try {
@@ -501,6 +499,7 @@ async function onAppRendered(proPurchaseCheck) {
 		await loadTerminalManager().catch((error) => {
 			console.error("Failed to load terminal module:", error);
 		});
+		await proStatusReady;
 		await loadPlugins();
 		fileIcons.refreshRenderedIcons();
 		// Ensure at least one sidebar app is active after all plugins are loaded
@@ -529,7 +528,6 @@ async function onAppRendered(proPurchaseCheck) {
 	} finally {
 		void processPendingIntents().catch(intentHandler.onError);
 	}
-	startupPerf.mark("plugins loaded");
 	applySettings.afterRender();
 
 	// The purchase result must be applied before login can upgrade to Pro.
@@ -550,7 +548,6 @@ async function onAppRendered(proPurchaseCheck) {
 
 	fetchPromotions();
 	startAd();
-	startupPerf.report();
 }
 
 function showSftpMigrationReport({
@@ -725,7 +722,6 @@ async function loadApp() {
 	const folders = helpers.parseJSON(localStorage.folders);
 	const files = helpers.parseJSON(localStorage.files) || [];
 	const editorManager = await EditorManager($header, $main);
-	startupPerf.mark("loadApp: editor manager");
 
 	const setMainMenu = () => {
 		if ($mainMenu) {
@@ -768,7 +764,6 @@ async function loadApp() {
 	editorManager.on("switch-file", initIconTooltips());
 	sidebarApps.init($sidebar);
 	await sidebarApps.loadApps();
-	startupPerf.mark("loadApp: sidebar apps");
 	editorManager.onupdate = onEditorUpdate;
 	root.on("show", mainPageOnShow);
 	app.addEventListener("click", onClickApp);
@@ -815,6 +810,9 @@ async function loadApp() {
 		openWelcomeTab();
 	}
 
+	// Plugins read Pro status while initializing, so let it settle first.
+	await proStatusReady;
+
 	// load theme plugins
 	try {
 		await loadPlugins(true);
@@ -823,7 +821,6 @@ async function loadApp() {
 		window.log("error", error);
 		toast("Failed to load theme plugins!");
 	}
-	startupPerf.mark("loadApp: theme plugins");
 
 	acode.setLoadingMessage("Loading folders...");
 	if (Array.isArray(folders)) {
@@ -854,7 +851,6 @@ async function loadApp() {
 		onEditorUpdate(undefined, false);
 	}
 
-	startupPerf.mark("loadApp: files restored");
 	acode.exec("save-state");
 	initFileList();
 
