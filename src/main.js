@@ -996,12 +996,29 @@ function menuButtonHandler() {
 
 async function pauseHandler() {
 	const { acode } = window;
+	try {
+		// Keep terminal/PTY processes alive while backgrounded so servers
+		// (and long-running commands) are not aborted by the OS.
+		const { TerminalManager } = await import(
+			/* webpackChunkName: "terminal" */ "components/terminal"
+		);
+		TerminalManager.handleAppPause?.();
+	} catch (error) {
+		console.warn("Terminal pause handling failed:", error);
+	}
 	await window.editorManager?.flushCacheWrites?.();
 	acode?.exec("save-state");
 }
 
 function resumeHandler() {
 	adRewards.handleResume();
+	import(/* webpackChunkName: "terminal" */ "components/terminal")
+		.then(({ TerminalManager }) => {
+			TerminalManager.handleAppResume?.();
+		})
+		.catch(() => {
+			// Terminal module may not be loaded; lifecycle is also bound in the manager.
+		});
 	if (!settings.value.checkFiles) return;
 	checkFiles();
 }

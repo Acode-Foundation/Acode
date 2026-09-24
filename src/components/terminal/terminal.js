@@ -81,6 +81,11 @@ export default class TerminalComponent {
 		// Lifecycle flags so exit/disconnect/error don't race into zombie tabs
 		this.intentionalClose = false;
 		this.processExited = false;
+		// Reconnect state for transient WebSocket drops (app backgrounded, etc.)
+		this.isReconnecting = false;
+		this.reconnectAttempts = 0;
+		this.maxReconnectAttempts = 5;
+		this._openSocket = null;
 
 		this.init();
 	}
@@ -824,7 +829,16 @@ export default class TerminalComponent {
 		}
 
 		this.pid = pid;
+		await this.openSocket(pid);
+	}
 
+	/**
+	 * Open (or re-open) the WebSocket for an existing terminal PID.
+	 * Used for first connect and for transparent reconnects after a drop.
+	 * @param {string} pid
+	 * @returns {Promise<void>}
+	 */
+	async openSocket(pid) {
 		const wsUrl = `ws://127.0.0.1:${this.options.port}/terminals/${pid}`;
 
 		await new Promise((resolve, reject) => {
@@ -833,6 +847,7 @@ export default class TerminalComponent {
 			let settled = false;
 			let hasOpened = false;
 
+			this._openSocket = websocket;
 			this.websocket = websocket;
 
 			const rejectInitialConnect = (message, error) => {
@@ -855,6 +870,8 @@ export default class TerminalComponent {
 				clearTimeout(connectionTimeout);
 				hasOpened = true;
 				this.isConnected = true;
+				this.isReconnecting = false;
+				this.reconnectAttempts = 0;
 				this.onConnect?.();
 
 				// Load attach addon after connection
@@ -894,6 +911,9 @@ export default class TerminalComponent {
 
 			websocket.onclose = (event) => {
 				clearTimeout(connectionTimeout);
+				// Ignore close events from a superseded socket during reconnect
+				if (this._openSocket && this._openSocket !== websocket) return;
+
 				this.isConnected = false;
 
 				if (!hasOpened) {
@@ -914,6 +934,8 @@ export default class TerminalComponent {
 			};
 
 			websocket.onerror = (error) => {
+				if (this._openSocket && this._openSocket !== websocket) return;
+
 				if (!hasOpened) {
 					clearTimeout(connectionTimeout);
 					rejectInitialConnect(
@@ -930,6 +952,63 @@ export default class TerminalComponent {
 				this.onError?.(error);
 			};
 		});
+	}
+
+	/**
+	 * Attempt to re-establish the WebSocket after a transient drop.
+	 * Returns true when the socket is open again.
+	 * @returns {Promise<boolean>}
+	 */
+	async reconnect() {
+		if (this.intentionalClose || this.processExited) return false;
+		if (!this.serverMode || this.remoteSsh) return false;
+		if (!this.pid) return false;
+		if (this.isReconnecting) return false;
+		if (this.isConnected && this.websocket?.readyState === WebSocket.OPEN) {
+			return true;
+		}
+
+		this.isReconnecting = true;
+		this.reconnectAttempts += 1;
+
+		try {
+			// Tear down the dead socket without marking the session intentional
+			const previous = this._openSocket || this.websocket;
+			this._openSocket = null;
+			this.websocket = null;
+			this.isConnected = false;
+			if (previous) {
+				try {
+					previous.onclose = null;
+					previous.onerror = null;
+					previous.onmessage = null;
+					previous.close();
+				} catch {
+					// Already closed
+				}
+			}
+
+			// Confirm AXS (the PTY server) is still alive before reconnecting
+			if (typeof Terminal !== "undefined" && Terminal.isAxsRunning) {
+				const alive = await Terminal.isAxsRunning();
+				if (!alive) {
+					this.isReconnecting = false;
+					return false;
+				}
+			}
+
+			this.onReconnecting?.(this.reconnectAttempts);
+			await this.openSocket(this.pid);
+			this.onReconnected?.();
+			return true;
+		} catch (error) {
+			console.warn(
+				`Terminal ${this.pid} reconnect attempt ${this.reconnectAttempts} failed:`,
+				error,
+			);
+			this.isReconnecting = false;
+			return false;
+		}
 	}
 
 	/**
@@ -1421,6 +1500,8 @@ export default class TerminalComponent {
 	 */
 	async terminate() {
 		this.intentionalClose = true;
+		this._openSocket = null;
+		this.isReconnecting = false;
 		this.remoteInputDisposable?.dispose?.();
 		this.remoteInputDisposable = null;
 
@@ -1436,11 +1517,13 @@ export default class TerminalComponent {
 
 		if (this.websocket) {
 			try {
-				this.websocket.close();
+				const socket = this.websocket;
+				this.websocket = null;
+				this._openSocket = null;
+				socket.close();
 			} catch {
 				// Already closed
 			}
-			this.websocket = null;
 		}
 
 		if (this.pid && this.serverMode) {
@@ -1510,6 +1593,8 @@ export default class TerminalComponent {
 	onTitleChange(title) {}
 	onBell() {}
 	onProcessExit(exitData) {}
+	onReconnecting(_attempt) {}
+	onReconnected() {}
 }
 
 // Internal helpers for WebGL renderer lifecycle

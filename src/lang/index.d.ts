@@ -773,6 +773,9 @@ declare type LangStrings = {
   "support-question-info": string;
   "support-contact": string;
   "support-contact-info": string;
+  "terminal-reconnecting": string;
+  "terminal-reconnect-failed": string;
+  "terminal-session-ended": string;
   "settings-info-main-theme": string;
   "settings-info-preview-disable-cache": string;
   "settings-info-preview-host": string;
