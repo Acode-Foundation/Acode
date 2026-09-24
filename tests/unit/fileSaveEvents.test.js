@@ -9,7 +9,7 @@ function setup() {
 	const write = vi.fn(async () => true);
 	const manager = { files: [], getFile: () => null, addFile: file => manager.files.push(file), emit: vi.fn(), onupdate: vi.fn(), activeFile: null };
 	const defaults = Object.fromEntries([
-		"fileSystem", "components/quickTools", "components/sidebar", "components/toast", "dialogs/confirm", "handlers/editorFileTab", "handlers/quickTools", "lib/quickToolsAdapter", "handlers/tabContextMenu", "dompurify", "mime-types", "utils/codeHighlight", "utils/Path", "utils/remoteFilePreview", "utils/Url", "./loadPlugins", "./openFolder", "./run", "cm/editorReadOnly",
+		"fileSystem", "components/quickTools", "components/sidebar", "components/toast", "dialogs/confirm", "handlers/editorFileTab", "handlers/quickTools", "lib/quickToolsAdapter", "handlers/tabContextMenu", "dompurify", "utils/mimeTypes", "utils/codeHighlight", "utils/Path", "utils/remoteFilePreview", "utils/Url", "./loadPlugins", "./openFolder", "./runLazily", "cm/editorReadOnly",
 	].map(id => [id, {}]));
 	const { default: EditorFile } = loadSourceModule("src/lib/editorFile.js", {
 		...defaults,

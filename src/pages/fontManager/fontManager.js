@@ -2,7 +2,7 @@ import "./style.scss";
 import fsOperation from "fileSystem";
 import Page from "components/page";
 import searchBar from "components/searchbar";
-import { DEFAULT_TERMINAL_SETTINGS } from "components/terminal";
+import { DEFAULT_TERMINAL_SETTINGS } from "components/terminal/terminalDefaults";
 import toast from "components/toast";
 import confirm from "dialogs/confirm";
 import dialog from "dialogs/dialog";

@@ -45,8 +45,23 @@ export function toCodeMirrorKey(combo) {
 	return strokes.length ? strokes.join(" ") : null;
 }
 
+// Conflict checks compare every binding with every other one on each keymap
+// rebuild, so cache the parsed form. The app has a few hundred binding strings;
+// the cap only stops unbounded growth from repeated registrations of new keys.
+const MAX_CANONICAL_KEY_CACHE_SIZE = 1000;
+const canonicalKeyCache = new Map();
+
 export function canonicalizeKeyBinding(combo) {
-	return toCodeMirrorKey(combo)?.toLowerCase() || null;
+	if (typeof combo !== "string") {
+		return toCodeMirrorKey(combo)?.toLowerCase() || null;
+	}
+	if (canonicalKeyCache.has(combo)) return canonicalKeyCache.get(combo);
+	const canonicalKey = toCodeMirrorKey(combo)?.toLowerCase() || null;
+	if (canonicalKeyCache.size >= MAX_CANONICAL_KEY_CACHE_SIZE) {
+		canonicalKeyCache.clear();
+	}
+	canonicalKeyCache.set(combo, canonicalKey);
+	return canonicalKey;
 }
 
 /**
