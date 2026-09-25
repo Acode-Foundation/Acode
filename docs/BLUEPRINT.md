@@ -32,7 +32,7 @@
 | Git | Community plugin, manual `apk add git` | **Bundle, add native UI** | No change in direction |
 | AI agent, DAP, MCP/ACP, native vault/HTTP/background-service | Doesn't exist in Acode | **Greenfield, build new** | No upstream equivalent to harvest |
 
-**Verify before committing** (could not confirm from public pages): exact LICENSE terms, current store policy for executing downloaded binaries.
+**Verify before committing** (could not confirm from public pages): current store policy for executing downloaded binaries. (LICENSE terms verified as fine — ADR-005.)
 
 ## 3. Shell migration and provenance strategy
 
@@ -177,8 +177,9 @@ flowchart TD
 - Foreground-service types and notifications for long tasks; test on aggressive-battery OEMs.
 - Keep proot binaries and any bundled native libraries compatible with current store and OS requirements; verify target-API and native-library rules at build time.
 - Target mid-range devices for performance budgets, not flagships.
+- Minimum supported OS: Android 13 / API 33 (ADR-006) — modern-only, no back-compat shims for older Android versions. Performance budgets above still target mid-range *hardware* running that OS baseline, not flagships.
 
-## 8. Roadmap (rough estimates for a 4 to 6 person team)
+## 8. Roadmap (rough estimates for a 4 to 6 person team — team size TBD, see section 11)
 
 | Phase | Weeks | Scope | Exit criteria |
 |---|---|---|---|
@@ -205,14 +206,13 @@ flowchart TD
 | WebView performance on low-end phones | Lazy-load language packs and servers; budgets in CI |
 | Agent cost blowups | Budgets, pre-run estimates, cheap-model routing |
 | proot fragility across devices | Device test matrix; fallback to remote runner |
+| Freemium Pro tier vs. F-Droid's no-proprietary-IAP build constraints | See ADR-006 consequence note; needs its own licensing/gating mechanism for the F-Droid build, separate from Play Billing |
 
 ## 11. Decisions needed
-1. Verify the Acode LICENSE terms carry correctly into the new Capacitor project.
-2. Choose distribution channels and monetization.
-3. Set team size and target device floor (Android version, RAM).
-4. Pick the first three model providers to support and test.
+1. Set team size.
+2. Pick the first three model providers to support and test.
 
-Resolved: name (Bract, ADR-002); fork approach (native GitHub fork, ADR-001); "zero privacy" meaning (section 5.4, L2); app shell (Capacitor, ADR-003); new-UI framework (Svelte, ADR-004).
+Resolved: name (Bract, ADR-002); fork approach (native GitHub fork, ADR-001); "zero privacy" meaning (section 5.4, L2); app shell (Capacitor, ADR-003); new-UI framework (Svelte, ADR-004); license carries forward as MIT, no changes needed (ADR-005); distribution — Google Play + F-Droid + GitHub Releases, monetization — freemium (free app, paid Pro tier), minimum device floor — Android 13 / API 33 (ADR-006).
 
 ## 12. Research notes
 Based on public pages reviewed in Sept 2026: `github.com/Acode-Foundation/Acode` (README, releases, PRs, source tree), `github.com/Acode-Foundation/acode-plugin-git`, `github.com/hallofcodes/acode-ai-agent-plugin`, and `agentclientprotocol.com`. Anything not confirmed there is listed under "Verify" in section 2.
