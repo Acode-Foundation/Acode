@@ -1,6 +1,6 @@
-# Project Bract: Blueprint v0.1
+# Project Bract: Blueprint v0.2
 
-*A calm, beginner-friendly, agent-first full local IDE for Android, forked from Acode. Draft, Sept 2026. Rough estimates are marked as such.*
+*A calm, beginner-friendly, agent-first full local IDE for Android. Built by harvesting the mature parts of Acode into a modern, lightweight, privacy-respecting native shell. Draft, Sept 2026. Rough estimates are marked as such.*
 
 ## 1. Vision and principles
 
@@ -13,47 +13,49 @@
 2. **Thumb-first.** Core actions are one-handed. Panels are bottom sheets, not side docks.
 3. **Agent as a teammate you supervise,** not a chat box.
 4. **Two dials, not one switch.** Privacy and autonomy are independent settings.
-5. **Compatible.** Keep the Acode plugin API and stay mergeable with upstream.
+5. **Lightweight.** Ship the smallest runtime footprint that does the job — no framework or dependency added without a clear reason (see ADR-003, ADR-004).
 6. **Local-first.** Works offline; cloud features are opt-in.
-7. **Measurable.** Every feature ships with an acceptance test and a metric.
+7. **Independent.** Bract is its own installable app with its own identity — not a rename of Acode's package.
+8. **Measurable.** Every feature ships with an acceptance test and a metric.
 
-## 2. Baseline: what Acode already gives us
+## 2. Baseline: what we're keeping from Acode vs. replacing
 
-| Area | Acode today (from repo research) | Fork action |
-|---|---|---|
-| Shell | Cordova hybrid app | Keep |
-| Editor | CodeMirror (migrated from Ace) | Keep, tune for mobile |
-| LSP | Built in, per-server settings, externally managed WebSocket servers | Extend: manager UI, one-tap server install |
-| Terminal | Alpine Linux in proot, shared public folder | Harden; background service |
-| Remote | SFTP plus SSH terminal integration | Extend to full remote workspaces |
-| Git | Community plugin driving the native git binary; needs manual `apk add git` and OpenSSH | Bundle, add native UI |
-| AI | Community agent plugin (file and terminal tools; Gemini, OpenRouter, Ollama, OpenAI; Ollama needs a CORS proxy) | Replace with a native core |
-| Plugins | Large community catalog | Keep API compatibility |
-| Build | pnpm/bun, nightly builds, unit tests in CI, free/paid and F-Droid flavors | Reuse |
+| Layer | Acode's choice | Our call | Reason |
+|---|---|---|---|
+| App shell | Cordova | **Replace — Capacitor** | ADR-003: aging maintenance pace, weaker plugin ecosystem; Capacitor keeps our JS/CSS investment while giving a real native Gradle project |
+| Editor core | CodeMirror 6 | **Keep** | Already best-in-class |
+| Build tooling | bun, rspack, biome, vitest, TypeScript | **Keep** | Already modern and fast |
+| UI component layer (new surfaces) | Vanilla DOM + `html-tag-js` | **New surfaces in Svelte** | ADR-004: compiles away at build time, smallest bundle, fastest to build in |
+| Terminal / Linux env | Custom Alpine-in-proot | **Keep the self-contained approach**; consider reusing Termux's bootstrap/package-repo tooling under the hood | Self-contained fits "independent app"; Termux's tooling is more proven than a fully bespoke setup — low priority, revisit later |
+| LSP | Built in, externally managed WebSocket servers | **Keep and extend** | Sound design; add a manager UI |
+| Remote (SFTP/SSH) | Present | **Keep and extend** to full remote workspaces | Sound design |
+| Git | Community plugin, manual `apk add git` | **Bundle, add native UI** | No change in direction |
+| AI agent, DAP, MCP/ACP, native vault/HTTP/background-service | Doesn't exist in Acode | **Greenfield, build new** | No upstream equivalent to harvest |
 
-**Verify before committing** (could not confirm from public pages): built-in debugger, test runner, split view, project-wide search depth, exact LICENSE terms, and current store policy for executing downloaded binaries.
+**Verify before committing** (could not confirm from public pages): exact LICENSE terms, current store policy for executing downloaded binaries.
 
-## 3. Fork strategy
+## 3. Shell migration and provenance strategy
 
-- Forked as `ShashiDao/Bract` from `Acode-Foundation/Acode` (main branch only). Track upstream with a scheduled weekly merge or rebase from `main`/nightlies.
-- Put new code under `src/pocket/` (or equivalent feature-flagged modules) and expose it through feature flags (`simple_mode`, `agent`, `dap`, `remote`). Keep edits to upstream files small and listed in `PATCHES.md`.
-- Send generic fixes upstream first; keep only product-specific code in the fork.
-- New app name, icon, and package ID (see `docs/DECISIONS.md`). Keep license notices and attribution intact.
-- Plugin API is additive-only. CI runs contract tests against the most popular community plugins.
-- Channels: nightly, beta, stable. Distribution: GitHub APK and F-Droid first; Play Store after a policy review (see Risks).
+Per ADR-003, this is a **one-time harvest and port**, not a continuously-rebased fork of the shell layer:
+
+- New app identity from the start: our own package/application ID, display name, icon, and deep-link scheme — set during Capacitor init, not renamed after the fact from Acode's `com.foxdebug.acode`.
+- Harvested as-is or lightly adapted: CodeMirror integration code, the LSP client wiring, `src/lang/` language files, the plugin-API concept (re-implemented against Capacitor's plugin model), terminal/proot logic, icons and themes we choose to keep.
+- Rebuilt fresh: the native project itself (Capacitor-generated `android/` Gradle project replaces Cordova's `platforms/`-and-hooks model), CI (new workflow targeting the Capacitor/Gradle build instead of Cordova), and app packaging metadata.
+- Dropped: `config.xml`, `hooks/`, most of `gradle/` (Capacitor generates its own), Cordova-oriented CI steps, and everything Acode-Foundation-specific (CODEOWNERS, their release/community workflows, `fastlane/` store metadata, `CODE_OF_CONDUCT.md`) — tracked as it happens in `PATCHES.md`, which now doubles as a provenance log (what was ported vs. rebuilt vs. dropped), not just a rebase-conflict tracker.
+- We can still selectively pull individual upstream improvements (new CodeMirror language modes, LSP client fixes, security patches) as one-off cherry-picks after the port — just not full rebases.
 
 ## 4. Architecture
 
 ```mermaid
 flowchart TD
-  UI["WebView UI: Simple/Pro shell, editor, bottom-sheet panels"] --> CORE["Core services (JS): workspace, LSP, DAP, agent runtime, MCP and ACP clients"]
-  CORE --> NATIVE["Native plugins (Kotlin): HTTP client, background service, keystore vault, process runner"]
-  NATIVE --> LINUX["Alpine proot: toolchains, git, ripgrep, language servers"]
+  UI["Capacitor WebView UI: Simple/Pro shell (Svelte), editor (CodeMirror, ported), bottom-sheet panels"] --> CORE["Core services (JS/TS): workspace, LSP, DAP, agent runtime, MCP and ACP clients"]
+  CORE --> NATIVE["Capacitor native plugins (Kotlin): HTTP client, background service, keystore vault, process runner"]
+  NATIVE --> LINUX["Bundled proot Linux: toolchains, git, ripgrep, language servers"]
   CORE --> REMOTE["Remote: SSH/SFTP, remote LSP, cloud agent runners"]
   CORE --> LLM["Models: BYOK cloud, LAN Ollama, on-device"]
 ```
 
-**Native plugin responsibilities**
+**Native plugin responsibilities** (as Capacitor plugins)
 - **HTTP client:** all model and network calls bypass WebView CORS, stream responses, and support cancellation.
 - **Background service:** foreground service for agent runs, dev servers, and long builds, with a visible notification and one-tap stop.
 - **Vault:** API keys, tokens, and SSH keys in Android Keystore-backed storage; never in plain settings.
@@ -65,7 +67,7 @@ flowchart TD
 
 ### 5.1 Simple and Pro modes
 - **Goal:** less clutter without losing power.
-- **Simple mode UI:** top bar (project name, Run, Undo/Redo, More); bottom context-aware extra-key row; one Assistant button; file tree, search, and Git in a left drawer; tabs collapse into a recent-files switcher; Terminal, Problems, Preview, Debug open as bottom sheets (peek, half, full).
+- **Simple mode UI:** top bar (project name, Run, Undo/Redo, More); bottom context-aware extra-key row; one Assistant button; file tree, search, and Git in a left drawer; tabs collapse into a recent-files switcher; Terminal, Problems, Preview, Debug open as bottom sheets (peek, half, full). Built in Svelte per ADR-004.
 - **Command palette:** one search box for files, commands, symbols, and settings.
 - **Settings:** five groups (Editor, Appearance, Run and Tools, AI and Privacy, Advanced), searchable. Pro mode reveals advanced items and the full tab bar.
 - **Acceptance:** a new user opens a template and sees it run in under 60 seconds; Pro toggle needs no restart.
@@ -96,7 +98,7 @@ flowchart TD
 
 **Context:** a repo map (symbols via LSP or tree-sitter), project instructions from `AGENTS.md`, ripgrep retrieval, rolling summaries for long tasks.
 
-**Where it runs:** on-device as a foreground service, or on a remote runner (SSH or ACP) for long jobs so phone battery and background limits do not matter.
+**Where it runs:** on-device as a foreground service (Capacitor plugin), or on a remote runner (SSH or ACP) for long jobs so phone battery and background limits do not matter.
 
 **Models:** bring your own key for any provider; native streaming; LAN Ollama; optional on-device small model where hardware allows. A routing policy sends small edits to cheap models and planning to the strongest. A cost estimate and cap are shown before each run.
 
@@ -122,7 +124,7 @@ flowchart TD
 
 ### 5.5 Run, toolchains, tasks
 - **Runtimes manager:** one-tap install and switch for Python, Node, Java, Go, and others, with disk-usage display and cleanup.
-- **Run tasks:** auto-detected from project files (`package.json`, `pyproject.toml`, and so on), editable in `.pocket/tasks.json`, with a big Run button.
+- **Run tasks:** auto-detected from project files (`package.json`, `pyproject.toml`, and so on), editable in `.bract/tasks.json`, with a big Run button.
 - **Dev servers:** survive backgrounding via the foreground service; port list with open-in-preview.
 - **Acceptance:** fresh install to a running Python or Node hello-world without typing in the terminal.
 
@@ -180,8 +182,8 @@ flowchart TD
 
 | Phase | Weeks | Scope | Exit criteria |
 |---|---|---|---|
-| 0 Setup | 2 | Fork, CI, rebrand, baseline audit, eval harness skeleton, decisions in section 11 | Builds and passes upstream tests |
-| 1 Calm and Ready | 6 to 8 | Simple/Pro, onboarding, templates, bundled Git, native HTTP and vault, Agent v1 (chat, read/edit/run, diff review, checkpoints), dials v1 | Time-to-first-run under 90 s; agent passes its first eval targets |
+| 0 Setup | 2 to 3 | Shell migration (Cordova → Capacitor), app identity, CI rebuild, Acode-specific file cleanup, eval harness skeleton | Capacitor app builds and installs independently of Acode |
+| 1 Calm and Ready | 6 to 8 | Simple/Pro (Svelte), onboarding, templates, bundled Git, native HTTP and vault, Agent v1 (chat, read/edit/run, diff review, checkpoints), dials v1 | Time-to-first-run under 90 s; agent passes its first eval targets |
 | 2 Real IDE loop | 8 to 10 | Runtimes manager, run tasks, Problems, tests, navigation and search, preview inspector, DAP for JS and Python, agent uses debug and test tools | Debug a Node and a Python bug end to end on-device |
 | 3 Everywhere | 8 | Remote workspaces, MCP and ACP, remote agent runners, large-screen layouts, VS Code import, deploy | Remote edit-run-agent loop works over SSH |
 | 4 Launch | 4 to 6 | Beta, hardening, docs, plugin API v2, store submissions | Crash-free target met; beta feedback triaged |
@@ -190,12 +192,13 @@ flowchart TD
 - **Product:** time to first run (target under 90 s), day-7 retention, crash-free sessions (target 99.5%+), cold start (baseline first, then set a budget).
 - **Agent eval suite (about 60 tasks):** bug fix, add feature, refactor, explain code, set up environment, UI tweak from screenshot. Track pass rate, steps, tokens and cost, wall time. Run nightly across providers; a regression blocks release.
 - **Privacy:** audit log completeness; zero unexplained network calls in L0.
+- **Lightweight:** app size and cold-start budget set once the Capacitor scaffold exists; tracked in CI from Phase 0 onward.
 
 ## 10. Risks and mitigations
 
 | Risk | Mitigation |
 |---|---|
-| Upstream divergence | Namespace isolation, weekly merges, upstream-first fixes |
+| Shell migration surfaces hidden Cordova-plugin dependencies | Port plugin-by-plugin, test each before removing the Cordova equivalent |
 | Store policy on executing downloaded binaries | Review policy early; ship toolchain features via F-Droid/GitHub if needed |
 | Android background limits kill long tasks | Foreground service, remote runners, resumable runs |
 | Prompt injection via repo or web content | Section 6 rules; confirmations for shell and network |
@@ -204,12 +207,12 @@ flowchart TD
 | proot fragility across devices | Device test matrix; fallback to remote runner |
 
 ## 11. Decisions needed
-1. Verify the Acode LICENSE and finalize package ID.
-2. Choose distribution channels and monetization (Acode already has free and paid flavors).
+1. Verify the Acode LICENSE terms carry correctly into the new Capacitor project.
+2. Choose distribution channels and monetization.
 3. Set team size and target device floor (Android version, RAM).
 4. Pick the first three model providers to support and test.
 
-Resolved: name (Bract, see `docs/DECISIONS.md` ADR-002); fork approach (native GitHub fork, ADR-001); "zero privacy" meaning (section 5.4, L2 — full-cloud opt-in with secrets still blocked by default).
+Resolved: name (Bract, ADR-002); fork approach (native GitHub fork, ADR-001); "zero privacy" meaning (section 5.4, L2); app shell (Capacitor, ADR-003); new-UI framework (Svelte, ADR-004).
 
 ## 12. Research notes
-Based on public pages reviewed in Sept 2026: `github.com/Acode-Foundation/Acode` (README, releases, PRs), `github.com/Acode-Foundation/acode-plugin-git`, `github.com/hallofcodes/acode-ai-agent-plugin`, and `agentclientprotocol.com`. Anything not confirmed there is listed under "Verify" in section 2.
+Based on public pages reviewed in Sept 2026: `github.com/Acode-Foundation/Acode` (README, releases, PRs, source tree), `github.com/Acode-Foundation/acode-plugin-git`, `github.com/hallofcodes/acode-ai-agent-plugin`, and `agentclientprotocol.com`. Anything not confirmed there is listed under "Verify" in section 2.
