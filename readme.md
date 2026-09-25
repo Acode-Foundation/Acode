@@ -1,3 +1,6 @@
+[![CI](https://github.com/ShashiDao/Bract/actions/workflows/ci.yml/badge.svg)](https://github.com/ShashiDao/Bract/actions/workflows/ci.yml)
+
+
 # Bract — a calm, agent-first code editor for Android
 
 *Forked from [Acode](https://github.com/Acode-Foundation/Acode). Bract's goal: a full local IDE on Android that's uncluttered enough for beginners, with a supervised AI agent built in, and two independent dials for privacy and autonomy.*
