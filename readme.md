@@ -1,3 +1,19 @@
+# Bract — a calm, agent-first code editor for Android
+
+*Forked from [Acode](https://github.com/Acode-Foundation/Acode). Bract's goal: a full local IDE on Android that's uncluttered enough for beginners, with a supervised AI agent built in, and two independent dials for privacy and autonomy.*
+
+**Start here:**
+- [`docs/BLUEPRINT.md`](docs/BLUEPRINT.md) — full vision, architecture, and feature specs
+- [`docs/STATUS.md`](docs/STATUS.md) — what's built, in progress, and next, kept current
+- [`docs/ROADMAP.md`](docs/ROADMAP.md) — phased plan as checkboxes
+- [`docs/DECISIONS.md`](docs/DECISIONS.md) — why we chose what we chose
+- [`AGENTS.md`](AGENTS.md) — instructions for any AI agent picking up this codebase
+- [`PATCHES.md`](PATCHES.md) — everywhere we diverge from upstream Acode
+
+Everything below this line is Acode's original readme, kept as-is since the current codebase is still Acode's baseline.
+
+---
+
 # Acode - Code Editor for Android
 
 <p align="center">
