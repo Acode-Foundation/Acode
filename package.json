@@ -75,6 +75,8 @@
     "@babel/runtime-corejs3": "^7.29.7",
     "@babel/traverse": "^7.29.8",
     "@biomejs/biome": "2.4.11",
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/cli": "^8.5.2",
     "@lezer/generator": "^1.8.0",
     "@rspack/cli": "^2.2.0",
     "@rspack/core": "^2.2.0",
@@ -125,6 +127,7 @@
     "ws": "^8.21.3"
   },
   "dependencies": {
+    "@capacitor/core": "^8.5.2",
     "@codemirror/autocomplete": "^6.20.3",
     "@codemirror/commands": "^6.11.0",
     "@codemirror/lang-angular": "^0.1.4",
