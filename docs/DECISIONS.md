@@ -17,10 +17,10 @@ Short, dated records of non-obvious choices: what we chose, what we rejected, an
 
 ## ADR-001: Fork via GitHub's native fork feature, not a fresh copy
 - **Date:** 2026-09-25
-- **Status:** accepted
+- **Status:** accepted; partially superseded by ADR-003 (the "stay mergeable via continuous rebase" assumption no longer applies to the app-shell layer)
 - **Decision:** Bract is a GitHub fork of `Acode-Foundation/Acode` (main branch only), not a freshly initialized repo with copied files.
 - **Alternatives considered:** Fresh repo with manually copied source (loses git history and the upstream link).
-- **Why:** Preserves full commit history and GitHub's upstream comparison/PR tooling, which we rely on for the weekly-rebase strategy in `docs/BLUEPRINT.md` section 3.
+- **Why:** Preserves full commit history and GitHub's upstream comparison/PR tooling, and still gives us a clean base to harvest mature parts from (see ADR-003).
 
 ## ADR-002: Repo name "Bract"
 - **Date:** 2026-09-25
@@ -28,3 +28,18 @@ Short, dated records of non-obvious choices: what we chose, what we rejected, an
 - **Decision:** Project and repo are named "Bract".
 - **Alternatives considered:** Nimbis, Basecode, Forgeon/Forj, Ampcode.
 - **Why:** Short, distinctive, available as a name; "small but essential" metaphor fits the calm/lean product positioning better than a literal descriptive name.
+
+## ADR-003: Migrate app shell from Cordova to Capacitor; harvest, don't rebase, upstream Acode
+- **Date:** 2026-09-25
+- **Status:** accepted
+- **Decision:** Replace Cordova with Capacitor as the native app shell. This is a one-time port, not a continuously-rebased fork of the shell layer: we harvest the mature, reusable parts of Acode (CodeMirror integration, LSP client wiring, language files, plugin API concepts, terminal/proot logic, icons/themes) into a new Capacitor project structure, rather than tracking Acode's git history line-for-line going forward. We can still selectively cherry-pick specific upstream improvements (new language modes, LSP client fixes, security patches) after the port.
+- **Alternatives considered:** Stay on Cordova (aging maintenance pace, weaker plugin ecosystem, worse Android 14+/edge-to-edge support out of the box); Tauri Mobile (Rust-based, lighter in theory, but less mature on Android as of early 2026, smaller plugin ecosystem); a fully native Kotlin/Compose shell hosting a manual WebView (maximum control, but reinvents what Capacitor already solves, with no real upside for us).
+- **Why:** Capacitor keeps nearly all existing investment in `src/`/`www/` and the CodeMirror integration (same "web app in a native shell" model as Cordova), while giving a real first-class native Gradle project instead of Cordova's hook-based abstraction, a more actively maintained plugin ecosystem, and better modern-Android support. It's the best match for the lightweight + independent-app-building goals: no heavier runtime than what we already carry, and a native project we fully own rather than one shaped by Cordova's platform-add tooling.
+- **Consequence:** `config.xml`, `hooks/`, most of `gradle/`, and the Cordova-oriented parts of `.github/workflows/ci.yml` become obsolete and get replaced as part of this migration, not just cleaned up separately. App identity (package/appId, display name, deep-link scheme) is set fresh as part of Capacitor init rather than renamed after the fact.
+
+## ADR-004: New UI surfaces built in Svelte; existing editor chrome left as-is
+- **Date:** 2026-09-25
+- **Status:** accepted
+- **Decision:** The existing CodeMirror-integration DOM code stays as-is where it's already mature. New UI surfaces going forward — the Simple/Pro mode shell, agent review panels, bottom sheets, command palette — are built in Svelte rather than extending Acode's vanilla-DOM/`html-tag-js` pattern.
+- **Alternatives considered:** Preact (small but still ships a runtime and virtual-DOM diffing); SolidJS (also compiles away reactivity, but smaller ecosystem/tooling maturity than Svelte); staying with the existing vanilla pattern (slower to build in, and explicitly not "the best possible framework" for this piece).
+- **Why:** Svelte compiles away at build time — no shipped framework runtime, smallest bundle size of the realistic options, and faster to build UI in than the existing imperative pattern. This is the best fit for the stated lightweight priority: every KB matters more on a phone-hosted IDE than it would on desktop.
