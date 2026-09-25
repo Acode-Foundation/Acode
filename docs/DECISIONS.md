@@ -85,3 +85,10 @@ Short, dated records of non-obvious choices: what we chose, what we rejected, an
 - **Decision:** On-device (on-phone) model inference is out of scope for Phase 1. Ship BYOK cloud + LAN Ollama first; revisit on-device support no earlier than Phase 3.
 - **Alternatives considered:** Building on-device support in Phase 1 alongside cloud — rejected as disproportionate effort (model packaging, quantization, per-chipset variance) for a solo, AI-assisted build.
 - **Why:** Keeps Phase 1 scope achievable solo. `docs/BLUEPRINT.md` section 5.3 already hedges on-device as "where hardware allows"; this just fixes the timing.
+
+## ADR-011: App identity — application ID, display name, deep-link scheme
+- **Date:** 2026-09-25
+- **Status:** accepted
+- **Decision:** Application ID `io.github.shashidao.bract`; display name "Bract"; deep-link scheme `bract://`.
+- **Alternatives considered:** A custom-domain-based app ID (e.g. `app.bract.*`) — rejected for now, no domain is owned yet and one isn't needed to ship.
+- **Why:** `io.github.<owner>.<repo>` is F-Droid's own recommended fallback convention for developers without a domain — collision-free, requires no purchase, and stable even if a domain is added later. This needs to be set correctly once at Capacitor init (ADR-003) rather than renamed after the fact: changing an applicationId after real installs exist breaks update continuity and signing identity.
