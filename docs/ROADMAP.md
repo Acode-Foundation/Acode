@@ -14,8 +14,8 @@ Each phase is broken into sub-phases, sequenced from easiest/lowest-risk to hard
 - [x] Resolve remaining open decisions (BLUEPRINT.md §11: distribution/monetization, team size and device floor, first three model providers) — see ADR-006 through ADR-010
 
 ### 0.2 Capacitor scaffold
-- [ ] Scaffold new Capacitor project (own app ID, display name, deep-link scheme)
-- [ ] Rebuild CI for the Capacitor/Gradle build (replace Cordova-oriented `ci.yml`)
+- [x] Scaffold new Capacitor project (own app ID, display name, deep-link scheme)
+- [x] Rebuild CI for the Capacitor/Gradle build (replace Cordova-oriented `ci.yml`)
 
 ### 0.3 Harvest and port core systems
 - [ ] Port CodeMirror integration and LSP client wiring into the new shell

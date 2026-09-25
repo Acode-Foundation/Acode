@@ -11,12 +11,10 @@
     body {
       margin: 0;
       background-color: #20202c;
-      /* fallback dark */
     }
 
     :root {
       --bg-color: #20202c;
-      /* fallback splash color */
       --test-height: 45px;
     }
 
@@ -31,22 +29,14 @@
     #splash {
       display: none;
       position: fixed;
-      top: 0;
-      right: 0;
-      bottom: 0;
-      left: 0;
       inset: 0;
       z-index: 999999;
-
       background-image: url("./logo.svg");
       background-position: center;
       background-repeat: no-repeat;
       background-size: 180px;
       background-color: var(--bg-color);
-
       text-align: center;
-
-      /* Disable any possible fade */
       animation: none !important;
       transition: none !important;
     }
@@ -55,7 +45,6 @@
       position: absolute;
       top: 15px;
       left: 15px;
-
       color: rgb(209, 209, 209);
       font-size: 0.8rem;
       white-space: pre;
@@ -75,7 +64,6 @@
     }
   </style>
 
-  <!-- Set theme color BEFORE UI renders -->
   <script>
     (function () {
       var MIN_WEBVIEW_MAJOR = 67;
@@ -107,14 +95,11 @@
 
       function setStartupMessage(message) {
         pendingStartupMessage = message;
-
         if (document.body) {
           applyStartupMessage();
         } else if (!hasPendingStartupMessageListener) {
           hasPendingStartupMessageListener = true;
-          document.addEventListener("DOMContentLoaded", applyStartupMessage, {
-            once: true
-          });
+          document.addEventListener("DOMContentLoaded", applyStartupMessage, { once: true });
         }
       }
 
@@ -124,58 +109,37 @@
       } catch (e) {}
 
       if (!hasES6) {
-        setStartupMessage(
-          "Acode requires a modern browser. Please update Android System WebView or Chrome."
-        );
+        setStartupMessage("Bract requires a modern Android System WebView or Chrome.");
       }
 
       window.__ACODE_WEBVIEW_MAJOR__ = getWebViewMajor();
       window.__ACODE_MIN_WEBVIEW_MAJOR__ = MIN_WEBVIEW_MAJOR;
 
-      if (hasES6 &&
-        window.__ACODE_WEBVIEW_MAJOR__ &&
-        window.__ACODE_WEBVIEW_MAJOR__ < MIN_WEBVIEW_MAJOR
-      ) {
-        setStartupMessage(
-          "Your Android System WebView is old. Update Android System WebView or Chrome if Acode stays on this screen."
-        );
+      if (hasES6 && window.__ACODE_WEBVIEW_MAJOR__ && window.__ACODE_WEBVIEW_MAJOR__ < MIN_WEBVIEW_MAJOR) {
+        setStartupMessage("Your Android System WebView is old. Update Android System WebView or Chrome if Bract stays on this screen.");
       }
 
       function isStorageError(reason) {
         if (!reason) return false;
-        return (
-          reason.name === "FileError" ||
-          reason.name === "NotFoundError" ||
-          reason.name === "SecurityError" ||
-          (typeof window.FileError !== "undefined" &&
-            reason instanceof window.FileError)
-        );
+        return reason.name === "FileError" || reason.name === "NotFoundError" || reason.name === "SecurityError" ||
+          (typeof window.FileError !== "undefined" && reason instanceof window.FileError);
       }
 
       function handleStartupError(event) {
         if (!isStartupLoading()) return;
         var message = event && event.message ? event.message : "Startup error";
-        setStartupMessage(
-          isStorageError(event && event.error)
-            ? "Acode failed to start: storage is unavailable. Try restarting your device, or clearing the app data. " +
-                message
-            : "Acode failed to start. Update Android System WebView or Chrome. " +
-                message
-        );
+        setStartupMessage(isStorageError(event && event.error)
+          ? "Bract failed to start: storage is unavailable. Try restarting your device, or clearing the app data. " + message
+          : "Bract failed to start. Update Android System WebView or Chrome. " + message);
       }
 
       function handleStartupRejection(event) {
         if (!isStartupLoading()) return;
         var reason = event && event.reason;
-        var message =
-          reason && reason.message ? reason.message : "Startup promise failed";
-        setStartupMessage(
-          isStorageError(reason)
-            ? "Acode failed to start: storage is unavailable. Try restarting your device, or clearing the app data. " +
-                message
-            : "Acode failed to start. Update Android System WebView or Chrome. " +
-                message
-        );
+        var message = reason && reason.message ? reason.message : "Startup promise failed";
+        setStartupMessage(isStorageError(reason)
+          ? "Bract failed to start: storage is unavailable. Try restarting your device, or clearing the app data. " + message
+          : "Bract failed to start. Update Android System WebView or Chrome. " + message);
       }
 
       window.addEventListener("error", handleStartupError);
@@ -183,12 +147,11 @@
     })();
   </script>
 
-  <!-- Core Scripts -->
+  <!-- Kept while the staged Cordova-plugin compatibility layer is being ported. -->
   <script src="cordova.js"></script>
-
   <script src="./build/boot.js"></script>
 
-  <title>Acode</title>
+  <title>Bract</title>
 </head>
 
 <body class="loading" data-version="" data-small-msg="">
@@ -204,15 +167,11 @@
       const splash = document.getElementById("splash");
 
       function updateSplash() {
-        splash.querySelector(".splash-version").textContent =
-          document.body.getAttribute("data-version") || "";
-
-        splash.querySelector(".splash-message").textContent =
-          document.body.getAttribute("data-small-msg") || "";
+        splash.querySelector(".splash-version").textContent = document.body.getAttribute("data-version") || "";
+        splash.querySelector(".splash-message").textContent = document.body.getAttribute("data-small-msg") || "";
       }
 
       updateSplash();
-
       new MutationObserver(updateSplash).observe(document.body, {
         attributes: true,
         attributeFilter: ["data-version", "data-small-msg"]
