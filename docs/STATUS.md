@@ -4,15 +4,16 @@ _Last updated: 2026-09-25_
 
 ## Where we are
 
-Just forked from `Acode-Foundation/Acode` (main branch only). No product code has been written yet — this is the baseline Acode codebase under a new name.
+Architecture decided: migrating the app shell from Cordova to Capacitor (ADR-003), with new UI surfaces built in Svelte (ADR-004). This is a one-time harvest-and-port from Acode, not a continuously-rebased fork — see `docs/DECISIONS.md` and `docs/BLUEPRINT.md` section 3. Docs are updated for this plan; the actual migration work is starting now.
 
 ## What's built
 
-- Nothing yet beyond the inherited Acode baseline (editor, terminal, LSP, SFTP/SSH, plugin system — all as upstream provides them).
+- Nothing beyond the inherited Acode baseline yet. The Capacitor scaffold is about to be created.
 
 ## In progress
 
-- Repo scaffold and documentation (this file, blueprint, roadmap, decisions, AGENTS.md, PATCHES.md).
+- Capacitor project scaffold (own app ID, display name, deep-link scheme).
+- Cleanup of Acode-Foundation-specific files (CODEOWNERS, community/release workflows, `fastlane/` metadata, `CODE_OF_CONDUCT.md`, redundant lockfile) — folded into the shell migration rather than done separately, since several of these files are replaced by the migration anyway.
 
 ## Known issues / broken
 
@@ -20,7 +21,7 @@ Just forked from `Acode-Foundation/Acode` (main branch only). No product code ha
 
 ## Next up
 
-See `docs/ROADMAP.md` — Phase 0 (Setup) is current: rebrand, CI baseline audit, eval harness skeleton, and the decisions listed in `docs/BLUEPRINT.md` section 11.
+See `docs/ROADMAP.md` Phase 0: scaffold the Capacitor project, port CodeMirror/LSP-client/language-files/terminal-plugin, rebuild CI for the Gradle build.
 
 ## How to update this file
 
