@@ -9,8 +9,9 @@ Each phase is broken into sub-phases, sequenced from easiest/lowest-risk to hard
 ### 0.1 Groundwork and decisions
 - [x] Fork Acode into Bract
 - [x] Decide architecture: Cordova → Capacitor (ADR-003), new UI in Svelte (ADR-004)
-- [ ] Clean up Acode-Foundation-specific files (CODEOWNERS, community/release workflows, `fastlane/` metadata, `CODE_OF_CONDUCT.md`, redundant lockfile)
-- [ ] Resolve remaining open decisions (BLUEPRINT.md §11: license verification, distribution/monetization, team size and device floor, first three model providers)
+- [x] Clean up Acode-Foundation-specific files (CODEOWNERS, release/community workflows, `fastlane/` metadata, `CODE_OF_CONDUCT.md`, redundant lockfile) — see `PATCHES.md`
+- [x] Verify Acode's LICENSE carries forward cleanly (ADR-005 — MIT, confirmed, no blocker)
+- [ ] Resolve remaining open decisions (BLUEPRINT.md §11: distribution/monetization, team size and device floor, first three model providers) — awaiting project-owner input
 
 ### 0.2 Capacitor scaffold
 - [ ] Scaffold new Capacitor project (own app ID, display name, deep-link scheme)

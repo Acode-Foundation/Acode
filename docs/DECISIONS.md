@@ -43,3 +43,10 @@ Short, dated records of non-obvious choices: what we chose, what we rejected, an
 - **Decision:** The existing CodeMirror-integration DOM code stays as-is where it's already mature. New UI surfaces going forward — the Simple/Pro mode shell, agent review panels, bottom sheets, command palette — are built in Svelte rather than extending Acode's vanilla-DOM/`html-tag-js` pattern.
 - **Alternatives considered:** Preact (small but still ships a runtime and virtual-DOM diffing); SolidJS (also compiles away reactivity, but smaller ecosystem/tooling maturity than Svelte); staying with the existing vanilla pattern (slower to build in, and explicitly not "the best possible framework" for this piece).
 - **Why:** Svelte compiles away at build time — no shipped framework runtime, smallest bundle size of the realistic options, and faster to build UI in than the existing imperative pattern. This is the best fit for the stated lightweight priority: every KB matters more on a phone-hosted IDE than it would on desktop.
+
+## ADR-005: Acode's MIT license carries forward as-is
+- **Date:** 2026-09-25
+- **Status:** accepted
+- **Decision:** Keep `license.txt` (MIT, © 2020 Foxdebug/Ajit Kumar) unmodified at the repo root. Bract remains MIT-licensed; no relicensing needed.
+- **Alternatives considered:** Relicense Bract under a different license — rejected, unnecessary and would require stripping/replacing all retained Acode code first.
+- **Why:** MIT is maximally permissive: it allows use, copy, modify, merge, publish, distribute, sublicense, and sell, with the only condition being that the copyright and permission notice ships with the software. This resolves BLUEPRINT.md §11 item 1 ("verify the Acode LICENSE terms carry correctly into the new Capacitor project") — confirmed compatible, no blocker for the harvest-and-port plan in ADR-003. The three other §11 items (distribution/monetization, team size and device floor, first model providers) are product/business calls for the project owner, not something to resolve unilaterally here — tracked as still open.
