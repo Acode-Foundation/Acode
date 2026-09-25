@@ -1,3 +1,5 @@
+# Ci Status
+
 [![CI](https://github.com/ShashiDao/Bract/actions/workflows/ci.yml/badge.svg)](https://github.com/ShashiDao/Bract/actions/workflows/ci.yml)
 
 
@@ -38,12 +40,6 @@ Welcome to Acode Editor - a powerful and versatile code editing tool designed sp
 - Built-in terminal(Alpine)
 - Enjoy multi-language editing support with easy management tools.
 - Enjoy a large collections of community plugins to enhance your coding experience.
-
-## • Installation
-
-You can get Acode Editor from popular platforms:
-
-[<img src="https://play.google.com/intl/en_us/badges/images/generic/en-play-badge.png" alt="Get it on Google Play" height="60">](https://play.google.com/store/apps/details?id=com.foxdebug.acodefree) [<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Get it on F-Droid" height="60"/>](https://www.f-droid.org/packages/com.foxdebug.acode/)
 
 ## • Project Structure
 
