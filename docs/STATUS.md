@@ -16,7 +16,7 @@ Phase 0.1 (groundwork and decisions) is complete. Phase 0.2 (Capacitor scaffold)
 
 ## In progress
 
-- **Phase 0.2, item 3 (native Android scaffold) — workflow landed, not yet triggered.** `.github/workflows/scaffold-android.yml` is committed and ready to run. (The doc that staged its content for copy-paste, `docs/pending-scaffold-android-workflow.yml`, has been deleted — it was only needed until the real workflow file existed.) It's a one-time `workflow_dispatch` Action: run on a real GitHub Actions runner, it does `npx cap add android` (handles the binaries — gradle-wrapper.jar, launcher/splash PNGs — that this agent's contents-API can't write), applies the ADR-008 `minSdkVersion=29` override and the ADR-011 `bract://` deep-link intent-filter automatically, then opens a PR.
+- **Phase 0.2, item 3 (native Android scaffold) — workflow landed, not yet triggered.** `.github/workflows/scaffold-android.yml` is committed and ready to run. (The doc that staged its content for copy-paste, `docs/pending-scaffold-android-workflow.yml`, has been deleted — it was only needed until the real workflow file existed.) It's a one-time `workflow_dispatch` Action: run on a real GitHub Actions runner, it does `npx cap add android` (handles the binaries — gradle-wrapper.jar, launcher/splash PNG images — that this agent's contents-API can't write), applies the ADR-008 `minSdkVersion=29` override and the ADR-011 `bract://` deep-link intent-filter automatically, then opens a PR.
 
   To land it:
   1. Trigger it from the repo's **Actions** tab.
