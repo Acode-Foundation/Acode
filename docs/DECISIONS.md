@@ -49,4 +49,39 @@ Short, dated records of non-obvious choices: what we chose, what we rejected, an
 - **Status:** accepted
 - **Decision:** Keep `license.txt` (MIT, © 2020 Foxdebug/Ajit Kumar) unmodified at the repo root. Bract remains MIT-licensed; no relicensing needed.
 - **Alternatives considered:** Relicense Bract under a different license — rejected, unnecessary and would require stripping/replacing all retained Acode code first.
-- **Why:** MIT is maximally permissive: it allows use, copy, modify, merge, publish, distribute, sublicense, and sell, with the only condition being that the copyright and permission notice ships with the software. This resolves BLUEPRINT.md §11 item 1 ("verify the Acode LICENSE terms carry correctly into the new Capacitor project") — confirmed compatible, no blocker for the harvest-and-port plan in ADR-003. The three other §11 items (distribution/monetization, team size and device floor, first model providers) are product/business calls for the project owner, not something to resolve unilaterally here — tracked as still open.
+- **Why:** MIT is maximally permissive: it allows use, copy, modify, merge, publish, distribute, sublicense, and sell, with the only condition being that the copyright and permission notice ships with the software. This resolves BLUEPRINT.md §11 item 1 ("verify the Acode LICENSE terms carry correctly into the new Capacitor project") — confirmed compatible, no blocker for the harvest-and-port plan in ADR-003.
+
+## ADR-006: Team composition — solo, AI-assisted, multi-assistant workflow
+- **Date:** 2026-09-25
+- **Status:** accepted
+- **Decision:** Bract is built by a single developer working AI-assisted, rotating between different AI assistants (Claude and others) as usage limits require. This is not a 4–6 person team.
+- **Alternatives considered:** n/a — this records actual project resourcing rather than a choice between options.
+- **Why:** `AGENTS.md`'s "any AI agent, Claude, GPT, or otherwise" framing already anticipated this workflow. `docs/BLUEPRINT.md` section 8's week-based roadmap table assumed a 4–6 person team; it now stands as a rough relative-effort reference only, not a solo timeline.
+
+## ADR-007: Distribution and monetization — GitHub + F-Droid, no monetization for now
+- **Date:** 2026-09-25
+- **Status:** accepted
+- **Decision:** Distribute via GitHub Releases and F-Droid only, for now. No Play Store. No monetization — Bract stays fully free.
+- **Alternatives considered:** An earlier, unmerged draft (branch `docs/phase-0.1-decisions`, its own ADR-006) proposed Play Store + F-Droid + GitHub with a freemium Pro tier and an Android 13 (API 33) floor. That draft was never merged to `main` and is superseded by this entry and by ADR-008.
+- **Why:** Project owner's explicit call. Keeps distribution simple for a solo maintainer; F-Droid's build-from-source requirements are already satisfied by the MIT license (ADR-005).
+
+## ADR-008: Minimum device floor — Android 10 (API 29), ~4GB RAM tested floor
+- **Date:** 2026-09-25
+- **Status:** accepted
+- **Decision:** Minimum supported Android version is 10 (API 29); target/compile against current API. No hard RAM gate, but ~4GB RAM is the tested/supported floor — below that, proot toolchains and any on-device model are disabled rather than blocking install.
+- **Alternatives considered:** Android 13 (API 33) / modern-only floor, from the unmerged `docs/phase-0.1-decisions` draft — rejected as excluding too much of the active device base for a solo-maintained, non-Play-Store app. A lower floor such as Android 8 — rejected, fits poorly with the scoped-storage/SAF import model already committed to in section 4 of `docs/BLUEPRINT.md`.
+- **Why:** Balances device coverage against realistic support burden for a solo maintainer; matches the already-chosen app-private-storage-plus-SAF-import model.
+
+## ADR-009: First three model providers — Anthropic, OpenAI, Google Gemini
+- **Date:** 2026-09-25
+- **Status:** accepted
+- **Decision:** Support Anthropic, OpenAI, and Google (Gemini) as the first three BYOK model providers.
+- **Alternatives considered:** Other providers (Mistral, local-only-first, etc.) — not rejected, just deferred; providers are pluggable via BYOK so more can be added later without a decision record.
+- **Why:** Covers the most-used coding-capable APIs with strong streaming support; Gemini's free tier matters for a BYOK, non-Play-Store audience.
+
+## ADR-010: On-device model deferred to Phase 3+
+- **Date:** 2026-09-25
+- **Status:** accepted
+- **Decision:** On-device (on-phone) model inference is out of scope for Phase 1. Ship BYOK cloud + LAN Ollama first; revisit on-device support no earlier than Phase 3.
+- **Alternatives considered:** Building on-device support in Phase 1 alongside cloud — rejected as disproportionate effort (model packaging, quantization, per-chipset variance) for a solo, AI-assisted build.
+- **Why:** Keeps Phase 1 scope achievable solo. `docs/BLUEPRINT.md` section 5.3 already hedges on-device as "where hardware allows"; this just fixes the timing.
