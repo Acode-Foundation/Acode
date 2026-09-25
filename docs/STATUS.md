@@ -16,26 +16,15 @@ Phase 0.1 (groundwork and decisions) is complete. Phase 0.2 (Capacitor scaffold)
 
 ## In progress
 
-- **Phase 0.2, item 3 (native Android scaffold) — not started, and not completable by an AI agent limited to GitHub's contents API.** `npx cap add android` generates a real native project, most of which is text (build.gradle, settings.gradle, variables.gradle, AndroidManifest.xml, Kotlin/Java sources) but part of which is binary (gradle-wrapper.jar, launcher/splash PNGs across densities) — those can't be transmitted through this connector's text-based file-write calls without corruption. This step needs to run somewhere with a real filesystem: your machine, or an agent with actual disk access (e.g. Claude Code). Commands:
-  ```
-  git checkout main && git pull
-  bun add @capacitor/core
-  bun add -D @capacitor/cli @capacitor/android
-  npx cap add android
-  ```
-  Two things to apply once `android/` exists, before committing it:
-  1. **`android/variables.gradle`**: the current Capacitor template (8.5.2) defaults `minSdkVersion` to 24. Change it to **29** to match ADR-008.
-  2. **`android/app/src/main/AndroidManifest.xml`**: add the `bract://` deep-link intent-filter (ADR-011) to the `MainActivity` `<activity>` block, alongside the existing MAIN/LAUNCHER one:
-     ```xml
-     <intent-filter android:autoVerify="false">
-         <action android:name="android.intent.action.VIEW" />
-         <category android:name="android.intent.category.DEFAULT" />
-         <category android:name="android.intent.category.BROWSABLE" />
-         <data android:scheme="bract" />
-     </intent-filter>
-     ```
-  Then `git add android/ && git commit -m "Phase 0.2: generate Android platform" && git push` — this also flips the `android-build` CI job from no-op to actually running.
-  For reference, the template scaffold as of Capacitor 8.5.2 pins: AGP 8.13.0, Gradle 8.14.3, compileSdk/targetSdk 36 — no action needed on these, just noting them since they weren't pinned anywhere in the repo before.
+- **Phase 0.2, item 3 (native Android scaffold) — staged, not yet triggered.** Same connector limits as item 2 hit again, one level up: this agent can't write binaries (gradle-wrapper.jar, launcher/splash PNGs — part of what `npx cap add android` generates) through the contents API, and can't write to `.github/workflows/**` at all (no `workflow` scope). Workaround staged at `docs/pending-scaffold-android-workflow.yml`: a one-time `workflow_dispatch` Action that, run on a real GitHub Actions runner, does `npx cap add android`, applies the ADR-008 `minSdkVersion=29` override and the ADR-011 `bract://` deep-link intent-filter automatically, then opens a PR.
+
+  To land it:
+  1. Copy `docs/pending-scaffold-android-workflow.yml`'s content into `.github/workflows/scaffold-android.yml` (must be done via the GitHub UI/your machine — same `workflow` scope block).
+  2. Commit it, then trigger it from the repo's **Actions** tab.
+  3. Review the diff in the PR it opens, merge.
+  4. Delete `.github/workflows/scaffold-android.yml` and `docs/pending-scaffold-android-workflow.yml` — both are one-time, not regular CI.
+
+  Landing this also flips the `android-build` CI job from no-op to actually running.
 
 ## Known issues / broken
 
@@ -43,7 +32,7 @@ Phase 0.1 (groundwork and decisions) is complete. Phase 0.2 (Capacitor scaffold)
 
 ## Next up
 
-Generate and commit the native `android/` scaffold per the steps above (needs a real filesystem — your machine or Claude Code). That's the last Phase 0.2 item; once it lands, Phase 0.3 can start.
+Copy the staged workflow into `.github/workflows/scaffold-android.yml`, run it from the Actions tab, merge the PR it opens. That's the last Phase 0.2 item; once it lands, Phase 0.3 can start.
 
 ## How to update this file
 
