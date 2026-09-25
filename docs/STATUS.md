@@ -4,7 +4,7 @@ _Last updated: 2026-09-25_
 
 ## Where we are
 
-Architecture decided: migrating the app shell from Cordova to Capacitor (ADR-003), with new UI surfaces built in Svelte (ADR-004). This is a one-time harvest-and-port from Acode, not a continuously-rebased fork — see `docs/DECISIONS.md` and `docs/BLUEPRINT.md` section 3. Docs are updated for this plan; the actual migration work is starting now.
+Architecture decided: migrating the app shell from Cordova to Capacitor (ADR-003), with new UI surfaces built in Svelte (ADR-004). This is a one-time harvest-and-port from Acode, not a continuously-rebased fork — see `docs/DECISIONS.md` and `docs/BLUEPRINT.md` section 3. `docs/ROADMAP.md` is now broken into sub-phases per phase, sequenced easy to tough, to guide build order. The actual migration work is starting now.
 
 ## What's built
 
@@ -12,8 +12,8 @@ Architecture decided: migrating the app shell from Cordova to Capacitor (ADR-003
 
 ## In progress
 
-- Capacitor project scaffold (own app ID, display name, deep-link scheme).
-- Cleanup of Acode-Foundation-specific files (CODEOWNERS, community/release workflows, `fastlane/` metadata, `CODE_OF_CONDUCT.md`, redundant lockfile) — folded into the shell migration rather than done separately, since several of these files are replaced by the migration anyway.
+- Capacitor project scaffold (own app ID, display name, deep-link scheme) — Phase 0.2.
+- Cleanup of Acode-Foundation-specific files (CODEOWNERS, community/release workflows, `fastlane/` metadata, `CODE_OF_CONDUCT.md`, redundant lockfile) — Phase 0.1, folded into the shell migration rather than done separately, since several of these files are replaced by the migration anyway.
 
 ## Known issues / broken
 
@@ -21,7 +21,7 @@ Architecture decided: migrating the app shell from Cordova to Capacitor (ADR-003
 
 ## Next up
 
-See `docs/ROADMAP.md` Phase 0: scaffold the Capacitor project, port CodeMirror/LSP-client/language-files/terminal-plugin, rebuild CI for the Gradle build.
+Start `docs/ROADMAP.md` Phase 0.1 (groundwork and decisions: cleanup + resolve remaining open decisions), then 0.2 (Capacitor scaffold), then 0.3 (port CodeMirror/LSP-client/language-files/terminal-plugin), then 0.4 (eval harness skeleton).
 
 ## How to update this file
 
