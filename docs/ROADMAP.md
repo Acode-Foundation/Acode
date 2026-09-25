@@ -2,18 +2,23 @@
 
 Phased plan, mirrored as a GitHub Projects board. Check items off as they land; keep this in sync with `docs/STATUS.md`.
 
-## Phase 0 — Setup
+## Phase 0 — Setup and shell migration
 - [x] Fork Acode into Bract
-- [ ] Rebrand (name, icon, package ID)
-- [ ] CI baseline audit (confirm existing tests/build pass as-is)
+- [x] Decide architecture: Cordova → Capacitor (ADR-003), new UI in Svelte (ADR-004)
+- [ ] Clean up Acode-Foundation-specific files (CODEOWNERS, community/release workflows, `fastlane/` metadata, `CODE_OF_CONDUCT.md`, redundant lockfile)
+- [ ] Scaffold new Capacitor project (own app ID, display name, deep-link scheme)
+- [ ] Port CodeMirror integration and LSP client wiring into the new shell
+- [ ] Port language files (`src/lang/`) and plugin-API concept
+- [ ] Port terminal/proot plugin to Capacitor's native plugin model
+- [ ] Rebuild CI for the Capacitor/Gradle build (replace Cordova-oriented `ci.yml`)
 - [ ] Eval harness skeleton for agent tasks
-- [ ] Resolve open decisions (see `docs/BLUEPRINT.md` section 11)
+- [ ] Resolve remaining open decisions (see `docs/BLUEPRINT.md` section 11)
 
 ## Phase 1 — Calm and Ready
-- [ ] Simple/Pro mode toggle
+- [ ] Simple/Pro mode toggle (Svelte)
 - [ ] Onboarding + templates (static site, Python, Node/Vite)
 - [ ] Bundled Git (no manual `apk add git` step)
-- [ ] Native HTTP client + Keystore-backed vault
+- [ ] Native HTTP client + Keystore-backed vault (Capacitor plugins)
 - [ ] Agent v1: chat, read/edit/run tools, diff review, checkpoints
 - [ ] Privacy dial v1 (Local / Cloud-scoped / Full-cloud) + Autonomy dial v1 (Ask / Auto-edit / Autopilot)
 
@@ -44,4 +49,4 @@ Phased plan, mirrored as a GitHub Projects board. Check items off as they land; 
 - [ ] Store submissions (F-Droid, GitHub releases, Play Store policy review)
 
 ---
-Full detail and rationale for every item: `docs/BLUEPRINT.md`.
+Full detail and rationale for every item: `docs/BLUEPRINT.md`. Architecture rationale: `docs/DECISIONS.md`.
