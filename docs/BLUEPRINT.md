@@ -100,7 +100,7 @@ flowchart TD
 
 **Where it runs:** on-device as a foreground service (Capacitor plugin), or on a remote runner (SSH or ACP) for long jobs so phone battery and background limits do not matter.
 
-**Models:** bring your own key for any provider; native streaming; LAN Ollama; optional on-device small model where hardware allows. A routing policy sends small edits to cheap models and planning to the strongest. A cost estimate and cap are shown before each run.
+**Models:** bring your own key for any provider; native streaming; LAN Ollama; optional on-device small model where hardware allows (deferred to Phase 3+, ADR-010). A routing policy sends small edits to cheap models and planning to the strongest. A cost estimate and cap are shown before each run.
 
 **Protocols:** MCP client for tools. ACP client so external coding agents can drive the editor (local subprocess in proot, or remote).
 
@@ -176,7 +176,7 @@ flowchart TD
 - Edge-to-edge layouts, predictive back, and window-size-aware layouts from day one.
 - Foreground-service types and notifications for long tasks; test on aggressive-battery OEMs.
 - Keep proot binaries and any bundled native libraries compatible with current store and OS requirements; verify target-API and native-library rules at build time.
-- Target mid-range devices for performance budgets, not flagships.
+- Target mid-range devices for performance budgets, not flagships. Minimum supported Android version: 10 / API 29 (ADR-008); ~4GB RAM is the tested/supported floor, below which proot toolchains and on-device model are disabled rather than blocking install.
 
 ## 8. Roadmap (rough estimates for a 4 to 6 person team)
 
@@ -187,6 +187,8 @@ flowchart TD
 | 2 Real IDE loop | 8 to 10 | Runtimes manager, run tasks, Problems, tests, navigation and search, preview inspector, DAP for JS and Python, agent uses debug and test tools | Debug a Node and a Python bug end to end on-device |
 | 3 Everywhere | 8 | Remote workspaces, MCP and ACP, remote agent runners, large-screen layouts, VS Code import, deploy | Remote edit-run-agent loop works over SSH |
 | 4 Launch | 4 to 6 | Beta, hardening, docs, plugin API v2, store submissions | Crash-free target met; beta feedback triaged |
+
+*Note: these week estimates assume a 4–6 person team, per the original draft above. Per ADR-006, Bract is actually built by a solo, AI-assisted developer — treat this table as a rough relative-effort reference between phases, not a solo-pace timeline.*
 
 ## 9. Metrics and evals
 - **Product:** time to first run (target under 90 s), day-7 retention, crash-free sessions (target 99.5%+), cold start (baseline first, then set a budget).
@@ -207,12 +209,9 @@ flowchart TD
 | proot fragility across devices | Device test matrix; fallback to remote runner |
 
 ## 11. Decisions needed
-1. Verify the Acode LICENSE terms carry correctly into the new Capacitor project.
-2. Choose distribution channels and monetization.
-3. Set team size and target device floor (Android version, RAM).
-4. Pick the first three model providers to support and test.
+All items resolved — see `docs/DECISIONS.md` ADR-005 through ADR-010.
 
-Resolved: name (Bract, ADR-002); fork approach (native GitHub fork, ADR-001); "zero privacy" meaning (section 5.4, L2); app shell (Capacitor, ADR-003); new-UI framework (Svelte, ADR-004).
+Resolved: name (Bract, ADR-002); fork approach (native GitHub fork, ADR-001); "zero privacy" meaning (section 5.4, L2); app shell (Capacitor, ADR-003); new-UI framework (Svelte, ADR-004); LICENSE carries forward (MIT, ADR-005); team composition (solo, AI-assisted, ADR-006); distribution and monetization (GitHub + F-Droid, no monetization for now, ADR-007); device floor (Android 10 / API 29, ~4GB RAM tested, ADR-008); first model providers (Anthropic, OpenAI, Google Gemini, ADR-009); on-device model timing (deferred to Phase 3+, ADR-010).
 
 ## 12. Research notes
 Based on public pages reviewed in Sept 2026: `github.com/Acode-Foundation/Acode` (README, releases, PRs, source tree), `github.com/Acode-Foundation/acode-plugin-git`, `github.com/hallofcodes/acode-ai-agent-plugin`, and `agentclientprotocol.com`. Anything not confirmed there is listed under "Verify" in section 2.
