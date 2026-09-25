@@ -1,25 +1,3 @@
-# PENDING: replace .github/workflows/ci.yml with this file's content.
-#
-# Why this isn't already in .github/workflows/: the GitHub connector used to
-# make these commits doesn't have the `workflows` permission scope (a
-# separate, opt-in GitHub App permission for modifying Actions config beyond
-# normal repo contents). Writing here succeeds; writing to .github/workflows/
-# is rejected with 403. To apply: grant that permission and re-run, or just
-# copy this file's content over .github/workflows/ci.yml yourself and delete
-# this file.
-#
-# What changed vs the current ci.yml:
-#   1. FIX: unit-tests and translation-check ran `npm ci` and cached
-#      `**/package-lock.json` — but package-lock.json was deleted in the
-#      Phase 0.1 cleanup (bun.lock is canonical). Both jobs have been
-#      broken/misconfigured since that cleanup landed. Switched to
-#      oven-sh/setup-bun + `bun install --frozen-lockfile`.
-#   2. NEW: android-build job (PR only) — JDK 17 + Gradle cache, runs
-#      `./gradlew assembleDebug` in android/. Gated on android/ existing
-#      (via a step-level check), so it no-ops rather than fails until the
-#      native Capacitor scaffold (Phase 0.2's other open item) is generated
-#      and committed.
-
 name: CI
 
 on:
