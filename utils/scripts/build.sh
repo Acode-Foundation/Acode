@@ -5,7 +5,6 @@ mode="d"
 fdroidFlag=""
 packageType="apk"  # New default: apk or aar
 webpackmode="development"
-cordovamode=""
 
 # Check all arguments for specific values
 for arg in "$@"; do
@@ -74,7 +73,6 @@ if [ "$mode" = "p" ] || [ "$mode" = "prod" ]
 then
 mode="p"
 webpackmode="production"
-cordovamode="--release"
 fi
 
 # Set build target based on packageType
@@ -93,7 +91,19 @@ script2="rspack --mode $webpackmode"
 
 echo "type : $packageType"
 
-script4="cordova build android $cordovamode -- --packageType=$packageType"
+# Capacitor (ADR-003): no `cordova build`. Sync web assets + the Cordova-plugin
+# bridge into android/, then invoke Gradle directly for the requested variant.
+if [ "$packageType" = "bundle" ]; then
+  gradleTask="bundle"
+else
+  gradleTask="assemble"
+fi
+if [ "$mode" = "p" ]; then
+  gradleTask="${gradleTask}Release"
+else
+  gradleTask="${gradleTask}Debug"
+fi
+script4="npx cap sync android && (cd android && ./gradlew $gradleTask)"
 
 eval "
 echo \"${RED}$script1${NC}\";
