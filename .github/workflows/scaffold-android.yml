@@ -42,14 +42,16 @@ jobs:
           const p = 'android/app/src/main/AndroidManifest.xml';
           let xml = fs.readFileSync(p, 'utf8');
           if (!xml.includes('android:scheme="bract"')) {
-            const filter = `            <intent-filter android:autoVerify="false">
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="bract" />
-            </intent-filter>
-
-        </activity>`;
+            const filter = [
+              '            <intent-filter android:autoVerify="false">',
+              '                <action android:name="android.intent.action.VIEW" />',
+              '                <category android:name="android.intent.category.DEFAULT" />',
+              '                <category android:name="android.intent.category.BROWSABLE" />',
+              '                <data android:scheme="bract" />',
+              '            </intent-filter>',
+              '',
+              '        </activity>'
+            ].join('\n');
             xml = xml.replace('        </activity>', filter);
             fs.writeFileSync(p, xml);
           }
