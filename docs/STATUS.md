@@ -16,15 +16,14 @@ Phase 0.1 (groundwork and decisions) is complete. Phase 0.2 (Capacitor scaffold)
 
 ## In progress
 
-- **Phase 0.2, item 3 (native Android scaffold) — staged, not yet triggered.** Same connector limits as item 2 hit again, one level up: this agent can't write binaries (gradle-wrapper.jar, launcher/splash PNGs — part of what `npx cap add android` generates) through the contents API, and can't write to `.github/workflows/**` at all (no `workflow` scope). Workaround staged at `docs/pending-scaffold-android-workflow.yml`: a one-time `workflow_dispatch` Action that, run on a real GitHub Actions runner, does `npx cap add android`, applies the ADR-008 `minSdkVersion=29` override and the ADR-011 `bract://` deep-link intent-filter automatically, then opens a PR.
+- **Phase 0.2, item 3 (native Android scaffold) — workflow landed, not yet triggered.** `.github/workflows/scaffold-android.yml` is committed and ready to run. (The doc that staged its content for copy-paste, `docs/pending-scaffold-android-workflow.yml`, has been deleted — it was only needed until the real workflow file existed.) It's a one-time `workflow_dispatch` Action: run on a real GitHub Actions runner, it does `npx cap add android` (handles the binaries — gradle-wrapper.jar, launcher/splash PNGs — that this agent's contents-API can't write), applies the ADR-008 `minSdkVersion=29` override and the ADR-011 `bract://` deep-link intent-filter automatically, then opens a PR.
 
   To land it:
-  1. Copy `docs/pending-scaffold-android-workflow.yml`'s content into `.github/workflows/scaffold-android.yml` (must be done via the GitHub UI/your machine — same `workflow` scope block).
-  2. Commit it, then trigger it from the repo's **Actions** tab.
-  3. Review the diff in the PR it opens, merge.
-  4. Delete `.github/workflows/scaffold-android.yml` and `docs/pending-scaffold-android-workflow.yml` — both are one-time, not regular CI.
+  1. Trigger it from the repo's **Actions** tab.
+  2. Review the diff in the PR it opens, merge.
+  3. Delete `.github/workflows/scaffold-android.yml` — one-time, not regular CI.
 
-  Landing this also flips the `android-build` CI job from no-op to actually running.
+  Landing this also flips the `android-build` CI job from no-op to actually running. Note: since the PR is opened using the workflow's own `GITHUB_TOKEN`, GitHub won't auto-run `ci.yml` checks on it — close/reopen the PR or push an empty commit yourself first if you want the check to show green before merging.
 
 ## Known issues / broken
 
@@ -32,7 +31,7 @@ Phase 0.1 (groundwork and decisions) is complete. Phase 0.2 (Capacitor scaffold)
 
 ## Next up
 
-Copy the staged workflow into `.github/workflows/scaffold-android.yml`, run it from the Actions tab, merge the PR it opens. That's the last Phase 0.2 item; once it lands, Phase 0.3 can start.
+Trigger `scaffold-android.yml` from the Actions tab, merge the PR it opens, then delete the workflow file. That's the last Phase 0.2 item; once it lands, Phase 0.3 can start.
 
 ## How to update this file
 
