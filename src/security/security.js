@@ -3,25 +3,27 @@
  * License: MIT license.
  */
 
-/** Variable for mask the Sensible Credentials of Acode,
- * in JavaScript: Create a Variable (e.g: let key = "secret password"),
- * this Variable is in the RAM (Random Access Memory) and a Malware-Plugin installed
- * have access and modify the Variable. */
+/** 
+ * Mask key used to obfuscate sensitive Acode credentials.
+ * In JavaScript, plain text variables (e.g., let key = "secret password") 
+ * reside in the RAM unprotected, making them vulnerable to access or modification 
+ * by malicious installed plugins.
+ */
 const MASK_KEY = 0x5A;
 
-// The function to he apply a Mask
+// Applies a XOR mask to secure sensitive strings
 export function maskCredential(secretString) {
     if (!secretString) return [];
     
-    // Transforms the String in a Numbers Array (bytes) maskareds
+    // Transforms the string into a masked array of bytes (numbers)
     return Array.from(secretString).map(char => char.charCodeAt(0) ^ MASK_KEY);
 }
 
-// The Function to remove the Mask
+// Removes the XOR mask to restore the original string
 export function unmaskCredential(maskedArray) {
     if (!Array.isArray(maskedArray)) return " ";
 
-    // Remove the Mask
+    // Removes the mask
     return maskedArray
         .map(byte => String.fromCharCode(byte ^ MASK_KEY))
         .join("");

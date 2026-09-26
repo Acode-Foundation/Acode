@@ -44,8 +44,9 @@ const loginEvents = {
 	},
 };
 
-/** Function for get the object of user under the Server,
- * clone the structure and mask in the Strings.
+/** 
+ * Clones the user object structure and masks sensitive string properties
+ * to protect them in memory.
  */
 function secureUserObject(user) {
 	if (!user) return null;
