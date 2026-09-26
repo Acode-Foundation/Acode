@@ -69,6 +69,8 @@ function secureUserObject(user) {
 	return secured;
 }
 
+
+
 /** Function to unmask the user object properties
  * so the interface can read them safely without crashing.
  */

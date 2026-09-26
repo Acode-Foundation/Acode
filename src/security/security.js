@@ -5,9 +5,8 @@
 
 /** 
  * Mask key used to obfuscate sensitive Acode credentials.
- * In JavaScript, plain text variables (e.g., let key = "secret password") 
- * reside in the RAM unprotected, making them vulnerable to access or modification 
- * by malicious installed plugins.
+ * In JavaScript, plain text variables reside unprotected in the RAM, 
+ * making them vulnerable to access or modification by malicious plugins.
  */
 const MASK_KEY = 0x5A;
 
@@ -15,7 +14,6 @@ const MASK_KEY = 0x5A;
 export function maskCredential(secretString) {
     if (!secretString) return [];
     
-    // Transforms the string into a masked array of bytes (numbers)
     return Array.from(secretString).map(char => char.charCodeAt(0) ^ MASK_KEY);
 }
 
@@ -23,7 +21,6 @@ export function maskCredential(secretString) {
 export function unmaskCredential(maskedArray) {
     if (!Array.isArray(maskedArray)) return " ";
 
-    // Removes the mask
     return maskedArray
         .map(byte => String.fromCharCode(byte ^ MASK_KEY))
         .join("");
