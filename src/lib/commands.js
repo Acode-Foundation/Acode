@@ -432,6 +432,12 @@ export default {
 		if (!activeFile?.uri) return;
 		activeFile.openWith?.();
 	},
+	reload() {
+		const { activeFile } = editorManager;
+		if (!activeFile?.uri) return;
+
+		activeFile.reload?.();
+	},
 	async "open-file"() {
 		editorManager.editor.contentDOM.blur();
 		const FileBrowser = await loadFileBrowser();
