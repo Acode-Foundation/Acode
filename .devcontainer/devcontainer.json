@@ -15,7 +15,7 @@
   },
 
   "features": {
-    "ghcr.io/nordcominc/devcontainer-features/android-sdk:1": {
+    "ghcr.io/nordcominc/devcontainer-features/android-sdk:2": {
       "platform": "36",
       "build_tools": "36.0.0"
     },
