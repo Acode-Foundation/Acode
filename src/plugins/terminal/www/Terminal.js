@@ -9,6 +9,28 @@ const Terminal = {
      * @returns {Promise<boolean>} - Returns true if installation completes with exit code 0, void if not installing
      */
     async startAxs(installing = false, logger = console.log, err_logger = console.error,failsafe = false) {
+        // Guard against callers (core terminal UI, or third-party plugins such as
+        // AI copilots that shell out to run `npm`/`node`) invoking startAxs before
+        // the Alpine sandbox has ever been provisioned on this device. Without this
+        // check, init-sandbox.sh does not exist yet and the caller sees a confusing
+        // "No such file or directory" + unknown node/npm versions instead of the
+        // sandbox being set up automatically.
+        if (!(await this.isInstalled())) {
+            if (!installing) {
+                const message = "Linux sandbox is not installed yet. Open Terminal once (or let the plugin install it) before running commands.";
+                err_logger(message);
+                throw new Error(message);
+            }
+
+            logger("Linux sandbox not found, installing it first...");
+            const installed = await this.install(logger, err_logger);
+            if (!installed) {
+                const message = this.lastInstallError || "Failed to install the Linux sandbox required to run this command.";
+                err_logger(message);
+                return false;
+            }
+        }
+
         const filesDir = await new Promise((resolve, reject) => {
             system.getFilesDir(resolve, reject);
         });
