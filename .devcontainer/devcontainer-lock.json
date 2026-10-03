@@ -5,10 +5,10 @@
       "resolved": "ghcr.io/devcontainers/features/node@sha256:586c9a6f7dd40bd3ba2cd41e7f2f88dcc31fbe5d1442afcbf07ffbc66b686857",
       "integrity": "sha256:586c9a6f7dd40bd3ba2cd41e7f2f88dcc31fbe5d1442afcbf07ffbc66b686857"
     },
-    "ghcr.io/nordcominc/devcontainer-features/android-sdk:1": {
-      "version": "1.2.0",
-      "resolved": "ghcr.io/nordcominc/devcontainer-features/android-sdk@sha256:c3e0c7e1b12fce18a257e163ade8515e534e58a7edad10dfb6d1fb1a250a307e",
-      "integrity": "sha256:c3e0c7e1b12fce18a257e163ade8515e534e58a7edad10dfb6d1fb1a250a307e"
+    "ghcr.io/nordcominc/devcontainer-features/android-sdk:2": {
+      "version": "2.0.0",
+      "resolved": "ghcr.io/nordcominc/devcontainer-features/android-sdk@sha256:17c25d5721b31e45564e864d5bdfead9eefab7a1624e69ac5cf51079e9f62f0b",
+      "integrity": "sha256:17c25d5721b31e45564e864d5bdfead9eefab7a1624e69ac5cf51079e9f62f0b"
     }
   }
 }
