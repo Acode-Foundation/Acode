@@ -1,7 +1,7 @@
 export LD_LIBRARY_PATH=$PREFIX
 
 mkdir -p "$PREFIX/tmp"
-mkdir -p "$PREFIX/alpine/tmp"
+mkdir -p "$PREFIX/ubuntu/tmp"
 mkdir -p "$PREFIX/public"
 
 export PROOT_TMP_DIR=$PREFIX/tmp
@@ -66,7 +66,7 @@ ARGS="$ARGS -b $NATIVE_DIR"
 ARGS="$ARGS -b $PREFIX/public:/public"
 ARGS="$ARGS -b $PREFIX/public:/home"
 ARGS="$ARGS -b $PREFIX/public:/root"
-ARGS="$ARGS -b $PREFIX/alpine/tmp:/dev/shm"
+ARGS="$ARGS -b $PREFIX/ubuntu/tmp:/dev/shm"
 
 
 # PRoot canonicalizes every -b host path with realpath(3).  The magic links
@@ -118,7 +118,7 @@ if can_bind "/proc/$SELF_PID/fd/2"; then
 fi
 
 
-ARGS="$ARGS -r $PREFIX/alpine"
+ARGS="$ARGS -r $PREFIX/ubuntu"
 ARGS="$ARGS -0"
 ARGS="$ARGS --link2symlink"
 ARGS="$ARGS --sysvipc"
@@ -150,5 +150,5 @@ if [ "$FAILSAFE" = true ] && [ "$INSTALLING" != true ]; then
 
     exec "$LINKER" "$PREFIX/axs" -c "sh"
 else
-    exec "$PROOT" $ARGS /bin/sh "$PREFIX/init-alpine.sh" "$@"
+    exec "$PROOT" $ARGS /bin/sh "$PREFIX/init-ubuntu.sh" "$@"
 fi

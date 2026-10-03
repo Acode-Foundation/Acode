@@ -33,7 +33,7 @@ export const javascriptServers: LspServerManifest[] = [
 			"tsx",
 			"jsx",
 		],
-		runtimes: ["builtin-alpine"],
+		runtimes: ["builtin-ubuntu"],
 		transport: {
 			kind: "websocket",
 		},
@@ -74,7 +74,7 @@ export const javascriptServers: LspServerManifest[] = [
 			"tsx",
 			"jsx",
 		],
-		runtimes: ["builtin-alpine"],
+		runtimes: ["builtin-ubuntu"],
 		transport: {
 			kind: "websocket",
 		},

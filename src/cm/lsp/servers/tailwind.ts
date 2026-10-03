@@ -23,7 +23,7 @@ export const tailwindServers: LspServerManifest[] = [
 			"php",
 			"mdx",
 		],
-		runtimes: ["builtin-alpine"],
+		runtimes: ["builtin-ubuntu"],
 		command: "tailwindcss-language-server",
 		args: ["--stdio"],
 		checkCommand: "which tailwindcss-language-server",

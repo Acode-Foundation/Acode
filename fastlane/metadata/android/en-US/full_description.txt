@@ -2,7 +2,7 @@ Acode is an open-source code editor and web IDE for Android. Edit projects, mana
 
 LINUX TERMINAL
 
-Acode includes an Alpine Linux terminal powered by proot, with no root required. Use apk to install supported command-line packages, keep multiple terminal tabs, customize your shell, and back up or restore your terminal setup.
+Acode includes an Ubuntu Linux terminal powered by proot, with no root required. Use apt to install supported command-line packages, keep multiple terminal tabs, customize your shell, and back up or restore your terminal setup.
 
 AI CODING SUPPORT
 
