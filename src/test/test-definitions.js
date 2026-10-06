@@ -3,9 +3,9 @@ import { runCodeMirrorTests } from "./editor.tests";
 import { runExecutorTests } from "./exec.tests";
 import { runFsTests } from "./fs.tests";
 import { runFtpTests } from "./ftp.tests";
-import { runSftpTests } from "./sftp.tests";
 import { runLspTests } from "./lsp.tests";
 import { runSanityTests } from "./sanity.tests";
+import { runSftpTests } from "./sftp.tests";
 import { runUrlTests } from "./url.tests";
 
 /**
