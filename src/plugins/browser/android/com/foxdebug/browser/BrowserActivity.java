@@ -11,6 +11,7 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
+import android.view.WindowManager;
 import android.webkit.WebChromeClient;
 import com.foxdebug.system.Ui;
 import org.json.JSONObject;
@@ -40,17 +41,34 @@ public class BrowserActivity extends Activity {
     browser.setUrl(url);
     setContentView(browser);
 
-    if (Build.VERSION.SDK_INT >= 30) {
-      getWindow().setDecorFitsSystemWindows(false);
+    // Match Acode's editor behavior: the console WebView itself is resized when
+    // the software keyboard opens, so DOM viewport units and resize events work.
+    getWindow().setSoftInputMode(
+      WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+    );
 
-      browser.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
-        @Override
-        public WindowInsets onApplyWindowInsets(View v, WindowInsets insets) {
-          Insets systemBarsInsets = insets.getInsets(WindowInsets.Type.systemBars());
-          v.setPadding(systemBarsInsets.left, systemBarsInsets.top, systemBarsInsets.right, systemBarsInsets.bottom);
-          return WindowInsets.CONSUMED;
-        }
-      });
+    if (Build.VERSION.SDK_INT >= 30) {
+      if (onlyConsole) {
+        getWindow().setDecorFitsSystemWindows(true);
+      } else {
+        getWindow().setDecorFitsSystemWindows(false);
+
+        browser.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+          @Override
+          public WindowInsets onApplyWindowInsets(View v, WindowInsets insets) {
+            Insets systemBarsInsets = insets.getInsets(WindowInsets.Type.systemBars());
+            Insets imeInsets = insets.getInsets(WindowInsets.Type.ime());
+            int bottomInset = Math.max(systemBarsInsets.bottom, imeInsets.bottom);
+            v.setPadding(
+              systemBarsInsets.left,
+              systemBarsInsets.top,
+              systemBarsInsets.right,
+              bottomInset
+            );
+            return WindowInsets.CONSUMED;
+          }
+        });
+      }
     }
 
     setSystemTheme(theme.get("primaryColor"));

@@ -1,3 +1,4 @@
+import fileIcons from "lib/fileIcons";
 import "./settingsPage.scss";
 import colorPicker from "dialogs/color";
 import prompt from "dialogs/prompt";
@@ -390,12 +391,19 @@ function createListItemElement(item, options, useInfoAsDescription) {
 	const $item = (
 		<div
 			tabIndex={1}
-			className={`list-item ${item.sake ? "sake" : ""} ${item.icon || item.image ? "" : "no-leading-icon"}`}
+			className={`list-item ${item.sake ? "sake" : ""} ${item.icon || item.image || item.fileIcon ? "" : "no-leading-icon"}`}
 			data-key={item.key}
 			data-action="list-item"
 		>
 			<span
-				className={`icon ${item.icon || (item.image ? "" : "no-icon")}`}
+				className={
+					item.fileIcon
+						? `icon ${fileIcons.icon(item.fileIcon)}`
+						: `icon ${item.icon || (item.image ? "" : "no-icon")}`
+				}
+				data-file-icon-name={item.fileIcon?.name}
+				data-file-icon-kind={item.fileIcon?.kind}
+				data-file-icon-extra={item.fileIcon ? "icon" : undefined}
 				style={{ color: item.iconColor }}
 			>
 				{item.image && (

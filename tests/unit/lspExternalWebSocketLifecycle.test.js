@@ -197,6 +197,24 @@ afterEach(async () => {
 });
 
 describe("LSP client idle lifecycle", () => {
+	it("advertises lazy code-action edit resolution", async () => {
+		manager = new LspClientManager();
+		await manager.getExtensionsForFile({
+			uri: "file:///workspace/main.rs",
+			rootUri: "file:///workspace",
+			languageId: LANGUAGE_ID,
+			view,
+		});
+
+		const initialize = TestWebSocket.instances[0].sent
+			.map((data) => JSON.parse(data))
+			.find((message) => message.method === "initialize");
+		expect(initialize.params.capabilities.textDocument.codeAction).toEqual({
+			dataSupport: true,
+			resolveSupport: {properties: ["edit"]},
+		});
+	});
+
 	it("reuses an external WebSocket client when a file attaches during the grace period", async () => {
 		const onClientIdle = vi.fn(({dispose}) => void dispose());
 		manager = new LspClientManager({onClientIdle});

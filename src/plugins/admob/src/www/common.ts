@@ -2,6 +2,7 @@ export const CordovaService = "AdMob";
 
 export type CordovaAction =
   | "adCreate"
+  | "adDestroy"
   | "adHide"
   | "adIsLoaded"
   | "adLoad"

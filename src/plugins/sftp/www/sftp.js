@@ -5,6 +5,12 @@ module.exports = {
   connectUsingProfile: function (profileId, onSuccess, onFail) {
     cordova.exec(onSuccess, onFail, 'Sftp', 'connectUsingProfile', [profileId]);
   },
+  testProfile: function (profileId, requestId, timeout, onSuccess, onFail) {
+    cordova.exec(onSuccess, onFail, 'Sftp', 'testProfile', [profileId, requestId, timeout]);
+  },
+  cancelConnection: function (requestId, onSuccess, onFail) {
+    cordova.exec(onSuccess, onFail, 'Sftp', 'cancelConnection', [requestId]);
+  },
   saveProfile: function (profileId, host, port, username, authType, password, keyFile, passphrase, onSuccess, onFail) {
     cordova.exec(onSuccess, onFail, 'Sftp', 'saveProfile', [profileId, host, port, username, authType, password, keyFile, passphrase]);
   },

@@ -470,6 +470,9 @@ async function resolveDep(manifest) {
 			const purchase = await getPurchase(product.productId);
 			await fetch(Url.join(config.API_BASE, "plugin/order"), {
 				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
 				body: JSON.stringify({
 					id: manifest.id,
 					token: purchase?.purchaseToken,

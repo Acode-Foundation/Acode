@@ -1,17 +1,23 @@
 .acode-tooltip {
 	position: fixed;
 
-	padding: 6px 10px;
+	padding: 8px 12px;
 
 	background: var(--popup-background-color);
 	color: var(--popup-text-color);
-	border: 1px solid var(--popup-border-color);
-	box-shadow: 0 0 4px var(--box-shadow-color);
+	border: 1px solid
+		color-mix(in srgb, var(--popup-text-color) 30%, var(--popup-background-color));
+	box-shadow: 0 4px 12px var(--box-shadow-color);
 	border-radius: var(--popup-border-radius);
 
-	font-size: 12px;
+	font-size: 13px;
+	font-weight: 500;
 
-	white-space: nowrap;
+	white-space: normal;
+	overflow-wrap: anywhere;
+	overflow: hidden;
+	box-sizing: border-box;
+	line-height: 1.4;
 
 	pointer-events: none;
 
@@ -21,4 +27,8 @@
 
 	z-index: 999999;
 }
-
+.acode-tooltip-description {
+	margin-top: 3px;
+	font-size: 12px;
+	font-weight: 400;
+}

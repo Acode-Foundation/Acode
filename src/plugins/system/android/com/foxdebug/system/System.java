@@ -66,6 +66,7 @@ import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.CordovaWebView;
+import org.apache.cordova.CordovaWebViewImpl;
 import org.apache.cordova.PluginResult;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -76,6 +77,29 @@ public class System extends CordovaPlugin {
   private static final String TAG = "SystemPlugin";
 
   private CallbackContext requestPermissionCallback;
+  private static final Map<String, String> APP_ICON_ALIASES;
+
+  static {
+    Map<String, String> aliases = new HashMap<>();
+    aliases.put("default", "MainActivityIconDefault");
+    aliases.put("pro", "MainActivityIconPro");
+    aliases.put("midnight_circuit", "MainActivityIconMidnightCircuit");
+    aliases.put("aurora_pulse", "MainActivityIconAuroraPulse");
+    aliases.put("terminal_glow", "MainActivityIconTerminalGlow");
+    aliases.put("solar_flare", "MainActivityIconSolarFlare");
+    aliases.put("blueprint", "MainActivityIconBlueprint");
+    aliases.put("pixel_party", "MainActivityIconPixelParty");
+    aliases.put("prism", "MainActivityIconPrism");
+    aliases.put("porcelain", "MainActivityIconPorcelain");
+    aliases.put("tangerine", "MainActivityIconTangerine");
+    aliases.put("tidal", "MainActivityIconTidal");
+    aliases.put("lilac", "MainActivityIconLilac");
+    aliases.put("volt", "MainActivityIconVolt");
+    aliases.put("cobalt", "MainActivityIconCobalt");
+    aliases.put("glacier", "MainActivityIconGlacier");
+    APP_ICON_ALIASES = Collections.unmodifiableMap(aliases);
+  }
+
   private Activity activity;
   private Context context;
   private int REQ_PERMISSIONS = 1;
@@ -101,6 +125,19 @@ public class System extends CordovaPlugin {
         }
       }
     );
+  }
+
+  @Override
+  public void onReset() {
+    super.onReset();
+    StreamHttp.cancelAll();
+    intentHandler = null;
+  }
+
+  @Override
+  public void onDestroy() {
+    StreamHttp.cancelAll();
+    super.onDestroy();
   }
 
   public boolean execute(
@@ -144,6 +181,39 @@ public class System extends CordovaPlugin {
       case "get-configuration":
         getConfiguration(callbackContext);
         return true;
+      case "set-fullscreen-back-handler":
+        final boolean fullscreenBackHandler = args.getBoolean(0);
+        activity.runOnUiThread(() -> {
+          try {
+            ((CordovaWebViewImpl) webView).setFullscreenBackHandler(fullscreenBackHandler);
+            callbackContext.success();
+          } catch (RuntimeException error) {
+            callbackContext.error(error.getMessage());
+          }
+        });
+        return true;
+      case "set-fullscreen-orientation":
+        final String orientation = args.isNull(0) ? null : args.getString(0);
+        activity.runOnUiThread(() -> {
+          try {
+            ((CordovaWebViewImpl) webView).setFullscreenOrientation(orientation);
+            callbackContext.success();
+          } catch (RuntimeException error) {
+            callbackContext.error(error.getMessage());
+          }
+        });
+        return true;
+      case "http-stream-start":
+        httpStreamStart(args, callbackContext);
+        return true;
+      case "http-stream-ack":
+        StreamHttp.ack(arg1, args.optInt(1, 0));
+        callbackContext.success();
+        return true;
+      case "http-stream-cancel":
+        StreamHttp.cancel(arg1);
+        callbackContext.success();
+        return true;
       case "set-input-type":
         setInputType(arg1);
         callbackContext.success();
@@ -158,6 +228,9 @@ public class System extends CordovaPlugin {
             }
           }
         );
+        return true;
+      case "set-app-icon":
+        setAppIcon(arg1, callbackContext);
         return true;
       case "get-cordova-intent":
         getCordovaIntent(callbackContext);
@@ -636,6 +709,52 @@ public class System extends CordovaPlugin {
       extension
     );
     return mimeType != null ? mimeType : "application/octet-stream";
+  }
+
+  /**
+   * Starts a streaming HTTP request. The response body is delivered to
+   * JavaScript incrementally as raw (or base64 encoded) chunks.
+   *
+   * <p>Args:
+   * <ol>
+   *   <li>requestId - unique id used for pause/resume/cancel</li>
+   *   <li>url</li>
+   *   <li>options JSON object:
+   *     method, headers, body, bodyIsBase64, followRedirects,
+   *     connectTimeout, readTimeout, chunkSize</li>
+   * </ol>
+   */
+  private void httpStreamStart(JSONArray args, CallbackContext callbackContext) {
+    try {
+      final String requestId = args.getString(0);
+      final String url = args.getString(1);
+      final JSONObject options = args.getJSONObject(2);
+
+      final String method = options.optString("method", "GET");
+      final JSONObject headers = options.optJSONObject("headers");
+      final String body = options.isNull("body") ? null : options.optString("body");
+      final boolean bodyIsBase64 = options.optBoolean("bodyIsBase64", false);
+      final boolean followRedirects = options.optBoolean("followRedirects", true);
+      final int connectTimeout = options.optInt("connectTimeout", 30000);
+      final int readTimeout = options.optInt("readTimeout", 0);
+      final int chunkSize = options.optInt("chunkSize", 0);
+
+      StreamHttp.start(
+        requestId,
+        url,
+        method,
+        headers,
+        body,
+        bodyIsBase64,
+        followRedirects,
+        connectTimeout,
+        readTimeout,
+        chunkSize,
+        callbackContext
+      );
+    } catch (Exception e) {
+      callbackContext.error("Failed to start stream: " + e.getMessage());
+    }
   }
 
   private void getConfiguration(CallbackContext callback) {
@@ -1919,11 +2038,55 @@ public class System extends CordovaPlugin {
       json.put("data", intent.getDataString());
       json.put("type", intent.getType());
       json.put("package", intent.getPackage());
+      json.put("uris", getIntentUris(intent));
       json.put("extras", getExtrasJson(intent.getExtras()));
-    } catch (JSONException e) {
+    } catch (JSONException | RuntimeException e) {
       e.printStackTrace();
     }
     return json;
+  }
+
+  private JSONArray getIntentUris(Intent intent) {
+    Set<Uri> uris = new LinkedHashSet<>();
+    String action = intent.getAction();
+    if (Intent.ACTION_VIEW.equals(action) || Intent.ACTION_EDIT.equals(action)) {
+      if (intent.getData() != null) uris.add(intent.getData());
+    } else if (!Intent.ACTION_SEND.equals(action) && !Intent.ACTION_SEND_MULTIPLE.equals(action)) {
+      return new JSONArray();
+    }
+    try {
+      Object stream = intent.getExtras() == null ? null : intent.getExtras().get(Intent.EXTRA_STREAM);
+      if (stream instanceof Uri) uris.add((Uri) stream);
+      else if (stream instanceof ArrayList<?>) {
+        for (Object item : (ArrayList<?>) stream) {
+          if (item instanceof Uri) uris.add((Uri) item);
+        }
+      }
+    } catch (RuntimeException error) {
+      Log.w(TAG, "Unable to read shared streams", error);
+    }
+    ClipData clip = intent.getClipData();
+    if (clip != null) {
+      for (int i = 0; i < clip.getItemCount(); i++) {
+        Uri uri = clip.getItemAt(i).getUri();
+        if (uri != null) uris.add(uri);
+      }
+    }
+    JSONArray result = new JSONArray();
+    for (Uri uri : uris) {
+      if (!"content".equals(uri.getScheme()) && !"file".equals(uri.getScheme())) continue;
+      result.put(uri.toString());
+      int grants = intent.getFlags() & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+      if ("content".equals(uri.getScheme()) && grants != 0 &&
+          (intent.getFlags() & Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION) != 0) {
+        try {
+          context.getContentResolver().takePersistableUriPermission(uri, grants);
+        } catch (SecurityException | IllegalArgumentException ignored) {
+          // Temporary access remains valid when a provider cannot persist the grant.
+        }
+      }
+    }
+    return result;
   }
 
   private JSONObject getExtrasJson(Bundle extras) {
@@ -1946,7 +2109,7 @@ public class System extends CordovaPlugin {
             json.put(key, (Boolean) value);
           } else if (value instanceof Bundle) {
             json.put(key, getExtrasJson((Bundle) value));
-          } else {
+          } else if (value != null) {
             json.put(key, value.toString());
           }
         } catch (JSONException e) {
@@ -2183,6 +2346,52 @@ public class System extends CordovaPlugin {
       return;
     }
     webView.setNativeContextMenuDisabled(disabled);
+  }
+
+  /**
+   * Dynamically changes the app icon by toggling activity-alias components.
+   *
+   * <p>The launcher icon is always represented by an activity-alias (including
+   * the default icon) so that the running MainActivity component never has to
+   * be disabled. Disabling the currently running component would make Android
+   * force-stop/restart the app, so only aliases are toggled here.
+   *
+   * @param iconName Icon id (e.g. "midnight_circuit") or "default" to restore
+   *     the original launcher icon.
+   * @param callback Callback invoked with the result.
+   */
+  private void setAppIcon(String iconName, CallbackContext callback) {
+    try {
+      String packageName = context.getPackageName();
+      PackageManager pm = context.getPackageManager();
+      String key = iconName == null ? "default" : iconName.toLowerCase();
+
+      String targetAlias = APP_ICON_ALIASES.get(key);
+      if (targetAlias == null) {
+        callback.error("Unknown app icon: " + iconName);
+        return;
+      }
+
+      pm.setComponentEnabledSetting(
+        new ComponentName(packageName, packageName + "." + targetAlias),
+        PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+        PackageManager.DONT_KILL_APP
+      );
+
+      for (Map.Entry<String, String> entry : APP_ICON_ALIASES.entrySet()) {
+        if (entry.getKey().equals(key)) {
+          continue;
+        }
+        pm.setComponentEnabledSetting(
+          new ComponentName(packageName, packageName + "." + entry.getValue()),
+          PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+          PackageManager.DONT_KILL_APP
+        );
+      }
+      callback.success();
+    } catch (Exception e) {
+      callback.error(e.toString());
+    }
   }
 
   private void extractAsset(

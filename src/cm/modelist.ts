@@ -14,6 +14,24 @@ export interface ModesByName {
 const modesByName: ModesByName = {};
 const modes: Mode[] = [];
 
+const FILE_NAME_CACHE_LIMIT = 2000;
+
+interface NamedCheck {
+	mode: Mode;
+	exactName?: string;
+	matcher?: RegExp;
+}
+
+interface ModeIndex {
+	sorted: Mode[];
+	namedChecks: NamedCheck[];
+	extensions: Map<string, Mode>;
+	rankByMode: Map<Mode, number>;
+}
+
+let modeIndex: ModeIndex | null = null;
+const resolvedByFileName = new Map<string, Mode>();
+
 function normalizeModeKey(value: string): string {
 	return String(value ?? "")
 		.trim()
@@ -32,6 +50,19 @@ function normalizeAliases(aliases: string[] = [], name: string): string[] {
 
 function escapeRegExp(value: string): string {
 	return String(value ?? "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function fileNameFromPath(path: string): string {
+	const value = String(path ?? "");
+	const slash = value.lastIndexOf("/");
+	const backslash = value.lastIndexOf("\\");
+	const sep = slash > backslash ? slash : backslash;
+	return sep === -1 ? value : value.slice(sep + 1);
+}
+
+function invalidateModeIndex(): void {
+	modeIndex = null;
+	resolvedByFileName.clear();
 }
 
 /**
@@ -67,6 +98,7 @@ export function addMode(
 		}
 	});
 	modes.push(mode);
+	invalidateModeIndex();
 }
 
 /**
@@ -84,36 +116,13 @@ export function removeMode(name: string): void {
 		}
 	});
 
-	const modeIndex = modes.findIndex(
+	const modeIndexInList = modes.findIndex(
 		(registeredMode) => registeredMode === mode,
 	);
-	if (modeIndex >= 0) {
-		modes.splice(modeIndex, 1);
+	if (modeIndexInList >= 0) {
+		modes.splice(modeIndexInList, 1);
 	}
-}
-
-/**
- * Get mode for file path
- */
-export function getModeForPath(path: string): Mode {
-	let mode = modesByName.text;
-	const fileName = path.split(/[/\\]/).pop() || "";
-
-	// Sort modes by specificity (descending) to check most specific first
-	const sortedModes = [...modes].sort((a, b) => {
-		const scoreDiff = getModeSpecificityScore(b) - getModeSpecificityScore(a);
-		if (scoreDiff !== 0) return scoreDiff;
-		// Tie-breaker: prefer modes registered later (plugins) over those registered earlier (core)
-		return modes.indexOf(b) - modes.indexOf(a);
-	});
-
-	for (const iMode of sortedModes) {
-		if (iMode.supportsFile?.(fileName)) {
-			mode = iMode;
-			break;
-		}
-	}
-	return mode;
+	invalidateModeIndex();
 }
 
 /**
@@ -155,6 +164,174 @@ function getModeSpecificityScore(modeInstance: Mode): number {
 	}
 
 	return maxScore;
+}
+
+function exactNameFromRegex(matcher: RegExp): string | null {
+	const otherFlags = matcher.flags.replaceAll("i", "");
+	if (otherFlags) return null;
+
+	const source = matcher.source;
+	if (
+		source.length < 2 ||
+		source[0] !== "^" ||
+		source[source.length - 1] !== "$"
+	) {
+		return null;
+	}
+
+	const inner = source.slice(1, -1);
+	let name = "";
+	for (let i = 0; i < inner.length; i++) {
+		const ch = inner[i];
+		if (ch === "\\") {
+			const next = inner[i + 1];
+			if (!next) return null;
+			name += next;
+			i++;
+			continue;
+		}
+		if ("^$|.*+?()[]{}".includes(ch)) return null;
+		name += ch;
+	}
+
+	return name ? name.toLowerCase() : null;
+}
+
+function rememberFirst(map: Map<string, Mode>, key: string, mode: Mode): void {
+	if (key && !map.has(key)) {
+		map.set(key, mode);
+	}
+}
+
+function getModeIndex(): ModeIndex {
+	if (modeIndex) return modeIndex;
+
+	const ranked = modes.map((mode, index) => ({
+		mode,
+		score: getModeSpecificityScore(mode),
+		index,
+	}));
+	ranked.sort((a, b) => {
+		const scoreDiff = b.score - a.score;
+		return scoreDiff !== 0 ? scoreDiff : b.index - a.index;
+	});
+
+	const sorted = ranked.map((entry) => entry.mode);
+	const rankByMode = new Map<Mode, number>();
+	const namedChecks: NamedCheck[] = [];
+	const extensions = new Map<string, Mode>();
+
+	for (let rank = 0; rank < sorted.length; rank++) {
+		rankByMode.set(sorted[rank], rank);
+	}
+
+	for (const { mode } of ranked) {
+		if (mode.extensions) {
+			for (const raw of mode.extensions.split("|")) {
+				const pattern = raw.trim();
+				if (!pattern) continue;
+				if (pattern.startsWith("^")) {
+					namedChecks.push({
+						mode,
+						exactName: pattern.slice(1).toLowerCase(),
+					});
+				} else {
+					rememberFirst(extensions, pattern.toLowerCase(), mode);
+				}
+			}
+		}
+
+		for (const matcher of mode.filenameMatchers) {
+			const exactName = exactNameFromRegex(matcher);
+			if (exactName) {
+				namedChecks.push({ mode, exactName });
+				continue;
+			}
+			namedChecks.push({ mode, matcher });
+		}
+	}
+
+	modeIndex = { sorted, namedChecks, extensions, rankByMode };
+	return modeIndex;
+}
+
+function findModeByExtension(
+	fileNameLower: string,
+	extensions: Map<string, Mode>,
+	rankByMode: Map<Mode, number>,
+): Mode | undefined {
+	let best: Mode | undefined;
+	let bestRank = Number.POSITIVE_INFINITY;
+	let dot = fileNameLower.indexOf(".");
+	while (dot >= 0 && dot < fileNameLower.length - 1) {
+		const mode = extensions.get(fileNameLower.slice(dot + 1));
+		if (mode) {
+			const rank = rankByMode.get(mode) ?? Number.POSITIVE_INFINITY;
+			if (rank < bestRank) {
+				best = mode;
+				bestRank = rank;
+			}
+		}
+		dot = fileNameLower.indexOf(".", dot + 1);
+	}
+	return best;
+}
+
+function resolveModeForPath(fileName: string): Mode {
+	const fallback = modesByName.text;
+	const index = getModeIndex();
+	const fileNameLower = fileName.toLowerCase();
+
+	for (const check of index.namedChecks) {
+		if (check.exactName) {
+			if (
+				check.exactName === fileNameLower &&
+				check.mode.supportsFile?.(fileName)
+			) {
+				return check.mode;
+			}
+			continue;
+		}
+
+		const matcher = check.matcher;
+		if (!matcher) continue;
+		matcher.lastIndex = 0;
+		if (matcher.test(fileName) && check.mode.supportsFile?.(fileName)) {
+			return check.mode;
+		}
+	}
+
+	const byExtension = findModeByExtension(
+		fileNameLower,
+		index.extensions,
+		index.rankByMode,
+	);
+	if (byExtension?.supportsFile?.(fileName)) return byExtension;
+
+	for (const mode of index.sorted) {
+		if (mode.supportsFile?.(fileName)) return mode;
+	}
+
+	return fallback;
+}
+
+function cacheResolvedMode(fileNameLower: string, mode: Mode): Mode {
+	if (resolvedByFileName.size >= FILE_NAME_CACHE_LIMIT) {
+		resolvedByFileName.clear();
+	}
+	resolvedByFileName.set(fileNameLower, mode);
+	return mode;
+}
+
+/**
+ * Get mode for file path
+ */
+export function getModeForPath(path: string): Mode {
+	const fileName = fileNameFromPath(path);
+	const cached = resolvedByFileName.get(fileName);
+	if (cached) return cached;
+
+	return cacheResolvedMode(fileName, resolveModeForPath(fileName));
 }
 
 /**

@@ -85,6 +85,9 @@ export default function Sponsor(onclose) {
 					try {
 						const res = await fetch(`${config.API_BASE}/sponsor`, {
 							method: "POST",
+							headers: {
+								"Content-Type": "application/json",
+							},
 							body: JSON.stringify({
 								...sponsorDetails,
 								tier: productId,

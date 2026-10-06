@@ -1,9 +1,16 @@
 import { focusEditorIfEditable } from "cm/editorReadOnly";
+import openTabContextMenu from "handlers/tabContextMenu";
 import config from "lib/config";
 import settings from "lib/settings";
 import { animate } from "motion";
 
 const opts = { passive: false };
+
+/**
+ * How far the pointer must travel before a long press counts as a drag
+ * instead of a tab context menu request.
+ */
+const DRAG_MENU_SLOP = 8;
 
 /**
  * Clone of tab being dragged
@@ -78,6 +85,23 @@ let prevScrollLeft = 0;
 let initialNextSibling = null;
 let didReorder = false;
 let dragSessionId = 0;
+/**
+ * Whether the pointer moved far enough during this drag session to count as a
+ * real drag. When the drag session ends without any drag, the tab context
+ * menu is shown instead.
+ * @type {boolean}
+ */
+let didDrag = false;
+/**
+ * Pointer position where the current drag session started.
+ * @type {number}
+ */
+let dragOriginX = 0;
+/**
+ * Pointer position where the current drag session started.
+ * @type {number}
+ */
+let dragOriginY = 0;
 
 const MIN_SCROLL_SPEED = 2;
 const MAX_SCROLL_SPEED = 14;
@@ -95,6 +119,10 @@ const reorderAnimations = new WeakMap();
 export default function startDrag(e) {
 	const { clientX, clientY } = getClientPos(e);
 	const { editor, activeFile } = editorManager;
+
+	dragOriginX = clientX;
+	dragOriginY = clientY;
+	didDrag = false;
 
 	if (activeFile.focusedBefore) {
 		focusEditorIfEditable(editor);
@@ -177,6 +205,14 @@ function onDrag(e) {
 
 	const { clientX, clientY } = getClientPos(e);
 
+	if (
+		!didDrag &&
+		(Math.abs(clientX - dragOriginX) > DRAG_MENU_SLOP ||
+			Math.abs(clientY - dragOriginY) > DRAG_MENU_SLOP)
+	) {
+		didDrag = true;
+	}
+
 	tabLeft = clientX - offsetX;
 	tabTop = clientY - offsetY;
 
@@ -205,6 +241,20 @@ function onDrag(e) {
  */
 function releaseDrag(e) {
 	const { clientX, clientY } = getClientPos(e);
+
+	// A long press (or right click) that ends without moving the pointer is a
+	// request for the tab context menu, not a drag.
+	const openContextMenu =
+		!didDrag &&
+		!!draggedFile &&
+		(e.type === "mouseup" || e.type === "touchend");
+
+	if (openContextMenu) {
+		const file = draggedFile;
+		finishDrag(false);
+		openTabContextMenu(file);
+		return;
+	}
 
 	/**@type {HTMLDivElement} target tab */
 	const $target = document.elementFromPoint(clientX, clientY);
@@ -311,6 +361,9 @@ function cleanupDrag(state = getCurrentDragState()) {
 	allowPaneTransfer = true;
 	initialNextSibling = null;
 	didReorder = false;
+	didDrag = false;
+	dragOriginX = 0;
+	dragOriginY = 0;
 }
 
 function preventDefaultScroll() {

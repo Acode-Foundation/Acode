@@ -31,7 +31,7 @@ function FileBrowser(mode, info, doesOpenLast, ...args) {
 }
 
 FileBrowser.openFile = (res) => {
-	const { url, name, mode } = res;
+	const { url, name, mode, persistedUriPermission } = res;
 	const createOption = {
 		uri: url,
 		name,
@@ -41,8 +41,11 @@ FileBrowser.openFile = (res) => {
 	if (mode) {
 		createOption.mode = mode;
 	}
+	if (mode === "single") {
+		createOption.persistInSession = persistedUriPermission !== false;
+	}
 
-	openFile(url, createOption);
+	return openFile(url, createOption);
 };
 
 FileBrowser.openFileError = (err) => {

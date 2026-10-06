@@ -1,58 +1,15 @@
 import fsOperation from "fileSystem";
-import { getModeForPath as getCMModeForPath } from "cm/modelist";
 import alert from "dialogs/alert";
 import escapeStringRegexp from "escape-string-regexp";
 import adRewards from "lib/adRewards";
 import config from "lib/config";
+import fileIcons from "lib/fileIcons";
 import { interstitialAd, requestBannerForPage } from "lib/startAd";
 import { isBinaryFile } from "./binaryExtensions";
 import { isPlayStoreInstall } from "./installSource";
 import path from "./Path";
 import Uri from "./Uri";
 import Url from "./Url";
-
-/**
- * Gets programming language name according to filename
- * @param {String} filename
- * @returns
- */
-function getFileType(filename) {
-	const regex = {
-		babel: /\.babelrc$/i,
-		jsmap: /\.js\.map$/i,
-		yarn: /^yarn\.lock$/i,
-		testjs: /\.test\.js$/i,
-		testts: /\.test\.ts$/i,
-		cssmap: /\.css\.map$/i,
-		typescriptdef: /\.d\.ts$/i,
-		clojurescript: /\.cljs$/i,
-		cppheader: /\.(hh|hpp)$/i,
-		jsconfig: /^jsconfig.json$/i,
-		tsconfig: /^tsconfig.json$/i,
-		android: /\.(apk|aab|slim)$/i,
-		jsbeautify: /^\.jsbeautifyrc$/i,
-		webpack: /^webpack\.config\.js$/i,
-		audio: /\.(mp3|wav|ogg|flac|aac)$/i,
-		git: /(^\.gitignore$)|(^\.gitmodules$)/i,
-		video: /\.(mp4|m4a|mov|3gp|wmv|flv|avi)$/i,
-		image: /\.(png|jpg|jpeg|gif|bmp|ico|webp)$/i,
-		npm: /(^package\.json$)|(^package\-lock\.json$)/i,
-		compressed: /\.(zip|rar|7z|tar|gz|gzip|dmg|iso)$/i,
-		eslint:
-			/(^\.eslintrc(\.(json5?|ya?ml|toml))?$|eslint\.config\.(c?js|json)$)/i,
-		postcssconfig:
-			/(^\.postcssrc(\.(json5?|ya?ml|toml))?$|postcss\.config\.(c?js|json)$)/i,
-		prettier:
-			/(^\.prettierrc(\.(json5?|ya?ml|toml))?$|prettier\.config\.(c?js|json)$)/i,
-	};
-
-	const fileType = Object.keys(regex).find((type) =>
-		regex[type].test(filename),
-	);
-	if (fileType) return fileType;
-
-	return Url.extname(filename).substring(1);
-}
 
 export default {
 	/**
@@ -77,20 +34,20 @@ export default {
 	 * @param {string} filename
 	 */
 	getIconForFile(filename) {
-		const type = getFileType(filename);
-		// Use CodeMirror's modelist to determine mode name
-		let modeName = "text";
-		try {
-			const mode = getCMModeForPath?.(filename);
-			modeName = mode?.name || modeName;
-		} catch (e) {
-			// fallback to default if CodeMirror modelist isn't available yet
-		}
-
-		const iconForMode = `file_type_${modeName}`;
-		const iconForType = `file_type_${type}`;
-
-		return `file file_type_default ${iconForMode} ${iconForType}`;
+		return fileIcons.icon({ kind: "file", name: filename });
+	},
+	/**
+	 * Gets icon according to folder name and expansion state
+	 * @param {string} name
+	 * @param {{expanded?: boolean, isRoot?: boolean}} [options]
+	 */
+	getIconForFolder(name, options = {}) {
+		return fileIcons.icon({
+			kind: "folder",
+			name,
+			expanded: options.expanded,
+			isRoot: options.isRoot,
+		});
 	},
 	/**
 	 *
@@ -123,7 +80,9 @@ export default {
 				}
 			}
 			if (item.isDirectory) {
-				item.icon = "folder";
+				item.icon = this.getIconForFolder(item.name, {
+					isRoot: item.isRoot,
+				});
 			} else {
 				if (mode === "folder") {
 					item.disabled = true;

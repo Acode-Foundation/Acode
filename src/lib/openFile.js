@@ -8,9 +8,12 @@ import { reopenWithNewEncoding } from "palettes/changeEncoding";
 import { decode, detectEncoding } from "utils/encodings";
 import helpers from "utils/helpers";
 import EditorFile from "./editorFile";
+import { promoteSessionPersistence } from "./fileSessionPersistence";
 import fileTypeHandler from "./fileTypeHandler";
 import recents from "./recents";
 import appSettings from "./settings";
+
+let loadingFileCount = 0;
 
 /**
  * @typedef {object} FileOptions
@@ -22,6 +25,9 @@ import appSettings from "./settings";
  * @property {string} mode
  * @property {string} uri
  * @property {string} paneId
+ * @property {boolean} persistInSession
+ * @property {AbortSignal} signal Discard an obsolete open before activating its file.
+ * @property {boolean} external Receive an Android file intent; report failures to the batch and require document handlers.
  */
 
 /**
@@ -31,15 +37,28 @@ import appSettings from "./settings";
  */
 
 export default async function openFile(file, options = {}) {
+	const { signal } = options;
+	if (signal?.aborted) return;
+	let releaseTitleLoader;
 	try {
 		let uri = typeof file === "string" ? file : file.uri;
 		if (!uri) return;
 
 		/**@type {EditorFile} */
 		const existingFile = editorManager.getFile(uri, "uri");
-		const { cursorPos, render, onsave, text, mode, encoding, paneId } = options;
+		const {
+			cursorPos,
+			render,
+			onsave,
+			text,
+			mode,
+			encoding,
+			paneId,
+			persistInSession,
+		} = options;
 
 		if (existingFile) {
+			promoteSessionPersistence(existingFile, persistInSession);
 			// If file is already opened and new text is provided
 			const incomingDoc =
 				text != null ? Text.of(String(text).split("\n")) : null;
@@ -100,13 +119,15 @@ export default async function openFile(file, options = {}) {
 			return;
 		}
 
-		loader.showTitleLoader();
+		releaseTitleLoader = acquireTitleLoader(signal);
 		const settings = appSettings.value;
 		const fs = fsOperation(uri);
 		const fileInfo = await fs.stat();
+		if (signal?.aborted) return;
 		const name = fileInfo.name || file.filename || uri;
-		const readOnly = fileInfo.canWrite ? false : true;
+		const readOnly = fileInfo.canWrite === false;
 		const createEditor = (isUnsaved, text, detectedEncoding) => {
+			if (signal?.aborted) return;
 			new EditorFile(name, {
 				uri,
 				text,
@@ -120,11 +141,21 @@ export default async function openFile(file, options = {}) {
 				savedMtime: helpers.getStatMtime(fileInfo),
 				diskMtime: helpers.getStatMtime(fileInfo),
 				paneId,
+				persistInSession,
 			});
 		};
 
 		// Check for registered file handlers
 		const customHandler = fileTypeHandler.getFileHandler(name);
+		const needsDocumentHandler =
+			options.external &&
+			/\.(pdf|docx|dotx|xlsx|xls|ods|pptx|ppsx|potx)$/i.test(name);
+		if (needsDocumentHandler && !customHandler) {
+			throw Object.assign(new Error("Document handler unavailable"), {
+				code: "DOCUMENT_HANDLER_UNAVAILABLE",
+				filename: name,
+			});
+		}
 		if (customHandler) {
 			try {
 				await customHandler.handleFile({
@@ -139,11 +170,21 @@ export default async function openFile(file, options = {}) {
 						encoding,
 						mode,
 						createEditor,
+						signal,
 					},
 				});
 				return;
 			} catch (error) {
+				if (signal?.aborted) return;
 				console.error(`File handler '${customHandler.id}' failed:`, error);
+				if (options.external) {
+					throw Object.assign(
+						new Error("Document handler failed", { cause: error }),
+						{
+							filename: name,
+						},
+					);
+				}
 				// Continue with default handling if custom handler fails
 			}
 		}
@@ -160,6 +201,10 @@ export default async function openFile(file, options = {}) {
 
 		if (videoRegex.test(name)) {
 			const objectUrl = await fileToDataUrl(uri);
+			if (signal?.aborted) {
+				URL.revokeObjectURL(objectUrl);
+				return;
+			}
 			const videoContainer = (
 				<div
 					style={{
@@ -199,6 +244,10 @@ export default async function openFile(file, options = {}) {
 
 		if (imageRegex.test(name)) {
 			const objectUrl = await fileToDataUrl(uri);
+			if (signal?.aborted) {
+				URL.revokeObjectURL(objectUrl);
+				return;
+			}
 			const imageContainer = (
 				<div
 					className="image-container"
@@ -368,6 +417,10 @@ export default async function openFile(file, options = {}) {
 
 		if (audioRegex.test(name)) {
 			const objectUrl = await fileToDataUrl(uri);
+			if (signal?.aborted) {
+				URL.revokeObjectURL(objectUrl);
+				return;
+			}
 			const audioContainer = (
 				<div
 					style={{
@@ -401,6 +454,8 @@ export default async function openFile(file, options = {}) {
 		// Else open a new file
 		// Checks for valid file
 		if (fileInfo.length * 0.000001 > settings.maxFileSize) {
+			if (options.external)
+				throw Object.assign(new Error("File too large"), { filename: name });
 			return alert(
 				strings.error.toUpperCase(),
 				strings["file too large"].replace(
@@ -410,12 +465,20 @@ export default async function openFile(file, options = {}) {
 			);
 		}
 
+		if (
+			options.external &&
+			(helpers.isBinary(name) ||
+				helpers.isBinary({ name, mime: fileInfo.mime || fileInfo.type }))
+		) {
+			throw Object.assign(new Error("Unsupported file"), { filename: name });
+		}
 		if (helpers.isBinary(uri)) {
 			const confirmation = await confirm(strings.info, strings["binary file"]);
-			if (!confirmation) return;
+			if (!confirmation || signal?.aborted) return;
 		}
 
 		const binData = await fs.readFile();
+		if (signal?.aborted) return;
 
 		// Determine encoding: if explicit provided use it, otherwise
 		// if settings.defaultFileEncoding === 'auto' then detect; else use the default as-is
@@ -435,16 +498,35 @@ export default async function openFile(file, options = {}) {
 			}
 		}
 
+		if (signal?.aborted) return;
 		const fileContent = await decode(binData, detectedEncoding);
+		if (signal?.aborted) return;
 
 		createEditor(false, fileContent, detectedEncoding);
 		if (mode !== "single") recents.addFile(uri);
 		return;
 	} catch (error) {
-		console.error(error);
+		if (options.external && !signal?.aborted) throw error;
+		if (!signal?.aborted) console.error(error);
 	} finally {
-		loader.removeTitleLoader();
+		releaseTitleLoader?.();
 	}
+}
+
+/** Keep the shared indicator visible while any file open still needs it. */
+function acquireTitleLoader(signal) {
+	if (loadingFileCount++ === 0) loader.showTitleLoader();
+	let released = false;
+	const release = () => {
+		// An aborted filesystem call may settle much later. Release immediately
+		// on abort, and make its eventual finally block a no-op.
+		if (released) return;
+		released = true;
+		signal?.removeEventListener("abort", release);
+		if (--loadingFileCount === 0) loader.removeTitleLoader();
+	};
+	signal?.addEventListener("abort", release, { once: true });
+	return release;
 }
 
 /**

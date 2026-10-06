@@ -40,6 +40,7 @@ import type {
 	MarkupContent,
 } from "vscode-languageserver-types";
 import { getMode, getModeForPath, type Mode } from "../modelist";
+import { safeLspPositionToOffset } from "./positionUtils";
 
 interface LspClientInternals {
 	config?: {
@@ -258,14 +259,6 @@ async function loadHoverContentLanguages(contents: Hover["contents"]): Promise<v
 	);
 }
 
-function fromPosition(
-	doc: EditorView["state"]["doc"],
-	position: { line: number; character: number },
-): number {
-	const line = doc.line(position.line + 1);
-	return Math.min(line.to, line.from + position.character);
-}
-
 function escapeHtml(value: string): string {
 	return value.replace(/[&<>"']/g, (match) => {
 		switch (match) {
@@ -401,8 +394,14 @@ function lspTooltipSource(
 		let to = pos;
 		for (const { result } of results) {
 			if (!result.range) continue;
-			from = Math.min(from, fromPosition(view.state.doc, result.range.start));
-			to = Math.max(to, fromPosition(view.state.doc, result.range.end));
+			from = Math.min(
+				from,
+				safeLspPositionToOffset(view.state.doc, result.range.start),
+			);
+			to = Math.max(
+				to,
+				safeLspPositionToOffset(view.state.doc, result.range.end),
+			);
 		}
 
 		return {

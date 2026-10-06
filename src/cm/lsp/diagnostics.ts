@@ -10,6 +10,7 @@ import {
 } from "@codemirror/state";
 import { type EditorView, ViewPlugin, type ViewUpdate } from "@codemirror/view";
 import { addLspLogFor } from "./logs";
+import { safeLspPositionToOffset } from "./positionUtils";
 import type {
 	DocumentDiagnosticParams,
 	DocumentDiagnosticReport,
@@ -186,13 +187,13 @@ function collectLspDiagnostics(
 		let from: number;
 		let to: number;
 		try {
-			const mappedFrom = plugin.fromPosition(
+			const mappedFrom = safeLspPositionToOffset(
+				plugin.syncedDoc,
 				diagnostic.range.start,
-				plugin.syncedDoc,
 			);
-			const mappedTo = plugin.fromPosition(
-				diagnostic.range.end,
+			const mappedTo = safeLspPositionToOffset(
 				plugin.syncedDoc,
+				diagnostic.range.end,
 			);
 			const fromResult = plugin.unsyncedChanges.mapPos(mappedFrom);
 			const toResult = plugin.unsyncedChanges.mapPos(mappedTo);

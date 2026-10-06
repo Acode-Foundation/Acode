@@ -5,7 +5,7 @@
 #   docker build --target standalone -t acode-dev .devcontainer/
 #   docker run -it -v $(pwd):/workspaces/acode acode-dev
 
-FROM mcr.microsoft.com/devcontainers/java:1-21-bullseye AS base
+FROM mcr.microsoft.com/devcontainers/java:1-21-bookworm AS base
 
 ARG ANDROID_PLATFORM=36
 ARG ANDROID_BUILD_TOOLS=36.0.0

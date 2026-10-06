@@ -51,10 +51,12 @@ import windowResize from "handlers/windowResize";
 import actionStack from "lib/actionStack";
 import commands from "lib/commands";
 import EditorFile from "lib/editorFile";
+import fileIcons from "lib/fileIcons";
 import fileIndex from "lib/fileIndex";
 import files from "lib/fileList";
 import fileTypeHandler from "lib/fileTypeHandler";
 import fonts from "lib/fonts";
+import fullscreen from "lib/fullscreen";
 import {
 	BROKEN_PLUGINS,
 	LOADED_PLUGINS,
@@ -63,18 +65,29 @@ import {
 } from "lib/loadPlugins";
 import notificationManager from "lib/notificationManager";
 import openFolder, { addedFolder } from "lib/openFolder";
+import orientation from "lib/orientation";
 import projects from "lib/projects";
 import selectionMenu from "lib/selectionMenu";
 import appSettings from "lib/settings";
 import FileBrowser from "pages/fileBrowser";
 import ThemeBuilder from "theme/builder";
 import themes from "theme/list";
+import {
+	applyHighlightStyles,
+	clearHighlightCache,
+	getHighlightStyleSheet,
+	getHighlightStyles,
+	HIGHLIGHT_CLASS,
+	highlightCodeBlock,
+	highlightLine,
+} from "utils/codeHighlight";
 import Color from "utils/color";
 import encodings, { decode, encode } from "utils/encodings";
 import helpers from "utils/helpers";
 import KeyboardEvent from "utils/keyboardEvent";
 import Url from "utils/Url";
 import config from "./config";
+import quickToolsAdapters from "./quickToolsAdapter";
 import webview from "./webview";
 
 class Acode {
@@ -312,6 +325,17 @@ class Acode {
 			},
 		};
 
+		const codeHighlightModule = Object.freeze({
+			highlightLine,
+			highlightCodeBlock,
+			highlight: highlightCodeBlock,
+			clearCache: clearHighlightCache,
+			applyStyles: applyHighlightStyles,
+			getStyles: getHighlightStyles,
+			getStyleSheet: getHighlightStyleSheet,
+			HIGHLIGHT_CLASS,
+		});
+
 		const codemirrorModule = Object.freeze({
 			autocomplete: cmAutocomplete,
 			commands: cmCommands,
@@ -326,6 +350,7 @@ class Acode {
 			search: cmSearch,
 			state: cmState,
 			view: cmView,
+			highlight: codeHighlightModule,
 		});
 
 		const configProxy = new Proxy(config, {
@@ -413,7 +438,10 @@ class Acode {
 		this.define("sidebarApps", sidebarAppsModule);
 		this.define("terminal", terminalModule);
 		this.define("webview", webview);
+		this.define("orientation", orientation);
+		this.define("fullscreen", fullscreen);
 		this.define("codemirror", codemirrorModule);
+		this.define("codeHighlight", codeHighlightModule);
 		this.define("@codemirror/autocomplete", cmAutocomplete);
 		this.define("@codemirror/commands", cmCommands);
 		this.define("@codemirror/language", cmLanguage);
@@ -536,6 +564,8 @@ class Acode {
 	}
 
 	require(module) {
+		if (module.toLowerCase() === "fileicons")
+			return fileIcons.getPluginApi(document.currentScript);
 		return this.#modules[module.toLowerCase()];
 	}
 
@@ -636,6 +666,9 @@ class Acode {
 										const purchase = await getPurchase(product.productId);
 										await fetch(Url.join(config.API_BASE, "plugin/order"), {
 											method: "POST",
+											headers: {
+												"Content-Type": "application/json",
+											},
 											body: JSON.stringify({
 												id: remotePlugin.id,
 												token: purchase?.purchaseToken,
@@ -696,7 +729,7 @@ class Acode {
 	}
 
 	get exitAppMessage() {
-		const numFiles = editorManager.hasUnsavedFiles();
+		const numFiles = editorManager?.hasUnsavedFiles?.() ?? 0;
 		if (numFiles) {
 			return strings["unsaved files close app"];
 		}
@@ -763,6 +796,7 @@ class Acode {
 		}
 
 		delete appSettings.uiSettings[`plugin-${id}`];
+		fileIcons.unregisterByPlugin(id);
 	}
 
 	registerFormatter(id, extensions, format, displayName) {
@@ -1005,6 +1039,11 @@ class Acode {
 		const command = registerExternalCommand(descriptor);
 		this.#refreshCommandBindings();
 		return command;
+	}
+
+	/** Register input, selection and availability handlers for one custom tab. */
+	registerQuickToolsAdapter(tab, adapter) {
+		return quickToolsAdapters.register(tab, adapter);
 	}
 
 	removeCommand(name) {

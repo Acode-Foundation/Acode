@@ -113,7 +113,8 @@ function createConfig(name, caption, palette) {
 		cursor: palette.rosewater,
 		dropdownBackground: palette.mantle,
 		dropdownBorder: palette.overlay0,
-		activeLine: palette.surface0,
+		// Keep this translucent: CodeMirror draws selections behind line backgrounds.
+		activeLine: `${palette.surface0}40`,
 		lineNumber: palette.subtext0,
 		lineNumberActive: palette.mauve,
 		matchingBracket: `${palette.surface2}47`,

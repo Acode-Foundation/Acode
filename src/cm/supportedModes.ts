@@ -72,6 +72,14 @@ function createLanguageLoader(name: string, lang: LanguageDescription) {
 				return javascript({ jsx: true });
 			};
 
+		case "markdown":
+			return async () => {
+				const { markdown, markdownLanguage } = await import(
+					"@codemirror/lang-markdown"
+				);
+				return markdown({ base: markdownLanguage });
+			};
+
 		case "html":
 			return async () => {
 				const { html } = await import("@codemirror/lang-html");

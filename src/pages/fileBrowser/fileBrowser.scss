@@ -3,6 +3,19 @@
     display: none;
   }
 
+  #list .tile > .icon:first-child {
+    --file-icon-size: 24px;
+    font-size: var(--file-icon-size);
+    background-size: var(--file-icon-size);
+    background-position: center;
+
+    > svg, > img {
+      width: var(--file-icon-size);
+      height: var(--file-icon-size);
+      object-fit: contain;
+    }
+  }
+
   .tile {
     &[data-storage-type="notification"] {
       background-color: rgb(153, 153, 255);
@@ -41,10 +54,12 @@
 
       &.folder {
         color: rgb(206, 206, 53);
+      }
 
-        &.user-added-storage {
-          color: rgb(53, 101, 206);
-        }
+      // Plugin icon themes replace the builtin `folder` glyph class.
+      // Storage colour has to match `user-added-storage` on its own.
+      &.user-added-storage {
+        color: rgb(53, 101, 206);
       }
 
       &.code {

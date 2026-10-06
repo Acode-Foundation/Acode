@@ -3,11 +3,6 @@
     <name>PluginContext</name>
 
 
-        <js-module name="PluginContext" src="www/PluginContext.js">
-        <clobbers target="window.PluginContext" />
-    </js-module>
-
-
     <platform name="android">
         <config-file parent="/*" target="res/xml/config.xml">
             <feature name="Tee">

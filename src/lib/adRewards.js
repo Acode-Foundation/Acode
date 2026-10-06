@@ -3,13 +3,15 @@ import {
 	createRewardStateLifecycle,
 	isRewardPassActive,
 } from "./adRewardBannerPolicy.mjs";
-import auth from "./auth";
 import config from "./config";
+import showRewardedAd, {
+	isRewardedAdSupported,
+	isWatchingRewardedAd,
+} from "./rewardedAd";
 import secureAdRewardState from "./secureAdRewardState";
-import { adUnitIdRewarded, setBannerSuppressed } from "./startAd";
+import { setBannerSuppressed } from "./startAd";
 
 const ONE_HOUR = 60 * 60 * 1000;
-const REWARDED_RESULT_TIMEOUT_MS = 90 * 1000;
 
 const OFFERS = [
 	{
@@ -153,78 +155,19 @@ async function getRewardIdentity() {
 	}
 }
 
-async function createRewardedAd(offer, step, sessionId) {
-	if (!admob?.RewardedAd) {
-		throw new Error("Rewarded ads are not available in this build.");
-	}
-
-	const userId = await getRewardIdentity();
-	const customData = [
-		`session=${sessionId}`,
-		`offer=${offer.id}`,
-		`step=${step}`,
-		`ads=${offer.adsRequired}`,
-	].join("&");
-
-	return new admob.RewardedAd({
-		adUnitId: adUnitIdRewarded,
+async function showRewardedStep(offer, step, sessionId) {
+	const earned = await showRewardedAd({
 		serverSideVerification: {
-			userId,
-			customData,
+			userId: await getRewardIdentity(),
+			customData: [
+				`session=${sessionId}`,
+				`offer=${offer.id}`,
+				`step=${step}`,
+				`ads=${offer.adsRequired}`,
+			].join("&"),
 		},
 	});
-}
-
-function waitForRewardedResult(ad) {
-	return new Promise((resolve, reject) => {
-		let earned = false;
-		let settled = false;
-		const timeoutId = setTimeout(() => {
-			fail(
-				new Error("Rewarded ad timed out before completion. Please try again."),
-			);
-		}, REWARDED_RESULT_TIMEOUT_MS);
-
-		const finish = (result) => {
-			if (settled) return;
-			settled = true;
-			clearTimeout(timeoutId);
-			resolve(result);
-		};
-
-		const fail = (error) => {
-			if (settled) return;
-			settled = true;
-			clearTimeout(timeoutId);
-			reject(
-				error instanceof Error
-					? error
-					: new Error(error?.message || "Rewarded ad failed."),
-			);
-		};
-
-		ad.on("reward", () => {
-			earned = true;
-		});
-
-		ad.on("dismiss", () => {
-			finish({ earned });
-		});
-
-		ad.on("showfail", fail);
-		ad.on("loadfail", fail);
-	});
-}
-
-async function showRewardedStep(offer, step, sessionId) {
-	const rewardedAd = await createRewardedAd(offer, step, sessionId);
-	const resultPromise = waitForRewardedResult(rewardedAd);
-	await rewardedAd.load();
-	await rewardedAd.show();
-	const result = await resultPromise;
-	if (!result.earned) {
-		throw new Error("Reward not earned. The ad was closed before completion.");
-	}
+	if (!earned) throw new Error(strings["rewarded ad incomplete"]);
 }
 
 export default {
@@ -285,13 +228,13 @@ export default {
 		return Boolean(!config.HAS_PRO && !this.isAdFreeActive());
 	},
 	isRewardedSupported() {
-		return Boolean(!config.HAS_PRO && admob?.RewardedAd && adUnitIdRewarded);
+		return isRewardedAdSupported();
 	},
 	getRewardedUnavailableReason() {
 		if (config.HAS_PRO) {
 			return "Ads are already disabled on this build.";
 		}
-		if (!admob?.RewardedAd) {
+		if (!isRewardedAdSupported()) {
 			return "Rewarded ads are unavailable on this device.";
 		}
 		return "";
@@ -303,7 +246,7 @@ export default {
 		};
 	},
 	isWatchingReward() {
-		return Boolean(activeWatchPromise);
+		return Boolean(activeWatchPromise) || isWatchingRewardedAd();
 	},
 	async watchOffer(offerId, { onStep } = {}) {
 		if (activeWatchPromise) {
@@ -318,18 +261,18 @@ export default {
 			throw new Error(this.getRewardedUnavailableReason());
 		}
 
-		await rewardLifecycle.refresh({ notifyExpiry: false });
-		const redemptionStatus = this.canRedeemNow();
-		if (!redemptionStatus.ok) {
-			throw new Error(redemptionStatus.reason);
-		}
-
 		const sessionId =
 			typeof crypto?.randomUUID === "function"
 				? crypto.randomUUID()
 				: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
 		activeWatchPromise = (async () => {
+			await rewardLifecycle.refresh({ notifyExpiry: false });
+			const redemptionStatus = this.canRedeemNow();
+			if (!redemptionStatus.ok) {
+				throw new Error(redemptionStatus.reason);
+			}
+
 			for (let step = 1; step <= offer.adsRequired; step += 1) {
 				onStep?.({
 					step,

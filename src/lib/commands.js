@@ -45,7 +45,32 @@ function resolveReferenceFile(referenceFile) {
 		return getFile(referenceFile, "id") || activeFile;
 	}
 	if (referenceFile?.id) {
-		return getFile(referenceFile.id, "id") || referenceFile;
+		return getFile(referenceFile.id, "id") || null;
+	}
+
+	return referenceFile;
+}
+
+/**
+ * Resolve a file reference strictly by identity, without falling back to the
+ * active file.
+ *
+ * Used by commands that target one specific tab (e.g. the tab a context menu
+ * was opened on). If the referenced file no longer exists, these commands must
+ * do nothing instead of silently acting on whatever is currently active — a
+ * stale menu would otherwise close the wrong tab.
+ * @param {string|object} referenceFile
+ * @returns {EditorFile|null}
+ */
+function resolveExactFile(referenceFile) {
+	const { getFile } = editorManager;
+
+	if (!referenceFile) return null;
+	if (typeof referenceFile === "string") {
+		return getFile(referenceFile, "id") || null;
+	}
+	if (referenceFile?.id) {
+		return getFile(referenceFile.id, "id") || null;
 	}
 
 	return referenceFile;
@@ -53,7 +78,8 @@ function resolveReferenceFile(referenceFile) {
 
 export function canSaveFile(file = editorManager.activeFile) {
 	return (
-		file?.type === "editor" &&
+		(file?.type === "editor" || file?.canSave === true) &&
+		file.canSave !== false &&
 		typeof file.save === "function" &&
 		typeof file.saveAs === "function"
 	);
@@ -113,15 +139,22 @@ async function closeTabs(files, options = {}) {
 		}
 	}
 
+	let complete = true;
 	for (const file of [...closableFiles]) {
-		if (save) {
-			await file.save();
+		if (save && file.isUnsaved) {
+			if (!canSaveFile(file)) {
+				complete = false;
+				continue;
+			}
+			const saved = await file.save();
+			if (saved === false || file.hasUnsavedChanges?.() || file.isUnsaved)
+				return false;
 		}
 
 		await file.remove(true, { silentPinned: true });
 	}
 
-	return true;
+	return complete;
 }
 
 export default {
@@ -132,22 +165,45 @@ export default {
 		await runAllTests();
 	},
 	async "close-all-tabs"() {
-		await closeTabs(editorManager.files);
+		return closeTabs(editorManager.files);
+	},
+	/**
+	 * Close every tab shown in the same tab group (pane tab bar) as the
+	 * reference file. In the sidebar layout all tabs belong to one visible
+	 * group, so all open files are closed.
+	 *
+	 * Resolved strictly: if the referenced file is gone (e.g. a stale context
+	 * menu), do nothing rather than closing an unrelated group.
+	 */
+	async "close-tabs-in-group"(referenceFile) {
+		const file = referenceFile
+			? resolveExactFile(referenceFile)
+			: editorManager.activeFile;
+		if (!file) return false;
+
+		const { openFileListPos } = appSettings.value;
+		const isPaneTabLayout =
+			openFileListPos === appSettings.OPEN_FILE_LIST_POS_HEADER ||
+			openFileListPos === appSettings.OPEN_FILE_LIST_POS_BOTTOM;
+		const files = isPaneTabLayout
+			? editorManager.getPaneFiles?.(file) || editorManager.files
+			: editorManager.files;
+		return closeTabs(files);
 	},
 	async "close-tabs-to-left"(referenceFile) {
-		await closeTabs(
+		return closeTabs(
 			getTabsRelativeToFile("left", referenceFile),
 			getTabCloseSelectionOptions(),
 		);
 	},
 	async "close-tabs-to-right"(referenceFile) {
-		await closeTabs(
+		return closeTabs(
 			getTabsRelativeToFile("right", referenceFile),
 			getTabCloseSelectionOptions(),
 		);
 	},
 	async "close-other-tabs"(referenceFile) {
-		await closeTabs(
+		return closeTabs(
 			getTabsRelativeToFile("others", referenceFile),
 			getTabCloseSelectionOptions(),
 		);
@@ -158,13 +214,35 @@ export default {
 			strings["save all changes warning"],
 		);
 		if (!doSave) return;
-		editorManager.files.forEach((file) => {
-			file.save();
-			file.isUnsaved = false;
-		});
+		let complete = true;
+		for (const file of [...editorManager.files]) {
+			if (!file.isUnsaved) continue;
+			if (!canSaveFile(file)) {
+				complete = false;
+				continue;
+			}
+			const saved = await file.save();
+			if (saved === false || file.hasUnsavedChanges?.() || file.isUnsaved)
+				return false;
+		}
+		return complete;
 	},
 	"close-current-tab"() {
 		editorManager.activeFile?.remove();
+	},
+	/**
+	 * Close the tab of the given file (which may not be the active file).
+	 *
+	 * Resolved strictly by identity: if an explicit id is provided but that tab
+	 * no longer exists (e.g. the menu went stale), this returns false instead of
+	 * falling back to the active file and closing the wrong tab.
+	 */
+	"close-tab"(referenceFile) {
+		const file = referenceFile
+			? resolveExactFile(referenceFile)
+			: editorManager.activeFile;
+		if (!file) return false;
+		return file.remove();
 	},
 	"new-pane"() {
 		return editorManager.createPane?.();
@@ -431,8 +509,8 @@ export default {
 		try {
 			const { activeFile } = editorManager;
 			if (!canSaveFile(activeFile)) return;
-			await activeFile.save();
-			if (showToast) {
+			const saved = await activeFile.save();
+			if (showToast && saved === true) {
 				toast(strings["file saved"]);
 			}
 		} catch (error) {
@@ -443,8 +521,8 @@ export default {
 		try {
 			const { activeFile } = editorManager;
 			if (!canSaveFile(activeFile)) return;
-			await activeFile.saveAs();
-			if (showToast) {
+			const saved = await activeFile.saveAs();
+			if (showToast && saved === true) {
 				toast(strings["file saved"]);
 			}
 		} catch (error) {

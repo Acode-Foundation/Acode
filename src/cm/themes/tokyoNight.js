@@ -11,7 +11,8 @@ export const config = {
 	cursor: "#c0caf5",
 	dropdownBackground: "#1a1b26",
 	dropdownBorder: "#414868",
-	activeLine: "#24283b",
+	// Keep this translucent: CodeMirror draws selections behind line backgrounds.
+	activeLine: "#6a83ce20",
 	lineNumber: "#414868",
 	lineNumberActive: "#a9b1d6",
 	matchingBracket: "#24283b",

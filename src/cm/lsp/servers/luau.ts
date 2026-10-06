@@ -164,7 +164,7 @@ esac && apk add --no-cache gcompat libstdc++ && TMP_DIR="$(mktemp -d)" && cleanu
 
 			const loadingDialog = loader.create(
 				label,
-				`${actionLabel}ing ${label}...`,
+				`${mode === "update" ? "Updating" : "Installing"} ${label}...`,
 			);
 			try {
 				loadingDialog.show();

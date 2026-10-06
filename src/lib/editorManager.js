@@ -68,6 +68,7 @@ import {
 } from "cm/modelist";
 import createTouchSelectionMenu from "cm/touchSelectionMenu";
 import "cm/supportedModes";
+import { onProviderRegistered } from "fileSystem";
 import { autocompletion } from "@codemirror/autocomplete";
 import { serverCompletionSource } from "@codemirror/lsp-client";
 import colorView from "cm/colorView";
@@ -78,6 +79,7 @@ import {
 	restoreSelection,
 	setScrollPosition,
 } from "cm/editorUtils";
+import { indentedLineWrapping } from "cm/indentedLineWrapping";
 import indentGuides from "cm/indentGuides";
 import { lineBreakMarker } from "cm/lineBreakMarker";
 import quickToolsModifierInput from "cm/quickToolsModifierInput";
@@ -96,7 +98,7 @@ import SideButton, { sideButtonContainer } from "components/sideButton";
 import keyboardHandler, { keydownState } from "handlers/keyboard";
 import { animate } from "motion";
 import config from "./config";
-import EditorFile from "./editorFile";
+import EditorFile, { AUTO_SAVE } from "./editorFile";
 import openFile from "./openFile";
 import { addedFolder } from "./openFolder";
 import appSettings from "./settings";
@@ -140,6 +142,8 @@ async function EditorManager($header, $body) {
 	const PANE_SPLIT_VERTICAL = "vertical";
 
 	const docSyncTimers = new WeakMap();
+	// Preview text belongs to the loading view, not the file's saved session.
+	const loadingPreviews = new WeakMap();
 	let touchSelectionController = null;
 	let touchSelectionSyncRaf = 0;
 	let nativeContextMenuDisabled = null;
@@ -1033,7 +1037,8 @@ async function EditorManager($header, $body) {
 	}
 
 	function makeWrapExtension() {
-		if (appSettings?.value?.textWrap) return EditorView.lineWrapping;
+		if (appSettings?.value?.textWrap)
+			return indentedLineWrapping(appSettings.value.wrappingIndent);
 		return horizontalScrollPastEnd(
 			Number(appSettings?.value?.leftMargin ?? 50),
 		);
@@ -1193,7 +1198,7 @@ async function EditorManager($header, $body) {
 			},
 		},
 		{
-			keys: ["textWrap"],
+			keys: ["textWrap", "wrappingIndent"],
 			compartments: [wrapCompartment],
 			build() {
 				return makeWrapExtension();
@@ -1401,6 +1406,7 @@ async function EditorManager($header, $body) {
 	async function configureLspForFile(file) {
 		const pane = getFileLspPane(file);
 		if (!pane?.editor || pane.activeFile?.id !== file?.id) return;
+		if (!file.loaded || file.loading) return;
 		const targetEditor = pane.editor;
 		const metadata = buildLspMetadata(file, targetEditor);
 		const token = ++pane.lspRequestToken;
@@ -1850,13 +1856,7 @@ async function EditorManager($header, $body) {
 			const col = Math.max(0, Math.min(targetColumn, docLine.length));
 			const pos = docLine.from + col;
 
-			// Move cursor and scroll into view
-			editor.dispatch({
-				selection: { anchor: pos, head: pos },
-				effects: EditorView.scrollIntoView(pos, { y: "center" }),
-			});
-			focusEditorIfEditable(editor);
-			return true;
+			return revealEditorRange(editor, pos);
 		} catch (error) {
 			console.error("Error in gotoLine:", error);
 			return false;
@@ -2181,12 +2181,7 @@ async function EditorManager($header, $body) {
 						const col = Math.max(0, Math.min(targetColumn, docLine.length));
 						const pos = docLine.from + col;
 
-						targetEditor.dispatch({
-							selection: { anchor: pos, head: pos },
-							effects: EditorView.scrollIntoView(pos, { y: "center" }),
-						});
-						focusEditorIfEditable(targetEditor);
-						return true;
+						return revealEditorRange(targetEditor, pos);
 					} catch (error) {
 						console.error("Error in gotoLine:", error);
 						return false;
@@ -2833,16 +2828,18 @@ async function EditorManager($header, $body) {
 		}
 	}
 
-	function showLoadingEditor(file, text = "") {
+	function showLoadingEditor(file, text = loadingPreviews.get(file)) {
 		const loadingState = EditorState.create({
-			doc: text,
+			doc: text ?? "",
 			extensions: [
 				themeCompartment.of(getConfiguredThemeExtension()),
 				...getBaseExtensionsFromOptions(),
 				languageCompartment.of([]),
 				lspCompartment.of([]),
 				readOnlyCompartment.of(createEditorReadOnlyExtension(true)),
-				placeholder(`Loading ${file.filename || "file"}...`),
+				...(text === undefined
+					? [placeholder(`Loading ${file.filename || "file"}...`)]
+					: []),
 			],
 		});
 		editor.setState(loadingState);
@@ -2899,6 +2896,11 @@ async function EditorManager($header, $body) {
 	// Helper: apply a file's content and language to the editor view
 	function applyFileToEditor(file, options = {}) {
 		if (!file || file.type !== "editor") return;
+		if (!file.loaded || file.loading) {
+			showLoadingEditor(file);
+			return;
+		}
+		loadingPreviews.delete(file);
 		const {
 			forceRecreate = false,
 			restoreScroll = true,
@@ -3018,9 +3020,19 @@ async function EditorManager($header, $body) {
 		// Restore folds from previous state if available
 		try {
 			const folds = prevState ? getAllFolds(prevState) : [];
+			const canConsumeRestoredFolds = file.loaded && !file.loading;
+			if (
+				!folds.length &&
+				canConsumeRestoredFolds &&
+				file.restoredFolds?.length
+			) {
+				folds.push(...file.restoredFolds);
+			}
 			if (folds && folds.length) {
 				restoreFolds(editor, folds);
+				file.session = editor.state;
 			}
+			if (canConsumeRestoredFolds) file.restoredFolds = null;
 		} catch (error) {
 			warnRecoverable(
 				"Failed to restore folded regions from previous session state.",
@@ -3182,6 +3194,9 @@ async function EditorManager($header, $body) {
 		hasUnsavedFiles,
 		getEditorHeight,
 		getEditorWidth,
+		revealRange(from, to = from, options) {
+			return revealEditorRange(manager.editor, from, to, options);
+		},
 		header: $header,
 		openPreviousEditorFromHistory,
 		openNextEditorFromHistory,
@@ -3285,7 +3300,7 @@ async function EditorManager($header, $body) {
 			diagnosticsButtonSyncRaf = requestAnimationFrame(() => {
 				diagnosticsButtonSyncRaf = 0;
 				const active = manager.activeFile;
-				if (active?.type === "editor") {
+				if (active?.type === "editor" && active.loaded && !active.loading) {
 					active.session = editor.state;
 				}
 				toggleProblemButton();
@@ -3408,6 +3423,9 @@ async function EditorManager($header, $body) {
 		updateMargin();
 		applyOptions(["textWrap"]);
 	});
+	appSettings.on("update:wrappingIndent", function () {
+		applyOptions(["wrappingIndent"]);
+	});
 
 	appSettings.on("update:leftMargin", function () {
 		applyOptions(["textWrap"]);
@@ -3434,12 +3452,51 @@ async function EditorManager($header, $body) {
 
 	function recreateActiveEditorState() {
 		const file = manager.activeFile;
-		if (file?.type !== "editor") return;
+		if (file?.type !== "editor" || !file.loaded || file.loading) return;
 
 		file.session = editor.state;
 		file.lastScrollTop = editor.scrollDOM?.scrollTop ?? 0;
 		file.lastScrollLeft = editor.scrollDOM?.scrollLeft ?? 0;
 		applyFileToEditor(file, { forceRecreate: true });
+	}
+
+	/**
+	 * Reveal an editor range after a file switch.
+	 *
+	 * File activation restores the tab's saved viewport over two animation
+	 * frames and a short timeout. Explicit navigation must cancel that work or
+	 * it can overwrite CodeMirror's scrollIntoView effect while leaving the new
+	 * selection in place.
+	 */
+	function revealEditorRange(
+		targetEditor,
+		from,
+		to = from,
+		{ y = "center", userEvent = "select.reveal" } = {},
+	) {
+		if (!targetEditor) return false;
+
+		try {
+			const length = targetEditor.state.doc.length;
+			const anchor = Math.max(0, Math.min(Number(from) || 0, length));
+			const head = Math.max(0, Math.min(Number(to) || 0, length));
+
+			if (targetEditor === editor) {
+				cancelPendingScrollRestore();
+				clearScrollbarScrollLock();
+			}
+
+			targetEditor.dispatch({
+				selection: { anchor, head },
+				effects: EditorView.scrollIntoView(anchor, { y }),
+				userEvent,
+			});
+			focusEditorIfEditable(targetEditor);
+			return true;
+		} catch (error) {
+			console.error("Error revealing editor range:", error);
+			return false;
+		}
 	}
 
 	appSettings.on("update:tabSize", function () {
@@ -3649,7 +3706,7 @@ async function EditorManager($header, $body) {
 				if (file.uri && file.isUnsaved && autosave) {
 					timers.autosaveTimeout = setTimeout(() => {
 						timers.autosaveTimeout = null;
-						file.save()?.catch?.((error) => {
+						file.save(AUTO_SAVE)?.catch?.((error) => {
 							warnRecoverable(
 								`Failed to autosave ${file.filename || file.uri}`,
 								error,
@@ -3665,6 +3722,20 @@ async function EditorManager($header, $body) {
 	}
 
 	// Register critical listeners
+	onProviderRegistered((test) => {
+		for (const file of manager.files) {
+			if (
+				file.type === "editor" &&
+				file.tab &&
+				!file.loaded &&
+				file.uri &&
+				test(file.uri)
+			) {
+				void file.load().catch(console.error);
+			}
+		}
+	});
+
 	manager.on(["file-loaded"], (file) => {
 		if (!file || file.type !== "editor") return;
 		const pane = getFilePane(file);
@@ -3676,7 +3747,8 @@ async function EditorManager($header, $body) {
 	});
 
 	manager.on(["file-loading-preview"], (file, text) => {
-		if (!file || file.type !== "editor" || !file.loading) return;
+		if (!file || file.type !== "editor" || !file.loading || !file.tab) return;
+		loadingPreviews.set(file, text);
 		const pane = getFilePane(file);
 		if (!pane?.editor || pane.activeFile?.id !== file.id) return;
 
@@ -3696,7 +3768,7 @@ async function EditorManager($header, $body) {
 		const file = manager.activeFile;
 		if (file?.type !== "editor") return;
 		try {
-			const ro = !file.editable || !!file.loading;
+			const ro = !file.editable || !file.loaded || file.loading;
 			reconfigureEditorReadOnly(editor, readOnlyCompartment, ro);
 			touchSelectionController?.onStateChanged();
 		} catch (error) {
@@ -3711,6 +3783,7 @@ async function EditorManager($header, $body) {
 	});
 
 	manager.on(["remove-file"], (file) => {
+		loadingPreviews.delete(file);
 		removeFileFromHistory(file);
 		clearDocSyncTimers(file);
 		detachLspForFile(file);
@@ -4093,7 +4166,12 @@ async function EditorManager($header, $body) {
 			return true;
 		}
 
-		if (sourcePane?.activeFile?.id === file.id && file.type === "editor") {
+		if (
+			sourcePane?.activeFile?.id === file.id &&
+			file.type === "editor" &&
+			file.loaded &&
+			!file.loading
+		) {
 			const sourceEditor = sourcePane.editor;
 			file.session = getRawEditorState(sourceEditor?.state);
 			file.lastScrollTop = sourceEditor?.scrollDOM?.scrollTop || 0;
@@ -4929,11 +5007,7 @@ async function EditorManager($header, $body) {
 				file.tab?.classList.add("active");
 				updateHeaderForFile(file);
 				if (file.type === "editor") {
-					if (!file.loaded && !file.loading) {
-						showLoadingEditor(file);
-					} else {
-						applyFileToPaneEditor(file, pane);
-					}
+					applyFileToPaneEditor(file, pane);
 					pane.editorContainer.style.display = "block";
 
 					$hScrollbar.hideImmediately();
@@ -4962,7 +5036,7 @@ async function EditorManager($header, $body) {
 
 		// Persist the previous editor's state before switching away
 		const prev = paneActiveFile;
-		if (prev?.type === "editor") {
+		if (prev?.type === "editor" && prev.loaded && !prev.loading) {
 			prev.session = getRawEditorState(pane.editor.state);
 			prev.lastScrollTop = pane.editor.scrollDOM?.scrollTop || 0;
 			prev.lastScrollLeft = pane.editor.scrollDOM?.scrollLeft || 0;
@@ -4987,12 +5061,7 @@ async function EditorManager($header, $body) {
 
 		if (file.type === "editor") {
 			pane.touchSelectionController?.setEnabled(true);
-			if (!file.loaded && !file.loading) {
-				showLoadingEditor(file);
-			} else {
-				// Apply active file content and language to CodeMirror
-				applyFileToEditor(file);
-			}
+			applyFileToEditor(file);
 			pane.editorContainer.style.display = "block";
 
 			$hScrollbar.hideImmediately();

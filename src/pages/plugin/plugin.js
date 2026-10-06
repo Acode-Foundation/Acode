@@ -18,6 +18,7 @@ import anchor from "markdown-it-anchor";
 import markdownItFootnote from "markdown-it-footnote";
 import MarkdownItGitHubAlerts from "markdown-it-github-alerts";
 import markdownItTaskLists from "markdown-it-task-lists";
+import mimeTypes from "mime-types";
 import { highlightCodeBlock, initHighlighting } from "utils/codeHighlight";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
@@ -120,8 +121,10 @@ export default async function PluginInclude(
 				Url.join(PLUGIN_DIR, id, installedPlugin.icon),
 			);
 			const iconData = await fsOperation(iconUrl).readFile();
+			const iconMimeType =
+				mimeTypes.lookup(installedPlugin.icon) || "image/png";
 			const icon = URL.createObjectURL(
-				new Blob([iconData], { type: "image/png" }),
+				new Blob([iconData], { type: iconMimeType }),
 			);
 			plugin = {
 				id,
@@ -320,6 +323,9 @@ export default async function PluginInclude(
 				const purchase = await getPurchase(product.productId);
 				await fetch(Url.join(config.API_BASE, "plugin/order"), {
 					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+					},
 					body: JSON.stringify({
 						id: plugin.id,
 						token: purchase?.purchaseToken,
@@ -379,6 +385,9 @@ export default async function PluginInclude(
 			$button.textContent = strings["loading..."];
 			const res = await fetch(Url.join(config.API_BASE, "plugin/refund"), {
 				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
 				body: JSON.stringify({
 					id: plugin.id,
 					package: BuildInfo.packageName,

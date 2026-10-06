@@ -3,16 +3,26 @@ import DOMPurify from "dompurify";
 import actionStack from "lib/actionStack";
 import restoreTheme from "lib/restoreTheme";
 
+let nextConfirmId = 0;
+
 /**
  * Confirm dialog box
  * @param {string} titleText Title text
  * @param {string} [message] Alert message
  * @param {boolean} [isHTML] Whether the message is HTML
- * @param {{checkboxText?: string, returnState?: boolean}} [options]
+ * @param {{checkboxText?: string, returnState?: boolean, signal?: AbortSignal, direction?: "ltr" | "rtl", aboveOverlay?: boolean}} [options]
  * @returns {Promise<boolean | {confirmed: boolean, checked: boolean}>}
  */
 function confirm(titleText, message, isHTML, options = {}) {
 	return new Promise((resolve) => {
+		if (options.signal?.aborted) {
+			resolve(
+				options.returnState ? { confirmed: false, checked: false } : false,
+			);
+			return;
+		}
+		const actionId = `confirm-${++nextConfirmId}`;
+		let closed = false;
 		if (!message && titleText) {
 			message = titleText;
 			titleText = "";
@@ -42,20 +52,15 @@ function confirm(titleText, message, isHTML, options = {}) {
 		};
 		const okBtn = tag("button", {
 			textContent: strings.ok,
-			onclick: function () {
-				hide();
-				resolve(getResponse(true));
-			},
+			onclick: () => close(true),
 		});
 		const cancelBtn = tag("button", {
 			textContent: strings.cancel,
-			onclick: function () {
-				hide();
-				resolve(getResponse(false));
-			},
+			onclick: cancel,
 		});
 		const confirmDiv = tag("div", {
-			className: "prompt confirm",
+			className: `prompt confirm${options.aboveOverlay ? " above-overlay" : ""}`,
+			dir: options.direction,
 			children: [
 				titleSpan,
 				messageSpan,
@@ -71,24 +76,37 @@ function confirm(titleText, message, isHTML, options = {}) {
 		});
 
 		actionStack.push({
-			id: "confirm",
-			action: hideAlert,
+			id: actionId,
+			action: cancel,
 		});
 
 		app.append(confirmDiv, mask);
 		restoreTheme(true);
+		options.signal?.addEventListener("abort", cancel, { once: true });
+
+		function cancel() {
+			close(false);
+		}
+
+		function close(confirmed) {
+			if (closed) return;
+			closed = true;
+			options.signal?.removeEventListener("abort", cancel);
+			hide();
+			resolve(getResponse(confirmed));
+		}
 
 		function hideAlert() {
 			confirmDiv.classList.add("hide");
 			restoreTheme();
 			setTimeout(() => {
-				app.removeChild(confirmDiv);
-				app.removeChild(mask);
+				confirmDiv.remove();
+				mask.remove();
 			}, 300);
 		}
 
 		function hide() {
-			actionStack.remove("confirm");
+			actionStack.remove(actionId);
 			hideAlert();
 		}
 	});

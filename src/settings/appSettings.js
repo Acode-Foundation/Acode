@@ -7,6 +7,7 @@ import select from "dialogs/select";
 import actions from "handlers/quickTools";
 import actionStack from "lib/actionStack";
 import config from "lib/config";
+import fileIcons from "lib/fileIcons";
 import fonts from "lib/fonts";
 import lang from "lib/lang";
 import openFile from "lib/openFile";
@@ -225,6 +226,27 @@ export default function otherSettings() {
 			info: strings["settings-info-app-font-manager"],
 			category: categories.fonts,
 			chevron: true,
+		},
+		{
+			key: "iconTheme",
+			text: strings["icon pack"],
+			value: values.iconTheme || "builtin",
+			get select() {
+				return fileIcons
+					.list()
+					.map((theme) => [
+						theme.id,
+						theme.available === false
+							? `${theme.name} (${strings.unavailable || "unavailable"})`
+							: theme.name,
+					]);
+			},
+			valueText: (value) => {
+				const theme = fileIcons.list().find((entry) => entry.id === value);
+				return theme?.name || value || "Builtin";
+			},
+			info: strings["settings-info-icon-pack"],
+			category: categories.interface,
 		},
 		{
 			key: "rememberFiles",

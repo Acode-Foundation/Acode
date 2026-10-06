@@ -21,51 +21,6 @@ body {
 
     wc-page {
       &#root {
-        &[open-file-list-pos="bottom"] {
-          &[footer-height="1"] {
-            header {
-              bottom: 40px;
-            }
-
-            #sidebar-toggler {
-              bottom: 40px;
-            }
-          }
-
-          &[footer-height="2"] {
-            header {
-              bottom: 80px;
-            }
-
-            #sidebar-toggler {
-              bottom: 80px;
-            }
-          }
-
-          &[footer-height="3"] {
-            header {
-              bottom: 120px;
-            }
-
-            #sidebar-toggler {
-              bottom: 120px;
-            }
-          }
-
-          header {
-            bottom: 0;
-            top: auto !important;
-            z-index: 99;
-          }
-
-          #sidebar-toggler {
-            bottom: 0;
-            top: auto !important;
-            z-index: 99;
-            transition: none !important;
-          }
-        }
-
         &:not(.top-bar) {
           &.show-header {
             #header-toggler {

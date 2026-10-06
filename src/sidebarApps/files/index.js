@@ -1,5 +1,6 @@
 import "./style.scss";
 import Sidebar from "components/sidebar";
+import fileIcons from "lib/fileIcons";
 import settings from "lib/settings";
 
 /**@type {HTMLElement} */
@@ -45,6 +46,9 @@ function initApp(el) {
  * @param {HTMLElement} el
  */
 function onSelected(el) {
+	// Phone sidebars and inactive sidebar apps are detached, so document-wide
+	// icon updates cannot reach them until this view is shown again.
+	fileIcons.refreshRenderedIcons(container);
 	const $scrollableLists = container.getAll(":scope .scroll[data-scroll-top]");
 	$scrollableLists.forEach(($el) => {
 		$el.scrollTop = $el.dataset.scrollTop;

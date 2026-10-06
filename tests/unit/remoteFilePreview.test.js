@@ -19,10 +19,10 @@ describe("readRemoteFilePreview", () => {
 			readRemoteFilePreview({
 				editorCache,
 				transportCache,
-				encoding: "UTF-8",
+				encoding: "utf-16le",
 			}),
 		).resolves.toEqual({ editorCacheExists: true, text: "unsaved" });
-		expect(editorCache.readFile).toHaveBeenCalledWith("UTF-8");
+		expect(editorCache.readFile).toHaveBeenCalledWith("utf-8");
 		expect(transportCache.exists).not.toHaveBeenCalled();
 	});
 

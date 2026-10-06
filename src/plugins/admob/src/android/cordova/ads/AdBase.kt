@@ -45,7 +45,7 @@ abstract class AdBase(ctx: ExecuteContext) {
 
     fun destroy() {
         plugin.activity.runOnUiThread {
-            ads.remove(id)
+            ads.remove(id, this)
         }
     }
 
@@ -75,6 +75,8 @@ abstract class AdBase(ctx: ExecuteContext) {
     }
 
     fun emit(eventName: String, data: Map<String, Any?> = mapOf()) {
+        // A reload can recreate the same ad ID while old SDK callbacks finish.
+        if (ads[id] !== this) return
         plugin.emit(eventName, mapOf("adId" to id) + data)
     }
 

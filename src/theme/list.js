@@ -87,6 +87,11 @@ export async function apply(id, init) {
 	if (!DOES_SUPPORT_THEME) {
 		id = "default";
 	}
+	if (id.toLowerCase() === "system") {
+		// Refresh the mutable System theme before reading its preferred editor
+		// theme. Do not re-enter apply() while appTheme is being updated below.
+		updateSystemTheme(isDeviceDarkTheme(), false);
+	}
 
 	themeApplied = true;
 	const theme = get(id);
@@ -164,10 +169,10 @@ export function update(theme) {
 	});
 }
 
-function syncSystemTheme(event) {
+function syncSystemTheme(event, applyTheme = true) {
 	if (settings.value.appTheme.toLowerCase() !== "system") return;
 	const isDark = event ? event.matches : darkModeMediaQuery.matches;
-	updateSystemTheme(isDark);
+	updateSystemTheme(isDark, applyTheme);
 }
 
 function startSystemThemeWatcher() {
@@ -197,7 +202,10 @@ function stopSystemThemeWatcher() {
 export function updateSystemThemeWatcher(theme) {
 	if (String(theme).toLowerCase() === "system") {
 		startSystemThemeWatcher();
-		syncSystemTheme();
+		// Starting the watcher happens from the appTheme update listener. Applying
+		// the theme here would update appTheme again before the first settings
+		// update is saved, causing unbounded synchronous recursion.
+		syncSystemTheme(undefined, false);
 		return;
 	}
 	stopSystemThemeWatcher();

@@ -3,6 +3,7 @@ package admob.plus.cordova
 
 object Actions {
     const val AD_CREATE = "adCreate"
+    const val AD_DESTROY = "adDestroy"
     const val AD_HIDE = "adHide"
     const val AD_IS_LOADED = "adIsLoaded"
     const val AD_LOAD = "adLoad"

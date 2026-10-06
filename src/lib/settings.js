@@ -134,6 +134,7 @@ class Settings {
 			cursorWidth: 2,
 			editorTheme: "one_dark",
 			textWrap: false,
+			wrappingIndent: "same",
 			softTab: true,
 			tabSize: 2,
 			retryRemoteFsAfterFail: true,
@@ -217,6 +218,8 @@ class Settings {
 			developerMode: false,
 			shiftClickSelection: true,
 			showShareButton: true,
+			appIcon: "default",
+			iconTheme: "builtin",
 		};
 		this.value = structuredClone(this.#defaultSettings);
 	}
