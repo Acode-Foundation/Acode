@@ -51,14 +51,14 @@ function touchDistance(a: PinchPoint, b: PinchPoint): number {
  * Read the font size the editor is actually displaying, in pixels.
  *
  * The font theme only sets font-size on the editor root, and settings.json may
- * use any unit accepted by config.FONT_SIZE (px|rem|em|pt|mm|pc|in), so the
- * computed style of the content element is the only reliable base for the pinch
+ * use any unit accepted by config.FONT_SIZE (px|rem|em|pt|mm|pc|in), so the computed 
+ * style of the editor root is the only reliable base for the pinch
  * ratio. The saved setting is used as a fallback only when no computed style is
  * available (e.g. in tests).
  */
-function readFontSizePx(view: { contentDOM: HTMLElement }): number {
+function readFontSizePx(view: { dom: HTMLElement }): number {
 	const computed = Number.parseFloat(
-		getComputedStyle(view.contentDOM).fontSize,
+		getComputedStyle(view.dom).fontSize,
 	);
 	if (Number.isFinite(computed) && computed > 0) return computed;
 
@@ -98,7 +98,7 @@ export default function pinchZoom() {
 			// value, so writing settings mid-gesture can never undo a preview once
 			// the pinch returns to its starting size, and would leave the font
 			// theme stale as soon as the inline preview is removed.
-			view.contentDOM.style.fontSize = `${px}px`;
+			view.dom.style.fontSize = `${px}px`;
 		}
 
 		function persistFontSize() {
@@ -111,7 +111,7 @@ export default function pinchZoom() {
 			}
 
 			// Let the settings-driven font theme control the editor after the gesture.
-			view.contentDOM.style.fontSize = gesture.originalInlineFontSize;
+			view.dom.style.fontSize = gesture.originalInlineFontSize;
 		}
 
 		function onTouchStart(event: TouchEvent) {
@@ -129,7 +129,7 @@ export default function pinchZoom() {
 			gesture.lastPx = gesture.startPx;
 			gesture.pendingDistance = gesture.startDistance;
 			gesture.lastUpdate = 0;
-			gesture.originalInlineFontSize = view.contentDOM.style.fontSize;
+			gesture.originalInlineFontSize = view.dom.style.fontSize;
 		}
 
 		function onTouchMove(event: TouchEvent) {
@@ -190,7 +190,7 @@ export default function pinchZoom() {
 			destroy() {
 				// Never leave a half-finished preview behind.
 				if (gesture.pinching) {
-					view.contentDOM.style.fontSize = gesture.originalInlineFontSize;
+					view.dom.style.fontSize = gesture.originalInlineFontSize;
 					gesture.pinching = false;
 				}
 				dom.removeEventListener("touchstart", onTouchStart);

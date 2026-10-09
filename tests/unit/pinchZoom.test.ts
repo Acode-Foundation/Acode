@@ -34,7 +34,7 @@ function createView(fontSize = "12px") {
 		}),
 		parent,
 	});
-	view.contentDOM.style.fontSize = fontSize;
+	view.dom.style.fontSize = fontSize;
 	return view;
 }
 
@@ -93,7 +93,7 @@ describe("pinchZoom gesture", () => {
 		]);
 
 		// Live preview is applied directly to the editor.
-		expect(view.contentDOM.style.fontSize).toBe("24px");
+		expect(view.dom.style.fontSize).toBe("24px");
 		// Nothing is written to settings while the fingers are down.
 		expect(settingsMock.update).not.toHaveBeenCalled();
 
@@ -104,7 +104,7 @@ describe("pinchZoom gesture", () => {
 		expect(settingsMock.update).toHaveBeenCalledWith(false);
 		expect(settingsMock.value.fontSize).toBe("24px");
 		// The inline preview is dropped so the rebuilt font theme takes over.
-		expect(view.contentDOM.style.fontSize).toBe("12px");
+		expect(view.dom.style.fontSize).toBe("12px");
 		view.destroy();
 	});
 
@@ -124,7 +124,7 @@ describe("pinchZoom gesture", () => {
 		]);
 
 		// 16px * 200/100 = 32px (parsing "1rem" as 1 would clamp down to 6px).
-		expect(view.contentDOM.style.fontSize).toBe("32px");
+		expect(view.dom.style.fontSize).toBe("32px");
 		view.destroy();
 	});
 
@@ -141,7 +141,7 @@ describe("pinchZoom gesture", () => {
 			{ clientX: 50, clientY: 0 },
 		]);
 
-		expect(view.contentDOM.style.fontSize).toBe("6px");
+		expect(view.dom.style.fontSize).toBe("6px");
 
 		fireTouch(view, "touchend", [{ clientX: 0, clientY: 0 }]);
 		expect(settingsMock.value.fontSize).toBe("6px");
@@ -162,7 +162,7 @@ describe("pinchZoom gesture", () => {
 			{ clientX: 150, clientY: 0 },
 		]);
 
-		expect(view.contentDOM.style.fontSize).toBe("18px");
+		expect(view.dom.style.fontSize).toBe("18px");
 
 		fireTouch(view, "touchmove", [
 			{ clientX: 0, clientY: 0 },
@@ -170,7 +170,7 @@ describe("pinchZoom gesture", () => {
 		]);
 
 		// The second move is throttled during the gesture.
-		expect(view.contentDOM.style.fontSize).toBe("18px");
+		expect(view.dom.style.fontSize).toBe("18px");
 
 		// Ending the gesture must apply the latest pending distance.
 		fireTouch(view, "touchend", [{ clientX: 0, clientY: 0 }]);
@@ -188,7 +188,7 @@ describe("pinchZoom gesture", () => {
 		now += 60;
 		fireTouch(view, "touchmove", [{ clientX: 0, clientY: 400 }]);
 
-		expect(view.contentDOM.style.fontSize).toBe("12px");
+		expect(view.dom.style.fontSize).toBe("12px");
 		expect(settingsMock.update).not.toHaveBeenCalled();
 		view.destroy();
 	});
@@ -205,14 +205,14 @@ describe("pinchZoom gesture", () => {
 			{ clientX: 0, clientY: 0 },
 			{ clientX: 200, clientY: 0 },
 		]);
-		expect(view.contentDOM.style.fontSize).toBe("24px");
+		expect(view.dom.style.fontSize).toBe("24px");
 
 		now += 60;
 		fireTouch(view, "touchmove", [
 			{ clientX: 0, clientY: 0 },
 			{ clientX: 100, clientY: 0 },
 		]);
-		expect(view.contentDOM.style.fontSize).toBe("12px");
+		expect(view.dom.style.fontSize).toBe("12px");
 
 		fireTouch(view, "touchend", [{ clientX: 0, clientY: 0 }]);
 
@@ -220,7 +220,7 @@ describe("pinchZoom gesture", () => {
 		// font theme (still 12px) matches what the editor shows.
 		expect(settingsMock.update).not.toHaveBeenCalled();
 		expect(settingsMock.value.fontSize).toBe("12px");
-		expect(view.contentDOM.style.fontSize).toBe("12px");
+		expect(view.dom.style.fontSize).toBe("12px");
 		view.destroy();
 	});
 
@@ -235,7 +235,7 @@ describe("pinchZoom gesture", () => {
 
 		expect(settingsMock.update).not.toHaveBeenCalled();
 		expect(settingsMock.value.fontSize).toBe("9.5px");
-		expect(view.contentDOM.style.fontSize).toBe("9.5px");
+		expect(view.dom.style.fontSize).toBe("9.5px");
 		view.destroy();
 	});
 
@@ -250,7 +250,7 @@ describe("pinchZoom gesture", () => {
 
 		expect(settingsMock.update).not.toHaveBeenCalled();
 		expect(settingsMock.value.fontSize).toBe("99px");
-		expect(view.contentDOM.style.fontSize).toBe("99px");
+		expect(view.dom.style.fontSize).toBe("99px");
 		view.destroy();
 	});
 });
