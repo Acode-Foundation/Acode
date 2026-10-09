@@ -1,4 +1,3 @@
-
 import { ViewPlugin } from "@codemirror/view";
 import settings from "lib/settings";
 
@@ -48,59 +47,44 @@ function touchDistance(a: PinchPoint, b: PinchPoint): number {
 	return Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
 }
 
+/**
+ * Read the font size the editor is actually displaying, in pixels.
+ *
+ * The font theme only sets font-size on the editor root, and settings.json may
+ * use any unit accepted by config.FONT_SIZE (px|rem|em|pt|mm|pc|in), so the
+ * computed style of the content element is the only reliable base for the pinch
+ * ratio. The saved setting is used as a fallback only when no computed style is
+ * available (e.g. in tests).
+ */
 function readFontSizePx(view: { contentDOM: HTMLElement }): number {
-	const configuredSize = String(
-		settings?.value?.fontSize || `${DEFAULT_FONT_SIZE}px`,
-	).trim();
-
-	const match = configuredSize.match(
-		/^(\d+(?:\.\d+)?)(px|rem|em|pt)?$/i,
+	const computed = Number.parseFloat(
+		getComputedStyle(view.contentDOM).fontSize,
 	);
+	if (Number.isFinite(computed) && computed > 0) return computed;
+
+	const match = String(settings?.value?.fontSize || `${DEFAULT_FONT_SIZE}px`)
+		.trim()
+		.match(/^(\d+(?:\.\d+)?)px$/i);
 
 	if (match) {
 		const value = Number.parseFloat(match[1]);
-		const unit = (match[2] || "px").toLowerCase();
-
-		if (Number.isFinite(value) && value > 0) {
-			switch (unit) {
-				case "rem":
-					return value * Number.parseFloat(
-						getComputedStyle(document.documentElement).fontSize || "16",
-					);
-				case "em":
-					return value * readComputedFontSize(view);
-				case "pt":
-					return value * (96 / 72);
-				default:
-					return value;
-			}
-		}
+		if (Number.isFinite(value) && value > 0) return value;
 	}
 
-	return readComputedFontSize(view);
-}
-
-function readComputedFontSize(view: { contentDOM: HTMLElement }): number {
-	const computedSize = Number.parseFloat(
-		getComputedStyle(view.contentDOM).fontSize,
-	);
-
-	return Number.isFinite(computedSize) && computedSize > 0
-		? computedSize
-		: DEFAULT_FONT_SIZE;
+	return DEFAULT_FONT_SIZE;
 }
 
 export default function pinchZoom() {
 	return ViewPlugin.define((view) => {
 		const gesture = {
 			pinching: false,
+			moved: false,
 			startDistance: 0,
 			startPx: DEFAULT_FONT_SIZE,
 			lastPx: DEFAULT_FONT_SIZE,
 			pendingDistance: 0,
 			lastUpdate: 0,
 			originalInlineFontSize: "",
-			originalSetting: "",
 		};
 
 		function applyFontSize(px: number) {
@@ -109,23 +93,24 @@ export default function pinchZoom() {
 
 			gesture.lastPx = px;
 
-			// Preview directly so returning to the saved size also updates the editor.
+			// Preview directly on this editor. settings.update() only notifies
+			// update:fontSize listeners while the value differs from the last SAVED
+			// value, so writing settings mid-gesture can never undo a preview once
+			// the pinch returns to its starting size, and would leave the font
+			// theme stale as soon as the inline preview is removed.
 			view.contentDOM.style.fontSize = `${px}px`;
-
-			settings.value.fontSize = `${px}px`;
-			settings.update(undefined, false, false);
 		}
 
 		function persistFontSize() {
 			if (gesture.lastPx !== gesture.startPx) {
+				// The value differs from the saved one, so this fires update:fontSize
+				// (rebuilding the font theme in every pane) and writes settings.json
+				// exactly once per gesture, before the inline preview is dropped below.
 				settings.value.fontSize = `${gesture.lastPx}px`;
 				settings.update(false);
-			} else {
-				// Restore the original unit/value if the gesture made no net change.
-				settings.value.fontSize = gesture.originalSetting;
 			}
 
-			// Let the normal settings styles control the editor after the gesture.
+			// Let the settings-driven font theme control the editor after the gesture.
 			view.contentDOM.style.fontSize = gesture.originalInlineFontSize;
 		}
 
@@ -135,6 +120,7 @@ export default function pinchZoom() {
 			event.preventDefault();
 
 			gesture.pinching = true;
+			gesture.moved = false;
 			gesture.startDistance = touchDistance(
 				event.touches[0],
 				event.touches[1],
@@ -144,9 +130,6 @@ export default function pinchZoom() {
 			gesture.pendingDistance = gesture.startDistance;
 			gesture.lastUpdate = 0;
 			gesture.originalInlineFontSize = view.contentDOM.style.fontSize;
-			gesture.originalSetting = String(
-				settings.value.fontSize || `${DEFAULT_FONT_SIZE}px`,
-			);
 		}
 
 		function onTouchMove(event: TouchEvent) {
@@ -154,7 +137,9 @@ export default function pinchZoom() {
 
 			event.preventDefault();
 
-			// Always remember the latest movement, even if the preview is throttled.
+			// The gesture received a real movement; remember the latest distance
+			// even when the preview itself is throttled.
+			gesture.moved = true;
 			gesture.pendingDistance = touchDistance(
 				event.touches[0],
 				event.touches[1],
@@ -177,14 +162,18 @@ export default function pinchZoom() {
 		function endPinch(event: TouchEvent) {
 			if (!gesture.pinching || event.touches.length >= 2) return;
 
-			// Apply the final movement even if it fell inside the throttle window.
-			applyFontSize(
-				computePinchFontSize(
-					gesture.startPx,
-					gesture.startDistance,
-					gesture.pendingDistance,
-				),
-			);
+			// Only flush the latest movement when the gesture actually moved:
+			// a two-finger tap must not round or clamp the saved size
+			// (9.5px -> 10px, 99px -> 72px).
+			if (gesture.moved) {
+				applyFontSize(
+					computePinchFontSize(
+						gesture.startPx,
+						gesture.startDistance,
+						gesture.pendingDistance,
+					),
+				);
+			}
 
 			gesture.pinching = false;
 			persistFontSize();
@@ -199,6 +188,11 @@ export default function pinchZoom() {
 
 		return {
 			destroy() {
+				// Never leave a half-finished preview behind.
+				if (gesture.pinching) {
+					view.contentDOM.style.fontSize = gesture.originalInlineFontSize;
+					gesture.pinching = false;
+				}
 				dom.removeEventListener("touchstart", onTouchStart);
 				dom.removeEventListener("touchmove", onTouchMove);
 				dom.removeEventListener("touchend", endPinch);
