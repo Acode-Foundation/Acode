@@ -112,25 +112,36 @@ describe("pinchZoom gesture", () => {
 		view.destroy();
 	});
 
-	it("throttles rapid touchmove events", () => {
+	it("throttles rapid touchmove events and applies the final size", () => {
 		const view = createView();
 
 		fireTouch(view, "touchstart", [
 			{ clientX: 0, clientY: 0 },
 			{ clientX: 100, clientY: 0 },
 		]);
+
 		now += 60;
 		fireTouch(view, "touchmove", [
 			{ clientX: 0, clientY: 0 },
 			{ clientX: 150, clientY: 0 },
 		]);
+
+		expect(settingsMock.value.fontSize).toBe("18px");
+
 		fireTouch(view, "touchmove", [
 			{ clientX: 0, clientY: 0 },
 			{ clientX: 300, clientY: 0 },
 		]);
 
-		// Second move is inside the 50ms window -> size from first move only
+		// The second move is throttled during the gesture.
 		expect(settingsMock.value.fontSize).toBe("18px");
+
+		// Ending the gesture must apply the latest pending distance.
+		fireTouch(view, "touchend", [{ clientX: 0, clientY: 0 }]);
+
+		expect(settingsMock.value.fontSize).toBe("36px");
+		expect(settingsMock.update).toHaveBeenCalledWith(false);
+
 		view.destroy();
 	});
 

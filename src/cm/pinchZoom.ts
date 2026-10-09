@@ -1,3 +1,4 @@
+
 import { ViewPlugin } from "@codemirror/view";
 import settings from "lib/settings";
 
@@ -18,23 +19,28 @@ export function clampEditorFontSize(px: number): number {
 
 /**
  * Convert a pinch distance ratio into an absolute font size.
- * @param startPx font size (px) when the gesture started
- * @param startDistance distance (px) between the two touches when the gesture started
- * @param distance current distance (px) between the two touches
+ * @param startPx font size in pixels when the gesture started
+ * @param startDistance distance between the two touches at the start
+ * @param distance current distance between the two touches
  */
 export function computePinchFontSize(
 	startPx: number,
 	startDistance: number,
 	distance: number,
 ): number {
-	if (!Number.isFinite(startPx) || startPx <= 0) startPx = DEFAULT_FONT_SIZE;
+	if (!Number.isFinite(startPx) || startPx <= 0) {
+		startPx = DEFAULT_FONT_SIZE;
+	}
+
 	if (
 		!Number.isFinite(startDistance) ||
 		startDistance <= 0 ||
-		!Number.isFinite(distance)
+		!Number.isFinite(distance) ||
+		distance <= 0
 	) {
 		return clampEditorFontSize(startPx);
 	}
+
 	return clampEditorFontSize((startPx * distance) / startDistance);
 }
 
@@ -42,76 +48,162 @@ function touchDistance(a: PinchPoint, b: PinchPoint): number {
 	return Math.hypot(b.clientX - a.clientX, b.clientY - a.clientY);
 }
 
-function readFontSizePx(): number {
-	const current = settings?.value?.fontSize || `${DEFAULT_FONT_SIZE}px`;
-	const numeric = Number.parseInt(String(current), 10);
-	return numeric > 0 ? numeric : DEFAULT_FONT_SIZE;
+function readFontSizePx(view: { contentDOM: HTMLElement }): number {
+	const configuredSize = String(
+		settings?.value?.fontSize || `${DEFAULT_FONT_SIZE}px`,
+	).trim();
+
+	const match = configuredSize.match(
+		/^(\d+(?:\.\d+)?)(px|rem|em|pt)?$/i,
+	);
+
+	if (match) {
+		const value = Number.parseFloat(match[1]);
+		const unit = (match[2] || "px").toLowerCase();
+
+		if (Number.isFinite(value) && value > 0) {
+			switch (unit) {
+				case "rem":
+					return value * Number.parseFloat(
+						getComputedStyle(document.documentElement).fontSize || "16",
+					);
+				case "em":
+					return value * readComputedFontSize(view);
+				case "pt":
+					return value * (96 / 72);
+				default:
+					return value;
+			}
+		}
+	}
+
+	return readComputedFontSize(view);
+}
+
+function readComputedFontSize(view: { contentDOM: HTMLElement }): number {
+	const computedSize = Number.parseFloat(
+		getComputedStyle(view.contentDOM).fontSize,
+	);
+
+	return Number.isFinite(computedSize) && computedSize > 0
+		? computedSize
+		: DEFAULT_FONT_SIZE;
 }
 
 export default function pinchZoom() {
-    return ViewPlugin.define((view) => {
-        const gesture = {
-            pinching: false,
-            startDistance: 0,
-            startPx: DEFAULT_FONT_SIZE,
-            lastPx: DEFAULT_FONT_SIZE,
-            lastUpdate: 0,
-        };
+	return ViewPlugin.define((view) => {
+		const gesture = {
+			pinching: false,
+			startDistance: 0,
+			startPx: DEFAULT_FONT_SIZE,
+			lastPx: DEFAULT_FONT_SIZE,
+			pendingDistance: 0,
+			lastUpdate: 0,
+			originalInlineFontSize: "",
+			originalSetting: "",
+		};
 
-        function applyFontSize(px: number) {
-            if (px === gesture.lastPx) return;
-            gesture.lastPx = px;
-            settings.value.fontSize = `${px}px`;
-            settings.update(undefined, false, false);
-        }
+		function applyFontSize(px: number) {
+			px = clampEditorFontSize(px);
+			if (px === gesture.lastPx) return;
 
-        function persistFontSize() {
-            if (gesture.lastPx === gesture.startPx) return;
-            settings.update(false);
-        }
+			gesture.lastPx = px;
 
-        function onTouchStart(event: TouchEvent) {
-            if (event.touches.length < 2) return;
-            event.preventDefault();
-            gesture.pinching = true;
-            gesture.startDistance = touchDistance(event.touches[0], event.touches[1]);
-            gesture.startPx = readFontSizePx();
-            gesture.lastPx = gesture.startPx;
-            gesture.lastUpdate = 0;
-        }
+			// Preview directly so returning to the saved size also updates the editor.
+			view.contentDOM.style.fontSize = `${px}px`;
 
-        function onTouchMove(event: TouchEvent) {
-            if (!gesture.pinching || event.touches.length < 2) return;
-            event.preventDefault();
-            const now = Date.now();
-            if (now - gesture.lastUpdate < ZOOM_THROTTLE_MS) return;
-            gesture.lastUpdate = now;
-            const distance = touchDistance(event.touches[0], event.touches[1]);
-            applyFontSize(
-                computePinchFontSize(gesture.startPx, gesture.startDistance, distance),
-            );
-        }
+			settings.value.fontSize = `${px}px`;
+			settings.update(undefined, false, false);
+		}
 
-        function endPinch(event: TouchEvent) {
-            if (!gesture.pinching) return;
-            if (event.touches.length >= 2) return;
-            gesture.pinching = false;
-            persistFontSize();
-        }
+		function persistFontSize() {
+			if (gesture.lastPx !== gesture.startPx) {
+				settings.value.fontSize = `${gesture.lastPx}px`;
+				settings.update(false);
+			} else {
+				// Restore the original unit/value if the gesture made no net change.
+				settings.value.fontSize = gesture.originalSetting;
+			}
 
-        const { dom } = view;
-        dom.addEventListener("touchstart", onTouchStart, { passive: false });
-        dom.addEventListener("touchmove", onTouchMove, { passive: false });
-        dom.addEventListener("touchend", endPinch);
-        dom.addEventListener("touchcancel", endPinch);
+			// Let the normal settings styles control the editor after the gesture.
+			view.contentDOM.style.fontSize = gesture.originalInlineFontSize;
+		}
 
-        return {
-            destroy() {
-                dom.removeEventListener("touchstart", onTouchStart);
-                dom.removeEventListener("touchmove", onTouchMove);
-                dom.removeEventListener("touchend", endPinch);
-                dom.removeEventListener("touchcancel", endPinch);
-            },
-        };
-    });
+		function onTouchStart(event: TouchEvent) {
+			if (gesture.pinching || event.touches.length < 2) return;
+
+			event.preventDefault();
+
+			gesture.pinching = true;
+			gesture.startDistance = touchDistance(
+				event.touches[0],
+				event.touches[1],
+			);
+			gesture.startPx = readFontSizePx(view);
+			gesture.lastPx = gesture.startPx;
+			gesture.pendingDistance = gesture.startDistance;
+			gesture.lastUpdate = 0;
+			gesture.originalInlineFontSize = view.contentDOM.style.fontSize;
+			gesture.originalSetting = String(
+				settings.value.fontSize || `${DEFAULT_FONT_SIZE}px`,
+			);
+		}
+
+		function onTouchMove(event: TouchEvent) {
+			if (!gesture.pinching || event.touches.length < 2) return;
+
+			event.preventDefault();
+
+			// Always remember the latest movement, even if the preview is throttled.
+			gesture.pendingDistance = touchDistance(
+				event.touches[0],
+				event.touches[1],
+			);
+
+			const now = Date.now();
+			if (now - gesture.lastUpdate < ZOOM_THROTTLE_MS) return;
+
+			gesture.lastUpdate = now;
+
+			applyFontSize(
+				computePinchFontSize(
+					gesture.startPx,
+					gesture.startDistance,
+					gesture.pendingDistance,
+				),
+			);
+		}
+
+		function endPinch(event: TouchEvent) {
+			if (!gesture.pinching || event.touches.length >= 2) return;
+
+			// Apply the final movement even if it fell inside the throttle window.
+			applyFontSize(
+				computePinchFontSize(
+					gesture.startPx,
+					gesture.startDistance,
+					gesture.pendingDistance,
+				),
+			);
+
+			gesture.pinching = false;
+			persistFontSize();
+		}
+
+		const { dom } = view;
+
+		dom.addEventListener("touchstart", onTouchStart, { passive: false });
+		dom.addEventListener("touchmove", onTouchMove, { passive: false });
+		dom.addEventListener("touchend", endPinch);
+		dom.addEventListener("touchcancel", endPinch);
+
+		return {
+			destroy() {
+				dom.removeEventListener("touchstart", onTouchStart);
+				dom.removeEventListener("touchmove", onTouchMove);
+				dom.removeEventListener("touchend", endPinch);
+				dom.removeEventListener("touchcancel", endPinch);
+			},
+		};
+	});
 }
