@@ -1,6 +1,7 @@
 import type { Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import searchMatchHighlighter from "./searchMatchHighlighter";
+import pinchZoom from "./pinchZoom";
 
 interface MainEditorExtensionOptions {
 	emmetExtensions?: Extension[];
@@ -47,6 +48,7 @@ export function createMainEditorExtensions(
 	pushExtension(extensions, options.commandKeymapExtension);
 	pushExtension(extensions, options.themeExtension);
 	extensions.push(fixedHeightTheme);
+	extensions.push(pinchZoom());
 	pushExtension(extensions, options.pointerCursorVisibilityExtension);
 	pushExtension(extensions, options.shiftClickSelectionExtension);
 	pushExtension(extensions, options.multiCursorSelectionExtension);
