@@ -288,6 +288,24 @@ public class Browser extends LinearLayout {
             case "Console":
               setConsoleVisible(checked);
               break;
+            case "Set as Default":
+              if (deviceEmulator != null) {
+                deviceEmulator.saveAsDefault();
+                Toast
+                  .makeText(
+                    context,
+                    "Saved as default preview",
+                    Toast.LENGTH_SHORT
+                  )
+                  .show();
+              }
+              break;
+            case "Clear Default":
+              Emulator.clearDefault(context);
+              Toast
+                .makeText(context, "Default cleared", Toast.LENGTH_SHORT)
+                .show();
+              break;
             case "Disable Cache":
               webView
                 .getSettings()
