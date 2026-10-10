@@ -408,6 +408,7 @@ class DeviceListView extends ScrollView {
   }
 
   public void add(Device device) {
+    devices.add(device);
     DeviceView deviceView = new DeviceView(context, device, theme);
     deviceListLayout.addView(deviceView);
 
