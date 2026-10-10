@@ -227,6 +227,7 @@ public class Browser extends LinearLayout {
     createMenu();
     addView(titleLayout);
     addView(webViewContainer);
+    restoreEmulator();
   }
 
   private void createMenu() {
