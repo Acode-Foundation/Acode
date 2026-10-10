@@ -367,6 +367,7 @@ class Device {
 class DeviceListView extends ScrollView {
 
   DeviceView selectedDeviceView;
+  ArrayList<Device> devices = new ArrayList<Device>();
   LinearLayout deviceListLayout;
   Callback callback;
   Context context;
