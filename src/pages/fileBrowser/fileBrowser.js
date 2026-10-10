@@ -1141,6 +1141,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					case "rename": {
 						let newname = await prompt(strings.rename, name, "text", {
 							match: config.FILE_NAME_REGEX,
+							required: true,
 						});
 
 						newname = helpers.fixFilename(newname);
