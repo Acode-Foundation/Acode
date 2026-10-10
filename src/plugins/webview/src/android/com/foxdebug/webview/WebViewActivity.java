@@ -3,14 +3,21 @@ package com.foxdebug.webview;
 import android.app.Activity;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.WebView;
 import android.widget.FrameLayout;
 
+/**
+ * Hosts a "fullscreen" {@link WebViewInstance}: it shows the instance's WebView
+ * and renders fullscreen custom views (video, canvas, …) on top of it.
+ */
 public class WebViewActivity extends Activity {
 
   private WebView webView;
   private String webviewId;
+  private FrameLayout container;
+  private View customView;
 
   @Override
   public void onCreate(Bundle savedInstanceState) {
@@ -19,9 +26,7 @@ public class WebViewActivity extends Activity {
     webviewId = getIntent().getStringExtra("webviewId");
 
     // The plugin registers itself in pluginInitialize(), so the singleton is
-    // always available while the app is alive. Previously this read a static
-    // field that was never set, which made every fullscreen WebView close
-    // instantly because the instance lookup returned null.
+    // always available while the app is alive.
     WebViewPlugin plugin = WebViewPlugin.getInstance();
     WebViewInstance instance = plugin != null ? plugin.getInstance(webviewId) : null;
     if (instance == null) {
@@ -45,7 +50,7 @@ public class WebViewActivity extends Activity {
     if (webView.getParent() != null) {
       ((ViewGroup) webView.getParent()).removeView(webView);
     }
-    FrameLayout container = new FrameLayout(this);
+    container = new FrameLayout(this);
     // Edge-to-edge is enforced on newer Android versions, so pad the content
     // out from under the status and navigation bars.
     WebViewInstance.applySystemBarInsets(container);
@@ -60,8 +65,48 @@ public class WebViewActivity extends Activity {
     }
   }
 
+  /** Renders a fullscreen custom view (e.g. a <video>) over the WebView. */
+  void showCustomView(View view) {
+    if (view == null || container == null) return;
+    if (customView != null) {
+      hideCustomView();
+    }
+    customView = view;
+    if (customView.getParent() instanceof ViewGroup) {
+      ((ViewGroup) customView.getParent()).removeView(customView);
+    }
+    container.addView(customView, new FrameLayout.LayoutParams(
+      ViewGroup.LayoutParams.MATCH_PARENT,
+      ViewGroup.LayoutParams.MATCH_PARENT
+    ));
+    if (webView != null) {
+      webView.setVisibility(View.GONE);
+    }
+  }
+
+  /** Removes the fullscreen custom view and restores the WebView. */
+  void hideCustomView() {
+    if (customView != null) {
+      if (customView.getParent() instanceof ViewGroup) {
+        ((ViewGroup) customView.getParent()).removeView(customView);
+      }
+      customView = null;
+    }
+    if (webView != null) {
+      webView.setVisibility(View.VISIBLE);
+    }
+  }
+
   @Override
   public void onBackPressed() {
+    // Fullscreen custom views consume the first back press.
+    WebViewPlugin plugin = WebViewPlugin.getInstance();
+    WebViewInstance instance = plugin != null ? plugin.getInstance(webviewId) : null;
+    if (instance != null && instance.isInCustomView()) {
+      instance.onHideCustomView();
+      return;
+    }
+
     if (webView != null && webView.canGoBack()) {
       webView.goBack();
     } else {
@@ -72,6 +117,8 @@ public class WebViewActivity extends Activity {
   @Override
   protected void onDestroy() {
     super.onDestroy();
+
+    hideCustomView();
 
     WebViewPlugin plugin = WebViewPlugin.getInstance();
     if (plugin != null && webviewId != null) {
@@ -89,5 +136,6 @@ public class WebViewActivity extends Activity {
     }
 
     webView = null;
+    container = null;
   }
 }
