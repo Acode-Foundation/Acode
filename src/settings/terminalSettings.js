@@ -387,27 +387,33 @@ export default function terminalSettings() {
 
 			sdcard.openDocumentFile(
 				async (data) => {
-					loader.showTitleLoader();
-					//this will create a file at $PREFIX/atem_backup.tar.tar
-					await system.copyToUri(
-						data.uri,
-						cordova.file.dataDirectory,
-						"aterm_backup.tar",
-						console.log,
-						console.error,
-					);
+					try {
+						loader.showTitleLoader();
+						//this will create a file at $PREFIX/atem_backup.tar.tar
+						await system.copyToUri(
+							data.uri,
+							cordova.file.dataDirectory,
+							"aterm_backup.tar",
+							console.log,
+							console.error,
+						);
 
-					// Restore
-					await Terminal.restore();
+						// Restore
+						await Terminal.restore();
 
-					//Cleanup restore file
-					await Executor.execute("rm -rf $PREFIX/aterm_backup.*");
+						//Cleanup restore file
+						await Executor.execute("rm -rf $PREFIX/aterm_backup.*");
 
-					loader.removeTitleLoader();
-					alert(
-						strings.success.toUpperCase(),
-						`${strings["restored successfully"]}.`,
-					);
+						loader.removeTitleLoader();
+						alert(
+							strings.success.toUpperCase(),
+							`${strings["restored successfully"]}.`,
+						);
+					} catch (error) {
+						loader.removeTitleLoader();
+						console.error("Terminal restore failed:", error);
+						toast(error.toString());
+					}
 				},
 				toast,
 				"application/x-tar",

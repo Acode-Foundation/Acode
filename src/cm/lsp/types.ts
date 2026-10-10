@@ -89,7 +89,7 @@ export interface TransportContext {
 
 export type WorkspaceKind =
 	| "app-private"
-	| "builtin-alpine"
+	| "builtin-ubuntu"
 	| "termux-saf"
 	| "saf"
 	| "remote"
@@ -199,7 +199,7 @@ export interface BridgeConfig {
 }
 
 export type InstallerKind =
-	| "apk"
+	| "apt"
 	| "npm"
 	| "pip"
 	| "cargo"

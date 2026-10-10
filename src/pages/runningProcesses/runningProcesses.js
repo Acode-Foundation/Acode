@@ -124,7 +124,7 @@ export default function RunningProcesses() {
 					managedMap.set(p.pid, {
 						type: "Terminal service",
 						id: p.id,
-						alpine: p.alpine,
+						ubuntu: p.ubuntu,
 						startedAt: p.startedAt,
 						background: false,
 					});
@@ -134,7 +134,7 @@ export default function RunningProcesses() {
 					managedMap.set(p.pid, {
 						type: "Background executor",
 						id: p.id,
-						alpine: p.alpine,
+						ubuntu: p.ubuntu,
 						startedAt: p.startedAt,
 						background: true,
 					});
@@ -146,7 +146,7 @@ export default function RunningProcesses() {
 					p.managed = true;
 					p.managedType = managed.type;
 					p.managedId = managed.id;
-					p.alpine = managed.alpine;
+					p.ubuntu = managed.ubuntu;
 					if (managed.startedAt) p.startedAt = managed.startedAt;
 				}
 			}
@@ -274,7 +274,7 @@ export default function RunningProcesses() {
 								{text("acode service", "Acode Service")}
 							</span>
 							<span className="detail-value">
-								{proc.managedType} ({proc.alpine ? "Alpine" : "Android"})
+								{proc.managedType} ({proc.ubuntu ? "Ubuntu" : "Android"})
 							</span>
 						</div>
 					)}

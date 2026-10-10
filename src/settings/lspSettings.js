@@ -36,7 +36,7 @@ function normalizePackages(value) {
 function getInstallMethods() {
 	return [
 		{ value: "manual", text: strings["lsp-install-method-manual"] },
-		{ value: "apk", text: strings["lsp-install-method-apk"] },
+		{ value: "apt", text: strings["lsp-install-method-apt"] },
 		{ value: "npm", text: strings["lsp-install-method-npm"] },
 		{ value: "pip", text: strings["lsp-install-method-pip"] },
 		{ value: "cargo", text: strings["lsp-install-method-cargo"] },
@@ -114,7 +114,7 @@ async function promptInstaller(binaryCommand) {
 				binaryPath: String(binaryPath || "").trim() || undefined,
 			};
 		}
-		case "apk":
+		case "apt":
 		case "npm":
 		case "pip":
 		case "cargo": {

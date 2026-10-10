@@ -8,7 +8,7 @@ const menuJava = path.resolve(
 );
 const docProvider = path.resolve(
   __dirname,
-  "../../../platforms/android/app/src/main/java/com/foxdebug/acode/rk/exec/terminal/AlpineDocumentProvider.java"
+  "../../../platforms/android/app/src/main/java/com/foxdebug/acode/rk/exec/terminal/UbuntuDocumentProvider.java"
 );
 
 const repeatChar = (char, times) => char.repeat(times);

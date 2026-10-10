@@ -55,6 +55,10 @@ module.exports = {
     cordova.exec(success, error, 'System', 'extractAsset', [assetName, destinationPath]);
   },
 
+  extractTarXz: function (sourcePath, destinationPath, success, error) {
+    cordova.exec(success, error, 'System', 'extractTarXz', [sourcePath, destinationPath]);
+  },
+
   getParentPath: function (path, success, error) {
     cordova.exec(success, error, 'System', 'getParentPath', [path]);
   },
