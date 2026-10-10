@@ -331,6 +331,46 @@ public class Browser extends LinearLayout {
     );
   }
 
+  private void updateDefaultItems(boolean emulatorOn) {
+    menu.setVisible("Set as Default", emulatorOn);
+    menu.setVisible("Clear Default", emulatorOn);
+  }
+
+  private void restoreEmulator() {
+    if (onlyConsole) return;
+    if (!Emulator.hasDefault(context)) return;
+
+    webView
+      .getViewTreeObserver()
+      .addOnGlobalLayoutListener(
+        new ViewTreeObserver.OnGlobalLayoutListener() {
+          @Override
+          public void onGlobalLayout() {
+            if (webView.getMeasuredWidth() == 0) return;
+            webView.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+
+            if (deviceEmulator == null) {
+              createDeviceEmulatorLayout();
+            }
+
+            emulator = true;
+            menu.setChecked("Devices", true);
+            updateDefaultItems(true);
+            setDesktopMode(true);
+            setConsoleVisible(false);
+            menu.setChecked("Console", false);
+            menu.setVisible("Console", false);
+            addView(deviceEmulator);
+            fitWebViewTo(
+              deviceEmulator.getWidthProgress(),
+              deviceEmulator.getHeightProgress(),
+              deviceEmulator.getScaleProgress()
+            );
+          }
+        }
+      );
+  }
+
   private void createDeviceEmulatorLayout() {
     Browser browser = this;
     deviceEmulator = new Emulator(context, theme);
