@@ -163,6 +163,8 @@ public class Emulator extends LinearLayout {
             if (listener != null) {
               listener.onChange(iWidth, correctedHeight, 1);
             }
+
+            restoreDefaultDevice();
           }
         }
       );
