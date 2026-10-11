@@ -403,6 +403,10 @@ public class Browser extends LinearLayout {
   }
 
   private void setDesktopMode(boolean enabled) {
+    setDesktopMode(enabled, true);
+  }
+
+  private void setDesktopMode(boolean enabled, boolean reload) {
     int width = 0;
     int height = 0;
     WebSettings webSettings = webView.getSettings();
