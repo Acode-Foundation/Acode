@@ -428,7 +428,9 @@ public class Browser extends LinearLayout {
     webSettings.setLoadWithOverviewMode(enabled);
     webSettings.setSupportZoom(enabled);
     webSettings.setBuiltInZoomControls(enabled);
-    webView.reload();
+    if (reload) {
+      webView.reload();
+    }
   }
 
   public void setDesktopMode() {
