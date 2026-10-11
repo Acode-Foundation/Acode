@@ -163,6 +163,8 @@ public class Emulator extends LinearLayout {
             if (listener != null) {
               listener.onChange(iWidth, correctedHeight, 1);
             }
+
+            restoreDefaultDevice();
           }
         }
       );
@@ -302,6 +304,81 @@ public class Emulator extends LinearLayout {
     listener.onChange(width, height, maxScale / 100f);
   }
 
+  public static boolean hasDefault(Context context) {
+    return context
+      .getSharedPreferences("acode_browser", Context.MODE_PRIVATE)
+      .getBoolean("default_set", false);
+  }
+
+  public static void clearDefault(Context context) {
+    context
+      .getSharedPreferences("acode_browser", Context.MODE_PRIVATE)
+      .edit()
+      .putBoolean("default_set", false)
+      .apply();
+  }
+
+  public void saveAsDefault() {
+    context
+      .getSharedPreferences("acode_browser", Context.MODE_PRIVATE)
+      .edit()
+      .putBoolean("default_set", true)
+      .putInt("default_width", getWidthProgress())
+      .putInt("default_height", getHeightProgress())
+      .putInt("default_scale", seekBars.get("scale").getProgress())
+      .putString(
+        "default_device",
+        selectedDevice != null ? selectedDevice.name : "Custom"
+      )
+      .apply();
+  }
+
+  private void restoreDefaultDevice() {
+    if (!hasDefault(context)) return;
+
+    android.content.SharedPreferences prefs = context.getSharedPreferences(
+      "acode_browser",
+      Context.MODE_PRIVATE
+    );
+    SeekBar widthSeekBar = seekBars.get("width");
+    SeekBar heightSeekBar = seekBars.get("height");
+    SeekBar scaleSeekBar = seekBars.get("scale");
+
+    int width = Math.min(
+      prefs.getInt("default_width", widthSeekBar.getMax()),
+      widthSeekBar.getMax()
+    );
+    int height = Math.min(
+      prefs.getInt("default_height", heightSeekBar.getMax()),
+      heightSeekBar.getMax()
+    );
+
+    widthSeekBar.setProgress(width);
+    heightSeekBar.setProgress(height);
+    setMaxScale(width, height);
+    int scale = Math.min(
+      prefs.getInt("default_scale", 100),
+      scaleSeekBar.getMax()
+    );
+    scaleSeekBar.setProgress(scale);
+
+    String name = prefs.getString("default_device", "Custom");
+    for (Device device : deviceListView.devices) {
+      if (device.name.equals(name)) {
+        if (deviceListView.selectedDeviceView != null) {
+          deviceListView.selectedDeviceView.deselect();
+        }
+        deviceListView.select(device);
+        selectedDevice = device;
+        break;
+      }
+    }
+
+    if (listener != null) {
+      listener.onChange(width, height, scale / 100f);
+    }
+  }
+
   private void setMaxScale(int width, int height) {
     SeekBar scaleSeekBar = seekBars.get("scale");
     SeekBar widthSeekBar = seekBars.get("width");
@@ -367,6 +444,7 @@ class Device {
 class DeviceListView extends ScrollView {
 
   DeviceView selectedDeviceView;
+  ArrayList<Device> devices = new ArrayList<Device>();
   LinearLayout deviceListLayout;
   Callback callback;
   Context context;
@@ -407,6 +485,7 @@ class DeviceListView extends ScrollView {
   }
 
   public void add(Device device) {
+    devices.add(device);
     DeviceView deviceView = new DeviceView(context, device, theme);
     deviceListLayout.addView(deviceView);
 
