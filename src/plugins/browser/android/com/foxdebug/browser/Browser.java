@@ -341,6 +341,10 @@ public class Browser extends LinearLayout {
     if (onlyConsole) return;
     if (!Emulator.hasDefault(context)) return;
 
+    // Apply the saved mode before the first navigation so the page is not
+    // loaded with the wrong user agent and then reloaded.
+    setDesktopMode(true, false);
+
     webView
       .getViewTreeObserver()
       .addOnGlobalLayoutListener(
