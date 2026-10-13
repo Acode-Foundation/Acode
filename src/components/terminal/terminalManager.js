@@ -23,6 +23,67 @@ class TerminalManager {
 	constructor() {
 		this.terminals = new Map();
 		this.terminalCounter = 0;
+		this._lifecycleBound = false;
+		this._bindLifecycle();
+	}
+
+	/**
+	 * Keep terminal processes alive while the app is backgrounded and
+	 * re-establish WebSocket sessions when the app returns to the foreground.
+	 */
+	_bindLifecycle() {
+		if (this._lifecycleBound || typeof document === "undefined") return;
+		this._lifecycleBound = true;
+
+		document.addEventListener("pause", () => {
+			this.handleAppPause();
+		});
+		document.addEventListener("resume", () => {
+			this.handleAppResume();
+		});
+		document.addEventListener("visibilitychange", () => {
+			if (document.visibilityState === "visible") {
+				this.handleAppResume();
+			}
+		});
+	}
+
+	/**
+	 * App went to background: promote the executor service so Android is less
+	 * likely to kill PTYs/servers, and avoid stopping it.
+	 */
+	handleAppPause() {
+		if (!this.terminals.size) return;
+		try {
+			// Keep the foreground notification so background processes survive
+			Executor.moveToForeground?.()?.catch?.(() => {});
+		} catch (error) {
+			console.warn("Failed to keep terminal service in foreground:", error);
+		}
+	}
+
+	/**
+	 * App returned to foreground: transparently reconnect any dropped sockets
+	 * instead of tearing the sessions down with a "connection lost" error.
+	 */
+	handleAppResume() {
+		if (!this.terminals.size) return;
+		this.terminals.forEach((terminal) => {
+			const component = terminal?.component;
+			if (!component || component.intentionalClose || component.processExited) {
+				return;
+			}
+			// Remote SSH uses a different transport; local WS reconnect
+			// always refuses it and would only burn retries + show a warning.
+			if (component.remoteSsh || !component.serverMode) return;
+			if (
+				component.isConnected &&
+				component.websocket?.readyState === WebSocket.OPEN
+			) {
+				return;
+			}
+			void this.reconnectTerminal(component, terminal.id);
+		});
 	}
 
 	extractTerminalNumber(name) {
@@ -806,29 +867,72 @@ class TerminalManager {
 			console.log(`Terminal ${terminalId} connected`);
 		};
 
+		terminalComponent.onReconnecting = (attempt) => {
+			console.log(`Terminal ${terminalId} reconnecting (attempt ${attempt})`);
+			try {
+				terminalComponent.write(
+					`\r\n\x1b[33m${strings["terminal-reconnecting"] || "Reconnecting terminal…"}\x1b[0m\r\n`,
+				);
+			} catch {
+				// Best-effort status line
+			}
+		};
+
+		terminalComponent.onReconnected = () => {
+			console.log(`Terminal ${terminalId} reconnected`);
+		};
+
 		terminalComponent.onDisconnect = (info = {}) => {
 			console.log(`Terminal ${terminalId} disconnected`, info);
 
 			// User/tab close and dispose intentionally close the socket.
 			if (info.intentional) return;
 
-			// Exit message already drove finishTerminalSession (or is about to).
-			// Still call finish so a race can't leave the tab open; it's idempotent.
-			const message = info.processExited ? null : "Terminal session ended";
-			void finishTerminalSession({
-				message,
-				showToast: !info.processExited,
-			});
+			// Process really exited: there is nothing to reconnect to.
+			if (info.processExited) {
+				void finishTerminalSession({
+					message: null,
+					showToast: false,
+				});
+				return;
+			}
+
+			// Transient drop (app backgrounded, network blip): try to reconnect
+			// before declaring the session dead. This keeps servers/PTYs alive.
+			void this.reconnectTerminal(terminalComponent, terminalId).then(
+				(reconnected) => {
+					if (reconnected) return;
+					void finishTerminalSession({
+						message:
+							strings["terminal-reconnect-failed"] ||
+							"Terminal connection lost. Could not reconnect.",
+						showToast: true,
+					});
+				},
+			);
 		};
 
 		terminalComponent.onError = (error) => {
 			console.error(`Terminal ${terminalId} error:`, error);
 
-			const errorMessage = error?.message || "Connection lost";
-			void finishTerminalSession({
-				showToast: false,
-				errorAlert: `Terminal connection error: ${errorMessage}`,
-			});
+			if (
+				terminalComponent.intentionalClose ||
+				terminalComponent.processExited
+			) {
+				return;
+			}
+
+			// Prefer silent reconnect over an immediate "connection lost" alert.
+			void this.reconnectTerminal(terminalComponent, terminalId).then(
+				(reconnected) => {
+					if (reconnected) return;
+					const errorMessage = error?.message || "Connection lost";
+					void finishTerminalSession({
+						showToast: false,
+						errorAlert: `Terminal connection error: ${errorMessage}`,
+					});
+				},
+			);
 		};
 
 		terminalComponent.onTitleChange = async (title) => {
@@ -927,6 +1031,70 @@ class TerminalManager {
 	}
 
 	/**
+	 * Reconnect a dropped terminal socket with bounded retries.
+	 * @param {object} terminalComponent
+	 * @param {string} terminalId
+	 * @returns {Promise<boolean>} Whether the session is connected again
+	 */
+	async reconnectTerminal(terminalComponent, terminalId) {
+		if (!terminalComponent) return false;
+		if (terminalComponent.intentionalClose || terminalComponent.processExited) {
+			return false;
+		}
+		if (
+			terminalComponent.serverMode &&
+			!terminalComponent.remoteSsh &&
+			terminalComponent.isConnected &&
+			terminalComponent.websocket?.readyState === WebSocket.OPEN
+		) {
+			return true;
+		}
+		// Competing callers (onDisconnect, onError, resume) must share one
+		// retry loop so a second caller never burns attempts on "in progress".
+		if (terminalComponent._reconnectLoopPromise) {
+			return terminalComponent._reconnectLoopPromise;
+		}
+
+		terminalComponent._reconnectLoopPromise = this._runReconnectLoop(
+			terminalComponent,
+			terminalId,
+		);
+		try {
+			return await terminalComponent._reconnectLoopPromise;
+		} finally {
+			terminalComponent._reconnectLoopPromise = null;
+		}
+	}
+
+	async _runReconnectLoop(terminalComponent, terminalId) {
+		const maxAttempts = terminalComponent.maxReconnectAttempts || 5;
+		const baseDelay = 400;
+
+		for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+			if (
+				terminalComponent.intentionalClose ||
+				terminalComponent.processExited
+			) {
+				return false;
+			}
+
+			const connected = await terminalComponent.reconnect();
+			if (connected) {
+				console.log(`Terminal ${terminalId} reconnected on attempt ${attempt}`);
+				return true;
+			}
+
+			if (attempt < maxAttempts) {
+				const delay = Math.min(baseDelay * 2 ** (attempt - 1), 4000);
+				await new Promise((resolve) => setTimeout(resolve, delay));
+			}
+		}
+
+		console.warn(`Terminal ${terminalId} failed to reconnect after retries`);
+		return false;
+	}
+
+	/**
 	 * Close a terminal session
 	 * @param {string} terminalId - Terminal ID
 	 * @param {boolean} removeTab - Also remove the editor tab
@@ -939,6 +1107,8 @@ class TerminalManager {
 		try {
 			if (terminal.component) {
 				terminal.component.intentionalClose = true;
+				terminal.component._reconnectPromise = null;
+				terminal.component._reconnectLoopPromise = null;
 			}
 
 			if (
@@ -977,7 +1147,13 @@ class TerminalManager {
 			}
 
 			if (this.getAllTerminals().size <= 0) {
-				Executor.stopService();
+				// Only stop the service when nothing (terminals) needs it anymore.
+				// Keep it running otherwise so background servers are not aborted.
+				try {
+					Executor.stopService();
+				} catch (error) {
+					console.warn("Failed to stop terminal service:", error);
+				}
 			}
 
 			console.log(`Terminal ${terminalId} closed`);
