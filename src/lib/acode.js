@@ -241,6 +241,8 @@ class Acode {
 		const sidebarAppsModule = {
 			add: sidebarApps.add,
 			get: sidebarApps.get,
+			open: sidebarApps.open,
+			close: sidebarApps.close,
 			remove: sidebarApps.remove,
 		};
 
