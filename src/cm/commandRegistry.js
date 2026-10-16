@@ -108,6 +108,10 @@ import keyBindings, {
 } from "lib/keyBindings";
 import settings from "lib/settings";
 import Url from "utils/Url";
+import {
+	clampEditorFontSize,
+	DEFAULT_EDITOR_FONT_SIZE,
+} from "./editorFontSize";
 
 const commandKeymapCompartment = new Compartment();
 
@@ -1457,11 +1461,13 @@ async function openInAppBrowserCommand() {
 }
 
 function adjustFontSize(delta) {
-	const current = settings?.value?.fontSize || "12px";
-	const numeric = Number.parseInt(current, 10) || 12;
-	const next = Math.min(72, Math.max(6, numeric + delta));
+	const current = settings?.value?.fontSize || `${DEFAULT_EDITOR_FONT_SIZE}px`;
+	const numeric = Number.parseInt(current, 10) || DEFAULT_EDITOR_FONT_SIZE;
+	const next = clampEditorFontSize(numeric + delta);
+
 	settings.value.fontSize = `${next}px`;
 	settings.update(false);
+
 	return true;
 }
 
