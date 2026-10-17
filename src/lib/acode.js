@@ -66,6 +66,7 @@ import {
 import notificationManager from "lib/notificationManager";
 import openFolder, { addedFolder } from "lib/openFolder";
 import orientation from "lib/orientation";
+import PluginWaiters from "lib/pluginWaiters";
 import projects from "lib/projects";
 import selectionMenu from "lib/selectionMenu";
 import appSettings from "lib/settings";
@@ -96,7 +97,7 @@ class Acode {
 	#pluginUnmount = {};
 	// Registered formatter implementations (populated by plugins)
 	#formatter = [];
-	#pluginWatchers = {};
+	#pluginWatchers = new PluginWaiters();
 
 	/**
 	 * Clear a plugin's broken mark (so it can be retried)
@@ -700,32 +701,18 @@ class Acode {
 	}
 
 	[onPluginLoadCallback](pluginId) {
-		if (this.#pluginWatchers[pluginId]) {
-			this.#pluginWatchers[pluginId].resolve();
-			delete this.#pluginWatchers[pluginId];
-		}
+		this.#pluginWatchers.resolve(pluginId);
 	}
 
 	[onPluginsLoadCompleteCallback]() {
-		for (const pluginId in this.#pluginWatchers) {
-			this.#pluginWatchers[pluginId].reject(
-				new Error(`Plugin '${pluginId}' failed to load.`),
-			);
-		}
-		this.#pluginWatchers = {};
+		this.#pluginWatchers.rejectAll(
+			(pluginId) => new Error(`Plugin '${pluginId}' failed to load.`),
+		);
 	}
 
 	waitForPlugin(pluginId) {
-		return new Promise((resolve, reject) => {
-			if (LOADED_PLUGINS.has(pluginId)) {
-				return resolve(true);
-			}
-
-			this.#pluginWatchers[pluginId] = {
-				resolve,
-				reject,
-			};
-		});
+		if (LOADED_PLUGINS.has(pluginId)) return Promise.resolve(true);
+		return this.#pluginWatchers.waitFor(pluginId);
 	}
 
 	get exitAppMessage() {
