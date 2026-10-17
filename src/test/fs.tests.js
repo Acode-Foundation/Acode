@@ -201,5 +201,84 @@ export async function runFsTests(writeOutput) {
 		}
 	});
 
+	runner.test("copyTo, moveTo, renameTo", async (test) => {
+		const fs = fsOperation(testDir);
+		const sourceName = `__fs_source_${Date.now()}__.txt`;
+		const destDirName = `__fs_destdir_${Date.now()}__`;
+
+		const sourceUrl = Url.join(testDir, sourceName);
+		const destDirUrl = Url.join(testDir, destDirName);
+
+		try {
+			// 1. Create source file and destination directory
+			await fs.createFile(sourceName, "file operation content");
+			await fs.createDirectory(destDirName);
+
+			const sourceFs = fsOperation(sourceUrl);
+
+			// 2. copyTo
+			const copiedUrl = await sourceFs.copyTo(destDirUrl);
+			const copiedFs = fsOperation(copiedUrl);
+			test.assertEqual(
+				await copiedFs.exists(),
+				true,
+				"Copied file should exist",
+			);
+			test.assertEqual(
+				await copiedFs.readFile("utf-8"),
+				"file operation content",
+				"Copied file content should match",
+			);
+
+			// 3. moveTo
+			const movedUrl = await copiedFs.moveTo(testDir); // Move it back to testDir
+			const movedFs = fsOperation(movedUrl);
+			test.assertEqual(await movedFs.exists(), true, "Moved file should exist");
+			test.assertEqual(
+				await copiedFs.exists(),
+				false,
+				"Original copied file should no longer exist after move",
+			);
+			test.assertEqual(
+				await movedFs.readFile("utf-8"),
+				"file operation content",
+				"Moved file content should match",
+			);
+
+			// 4. renameTo
+			const newName = `__fs_renamed_${Date.now()}__.txt`;
+			const renamedUrl = await movedFs.renameTo(newName);
+			const renamedFs = fsOperation(renamedUrl);
+			test.assertEqual(
+				await renamedFs.exists(),
+				true,
+				"Renamed file should exist",
+			);
+			test.assertEqual(
+				await movedFs.exists(),
+				false,
+				"Original moved file should no longer exist after rename",
+			);
+			test.assertEqual(
+				await renamedFs.readFile("utf-8"),
+				"file operation content",
+				"Renamed file content should match",
+			);
+
+			// Cleanup
+			await sourceFs.delete();
+			await renamedFs.delete();
+			await fsOperation(destDirUrl).delete();
+		} catch (error) {
+			try {
+				await fsOperation(sourceUrl).delete();
+			} catch (_) {}
+			try {
+				await fsOperation(destDirUrl).delete();
+			} catch (_) {}
+			throw error;
+		}
+	});
+
 	return await runner.run(writeOutput);
 }
