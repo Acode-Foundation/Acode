@@ -887,5 +887,9 @@
 	"settings-info-editor-wrapping-indent": "Pilih apakah teks terbungkus dimulai dari tepi kiri, mengikuti indentasi baris asli, atau di-indentasi lebih jauh. Setiap level tambahan menggunakan ukuran tab Anda.",
 	"icon pack": "Icon pack",
 	"settings-info-icon-pack": "Choose the icons used for files and folders in the explorer and file lists across the app.",
-	"unavailable": "unavailable"
+	"unavailable": "unavailable",
+	"editor renderer": "Renderer",
+	"editor renderer dom": "DOM (default)",
+	"editor renderer canvas": "Canvas (experimental)",
+	"settings-info-editor-renderer": "Canvas draws code with the GPU for smoother scrolling in large files. It is experimental: some plugins may not work with it. Applies after a reload."
 }

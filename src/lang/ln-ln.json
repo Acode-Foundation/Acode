@@ -887,5 +887,9 @@
 	"settings-info-editor-wrapping-indent": "Choose whether wrapped text starts at the left edge, matches the original line's indentation, or is indented further. Each extra level uses your tab size.",
 	"icon pack": "Icon pack",
 	"settings-info-icon-pack": "Choose the icons used for files and folders in the explorer and file lists across the app.",
-	"unavailable": "unavailable"
+	"unavailable": "unavailable",
+	"editor renderer": "Renderer",
+	"editor renderer dom": "DOM (default)",
+	"editor renderer canvas": "Canvas (experimental)",
+	"settings-info-editor-renderer": "Canvas draws code with the GPU for smoother scrolling in large files. It is experimental: some plugins may not work with it. Applies after a reload."
 }

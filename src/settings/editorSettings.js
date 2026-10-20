@@ -1,4 +1,5 @@
 import settingsPage from "components/settingsPage";
+import confirm from "dialogs/confirm";
 import config from "lib/config";
 import fonts from "lib/fonts";
 import appSettings from "lib/settings";
@@ -7,6 +8,10 @@ import scrollSettings from "./scrollSettings";
 export default function editorSettings() {
 	const title = strings["editor settings"];
 	const values = appSettings.value;
+	const rendererOptions = [
+		["dom", strings["editor renderer dom"]],
+		["canvas", strings["editor renderer canvas"]],
+	];
 	const wrappingIndentOptions = [
 		["none", strings.none],
 		["same", strings["wrap-indent-same"]],
@@ -28,6 +33,17 @@ export default function editorSettings() {
 			info: strings["settings-info-editor-scroll-settings"],
 			category: categories.scrolling,
 			chevron: true,
+		},
+		{
+			key: "editorRenderer",
+			text: strings["editor renderer"],
+			value: values.editorRenderer ?? "dom",
+			valueText: (value) =>
+				rendererOptions.find(([key]) => key === value)?.[1] ??
+				rendererOptions[0][1],
+			select: rendererOptions,
+			info: strings["settings-info-editor-renderer"],
+			category: categories.textLayout,
 		},
 		{
 			key: "editorFont",
@@ -269,10 +285,19 @@ export default function editorSettings() {
 	 * @param {string} key
 	 * @param {string} value
 	 */
-	function callback(key, value) {
+	async function callback(key, value) {
 		switch (key) {
 			case "scroll-settings":
 				appSettings.uiSettings[key].show();
+				return;
+
+			case "editorRenderer":
+				// Editors are created with their renderer: reload to switch.
+				if (value === appSettings.value.editorRenderer) return;
+				await appSettings.update({ [key]: value });
+				if (await confirm(strings.info, strings["reload to apply"])) {
+					location.reload();
+				}
 				return;
 
 			case "editorFont":

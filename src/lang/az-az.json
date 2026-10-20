@@ -887,5 +887,9 @@
 	"plugin-review:error-max-length": "Rəy ən çox {max} simvoldan ibarət olmalıdır.",
 	"plugin-review:error-downvote-comment": "Nəyin yaxşılaşdırıla biləcəyini tərtibatçıya bildir.",
 	"plugin-review:error-empty": "Şərh əlavə et və ya «Bəyən» seçimini et.",
-	"plugin-review:unrated": "Qiymətləndirilməyib"
+	"plugin-review:unrated": "Qiymətləndirilməyib",
+	"editor renderer": "Renderer",
+	"editor renderer dom": "DOM (default)",
+	"editor renderer canvas": "Canvas (experimental)",
+	"settings-info-editor-renderer": "Canvas draws code with the GPU for smoother scrolling in large files. It is experimental: some plugins may not work with it. Applies after a reload."
 }

@@ -133,6 +133,7 @@ class Settings {
 			fontSize: "12px",
 			cursorWidth: 2,
 			editorTheme: "one_dark",
+			editorRenderer: "dom",
 			textWrap: false,
 			wrappingIndent: "same",
 			softTab: true,

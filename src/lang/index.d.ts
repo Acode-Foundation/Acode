@@ -891,6 +891,10 @@ declare type LangStrings = {
 	"plugin-review:error-downvote-comment": string;
 	"plugin-review:error-empty": string;
 	"plugin-review:unrated": string;
+	"editor renderer": string;
+	"editor renderer dom": string;
+	"editor renderer canvas": string;
+	"settings-info-editor-renderer": string;
 };
 
 declare var strings: LangStrings;
