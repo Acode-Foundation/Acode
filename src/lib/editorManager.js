@@ -1122,12 +1122,17 @@ async function EditorManager($header, $body) {
 
 	function getBaseExtensionOptions() {
 		const values = appSettings?.value || {};
-		return Object.fromEntries(
-			Object.entries(baseExtensionDefaults).map(([key, defaultValue]) => [
-				key,
-				values[key] ?? defaultValue,
-			]),
-		);
+		return {
+			...Object.fromEntries(
+				Object.entries(baseExtensionDefaults).map(([key, defaultValue]) => [
+					key,
+					values[key] ?? defaultValue,
+				]),
+			),
+			// Canvas views draw fold markers themselves; CodeMirror's fold
+			// gutter would only rebuild its (unused) markers on every update.
+			foldGutter: !canvasRenderer,
+		};
 	}
 
 	function createConfiguredBaseExtensions() {

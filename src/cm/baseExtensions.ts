@@ -7,6 +7,7 @@ import {
 import { history } from "@codemirror/commands";
 import {
 	bracketMatching,
+	codeFolding as codeFoldingState,
 	defaultHighlightStyle,
 	foldGutter,
 	indentOnInput,
@@ -31,6 +32,11 @@ import indentationFolding from "./indentationFolding";
 export interface BaseExtensionOptions {
 	autoIndent?: boolean;
 	codeFolding?: boolean;
+	/**
+	 * Show CodeMirror's fold gutter with code folding. The canvas renderer
+	 * draws its own fold markers, so it only needs the folding state.
+	 */
+	foldGutter?: boolean;
 	autoCloseBrackets?: boolean;
 	bracketMatching?: boolean;
 	highlightActiveLine?: boolean;
@@ -46,6 +52,7 @@ export default function createBaseExtensions(
 	const {
 		autoIndent = true,
 		codeFolding = true,
+		foldGutter: showFoldGutter = true,
 		autoCloseBrackets = true,
 		bracketMatching: enableBracketMatching = true,
 		highlightActiveLine: enableHighlightActiveLine = true,
@@ -54,7 +61,12 @@ export default function createBaseExtensions(
 	const extensions: Extension[] = [highlightSpecialChars(), history()];
 
 	if (enableHighlightActiveLine) extensions.push(highlightActiveLineGutter());
-	if (codeFolding) extensions.push(foldGutter(), indentationFolding);
+	if (codeFolding) {
+		extensions.push(
+			showFoldGutter ? foldGutter() : codeFoldingState(),
+			indentationFolding,
+		);
+	}
 	extensions.push(drawSelection());
 	extensions.push(dropCursor());
 	extensions.push(EditorState.allowMultipleSelections.of(true));
