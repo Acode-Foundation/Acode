@@ -12,7 +12,19 @@ module.exports = (env, options) => {
     ? ''.concat(devProto, '://', devHost, ':', devPort)
     : '';
 
+  // @acode/canvas-view is linked from a local checkout (`bun link`), so its
+  // files resolve to their real path outside node_modules. It ships pre-built
+  // code, and its imports must resolve from Acode's node_modules: a second
+  // copy of @codemirror/state or view (the checkout's own) breaks facets.
+  const canvasViewDist = /[\\/]canvas-view[\\/]dist[\\/]/;
+
   const rules = [
+    {
+      test: canvasViewDist,
+      resolve: {
+        modules: [path.resolve(__dirname, 'node_modules')],
+      },
+    },
     {
       test: /typescript[\\/]lib[\\/]lib\..*\.d\.ts$/,
       type: 'asset/source',
@@ -46,7 +58,10 @@ module.exports = (env, options) => {
         // dependency, so it resolves to its real path outside node_modules. It
         // still ships pre-built code and must not go through the source loaders.
         {
-          include: /[\\/](?:node_modules|codemirror-lsp-client)[\\/]/,
+          include: [
+            /[\\/](?:node_modules|codemirror-lsp-client)[\\/]/,
+            canvasViewDist,
+          ],
           use: [
             {
               loader: 'builtin:swc-loader',

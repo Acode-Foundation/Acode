@@ -5,6 +5,7 @@
     "": {
       "name": "com.foxdebug.acode",
       "dependencies": {
+        "@acode/canvas-view": "link:@acode/canvas-view",
         "@codemirror/autocomplete": "^6.20.3",
         "@codemirror/commands": "^6.11.0",
         "@codemirror/lang-angular": "^0.1.4",
@@ -159,6 +160,8 @@
     "tar": "^7.5.22",
   },
   "packages": {
+    "@acode/canvas-view": ["@acode/canvas-view@link:@acode/canvas-view", {}],
+
     "@antfu/install-pkg": ["@antfu/install-pkg@1.1.0", "", { "dependencies": { "package-manager-detector": "^1.3.0", "tinyexec": "^1.0.1" } }, "sha512-MGQsmw10ZyI+EJo45CdSER4zEb+p31LpDAFp2Z3gkSd1yqVZGi0Ebx++YTEMonJy4oChEMLsxZ64j8FH6sSqtQ=="],
 
     "@babel/code-frame": ["@babel/code-frame@8.0.0", "", { "dependencies": { "@babel/helper-validator-identifier": "^8.0.0", "js-tokens": "^10.0.0" } }, "sha512-dYYg153EyN2Ekbqw2zAsbd6/JR+9N2SEoC7YV2GyyqMM7x9bLDTjBD6XBhSMLH0wtIVyJj03jWNriQhaN+eoCw=="],
