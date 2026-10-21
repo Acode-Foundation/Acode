@@ -30,6 +30,7 @@ import {
 } from "@emmetio/codemirror6-plugin";
 import createBaseExtensions from "cm/baseExtensions";
 import {
+	getCanvasBackend,
 	getCanvasDisplayOptions,
 	getCanvasFont,
 	getCanvasTheme,
@@ -1475,6 +1476,7 @@ async function EditorManager($header, $body) {
 					...display,
 					font,
 					theme: getCanvasTheme(themeId),
+					backend: getCanvasBackend(appSettings.value),
 					input: appSettings.value.useTextareaForIME ? "textarea" : "auto",
 					touchSelection: {
 						onMenu: (event) =>
@@ -3802,6 +3804,7 @@ async function EditorManager($header, $body) {
 	// highlightActiveLine when the state is recreated.
 	appSettings.on("update:highlightActiveLine", syncAllCanvasViews);
 	appSettings.on("update:scrollSpeed", syncAllCanvasViews);
+	appSettings.on("update:stickyScroll", syncAllCanvasViews);
 
 	// Keep file.session and cache in sync on every edit
 	function getDocSyncListener() {

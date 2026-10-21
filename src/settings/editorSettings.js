@@ -12,6 +12,11 @@ export default function editorSettings() {
 		["dom", strings["editor renderer dom"]],
 		["canvas", strings["editor renderer canvas"]],
 	];
+	const canvasBackendOptions = [
+		["auto", strings["canvas backend auto"]],
+		["webgl2", "WebGL2"],
+		["webgpu", "WebGPU"],
+	];
 	const wrappingIndentOptions = [
 		["none", strings.none],
 		["same", strings["wrap-indent-same"]],
@@ -43,6 +48,24 @@ export default function editorSettings() {
 				rendererOptions[0][1],
 			select: rendererOptions,
 			info: strings["settings-info-editor-renderer"],
+			category: categories.textLayout,
+		},
+		{
+			key: "canvasBackend",
+			text: strings["canvas backend"],
+			value: values.canvasBackend ?? "auto",
+			valueText: (value) =>
+				canvasBackendOptions.find(([key]) => key === value)?.[1] ??
+				canvasBackendOptions[0][1],
+			select: canvasBackendOptions,
+			info: strings["settings-info-canvas-backend"],
+			category: categories.textLayout,
+		},
+		{
+			key: "stickyScroll",
+			text: strings["sticky scroll"],
+			checkbox: values.stickyScroll ?? false,
+			info: strings["settings-info-sticky-scroll"],
 			category: categories.textLayout,
 		},
 		{
@@ -292,10 +315,16 @@ export default function editorSettings() {
 				return;
 
 			case "editorRenderer":
-				// Editors are created with their renderer: reload to switch.
-				if (value === appSettings.value.editorRenderer) return;
+			case "canvasBackend":
+				// Editors are created with their renderer and backend: reload
+				// to switch (a backend change only matters to canvas editors).
+				if (value === appSettings.value[key]) return;
 				await appSettings.update({ [key]: value });
-				if (await confirm(strings.info, strings["reload to apply"])) {
+				if (
+					(key === "editorRenderer" ||
+						appSettings.value.editorRenderer === "canvas") &&
+					(await confirm(strings.info, strings["reload to apply"]))
+				) {
 					location.reload();
 				}
 				return;

@@ -134,6 +134,8 @@ class Settings {
 			cursorWidth: 2,
 			editorTheme: "one_dark",
 			editorRenderer: "dom",
+			canvasBackend: "auto",
+			stickyScroll: false,
 			textWrap: false,
 			wrappingIndent: "same",
 			softTab: true,

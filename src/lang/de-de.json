@@ -891,5 +891,10 @@
 	"editor renderer": "Renderer",
 	"editor renderer dom": "DOM (default)",
 	"editor renderer canvas": "Canvas (experimental)",
-	"settings-info-editor-renderer": "Canvas draws code with the GPU for smoother scrolling in large files. It is experimental: some plugins may not work with it. Applies after a reload."
+	"settings-info-editor-renderer": "Canvas draws code with the GPU for smoother scrolling in large files. It is experimental: some plugins may not work with it. Applies after a reload.",
+	"canvas backend": "Canvas backend",
+	"canvas backend auto": "Auto (WebGL2)",
+	"settings-info-canvas-backend": "The GPU API the canvas renderer draws with. WebGPU falls back to WebGL2 where it isn't available. Applies after a reload.",
+	"sticky scroll": "Sticky scroll",
+	"settings-info-sticky-scroll": "Keep the first lines of the functions, classes and blocks around the top line pinned while scrolling. Canvas renderer only."
 }

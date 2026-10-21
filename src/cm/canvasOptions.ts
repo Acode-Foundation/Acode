@@ -243,7 +243,18 @@ export function getCanvasDisplayOptions(
 		showWhitespace: showSpaces
 			? { spaces: true, trailing: true, lineBreaks: true }
 			: false,
+		stickyScroll: !!settings.stickyScroll,
 	};
+}
+
+const CANVAS_BACKENDS = ["auto", "webgl2", "webgpu"] as const;
+
+/** The GPU API for new canvas views ("webgpu" falls back to WebGL2). */
+export function getCanvasBackend(
+	settings: Settings,
+): CanvasViewConfig["backend"] {
+	const value = settings.canvasBackend;
+	return CANVAS_BACKENDS.includes(value) ? value : "auto";
 }
 
 interface CanvasSyncState {
