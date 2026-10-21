@@ -34,6 +34,7 @@ interface ThemeConfig {
 	lineNumber?: string;
 	lineNumberActive?: string;
 	matchingBracket?: string;
+	selectionMatch?: string;
 	[color: string]: unknown;
 }
 
@@ -112,6 +113,22 @@ function highlightFromConfig(config: ThemeConfig): TokenStyleSpec[] {
 }
 
 /**
+ * Decoration colors the canvas draws natively, as the themes' CSS has them:
+ * selection matches use the theme's `selectionMatch`, else its selection.
+ */
+function themeClasses(config: ThemeConfig): CanvasThemeSpec["classes"] {
+	const classes: NonNullable<CanvasThemeSpec["classes"]> = {};
+	if (config.matchingBracket) {
+		classes["cm-matchingBracket"] = { background: config.matchingBracket };
+	}
+	const selectionMatch = config.selectionMatch || config.selection;
+	if (selectionMatch) {
+		classes["cm-selectionMatch"] = { background: selectionMatch };
+	}
+	return Object.keys(classes).length ? classes : undefined;
+}
+
+/**
  * The canvas theme for an Acode editor theme: colors from its config, syntax
  * colors from the HighlightStyle in its extensions. The theme's
  * EditorView.theme stays in the state, where it styles the DOM UI (tooltips,
@@ -141,9 +158,7 @@ export function getCanvasTheme(themeId: string): CanvasThemeSpec {
 		// Acode draws its own (draggable) scrollbars over the editor.
 		scrollbar: "transparent",
 		highlight,
-		classes: config.matchingBracket
-			? { "cm-matchingBracket": { background: config.matchingBracket } }
-			: undefined,
+		classes: themeClasses(config),
 	};
 }
 
@@ -218,8 +233,9 @@ export function getCanvasDisplayOptions(
 		horizontalScrollPastEnd: Number(settings.leftMargin ?? 50) || 0,
 		scrollPastEnd: SCROLL_PAST_END[settings.scrollPastEnd || "medium"] ?? 1,
 		scrollSpeed: SCROLL_SPEED[settings.scrollSpeed] ?? "normal",
-		// The DOM editor's guides don't highlight the active block either.
-		indentGuides: settings.indentGuides ? { active: false } : false,
+		// Unlike the DOM editor's guides, the block around the cursor is
+		// highlighted: it's one rect per frame on the canvas.
+		indentGuides: settings.indentGuides ? { active: true } : false,
 		rainbowBrackets: rainbow
 			? { colors: getRainbowBracketColors(getThemeConfig(themeId)) }
 			: false,

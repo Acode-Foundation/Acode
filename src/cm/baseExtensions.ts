@@ -37,6 +37,12 @@ export interface BaseExtensionOptions {
 	 * draws its own fold markers, so it only needs the folding state.
 	 */
 	foldGutter?: boolean;
+	/**
+	 * The canvas renderer draws the selection, cursors, drop cursor, active
+	 * line (and its gutter) and special characters itself, so those
+	 * extensions are left out.
+	 */
+	canvas?: boolean;
 	autoCloseBrackets?: boolean;
 	bracketMatching?: boolean;
 	highlightActiveLine?: boolean;
@@ -53,22 +59,25 @@ export default function createBaseExtensions(
 		autoIndent = true,
 		codeFolding = true,
 		foldGutter: showFoldGutter = true,
+		canvas = false,
 		autoCloseBrackets = true,
 		bracketMatching: enableBracketMatching = true,
 		highlightActiveLine: enableHighlightActiveLine = true,
 		highlightSelectionMatches: enableHighlightSelectionMatches = true,
 	} = options;
-	const extensions: Extension[] = [highlightSpecialChars(), history()];
+	const extensions: Extension[] = [history()];
+	if (!canvas) extensions.push(highlightSpecialChars());
 
-	if (enableHighlightActiveLine) extensions.push(highlightActiveLineGutter());
+	if (enableHighlightActiveLine && !canvas) {
+		extensions.push(highlightActiveLineGutter());
+	}
 	if (codeFolding) {
 		extensions.push(
 			showFoldGutter ? foldGutter() : codeFoldingState(),
 			indentationFolding,
 		);
 	}
-	extensions.push(drawSelection());
-	extensions.push(dropCursor());
+	if (!canvas) extensions.push(drawSelection(), dropCursor());
 	extensions.push(EditorState.allowMultipleSelections.of(true));
 	if (autoIndent) extensions.push(indentOnInput());
 	extensions.push(
@@ -78,7 +87,9 @@ export default function createBaseExtensions(
 	if (autoCloseBrackets) extensions.push(closeBrackets());
 	extensions.push(rectangularSelection());
 	extensions.push(crosshairCursor());
-	if (enableHighlightActiveLine) extensions.push(highlightActiveLine());
+	if (enableHighlightActiveLine && !canvas) {
+		extensions.push(highlightActiveLine());
+	}
 	if (enableHighlightSelectionMatches) {
 		extensions.push(highlightSelectionMatches());
 	}

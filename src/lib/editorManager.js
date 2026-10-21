@@ -1132,6 +1132,10 @@ async function EditorManager($header, $body) {
 			// Canvas views draw fold markers themselves; CodeMirror's fold
 			// gutter would only rebuild its (unused) markers on every update.
 			foldGutter: !canvasRenderer,
+			canvas: canvasRenderer,
+			// Off by default for the DOM editor (its cost per selection
+			// change); canvas views draw the matches cheaply.
+			...(canvasRenderer ? { highlightSelectionMatches: true } : {}),
 		};
 	}
 

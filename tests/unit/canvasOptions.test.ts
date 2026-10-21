@@ -45,6 +45,7 @@ describe("canvas renderer theme bridge", () => {
 			gutterActiveForeground: config.lineNumberActive,
 			classes: {
 				"cm-matchingBracket": { background: config.matchingBracket },
+				"cm-selectionMatch": { background: config.selection },
 			},
 		});
 	});
@@ -114,7 +115,7 @@ describe("canvas renderer settings", () => {
 			wrapIndent: "deepIndent",
 			scrollPastEnd: 0,
 			scrollSpeed: "fastX2",
-			indentGuides: { active: false },
+			indentGuides: { active: true },
 			rainbowBrackets: false,
 			showWhitespace: { spaces: true, trailing: true, lineBreaks: true },
 			cursorWidth: 10,
