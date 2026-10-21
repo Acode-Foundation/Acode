@@ -53,6 +53,23 @@ function expectReadOnly(view: EditorView) {
 }
 
 describe("editor read-only configuration", () => {
+	it("leaves focus and input to a canvas view, keeping the edit filter", () => {
+		const state = EditorState.create({
+			doc: "abc",
+			extensions: createEditorReadOnlyExtension(true, { canvas: true }),
+		});
+		expect(state.readOnly).toBe(true);
+		// Canvas views take focus without a keyboard while read-only.
+		expect(state.facet(EditorView.editable)).toBe(true);
+		const typed = state.update({
+			changes: { from: 0, insert: "x" },
+			userEvent: "input.type",
+		});
+		expect(typed.state.doc.toString()).toBe("abc");
+		const synced = state.update({ changes: { from: 0, insert: "x" } });
+		expect(synced.state.doc.toString()).toBe("xabc");
+	});
+
 	it("keeps an editable editor focusable for text input", () => {
 		const { view } = createEditor();
 

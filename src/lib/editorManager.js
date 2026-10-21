@@ -1799,7 +1799,7 @@ async function EditorManager($header, $body) {
 				searchExtension: search(),
 				// Ensure read-only can be toggled later via compartment
 				readOnlyExtension: readOnlyCompartment.of(
-					createEditorReadOnlyExtension(false),
+					createEditorReadOnlyExtension(false, { canvas: canvasRenderer }),
 				),
 				// Editor options driven by settings via compartments
 				optionExtensions: getBaseExtensionsFromOptions(),
@@ -2961,7 +2961,9 @@ async function EditorManager($header, $body) {
 				...getBaseExtensionsFromOptions(),
 				languageCompartment.of([]),
 				lspCompartment.of([]),
-				readOnlyCompartment.of(createEditorReadOnlyExtension(true)),
+				readOnlyCompartment.of(
+					createEditorReadOnlyExtension(true, { canvas: canvasRenderer }),
+				),
 				...(text === undefined
 					? [placeholder(`Loading ${file.filename || "file"}...`)]
 					: []),
@@ -3103,7 +3105,11 @@ async function EditorManager($header, $body) {
 		// Apply read-only state based on file.editable/loading using Compartment
 		try {
 			const ro = !file.editable || !!file.loading;
-			exts.push(readOnlyCompartment.of(createEditorReadOnlyExtension(ro)));
+			exts.push(
+				readOnlyCompartment.of(
+					createEditorReadOnlyExtension(ro, { canvas: canvasRenderer }),
+				),
+			);
 		} catch (e) {
 			// safe to ignore; editor will remain editable by default
 		}
