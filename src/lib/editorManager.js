@@ -984,7 +984,9 @@ async function EditorManager($header, $body) {
 	}
 	const diagnosticsClientExt = lspDiagnosticsClientExtension();
 	const buildDiagnosticsUiExt = () =>
-		lspDiagnosticsUiExtension(appSettings?.value?.lintGutter !== false);
+		lspDiagnosticsUiExtension(appSettings?.value?.lintGutter !== false, {
+			canvas: canvasRenderer,
+		});
 	const UNTITLED_URI_PREFIX = "untitled://acode/";
 
 	function getEditorFontFamily() {
@@ -3743,7 +3745,9 @@ async function EditorManager($header, $body) {
 
 	appSettings.on("update:lintGutter", function (value) {
 		lspClientManager.setOptions({
-			diagnosticsUiExtension: lspDiagnosticsUiExtension(value !== false),
+			diagnosticsUiExtension: lspDiagnosticsUiExtension(value !== false, {
+				canvas: canvasRenderer,
+			}),
 		});
 		const active = manager.activeFile;
 		if (active?.type === "editor") {
