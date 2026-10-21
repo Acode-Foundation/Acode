@@ -1,3 +1,4 @@
+import type { CanvasWidgetSpec } from "@acode/canvas-view";
 import type { LSPClient } from "@codemirror/lsp-client";
 import { LSPPlugin } from "@codemirror/lsp-client";
 import type { Range } from "@codemirror/state";
@@ -71,6 +72,27 @@ export class ColorChipWidget extends WidgetType {
 		el.dataset["colorraw"] = this.payload.css;
 		chipState.set(el, this.payload);
 		return el;
+	}
+
+	/**
+	 * How a canvas view (@acode/canvas-view) draws the chip: the box
+	 * `toDOM` styles, without making its element. The view only calls
+	 * `toDOM` when the chip is tapped, so the color picker still opens.
+	 */
+	toCanvas(view: EditorView): CanvasWidgetSpec {
+		const cell = view.defaultCharacterWidth || 8;
+		const em = (view as unknown as { fontSizePx?: number }).fontSizePx || 14;
+		return {
+			text: "",
+			cells: Math.max(0.5, Math.round(((0.9 * em) / cell) * 4) / 4),
+			padLeft: 2 / cell,
+			padRight: 2 / cell,
+			style: {
+				background: this.payload.css,
+				border: "rgba(0,0,0,0.2)",
+				rounded: true,
+			},
+		};
 	}
 
 	ignoreEvent(): boolean {
