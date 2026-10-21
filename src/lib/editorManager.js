@@ -1034,10 +1034,13 @@ async function EditorManager($header, $body) {
 
 	function makeFontTheme() {
 		const fontSize = appSettings?.value?.fontSize || "12px";
-		const lineHeight = appSettings?.value?.lineHeight || 1.6;
+		const lineHeight = appSettings?.value?.lineHeight || 1.4;
 		const fontFamily = getEditorFontFamily();
 		return EditorView.theme({
-			"&": { fontSize, lineHeight: String(lineHeight) },
+			"&": { fontSize },
+			// On the scroller, where CodeMirror's base theme sets 1.4: a line
+			// height on the editor itself never reached the lines or gutters.
+			".cm-scroller": { lineHeight: String(lineHeight) },
 			".cm-content": { fontFamily },
 			".cm-gutter": { fontFamily },
 			".cm-tooltip, .cm-tooltip *": { fontFamily },

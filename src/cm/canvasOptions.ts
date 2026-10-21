@@ -189,13 +189,14 @@ export function fontSizeToPx(value: unknown): number {
 	}
 }
 
+/** Same font size and line height as `makeFontTheme` gives the DOM editor. */
 export function getCanvasFont(settings: Settings, family: string): FontSpec {
 	const lineHeight = Number(settings.lineHeight);
 	return {
 		family,
 		size: fontSizeToPx(settings.fontSize || "12px"),
 		lineHeight:
-			Number.isFinite(lineHeight) && lineHeight > 0 ? lineHeight : 1.6,
+			Number.isFinite(lineHeight) && lineHeight > 0 ? lineHeight : 1.4,
 	};
 }
 
