@@ -88,9 +88,9 @@ export function colorChipDecoration(
 }
 
 export function isViewEditable(view: EditorView): boolean {
-	const readOnly = view.contentDOM.ariaReadOnly === "true";
-	const editable = view.contentDOM.contentEditable === "true";
-	return !readOnly && editable;
+	// From the state, not contentDOM's attributes: a canvas view's
+	// contentDOM is its hidden input element, which has neither.
+	return view.state.facet(EditorView.editable) && !view.state.readOnly;
 }
 
 export function hasLspColorProvider(view: EditorView): boolean {
