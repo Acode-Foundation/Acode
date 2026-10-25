@@ -325,7 +325,7 @@ export default function editorSettings() {
 						appSettings.value.editorRenderer === "canvas") &&
 					(await confirm(strings.info, strings["reload to apply"]))
 				) {
-					location.reload();
+					await reloadApp();
 				}
 				return;
 
@@ -338,5 +338,12 @@ export default function editorSettings() {
 				});
 				break;
 		}
+	}
+
+	/** Reload once open files' edits are cached and the session is saved. */
+	async function reloadApp() {
+		await window.editorManager?.flushCacheWrites?.();
+		window.acode?.exec("save-state");
+		location.reload();
 	}
 }

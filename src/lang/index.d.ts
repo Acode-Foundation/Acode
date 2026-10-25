@@ -895,6 +895,11 @@ declare type LangStrings = {
 	"editor renderer dom": string;
 	"editor renderer canvas": string;
 	"settings-info-editor-renderer": string;
+	"canvas backend": string;
+	"canvas backend auto": string;
+	"settings-info-canvas-backend": string;
+	"sticky scroll": string;
+	"settings-info-sticky-scroll": string;
 };
 
 declare var strings: LangStrings;

@@ -1151,9 +1151,12 @@ async function EditorManager($header, $body) {
 
 	function getBaseExtensionSignature() {
 		const options = getBaseExtensionOptions();
-		return JSON.stringify(
-			baseExtensionSettings.map((key) => [key, options[key]]),
-		);
+		// The renderer is part of it: states built for canvas views leave out
+		// what the canvas draws, so a DOM fallback must not reuse them.
+		return JSON.stringify([
+			...baseExtensionSettings.map((key) => [key, options[key]]),
+			["canvas", options.canvas],
+		]);
 	}
 
 	function makeRainbowBracketExtension() {
@@ -1503,7 +1506,13 @@ async function EditorManager($header, $body) {
 				error,
 				"canvas-renderer",
 			);
-			const view = createEditorView({ state, parent });
+			// Panes start with an empty state; rebuild it with the DOM
+			// editor's extensions. Files' states follow on their next show,
+			// since the renderer is in their extension signature.
+			const view = createEditorView({
+				state: createEmptyEditorState(),
+				parent,
+			});
 			applyOptions(null, view);
 			return view;
 		}
