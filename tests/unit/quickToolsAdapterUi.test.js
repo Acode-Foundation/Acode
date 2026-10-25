@@ -1,4 +1,9 @@
 // @vitest-environment happy-dom
+
+import {
+	clampEditorFontSize,
+	DEFAULT_EDITOR_FONT_SIZE,
+} from "cm/editorFontSize";
 import { afterEach, expect, it, vi } from "vitest";
 import { loadSourceModule } from "../helpers/loadSourceModule";
 
@@ -147,6 +152,7 @@ function hostCommands(manager, exec) {
 		"src/cm/commandRegistry.js",
 		{
 			...dependencies,
+			"./editorFontSize": { clampEditorFontSize, DEFAULT_EDITOR_FONT_SIZE },
 			"@codemirror/state": { Compartment: class {} },
 			"cm/keyBindingUtils": { toCodeMirrorKey: () => null },
 			"lib/keyBindings": {
