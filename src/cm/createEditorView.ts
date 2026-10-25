@@ -1,10 +1,10 @@
-import { CanvasView, type CanvasViewConfig } from "@acode/canvas-view";
+import { CanvasView, type CanvasViewConfig } from "@acode.app/canvas-view";
 import type { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 
 /**
  * The editor renderers Acode can create. "dom" is CodeMirror's own
- * EditorView; "canvas" is @acode/canvas-view, which draws the text with
+ * EditorView; "canvas" is @acode.app/canvas-view, which draws the text with
  * the GPU on CodeMirror's state (opt-in, experimental).
  */
 export type EditorRenderer = "dom" | "canvas";

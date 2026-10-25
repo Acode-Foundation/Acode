@@ -15,13 +15,7 @@
     "declaration": false,
     "allowJs": true,
     "checkJs": false,
-    // Linked @acode/canvas-view must see Acode's CodeMirror types, not its checkout's.
     "paths": {
-      "@codemirror/language": ["./node_modules/@codemirror/language"],
-      "@codemirror/state": ["./node_modules/@codemirror/state"],
-      "@codemirror/view": ["./node_modules/@codemirror/view"],
-      "@lezer/common": ["./node_modules/@lezer/common"],
-      "@lezer/highlight": ["./node_modules/@lezer/highlight"],
       "*": ["./src/*"]
     },
     "jsx": "preserve",

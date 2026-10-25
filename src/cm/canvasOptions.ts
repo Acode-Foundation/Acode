@@ -4,7 +4,7 @@ import {
 	type CanvasViewConfig,
 	type FontSpec,
 	type TokenStyleSpec,
-} from "@acode/canvas-view";
+} from "@acode.app/canvas-view";
 import { HighlightStyle } from "@codemirror/language";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { tags as t } from "@lezer/highlight";
@@ -12,7 +12,7 @@ import { getRainbowBracketColors } from "cm/rainbowBrackets";
 import { getThemeById, getThemeConfig, getThemeExtensions } from "cm/themes";
 
 /**
- * Maps Acode's editor settings and themes to @acode/canvas-view options.
+ * Maps Acode's editor settings and themes to @acode.app/canvas-view options.
  *
  * The canvas renderer draws line numbers, fold markers, the active line,
  * indent guides, rainbow brackets, whitespace, wrapping and scroll room

@@ -548,7 +548,7 @@ export function lspDiagnosticsUiExtension(
 	{ canvas = false }: { canvas?: boolean } = {},
 ): Extension[] {
 	// Touch devices get no in-text marks in the DOM editor. Canvas views
-	// (@acode/canvas-view) draw them natively (wavy underlines, lint
+	// (@acode.app/canvas-view) draw them natively (wavy underlines, lint
 	// points) at no layout cost, so they keep them; tooltips stay off.
 	const diagnosticsMarkerFilter =
 		isCoarsePointerDevice() && !canvas ? () => [] : undefined;

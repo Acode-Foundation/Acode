@@ -1,4 +1,4 @@
-import type { CanvasWidgetSpec } from "@acode/canvas-view";
+import type { CanvasWidgetSpec } from "@acode.app/canvas-view";
 import type { LSPClient } from "@codemirror/lsp-client";
 import { LSPPlugin } from "@codemirror/lsp-client";
 import type { Range } from "@codemirror/state";
@@ -75,7 +75,7 @@ export class ColorChipWidget extends WidgetType {
 	}
 
 	/**
-	 * How a canvas view (@acode/canvas-view) draws the chip: the box
+	 * How a canvas view (@acode.app/canvas-view) draws the chip: the box
 	 * `toDOM` styles, without making its element. The view only calls
 	 * `toDOM` when the chip is tapped, so the color picker still opens.
 	 */

@@ -77,7 +77,7 @@ const readOnlyCursor = [
 ];
 
 export interface EditorReadOnlyOptions {
-	/** The extension is for a canvas view (@acode/canvas-view). */
+	/** The extension is for a canvas view (@acode.app/canvas-view). */
 	canvas?: boolean;
 }
 

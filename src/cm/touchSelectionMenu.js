@@ -177,7 +177,7 @@ export default function createTouchSelectionMenu(view, options = {}) {
 }
 
 /**
- * The selection menu for a canvas editor (@acode/canvas-view). The view owns
+ * The selection menu for a canvas editor (@acode.app/canvas-view). The view owns
  * the touch selection gestures and handles, and asks for the menu through its
  * `touchSelection.onMenu` hook, which goes to `handleCanvasMenu()`. Only the
  * menu UI (items, layout, actions) is shared with the DOM editor's controller,
