@@ -461,6 +461,7 @@ class TerminalManager {
 						`\x1b[31mError: ${cleanError}\x1b[0m\r\n`,
 					);
 				},
+				appSettings.value.terminalSettings?.mergedHomeDirectories !== false,
 			);
 
 			// Only return success if Terminal.install() indicates success (exit code 0)
@@ -1232,7 +1233,16 @@ class TerminalManager {
 
 		let convertedPath;
 
-		if (prootPath.startsWith("/public")) {
+		const mergedHomeDirectories =
+			appSettings.value.terminalSettings?.mergedHomeDirectories !== false;
+		const homePathMatch = mergedHomeDirectories
+			? prootPath.match(/^\/(home|root)(\/.*)?$/)
+			: null;
+
+		if (homePathMatch) {
+			// /home and /root are bind-mounted to the public directory.
+			convertedPath = `file://${dataDir}/files/public${homePathMatch[2] || ""}`;
+		} else if (prootPath.startsWith("/public")) {
 			// /public -> /data/user/0/com.foxdebug.acode/files/public
 			convertedPath = `file://${dataDir}/files${prootPath}`;
 		} else if (

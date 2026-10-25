@@ -887,5 +887,10 @@
 	"settings-info-editor-wrapping-indent": "选择折行后的文本是从行首靠左对齐、保持原行的缩进，还是进一步向内缩进。每增加一级缩进将遵循您设定的制表符宽度。",
 	"icon pack": "图标包",
 	"settings-info-icon-pack": "选择资源管理器及整个应用文件列表中文件和文件夹所使用的图标。",
-	"unavailable": "不可用"
+	"unavailable": "不可用",
+	"terminal:merged home directories": "Merged home directories",
+	"info-mergedHomeDirectories": "Mount /public as /home and /root inside the terminal. Disable to keep /public, /home and /root as separate directories; existing files stay where they are. Restarting the terminal is required for changes to take effect.",
+	"terminal:restart home layout": "Restart terminal",
+	"info-terminal-restart-home-layout": "Open terminal sessions will be closed so the new home directory layout can take effect.",
+	"terminal:restart required": "Restart the terminal to apply this change."
 }

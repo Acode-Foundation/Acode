@@ -18,6 +18,7 @@ export const DEFAULT_TERMINAL_SETTINGS = {
 	confirmTabClose: true,
 	failsafeMode: false,
 	prootDebug: false,
+	mergedHomeDirectories: true,
 	// Touch selection settings
 	touchSelectionTapHoldDuration: 400,
 	touchSelectionMoveThreshold: 8,

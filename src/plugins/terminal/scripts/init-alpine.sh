@@ -1,6 +1,11 @@
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/share/bin:/usr/share/sbin:/usr/local/bin:/usr/local/sbin:/system/bin:/system/xbin:$PREFIX/local/bin
 export PS1="\[\e[38;5;46m\]\u\[\033[39m\]@localhost \[\033[39m\]\w \[\033[0m\]\\$ "
-export HOME=/public
+if [ "${MERGED_HOME_DIRS:-true}" = "true" ]; then
+    export HOME=/public
+else
+    export HOME=/home
+fi
+export ACODE_HOME="$HOME"
 export TERM=xterm-256color
 
 INSTALLING=false
@@ -193,7 +198,7 @@ fi
 # Environment setup
 export PATH=$PATH:/bin:/sbin:/usr/bin:/usr/sbin:/usr/share/bin:/usr/share/sbin:/usr/local/bin:/usr/local/sbin
 
-export HOME=/public
+export HOME="${ACODE_HOME:-/public}"
 export TERM=xterm-256color
 SHELL=/bin/bash
 export PIP_BREAK_SYSTEM_PACKAGES=1
@@ -338,6 +343,11 @@ if [ -f "$HOME/.bashrc" ]; then
 fi
 
 EOF
+fi
+
+# Keep older initrc files in sync with the home layout selected in settings.
+if [ -f "$PREFIX/alpine/initrc" ] && grep -q '^export HOME=/public$' "$PREFIX/alpine/initrc" 2>/dev/null; then
+    sed -i 's|^export HOME=/public$|export HOME="${ACODE_HOME:-/public}"|' "$PREFIX/alpine/initrc"
 fi
 
 # Add PS1 only if not already present

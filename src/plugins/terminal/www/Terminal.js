@@ -6,12 +6,17 @@ const Terminal = {
      * @param {boolean} [installing=false] - Whether AXS is being started during installation.
      * @param {Function} [logger=console.log] - Function to log standard output.
      * @param {Function} [err_logger=console.error] - Function to log errors.
+     * @param {boolean} [failsafe=false] - Whether to start the failsafe system shell.
+     * @param {boolean} [mergedHomeDirectories=true] - Whether /home and /root are aliases of /public.
      * @returns {Promise<boolean>} - Returns true if installation completes with exit code 0, void if not installing
      */
-    async startAxs(installing = false, logger = console.log, err_logger = console.error,failsafe = false) {
+    async startAxs(installing = false, logger = console.log, err_logger = console.error,failsafe = false, mergedHomeDirectories = true) {
         const filesDir = await new Promise((resolve, reject) => {
             system.getFilesDir(resolve, reject);
         });
+
+        const mergedHome = mergedHomeDirectories !== false;
+        await this.setMergedHomeDirectories(mergedHome, filesDir);
 
         const failsafeArg = failsafe ? "--failsafe" : "";
 
@@ -21,7 +26,7 @@ const Terminal = {
             readAsset("init-sandbox.sh"),
         ]);
 
-        await this.migrateLegacyHome();
+        await this.migrateLegacyHome(mergedHome);
 
         const isFdroid = await Executor.execute("echo $FDROID");
 
@@ -118,9 +123,10 @@ const Terminal = {
      * Also sets up additional dependencies for F-Droid variant.
      * @param {Function} [logger=console.log] - Function to log standard output.
      * @param {Function} [err_logger=console.error] - Function to log errors.
+     * @param {boolean} [mergedHomeDirectories=true] - Whether /home and /root are aliases of /public.
      * @returns {Promise<boolean>} - Returns true if installation completes with exit code 0
      */
-    async install(logger = console.log, err_logger = console.error) {
+    async install(logger = console.log, err_logger = console.error, mergedHomeDirectories = true) {
         if (!(await this.isSupported())) return false;
 
         const isFdroid = await Executor.execute("echo $FDROID");
@@ -369,7 +375,7 @@ const Terminal = {
             await ensureDir(`${filesDir}/.extracted`);
 
             logger("⚙️  Updating sandbox enviroment...");
-            const installResult = await this.startAxs(true, logger, err_logger);
+            const installResult = await this.startAxs(true, logger, err_logger, false, mergedHomeDirectories);
             if (!installResult) {
                 throw new Error(this.lastInstallError || "Sandbox configuration failed.");
             }
@@ -570,29 +576,61 @@ const Terminal = {
     },
 
     /**
+     * Persists the home directory layout for the shell scripts.
+     * @param {boolean} [merged=true] - `true` to mount /public at /home and /root.
+     * @param {string} [filesDir] - App files directory, resolved when omitted.
+     * @returns {Promise<void>}
+     */
+    async setMergedHomeDirectories(merged = true, filesDir) {
+        if (!filesDir) {
+            filesDir = await new Promise((resolve, reject) => {
+                system.getFilesDir(resolve, reject);
+            });
+        }
+
+        await writeText(
+            `${filesDir}/terminal_home_mode`,
+            merged ? "merged" : "separate"
+        );
+    },
+
+    /**
      * Migrates the legacy terminal home directories into public/MIGRATE.
      * Older builds stored user files under alpine/home and alpine/root.
      * After /home, /root and /public were merged into a single public
      * directory, any files still left in the old locations are copied
      * into public/MIGRATE (keeping their source structure) so nothing is
      * hidden or lost. This is a no-op once the migration has run.
+     *
+     * When the separate layout is selected, no files are copied. The
+     * migration marker is still written so independent /home and /root
+     * contents are never later mistaken for legacy data.
+     * @param {boolean} [merged=true] - Whether the merged layout is active.
      * @returns {Promise<void>}
      */
-    async migrateLegacyHome() {
+    async migrateLegacyHome(merged = true) {
         if (this._legacyHomeMigrated) return;
         try {
+            if (!merged) {
+                await Executor.BackgroundExecutor.execute(`
+                    MIGRATE="$PREFIX/public/MIGRATE"
+                    mkdir -p "$MIGRATE"
+                    touch "$MIGRATE/.migrated"
+                `);
+                this._legacyHomeMigrated = true;
+                return;
+            }
+
             const cmd = `
                 MIGRATE="$PREFIX/public/MIGRATE"
 
                 # Already migrated
                 [ -e "$MIGRATE/.migrated" ] && exit 0
 
-                COPIED=false
-
                 if [ -d "$PREFIX/alpine/home" ] && [ -n "$(find "$PREFIX/alpine/home" -mindepth 1 -maxdepth 1 2>/dev/null | head -n 1)" ]; then
                     mkdir -p "$MIGRATE/home"
                     if cp -a "$PREFIX/alpine/home/." "$MIGRATE/home/"; then
-                        COPIED=true
+                        :
                     else
                         exit 1
                     fi
@@ -601,16 +639,16 @@ const Terminal = {
                 if [ -d "$PREFIX/alpine/root" ] && [ -n "$(find "$PREFIX/alpine/root" -mindepth 1 -maxdepth 1 2>/dev/null | head -n 1)" ]; then
                     mkdir -p "$MIGRATE/root"
                     if cp -a "$PREFIX/alpine/root/." "$MIGRATE/root/"; then
-                        COPIED=true
+                        :
                     else
                         exit 1
                     fi
                 fi
 
-                # Mark as migrated so this only runs once
-                if [ "$COPIED" = "true" ]; then
-                    touch "$MIGRATE/.migrated"
-                fi
+                # Mark as migrated so this only runs once, even when there
+                # was nothing to copy. Later independent /home or /root
+                # contents must not be treated as legacy data.
+                touch "$MIGRATE/.migrated"
             `;
             await Executor.BackgroundExecutor.execute(cmd);
             this._legacyHomeMigrated = true;

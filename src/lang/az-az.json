@@ -887,5 +887,10 @@
 	"plugin-review:error-max-length": "Rəy ən çox {max} simvoldan ibarət olmalıdır.",
 	"plugin-review:error-downvote-comment": "Nəyin yaxşılaşdırıla biləcəyini tərtibatçıya bildir.",
 	"plugin-review:error-empty": "Şərh əlavə et və ya «Bəyən» seçimini et.",
-	"plugin-review:unrated": "Qiymətləndirilməyib"
+	"plugin-review:unrated": "Qiymətləndirilməyib",
+	"terminal:merged home directories": "Merged home directories",
+	"info-mergedHomeDirectories": "Mount /public as /home and /root inside the terminal. Disable to keep /public, /home and /root as separate directories; existing files stay where they are. Restarting the terminal is required for changes to take effect.",
+	"terminal:restart home layout": "Restart terminal",
+	"info-terminal-restart-home-layout": "Open terminal sessions will be closed so the new home directory layout can take effect.",
+	"terminal:restart required": "Restart the terminal to apply this change."
 }

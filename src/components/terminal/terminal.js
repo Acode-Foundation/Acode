@@ -727,6 +727,7 @@ export default class TerminalComponent {
 					() => {},
 					console.error,
 					terminalValues.failsafeMode,
+					terminalValues.mergedHomeDirectories !== false,
 				);
 			}
 

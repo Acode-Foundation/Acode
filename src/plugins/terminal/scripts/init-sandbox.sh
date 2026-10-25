@@ -4,6 +4,19 @@ mkdir -p "$PREFIX/tmp"
 mkdir -p "$PREFIX/alpine/tmp"
 mkdir -p "$PREFIX/public"
 
+# The terminal settings page controls whether /home and /root are aliases of
+# /public. Terminal.startAxs writes this marker before this script runs, so
+# background Executor processes use the same layout as the interactive shell.
+MERGED_HOME_DIRS=true
+if [ -f "$PREFIX/terminal_home_mode" ] && [ "$(cat "$PREFIX/terminal_home_mode" 2>/dev/null)" = "separate" ]; then
+    MERGED_HOME_DIRS=false
+fi
+export MERGED_HOME_DIRS
+
+if [ "$MERGED_HOME_DIRS" != "true" ]; then
+    mkdir -p "$PREFIX/alpine/home" "$PREFIX/alpine/root"
+fi
+
 export PROOT_TMP_DIR=$PREFIX/tmp
 
 if [ "$FDROID" = "true" ]; then
@@ -64,8 +77,10 @@ ARGS="$ARGS -b /sys"
 ARGS="$ARGS -b $PREFIX"
 ARGS="$ARGS -b $NATIVE_DIR"
 ARGS="$ARGS -b $PREFIX/public:/public"
-ARGS="$ARGS -b $PREFIX/public:/home"
-ARGS="$ARGS -b $PREFIX/public:/root"
+if [ "$MERGED_HOME_DIRS" = "true" ]; then
+    ARGS="$ARGS -b $PREFIX/public:/home"
+    ARGS="$ARGS -b $PREFIX/public:/root"
+fi
 ARGS="$ARGS -b $PREFIX/alpine/tmp:/dev/shm"
 
 

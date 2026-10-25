@@ -4,6 +4,7 @@ import {
 	DEFAULT_TERMINAL_SETTINGS,
 	TerminalThemeManager,
 } from "components/terminal";
+import terminalManager from "components/terminal/terminalManager";
 import toast from "components/toast";
 import alert from "dialogs/alert";
 import confirm from "dialogs/confirm";
@@ -229,6 +230,17 @@ export default function terminalSettings() {
 			category: categories.session,
 		},
 		{
+			key: "mergedHomeDirectories",
+			text:
+				strings["terminal:merged home directories"] ||
+				"Merged home directories",
+			checkbox: terminalValues.mergedHomeDirectories !== false,
+			info:
+				strings["info-mergedHomeDirectories"] ||
+				"Mount /public as /home and /root inside the terminal. Disable to keep /public, /home and /root as separate directories; existing files stay where they are. Restarting the terminal is required for changes to take effect.",
+			category: categories.session,
+		},
+		{
 			key: "failsafeMode",
 			text: strings["terminal:failsafe"],
 			checkbox: terminalValues.failsafeMode,
@@ -336,6 +348,16 @@ export default function terminalSettings() {
 				Executor.BackgroundExecutor.setProotDebug(value);
 				break;
 
+			case "mergedHomeDirectories":
+				appSettings.update({
+					terminalSettings: {
+						...values.terminalSettings,
+						[key]: value,
+					},
+				});
+				await applyMergedHomeChange(value);
+				break;
+
 			default:
 				appSettings.update({
 					terminalSettings: {
@@ -416,6 +438,46 @@ export default function terminalSettings() {
 			loader.removeTitleLoader();
 			console.error("Terminal restore failed:", error);
 			toast(error.toString());
+		}
+	}
+
+	/**
+	 * Applies the merged/separate home layout and restarts AXS when needed.
+	 * @param {boolean} enabled
+	 */
+	async function applyMergedHomeChange(enabled) {
+		try {
+			if (!(await Terminal.isAxsRunning())) {
+				await Terminal.setMergedHomeDirectories(enabled);
+				return;
+			}
+
+			const terminalIds = Array.from(terminalManager.getAllTerminals().keys());
+
+			if (terminalIds.length) {
+				const shouldRestart = await confirm(
+					strings["terminal:restart home layout"] || "Restart terminal",
+					strings["info-terminal-restart-home-layout"] ||
+						"Open terminal sessions will be closed so the new home directory layout can take effect.",
+				);
+				if (!shouldRestart) {
+					toast(
+						strings["terminal:restart required"] ||
+							"Restart the terminal to apply this change.",
+					);
+					return;
+				}
+			}
+
+			for (const terminalId of terminalIds) {
+				await terminalManager.closeTerminal(terminalId, true);
+			}
+
+			await Terminal.stopAxs();
+			await Terminal.setMergedHomeDirectories(enabled);
+		} catch (error) {
+			console.error("Failed to apply merged home directory setting:", error);
+			toast(error?.message || String(error));
 		}
 	}
 }

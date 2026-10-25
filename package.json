@@ -46,9 +46,7 @@
       "cordova-plugin-iap": {},
       "com.foxdebug.acode.rk.customtabs": {},
       "cordova-plugin-crashhandler": {},
-      "cordova-plugin-advanced-http": {
-        "ANDROIDBLACKLISTSECURESOCKETPROTOCOLS": "SSLv3,TLSv1"
-      },
+      "cordova-plugin-advanced-http": {},
       "cordova-plugin-acode-webview": {},
       "cordova-plugin-system": {}
     },

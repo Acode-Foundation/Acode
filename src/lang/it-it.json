@@ -887,5 +887,10 @@
 	"settings-info-editor-wrapping-indent": "Choose whether wrapped text starts at the left edge, matches the original line's indentation, or is indented further. Each extra level uses your tab size.",
 	"icon pack": "Icon pack",
 	"settings-info-icon-pack": "Choose the icons used for files and folders in the explorer and file lists across the app.",
-	"unavailable": "unavailable"
+	"unavailable": "unavailable",
+	"terminal:merged home directories": "Merged home directories",
+	"info-mergedHomeDirectories": "Mount /public as /home and /root inside the terminal. Disable to keep /public, /home and /root as separate directories; existing files stay where they are. Restarting the terminal is required for changes to take effect.",
+	"terminal:restart home layout": "Restart terminal",
+	"info-terminal-restart-home-layout": "Open terminal sessions will be closed so the new home directory layout can take effect.",
+	"terminal:restart required": "Restart the terminal to apply this change."
 }

@@ -1390,8 +1390,15 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 				// Migrate any files left in the legacy alpine/home and
 				// alpine/root directories into public/MIGRATE so they are
-				// not hidden after the home/root/public merge.
-				if (typeof Terminal !== "undefined" && Terminal.migrateLegacyHome) {
+				// not hidden after the home/root/public merge. Skip this in
+				// the separate layout, where those directories are live.
+				const mergedHomeDirectories =
+					appSettings.value.terminalSettings?.mergedHomeDirectories !== false;
+				if (
+					mergedHomeDirectories &&
+					typeof Terminal !== "undefined" &&
+					Terminal.migrateLegacyHome
+				) {
 					Terminal.migrateLegacyHome();
 				}
 			} catch (err) {
