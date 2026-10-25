@@ -17,29 +17,8 @@ import {
 } from "./renderer";
 
 let previewController = null;
-let mermaidModulePromise = null;
-let mermaidThemeSignature = "";
+let peleModulePromise = null;
 let mathStylesPromise = null;
-
-function getThemeColor(name, fallback) {
-	const value = getComputedStyle(document.documentElement)
-		.getPropertyValue(name)
-		.trim();
-	return value || fallback;
-}
-
-function isDarkColor(color) {
-	const normalized = color.replace(/\s+/g, "");
-	const match = normalized.match(/^#([0-9a-f]{6})$/i);
-	if (!match) return true;
-
-	const value = match[1];
-	const r = Number.parseInt(value.slice(0, 2), 16);
-	const g = Number.parseInt(value.slice(2, 4), 16);
-	const b = Number.parseInt(value.slice(4, 6), 16);
-	const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-	return luminance < 0.5;
-}
 
 function escapeHtml(text) {
 	return String(text ?? "")
@@ -75,17 +54,15 @@ function getOffsetTopWithinContainer(target, container) {
 	return top;
 }
 
-async function getMermaid() {
-	if (!mermaidModulePromise) {
-		mermaidModulePromise = import("mermaid")
-			.then(({ default: mermaid }) => mermaid)
-			.catch((error) => {
-				mermaidModulePromise = null;
-				throw error;
-			});
+async function getPele() {
+	if (!peleModulePromise) {
+		peleModulePromise = import("pele/lazy").catch((error) => {
+			peleModulePromise = null;
+			throw error;
+		});
 	}
 
-	return mermaidModulePromise;
+	return peleModulePromise;
 }
 
 async function ensureMathStyles() {
@@ -100,76 +77,6 @@ async function ensureMathStyles() {
 	}
 
 	return mathStylesPromise;
-}
-
-function getMermaidThemeConfig() {
-	const backgroundColor = getThemeColor("--background-color", "#1e1e1e");
-	const panelColor = getThemeColor("--popup-background-color", "#2a2f3a");
-	const borderColor = getThemeColor("--border-color", "#4a4f5a");
-	const primaryTextColor = getThemeColor("--primary-text-color", "#f5f5f5");
-	const accentColor = getThemeColor("--link-text-color", "#4ba3ff");
-	const activeColor = getThemeColor("--active-color", accentColor);
-
-	return {
-		startOnLoad: false,
-		securityLevel: "strict",
-		htmlLabels: false,
-		theme: "base",
-		flowchart: {
-			htmlLabels: false,
-		},
-		themeVariables: {
-			darkMode: isDarkColor(backgroundColor),
-			background: backgroundColor,
-			mainBkg: panelColor,
-			primaryColor: panelColor,
-			mainContrastColor: primaryTextColor,
-			textColor: primaryTextColor,
-			primaryTextColor,
-			primaryBorderColor: borderColor,
-			lineColor: primaryTextColor,
-			secondaryColor: accentColor,
-			secondaryBorderColor: borderColor,
-			secondaryTextColor: primaryTextColor,
-			tertiaryColor: backgroundColor,
-			tertiaryBorderColor: borderColor,
-			tertiaryTextColor: primaryTextColor,
-			clusterBkg: panelColor,
-			clusterBorder: borderColor,
-			nodeBorder: borderColor,
-			nodeTextColor: primaryTextColor,
-			titleColor: primaryTextColor,
-			defaultLinkColor: activeColor,
-			actorTextColor: primaryTextColor,
-			labelTextColor: primaryTextColor,
-			loopTextColor: primaryTextColor,
-			noteTextColor: primaryTextColor,
-			sectionBkgColor: panelColor,
-			sectionBkgColor2: backgroundColor,
-			sectionTitleColor: primaryTextColor,
-			sequenceNumberColor: primaryTextColor,
-			signalTextColor: primaryTextColor,
-			taskTextColor: primaryTextColor,
-			taskTextDarkColor: primaryTextColor,
-			taskTextOutsideColor: primaryTextColor,
-			edgeLabelBackground: backgroundColor,
-			pieTitleTextColor: primaryTextColor,
-			pieLegendTextColor: primaryTextColor,
-			pieSectionTextColor: primaryTextColor,
-			git0: panelColor,
-			git1: backgroundColor,
-			git2: accentColor,
-			git3: activeColor,
-		},
-	};
-}
-
-function initializeMermaid(mermaid) {
-	const config = getMermaidThemeConfig();
-	const signature = JSON.stringify(config);
-	if (signature === mermaidThemeSignature) return;
-	mermaid.initialize(config);
-	mermaidThemeSignature = signature;
 }
 
 async function copyText(text) {
@@ -437,17 +344,17 @@ function createMarkdownPreview(file) {
 		);
 		if (!mermaidBlocks.length) return;
 
-		const mermaid = await getMermaid();
+		const { renderAsync } = await getPele();
 		if (previewState.disposed || version !== previewState.renderVersion) return;
-		initializeMermaid(mermaid);
-		let index = 0;
 		await Promise.all(
-			mermaidBlocks.map(async (block) => {
+			mermaidBlocks.map(async (block, index) => {
 				const source = block.textContent || "";
-				const id = `acode-markdown-mermaid-${Date.now()}-${version}-${index++}`;
 
 				try {
-					const { svg, bindFunctions } = await mermaid.render(id, source);
+					const { svg } = await renderAsync(source, {
+						idPrefix: `acode-markdown-mermaid-${version}-${index}`,
+						maxWidth: block.clientWidth || undefined,
+					});
 					if (
 						previewState.disposed ||
 						version !== previewState.renderVersion ||
@@ -456,13 +363,10 @@ function createMarkdownPreview(file) {
 						return;
 					}
 
-					const sanitizedSvg = DOMPurify.sanitize(svg, {
+					block.innerHTML = DOMPurify.sanitize(svg, {
 						USE_PROFILES: { svg: true, svgFilters: true },
-						ADD_TAGS: ["style"],
-						ADD_ATTR: ["data-et", "data-id", "data-node", "data-zoom", "class"],
+						ADD_ATTR: ["data-id", "class"],
 					});
-					block.innerHTML = sanitizedSvg;
-					bindFunctions?.(block);
 				} catch (error) {
 					if (!block.isConnected) return;
 					block.classList.add("mermaid-error");
