@@ -888,7 +888,7 @@
 	"icon pack": "Ikoncsomag",
 	"settings-info-icon-pack": "Válassza ki a fájlokhoz és a mappákhoz használandó ikonokat a fájlkezelőben és az alkalmazás egészében megjelenő fájllistákban.",
 	"unavailable": "nem érhető el",
-	"editor renderer": "Szerkesztő megjelenítője",
+	"editor renderer": "Megjelenítő",
 	"editor renderer dom": "DOM (alapértelmezett)",
 	"editor renderer canvas": "Canvas (kísérleti)",
 	"settings-info-editor-renderer": "A Canvas a GPU segítségével rajzolja ki a kódot a nagy fájlok gördülékenyebb görgetéséhez. Kísérleti funkció: előfordulhat, hogy egyes bővítmények nem működnek vele. Újratöltés után lép érvénybe.",
