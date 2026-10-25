@@ -83,6 +83,9 @@ describe("canvas renderer settings", () => {
 			showWhitespace: false,
 			highlightActiveLine: true,
 			cursorWidth: 2,
+			cursorBlinkRate: 1200,
+			gutterMarkers: "shared",
+			stickyScroll: false,
 			textDirection: "ltr",
 		});
 		expect(options.rainbowBrackets).toMatchObject({
@@ -104,6 +107,10 @@ describe("canvas renderer settings", () => {
 				rainbowBrackets: false,
 				showSpaces: true,
 				cursorWidth: 40,
+				cursorBlinkRate: "0",
+				canvasGutterMarkers: "overlay",
+				stickyScroll: true,
+				stickyScrollMaxLines: 30,
 				rtlText: true,
 			},
 			{ themeId: "one_dark" },
@@ -119,6 +126,9 @@ describe("canvas renderer settings", () => {
 			rainbowBrackets: false,
 			showWhitespace: { spaces: true, trailing: true, lineBreaks: true },
 			cursorWidth: 10,
+			cursorBlinkRate: 0,
+			gutterMarkers: "overlay",
+			stickyScroll: { maxLines: 10 },
 			textDirection: "auto",
 		});
 		expect(
@@ -127,6 +137,21 @@ describe("canvas renderer settings", () => {
 				{ themeId: "one_dark" },
 			).lineNumbers,
 		).toBe(false);
+		expect(
+			getCanvasDisplayOptions(
+				{
+					...defaults,
+					stickyScroll: true,
+					canvasGutterMarkers: "bad",
+					cursorBlinkRate: "bad",
+				},
+				{ themeId: "one_dark" },
+			),
+		).toMatchObject({
+			stickyScroll: { maxLines: 5 },
+			gutterMarkers: "shared",
+			cursorBlinkRate: 1200,
+		});
 	});
 
 	it("converts the editor font settings", () => {

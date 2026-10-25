@@ -52,6 +52,22 @@ const SCROLL_SPEED: Record<string, CanvasViewConfig["scrollSpeed"]> = {
 	FAST_X2: "fastX2",
 };
 
+const GUTTER_MARKERS = ["shared", "columns", "overlay"] as const;
+
+/** A finite number within [min, max], else the fallback. */
+function clampSetting(
+	value: unknown,
+	min: number,
+	max: number,
+	fallback: number,
+): number {
+	const number = Number(value);
+	if (value == null || value === "" || !Number.isFinite(number)) {
+		return fallback;
+	}
+	return Math.min(Math.max(Math.round(number), min), max);
+}
+
 /**
  * Find the HighlightStyle a theme passes to `syntaxHighlighting()`, by
  * walking its extension tree (arrays, precedence wrappers, compartments,
@@ -228,6 +244,11 @@ export function getCanvasDisplayOptions(
 			Number.isFinite(cursorWidth) && cursorWidth > 0
 				? Math.min(cursorWidth, 10)
 				: 2,
+		// 0 keeps the cursor steady.
+		cursorBlinkRate: clampSetting(settings.cursorBlinkRate, 0, 10000, 1200),
+		gutterMarkers: GUTTER_MARKERS.includes(settings.canvasGutterMarkers)
+			? settings.canvasGutterMarkers
+			: "shared",
 		lineWrapping: !!settings.textWrap,
 		wrapIndent: settings.wrappingIndent ?? "same",
 		textDirection: settings.rtlText ? "auto" : "ltr",
@@ -243,7 +264,9 @@ export function getCanvasDisplayOptions(
 		showWhitespace: showSpaces
 			? { spaces: true, trailing: true, lineBreaks: true }
 			: false,
-		stickyScroll: !!settings.stickyScroll,
+		stickyScroll: settings.stickyScroll
+			? { maxLines: clampSetting(settings.stickyScrollMaxLines, 1, 10, 5) }
+			: false,
 	};
 }
 

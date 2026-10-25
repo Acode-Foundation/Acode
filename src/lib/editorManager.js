@@ -3814,6 +3814,9 @@ async function EditorManager($header, $body) {
 	appSettings.on("update:highlightActiveLine", syncAllCanvasViews);
 	appSettings.on("update:scrollSpeed", syncAllCanvasViews);
 	appSettings.on("update:stickyScroll", syncAllCanvasViews);
+	appSettings.on("update:stickyScrollMaxLines", syncAllCanvasViews);
+	appSettings.on("update:cursorBlinkRate", syncAllCanvasViews);
+	appSettings.on("update:canvasGutterMarkers", syncAllCanvasViews);
 
 	// Keep file.session and cache in sync on every edit
 	function getDocSyncListener() {

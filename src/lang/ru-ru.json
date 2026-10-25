@@ -896,5 +896,15 @@
 	"canvas backend auto": "Auto (WebGL2)",
 	"settings-info-canvas-backend": "The GPU API the canvas renderer draws with. WebGPU falls back to WebGL2 where it isn't available. Applies after a reload.",
 	"sticky scroll": "Sticky scroll",
-	"settings-info-sticky-scroll": "Keep the first lines of the functions, classes and blocks around the top line pinned while scrolling. Canvas renderer only."
+	"settings-info-sticky-scroll": "Keep the first lines of the functions, classes and blocks around the top line pinned while scrolling.",
+	"sticky scroll max lines": "Sticky scroll lines",
+	"settings-info-sticky-scroll-max-lines": "The most header lines sticky scroll keeps pinned at the top (1–10).",
+	"gutter markers": "Gutter markers",
+	"gutter markers shared": "One column",
+	"gutter markers columns": "Column per gutter",
+	"gutter markers overlay": "Over line numbers",
+	"settings-info-gutter-markers": "Where lint and other gutter markers go: one shared column, a column for each gutter, or over the line numbers to save width.",
+	"cursor blink rate": "Cursor blink rate",
+	"settings-info-cursor-blink-rate": "How long one cursor blink takes, in milliseconds. 0 keeps the cursor steady.",
+	"settings-info-scroll-speed": "How far a fling or a mouse wheel turn scrolls the editor."
 }

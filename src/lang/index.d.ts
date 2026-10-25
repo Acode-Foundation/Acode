@@ -900,6 +900,16 @@ declare type LangStrings = {
 	"settings-info-canvas-backend": string;
 	"sticky scroll": string;
 	"settings-info-sticky-scroll": string;
+	"sticky scroll max lines": string;
+	"settings-info-sticky-scroll-max-lines": string;
+	"gutter markers": string;
+	"gutter markers shared": string;
+	"gutter markers columns": string;
+	"gutter markers overlay": string;
+	"settings-info-gutter-markers": string;
+	"cursor blink rate": string;
+	"settings-info-cursor-blink-rate": string;
+	"settings-info-scroll-speed": string;
 };
 
 declare var strings: LangStrings;
