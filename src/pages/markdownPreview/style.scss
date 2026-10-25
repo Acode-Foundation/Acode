@@ -85,7 +85,7 @@
     justify-content: center;
     overflow-x: auto;
     padding: 12px 0;
-    --pele-bg: var(--background-color);
+    --pele-bg: var(--primary-color);
     --pele-fg: var(--primary-text-color);
     --pele-muted: var(--secondary-text-color);
     --pele-line: var(--primary-text-color);
@@ -93,7 +93,7 @@
     --pele-surface-alt: var(--secondary-color);
     --pele-border: var(--border-color);
     --pele-accent: var(--link-text-color);
-    --pele-error: var(--danger-text-color);
+    --pele-error: var(--error-text-color);
   }
 
   .mermaid svg {
