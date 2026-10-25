@@ -144,6 +144,16 @@ export default function mainSettings() {
 			chevron: true,
 		},
 		{
+			key: "support",
+			text: strings.support || "Support",
+			icon: "help",
+			info:
+				strings["settings-info-main-support"] ||
+				"Open tickets, report bugs, and contact support.",
+			category: categories.aboutAcode,
+			chevron: true,
+		},
+		{
 			key: "about",
 			text: strings.about,
 			icon: "info",
@@ -252,6 +262,14 @@ export default function mainSettings() {
 
 			case "appIcon":
 				return appIconSetting();
+
+			case "support":
+				(
+					await import(
+						/* webpackChunkName: "helpSettings" */ "settings/helpSettings"
+					)
+				).default();
+				break;
 
 			case "about":
 				About();
