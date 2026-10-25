@@ -85,27 +85,20 @@
     justify-content: center;
     overflow-x: auto;
     padding: 12px 0;
+    --pele-bg: var(--primary-color);
+    --pele-fg: var(--primary-text-color);
+    --pele-muted: var(--secondary-text-color);
+    --pele-line: var(--primary-text-color);
+    --pele-surface: var(--popup-background-color);
+    --pele-surface-alt: var(--secondary-color);
+    --pele-border: var(--border-color);
+    --pele-accent: var(--link-text-color);
+    --pele-error: var(--error-text-color);
   }
 
   .mermaid svg {
     max-width: 100%;
     height: auto;
-  }
-
-  .mermaid svg text,
-  .mermaid svg tspan,
-  .mermaid .label,
-  .mermaid .nodeLabel,
-  .mermaid .edgeLabel,
-  .mermaid .cluster-label,
-  .mermaid .flowchart-label {
-    fill: var(--primary-text-color) !important;
-    color: var(--primary-text-color) !important;
-  }
-
-  .mermaid svg foreignObject,
-  .mermaid svg foreignObject * {
-    color: var(--primary-text-color) !important;
   }
 
   @supports not (gap: 1px) {
