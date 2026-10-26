@@ -109,7 +109,14 @@ public class Ftp extends CordovaPlugin {
               if (ftpProfiles.containsKey(ftpId)) {
                 ftp = ftpProfiles.get(ftpId);
                 reply = ftp.getReplyCode();
-                if (ftp.isConnected() && FTPReply.isPositiveCompletion(reply)) {
+                // ftpId ignores security, so don't reuse a client of the other type
+                boolean sameSecurity =
+                  (ftp instanceof FTPSClient) == "ftps".equals(securityType);
+                if (
+                  sameSecurity &&
+                  ftp.isConnected() &&
+                  FTPReply.isPositiveCompletion(reply)
+                ) {
                   ftp.setControlEncoding("UTF-8");
                   ftp.setAutodetectUTF8(true);
                   System.setProperty("ftp.client.encoding", "UTF-8");
