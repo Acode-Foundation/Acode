@@ -78,6 +78,11 @@ public class Ftp extends CordovaPlugin {
     connect(args, callback, false);
   }
 
+  private FTPClient createClient(String securityType) {
+    // explicit FTPS: AUTH TLS on the normal port
+    return "ftps".equals(securityType) ? new FTPSClient(false) : new FTPClient();
+  }
+
   public void connect(
     JSONArray args,
     CallbackContext callback,
@@ -93,11 +98,10 @@ public class Ftp extends CordovaPlugin {
             String host = args.optString(0);
             String username = args.optString(2);
             String password = args.optString(3);
-            String defaultPath = args.optString(4);
+            // order must match www/ftp.js connect()
+            String connectionMode = args.optString(4);
             String securityType = args.optString(5);
-            String connectionMode = args.optString(6);
-            String encryption = args.optString(7);
-            String encoding = args.optString(8);
+            String encoding = args.optString(6);
             String ftpId = getFtpId(host, port, username);
             FTPClient ftp = null;
 
@@ -118,9 +122,11 @@ public class Ftp extends CordovaPlugin {
                 Log.d("FTP", "FTPClient (" + ftpId + ") is not connected");
                 ftp.disconnect();
                 Log.d("FTP", "FTPClient (" + ftpId + ") disconnecting...");
+                ftp = createClient(securityType);
+                ftpProfiles.put(ftpId, ftp);
               } else {
                 Log.d("FTP", "Creating new FTPClient (" + ftpId + ")");
-                ftp = new FTPClient();
+                ftp = createClient(securityType);
                 ftpProfiles.put(ftpId, ftp);
               }
 
@@ -147,6 +153,12 @@ public class Ftp extends CordovaPlugin {
                 );
                 callback.error("FTP server refused connection.");
                 return;
+              }
+
+              if (ftp instanceof FTPSClient) {
+                // RFC 4217: protect the data channel too
+                ((FTPSClient) ftp).execPBSZ(0);
+                ((FTPSClient) ftp).execPROT("P");
               }
 
               ftp.setListHiddenFiles(true);
