@@ -159,6 +159,12 @@ function openFolder(_path, opts = {}) {
 		ontoggle: () => {
 			setFolderLeadIcon($root, title, { isRoot: true });
 			expandList($root);
+			// Folders also expand without a header tap (saved state, header
+			// actions, drag hover), so size them here rather than on click only.
+			// Imported lazily: the files app reads `strings` when it loads.
+			import("sidebarApps/files")
+				.then(({ fixHeight }) => fixHeight($root))
+				.catch(console.error);
 		},
 	});
 	setFolderLeadIcon($root, title, { isRoot: true });
@@ -245,8 +251,8 @@ function openFolder(_path, opts = {}) {
 
 /**
  * Quick actions on an open folder's header. With a mouse they appear on
- * hover; on touch a single "+" slides them out inline, so idle headers stay
- * clean.
+ * hover; on touch a single button opens the folder's menu (the same one as a
+ * long press), so idle headers stay clean.
  * @param {() => Collapsible} getRoot
  * @returns {HTMLElement}
  */
@@ -257,7 +263,7 @@ function createRootActions(getRoot) {
 		["new folder", "folder-add", strings["new folder"]],
 		["refresh", "autorenew", strings.refresh],
 		["collapse-all", "expand_less", strings["collapse all"] || "Collapse all"],
-		["toggle", "add more-actions", strings.more],
+		["menu", "more_vert more-actions", strings.more],
 	];
 
 	for (const [action, icon, title] of buttons) {
@@ -267,45 +273,21 @@ function createRootActions(getRoot) {
 		$actions.append($button);
 	}
 
-	const onOutsidePress = (e) => {
-		if (!$actions.contains(e.target)) setOpen(false);
-	};
-
-	/**
-	 * @param {boolean} open
-	 */
-	const setOpen = (open) => {
-		$actions.classList.toggle("open", open);
-		if (open) {
-			document.addEventListener("touchstart", onOutsidePress, true);
-			document.addEventListener("mousedown", onOutsidePress, true);
-		} else {
-			document.removeEventListener("touchstart", onOutsidePress, true);
-			document.removeEventListener("mousedown", onOutsidePress, true);
-		}
-	};
-
-	$actions.addEventListener("click", async (e) => {
+	$actions.addEventListener("click", (e) => {
 		const $button = e.target.closest("[data-action]");
 		if (!$button) return;
 		e.preventDefault();
 		e.stopPropagation();
 
+		const $root = getRoot();
 		const { action } = $button.dataset;
-		if (action === "toggle") {
-			setOpen(!$actions.classList.contains("open"));
+		if (action === "menu") {
+			const { url, name } = $root.$title.dataset;
+			handleContextmenu("root", url, name, $root.$title);
 			return;
 		}
 
-		// Refresh keeps the strip open while its icon spins.
-		if (action !== "refresh") setOpen(false);
-		try {
-			await runRootAction(getRoot(), action, $button);
-		} catch (error) {
-			helpers.error(error);
-		} finally {
-			setOpen(false);
-		}
+		runRootAction($root, action, $button).catch(helpers.error);
 	});
 
 	return $actions;
@@ -457,6 +439,12 @@ async function handleContextmenu(type, url, name, $target) {
 	const OPEN_FOLDER = ["open-folder", strings["open folder"], "folder"];
 	const INSERT_FILE = ["insert-file", strings["insert file"], "file_copy"];
 	const CLOSE_FOLDER = ["close", strings["close"], "folder-remove"];
+	const REFRESH = ["refresh", strings.refresh, "autorenew"];
+	const COLLAPSE_ALL = [
+		"collapse-all",
+		strings["collapse all"] || "Collapse all",
+		"expand_less",
+	];
 	const INSTALL_PLUGIN = [
 		"install-plugin",
 		strings["install as plugin"] || "Install as Plugin",
@@ -519,7 +507,7 @@ async function handleContextmenu(type, url, name, $target) {
 			options.push(OPEN_SSH_TERMINAL);
 		}
 
-		options.push(CLOSE_FOLDER);
+		options.push(REFRESH, COLLAPSE_ALL, CLOSE_FOLDER);
 	}
 
 	if (clipBoard.action) options.push(CANCEL);
@@ -588,6 +576,10 @@ function execOperation(type, action, url, $target, name) {
 
 		case "open-ssh-terminal":
 			return openSshTerminal();
+
+		case "refresh":
+		case "collapse-all":
+			return runRootAction($node, action);
 
 		case "copy-relative-path":
 			return copyRelativePath();
@@ -1005,10 +997,21 @@ async function pasteEntry({ url: srcUrl, type: srcType }, targetUrl, action) {
 	if (getConnectionKey(srcUrl) !== getConnectionKey(targetUrl)) {
 		// Different servers or storage: read from the source and write to the
 		// target, since the source provider can't reach the target.
-		const result = await copyEntry(srcUrl, targetUrl, {
-			excludePatterns: excludePatterns || [],
-		});
-		newUrl = result.url;
+		if (doesExist && IS_FILE) {
+			// copyEntry only creates new files, so overwrite the confirmed one.
+			await fsOperation(possibleConflictUrl).writeFile(await fs.readFile());
+			newUrl = possibleConflictUrl;
+		} else {
+			if (doesExist) {
+				// The user confirmed replacing what's there.
+				const { isDirectory } = await fsOperation(possibleConflictUrl).stat();
+				await deleteFromDisk(possibleConflictUrl, isDirectory ? "dir" : "file");
+			}
+			const result = await copyEntry(srcUrl, targetUrl, {
+				excludePatterns: excludePatterns || [],
+			});
+			newUrl = result.url;
+		}
 		if (newUrl && action === "cut") await deleteFromDisk(srcUrl, srcType);
 	} else if (action === "cut") {
 		// Special handling for SAF folders backed by terminal providers - move manually due to SAF limitations

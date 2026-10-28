@@ -4,9 +4,15 @@ import config from "lib/config";
 import appSettings from "lib/settings";
 import selection from "./selection";
 
-// How far the pointer travels before a press becomes a drag.
+// Movement allowed before a touch counts as a scroll instead of a press.
 const TOUCH_SLOP = 8;
+// After a long press a resting finger still wobbles, so a drag needs a
+// clearly deliberate move.
+const DRAG_SLOP = 14;
 const MOUSE_SLOP = 5;
+// Holding still this long after the long press opens the menu without
+// waiting for the finger to lift.
+const MENU_HOLD_MS = 300;
 // Distance from a scroll edge where the list starts scrolling on its own.
 const SCROLL_EDGE = 48;
 const MAX_SCROLL_SPEED = 14;
@@ -20,7 +26,7 @@ const SETTLE_MS = 240;
 let container;
 /**
  * Press that may turn into a drag.
- * @type {{$tile: HTMLElement, x: number, y: number, pointer: "touch"|"mouse", armed: boolean, $target?: Element} | null}
+ * @type {{$tile: HTMLElement, x: number, y: number, pointer: "touch"|"mouse", armed: boolean, menuOpened?: boolean, menuTimer?: number, $target?: Element} | null}
  */
 let press = null;
 /** @type {DragState|null} */
@@ -100,17 +106,20 @@ function onTouchMove(e) {
 	}
 
 	if (!press) return;
-	const moved = distance(press, touch) > TOUCH_SLOP;
 
 	if (!press.armed) {
 		// Moving before the long press is a scroll.
-		if (moved) endPress();
+		if (distance(press, touch) > TOUCH_SLOP) endPress();
 		return;
 	}
 
 	// Held long enough: keep the list (and the sidebar) still.
 	consume(e);
-	if (moved) startDrag(touch.clientX, touch.clientY);
+	if (press.menuOpened) return;
+	if (distance(press, touch) > DRAG_SLOP) {
+		clearTimeout(press.menuTimer);
+		startDrag(touch.clientX, touch.clientY);
+	}
 }
 
 /**
@@ -121,11 +130,12 @@ function onTouchEnd(e) {
 		const touch = e.changedTouches[0];
 		if (touch) moveDrag(touch.clientX, touch.clientY);
 		finishDrag(true);
+		endPress();
 		return;
 	}
 
 	// A long press released in place is a normal context menu request.
-	if (press?.armed) replayContextMenu(press);
+	if (press?.armed && !press.menuOpened) replayContextMenu(press);
 	endPress();
 }
 
@@ -148,6 +158,15 @@ function onContextMenu(e) {
 	press.$target = e.target;
 	press.$tile.classList.add("drag-armed");
 	vibrate();
+
+	// Holding still means the menu was wanted, not a drag.
+	const current = press;
+	current.menuTimer = setTimeout(() => {
+		if (press !== current || drag) return;
+		current.menuOpened = true;
+		current.$tile.classList.remove("drag-armed");
+		replayContextMenu(current);
+	}, MENU_HOLD_MS);
 }
 
 /**
@@ -384,6 +403,7 @@ function finishDrag(drop) {
 }
 
 function endPress() {
+	clearTimeout(press?.menuTimer);
 	press?.$tile.classList.remove("drag-armed");
 	press = null;
 	window.removeEventListener("touchmove", onTouchMove, true);

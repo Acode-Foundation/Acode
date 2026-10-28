@@ -105,19 +105,15 @@
   }
 }
 
-// Open folder header actions: on hover with a mouse, behind a single "+" on
-// touch that slides them out inline, and nothing on collapsed folders.
+// Open folder header actions: on hover with a mouse, a single menu button on
+// touch, and nothing on collapsed folders.
 $root-actions-ease: cubic-bezier(0.2, 0, 0, 1);
-$root-actions-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
 #sidebar .container.files > .list > .tile[data-type="root"] .root-actions {
   display: flex;
   flex: none;
   align-items: center;
   margin: 0 4px 0 auto;
-  padding: 2px;
-  border-radius: 10px;
-  transition: background-color 180ms ease;
 
   .icon {
     display: none;
@@ -144,44 +140,8 @@ $root-actions-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
     }
   }
 
-  // The "+" turns into a close button while the strip is open.
   .icon.more-actions {
     display: block;
-    transition:
-      opacity 120ms ease,
-      transform 260ms $root-actions-spring,
-      background-color 120ms ease;
-  }
-
-  &.open {
-    background-color: rgba(127, 127, 127, 0.12);
-
-    .icon {
-      display: block;
-      opacity: 0.85;
-      animation: root-action-in 260ms $root-actions-spring backwards;
-    }
-
-    // Slide out from the "+", nearest first.
-    @for $i from 1 through 4 {
-      .icon:nth-child(#{$i}) {
-        animation-delay: #{(4 - $i) * 30}ms;
-      }
-    }
-
-    .icon.spinning {
-      animation: root-action-spin 700ms linear infinite;
-    }
-
-    .icon.more-actions {
-      opacity: 1;
-      transform: rotate(45deg);
-      animation: none;
-
-      &:active {
-        transform: rotate(45deg) scale(0.86);
-      }
-    }
   }
 
   @media (hover: hover) and (pointer: fine) {
@@ -211,13 +171,6 @@ $root-actions-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 
 #sidebar .container.files > .list.hidden > .tile[data-type="root"] .root-actions {
   display: none;
-}
-
-@keyframes root-action-in {
-  from {
-    opacity: 0;
-    transform: translateX(10px) scale(0.7);
-  }
 }
 
 @keyframes root-action-spin {
