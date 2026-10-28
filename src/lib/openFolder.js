@@ -2,7 +2,6 @@ import fsOperation from "fileSystem";
 import sidebarApps from "sidebarApps";
 import fileSelection from "sidebarApps/files/selection";
 import collapsableList from "components/collapsableList";
-import Contextmenu from "components/contextmenu";
 import FileTree from "components/fileTree";
 import Sidebar from "components/sidebar";
 import tile from "components/tile";
@@ -246,7 +245,8 @@ function openFolder(_path, opts = {}) {
 
 /**
  * Quick actions on an open folder's header. With a mouse they appear on
- * hover; on touch a single "+" opens them as a menu, so idle headers stay clean.
+ * hover; on touch a single "+" slides them out inline, so idle headers stay
+ * clean.
  * @param {() => Collapsible} getRoot
  * @returns {HTMLElement}
  */
@@ -257,7 +257,7 @@ function createRootActions(getRoot) {
 		["new folder", "folder-add", strings["new folder"]],
 		["refresh", "autorenew", strings.refresh],
 		["collapse-all", "expand_less", strings["collapse all"] || "Collapse all"],
-		["root-menu", "add more-actions", strings.more],
+		["toggle", "add more-actions", strings.more],
 	];
 
 	for (const [action, icon, title] of buttons) {
@@ -267,14 +267,45 @@ function createRootActions(getRoot) {
 		$actions.append($button);
 	}
 
-	$actions.addEventListener("click", (e) => {
+	const onOutsidePress = (e) => {
+		if (!$actions.contains(e.target)) setOpen(false);
+	};
+
+	/**
+	 * @param {boolean} open
+	 */
+	const setOpen = (open) => {
+		$actions.classList.toggle("open", open);
+		if (open) {
+			document.addEventListener("touchstart", onOutsidePress, true);
+			document.addEventListener("mousedown", onOutsidePress, true);
+		} else {
+			document.removeEventListener("touchstart", onOutsidePress, true);
+			document.removeEventListener("mousedown", onOutsidePress, true);
+		}
+	};
+
+	$actions.addEventListener("click", async (e) => {
 		const $button = e.target.closest("[data-action]");
 		if (!$button) return;
 		e.preventDefault();
 		e.stopPropagation();
-		runRootAction(getRoot(), $button.dataset.action, $button).catch(
-			helpers.error,
-		);
+
+		const { action } = $button.dataset;
+		if (action === "toggle") {
+			setOpen(!$actions.classList.contains("open"));
+			return;
+		}
+
+		// Refresh keeps the strip open while its icon spins.
+		if (action !== "refresh") setOpen(false);
+		try {
+			await runRootAction(getRoot(), action, $button);
+		} catch (error) {
+			helpers.error(error);
+		} finally {
+			setOpen(false);
+		}
 	});
 
 	return $actions;
@@ -316,20 +347,6 @@ async function runRootAction($root, action, $button) {
 			for (const $list of $open) $list.collapse();
 			return;
 		}
-
-		case "root-menu":
-			Contextmenu({
-				toggler: $button,
-				items: [
-					[strings["new file"], "new file"],
-					[strings["new folder"], "new folder"],
-					[strings.refresh, "refresh"],
-					[strings["collapse all"] || "Collapse all", "collapse-all"],
-				],
-				onselect: (item) => {
-					runRootAction($root, item).catch(helpers.error);
-				},
-			}).show();
 	}
 }
 
