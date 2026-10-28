@@ -2,6 +2,7 @@ import "./style.scss";
 import Sidebar from "components/sidebar";
 import fileIcons from "lib/fileIcons";
 import settings from "lib/settings";
+import dragMove from "./dragMove";
 import selection from "./selection";
 
 /**@type {HTMLElement} */
@@ -26,6 +27,9 @@ function initApp(el) {
 	container.setAttribute("data-msg", strings["open folder"]);
 	container.style.overflowX = "auto";
 	container.addEventListener("click", clickHandler);
+	// Drag listens first so a long press can become a drag before selection
+	// or the context menu sees it.
+	dragMove.init(container);
 	selection.init(container);
 	editorManager.on(
 		["new-file", "int-open-file-list", "remove-file"],

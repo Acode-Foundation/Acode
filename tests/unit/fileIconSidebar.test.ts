@@ -6,6 +6,10 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 const sidebar = vi.hoisted(() => ({ on: vi.fn() }));
 vi.mock("components/sidebar", () => ({ default: sidebar }));
 vi.mock("lib/settings", () => ({ default: {} }));
+vi.mock("sidebarApps/files/dragMove", () => ({ default: { init: vi.fn() } }));
+vi.mock("sidebarApps/files/selection", () => ({
+	default: { init: vi.fn(), syncBar: vi.fn() },
+}));
 
 beforeEach(() => {
 	vi.stubGlobal("strings", { files: "Files", "open folder": "Open folder" });

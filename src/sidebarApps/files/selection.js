@@ -6,7 +6,7 @@ import appSettings from "lib/settings";
 import helpers from "utils/helpers";
 
 /**
- * @typedef {"copy"|"cut"|"delete"|"copy-path"|"rename"|"open"} SelectionAction
+ * @typedef {"copy"|"cut"|"delete"|"copy-path"|"rename"|"open"|"move"} SelectionAction
  */
 
 /**
@@ -14,6 +14,7 @@ import helpers from "utils/helpers";
  * @property {string} url
  * @property {"file"|"dir"} type
  * @property {string} name
+ * @property {string} [rootUrl] Url of the open folder containing the entry
  * @property {HTMLElement} [$el]
  */
 
@@ -33,7 +34,7 @@ const selected = new Map();
 let container;
 /** @type {string|null} */
 let anchorUrl = null;
-/** @type {(action: SelectionAction, items: SelectedEntry[]) => Promise<boolean|void>} */
+/** @type {(action: SelectionAction, items: SelectedEntry[], targetUrl?: string) => Promise<boolean|void>} */
 let actionHandler;
 /** @type {MutationObserver} */
 let observer;
@@ -54,10 +55,11 @@ function init($container) {
 	container.addEventListener("click", onClick, true);
 	container.addEventListener("contextmenu", onContextMenu, true);
 	observer = new MutationObserver(onTreeMutation);
+	editorManager.on("remove-folder", onRemoveFolder);
 }
 
 /**
- * @param {(action: SelectionAction, items: SelectedEntry[]) => Promise<boolean|void>} handler
+ * @param {(action: SelectionAction, items: SelectedEntry[], targetUrl?: string) => Promise<boolean|void>} handler
  * Return false from the handler to keep the selection open.
  */
 function onAction(handler) {
@@ -199,6 +201,18 @@ function onTreeMutation(records) {
 }
 
 /**
+ * Drop entries of an open folder that was closed.
+ * @param {{url: string}} folder
+ */
+function onRemoveFolder({ url } = {}) {
+	if (!isActive()) return;
+	for (const [key, entry] of selected) {
+		if (entry.rootUrl === url) selected.delete(key);
+	}
+	update(-1);
+}
+
+/**
  * @param {HTMLElement} $tile
  */
 function toggle($tile) {
@@ -261,7 +275,8 @@ function selectWave($tiles) {
  */
 function setSelected($tile, value) {
 	const { url, type, name } = $tile.dataset;
-	if (value) selected.set(url, { url, type, name });
+	const rootUrl = getRoot($tile).firstElementChild?.dataset.url;
+	if (value) selected.set(url, { url, type, name, rootUrl });
 	else selected.delete(url);
 
 	for (const $el of findEntries(url)) markEntry($el, value);
@@ -303,25 +318,41 @@ function update(direction) {
  * @param {SelectionAction} action
  */
 async function run(action) {
-	if (busy || !actionHandler || !selected.size) return;
+	if (!selected.size) return;
+	await perform(action, getItems());
+}
 
-	const items = Array.from(selected.values(), (item) => ({
-		...item,
-		$el: findEntries(item.url)[0],
-	}));
+/**
+ * Run an action on the given entries, then leave selection mode.
+ * @param {SelectionAction} action
+ * @param {SelectedEntry[]} items
+ * @param {string} [targetUrl]
+ */
+async function perform(action, items, targetUrl) {
+	if (busy || !actionHandler || !items.length) return;
 
 	busy = true;
-	$bar.classList.add("busy");
+	$bar?.classList.add("busy");
 	try {
-		const keepSelection = (await actionHandler(action, items)) === false;
-		if (!keepSelection) exit();
+		const result = await actionHandler(action, items, targetUrl);
+		if (result !== false) exit();
 	} catch (error) {
 		console.error(error);
 		helpers.error(error);
 	} finally {
 		busy = false;
-		$bar.classList.remove("busy");
+		$bar?.classList.remove("busy");
 	}
+}
+
+/**
+ * @returns {SelectedEntry[]} Selected entries with their rendered elements
+ */
+function getItems() {
+	return Array.from(selected.values(), (item) => ({
+		...item,
+		$el: findEntries(item.url)[0],
+	}));
 }
 
 async function showMore() {
@@ -487,6 +518,10 @@ export default {
 	start,
 	exit,
 	syncBar,
+	perform,
+	getItems,
+	getEntry,
+	isSelected: (url) => selected.has(url),
 	get active() {
 		return isActive();
 	},

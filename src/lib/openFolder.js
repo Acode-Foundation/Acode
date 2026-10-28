@@ -2,6 +2,7 @@ import fsOperation from "fileSystem";
 import sidebarApps from "sidebarApps";
 import fileSelection from "sidebarApps/files/selection";
 import collapsableList from "components/collapsableList";
+import Contextmenu from "components/contextmenu";
 import FileTree from "components/fileTree";
 import Sidebar from "components/sidebar";
 import tile from "components/tile";
@@ -11,6 +12,7 @@ import confirm from "dialogs/confirm";
 import prompt from "dialogs/prompt";
 import select from "dialogs/select";
 import escapeStringRegexp from "escape-string-regexp";
+import tag from "html-tag-js";
 import fileIcons from "lib/fileIcons";
 import copyEntry from "utils/copyEntry";
 import helpers from "utils/helpers";
@@ -154,6 +156,7 @@ function openFolder(_path, opts = {}) {
 
 	const $root = collapsableList(title, "folder", {
 		allCaps: true,
+		tail: createRootActions(() => $root),
 		ontoggle: () => {
 			setFolderLeadIcon($root, title, { isRoot: true });
 			expandList($root);
@@ -238,6 +241,95 @@ function openFolder(_path, opts = {}) {
 		editorManager.emit("update", "remove-folder");
 		editorManager.onupdate("remove-folder", event);
 		editorManager.emit("remove-folder", event);
+	}
+}
+
+/**
+ * Quick actions on an open folder's header. With a mouse they appear on
+ * hover; on touch a single "+" opens them as a menu, so idle headers stay clean.
+ * @param {() => Collapsible} getRoot
+ * @returns {HTMLElement}
+ */
+function createRootActions(getRoot) {
+	const $actions = tag("span", { className: "root-actions" });
+	const buttons = [
+		["new file", "document-add", strings["new file"]],
+		["new folder", "folder-add", strings["new folder"]],
+		["refresh", "autorenew", strings.refresh],
+		["collapse-all", "expand_less", strings["collapse all"] || "Collapse all"],
+		["root-menu", "add more-actions", strings.more],
+	];
+
+	for (const [action, icon, title] of buttons) {
+		// tile children only receive clicks when they carry data-action.
+		const $button = tag("span", { className: `icon ${icon}`, title });
+		$button.dataset.action = action;
+		$actions.append($button);
+	}
+
+	$actions.addEventListener("click", (e) => {
+		const $button = e.target.closest("[data-action]");
+		if (!$button) return;
+		e.preventDefault();
+		e.stopPropagation();
+		runRootAction(getRoot(), $button.dataset.action, $button).catch(
+			helpers.error,
+		);
+	});
+
+	return $actions;
+}
+
+/**
+ * @param {Collapsible} $root
+ * @param {string} action
+ * @param {HTMLElement} [$button]
+ */
+async function runRootAction($root, action, $button) {
+	const { url, name } = $root.$title.dataset;
+
+	switch (action) {
+		case "new file":
+		case "new folder":
+			if ($root.collapsed) $root.expand();
+			return execOperation("root", action, url, $root.$title, name);
+
+		case "refresh": {
+			if ($root.collapsed) {
+				$root.expand();
+				return;
+			}
+			$button?.classList.add("spinning");
+			try {
+				await getLoadedFileTree($root.$title)?.refresh();
+			} finally {
+				$button?.classList.remove("spinning");
+			}
+			return;
+		}
+
+		case "collapse-all": {
+			// Deepest first, so each folder records its own collapsed state.
+			const $open = Array.from(
+				$root.$ul.querySelectorAll(".list.collapsible:not(.hidden)"),
+			).reverse();
+			for (const $list of $open) $list.collapse();
+			return;
+		}
+
+		case "root-menu":
+			Contextmenu({
+				toggler: $button,
+				items: [
+					[strings["new file"], "new file"],
+					[strings["new folder"], "new folder"],
+					[strings.refresh, "refresh"],
+					[strings["collapse all"] || "Collapse all", "collapse-all"],
+				],
+				onselect: (item) => {
+					runRootAction($root, item).catch(helpers.error);
+				},
+			}).show();
 	}
 }
 
@@ -678,21 +770,21 @@ function execOperation(type, action, url, $target, name) {
 		}
 
 		const { action: pasteAction, items } = clipBoard;
-		let pasted = 0;
 
 		startLoading();
 		try {
-			for (const item of items) {
-				if (await pasteEntry(item, url, pasteAction)) pasted++;
-			}
+			const { pasted, remaining, error } = await pasteEntries(
+				items,
+				url,
+				pasteAction,
+			);
 
-			if (pasted) {
-				toast(strings.success);
-				clearClipboard();
-			}
-		} catch (error) {
-			console.error(error);
-			helpers.error(error);
+			// Keep skipped or failed entries so the paste can be retried.
+			if (remaining.length) setClipboard(remaining, pasteAction);
+			else clearClipboard();
+
+			if (error) helpers.error(error);
+			else if (pasted) toast(strings.success);
 		} finally {
 			stopLoading();
 		}
@@ -744,37 +836,14 @@ function execOperation(type, action, url, $target, name) {
 async function deleteEntry(url, type) {
 	if (!(await fsOperation(url).exists())) return false;
 	recents.removeFile(url);
+	await deleteFromDisk(url, type);
 	if (helpers.isFile(type)) {
-		await fsOperation(url).delete();
 		removeEntryFromOpenFolder(url);
 		const file = editorManager.getFile(url, "uri");
 		if (file) file.uri = null;
 		editorManager.onupdate("delete-file");
 		editorManager.emit("update", "delete-file");
 	} else {
-		if (isTerminalSafUri(url)) {
-			const fs = fsOperation(url);
-			const entries = await fs.lsDir();
-			if (entries.length === 0) {
-				await fs.delete();
-			} else {
-				const deleteRecursively = async (currentUrl) => {
-					const currentFs = fsOperation(currentUrl);
-					const currentEntries = await currentFs.lsDir();
-					for (const entry of currentEntries) {
-						if (entry.isDirectory) {
-							await deleteRecursively(entry.url);
-						} else {
-							await fsOperation(entry.url).delete();
-						}
-					}
-					await currentFs.delete();
-				};
-				await deleteRecursively(url);
-			}
-		} else {
-			await fsOperation(url).delete();
-		}
 		recents.removeFolder(url);
 		helpers.updateUriOfAllActiveFiles(url, null);
 		removeEntryFromOpenFolder(url);
@@ -784,6 +853,86 @@ async function deleteEntry(url, type) {
 
 	FileList.remove(url);
 	return true;
+}
+
+/**
+ * Remove a file or folder from its file system without touching any views.
+ * @param {string} url
+ * @param {"file"|"dir"} type
+ */
+async function deleteFromDisk(url, type) {
+	if (!helpers.isDir(type) || !isTerminalSafUri(url)) {
+		await fsOperation(url).delete();
+		return;
+	}
+
+	// Terminal SAF providers can't delete non-empty folders.
+	const deleteRecursively = async (currentUrl) => {
+		const currentFs = fsOperation(currentUrl);
+		const currentEntries = await currentFs.lsDir();
+		for (const entry of currentEntries) {
+			if (entry.isDirectory) {
+				await deleteRecursively(entry.url);
+			} else {
+				await fsOperation(entry.url).delete();
+			}
+		}
+		await currentFs.delete();
+	};
+	await deleteRecursively(url);
+}
+
+/**
+ * Paste entries one by one so a failure doesn't stop the rest.
+ * @param {ClipBoardItem[]} items
+ * @param {string} targetUrl
+ * @param {"cut"|"copy"} action
+ * @returns {Promise<{pasted: number, remaining: ClipBoardItem[], error?: Error}>}
+ * `remaining` holds the entries that were skipped or failed.
+ */
+async function pasteEntries(items, targetUrl, action) {
+	const remaining = [];
+	let pasted = 0;
+	let error;
+
+	for (const item of items) {
+		try {
+			if (await pasteEntry(item, targetUrl, action)) {
+				pasted++;
+				continue;
+			}
+		} catch (err) {
+			console.error(err);
+			error = err;
+		}
+		remaining.push(item);
+	}
+
+	return { pasted, remaining, error };
+}
+
+/**
+ * Identify the connection a url belongs to. Providers can only move or copy
+ * within their own connection (e.g. one SFTP server or one SAF tree).
+ * @param {string} url
+ * @returns {string}
+ */
+function getConnectionKey(url) {
+	const { url: parsedUrl } = Url.parse(url);
+	const protocol = Url.getProtocol(parsedUrl);
+
+	if (!protocol || protocol === "file:") return "file:";
+
+	if (protocol === "content:") {
+		try {
+			return `content:${Uri.parse(parsedUrl).rootUri}`;
+		} catch (error) {
+			return parsedUrl;
+		}
+	}
+
+	const { username, hostname, port } = Url.decodeUrl(parsedUrl);
+	return `${protocol}//${username || ""}@${hostname}:${port || ""}`;
 }
 
 /**
@@ -803,7 +952,7 @@ async function pasteEntry({ url: srcUrl, type: srcType }, targetUrl, action) {
 		const targetPath = Url.parse(targetUrl).url;
 
 		if (sourcePath === targetPath) {
-			await showWarning("Cannot paste a folder into itself");
+			alert(strings.warning, "Cannot paste a folder into itself");
 			return null;
 		}
 
@@ -811,7 +960,7 @@ async function pasteEntry({ url: srcUrl, type: srcType }, targetUrl, action) {
 			targetPath.startsWith(sourcePath + "/") ||
 			targetPath.startsWith(sourcePath + "\\")
 		) {
-			await showWarning("Cannot paste a folder into its subdirectory");
+			alert(strings.warning, "Cannot paste a folder into its subdirectory");
 			return null;
 		}
 	}
@@ -830,8 +979,21 @@ async function pasteEntry({ url: srcUrl, type: srcType }, targetUrl, action) {
 		if (!confirmation) return null;
 	}
 
+	const excludePatterns =
+		action === "copy" && appSettings.value.useFileOperationExclusions
+			? appSettings.value.excludeFolders
+			: null;
+
 	let newUrl;
-	if (action === "cut") {
+	if (getConnectionKey(srcUrl) !== getConnectionKey(targetUrl)) {
+		// Different servers or storage: read from the source and write to the
+		// target, since the source provider can't reach the target.
+		const result = await copyEntry(srcUrl, targetUrl, {
+			excludePatterns: excludePatterns || [],
+		});
+		newUrl = result.url;
+		if (newUrl && action === "cut") await deleteFromDisk(srcUrl, srcType);
+	} else if (action === "cut") {
 		// Special handling for SAF folders backed by terminal providers - move manually due to SAF limitations
 		if (isTerminalSafUri(srcUrl) && IS_DIR) {
 			const moveRecursively = async (sourceUrl, targetParentUrl) => {
@@ -866,17 +1028,16 @@ async function pasteEntry({ url: srcUrl, type: srcType }, targetUrl, action) {
 		} else {
 			newUrl = await fs.moveTo(targetUrl);
 		}
-	} else if (appSettings.value.useFileOperationExclusions) {
-		const result = await copyEntry(srcUrl, targetUrl, {
-			excludePatterns: appSettings.value.excludeFolders,
-		});
+	} else if (excludePatterns) {
+		const result = await copyEntry(srcUrl, targetUrl, { excludePatterns });
 		newUrl = result.url;
-		if (!newUrl) {
-			toast(strings.skipped);
-			return null;
-		}
 	} else {
 		newUrl = await fs.copyTo(targetUrl);
+	}
+
+	if (!newUrl) {
+		toast(strings.skipped);
+		return null;
 	}
 
 	if (action === "cut") {
@@ -895,14 +1056,6 @@ async function pasteEntry({ url: srcUrl, type: srcType }, targetUrl, action) {
 
 	appendEntryToOpenFolder(targetUrl, newUrl, IS_DIR ? "folder" : "file");
 	return newUrl;
-}
-
-/**
- * @param {string} message
- * @returns {Promise<void>} Resolves when the alert is dismissed
- */
-function showWarning(message) {
-	return new Promise((resolve) => alert(strings.warning, message, resolve));
 }
 
 /**
@@ -1005,10 +1158,15 @@ function removeNestedItems(items) {
  * Run an action from the file selection bar.
  * @param {import("sidebarApps/files/selection").SelectionAction} action
  * @param {import("sidebarApps/files/selection").SelectedEntry[]} items
+ * @param {string} [targetUrl] Destination folder for "move"
  * @returns {Promise<boolean|void>} false keeps the selection open
  */
-async function handleSelectionAction(action, items) {
-	items = removeNestedItems(items);
+async function handleSelectionAction(action, items, targetUrl) {
+	// Entries inside a selected folder are handled with the folder, but open
+	// and copy path still act on everything that was picked.
+	if (["copy", "cut", "delete", "move"].includes(action)) {
+		items = removeNestedItems(items);
+	}
 
 	switch (action) {
 		case "copy":
@@ -1018,6 +1176,9 @@ async function handleSelectionAction(action, items) {
 
 		case "delete":
 			return deleteEntries(items);
+
+		case "move":
+			return moveEntries(items, targetUrl);
 
 		case "copy-path": {
 			const paths = items.map(({ url }) =>
@@ -1076,6 +1237,28 @@ async function deleteEntries(items) {
 	if (failed) helpers.error(lastError);
 	else toast(strings.success);
 	return true;
+}
+
+/**
+ * Move entries into a folder, skipping those already there.
+ * @param {ClipBoardItem[]} items
+ * @param {string} targetUrl
+ */
+async function moveEntries(items, targetUrl) {
+	const movable = items.filter(
+		({ url }) => !areSameOpenFolderUrl(getParentUrl(url), targetUrl),
+	);
+	if (!movable.length) return;
+
+	const $title = openFolder.find(targetUrl)?.$node.$title;
+	$title?.classList.add("loading");
+	try {
+		const { pasted, error } = await pasteEntries(movable, targetUrl, "cut");
+		if (error) helpers.error(error);
+		else if (pasted) toast(strings.success);
+	} finally {
+		$title?.classList.remove("loading");
+	}
 }
 
 fileSelection.onAction(handleSelectionAction);
