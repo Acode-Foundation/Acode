@@ -161,10 +161,14 @@ function openFolder(_path, opts = {}) {
 			expandList($root);
 			// Folders also expand without a header tap (saved state, header
 			// actions, drag hover), so size them here rather than on click only.
+			// Only on expand: sizing collapses the other folders, and doing it on
+			// collapse would undo the folder that just opened.
 			// Imported lazily: the files app reads `strings` when it loads.
-			import("sidebarApps/files")
-				.then(({ fixHeight }) => fixHeight($root))
-				.catch(console.error);
+			if ($root.unclasped) {
+				import("sidebarApps/files")
+					.then(({ fixHeight }) => fixHeight($root))
+					.catch(console.error);
+			}
 		},
 	});
 	setFolderLeadIcon($root, title, { isRoot: true });

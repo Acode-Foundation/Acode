@@ -26,7 +26,7 @@ const SETTLE_MS = 240;
 let container;
 /**
  * Press that may turn into a drag.
- * @type {{$tile: HTMLElement, x: number, y: number, pointer: "touch"|"mouse", armed: boolean, menuOpened?: boolean, menuTimer?: number, $target?: Element} | null}
+ * @type {{$tile: HTMLElement, x: number, y: number, pointer: "touch"|"mouse", armed: boolean, menuOpened?: boolean, menuTimer?: number, $target?: Element, $touchTarget?: EventTarget} | null}
  */
 let press = null;
 /** @type {DragState|null} */
@@ -34,6 +34,8 @@ let drag = null;
 let suppressClick = false;
 /** Context menu events re-dispatched after a long press ends without moving. */
 const replayed = new WeakSet();
+/** Touch events already handled, since they can reach two listeners. */
+const handled = new WeakSet();
 
 /**
  * @typedef {object} DragState
@@ -73,7 +75,9 @@ function init($container) {
  * @param {TouchEvent} e
  */
 function onTouchStart(e) {
-	if (drag) return;
+	// A drag that lost its touch stream ends with the next touch.
+	if (drag) finishDrag(false);
+	endPress();
 	if (e.touches.length !== 1) {
 		endPress();
 		return;
@@ -83,19 +87,32 @@ function onTouchStart(e) {
 	if (!$tile) return;
 
 	const { clientX, clientY } = e.touches[0];
-	press = { $tile, x: clientX, y: clientY, pointer: "touch", armed: false };
-	window.addEventListener("touchmove", onTouchMove, {
-		capture: true,
-		passive: false,
-	});
-	window.addEventListener("touchend", onTouchEnd, true);
-	window.addEventListener("touchcancel", onTouchCancel, true);
+	press = {
+		$tile,
+		x: clientX,
+		y: clientY,
+		pointer: "touch",
+		armed: false,
+		$touchTarget: e.target,
+	};
+	// Touch events keep going to the touched element even after it leaves the
+	// DOM (e.g. its folder collapses mid-drag), where they no longer reach the
+	// window, so listen on both.
+	for (const $el of [window, e.target]) {
+		$el.addEventListener("touchmove", onTouchMove, {
+			capture: true,
+			passive: false,
+		});
+		$el.addEventListener("touchend", onTouchEnd, true);
+		$el.addEventListener("touchcancel", onTouchCancel, true);
+	}
 }
 
 /**
  * @param {TouchEvent} e
  */
 function onTouchMove(e) {
+	if (isHandled(e)) return;
 	const touch = e.touches[0];
 	if (!touch) return;
 
@@ -126,6 +143,7 @@ function onTouchMove(e) {
  * @param {TouchEvent} e
  */
 function onTouchEnd(e) {
+	if (isHandled(e)) return;
 	if (drag) {
 		const touch = e.changedTouches[0];
 		if (touch) moveDrag(touch.clientX, touch.clientY);
@@ -139,7 +157,8 @@ function onTouchEnd(e) {
 	endPress();
 }
 
-function onTouchCancel() {
+function onTouchCancel(e) {
+	if (isHandled(e)) return;
 	if (drag) finishDrag(false);
 	endPress();
 }
@@ -235,6 +254,14 @@ function onKeydown(e) {
 }
 
 /**
+ * Any new touch during a drag means its own touch stream was lost.
+ */
+function onStrayTouch() {
+	if (drag) finishDrag(false);
+	endPress();
+}
+
+/**
  * @param {number} x
  * @param {number} y
  */
@@ -253,6 +280,7 @@ function startDrag(x, y) {
 	for (const $el of $sources) $el.classList.add("drag-source");
 	document.body.classList.add("file-dragging");
 	document.addEventListener("keydown", onKeydown, true);
+	document.addEventListener("touchstart", onStrayTouch, true);
 
 	drag = {
 		items,
@@ -377,6 +405,7 @@ function finishDrag(drop) {
 	state.$list?.classList.remove("drop-target", "drop-pending");
 	document.body.classList.remove("file-dragging");
 	document.removeEventListener("keydown", onKeydown, true);
+	document.removeEventListener("touchstart", onStrayTouch, true);
 	for (const $el of state.$sources) $el.classList.remove("drag-source");
 
 	const $ghost = state.$ghost;
@@ -405,10 +434,12 @@ function finishDrag(drop) {
 function endPress() {
 	clearTimeout(press?.menuTimer);
 	press?.$tile.classList.remove("drag-armed");
+	for (const $el of [window, press?.$touchTarget]) {
+		$el?.removeEventListener("touchmove", onTouchMove, true);
+		$el?.removeEventListener("touchend", onTouchEnd, true);
+		$el?.removeEventListener("touchcancel", onTouchCancel, true);
+	}
 	press = null;
-	window.removeEventListener("touchmove", onTouchMove, true);
-	window.removeEventListener("touchend", onTouchEnd, true);
-	window.removeEventListener("touchcancel", onTouchCancel, true);
 	window.removeEventListener("mousemove", onMouseMove, true);
 	window.removeEventListener("mouseup", onMouseUp, true);
 }
@@ -544,6 +575,16 @@ function findTiles(url) {
  */
 function distance(from, to) {
 	return Math.hypot(to.clientX - from.x, to.clientY - from.y);
+}
+
+/**
+ * @param {Event} e
+ * @returns {boolean} Whether another listener already handled the event
+ */
+function isHandled(e) {
+	if (handled.has(e)) return true;
+	handled.add(e);
+	return false;
 }
 
 /**
