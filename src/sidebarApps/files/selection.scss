@@ -1,0 +1,273 @@
+// Avoids :is(), :has(), color-mix() without fallback, container queries and
+// flex gap so the styles still work on old Android WebViews.
+$ease: cubic-bezier(0.2, 0, 0, 1);
+$spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+$delay: var(--select-delay, 0ms);
+
+@mixin entries {
+  > .list:not(.file-list) {
+    .tile[data-type="file"],
+    .tile[data-type="dir"] {
+      @content;
+    }
+  }
+}
+
+#sidebar .container.files {
+  transition: padding-bottom 220ms $ease;
+
+  &.selecting {
+    // Keeps the last entries reachable above the floating bar.
+    padding-bottom: 64px;
+  }
+
+  @include entries {
+    transition: background-color 180ms ease $delay;
+
+    &.selected {
+      background-color: rgba(127, 127, 127, 0.18);
+      background-color: color-mix(in srgb, var(--active-color) 18%, transparent);
+    }
+  }
+
+  &.selecting {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+
+    @include entries {
+      &:active {
+        background-color: rgba(127, 127, 127, 0.1);
+      }
+
+      &.selected:active {
+        background-color: rgba(127, 127, 127, 0.26);
+        background-color: color-mix(
+          in srgb,
+          var(--active-color) 26%,
+          transparent
+        );
+      }
+    }
+
+    // Entries inside a selected folder are included implicitly.
+    .list.collapsible.has-selected-title > ul {
+      .tile[data-type="file"]:not(.selected),
+      .tile[data-type="dir"]:not(.selected) {
+        background-color: rgba(127, 127, 127, 0.08);
+        background-color: color-mix(
+          in srgb,
+          var(--active-color) 8%,
+          transparent
+        );
+      }
+    }
+  }
+}
+
+#sidebar .file-selection-bar {
+  position: absolute;
+  z-index: 111;
+  left: 60px;
+  right: 10px;
+  bottom: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  height: 44px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  padding: 0 5px;
+  border-radius: 14px;
+  border: 1px solid var(--popup-border-color, var(--border-color));
+  background-color: var(--popup-background-color);
+  color: var(--popup-text-color);
+  box-shadow:
+    0 10px 28px -8px var(--box-shadow-color),
+    0 2px 6px var(--box-shadow-color);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(16px) scale(0.96);
+  transform-origin: 50% 100%;
+  transition:
+    opacity 140ms ease,
+    transform 200ms $ease,
+    visibility 0s linear 200ms;
+
+  .label {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    padding: 0 4px;
+    overflow: hidden;
+    white-space: nowrap;
+    font-size: 0.9em;
+  }
+
+  .count {
+    display: inline-block;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+
+    &.up {
+      animation: file-selection-count-up 260ms $spring;
+    }
+
+    &.down {
+      animation: file-selection-count-down 260ms $spring;
+    }
+  }
+
+  .unit {
+    margin-left: 4px;
+    opacity: 0.6;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  button {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: none;
+    border-radius: 10px;
+    background-color: transparent;
+    color: inherit;
+    font-size: 1.15em;
+    cursor: pointer;
+    margin-left: 2px;
+    transition:
+      transform 160ms $ease,
+      background-color 120ms ease,
+      color 120ms ease;
+
+    &:active {
+      transform: scale(0.86);
+      background-color: rgba(127, 127, 127, 0.2);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--active-color);
+      outline-offset: -2px;
+    }
+
+    &.danger:active {
+      color: var(--danger-color);
+      background-color: rgba(127, 127, 127, 0.2);
+      background-color: color-mix(in srgb, var(--danger-color) 16%, transparent);
+    }
+  }
+
+  @media (hover: hover) {
+    button:hover {
+      background-color: rgba(127, 127, 127, 0.12);
+    }
+
+    button.danger:hover {
+      color: var(--danger-color);
+      background-color: rgba(127, 127, 127, 0.12);
+      background-color: color-mix(in srgb, var(--danger-color) 12%, transparent);
+    }
+  }
+
+  &.busy {
+    overflow: hidden;
+    pointer-events: none;
+
+    &::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: 100%;
+      height: 2px;
+      background-color: var(--active-color);
+      animation: bar-loader-animation 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+
+    button {
+      opacity: 0.45;
+    }
+  }
+
+  // Size classes are set from JS (container queries need newer WebViews).
+  // Too narrow for "3 selected": keep just the number.
+  &.compact .unit {
+    display: none;
+  }
+
+  // Minimum sidebar width: tighten the buttons so they still fit.
+  &.tight button {
+    width: 28px;
+  }
+}
+
+#sidebar .container.files.selecting + .file-selection-bar {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: none;
+  transition:
+    opacity 180ms ease,
+    transform 340ms $spring,
+    visibility 0s;
+
+  // Bar contents settle in one after another.
+  > * {
+    animation: file-selection-item-in 300ms $spring backwards;
+  }
+
+  @for $i from 2 through 6 {
+    > :nth-child(#{$i}) {
+      animation-delay: #{($i - 1) * 25}ms;
+    }
+  }
+}
+
+@keyframes file-selection-item-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+}
+
+@keyframes file-selection-count-up {
+  from {
+    opacity: 0;
+    transform: translateY(70%);
+  }
+}
+
+@keyframes file-selection-count-down {
+  from {
+    opacity: 0;
+    transform: translateY(-70%);
+  }
+}
+
+body.no-animation #sidebar {
+  .container.files,
+  .container.files *::before,
+  .container.files *::after,
+  .file-selection-bar,
+  .file-selection-bar * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #sidebar .container.files *::before,
+  #sidebar .container.files *::after,
+  #sidebar .file-selection-bar,
+  #sidebar .file-selection-bar * {
+    transition-duration: 1ms !important;
+    animation: none !important;
+  }
+}

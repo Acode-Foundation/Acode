@@ -1,5 +1,6 @@
 import fsOperation from "fileSystem";
 import sidebarApps from "sidebarApps";
+import fileSelection from "sidebarApps/files/selection";
 import collapsableList from "components/collapsableList";
 import FileTree from "components/fileTree";
 import Sidebar from "components/sidebar";
@@ -94,10 +95,15 @@ const convertToProotPath = (url = "") => {
  */
 
 /**
- * @typedef {object} ClipBoard
+ * @typedef {object} ClipBoardItem
  * @property {string} url
- * @property {HTMLElement} $el
- * @property {"cut"|"copy"} action
+ * @property {"file"|"dir"} type
+ */
+
+/**
+ * @typedef {object} ClipBoard
+ * @property {ClipBoardItem[]} items
+ * @property {"cut"|"copy"|null} action
  */
 
 /**
@@ -116,6 +122,11 @@ const convertToProotPath = (url = "") => {
 
 /**@type {Folder[]} */
 export const addedFolder = [];
+/**
+ * Shared by every open folder so entries can be pasted across roots.
+ * @type {ClipBoard}
+ */
+const clipBoard = { items: [], action: null };
 const ACODE_PLUGIN_MANIFEST_FILE = "plugin.json";
 /**
  * Open a folder in the sidebar
@@ -182,7 +193,7 @@ function openFolder(_path, opts = {}) {
 		url: _path,
 		$node: $root,
 		id: opts.id,
-		clipBoard: {},
+		clipBoard,
 		reload() {
 			$root.collapse();
 			$root.expand();
@@ -317,8 +328,10 @@ async function handleContextmenu(type, url, name, $target) {
 	if (appSettings.value.vibrateOnTap) {
 		navigator.vibrate(config.VIBRATION_TIME);
 	}
-	const { clipBoard, $node } = openFolder.find(url);
-	const cancel = `${strings.cancel}${clipBoard ? ` (${strings[clipBoard.action]})` : ""}`;
+	const { $node } = openFolder.find(url);
+	const hasClipboard = clipBoard.items.length > 0;
+	const cancel = `${strings.cancel}${hasClipboard ? ` (${strings[clipBoard.action]})` : ""}`;
+	const SELECT = ["select", strings.select, "check_circle_outline"];
 	const COPY = ["copy", strings.copy, "copy"];
 	const CUT = ["cut", strings.cut, "cut"];
 	const COPY_RELATIVE_PATH = [
@@ -328,7 +341,7 @@ async function handleContextmenu(type, url, name, $target) {
 	];
 	const REMOVE = ["delete", strings.delete, "delete"];
 	const RENAME = ["rename", strings.rename, "edit"];
-	const PASTE = ["paste", strings.paste, "paste", !!clipBoard];
+	const PASTE = ["paste", strings.paste, "paste", hasClipboard];
 	const NEW_FILE = ["new file", strings["new file"], "document-add"];
 	const NEW_FOLDER = ["new folder", strings["new folder"], "folder-add"];
 	const CANCEL = ["cancel", cancel, "clearclose"];
@@ -349,7 +362,7 @@ async function handleContextmenu(type, url, name, $target) {
 	let options;
 
 	if (helpers.isFile(type)) {
-		options = [COPY, CUT, COPY_RELATIVE_PATH, RENAME, REMOVE];
+		options = [SELECT, COPY, CUT, COPY_RELATIVE_PATH, RENAME, REMOVE];
 		if (
 			url.toLowerCase().endsWith(".zip") &&
 			(await fsOperation(
@@ -359,9 +372,9 @@ async function handleContextmenu(type, url, name, $target) {
 			options.push(INSTALL_PLUGIN);
 		}
 	} else if (helpers.isDir(type)) {
-		options = [COPY, CUT, COPY_RELATIVE_PATH, REMOVE, RENAME];
+		options = [SELECT, COPY, CUT, COPY_RELATIVE_PATH, REMOVE, RENAME];
 
-		if (clipBoard.url != null) {
+		if (hasClipboard) {
 			options.push(PASTE);
 		}
 
@@ -380,7 +393,7 @@ async function handleContextmenu(type, url, name, $target) {
 	} else if (type === "root") {
 		options = [];
 
-		if (clipBoard.url != null) {
+		if (hasClipboard) {
 			options.push(PASTE);
 		}
 
@@ -415,17 +428,20 @@ async function handleContextmenu(type, url, name, $target) {
 
 /**
  * @param {"dir"|"file"|"root"} type
- * @param {"copy"|"cut"|"delete"|"rename"|"paste"|"new file"|"new folder"|"cancel"|"open-folder"|"install-plugin"|"open-in-terminal"|"open-ssh-terminal"|"copy-relative-path"} action
+ * @param {"select"|"copy"|"cut"|"delete"|"rename"|"paste"|"new file"|"new folder"|"cancel"|"open-folder"|"install-plugin"|"open-in-terminal"|"open-ssh-terminal"|"copy-relative-path"} action
  * @param {string} url target url
  * @param {HTMLElement} $target target element
  * @param {string} name Name of file or folder
  */
 function execOperation(type, action, url, $target, name) {
-	const { clipBoard, $node, remove, url: rootUrl } = openFolder.find(url);
+	const { $node, remove, url: rootUrl } = openFolder.find(url);
 	const startLoading = () => $node.$title.classList.add("loading");
 	const stopLoading = () => $node.$title.classList.remove("loading");
 
 	switch (action) {
+		case "select":
+			return fileSelection.start($target);
+
 		case "copy":
 		case "cut":
 			return clipBoardAction();
@@ -497,42 +513,14 @@ function execOperation(type, action, url, $target, name) {
 				return;
 			}
 
-			let relativePath;
-
-			// Try using Url.pathname for protocol-based URLs
-			const rootPath = Url.pathname(rootUrl);
-			const targetPath = Url.pathname(url);
-
-			if (rootPath && targetPath) {
-				// Both pathnames extracted successfully
-				relativePath = Path.convertToRelative(rootPath, targetPath);
-			} else {
-				// Fallback: Use simple string comparison for URIs where pathname extraction fails
-				const cleanRoot = rootUrl.endsWith("/")
-					? rootUrl.slice(0, -1)
-					: rootUrl;
-				const cleanTarget = url.endsWith("/") ? url.slice(0, -1) : url;
-
-				// Check if target URL starts with root URL
-				if (cleanTarget.startsWith(cleanRoot)) {
-					relativePath = cleanTarget.slice(cleanRoot.length + 1);
-				} else {
-					// If not a child path, just use basename
-					relativePath = Url.basename(url);
-				}
-			}
+			const relativePath = getRelativePath(url, rootUrl);
 
 			if (!relativePath) {
 				console.error("Unable to calculate relative path");
 				return;
 			}
 
-			if (cordova.plugins.clipboard) {
-				cordova.plugins.clipboard.copy(relativePath);
-			} else {
-				console.error("Clipboard not available");
-				toast("Clipboard not available");
-			}
+			copyText(relativePath);
 		} catch (error) {
 			console.error("Failed to copy relative path:", error);
 		}
@@ -592,49 +580,8 @@ function execOperation(type, action, url, $target, name) {
 		const confirmation = await confirm(strings.warning, msg);
 		if (!confirmation) return;
 		startLoading();
-		if (!(await fsOperation(url).exists())) return;
-		// await fsOperation(url).delete();
-		recents.removeFile(url);
-		if (helpers.isFile(type)) {
-			await fsOperation(url).delete();
-			removeEntryFromOpenFolder(url);
-			const file = editorManager.getFile(url, "uri");
-			if (file) file.uri = null;
-			editorManager.onupdate("delete-file");
-			editorManager.emit("update", "delete-file");
-		} else {
-			if (isTerminalSafUri(url)) {
-				const fs = fsOperation(url);
-				const entries = await fs.lsDir();
-				if (entries.length === 0) {
-					await fs.delete();
-				} else {
-					const deleteRecursively = async (currentUrl) => {
-						const currentFs = fsOperation(currentUrl);
-						const currentEntries = await currentFs.lsDir();
-						for (const entry of currentEntries) {
-							if (entry.isDirectory) {
-								await deleteRecursively(entry.url);
-							} else {
-								await fsOperation(entry.url).delete();
-							}
-						}
-						await currentFs.delete();
-					};
-					await deleteRecursively(url);
-				}
-			} else {
-				await fsOperation(url).delete();
-			}
-			recents.removeFolder(url);
-			helpers.updateUriOfAllActiveFiles(url, null);
-			removeEntryFromOpenFolder(url);
-			editorManager.onupdate("delete-folder");
-			editorManager.emit("update", "delete-folder");
-		}
-
+		if (!(await deleteEntry(url, type))) return;
 		toast(strings.success);
-		FileList.remove(url);
 	}
 
 	async function renameFile() {
@@ -725,121 +672,24 @@ function execOperation(type, action, url, $target, name) {
 	}
 
 	async function paste() {
-		if (clipBoard.url == null) {
+		if (!clipBoard.items.length) {
 			alert(strings.warning, "Nothing to paste");
 			return;
 		}
 
-		// Prevent pasting a folder into itself or its subdirectories
-		if (helpers.isDir(clipBoard.$el.dataset.type)) {
-			const sourceUrl = Url.parse(clipBoard.url).url;
-			const targetUrl = Url.parse(url).url;
-
-			// Check if trying to paste folder into itself
-			if (sourceUrl === targetUrl) {
-				alert(strings.warning, "Cannot paste a folder into itself");
-				return;
-			}
-
-			// Check if trying to paste folder into one of its subdirectories
-			if (
-				targetUrl.startsWith(sourceUrl + "/") ||
-				targetUrl.startsWith(sourceUrl + "\\")
-			) {
-				alert(strings.warning, "Cannot paste a folder into its subdirectory");
-				return;
-			}
-		}
-
-		const srcType = clipBoard.$el.dataset.type;
-		const IS_FILE = helpers.isFile(srcType);
-		const IS_DIR = helpers.isDir(srcType);
+		const { action: pasteAction, items } = clipBoard;
+		let pasted = 0;
 
 		startLoading();
 		try {
-			const fs = fsOperation(clipBoard.url);
-			const itemName = Url.basename(clipBoard.url);
-			const possibleConflictUrl = Url.join(url, itemName);
-			const doesExist = await fsOperation(possibleConflictUrl).exists();
-			if (doesExist) {
-				let confirmation = await confirm(
-					strings.warning,
-					strings["already exists"]
-						? strings["already exists"].replace("{name}", itemName)
-						: `"${itemName}" already exists in this location.`,
-				);
-				if (!confirmation) return;
-			}
-			let newUrl;
-			if (clipBoard.action === "cut") {
-				// Special handling for SAF folders backed by terminal providers - move manually due to SAF limitations
-				if (isTerminalSafUri(clipBoard.url) && IS_DIR) {
-					const moveRecursively = async (sourceUrl, targetParentUrl) => {
-						const sourceFs = fsOperation(sourceUrl);
-						const sourceName = Url.basename(sourceUrl);
-						const targetUrl = Url.join(targetParentUrl, sourceName);
-
-						// Create target folder
-						await fsOperation(targetParentUrl).createDirectory(sourceName);
-
-						// Get all entries in source folder
-						const entries = await sourceFs.lsDir();
-
-						// Move all files and folders recursively
-						for (const entry of entries) {
-							if (entry.isDirectory) {
-								await moveRecursively(entry.url, targetUrl);
-							} else {
-								const fileContent = await fsOperation(entry.url).readFile();
-								const fileName = entry.name || Url.basename(entry.url);
-								await fsOperation(targetUrl).createFile(fileName, fileContent);
-								await fsOperation(entry.url).delete();
-							}
-						}
-
-						// Delete the now-empty source folder
-						await sourceFs.delete();
-						return targetUrl;
-					};
-
-					newUrl = await moveRecursively(clipBoard.url, url);
-				} else {
-					newUrl = await fs.moveTo(url);
-				}
-			} else {
-				if (appSettings.value.useFileOperationExclusions) {
-					const result = await copyEntry(clipBoard.url, url, {
-						excludePatterns: appSettings.value.excludeFolders,
-					});
-					newUrl = result.url;
-					if (!newUrl) {
-						toast(strings.skipped);
-						clearClipboard();
-						return;
-					}
-				} else {
-					newUrl = await fs.copyTo(url);
-				}
-			}
-			stopLoading();
-
-			if (clipBoard.action === "cut") {
-				if (IS_FILE) {
-					const file = editorManager.getFile(clipBoard.url, "uri");
-					if (file) file.uri = newUrl;
-				} else if (IS_DIR) {
-					helpers.updateUriOfAllActiveFiles(clipBoard.url, newUrl);
-					migrateOpenFolderStateUrls(clipBoard.url, newUrl);
-				}
-				removeEntryFromOpenFolder(clipBoard.url);
-				FileList.rename(clipBoard.url, newUrl);
-			} else {
-				FileList.append(url, newUrl);
+			for (const item of items) {
+				if (await pasteEntry(item, url, pasteAction)) pasted++;
 			}
 
-			appendEntryToOpenFolder(url, newUrl, IS_DIR ? "folder" : "file");
-			toast(strings.success);
-			clearClipboard();
+			if (pasted) {
+				toast(strings.success);
+				clearClipboard();
+			}
 		} catch (error) {
 			console.error(error);
 			helpers.error(error);
@@ -869,12 +719,7 @@ function execOperation(type, action, url, $target, name) {
 	}
 
 	async function clipBoardAction() {
-		clipBoard.url = url;
-		clipBoard.action = action;
-		clipBoard.$el = $target;
-
-		if (action === "cut") $target.classList.add("cut");
-		else $target.classList.remove("cut");
+		setClipboard([{ url, type }], action);
 	}
 
 	async function open() {
@@ -886,16 +731,354 @@ function execOperation(type, action, url, $target, name) {
 	}
 
 	function cancelAction() {
-		clipBoard.$el.classList.remove("cut");
 		clearClipboard();
 	}
+}
 
-	function clearClipboard() {
-		clipBoard.$el = null;
-		clipBoard.url = null;
-		clipBoard.action = null;
+/**
+ * Delete a file or folder and update every view that references it.
+ * @param {string} url
+ * @param {"file"|"dir"} type
+ * @returns {Promise<boolean>} false when the entry no longer exists
+ */
+async function deleteEntry(url, type) {
+	if (!(await fsOperation(url).exists())) return false;
+	recents.removeFile(url);
+	if (helpers.isFile(type)) {
+		await fsOperation(url).delete();
+		removeEntryFromOpenFolder(url);
+		const file = editorManager.getFile(url, "uri");
+		if (file) file.uri = null;
+		editorManager.onupdate("delete-file");
+		editorManager.emit("update", "delete-file");
+	} else {
+		if (isTerminalSafUri(url)) {
+			const fs = fsOperation(url);
+			const entries = await fs.lsDir();
+			if (entries.length === 0) {
+				await fs.delete();
+			} else {
+				const deleteRecursively = async (currentUrl) => {
+					const currentFs = fsOperation(currentUrl);
+					const currentEntries = await currentFs.lsDir();
+					for (const entry of currentEntries) {
+						if (entry.isDirectory) {
+							await deleteRecursively(entry.url);
+						} else {
+							await fsOperation(entry.url).delete();
+						}
+					}
+					await currentFs.delete();
+				};
+				await deleteRecursively(url);
+			}
+		} else {
+			await fsOperation(url).delete();
+		}
+		recents.removeFolder(url);
+		helpers.updateUriOfAllActiveFiles(url, null);
+		removeEntryFromOpenFolder(url);
+		editorManager.onupdate("delete-folder");
+		editorManager.emit("update", "delete-folder");
+	}
+
+	FileList.remove(url);
+	return true;
+}
+
+/**
+ * Paste a clipboard entry into a folder.
+ * @param {ClipBoardItem} item
+ * @param {string} targetUrl
+ * @param {"cut"|"copy"} action
+ * @returns {Promise<string|null>} New url, or null when skipped
+ */
+async function pasteEntry({ url: srcUrl, type: srcType }, targetUrl, action) {
+	const IS_FILE = helpers.isFile(srcType);
+	const IS_DIR = helpers.isDir(srcType);
+
+	// Prevent pasting a folder into itself or its subdirectories
+	if (IS_DIR) {
+		const sourcePath = Url.parse(srcUrl).url;
+		const targetPath = Url.parse(targetUrl).url;
+
+		if (sourcePath === targetPath) {
+			await showWarning("Cannot paste a folder into itself");
+			return null;
+		}
+
+		if (
+			targetPath.startsWith(sourcePath + "/") ||
+			targetPath.startsWith(sourcePath + "\\")
+		) {
+			await showWarning("Cannot paste a folder into its subdirectory");
+			return null;
+		}
+	}
+
+	const fs = fsOperation(srcUrl);
+	const itemName = Url.basename(srcUrl);
+	const possibleConflictUrl = Url.join(targetUrl, itemName);
+	const doesExist = await fsOperation(possibleConflictUrl).exists();
+	if (doesExist) {
+		const confirmation = await confirm(
+			strings.warning,
+			strings["already exists"]
+				? strings["already exists"].replace("{name}", itemName)
+				: `"${itemName}" already exists in this location.`,
+		);
+		if (!confirmation) return null;
+	}
+
+	let newUrl;
+	if (action === "cut") {
+		// Special handling for SAF folders backed by terminal providers - move manually due to SAF limitations
+		if (isTerminalSafUri(srcUrl) && IS_DIR) {
+			const moveRecursively = async (sourceUrl, targetParentUrl) => {
+				const sourceFs = fsOperation(sourceUrl);
+				const sourceName = Url.basename(sourceUrl);
+				const targetUrl = Url.join(targetParentUrl, sourceName);
+
+				// Create target folder
+				await fsOperation(targetParentUrl).createDirectory(sourceName);
+
+				// Get all entries in source folder
+				const entries = await sourceFs.lsDir();
+
+				// Move all files and folders recursively
+				for (const entry of entries) {
+					if (entry.isDirectory) {
+						await moveRecursively(entry.url, targetUrl);
+					} else {
+						const fileContent = await fsOperation(entry.url).readFile();
+						const fileName = entry.name || Url.basename(entry.url);
+						await fsOperation(targetUrl).createFile(fileName, fileContent);
+						await fsOperation(entry.url).delete();
+					}
+				}
+
+				// Delete the now-empty source folder
+				await sourceFs.delete();
+				return targetUrl;
+			};
+
+			newUrl = await moveRecursively(srcUrl, targetUrl);
+		} else {
+			newUrl = await fs.moveTo(targetUrl);
+		}
+	} else if (appSettings.value.useFileOperationExclusions) {
+		const result = await copyEntry(srcUrl, targetUrl, {
+			excludePatterns: appSettings.value.excludeFolders,
+		});
+		newUrl = result.url;
+		if (!newUrl) {
+			toast(strings.skipped);
+			return null;
+		}
+	} else {
+		newUrl = await fs.copyTo(targetUrl);
+	}
+
+	if (action === "cut") {
+		if (IS_FILE) {
+			const file = editorManager.getFile(srcUrl, "uri");
+			if (file) file.uri = newUrl;
+		} else if (IS_DIR) {
+			helpers.updateUriOfAllActiveFiles(srcUrl, newUrl);
+			migrateOpenFolderStateUrls(srcUrl, newUrl);
+		}
+		removeEntryFromOpenFolder(srcUrl);
+		FileList.rename(srcUrl, newUrl);
+	} else {
+		FileList.append(targetUrl, newUrl);
+	}
+
+	appendEntryToOpenFolder(targetUrl, newUrl, IS_DIR ? "folder" : "file");
+	return newUrl;
+}
+
+/**
+ * @param {string} message
+ * @returns {Promise<void>} Resolves when the alert is dismissed
+ */
+function showWarning(message) {
+	return new Promise((resolve) => alert(strings.warning, message, resolve));
+}
+
+/**
+ * Get the elements currently rendered for an entry.
+ * @param {string} url
+ * @returns {HTMLElement[]}
+ */
+function getRenderedEntries(url) {
+	const filesApp = sidebarApps.get("files");
+	return Array.from(filesApp.getAll(`[data-url="${CSS.escape(url)}"]`));
+}
+
+/**
+ * @param {ClipBoardItem[]} items
+ * @param {"cut"|"copy"} action
+ */
+function setClipboard(items, action) {
+	clearClipboard();
+	clipBoard.items = items.map(({ url, type }) => ({ url, type }));
+	clipBoard.action = action;
+
+	if (action !== "cut") return;
+	for (const { url } of clipBoard.items) {
+		for (const $el of getRenderedEntries(url)) $el.classList.add("cut");
 	}
 }
+
+function clearClipboard() {
+	for (const { url } of clipBoard.items) {
+		for (const $el of getRenderedEntries(url)) $el.classList.remove("cut");
+	}
+	clipBoard.items = [];
+	clipBoard.action = null;
+}
+
+/**
+ * Get the path of an entry relative to its open folder.
+ * @param {string} url
+ * @param {string} rootUrl
+ * @returns {string}
+ */
+function getRelativePath(url, rootUrl) {
+	// Try using Url.pathname for protocol-based URLs
+	const rootPath = Url.pathname(rootUrl);
+	const targetPath = Url.pathname(url);
+
+	if (rootPath && targetPath) {
+		// Both pathnames extracted successfully
+		return Path.convertToRelative(rootPath, targetPath);
+	}
+
+	// Fallback: Use simple string comparison for URIs where pathname extraction fails
+	const cleanRoot = rootUrl.endsWith("/") ? rootUrl.slice(0, -1) : rootUrl;
+	const cleanTarget = url.endsWith("/") ? url.slice(0, -1) : url;
+
+	// Check if target URL starts with root URL
+	if (cleanTarget.startsWith(cleanRoot)) {
+		return cleanTarget.slice(cleanRoot.length + 1);
+	}
+
+	// If not a child path, just use basename
+	return Url.basename(url);
+}
+
+/**
+ * @param {string} text
+ * @returns {boolean} Whether the text was copied
+ */
+function copyText(text) {
+	if (cordova.plugins.clipboard) {
+		cordova.plugins.clipboard.copy(text);
+		return true;
+	}
+
+	console.error("Clipboard not available");
+	toast("Clipboard not available");
+	return false;
+}
+
+/**
+ * Drop entries that are already covered by a selected parent folder.
+ * @template {ClipBoardItem} T
+ * @param {T[]} items
+ * @returns {T[]}
+ */
+function removeNestedItems(items) {
+	return items.filter(
+		(item) =>
+			!items.some(
+				(other) =>
+					other !== item &&
+					helpers.isDir(other.type) &&
+					!areSameOpenFolderUrl(other.url, item.url) &&
+					isInsideOpenFolder(item.url, other.url),
+			),
+	);
+}
+
+/**
+ * Run an action from the file selection bar.
+ * @param {import("sidebarApps/files/selection").SelectionAction} action
+ * @param {import("sidebarApps/files/selection").SelectedEntry[]} items
+ * @returns {Promise<boolean|void>} false keeps the selection open
+ */
+async function handleSelectionAction(action, items) {
+	items = removeNestedItems(items);
+
+	switch (action) {
+		case "copy":
+		case "cut":
+			setClipboard(items, action);
+			return;
+
+		case "delete":
+			return deleteEntries(items);
+
+		case "copy-path": {
+			const paths = items.map(({ url }) =>
+				getRelativePath(url, openFolder.find(url)?.url || url),
+			);
+			if (copyText(paths.join("\n"))) toast(strings["copied to clipboard"]);
+			return;
+		}
+
+		case "rename": {
+			const [{ type, url, $el, name }] = items;
+			return execOperation(type, "rename", url, $el, name);
+		}
+
+		case "open": {
+			const files = items.filter(({ type }) => helpers.isFile(type));
+			for (const [index, { url }] of files.entries()) {
+				await openFile(url, { render: index === files.length - 1 });
+			}
+			Sidebar.hide();
+			return;
+		}
+	}
+}
+
+/**
+ * @param {ClipBoardItem[]} items
+ * @returns {Promise<boolean>} false when cancelled
+ */
+async function deleteEntries(items) {
+	const msg = strings["delete entries"].replace("{count}", items.length);
+	const confirmation = await confirm(strings.warning, msg);
+	if (!confirmation) return false;
+
+	const $titles = new Set(
+		items.map(({ url }) => openFolder.find(url)?.$node.$title).filter(Boolean),
+	);
+	for (const $title of $titles) $title.classList.add("loading");
+
+	let failed = 0;
+	let lastError;
+	try {
+		for (const { url, type } of items) {
+			try {
+				await deleteEntry(url, type);
+			} catch (error) {
+				console.error(error);
+				failed++;
+				lastError = error;
+			}
+		}
+	} finally {
+		for (const $title of $titles) $title.classList.remove("loading");
+	}
+
+	if (failed) helpers.error(lastError);
+	else toast(strings.success);
+	return true;
+}
+
+fileSelection.onAction(handleSelectionAction);
 
 /**
  *
