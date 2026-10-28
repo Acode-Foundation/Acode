@@ -14,6 +14,7 @@ import escapeStringRegexp from "escape-string-regexp";
 import tag from "html-tag-js";
 import fileIcons from "lib/fileIcons";
 import copyEntry from "utils/copyEntry";
+import { isExcludedFileOperationPath } from "utils/fileOperationExclusions";
 import helpers from "utils/helpers";
 import Path from "utils/Path";
 import Uri from "utils/Uri";
@@ -166,7 +167,10 @@ function openFolder(_path, opts = {}) {
 			// Imported lazily: the files app reads `strings` when it loads.
 			if ($root.unclasped) {
 				import("sidebarApps/files")
-					.then(({ fixHeight }) => fixHeight($root))
+					.then(({ fixHeight }) => {
+						// It may have closed again while the module loaded.
+						if ($root.unclasped) fixHeight($root);
+					})
 					.catch(console.error);
 			}
 		},
@@ -1001,6 +1005,15 @@ async function pasteEntry({ url: srcUrl, type: srcType }, targetUrl, action) {
 	if (getConnectionKey(srcUrl) !== getConnectionKey(targetUrl)) {
 		// Different servers or storage: read from the source and write to the
 		// target, since the source provider can't reach the target.
+		// Check exclusions first so a skipped entry never replaces anything.
+		if (
+			excludePatterns &&
+			isExcludedFileOperationPath(srcUrl, excludePatterns)
+		) {
+			toast(strings.skipped);
+			return null;
+		}
+
 		if (doesExist && IS_FILE) {
 			// copyEntry only creates new files, so overwrite the confirmed one.
 			await fsOperation(possibleConflictUrl).writeFile(await fs.readFile());
