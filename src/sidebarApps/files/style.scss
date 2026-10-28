@@ -104,3 +104,77 @@
     }
   }
 }
+
+// Open folder header actions: on hover with a mouse, a single menu button on
+// touch, and nothing on collapsed folders.
+$root-actions-ease: cubic-bezier(0.2, 0, 0, 1);
+
+#sidebar .container.files > .list > .tile[data-type="root"] .root-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  margin: 0 4px 0 auto;
+
+  .icon {
+    display: none;
+    width: 28px;
+    min-width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    font-size: 1em;
+    line-height: 28px;
+    opacity: 0.55;
+    transition:
+      opacity 120ms ease,
+      transform 160ms $root-actions-ease,
+      background-color 120ms ease;
+
+    &:active {
+      opacity: 1;
+      transform: scale(0.86);
+      background-color: rgba(127, 127, 127, 0.2);
+    }
+
+    &.spinning {
+      animation: root-action-spin 700ms linear infinite;
+    }
+  }
+
+  .icon.more-actions {
+    display: block;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    opacity: 0;
+    transition: opacity 120ms ease;
+
+    .icon {
+      display: block;
+
+      &:hover {
+        opacity: 1;
+        background-color: rgba(127, 127, 127, 0.14);
+      }
+    }
+
+    .icon.more-actions {
+      display: none;
+    }
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  #sidebar .container.files > .list > .tile[data-type="root"]:hover .root-actions {
+    opacity: 1;
+  }
+}
+
+#sidebar .container.files > .list.hidden > .tile[data-type="root"] .root-actions {
+  display: none;
+}
+
+@keyframes root-action-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
