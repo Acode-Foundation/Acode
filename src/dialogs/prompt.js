@@ -144,9 +144,10 @@ export default function prompt(
 		if (input.value) {
 			try {
 				const col = input.value.length;
-				// Select the name without its extension, so typing replaces it
+				// Select the name without its extension (or the whole name when
+				// there is none), so typing replaces it
 				const dot = isFilename ? input.value.lastIndexOf(".") : -1;
-				if (dot > 0) input.setSelectionRange(0, dot);
+				if (isFilename) input.setSelectionRange(0, dot > 0 ? dot : col);
 				else input.setSelectionRange(col, col);
 			} catch (error) {
 				// ignore
