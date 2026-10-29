@@ -204,7 +204,10 @@ export default function ScrollBar(options) {
 	}
 
 	function setValue(val) {
-		if (!trackLength()) resize(false);
+		// Measure each time, as the parent can change size without a window
+		// resize (e.g. the sidebar opening). A detached bar has an empty rect;
+		// show() measures it once it's back on the page.
+		if ($scrollbar.isConnected) resize(false);
 
 		//Make sure value is between 0 and 1
 		if (val < 0) val = 0;
