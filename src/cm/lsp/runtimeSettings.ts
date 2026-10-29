@@ -124,7 +124,9 @@ export async function setServerRuntime(
 }
 
 export function getDefaultRuntimeSetting(): string {
-	return toRuntimeId(appSettings.value?.lsp?.runtime?.default) || AUTO_RUNTIME_ID;
+	return (
+		toRuntimeId(appSettings.value?.lsp?.runtime?.default) || AUTO_RUNTIME_ID
+	);
 }
 
 export function getServerRuntimeSetting(serverId: string): string {
@@ -135,8 +137,5 @@ export function getServerRuntimeSetting(serverId: string): string {
 		string,
 		unknown
 	>;
-	return (
-		toRuntimeId(servers[normalizedServerId]) ||
-		AUTO_RUNTIME_ID
-	);
+	return toRuntimeId(servers[normalizedServerId]) || AUTO_RUNTIME_ID;
 }

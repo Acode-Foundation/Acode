@@ -81,10 +81,7 @@ startWorkerServer(({ documents }) => {
 
 		validate(document) {
 			const service = getService(document);
-			return service.doValidation(
-				document,
-				getStylesheet(document, service),
-			);
+			return service.doValidation(document, getStylesheet(document, service));
 		},
 
 		async request(method, params) {
@@ -127,11 +124,7 @@ startWorkerServer(({ documents }) => {
 					return definition ? [definition] : null;
 				}
 				case "textDocument/references":
-					return service.findReferences(
-						document,
-						request.position,
-						stylesheet,
-					);
+					return service.findReferences(document, request.position, stylesheet);
 				case "textDocument/prepareRename":
 					return (
 						service.prepareRename(document, request.position, stylesheet) ??

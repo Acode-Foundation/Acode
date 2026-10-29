@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
-  xmlns:android="http://schemas.android.com/apk/res/android" id="cordova-plugin-acode-webview" version="1.0.0">
+  xmlns:android="http://schemas.android.com/apk/res/android" id="cordova-plugin-acode-webview" version="2.0.0">
   <name>cordova-plugin-acode-webview</name>
   <description>Acode WebView Plugin API - Create and manage isolated WebView instances</description>
   <license>Apache 2.0</license>
@@ -18,9 +18,16 @@
       </activity>
     </config-file>
 
+    <!-- Multi-profile WebView support powers incognito isolation. It is already
+         a transitive dependency of the Cordova framework, declared explicitly
+         here so this plugin compiles against it. -->
+    <framework src="androidx.webkit:webkit:1.14.0" />
+
     <source-file src="src/android/com/foxdebug/webview/WebViewPlugin.java" target-dir="src/com/foxdebug/webview"/>
     <source-file src="src/android/com/foxdebug/webview/WebViewInstance.java" target-dir="src/com/foxdebug/webview"/>
     <source-file src="src/android/com/foxdebug/webview/WebViewActivity.java" target-dir="src/com/foxdebug/webview"/>
+    <source-file src="src/android/com/foxdebug/webview/WebViewOptions.java" target-dir="src/com/foxdebug/webview"/>
+    <source-file src="src/android/com/foxdebug/webview/ProfileManager.java" target-dir="src/com/foxdebug/webview"/>
 
   </platform>
 </plugin>

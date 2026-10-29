@@ -26,21 +26,35 @@ fun buildServerSideVerificationOptions(opts: JSONObject): ServerSideVerification
 
 class Rewarded(ctx: ExecuteContext) : AdBase(ctx) {
     private var mAd: RewardedAd? = null
+    private var destroyed = false
+    private var pendingLoad: ExecuteContext? = null
+
     override fun onDestroy() {
+        if (destroyed) return
+        destroyed = true
+        pendingLoad?.reject("Ad is destroyed")
+        pendingLoad = null
         clear()
         super.onDestroy()
     }
 
     override fun load(ctx: ExecuteContext) {
+        if (destroyed) return ctx.reject("Ad is destroyed")
+        pendingLoad?.reject("Ad load replaced")
+        pendingLoad = ctx
         clear()
         RewardedAd.load(plugin.activity, adUnitId, adRequest, object : RewardedAdLoadCallback() {
             override fun onAdFailedToLoad(loadAdError: LoadAdError) {
+                if (destroyed || pendingLoad !== ctx) return
+                pendingLoad = null
                 mAd = null
                 emit(Events.AD_LOAD_FAIL, loadAdError)
                 ctx.reject(loadAdError.toString())
             }
 
             override fun onAdLoaded(rewardedAd: RewardedAd) {
+                if (destroyed || pendingLoad !== ctx) return
+                pendingLoad = null
                 mAd = rewardedAd
                 rewardedAd.onPaidEventListener =
                     paidEventListener("rewarded") { rewardedAd.responseInfo }

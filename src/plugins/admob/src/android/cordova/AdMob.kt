@@ -45,6 +45,7 @@ class AdMob : CordovaPlugin() {
         Actions.START to ::executeStart,
         Actions.CONFIGURE to ::executeConfigure,
         Actions.AD_CREATE to ::executeAdCreate,
+        Actions.AD_DESTROY to ::executeAdDestroy,
         Actions.AD_IS_LOADED to ::executeAdIsLoaded,
         Actions.AD_LOAD to ::executeAdLoad,
         Actions.AD_SHOW to ::executeAdShow,
@@ -140,6 +141,14 @@ class AdMob : CordovaPlugin() {
         } ?: ctx.reject("ad cls is missing")
     }
 
+    private fun executeAdDestroy(ctx: ExecuteContext) {
+        val id = ctx.optId() ?: return ctx.reject("id is required")
+        cordova.activity.runOnUiThread {
+            ads[id]?.onDestroy()
+            ctx.resolve()
+        }
+    }
+
     private fun executeAdIsLoaded(ctx: ExecuteContext) {
         cordova.activity.runOnUiThread {
             ctx.optAdOrReject()?.let { ad ->
@@ -217,13 +226,28 @@ class AdMob : CordovaPlugin() {
         }
     }
 
+    override fun onReset() {
+        clearAdState()
+        super.onReset()
+    }
+
     override fun onDestroy() {
-        readyCallbackContext = null
-        for (ad in ads.toMap().values) {
-            ad.onDestroy()
-        }
-        Banner.destroyParentView()
+        clearAdState()
         super.onDestroy()
+    }
+
+    private fun clearAdState() {
+        readyCallbackContext = null
+        eventQueue.clear()
+        val previousAds = synchronized(ads) {
+            ads.values.toList().also { ads.clear() }
+        }
+        cordova.activity.runOnUiThread {
+            for (ad in previousAds) {
+                ad.onDestroy()
+            }
+            Banner.destroyParentView()
+        }
     }
 
     companion object {

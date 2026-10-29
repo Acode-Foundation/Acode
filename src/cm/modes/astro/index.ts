@@ -5,17 +5,19 @@ import {
 	typescriptLanguage,
 } from "@codemirror/lang-javascript";
 import {
-	LRLanguage,
-	LanguageSupport,
 	foldInside,
 	foldNodeProp,
 	indentNodeProp,
+	LanguageSupport,
+	LRLanguage,
 } from "@codemirror/language";
 import { parseMixed } from "@lezer/common";
 import { styleTags, tags as t } from "@lezer/highlight";
 import { parser } from "./parser/parser";
 
-export function astro(config: { autoCloseTags?: boolean } = {}): LanguageSupport {
+export function astro(
+	config: { autoCloseTags?: boolean } = {},
+): LanguageSupport {
 	const htmlSupport = html({
 		autoCloseTags: config.autoCloseTags,
 		matchClosingTags: false,
@@ -68,5 +70,8 @@ export function astro(config: { autoCloseTags?: boolean } = {}): LanguageSupport
 		},
 	});
 
-	return new LanguageSupport(astroLanguage, [htmlSupport.support, jsSupport.support]);
+	return new LanguageSupport(astroLanguage, [
+		htmlSupport.support,
+		jsSupport.support,
+	]);
 }

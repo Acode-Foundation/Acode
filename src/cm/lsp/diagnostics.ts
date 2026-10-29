@@ -10,6 +10,7 @@ import {
 } from "@codemirror/state";
 import { type EditorView, ViewPlugin, type ViewUpdate } from "@codemirror/view";
 import { addLspLogFor } from "./logs";
+import { safeLspPositionToOffset } from "./positionUtils";
 import type {
 	DocumentDiagnosticParams,
 	DocumentDiagnosticReport,
@@ -132,16 +133,8 @@ const lspPublishedDiagnostics = StateField.define<
 			for (const [client, diagnostics] of value) {
 				const mapped: LspDiagnostic[] = [];
 				for (const diagnostic of diagnostics) {
-					const from = tr.changes.mapPos(
-						diagnostic.from,
-						1,
-						MapMode.TrackDel,
-					);
-					const to = tr.changes.mapPos(
-						diagnostic.to,
-						-1,
-						MapMode.TrackDel,
-					);
+					const from = tr.changes.mapPos(diagnostic.from, 1, MapMode.TrackDel);
+					const to = tr.changes.mapPos(diagnostic.to, -1, MapMode.TrackDel);
 					if (from != null && to != null) {
 						mapped.push({ ...diagnostic, from, to });
 					}
@@ -186,13 +179,13 @@ function collectLspDiagnostics(
 		let from: number;
 		let to: number;
 		try {
-			const mappedFrom = plugin.fromPosition(
+			const mappedFrom = safeLspPositionToOffset(
+				plugin.syncedDoc,
 				diagnostic.range.start,
-				plugin.syncedDoc,
 			);
-			const mappedTo = plugin.fromPosition(
-				diagnostic.range.end,
+			const mappedTo = safeLspPositionToOffset(
 				plugin.syncedDoc,
+				diagnostic.range.end,
 			);
 			const fromResult = plugin.unsyncedChanges.mapPos(mappedFrom);
 			const toResult = plugin.unsyncedChanges.mapPos(mappedTo);
@@ -345,8 +338,7 @@ async function pullDiagnostics(
 		applyDiagnostics(client, uri, version, report.items);
 	} catch (error) {
 		if (state.generations.get(uri) === generation) {
-			const message =
-				error instanceof Error ? error.message : String(error);
+			const message = error instanceof Error ? error.message : String(error);
 			const failures = (state.failures.get(uri) ?? 0) + 1;
 			state.failures.set(uri, failures);
 			if (/timed out/i.test(message) && failures <= 2) {
@@ -389,10 +381,13 @@ export function schedulePullDiagnostics(
 	state.generations.set(uri, generation);
 	state.timers.set(
 		uri,
-		setTimeout(() => {
-			state.timers.delete(uri);
-			void pullDiagnostics(client, uri, generation);
-		}, Math.max(0, delay)),
+		setTimeout(
+			() => {
+				state.timers.delete(uri);
+				void pullDiagnostics(client, uri, generation);
+			},
+			Math.max(0, delay),
+		),
 	);
 }
 
@@ -548,10 +543,15 @@ export function lspDiagnosticsClientExtension(): {
 	};
 }
 
-export function lspDiagnosticsUiExtension(includeGutter = true): Extension[] {
-	const diagnosticsMarkerFilter = isCoarsePointerDevice()
-		? () => []
-		: undefined;
+export function lspDiagnosticsUiExtension(
+	includeGutter = true,
+	{ canvas = false }: { canvas?: boolean } = {},
+): Extension[] {
+	// Touch devices get no in-text marks in the DOM editor. Canvas views
+	// (@acode.app/canvas-view) draw them natively (wavy underlines, lint
+	// points) at no layout cost, so they keep them; tooltips stay off.
+	const diagnosticsMarkerFilter =
+		isCoarsePointerDevice() && !canvas ? () => [] : undefined;
 	const diagnosticsTooltipFilter = isCoarsePointerDevice()
 		? () => []
 		: undefined;

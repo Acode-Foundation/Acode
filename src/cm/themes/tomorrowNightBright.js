@@ -1,6 +1,7 @@
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorView } from "@codemirror/view";
 import { tags as t } from "@lezer/highlight";
+import { memberProperty } from "../highlightTags";
 
 // Palette adapted from Tomorrow Night Bright (Chris Kempson)
 export const config = {
@@ -12,7 +13,8 @@ export const config = {
 	cursor: "#9F9F9F",
 	dropdownBackground: "#000000",
 	dropdownBorder: "#343434",
-	activeLine: "#2A2A2A",
+	// Keep this translucent: CodeMirror draws selections behind line backgrounds.
+	activeLine: "#D2D2D233",
 	lineNumber: "#343434",
 	lineNumberActive: "#DEDEDE",
 	matchingBracket: "#2A2A2A",
@@ -21,6 +23,7 @@ export const config = {
 	variable: "#D54E53",
 	parameter: "#E78C45",
 	function: "#7AA6DA",
+	memberProperty: "#DEDEDE",
 	string: "#B9CA4A",
 	constant: "#E78C45",
 	type: "#E7C547",
@@ -113,6 +116,10 @@ export const tomorrowNightBrightTheme = EditorView.theme(
 );
 
 export const tomorrowNightBrightHighlightStyle = HighlightStyle.define([
+	{
+		tag: [memberProperty, t.definition(memberProperty)],
+		color: config.memberProperty,
+	},
 	{ tag: t.keyword, color: config.keyword },
 	{
 		tag: [t.name, t.deleted, t.character, t.macroName],
@@ -123,7 +130,16 @@ export const tomorrowNightBrightHighlightStyle = HighlightStyle.define([
 		tag: [t.processingInstruction, t.string, t.inserted, t.special(t.string)],
 		color: config.string,
 	},
-	{ tag: [t.function(t.variableName), t.labelName], color: config.function },
+	{
+		tag: [
+			t.function(t.variableName),
+			t.function(t.propertyName),
+			t.function(t.definition(t.propertyName)),
+			t.function(t.definition(t.variableName)),
+			t.labelName,
+		],
+		color: config.function,
+	},
 	{
 		tag: [t.color, t.constant(t.name), t.standard(t.name)],
 		color: config.constant,

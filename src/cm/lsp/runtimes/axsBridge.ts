@@ -81,9 +81,9 @@ export async function checkAxsBridgeStatus(
 			return "unsupported";
 		}
 
-		const data = (await response.json().catch(() => null)) as
-			| AxsBridgeStatusResponse
-			| null;
+		const data = (await response
+			.json()
+			.catch(() => null)) as AxsBridgeStatusResponse | null;
 		return isAxsBridgeStatusResponse(data) ? "alive" : "dead";
 	} catch {
 		return "dead";

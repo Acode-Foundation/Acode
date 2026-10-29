@@ -1,11 +1,11 @@
 import fsOperation from "fileSystem";
 import { LSPPlugin } from "@codemirror/lsp-client";
 import type { EditorView } from "@codemirror/view";
+import { getDocText } from "cm/editorUtils";
 import {
 	openReferencesTab,
 	showReferencesPanel,
 } from "components/referencesPanel";
-import { getDocText } from "cm/editorUtils";
 import settings from "lib/settings";
 
 interface Position {
@@ -33,7 +33,10 @@ interface ReferenceParams {
 	context: { includeDeclaration: boolean };
 }
 
-async function fetchLineText(uri: string, line: number): Promise<string> {
+export async function fetchLineText(
+	uri: string,
+	line: number,
+): Promise<string> {
 	try {
 		interface EditorManagerLike {
 			getFile?: (uri: string, type: string) => EditorFileLike | null;
@@ -89,7 +92,7 @@ async function fetchLineText(uri: string, line: number): Promise<string> {
 	return "";
 }
 
-function getWordAtCursor(view: EditorView): string {
+export function getWordAtCursor(view: EditorView): string {
 	const { state } = view;
 	const pos = state.selection.main.head;
 	const word = state.wordAt(pos);

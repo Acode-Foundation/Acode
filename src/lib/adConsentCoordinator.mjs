@@ -35,6 +35,7 @@ export class AdConsentCoordinator {
 	#state = EMPTY_PRIVACY_STATE;
 	#consentPromise;
 	#adStartPromise;
+	#privacyOptionsPromise;
 	#listeners = new Set();
 
 	constructor({ privacy, initializeAds, onError = console.error }) {
@@ -51,7 +52,14 @@ export class AdConsentCoordinator {
 		return (this.#consentPromise ??= this.#gatherAndStart());
 	}
 
-	async showPrivacyOptions() {
+	showPrivacyOptions() {
+		this.#privacyOptionsPromise ??= this.#showPrivacyOptions().finally(() => {
+			this.#privacyOptionsPromise = undefined;
+		});
+		return this.#privacyOptionsPromise;
+	}
+
+	async #showPrivacyOptions() {
 		const state = await this.#privacy.showOptions();
 		this.#setState(state);
 		await this.#startAdsIfAllowed();

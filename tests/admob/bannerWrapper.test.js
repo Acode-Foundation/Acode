@@ -13,7 +13,10 @@ function loadBannerModule() {
 	const { code } = transformSync(source, {
 		filename: sourcePath,
 		presets: [
-			["@babel/preset-env", { modules: "commonjs", targets: { node: "current" } }],
+			[
+				"@babel/preset-env",
+				{ modules: "commonjs", targets: { node: "current" } },
+			],
 			"@babel/preset-typescript",
 		],
 	});

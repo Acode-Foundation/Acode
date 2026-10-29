@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
 import { INSTALL_SOURCE_PLAY, isPlayStoreInstall } from "utils/installSource";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 afterEach(() => {
 	vi.unstubAllGlobals();
@@ -12,7 +12,9 @@ describe("isPlayStoreInstall", () => {
 	});
 
 	it("returns false for any other install source", () => {
-		vi.stubGlobal("window", { appInstallSource: "com.android.packageinstaller" });
+		vi.stubGlobal("window", {
+			appInstallSource: "com.android.packageinstaller",
+		});
 		expect(isPlayStoreInstall()).toBe(false);
 	});
 

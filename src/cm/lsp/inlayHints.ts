@@ -21,6 +21,7 @@ import type {
 	InlayHintLabelPart,
 	Position,
 } from "vscode-languageserver-types";
+import { safeLspPositionToOffset } from "./positionUtils";
 import type { LSPPluginAPI } from "./types";
 
 // ============================================================================
@@ -238,7 +239,7 @@ function createPlugin(config: InlayHintsConfig) {
 
 					let pos: number;
 					try {
-						pos = lsp.fromPosition(h.position, lsp.syncedDoc);
+						pos = safeLspPositionToOffset(lsp.syncedDoc, h.position);
 						const mapped = lsp.unsyncedChanges.mapPos(pos);
 						if (mapped === null) continue;
 						pos = mapped;
@@ -347,11 +348,7 @@ export function inlayHintsEditorExtension(
 ): Extension {
 	if (config.enabled === false) return [];
 	if (!Object.keys(config).length) {
-		defaultInlayHintsEditorExtension ??= [
-			hintsField,
-			createPlugin({}),
-			styles,
-		];
+		defaultInlayHintsEditorExtension ??= [hintsField, createPlugin({}), styles];
 		return defaultInlayHintsEditorExtension;
 	}
 	return [hintsField, createPlugin(config), styles];

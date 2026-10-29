@@ -1,5 +1,6 @@
 import type { Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
+import searchMatchHighlighter from "./searchMatchHighlighter";
 
 interface MainEditorExtensionOptions {
 	emmetExtensions?: Extension[];
@@ -51,7 +52,9 @@ export function createMainEditorExtensions(
 	pushExtension(extensions, options.multiCursorSelectionExtension);
 	pushExtension(extensions, options.touchSelectionUpdateExtension);
 	pushExtension(extensions, options.quickToolsModifierInputExtension);
-	pushExtension(extensions, options.searchExtension);
+	if (options.searchExtension != null) {
+		extensions.push(options.searchExtension, searchMatchHighlighter);
+	}
 	pushExtension(extensions, options.readOnlyExtension);
 
 	if (options.optionExtensions?.length) {

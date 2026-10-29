@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import {
 	clearModifierState,
 	clearQuickToolsButtonFeedback,
@@ -6,6 +5,7 @@ import {
 	removeActionStackEntries,
 	shouldCaptureModifierInput,
 } from "handlers/quickToolsState";
+import { describe, expect, it } from "vitest";
 
 describe("shouldCaptureModifierInput", () => {
 	const modifiers = (overrides = {}) => ({
@@ -17,35 +17,33 @@ describe("shouldCaptureModifierInput", () => {
 	});
 
 	it("captures command modifiers outside CodeMirror", () => {
-		expect(
-			shouldCaptureModifierInput(modifiers({ shift: true }), false),
-		).toBe(true);
-		expect(
-			shouldCaptureModifierInput(modifiers({ ctrl: true }), false),
-		).toBe(true);
+		expect(shouldCaptureModifierInput(modifiers({ shift: true }), false)).toBe(
+			true,
+		);
+		expect(shouldCaptureModifierInput(modifiers({ ctrl: true }), false)).toBe(
+			true,
+		);
 	});
 
 	it("keeps Shift-only text in CodeMirror", () => {
-		expect(
-			shouldCaptureModifierInput(modifiers({ shift: true }), true),
-		).toBe(false);
+		expect(shouldCaptureModifierInput(modifiers({ shift: true }), true)).toBe(
+			false,
+		);
 	});
 
-	it.each(["ctrl", "alt", "meta"])(
-		"captures CodeMirror input when %s is active",
-		(key) => {
-			expect(
-				shouldCaptureModifierInput(modifiers({ [key]: true }), true),
-			).toBe(true);
-		},
-	);
+	it.each([
+		"ctrl",
+		"alt",
+		"meta",
+	])("captures CodeMirror input when %s is active", (key) => {
+		expect(shouldCaptureModifierInput(modifiers({ [key]: true }), true)).toBe(
+			true,
+		);
+	});
 
 	it("captures Shift combined with a command modifier", () => {
 		expect(
-			shouldCaptureModifierInput(
-				modifiers({ shift: true, ctrl: true }),
-				true,
-			),
+			shouldCaptureModifierInput(modifiers({ shift: true, ctrl: true }), true),
 		).toBe(true);
 	});
 

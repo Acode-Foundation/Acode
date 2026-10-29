@@ -40,9 +40,12 @@
 	"files": {
 		"includes": [
 			"src/**/*.js",
+			"src/**/*.ts",
 			"utils/**/*.js",
 			"src/lang/**/*.json",
+			"tests/**",
 			"!src/plugins/**/*.js",
+			"!src/plugins/**/*.ts",
 			"!www/**/*",
 			"!plugins/**/*",
 			"!hooks/**/*",

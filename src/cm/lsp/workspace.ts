@@ -3,10 +3,7 @@ import { LSPPlugin, Workspace } from "@codemirror/lsp-client";
 import type { Text, TransactionSpec } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import { getModeForPath } from "cm/modelist";
-import {
-	forgetPullDiagnostics,
-	schedulePullDiagnostics,
-} from "./diagnostics";
+import { forgetPullDiagnostics, schedulePullDiagnostics } from "./diagnostics";
 import { addLspLogFor, type LspLogLevel } from "./logs";
 import type { WorkspaceFileUpdate, WorkspaceOptions } from "./types";
 
@@ -58,6 +55,9 @@ export default class AcodeWorkspace extends Workspace {
 		this.#versions = Object.create(null) as Record<string, number>;
 		this.#workspaceFolders = new Set();
 		this.options = options;
+		for (const folder of options.initialFolders ?? []) {
+			if (folder) this.#workspaceFolders.add(folder);
+		}
 	}
 
 	#log(level: LspLogLevel, message: string, details?: unknown): void {

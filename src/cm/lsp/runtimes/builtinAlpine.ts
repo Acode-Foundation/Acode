@@ -1,6 +1,6 @@
 import toast from "components/toast";
 import confirm from "dialogs/confirm";
-import { createTransport } from "../transport";
+import { isBuiltinAlpineAccessible } from "../runtimeProviders";
 import {
 	checkServerInstallation,
 	ensureServerRunning,
@@ -9,12 +9,12 @@ import {
 	installServer,
 	uninstallServer,
 } from "../serverLauncher";
-import { isBuiltinAlpineAccessible } from "../runtimeProviders";
+import { createTransport } from "../transport";
 import type {
 	LspRuntimeContext,
 	LspRuntimeProvider,
-	LspServerDefinition,
 	LspRuntimeUriResolutionContext,
+	LspServerDefinition,
 } from "../types";
 
 export const BUILTIN_ALPINE_RUNTIME_ID = "builtin-alpine";
@@ -52,10 +52,7 @@ export const builtinAlpineRuntimeProvider: LspRuntimeProvider = {
 	label: "Built-in Alpine",
 	priority: -100,
 
-	canHandle(
-		server: LspServerDefinition,
-		context: LspRuntimeContext,
-	): boolean {
+	canHandle(server: LspServerDefinition, context: LspRuntimeContext): boolean {
 		if (context.runtimeAction && server.launcher) {
 			return true;
 		}

@@ -1,12 +1,42 @@
 import settingsPage from "components/settingsPage";
+import confirm from "dialogs/confirm";
 import config from "lib/config";
 import fonts from "lib/fonts";
 import appSettings from "lib/settings";
 import scrollSettings from "./scrollSettings";
 
+/** Settings only canvas editors use; shown with the canvas renderer. */
+const CANVAS_ONLY_SETTINGS = [
+	"canvasBackend",
+	"stickyScroll",
+	"stickyScrollMaxLines",
+	"canvasGutterMarkers",
+	"cursorBlinkRate",
+];
+
 export default function editorSettings() {
 	const title = strings["editor settings"];
 	const values = appSettings.value;
+	const rendererOptions = [
+		["dom", strings["editor renderer dom"]],
+		["canvas", strings["editor renderer canvas"]],
+	];
+	const canvasBackendOptions = [
+		["auto", strings["canvas backend auto"]],
+		["webgl2", "WebGL2"],
+		["webgpu", "WebGPU"],
+	];
+	const gutterMarkerOptions = [
+		["shared", strings["gutter markers shared"]],
+		["columns", strings["gutter markers columns"]],
+		["overlay", strings["gutter markers overlay"]],
+	];
+	const wrappingIndentOptions = [
+		["none", strings.none],
+		["same", strings["wrap-indent-same"]],
+		["indent", strings["wrap-indent-indent"]],
+		["deepIndent", strings["wrap-indent-deep"]],
+	];
 	const categories = {
 		scrolling: strings["settings-category-scrolling"],
 		textLayout: strings["settings-category-text-layout"],
@@ -22,6 +52,50 @@ export default function editorSettings() {
 			info: strings["settings-info-editor-scroll-settings"],
 			category: categories.scrolling,
 			chevron: true,
+		},
+		{
+			key: "editorRenderer",
+			text: strings["editor renderer"],
+			value: values.editorRenderer ?? "dom",
+			valueText: (value) =>
+				rendererOptions.find(([key]) => key === value)?.[1] ??
+				rendererOptions[0][1],
+			select: rendererOptions,
+			info: strings["settings-info-editor-renderer"],
+			category: categories.textLayout,
+		},
+		{
+			key: "canvasBackend",
+			text: strings["canvas backend"],
+			value: values.canvasBackend ?? "auto",
+			valueText: (value) =>
+				canvasBackendOptions.find(([key]) => key === value)?.[1] ??
+				canvasBackendOptions[0][1],
+			select: canvasBackendOptions,
+			info: strings["settings-info-canvas-backend"],
+			category: categories.textLayout,
+		},
+		{
+			key: "stickyScroll",
+			text: strings["sticky scroll"],
+			checkbox: values.stickyScroll ?? false,
+			info: strings["settings-info-sticky-scroll"],
+			category: categories.textLayout,
+		},
+		{
+			key: "stickyScrollMaxLines",
+			text: strings["sticky scroll max lines"],
+			value: values.stickyScrollMaxLines ?? 5,
+			prompt: strings["sticky scroll max lines"],
+			promptType: "number",
+			promptOptions: {
+				test(value) {
+					value = Number.parseInt(value);
+					return value >= 1 && value <= 10;
+				},
+			},
+			info: strings["settings-info-sticky-scroll-max-lines"],
+			category: categories.textLayout,
 		},
 		{
 			key: "editorFont",
@@ -65,6 +139,17 @@ export default function editorSettings() {
 			text: strings["text wrap"],
 			checkbox: values.textWrap,
 			info: strings["settings-info-editor-text-wrap"],
+			category: categories.textLayout,
+		},
+		{
+			key: "wrappingIndent",
+			text: strings["wrapped line indent"],
+			value: values.wrappingIndent ?? "same",
+			valueText: (value) =>
+				wrappingIndentOptions.find(([key]) => key === value)?.[1] ??
+				wrappingIndentOptions[1][1],
+			select: wrappingIndentOptions,
+			info: strings["settings-info-editor-wrapping-indent"],
 			category: categories.textLayout,
 		},
 		{
@@ -189,6 +274,17 @@ export default function editorSettings() {
 			category: categories.guidesIndicators,
 		},
 		{
+			key: "canvasGutterMarkers",
+			text: strings["gutter markers"],
+			value: values.canvasGutterMarkers ?? "shared",
+			valueText: (value) =>
+				gutterMarkerOptions.find(([key]) => key === value)?.[1] ??
+				gutterMarkerOptions[0][1],
+			select: gutterMarkerOptions,
+			info: strings["settings-info-gutter-markers"],
+			category: categories.guidesIndicators,
+		},
+		{
 			key: "showSpaces",
 			text: strings["show spaces"],
 			checkbox: values.showSpaces,
@@ -231,6 +327,21 @@ export default function editorSettings() {
 			category: categories.cursorSelection,
 		},
 		{
+			key: "cursorBlinkRate",
+			text: strings["cursor blink rate"],
+			value: values.cursorBlinkRate ?? 1200,
+			prompt: strings["cursor blink rate"] + " (ms)",
+			promptType: "number",
+			promptOptions: {
+				test(value) {
+					value = Number.parseInt(value);
+					return value >= 0 && value <= 10000;
+				},
+			},
+			info: strings["settings-info-cursor-blink-rate"],
+			category: categories.cursorSelection,
+		},
+		{
 			key: "rtlText",
 			text: strings["line based rtl switching"],
 			checkbox: values.rtlText,
@@ -239,7 +350,13 @@ export default function editorSettings() {
 		},
 	];
 
-	return settingsPage(title, items, callback, undefined, {
+	for (const item of items) {
+		if (CANVAS_ONLY_SETTINGS.includes(item.key)) {
+			item.hidden = !isCanvasSettingVisible(item.key);
+		}
+	}
+
+	const page = settingsPage(title, items, callback, undefined, {
 		preserveOrder: true,
 		pageClassName: "detail-settings-page",
 		listClassName: "detail-settings-list",
@@ -247,16 +364,54 @@ export default function editorSettings() {
 		valueInTail: true,
 	});
 
+	// The page is created once and kept, so follow the renderer from here.
+	appSettings.on("update:editorRenderer", updateCanvasSettings);
+	appSettings.on("update:stickyScroll", updateCanvasSettings);
+
+	return page;
+
+	function isCanvasSettingVisible(key) {
+		const { editorRenderer, stickyScroll } = appSettings.value;
+		if (editorRenderer !== "canvas") return false;
+		return key !== "stickyScrollMaxLines" || !!stickyScroll;
+	}
+
+	function updateCanvasSettings() {
+		for (const key of CANVAS_ONLY_SETTINGS) {
+			page.setItemVisibility(key, isCanvasSettingVisible(key));
+		}
+	}
+
 	/**
 	 * Callback for settings page when an item is clicked
 	 * @param {string} key
 	 * @param {string} value
 	 */
-	function callback(key, value) {
+	async function callback(key, value) {
 		switch (key) {
 			case "scroll-settings":
 				appSettings.uiSettings[key].show();
 				return;
+
+			case "editorRenderer":
+			case "canvasBackend":
+				// Editors are created with their renderer and backend: reload
+				// to switch (a backend change only matters to canvas editors).
+				if (value === appSettings.value[key]) return;
+				await appSettings.update({ [key]: value });
+				if (
+					(key === "editorRenderer" ||
+						appSettings.value.editorRenderer === "canvas") &&
+					(await confirm(strings.info, strings["reload to apply"]))
+				) {
+					await reloadApp();
+				}
+				return;
+
+			case "stickyScrollMaxLines":
+			case "cursorBlinkRate":
+				appSettings.update({ [key]: Number.parseInt(value) });
+				break;
 
 			case "editorFont":
 				fonts.setFont(value);
@@ -267,5 +422,12 @@ export default function editorSettings() {
 				});
 				break;
 		}
+	}
+
+	/** Reload once open files' edits are cached and the session is saved. */
+	async function reloadApp() {
+		await window.editorManager?.flushCacheWrites?.();
+		window.acode?.exec("save-state");
+		location.reload();
 	}
 }

@@ -19,7 +19,7 @@ export async function readRemoteFilePreview({
 	if (editorCacheExists) {
 		return {
 			editorCacheExists,
-			text: await editorCache.readFile(encoding),
+			text: await editorCache.readFile("utf-8"),
 		};
 	}
 

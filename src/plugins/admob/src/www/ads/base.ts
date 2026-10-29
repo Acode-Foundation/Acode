@@ -19,6 +19,8 @@ export class MobileAd<T extends MobileAdOptions = MobileAdOptions> {
 
   protected readonly opts: T;
   private _initPromise: ReturnType<typeof this._init> | undefined;
+  private _destroyPromise: Promise<void> | undefined;
+  private _destroyed = false;
 
   constructor(opts: T) {
     this.opts = opts;
@@ -79,13 +81,30 @@ export class MobileAd<T extends MobileAdOptions = MobileAdOptions> {
     return execAsync("adHide", [{ id: this.id }]);
   }
 
+  protected destroy(): Promise<void> {
+    if (this._destroyPromise) return this._destroyPromise;
+    this._destroyed = true;
+    if (MobileAd.allAds[this.id] === this) delete MobileAd.allAds[this.id];
+    this._destroyPromise = (async () => {
+      // Creation may already be in flight; dispose only after it settles.
+      if (this._initPromise) {
+        await this._initPromise;
+        await execAsync("adDestroy", [{ id: this.id }]);
+      }
+    })();
+    return this._destroyPromise;
+  }
+
   protected async init() {
+    if (this._destroyed) throw new Error("Ad is destroyed");
     // biome-ignore lint/suspicious/noAssignInExpressions: <explanation>
-    return (this._initPromise ??= this._init());
+    await (this._initPromise ??= this._init());
+    if (this._destroyed) throw new Error("Ad is destroyed");
   }
 
   private async _init() {
     await admob.start();
+    if (this._destroyed) return;
 
     const cls =
       (this.constructor as unknown as { cls?: string }).cls ??

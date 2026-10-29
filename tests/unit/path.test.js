@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import Path from "utils/Path";
+import { describe, expect, it } from "vitest";
 
 describe("Path.dirname", () => {
 	it("returns the parent directory", () => {
@@ -72,9 +72,7 @@ describe("Path.join / normalize", () => {
 
 describe("Path.resolve", () => {
 	it("resolves relative segments against a base", () => {
-		expect(Path.resolve("path/to/some/dir/", "../../dir")).toBe(
-			"/path/to/dir",
-		);
+		expect(Path.resolve("path/to/some/dir/", "../../dir")).toBe("/path/to/dir");
 	});
 
 	it("resets on absolute segments", () => {
@@ -115,8 +113,6 @@ describe("Path.isAbsolute / convertToRelative", () => {
 	});
 
 	it("computes a path relative to a base", () => {
-		expect(Path.convertToRelative("/foo/bar", "/foo/baz/qux")).toBe(
-			"baz/qux",
-		);
+		expect(Path.convertToRelative("/foo/bar", "/foo/baz/qux")).toBe("baz/qux");
 	});
 });

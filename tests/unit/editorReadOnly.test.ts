@@ -1,30 +1,53 @@
 // @vitest-environment happy-dom
 
 import { Compartment, EditorSelection, EditorState } from "@codemirror/state";
-import { EditorView } from "@codemirror/view";
+import { drawSelection, EditorView } from "@codemirror/view";
 import {
-	collapseReadOnlySelection,
 	createEditorReadOnlyExtension,
 	focusEditorIfEditable,
 	isReadOnlyUserChange,
+	placeReadOnlyCursor,
 	reconfigureEditorReadOnly,
 	resolveReadOnlyContextSelection,
 	shouldCommitReadOnlyTap,
 } from "cm/editorReadOnly";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 const views: EditorView[] = [];
+
+// happy-dom dispatches selectionchange synchronously from Selection methods,
+// while browsers queue it as a task. CodeMirror's view flushes on every
+// selectionchange, so a synchronous one fired while the view syncs its own
+// DOM selection re-enters EditorView.update. Queue it like a browser does.
+const dispatchDocumentEvent = document.dispatchEvent;
+
+beforeAll(() => {
+	document.dispatchEvent = function (event) {
+		if (event.type !== "selectionchange") {
+			return dispatchDocumentEvent.call(this, event);
+		}
+		setTimeout(() => dispatchDocumentEvent.call(this, event));
+		return true;
+	};
+});
+
+afterAll(() => {
+	document.dispatchEvent = dispatchDocumentEvent;
+});
 
 afterEach(() => {
 	while (views.length) views.pop()?.destroy();
 	document.body.replaceChildren();
 });
 
-function createEditor(readOnly = false) {
+function createEditor(readOnly = false, doc = "read only content") {
 	const compartment = new Compartment();
 	const state = EditorState.create({
-		doc: "read only content",
-		extensions: [compartment.of(createEditorReadOnlyExtension(readOnly))],
+		doc,
+		extensions: [
+			drawSelection(),
+			compartment.of(createEditorReadOnlyExtension(readOnly)),
+		],
 	});
 	const view = new EditorView({ state, parent: document.body });
 	views.push(view);
@@ -37,6 +60,7 @@ function expectEditable(view: EditorView) {
 	expect(view.contentDOM.getAttribute("contenteditable")).toBe("true");
 	expect(view.contentDOM.hasAttribute("aria-readonly")).toBe(false);
 	expect(view.contentDOM.hasAttribute("tabindex")).toBe(false);
+	expect(view.dom.classList.contains("cm-read-only")).toBe(false);
 }
 
 function expectReadOnly(view: EditorView) {
@@ -45,9 +69,27 @@ function expectReadOnly(view: EditorView) {
 	expect(view.contentDOM.getAttribute("contenteditable")).toBe("false");
 	expect(view.contentDOM.getAttribute("aria-readonly")).toBe("true");
 	expect(view.contentDOM.hasAttribute("tabindex")).toBe(false);
+	expect(view.dom.classList.contains("cm-read-only")).toBe(true);
 }
 
 describe("editor read-only configuration", () => {
+	it("leaves focus and input to a canvas view, keeping the edit filter", () => {
+		const state = EditorState.create({
+			doc: "abc",
+			extensions: createEditorReadOnlyExtension(true, { canvas: true }),
+		});
+		expect(state.readOnly).toBe(true);
+		// Canvas views take focus without a keyboard while read-only.
+		expect(state.facet(EditorView.editable)).toBe(true);
+		const typed = state.update({
+			changes: { from: 0, insert: "x" },
+			userEvent: "input.type",
+		});
+		expect(typed.state.doc.toString()).toBe("abc");
+		const synced = state.update({ changes: { from: 0, insert: "x" } });
+		expect(synced.state.doc.toString()).toBe("xabc");
+	});
+
 	it("keeps an editable editor focusable for text input", () => {
 		const { view } = createEditor();
 
@@ -65,6 +107,22 @@ describe("editor read-only configuration", () => {
 		expect(view.state.selection.main.from).toBe(0);
 		expect(view.state.selection.main.to).toBe(4);
 		expect(view.state.doc.toString()).toBe(originalDocument);
+	});
+
+	it("reveals CodeMirror's static cursor only in read-only mode", () => {
+		const { compartment, view } = createEditor(true);
+		const cursorLayer = view.dom.querySelector<HTMLElement>(".cm-cursorLayer");
+		expect(cursorLayer).not.toBeNull();
+		const cursor = document.createElement("span");
+		cursor.className = "cm-cursor cm-cursor-primary";
+		cursorLayer!.append(cursor);
+
+		expect(getComputedStyle(cursor).display).toBe("block");
+		expect(view.hasFocus).toBe(false);
+
+		reconfigureEditorReadOnly(view, compartment, false);
+		expect(view.dom.classList.contains("cm-read-only")).toBe(false);
+		expect(getComputedStyle(cursor).display).toBe("none");
 	});
 
 	it("blocks user document changes but permits internal synchronization", () => {
@@ -125,17 +183,33 @@ describe("editor read-only configuration", () => {
 		expect(editable.hasFocus).toBe(true);
 	});
 
-	it("collapses a read-only selection without editing or focusing", () => {
+	it("places a read-only cursor without editing or focusing", () => {
 		const { view } = createEditor(true);
 		view.dispatch({ selection: EditorSelection.range(0, 4) });
 		const originalDocument = view.state.doc.toString();
 
-		expect(collapseReadOnlySelection(view, 7)).toBe(true);
+		expect(placeReadOnlyCursor(view, 7)).toBe(true);
 		expect(view.state.selection.main.empty).toBe(true);
 		expect(view.state.selection.main.head).toBe(7);
 		expect(view.state.doc.toString()).toBe(originalDocument);
 		expect(view.hasFocus).toBe(false);
-		expect(collapseReadOnlySelection(view, 2)).toBe(false);
+
+		expect(placeReadOnlyCursor(view, 2)).toBe(true);
+		expect(view.state.selection.main.head).toBe(2);
+		expect(placeReadOnlyCursor(view, 2)).toBe(true);
+		expect(view.state.doc.toString()).toBe(originalDocument);
+	});
+
+	it("clamps cursor placement in an empty document and declines editable views", () => {
+		const readOnly = createEditor(true, "").view;
+		const editable = createEditor(false).view;
+
+		expect(placeReadOnlyCursor(readOnly, 10)).toBe(true);
+		expect(readOnly.state.selection.main.head).toBe(0);
+		expect(readOnly.hasFocus).toBe(false);
+
+		expect(placeReadOnlyCursor(editable, 5)).toBe(false);
+		expect(editable.state.selection.main.head).toBe(0);
 	});
 
 	it("accepts only uncancelled short primary taps", () => {

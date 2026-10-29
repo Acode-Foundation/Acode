@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import Url from "utils/Url";
+import { describe, expect, it } from "vitest";
 
 describe("Url.getProtocol", () => {
 	it("extracts the protocol", () => {
@@ -71,9 +71,7 @@ describe("Url.parse / pathname / dirname", () => {
 	});
 
 	it("returns the parent url", () => {
-		expect(Url.dirname("ftp://localhost/foo/bar")).toBe(
-			"ftp://localhost/foo/",
-		);
+		expect(Url.dirname("ftp://localhost/foo/bar")).toBe("ftp://localhost/foo/");
 	});
 });
 
@@ -82,6 +80,32 @@ describe("Url.safe", () => {
 		expect(Url.safe("https://ex.com/a b/c?x=1 2")).toBe(
 			"https://ex.com/a%20b/c?x=1 2",
 		);
+	});
+});
+
+describe("Url.isSameOrDescendant", () => {
+	it("matches a remote root and its descendants", () => {
+		expect(
+			Url.isSameOrDescendant(
+				"sftp://user@host:22/project/src?keyFile=secret",
+				"sftp://user@host:22/project",
+			),
+		).toBe(true);
+		expect(
+			Url.isSameOrDescendant(
+				"sftp://user@host:22/project/",
+				"sftp://user@host:22/project",
+			),
+		).toBe(true);
+	});
+
+	it("preserves path segment boundaries", () => {
+		expect(
+			Url.isSameOrDescendant(
+				"sftp://user@host:22/project-copy",
+				"sftp://user@host:22/project",
+			),
+		).toBe(false);
 	});
 });
 
@@ -127,16 +151,16 @@ describe("Url.hidePassword / decodeUrl", () => {
 		// NOTE: url-parse only splits the port for special protocols
 		// (http/https/ws/...), so an http url is used to exercise the
 		// port decoding branch of decodeUrl.
-		expect(
-			Url.decodeUrl("http://user:p%40ss@host.com:8080/a%20b?x=1"),
-		).toEqual({
-			username: "user",
-			password: "p@ss",
-			hostname: "host.com",
-			pathname: "/a b",
-			port: 8080,
-			query: { x: "1" },
-		});
+		expect(Url.decodeUrl("http://user:p%40ss@host.com:8080/a%20b?x=1")).toEqual(
+			{
+				username: "user",
+				password: "p@ss",
+				hostname: "host.com",
+				pathname: "/a b",
+				port: 8080,
+				query: { x: "1" },
+			},
+		);
 	});
 
 	it("decodes credentials for ftp urls", () => {

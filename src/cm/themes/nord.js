@@ -1,6 +1,7 @@
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorView } from "@codemirror/view";
 import { tags as t } from "@lezer/highlight";
+import { memberProperty } from "../highlightTags";
 
 export const config = {
 	name: "nord",
@@ -19,6 +20,7 @@ export const config = {
 	variable: "#d8dee9",
 	parameter: "#d8dee9",
 	function: "#8fbcbb",
+	memberProperty: "#d8dee9",
 	string: "#a3be8c",
 	constant: "#b48ead",
 	type: "#88c0d0",
@@ -91,6 +93,10 @@ export const nordTheme = EditorView.theme(
 );
 
 export const nordHighlightStyle = HighlightStyle.define([
+	{
+		tag: [memberProperty, t.definition(memberProperty)],
+		color: config.memberProperty,
+	},
 	{ tag: t.keyword, color: config.keyword },
 	{
 		tag: [t.name, t.deleted, t.character, t.macroName],
@@ -101,7 +107,16 @@ export const nordHighlightStyle = HighlightStyle.define([
 		tag: [t.processingInstruction, t.string, t.inserted, t.special(t.string)],
 		color: config.string,
 	},
-	{ tag: [t.function(t.variableName), t.labelName], color: config.function },
+	{
+		tag: [
+			t.function(t.variableName),
+			t.function(t.propertyName),
+			t.function(t.definition(t.propertyName)),
+			t.function(t.definition(t.variableName)),
+			t.labelName,
+		],
+		color: config.function,
+	},
 	{
 		tag: [t.color, t.constant(t.name), t.standard(t.name)],
 		color: config.constant,

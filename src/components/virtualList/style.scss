@@ -7,3 +7,13 @@
 	position: relative;
 	min-width: 100%;
 }
+
+.variable-virtual-spacer {
+	width: 100%;
+	pointer-events: none;
+}
+
+.variable-virtual-items {
+	position: relative;
+	min-width: 100%;
+}

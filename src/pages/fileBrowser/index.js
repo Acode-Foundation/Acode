@@ -31,7 +31,7 @@ function FileBrowser(mode, info, doesOpenLast, ...args) {
 }
 
 FileBrowser.openFile = (res) => {
-	const { url, name, mode } = res;
+	const { url, name, mode, persistedUriPermission } = res;
 	const createOption = {
 		uri: url,
 		name,
@@ -41,12 +41,15 @@ FileBrowser.openFile = (res) => {
 	if (mode) {
 		createOption.mode = mode;
 	}
+	if (mode === "single") {
+		createOption.persistInSession = persistedUriPermission !== false;
+	}
 
-	openFile(url, createOption);
+	return openFile(url, createOption);
 };
 
 FileBrowser.openFileError = (err) => {
-	const ERROR = strings.error.toUpperCase();
+	const ERROR = strings.error;
 	const message = `${strings["unable to open file"]}. ${helpers.errorMessage(err.code)}`;
 	if (err.code) {
 		alert(ERROR, message);
@@ -75,7 +78,7 @@ FileBrowser.openFolder = async (res) => {
 };
 
 FileBrowser.openFolderError = (err) => {
-	const ERROR = strings.error.toUpperCase();
+	const ERROR = strings.error;
 	const message = `${strings["unable to open folder"]}. ${helpers.errorMessage(err.code)}`;
 	if (err.code) {
 		alert(ERROR, message);

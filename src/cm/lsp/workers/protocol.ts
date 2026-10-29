@@ -394,9 +394,8 @@ export function getTextDocument(
 	documentsMap: Map<string, TextDocument>,
 	params: unknown,
 ): TextDocument | null {
-	const uri = (
-		params as { textDocument?: { uri?: unknown } } | null
-	)?.textDocument?.uri;
+	const uri = (params as { textDocument?: { uri?: unknown } } | null)
+		?.textDocument?.uri;
 	return typeof uri === "string" ? (documentsMap.get(uri) ?? null) : null;
 }
 

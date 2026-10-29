@@ -12,7 +12,8 @@ export const config = {
 	cursor: "#c6c6c6",
 	dropdownBackground: "#202020",
 	dropdownBorder: "#454545",
-	activeLine: "#282828",
+	// Keep this translucent: CodeMirror draws selections behind line backgrounds.
+	activeLine: "#67676720",
 	lineNumber: "#6e7681",
 	lineNumberActive: "#cccccc",
 	matchingBracket: "#add6ff26",
@@ -160,7 +161,12 @@ export const vscodeDarkHighlightStyle = HighlightStyle.define([
 	{ tag: [t.typeName, t.className], color: config.type },
 	{ tag: [t.tagName, t.standard(t.tagName)], color: config.keyword },
 	{
-		tag: [t.function(t.variableName), t.function(t.propertyName)],
+		tag: [
+			t.function(t.variableName),
+			t.function(t.definition(t.propertyName)),
+			t.function(t.definition(t.variableName)),
+			t.function(t.propertyName),
+		],
 		color: config.function,
 	},
 	{

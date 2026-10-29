@@ -16,7 +16,7 @@ import appSettings from "lib/settings";
  * Opens a prompt dialog
  * @param {string} message
  * @param {string} defaultValue
- * @param {"textarea"|"text"|"number"|"tel"|"search"|"email"|"url"} type
+ * @param {"textarea"|"text"|"filename"|"number"|"tel"|"search"|"email"|"url"} type
  * @param {PromptOptions} options
  * @returns {Promise<string|number|null>} Returns null if cancelled
  */
@@ -34,7 +34,8 @@ export default function prompt(
 
 	return new Promise((resolve) => {
 		const inputType = type === "textarea" ? "textarea" : "input";
-		type = type === "filename" ? "text" : type;
+		const isFilename = type === "filename";
+		type = isFilename ? "text" : type;
 
 		const messageSpan = tag("span", {
 			textContent: message,
@@ -143,7 +144,11 @@ export default function prompt(
 		if (input.value) {
 			try {
 				const col = input.value.length;
-				input.setSelectionRange(col, col);
+				// Select the name without its extension (or the whole name when
+				// there is none), so typing replaces it
+				const dot = isFilename ? input.value.lastIndexOf(".") : -1;
+				if (isFilename) input.setSelectionRange(0, dot > 0 ? dot : col);
+				else input.setSelectionRange(col, col);
 			} catch (error) {
 				// ignore
 			}

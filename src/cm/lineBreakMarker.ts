@@ -1,5 +1,12 @@
-import { Decoration, DecorationSet, ViewPlugin, WidgetType, EditorView, ViewUpdate } from "@codemirror/view";
 import { RangeSetBuilder } from "@codemirror/state";
+import {
+	Decoration,
+	DecorationSet,
+	EditorView,
+	ViewPlugin,
+	ViewUpdate,
+	WidgetType,
+} from "@codemirror/view";
 
 class NewlineWidget extends WidgetType {
 	toDOM(): HTMLElement {
@@ -30,12 +37,15 @@ export const lineBreakMarkerPlugin = ViewPlugin.fromClass(
 		getDecorations(view: EditorView): DecorationSet {
 			let builder = new RangeSetBuilder<Decoration>();
 			let lastLineNumber = -1;
-			
+
 			for (let { from, to } of view.visibleRanges) {
 				for (let pos = from; pos <= to; ) {
 					let line = view.state.doc.lineAt(pos);
-					
-					if (line.number > lastLineNumber && line.number < view.state.doc.lines) {
+
+					if (
+						line.number > lastLineNumber &&
+						line.number < view.state.doc.lines
+					) {
 						let deco = Decoration.widget({
 							widget: new NewlineWidget(),
 							side: 1,
@@ -43,7 +53,7 @@ export const lineBreakMarkerPlugin = ViewPlugin.fromClass(
 						builder.add(line.to, line.to, deco);
 						lastLineNumber = line.number;
 					}
-					
+
 					pos = line.to + 1;
 				}
 			}

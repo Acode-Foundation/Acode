@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from "vitest";
 import { readRemoteFilePreview } from "utils/remoteFilePreview";
+import { describe, expect, it, vi } from "vitest";
 
 function createCache({ exists = false, text = "", error = null } = {}) {
 	return {
@@ -19,10 +19,10 @@ describe("readRemoteFilePreview", () => {
 			readRemoteFilePreview({
 				editorCache,
 				transportCache,
-				encoding: "UTF-8",
+				encoding: "utf-16le",
 			}),
 		).resolves.toEqual({ editorCacheExists: true, text: "unsaved" });
-		expect(editorCache.readFile).toHaveBeenCalledWith("UTF-8");
+		expect(editorCache.readFile).toHaveBeenCalledWith("utf-8");
 		expect(transportCache.exists).not.toHaveBeenCalled();
 	});
 

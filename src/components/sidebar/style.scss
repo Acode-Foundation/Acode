@@ -192,9 +192,20 @@ body.no-animation {
         }
       }
 
-      // Special styling for the favorites/sponsors icon
+      // Unread dot, drawn as a background so ::before/::after stay free
+      body.has-unread-notifications &[data-id="notification"] {
+        background-image: radial-gradient(
+          circle at 28px 12px,
+          var(--active-color, #3399ff) 3px,
+          transparent 3.5px
+        );
+        background-size: 100% 100%;
+        background-position: 0 0;
+      }
+
+      // Special styling for the favorites/sponsors icon, pinned above the profile
       &.favorite {
-        margin-top: 8px;
+        margin: 4px auto 8px;
 
         &::after {
           display: none;

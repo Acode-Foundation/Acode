@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import { compareVersions, isVersionGreater, parseVersion } from "utils/version";
+import { describe, expect, it } from "vitest";
 
 describe("utils/version", () => {
 	it("parses strict x.y.z versions", () => {

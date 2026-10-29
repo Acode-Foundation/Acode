@@ -1,6 +1,7 @@
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorView } from "@codemirror/view";
 import { tags as t } from "@lezer/highlight";
+import { memberProperty } from "../highlightTags";
 
 export const config = {
 	name: "noctisLilac",
@@ -20,6 +21,7 @@ export const config = {
 	variable: "#0c006b",
 	parameter: "#0c006b",
 	function: "#0095a8",
+	memberProperty: "#fa8900",
 	string: "#00b368",
 	constant: "#5842ff",
 	type: "#b3694d",
@@ -108,6 +110,10 @@ export const noctisLilacTheme = EditorView.theme(
 );
 
 export const noctisLilacHighlightStyle = HighlightStyle.define([
+	{
+		tag: [memberProperty, t.definition(memberProperty)],
+		color: config.memberProperty,
+	},
 	{ tag: t.comment, color: config.comment },
 	{ tag: t.keyword, color: config.keyword, fontWeight: "bold" },
 	{ tag: [t.definitionKeyword, t.modifier], color: config.keyword },
@@ -117,7 +123,13 @@ export const noctisLilacHighlightStyle = HighlightStyle.define([
 	},
 	{ tag: [t.number, t.bool, t.null, t.special(t.brace)], color: config.number },
 	{
-		tag: [t.definition(t.propertyName), t.function(t.variableName)],
+		tag: [
+			t.definition(t.propertyName),
+			t.function(t.variableName),
+			t.function(t.propertyName),
+			t.function(t.definition(t.propertyName)),
+			t.function(t.definition(t.variableName)),
+		],
 		color: config.function,
 	},
 	{ tag: t.typeName, color: config.type },

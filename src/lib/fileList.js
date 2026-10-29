@@ -15,6 +15,9 @@ import settings from "./settings";
 
 const filesTree = {};
 const pendingScans = new Set();
+const activeChildUrls = new WeakMap();
+const FALLBACK_SCAN_BATCH_SIZE = 64;
+let fallbackScanTail = Promise.resolve();
 const events = {
 	"add-file": [],
 	"push-file": [],
@@ -164,7 +167,7 @@ export function rename(oldUrl, newUrl) {
  * @returns {Tree[]}
  */
 export default function files(dir) {
-	const listedDirs = [];
+	const listedDirs = new Set();
 	let transform = (item) => item;
 	if (typeof dir === "string") {
 		for (const item of Object.values(filesTree)) {
@@ -178,7 +181,7 @@ export default function files(dir) {
 
 	const allFiles = [];
 	Object.values(filesTree).forEach((item) => {
-		allFiles.push(...flattenTree(item, transform, listedDirs));
+		flattenTree(item, transform, listedDirs, allFiles);
 	});
 	return allFiles;
 }
@@ -215,13 +218,14 @@ files.off = function (event, callback) {
  */
 function getTree(treeList, dir) {
 	if (!treeList) return;
-	let tree = treeList.find(({ url }) => url === dir);
-	if (tree) return tree;
-	for (const item of treeList) {
-		tree = getTree(item.children, dir);
-		if (tree) return tree;
+	const pending = [...treeList];
+	while (pending.length) {
+		const tree = pending.pop();
+		if (tree.url === dir) return tree;
+		if (tree.children?.length) {
+			for (const child of tree.children) pending.push(child);
+		}
 	}
-
 	return null;
 }
 
@@ -235,15 +239,13 @@ function getTree(treeList, dir) {
  * @param {Tree} tree - Files tree
  */
 function getFile(path, tree) {
-	const { children } = tree;
-	let { url } = tree;
-	if (url === path) return tree;
-	if (!children) return null;
-	const len = children.length;
-	for (let i = 0; i < len; i++) {
-		const item = children[i];
-		const result = getFile(path, item);
-		if (result) return result;
+	const pending = [tree];
+	while (pending.length) {
+		const item = pending.pop();
+		if (item.url === path) return item;
+		if (item.children?.length) {
+			for (const child of item.children) pending.push(child);
+		}
 	}
 	return null;
 }
@@ -253,21 +255,20 @@ function getFile(path, tree) {
  * @param {Tree} tree
  * @param {(item:Tree)=>object} transform
  */
-function flattenTree(tree, transform, listedDirs) {
-	const list = [];
-	const { children } = tree;
-	if (!children) {
-		return [transform(tree)];
+function flattenTree(tree, transform, listedDirs, list = []) {
+	const pending = [tree];
+	while (pending.length) {
+		const item = pending.pop();
+		if (!item.children) {
+			list.push(transform(item));
+			continue;
+		}
+		if (listedDirs.has(item.url)) continue;
+		listedDirs.add(item.url);
+		for (let i = item.children.length - 1; i >= 0; i -= 1) {
+			pending.push(item.children[i]);
+		}
 	}
-
-	if (listedDirs.includes(tree.url)) return list;
-
-	listedDirs.push(tree.url);
-
-	children.forEach((item) => {
-		if (item.children) list.push(...flattenTree(item, transform, listedDirs));
-		else list.push(transform(item));
-	});
 	return list;
 }
 
@@ -316,33 +317,103 @@ function onRemoveFolder({ url }) {
  * @param {Tree} [root] - Root path
  */
 async function getAllFiles(parent, root, options = {}) {
-	root = root || parent.root;
-	if (!parent.children || !root.isConnected) return;
+	const previousScan = fallbackScanTail;
+	let releaseScan;
+	fallbackScanTail = new Promise((resolve) => {
+		releaseScan = resolve;
+	});
 
+	await previousScan.catch(() => {});
 	try {
-		const entries = await fsOperation(parent.url).lsDir();
-		const promises = [];
-
-		for (const item of entries) {
-			promises.push(createChildTree(parent, item, root));
-		}
-
-		await Promise.all(promises);
-	} catch (error) {
-		// retry after 3s
-		parent.retriedCount += 1;
-		if (parent.retriedCount > settings.value.maxRetryCount) return;
-		if (settings.value.showRetryToast) {
-			toast(`retrying: ${parent.path}`);
-		}
-
-		setTimeout(() => {
-			// why not outside? because parent may be removed
-			if (!root.isConnected) return;
-			parent.children.length = 0;
-			getAllFiles(parent, root, options);
-		}, 3000);
+		return await scanAllFiles(parent, root, options);
+	} finally {
+		releaseScan();
 	}
+}
+
+async function scanAllFiles(parent, root, options = {}) {
+	root = root || parent.root;
+	if (!parent.children || !isFallbackScanActive(root)) return;
+
+	// Compatibility providers such as FTP and SFTP are indexed in JavaScript.
+	// Keep one directory request in flight and periodically yield so a large
+	// remote workspace cannot monopolize the WebView event loop.
+	const directories = [parent];
+	const queuedDirectories = new Set([parent.url]);
+	let directoryIndex = 0;
+	let processedSinceYield = 0;
+
+	while (directoryIndex < directories.length && isFallbackScanActive(root)) {
+		const directory = directories[directoryIndex++];
+		const entries = await listDirectoryWithRetry(directory, root);
+		if (!entries) continue;
+		const knownChildren = new Set(directory.children.map((child) => child.url));
+		activeChildUrls.set(directory, knownChildren);
+
+		try {
+			for (const item of entries) {
+				if (!isFallbackScanActive(root)) return;
+				const child = await createChildTree(directory, item, root, {
+					...options,
+					deferDirectories: true,
+					knownChildren,
+				});
+				if (child?.children && !queuedDirectories.has(child.url)) {
+					queuedDirectories.add(child.url);
+					directories.push(child);
+				}
+
+				processedSinceYield += 1;
+				if (processedSinceYield >= FALLBACK_SCAN_BATCH_SIZE) {
+					processedSinceYield = 0;
+					await yieldToMainThread();
+				}
+			}
+		} finally {
+			if (activeChildUrls.get(directory) === knownChildren) {
+				activeChildUrls.delete(directory);
+			}
+		}
+
+		await yieldToMainThread();
+	}
+}
+
+async function listDirectoryWithRetry(parent, root) {
+	while (isFallbackScanActive(root)) {
+		try {
+			const entries = await fsOperation(parent.url).lsDir();
+			parent.retriedCount = 0;
+			return entries || [];
+		} catch (error) {
+			parent.retriedCount += 1;
+			if (parent.retriedCount > settings.value.maxRetryCount) return null;
+			if (settings.value.showRetryToast) {
+				toast(`retrying: ${parent.path}`);
+			}
+			await waitForRetry(root, 3000);
+		}
+	}
+	return null;
+}
+
+async function waitForRetry(root, duration) {
+	const deadline = Date.now() + duration;
+	while (isFallbackScanActive(root) && Date.now() < deadline) {
+		await delay(Math.min(250, deadline - Date.now()));
+	}
+}
+
+function isFallbackScanActive(root) {
+	return root.isConnected && filesTree[root.url] === root;
+}
+
+function delay(duration) {
+	return new Promise((resolve) => setTimeout(resolve, duration));
+}
+
+function yieldToMainThread() {
+	return delay(0);
 }
 
 /**
@@ -369,11 +440,16 @@ function trackScan(scan) {
  * @param {File} item
  * @param {Tree} root
  */
-async function createChildTree(parent, item, root) {
-	if (!root.isConnected) return;
-	const { name, url, isDirectory, mime, type, size, modifiedDate } = item;
-	const exists = parent.children.findIndex((child) => child.url === url);
-	if (exists > -1) {
+async function createChildTree(parent, item, root, options = {}) {
+	if (!isFallbackScanActive(root)) return;
+	const { name, url, isDirectory, isLink, mime, type, size, modifiedDate } =
+		item;
+	const knownChildren =
+		options.knownChildren || activeChildUrls.get(parent) || null;
+	const exists = knownChildren
+		? knownChildren.has(url)
+		: parent.children.some((child) => child.url === url);
+	if (exists) {
 		return;
 	}
 
@@ -385,18 +461,23 @@ async function createChildTree(parent, item, root) {
 		size,
 		modifiedDate,
 	);
-	if (!root.isConnected) return;
+	if (!isFallbackScanActive(root)) return;
 
-	const existingTree = getTree(Object.values(filesTree), file.url);
+	const existingTree = filesTree[file.url];
 
 	if (existingTree) {
 		file.children = existingTree.children;
 		parent.children.push(file);
+		knownChildren?.add(file.url);
 		return;
 	}
 
 	parent.children.push(file);
+	knownChildren?.add(file.url);
 	if (isDirectory) {
+		// Keep links visible in the tree, but do not recursively index them. Remote
+		// links can point back to an ancestor and otherwise create an endless scan.
+		if (isLink) return;
 		const ignore = picomatch.isMatch(
 			Url.join(file.path, ""),
 			settings.value.excludeFolders,
@@ -404,12 +485,15 @@ async function createChildTree(parent, item, root) {
 		);
 		if (ignore) return;
 
-		await getAllFiles(file, root);
-		return;
+		if (!options.deferDirectories) {
+			await getAllFiles(file, root, options);
+		}
+		return file;
 	}
 
 	emit("push-file", file);
 	emit("add-file", file);
+	return file;
 }
 
 export class Tree {

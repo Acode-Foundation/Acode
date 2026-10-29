@@ -35,6 +35,7 @@ interface DocumentFile {
   canWrite: boolean;
   filename: string;
   length: number;
+  persistedUriPermission: boolean;
   type: string;
   uri: string;
 }

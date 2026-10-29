@@ -134,12 +134,7 @@ export function getDocumentRegions(
 	return {
 		regions,
 		getEmbeddedDocument: (languageId, ignoreAttributeValues) =>
-			getEmbeddedDocument(
-				document,
-				regions,
-				languageId,
-				ignoreAttributeValues,
-			),
+			getEmbeddedDocument(document, regions, languageId, ignoreAttributeValues),
 		getEmbeddedLanguages: (ignoreAttributeValues) =>
 			getEmbeddedLanguages(regions, ignoreAttributeValues),
 		getEmbeddedLanguageAtPosition: (position) =>

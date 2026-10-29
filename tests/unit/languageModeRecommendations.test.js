@@ -1,8 +1,8 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import "cm/supportedModes";
 import { getModeForPath } from "cm/modelist";
-import notificationManager from "lib/notificationManager";
 import recommendLanguageModeExtension from "lib/languageModeRecommendations";
+import notificationManager from "lib/notificationManager";
 
 vi.mock("lib/notificationManager", () => ({
 	default: {

@@ -163,6 +163,8 @@ public class Emulator extends LinearLayout {
             if (listener != null) {
               listener.onChange(iWidth, correctedHeight, 1);
             }
+
+            restoreDefaultDevice();
           }
         }
       );
@@ -302,6 +304,108 @@ public class Emulator extends LinearLayout {
     listener.onChange(width, height, maxScale / 100f);
   }
 
+  public static boolean hasDefault(Context context) {
+    return context
+      .getSharedPreferences("acode_browser", Context.MODE_PRIVATE)
+      .getBoolean("default_set", false);
+  }
+
+  public static void clearDefault(Context context) {
+    context
+      .getSharedPreferences("acode_browser", Context.MODE_PRIVATE)
+      .edit()
+      .putBoolean("default_set", false)
+      .apply();
+  }
+
+  public void saveAsDefault() {
+    context
+      .getSharedPreferences("acode_browser", Context.MODE_PRIVATE)
+      .edit()
+      .putBoolean("default_set", true)
+      .putInt("default_width", getWidthProgress())
+      .putInt("default_height", getHeightProgress())
+      .putInt("default_scale", seekBars.get("scale").getProgress())
+      .putString(
+        "default_device",
+        selectedDevice != null ? selectedDevice.name : "Custom"
+      )
+      .apply();
+  }
+
+  private Runnable restoredListener;
+
+  public void setRestoredListener(Runnable listener) {
+    restoredListener = listener;
+  }
+
+  private void restoreDefaultDevice() {
+    if (!hasDefault(context)) return;
+
+    android.content.SharedPreferences prefs = context.getSharedPreferences(
+      "acode_browser",
+      Context.MODE_PRIVATE
+    );
+    SeekBar widthSeekBar = seekBars.get("width");
+    SeekBar heightSeekBar = seekBars.get("height");
+    SeekBar scaleSeekBar = seekBars.get("scale");
+    String name = prefs.getString("default_device", "Custom");
+
+    Device preset = null;
+    for (Device device : deviceListView.devices) {
+      if (device.id != customDevice.id && device.name.equals(name)) {
+        preset = device;
+        break;
+      }
+    }
+
+    if (preset != null && listener != null) {
+      // A preset is re-fitted to the current screen, so it keeps its shape if
+      // the screen size changed since it was saved (rotation, split-screen,
+      // foldables). Only the scale is restored from the saved value.
+      if (deviceListView.selectedDeviceView != null) {
+        deviceListView.selectedDeviceView.deselect();
+      }
+      deviceListView.select(preset);
+      selectDevice(preset);
+
+      int scale = Math.min(
+        prefs.getInt("default_scale", scaleSeekBar.getMax()),
+        scaleSeekBar.getMax()
+      );
+      scaleSeekBar.setProgress(scale);
+      listener.onChange(getWidthProgress(), getHeightProgress(), scale / 100f);
+    } else {
+      // Custom sizes are restored from the saved width/height.
+      int width = Math.min(
+        prefs.getInt("default_width", widthSeekBar.getMax()),
+        widthSeekBar.getMax()
+      );
+      int height = Math.min(
+        prefs.getInt("default_height", heightSeekBar.getMax()),
+        heightSeekBar.getMax()
+      );
+
+      widthSeekBar.setProgress(width);
+      heightSeekBar.setProgress(height);
+      setMaxScale(width, height);
+      int scale = Math.min(
+        prefs.getInt("default_scale", 100),
+        scaleSeekBar.getMax()
+      );
+      scaleSeekBar.setProgress(scale);
+      selectedDevice = customDevice;
+
+      if (listener != null) {
+        listener.onChange(width, height, scale / 100f);
+      }
+    }
+
+    if (restoredListener != null) {
+      restoredListener.run();
+    }
+  }
+
   private void setMaxScale(int width, int height) {
     SeekBar scaleSeekBar = seekBars.get("scale");
     SeekBar widthSeekBar = seekBars.get("width");
@@ -367,6 +471,7 @@ class Device {
 class DeviceListView extends ScrollView {
 
   DeviceView selectedDeviceView;
+  ArrayList<Device> devices = new ArrayList<Device>();
   LinearLayout deviceListLayout;
   Callback callback;
   Context context;
@@ -407,6 +512,7 @@ class DeviceListView extends ScrollView {
   }
 
   public void add(Device device) {
+    devices.add(device);
     DeviceView deviceView = new DeviceView(context, device, theme);
     deviceListLayout.addView(deviceView);
 

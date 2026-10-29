@@ -2,6 +2,7 @@ import Checkbox from "components/checkbox";
 import tile from "components/tile";
 import DOMPurify from "dompurify";
 import actionStack from "lib/actionStack";
+import fileIcons from "lib/fileIcons";
 import restoreTheme from "lib/restoreTheme";
 
 /**
@@ -20,6 +21,7 @@ import restoreTheme from "lib/restoreTheme";
  * @property {string} [text]
  * @property {string} [subText]
  * @property {string} [icon]
+ * @property {{name: string, kind?: "file" | "folder"}} [fileIcon]
  * @property {string} [className]
  * @property {string} [title]
  * @property {boolean} [disabled]
@@ -100,8 +102,18 @@ function select(title, items, options = {}) {
 				itemOptions.text = item;
 			}
 
-			// handle icon (lead)
-			if (itemOptions.icon) {
+			// File resources stay refreshable while image assets load.
+			if (itemOptions.fileIcon) {
+				const resource = itemOptions.fileIcon;
+				lead = (
+					<i
+						className={`icon ${fileIcons.icon(resource)}`}
+						data-file-icon-extra="icon"
+						data-file-icon-name={resource.name}
+						data-file-icon-kind={resource.kind || "file"}
+					/>
+				);
+			} else if (itemOptions.icon) {
 				if (itemOptions.icon === "letters" && !!itemOptions.letters) {
 					lead = (
 						<i className="icon letters" data-letters={itemOptions.letters}></i>
@@ -150,6 +162,7 @@ function select(title, items, options = {}) {
 				$item.setAttribute("aria-label", itemOptions.title);
 			}
 			if (itemOptions.disabled) $item.classList.add("disabled");
+			if (itemOptions.value === "delete") $item.classList.add("destructive");
 			if (options.default === itemOptions.value) {
 				$item.classList.add("selected");
 				$defaultVal = $item;

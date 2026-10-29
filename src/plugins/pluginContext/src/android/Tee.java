@@ -6,13 +6,12 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.util.UUID;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import android.content.Context;
 import org.apache.cordova.*;
@@ -23,15 +22,18 @@ import com.foxdebug.acode.rk.auth.EncryptedPreferenceManager;
 public class Tee extends CordovaPlugin {
 
     // pluginId : token
-    private /*static*/ final Map<String, String> tokenStore = new ConcurrentHashMap<>();
-
-    //assigned tokens
-    private /*static*/ final Set<String> disclosed = ConcurrentHashMap.newKeySet();
+    private final Map<String, String> tokenStore = new ConcurrentHashMap<>();
 
     // token : list of permissions
-    private /*static*/ final Map<String, List<String>> permissionStore = new ConcurrentHashMap<>();
+    private final Map<String, List<String>> permissionStore = new ConcurrentHashMap<>();
 
+    // Trusted session established by the plugin loader before any plugin runs.
+    // Only requests carrying this secret are allowed to request tokens.
+    private volatile String sessionId = null;
 
+    // Cryptographically secure source for all secrets. Tokens must never be
+    // predictable or derivable, otherwise a malicious plugin could forge them.
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private Context context;
 
@@ -42,9 +44,42 @@ public class Tee extends CordovaPlugin {
     }
 
     @Override
+    public void onReset() {
+        // The WebView navigated/refreshed: the JS world was rebuilt, so the
+        // previous trusted session is no longer meaningful. Drop it and let the
+        // loader establish a fresh one during the next bootstrap.
+        this.sessionId = null;
+    }
+
+    @Override
     public boolean execute(String action, JSONArray args, CallbackContext callback)
             throws JSONException {
 
+        if ("establishConnection".equals(action)) {
+            synchronized (this) {
+                if (sessionId != null) {
+                    callback.error("CONNECTION_ALREADY_ESTABLISHED");
+                } else {
+                    sessionId = generateSecret();
+                    callback.success(sessionId);
+                }
+            }
+            return true;
+        }
+
+        if ("requestToken".equals(action)) {
+            String session = args.getString(0);
+            String pluginId = args.getString(1);
+            String pluginJson = args.getString(2);
+
+            if (!isValidSession(session)) {
+                callback.error("INVALID_SESSION");
+                return true;
+            }
+
+            handleTokenRequest(pluginId, pluginJson, callback);
+            return true;
+        }
 
         if ("get_secret".equals(action)) {
             String token = args.getString(0);
@@ -86,11 +121,56 @@ public class Tee extends CordovaPlugin {
             return true;
         }
 
+        if ("delete_secret".equals(action)) {
+            String token = args.getString(0);
+            String key = args.getString(1);
 
-        if ("requestToken".equals(action)) {
-            String pluginId = args.getString(0);
-            String pluginJson = args.getString(1);
-            handleTokenRequest(pluginId, pluginJson, callback);
+            String pluginId = getPluginIdFromToken(token);
+
+            if (pluginId == null) {
+                callback.error("INVALID_TOKEN");
+                return true;
+            }
+
+            EncryptedPreferenceManager prefs =
+                    new EncryptedPreferenceManager(context, pluginId);
+
+            prefs.remove(key);
+            callback.success();
+            return true;
+        }
+
+        if ("clear_all_secrets".equals(action)) {
+            String token = args.getString(0);
+
+            String pluginId = getPluginIdFromToken(token);
+
+            if (pluginId == null) {
+                callback.error("INVALID_TOKEN");
+                return true;
+            }
+
+            EncryptedPreferenceManager prefs =
+                    new EncryptedPreferenceManager(context, pluginId);
+
+            prefs.clear();
+            callback.success();
+            return true;
+        }
+
+
+        if ("invalidate".equals(action)) {
+            String token = args.getString(0);
+
+            String pluginId = getPluginIdFromToken(token);
+
+            if (pluginId == null) {
+                callback.error("INVALID_TOKEN");
+                return true;
+            }
+
+            invalidateToken(token, pluginId);
+            callback.success();
             return true;
         }
 
@@ -129,18 +209,31 @@ public class Tee extends CordovaPlugin {
 
     private String getPluginIdFromToken(String token) {
         for (Map.Entry<String, String> entry : tokenStore.entrySet()) {
-            if (entry.getValue().equals(token)) {
+            if (constantTimeEquals(token, entry.getValue())) {
                 return entry.getKey();
             }
         }
         return null;
     }
 
+    private void invalidateToken(String token, String pluginId) {
+        String storedToken = tokenStore.get(pluginId);
+        if (storedToken != null && constantTimeEquals(token, storedToken)) {
+            tokenStore.remove(pluginId);
+        }
+        permissionStore.remove(token);
+    }
+
+    private boolean isValidSession(String session) {
+        String current = sessionId;
+        return current != null && constantTimeEquals(session, current);
+    }
+
     //============================================================
     //do not change function signatures
     public boolean isTokenValid(String token, String pluginId) {
         String storedToken = tokenStore.get(pluginId);
-        return storedToken != null && token.equals(storedToken);
+        return storedToken != null && constantTimeEquals(token, storedToken);
     }
 
 
@@ -167,15 +260,10 @@ public class Tee extends CordovaPlugin {
             CallbackContext callback
     ) {
 
-        if (disclosed.contains(pluginId)) {
-            callback.error("TOKEN_ALREADY_ISSUED");
-            return;
-        }
-
         String token = tokenStore.get(pluginId);
 
         if (token == null) {
-            token = UUID.randomUUID().toString();
+            token = generateSecret();
             tokenStore.put(pluginId, token);
         }
 
@@ -199,7 +287,35 @@ public class Tee extends CordovaPlugin {
             return;
         }
 
-        disclosed.add(pluginId);
         callback.success(token);
+    }
+
+    /**
+     * Generates a 256-bit (32-byte) secret encoded as hex. Uses SecureRandom so
+     * tokens and session ids are never predictable, derivable or forgeable.
+     */
+    private static String generateSecret() {
+        byte[] bytes = new byte[32];
+        SECURE_RANDOM.nextBytes(bytes);
+        return toHex(bytes);
+    }
+
+    private static String toHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder(bytes.length * 2);
+        for (byte b : bytes) {
+            sb.append(Character.forDigit((b >> 4) & 0xF, 16));
+            sb.append(Character.forDigit(b & 0xF, 16));
+        }
+        return sb.toString();
+    }
+
+    private static boolean constantTimeEquals(String a, String b) {
+        if (a == null || b == null) {
+            return false;
+        }
+        return MessageDigest.isEqual(
+                a.getBytes(StandardCharsets.UTF_8),
+                b.getBytes(StandardCharsets.UTF_8)
+        );
     }
 }

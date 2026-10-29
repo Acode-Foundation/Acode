@@ -10,7 +10,7 @@ Thank you for your interest in contributing to Acode! This guide will help you g
 
 2. Clone and open the repository:
    ```bash
-   git clone https://github.com/Acode-Foundation/Acode.git
+   git clone --recurse-submodules https://github.com/Acode-Foundation/Acode.git
    code Acode
    ```
 
@@ -35,7 +35,7 @@ If your editor doesn't support DevContainers, you can use Docker directly:
 
 ```bash
 # Clone the repository
-git clone https://github.com/Acode-Foundation/Acode.git
+git clone --recurse-submodules https://github.com/Acode-Foundation/Acode.git
 cd Acode
 
 # Build the Docker image from our Dockerfile
@@ -109,7 +109,7 @@ Some more environment variables, check [cordova docs](https://cordova.apache.org
 
 ```bash
 # Clone the repository
-git clone https://github.com/Acode-Foundation/Acode.git
+git clone --recurse-submodules https://github.com/Acode-Foundation/Acode.git
 cd Acode
 
 # Install dependencies and set up Cordova
@@ -121,6 +121,43 @@ pnpm run build paid dev apk # or pnpm run build p d
 
 The APK will be at: `platforms/android/app/build/outputs/apk/debug/app-debug.apk`
 
+> [!NOTE]
+> `@codemirror/lsp-client` comes from the `codemirror-lsp-client` git submodule and is installed as a local `file:` dependency, so the submodule must be cloned before `setup` runs. If it isn't, `setup` stops with a missing-submodules error — see [Troubleshooting](#-troubleshooting).
+
+## 🔧 Troubleshooting
+
+### `setup` fails: submodules are not checked out
+
+`@codemirror/lsp-client` is not fetched from a registry. It comes from the
+[`codemirror-lsp-client`](https://github.com/Acode-Foundation/codemirror-lsp-client)
+git submodule and is installed as a local `file:` dependency.
+
+Before installing dependencies, `pnpm run setup` reads `.gitmodules` and verifies that
+every submodule it declares has actually been cloned — a directory only counts as cloned
+when it contains at least one non-hidden file. An empty, missing, or partial checkout (for
+example one holding only `.git` or `node_modules`) therefore stops setup with:
+
+```
+The following submodule(s) are not checked out (empty or absent):
+```
+
+To fix it, initialize the submodules from the repository root and re-run setup:
+
+```bash
+git submodule update --init --recursive
+pnpm run setup
+```
+
+This usually means the repository was cloned without `--recurse-submodules`. Cloning with
+submodules avoids the problem entirely:
+
+```bash
+git clone --recurse-submodules https://github.com/Acode-Foundation/Acode.git
+```
+
+> [!NOTE]
+> The check is skipped when `.gitmodules` is absent (for example an unpacked source
+> archive) or declares no submodules, so those setups are unaffected.
 
 ## 📝 Contribution Guidelines
 

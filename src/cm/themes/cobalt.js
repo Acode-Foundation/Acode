@@ -1,6 +1,7 @@
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorView } from "@codemirror/view";
 import { tags as t } from "@lezer/highlight";
+import { memberProperty } from "../highlightTags";
 
 export const config = {
 	name: "cobalt",
@@ -20,6 +21,7 @@ export const config = {
 	variable: "#ffffff",
 	parameter: "#ffffff",
 	function: "#ffc600",
+	memberProperty: "#ffffff",
 	string: "#3ad900",
 	constant: "#ff628c",
 	type: "#80ffbb",
@@ -85,6 +87,10 @@ export const cobaltTheme = EditorView.theme(
 );
 
 export const cobaltHighlightStyle = HighlightStyle.define([
+	{
+		tag: [memberProperty, t.definition(memberProperty)],
+		color: config.memberProperty,
+	},
 	{ tag: t.keyword, color: config.keyword },
 	{ tag: [t.modifier, t.definitionKeyword], color: config.storage },
 	{
@@ -92,7 +98,14 @@ export const cobaltHighlightStyle = HighlightStyle.define([
 		color: config.variable,
 	},
 	{
-		tag: [t.propertyName, t.function(t.variableName), t.labelName],
+		tag: [
+			t.propertyName,
+			t.function(t.variableName),
+			t.function(t.propertyName),
+			t.function(t.definition(t.propertyName)),
+			t.function(t.definition(t.variableName)),
+			t.labelName,
+		],
 		color: config.function,
 	},
 	{

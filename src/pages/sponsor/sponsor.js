@@ -85,6 +85,9 @@ export default function Sponsor(onclose) {
 					try {
 						const res = await fetch(`${config.API_BASE}/sponsor`, {
 							method: "POST",
+							headers: {
+								"Content-Type": "application/json",
+							},
 							body: JSON.stringify({
 								...sponsorDetails,
 								tier: productId,
@@ -95,7 +98,7 @@ export default function Sponsor(onclose) {
 						if (res.error) {
 							helpers.error(res.error);
 						} else {
-							dialog(strings.info.toUpperCase(), msg);
+							dialog(strings.info, msg);
 							localStorage.removeItem(`sponsor_${productId}`);
 							$page.hide();
 						}
@@ -109,7 +112,7 @@ export default function Sponsor(onclose) {
 		},
 		(err) => {
 			if (err !== iap.USER_CANCELED) {
-				alert(strings.error.toUpperCase(), err);
+				alert(strings.error, err);
 			}
 			loader.removeTitleLoader();
 		},

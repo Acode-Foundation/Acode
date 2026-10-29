@@ -35,9 +35,7 @@ export class NestedLspClient {
 		});
 		this.ready = new Promise<void>((resolve, reject) => {
 			const timeout = setTimeout(() => {
-				const error = new Error(
-					`Timed out starting ${config.serverId} worker`,
-				);
+				const error = new Error(`Timed out starting ${config.serverId} worker`);
 				this.fail(error);
 				reject(error);
 			}, 10000);
@@ -182,7 +180,9 @@ export class NestedLspClient {
 			if (!request) return;
 			this.pending.delete(message.id);
 			if (message.error) {
-				request.reject(new Error(message.error.message || "Nested request failed"));
+				request.reject(
+					new Error(message.error.message || "Nested request failed"),
+				);
 			} else {
 				request.resolve(message.result);
 			}

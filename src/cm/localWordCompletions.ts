@@ -1,6 +1,6 @@
 import {
-	completeAnyWord,
 	type CompletionSource,
+	completeAnyWord,
 } from "@codemirror/autocomplete";
 import { EditorState, type Extension } from "@codemirror/state";
 

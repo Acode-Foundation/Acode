@@ -45,7 +45,11 @@ function createWebSocketTransport(
 		console.info(
 			`[LSP:${server.id}] Using auto-discovered port ${context.dynamicPort}`,
 		);
-		addLspLog(server.id, "info", `Using auto-discovered port ${context.dynamicPort}`);
+		addLspLog(
+			server.id,
+			"info",
+			`Using auto-discovered port ${context.dynamicPort}`,
+		);
 	}
 
 	// URL is only required when not using dynamic port
@@ -176,9 +180,8 @@ function createWebSocketTransport(
 						break;
 					case "workspace/configuration":
 						result = Array.isArray(msg.params?.items)
-							? msg.params.items.map(
-									(item: { section?: unknown }) =>
-										resolveWorkspaceConfiguration(item?.section),
+							? msg.params.items.map((item: { section?: unknown }) =>
+									resolveWorkspaceConfiguration(item?.section),
 								)
 							: [];
 						break;
@@ -189,8 +192,7 @@ function createWebSocketTransport(
 									{
 										uri: rootUri,
 										name:
-											rootUri.replace(/\/$/, "").split("/").pop() ||
-											rootUri,
+											rootUri.replace(/\/$/, "").split("/").pop() || rootUri,
 									},
 								]
 							: null;

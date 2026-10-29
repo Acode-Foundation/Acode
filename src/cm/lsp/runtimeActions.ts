@@ -34,7 +34,11 @@ export async function checkRuntimeServerInstallation(
 	server: LspServerDefinition,
 	context?: LspRuntimeContext,
 ): Promise<InstallCheckResult> {
-	const settingsContext = getSettingsContext(server, context, "checkInstallation");
+	const settingsContext = getSettingsContext(
+		server,
+		context,
+		"checkInstallation",
+	);
 	const provider = await getProvider(server, context, "checkInstallation");
 	if (!provider?.checkInstallation) {
 		return {
@@ -82,13 +86,7 @@ export async function getRuntimeInstallCommand(
 ): Promise<string | null> {
 	const settingsContext = getSettingsContext(server, context, "command");
 	const provider = await getProvider(server, context, "command");
-	return (
-		provider?.getInstallCommand?.(
-			server,
-			settingsContext,
-			mode,
-		) ?? null
-	);
+	return provider?.getInstallCommand?.(server, settingsContext, mode) ?? null;
 }
 
 export async function getRuntimeUninstallCommand(
@@ -97,12 +95,7 @@ export async function getRuntimeUninstallCommand(
 ): Promise<string | null> {
 	const settingsContext = getSettingsContext(server, context, "command");
 	const provider = await getProvider(server, context, "command");
-	return (
-		provider?.getUninstallCommand?.(
-			server,
-			settingsContext,
-		) ?? null
-	);
+	return provider?.getUninstallCommand?.(server, settingsContext) ?? null;
 }
 
 export async function getRuntimeLabelForServer(

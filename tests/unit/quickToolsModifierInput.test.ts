@@ -7,12 +7,12 @@ import {
 } from "@codemirror/language";
 import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
-import { afterEach, describe, expect, it } from "vitest";
 import quickToolsModifierInput, {
 	isSelectedRangeDeletion,
-	setQuickToolsModifierInputHandler,
 	type QuickToolsModifierInputContext,
+	setQuickToolsModifierInputHandler,
 } from "cm/quickToolsModifierInput";
+import { afterEach, describe, expect, it } from "vitest";
 
 function createView(
 	doc = "abcdef",
@@ -46,13 +46,7 @@ function applyInput(
 	const handled = view.state
 		.facet(EditorView.inputHandler)
 		.some((handler) =>
-			handler(
-				view,
-				input.from,
-				input.to,
-				input.text,
-				defaultInsert,
-			),
+			handler(view, input.from, input.to, input.text, defaultInsert),
 		);
 	if (!handled) view.dispatch(defaultInsert());
 	return handled;
@@ -67,20 +61,20 @@ describe("quick-tools modifier input", () => {
 	it("recognizes only empty changes that cover the active selection", () => {
 		const { view } = createView();
 
-		expect(
-			isSelectedRangeDeletion(view, { from: 1, to: 4, text: "" }),
-		).toBe(true);
-		expect(
-			isSelectedRangeDeletion(view, { from: 2, to: 4, text: "" }),
-		).toBe(false);
-		expect(
-			isSelectedRangeDeletion(view, { from: 1, to: 4, text: "c" }),
-		).toBe(false);
+		expect(isSelectedRangeDeletion(view, { from: 1, to: 4, text: "" })).toBe(
+			true,
+		);
+		expect(isSelectedRangeDeletion(view, { from: 2, to: 4, text: "" })).toBe(
+			false,
+		);
+		expect(isSelectedRangeDeletion(view, { from: 1, to: 4, text: "c" })).toBe(
+			false,
+		);
 
 		view.dispatch({ selection: { anchor: 2 } });
-		expect(
-			isSelectedRangeDeletion(view, { from: 1, to: 4, text: "" }),
-		).toBe(false);
+		expect(isSelectedRangeDeletion(view, { from: 1, to: 4, text: "" })).toBe(
+			false,
+		);
 		view.destroy();
 	});
 
@@ -102,17 +96,13 @@ describe("quick-tools modifier input", () => {
 			return true;
 		});
 
-		expect(applyInput(view, { from: 0, to: doc.length, text: "" })).toBe(
-			true,
-		);
+		expect(applyInput(view, { from: 0, to: doc.length, text: "" })).toBe(true);
 		expect(view.state.doc.toString()).toBe(doc);
 		expect(view.state.selection.main.from).toBe(0);
 		expect(view.state.selection.main.to).toBe(doc.length);
 		expect(ctrlArmed).toBe(true);
 
-		expect(applyInput(view, { from: 0, to: doc.length, text: "c" })).toBe(
-			true,
-		);
+		expect(applyInput(view, { from: 0, to: doc.length, text: "c" })).toBe(true);
 		expect(copied).toBe(doc);
 		expect(view.state.doc.toString()).toBe(doc);
 		expect(view.state.selection.main.from).toBe(0);
@@ -137,9 +127,9 @@ describe("quick-tools modifier input", () => {
 		view.focus();
 		await new Promise((resolve) => setTimeout(resolve, 10));
 		const startState = view.state;
-		const stringSpan = Array.from(view.contentDOM.querySelectorAll("span")).find(
-			(element) => element.textContent?.includes("codemirror"),
-		);
+		const stringSpan = Array.from(
+			view.contentDOM.querySelectorAll("span"),
+		).find((element) => element.textContent?.includes("codemirror"));
 		const textNode = stringSpan?.firstChild;
 		expect(textNode).not.toBeNull();
 

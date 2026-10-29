@@ -1,19 +1,15 @@
-import { describe, expect, it } from "vitest";
 import { horizontalScrollPastEnd } from "cm/scrollPastEnd";
+import { describe, expect, it } from "vitest";
 
 function themeRules(extension) {
-	return extension
-		.flatMap((part) => part?.value?.rules ?? [])
-		.join("\n");
+	return extension.flatMap((part) => part?.value?.rules ?? []).join("\n");
 }
 
 describe("horizontal scroll past end", () => {
 	it("adds right-side space only to unwrapped editor content", () => {
 		const rules = themeRules(horizontalScrollPastEnd(50));
 
-		expect(rules).toContain(
-			".cm-content:not(.cm-lineWrapping) .cm-line",
-		);
+		expect(rules).toContain(".cm-content:not(.cm-lineWrapping) .cm-line");
 		expect(rules).toContain("box-sizing: border-box");
 		expect(rules).toContain("min-width: 100%");
 		expect(rules).toContain("padding-right: 52px");

@@ -67,10 +67,7 @@ function atLineStart(input: Input): boolean {
 	return input.peek(-1) === newline;
 }
 
-function lineHasOnlyFrontmatterFence(
-	input: Input,
-	offset = 0,
-): boolean {
+function lineHasOnlyFrontmatterFence(input: Input, offset = 0): boolean {
 	if (
 		input.peek(offset) !== dash ||
 		input.peek(offset + 1) !== dash ||
@@ -112,10 +109,7 @@ function startsWithTagName(
 	return isNameBoundary(input.peek(offset + 1 + name.length));
 }
 
-function tagEnd(
-	input: Input,
-	offset: number,
-): TagEnd {
+function tagEnd(input: Input, offset: number): TagEnd {
 	let quote = 0;
 	let lastNonWhitespace = 0;
 
@@ -145,11 +139,7 @@ function tagEndOffset(input: Input, offset: number): number {
 	return tagEnd(input, offset).end;
 }
 
-function closeTagEndOffset(
-	input: Input,
-	offset: number,
-	name: string,
-): number {
+function closeTagEndOffset(input: Input, offset: number, name: string): number {
 	const nameLength = name.length;
 
 	for (let i = offset; ; i++) {
@@ -171,10 +161,7 @@ function closeTagEndOffset(
 	}
 }
 
-function rawTextElementEndOffset(
-	input: Input,
-	offset: number,
-): number | null {
+function rawTextElementEndOffset(input: Input, offset: number): number | null {
 	if (startsWithTagName(input, offset, "script")) {
 		const openTag = tagEnd(input, offset);
 		if (openTag.selfClosing) return openTag.end;
@@ -213,10 +200,7 @@ function htmlCommentEndOffset(input: Input, offset: number): number | null {
 	}
 }
 
-function expressionEndOffset(
-	input: Input,
-	offset: number,
-): number {
+function expressionEndOffset(input: Input, offset: number): number {
 	let depth = 0;
 	let quote = 0;
 	let escaped = false;
@@ -311,9 +295,7 @@ function startsInsideTagFragment(input: Input): boolean {
 	}
 }
 
-function htmlContentEndOffset(
-	input: Input,
-): number {
+function htmlContentEndOffset(input: Input): number {
 	let inTag = startsInsideTagFragment(input);
 	let quote = 0;
 
@@ -368,9 +350,7 @@ function htmlContentEndOffset(
 	}
 }
 
-function frontmatterContentEndOffset(
-	input: Input,
-): number {
+function frontmatterContentEndOffset(input: Input): number {
 	for (let offset = 0; ; offset++) {
 		const next = input.peek(offset);
 		if (next === eof) return offset;

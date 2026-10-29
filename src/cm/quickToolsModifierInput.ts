@@ -1,7 +1,7 @@
 import type { Extension } from "@codemirror/state";
 import {
-	EditorView,
 	type EditorView as CodeMirrorEditorView,
+	EditorView,
 } from "@codemirror/view";
 import { blurEditorIfReadOnly, focusEditorIfEditable } from "cm/editorReadOnly";
 

@@ -1,10 +1,10 @@
+import { getConfiguredRuntimeId } from "./runtimeSettings";
 import type {
 	LspRuntimeContext,
 	LspRuntimeProvider,
 	LspServerDefinition,
 	WorkspaceKind,
 } from "./types";
-import { getConfiguredRuntimeId } from "./runtimeSettings";
 
 export const BUILTIN_ALPINE_RUNTIME_ID = "builtin-alpine";
 export const EXTERNAL_WEBSOCKET_RUNTIME_ID = "external-websocket";
@@ -22,9 +22,7 @@ function toKey(id: string | null | undefined): string {
 		.toLowerCase();
 }
 
-function normalizeProvider(
-	provider: LspRuntimeProvider,
-): LspRuntimeProvider {
+function normalizeProvider(provider: LspRuntimeProvider): LspRuntimeProvider {
 	const id = toKey(provider?.id);
 	if (!id) throw new Error("LSP runtime provider requires a non-empty id");
 	if (!provider.label || typeof provider.label !== "string") {

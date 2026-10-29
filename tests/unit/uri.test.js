@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import Uri from "utils/Uri";
+import { describe, expect, it } from "vitest";
 
 const TREE_URI =
 	"content://com.android.externalstorage.documents/tree/primary%3ADCIM";
@@ -67,9 +67,9 @@ describe("Uri.getPrimaryAddress", () => {
 describe("Uri.getDisplayPath", () => {
 	it("uses the storage name and a path relative to its SAF root", () => {
 		const url = `${TREE_URI}::primary:DCIM/Camera/photo.jpg`;
-		expect(
-			Uri.getDisplayPath(url, [{ name: "Pictures", url: TREE_URI }]),
-		).toBe("Pictures/Camera/photo.jpg");
+		expect(Uri.getDisplayPath(url, [{ name: "Pictures", url: TREE_URI }])).toBe(
+			"Pictures/Camera/photo.jpg",
+		);
 	});
 
 	it("does not match aliases from a prefix-sharing SAF root", () => {
@@ -79,9 +79,7 @@ describe("Uri.getDisplayPath", () => {
 			"content://com.android.externalstorage.documents/tree/primary%3ACodesBackup";
 
 		expect(
-			Uri.getDisplayPath(codesBackupRoot, [
-				{ name: "Codes", url: codesRoot },
-			]),
+			Uri.getDisplayPath(codesBackupRoot, [{ name: "Codes", url: codesRoot }]),
 		).toBe("primary/CodesBackup");
 	});
 
@@ -89,15 +87,13 @@ describe("Uri.getDisplayPath", () => {
 		const rootUri =
 			"content://com.android.externalstorage.documents/tree/primary%3A";
 		const url = `${rootUri}::primary/file.txt`;
-		expect(
-			Uri.getDisplayPath(url, [{ name: "Internal", url: rootUri }]),
-		).toBe("Internal/file.txt");
+		expect(Uri.getDisplayPath(url, [{ name: "Internal", url: rootUri }])).toBe(
+			"Internal/file.txt",
+		);
 	});
 
 	it("falls back to a readable volume and document path", () => {
-		expect(Uri.getDisplayPath(SINGLE_URI, [])).toBe(
-			"primary/DCIM/file.txt",
-		);
+		expect(Uri.getDisplayPath(SINGLE_URI, [])).toBe("primary/DCIM/file.txt");
 	});
 
 	it("includes the selected folder in a bare primary tree path", () => {

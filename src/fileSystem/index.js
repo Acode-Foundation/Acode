@@ -7,6 +7,13 @@ import internalFs from "./internalFs";
 import Sftp from "./sftp";
 
 const fsList = [];
+const registrationListeners = new Set();
+
+// Internal notification; plugins keep using fsOperation.extend as before.
+export function onProviderRegistered(listener) {
+	registrationListeners.add(listener);
+	return () => registrationListeners.delete(listener);
+}
 
 /**
  * @typedef {Object} Stat
@@ -61,8 +68,18 @@ export default function fsOperation(...url) {
 	return fsList.find((fs) => fs.test(url))?.fs(url);
 }
 
+// Check registration without constructing a transport or opening a file.
+export function hasProvider(url) {
+	return fsList.some((fs) => fs.test(url));
+}
+
 fsOperation.extend = (test, fs) => {
 	fsList.push({ test, fs });
+	for (const listener of registrationListeners) {
+		Promise.resolve()
+			.then(() => listener(test))
+			.catch(console.error);
+	}
 };
 
 fsOperation.remove = (test) => {

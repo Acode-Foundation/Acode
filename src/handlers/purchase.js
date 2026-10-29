@@ -3,7 +3,11 @@ import helpers from "utils/helpers";
 export default function purchaseListener(onpurchase, onerror) {
 	return [
 		(purchases) => {
-			const [purchase] = purchases;
+			const purchase = purchases?.[0];
+			if (!purchase) {
+				onerror?.(strings.failed);
+				return;
+			}
 			if (purchase.purchaseState === iap.PURCHASE_STATE_PURCHASED) {
 				if (!purchase.isAcknowledged) {
 					iap.acknowledgePurchase(
@@ -36,7 +40,7 @@ export default function purchaseListener(onpurchase, onerror) {
 			}
 
 			let message =
-				error === iap.USER_CANCELED ? strings.failed : strings.canceled;
+				error === iap.USER_CANCELED ? strings.canceled : strings.failed;
 
 			if (typeof onerror === "function") onerror(message);
 		},

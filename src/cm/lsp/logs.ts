@@ -1,4 +1,10 @@
-export type LspLogLevel = "debug" | "info" | "log" | "warn" | "error" | "stderr";
+export type LspLogLevel =
+	| "debug"
+	| "info"
+	| "log"
+	| "warn"
+	| "error"
+	| "stderr";
 
 export interface LspLogEntry {
 	timestamp: Date;
@@ -79,10 +85,7 @@ export function getLspLogServerId(source: unknown): string | null {
 		Object.prototype.hasOwnProperty.call(source, "client")
 			? (source as { client?: unknown }).client
 			: source;
-	const metadata = client as
-		| { __acodeServerId?: unknown }
-		| null
-		| undefined;
+	const metadata = client as { __acodeServerId?: unknown } | null | undefined;
 	const serverId = metadata?.__acodeServerId;
 	return typeof serverId === "string" && serverId.trim()
 		? serverId.trim()

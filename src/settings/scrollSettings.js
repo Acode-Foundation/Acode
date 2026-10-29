@@ -7,18 +7,21 @@ export default function scrollSettings() {
 	const title = strings["scroll settings"];
 
 	const items = [
-		/*{
+		{
 			key: "scrollSpeed",
 			text: strings["scroll speed"],
 			value: values.scrollSpeed,
 			valueText: getScrollSpeedString,
 			select: [
-				[constants.SCROLL_SPEED_FAST_X2, `${strings.fast} x2`],
-				[constants.SCROLL_SPEED_FAST, strings.fast],
-				[constants.SCROLL_SPEED_NORMAL, strings.normal],
-				[constants.SCROLL_SPEED_SLOW, strings.slow],
+				[config.SCROLL_SPEED_FAST_X2, `${strings.fast} x2`],
+				[config.SCROLL_SPEED_FAST, strings.fast],
+				[config.SCROLL_SPEED_NORMAL, strings.normal],
+				[config.SCROLL_SPEED_SLOW, strings.slow],
 			],
-		},*/
+			info: strings["settings-info-scroll-speed"],
+			// Only canvas editors use it.
+			hidden: values.editorRenderer !== "canvas",
+		},
 		/*{
 			key: "reverseScrolling",
 			text: strings["reverse scrolling"],
@@ -86,7 +89,7 @@ export default function scrollSettings() {
 		},
 	];
 
-	return settingsPage(title, items, callback, undefined, {
+	const page = settingsPage(title, items, callback, undefined, {
 		preserveOrder: true,
 		pageClassName: "detail-settings-page",
 		listClassName: "detail-settings-list",
@@ -94,6 +97,13 @@ export default function scrollSettings() {
 		valueInTail: true,
 		groupByDefault: true,
 	});
+
+	// The page is created once and kept, so follow the renderer from here.
+	appSettings.on("update:editorRenderer", (renderer) => {
+		page.setItemVisibility("scrollSpeed", renderer === "canvas");
+	});
+
+	return page;
 
 	function callback(key, value) {
 		appSettings.update({

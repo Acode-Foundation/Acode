@@ -67,9 +67,24 @@ function createLanguageLoader(name: string, lang: LanguageDescription) {
 
 	switch (normalizedName) {
 		case "javascript":
+		case "jsx":
+		case "typescript":
+		case "tsx":
 			return async () => {
-				const { javascript } = await import("@codemirror/lang-javascript");
-				return javascript({ jsx: true });
+				const { javascriptSupport } = await import("./modes/javascript");
+				return javascriptSupport({
+					jsx: normalizedName !== "typescript",
+					typescript:
+						normalizedName === "typescript" || normalizedName === "tsx",
+				});
+			};
+
+		case "markdown":
+			return async () => {
+				const { markdown, markdownLanguage } = await import(
+					"@codemirror/lang-markdown"
+				);
+				return markdown({ base: markdownLanguage });
 			};
 
 		case "html":
@@ -130,7 +145,33 @@ function createLanguageLoader(name: string, lang: LanguageDescription) {
 }
 
 // 1) Always register a plain text fallback
-addMode("Text", "txt|text|log|plain|lock|pub|gitkeep|keep|mk|^makefile", "Plain Text", () => []);
+addMode(
+	"Text",
+	"txt|text|log|plain|lock|pub|gitkeep|keep|mk|^makefile",
+	"Plain Text",
+	() => [],
+);
+
+// Languages that @codemirror/language-data only covers with legacy stream
+// tokenizers and that the official Additional Language Modes plugin
+// (acode.additional.langmodes) provides as Lezer grammars. They are left out
+// so the plugin registers them under their canonical names; without it, these
+// files fall back to plain text and Acode recommends the plugin.
+const PLUGIN_PROVIDED_LANGUAGES = new Set([
+	"clojure",
+	"clojurescript",
+	"edn",
+	"gas",
+	"kotlin",
+	"latex",
+	"stex",
+	"lua",
+	"swift",
+]);
+
+// Extensions other modes claim in @codemirror/language-data but that the
+// plugin has dedicated modes for: HTML lists Handlebars templates.
+const PLUGIN_PROVIDED_EXTENSIONS = new Set(["hbs", "handlebars"]);
 
 // 2) Register all languages provided by @codemirror/language-data
 //    We convert extensions like [".js", ".mjs"] into a modelist pattern: "js|mjs"
@@ -139,6 +180,7 @@ for (const lang of languages as readonly LanguageDescription[]) {
 	try {
 		const name = String(lang?.name || "").trim();
 		if (!name) continue;
+		if (PLUGIN_PROVIDED_LANGUAGES.has(normalizeModeKey(name))) continue;
 
 		const aliases = collectAliases(name, lang.alias);
 		const modeId = getModeId(name, aliases);
@@ -209,7 +251,13 @@ for (const lang of languages as readonly LanguageDescription[]) {
 			);
 		} else if (normalizedName === "json" || modeId === "json") {
 			langExtensions.push("prettierrc", "hintrc", "eslintrc", "babelrc");
-			filenames.push(".prettierrc", ".hintrc", ".eslintrc", ".babelrc", "bun.lock");
+			filenames.push(
+				".prettierrc",
+				".hintrc",
+				".eslintrc",
+				".babelrc",
+				"bun.lock",
+			);
 		} else if (normalizedName === "yaml" || modeId === "yaml") {
 			filenames.push("yarn.lock");
 		} else if (normalizedName === "toml" || modeId === "toml") {
@@ -222,7 +270,9 @@ for (const lang of languages as readonly LanguageDescription[]) {
 		for (const e of langExtensions) {
 			if (typeof e !== "string") continue;
 			const cleaned = e.replace(/^\./, "").trim();
-			if (cleaned) parts.push(cleaned);
+			if (cleaned && !PLUGIN_PROVIDED_EXTENSIONS.has(cleaned.toLowerCase())) {
+				parts.push(cleaned);
+			}
 		}
 
 		const filenameMatchers: RegExp[] = [];

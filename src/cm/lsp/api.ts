@@ -1,5 +1,12 @@
 import { defineBundle, defineServer, installers } from "./providerUtils";
 import {
+	getRuntimeProvider,
+	listRuntimeProviders,
+	registerRuntimeProvider,
+	selectRuntimeProvider,
+	unregisterRuntimeProvider,
+} from "./runtimeProviders";
+import {
 	getServerBundle,
 	listServerBundles,
 	registerServerBundle,
@@ -16,13 +23,6 @@ import {
 	unregisterServer,
 	updateServer,
 } from "./serverRegistry";
-import {
-	getRuntimeProvider,
-	listRuntimeProviders,
-	registerRuntimeProvider,
-	selectRuntimeProvider,
-	unregisterRuntimeProvider,
-} from "./runtimeProviders";
 import "./runtimes/registerBuiltins";
 import type {
 	LspRuntimeContext,
@@ -36,8 +36,11 @@ import {
 	type LspWorkerTransportOptions,
 } from "./workerTransport";
 
+export type {
+	LspWorkerHostHandler,
+	LspWorkerTransportOptions,
+} from "./workerTransport";
 export { defineBundle, defineServer, installers };
-export type { LspWorkerHostHandler, LspWorkerTransportOptions } from "./workerTransport";
 
 export type LspRegistrationEntry = LspServerManifest | LspServerBundle;
 

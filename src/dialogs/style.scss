@@ -49,6 +49,14 @@
     z-index: 113;
   }
 
+  &.above-overlay {
+    z-index: 1001;
+
+    & + .mask {
+      z-index: 1000;
+    }
+  }
+
   &.multi {
     textarea:not(:first-of-type) {
       margin-top: 20px;
@@ -56,9 +64,10 @@
   }
 
   &.confirm,
-  &.alert {
+  &.alert,
+  &.app-icon-dialog {
     .title {
-      text-transform: uppercase;
+      text-transform: none;
     }
 
     .confirm-checkbox {
@@ -83,6 +92,13 @@
     .tile,
     .title {
       justify-content: center;
+    }
+
+    .tile.destructive {
+      &,
+      .icon {
+        color: #e5534b;
+      }
     }
 
     .no-text-transform {
@@ -204,10 +220,9 @@
     z-index: 111;
     background-color: rgb(0, 0, 0);
     opacity: 0.4;
-    animation: mask-enter 180ms ease-out forwards;
 
-    ~ .mask {
-      opacity: 0;
+    &:has(~ .prompt:not(.hide) + .mask) {
+      opacity: 0 !important;
     }
   }
 
@@ -218,8 +233,6 @@
     opacity: 0 !important;
 
     & + .mask {
-      animation: none;
-      transition: opacity 180ms ease-in-out;
       opacity: 0 !important;
     }
   }
@@ -267,7 +280,25 @@
 
   .message {
     overflow: auto;
+    overflow-wrap: anywhere;
     font-size: 0.9em;
+
+    .error-details {
+      margin-top: 12px;
+      font-size: 0.85em;
+      opacity: 0.75;
+
+      summary {
+        cursor: pointer;
+      }
+
+      code {
+        display: block;
+        margin-top: 6px;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+    }
 
     &.color-picker {
       position: relative;
@@ -482,5 +513,19 @@
 
   .button-container {
     margin-top: 20px;
+    padding: 0 8px 8px;
+    gap: 4px;
+    box-sizing: border-box;
+
+    > button {
+      min-height: 40px;
+      border-radius: 6px;
+      text-transform: capitalize;
+      font-weight: 500;
+
+      &:last-child {
+        font-weight: 600;
+      }
+    }
   }
 }

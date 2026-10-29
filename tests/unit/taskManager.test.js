@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import TaskManager from "utils/taskManager";
+import { describe, expect, it } from "vitest";
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 

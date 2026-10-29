@@ -5,13 +5,13 @@ import color from "utils/color";
 import { colorRegex, isValidColor } from "utils/color/regex";
 import {
 	COLOR_CHIP_CLASS,
+	type ColorChipPayload,
 	colorChipDecoration,
 	colorChipTheme,
 	findColorChip,
 	getColorChipPayload,
 	isViewEditable,
 	openColorPicker,
-	type ColorChipPayload,
 } from "./colorChip";
 import {
 	didReplaceLspDocumentColors,
@@ -45,10 +45,7 @@ function isWhitespace(char: string): boolean {
 function isAlpha(char: string): boolean {
 	if (!char) return false;
 	const code = char.charCodeAt(0);
-	return (
-		(code >= 65 && code <= 90) ||
-		(code >= 97 && code <= 122)
-	);
+	return (code >= 65 && code <= 90) || (code >= 97 && code <= 122);
 }
 
 function charAt(doc: Text, index: number): string {

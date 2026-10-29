@@ -213,6 +213,72 @@ export async function runCodeMirrorTests(writeOutput) {
 		);
 	});
 
+	runner.test(
+		"Acode exposes the static CodeMirror highlighter",
+		async (test) => {
+			const codeHighlight = acode.require("codeHighlight");
+			const codemirror = acode.require("codemirror");
+
+			test.assert(codeHighlight != null, "codeHighlight module should exist");
+			test.assertEqual(
+				typeof codeHighlight.highlightCodeBlock,
+				"function",
+				"highlightCodeBlock should be a function",
+			);
+			test.assertEqual(
+				typeof codeHighlight.highlightLine,
+				"function",
+				"highlightLine should be a function",
+			);
+			test.assertEqual(
+				typeof codeHighlight.applyStyles,
+				"function",
+				"applyStyles should be a function",
+			);
+			test.assertEqual(
+				typeof codeHighlight.getStyles,
+				"function",
+				"getStyles should be a function",
+			);
+			test.assertEqual(
+				codeHighlight.HIGHLIGHT_CLASS,
+				"cm-highlighted",
+				"HIGHLIGHT_CLASS should match the internal token wrapper",
+			);
+			test.assertEqual(
+				codemirror.highlight,
+				codeHighlight,
+				"codemirror.highlight should be the same highlighter module",
+			);
+
+			const css = codeHighlight.getStyles();
+			test.assert(
+				typeof css === "string" && css.includes(".tok-keyword"),
+				"getStyles should return token CSS",
+			);
+
+			const highlighted = await codeHighlight.highlightCodeBlock(
+				'const value = "acode";',
+				"javascript",
+			);
+			test.assert(
+				highlighted.includes("value") && !highlighted.includes("<script"),
+				"highlightCodeBlock should return escaped highlighted HTML",
+			);
+
+			const host = document.createElement("div");
+			const shadow = host.attachShadow({ mode: "open" });
+			codeHighlight.applyStyles(shadow);
+			const sheet = codeHighlight.getStyleSheet();
+			test.assert(
+				sheet == null ||
+					Array.from(shadow.adoptedStyleSheets || []).includes(sheet) ||
+					shadow.querySelector("#cm-static-highlight-styles") != null,
+				"applyStyles should attach highlight CSS to a shadow root",
+			);
+		},
+	);
+
 	runner.test("Editor creation", async (test) => {
 		const { view, container } = createEditor();
 		test.assert(view != null, "EditorView instance should be created");

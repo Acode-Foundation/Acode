@@ -171,6 +171,10 @@
     }
   }
 
+  .search-result-header.idle {
+    display: none;
+  }
+
   .search-result-header {
     flex-shrink: 0;
     padding: 8px 10px;

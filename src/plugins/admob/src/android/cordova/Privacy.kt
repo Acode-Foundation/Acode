@@ -80,12 +80,26 @@ internal class Privacy(private val plugin: AdMob) {
 
     fun showOptions(ctx: ExecuteContext) {
         plugin.activity.runOnUiThread {
-            UserMessagingPlatform.showPrivacyOptionsForm(plugin.activity) { formError ->
-                if (formError != null) {
-                    ctx.reject("UMP ${formError.errorCode}: ${formError.message}")
-                } else {
-                    ctx.resolve(currentState().toMap())
+            val activity = plugin.activity
+            val state = currentState()
+            if (!state.privacyOptionsRequired) {
+                return@runOnUiThread ctx.resolve(state.toMap())
+            }
+
+            if (activity.isFinishing || activity.isDestroyed) {
+                return@runOnUiThread ctx.reject("Privacy Choices are temporarily unavailable")
+            }
+
+            try {
+                UserMessagingPlatform.showPrivacyOptionsForm(activity) { formError ->
+                    if (formError != null) {
+                        ctx.reject("UMP ${formError.errorCode}: ${formError.message}")
+                    } else {
+                        ctx.resolve(currentState().toMap())
+                    }
                 }
+            } catch (error: Exception) {
+                ctx.reject(error.message ?: "Unable to open Privacy Choices")
             }
         }
     }

@@ -1,3 +1,4 @@
+import type { Language } from "@codemirror/language";
 import type {
 	LSPClient,
 	LSPClientConfig,
@@ -6,7 +7,6 @@ import type {
 	Workspace,
 	WorkspaceFile,
 } from "@codemirror/lsp-client";
-import type { Language } from "@codemirror/language";
 import type { ChangeSet, Extension, MapMode, Text } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 
@@ -411,6 +411,8 @@ export interface ClientManagerOptions {
 	displayFile?: (uri: string) => Promise<EditorView | null>;
 	openFile?: (uri: string) => Promise<EditorView | null>;
 	resolveLanguageId?: (uri: string) => string | null;
+	/** Delay before an unreferenced client is reported as idle. */
+	clientIdleGracePeriodMs?: number;
 	onClientIdle?: (info: ClientIdleInfo) => void;
 	allowNonTerminalWorkspace?: boolean;
 }
@@ -519,6 +521,8 @@ export interface WorkspaceOptions {
 	displayFile?: (uri: string) => Promise<EditorView | null>;
 	openFile?: (uri: string) => Promise<EditorView | null>;
 	resolveLanguageId?: (uri: string) => string | null;
+	/** Folders already advertised in `initialize`; do not re-notify. */
+	initialFolders?: string[];
 }
 
 // ============================================================================
@@ -627,13 +631,8 @@ export interface LSPPluginAPI {
 	client: LSPClient & { sync: () => void; connected?: boolean };
 	/** Convert a document offset to an LSP Position */
 	toPosition: (offset: number) => { line: number; character: number };
-	/** Convert an LSP Position to a document offset */
-	fromPosition: (
-		pos: { line: number; character: number },
-		doc?: unknown,
-	) => number;
 	/** The currently synced document state */
-	syncedDoc: { length: number };
+	syncedDoc: Text;
 	/** Pending changes that haven't been synced yet */
 	unsyncedChanges: {
 		mapPos: (pos: number, assoc?: number, mode?: MapMode) => number | null;

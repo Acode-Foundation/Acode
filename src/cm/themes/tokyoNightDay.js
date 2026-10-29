@@ -1,6 +1,7 @@
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorView, lineNumbers } from "@codemirror/view";
 import { tags as t } from "@lezer/highlight";
+import { memberProperty } from "../highlightTags";
 
 export const config = {
 	name: "tokyoNightDay",
@@ -20,6 +21,7 @@ export const config = {
 	variable: "#3760bf",
 	parameter: "#3760bf",
 	function: "#2e7de9",
+	memberProperty: "#007197",
 	string: "#587539",
 	constant: "#9854f1",
 	type: "#07879d",
@@ -106,6 +108,10 @@ export const tokyoNightDayTheme = EditorView.theme(
 );
 
 export const tokyoNightDayHighlightStyle = HighlightStyle.define([
+	{
+		tag: [memberProperty, t.definition(memberProperty)],
+		color: config.memberProperty,
+	},
 	{ tag: t.keyword, color: config.keyword },
 	{
 		tag: [t.name, t.deleted, t.character, t.macroName],
@@ -116,7 +122,16 @@ export const tokyoNightDayHighlightStyle = HighlightStyle.define([
 		tag: [t.processingInstruction, t.string, t.inserted, t.special(t.string)],
 		color: config.string,
 	},
-	{ tag: [t.function(t.variableName), t.labelName], color: config.function },
+	{
+		tag: [
+			t.function(t.variableName),
+			t.function(t.propertyName),
+			t.function(t.definition(t.propertyName)),
+			t.function(t.definition(t.variableName)),
+			t.labelName,
+		],
+		color: config.function,
+	},
 	{
 		tag: [t.color, t.constant(t.name), t.standard(t.name)],
 		color: config.constant,

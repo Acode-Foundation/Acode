@@ -76,7 +76,11 @@ function extractHostRequest(
 		return null;
 	}
 
-	if (data.params && typeof data.params === "object" && !Array.isArray(data.params)) {
+	if (
+		data.params &&
+		typeof data.params === "object" &&
+		!Array.isArray(data.params)
+	) {
 		return {
 			id: data.id,
 			method: data.method,
@@ -86,7 +90,12 @@ function extractHostRequest(
 
 	const params: Record<string, unknown> = {};
 	for (const [key, value] of Object.entries(data)) {
-		if (key === "kind" || key === "id" || key === "method" || key === "params") {
+		if (
+			key === "kind" ||
+			key === "id" ||
+			key === "method" ||
+			key === "params"
+		) {
 			continue;
 		}
 		params[key] = value;
@@ -177,12 +186,17 @@ export function createWorkerTransport(
 			try {
 				listener(data);
 			} catch (error) {
-				console.error(`[LSP:${serverId}] Worker transport listener failed`, error);
+				console.error(
+					`[LSP:${serverId}] Worker transport listener failed`,
+					error,
+				);
 			}
 		}
 	}
 
-	async function handleHostRequest(message: WorkerControlMessage): Promise<void> {
+	async function handleHostRequest(
+		message: WorkerControlMessage,
+	): Promise<void> {
 		const request = extractHostRequest(message);
 		if (!request) return;
 
@@ -198,8 +212,7 @@ export function createWorkerTransport(
 			try {
 				response.result = await handler(request.params);
 			} catch (error) {
-				response.error =
-					error instanceof Error ? error.message : String(error);
+				response.error = error instanceof Error ? error.message : String(error);
 			}
 		}
 
@@ -257,9 +270,7 @@ export function createWorkerTransport(
 	};
 
 	worker.onerror = (event: ErrorEvent) => {
-		failTransport(
-			new Error(event.message || `The ${serverId} worker failed`),
-		);
+		failTransport(new Error(event.message || `The ${serverId} worker failed`));
 	};
 
 	if (options.configure && typeof options.configure === "object") {

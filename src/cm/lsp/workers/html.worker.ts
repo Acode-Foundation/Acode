@@ -1,6 +1,6 @@
 import {
-	getCSSLanguageService,
 	type LanguageService as CssLanguageService,
+	getCSSLanguageService,
 	type Stylesheet,
 } from "vscode-css-languageservice";
 import {
@@ -67,8 +67,14 @@ startWorkerServer(({ documents, requestFile, rootUri }) => {
 	const jsonService = createImportMapService();
 	const parsedHtml = new Map<string, CachedHtmlDocument>();
 	const embeddedDocuments = new Map<string, CachedEmbeddedDocuments>();
-	const parsedCss = new Map<string, { version: number; document: Stylesheet }>();
-	const parsedJson = new Map<string, { version: number; document: JSONDocument }>();
+	const parsedCss = new Map<
+		string,
+		{ version: number; document: Stylesheet }
+	>();
+	const parsedJson = new Map<
+		string,
+		{ version: number; document: JSONDocument }
+	>();
 	const documentContext = { resolveReference };
 	let typescriptClient: NestedLspClient | null | undefined;
 
@@ -121,12 +127,7 @@ startWorkerServer(({ documents, requestFile, rootUri }) => {
 			version: document.version,
 			regions,
 			css: cssText
-				? TextDocument.create(
-						document.uri,
-						"css",
-						document.version,
-						cssText,
-					)
+				? TextDocument.create(document.uri, "css", document.version, cssText)
 				: null,
 			importmap: importMapText
 				? TextDocument.create(
@@ -215,10 +216,7 @@ startWorkerServer(({ documents, requestFile, rootUri }) => {
 
 			if (embedded.css) {
 				diagnostics.push(
-					...cssService.doValidation(
-						embedded.css,
-						getCss(embedded.css),
-					),
+					...cssService.doValidation(embedded.css, getCss(embedded.css)),
 				);
 			}
 			if (embedded.importmap) {
@@ -327,30 +325,22 @@ startWorkerServer(({ documents, requestFile, rootUri }) => {
 						return cssService.format(css, request.range, request.options);
 					}
 					if (languageId === "importmap" && importmap) {
-						return jsonService.format(
-							importmap,
-							request.range,
-							{
-								tabSize: request.options.tabSize ?? 4,
-								insertSpaces: request.options.insertSpaces ?? true,
-							},
-						);
+						return jsonService.format(importmap, request.range, {
+							tabSize: request.options.tabSize ?? 4,
+							insertSpaces: request.options.insertSpaces ?? true,
+						});
 					}
 					if (languageId === "javascript") {
 						return requestTypeScript(method, params, javascript);
 					}
-					return htmlService.format(
-						document,
-						request.range,
-						request.options,
-					);
+					return htmlService.format(document, request.range, request.options);
 				case "textDocument/documentSymbol": {
-					const symbols: DocumentSymbol[] =
-						htmlService.findDocumentSymbols2(document, html);
+					const symbols: DocumentSymbol[] = htmlService.findDocumentSymbols2(
+						document,
+						html,
+					);
 					if (css) {
-						symbols.push(
-							...cssService.findDocumentSymbols2(css, getCss(css)),
-						);
+						symbols.push(...cssService.findDocumentSymbols2(css, getCss(css)));
 					}
 					if (importmap) {
 						symbols.push(
@@ -397,11 +387,7 @@ startWorkerServer(({ documents, requestFile, rootUri }) => {
 						return requestTypeScript(method, params, javascript);
 					}
 					return languageId === "css" && css
-						? cssService.findReferences(
-								css,
-								request.position,
-								getCss(css),
-							)
+						? cssService.findReferences(css, request.position, getCss(css))
 						: null;
 				case "textDocument/rename":
 					if (languageId === "css" && css) {
@@ -455,10 +441,7 @@ startWorkerServer(({ documents, requestFile, rootUri }) => {
 					}
 					if (importmap) {
 						links.push(
-							...(await jsonService.findLinks(
-								importmap,
-								getJson(importmap),
-							)),
+							...(await jsonService.findLinks(importmap, getJson(importmap))),
 						);
 					}
 					return links;
@@ -476,9 +459,7 @@ startWorkerServer(({ documents, requestFile, rootUri }) => {
 							)
 						: [];
 				case "textDocument/documentColor":
-					return css
-						? cssService.findDocumentColors(css, getCss(css))
-						: [];
+					return css ? cssService.findDocumentColors(css, getCss(css)) : [];
 				case "textDocument/colorPresentation":
 					return languageId === "css" && css
 						? cssService.getColorPresentations(
@@ -489,8 +470,7 @@ startWorkerServer(({ documents, requestFile, rootUri }) => {
 							)
 						: [];
 				case "textDocument/foldingRange": {
-					const ranges: FoldingRange[] =
-						htmlService.getFoldingRanges(document);
+					const ranges: FoldingRange[] = htmlService.getFoldingRanges(document);
 					if (css) ranges.push(...cssService.getFoldingRanges(css));
 					if (importmap) {
 						ranges.push(...jsonService.getFoldingRanges(importmap));
@@ -536,10 +516,7 @@ startWorkerServer(({ documents, requestFile, rootUri }) => {
 					) {
 						return requestTypeScript(method, params, javascript);
 					}
-					return htmlService.getSelectionRanges(
-						document,
-						request.positions,
-					);
+					return htmlService.getSelectionRanges(document, request.positions);
 				case "textDocument/linkedEditingRange": {
 					if (languageId) return null;
 					const ranges = htmlService.findLinkedEditingRanges(

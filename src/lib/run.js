@@ -22,6 +22,9 @@ import appSettings from "./settings";
 /**@type {Server} */
 let webServer;
 
+// An open console may outlive the server instance that created it.
+const CONSOLE_THEME_STATE = "__acode_console_theme.json";
+
 /**
  * Starts the server and run the active file in browser
  * @param {Boolean} isConsole
@@ -69,9 +72,14 @@ async function run(
 	let isLoading = false;
 	let filename, pathName, extension;
 	let port = appSettings.value.serverPort;
-	let EXECUTING_SCRIPT = uuid + "_script.js";
+	let shouldExecuteScript = false;
 	const MIMETYPE_HTML = mimeType.lookup("html");
 	const CONSOLE_SCRIPT = uuid + "_console.js";
+	const CONSOLE_WORKER_SCRIPT = uuid + "_console_worker.js";
+	// Keep this route independent of the filename because characters such as
+	// "#" and "?" change how browsers parse a URL.
+	const EXECUTING_SCRIPT = uuid + "_script.js";
+	const CONSOLE_THEME_STYLE = uuid + "_console_theme.css";
 	const MARKDOWN_STYLE = uuid + "_md.css";
 	const queue = [];
 
@@ -138,7 +146,7 @@ async function run(
 	}
 
 	function runConsole() {
-		if (!isConsole) EXECUTING_SCRIPT = activeFile.filename;
+		if (!isConsole) shouldExecuteScript = true;
 		isConsole = true;
 		target = "inapp";
 		filename = "console.html";
@@ -205,6 +213,23 @@ async function run(
 				sendFileContent(url, reqId, "application/javascript");
 				break;
 
+			case CONSOLE_WORKER_SCRIPT:
+				url = `${ASSETS_DIRECTORY}/build/consoleWorker.js`;
+				sendFileContent(url, reqId, "application/javascript");
+				break;
+
+			case CONSOLE_THEME_STYLE:
+				sendText(getConsoleThemeSnapshot().css, reqId, "text/css");
+				break;
+
+			case CONSOLE_THEME_STATE:
+				sendText(
+					JSON.stringify(getConsoleThemeSnapshot()),
+					reqId,
+					"application/json",
+				);
+				break;
+
 			case EXECUTING_SCRIPT: {
 				const text = getDocText(activeFile?.session?.doc);
 				sendText(text, reqId, "application/javascript");
@@ -228,7 +253,11 @@ async function run(
 					sendText(
 						mustache.render($_console, {
 							CONSOLE_SCRIPT,
-							EXECUTING_SCRIPT,
+							CONSOLE_WORKER_SCRIPT,
+							CONSOLE_THEME_STYLE,
+							CONSOLE_THEME_STATE,
+							EXECUTING_SCRIPT: shouldExecuteScript ? EXECUTING_SCRIPT : null,
+							APP_THEME_TYPE: getConsoleThemeSnapshot().type,
 						}),
 						reqId,
 						MIMETYPE_HTML,
@@ -357,6 +386,13 @@ async function run(
 		}
 	}
 
+	function getConsoleThemeSnapshot() {
+		return {
+			css: document.head.querySelector("style#app-theme")?.textContent || "",
+			type: document.body.getAttribute("theme-type") || "dark",
+		};
+	}
+
 	/**
 	 * Sends 404 error
 	 * @param {string} id
@@ -384,7 +420,8 @@ async function run(
 	 * @param {string} id
 	 */
 	function sendHTML(text, id) {
-		const js = `<!-- Injected code, this is not present in original code --><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		const js = `<!-- Injected code, this is not present in original code --><meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
+    <script class="${uuid}">window.__consoleWorkerScript = "/${CONSOLE_WORKER_SCRIPT}";</script>
     <script class="${uuid}" src="/${CONSOLE_SCRIPT}" crossorigin="anonymous"></script>
     <script class="${uuid}">
       if(window.eruda){

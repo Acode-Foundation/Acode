@@ -22,8 +22,7 @@ const context = require.context(
 const libraries: Record<string, string> = {};
 for (const key of context.keys()) {
 	const value = context(key);
-	libraries[key.slice(2)] =
-		typeof value === "string" ? value : value.default;
+	libraries[key.slice(2)] = typeof value === "string" ? value : value.default;
 }
 
 export default libraries;

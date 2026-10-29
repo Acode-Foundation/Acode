@@ -1,6 +1,7 @@
 import fsOperation from "fileSystem";
 import { parse } from "acorn";
 import { getDocText } from "cm/editorUtils";
+import { getFormatAsMode } from "cm/modelist";
 import toast from "components/toast";
 import appSettings from "lib/settings";
 import prettierPluginBabel from "prettier/plugins/babel";
@@ -77,7 +78,9 @@ export async function formatActiveFileWithPrettier() {
 	if (!file || file.type !== "editor" || !editor) return false;
 
 	const modeName = (file.currentMode || "text").toLowerCase();
-	const parser = getParserForMode(modeName);
+	const formatAs = getFormatAsMode(modeName);
+	const parser =
+		getParserForMode(modeName) || (formatAs && getParserForMode(formatAs));
 	if (!parser) {
 		toast("Prettier does not support this file type yet");
 		return false;

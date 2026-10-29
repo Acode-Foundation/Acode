@@ -2,11 +2,12 @@ import {
 	Compartment,
 	EditorSelection,
 	EditorState,
-	Transaction,
 	type Extension,
 	type SelectionRange,
+	Transaction,
 } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
+import { isCanvasView } from "./createEditorView";
 
 interface PointerTapSnapshot {
 	pointerId: number;
@@ -63,15 +64,51 @@ const readOnlyFocusGuard = EditorView.domEventHandlers({
 	},
 });
 
+const readOnlyCursor = [
+	EditorView.editorAttributes.of({ class: "cm-read-only" }),
+	EditorView.theme({
+		"&.cm-read-only > .cm-scroller > .cm-cursorLayer": {
+			animation: "none",
+		},
+		"&.cm-read-only > .cm-scroller > .cm-cursorLayer .cm-cursor": {
+			display: "block",
+		},
+	}),
+];
+
+export interface EditorReadOnlyOptions {
+	/** The extension is for a canvas view (@acode.app/canvas-view). */
+	canvas?: boolean;
+}
+
 /**
  * Keep CodeMirror's document and DOM editability in sync.
  */
-export function createEditorReadOnlyExtension(readOnly: boolean): Extension {
+export function createEditorReadOnlyExtension(
+	readOnly: boolean,
+	{ canvas = false }: EditorReadOnlyOptions = {},
+): Extension {
+	// A canvas view handles read-only files itself: it ignores typing,
+	// cut, paste and drops, takes focus without opening the keyboard (so
+	// its cursor shows and hardware-keyboard shortcuts work), and drops
+	// focus when the editor becomes read-only. It stays editable; only the
+	// filter for Acode's own editing commands applies.
+	if (canvas) {
+		return [
+			EditorState.readOnly.of(readOnly),
+			...(readOnly ? [readOnlyUserChangeFilter] : []),
+		];
+	}
 	return [
 		EditorState.readOnly.of(readOnly),
 		EditorView.editable.of(!readOnly),
 		...(readOnly
-			? [readOnlyFocusGuard, readOnlyInputGuard, readOnlyUserChangeFilter]
+			? [
+					readOnlyFocusGuard,
+					readOnlyInputGuard,
+					readOnlyUserChangeFilter,
+					readOnlyCursor,
+				]
 			: []),
 	];
 }
@@ -86,7 +123,8 @@ export function blurEditorIfReadOnly(
 	view: EditorView,
 	readOnly: boolean,
 ): void {
-	if (!readOnly) return;
+	// A read-only canvas view keeps focus without a keyboard.
+	if (!readOnly || isCanvasView(view)) return;
 	const activeElement = document.activeElement;
 	if (
 		activeElement instanceof HTMLElement &&
@@ -104,7 +142,9 @@ export function reconfigureEditorReadOnly(
 	readOnly: boolean,
 ): void {
 	view.dispatch({
-		effects: compartment.reconfigure(createEditorReadOnlyExtension(readOnly)),
+		effects: compartment.reconfigure(
+			createEditorReadOnlyExtension(readOnly, { canvas: isCanvasView(view) }),
+		),
 	});
 	blurEditorIfReadOnly(view, readOnly);
 }
@@ -112,7 +152,10 @@ export function reconfigureEditorReadOnly(
 /** Focus editable editors and actively settle read-only editors unfocused. */
 export function focusEditorIfEditable(view: EditorView): boolean {
 	if (view.state.readOnly) {
-		blurEditorIfReadOnly(view, true);
+		// A canvas view focuses without opening the keyboard. (Checked on
+		// `unknown`: the type guard would narrow an EditorView to never.)
+		if (isCanvasView(view as unknown)) view.focus();
+		else blurEditorIfReadOnly(view, true);
 		return false;
 	}
 	view.focus();
@@ -137,17 +180,17 @@ export function shouldCommitReadOnlyTap(
 	return Math.hypot(end.x - start.x, end.y - start.y) <= maxDistance;
 }
 
-/** Collapse an existing read-only selection without focusing or editing. */
-export function collapseReadOnlySelection(
-	view: EditorView,
-	pos: number,
-): boolean {
-	if (!view.state.readOnly || view.state.selection.main.empty) return false;
+/** Place the visual read-only cursor without focusing or editing. */
+export function placeReadOnlyCursor(view: EditorView, pos: number): boolean {
+	if (!view.state.readOnly) return false;
 	const position = Math.max(0, Math.min(pos, view.state.doc.length));
-	view.dispatch({
-		selection: EditorSelection.cursor(position),
-		userEvent: "select.pointer",
-	});
+	const selection = EditorSelection.single(position);
+	if (!view.state.selection.eq(selection)) {
+		view.dispatch({
+			selection,
+			userEvent: "select.pointer",
+		});
+	}
 	blurEditorIfReadOnly(view, true);
 	return true;
 }

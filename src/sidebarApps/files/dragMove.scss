@@ -1,0 +1,179 @@
+// Written without inset, flex gap or unguarded color-mix() so it still works
+// on old Android WebViews.
+$ease: cubic-bezier(0.2, 0, 0, 1);
+$spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+body.file-dragging {
+  cursor: grabbing;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#sidebar .container.files {
+  .tile[data-type="file"],
+  .tile[data-type="dir"] {
+    transition:
+      opacity 160ms ease,
+      transform 160ms $ease,
+      background-color 180ms ease;
+
+    // Long press recognised: the row lifts slightly, ready to be dragged.
+    &.drag-armed {
+      transform: scale(0.97);
+      background-color: rgba(127, 127, 127, 0.14);
+    }
+
+    &.drag-source {
+      opacity: 0.35;
+    }
+  }
+
+  // The whole folder the entries would land in lights up.
+  .list.collapsible.drop-target {
+    border-radius: 8px;
+    background-color: rgba(127, 127, 127, 0.1);
+    background-color: color-mix(in srgb, var(--active-color) 10%, transparent);
+    box-shadow: inset 0 0 0 1px rgba(127, 127, 127, 0.35);
+    box-shadow: inset 0 0 0 1px
+      color-mix(in srgb, var(--active-color) 45%, transparent);
+
+    > .tile:first-child {
+      border-radius: 8px;
+    }
+  }
+
+  // Closed folder about to spring open.
+  .list.collapsible.drop-pending > .tile:first-child {
+    animation: file-drop-pending 650ms ease-in-out;
+  }
+
+  .tile.drop-flash {
+    animation: file-drop-flash 600ms ease-out;
+  }
+}
+
+.file-drag-ghost {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  pointer-events: none;
+  will-change: transform;
+
+  &.settling {
+    opacity: 0;
+    transition:
+      transform 240ms $ease,
+      opacity 240ms ease;
+  }
+
+  .chip {
+    position: relative;
+    display: flex;
+    align-items: center;
+    box-sizing: border-box;
+    height: 34px;
+    max-width: 220px;
+    padding: 0 10px 0 6px;
+    border-radius: 10px;
+    border: 1px solid var(--popup-border-color, var(--border-color));
+    background-color: var(--popup-background-color);
+    color: var(--popup-text-color);
+    font-size: 13px;
+    box-shadow:
+      0 14px 30px -8px rgba(0, 0, 0, 0.45),
+      0 2px 6px rgba(0, 0, 0, 0.2);
+    animation: file-drag-pick 260ms $spring;
+
+    > :first-child {
+      flex: none;
+      width: 22px;
+      height: 22px;
+      min-width: 0;
+      margin-right: 6px;
+      font-size: 15px;
+      line-height: 22px;
+      text-align: center;
+      background-size: 16px;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+  }
+
+  .name {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .badge {
+    flex: none;
+    min-width: 18px;
+    height: 18px;
+    box-sizing: border-box;
+    margin-left: 8px;
+    padding: 0 5px;
+    border-radius: 9px;
+    background-color: var(--active-color);
+    color: var(--active-text-color);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 18px;
+    text-align: center;
+  }
+
+  // Several entries: cards stacked behind the chip.
+  &.multi .chip::before,
+  &.multi .chip::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    box-sizing: border-box;
+    border-radius: 10px;
+    border: 1px solid var(--popup-border-color, var(--border-color));
+    background-color: var(--popup-background-color);
+  }
+
+  &.multi .chip::before {
+    transform: translate(4px, 4px) rotate(2deg);
+    opacity: 0.7;
+  }
+
+  &.multi .chip::after {
+    transform: translate(8px, 8px) rotate(4deg);
+    opacity: 0.4;
+  }
+}
+
+@keyframes file-drag-pick {
+  from {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+}
+
+@keyframes file-drop-pending {
+  50% {
+    background-color: rgba(127, 127, 127, 0.22);
+  }
+}
+
+@keyframes file-drop-flash {
+  from {
+    background-color: rgba(127, 127, 127, 0.3);
+    background-color: color-mix(in srgb, var(--active-color) 35%, transparent);
+  }
+}
+
+body.no-animation {
+  .file-drag-ghost,
+  .file-drag-ghost * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

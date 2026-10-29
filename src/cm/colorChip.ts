@@ -1,3 +1,4 @@
+import type { CanvasWidgetSpec } from "@acode.app/canvas-view";
 import type { LSPClient } from "@codemirror/lsp-client";
 import { LSPPlugin } from "@codemirror/lsp-client";
 import type { Range } from "@codemirror/state";
@@ -73,6 +74,27 @@ export class ColorChipWidget extends WidgetType {
 		return el;
 	}
 
+	/**
+	 * How a canvas view (@acode.app/canvas-view) draws the chip: the box
+	 * `toDOM` styles, without making its element. The view only calls
+	 * `toDOM` when the chip is tapped, so the color picker still opens.
+	 */
+	toCanvas(view: EditorView): CanvasWidgetSpec {
+		const cell = view.defaultCharacterWidth || 8;
+		const em = (view as unknown as { fontSizePx?: number }).fontSizePx || 14;
+		return {
+			text: "",
+			cells: Math.max(0.5, Math.round(((0.9 * em) / cell) * 4) / 4),
+			padLeft: 2 / cell,
+			padRight: 2 / cell,
+			style: {
+				background: this.payload.css,
+				border: "rgba(0,0,0,0.2)",
+				rounded: true,
+			},
+		};
+	}
+
 	ignoreEvent(): boolean {
 		return false;
 	}
@@ -88,16 +110,15 @@ export function colorChipDecoration(
 }
 
 export function isViewEditable(view: EditorView): boolean {
-	const readOnly = view.contentDOM.ariaReadOnly === "true";
-	const editable = view.contentDOM.contentEditable === "true";
-	return !readOnly && editable;
+	// From the state, not contentDOM's attributes: a canvas view's
+	// contentDOM is its hidden input element, which has neither.
+	return view.state.facet(EditorView.editable) && !view.state.readOnly;
 }
 
 export function hasLspColorProvider(view: EditorView): boolean {
 	return LSPPlugin.getAll(view, "documentColor").some(
 		(lsp) =>
-			lsp.client.connected &&
-			!!lsp.client.serverCapabilities?.colorProvider,
+			lsp.client.connected && !!lsp.client.serverCapabilities?.colorProvider,
 	);
 }
 

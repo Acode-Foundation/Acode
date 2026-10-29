@@ -1,30 +1,30 @@
 import ts from "typescript";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import {
-	CompletionItemKind,
-	DiagnosticSeverity,
-	DiagnosticTag,
-	DocumentHighlightKind,
-	FoldingRangeKind,
-	InlayHintKind,
-	Range,
-	SelectionRange,
-	SymbolKind,
 	type CodeAction,
 	type CodeActionContext,
 	type CompletionItem,
+	CompletionItemKind,
 	type Diagnostic,
+	DiagnosticSeverity,
+	DiagnosticTag,
 	type DocumentHighlight,
+	DocumentHighlightKind,
 	type DocumentSymbol,
 	type FoldingRange,
+	FoldingRangeKind,
 	type FormattingOptions,
 	type InlayHint,
+	InlayHintKind,
 	type Location,
 	type LocationLink,
+	type SelectionRange as LspSelectionRange,
 	type MarkupContent,
 	type Position,
-	type SelectionRange as LspSelectionRange,
+	Range,
+	SelectionRange,
 	type SignatureHelp,
+	SymbolKind,
 	type TextEdit,
 	type WorkspaceEdit,
 } from "vscode-languageserver-types";
@@ -157,10 +157,7 @@ class TypeScriptHost implements ts.LanguageServiceHost {
 		containingFile: string,
 	): (ts.ResolvedModule | undefined)[] {
 		return moduleNames.map((moduleName) => {
-			const openDocument = this.resolveOpenDocument(
-				moduleName,
-				containingFile,
-			);
+			const openDocument = this.resolveOpenDocument(moduleName, containingFile);
 			if (openDocument) return openDocument;
 			return ts.resolveModuleName(
 				moduleName,
@@ -206,175 +203,160 @@ class TypeScriptHost implements ts.LanguageServiceHost {
 	}
 }
 
-startWorkerServer(async ({
-	documents,
-	requestFile,
-	rootUri,
-	getProjectVersion,
-}) => {
-	const compilerOptions = await loadCompilerOptions(rootUri, requestFile);
-	const host = new TypeScriptHost(
-		documents,
-		compilerOptions,
-		getProjectVersion,
-	);
-	const service = ts.createLanguageService(
-		host,
-		ts.createDocumentRegistry(true, "/"),
-	);
+startWorkerServer(
+	async ({ documents, requestFile, rootUri, getProjectVersion }) => {
+		const compilerOptions = await loadCompilerOptions(rootUri, requestFile);
+		const host = new TypeScriptHost(
+			documents,
+			compilerOptions,
+			getProjectVersion,
+		);
+		const service = ts.createLanguageService(
+			host,
+			ts.createDocumentRegistry(true, "/"),
+		);
 
-	return {
-		capabilities: {
-			completionProvider: {
-				resolveProvider: true,
-				triggerCharacters: [".", "/", '"', "'", "<"],
+		return {
+			capabilities: {
+				completionProvider: {
+					resolveProvider: true,
+					triggerCharacters: [".", "/", '"', "'", "<"],
+				},
+				hoverProvider: true,
+				signatureHelpProvider: {
+					triggerCharacters: ["(", ",", "<"],
+					retriggerCharacters: [")"],
+				},
+				documentFormattingProvider: true,
+				documentRangeFormattingProvider: true,
+				documentSymbolProvider: true,
+				definitionProvider: true,
+				referencesProvider: true,
+				renameProvider: {
+					prepareProvider: true,
+				},
+				documentHighlightProvider: true,
+				codeActionProvider: true,
+				foldingRangeProvider: true,
+				selectionRangeProvider: true,
+				inlayHintProvider: true,
 			},
-			hoverProvider: true,
-			signatureHelpProvider: {
-				triggerCharacters: ["(", ",", "<"],
-				retriggerCharacters: [")"],
-			},
-			documentFormattingProvider: true,
-			documentRangeFormattingProvider: true,
-			documentSymbolProvider: true,
-			definitionProvider: true,
-			referencesProvider: true,
-			renameProvider: {
-				prepareProvider: true,
-			},
-			documentHighlightProvider: true,
-			codeActionProvider: true,
-			foldingRangeProvider: true,
-			selectionRangeProvider: true,
-			inlayHintProvider: true,
-		},
 
-		validate(document) {
-			const diagnostics: ts.Diagnostic[] = [
-				...service.getSyntacticDiagnostics(document.uri),
-				...service.getSuggestionDiagnostics(document.uri),
-			];
-			if (isTypeScriptDocument(document)) {
-				diagnostics.push(...service.getSemanticDiagnostics(document.uri));
-			}
-			return diagnostics.map((diagnostic) =>
-				toDiagnostic(document, diagnostic),
-			);
-		},
-
-		request(method, params) {
-			if (method === "completionItem/resolve") {
-				return resolveCompletion(
-					service,
-					documents,
-					params as CompletionItem,
+			validate(document) {
+				const diagnostics: ts.Diagnostic[] = [
+					...service.getSyntacticDiagnostics(document.uri),
+					...service.getSuggestionDiagnostics(document.uri),
+				];
+				if (isTypeScriptDocument(document)) {
+					diagnostics.push(...service.getSemanticDiagnostics(document.uri));
+				}
+				return diagnostics.map((diagnostic) =>
+					toDiagnostic(document, diagnostic),
 				);
-			}
+			},
 
-			const document = getTextDocument(documents, params);
-			if (!document) return null;
-			const request = params as RequestParams;
-			const offset = request.position
-				? document.offsetAt(request.position)
-				: 0;
+			request(method, params) {
+				if (method === "completionItem/resolve") {
+					return resolveCompletion(
+						service,
+						documents,
+						params as CompletionItem,
+					);
+				}
 
-			switch (method) {
-				case "acode/validate": {
-					const diagnostics: ts.Diagnostic[] = [
-						...service.getSyntacticDiagnostics(document.uri),
-						...service.getSuggestionDiagnostics(document.uri),
-					];
-					if (isTypeScriptDocument(document)) {
-						diagnostics.push(
-							...service.getSemanticDiagnostics(document.uri),
+				const document = getTextDocument(documents, params);
+				if (!document) return null;
+				const request = params as RequestParams;
+				const offset = request.position
+					? document.offsetAt(request.position)
+					: 0;
+
+				switch (method) {
+					case "acode/validate": {
+						const diagnostics: ts.Diagnostic[] = [
+							...service.getSyntacticDiagnostics(document.uri),
+							...service.getSuggestionDiagnostics(document.uri),
+						];
+						if (isTypeScriptDocument(document)) {
+							diagnostics.push(...service.getSemanticDiagnostics(document.uri));
+						}
+						return diagnostics.map((diagnostic) =>
+							toDiagnostic(document, diagnostic),
 						);
 					}
-					return diagnostics.map((diagnostic) =>
-						toDiagnostic(document, diagnostic),
-					);
+					case "textDocument/completion":
+						return completions(service, document, offset);
+					case "textDocument/hover":
+						return hover(service, document, offset);
+					case "textDocument/signatureHelp":
+						return signatureHelp(service, document, offset, request.context);
+					case "textDocument/formatting":
+						return format(service, document, undefined, request.options);
+					case "textDocument/rangeFormatting":
+						return format(service, document, request.range, request.options);
+					case "textDocument/documentSymbol":
+						return documentSymbols(service, document);
+					case "textDocument/definition":
+						return definitions(service, documents, document, offset);
+					case "textDocument/references":
+						return references(service, documents, document, offset);
+					case "textDocument/prepareRename": {
+						const info = service.getRenameInfo(document.uri, offset, {
+							allowRenameOfImportPath: true,
+						});
+						return info.canRename
+							? rangeFromSpan(document, info.triggerSpan)
+							: null;
+					}
+					case "textDocument/rename":
+						return rename(
+							service,
+							documents,
+							document,
+							offset,
+							request.newName,
+						);
+					case "textDocument/documentHighlight":
+						return documentHighlights(service, document, offset);
+					case "textDocument/codeAction":
+						return codeActions(
+							service,
+							documents,
+							document,
+							request.range!,
+							request.context,
+							request.options,
+						);
+					case "textDocument/foldingRange":
+						return foldingRanges(service, document);
+					case "textDocument/selectionRange":
+						return selectionRanges(
+							service,
+							document,
+							(params as { positions: Position[] }).positions,
+						);
+					case "textDocument/inlayHint":
+						return inlayHints(service, document, request.range!);
+					default:
+						return METHOD_NOT_HANDLED;
 				}
-				case "textDocument/completion":
-					return completions(service, document, offset);
-				case "textDocument/hover":
-					return hover(service, document, offset);
-				case "textDocument/signatureHelp":
-					return signatureHelp(
-						service,
-						document,
-						offset,
-						request.context,
-					);
-				case "textDocument/formatting":
-					return format(service, document, undefined, request.options);
-				case "textDocument/rangeFormatting":
-					return format(
-						service,
-						document,
-						request.range,
-						request.options,
-					);
-				case "textDocument/documentSymbol":
-					return documentSymbols(service, document);
-				case "textDocument/definition":
-					return definitions(service, documents, document, offset);
-				case "textDocument/references":
-					return references(service, documents, document, offset);
-				case "textDocument/prepareRename": {
-					const info = service.getRenameInfo(document.uri, offset, {
-						allowRenameOfImportPath: true,
-					});
-					return info.canRename
-						? rangeFromSpan(document, info.triggerSpan)
-						: null;
+			},
+
+			// Only wipe the shared semantic program when nothing is open.
+			// cleanupSemanticCache() releases every source file and forces a full
+			// re-analysis of remaining tabs — costly on multi-file mobile sessions.
+			closeDocument() {
+				if (documents.size === 0) {
+					service.cleanupSemanticCache();
 				}
-				case "textDocument/rename":
-					return rename(
-						service,
-						documents,
-						document,
-						offset,
-						request.newName,
-					);
-				case "textDocument/documentHighlight":
-					return documentHighlights(service, document, offset);
-				case "textDocument/codeAction":
-					return codeActions(
-						service,
-						documents,
-						document,
-						request.range!,
-						request.context,
-						request.options,
-					);
-				case "textDocument/foldingRange":
-					return foldingRanges(service, document);
-				case "textDocument/selectionRange":
-					return selectionRanges(
-						service,
-						document,
-						(params as { positions: Position[] }).positions,
-					);
-				case "textDocument/inlayHint":
-					return inlayHints(service, document, request.range!);
-				default:
-					return METHOD_NOT_HANDLED;
-			}
-		},
+			},
 
-		// Only wipe the shared semantic program when nothing is open.
-		// cleanupSemanticCache() releases every source file and forces a full
-		// re-analysis of remaining tabs — costly on multi-file mobile sessions.
-		closeDocument() {
-			if (documents.size === 0) {
-				service.cleanupSemanticCache();
-			}
-		},
-
-		dispose() {
-			service.dispose();
-		},
-	};
-});
+			dispose() {
+				service.dispose();
+			},
+		};
+	},
+);
 
 async function loadCompilerOptions(
 	rootUri: string | null | undefined,
@@ -526,9 +508,7 @@ function hover(
 		range: rangeFromSpan(document, info.textSpan),
 		contents: [
 			{
-				language: isTypeScriptDocument(document)
-					? "typescript"
-					: "javascript",
+				language: isTypeScriptDocument(document) ? "typescript" : "javascript",
 				value: signature,
 			},
 			[documentation, tags].filter(Boolean).join("\n\n"),
@@ -553,9 +533,7 @@ function signatureHelp(
 			label:
 				ts.displayPartsToString(item.prefixDisplayParts) +
 				item.parameters
-					.map((parameter) =>
-						ts.displayPartsToString(parameter.displayParts),
-					)
+					.map((parameter) => ts.displayPartsToString(parameter.displayParts))
 					.join(ts.displayPartsToString(item.separatorDisplayParts)) +
 				ts.displayPartsToString(item.suffixDisplayParts),
 			documentation: markdownContent(
@@ -642,8 +620,10 @@ function references(
 	offset: number,
 ): Location[] {
 	const result: Location[] = [];
-	for (const reference of
-		service.getReferencesAtPosition(document.uri, offset) ?? []) {
+	for (const reference of service.getReferencesAtPosition(
+		document.uri,
+		offset,
+	) ?? []) {
 		const target = documents.get(reference.fileName);
 		if (!target) continue;
 		result.push({
@@ -687,9 +667,9 @@ function documentHighlights(
 	offset: number,
 ): DocumentHighlight[] {
 	const result: DocumentHighlight[] = [];
-	for (const item of
-		service.getDocumentHighlights(document.uri, offset, [document.uri]) ??
-		[]) {
+	for (const item of service.getDocumentHighlights(document.uri, offset, [
+		document.uri,
+	]) ?? []) {
 		for (const highlight of item.highlightSpans) {
 			result.push({
 				range: rangeFromSpan(document, highlight.textSpan),
@@ -773,10 +753,7 @@ function selectionRanges(
 		);
 	return positions.map((position) =>
 		convert(
-			service.getSmartSelectionRange(
-				document.uri,
-				document.offsetAt(position),
-			),
+			service.getSmartSelectionRange(document.uri, document.offsetAt(position)),
 		),
 	);
 }
@@ -805,9 +782,7 @@ function inlayHints(
 		.map((hint) => ({
 			position: document.positionAt(hint.position),
 			label:
-				hint.text ||
-				hint.displayParts?.map((part) => part.text).join("") ||
-				"",
+				hint.text || hint.displayParts?.map((part) => part.text).join("") || "",
 			kind:
 				hint.kind === ts.InlayHintKind.Parameter
 					? InlayHintKind.Parameter

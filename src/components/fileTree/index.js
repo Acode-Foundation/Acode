@@ -35,6 +35,9 @@ export default class FileTree {
 		this.isLoading = false;
 		this.childTrees = new Map(); // Track child trees for cleanup
 		this.depth = options._depth || 0; // Internal: nesting depth
+		// Bumped on every load and on destroy so a slow load that finishes
+		// late can tell it's stale and skip rendering.
+		this.generation = 0;
 	}
 
 	/**
@@ -45,11 +48,14 @@ export default class FileTree {
 		if (this.isLoading) return;
 		this.isLoading = true;
 		this.currentUrl = url;
+		const generation = ++this.generation;
 
 		try {
 			this.clear();
 
 			const entries = await this.options.getEntries(url);
+			// Destroyed (e.g. the folder collapsed) while listing.
+			if (generation !== this.generation) return;
 			this.entries = helpers.sortDir(entries, {
 				sortByName: true,
 				showHiddenFiles: true,
@@ -127,6 +133,12 @@ export default class FileTree {
 				$title.dataset.name = name;
 				const textEl = $title.querySelector(".text");
 				if (textEl) textEl.textContent = name;
+				const iconEl = $title.querySelector("span:first-child");
+				if (iconEl) {
+					iconEl.className = helpers.getIconForFolder(name, {
+						expanded: false,
+					});
+				}
 
 				// Collapse if expanded and clear children
 				if (!recycledEl.classList.contains("hidden")) {
@@ -137,6 +149,7 @@ export default class FileTree {
 						this.childTrees.delete(recycledEl._folderUrl);
 					}
 					recycledEl.$ul.innerHTML = "";
+					recycledEl.$ul._fileTree = null;
 				}
 
 				recycledEl._folderUrl = url;
@@ -149,7 +162,9 @@ export default class FileTree {
 		});
 		$wrapper._folderUrl = url;
 
-		const $indicator = tag("span", { className: "icon folder" });
+		const $indicator = tag("span", {
+			className: helpers.getIconForFolder(name, { expanded: false }),
+		});
 
 		const $title = tile({
 			lead: $indicator,
@@ -166,15 +181,20 @@ export default class FileTree {
 		$wrapper.append($title, $content);
 
 		// Child file tree for nested folders
-		let childTree = null;
 		$content._fileTree = null;
 
 		const toggle = async () => {
+			const name = $title.dataset.name;
+			const url = $title.dataset.url;
 			const isExpanded = !$wrapper.classList.contains("hidden");
+			let childTree = $content._fileTree;
 
 			if (isExpanded) {
 				// Collapse
 				$wrapper.classList.add("hidden");
+				$indicator.className = helpers.getIconForFolder(name, {
+					expanded: false,
+				});
 
 				if (childTree) {
 					childTree.destroy();
@@ -186,6 +206,9 @@ export default class FileTree {
 			} else {
 				// Expand
 				$wrapper.classList.remove("hidden");
+				$indicator.className = helpers.getIconForFolder(name, {
+					expanded: true,
+				});
 				$title.classList.add("loading");
 
 				// Create child tree with incremented depth
@@ -211,7 +234,12 @@ export default class FileTree {
 
 		$title.addEventListener("contextmenu", (e) => {
 			e.stopPropagation();
-			this.options.onContextMenu?.("dir", url, name, $title);
+			this.options.onContextMenu?.(
+				"dir",
+				$title.dataset.url,
+				$title.dataset.name,
+				$title,
+			);
 		});
 
 		// Check if folder should be expanded from saved state
@@ -225,9 +253,9 @@ export default class FileTree {
 				expanded: { get: () => !$wrapper.classList.contains("hidden") },
 				unclasped: { get: () => !$wrapper.classList.contains("hidden") }, // Legacy compatibility
 				$ul: { get: () => $content },
-				fileTree: { get: () => childTree },
+				fileTree: { get: () => $content._fileTree },
 				refresh: {
-					value: () => childTree?.refresh(),
+					value: () => $content._fileTree?.refresh(),
 				},
 				expand: {
 					value: () => !$wrapper.classList.contains("hidden") || toggle(),
@@ -259,6 +287,7 @@ export default class FileTree {
 	 * @returns {HTMLElement}
 	 */
 	createFileElement(name, url, recycledEl) {
+		// Resolve here so icon plugins that replace helpers.getIconForFile still apply.
 		const iconClass = helpers.getIconForFile(name);
 
 		// Try to recycle existing element
@@ -283,12 +312,17 @@ export default class FileTree {
 
 		$tile.addEventListener("click", (e) => {
 			e.stopPropagation();
-			this.options.onFileClick?.(url, name);
+			this.options.onFileClick?.($tile.dataset.url, $tile.dataset.name);
 		});
 
 		$tile.addEventListener("contextmenu", (e) => {
 			e.stopPropagation();
-			this.options.onContextMenu?.("file", url, name, $tile);
+			this.options.onContextMenu?.(
+				"file",
+				$tile.dataset.url,
+				$tile.dataset.name,
+				$tile,
+			);
 		});
 
 		return $tile;
@@ -313,6 +347,7 @@ export default class FileTree {
 	 * Destroy the file tree and cleanup
 	 */
 	destroy() {
+		this.generation++;
 		this.clear();
 		this.container.classList.remove("file-tree");
 	}

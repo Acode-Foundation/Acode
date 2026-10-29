@@ -12,8 +12,9 @@ import type {
 	Range as LspRange,
 	WorkspaceEdit,
 } from "vscode-languageserver-types";
-import type { Position, Range } from "./types";
 import { addLspLogFor } from "./logs";
+import { safeLspPositionToOffset } from "./positionUtils";
+import type { Range } from "./types";
 import type AcodeWorkspace from "./workspace";
 
 type CodeActionResponse = (CodeAction | Command)[] | null;
@@ -60,13 +61,6 @@ function isCommand(item: CodeAction | Command): item is Command {
 	return (
 		"command" in item && typeof item.command === "string" && !("edit" in item)
 	);
-}
-
-function lspPositionToOffset(
-	doc: { line: (n: number) => { from: number } },
-	pos: Position,
-): number {
-	return doc.line(pos.line + 1).from + pos.character;
 }
 
 async function requestCodeActions(
@@ -141,7 +135,12 @@ async function executeCommand(
 		// -32601 = Method not implemented (expected for some LSP servers)
 		const lspError = error as { code?: number };
 		if (lspError?.code !== -32601) {
-			addLspLogFor(plugin, "warn", "Code action command execution failed", error);
+			addLspLogFor(
+				plugin,
+				"warn",
+				"Code action command execution failed",
+				error,
+			);
 			console.warn("[LSP:CodeAction] Command execution failed:", error);
 		}
 		return false;
@@ -157,7 +156,7 @@ async function applyChangesToFile(
 	workspace: AcodeWorkspace,
 	uri: string,
 	changes: LspChange[],
-	mapping: { mapPosition: (uri: string, pos: Position) => number },
+	mapping: { mapPos: (uri: string, pos: number, assoc?: number) => number },
 ): Promise<boolean> {
 	const file = workspace.getFile(uri);
 	if (file) {
@@ -165,8 +164,16 @@ async function applyChangesToFile(
 		if (view) {
 			view.dispatch({
 				changes: changes.map((c) => ({
-					from: mapping.mapPosition(uri, c.range.start),
-					to: mapping.mapPosition(uri, c.range.end),
+					from: mapping.mapPos(
+						uri,
+						safeLspPositionToOffset(file.doc, c.range.start),
+						1,
+					),
+					to: mapping.mapPos(
+						uri,
+						safeLspPositionToOffset(file.doc, c.range.end),
+						-1,
+					),
 					insert: c.newText,
 				})),
 				userEvent: "codeAction",
@@ -188,8 +195,8 @@ async function applyChangesToFile(
 
 	displayedView.dispatch({
 		changes: changes.map((c) => ({
-			from: lspPositionToOffset(displayedView.state.doc, c.range.start),
-			to: lspPositionToOffset(displayedView.state.doc, c.range.end),
+			from: safeLspPositionToOffset(displayedView.state.doc, c.range.start),
+			to: safeLspPositionToOffset(displayedView.state.doc, c.range.end),
 			insert: c.newText,
 		})),
 		userEvent: "codeAction",
@@ -342,13 +349,13 @@ export async function fetchCodeActions(
 	// Sort: preferred first, then quickfixes, then alphabetically. Stable
 	// sorting preserves server priority for otherwise identical actions.
 	items.sort((a, b) => {
-			if (a.isPreferred && !b.isPreferred) return -1;
-			if (!a.isPreferred && b.isPreferred) return 1;
-			if (a.kind?.startsWith("quickfix") && !b.kind?.startsWith("quickfix"))
-				return -1;
-			if (!a.kind?.startsWith("quickfix") && b.kind?.startsWith("quickfix"))
-				return 1;
-			return a.title.localeCompare(b.title);
+		if (a.isPreferred && !b.isPreferred) return -1;
+		if (!a.isPreferred && b.isPreferred) return 1;
+		if (a.kind?.startsWith("quickfix") && !b.kind?.startsWith("quickfix"))
+			return -1;
+		if (!a.kind?.startsWith("quickfix") && b.kind?.startsWith("quickfix"))
+			return 1;
+		return a.title.localeCompare(b.title);
 	});
 	return items;
 }

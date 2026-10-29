@@ -1,6 +1,9 @@
 import "./style.scss";
 import Sidebar from "components/sidebar";
+import fileIcons from "lib/fileIcons";
 import settings from "lib/settings";
+import dragMove from "./dragMove";
+import selection from "./selection";
 
 /**@type {HTMLElement} */
 let container;
@@ -24,6 +27,10 @@ function initApp(el) {
 	container.setAttribute("data-msg", strings["open folder"]);
 	container.style.overflowX = "auto";
 	container.addEventListener("click", clickHandler);
+	// Drag listens first so a long press can become a drag before selection
+	// or the context menu sees it.
+	dragMove.init(container);
+	selection.init(container);
 	editorManager.on(
 		["new-file", "int-open-file-list", "remove-file"],
 		(position) => {
@@ -45,6 +52,15 @@ function initApp(el) {
  * @param {HTMLElement} el
  */
 function onSelected(el) {
+	// Phone sidebars and inactive sidebar apps are detached, so document-wide
+	// icon updates cannot reach them until this view is shown again.
+	fileIcons.refreshRenderedIcons(container);
+	selection.syncBar();
+	// Heights measured while the sidebar was detached come out wrong.
+	const $openFolder = container.querySelector(
+		":scope > .list:not(.hidden):not(.file-list)",
+	);
+	if ($openFolder) fixHeight($openFolder);
 	const $scrollableLists = container.getAll(":scope .scroll[data-scroll-top]");
 	$scrollableLists.forEach(($el) => {
 		$el.scrollTop = $el.dataset.scrollTop;
@@ -75,8 +91,13 @@ function clickHandler(e) {
 export function fixHeight(target) {
 	const lists = Array.from(container.getAll(":scope > div"));
 	const ITEM_HEIGHT = 30;
+	// Headers are taller than rows (36px, 40px on wide screens); measure them so
+	// the expanded list doesn't overflow below the sidebar.
+	const headerHeight =
+		container.querySelector(":scope > .list > .tile")?.offsetHeight ||
+		ITEM_HEIGHT;
 
-	let height = (lists.length - 1) * ITEM_HEIGHT;
+	let height = (lists.length - 1) * headerHeight;
 	let activeFileList;
 
 	if (settings.value.openFileListPos === settings.OPEN_FILE_LIST_POS_SIDEBAR) {
@@ -84,9 +105,9 @@ export function fixHeight(target) {
 		if (firstList.classList.contains("file-list")) {
 			activeFileList = firstList;
 			if (firstList.unclasped) {
-				const heightOffset = height - ITEM_HEIGHT;
+				const heightOffset = height - headerHeight;
 				const totalHeight =
-					ITEM_HEIGHT * activeFileList.$ul.children.length + ITEM_HEIGHT;
+					ITEM_HEIGHT * activeFileList.$ul.children.length + headerHeight;
 				const maxHeight =
 					lists.length === 1 || !lists.slice(1).find((list) => list.unclasped)
 						? window.innerHeight
@@ -95,7 +116,7 @@ export function fixHeight(target) {
 
 				activeFileList.style.maxHeight = `${minHeight}px`;
 				activeFileList.style.height = `${minHeight}px`;
-				height += minHeight - ITEM_HEIGHT;
+				height += minHeight - headerHeight;
 			}
 		}
 	}

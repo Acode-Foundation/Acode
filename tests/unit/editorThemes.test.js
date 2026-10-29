@@ -1,10 +1,6 @@
 import { EditorState } from "@codemirror/state";
+import { getThemeConfig, getThemeExtensions, getThemes } from "cm/themes";
 import { describe, expect, it } from "vitest";
-import {
-	getThemeConfig,
-	getThemeExtensions,
-	getThemes,
-} from "cm/themes";
 
 describe("built-in editor themes", () => {
 	it("uses the base editor foreground for plain VS Code text", () => {
@@ -59,6 +55,19 @@ describe("built-in editor themes", () => {
 			expect(() =>
 				EditorState.create({ extensions: getThemeExtensions(id) }),
 			).not.toThrow();
+		}
+	});
+
+	it("keeps active-line backgrounds translucent so selections remain visible", () => {
+		for (const { id } of getThemes()) {
+			const activeLine = getThemeConfig(id).activeLine;
+			if (!activeLine) continue;
+
+			expect(activeLine, `${id} active line`).toMatch(/^#[\da-f]{8}$/i);
+			expect(
+				Number.parseInt(activeLine.slice(-2), 16),
+				`${id} active line`,
+			).toBeLessThan(255);
 		}
 	});
 });

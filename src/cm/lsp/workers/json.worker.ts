@@ -5,12 +5,12 @@ import {
 	type LanguageService,
 } from "vscode-json-languageservice";
 import type { TextDocument } from "vscode-languageserver-textdocument";
+import { schemas } from "./jsonSchemas";
 import {
 	getTextDocument,
 	METHOD_NOT_HANDLED,
 	startWorkerServer,
 } from "./protocol";
-import { schemas } from "./jsonSchemas";
 
 interface CachedJsonDocument {
 	version: number;
@@ -105,8 +105,7 @@ startWorkerServer(({ documents, requestFile }) => {
 			const service = getService(document);
 			return service.doValidation(document, getParsed(document, service), {
 				comments: document.languageId === "jsonc" ? "ignore" : "error",
-				trailingCommas:
-					document.languageId === "jsonc" ? "warning" : "error",
+				trailingCommas: document.languageId === "jsonc" ? "warning" : "error",
 			});
 		},
 
@@ -156,11 +155,7 @@ startWorkerServer(({ documents, requestFile }) => {
 				case "textDocument/foldingRange":
 					return service.getFoldingRanges(document);
 				case "textDocument/selectionRange":
-					return service.getSelectionRanges(
-						document,
-						request.positions,
-						json,
-					);
+					return service.getSelectionRanges(document, request.positions, json);
 				default:
 					return METHOD_NOT_HANDLED;
 			}

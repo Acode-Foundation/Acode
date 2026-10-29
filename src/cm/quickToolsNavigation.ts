@@ -31,8 +31,8 @@ import {
 	selectPageUp,
 } from "@codemirror/commands";
 import {
-	type Command,
 	type EditorView as CodeMirrorEditorView,
+	type Command,
 	runScopeHandlers,
 } from "@codemirror/view";
 import { focusEditorIfEditable } from "cm/editorReadOnly";

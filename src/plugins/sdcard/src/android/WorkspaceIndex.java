@@ -50,8 +50,7 @@ class WorkspaceIndex {
   private static final int EXPLICIT_INCLUDE_READ_LIMIT_BYTES = 128 * 1024 * 1024;
   private static final int SAMPLE_BYTES = 8192;
   private static final int MAX_MATCHES_PER_FILE = 5000;
-  private static final int SEARCH_RESULT_BATCH_SIZE = 12;
-  private static final int SEARCH_RESULT_BATCH_MATCHES = 600;
+  private static final int SEARCH_RESULT_BATCH_MATCHES = 200;
 
   private static final Set<String> BINARY_EXTENSIONS = new HashSet<>();
   private static final Set<String> TEXT_EXTENSIONS = new HashSet<>();
@@ -965,8 +964,6 @@ class WorkspaceIndex {
     boolean batchResults = options.optBoolean("batchResults", false);
 
     Pattern pattern = compileSearchPattern(search, searchOptions);
-    JSONArray searchResultBatch = new JSONArray();
-    int batchedMatches = 0;
     int total = files.length();
     int processed = 0;
     int lastProgress = -1;
@@ -1013,38 +1010,18 @@ class WorkspaceIndex {
 
       if ("replace".equals(mode)) {
         String replacement = Matcher.quoteReplacement(replace == null ? "" : replace);
-        String text = pattern.matcher(content).replaceAll(replacement);
+        String text = pattern.matcher(new SearchInput(content, job)).replaceAll(replacement);
         JSONObject result = baseEvent(job.id, "replace-result");
         result.put("file", file);
         result.put("text", text);
         send(callback, result, true);
       } else {
-        JSONObject result = searchInContent(file, content, pattern);
-        if (result != null) {
-          if (batchResults) {
-            searchResultBatch.put(result);
-            batchedMatches += result.getJSONArray("matches").length();
-            if (
-              searchResultBatch.length() >= SEARCH_RESULT_BATCH_SIZE ||
-              batchedMatches >= SEARCH_RESULT_BATCH_MATCHES
-            ) {
-              flushSearchResultBatch(callback, job.id, searchResultBatch);
-              batchedMatches = 0;
-            }
-          } else {
-            JSONObject event = baseEvent(job.id, "search-result");
-            event.put("data", result);
-            send(callback, event, true);
-          }
-        }
+        searchInContent(file, content, pattern, job, callback, batchResults);
       }
 
       processed += 1;
     }
 
-    if (batchResults) {
-      flushSearchResultBatch(callback, job.id, searchResultBatch);
-    }
     sendProgress(callback, job.id, 100);
     send(callback, baseEvent(job.id, "replace".equals(mode) ? "done-replacing" : "done-searching"), false);
   }
@@ -1063,32 +1040,30 @@ class WorkspaceIndex {
     return Pattern.compile(pattern, flags);
   }
 
-  private JSONObject searchInContent(
+  private void searchInContent(
     JSONObject file,
     String content,
-    Pattern pattern
+    Pattern pattern,
+    Job job,
+    CallbackContext callback,
+    boolean batchResults
   ) throws JSONException {
-    Matcher matcher = pattern.matcher(content);
+    SearchInput input = new SearchInput(content, job);
+    Matcher matcher = pattern.matcher(input);
     JSONArray matches = new JSONArray();
-    StringBuilder text = new StringBuilder(file.optString("name"));
-    if (text.length() > 30) {
-      text = new StringBuilder("..." + text.substring(text.length() - 30));
-    }
-
-    boolean limited = false;
+    int matchCount = 0;
     int cursor = 0;
     int row = 0;
     int column = 0;
-    while (matcher.find()) {
-      if (matches.length() >= MAX_MATCHES_PER_FILE) {
-        limited = true;
-        break;
-      }
-      String word = matcher.group();
+    while (true) {
+      input.check();
+      if (!matcher.find()) break;
+      String word = content.substring(matcher.start(), Math.min(matcher.end(), matcher.start() + 160));
       int start = matcher.start();
       int end = matcher.end();
       String[] surrounding = getSurrounding(content, word, start, end);
       while (cursor < start) {
+        if ((cursor & 1023) == 0) input.check();
         if (content.charAt(cursor) == '\n') {
           row += 1;
           column = 0;
@@ -1099,6 +1074,7 @@ class WorkspaceIndex {
       }
       JSONObject startPosition = lineColumn(row, column);
       while (cursor < end) {
+        if ((cursor & 1023) == 0) input.check();
         if (content.charAt(cursor) == '\n') {
           row += 1;
           column = 0;
@@ -1114,34 +1090,31 @@ class WorkspaceIndex {
       match.put("line", surrounding[0].trim());
       match.put("position", position(startPosition, endPosition));
       matches.put(match);
-      text.append("\n\t").append(surrounding[0].trim());
+      matchCount++;
+      if (matchCount == MAX_MATCHES_PER_FILE) {
+        sendSearchMatches(callback, job.id, file, matches, batchResults, matcher.find());
+        return;
+      }
+      if (matches.length() >= SEARCH_RESULT_BATCH_MATCHES) {
+        sendSearchMatches(callback, job.id, file, matches, batchResults, false);
+        matches = new JSONArray();
+        input.renewDeadline();
+      }
     }
 
-    if (matches.length() == 0) return null;
+    sendSearchMatches(callback, job.id, file, matches, batchResults, false);
+  }
 
+  private void sendSearchMatches(CallbackContext callback, String id, JSONObject file,
+    JSONArray matches, boolean batchResults, boolean limited) throws JSONException {
+    if (matches.length() == 0) return;
     JSONObject data = new JSONObject();
     data.put("file", file);
     data.put("matches", matches);
-    if (limited) {
-      text
-        .append("\n\t")
-        .append("... result limit reached for this file");
-    }
     data.put("limited", limited);
-    data.put("text", text.toString());
-    return data;
-  }
-
-  private void flushSearchResultBatch(
-    CallbackContext callback,
-    String id,
-    JSONArray batch
-  ) throws JSONException {
-    if (batch.length() == 0) return;
-    JSONObject event = baseEvent(id, "search-results");
-    event.put("data", new JSONArray(batch.toString()));
+    JSONObject event = baseEvent(id, batchResults ? "search-results" : "search-result");
+    event.put("data", batchResults ? new JSONArray().put(data) : data);
     send(callback, event, true);
-    while (batch.length() > 0) batch.remove(0);
   }
 
   private String getFileContent(
@@ -1590,37 +1563,56 @@ class WorkspaceIndex {
     return result;
   }
 
+  // Java's Matcher does not honor thread interruption. Check its input access
+  // so backtracking is subject to the same cancellation and deadline as results.
+  private static final class SearchInput implements CharSequence {
+    final String content;
+    final Job job;
+    long deadline = System.nanoTime() + 2_000_000_000L;
+    int accesses;
+
+    SearchInput(String content, Job job) {
+      this.content = content;
+      this.job = job;
+    }
+
+    void renewDeadline() { deadline = System.nanoTime() + 2_000_000_000L; }
+
+    void check() {
+      if (job.cancelled) throw new IllegalStateException("Search cancelled");
+      if (System.nanoTime() > deadline) throw new IllegalStateException("Search timed out; simplify the expression");
+    }
+
+    public int length() { return content.length(); }
+    public char charAt(int index) {
+      if ((accesses++ & 1023) == 0) check();
+      return content.charAt(index);
+    }
+    public CharSequence subSequence(int start, int end) { return content.subSequence(start, end); }
+    public String toString() { return content; }
+  }
+
   private String[] getSurrounding(String content, String word, int start, int end) {
     int max = 160;
-    int lineStart = start;
-    while (lineStart > 0) {
-      char previous = content.charAt(lineStart - 1);
-      if (previous == '\n' || previous == '\r') break;
-      lineStart--;
+    int remaining = Math.max(0, max - (end - start));
+    int snippetStart = start;
+    int leftLimit = Math.max(0, start - remaining / 2);
+    while (snippetStart > leftLimit) {
+      char c = content.charAt(snippetStart - 1);
+      if (c == '\n' || c == '\r') break;
+      snippetStart--;
     }
-
-    int lineEnd = end;
-    while (lineEnd < content.length()) {
-      char current = content.charAt(lineEnd);
-      if (current == '\n' || current == '\r') break;
-      lineEnd++;
+    int snippetEnd = Math.min(end, start + max);
+    int rightLimit = Math.min(content.length(), snippetStart + max);
+    while (snippetEnd < rightLimit) {
+      char c = content.charAt(snippetEnd);
+      if (c == '\n' || c == '\r') break;
+      snippetEnd++;
     }
-
-    int snippetStart = lineStart;
-    int snippetEnd = lineEnd;
-    if (lineEnd - lineStart > max) {
-      int matchLength = Math.max(1, end - start);
-      int remaining = Math.max(0, max - matchLength);
-      int left = remaining / 2;
-      int right = remaining - left;
-      snippetStart = Math.max(lineStart, start - left);
-      snippetEnd = Math.min(lineEnd, end + right);
-    }
-
     StringBuilder line = new StringBuilder();
-    if (snippetStart > lineStart) line.append("...");
+    if (snippetStart > 0 && content.charAt(snippetStart - 1) != '\n' && content.charAt(snippetStart - 1) != '\r') line.append("...");
     line.append(content.substring(snippetStart, snippetEnd).trim());
-    if (snippetEnd < lineEnd) line.append("...");
+    if (snippetEnd < content.length() && content.charAt(snippetEnd) != '\n' && content.charAt(snippetEnd) != '\r') line.append("...");
     String renderText = word;
 
     return new String[] {

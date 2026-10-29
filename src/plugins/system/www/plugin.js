@@ -231,6 +231,15 @@ module.exports = {
       [String(!!disabled)]
     );
   },
+  /**
+   * Change the app icon at runtime.
+   * @param iconName Icon id, e.g. "midnight_circuit", or "default" to restore the original icon
+   * @param onSuccess
+   * @param onFail
+   */
+  setAppIcon: function (iconName, onSuccess, onFail) {
+    cordova.exec(onSuccess, onFail, 'System', 'set-app-icon', [iconName]);
+  },
   getGlobalSetting: function (key, onSuccess, onFail) {
     cordova.exec(onSuccess, onFail, 'System', 'get-global-setting', [key]);
   },
@@ -272,5 +281,231 @@ module.exports = {
         [text1, text2]
       );
     });
+  },
+  /**
+   * Make an HTTP request and receive the response body as a WHATWG
+   * `ReadableStream` of `Uint8Array` chunks, as bytes arrive from the server.
+   *
+   * The native layer does not buffer the whole response and performs no SSE /
+   * provider specific parsing; it simply forwards raw byte chunks. Chunk
+   * boundaries are arbitrary and may split multi-byte UTF-8 characters or SSE
+   * frames. The consumer is responsible for decoding / parsing the stream.
+   *
+   * @param {string} url - Request URL
+   * @param {Object} [options]
+   * @param {string} [options.method="GET"] - HTTP method
+   * @param {Object<string,string>} [options.headers] - Request headers
+   * @param {string} [options.body] - Request body. Sent as UTF-8 text unless
+   *   `bodyIsBase64` is set, in which case it is decoded from base64.
+   * @param {boolean} [options.bodyIsBase64=false]
+   * @param {boolean} [options.followRedirects=true]
+   * @param {number} [options.connectTimeout=30000] - Connect timeout in ms
+   * @param {number} [options.readTimeout=0] - Read timeout in ms (0 = none)
+   * @param {number} [options.chunkSize=32768] - Requested native chunk size in bytes
+   * @param {AbortSignal} [options.signal] - When aborted, the underlying native
+   *   request is cancelled. If the headers have not yet arrived the returned
+   *   promise rejects with an `AbortError`; otherwise the response stream is
+   *   errored with an `AbortError`.
+   * @returns {Promise<Response>} Resolves with a `Response` whose `body` is a
+   *   `ReadableStream` delivering `Uint8Array` chunks. A 4xx/5xx HTTP status
+   *   is a normal response (not a rejected promise); only transport failures
+   *   reject. Cancelling the returned stream's reader (or aborting
+   *   `options.signal`) cancels the underlying native HTTP request.
+   */
+  httpStream: function (url, options) {
+    options = options || {};
+    var signal = options.signal || null;
+
+    var nativeOptions = {};
+    for (var key in options) {
+      if (key !== 'signal') nativeOptions[key] = options[key];
+    }
+
+    return new Promise(function (resolve, reject) {
+      var requestId = "httpStream_" + Date.now() + "_" + Math.random().toString(36).slice(2, 10);
+      var HIGH_WATER_MARK = 65536;
+      var controller = null;
+      var headersReceived = false;
+      var started = false;
+      var cancelSent = false;
+      var terminal = false;
+      var receivedBytes = 0;
+      var ackedBytes = 0;
+
+      function sendCancel() {
+        if (cancelSent) return;
+        cancelSent = true;
+        cordova.exec(null, null, 'System', 'http-stream-cancel', [requestId]);
+      }
+
+      function teardownSignal() {
+        if (signal) {
+          try {
+            signal.removeEventListener('abort', onAbort);
+          } catch (e) {}
+        }
+      }
+
+      function finish() {
+        terminal = true;
+        teardownSignal();
+      }
+
+      function fail(err) {
+        if (terminal) return;
+        finish();
+        if (headersReceived && controller) {
+          controller.error(err);
+        } else {
+          reject(err);
+        }
+      }
+
+      function onAbort() {
+        if (terminal) return;
+        if (started) sendCancel();
+        var err = new Error('The http stream was aborted');
+        err.name = 'AbortError';
+        fail(err);
+      }
+
+      function ackConsumed() {
+        if (terminal || !controller) return;
+        var desired = controller.desiredSize;
+        if (desired === null) return;
+        var buffered = Math.max(0, HIGH_WATER_MARK - desired);
+        var consumed = receivedBytes - buffered;
+        var delta = consumed - ackedBytes;
+        if (delta > 0) {
+          ackedBytes = consumed;
+          cordova.exec(null, null, 'System', 'http-stream-ack', [requestId, delta]);
+        }
+      }
+
+      function headersFromPairs(pairs) {
+        var h = new Headers();
+        if (!pairs) return h;
+        if (!Array.isArray(pairs)) {
+          for (var name in pairs) {
+            try {
+              h.append(name, pairs[name]);
+            } catch (e) {}
+          }
+          return h;
+        }
+        for (var i = 0; i < pairs.length; i++) {
+          var pair = pairs[i];
+          if (!pair || pair.length < 2) continue;
+          try {
+            h.append(pair[0], pair[1]);
+          } catch (e) {}
+        }
+        return h;
+      }
+
+      var stream = new ReadableStream({
+        start: function (c) {
+          controller = c;
+        },
+        pull: function () {
+          ackConsumed();
+        },
+        cancel: function () {
+          finish();
+          if (started) sendCancel();
+        }
+      }, {
+        highWaterMark: HIGH_WATER_MARK,
+        size: function (chunk) {
+          return chunk.byteLength;
+        }
+      });
+
+      if (signal) {
+        if (signal.aborted) {
+          onAbort();
+        } else {
+          signal.addEventListener('abort', onAbort);
+        }
+      }
+      if (terminal) return;
+
+      started = true;
+      cordova.exec(
+        function (event) {
+          if (!event || typeof event !== 'object' || terminal) return;
+
+          switch (event.type) {
+            case 'headers': {
+              headersReceived = true;
+              var status = event.status;
+              var cannotHaveBody = status === 204 || status === 205 || status === 304;
+              var headers = headersFromPairs(event.headers || []);
+              var response;
+              if (cannotHaveBody) {
+                response = new Response(null, {
+                  status: status,
+                  statusText: event.statusText || '',
+                  headers: headers
+                });
+              } else {
+                response = new Response(stream, {
+                  status: status,
+                  statusText: event.statusText || '',
+                  headers: headers
+                });
+              }
+              if (event.url) {
+                Object.defineProperty(response, 'url', { value: event.url, configurable: true });
+              }
+              resolve(response);
+              break;
+            }
+            case 'data': {
+              if (controller && event.chunk) {
+                var bytes = event.b64
+                  ? base64ToBytes(event.chunk)
+                  : latin1ToBytes(event.chunk);
+                controller.enqueue(bytes);
+                receivedBytes += bytes.byteLength;
+              }
+              break;
+            }
+            case 'complete': {
+              finish();
+              if (controller) controller.close();
+              break;
+            }
+            case 'error': {
+              fail(new Error(event.message || 'Stream failed'));
+              break;
+            }
+          }
+        },
+        function (err) {
+          fail(typeof err === 'string' ? new Error(err) : err);
+        },
+        'System',
+        'http-stream-start',
+        [requestId, url, nativeOptions]
+      );
+    });
   }
 };
+
+function base64ToBytes(base64) {
+  var binary = atob(base64);
+  var bytes = new Uint8Array(binary.length);
+  for (var i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+function latin1ToBytes(text) {
+  var bytes = new Uint8Array(text.length);
+  for (var i = 0; i < text.length; i++) {
+    bytes[i] = text.charCodeAt(i);
+  }
+  return bytes;
+}

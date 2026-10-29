@@ -1,10 +1,10 @@
-import { describe, expect, it } from "vitest";
 import {
 	isBinaryFile,
 	isBinaryMime,
 	isBinaryPath,
 	isTextPath,
 } from "utils/binaryExtensions";
+import { describe, expect, it } from "vitest";
 
 describe("isBinaryPath", () => {
 	it("detects binary extensions", () => {

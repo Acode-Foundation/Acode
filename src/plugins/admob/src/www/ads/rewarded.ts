@@ -23,4 +23,9 @@ export class RewardedAd extends MobileAd<RewardedAdOptions> {
   public show() {
     return super.show();
   }
+
+  /** Release an Android rewarded ad after dismissal or before presentation. */
+  public destroy() {
+    return super.destroy();
+  }
 }

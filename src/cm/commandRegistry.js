@@ -63,13 +63,7 @@ import {
 } from "@codemirror/lint";
 import {
 	LSPPlugin,
-	closeReferencePanel as lspCloseReferencePanel,
-	findReferences as lspFindReferences,
 	formatDocument as lspFormatDocument,
-	jumpToDeclaration as lspJumpToDeclaration,
-	jumpToDefinition as lspJumpToDefinition,
-	jumpToImplementation as lspJumpToImplementation,
-	jumpToTypeDefinition as lspJumpToTypeDefinition,
 } from "@codemirror/lsp-client";
 import { Compartment, EditorSelection } from "@codemirror/state";
 import { keymap } from "@codemirror/view";
@@ -91,6 +85,10 @@ import {
 	renameSymbol as acodeRenameSymbol,
 	clearDiagnosticsEffect,
 	clientManager,
+	jumpToDeclaration as lspJumpToDeclaration,
+	jumpToDefinition as lspJumpToDefinition,
+	jumpToImplementation as lspJumpToImplementation,
+	jumpToTypeDefinition as lspJumpToTypeDefinition,
 	nextSignature as lspNextSignature,
 	prevSignature as lspPrevSignature,
 	showSignatureHelp as lspShowSignatureHelp,

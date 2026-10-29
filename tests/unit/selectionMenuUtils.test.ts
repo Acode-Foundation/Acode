@@ -1,4 +1,7 @@
-import { filterSelectionMenuItems } from "cm/selectionMenuUtils";
+import {
+	filterSelectionMenuItems,
+	partitionSelectionMenuItems,
+} from "cm/selectionMenuUtils";
 import { describe, expect, it } from "vitest";
 
 const items = [
@@ -39,5 +42,34 @@ describe("selection menu filtering", () => {
 			"paste",
 			"select-all",
 		]);
+	});
+});
+
+describe("selection menu hierarchy", () => {
+	it("keeps selection essentials in the compact toolbar", () => {
+		const pluginItem = { id: "plugin-action", mode: "all" } as const;
+		const { primary, overflow } = partitionSelectionMenuItems(
+			[...items, pluginItem],
+			{ hasSelection: true },
+		);
+
+		expect(primary.map((item) => item.id)).toEqual([
+			"copy",
+			"cut",
+			"paste",
+			"select-all",
+		]);
+		expect(overflow.map((item) => item.id)).toEqual(["plugin-action"]);
+	});
+
+	it("keeps caret actions concise and moves plugins into More", () => {
+		const pluginItem = { mode: "all" } as const;
+		const { primary, overflow } = partitionSelectionMenuItems(
+			[...items, pluginItem],
+			{ hasSelection: false },
+		);
+
+		expect(primary.map((item) => item.id)).toEqual(["paste", "select-all"]);
+		expect(overflow).toEqual([items[0], items[1], pluginItem]);
 	});
 });

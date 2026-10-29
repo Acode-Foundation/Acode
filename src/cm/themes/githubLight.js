@@ -1,6 +1,7 @@
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorView, lineNumbers } from "@codemirror/view";
 import { tags as t } from "@lezer/highlight";
+import { memberProperty } from "../highlightTags";
 
 export const config = {
 	name: "githubLight",
@@ -20,6 +21,7 @@ export const config = {
 	variable: "#1f2328",
 	parameter: "#1f2328",
 	function: "#8250df",
+	memberProperty: "#1f2328",
 	string: "#0a3069",
 	constant: "#0550ae",
 	type: "#0550ae",
@@ -109,6 +111,10 @@ export const githubLightTheme = EditorView.theme(
 );
 
 export const githubLightHighlightStyle = HighlightStyle.define([
+	{
+		tag: [memberProperty, t.definition(memberProperty)],
+		color: config.memberProperty,
+	},
 	{ tag: t.keyword, color: config.keyword },
 	{
 		tag: [t.name, t.deleted, t.character, t.macroName],
@@ -119,7 +125,16 @@ export const githubLightHighlightStyle = HighlightStyle.define([
 		tag: [t.processingInstruction, t.string, t.inserted, t.special(t.string)],
 		color: config.string,
 	},
-	{ tag: [t.function(t.variableName), t.labelName], color: config.function },
+	{
+		tag: [
+			t.function(t.variableName),
+			t.function(t.propertyName),
+			t.function(t.definition(t.propertyName)),
+			t.function(t.definition(t.variableName)),
+			t.labelName,
+		],
+		color: config.function,
+	},
 	{
 		tag: [t.color, t.constant(t.name), t.standard(t.name)],
 		color: config.constant,

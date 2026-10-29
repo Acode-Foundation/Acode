@@ -172,10 +172,7 @@ test("resume after expiry clears rewarded suppression", async () => {
 test("refresh failure preserves state, suppression, and existing timer", async () => {
 	const failure = new Error("offline");
 	const harness = createHarness({
-		statuses: [
-			{ isActive: true, adFreeUntil: 61_000 },
-			failure,
-		],
+		statuses: [{ isActive: true, adFreeUntil: 61_000 }, failure],
 	});
 	await harness.lifecycle.initialize();
 	const activeState = harness.state;
@@ -226,7 +223,10 @@ test("clearing reward suppression leaves Pro suppression active", () => {
 		adFreeUntil: 0,
 	});
 
-	assert.deepEqual(harness.suppressions, new Set([BANNER_SUPPRESSION_REASON.PRO]));
+	assert.deepEqual(
+		harness.suppressions,
+		new Set([BANNER_SUPPRESSION_REASON.PRO]),
+	);
 });
 
 test("uses the same expiry predicate exposed to ad eligibility checks", () => {

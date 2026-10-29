@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import { isExcludedFileOperationPath } from "utils/fileOperationExclusions";
+import { describe, expect, it } from "vitest";
 
 const patterns = [
 	"**/node_modules/**",
@@ -35,10 +35,7 @@ describe("isExcludedFileOperationPath", () => {
 
 	it("normalizes Windows separators", () => {
 		expect(
-			isExcludedFileOperationPath(
-				"C:\\project\\package.egg-info",
-				patterns,
-			),
+			isExcludedFileOperationPath("C:\\project\\package.egg-info", patterns),
 		).toBe(true);
 	});
 

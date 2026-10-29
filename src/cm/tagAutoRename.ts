@@ -1,7 +1,6 @@
 import { syntaxTree } from "@codemirror/language";
-import type { Extension, Text } from "@codemirror/state";
+import type { ChangeSpec, Extension, Text } from "@codemirror/state";
 import { Annotation, EditorState, Transaction } from "@codemirror/state";
-import type { ChangeSpec } from "@codemirror/state";
 import type { SyntaxNode } from "@lezer/common";
 
 const skipTagAutoRename = Annotation.define<boolean>();
@@ -17,7 +16,11 @@ interface ChangedRange {
 	toA: number;
 }
 
-function getTagNameNode(state: EditorState, from: number, to: number): SyntaxNode | null {
+function getTagNameNode(
+	state: EditorState,
+	from: number,
+	to: number,
+): SyntaxNode | null {
 	const tree = syntaxTree(state);
 	const positions = from === to ? [from, from - 1] : [from, to, to - 1];
 
@@ -127,15 +130,14 @@ function createPairedRename(transaction: Transaction): ChangeSpec | null {
 		change.fromA,
 		change.toA,
 	);
-	if (!target || !touchesRange(change, target.tagName.from, target.tagName.to)) {
+	if (
+		!target ||
+		!touchesRange(change, target.tagName.from, target.tagName.to)
+	) {
 		return null;
 	}
 	if (
-		touchesRange(
-			change,
-			target.pairedTagName.from,
-			target.pairedTagName.to,
-		)
+		touchesRange(change, target.pairedTagName.from, target.pairedTagName.to)
 	) {
 		return null;
 	}

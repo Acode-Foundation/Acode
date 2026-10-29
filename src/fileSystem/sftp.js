@@ -6,49 +6,33 @@ import Path from "utils/Path";
 import Url from "utils/Url";
 import internalFs from "./internalFs";
 
+let pendingConnection = null;
+let pendingConnectionID = null;
+
 class SftpClient {
 	#MAX_TRY = 3;
-	#hostname;
-	#port;
-	#username;
-	#authenticationType;
-	#password;
-	#keyFile;
-	#passPhrase;
+	#profileID;
 	#base;
 	#connectionID;
 	#path;
 	#stat;
-	#retry = 0;
 
 	/**
 	 *
 	 * @param {String} hostname
 	 * @param {Number} port
 	 * @param {String} username
-	 * @param {{password?: String, passPhrase?: String, keyFile?: String}} authentication
+	 * @param {{profileID: String}} authentication
 	 */
 	constructor(hostname, port = 22, username, authentication) {
-		this.#hostname = hostname;
-		this.#port = port;
-		this.#username = username;
-		this.#authenticationType = !!authentication.keyFile ? "key" : "password";
-		this.#keyFile = authentication.keyFile;
-		this.#passPhrase = authentication.passPhrase;
-		this.#password = authentication.password;
-		this.#base = Url.formate({
-			protocol: "sftp:",
-			hostname: this.#hostname,
-			port: this.#port,
-			username: this.#username,
-			password: this.#password,
-			query: {
-				passPhrase: this.#passPhrase,
-				keyFile: this.#keyFile,
-			},
-		});
+		authentication ||= {};
+		this.#profileID = authentication.profileID;
+		if (!this.#profileID) {
+			throw new Error("A native SFTP profile is required");
+		}
+		this.#base = Url.formate({ protocol: "sftp:", hostname: this.#profileID });
 
-		this.#connectionID = `${this.#username}@${this.#hostname}`;
+		this.#connectionID = this.#profileID;
 	}
 
 	setPath(path) {
@@ -398,41 +382,73 @@ class SftpClient {
 	}
 
 	async connect() {
-		await new Promise((resolve, reject) => {
-			const retry = (err) => {
-				if (settings.value.retryRemoteFsAfterFail) {
-					if (++this.#retry > this.#MAX_TRY) {
-						this.#retry = 0;
-						reject(err);
-					} else {
-						this.connect().then(resolve).catch(reject);
-					}
-				} else {
-					reject(err);
-				}
-			};
-
-			if (this.#authenticationType === "key") {
-				sftp.connectUsingKeyFile(
-					this.#hostname,
-					this.#port,
-					this.#username,
-					this.#keyFile,
-					this.#passPhrase,
-					resolve,
-					retry,
-				);
-				return;
+		if (pendingConnection) {
+			if (pendingConnectionID === this.#connectionID) {
+				return pendingConnection;
 			}
+			try {
+				await pendingConnection;
+			} catch {
+				// The next profile should still get its own connection attempt.
+			}
+			return this.connect();
+		}
 
-			sftp.connectUsingPassword(
-				this.#hostname,
-				this.#port,
-				this.#username,
-				this.#password,
-				resolve,
-				retry,
-			);
+		pendingConnectionID = this.#connectionID;
+		pendingConnection = this.#connectWithRetry();
+
+		try {
+			return await pendingConnection;
+		} finally {
+			if (pendingConnectionID === this.#connectionID) {
+				pendingConnection = null;
+				pendingConnectionID = null;
+			}
+		}
+	}
+
+	/**
+	 * Tests a profile once without the normal remote-filesystem retry policy.
+	 * @param {string} requestID Native request ID used for cancellation
+	 */
+	testConnection(requestID) {
+		return new Promise((resolve, reject) => {
+			sftp.testProfile(this.#profileID, requestID, 10000, resolve, reject);
+		});
+	}
+
+	/** Cancel an in-flight profile test. */
+	cancelConnection(requestID) {
+		return new Promise((resolve) => {
+			sftp.cancelConnection(requestID, resolve, resolve);
+		});
+	}
+
+	async #connectWithRetry() {
+		const attempts = settings.value.retryRemoteFsAfterFail
+			? this.#MAX_TRY + 1
+			: 1;
+		let lastError;
+
+		for (let attempt = 0; attempt < attempts; attempt++) {
+			try {
+				return await this.#connectWithHostVerification();
+			} catch (error) {
+				if (error?.nonRetryable) throw error;
+				lastError = error;
+			}
+		}
+
+		throw lastError;
+	}
+
+	async #connectWithHostVerification() {
+		return this.#connectOnce();
+	}
+
+	#connectOnce() {
+		return new Promise((resolve, reject) => {
+			sftp.connectUsingProfile(this.#profileID, resolve, reject);
 		});
 	}
 
@@ -581,25 +597,22 @@ class SftpClient {
  * @param {String} host
  * @param {Number} port
  * @param {String} username
- * @param {{password?: String, passPhrase?: String, keyFile?: String}} authentication
+ * @param {{profileID: String}} authentication
  */
 function Sftp(host, port, username, authentication) {
 	return new SftpClient(host, port, username, authentication);
 }
 
 Sftp.fromUrl = (url) => {
-	const { username, password, hostname, pathname, port, query } =
-		Url.decodeUrl(url);
-	const { keyFile, passPhrase } = query;
-
-	const sftp = new SftpClient(hostname, port || 22, username, {
-		password,
-		keyFile,
-		passPhrase,
-	});
-
-	sftp.setPath(pathname);
-	return createFs(sftp);
+	const { hostname, pathname } = Url.decodeUrl(url);
+	if (hostname?.startsWith("profile-")) {
+		const sftp = new SftpClient(null, 22, null, { profileID: hostname });
+		sftp.setPath(pathname);
+		return createFs(sftp);
+	}
+	throw new Error(
+		"Legacy SFTP credentials must be migrated to a native profile",
+	);
 };
 
 Sftp.test = (url) => /^sftp:/.test(url);

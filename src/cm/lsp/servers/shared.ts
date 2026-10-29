@@ -1,9 +1,43 @@
+import type { LspServerManifest } from "../types";
+
 export function normalizeServerLanguageKey(
 	value: string | undefined | null,
 ): string {
 	return String(value ?? "")
 		.trim()
 		.toLowerCase();
+}
+
+export function isTailwindCssServer(server: LspServerManifest): boolean {
+	const identifiers = [
+		server.id,
+		server.label,
+		server.transport?.command,
+		...(server.transport?.args ?? []),
+		server.launcher?.command,
+		...(server.launcher?.args ?? []),
+		server.launcher?.bridge?.command,
+		...(server.launcher?.bridge?.args ?? []),
+	];
+	return identifiers.some((value) =>
+		normalizeServerLanguageKey(value).includes("tailwindcss"),
+	);
+}
+
+export function addJsTsLanguageAliases(languages: string[]): string[] {
+	const aliases = new Set(languages.map(normalizeServerLanguageKey));
+	const pairs = [
+		["js", "javascript"],
+		["jsx", "javascriptreact"],
+		["ts", "typescript"],
+		["tsx", "typescriptreact"],
+	];
+	for (const [short, standard] of pairs) {
+		if (!aliases.has(short) && !aliases.has(standard)) continue;
+		aliases.add(short);
+		aliases.add(standard);
+	}
+	return [...aliases].filter(Boolean);
 }
 
 export function resolveJsTsLanguageId(

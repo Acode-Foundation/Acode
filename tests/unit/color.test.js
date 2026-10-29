@@ -1,8 +1,8 @@
-import { describe, expect, it } from "vitest";
 import Hex from "utils/color/hex";
 import Hsl from "utils/color/hsl";
 import { isValidColor } from "utils/color/regex";
 import Rgb from "utils/color/rgb";
+import { describe, expect, it } from "vitest";
 
 describe("Rgb", () => {
 	it("stringifies opaque colors as rgb()", () => {

@@ -22,6 +22,7 @@ import alert from "./alert";
  * @property {boolean} [readOnly] Is read only
  * @property {boolean} [autofocus] Is autofocus
  * @property {boolean} [hidden] Is hidden
+ * @property {boolean} [sensitive] Clear the input when the prompt closes
  */
 
 /**
@@ -66,8 +67,9 @@ export default function multiPrompt(message, inputs, help) {
 						return;
 					}
 				}
+				const values = getValue();
 				hide();
-				resolve(getValue());
+				resolve(values);
 			},
 		});
 		const cancelBtn = tag("button", {
@@ -88,7 +90,9 @@ export default function multiPrompt(message, inputs, help) {
 			onsubmit: (e) => {
 				e.preventDefault();
 				if (!okBtn.disabled) {
-					resolve(getValue());
+					const values = getValue();
+					hide();
+					resolve(values);
 				}
 			},
 			children: [
@@ -136,6 +140,7 @@ export default function multiPrompt(message, inputs, help) {
 		if ($focusEl) $focusEl.focus();
 
 		function hidePrompt() {
+			clearSensitiveInputs();
 			$promptDiv.classList.add("hide");
 			restoreTheme();
 			setTimeout(() => {
@@ -158,8 +163,17 @@ export default function multiPrompt(message, inputs, help) {
 					values[$input.id] = $input.checked;
 				else values[$input.id] = $input.value;
 			});
+			clearSensitiveInputs(inputAr);
 
 			return values;
+		}
+
+		function clearSensitiveInputs(inputs = [...$body.getAll("input")]) {
+			for (const $input of inputs) {
+				if ($input.type === "password" || $input.isSensitive) {
+					$input.value = "";
+				}
+			}
 		}
 
 		/**
@@ -211,6 +225,7 @@ export default function multiPrompt(message, inputs, help) {
 				readOnly,
 				autofocus,
 				hidden,
+				sensitive,
 			} = input;
 
 			const inputType = type === "textarea" ? "textarea" : "input";
@@ -276,6 +291,9 @@ export default function multiPrompt(message, inputs, help) {
 
 			Object.defineProperty($input, "prompt", {
 				value: { $body, hide },
+			});
+			Object.defineProperty($input, "isSensitive", {
+				value: Boolean(sensitive),
 			});
 
 			Object.defineProperty($input, "setError", {

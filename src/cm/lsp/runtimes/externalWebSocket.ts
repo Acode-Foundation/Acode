@@ -1,8 +1,5 @@
-import type {
-	InstallCheckResult,
-	LspRuntimeProvider,
-} from "../types";
 import { EXTERNAL_WEBSOCKET_RUNTIME_ID } from "../runtimeProviders";
+import type { InstallCheckResult, LspRuntimeProvider } from "../types";
 
 const externallyManagedStatus: InstallCheckResult = {
 	status: "unknown",
