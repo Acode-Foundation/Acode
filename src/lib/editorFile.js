@@ -1634,6 +1634,38 @@ export default class EditorFile {
 		this.#fileAction("SEND");
 	}
 
+	async reload() {
+		if (!this.uri) return;
+
+		if (this.refreshUnsavedState()) {
+			const confirmation = await confirm(
+				strings.warning.toUpperCase(),
+				strings["unsaved file"],
+			);
+
+			if (!confirmation) return;
+		}
+
+		try {
+			const fs = fsOperation(this.uri);
+
+			const stat = await fs.stat?.().catch(() => null);
+			const mtime = helpers.getStatMtime(stat);
+
+			const value = await fs.readFile(this.encoding);
+
+			this.session.setValue(value);
+
+			this.markLoaded({
+				mtime,
+				isUnsaved: false,
+			});
+		} catch (error) {
+			console.error("Unable to reload file:", error);
+			toast(strings.error);
+		}
+	}
+
 	runAction() {
 		this.#fileAction("RUN");
 	}
