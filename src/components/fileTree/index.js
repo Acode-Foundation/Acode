@@ -35,6 +35,9 @@ export default class FileTree {
 		this.isLoading = false;
 		this.childTrees = new Map(); // Track child trees for cleanup
 		this.depth = options._depth || 0; // Internal: nesting depth
+		// Bumped on every load and on destroy so a slow load that finishes
+		// late can tell it's stale and skip rendering.
+		this.generation = 0;
 	}
 
 	/**
@@ -45,11 +48,14 @@ export default class FileTree {
 		if (this.isLoading) return;
 		this.isLoading = true;
 		this.currentUrl = url;
+		const generation = ++this.generation;
 
 		try {
 			this.clear();
 
 			const entries = await this.options.getEntries(url);
+			// Destroyed (e.g. the folder collapsed) while listing.
+			if (generation !== this.generation) return;
 			this.entries = helpers.sortDir(entries, {
 				sortByName: true,
 				showHiddenFiles: true,
@@ -341,6 +347,7 @@ export default class FileTree {
 	 * Destroy the file tree and cleanup
 	 */
 	destroy() {
+		this.generation++;
 		this.clear();
 		this.container.classList.remove("file-tree");
 	}

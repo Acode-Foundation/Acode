@@ -354,20 +354,21 @@ async function expandList($list) {
 
 	if (!$ul) return;
 
-	// Cleanup existing file tree
-	if ($ul._fileTree) {
-		$ul._fileTree.destroy();
-		$ul._fileTree = null;
-	}
+	// Cleanup existing file tree, including one still loading: toggling while
+	// it loads would otherwise render both trees into the same list.
+	for (const tree of [$ul._fileTree, $ul._pendingFileTree]) tree?.destroy();
+	$ul._fileTree = null;
+	$ul._pendingFileTree = null;
 	$ul.innerHTML = "";
 
 	if (saveState) listState[url] = $list.unclasped;
 	if (!$list.unclasped) return;
 
+	let fileTree;
 	try {
 		startLoading();
 
-		const fileTree = new FileTree($ul, {
+		fileTree = new FileTree($ul, {
 			getEntries: (dirUrl) => fsOperation(dirUrl).lsDir(),
 			expandedState: listState,
 			onExpandedChange: (folderUrl, isExpanded) => {
@@ -381,9 +382,16 @@ async function expandList($list) {
 			},
 		});
 
+		$ul._pendingFileTree = fileTree;
 		await fileTree.load(url);
+		// A later toggle replaced this tree while it loaded.
+		if ($ul._pendingFileTree !== fileTree) return;
+		$ul._pendingFileTree = null;
 		$ul._fileTree = fileTree;
 	} catch (err) {
+		// A newer toggle owns the list now; don't collapse it.
+		if ($ul._pendingFileTree !== fileTree) return;
+		$ul._pendingFileTree = null;
 		$list.collapse();
 		if (err?.includes?.("Invalid message length")) {
 			console.error(err);
@@ -392,7 +400,8 @@ async function expandList($list) {
 		}
 		helpers.error(err);
 	} finally {
-		stopLoading();
+		// Leave the loading bar to a newer load that is still running.
+		if (!$ul._pendingFileTree) stopLoading();
 	}
 }
 

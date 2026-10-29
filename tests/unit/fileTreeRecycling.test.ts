@@ -71,3 +71,29 @@ it("uses recycled file identity for open and context actions", () => {
 	);
 	tree.destroy();
 });
+
+it("renders a folder once when it is toggled while still loading", async () => {
+	const pending: Array<() => void> = [];
+	const getEntries = vi.fn(
+		() =>
+			new Promise((resolve) => {
+				pending.push(() =>
+					resolve([{ name: "a.js", url: "file:///src/a.js", isFile: true }]),
+				);
+			}),
+	);
+	const tree = new FileTree(document.createElement("div"), { getEntries });
+	const row = tree.createFolderElement("src", "file:///src");
+
+	const first = row.expand();
+	await row.collapse();
+	const second = row.expand();
+	for (const resolve of pending) resolve();
+	await Promise.all([first, second]);
+
+	expect(getEntries).toHaveBeenCalledTimes(2);
+	expect(
+		row.$ul.querySelectorAll('[data-url="file:///src/a.js"]'),
+	).toHaveLength(1);
+	tree.destroy();
+});
