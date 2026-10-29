@@ -5,7 +5,7 @@ const prettier = require('prettier');
 main();
 
 async function main() {
-  const patchVersion = '2';
+  const patchVersion = '3';
   const flagFile = path.resolve(__dirname, '../platforms/android/.flag_done');
   if (fs.existsSync(flagFile)) {
     const appliedVersion = fs.readFileSync(flagFile, 'utf8').trim();
@@ -144,9 +144,7 @@ async function main() {
             if (type == NO_SUGGESTIONS) {
               outAttrs.inputType |= InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS;
             } else if (type == NO_SUGGESTIONS_AGGRESSIVE) {
-              outAttrs.inputType =
-                InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS |
-                InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD;
+              outAttrs.inputType |= InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS;
             } else {
               outAttrs.inputType |= InputType.TYPE_NULL;
             }
@@ -380,6 +378,20 @@ async function main() {
     const contentToAddTo = contentToAdd[file];
     const text = removeComments(content);
     let newContent = await format(text);
+
+    if (file === 'SystemWebView.java') {
+      newContent = newContent.replace(
+        /outAttrs\\.inputType\\s*=\\s*InputType\\.TYPE_TEXT_FLAG_NO_SUGGESTIONS\\s*\\|\\s*InputType\\.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD\\s*;/g,
+        'outAttrs.inputType |= InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS;',
+      );
+    }
+
+    if (file === 'SystemWebView.java') {
+      newContent = newContent.replace(
+        /outAttrs\.inputType\s*=\s*InputType\.TYPE_TEXT_FLAG_NO_SUGGESTIONS\s*\|\s*InputType\.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD\s*;/g,
+        'outAttrs.inputType |= InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS;',
+      );
+    }
     if (contentToAddTo.import) {
       const imports = contentToAddTo.import.map(importStr => {
         return `import ${importStr};`;
@@ -400,9 +412,14 @@ async function main() {
       );
     }
     if (contentToAddTo.methods) {
-      const methods = contentToAddTo.methods.map(method => {
-        return getMethodString(method);
-      }).join('\n');
+      if (file === 'SystemWebView.java') {
+        newContent = removeMethod(newContent, 'onCreateInputConnection');
+      }
+
+      const methods = contentToAddTo.methods
+        .filter(method => !(file === 'SystemWebView.java' && method.name === 'onCreateInputConnection'))
+        .map(method => getMethodString(method))
+        .join('\n');
 
       if (isInterface(file, content)) {
         const regex = getInterfaceDeclarationRegex(file);
@@ -456,7 +473,16 @@ async function main() {
     });
   }
 
-  function getMethodString(method) {
+  function removeMethod(content, methodName) {
+  const regex = new RegExp(
+    `\\n\\s*@Override\\s*\\n\\s*public\\s+[^\\s]+\\s+${methodName}\\s*\\([^)]*\\)\\s*\\{[^]*?\\n\\s*\\}`,
+    'm',
+  );
+
+  return content.replace(regex, '');
+}
+
+function getMethodString(method) {
     const params = method.params.map(param => {
       return `${param.type} ${param.name}`;
     }).join(', ');
