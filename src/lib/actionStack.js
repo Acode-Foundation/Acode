@@ -79,7 +79,7 @@ export default {
 		if (appSettings.value.confirmOnExit) {
 			let closeMessage =
 				acode.exitAppMessage || strings["close app"].capitalize(0);
-			confirmation = await confirm(strings.warning.toUpperCase(), closeMessage);
+			confirmation = await confirm(strings.warning, closeMessage);
 		}
 
 		if (confirmation) {

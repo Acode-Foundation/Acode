@@ -128,6 +128,36 @@ export default {
 		return msg + (extra ? "<br>" + extra : "");
 	},
 	/**
+	 * Maps common native errors (e.g. revoked SAF permissions) to a message
+	 * people can act on. Returns null when the error isn't recognised.
+	 * @param {string} msg
+	 * @returns {string|null}
+	 */
+	friendlyErrorMessage(msg) {
+		if (typeof msg !== "string") return null;
+		if (
+			/Permission Denial|ACTION_OPEN_DOCUMENT|SecurityException|EACCES/i.test(
+				msg,
+			)
+		) {
+			return strings["error-permission-revoked"];
+		}
+		if (/FileNotFoundException|ENOENT|No such file or directory/i.test(msg)) {
+			return strings["error-not-found"];
+		}
+		if (/ENOSPC|No space left on device/i.test(msg)) {
+			return strings["error-no-space"];
+		}
+		if (
+			/UnknownHostException|ConnectException|SocketTimeoutException|ECONNREFUSED|ETIMEDOUT/i.test(
+				msg,
+			)
+		) {
+			return strings["error-network"];
+		}
+		return null;
+	},
+	/**
 	 *
 	 * @param {Error} err
 	 * @param  {...string} args
@@ -144,7 +174,16 @@ export default {
 			if (hide) hide();
 		};
 
-		const msg = this.errorMessage(err, ...args);
+		let msg = this.errorMessage(err, ...args);
+		const base = this.errorMessage(err);
+		const friendly = this.friendlyErrorMessage(base);
+		if (friendly) {
+			// Keep the raw native message for bug reports, but out of the way
+			const raw = document.createElement("div");
+			raw.textContent = base;
+			const extra = msg.slice(base.length);
+			msg = `${friendly}${extra}<details class="error-details"><summary>${strings["error details"]}</summary><code>${raw.innerHTML}</code></details>`;
+		}
 		alert(strings.error, msg, onhide);
 
 		return new Promise((resolve) => {

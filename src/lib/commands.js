@@ -329,9 +329,7 @@ export default {
 	},
 	async files() {
 		const FileBrowser = await loadFileBrowser();
-		FileBrowser("both", strings["file browser"])
-			.then(FileBrowser.open)
-			.catch(FileBrowser.openError);
+		FileBrowser("both").then(FileBrowser.open).catch(FileBrowser.openError);
 	},
 	find() {
 		actions("search");
@@ -676,7 +674,7 @@ export default {
 		file = file || editorManager.activeFile;
 
 		if (file.SAFMode === "single") {
-			alert(strings.info.toUpperCase(), strings["unable to rename"]);
+			alert(strings.info, strings["unable to rename"]);
 			return;
 		}
 

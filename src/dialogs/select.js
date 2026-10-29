@@ -162,6 +162,7 @@ function select(title, items, options = {}) {
 				$item.setAttribute("aria-label", itemOptions.title);
 			}
 			if (itemOptions.disabled) $item.classList.add("disabled");
+			if (itemOptions.value === "delete") $item.classList.add("destructive");
 			if (options.default === itemOptions.value) {
 				$item.classList.add("selected");
 				$defaultVal = $item;

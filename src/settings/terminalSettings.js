@@ -312,10 +312,7 @@ export default function terminalSettings() {
 					Terminal.uninstall()
 						.then(() => {
 							loader.removeTitleLoader();
-							alert(
-								strings.success.toUpperCase(),
-								`${strings["uninstalled successfully"]}.`,
-							);
+							alert(strings.success, `${strings["uninstalled successfully"]}.`);
 						})
 						.catch((error) => {
 							loader.removeTitleLoader();
@@ -370,7 +367,7 @@ export default function terminalSettings() {
 				console.error,
 			);
 			loader.removeTitleLoader();
-			alert(strings.success.toUpperCase(), `${strings["backup successful"]}.`);
+			alert(strings.success, `${strings["backup successful"]}.`);
 		} catch (error) {
 			loader.removeTitleLoader();
 			console.error("Terminal backup failed:", error);
@@ -404,10 +401,7 @@ export default function terminalSettings() {
 					await Executor.execute("rm -rf $PREFIX/aterm_backup.*");
 
 					loader.removeTitleLoader();
-					alert(
-						strings.success.toUpperCase(),
-						`${strings["restored successfully"]}.`,
-					);
+					alert(strings.success, `${strings["restored successfully"]}.`);
 				},
 				toast,
 				"application/x-tar",

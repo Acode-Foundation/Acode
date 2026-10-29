@@ -109,7 +109,8 @@ function setSponsorSidebarAppVisibility(visible) {
 				onclick={Sponsors}
 			/>
 		);
-		$apps.append($sponsorIcon);
+		// Keep it out of the app list so it isn't tapped by mistake (#2866)
+		$apps.after($sponsorIcon);
 		return;
 	}
 

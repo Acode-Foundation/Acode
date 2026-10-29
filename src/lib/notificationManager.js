@@ -262,6 +262,7 @@ class NotificationManager {
 		const index = this.notifications.findIndex((n) => n.id === id);
 		if (index > -1) {
 			this.notifications.splice(index, 1);
+			if (!this.notifications.length) this.#setUnread(false);
 			this.renderNotifications();
 		}
 	}
@@ -293,6 +294,7 @@ class NotificationManager {
 		}
 
 		this.renderNotifications();
+		if (!this.#isPanelVisible()) this.#setUnread(true);
 
 		// show toast notification
 		const $toastEl = this.createToastNotification(notification);
@@ -372,8 +374,29 @@ class NotificationManager {
 		return date.toLocaleDateString();
 	}
 
+	/**
+	 * Clears the unread dot on the notifications sidebar icon
+	 */
+	markAllRead() {
+		this.#setUnread(false);
+	}
+
+	#isPanelVisible() {
+		const $panel = sidebarApps.get("notification");
+		return !!($panel?.isConnected && $panel.closest("#sidebar")?.activated);
+	}
+
+	/**
+	 * @param {boolean} unread
+	 */
+	#setUnread(unread) {
+		// Kept on <body> so it applies even before the sidebar icon exists
+		document.body.classList.toggle("has-unread-notifications", unread);
+	}
+
 	clearAll() {
 		this.notifications = [];
+		this.#setUnread(false);
 		this.renderNotifications();
 		if (this.timeUpdateInterval) {
 			clearInterval(this.timeUpdateInterval);

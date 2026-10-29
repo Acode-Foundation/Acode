@@ -37,6 +37,7 @@ const $caseSensitive = Ref();
 const $useIndex = Ref();
 const $btnReplaceAll = Ref();
 const $resultOverview = Ref();
+const $resultHeader = Ref();
 const $error = Reactive();
 const $progress = Reactive();
 const $indexStatus = Reactive("");
@@ -285,7 +286,7 @@ export default [
 						/>
 					</div>
 				</div>
-				<div className="search-result-header">
+				<div ref={$resultHeader} className="search-result-header idle">
 					<span ref={$resultOverview} innerHTML={searchResultText(0, 0)}></span>{" "}
 					({$progress}%)
 				</div>
@@ -618,6 +619,8 @@ function onInput(e) {
 	clearNativeResultQueue();
 	searchResult.setValue("");
 	removeEvents();
+	// Keep the result summary hidden until there is something to search for
+	$resultHeader.classList.toggle("idle", !$search.value);
 	if (!$search.value) {
 		searchResult.removeGhostText();
 		return;

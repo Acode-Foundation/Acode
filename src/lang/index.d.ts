@@ -910,6 +910,11 @@ declare type LangStrings = {
 	"cursor blink rate": string;
 	"settings-info-cursor-blink-rate": string;
 	"settings-info-scroll-speed": string;
+	"clear all": string;
+	"error-permission-revoked": string;
+	"error-not-found": string;
+	"error-no-space": string;
+	"error-network": string;
 };
 
 declare var strings: LangStrings;

@@ -62,7 +62,7 @@ export default function CustomThemeInclude() {
 
 			if (action === "reset-theme") {
 				const confirmation = await confirm(
-					strings["info"].toUpperCase(),
+					strings["info"],
 					strings["reset warning"],
 				);
 				if (!confirmation) return;
