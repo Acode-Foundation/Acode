@@ -1145,6 +1145,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 							helpers.isFile(type) ? "filename" : "text",
 							{
 								match: config.FILE_NAME_REGEX,
+								required: true,
 							},
 						);
 
