@@ -192,11 +192,19 @@ export default function ScrollBar(options) {
 
 		if (height < 0) height = 0;
 		if (width < 0) width = 0;
-		if (render && height && width) setValue(scroll);
+		if (render && trackLength()) setValue(scroll);
+	}
+
+	/**
+	 * Length the thumb travels along the scrollbar's axis. The cross axis is
+	 * always 0 (the bar is thinner than the thumb), so only this one counts.
+	 */
+	function trackLength() {
+		return isVertical ? height : width;
 	}
 
 	function setValue(val) {
-		if (!height || !width) resize(false);
+		if (!trackLength()) resize(false);
 
 		//Make sure value is between 0 and 1
 		if (val < 0) val = 0;
@@ -230,6 +238,9 @@ export default function ScrollBar(options) {
 		$scrollbar.classList.remove("hide");
 		if (!$scrollbar.isConnected) {
 			options.parent.append($scrollbar);
+			// The value may have been set while detached, against an empty
+			// rect; measure again so the thumb isn't painted at 0.
+			resize();
 			if (typeof onshow === "function") onshow();
 		}
 	}
