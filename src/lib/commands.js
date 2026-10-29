@@ -329,9 +329,7 @@ export default {
 	},
 	async files() {
 		const FileBrowser = await loadFileBrowser();
-		FileBrowser("both")
-			.then(FileBrowser.open)
-			.catch(FileBrowser.openError);
+		FileBrowser("both").then(FileBrowser.open).catch(FileBrowser.openError);
 	},
 	find() {
 		actions("search");
