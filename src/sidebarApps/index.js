@@ -1,3 +1,4 @@
+import Sidebar from "components/sidebar";
 import appSettings from "lib/settings";
 import Sponsors from "pages/sponsors";
 import SidebarApp from "./sidebarApp";
@@ -154,6 +155,37 @@ function get(id) {
 }
 
 /**
+ * Opens the sidebar and optionally activates an app.
+ *
+ * @param {string} [id] id of the sidebar app to activate
+ * @returns {boolean} whether the sidebar was opened
+ */
+function open(id) {
+	if (!$sidebar) return false;
+
+	if (id !== undefined) {
+		const app = apps.find((app) => app.id === id);
+		if (!app) return false;
+		setActiveApp(id);
+	}
+
+	Sidebar.show();
+	return true;
+}
+
+/**
+ * Closes the sidebar without changing the active app.
+ *
+ * @returns {boolean} whether the sidebar was closed
+ */
+function close() {
+	if (!$sidebar) return false;
+
+	Sidebar.hide(true);
+	return true;
+}
+
+/**
  * Handles click on sidebar apps
  * @param {MouseEvent} e
  */
@@ -187,6 +219,8 @@ export default {
 	init,
 	add,
 	get,
+	open,
+	close,
 	remove,
 	loadApps,
 	ensureActiveApp,
