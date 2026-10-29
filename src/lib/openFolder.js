@@ -1614,7 +1614,7 @@ fileIcons.onChange(() => {
  */
 function createFileTile(name, url) {
 	const $tile = tile({
-		lead: <span className={helpers.getIconForFile(name)}></span>,
+		lead: tag("span", { className: helpers.getIconForFile(name) }),
 		text: name,
 	});
 	$tile.dataset.url = url;
