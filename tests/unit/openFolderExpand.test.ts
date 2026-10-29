@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 
+import tag from "html-tag-js";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 type Read = {
@@ -62,6 +63,8 @@ beforeEach(() => {
 	fs.reads = [];
 	files.container = document.createElement("div");
 	helpersError.mockClear();
+	// tile() and other components use the app's global `tag`.
+	vi.stubGlobal("tag", tag);
 	vi.stubGlobal("strings", {});
 	vi.stubGlobal("editorManager", { emit: vi.fn(), onupdate: vi.fn() });
 	// Helpers the app gets from the html-tag-js polyfill and utils/polyfill.
