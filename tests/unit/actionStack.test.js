@@ -80,7 +80,7 @@ describe("actionStack app exit", () => {
 
 		await actionStack.pop();
 
-		expect(mocks.confirm).toHaveBeenCalledWith("WARNING", "Close Acode?");
+		expect(mocks.confirm).toHaveBeenCalledWith("Warning", "Close Acode?");
 		expect(mocks.showInterstitialIfReady).not.toHaveBeenCalled();
 		expect(mocks.exitApp).toHaveBeenCalledOnce();
 	});

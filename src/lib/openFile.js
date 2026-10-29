@@ -457,7 +457,7 @@ export default async function openFile(file, options = {}) {
 			if (options.external)
 				throw Object.assign(new Error("File too large"), { filename: name });
 			return alert(
-				strings.error.toUpperCase(),
+				strings.error,
 				strings["file too large"].replace(
 					"{size}",
 					settings.maxFileSize + "MB",

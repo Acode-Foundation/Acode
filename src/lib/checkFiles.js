@@ -87,7 +87,7 @@ export default async function checkFiles() {
 						if (!alreadyWarnedConflict) {
 							await new Promise((resolve) => {
 								alert(
-									strings.warning.toUpperCase(),
+									strings.warning,
 									`${file.filename} changed on disk while you have unsaved edits. Saving now may overwrite the external changes.`,
 									resolve,
 								);
@@ -108,7 +108,7 @@ export default async function checkFiles() {
 			if (!currentDoc?.eq?.(diskDoc)) {
 				try {
 					const confirmation = await confirm(
-						strings.warning.toUpperCase(),
+						strings.warning,
 						file.filename + strings["file changed"],
 					);
 

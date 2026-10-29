@@ -707,10 +707,15 @@ function execOperation(type, action, url, $target, name) {
 			alert(strings.warning, strings["rename not supported"]);
 			return;
 		}
-		let newName = await prompt(strings.rename, name, "text", {
-			match: config.FILE_NAME_REGEX,
-			required: true,
-		});
+		let newName = await prompt(
+			strings.rename,
+			name,
+			helpers.isFile(type) ? "filename" : "text",
+			{
+				match: config.FILE_NAME_REGEX,
+				required: true,
+			},
+		);
 
 		newName = helpers.fixFilename(newName);
 		if (!newName || newName === name) return;

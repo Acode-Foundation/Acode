@@ -1381,7 +1381,7 @@ export default class EditorFile {
 		}
 		if (!force && isUnsaved) {
 			const confirmation = await confirm(
-				strings.warning.toUpperCase(),
+				strings.warning,
 				strings["unsaved file"],
 			);
 			if (!confirmation) return false;
