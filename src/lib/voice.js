@@ -19,14 +19,20 @@ export const VoiceEvents = Object.freeze({
 const MIC_GRANTED_KEY = "acode.voice.micGranted";
 const DEFAULT_TIMEOUT = 30000;
 const MIN_TIMEOUT = 1000;
+const WEB_STOP_TIMEOUT = 5000;
 
 const listeners = new Map();
 let backendPromise = null;
+let startPromise = null;
 let listening = false;
 let activeOptions = null;
 let webRecognition = null;
 let webStopping = false;
+let webRestartAllowed = true;
 let webLastResult = null;
+let webStopPromise = null;
+let webStopResolve = null;
+let webStopTimer = null;
 
 function ensureBridge() {
 	nativeVoice.setCallback(handleNativeEvent);
@@ -286,6 +292,11 @@ function clearPermissionCache() {
 
 /**
  * Starts a recognition session.
+ *
+ * The session is reserved before the first asynchronous step so two callers
+ * cannot both pass the "already listening" check while permission or backend
+ * lookup is still pending.
+ *
  * @param {object} [options]
  * @param {string} [options.language]
  * @param {boolean} [options.continuous]
@@ -297,14 +308,28 @@ function clearPermissionCache() {
  * @param {number} [options.timeout]
  * @returns {Promise<object>}
  */
-async function start(options = {}) {
-	if (listening) {
-		throw createVoiceError(
-			"already_listening",
-			"Voice recognition is already running.",
+function start(options = {}) {
+	if (listening || startPromise || webRecognition || webStopPromise) {
+		return Promise.reject(
+			createVoiceError(
+				"already_listening",
+				"Voice recognition is already running.",
+			),
 		);
 	}
 
+	const promise = startSession(options);
+	startPromise = promise;
+
+	const clearStartPromise = () => {
+		if (startPromise === promise) startPromise = null;
+	};
+	promise.then(clearStartPromise, clearStartPromise);
+
+	return promise;
+}
+
+async function startSession(options = {}) {
 	const normalized = normalizeOptions(options);
 	const backend = await resolveBackend();
 	if (!backend) {
@@ -347,8 +372,12 @@ async function start(options = {}) {
  * @returns {Promise<object>}
  */
 async function stop() {
-	if (webRecognition) return stopWebRecognition();
-	if (!listening && !activeOptions) return { listening: false };
+	if (webRecognition || webStopPromise) return stopWebRecognition();
+
+	// If a start is still waiting for permission or a backend, let it settle
+	// first so the stop applies to the session it creates.
+	if (startPromise) await startPromise.catch(() => {});
+	if (webRecognition || webStopPromise) return stopWebRecognition();
 
 	const backend = await resolveBackend();
 	if (backend !== "native") {
@@ -357,6 +386,8 @@ async function stop() {
 		return { listening: false };
 	}
 
+	// Always delegate to the native plugin. Local state can be stale after a
+	// WebView reload or a missed event, and native stop() is a no-op when idle.
 	try {
 		const result = await nativeVoice.stop();
 		listening = false;
@@ -374,7 +405,12 @@ async function stop() {
  * @returns {Promise<object>}
  */
 async function cancel() {
-	if (webRecognition) return cancelWebRecognition();
+	if (webRecognition || webStopPromise) return cancelWebRecognition();
+
+	// Match stop(): wait for a pending start so cancellation cannot leave a
+	// microphone session running after this promise resolves.
+	if (startPromise) await startPromise.catch(() => {});
+	if (webRecognition || webStopPromise) return cancelWebRecognition();
 
 	const backend = await resolveBackend();
 	if (backend !== "native") {
@@ -482,10 +518,20 @@ function startWebRecognition(options) {
 		);
 	}
 
+	if (webRecognition) {
+		throw createVoiceError(
+			"already_listening",
+			"Voice recognition is already running.",
+		);
+	}
+
 	const recognition = new Recognition();
 	webRecognition = recognition;
 	webStopping = false;
+	webRestartAllowed = true;
 	webLastResult = null;
+
+	const isCurrent = () => webRecognition === recognition;
 
 	recognition.continuous = options.continuous;
 	recognition.interimResults = options.partialResults;
@@ -493,12 +539,15 @@ function startWebRecognition(options) {
 	if (options.language) recognition.lang = options.language;
 
 	recognition.onstart = () => {
+		if (!isCurrent()) return;
 		listening = true;
 		activeOptions = options;
 		emit(VoiceEvents.START, { listening: true, backend: "web" });
 	};
 
 	recognition.onresult = (event) => {
+		if (!isCurrent()) return;
+
 		const result = event.results?.[event.resultIndex];
 		if (!result) return;
 
@@ -524,19 +573,35 @@ function startWebRecognition(options) {
 	};
 
 	recognition.onerror = (event) => {
+		if (!isCurrent()) return;
+
+		const recoverable = ["no-speech", "network", "aborted"].includes(
+			event.error,
+		);
 		const payload = {
 			code: event.error || "unknown",
 			message: event.message || "Speech recognition failed.",
-			recoverable: ["no-speech", "network", "aborted"].includes(event.error),
+			recoverable,
 		};
-		if (!options.continuous || !payload.recoverable) listening = false;
+
+		if (!options.continuous || !recoverable) listening = false;
+		if (!recoverable) webRestartAllowed = false;
 		emit(VoiceEvents.ERROR, payload);
+
+		if (!recoverable) {
+			finishWebSession(recognition);
+			try {
+				recognition.abort();
+			} catch (error) {
+				// The recognizer may already have ended.
+			}
+		}
 	};
 
 	recognition.onend = () => {
-		if (webRecognition !== recognition) return;
+		if (!isCurrent()) return;
 
-		if (options.continuous && !webStopping) {
+		if (options.continuous && webRestartAllowed && !webStopping) {
 			try {
 				recognition.start();
 				return;
@@ -545,18 +610,13 @@ function startWebRecognition(options) {
 			}
 		}
 
-		listening = false;
-		activeOptions = null;
-		webRecognition = null;
-		emit(VoiceEvents.END, {
-			listening: false,
-			text: webLastResult?.text || "",
-		});
+		finishWebSession(recognition);
 	};
 
 	try {
 		recognition.start();
 	} catch (error) {
+		detachWebHandlers(recognition);
 		webRecognition = null;
 		listening = false;
 		activeOptions = null;
@@ -566,36 +626,116 @@ function startWebRecognition(options) {
 		);
 	}
 
-	listening = true;
-	activeOptions = options;
-	return { listening: true, backend: "web" };
+	if (webRecognition === recognition) {
+		listening = true;
+		activeOptions = options;
+	}
+
+	return { listening: webRecognition === recognition, backend: "web" };
 }
 
-function stopWebRecognition() {
-	webStopping = true;
-	try {
-		webRecognition?.stop();
-	} catch (error) {
-		// The recognition may have already ended.
-	}
-	listening = false;
-	return Promise.resolve({
-		listening: false,
-		text: webLastResult?.text || "",
-	});
+function detachWebHandlers(recognition) {
+	if (!recognition) return;
+	recognition.onstart = null;
+	recognition.onresult = null;
+	recognition.onerror = null;
+	recognition.onend = null;
 }
 
-function cancelWebRecognition() {
-	webStopping = true;
-	try {
-		webRecognition?.abort();
-	} catch (error) {
-		// The recognition may have already ended.
-	}
+function finishWebSession(recognition) {
+	if (webRecognition !== recognition) return;
+
+	detachWebHandlers(recognition);
 	webRecognition = null;
 	listening = false;
 	activeOptions = null;
-	return Promise.resolve({ listening: false });
+	webStopping = false;
+	webRestartAllowed = true;
+
+	const payload = {
+		listening: false,
+		text: webLastResult?.text || "",
+	};
+	settleWebStop(payload);
+	emit(VoiceEvents.END, payload);
+}
+
+function settleWebStop(payload) {
+	if (webStopTimer) {
+		clearTimeout(webStopTimer);
+		webStopTimer = null;
+	}
+
+	const resolve = webStopResolve;
+	webStopResolve = null;
+	webStopPromise = null;
+	if (resolve) resolve(payload);
+}
+
+function stopWebRecognition() {
+	if (webStopPromise) return webStopPromise;
+
+	const recognition = webRecognition;
+	if (!recognition) return Promise.resolve({ listening: false });
+
+	webStopping = true;
+	listening = false;
+
+	const stopPromise = new Promise((resolve) => {
+		webStopResolve = resolve;
+		webStopTimer = setTimeout(() => {
+			if (webRecognition === recognition) {
+				finishWebSession(recognition);
+				try {
+					recognition.abort();
+				} catch (error) {
+					// The recognizer may already have ended.
+				}
+			} else {
+				settleWebStop({
+					listening: false,
+					text: webLastResult?.text || "",
+				});
+			}
+		}, WEB_STOP_TIMEOUT);
+	});
+
+	webStopPromise = stopPromise;
+
+	try {
+		recognition.stop();
+	} catch (error) {
+		finishWebSession(recognition);
+		try {
+			recognition.abort();
+		} catch (abortError) {
+			// The recognizer may already have ended.
+		}
+	}
+
+	return stopPromise;
+}
+
+function cancelWebRecognition() {
+	const recognition = webRecognition;
+	webStopping = true;
+	webRestartAllowed = false;
+
+	if (recognition) {
+		detachWebHandlers(recognition);
+		try {
+			recognition.abort();
+		} catch (error) {
+			// The recognizer may already have ended.
+		}
+	}
+
+	webRecognition = null;
+	listening = false;
+	activeOptions = null;
+	const payload = { listening: false };
+	settleWebStop(payload);
+	return Promise.resolve(payload);
 }
 
 /**

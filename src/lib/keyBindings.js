@@ -616,14 +616,6 @@ const APP_BINDING_CONFIG = [
 		action: "format",
 	},
 	{
-		name: "voiceInput",
-		description: "Voice input (speech to text)",
-		key: "Ctrl-Alt-V",
-		action: "voice-input",
-		readOnly: false,
-		editorOnly: true,
-	},
-	{
 		name: "foldCode",
 		description: "Fold code",
 		key: "Ctrl-Shift-[",

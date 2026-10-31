@@ -44,9 +44,11 @@ public class VoicePlugin extends CordovaPlugin {
   private CallbackContext eventCallback;
   private CallbackContext startCallback;
   private CallbackContext stopCallback;
-  private CallbackContext permissionCallback;
-  private CallbackContext pendingStartCallback;
-  private JSONObject pendingStartOptions;
+  private final ArrayList<CallbackContext> permissionCallbacks = new ArrayList<>();
+  private final Object permissionLock = new Object();
+  private boolean permissionRequestInFlight;
+  private volatile CallbackContext pendingStartCallback;
+  private volatile JSONObject pendingStartOptions;
 
   private SpeechRecognizer recognizer;
   private Intent lastIntent;
@@ -150,13 +152,32 @@ public class VoicePlugin extends CordovaPlugin {
       return;
     }
 
-    permissionCallback = callbackContext;
+    synchronized (permissionCallbacks) {
+      permissionCallbacks.add(callbackContext);
+    }
+    requestPermissionInternal();
+  }
+
+  private void requestPermissionInternal() {
+    synchronized (permissionLock) {
+      if (permissionRequestInFlight) return;
+      permissionRequestInFlight = true;
+    }
+
     cordova.getActivity().runOnUiThread(() -> {
       try {
         cordova.requestPermission(VoicePlugin.this, REQUEST_RECORD_AUDIO, Manifest.permission.RECORD_AUDIO);
       } catch (Exception error) {
-        permissionCallback = null;
-        callbackContext.error(errorJson("permission_request_failed", safeMessage(error)));
+        synchronized (permissionLock) {
+          permissionRequestInFlight = false;
+        }
+        JSONObject payload = errorJson("permission_request_failed", safeMessage(error));
+        failPermissionCallbacks(payload);
+        if (pendingStartCallback != null) {
+          CallbackContext callback = pendingStartCallback;
+          clearPendingStart();
+          callback.error(payload);
+        }
       }
     });
   }
@@ -167,21 +188,10 @@ public class VoicePlugin extends CordovaPlugin {
         callbackContext.error(errorJson("permission_pending", "Microphone permission is already being requested."));
         return;
       }
-      if (permissionCallback != null) {
-        permissionCallback.error(errorJson("permission_request_superseded", "The microphone permission request was replaced."));
-        permissionCallback = null;
-      }
 
       pendingStartOptions = options != null ? options : new JSONObject();
       pendingStartCallback = callbackContext;
-      cordova.getActivity().runOnUiThread(() -> {
-        try {
-          cordova.requestPermission(VoicePlugin.this, REQUEST_RECORD_AUDIO, Manifest.permission.RECORD_AUDIO);
-        } catch (Exception error) {
-          clearPendingStart();
-          callbackContext.error(errorJson("permission_request_failed", safeMessage(error)));
-        }
-      });
+      requestPermissionInternal();
       return;
     }
 
@@ -261,6 +271,7 @@ public class VoicePlugin extends CordovaPlugin {
       continuous = false;
       stopping = true;
       mainHandler.removeCallbacks(restartRunnable);
+      cancelPendingPermission();
       cleanupRecognizer();
       emit("cancelled", stateJson());
       callbackContext.success(stateJson());
@@ -497,19 +508,68 @@ public class VoicePlugin extends CordovaPlugin {
     pendingStartOptions = null;
   }
 
+  private void settlePermissionCallbacks(boolean granted) {
+    ArrayList<CallbackContext> callbacks;
+    synchronized (permissionCallbacks) {
+      if (permissionCallbacks.isEmpty()) return;
+      callbacks = new ArrayList<>(permissionCallbacks);
+      permissionCallbacks.clear();
+    }
+
+    for (CallbackContext callback : callbacks) {
+      try {
+        callback.success(granted ? 1 : 0);
+      } catch (Exception ignored) {
+        // The callback can be invalid after a WebView reload.
+      }
+    }
+  }
+
+  private void failPermissionCallbacks(JSONObject payload) {
+    ArrayList<CallbackContext> callbacks;
+    synchronized (permissionCallbacks) {
+      if (permissionCallbacks.isEmpty()) return;
+      callbacks = new ArrayList<>(permissionCallbacks);
+      permissionCallbacks.clear();
+    }
+
+    for (CallbackContext callback : callbacks) {
+      try {
+        callback.error(payload);
+      } catch (Exception ignored) {
+        // The callback can be invalid after a WebView reload.
+      }
+    }
+  }
+
+  private void cancelPendingPermission() {
+    synchronized (permissionLock) {
+      permissionRequestInFlight = false;
+    }
+    JSONObject payload = errorJson("cancelled", "Microphone permission request was cancelled.");
+    failPermissionCallbacks(payload);
+
+    if (pendingStartCallback != null) {
+      CallbackContext callback = pendingStartCallback;
+      clearPendingStart();
+      callback.error(payload);
+    }
+  }
+
   @Override
   public void onRequestPermissionResult(int requestCode, String[] permissions, int[] grantResults) {
     if (requestCode != REQUEST_RECORD_AUDIO) return;
+
+    synchronized (permissionLock) {
+      permissionRequestInFlight = false;
+    }
 
     boolean granted = false;
     if (grantResults != null && grantResults.length > 0) {
       granted = grantResults[0] == PackageManager.PERMISSION_GRANTED;
     }
 
-    if (permissionCallback != null) {
-      permissionCallback.success(granted ? 1 : 0);
-      permissionCallback = null;
-    }
+    settlePermissionCallbacks(granted);
 
     if (pendingStartCallback != null) {
       CallbackContext callback = pendingStartCallback;
@@ -526,13 +586,19 @@ public class VoicePlugin extends CordovaPlugin {
 
   @Override
   public void onReset() {
-    mainHandler.post(this::cleanupRecognizer);
+    mainHandler.post(() -> {
+      cancelPendingPermission();
+      cleanupRecognizer();
+    });
     eventCallback = null;
   }
 
   @Override
   public void onDestroy() {
-    mainHandler.post(this::cleanupRecognizer);
+    mainHandler.post(() -> {
+      cancelPendingPermission();
+      cleanupRecognizer();
+    });
     eventCallback = null;
     super.onDestroy();
   }
