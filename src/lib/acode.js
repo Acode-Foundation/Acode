@@ -89,6 +89,7 @@ import KeyboardEvent from "utils/keyboardEvent";
 import Url from "utils/Url";
 import config from "./config";
 import quickToolsAdapters from "./quickToolsAdapter";
+import voice from "./voice";
 import webview from "./webview";
 
 class Acode {
@@ -439,6 +440,7 @@ class Acode {
 		this.define("selectionMenu", selectionMenu);
 		this.define("sidebarApps", sidebarAppsModule);
 		this.define("terminal", terminalModule);
+		this.define("voice", voice);
 		this.define("webview", webview);
 		this.define("orientation", orientation);
 		this.define("fullscreen", fullscreen);
