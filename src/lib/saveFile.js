@@ -122,7 +122,12 @@ async function saveFile(
 			if (!createdDocument?.uri || !isCurrent()) return false;
 			filename = helpers.fixFilename(createdDocument.filename || filename);
 		} else if (option === SELECT_FOLDER) {
-			newUrl = await selectFolder();
+			const destination = await selectFolder();
+			if (destination?.type === "file") {
+				createdDocument = destination;
+			} else {
+				newUrl = destination?.url;
+			}
 		} else {
 			newUrl = option.val.url;
 		}
@@ -281,11 +286,17 @@ async function saveFile(
 	}
 
 	async function selectFolder() {
-		const dir = await FileBrowser(
+		return FileBrowser(
 			"folder",
 			strings[`save file${isSaveAs ? " as" : ""}`],
+			true,
+			{
+				createDocument: {
+					filename,
+					mimeType: mimeTypes.lookup(filename) || "text/plain",
+				},
+			},
 		);
-		return dir.url;
 	}
 
 	async function getfilename(url, name) {
