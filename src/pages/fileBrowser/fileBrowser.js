@@ -49,18 +49,40 @@ import util from "./util";
  */
 
 /**
+ * @typedef {object} FileBrowserOptions
+ * @property {{filename: string, mimeType: string}} [createDocument]
+ * @property {boolean} [chooseFolderOnDevice]
+ */
+
+function isPickerCancelled(error) {
+	const message = typeof error === "string" ? error : error?.message;
+	return typeof message === "string" && /cancel/i.test(message);
+}
+
+/**
  *
  * @param {import('.').BrowseMode} [mode='file']
  * @param {string} [info]
  * @param {boolean} [doesOpenLast]
+ * @param {FileBrowserOptions} [options]
  * @returns {Promise<import('.').SelectedFile>}
  */
-function FileBrowserInclude(mode, info, doesOpenLast = true) {
+function FileBrowserInclude(mode, info, doesOpenLast = true, options = {}) {
 	mode = mode || "file";
 
 	const IS_FOLDER_MODE = ["folder", "both"].includes(mode);
 	const IS_FILE_MODE = ["file", "both"].includes(mode);
 	const SELECT_DOCUMENT_LABEL = "Select document";
+	const createDocumentOptions = options.createDocument;
+	const hasNativeDocumentPicker =
+		typeof sdcard !== "undefined" &&
+		typeof sdcard.openDocumentFile === "function";
+	const hasNativeCreateDocumentPicker =
+		typeof sdcard !== "undefined" &&
+		typeof sdcard.createDocument === "function";
+	const hasNativeFolderPicker =
+		typeof sdcard !== "undefined" &&
+		typeof sdcard.getStorageAccessPermission === "function";
 	const storedState = helpers.parseJSON(localStorage.fileBrowserState) || [];
 	/**@type {Array<Location>} */
 	const state = [];
@@ -105,16 +127,6 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		);
 
 		const $search = <span className="icon search" data-action="search"></span>;
-		const $selectDocument = (
-			<span
-				className="icon folder_open"
-				data-action="select-document"
-				title={SELECT_DOCUMENT_LABEL}
-				aria-label={SELECT_DOCUMENT_LABEL}
-				role="button"
-				tabindex="0"
-			></span>
-		);
 		const $lead = <span className="icon clearclose" data-action="close"></span>;
 		const $page = Page(strings["file browser"].capitalize(), {
 			lead: $lead,
@@ -188,7 +200,6 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		$content.addEventListener("contextmenu", handleContextMenu, true);
 		$page.body = $content;
 		$page.header.append($search);
-		if (IS_FILE_MODE) $page.header.append($selectDocument);
 		$page.header.append(
 			$pasteToggler,
 			$selectionModeToggler,
@@ -196,7 +207,6 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			$menuToggler,
 			$selectionMenuToggler,
 		);
-
 		if (IS_FOLDER_MODE) {
 			$openFolder = tag("button", {
 				className: "floating icon check",
@@ -234,12 +244,6 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		};
 
 		$pasteToggler.onclick = pasteCopiedItems;
-		$selectDocument.onclick = selectDocument;
-		$selectDocument.onkeydown = (event) => {
-			if (event.key !== "Enter" && event.key !== " ") return;
-			event.preventDefault();
-			selectDocument();
-		};
 
 		$fbMenu.onclick = function (e) {
 			$fbMenu.hide();
@@ -688,6 +692,70 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			);
 		}
 
+		async function createDocumentOnDevice() {
+			const filename =
+				createDocumentOptions?.filename || strings["new file"] || "New file";
+			const mimeType =
+				createDocumentOptions?.mimeType ||
+				mimeTypes.lookup(filename) ||
+				"text/plain";
+
+			try {
+				const createdDocument = await externalFs.createDocument(
+					mimeType,
+					filename,
+				);
+				if (!createdDocument?.uri) return;
+
+				resolve({
+					...createdDocument,
+					type: "file",
+					url: createdDocument.uri,
+					name: createdDocument.filename || filename,
+					mode: "single",
+				});
+				$page.hide();
+			} catch (error) {
+				if (!isPickerCancelled(error)) helpers.error(error);
+			}
+		}
+
+		async function selectNativeFolder() {
+			try {
+				const url = await externalFs.getStorageAccessPermission("");
+				if (!url) return;
+
+				const existingStorage = storageList.find(
+					(storage) => (storage.url || storage.uri) === url,
+				);
+				const stats = await fsOperation(url)
+					.stat()
+					.catch(() => null);
+				const name =
+					existingStorage?.name ||
+					stats?.name ||
+					Url.basename(url) ||
+					strings["open folder"];
+
+				if (!existingStorage) {
+					storageList.push({ name, uri: url, uuid: helpers.uuid() });
+					localStorage.storageList = JSON.stringify(storageList);
+					acode.exec("save-state");
+				}
+
+				$page.hide();
+				resolve({
+					type: "folder",
+					url,
+					name,
+					list: [],
+					scroll: 0,
+				});
+			} catch (error) {
+				if (!isPickerCancelled(error)) helpers.error(error);
+			}
+		}
+
 		/**
 		 * @param {string} url
 		 */
@@ -907,7 +975,6 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 				$addMenuToggler.style.display = "none";
 				$menuToggler.style.display = "none";
-				$selectDocument.style.display = "none";
 				$selectionMenuToggler.style.display = "";
 				updatePasteToggler();
 
@@ -935,7 +1002,6 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 				$addMenuToggler.style.display = "";
 				$menuToggler.style.display = "";
-				$selectDocument.style.display = "";
 				$selectionMenuToggler.style.display = "none";
 				updatePasteToggler();
 
@@ -981,6 +1047,8 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			let url = $el.dataset.url;
 			let name = $el.dataset.name;
 			const isOpenDoc = $el.dataset.openDoc != null;
+			const isCreateDocument = $el.dataset.openCreateDocument != null;
+			const isNativeFolderPicker = $el.dataset.openNativeFolder != null;
 			const uuid = $el.dataset.uuid;
 			const type = $el.dataset.type;
 			const storageType = $el.dataset.storageType;
@@ -1006,7 +1074,15 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				return;
 			}
 
-			if (!url && action === "open" && isDir && !isOpenDoc && !isContextMenu) {
+			if (
+				!url &&
+				action === "open" &&
+				isDir &&
+				!isOpenDoc &&
+				!isCreateDocument &&
+				!isNativeFolderPicker &&
+				!isContextMenu
+			) {
 				loader.hide();
 				util.addPath(name, uuid).then((res) => {
 					const storage = allStorages.find((storage) => storage.uuid === uuid);
@@ -1022,6 +1098,8 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 			if (isContextMenu) action = "contextmenu";
 			else if (isOpenDoc) action = "openDoc";
+			else if (isCreateDocument) action = "createDocument";
+			else if (isNativeFolderPicker) action = "openNativeFolder";
 
 			switch (action) {
 				case "navigation":
@@ -1036,6 +1114,12 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					break;
 				case "openDoc":
 					selectDocument();
+					break;
+				case "createDocument":
+					createDocumentOnDevice();
+					break;
+				case "openNativeFolder":
+					selectNativeFolder();
 					break;
 			}
 
@@ -1092,7 +1176,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				if (appSettings.value.vibrateOnTap) {
 					navigator.vibrate(config.VIBRATION_TIME);
 				}
-				if (isOpenDoc) return;
+				if (isOpenDoc || isCreateDocument || isNativeFolderPicker) return;
 
 				const deleteText =
 					currentDir.url === "/" ? strings.remove : strings.delete;
@@ -1371,6 +1455,35 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				);
 			}
 
+			if (IS_FILE_MODE && hasNativeDocumentPicker) {
+				util.pushFolder(allStorages, SELECT_DOCUMENT_LABEL, null, {
+					openDoc: true,
+					notSelectable: true,
+					icon: "description",
+				});
+			}
+
+			if (createDocumentOptions && hasNativeCreateDocumentPicker) {
+				util.pushFolder(
+					allStorages,
+					strings["create document on device"],
+					null,
+					{
+						openCreateDocument: true,
+						notSelectable: true,
+						icon: "description",
+					},
+				);
+			}
+
+			if (options.chooseFolderOnDevice && hasNativeFolderPicker) {
+				util.pushFolder(allStorages, strings["choose folder on device"], null, {
+					openNativeFolder: true,
+					notSelectable: true,
+					icon: "folder_open",
+				});
+			}
+
 			try {
 				const terminalPublicUrl = cordova.file.dataDirectory + "public";
 				const exists = await fsOperation(terminalPublicUrl).exists();
@@ -1437,14 +1550,6 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					notSelectable: true,
 				});
 			}
-
-			if (IS_FILE_MODE) {
-				util.pushFolder(allStorages, SELECT_DOCUMENT_LABEL, null, {
-					openDoc: true,
-					notSelectable: true,
-				});
-			}
-
 			return allStorages;
 		}
 
@@ -1501,11 +1606,39 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					loader.destroy();
 				}
 				if (error) return null;
+				const sortedList = helpers.sortDir(list, fileBrowser, mode);
+				if (url === "/") {
+					const pickerEntries = sortedList.filter(
+						(item) =>
+							item.openDoc || item.openCreateDocument || item.openNativeFolder,
+					);
+					if (pickerEntries.length) {
+						const rootEntries = sortedList.filter(
+							(item) =>
+								!item.openDoc &&
+								!item.openCreateDocument &&
+								!item.openNativeFolder,
+						);
+						const terminalPublicIndex = rootEntries.findIndex(
+							(item) =>
+								item.uuid === "terminal-public" ||
+								item.name === "Terminal Public",
+						);
+						rootEntries.splice(
+							terminalPublicIndex < 0
+								? rootEntries.length
+								: terminalPublicIndex,
+							0,
+							...pickerEntries,
+						);
+						sortedList.splice(0, sortedList.length, ...rootEntries);
+					}
+				}
 				return {
 					url,
 					name,
 					scroll: 0,
-					list: helpers.sortDir(list, fileBrowser, mode),
+					list: sortedList,
 				};
 			}
 		}

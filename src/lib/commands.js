@@ -440,7 +440,7 @@ export default {
 	async "open-folder"() {
 		editorManager.editor.contentDOM.blur();
 		const FileBrowser = await loadFileBrowser();
-		FileBrowser("folder")
+		FileBrowser("folder", undefined, true, { chooseFolderOnDevice: true })
 			.then(FileBrowser.openFolder)
 			.catch(FileBrowser.openFolderError);
 	},

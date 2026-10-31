@@ -14,7 +14,7 @@ import Url from "utils/Url";
  * @param {BrowseMode} [mode='file'] Specify file browser mode, value can be 'file', 'folder' or 'both'
  * @param {string} info A small message to show what's file browser is opened for
  * @param {boolean} doesOpenLast Should file browser open lastly visited directory?
- * @param {Array<{name: String, url: String}>} defaultDir Default directory to open.
+ * @param {{createDocument?: {filename: string, mimeType: string}, chooseFolderOnDevice?: boolean}} [options] Context-specific browser actions.
  * @returns {Promise<SelectedFile>}
  */
 function FileBrowser(mode, info, doesOpenLast, ...args) {
