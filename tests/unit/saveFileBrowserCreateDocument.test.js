@@ -8,6 +8,7 @@ it("saves a new file through Create document in the integrated file browser", as
 	await expect(saveFile(file)).resolves.toBe(true);
 
 	expect(fileBrowser).toHaveBeenCalledWith("folder", "Save file", true, {
+		chooseFolderOnDevice: true,
 		createDocument: {
 			filename: "Untitled.ts",
 			mimeType: "text/typescript",

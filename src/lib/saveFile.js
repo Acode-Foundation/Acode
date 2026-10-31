@@ -291,6 +291,7 @@ async function saveFile(
 			strings[`save file${isSaveAs ? " as" : ""}`],
 			true,
 			{
+				chooseFolderOnDevice: true,
 				createDocument: {
 					filename,
 					mimeType: mimeTypes.lookup(filename) || "text/plain",
