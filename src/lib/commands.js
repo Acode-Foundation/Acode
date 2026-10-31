@@ -20,6 +20,7 @@ import run from "./run";
 import saveState from "./saveState";
 import appSettings from "./settings";
 import showFileInfo from "./showFileInfo";
+import { toggleVoiceInput } from "./voiceInput";
 
 function getTabCloseSelectionOptions() {
 	return {
@@ -336,6 +337,9 @@ export default {
 	},
 	"file-info"(url) {
 		showFileInfo(url);
+	},
+	async "voice-input"() {
+		return toggleVoiceInput();
 	},
 	async goto() {
 		const lastLine = editorManager.editor?.state?.doc?.lines;

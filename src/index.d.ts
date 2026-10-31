@@ -12,6 +12,7 @@ declare const acode: {
 	webview: AcodeWebViewAPI;
 	require(module: "fullscreen"): AcodeFullscreenAPI;
 	require(module: "orientation"): AcodeOrientationAPI;
+	require(module: "voice"): AcodeVoiceAPI;
 	require(module: string): unknown;
 	[key: string]: unknown;
 };
@@ -36,6 +37,91 @@ interface String {
 	 * Generate a hash from a string
 	 */
 	hashCode(): string;
+}
+
+type VoiceEventName =
+	| "ready"
+	| "start"
+	| "speechstart"
+	| "speechend"
+	| "volume"
+	| "partial"
+	| "result"
+	| "error"
+	| "end"
+	| "cancelled"
+	| "restart"
+	| "event";
+
+interface VoiceOptions {
+	/** BCP-47 language tag, e.g. "en-US". Defaults to the device language. */
+	language?: string;
+	/** Keep listening and restart after each final result. */
+	continuous?: boolean;
+	/** Emit interim results while the user is speaking. */
+	partialResults?: boolean;
+	/** Prefer an on-device recognition model when available. */
+	preferOffline?: boolean;
+	/** Use Android's on-device recognizer when available (API 31+). */
+	onDevice?: boolean;
+	/** Number of alternative transcripts to return (1-10). */
+	maxResults?: number;
+	/** Silence before the recognizer treats speech as complete. */
+	silenceLengthMillis?: number;
+	/** Timeout used by recognize(), in milliseconds. */
+	timeout?: number;
+}
+
+interface VoiceResult {
+	text: string;
+	alternatives: string[];
+	isFinal: boolean;
+	confidences?: number[];
+	confidence?: number;
+}
+
+interface VoiceErrorPayload {
+	code: string;
+	message: string;
+	recoverable?: boolean;
+}
+
+interface VoiceState {
+	listening: boolean;
+	continuous?: boolean;
+	available?: boolean;
+	permission?: boolean;
+	onDevice?: boolean;
+	backend?: "native" | "web" | "unavailable" | null;
+}
+
+interface AcodeVoiceAPI {
+	/** Android microphone permission name. */
+	PERMISSION: string;
+	events: Record<string, string>;
+	isSupported(): Promise<boolean>;
+	getCapabilities(): Promise<VoiceState>;
+	hasPermission(): Promise<boolean>;
+	requestPermission(): Promise<boolean>;
+	clearPermissionCache(): void;
+	start(options?: VoiceOptions): Promise<VoiceState>;
+	stop(): Promise<VoiceResult | VoiceState>;
+	cancel(): Promise<VoiceState>;
+	recognize(options?: VoiceOptions): Promise<VoiceResult>;
+	getState(): Promise<VoiceState>;
+	isListening(): boolean;
+	on(
+		event: VoiceEventName,
+		listener: (payload: VoiceResult | VoiceErrorPayload | VoiceState) => void,
+	): () => void;
+	off(
+		event: VoiceEventName,
+		listener: (payload: VoiceResult | VoiceErrorPayload | VoiceState) => void,
+	): void;
+	once(
+		event: VoiceEventName,
+		listener: (payload: VoiceResult | VoiceErrorPayload | VoiceState) => void,
+	): () => void;
 }
 
 type ExecutorCallback = (

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	id="cordova-plugin-acode-voice" version="1.0.0">
+	<name>cordova-plugin-acode-voice</name>
+	<description>Speech recognition and microphone access for Acode.</description>
+	<license>MIT</license>
+	<keywords>cordova,acode,voice,speech,microphone</keywords>
+
+	<platform name="android">
+		<config-file target="res/xml/config.xml" parent="/*">
+			<feature name="AcodeVoice">
+				<param name="android-package" value="com.foxdebug.voice.VoicePlugin"/>
+			</feature>
+		</config-file>
+
+		<config-file target="AndroidManifest.xml" parent="/manifest">
+			<uses-permission android:name="android.permission.RECORD_AUDIO"/>
+			<uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
+			<queries>
+				<intent>
+					<action android:name="android.speech.RecognitionService"/>
+				</intent>
+			</queries>
+		</config-file>
+
+		<source-file src="src/android/com/foxdebug/voice/VoicePlugin.java"
+			target-dir="src/com/foxdebug/voice"/>
+	</platform>
+</plugin>
