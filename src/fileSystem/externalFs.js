@@ -92,6 +92,12 @@ const externalFs = {
 		});
 	},
 
+	createDocument(mimeType, filename) {
+		return new Promise((resolve, reject) => {
+			sdcard.createDocument(mimeType, filename, resolve, reject);
+		});
+	},
+
 	listStorages() {
 		return new Promise((resolve, reject) => {
 			sdcard.listStorages(resolve, reject);

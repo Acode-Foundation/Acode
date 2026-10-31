@@ -208,6 +208,19 @@ interface SDcard {
     mimeType: string,
   ): void;
   /**
+   * Opens Android's Create Document picker and returns the created document.
+   * @param mimeType MIME type of the document to create
+   * @param filename Suggested filename shown by the picker
+   * @param onSuccess Callback function on success returns the created document
+   * @param onFail Callback function on failure
+   */
+  createDocument(
+    mimeType: string,
+    filename: string,
+    onSuccess: (file: DocumentFile) => void,
+    onFail: (err: any) => void,
+  ): void;
+  /**
    * Opens gallery to select image
    * Returns a temporary URI grant for the selected image.
    * Use read/stats on the returned URI if you need to inspect or preview it.
