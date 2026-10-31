@@ -1,4 +1,5 @@
 import fsOperation, { hasProvider } from "fileSystem";
+import externalFs from "fileSystem/externalFs";
 import { Text } from "@codemirror/state";
 import { getDocText } from "cm/editorUtils";
 import toast from "components/toast";
@@ -6,6 +7,7 @@ import confirm from "dialogs/confirm";
 import prompt from "dialogs/prompt";
 import select from "dialogs/select";
 import recents from "lib/recents";
+import mimeTypes from "mime-types";
 import FileBrowser from "pages/fileBrowser";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
@@ -17,6 +19,12 @@ import appSettings from "./settings";
 let saveTimeout;
 
 const SELECT_FOLDER = "select-folder";
+const SELECT_ANDROID_DOCUMENT = "select-android-document";
+
+function isPickerCancelled(error) {
+	const message = typeof error === "string" ? error : error?.message;
+	return typeof message === "string" && /cancel/i.test(message);
+}
 
 /**
  * Saves a file to it's location, if file is new, it will ask for location
@@ -48,6 +56,7 @@ async function saveFile(
 	 * @type {string}
 	 */
 	let newUrl;
+	let createdDocument = null;
 	/**
 	 * File operation object
 	 * @type {fsOperation}
@@ -82,23 +91,52 @@ async function saveFile(
 	}
 
 	if (isSaveAs || isNewFile) {
+		const options = [[SELECT_FOLDER, strings["select folder"], "folder"]];
+		const hasNativeDocumentPicker =
+			typeof sdcard !== "undefined" &&
+			typeof sdcard.createDocument === "function";
+		if (hasNativeDocumentPicker) {
+			options.push([
+				SELECT_ANDROID_DOCUMENT,
+				strings["create document on device"],
+				"save",
+			]);
+		}
 		const option = await recents.select(
-			[[SELECT_FOLDER, strings["select folder"], "folder"]], // options
+			options,
 			"dir", // type
 			strings["select folder"], // title
 		);
 		if (!option || !isCurrent()) return false;
 
-		if (option === SELECT_FOLDER) {
+		if (option === SELECT_ANDROID_DOCUMENT) {
+			try {
+				createdDocument = await externalFs.createDocument(
+					mimeTypes.lookup(filename) || "text/plain",
+					filename,
+				);
+			} catch (error) {
+				if (isPickerCancelled(error)) return false;
+				throw error;
+			}
+			if (!createdDocument?.uri || !isCurrent()) return false;
+			filename = helpers.fixFilename(createdDocument.filename || filename);
+		} else if (option === SELECT_FOLDER) {
 			newUrl = await selectFolder();
 		} else {
 			newUrl = option.val.url;
 		}
-		if (!newUrl || !isCurrent()) return false;
 
-		if (isSaveAs) {
+		if (createdDocument) {
+			if (!createdDocument.uri || !isCurrent()) return false;
+			filename = helpers.fixFilename(createdDocument.filename || filename);
+		} else if (!newUrl || !isCurrent()) {
+			return false;
+		}
+
+		if (!createdDocument && isSaveAs) {
 			filename = await getfilename(newUrl, file.filename);
-		} else {
+		} else if (!createdDocument) {
 			filename = await check(newUrl, file.filename);
 		}
 
@@ -108,7 +146,8 @@ async function saveFile(
 		}
 	}
 
-	if (filename !== file.filename) {
+	if (isSaveAs && !createdDocument) file.SAFMode = null;
+	if (!createdDocument && filename !== file.filename) {
 		file.filename = filename;
 	}
 
@@ -117,7 +156,9 @@ async function saveFile(
 	let saved = false;
 
 	try {
-		if (isSaveAs || newUrl) {
+		if (createdDocument) {
+			fileOnDevice = fsOperation(createdDocument.uri);
+		} else if (isSaveAs || newUrl) {
 			// if save as or new file
 			const fileUri = Url.join(newUrl, file.filename);
 			fileOnDevice = fsOperation(fileUri);
@@ -189,6 +230,18 @@ async function saveFile(
 		if (!isCurrent()) return false;
 		const stat = await fileOnDevice.stat?.().catch(() => null);
 		if (!isCurrent()) return false;
+		if (createdDocument) {
+			const fileUri = createdDocument.uri;
+			const openedFile = editorManager.getFile(fileUri, "uri");
+			if (openedFile && openedFile !== file) openedFile.uri = null;
+			file.SAFMode = null;
+			file.filename = filename;
+			file.SAFMode = "single";
+			file.uri = fileUri;
+			targetUri = fileUri;
+			file.persistInSession = createdDocument.persistedUriPermission !== false;
+			recents.addFile(fileUri);
+		}
 		file.markSaved({
 			mtime: helpers.getStatMtime(stat),
 			savedDoc,
@@ -204,7 +257,7 @@ async function saveFile(
 		saveTimeout = setTimeout(() => {
 			if (!isCurrent()) return;
 			file.isSaving = false;
-			if (newUrl) recents.addFile(file.uri);
+			if (newUrl || createdDocument) recents.addFile(file.uri);
 			editorManager.onupdate("save-file");
 			editorManager.emit("update", "save-file");
 			editorManager.emit("save-file", file);
