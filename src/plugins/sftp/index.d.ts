@@ -17,6 +17,11 @@ interface ExecResult{
   result: String;
 }
 
+/** Result of a completed file transfer. */
+interface TransferResult {
+  bytes: number;
+}
+
 interface ShellEvent {
   type: "ready" | "data" | "exit" | "error";
   sessionId?: string;
@@ -41,7 +46,7 @@ interface Sftp {
    */
   exec(command: String, onSucess: (res: ExecResult)=>void, onFail: (err: any) => void): void;
   /** Connects using credentials held by the native profile store. */
-  connectUsingProfile(profileId: String, onSuccess: () => void, onFail: (err: any) => void): void;
+  connectUsingProfile(profileId: String, onSuccess: () => void, onFail: (err: any) => void, timeout?: Number): void;
   /** Tests a profile once and returns its remote working directory. */
   testProfile(profileId: String, requestId: String, timeout: Number, onSuccess: (home: String) => void, onFail: (err: any) => void): void;
   /** Cancels an in-flight profile connection or test. */
@@ -52,22 +57,22 @@ interface Sftp {
   deleteProfile(profileId: String, onSuccess: () => void, onFail: (err: any) => void): void;
 
   /**
-   * Gets file from the server.
-   * @param filename 
-   * @param localFilename copy/shadow of remote file.
-   * @param onSuccess 
-   * @param onFail 
+   * Downloads a file from the server.
+   * @param filename remote path
+   * @param localFilename local destination, a `file://` or `content://` URI
+   * @param onSuccess receives the number of bytes written
+   * @param onFail
    */
-  getFile(filename: String, localFilename: String, onSuccess: (url: String) => void, onFail: (err: any) => void): void;
-  
+  getFile(filename: String, localFilename: String, onSuccess: (res: TransferResult) => void, onFail: (err: any) => void): void;
+
   /**
-   * Uploaded the file to server
-   * @param filename 
-   * @param localFilename copy/shadow of remote file.
-   * @param onSuccess 
-   * @param onFail 
+   * Uploads a file to the server.
+   * @param filename remote path
+   * @param localFilename local source, a `file://` or `content://` URI
+   * @param onSuccess receives the number of bytes read
+   * @param onFail
    */
-  putFile(filename: String, localFilename: String, onSuccess: (url: String) => void, onFail: (err: any) => void): void;
+  putFile(filename: String, localFilename: String, onSuccess: (res: TransferResult) => void, onFail: (err: any) => void): void;
   
   /**
    * Closes the connection
@@ -86,6 +91,24 @@ interface Sftp {
   writeShell(sessionId: String, data: String, onSuccess: () => void, onFail: (err: any) => void): void;
   resizeShell(sessionId: String, cols: Number, rows: Number, onSuccess: () => void, onFail: (err: any) => void): void;
   closeShell(sessionId: String, onSuccess: () => void, onFail: (err: any) => void): void;
+
+  /**
+   * Answers a host key confirmation the plugin asked for.
+   * The plugin calls `window.__acodeSftpConfirm(request)`, and the page reports
+   * the answer back through this action.
+   */
+  resolveConfirmation(callbackId: String, confirmed: boolean, onSuccess: () => void, onFail: (err: any) => void): void;
+
+  /** Shows a native toast, used for notices raised off the UI thread. */
+  showToast(message: String, onSuccess: () => void, onFail: (err: any) => void): void;
+}
+
+interface SftpConfirmationRequest {
+  id: string;
+  title: string;
+  message: string;
+  acceptLabel: string;
+  cancelLabel: string;
 }
 
 declare var sftp: Sftp;

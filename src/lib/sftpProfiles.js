@@ -101,6 +101,43 @@ export function deleteSftpProfile(profileId) {
 }
 
 /**
+ * Answers a host key confirmation requested by the native SFTP plugin.
+ * @param {string} callbackId request id supplied by the plugin
+ * @param {boolean} confirmed
+ */
+export function resolveSftpConfirmation(callbackId, confirmed) {
+	return new Promise((resolve) => {
+		sftp.resolveConfirmation(callbackId, Boolean(confirmed), resolve, resolve);
+	});
+}
+
+/**
+ * Installs the hook the native plugin calls when a host key must be confirmed.
+ *
+ * The plugin shows these prompts from its connection thread, so they have to be
+ * answered with a dialog drawn by the app: the platform dialog used before sat
+ * behind the WebView, which made its buttons invisible and untappable.
+ * @param {(request: {id: string, title: string, message: string, acceptLabel: string, cancelLabel: string}) => Promise<boolean>} handler
+ */
+export function onSftpConfirmation(handler) {
+	globalThis.__acodeSftpConfirm = async (request = {}) => {
+		let confirmed = false;
+		try {
+			confirmed = Boolean(await handler(request));
+		} catch (error) {
+			console.error("SFTP confirmation failed", error);
+		}
+		try {
+			await resolveSftpConfirmation(request.id, confirmed);
+		} catch (error) {
+			// The native side also gives up on its own timeout; logging here keeps
+			// a broken bridge from looking like the prompt was simply ignored.
+			console.error("Could not deliver the SFTP host key answer", error);
+		}
+	};
+}
+
+/**
  * Moves legacy credential-bearing SFTP URLs into encrypted native profiles.
  * Profiles that cannot be encrypted are removed before third-party plugins load.
  * Unsaved editor tabs keep their cache and are restored as local recovery tabs.

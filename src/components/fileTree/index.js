@@ -9,12 +9,27 @@ const VIRTUALIZATION_THRESHOLD = Number.POSITIVE_INFINITY; // FIX: temporary due
 const ITEM_HEIGHT = 30;
 
 /**
+ * Fallback when no settings are supplied: alphabetical, everything visible.
+ * The sidebar passes the real settings so the tree follows the same order as
+ * the file browser.
+ */
+const DEFAULT_SORT_SETTINGS = {
+	sortByName: true,
+	sortBy: "name",
+	sortOrder: "asc",
+	showHiddenFiles: true,
+	foldersFirst: true,
+};
+
+/**
  * @typedef {object} FileTreeOptions
  * @property {function(string): Promise<Array>} getEntries - Function to get directory entries
  * @property {function(string, string): void} [onFileClick] - File click handler
  * @property {function(string, string, string, HTMLElement): void} [onContextMenu] - Context menu handler
  * @property {Object<string, boolean>} [expandedState] - Map of expanded folder URLs
  * @property {function(string, boolean): void} [onExpandedChange] - Called when folder expanded state changes
+ * @property {function():object} [getSortSettings] - Returns the settings that drive the order
+ * @property {function(function():void):void} [onSortChange] - Registers a listener for sort changes
  */
 
 /**
@@ -32,12 +47,21 @@ export default class FileTree {
 		this.options = options;
 		this.virtualList = null;
 		this.entries = [];
+		this.rawEntries = [];
 		this.isLoading = false;
 		this.childTrees = new Map(); // Track child trees for cleanup
 		this.depth = options._depth || 0; // Internal: nesting depth
 		// Bumped on every load and on destroy so a slow load that finishes
 		// late can tell it's stale and skip rendering.
 		this.generation = 0;
+		// Nested trees inherit the options object, so the root subscribes once
+		// and every child tree follows the shared order.
+		if (!options._sortListener && this.depth === 0 && options.onSortChange) {
+			const listener = () => this.resort();
+			options._sortListener = listener;
+			options.onSortChange(listener);
+		}
+		this._sortListener = options._sortListener;
 	}
 
 	/**
@@ -56,10 +80,10 @@ export default class FileTree {
 			const entries = await this.options.getEntries(url);
 			// Destroyed (e.g. the folder collapsed) while listing.
 			if (generation !== this.generation) return;
-			this.entries = helpers.sortDir(entries, {
-				sortByName: true,
-				showHiddenFiles: true,
-			});
+			// Keep the provider's own order: sorting is applied to a copy on top,
+			// so a later re-sort does not stack on an already grouped list.
+			this.rawEntries = entries;
+			this.entries = this.sortEntries(entries);
 
 			if (this.entries.length > VIRTUALIZATION_THRESHOLD) {
 				this.renderVirtualized();
@@ -69,6 +93,64 @@ export default class FileTree {
 		} finally {
 			this.isLoading = false;
 		}
+	}
+
+	/**
+	 * Applies the shared file browser sort settings to raw entries.
+	 * Hidden files stay visible here: the tree is an expanded view of a folder
+	 * the person already opened.
+	 * @param {Array} entries
+	 * @returns {Array}
+	 */
+	sortEntries(entries) {
+		// Read the settings every time: a stored copy would keep the order the
+		// folder had when it was expanded and ignore later changes.
+		const settings = {
+			...DEFAULT_SORT_SETTINGS,
+			...this.options.getSortSettings?.(),
+		};
+		return helpers.sortDir(entries, settings, "both", {
+			foldersFirst: settings.foldersFirst !== false,
+		});
+	}
+
+	/**
+	 * Re-applies the sort order to the entries already listed, without asking
+	 * the provider for the directory again, and re-renders in place.
+	 */
+	resort() {
+		if (this.entries.length) {
+			// Sort the original listing, not the sorted output: grouping folders
+			// first is not idempotent, so re-sorting an already ordered list would
+			// keep whatever grouping the previous order produced.
+			this.entries = this.sortEntries(this.rawEntries || this.entries);
+
+			if (this.virtualList) {
+				this.virtualList.setItems(this.entries);
+			} else {
+				// Rebuilding the rows replaces the folder wrappers, so release the
+				// old child trees first. Folders that were open re-expand from
+				// `expandedState`, which is what records them anyway.
+				const openFolders = new Set(this.childTrees.keys());
+				this.destroyChildTrees();
+
+				if (!this.options.expandedState) {
+					// Without a shared state object, seed one so re-created folders
+					// reopen instead of silently collapsing.
+					this.options.expandedState = {};
+					for (const url of openFolders) this.options.expandedState[url] = true;
+				}
+
+				const $fragment = document.createDocumentFragment();
+				for (const entry of this.entries) {
+					$fragment.appendChild(this.createEntryElement(entry));
+				}
+				this.container.replaceChildren($fragment);
+			}
+		}
+
+		// Nested folders keep their own listing, so apply the order there too.
+		for (const childTree of this.childTrees.values()) childTree.resort();
 	}
 
 	/**
@@ -341,6 +423,7 @@ export default class FileTree {
 		this.container.innerHTML = "";
 		this.container.classList.remove("virtual-scroll");
 		this.entries = [];
+		this.rawEntries = [];
 	}
 
 	/**
@@ -350,6 +433,14 @@ export default class FileTree {
 		this.generation++;
 		this.clear();
 		this.container.classList.remove("file-tree");
+
+		// Only the root tree owns the subscription; child trees share it through
+		// their options and must not release it from under the others.
+		if (this.depth === 0 && this._sortListener) {
+			this.options.onSortChange?.(null);
+			delete this.options._sortListener;
+			this._sortListener = null;
+		}
 	}
 
 	/**
@@ -425,11 +516,10 @@ export default class FileTree {
 			this.entries.push(entry);
 		}
 
-		// Re-sort entries
-		this.entries = helpers.sortDir(this.entries, {
-			sortByName: true,
-			showHiddenFiles: true,
-		});
+		// Track it in the unsorted listing too, so a later change of order can
+		// place it correctly instead of only knowing about it in the old order.
+		this.rawEntries.push(entry);
+		this.entries = this.sortEntries(this.rawEntries);
 
 		// Update rendering based on mode
 		if (this.virtualList) {
@@ -459,8 +549,9 @@ export default class FileTree {
 			this.childTrees.delete(url);
 		}
 
-		// Remove from entries
+		// Remove from entries, and from the unsorted listing the order is built on
 		this.entries.splice(index, 1);
+		this.rawEntries = this.rawEntries.filter((item) => item.url !== url);
 
 		// Update rendering based on mode
 		if (this.virtualList) {

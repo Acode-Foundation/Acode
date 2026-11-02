@@ -100,19 +100,63 @@ export default async function checkFiles() {
 
 			if (file.isUnsaved) return;
 
-			const text = await fs.readFile(file.encoding);
+			// Read the file before deciding anything. If the read fails, say so
+			// and stop: a failed read is not a changed file, and offering to
+			// reload would replace the document with whatever the failure
+			// produced. That is how a dropped connection once blanked a file.
+			let text;
+			try {
+				text = await fs.readFile(file.encoding);
+			} catch (error) {
+				if (!file.tab) return;
+				window.log("error", error);
+				if (file.hasVersionMetadata && !file.readOnly) {
+					await new Promise((resolve) => {
+						alert(
+							strings.warning,
+							strings["file could not be read"].replace(
+								"{file}",
+								file.filename,
+							),
+							resolve,
+						);
+					});
+				}
+				return;
+			}
 			if (!file.tab) return;
+			if (text == null) return;
+
 			const diskDoc = Text.of(String(text ?? "").split("\n"));
 			const currentDoc = file.session?.doc;
 
 			if (!currentDoc?.eq?.(diskDoc)) {
 				try {
+					// Never replace a document with an empty read: an empty result
+					// for a file that has content is a failed read, not an edit.
+					if (
+						diskDoc.length <= 1 &&
+						String(text ?? "").length === 0 &&
+						(currentDoc?.length ?? 0) > 1
+					) {
+						return;
+					}
+
 					const confirmation = await confirm(
 						strings.warning,
 						file.filename + strings["file changed"],
 					);
 
 					if (!confirmation || !file.tab) return;
+
+					// Reloading replaces the document with the disk version. Write the
+					// current buffer to the recovery cache first, so the text being
+					// discarded survives even if the replacement is unwanted.
+					try {
+						await file.flushCacheWrite();
+					} catch (error) {
+						console.warn("Could not preserve a copy before reloading", error);
+					}
 
 					const cursorPos = editor.getCursorPosition();
 					editorManager.getFile(file.id, "id")?.makeActive();

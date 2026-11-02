@@ -1,7 +1,7 @@
 {
   "name": "cordova-plugin-sftp",
-  "version": "1.1.1",
-  "description": "This cordova plugin is created to use sftp (client) in web/js.",
+  "version": "2.0.0",
+  "description": "SFTP and SSH client for Cordova on Android: encrypted profiles, host key verification, file transfer and remote shells.",
   "cordova": {
     "id": "cordova-plugin-sftp",
     "platforms": [
@@ -10,12 +10,26 @@
   },
   "keywords": [
     "cordova",
+    "ecosystem:cordova",
+    "cordova-android",
     "sftp",
-    "cordova-android"
+    "ssh",
+    "ftp"
   ],
   "author": "pax",
   "license": "Apache-2.0",
+  "engines": {
+    "cordovaDependencies": {
+      "1.0.0": {
+        "cordova-android": ">=10.0.0"
+      },
+      "2.0.0": {
+        "cordova-android": ">=10.0.0"
+      }
+    }
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
-  }
+  },
+  "private": true
 }

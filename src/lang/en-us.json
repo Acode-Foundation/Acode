@@ -89,6 +89,14 @@
 	"show spaces": "Show spaces",
 	"soft tab": "Soft tab",
 	"sort by name": "Sort by name",
+	"sort by": "Sort by",
+	"sort order": "Sort order",
+	"ascending": "Ascending",
+	"descending": "Descending",
+	"folders first": "Folders first",
+	"info-foldersFirst": "Group folders above files. Turn off to mix both in one order.",
+	"info-sortBy": "Group folders first and sort each group.",
+	"link": "symlink",
 	"success": "Success",
 	"tab size": "Tab size",
 	"text wrap": "Text wrap / Word wrap",
@@ -212,6 +220,7 @@
 	"files": "Files",
 	"help": "Help",
 	"file has been deleted": "{file} has been deleted!",
+	"file could not be read": "{file} could not be read, so it was left as it is. Your edits are unchanged. Check the connection and try again.",
 	"feature not available": "This feature is not available.",
 	"feature available in paid version": "This feature is only available in paid version of the app.",
 	"deleted file": "Deleted file",
@@ -911,5 +920,8 @@
 	"error-permission-revoked": "Acode can no longer access this location. Open the folder again to grant access.",
 	"error-not-found": "This file or folder no longer exists. It may have been moved, renamed or deleted.",
 	"error-no-space": "There isn't enough storage space left on this device.",
-	"error-network": "Couldn't reach the server. Check your connection and try again."
+	"error-network": "Couldn't reach the server. Check your connection and try again.",
+	"error-host-key-changed": "This server's SSH key changed, so the connection was blocked to protect you. If you changed the server yourself, open the connection's edit screen and reconnect to accept the new key.",
+	"error-host-key-rejected": "The SSH host key wasn't accepted, so the connection was cancelled.",
+	"host-key-note": "Only trust a fingerprint you can verify with the server owner. Trusting the wrong key exposes your files and credentials."
 }

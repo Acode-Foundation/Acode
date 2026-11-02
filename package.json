@@ -38,7 +38,6 @@
       "cordova-plugin-websocket": {},
       "cordova-plugin-buildinfo": {},
       "cordova-plugin-browser": {},
-      "cordova-plugin-sftp": {},
       "com.foxdebug.acode.rk.exec.terminal": {},
       "com.foxdebug.acode.rk.plugin.plugincontext": {},
       "com.foxdebug.acode.rk.auth": {},
@@ -46,11 +45,10 @@
       "cordova-plugin-iap": {},
       "com.foxdebug.acode.rk.customtabs": {},
       "cordova-plugin-crashhandler": {},
-      "cordova-plugin-advanced-http": {
-        "ANDROIDBLACKLISTSECURESOCKETPROTOCOLS": "SSLv3,TLSv1"
-      },
+      "cordova-plugin-advanced-http": {},
       "cordova-plugin-acode-webview": {},
-      "cordova-plugin-system": {}
+      "cordova-plugin-system": {},
+      "cordova-plugin-sftp": {}
     },
     "platforms": [
       "android"
@@ -222,5 +220,10 @@
     "@parcel/watcher@2.5.6": true,
     "core-js@3.49.0": true,
     "core-js-pure@3.49.0": true
-  }
+  },
+  "trustedDependencies": [
+    "@parcel/watcher",
+    "core-js",
+    "core-js-pure"
+  ]
 }

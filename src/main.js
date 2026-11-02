@@ -31,6 +31,7 @@ import toast from "components/toast";
 import { initIconTooltips } from "components/tooltip";
 import alert from "dialogs/alert";
 import confirm from "dialogs/confirm";
+import noticePrompt from "dialogs/noticePrompt";
 import intentHandler, { processPendingIntents } from "handlers/intent";
 import keyboardHandler, { keydownState } from "handlers/keyboard";
 import quickToolsInit from "handlers/quickToolsInit";
@@ -56,7 +57,10 @@ import openFolder, { addedFolder } from "lib/openFolder";
 import { registerPrettierFormatter } from "lib/registerPrettierFormatter";
 import restoreFiles from "lib/restoreFiles";
 import settings from "lib/settings";
-import { migrateLegacySftpProfiles } from "lib/sftpProfiles";
+import {
+	migrateLegacySftpProfiles,
+	onSftpConfirmation,
+} from "lib/sftpProfiles";
 import startAd, {
 	BANNER_SUPPRESSION_REASON,
 	setBannerSuppressed,
@@ -327,6 +331,31 @@ async function onDeviceReady() {
 	await lang.set(settings.value.lang);
 
 	acode.setLoadingMessage("Securing SFTP profiles...");
+	// Host key prompts come from the native thread; answer them on a page of
+	// their own so the fingerprint is readable and the buttons are never behind
+	// the system navigation bar.
+	onSftpConfirmation(async (request) => {
+		const choice = await noticePrompt(
+			request.title || "SSH host key",
+			request.message || "",
+			{
+				lead: "vpn_key",
+				note: strings["host-key-note"],
+				buttons: [
+					{
+						text: request.cancelLabel || strings.cancel,
+						value: false,
+					},
+					{
+						text: request.acceptLabel || strings.ok,
+						value: true,
+						primary: true,
+					},
+				],
+			},
+		);
+		return choice === true;
+	});
 	const sftpMigration = await migrateLegacySftpProfiles();
 	if (sftpMigration.failures.length) {
 		for (const failure of sftpMigration.failures) {

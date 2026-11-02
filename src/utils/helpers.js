@@ -8,6 +8,8 @@ import { interstitialAd, requestBannerForPage } from "lib/startAd";
 import { isBinaryFile } from "./binaryExtensions";
 import { isPlayStoreInstall } from "./installSource";
 import path from "./Path";
+import { getEntryComparator, normalizeSortOrder } from "./sortEntries";
+import { findRemoteStorageRoot, getStorageDisplayName } from "./storageRoot";
 import Uri from "./Uri";
 import Url from "./Url";
 
@@ -52,14 +54,22 @@ export default {
 	/**
 	 *
 	 * @param {FileEntry[]} list
-	 * @param {object} fileBrowser settings
-	 * @param {'both'|'file'|'folder'}
+	 * @param {fileBrowserSettings} fileBrowser settings
+	 * @param {'both'|'file'|'folder'} mode
+	 * @param {{foldersFirst?: boolean}} [options]
 	 */
-	sortDir(list, fileBrowser, mode = "both") {
+	sortDir(list, fileBrowser, mode = "both", options = {}) {
 		const dir = [];
 		const file = [];
-		const sortByName = fileBrowser.sortByName;
+		const foldersFirst = options.foldersFirst !== false;
 		const showHiddenFile = fileBrowser.showHiddenFiles;
+		// Folders are grouped before files unless asked otherwise, so the order
+		// applies inside each group. `sortByName: false` keeps the provider's
+		// listing order.
+		const order = normalizeSortOrder(fileBrowser.sortOrder);
+		const sortBy =
+			fileBrowser.sortByName === false ? "none" : fileBrowser.sortBy;
+		const compare = getEntryComparator(sortBy, order);
 
 		list.forEach((item) => {
 			let hidden;
@@ -91,16 +101,18 @@ export default {
 			}
 		});
 
-		if (sortByName) {
+		if (compare) {
 			dir.sort(compare);
 			file.sort(compare);
 		}
 
-		return dir.concat(file);
-
-		function compare(a, b) {
-			return a.name.toLowerCase() < b.name.toLowerCase() ? -1 : 1;
+		if (!foldersFirst) {
+			// Keep one sequence so a date or size order is not broken by
+			// lifting every folder to the top.
+			return dir.concat(file).sort(compare || (() => 0));
 		}
+
+		return dir.concat(file);
 	},
 	/**
 	 * Gets error message from error object
@@ -121,6 +133,15 @@ export default {
 			msg = err;
 		} else if (err instanceof Error) {
 			msg = err.message;
+		} else if (err && typeof err === "object") {
+			// Native plugins reject with a payload, not an Error: the SFTP host
+			// key failures carry `code`, `message`, `host` and fingerprints.
+			msg = err.message || err.code || strings["an error occurred"];
+			if (err.code && err.message && !msg.includes(err.code)) {
+				// Keep the code visible so the friendly mapping can match it.
+				msg = `${err.code}: ${msg}`;
+			}
+			if (err.host) msg = `${msg} (${err.host})`;
 		} else {
 			msg = strings["an error occurred"];
 		}
@@ -135,6 +156,12 @@ export default {
 	 */
 	friendlyErrorMessage(msg) {
 		if (typeof msg !== "string") return null;
+		if (/HOST_KEY_CHANGED/.test(msg)) {
+			return strings["error-host-key-changed"];
+		}
+		if (/HOST_KEY_REJECTED/.test(msg)) {
+			return strings["error-host-key-rejected"];
+		}
 		if (
 			/Permission Denial|ACTION_OPEN_DOCUMENT|SecurityException|EACCES/i.test(
 				msg,
@@ -262,6 +289,35 @@ export default {
 		}
 
 		return url;
+	},
+	/**
+	 * Name to show for a folder opened in the explorer.
+	 *
+	 * A remote storage keeps the alias the person chose when adding it, so a
+	 * folder under it reads "My server / myapp" instead of the login name that
+	 * only happens to be the basename of the home directory (e.g. "tony" for
+	 * `/home/tony`). Local paths are left untouched.
+	 * @param {string} url
+	 * @param {string} [fallback] Name to use when the url is not a remote storage
+	 * @returns {string}
+	 */
+	getFolderDisplayName(url, fallback) {
+		const storageList = this.parseJSON(localStorage.storageList);
+		return (
+			getStorageDisplayName(storageList, url, fallback) ||
+			fallback ||
+			this.getVirtualPath(url)
+		);
+	},
+	/**
+	 * Remote storage entry (from `localStorage.storageList`) that owns `url`.
+	 * Returns null for local paths so ordinary folders keep their own name.
+	 * @param {string} url
+	 * @returns {{url: string, name: string, home?: string}|null}
+	 */
+	findStorageRoot(url) {
+		const storageList = this.parseJSON(localStorage.storageList);
+		return findRemoteStorageRoot(storageList, url);
 	},
 	/**
 	 * Updates uri of all active which matches the oldUrl as location

@@ -5,6 +5,10 @@ import helpers from "utils/helpers";
 import Path from "utils/Path";
 import Url from "utils/Url";
 import internalFs from "./internalFs";
+import {
+	assertDownloadIsComplete,
+	isMissingFileError,
+} from "./remoteReadSafety";
 
 class FtpClient {
 	#MAX_TRY = 3;
@@ -99,9 +103,11 @@ class FtpClient {
 					resolve(
 						list.map((i) => {
 							i.url = Url.join(this.#origin, i.url);
-							if (i.isFile) {
-								i.type = mimeType.lookup(i.name);
-							}
+							// Entry kind for the app's own branches; the MIME type
+							// belongs in `mime`. Writing a MIME string into `type`
+							// made rows that are neither file nor directory.
+							i.type = i.isDirectory ? "dir" : "file";
+							i.mime = mimeType.lookup(i.name);
 							return i;
 						}),
 					);
@@ -117,14 +123,23 @@ class FtpClient {
 	 */
 	async readFile() {
 		await this.#connectIfNotConnected();
+		const expectedLength = await this.#remoteLength();
 		return new Promise((resolve, reject) => {
 			ftp.downloadFile(
 				this.#conId,
 				this.#path,
 				this.#cacheFile,
 				async () => {
-					const data = await internalFs.readFile(this.#cacheFile);
-					resolve(data);
+					try {
+						const data = await internalFs.readFile(this.#cacheFile);
+						// A dropped connection leaves a short cache; reporting it as
+						// the file content would let a save replace the real file
+						// with an empty document.
+						assertDownloadIsComplete(data, expectedLength, this.#path);
+						resolve(data);
+					} catch (error) {
+						reject(error);
+					}
 				},
 				(error) => {
 					reject(error);
@@ -132,6 +147,23 @@ class FtpClient {
 				},
 			);
 		});
+	}
+
+	/**
+	 * Size the server reports, used to detect a short download.
+	 * Resolves 0 when it cannot be determined, which disables the check.
+	 * @returns {Promise<number>}
+	 */
+	async #remoteLength() {
+		try {
+			const stat = await new Promise((resolve, reject) => {
+				ftp.getStat(this.#conId, this.#path, resolve, reject);
+			});
+			return Number(stat?.size ?? stat?.length) || 0;
+		} catch (error) {
+			if (isMissingFileError(error)) throw error;
+			return 0;
+		}
 	}
 
 	/**
@@ -299,9 +331,9 @@ class FtpClient {
 							this.url = val;
 						},
 					);
-					if (this.#stat.isFile) {
-						this.#stat.type = mimeType.lookup(this.#stat.name);
-					}
+					// Entry kind for the app's branches; MIME type goes in `mime`.
+					this.#stat.type = this.#stat.isDirectory ? "dir" : "file";
+					this.#stat.mime = mimeType.lookup(this.#stat.name);
 					resolve(this.#stat);
 				},
 				(err) => {

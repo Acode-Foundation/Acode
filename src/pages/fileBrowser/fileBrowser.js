@@ -12,6 +12,7 @@ import confirm from "dialogs/confirm";
 import loader from "dialogs/loader";
 import prompt from "dialogs/prompt";
 import select from "dialogs/select";
+import { filesize } from "filesize";
 import JSZip from "jszip";
 import actionStack from "lib/actionStack";
 import checkFiles from "lib/checkFiles";
@@ -22,6 +23,7 @@ import recents from "lib/recents";
 import remoteStorage from "lib/remoteStorage";
 import appSettings from "lib/settings";
 import { deleteSftpProfile, getSftpProfileId } from "lib/sftpProfiles";
+import { handleSortMenuClick, renderSortMenu } from "lib/sortMenu";
 import mimeTypes from "mime-types";
 import mustache from "mustache";
 import filesSettings from "settings/filesSettings";
@@ -105,6 +107,17 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		);
 
 		const $search = <span className="icon search" data-action="search"></span>;
+		const SORT_LABEL = strings["sort by"] || "Sort by";
+		const $sortToggler = (
+			<span
+				className="icon tune"
+				data-action="toggle-sort-menu"
+				title={SORT_LABEL}
+				aria-label={SORT_LABEL}
+				role="button"
+				tabindex="0"
+			></span>
+		);
 		const $selectDocument = (
 			<span
 				className="icon folder_open"
@@ -165,6 +178,10 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			},
 			...((menuOption.toggler = $addMenuToggler) && menuOption),
 		});
+		const $sortMenu = Contextmenu({
+			innerHTML: () => renderSortMenu(),
+			...((menuOption.toggler = $sortToggler) && menuOption),
+		});
 
 		$selectionMenuToggler.style.display = "none";
 		$pasteToggler.style.display = "none";
@@ -187,7 +204,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		$content.addEventListener("click", handleClick);
 		$content.addEventListener("contextmenu", handleContextMenu, true);
 		$page.body = $content;
-		$page.header.append($search);
+		$page.header.append($search, $sortToggler);
 		if (IS_FILE_MODE) $page.header.append($selectDocument);
 		$page.header.append(
 			$pasteToggler,
@@ -245,10 +262,13 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			$fbMenu.hide();
 			const action = e.target.getAttribute("action");
 			if (action === "settings") {
-				filesSettings().show();
+				const settingsPage = filesSettings();
+				settingsPage.show();
+				// The sort order can be changed there too, so re-apply it when the
+				// settings page closes instead of only on the next navigation.
 				const onshow = () => {
 					$page.off("show", onshow);
-					reload();
+					resortCurrentDir();
 				};
 				$page.on("show", onshow);
 				return;
@@ -271,6 +291,14 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				toast(strings.success);
 				return;
 			}
+		};
+
+		$sortMenu.onclick = (e) => {
+			$sortMenu.hide();
+			if (!handleSortMenuClick(e)) return;
+			// Re-sort the directory already in memory, so changing the order does
+			// not refetch a remote listing.
+			resortCurrentDir();
 		};
 
 		$addMenu.onclick = async (e) => {
@@ -645,6 +673,30 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			if ($list) searchBar($list, (hide) => (hideSearchBar = hide));
 		};
 
+		/**
+		 * Applies the stored sort order to the directory on screen without
+		 * asking the provider for the listing again.
+		 */
+		function resortCurrentDir() {
+			const { url } = currentDir;
+			if (!url || url === "/") {
+				// The root only lists storages, which keep their own order.
+				reload();
+				return;
+			}
+
+			const dir = cachedDir.get(url);
+			if (!dir) return;
+
+			const fileBrowser = appSettings.value.fileBrowser;
+			dir.list = helpers.sortDir(dir.list, fileBrowser, mode, {
+				foldersFirst: fileBrowser.foldersFirst !== false,
+			});
+			cachedDir.set(url, dir);
+			currentDir = dir;
+			render(dir);
+		}
+
 		$page.onhide = function () {
 			hideSearchBar();
 			actionStack.clearFromMark();
@@ -908,6 +960,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				$addMenuToggler.style.display = "none";
 				$menuToggler.style.display = "none";
 				$selectDocument.style.display = "none";
+				$sortToggler.style.display = "none";
 				$selectionMenuToggler.style.display = "";
 				updatePasteToggler();
 
@@ -936,6 +989,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				$addMenuToggler.style.display = "";
 				$menuToggler.style.display = "";
 				$selectDocument.style.display = "";
+				$sortToggler.style.display = "";
 				$selectionMenuToggler.style.display = "none";
 				updatePasteToggler();
 
@@ -1505,7 +1559,9 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					url,
 					name,
 					scroll: 0,
-					list: helpers.sortDir(list, fileBrowser, mode),
+					list: helpers.sortDir(list, fileBrowser, mode, {
+						foldersFirst: fileBrowser.foldersFirst !== false,
+					}),
 				};
 			}
 		}
@@ -1779,12 +1835,65 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			if (doesReload) reload();
 		}
 
+		/**
+		 * Whether the provider reported enough about an entry to show a detail
+		 * line. Remote listings do; local listings only carry names.
+		 * @param {object} entry
+		 * @returns {boolean}
+		 */
+		function hasEntryMetadata(entry) {
+			if (!entry || entry.uuid || entry.parent || entry.isRoot) return false;
+			if (entry.storageType) return false;
+			return entry.modifiedDate != null || entry.size > 0;
+		}
+
+		/**
+		 * Secondary line for a listing row: "1.2 MB · 12 Mar 2026" for files,
+		 * the modification date for folders. Values the server omits are
+		 * dropped rather than shown as "0 B" or "Invalid Date".
+		 * @param {object} entry
+		 * @returns {string}
+		 */
+		function formatEntryMeta(entry) {
+			const parts = [];
+			const size = Number(entry.size ?? entry.length);
+
+			if (!entry.isDirectory && Number.isFinite(size) && size >= 0) {
+				parts.push(filesize(size, { base: 2, standard: "jedec" }));
+			}
+
+			const modified = Number(entry.modifiedDate ?? entry.lastModified);
+			if (Number.isFinite(modified) && modified > 0) {
+				const date = new Date(modified);
+				parts.push(
+					date.toLocaleDateString(undefined, {
+						day: "numeric",
+						month: "short",
+						year:
+							date.getFullYear() === new Date().getFullYear()
+								? undefined
+								: "numeric",
+					}),
+				);
+			}
+
+			if (entry.isLink) parts.push(strings.link || "symlink");
+			return parts.join(" · ");
+		}
+
 		function render(dir) {
 			const { list, scroll } = dir;
+			// Providers that report metadata (SFTP does) get a second line with
+			// size and modification date; the rest render exactly as before.
+			const rows = list.map((entry) =>
+				entry.meta || !hasEntryMetadata(entry)
+					? entry
+					: { ...entry, meta: formatEntryMeta(entry) },
+			);
 			const $list = helpers.parseHTML(
 				mustache.render(_list, {
 					msg: strings["empty folder message"],
-					list,
+					list: rows,
 				}),
 			);
 
