@@ -4,6 +4,10 @@ import Page from "components/page";
 import actionStack from "lib/actionStack";
 import restoreTheme from "lib/restoreTheme";
 
+// Prompts can overlap (a file connection and an SSH shell may both be asking),
+// so each one needs its own Back action id.
+let nextPromptId = 0;
+
 /**
  * A decision that must be read before it is answered: a page rather than a
  * modal box, so long messages and their buttons are never hidden behind the
@@ -26,6 +30,7 @@ import restoreTheme from "lib/restoreTheme";
  */
 export default function noticePrompt(title, message, options = {}) {
 	const { buttons = [], note, oncancel } = options;
+	const actionId = `notice-prompt-${++nextPromptId}`;
 
 	return new Promise((resolve) => {
 		// The header keeps Page's own back arrow: replacing the lead would remove
@@ -62,8 +67,15 @@ export default function noticePrompt(title, message, options = {}) {
 
 		// A page needs its own Back entry so the hardware key does not fall
 		// through to whatever screen opened the connection.
-		actionStack.push({ id: "notice-prompt", action: cancel });
+		actionStack.push({ id: actionId, action: cancel });
 		restoreTheme(true);
+
+		// The header's back arrow calls Page.hide() without going through the
+		// buttons, so without this the prompt was hidden while its promise never
+		// settled and the native side waited for its own timeout.
+		// `closed` keeps hide() from re-entering cancel() when this prompt closes
+		// itself.
+		$page.onhide = () => cancel();
 
 		function appendMessage($parent, text) {
 			const lines = String(text || "").split("\n");
@@ -96,9 +108,10 @@ export default function noticePrompt(title, message, options = {}) {
 		function close(value) {
 			if (closed) return;
 			closed = true;
-			actionStack.remove("notice-prompt");
+			actionStack.remove(actionId);
 			restoreTheme();
-			// Page.hide() runs its exit animation and removes the node itself.
+			// Page.hide() runs its exit animation and removes the node itself,
+			// and calls onhide, which returns immediately because of `closed`.
 			$page.hide();
 			resolve(value);
 		}
