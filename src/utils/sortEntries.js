@@ -17,12 +17,19 @@ export function normalizeSortOrder(order) {
 /**
  * Compares two entries by a field, falling back to the name so equal sizes or
  * dates still have a stable, predictable order.
- * @param {SortField} sortBy
- * @param {SortOrder} sortOrder
+ *
+ * A missing field is not a request to stop sorting: the `fileBrowser` settings
+ * are saved as one object and only their top level is filled in on upgrade, so
+ * a block written before these fields existed has no `sortBy`. Reading that as
+ * "unsorted" turned alphabetical sorting off after an upgrade. Only the
+ * explicit "none" disables sorting, which is what the settings toggle passes.
+ *
+ * @param {SortField} [sortBy] missing means "name"
+ * @param {SortOrder} [sortOrder]
  * @returns {((a: object, b: object) => number) | null} null when unsorted
  */
-export function getEntryComparator(sortBy, sortOrder) {
-	if (!sortBy || sortBy === "none") return null;
+export function getEntryComparator(sortBy = "name", sortOrder) {
+	if (sortBy === "none") return null;
 
 	const sign = sortOrder === "desc" ? -1 : 1;
 	const byName = (a, b) => sign * compareText(a.name || "", b.name || "");
