@@ -47,12 +47,19 @@ export function setSort({ sortBy, sortOrder } = {}) {
 
 /**
  * Current sort selection, with the legacy `sortByName` flag folded in.
+ *
+ * `sortBy` is missing from settings saved before it existed (they are only
+ * filled in at the top level on upgrade), and the app sorts by name in that
+ * case, so report "name" rather than leaving the menu with no active row.
  * @returns {{sortBy: string, sortOrder: "asc"|"desc"}}
  */
 export function getSort() {
 	const fileBrowser = appSettings.value.fileBrowser || {};
 	return {
-		sortBy: fileBrowser.sortByName === false ? "none" : fileBrowser.sortBy,
+		sortBy:
+			fileBrowser.sortByName === false
+				? "none"
+				: (fileBrowser.sortBy ?? "name"),
 		sortOrder: fileBrowser.sortOrder === "desc" ? "desc" : "asc",
 	};
 }
