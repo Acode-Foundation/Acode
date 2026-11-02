@@ -531,22 +531,42 @@ class SftpClient {
 	async #replaceCache(filename, staged) {
 		const target = this.#getLocalname(filename);
 		const targetName = Url.basename(target);
+		const parked = `${targetName}.old`;
+		const parkedPath = Url.join(Url.dirname(target), parked);
+		let parkedOldCopy = false;
 
 		try {
 			// renameTo moves within the same directory and takes a basename, so
 			// this parks the old copy instead of deleting it: if the move below
 			// fails, the previous good copy is still there.
 			if (await internalFs.createFs(target).exists()) {
-				await internalFs.createFs(target).renameTo(`${targetName}.old`);
+				await internalFs.createFs(target).renameTo(parked);
+				parkedOldCopy = true;
 			}
 		} catch {
 			// Nothing to replace.
 		}
 
-		await internalFs.createFs(staged).renameTo(targetName);
-		await this.#removeQuietly(
-			Url.join(Url.dirname(target), `${targetName}.old`),
-		);
+		try {
+			await internalFs.createFs(staged).renameTo(targetName);
+		} catch (error) {
+			// Put the parked copy back. Leaving only "<name>.old" kept the bytes
+			// but pointed localName at a file that no longer existed, which broke
+			// sharing and every later cache read.
+			if (parkedOldCopy) {
+				try {
+					await internalFs.createFs(parkedPath).renameTo(targetName);
+				} catch (restoreError) {
+					console.warn(
+						"Could not restore the previous cached copy",
+						restoreError,
+					);
+				}
+			}
+			throw error;
+		}
+
+		await this.#removeQuietly(parkedPath);
 	}
 
 	async #removeQuietly(path) {
