@@ -71,19 +71,61 @@ final class WebConfirm {
       decision.countDown();
     };
 
+    String requestId = newRequestId();
     try {
-      show(title, message, acceptLabel, answer);
+      show(requestId, title, message, acceptLabel, answer);
     } catch (RuntimeException e) {
       Log.w(TAG, "Could not show the confirmation", e);
       decision.countDown();
     }
 
-    // A prompt lost to a configuration change must not wedge the connection.
-    if (!decision.await(TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
-      Log.w(TAG, "Confirmation timed out: " + title);
-      return false;
+    try {
+      // A prompt lost to a configuration change must not wedge the connection.
+      if (!decision.await(TIMEOUT_MS, TimeUnit.MILLISECONDS)) {
+        Log.w(TAG, "Confirmation timed out: " + title);
+        return false;
+      }
+      return confirmed.get();
+    } finally {
+      // However this wait ends, the entry must not outlive it. An unanswered
+      // timeout used to leave its callback in `pending` for the life of the
+      // plug-in, one more per expired prompt. When `resolve()` already took the
+      // entry the answer arrived, so there is nothing left to clean up; when it
+      // is still there, the prompt on screen can no longer be answered and is
+      // told to close.
+      if (pending.remove(requestId) != null) dismiss(requestId);
     }
-    return confirmed.get();
+  }
+
+  private static String newRequestId() {
+    return "sftp-confirm-" + UUID.randomUUID();
+  }
+
+  /**
+   * Ask the page to close a prompt that can no longer be answered.
+   *
+   * Best effort by design: the wait is already over, so a page without the
+   * hook (or one that is being torn down) must not produce an error. The id is
+   * one this class generated, so it carries no characters needing escaping.
+   * @param requestId id of the prompt to close
+   */
+  private void dismiss(String requestId) {
+    if (webView == null) return;
+    String script =
+      "javascript:(function(){try{" +
+      "if(window.__acodeSftpDismiss)window.__acodeSftpDismiss('" +
+      requestId +
+      "');" +
+      "}catch(e){}})()";
+    new Handler(Looper.getMainLooper()).post(
+      () -> {
+        try {
+          webView.loadUrl(script);
+        } catch (RuntimeException e) {
+          Log.w(TAG, "Could not dismiss the expired confirmation", e);
+        }
+      }
+    );
   }
 
   /**
@@ -118,6 +160,7 @@ final class WebConfirm {
   }
 
   private void show(
+    String requestId,
     String title,
     String message,
     String acceptLabel,
@@ -125,7 +168,6 @@ final class WebConfirm {
   ) {
     if (webView == null) throw new IllegalStateException("WebView is not ready");
 
-    String requestId = "sftp-confirm-" + UUID.randomUUID();
     pending.put(requestId, onResult);
 
     JSONObject request = new JSONObject();

@@ -923,8 +923,10 @@ declare type LangStrings = {
 	"error-not-found": string;
 	"error-no-space": string;
 	"error-network": string;
+	"file could not be read": string;
 	"error-host-key-changed": string;
 	"error-host-key-rejected": string;
+	"host-key-note": string;
 };
 
 declare var strings: LangStrings;

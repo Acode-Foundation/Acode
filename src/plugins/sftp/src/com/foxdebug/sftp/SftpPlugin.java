@@ -602,11 +602,15 @@ public class SftpPlugin extends CordovaPlugin {
       return;
     }
     try {
-      // The page escapes every path segment, but the server stores names, so
-      // the escaped form has to be decoded first. Passing it on unresolved made
-      // "/my file.txt" look like a different, missing file, and a missing file
-      // makes checkFiles() tell the reader their document was deleted.
-      String path = decodePath(args.optString(0));
+      // Do not decode here. The page already decoded the URL: `Sftp.fromUrl()`
+      // runs it through `Url.decodeUrl()`, and `#safeName()` only escapes shell
+      // quoting, never percent-encoding. Decoding a second time made
+      // `sftp://profile-1/a%2520b.txt` arrive as `/a%20b.txt` from JavaScript
+      // and become `/a b.txt` here, while the download still asked the server
+      // for `/a%20b.txt`. The existence check and the download then addressed
+      // different files, so a real document looked deleted and checkFiles()
+      // cleared its uri.
+      String path = args.optString(0);
       JSONObject entry;
       try {
         entry = describe(client, basename(path), path, client.stat(path));
@@ -906,26 +910,6 @@ public class SftpPlugin extends CordovaPlugin {
   private static String basename(String path) {
     String[] segments = path.split("/");
     return segments.length == 0 ? path : segments[segments.length - 1];
-  }
-
-  /**
-   * Turn a path sent by the page back into the name the server knows.
-   *
-   * The page escapes each segment, so `/my file.txt` arrives as
-   * `/my%20file.txt`, which the SFTP client does not find.
-   */
-  private static String decodePath(String path) {
-    if (path == null) return "";
-    try {
-      // `+` is a literal in a path; URIs do not use form encoding, but
-      // URLDecoder does, so protect it before decoding.
-      return java.net.URLDecoder.decode(
-        path.replace("+", "%2B"),
-        StandardCharsets.UTF_8.toString()
-      );
-    } catch (java.io.UnsupportedEncodingException | IllegalArgumentException e) {
-      return path;
-    }
   }
 
   static String errMessage(Exception e) {

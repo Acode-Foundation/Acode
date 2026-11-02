@@ -138,11 +138,7 @@ class FtpClient {
 						// A dropped connection leaves a short cache; reporting it as
 						// the file content would let a save replace the real file
 						// with an empty document.
-						assertDownloadIsComplete(
-							result?.data,
-							expectedLength,
-							this.#path,
-						);
+						assertDownloadIsComplete(result?.data, expectedLength, this.#path);
 						resolve(result);
 					} catch (error) {
 						reject(error);

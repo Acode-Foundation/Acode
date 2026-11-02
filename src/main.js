@@ -31,7 +31,7 @@ import toast from "components/toast";
 import { initIconTooltips } from "components/tooltip";
 import alert from "dialogs/alert";
 import confirm from "dialogs/confirm";
-import noticePrompt from "dialogs/noticePrompt";
+import noticePrompt, { dismissNoticePrompt } from "dialogs/noticePrompt";
 import intentHandler, { processPendingIntents } from "handlers/intent";
 import keyboardHandler, { keydownState } from "handlers/keyboard";
 import quickToolsInit from "handlers/quickToolsInit";
@@ -339,6 +339,10 @@ async function onDeviceReady() {
 			request.title || "SSH host key",
 			request.message || "",
 			{
+				// Lets the plug-in close this page when it stops waiting for an
+				// answer, so an expired prompt cannot stay on screen looking
+				// answerable.
+				id: request.id,
 				lead: "vpn_key",
 				note: strings["host-key-note"],
 				buttons: [
@@ -356,6 +360,15 @@ async function onDeviceReady() {
 		);
 		return choice === true;
 	});
+
+	// The plug-in stops waiting for an answer after its own timeout. Closing the
+	// page it left behind keeps an expired prompt from still looking answerable.
+	// Registered here rather than in `lib/sftpProfiles` so that a library module
+	// does not have to import a dialog module.
+	globalThis.__acodeSftpDismiss = (id) => {
+		if (typeof id === "string" && id) dismissNoticePrompt(id);
+	};
+
 	const sftpMigration = await migrateLegacySftpProfiles();
 	if (sftpMigration.failures.length) {
 		for (const failure of sftpMigration.failures) {

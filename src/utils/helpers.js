@@ -67,8 +67,13 @@ export default {
 		// applies inside each group. `sortByName: false` keeps the provider's
 		// listing order.
 		const order = normalizeSortOrder(fileBrowser.sortOrder);
+		// A settings object saved before this field existed has no `sortBy`.
+		// Reading it as `undefined` reached the comparator as "no order", which
+		// silently turned alphabetical sorting off after an upgrade.
 		const sortBy =
-			fileBrowser.sortByName === false ? "none" : fileBrowser.sortBy;
+			fileBrowser.sortByName === false
+				? "none"
+				: (fileBrowser.sortBy ?? "name");
 		const compare = getEntryComparator(sortBy, order);
 
 		list.forEach((item) => {

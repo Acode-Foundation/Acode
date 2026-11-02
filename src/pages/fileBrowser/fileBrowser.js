@@ -689,7 +689,11 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			if (!dir) return;
 
 			const fileBrowser = appSettings.value.fileBrowser;
-			dir.list = helpers.sortDir(dir.list, fileBrowser, mode, {
+			// Sort the listing as the provider returned it. `dir.list` has already
+			// been filtered and sorted, so re-sorting it could not bring back
+			// entries hidden when the folder loaded, and turning sorting off could
+			// not restore the provider's own order.
+			dir.list = helpers.sortDir(dir.rawList ?? dir.list, fileBrowser, mode, {
 				foldersFirst: fileBrowser.foldersFirst !== false,
 			});
 			cachedDir.set(url, dir);
@@ -1559,6 +1563,10 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					url,
 					name,
 					scroll: 0,
+					// The listing exactly as the provider returned it. `sortDir`
+					// filters hidden entries and orders the result, so the sorted
+					// array cannot be used to rebuild a different view later.
+					rawList: list,
 					list: helpers.sortDir(list, fileBrowser, mode, {
 						foldersFirst: fileBrowser.foldersFirst !== false,
 					}),

@@ -8,6 +8,22 @@ import restoreTheme from "lib/restoreTheme";
 // so each one needs its own Back action id.
 let nextPromptId = 0;
 
+// Prompts the native side may still be waiting on, keyed by request id. Native
+// gives up after its own timeout, at which point the question can no longer be
+// answered; `dismissNoticePrompt` lets it close the page it left behind.
+const activePrompts = new Map();
+
+/**
+ * Close a prompt whose caller has stopped waiting for an answer.
+ * @param {string} id request id the prompt was opened with
+ * @returns {void}
+ */
+export function dismissNoticePrompt(id) {
+	const cancel = activePrompts.get(id);
+	activePrompts.delete(id);
+	cancel?.();
+}
+
 /**
  * A decision that must be read before it is answered: a page rather than a
  * modal box, so long messages and their buttons are never hidden behind the
@@ -29,7 +45,7 @@ let nextPromptId = 0;
  * @returns {Promise<any>} The chosen button's value, or undefined when dismissed
  */
 export default function noticePrompt(title, message, options = {}) {
-	const { buttons = [], note, oncancel } = options;
+	const { buttons = [], note, oncancel, id } = options;
 	const actionId = `notice-prompt-${++nextPromptId}`;
 
 	return new Promise((resolve) => {
@@ -77,6 +93,10 @@ export default function noticePrompt(title, message, options = {}) {
 		// itself.
 		$page.onhide = () => cancel();
 
+		// Reachable from outside once the native wait has ended, so an expired
+		// prompt cannot stay on screen looking answerable.
+		if (id) activePrompts.set(id, cancel);
+
 		function appendMessage($parent, text) {
 			const lines = String(text || "").split("\n");
 			for (const line of lines) {
@@ -108,6 +128,7 @@ export default function noticePrompt(title, message, options = {}) {
 		function close(value) {
 			if (closed) return;
 			closed = true;
+			if (id) activePrompts.delete(id);
 			actionStack.remove(actionId);
 			restoreTheme();
 			// Page.hide() runs its exit animation and removes the node itself,
