@@ -25,9 +25,26 @@ describe("normalizeSortOrder", () => {
 });
 
 describe("getEntryComparator", () => {
-	it("returns nothing when the listing should keep its provider order", () => {
+	it("returns nothing only when sorting is explicitly off", () => {
 		expect(getEntryComparator("none", "asc")).toBeNull();
-		expect(getEntryComparator(undefined, "asc")).toBeNull();
+	});
+
+	it("sorts by name when the saved settings have no field yet", () => {
+		// Settings are only filled in at the top level on upgrade, so an existing
+		// install reaches here with `sortBy` undefined. That must not turn
+		// alphabetical sorting off.
+		expect(sorted(entries(), undefined)).toEqual([
+			"alpha",
+			"beta.txt",
+			"Gamma.md",
+			"zeta.txt",
+		]);
+		expect(sorted(entries(), null)).toEqual([
+			"alpha",
+			"beta.txt",
+			"Gamma.md",
+			"zeta.txt",
+		]);
 	});
 
 	it("orders by name, ignoring case", () => {
