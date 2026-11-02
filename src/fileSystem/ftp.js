@@ -131,12 +131,19 @@ class FtpClient {
 				this.#cacheFile,
 				async () => {
 					try {
-						const data = await internalFs.readFile(this.#cacheFile);
+						const result = await internalFs.readFile(this.#cacheFile);
+						// `readFile()` resolves with `{ data }`, not the buffer itself.
+						// The wrapper has no byteLength, so checking it reported zero
+						// bytes for every file and rejected complete downloads.
 						// A dropped connection leaves a short cache; reporting it as
 						// the file content would let a save replace the real file
 						// with an empty document.
-						assertDownloadIsComplete(data, expectedLength, this.#path);
-						resolve(data);
+						assertDownloadIsComplete(
+							result?.data,
+							expectedLength,
+							this.#path,
+						);
+						resolve(result);
 					} catch (error) {
 						reject(error);
 					}
