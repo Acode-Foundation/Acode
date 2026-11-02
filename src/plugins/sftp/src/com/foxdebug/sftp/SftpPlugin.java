@@ -17,7 +17,6 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.SocketException;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.UUID;
@@ -41,7 +40,6 @@ import org.json.JSONObject;
 public class SftpPlugin extends CordovaPlugin {
 
   private static final String TAG = "SFTP";
-  private static final String SERVICE = "Sftp";
 
   private static final long DEFAULT_CONNECT_TIMEOUT_MS = 10000L;
   private static final long MIN_CONNECT_TIMEOUT_MS = 1000L;
@@ -207,9 +205,14 @@ public class SftpPlugin extends CordovaPlugin {
    * The page compares the answer against a profile id and treats anything
    * falsy as disconnected, so this replies with the id when connected and the
    * number 0 when not.
+   *
+   * The stored id alone is not enough: after the server drops an idle
+   * connection the profile still looked connected, so the page skipped
+   * reconnecting and every file call failed with "Not connected" until the
+   * connection was reset. Ask the session whether it is still live.
    */
   private void answerConnectionState(CallbackContext callback) {
-    String id = session.connectionId();
+    String id = session.sftp() == null ? null : session.connectionId();
     if (id == null) callback.success(0);
     else callback.success(id);
   }
@@ -413,7 +416,10 @@ public class SftpPlugin extends CordovaPlugin {
       password.isEmpty() &&
       existing != null &&
       "password".equals(existing.optString("authType"));
-    profile.put("password", keepStoredPassword ? existing.optString("password") : password);
+    profile.put(
+      "password",
+      keepStoredPassword ? existing.optString("password") : password
+    );
   }
 
   private static void validateProfile(String hostname, String username, int port) {
@@ -432,7 +438,9 @@ public class SftpPlugin extends CordovaPlugin {
     cordova.getThreadPool().execute(() -> {
       try {
         String profileID = args.getString(0);
-        callback.success(profileInfo(profileID, securityStore.getProfile(profileID)));
+        callback.success(
+          profileInfo(profileID, securityStore.getProfile(profileID))
+        );
       } catch (Exception e) {
         callback.error("Could not read SFTP profile: " + errMessage(e));
       }
@@ -572,7 +580,9 @@ public class SftpPlugin extends CordovaPlugin {
       for (SftpFile file : client.ls(args.optString(0))) {
         String name = file.getFilename();
         if (".".equals(name) || "..".equals(name)) continue;
-        files.put(describe(client, name, file.getAbsolutePath(), file.attributes()));
+        files.put(
+          describe(client, name, file.getAbsolutePath(), file.attributes())
+        );
       }
       callback.success(files);
     } catch (SshException | RuntimeException e) {
@@ -592,7 +602,11 @@ public class SftpPlugin extends CordovaPlugin {
       return;
     }
     try {
-      String path = sanitizePath(args.optString(0));
+      // The page escapes every path segment, but the server stores names, so
+      // the escaped form has to be decoded first. Passing it on unresolved made
+      // "/my file.txt" look like a different, missing file, and a missing file
+      // makes checkFiles() tell the reader their document was deleted.
+      String path = decodePath(args.optString(0));
       JSONObject entry;
       try {
         entry = describe(client, basename(path), path, client.stat(path));
@@ -895,23 +909,21 @@ public class SftpPlugin extends CordovaPlugin {
   }
 
   /**
-   * Normalise a remote path so spaces and reserved characters survive the
-   * round trip through the page, while separators stay literal.
+   * Turn a path sent by the page back into the name the server knows.
+   *
+   * The page escapes each segment, so `/my file.txt` arrives as
+   * `/my%20file.txt`, which the SFTP client does not find.
    */
-  private static String sanitizePath(String path) {
+  private static String decodePath(String path) {
+    if (path == null) return "";
     try {
-      String decoded = java.net.URLDecoder.decode(
-        path,
+      // `+` is a literal in a path; URIs do not use form encoding, but
+      // URLDecoder does, so protect it before decoding.
+      return java.net.URLDecoder.decode(
+        path.replace("+", "%2B"),
         StandardCharsets.UTF_8.toString()
       );
-      return java.net.URLEncoder.encode(
-        decoded,
-        StandardCharsets.UTF_8.toString()
-      )
-        .replace("+", "%20")
-        .replace("%2F", "/")
-        .replace("%5C", "\\");
-    } catch (java.io.UnsupportedEncodingException e) {
+    } catch (java.io.UnsupportedEncodingException | IllegalArgumentException e) {
       return path;
     }
   }
