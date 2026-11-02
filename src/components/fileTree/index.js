@@ -116,7 +116,7 @@ export default class FileTree {
 
 	/**
 	 * Re-applies the sort order to the entries already listed, without asking
-	 * the provider for the directory again, and re-renders in place.
+	 * the provider for the directory again, and re-orders what is on screen.
 	 */
 	resort() {
 		if (this.entries.length) {
@@ -128,29 +128,35 @@ export default class FileTree {
 			if (this.virtualList) {
 				this.virtualList.setItems(this.entries);
 			} else {
-				// Rebuilding the rows replaces the folder wrappers, so release the
-				// old child trees first. Folders that were open re-expand from
-				// `expandedState`, which is what records them anyway.
-				const openFolders = new Set(this.childTrees.keys());
-				this.destroyChildTrees();
-
-				if (!this.options.expandedState) {
-					// Without a shared state object, seed one so re-created folders
-					// reopen instead of silently collapsing.
-					this.options.expandedState = {};
-					for (const url of openFolders) this.options.expandedState[url] = true;
-				}
-
-				const $fragment = document.createDocumentFragment();
-				for (const entry of this.entries) {
-					$fragment.appendChild(this.createEntryElement(entry));
-				}
-				this.container.replaceChildren($fragment);
+				this.reorderRenderedRows();
 			}
 		}
 
 		// Nested folders keep their own listing, so apply the order there too.
 		for (const childTree of this.childTrees.values()) childTree.resort();
+	}
+
+	/**
+	 * Put the rows already rendered in the new order.
+	 *
+	 * Rebuilding them used to destroy every expanded child tree, and the rebuilt
+	 * folders fetched their listings again: changing the order re-listed every
+	 * expanded remote folder, and a folder whose server had gone away lost the
+	 * files it was showing. Moving the existing nodes keeps what was loaded.
+	 */
+	reorderRenderedRows() {
+		const rows = new Map();
+		for (const $row of this.container.children) {
+			const url = $row._folderUrl || $row.dataset?.url;
+			if (url) rows.set(url, $row);
+		}
+
+		// appendChild moves an existing node, so appending in the wanted order
+		// leaves exactly that order and no duplicates.
+		for (const entry of this.entries) {
+			const $row = rows.get(entry.url);
+			if ($row) this.container.appendChild($row);
+		}
 	}
 
 	/**
@@ -503,21 +509,7 @@ export default class FileTree {
 
 		const entry = { name, url, isDirectory, isFile: !isDirectory };
 
-		// Insert in sorted position
-		if (isDirectory) {
-			// Find first file or end of dirs
-			const insertIndex = this.entries.findIndex((e) => !e.isDirectory);
-			if (insertIndex === -1) {
-				this.entries.push(entry);
-			} else {
-				this.entries.splice(insertIndex, 0, entry);
-			}
-		} else {
-			this.entries.push(entry);
-		}
-
-		// Track it in the unsorted listing too, so a later change of order can
-		// place it correctly instead of only knowing about it in the old order.
+		// Track it in the unsorted listing, then place it by the shared order.
 		this.rawEntries.push(entry);
 		this.entries = this.sortEntries(this.rawEntries);
 
