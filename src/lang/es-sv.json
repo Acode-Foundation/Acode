@@ -900,7 +900,7 @@
 	"sticky scroll max lines": "Líneas de desplazamiento Sticky",
 	"settings-info-sticky-scroll-max-lines": "La cantidad de lineas que se mantienen pegadas a la parte superior al desplazar el texto (1–10).",
 	"gutter markers": "Gutter markers",
-	"gutter markers shared": "Una sola columba",
+	"gutter markers shared": "Una sola columna",
 	"gutter markers columns": "Una columna por cada gutter",
 	"gutter markers overlay": "Sobre los numeros de línea",
 	"settings-info-gutter-markers": "Dónde van los markers del lint y otros en el gutter: una columna compartida, una columna para cada uno o sobre los números de línea.",
