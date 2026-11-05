@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
+import { hasBinaryContent, isBinaryFile } from "utils/binaryExtensions";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(
@@ -22,6 +23,7 @@ async function search(content, regex) {
 		},
 		picomatch: { isMatch: () => true },
 		isBinaryFile: () => false,
+		hasBinaryContent: () => false,
 	});
 	vm.runInContext(source, context);
 	context.content = content;
@@ -63,5 +65,89 @@ describe("fallback search matching", () => {
 		expect(result.matches[0].position.end.column).toBe(100000);
 		expect(result.matches[0].renderText.length).toBe(160);
 		expect(result.matches[0].line.length).toBeLessThanOrEqual(166);
+	});
+});
+
+async function searchFiles(fileContents, regex) {
+	const messages = [];
+	const context = vm.createContext({
+		self: {
+			postMessage(message) {
+				messages.push(message);
+				if (message.action === "get-file")
+					queueMicrotask(() =>
+						context.self.onmessage({
+							data: {
+								action: "get-file",
+								id: message.id,
+								data: fileContents[message.data],
+							},
+						}),
+					);
+				if (message.action === "search-result")
+					queueMicrotask(() =>
+						context.self.onmessage({
+							data: { action: "result-ack", id: message.id },
+						}),
+					);
+			},
+		},
+		picomatch: { isMatch: () => true },
+		isBinaryFile,
+		hasBinaryContent,
+	});
+	vm.runInContext(source, context);
+	const finished = new Promise((resolve, reject) => {
+		const timer = setTimeout(() => reject(new Error("search timed out")), 1000);
+		const check = () => {
+			if (messages.some((m) => m.action === "done-searching")) {
+				clearTimeout(timer);
+				resolve();
+			} else setTimeout(check, 5);
+		};
+		check();
+	});
+	context.self.onmessage({
+		data: {
+			action: "search-files",
+			data: {
+				files: Object.keys(fileContents).map((url) => ({
+					url,
+					path: url,
+					name: url,
+					mime: "application/octet-stream",
+				})),
+				search: regex,
+				options: {},
+			},
+		},
+	});
+	await finished;
+	return messages
+		.filter((m) => m.action === "search-result")
+		.map((m) => m.data.file.url);
+}
+
+describe("search files with an unknown mime type", () => {
+	it("searches text files reported as application/octet-stream", async () => {
+		const urls = await searchFiles(
+			{
+				"session.jsonl": '{"msg":"needle"}\n',
+				"session.jsonl.bak": '{"msg":"needle"}\n',
+			},
+			/needle/g,
+		);
+		expect(urls.sort()).toEqual(["session.jsonl", "session.jsonl.bak"]);
+	});
+
+	it("skips files whose content is binary", async () => {
+		const urls = await searchFiles(
+			{
+				"notes.unknownext": "needle\n",
+				"blob.unknownext": "\u0000\u0001needle\u0002",
+			},
+			/needle/g,
+		);
+		expect(urls).toEqual(["notes.unknownext"]);
 	});
 });
