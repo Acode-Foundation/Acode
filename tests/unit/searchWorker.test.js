@@ -1,12 +1,16 @@
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
-import { hasBinaryContent, isBinaryFile } from "utils/binaryExtensions";
+import {
+	hasBinaryContent,
+	isBinaryFile,
+	isTextFile,
+} from "utils/binaryExtensions";
 import { describe, expect, it } from "vitest";
 
 const source = readFileSync(
 	new URL("../../src/sidebarApps/searchInFiles/worker.js", import.meta.url),
 	"utf8",
-).replace(/^import .*;\n/gm, "");
+).replace(/^import [^;]*;\n/gm, "");
 async function search(content, regex) {
 	const messages = [];
 	const context = vm.createContext({
@@ -24,6 +28,7 @@ async function search(content, regex) {
 		picomatch: { isMatch: () => true },
 		isBinaryFile: () => false,
 		hasBinaryContent: () => false,
+		isTextFile: () => false,
 	});
 	vm.runInContext(source, context);
 	context.content = content;
@@ -68,7 +73,11 @@ describe("fallback search matching", () => {
 	});
 });
 
-async function searchFiles(fileContents, regex) {
+async function searchFiles(
+	fileContents,
+	regex,
+	mime = "application/octet-stream",
+) {
 	const messages = [];
 	const context = vm.createContext({
 		self: {
@@ -95,6 +104,7 @@ async function searchFiles(fileContents, regex) {
 		picomatch: { isMatch: () => true },
 		isBinaryFile,
 		hasBinaryContent,
+		isTextFile,
 	});
 	vm.runInContext(source, context);
 	const finished = new Promise((resolve, reject) => {
@@ -115,7 +125,7 @@ async function searchFiles(fileContents, regex) {
 					url,
 					path: url,
 					name: url,
-					mime: "application/octet-stream",
+					mime,
 				})),
 				search: regex,
 				options: {},
@@ -149,5 +159,23 @@ describe("search files with an unknown mime type", () => {
 			/needle/g,
 		);
 		expect(urls).toEqual(["notes.unknownext"]);
+	});
+
+	it("keeps ANSI-colored logs searchable", async () => {
+		const colored = "\u001b[31mneedle\u001b[0m\n";
+		const urls = await searchFiles(
+			{ "app.log": colored, "output.unknownext": colored },
+			/needle/g,
+		);
+		expect(urls.sort()).toEqual(["app.log", "output.unknownext"]);
+	});
+
+	it("does not inspect the content of files already known to be text", async () => {
+		const urls = await searchFiles(
+			{ "app.log": "\u0001needle\n", "notes.txt": "\u0000needle\n" },
+			/needle/g,
+			undefined,
+		);
+		expect(urls.sort()).toEqual(["app.log", "notes.txt"]);
 	});
 });

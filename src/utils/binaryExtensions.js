@@ -343,9 +343,8 @@ export function isBinaryFile(file) {
 	if (typeof file === "string") return isBinaryPath(file);
 	if (!file) return false;
 
+	if (isTextFile(file)) return false;
 	const mime = file.mime || file.type;
-	if (isTextMime(mime)) return false;
-	if (isTextPath(file.url || file.path || file.name)) return false;
 	if (isBinaryMime(mime) && !genericMimeTypes.has(normalizeMime(mime))) {
 		return true;
 	}
@@ -354,9 +353,25 @@ export function isBinaryFile(file) {
 }
 
 /**
+ * Whether the file is known to be text from its MIME type or extension alone,
+ * without looking at its content.
+ * @param {string|{mime?: string, type?: string, url?: string, path?: string, name?: string}} file
+ * @returns {boolean}
+ */
+export function isTextFile(file) {
+	if (typeof file === "string") return isTextPath(file);
+	if (!file) return false;
+	return (
+		isTextMime(file.mime || file.type) ||
+		isTextPath(file.url || file.path || file.name)
+	);
+}
+
+/**
  * Checks decoded text for control characters that do not appear in text
  * files. Mirrors `hasBinaryChars` in the native WorkspaceIndex so files whose
- * type is unknown are still skipped when their content is binary.
+ * type is unknown are still skipped when their content is binary. ESC (27) is
+ * allowed because logs commonly contain ANSI color sequences.
  * @param {string} text
  * @returns {boolean}
  */
@@ -365,7 +380,12 @@ export function hasBinaryContent(text) {
 	const len = Math.min(text.length, 2048);
 	for (let i = 0; i < len; i++) {
 		const ch = text.charCodeAt(i);
-		if (ch <= 8 || ch === 11 || (ch >= 14 && ch <= 31) || ch === 127) {
+		if (
+			ch <= 8 ||
+			ch === 11 ||
+			(ch >= 14 && ch <= 31 && ch !== 27) ||
+			ch === 127
+		) {
 			return true;
 		}
 	}

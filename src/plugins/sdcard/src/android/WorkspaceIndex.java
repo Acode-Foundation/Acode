@@ -1519,7 +1519,8 @@ class WorkspaceIndex {
         value != 9 &&
         value != 10 &&
         value != 13 &&
-        value != 12
+        value != 12 &&
+        value != 27
       ) {
         control++;
       }
@@ -1545,7 +1546,8 @@ class WorkspaceIndex {
       if (
         (ch >= 0 && ch <= 8) ||
         ch == 11 ||
-        (ch >= 14 && ch <= 31) ||
+        // ESC (27) is allowed: logs commonly contain ANSI color sequences.
+        (ch >= 14 && ch <= 31 && ch != 27) ||
         ch == 127
       ) {
         return true;

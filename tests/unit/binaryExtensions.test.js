@@ -3,6 +3,7 @@ import {
 	isBinaryFile,
 	isBinaryMime,
 	isBinaryPath,
+	isTextFile,
 	isTextPath,
 } from "utils/binaryExtensions";
 import { describe, expect, it } from "vitest";
@@ -128,6 +129,10 @@ describe("hasBinaryContent", () => {
 		expect(hasBinaryContent("x\u007f")).toBe(true);
 	});
 
+	it("allows ANSI escape sequences", () => {
+		expect(hasBinaryContent("\u001b[31mred\u001b[0m plain")).toBe(false);
+	});
+
 	it("only samples the beginning of the text", () => {
 		expect(hasBinaryContent(`${"a".repeat(4096)}\u0000`)).toBe(false);
 	});
@@ -135,5 +140,21 @@ describe("hasBinaryContent", () => {
 	it("returns false for non-string input", () => {
 		expect(hasBinaryContent(null)).toBe(false);
 		expect(hasBinaryContent(undefined)).toBe(false);
+	});
+});
+
+describe("isTextFile", () => {
+	it("detects text by extension or mime type", () => {
+		expect(isTextFile("app.log")).toBe(true);
+		expect(isTextFile({ name: "session.jsonl" })).toBe(true);
+		expect(isTextFile({ mime: "text/plain", name: "x.unknownext" })).toBe(true);
+	});
+
+	it("returns false when the type is unknown or binary", () => {
+		expect(
+			isTextFile({ mime: "application/octet-stream", name: "x.unknownext" }),
+		).toBe(false);
+		expect(isTextFile({ name: "photo.png" })).toBe(false);
+		expect(isTextFile(null)).toBe(false);
 	});
 });
