@@ -92,6 +92,14 @@ declare type LangStrings = {
 	"show spaces": string;
 	"soft tab": string;
 	"sort by name": string;
+	"sort by": string;
+	"sort order": string;
+	ascending: string;
+	descending: string;
+	"folders first": string;
+	"info-foldersFirst": string;
+	"info-sortBy": string;
+	link: string;
 	success: string;
 	"tab size": string;
 	"text wrap": string;
@@ -915,6 +923,10 @@ declare type LangStrings = {
 	"error-not-found": string;
 	"error-no-space": string;
 	"error-network": string;
+	"file could not be read": string;
+	"error-host-key-changed": string;
+	"error-host-key-rejected": string;
+	"host-key-note": string;
 };
 
 declare var strings: LangStrings;

@@ -95,6 +95,24 @@ body.no-animation {
       pointer-events: none;
       opacity: 0.5;
     }
+
+    // A row whose option is already active, e.g. the current sort field.
+    &.selected {
+      > span:first-child {
+        font-weight: 600;
+      }
+
+      .icon.arrow {
+        color: rgb(51, 153, 255);
+        color: var(--active-color);
+      }
+    }
+
+    // The sort row's direction arrow sits at the trailing edge.
+    .icon.arrow {
+      margin-left: auto;
+      padding-left: 12px;
+    }
   }
 
   &.hide {

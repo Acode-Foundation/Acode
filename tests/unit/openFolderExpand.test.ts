@@ -23,6 +23,13 @@ vi.mock("sidebarApps/files", () => ({ fixHeight: vi.fn() }));
 vi.mock("sidebarApps/files/selection", () => ({
 	default: { onAction: vi.fn(), start: vi.fn() },
 }));
+vi.mock("components/contextmenu", () => ({
+	default: () => ({ show: vi.fn(), hide: vi.fn(), destroy: vi.fn() }),
+}));
+vi.mock("lib/sortMenu", () => ({
+	renderSortMenu: () => "",
+	handleSortMenuClick: vi.fn(),
+}));
 vi.mock("components/sidebar", () => ({ default: { hide: vi.fn() } }));
 vi.mock("components/toast", () => ({ default: vi.fn() }));
 vi.mock("dialogs/alert", () => ({ default: vi.fn() }));
@@ -42,7 +49,12 @@ vi.mock("lib/recents", () => ({
 	default: { addFolder: vi.fn(), removeFile: vi.fn(), removeFolder: vi.fn() },
 }));
 vi.mock("lib/settings", () => ({
-	default: { value: { fileBrowser: { listFiles: false } } },
+	default: {
+		value: { fileBrowser: { listFiles: false } },
+		// The folder tree subscribes to sort changes through the settings API.
+		on: vi.fn(),
+		off: vi.fn(),
+	},
 }));
 vi.mock("utils/copyEntry", () => ({ default: vi.fn() }));
 vi.mock("utils/helpers", () => ({

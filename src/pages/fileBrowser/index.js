@@ -59,8 +59,12 @@ FileBrowser.openFileError = (err) => {
 };
 
 FileBrowser.openFolder = async (res) => {
-	const { url, name } = res;
+	const { url } = res;
 	const protocol = Url.getProtocol(url);
+	// A remote folder under a saved storage is labelled with the storage alias,
+	// so "/home/tony/myapp" reads "My server / myapp" instead of "myapp" (or
+	// the login name when the home directory itself is opened).
+	const name = helpers.getFolderDisplayName(url, res.name);
 
 	if (protocol === "ftp:") {
 		openFolder(url, {

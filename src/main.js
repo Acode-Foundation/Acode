@@ -31,6 +31,7 @@ import toast from "components/toast";
 import { initIconTooltips } from "components/tooltip";
 import alert from "dialogs/alert";
 import confirm from "dialogs/confirm";
+import noticePrompt, { dismissNoticePrompt } from "dialogs/noticePrompt";
 import intentHandler, { processPendingIntents } from "handlers/intent";
 import keyboardHandler, { keydownState } from "handlers/keyboard";
 import quickToolsInit from "handlers/quickToolsInit";
@@ -56,7 +57,10 @@ import openFolder, { addedFolder } from "lib/openFolder";
 import { registerPrettierFormatter } from "lib/registerPrettierFormatter";
 import restoreFiles from "lib/restoreFiles";
 import settings from "lib/settings";
-import { migrateLegacySftpProfiles } from "lib/sftpProfiles";
+import {
+	migrateLegacySftpProfiles,
+	onSftpConfirmation,
+} from "lib/sftpProfiles";
 import startAd, {
 	BANNER_SUPPRESSION_REASON,
 	setBannerSuppressed,
@@ -327,6 +331,44 @@ async function onDeviceReady() {
 	await lang.set(settings.value.lang);
 
 	acode.setLoadingMessage("Securing SFTP profiles...");
+	// Host key prompts come from the native thread; answer them on a page of
+	// their own so the fingerprint is readable and the buttons are never behind
+	// the system navigation bar.
+	onSftpConfirmation(async (request) => {
+		const choice = await noticePrompt(
+			request.title || "SSH host key",
+			request.message || "",
+			{
+				// Lets the plug-in close this page when it stops waiting for an
+				// answer, so an expired prompt cannot stay on screen looking
+				// answerable.
+				id: request.id,
+				lead: "vpn_key",
+				note: strings["host-key-note"],
+				buttons: [
+					{
+						text: request.cancelLabel || strings.cancel,
+						value: false,
+					},
+					{
+						text: request.acceptLabel || strings.ok,
+						value: true,
+						primary: true,
+					},
+				],
+			},
+		);
+		return choice === true;
+	});
+
+	// The plug-in stops waiting for an answer after its own timeout. Closing the
+	// page it left behind keeps an expired prompt from still looking answerable.
+	// Registered here rather than in `lib/sftpProfiles` so that a library module
+	// does not have to import a dialog module.
+	globalThis.__acodeSftpDismiss = (id) => {
+		if (typeof id === "string" && id) dismissNoticePrompt(id);
+	};
+
 	const sftpMigration = await migrateLegacySftpProfiles();
 	if (sftpMigration.failures.length) {
 		for (const failure of sftpMigration.failures) {

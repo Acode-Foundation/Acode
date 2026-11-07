@@ -58,6 +58,14 @@ final class SftpSecurityStore {
     return value == null ? null : new JSONObject(value);
   }
 
+  /**
+   * Forget a trusted host, so the next connection asks for confirmation again.
+   * @param host `host:port` endpoint
+   */
+  synchronized void forgetHost(String host) {
+    knownHosts.removeSync(host);
+  }
+
   synchronized void trustHost(
     String host,
     String algorithm,

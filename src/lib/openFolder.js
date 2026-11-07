@@ -2,6 +2,7 @@ import fsOperation from "fileSystem";
 import sidebarApps from "sidebarApps";
 import fileSelection from "sidebarApps/files/selection";
 import collapsableList from "components/collapsableList";
+import Contextmenu from "components/contextmenu";
 import FileTree from "components/fileTree";
 import Sidebar from "components/sidebar";
 import tile from "components/tile";
@@ -25,6 +26,7 @@ import { loadFileBrowser } from "./lazyImports";
 import openFile from "./openFile";
 import recents from "./recents";
 import appSettings from "./settings";
+import { handleSortMenuClick, renderSortMenu } from "./sortMenu";
 
 const isTermuxSafUri = (value = "") =>
 	value.startsWith("content://com.termux.documents/tree/");
@@ -266,9 +268,11 @@ function openFolder(_path, opts = {}) {
  */
 function createRootActions(getRoot) {
 	const $actions = tag("span", { className: "root-actions" });
+	const sortTitle = strings["sort by"] || "Sort by";
 	const buttons = [
 		["new file", "document-add", strings["new file"]],
 		["new folder", "folder-add", strings["new folder"]],
+		["sort", "tune", sortTitle],
 		["refresh", "autorenew", strings.refresh],
 		["collapse-all", "expand_less", strings["collapse all"] || "Collapse all"],
 		["menu", "more_vert more-actions", strings.more],
@@ -278,6 +282,7 @@ function createRootActions(getRoot) {
 		// tile children only receive clicks when they carry data-action.
 		const $button = tag("span", { className: `icon ${icon}`, title });
 		$button.dataset.action = action;
+		$button.setAttribute("aria-label", title);
 		$actions.append($button);
 	}
 
@@ -292,6 +297,11 @@ function createRootActions(getRoot) {
 		if (action === "menu") {
 			const { url, name } = $root.$title.dataset;
 			handleContextmenu("root", url, name, $root.$title);
+			return;
+		}
+
+		if (action === "sort") {
+			showSortMenu($button);
 			return;
 		}
 
@@ -341,6 +351,37 @@ async function runRootAction($root, action, $button) {
 }
 
 /**
+ * Open the sort menu under a folder header button.
+ *
+ * The menu is built on demand: one per open folder, created and destroyed with
+ * the menu itself, so nothing is left in the DOM for headers that are never
+ * sorted. The choice is shared with the file browser.
+ * @param {HTMLElement} $button
+ */
+function showSortMenu($button) {
+	let $menu;
+
+	$menu = Contextmenu({
+		innerHTML: () => renderSortMenu(),
+		// Anchored to the button rather than a fixed corner: the folder header
+		// can be anywhere down the sidebar.
+		toggler: null,
+		top: `${($button?.getBoundingClientRect().bottom || 0) + 4}px`,
+		right: "8px",
+		transformOrigin: "top right",
+		onhide: () => $menu.destroy(),
+		onclick: (e) => {
+			$menu.hide();
+			// File trees follow the stored setting themselves, so every open
+			// folder re-sorts without this having to reach into each one.
+			handleSortMenuClick(e);
+		},
+	});
+
+	$menu.show();
+}
+
+/**
  * Expand the list
  * @param {Collapsible} $list
  */
@@ -365,12 +406,29 @@ async function expandList($list) {
 	if (!$list.unclasped) return;
 
 	let fileTree;
+	let subscriber = null;
 	try {
 		startLoading();
 
 		fileTree = new FileTree($ul, {
 			getEntries: (dirUrl) => fsOperation(dirUrl).lsDir(),
 			expandedState: listState,
+			// Same order as the file browser. Hidden files stay visible: this is
+			// an expanded view of a folder the person already opened. A getter,
+			// not a copy: the tree must see the settings as they are now, not as
+			// they were when the folder was expanded.
+			getSortSettings: () => ({
+				...appSettings.value.fileBrowser,
+				showHiddenFiles: true,
+			}),
+			onSortChange(listener) {
+				if (!listener) {
+					appSettings.off("update:fileBrowser", subscriber);
+					return;
+				}
+				subscriber = listener;
+				appSettings.on("update:fileBrowser", subscriber);
+			},
 			onExpandedChange: (folderUrl, isExpanded) => {
 				if (saveState) listState[folderUrl] = isExpanded;
 			},
@@ -524,6 +582,9 @@ async function handleContextmenu(type, url, name, $target) {
 			options.push(OPEN_SSH_TERMINAL);
 		}
 
+		// The header's sort button is hidden on touch until the header menu is
+		// opened, so "Sort by" lives here too.
+		options.push(["sort", strings["sort by"] || "Sort by", "tune"]);
 		options.push(REFRESH, COLLAPSE_ALL, CLOSE_FOLDER);
 	}
 
@@ -542,7 +603,7 @@ async function handleContextmenu(type, url, name, $target) {
 
 /**
  * @param {"dir"|"file"|"root"} type
- * @param {"select"|"copy"|"cut"|"delete"|"rename"|"paste"|"new file"|"new folder"|"cancel"|"open-folder"|"install-plugin"|"open-in-terminal"|"open-ssh-terminal"|"copy-relative-path"} action
+ * @param {"select"|"copy"|"cut"|"delete"|"rename"|"paste"|"new file"|"new folder"|"cancel"|"open-folder"|"install-plugin"|"open-in-terminal"|"open-ssh-terminal"|"copy-relative-path"|"sort"} action
  * @param {string} url target url
  * @param {HTMLElement} $target target element
  * @param {string} name Name of file or folder
@@ -597,6 +658,9 @@ function execOperation(type, action, url, $target, name) {
 		case "refresh":
 		case "collapse-all":
 			return runRootAction($node, action);
+
+		case "sort":
+			return showSortMenu($target);
 
 		case "copy-relative-path":
 			return copyRelativePath();

@@ -17,6 +17,37 @@
   }
 
   .tile {
+    // Rows with a server-reported detail line: the name and the details stack,
+    // and the row grows so the second line is never clipped.
+    &.has-meta {
+      min-height: 58px;
+      height: auto;
+
+      .text {
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: center;
+        padding: 6px 0;
+        box-sizing: border-box;
+
+        .name {
+          line-height: 1.25;
+        }
+
+        .meta {
+          width: 100%;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          font-size: 0.72rem;
+          line-height: 1.3;
+          opacity: 0.6;
+          color: rgb(37, 37, 37);
+          color: var(--secondary-text-color);
+        }
+      }
+    }
+
     &[data-storage-type="notification"] {
       background-color: rgb(153, 153, 255);
       background-color: var(--primary-color);

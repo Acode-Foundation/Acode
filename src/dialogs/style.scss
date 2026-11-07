@@ -529,3 +529,147 @@
     }
   }
 }
+
+// Full-screen decision used when the message must be read before answering,
+// e.g. verifying an SSH host key. The buttons live in the scrolling content,
+// so they are never under the system navigation bar or the keyboard.
+.notice-prompt {
+  // Above the loading dialog (`.prompt` is 112) and its mask (111): while a
+  // connection is being established the loader is still up, and the prompt is
+  // the thing the connection is waiting for. Below context menus (113).
+  z-index: 114 !important;
+  background: rgb(255, 255, 255);
+  background: var(--secondary-color);
+
+  .main {
+    overflow-y: auto;
+    box-sizing: border-box;
+    // The page is taller than the viewport by design; let the content scroll
+    // instead of stretching, so the buttons at the end are still reachable.
+    display: block;
+    height: calc(100vh - 45px);
+    max-height: calc(100vh - 45px);
+  }
+
+  .notice-content {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 34rem;
+    margin: 0 auto;
+    padding: 1rem 1rem calc(1.5rem + env(safe-area-inset-bottom));
+    box-sizing: border-box;
+  }
+
+  .notice-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: rgb(37, 37, 37);
+    color: var(--secondary-text-color);
+    margin-bottom: 0.4rem;
+  }
+
+  .notice-message {
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: rgb(255, 255, 255);
+    background: var(--popup-background-color);
+    padding: 0.85rem 0.9rem;
+    box-sizing: border-box;
+  }
+
+  .notice-text {
+    margin: 0;
+    font-size: 0.92rem;
+    line-height: 1.5;
+    color: rgb(37, 37, 37);
+    color: var(--popup-text-color);
+  }
+
+  .notice-gap {
+    height: 0.6rem;
+  }
+
+  .notice-row {
+    display: flex;
+    flex-direction: column;
+    margin: 0.15rem 0;
+
+    & + .notice-row {
+      margin-top: 0.5rem;
+    }
+  }
+
+  .notice-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    color: rgb(37, 37, 37);
+    color: var(--secondary-text-color);
+  }
+
+  .notice-value {
+    display: block;
+    margin-top: 0.15rem;
+    padding: 0.4rem 0.5rem;
+    border-radius: 6px;
+    background: rgba(127, 127, 127, 0.1);
+    background: color-mix(in srgb, var(--secondary-color), var(--popup-text-color) 8%);
+    font-family: var(--editor-font-family, monospace);
+    font-size: 0.82rem;
+    line-height: 1.45;
+    word-break: break-all;
+    user-select: text;
+    color: rgb(37, 37, 37);
+    color: var(--popup-text-color);
+  }
+
+  .notice-note {
+    margin: 0.75rem 0 0;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: rgb(37, 37, 37);
+    color: var(--secondary-text-color);
+  }
+
+  .notice-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 1.25rem;
+
+    @supports not (gap: 1px) {
+      > button + button {
+        margin-left: 8px;
+      }
+    }
+
+    > button {
+      flex: 1;
+      min-height: 46px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+
+      &.primary {
+        background-color: rgb(51, 153, 255);
+        background-color: var(--button-background-color);
+        color: rgb(255, 255, 255);
+        color: var(--button-text-color);
+      }
+
+      &.destructive {
+        color: rgb(229, 83, 75);
+        color: var(--danger-color, #e5534b);
+      }
+    }
+  }
+
+  @media (min-width: 640px) {
+    .notice-content {
+      padding-top: 1.5rem;
+    }
+  }
+}

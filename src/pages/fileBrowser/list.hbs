@@ -2,7 +2,7 @@
   {{#.}}
   <li
     tabindex="1"
-    class="tile {{#isLink}}symlink{{/isLink}}"
+    class="tile {{#isLink}}symlink{{/isLink}}{{#meta}} has-meta{{/meta}}"
     data-action="open"
     data-type="{{type}}"
     data-name="{{name}}"
@@ -20,7 +20,8 @@
     ></span>
 
     <div class="text">
-      <span>{{name}}</span>
+      <span class="name">{{name}}</span>
+      {{#meta}}<span class="meta">{{meta}}</span>{{/meta}}
     </div>
     <data-url>{{url}}</data-url>
   </li>
