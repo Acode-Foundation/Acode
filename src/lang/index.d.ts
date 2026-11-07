@@ -915,6 +915,8 @@ declare type LangStrings = {
 	"error-not-found": string;
 	"error-no-space": string;
 	"error-network": string;
+	"choose folder on device": string;
+	"create document on device": string;
 };
 
 declare var strings: LangStrings;

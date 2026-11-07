@@ -125,6 +125,7 @@ function setup() {
 		"src/lib/saveFile.js",
 		{
 			fileSystem: filesystem,
+			"fileSystem/externalFs": {},
 			"@codemirror/state": { Text },
 			"cm/editorUtils": { getDocText: (doc) => doc.toString() },
 			"components/toast": toast,
@@ -138,6 +139,7 @@ function setup() {
 			"pages/fileBrowser": {},
 			"utils/helpers": helpers,
 			"utils/Url": url,
+			"mime-types": { lookup: () => "text/plain" },
 			"./config": {},
 			"./editorFile": {},
 			"./openFolder": {},

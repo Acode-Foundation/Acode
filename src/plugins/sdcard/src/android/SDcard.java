@@ -53,6 +53,7 @@ public class SDcard extends CordovaPlugin {
   private final int DOCUMENT_TREE = 6001;
   private final int OPEN_DOCUMENT = 6002;
   private final int PICK_FROM_GALLERY = 6003;
+  private final int CREATE_DOCUMENT = 6004;
   private final String SEPARATOR = "::";
   private StorageManager storageManager;
   private Context context;
@@ -98,6 +99,9 @@ public class SDcard extends CordovaPlugin {
         break;
       case "open document file":
         openDocumentFile(arg1, callback);
+        break;
+      case "create document":
+        createDocumentFile(arg1, arg2, callback);
         break;
       case "get image":
         getImage(arg1, callback);
@@ -275,6 +279,28 @@ public class SDcard extends CordovaPlugin {
     cordova.startActivityForResult(this, intent, this.OPEN_DOCUMENT);
   }
 
+  public void createDocumentFile(
+    String mimeType,
+    String filename,
+    CallbackContext callback
+  ) {
+    Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+    intent.addCategory(Intent.CATEGORY_OPENABLE);
+    intent.setType(
+      mimeType == null || mimeType.isEmpty() ? "*/*" : mimeType
+    );
+    if (filename != null && !filename.isEmpty()) {
+      intent.putExtra(Intent.EXTRA_TITLE, filename);
+    }
+    intent.addFlags(
+      Intent.FLAG_GRANT_READ_URI_PERMISSION |
+        Intent.FLAG_GRANT_WRITE_URI_PERMISSION |
+        Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+    );
+    activityResultCallback = callback;
+    cordova.startActivityForResult(this, intent, this.CREATE_DOCUMENT);
+  }
+
   public void getImage(String mimeType, CallbackContext callback) {
     Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
     if (mimeType == null) mimeType = "image/*";
@@ -356,6 +382,15 @@ public class SDcard extends CordovaPlugin {
       intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
     }
 
+    if (Intent.ACTION_OPEN_DOCUMENT_TREE.equals(intent.getAction())) {
+      intent.addFlags(
+        Intent.FLAG_GRANT_READ_URI_PERMISSION |
+          Intent.FLAG_GRANT_WRITE_URI_PERMISSION |
+          Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION |
+          Intent.FLAG_GRANT_PREFIX_URI_PERMISSION
+      );
+    }
+
     activityResultCallback = callback;
     cordova.startActivityForResult(this, intent, REQUEST_CODE);
   }
@@ -399,7 +434,7 @@ public class SDcard extends CordovaPlugin {
       return;
     }
 
-    if (requestCode == OPEN_DOCUMENT) {
+    if (requestCode == OPEN_DOCUMENT || requestCode == CREATE_DOCUMENT) {
       if (resultCode == Activity.RESULT_OK) {
         try {
           if (data == null) {

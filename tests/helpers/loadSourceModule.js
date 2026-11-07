@@ -5,7 +5,12 @@ import { transformSync } from "@babel/core";
 
 const compiled = new Map();
 // Compile the actual source with Acode's JSX transform; replace only its environment.
-export function loadSourceModule(relative, dependencies, globals = {}) {
+export function loadSourceModule(
+	relative,
+	dependencies,
+	globals = {},
+	vmSetup,
+) {
 	const filename = path.resolve(relative);
 	if (!compiled.has(filename))
 		compiled.set(
@@ -27,21 +32,19 @@ export function loadSourceModule(relative, dependencies, globals = {}) {
 			}).code,
 		);
 	const exports = {};
-	vm.runInNewContext(
-		compiled.get(filename),
-		{
-			exports,
-			Promise,
-			console,
-			setTimeout,
-			clearTimeout,
-			require(id) {
-				if (!(id in dependencies)) throw Error(`Unexpected import: ${id}`);
-				return dependencies[id];
-			},
-			...globals,
+	const context = vm.createContext({
+		exports,
+		Promise,
+		console,
+		setTimeout,
+		clearTimeout,
+		require(id) {
+			if (!(id in dependencies)) throw Error(`Unexpected import: ${id}`);
+			return dependencies[id];
 		},
-		{ filename },
-	);
+		...globals,
+	});
+	if (vmSetup) vm.runInContext(vmSetup, context);
+	vm.runInContext(compiled.get(filename), context, { filename });
 	return exports;
 }

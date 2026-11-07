@@ -1075,6 +1075,10 @@ export default class EditorFile {
 		return this.#SAFMode;
 	}
 
+	set SAFMode(value) {
+		this.#SAFMode = value === "single" || value === "tree" ? value : null;
+	}
+
 	get hasVersionMetadata() {
 		return this.#hasVersionMetadata;
 	}

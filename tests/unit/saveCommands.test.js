@@ -1,11 +1,13 @@
 import { expect, it, vi } from "vitest";
 import { loadSourceModule } from "../helpers/loadSourceModule";
 
-function setup(files) {
+function setup(files, fileBrowser = vi.fn()) {
+	const loadFileBrowser = vi.fn(async () => fileBrowser);
 	const manager = {
 		files,
 		activeFile: files[0],
 		getFile: (id) => files.find((file) => file.id === id),
+		editor: { contentDOM: { blur: vi.fn() } },
 	};
 	const toast = vi.fn(),
 		error = vi.fn();
@@ -36,13 +38,14 @@ function setup(files) {
 		"src/lib/commands.js",
 		{
 			...dependencies,
+			"./lazyImports": { loadFileBrowser },
 			"dialogs/confirm": async () => true,
 			"dialogs/select": async () => "save",
 			"utils/helpers": { error },
 		},
 		{ editorManager: manager, strings: {}, toast },
 	);
-	return { ...module, manager, toast, error };
+	return { ...module, manager, toast, error, fileBrowser, loadFileBrowser };
 }
 function tab(id, type = "docs") {
 	const file = {
@@ -78,6 +81,28 @@ it("routes standard Save and Save As to the captured tab and leaves terminals in
 	await f.default.save();
 	await f.default["save-as"]();
 	expect(terminal.save).not.toHaveBeenCalled();
+});
+
+it("enables the folder picker only for Open Folder, not Open File", async () => {
+	const selected = { type: "folder", url: "content://provider/tree" };
+	const fileBrowser = vi.fn(async () => selected);
+	fileBrowser.openFolder = vi.fn();
+	fileBrowser.openFolderError = vi.fn();
+	fileBrowser.openFile = vi.fn();
+	fileBrowser.openFileError = vi.fn();
+	const f = setup([], fileBrowser);
+
+	await f.default["open-folder"]();
+	await vi.waitFor(() => expect(fileBrowser.openFolder).toHaveBeenCalledOnce());
+	await f.default["open-file"]();
+	await vi.waitFor(() => expect(fileBrowser.openFile).toHaveBeenCalledOnce());
+
+	expect(fileBrowser).toHaveBeenNthCalledWith(1, "folder", undefined, true, {
+		chooseFolderOnDevice: true,
+	});
+	expect(fileBrowser).toHaveBeenNthCalledWith(2, "file");
+	expect(fileBrowser.openFolder).toHaveBeenCalledWith(selected);
+	expect(fileBrowser.openFile).toHaveBeenCalledWith(selected);
 });
 it("does not report custom-tab success on cancellation or failure", async () => {
 	const file = tab("one"),
