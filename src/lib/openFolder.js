@@ -1684,3 +1684,21 @@ openFolder.find = (url) => {
 };
 
 export default openFolder;
+
+// Recarga todos los folders abiertos, forzando reconexion en SFTP
+export async function refreshAllFolders() {
+	for (const folder of addedFolder) {
+		const isSftp = /^sftp:/.test(folder.url);
+		if (isSftp) {
+			try {
+				const fs = fsOperation(folder.url);
+				if (typeof fs.refresco === "function") {
+					await fs.refresco();
+				}
+			} catch (e) {
+				console.error("refresco SFTP failed:", e);
+			}
+		}
+		folder.reload();
+	}
+}

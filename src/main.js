@@ -52,7 +52,7 @@ import lang from "lib/lang";
 import loadPlugins from "lib/loadPlugins";
 import Logger from "lib/logger";
 import notificationManager from "lib/notificationManager";
-import openFolder, { addedFolder } from "lib/openFolder";
+import openFolder, { addedFolder, refreshAllFolders } from "lib/openFolder";
 import { registerPrettierFormatter } from "lib/registerPrettierFormatter";
 import restoreFiles from "lib/restoreFiles";
 import settings from "lib/settings";
@@ -715,6 +715,39 @@ async function loadApp() {
 	editorManager.on("switch-file", initIconTooltips());
 	sidebarApps.init($sidebar);
 	await sidebarApps.loadApps();
+
+	// Boton de refresco permanente en el sidebar de archivos
+	const $refreshBtn = (
+		<span
+			id="folder-refresh-btn"
+			className="icon refresh"
+			style={{
+				cursor: "pointer",
+				padding: "8px",
+				fontSize: "1.2em",
+				opacity: "0.8",
+			}}
+			title="Refresh folders"
+			onclick={async () => {
+				$refreshBtn.classList.add("loading");
+				$refreshBtn.style.opacity = "0.4";
+				$refreshBtn.style.pointerEvents = "none";
+				try {
+					await refreshAllFolders();
+					toast("Folders refreshed");
+				} catch (e) {
+					console.error("refreshAllFolders error:", e);
+					toast("Refresh failed");
+				} finally {
+					$refreshBtn.classList.remove("loading");
+					$refreshBtn.style.opacity = "0.8";
+					$refreshBtn.style.pointerEvents = "auto";
+				}
+			}}
+		/>
+	);
+	const $filesApp = sidebarApps.get("files");
+	if ($filesApp) $filesApp.prepend($refreshBtn);
 	editorManager.onupdate = onEditorUpdate;
 	root.on("show", mainPageOnShow);
 	app.addEventListener("click", onClickApp);

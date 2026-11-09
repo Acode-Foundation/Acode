@@ -590,6 +590,14 @@ class SftpClient {
 			this.#stat = await this.stat();
 		}
 	}
+
+	// Fuerza reconexion limpiando estado interno y rompiendo el connectionID
+	async refresco(path = this.#path) {
+		this.#stat = null;
+		this.#connectionID = `${this.#profileID}_${Date.now()}`;
+		await this.connect();
+		return this.lsDir(path);
+	}
 }
 
 /**
@@ -667,6 +675,9 @@ function createFs(sftp) {
 		},
 		stat() {
 			return sftp.stat();
+		},
+		refresco() {
+			return sftp.refresco();
 		},
 		get localName() {
 			return sftp.localName;
