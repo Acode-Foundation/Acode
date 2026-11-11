@@ -1034,11 +1034,9 @@ class WorkspaceIndex {
    * rules ($$, $&, $`, $', $1..$99, $<name>), so regex replacements behave the
    * same as the JS worker path.
    */
-  private static final Pattern NAMED_GROUP = Pattern.compile("\\(\\?<[A-Za-z]");
-
   static String replaceAllJs(Matcher matcher, String content, String replace) {
     StringBuilder out = new StringBuilder(content.length());
-    boolean namedGroups = NAMED_GROUP.matcher(matcher.pattern().pattern()).find();
+    boolean namedGroups = hasNamedGroups(matcher.pattern().pattern());
     int last = 0;
     while (matcher.find()) {
       out.append(content, last, matcher.start());
@@ -1047,6 +1045,43 @@ class WorkspaceIndex {
     }
     out.append(content, last, content.length());
     return out.toString();
+  }
+
+  /**
+   * Whether the pattern declares a named capture group, ignoring escaped text,
+   * \Q...\E quotes and character classes.
+   */
+  static boolean hasNamedGroups(String pattern) {
+    int len = pattern.length();
+    int classDepth = 0;
+    for (int i = 0; i < len; i++) {
+      char c = pattern.charAt(i);
+      if (c == '\\') {
+        if (i + 1 < len && pattern.charAt(i + 1) == 'Q') {
+          int end = pattern.indexOf("\\E", i + 2);
+          if (end == -1) return false;
+          i = end + 1;
+        } else {
+          i++;
+        }
+      } else if (classDepth > 0) {
+        if (c == '[') classDepth++;
+        else if (c == ']') classDepth--;
+      } else if (c == '[') {
+        classDepth = 1;
+        if (i + 1 < len && pattern.charAt(i + 1) == '^') i++;
+        if (i + 1 < len && pattern.charAt(i + 1) == ']') i++;
+      } else if (
+        c == '(' &&
+        i + 3 < len &&
+        pattern.charAt(i + 1) == '?' &&
+        pattern.charAt(i + 2) == '<' &&
+        Character.isLetter(pattern.charAt(i + 3))
+      ) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private static void appendJsSubstitution(
