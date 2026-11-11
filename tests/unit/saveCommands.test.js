@@ -248,3 +248,43 @@ it("keeps pinned tabs untouched by save-and-close and reports complete success f
 	expect(pinned.remove).not.toHaveBeenCalled();
 	expect(file.remove).toHaveBeenCalledOnce();
 });
+
+it("saves remote files one at a time after local files and reports the result", async () => {
+	const local = ["a", "b"].map((id) => {
+		const file = tab(id, "editor");
+		file.uri = `file:///${id}`;
+		return file;
+	});
+	const remote = ["c", "d"].map((id) => {
+		const file = tab(id, "editor");
+		file.uri = `sftp://host/${id}`;
+		return file;
+	});
+	let active = 0;
+	let maxRemoteActive = 0;
+	for (const file of remote) {
+		file.save.mockImplementationOnce(async () => {
+			active++;
+			maxRemoteActive = Math.max(maxRemoteActive, active);
+			await new Promise((resolve) => setTimeout(resolve, 5));
+			active--;
+			file.isUnsaved = false;
+			return true;
+		});
+	}
+	const f = setup([...local, ...remote]);
+	expect(await f.default["save-all-changes"]()).toBe(true);
+	expect(maxRemoteActive).toBe(1);
+	for (const file of local) {
+		expect(file.save.mock.invocationCallOrder[0]).toBeLessThan(
+			remote[0].save.mock.invocationCallOrder[0],
+		);
+	}
+	expect(f.toast).toHaveBeenCalledWith("Files saved: 4");
+
+	remote[0].isUnsaved = true;
+	remote[0].save.mockResolvedValue(false);
+	local[0].isUnsaved = true;
+	expect(await f.default["save-all-changes"]()).toBe(false);
+	expect(f.toast).toHaveBeenLastCalledWith("Files not saved: 1");
+});

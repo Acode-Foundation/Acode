@@ -911,5 +911,7 @@
 	"error-permission-revoked": "Acode 已無法存取此位置。請重新開啟資料夾以授予存取權限。",
 	"error-not-found": "此檔案或資料夾已不存在，可能已被移動、重新命名或刪除。",
 	"error-no-space": "此裝置的剩餘儲存空間不足。",
-	"error-network": "無法連線至伺服器。請檢查網路連線後重試。"
+	"error-network": "無法連線至伺服器。請檢查網路連線後重試。",
+	"files saved count": "Files saved: {count}",
+	"files not saved count": "Files not saved: {count}"
 }

@@ -149,46 +149,71 @@ async function closeTabs(files, options = {}) {
 const SAVE_CONCURRENCY = 4;
 
 /**
+ * Local and SAF files are independent, so they can be written in parallel.
+ * Remote providers (e.g. SFTP) share a connection and must save one by one.
+ * @param {string} uri
+ */
+function canSaveInParallel(uri) {
+	return /^(file|content):/.test(uri);
+}
+
+/**
  * Saves every unsaved file in `files`, showing progress while doing so.
- * Files with a location are first saved a few at a time without prompting;
- * anything that needs input (new files, conflicts, errors) is then saved one
- * at a time with the usual dialogs.
+ * Files with a location are first saved without prompting (local files a few
+ * at a time, remote files one by one); anything that needs input (new files,
+ * conflicts, errors) is then saved one at a time with the usual dialogs.
  * @param {EditorFile[]} files
  * @returns {Promise<Set<EditorFile>>} Files that are still unsaved.
  */
 async function saveFiles(files) {
 	const failed = new Set();
 	const pending = files.filter((file) => file.isUnsaved);
-	const queue = [];
+	const parallel = [];
+	const serial = [];
 	const interactive = [];
 	for (const file of pending) {
 		if (!canSaveFile(file)) failed.add(file);
-		else if (file.uri) queue.push(file);
-		else interactive.push(file);
+		else if (!file.uri) interactive.push(file);
+		else if (canSaveInParallel(file.uri)) parallel.push(file);
+		else serial.push(file);
 	}
 
-	const total = queue.length;
+	const total = parallel.length + serial.length;
 	let done = 0;
 	const progress =
 		total > 1 ? loader.create(strings.saving, `0 / ${total}`) : null;
+	const drain = async (queue) => {
+		while (queue.length) {
+			const file = queue.shift();
+			if (!(await trySave(file, AUTO_SAVE))) interactive.push(file);
+			progress?.setMessage(`${++done} / ${total}`);
+		}
+	};
 	try {
-		const workers = Array.from(
-			{ length: Math.min(SAVE_CONCURRENCY, total) },
-			async () => {
-				while (queue.length) {
-					const file = queue.shift();
-					if (!(await trySave(file, AUTO_SAVE))) interactive.push(file);
-					progress?.setMessage(`${++done} / ${total}`);
-				}
-			},
+		await Promise.all(
+			Array.from({ length: Math.min(SAVE_CONCURRENCY, parallel.length) }, () =>
+				drain(parallel),
+			),
 		);
-		await Promise.all(workers);
+		await drain(serial);
 	} finally {
 		progress?.destroy();
 	}
 
 	for (const file of interactive) {
 		if (!(await trySave(file))) failed.add(file);
+	}
+
+	if (pending.length > 1) {
+		const message = failed.size
+			? strings["files not saved count"] || "Files not saved: {count}"
+			: strings["files saved count"] || "Files saved: {count}";
+		toast(
+			message.replace(
+				"{count}",
+				String(failed.size || pending.length - failed.size),
+			),
+		);
 	}
 	return failed;
 }

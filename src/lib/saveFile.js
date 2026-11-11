@@ -147,21 +147,17 @@ async function saveFile(
 		if (!fileOnDevice || !isCurrent()) return false;
 
 		if (!isSaveAs && !isNewFile) {
-			let unchanged = false;
-			// A matching mtime proves the file is untouched since the last save,
-			// which avoids reading the whole file back before every save.
-			if (file.savedMtime != null) {
+			const source = Text.of(
+				(await fileOnDevice.readFile(encoding)).split(/\r\n?|\n/),
+			);
+			if (!isCurrent()) return false;
+			let unchanged = source.eq(file.session.doc);
+			if (!unchanged && baseline) {
+				unchanged = source.eq(baseline);
+			} else if (!unchanged && file.savedMtime != null) {
 				const stat = await fileOnDevice.stat?.().catch(() => null);
 				if (!isCurrent()) return false;
 				unchanged = helpers.getStatMtime(stat) === file.savedMtime;
-			}
-			if (!unchanged) {
-				const source = Text.of(
-					(await fileOnDevice.readFile(encoding)).split(/\r\n?|\n/),
-				);
-				if (!isCurrent()) return false;
-				unchanged =
-					source.eq(file.session.doc) || (!!baseline && source.eq(baseline));
 			}
 			if (!unchanged) {
 				file.hasDiskConflict = true;

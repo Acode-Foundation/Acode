@@ -911,5 +911,7 @@
 	"error-permission-revoked": "Acode artıq bu məkana daxil ola bilmir. Giriş icazəsi vermək üçün qovluğu yenidən aç.",
 	"error-not-found": "Bu fayl və ya qovluq artıq mövcud deyil. Yeri dəyişdirilmiş, adı dəyişdirilmiş və ya silinmiş ola bilər.",
 	"error-no-space": "Bu cihazda kifayət qədər boş yaddaş sahəsi qalmayıb.",
-	"error-network": "Serverlə əlaqə qurmaq mümkün olmadı. Əlaqəni yoxla və yenidən cəhd et."
+	"error-network": "Serverlə əlaqə qurmaq mümkün olmadı. Əlaqəni yoxla və yenidən cəhd et.",
+	"files saved count": "Files saved: {count}",
+	"files not saved count": "Files not saved: {count}"
 }
