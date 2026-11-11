@@ -914,6 +914,8 @@
 	"error-not-found": "This file or folder no longer exists. It may have been moved, renamed or deleted.",
 	"error-no-space": "There isn't enough storage space left on this device.",
 	"error-network": "Couldn't reach the server. Check your connection and try again.",
+	"files saved count": "Files saved: {count}",
+	"files not saved count": "Files not saved: {count}",
 	"faqs load failed": "Unable to load FAQs. Please try again.",
 	"faqs empty": "No FAQs are available yet.",
 	"retry": "Retry"
