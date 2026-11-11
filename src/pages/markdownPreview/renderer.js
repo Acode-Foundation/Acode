@@ -231,7 +231,16 @@ async function getMarkdownIt(text = "") {
 
 export async function renderMarkdown(text, file) {
 	const markdownText = text || "";
-	const md = await getMarkdownIt(markdownText);
+	let md;
+	try {
+		md = await getMarkdownIt(markdownText);
+	} catch (error) {
+		console.warn(
+			"Failed to load the math renderer; using plain markdown.",
+			error,
+		);
+		md = baseMarkdownIt;
+	}
 	const env = {};
 	env.markdownBaseUri = getMarkdownBaseUri(file);
 	const tokens = md.parse(markdownText, env);
