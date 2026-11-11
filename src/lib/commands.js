@@ -3,6 +3,7 @@ import { selectAll } from "@codemirror/commands";
 import { focusEditorIfEditable } from "cm/editorReadOnly";
 import Sidebar from "components/sidebar";
 import confirm from "dialogs/confirm";
+import loader from "dialogs/loader";
 import prompt from "dialogs/prompt";
 import select from "dialogs/select";
 import actions from "handlers/quickTools";
@@ -12,12 +13,12 @@ import helpers from "utils/helpers";
 import Url from "utils/Url";
 import checkFiles from "./checkFiles";
 import config from "./config";
-import EditorFile from "./editorFile";
+import EditorFile, { AUTO_SAVE } from "./editorFile";
 import { loadFileBrowser } from "./lazyImports";
 import openFile from "./openFile";
 import openFolder from "./openFolder";
 import run from "./run";
-import saveState from "./saveState";
+import saveState, { deferSaveState } from "./saveState";
 import appSettings from "./settings";
 import showFileInfo from "./showFileInfo";
 
@@ -139,22 +140,100 @@ async function closeTabs(files, options = {}) {
 		}
 	}
 
-	let complete = true;
-	for (const file of [...closableFiles]) {
-		if (save && file.isUnsaved) {
-			if (!canSaveFile(file)) {
-				complete = false;
-				continue;
-			}
-			const saved = await file.save();
-			if (saved === false || file.hasUnsavedChanges?.() || file.isUnsaved)
-				return false;
-		}
+	// Files that could not be saved stay open so no changes are lost.
+	const failed = save ? await saveFiles(closableFiles) : new Set();
+	await removeFiles(closableFiles.filter((file) => !failed.has(file)));
+	return !failed.size;
+}
 
-		await file.remove(true, { silentPinned: true });
+const SAVE_CONCURRENCY = 4;
+
+/**
+ * Saves every unsaved file in `files`, showing progress while doing so.
+ * Files with a location are first saved a few at a time without prompting;
+ * anything that needs input (new files, conflicts, errors) is then saved one
+ * at a time with the usual dialogs.
+ * @param {EditorFile[]} files
+ * @returns {Promise<Set<EditorFile>>} Files that are still unsaved.
+ */
+async function saveFiles(files) {
+	const failed = new Set();
+	const pending = files.filter((file) => file.isUnsaved);
+	const queue = [];
+	const interactive = [];
+	for (const file of pending) {
+		if (!canSaveFile(file)) failed.add(file);
+		else if (file.uri) queue.push(file);
+		else interactive.push(file);
 	}
 
-	return complete;
+	const total = queue.length;
+	let done = 0;
+	const progress =
+		total > 1 ? loader.create(strings.saving, `0 / ${total}`) : null;
+	try {
+		const workers = Array.from(
+			{ length: Math.min(SAVE_CONCURRENCY, total) },
+			async () => {
+				while (queue.length) {
+					const file = queue.shift();
+					if (!(await trySave(file, AUTO_SAVE))) interactive.push(file);
+					progress?.setMessage(`${++done} / ${total}`);
+				}
+			},
+		);
+		await Promise.all(workers);
+	} finally {
+		progress?.destroy();
+	}
+
+	for (const file of interactive) {
+		if (!(await trySave(file))) failed.add(file);
+	}
+	return failed;
+}
+
+/**
+ * @param {EditorFile} file
+ * @param {symbol} [origin]
+ * @returns {Promise<boolean>} Whether the file has no unsaved changes left.
+ */
+async function trySave(file, origin) {
+	try {
+		const saved = await file.save(origin);
+		return saved !== false && !file.hasUnsavedChanges?.() && !file.isUnsaved;
+	} catch (error) {
+		console.error(error);
+		return false;
+	}
+}
+
+/**
+ * Closes `files` without prompting. Background tabs are closed before the
+ * active ones so no tab gets activated (and rendered) only to be closed, and
+ * the tab list and session are updated once at the end instead of per tab.
+ * @param {EditorFile[]} files
+ */
+async function removeFiles(files) {
+	const { activeFile } = editorManager;
+	const isPaneActive = (file) =>
+		editorManager.getFilePane?.(file)?.activeFile === file;
+	const rank = (file) => {
+		if (file === activeFile) return 2;
+		return isPaneActive(file) ? 1 : 0;
+	};
+	const ordered = [...files].sort((a, b) => rank(a) - rank(b));
+
+	const removeAll = async () => {
+		for (const file of ordered) {
+			await file.remove(true, { silentPinned: true });
+		}
+	};
+	await deferSaveState(() =>
+		editorManager.batchFileRemoval
+			? editorManager.batchFileRemoval(removeAll)
+			: removeAll(),
+	);
 }
 
 export default {
@@ -214,18 +293,8 @@ export default {
 			strings["save all changes warning"],
 		);
 		if (!doSave) return;
-		let complete = true;
-		for (const file of [...editorManager.files]) {
-			if (!file.isUnsaved) continue;
-			if (!canSaveFile(file)) {
-				complete = false;
-				continue;
-			}
-			const saved = await file.save();
-			if (saved === false || file.hasUnsavedChanges?.() || file.isUnsaved)
-				return false;
-		}
-		return complete;
+		const failed = await saveFiles([...editorManager.files]);
+		return !failed.size;
 	},
 	"close-current-tab"() {
 		editorManager.activeFile?.remove();

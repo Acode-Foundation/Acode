@@ -14,7 +14,9 @@ import EditorFile from "./editorFile";
 import openFolder from "./openFolder";
 import appSettings from "./settings";
 
-let saveTimeout;
+/** @type {WeakMap<EditorFile, number>} */
+const saveTimeouts = new WeakMap();
+let updateTimeout;
 
 const SELECT_FOLDER = "select-folder";
 
@@ -145,17 +147,21 @@ async function saveFile(
 		if (!fileOnDevice || !isCurrent()) return false;
 
 		if (!isSaveAs && !isNewFile) {
-			const source = Text.of(
-				(await fileOnDevice.readFile(encoding)).split(/\r\n?|\n/),
-			);
-			if (!isCurrent()) return false;
-			let unchanged = source.eq(file.session.doc);
-			if (!unchanged && baseline) {
-				unchanged = source.eq(baseline);
-			} else if (!unchanged && file.savedMtime != null) {
+			let unchanged = false;
+			// A matching mtime proves the file is untouched since the last save,
+			// which avoids reading the whole file back before every save.
+			if (file.savedMtime != null) {
 				const stat = await fileOnDevice.stat?.().catch(() => null);
 				if (!isCurrent()) return false;
 				unchanged = helpers.getStatMtime(stat) === file.savedMtime;
+			}
+			if (!unchanged) {
+				const source = Text.of(
+					(await fileOnDevice.readFile(encoding)).split(/\r\n?|\n/),
+				);
+				if (!isCurrent()) return false;
+				unchanged =
+					source.eq(file.session.doc) || (!!baseline && source.eq(baseline));
 			}
 			if (!unchanged) {
 				file.hasDiskConflict = true;
@@ -171,12 +177,14 @@ async function saveFile(
 			}
 		}
 
-		if (appSettings.value.formatOnSave) {
-			editorManager.activeFile.markChanged = false;
+		// The format command works on the active editor, so only format when the
+		// file being saved is the one shown (bulk saves cover background tabs).
+		if (appSettings.value.formatOnSave && editorManager.activeFile === file) {
+			file.markChanged = false;
 			try {
 				acode.exec("format", false);
 			} finally {
-				editorManager.activeFile.markChanged = true;
+				file.markChanged = true;
 			}
 		}
 
@@ -200,15 +208,23 @@ async function saveFile(
 			recents.addFolder(file.location);
 		}
 
-		clearTimeout(saveTimeout);
-		saveTimeout = setTimeout(() => {
-			if (!isCurrent()) return;
-			file.isSaving = false;
-			if (newUrl) recents.addFile(file.uri);
+		clearTimeout(saveTimeouts.get(file));
+		saveTimeouts.set(
+			file,
+			setTimeout(() => {
+				saveTimeouts.delete(file);
+				if (!isCurrent()) return;
+				file.isSaving = false;
+				if (newUrl) recents.addFile(file.uri);
+				editorManager.emit("save-file", file);
+				resetText();
+			}, editorManager.TIMEOUT_VALUE + 100),
+		);
+		// Coalesce the session update so saving many files persists state once.
+		clearTimeout(updateTimeout);
+		updateTimeout = setTimeout(() => {
 			editorManager.onupdate("save-file");
 			editorManager.emit("update", "save-file");
-			editorManager.emit("save-file", file);
-			resetText();
 		}, editorManager.TIMEOUT_VALUE + 100);
 		return true;
 	} catch (err) {

@@ -139,6 +139,8 @@ async function EditorManager($header, $body) {
 	let timeoutQuicktoolsToggler;
 	let timeoutHeaderToggler;
 	let isScrolling = false;
+	let fileRemovalBatchDepth = 0;
+	let fileListSyncPending = false;
 	let lastScrollTop = 0;
 	let lastScrollLeft = 0;
 	let suppressCursorRevealUntil = 0;
@@ -3338,6 +3340,7 @@ async function EditorManager($header, $body) {
 		moveActiveFileToNewPane,
 		moveFileToPane,
 		removeFileFromPane,
+		batchFileRemoval,
 		moveFileByPinnedState,
 		normalizePinnedTabOrder,
 		updatePaneFileOrderFromTabs,
@@ -4385,8 +4388,29 @@ async function EditorManager($header, $body) {
 			}
 		}
 		rebuildFileListFromPanes();
-		syncOpenFileList();
+		if (fileRemovalBatchDepth) fileListSyncPending = true;
+		else syncOpenFileList();
 		return { pane, wasPaneActive, nextFile };
+	}
+
+	/**
+	 * Runs `task` (which removes files) while deferring the open file list
+	 * sync to a single pass at the end, instead of one full sync per file.
+	 * @template T
+	 * @param {() => Promise<T>|T} task
+	 * @returns {Promise<T>}
+	 */
+	async function batchFileRemoval(task) {
+		fileRemovalBatchDepth++;
+		try {
+			return await task();
+		} finally {
+			fileRemovalBatchDepth--;
+			if (!fileRemovalBatchDepth && fileListSyncPending) {
+				fileListSyncPending = false;
+				syncOpenFileList();
+			}
+		}
 	}
 
 	function updatePaneFileOrderFromTabs($tabList, options = {}) {
