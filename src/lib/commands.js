@@ -203,7 +203,7 @@ async function trySave(file, origin) {
 		const saved = await file.save(origin);
 		return saved !== false && !file.hasUnsavedChanges?.() && !file.isUnsaved;
 	} catch (error) {
-		console.error(error);
+		helpers.error(error);
 		return false;
 	}
 }

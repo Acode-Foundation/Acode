@@ -9,6 +9,7 @@ function setup(files) {
 	};
 	const toast = vi.fn(),
 		error = vi.fn();
+	const progress = { setMessage: vi.fn(), destroy: vi.fn() };
 	const dependencies = Object.fromEntries(
 		[
 			"fileSystem",
@@ -27,7 +28,6 @@ function setup(files) {
 			"./openFile",
 			"./openFolder",
 			"./run",
-			"./saveState",
 			"./settings",
 			"./showFileInfo",
 		].map((id) => [id, {}]),
@@ -38,11 +38,13 @@ function setup(files) {
 			...dependencies,
 			"dialogs/confirm": async () => true,
 			"dialogs/select": async () => "save",
+			"dialogs/loader": { create: () => progress },
+			"./saveState": { deferSaveState: (task) => task() },
 			"utils/helpers": { error },
 		},
 		{ editorManager: manager, strings: {}, toast },
 	);
-	return { ...module, manager, toast, error };
+	return { ...module, manager, toast, error, progress };
 }
 function tab(id, type = "docs") {
 	const file = {
@@ -105,7 +107,7 @@ it("does not save pending editors or report a cancelled editor save as successfu
 	await f.default["save-as"](true);
 	expect(f.toast).not.toHaveBeenCalled();
 });
-it("saves sequentially without clearing flags and stops at cancellation or newer edits", async () => {
+it("saves sequentially without clearing flags and keeps going past cancellation or newer edits", async () => {
 	const one = tab("one"),
 		two = tab("two"),
 		code = tab("code", "editor");
@@ -128,12 +130,47 @@ it("saves sequentially without clearing flags and stops at cancellation or newer
 	release();
 	expect(await saving).toBe(false);
 	expect(two.isUnsaved).toBe(true);
-	expect(code.save).not.toHaveBeenCalled();
+	expect(code.save).toHaveBeenCalledOnce();
+	expect(code.isUnsaved).toBe(false);
 	two.save.mockResolvedValueOnce(true); // A newer edit remains dirty after the write.
 	expect(await f.default["save-all-changes"]()).toBe(false);
-	expect(code.save).not.toHaveBeenCalled();
+	expect(two.isUnsaved).toBe(true);
 	expect(await f.default["save-all-changes"]()).toBe(true);
-	expect(code.isUnsaved).toBe(false);
+	expect(two.isUnsaved).toBe(false);
+});
+
+it("saves files with a location concurrently behind a progress dialog", async () => {
+	const files = ["a", "b", "c", "d", "e", "f"].map((id) => {
+		const file = tab(id, "editor");
+		file.uri = `file:///${id}`;
+		return file;
+	});
+	const releases = [];
+	for (const file of files) {
+		file.save.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					releases.push(() => {
+						file.isUnsaved = false;
+						resolve(true);
+					});
+				}),
+		);
+	}
+	const f = setup(files);
+	const saving = f.default["save-all-changes"]();
+	await vi.waitFor(() => expect(releases).toHaveLength(4));
+	expect(files[4].save).not.toHaveBeenCalled();
+	while (releases.length) {
+		releases.shift()();
+		await Promise.resolve();
+		await Promise.resolve();
+	}
+	await vi.waitFor(() => expect(files[5].save).toHaveBeenCalled());
+	while (releases.length) releases.shift()();
+	expect(await saving).toBe(true);
+	expect(f.progress.setMessage).toHaveBeenCalledTimes(files.length);
+	expect(f.progress.destroy).toHaveBeenCalledOnce();
 });
 it.each([
 	false,
@@ -145,9 +182,8 @@ it.each([
 	if (outcome === "failure")
 		file.save.mockRejectedValueOnce(Error("disk full"));
 	else file.save.mockResolvedValueOnce(outcome);
-	const result = f.default["close-all-tabs"]();
-	if (outcome === "failure") await expect(result).rejects.toThrow("disk full");
-	else await result;
+	expect(await f.default["close-all-tabs"]()).toBe(false);
+	expect(f.error).toHaveBeenCalledTimes(outcome === "failure" ? 1 : 0);
 	expect(file.remove).not.toHaveBeenCalled();
 	expect(file.isUnsaved).toBe(true);
 });
@@ -181,7 +217,7 @@ it.each([
 	false,
 	true,
 	"failure",
-])("still stops after a savable write fails or remains dirty (%s)", async (outcome) => {
+])("keeps a failed file open and still saves the rest (%s)", async (outcome) => {
 	for (const command of ["save-all-changes", "close-all-tabs"]) {
 		const unsupported = tab("unsupported", "terminal"),
 			failed = tab("failed"),
@@ -190,13 +226,15 @@ it.each([
 		if (outcome === "failure")
 			failed.save.mockRejectedValueOnce(Error("disk full"));
 		else failed.save.mockResolvedValueOnce(outcome);
-		const saving = f.default[command]();
-		if (outcome === "failure")
-			await expect(saving).rejects.toThrow("disk full");
-		else expect(await saving).toBe(false);
+		expect(await f.default[command]()).toBe(false);
+		expect(f.error).toHaveBeenCalledTimes(outcome === "failure" ? 1 : 0);
 		expect(failed.remove).not.toHaveBeenCalled();
-		expect(later.save).not.toHaveBeenCalled();
-		expect(later.remove).not.toHaveBeenCalled();
+		expect(failed.isUnsaved).toBe(true);
+		expect(later.save).toHaveBeenCalledOnce();
+		expect(later.isUnsaved).toBe(false);
+		expect(later.remove).toHaveBeenCalledTimes(
+			command === "close-all-tabs" ? 1 : 0,
+		);
 	}
 });
 
