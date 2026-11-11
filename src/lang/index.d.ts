@@ -915,6 +915,8 @@ declare type LangStrings = {
 	"error-not-found": string;
 	"error-no-space": string;
 	"error-network": string;
+	"files saved count": string;
+	"files not saved count": string;
 };
 
 declare var strings: LangStrings;

@@ -911,5 +911,7 @@
 	"error-permission-revoked": "Acode 已无法访问此位置。请重新打开文件夹以授予访问权限。",
 	"error-not-found": "此文件或文件夹已不存在，可能已被移动、重命名或删除。",
 	"error-no-space": "此设备的剩余存储空间不足。",
-	"error-network": "无法连接到服务器。请检查网络连接后重试。"
+	"error-network": "无法连接到服务器。请检查网络连接后重试。",
+	"files saved count": "Files saved: {count}",
+	"files not saved count": "Files not saved: {count}"
 }

@@ -3,8 +3,36 @@ import config from "./config";
 import { addedFolder } from "./openFolder";
 import appSettings from "./settings";
 
-export default () => {
+let deferDepth = 0;
+let deferredSave = false;
+
+/**
+ * Runs `task` while coalescing every session save it triggers into a single
+ * save once it finishes, so bulk tab operations don't re-serialize all open
+ * files per tab.
+ * @template T
+ * @param {() => Promise<T>|T} task
+ * @returns {Promise<T>}
+ */
+export async function deferSaveState(task) {
+	deferDepth++;
+	try {
+		return await task();
+	} finally {
+		deferDepth--;
+		if (!deferDepth && deferredSave) {
+			deferredSave = false;
+			saveState();
+		}
+	}
+}
+
+export default function saveState() {
 	if (!window.editorManager) return;
+	if (deferDepth) {
+		deferredSave = true;
+		return;
+	}
 
 	const filesToSave = [];
 	const folders = [];
@@ -103,7 +131,7 @@ export default () => {
 
 	localStorage.files = JSON.stringify(filesToSave);
 	localStorage.folders = JSON.stringify(folders);
-};
+}
 
 function collapseSelectionForRestore(selection) {
 	if (!selection?.ranges?.length) return selection;

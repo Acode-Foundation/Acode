@@ -14,7 +14,9 @@ import EditorFile from "./editorFile";
 import openFolder from "./openFolder";
 import appSettings from "./settings";
 
-let saveTimeout;
+/** @type {WeakMap<EditorFile, number>} */
+const saveTimeouts = new WeakMap();
+let updateTimeout;
 
 const SELECT_FOLDER = "select-folder";
 
@@ -171,12 +173,14 @@ async function saveFile(
 			}
 		}
 
-		if (appSettings.value.formatOnSave) {
-			editorManager.activeFile.markChanged = false;
+		// The format command works on the active editor, so only format when the
+		// file being saved is the one shown (bulk saves cover background tabs).
+		if (appSettings.value.formatOnSave && editorManager.activeFile === file) {
+			file.markChanged = false;
 			try {
 				acode.exec("format", false);
 			} finally {
-				editorManager.activeFile.markChanged = true;
+				file.markChanged = true;
 			}
 		}
 
@@ -200,15 +204,23 @@ async function saveFile(
 			recents.addFolder(file.location);
 		}
 
-		clearTimeout(saveTimeout);
-		saveTimeout = setTimeout(() => {
-			if (!isCurrent()) return;
-			file.isSaving = false;
-			if (newUrl) recents.addFile(file.uri);
+		clearTimeout(saveTimeouts.get(file));
+		saveTimeouts.set(
+			file,
+			setTimeout(() => {
+				saveTimeouts.delete(file);
+				if (!isCurrent()) return;
+				file.isSaving = false;
+				if (newUrl) recents.addFile(file.uri);
+				editorManager.emit("save-file", file);
+				resetText();
+			}, editorManager.TIMEOUT_VALUE + 100),
+		);
+		// Coalesce the session update so saving many files persists state once.
+		clearTimeout(updateTimeout);
+		updateTimeout = setTimeout(() => {
 			editorManager.onupdate("save-file");
 			editorManager.emit("update", "save-file");
-			editorManager.emit("save-file", file);
-			resetText();
 		}, editorManager.TIMEOUT_VALUE + 100);
 		return true;
 	} catch (err) {
