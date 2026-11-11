@@ -425,13 +425,16 @@ function createMarkdownPreview(file) {
 				}),
 			);
 		}
-		const [{ html }] = await Promise.all(pendingRenderTasks);
+		const [{ html, katexMarker }] = await Promise.all(pendingRenderTasks);
 
 		if (previewState.disposed || version !== previewState.renderVersion) {
 			return;
 		}
 
-		previewState.content.innerHTML = sanitizeMarkdownHtml(html);
+		previewState.content.innerHTML = sanitizeMarkdownHtml(
+			html,
+			katexMarker,
+		);
 
 		const objectUrls = await resolveRenderedImages(
 			previewState.content,

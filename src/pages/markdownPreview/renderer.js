@@ -36,6 +36,10 @@ function escapeAttribute(value = "") {
 		.replace(/>/g, "&gt;");
 }
 
+function createKatexMarker() {
+	return `katex-${Math.random().toString(36).slice(2)}`;
+}
+
 function splitLinkTarget(target = "") {
 	const hashIndex = target.indexOf("#");
 	if (hashIndex === -1) {
@@ -166,6 +170,20 @@ function createMarkdownIt({ katex = null, markdownItTexmath = null } = {}) {
 				strict: "ignore",
 			},
 		});
+
+		// Tag generated math so raw HTML cannot spoof the sanitizer's KaTeX exception.
+		for (const [ruleName, renderMath] of Object.entries(md.renderer.rules)) {
+			if (!ruleName.startsWith("math_") || typeof renderMath !== "function") {
+				continue;
+			}
+
+			md.renderer.rules[ruleName] = (tokens, idx, options, env, self) => {
+				const rendered = renderMath(tokens, idx, options, env, self);
+				if (!env?.katexMarker) return rendered;
+				const tag = ruleName.includes("block") ? "div" : "span";
+				return `<${tag} data-acode-katex="${env.katexMarker}">${rendered}</${tag}>`;
+			};
+		}
 	}
 
 	md.use(markdownItEmoji);
@@ -241,8 +259,10 @@ export async function renderMarkdown(text, file) {
 		);
 		md = baseMarkdownIt;
 	}
-	const env = {};
-	env.markdownBaseUri = getMarkdownBaseUri(file);
+	const env = {
+		markdownBaseUri: getMarkdownBaseUri(file),
+		katexMarker: createKatexMarker(),
+	};
 	const tokens = md.parse(markdownText, env);
 
 	collectTokens(tokens, (token) => {
@@ -259,5 +279,6 @@ export async function renderMarkdown(text, file) {
 
 	return {
 		html: md.renderer.render(tokens, md.options, env),
+		katexMarker: env.katexMarker,
 	};
 }

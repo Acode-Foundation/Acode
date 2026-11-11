@@ -1,9 +1,15 @@
 import DOMPurify from "dompurify";
 
-export default function sanitizeMarkdownHtml(html) {
+export default function sanitizeMarkdownHtml(html, katexMarker = "") {
+	const katexSelector = katexMarker
+		? `[data-acode-katex="${katexMarker}"]`
+		: null;
 	const limitStyleAttributes = (node, data) => {
-		// KaTeX needs inline styles for layout; block styles from raw markdown.
-		if (data.attrName === "style" && !node.closest?.(".katex")) {
+		// Only generated KaTeX output carries the per-render marker.
+		if (
+			data.attrName === "style" &&
+			(!katexSelector || !node.closest?.(katexSelector))
+		) {
 			data.keepAttr = false;
 		}
 	};
@@ -13,6 +19,7 @@ export default function sanitizeMarkdownHtml(html) {
 		return DOMPurify.sanitize(html, {
 			FORBID_TAGS: ["style"],
 			ADD_TAGS: ["eq", "eqn"],
+			ADD_ATTR: ["data-acode-katex"],
 		});
 	} finally {
 		DOMPurify.removeHook("uponSanitizeAttribute", limitStyleAttributes);

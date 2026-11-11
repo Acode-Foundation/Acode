@@ -3,14 +3,24 @@ import sanitizeMarkdownHtml from "pages/markdownPreview/sanitize";
 import { describe, expect, it } from "vitest";
 
 describe("markdown preview sanitizer", () => {
-	it("removes raw inline styles but keeps KaTeX layout styles", () => {
+	it("keeps generated KaTeX styles and strips lookalike raw HTML", () => {
+		const marker = "katex-test";
 		const html = sanitizeMarkdownHtml(
-			'<div style="position:fixed;color:red">text</div><span class="katex" style="height:1em">math</span>',
+			`<span data-acode-katex="${marker}"><span class="katex" style="height:1em">math</span></span><div class="katex" style="position:fixed;color:red">fake</div>`,
+			marker,
+		);
+
+		expect(html).toContain("height:1em");
+		expect(html).not.toContain("position:fixed");
+	});
+
+	it("strips styles when raw HTML claims to be KaTeX", () => {
+		const html = sanitizeMarkdownHtml(
+			'<div class="katex" style="position:fixed;color:red">fake controls</div>',
+			"only-this-render",
 		);
 
 		expect(html).not.toContain("position:fixed");
-		expect(html).toContain('class="katex"');
-		expect(html).toContain("height:1em");
 	});
 
 	it("removes style elements", () => {

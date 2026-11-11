@@ -49,6 +49,7 @@ export default async function PluginInclude(
 	let installed = await fsOperation(PLUGIN_DIR, id).exists();
 	let plugin = {};
 	let pluginBaseUri = "";
+	let changelogBaseUri = "";
 	let currentVersion = "";
 	let purchased = false;
 	let cancelled = false;
@@ -88,6 +89,7 @@ export default async function PluginInclude(
 	try {
 		if (installed) {
 			pluginBaseUri = Url.join(PLUGIN_DIR, id);
+			changelogBaseUri = pluginBaseUri;
 			const manifest = Url.join(PLUGIN_DIR, id, "plugin.json");
 			const installedPlugin = await fsOperation(manifest)
 				.readFile("json")
@@ -118,6 +120,7 @@ export default async function PluginInclude(
 						id,
 						installedPlugin.changelogs,
 					);
+					changelogBaseUri = Url.dirname(changelogPath);
 					const changelogExists = await fsOperation(changelogPath).exists();
 					if (changelogExists) {
 						changelogs =
@@ -582,7 +585,19 @@ export default async function PluginInclude(
 			pre.appendChild(copyButton);
 		});
 
-		await resolveReadmeAssets($page.body, pluginBaseUri);
+		const hidePage = () => $page.hide();
+		await Promise.all([
+			resolveReadmeAssets(
+				$page.body.querySelector("#overview"),
+				pluginBaseUri,
+				hidePage,
+			),
+			resolveReadmeAssets(
+				$page.body.querySelector("#changelog"),
+				changelogBaseUri,
+				hidePage,
+			),
+		]);
 
 		if ($settingsIcon) {
 			$settingsIcon.remove();
@@ -638,8 +653,8 @@ function isPluginEditorSupported(supportedEditor) {
 
 const ABSOLUTE_URI_PATTERN = /^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i;
 
-async function resolveReadmeAssets(container, baseUri) {
-	if (!baseUri) return;
+async function resolveReadmeAssets(container, baseUri, onOpen) {
+	if (!container || !baseUri) return;
 
 	const resolvePath = (target) => Url.join(baseUri, target.split(/[?#]/)[0]);
 	const images = Array.from(container.querySelectorAll("img[src]"));
@@ -678,6 +693,7 @@ async function resolveReadmeAssets(container, baseUri) {
 				event.stopPropagation();
 				try {
 					await openFile(path);
+					onOpen?.();
 				} catch (error) {
 					helpers.error(error);
 				}
