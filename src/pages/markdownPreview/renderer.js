@@ -37,7 +37,13 @@ function escapeAttribute(value = "") {
 }
 
 function createKatexMarker() {
-	return `katex-${Math.random().toString(36).slice(2)}`;
+	const values = new Uint32Array(2);
+	if (globalThis.crypto?.getRandomValues) {
+		globalThis.crypto.getRandomValues(values);
+		return `katex-${values[0].toString(36)}${values[1].toString(36)}`;
+	}
+
+	return `katex-${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
 }
 
 function splitLinkTarget(target = "") {
