@@ -4,6 +4,7 @@ import autosize from "autosize";
 import { getDocText } from "cm/editorUtils";
 import Checkbox from "components/checkbox";
 import Sidebar, { preventSlide } from "components/sidebar";
+import confirm from "dialogs/confirm";
 import escapeStringRegexp from "escape-string-regexp";
 import Reactive from "html-tag-js/reactive";
 import Ref from "html-tag-js/ref";
@@ -924,6 +925,16 @@ function withTimeout(promise, ms) {
  * Sends a message to the worker threads to perform the replacement.
  */
 async function replaceAll() {
+	if (filesSearched.length) {
+		const confirmed = await confirm(
+			strings.warning,
+			strings["replace all confirm"]
+				.replace("{matches}", resultOverview.matchesCount)
+				.replace("{files}", resultOverview.filesCount),
+		);
+		if (!confirmed) return;
+	}
+
 	terminateWorker();
 	filesReplaced.length = 0;
 

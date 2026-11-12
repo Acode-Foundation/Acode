@@ -913,5 +913,6 @@
 	"error-no-space": "There isn't enough storage space left on this device.",
 	"error-network": "Couldn't reach the server. Check your connection and try again.",
 	"files saved count": "Files saved: {count}",
-	"files not saved count": "Files not saved: {count}"
+	"files not saved count": "Files not saved: {count}",
+	"replace all confirm": "Replace {matches} matches in {files} files?"
 }
