@@ -225,24 +225,29 @@ export default [
 							size="10px"
 							text="aA"
 							ref={$caseSensitive}
+							title={strings["case sensitive"]}
 						/>
 						<Checkbox
 							checked={store.wholeWord}
 							size="10px"
 							text="a-z"
 							ref={$wholeWord}
+							title={strings["whole word"]}
 						/>
 						<Checkbox
 							checked={store.regExp}
 							size="10px"
 							text=".*"
 							ref={$regExp}
+							title={strings["regular expression"]}
 						/>
 						<Checkbox
 							checked={store.useIndex}
 							size="10px"
 							text="IDX"
 							ref={$useIndex}
+							title={strings["use native index"]}
+							description={strings["use native index hint"]}
 						/>
 					</div>
 

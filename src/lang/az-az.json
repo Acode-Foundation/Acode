@@ -913,5 +913,7 @@
 	"error-no-space": "Bu cihazda kifayət qədər boş yaddaş sahəsi qalmayıb.",
 	"error-network": "Serverlə əlaqə qurmaq mümkün olmadı. Əlaqəni yoxla və yenidən cəhd et.",
 	"files saved count": "Files saved: {count}",
-	"files not saved count": "Files not saved: {count}"
+	"files not saved count": "Files not saved: {count}",
+	"use native index": "Use native index",
+	"use native index hint": "Search local folders faster using the native file index."
 }
