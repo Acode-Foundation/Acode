@@ -930,7 +930,8 @@ async function replaceAll() {
 	const search = $search.value;
 	const replace = $replace.value;
 	const options = getOptions();
-	if (!search || !replace) return;
+	// An empty replacement is valid: it deletes every match.
+	if (!search) return;
 	const regex = toRegex(search, options);
 	if (!regex) return;
 
