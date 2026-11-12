@@ -919,6 +919,7 @@ declare type LangStrings = {
 	"files not saved count": string;
 	"use native index": string;
 	"use native index hint": string;
+	"replace all confirm": string;
 };
 
 declare var strings: LangStrings;

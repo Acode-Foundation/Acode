@@ -915,5 +915,6 @@
 	"files saved count": "{count} fájl mentve",
 	"files not saved count": "{count} fájl nem lett mentve",
 	"use native index": "Use native index",
-	"use native index hint": "Search local folders faster using the native file index."
+	"use native index hint": "Search local folders faster using the native file index.",
+	"replace all confirm": "Replace {matches} matches in {files} files?"
 }
