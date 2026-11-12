@@ -63,6 +63,24 @@ export default async function openFile(file, options = {}) {
 			const incomingDoc =
 				text != null ? Text.of(String(text).split("\n")) : null;
 
+			// Background update (e.g. replace all in files): change the text of an
+			// open, loaded tab without switching to it.
+			if (
+				render === false &&
+				incomingDoc &&
+				!paneId &&
+				!cursorPos &&
+				!encoding &&
+				existingFile.loaded &&
+				existingFile.session
+			) {
+				if (onsave) existingFile.onsave = onsave;
+				if (!existingFile.session.doc?.eq?.(incomingDoc)) {
+					existingFile.session.setValue(String(text));
+				}
+				return;
+			}
+
 			// If file is already opened
 			const targetPane = paneId
 				? editorManager.panes?.find((pane) => pane.id === paneId)

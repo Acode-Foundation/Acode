@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { Text } from "@codemirror/state";
 import ts from "typescript";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { isBinaryFile } from "../../src/utils/binaryExtensions";
@@ -63,7 +64,7 @@ describe("openFile cancellation", () => {
 		});
 		const dependencies = {
 			fileSystem: { default: () => ({ stat, readFile }) },
-			"@codemirror/state": {},
+			"@codemirror/state": { Text },
 			"components/audioPlayer": {},
 			"dialogs/alert": {},
 			"dialogs/confirm": {},
@@ -349,5 +350,41 @@ describe("openFile cancellation", () => {
 		reading.resolve("bytes");
 		await opening;
 		expect(loaderVisible).toBe(false);
+	});
+
+	function openTab(text) {
+		const file = {
+			loaded: true,
+			makeActive: vi.fn(),
+			session: {
+				doc: Text.of(text.split("\n")),
+				setValue: vi.fn(),
+			},
+		};
+		manager.getFile.mockReturnValue(file);
+		manager.editor = { dispatch: vi.fn(), state: { doc: { length: 0 } } };
+		return file;
+	}
+
+	it("updates an open tab in the background without switching to it", async () => {
+		const file = openTab("foo");
+		await openFile("target", { render: false, text: "bar" });
+		expect(file.makeActive).not.toHaveBeenCalled();
+		expect(file.session.setValue).toHaveBeenCalledWith("bar");
+		expect(manager.editor.dispatch).not.toHaveBeenCalled();
+	});
+
+	it("leaves an open tab alone in the background when the text is the same", async () => {
+		const file = openTab("foo");
+		await openFile("target", { render: false, text: "foo" });
+		expect(file.makeActive).not.toHaveBeenCalled();
+		expect(file.session.setValue).not.toHaveBeenCalled();
+	});
+
+	it("still switches to an open tab when it should render", async () => {
+		const file = openTab("foo");
+		await openFile("target", { text: "bar" });
+		expect(file.makeActive).toHaveBeenCalledOnce();
+		expect(manager.editor.dispatch).toHaveBeenCalledOnce();
 	});
 });
