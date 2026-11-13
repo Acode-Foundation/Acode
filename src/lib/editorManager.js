@@ -1497,6 +1497,11 @@ async function EditorManager($header, $body) {
 					backend: getCanvasBackend(appSettings.value),
 					input: appSettings.value.useTextareaForIME ? "textarea" : "auto",
 					touchSelection: {
+						// Read on every selection drag, so editing settings.json
+						// applies without recreating the view.
+						get magnifier() {
+							return appSettings.value.canvasMagnifier !== false;
+						},
 						onMenu: (event) =>
 							pane.touchSelectionController?.handleCanvasMenu?.(event),
 						onHaptic() {
