@@ -86,7 +86,12 @@ interface LaunchAppWithFileOptions {
   filename?: string;
   /** Label for the shared item; defaults to the file name */
   clipLabel?: string;
-  /** MIME type of the file; resolved from the URI or file name when omitted */
+  /**
+   * MIME type to advertise. When given it is always honoured, including
+   * `application/octet-stream`; such a value is never second-guessed by file
+   * detection. When omitted it is taken from the files, narrowed to the type
+   * they all share. Pass the universal wildcard to force detection.
+   */
   mimeType?: string;
   /**
    * Intent action, short (`VIEW`, `EDIT`, `SEND`, `SEND_MULTIPLE`, `RUN`) or

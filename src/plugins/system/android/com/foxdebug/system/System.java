@@ -1980,23 +1980,27 @@ public class System extends CordovaPlugin {
         intent.setType(mimeType);
       }
 
-      // A payload-less launch mirrors launchApp: MAIN + LAUNCHER, so the system
-      // can dispatch to the package's launcher activity.
-      if (
-        primary == null &&
-        requestedAction.isEmpty() &&
-        options.optJSONArray("categories") == null
-      ) {
+      // A plain app launch is a launcher launch: MAIN + LAUNCHER. The launcher
+      // category is implied only when the caller supplied no categories, since
+      // the binding always sends an array (possibly empty) for "not given".
+      JSONArray categories = options.optJSONArray("categories");
+      boolean hasCategories = categories != null && categories.length() > 0;
+      boolean launcherLaunch =
+        primary == null && Intent.ACTION_MAIN.equals(intentAction);
+
+      if (launcherLaunch && !hasCategories) {
         intent.addCategory(Intent.CATEGORY_LAUNCHER);
       }
 
-      applyCategories(intent, options.optJSONArray("categories"));
+      applyCategories(intent, categories);
 
       if (!appId.isEmpty()) {
         intent.setPackage(appId);
 
         if (!className.isEmpty()) {
           intent.setClassName(appId, className);
+        } else if (launcherLaunch && !hasCategories) {
+          pinLaunchActivity(intent, appId);
         } else {
           // Best effort only. On Android 11+ package visibility can hide an
           // installed handler from resolveActivity, and this app declares no
@@ -2103,6 +2107,30 @@ public class System extends CordovaPlugin {
     }
 
     return uris;
+  }
+
+  /**
+   * Pins the launcher activity of {@code appId} for a plain app launch.
+   *
+   * A launcher filter normally declares only MAIN and LAUNCHER, so it can never
+   * match a MATCH_DEFAULT_ONLY lookup. getLaunchIntentForPackage is the
+   * launcher-specific lookup Android provides for exactly this case. When
+   * package visibility hides the package it returns null, and the MAIN+LAUNCHER
+   * intent is still dispatched by the system, so this is an optimisation.
+   */
+  private void pinLaunchActivity(Intent intent, String appId) {
+    Intent launch = context.getPackageManager().getLaunchIntentForPackage(appId);
+    ComponentName component = launch == null ? null : launch.getComponent();
+
+    if (component != null) {
+      intent.setClassName(
+        component.getPackageName(),
+        component.getClassName()
+      );
+      return;
+    }
+
+    resolveComponentInPackage(intent);
   }
 
   /**
@@ -2920,7 +2948,7 @@ public class System extends CordovaPlugin {
     List<Uri> uris,
     String filename
   ) {
-    if (isConcreteMimeType(requestedMime)) {
+    if (isExplicitMimeType(requestedMime)) {
       return requestedMime;
     }
 
@@ -3002,8 +3030,22 @@ public class System extends CordovaPlugin {
   }
 
   /**
-   * Treats catch-all and octet-stream answers as "unknown", otherwise every
-   * unresolved file would appear to share a type.
+   * True when the caller supplied a real MIME type.
+   *
+   * An explicit value always wins, including application/octet-stream, because
+   * the receiver may accept only that. Only the universal wildcard is treated
+   * as "caller has no preference".
+   */
+  private static boolean isExplicitMimeType(String mimeType) {
+    return (
+      mimeType != null && !mimeType.isEmpty() && !"*/*".equals(mimeType)
+    );
+  }
+
+  /**
+   * Treats catch-all and octet-stream answers as "unknown" for types we detect
+   * ourselves, otherwise every unresolved file would appear to share a type.
+   * Caller-supplied types are judged by {@link #isExplicitMimeType} instead.
    */
   private static boolean isConcreteMimeType(String type) {
     return (
