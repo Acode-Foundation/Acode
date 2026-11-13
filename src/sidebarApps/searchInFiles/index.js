@@ -930,7 +930,7 @@ async function replaceAll() {
 	const search = $search.value;
 	const replace = $replace.value;
 	const options = getOptions();
-	if (!search || !replace) return;
+	if (!search) return;
 	const regex = toRegex(search, options);
 	if (!regex) return;
 
