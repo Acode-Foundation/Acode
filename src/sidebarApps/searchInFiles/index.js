@@ -26,6 +26,8 @@ const workers = [];
 const results = [];
 const filesSearched = [];
 const filesReplaced = [];
+/** Number of files the current Replace All was confirmed for. */
+let filesToReplaceCount = 0;
 
 const $container = Ref();
 const $regExp = Ref();
@@ -366,7 +368,7 @@ async function onWorkerMessage(e) {
 			const { file, text } = data;
 			filesReplaced.push(file);
 			openFile(file.url, {
-				render: filesSearched.length === filesReplaced.length,
+				render: filesReplaced.length === filesToReplaceCount,
 				text,
 			});
 			break;
@@ -796,7 +798,7 @@ function sendNativeSearch(
 				case "replace-result":
 					filesReplaced.push(event.file);
 					openFile(event.file.url, {
-						render: filesSearched.length === filesReplaced.length,
+						render: filesReplaced.length === filesToReplaceCount,
 						text: event.text,
 					});
 					break;
@@ -925,19 +927,9 @@ function withTimeout(promise, ms) {
  * Sends a message to the worker threads to perform the replacement.
  */
 async function replaceAll() {
-	if (filesSearched.length) {
-		const confirmed = await confirm(
-			strings.warning,
-			strings["replace all confirm"]
-				.replace("{matches}", resultOverview.matchesCount)
-				.replace("{files}", resultOverview.filesCount),
-		);
-		if (!confirmed) return;
-	}
-
-	terminateWorker();
-	filesReplaced.length = 0;
-
+	// Snapshot everything before the dialog: the search keeps running while it
+	// is open, so only the files the user was shown may be replaced.
+	const files = [...filesSearched];
 	const search = $search.value;
 	const replace = $replace.value;
 	const options = getOptions();
@@ -945,14 +937,24 @@ async function replaceAll() {
 	const regex = toRegex(search, options);
 	if (!regex) return;
 
+	if (files.length) {
+		const confirmed = await confirm(
+			strings.warning,
+			strings["replace all confirm"]
+				.replace("{matches}", resultOverview.matchesCount)
+				.replace("{files}", files.length),
+		);
+		if (!confirmed) return;
+	}
+
+	terminateWorker();
+	filesReplaced.length = 0;
+	filesToReplaceCount = files.length;
+
 	replacing = true;
 	activeReplaceTasks = 0;
-	const nativeFiles = filesSearched.filter((file) =>
-		supportsNativeSearch(file.url),
-	);
-	const workerFiles = filesSearched.filter(
-		(file) => !supportsNativeSearch(file.url),
-	);
+	const nativeFiles = files.filter((file) => supportsNativeSearch(file.url));
+	const workerFiles = files.filter((file) => !supportsNativeSearch(file.url));
 	if (nativeFiles.length) {
 		activeReplaceTasks += 1;
 		sendNativeSearch("replace", nativeFiles, search, options, replace);
