@@ -20,6 +20,7 @@ import {
 	crosshairCursor,
 	drawSelection,
 	dropCursor,
+	EditorView,
 	highlightActiveLine,
 	highlightActiveLineGutter,
 	highlightSpecialChars,
@@ -50,6 +51,30 @@ export interface BaseExtensionOptions {
 }
 
 /**
+ * Android draws its native selection handles for a DOM selection inside
+ * the editor even after focus moves to a menu or page over it, so they
+ * float above the ⋮ menu or Settings and can still be dragged there
+ * (Acode issue #3059). Focus leaving the editor doesn't clear the DOM
+ * selection, so this does. With `drawSelection()` the visible selection
+ * is CodeMirror's own layer and stays; CodeMirror writes the DOM selection
+ * again from its state when the editor gets focus back.
+ */
+const releaseNativeSelection = EditorView.domEventHandlers({
+	blur(_event, view) {
+		// Focus leaving the app (backgrounded) keeps it as it was.
+		if (!document.hasFocus()) return false;
+		const selection = document.getSelection();
+		if (
+			selection?.rangeCount &&
+			view.contentDOM.contains(selection.anchorNode)
+		) {
+			selection.removeAllRanges();
+		}
+		return false;
+	},
+});
+
+/**
  * Base extensions roughly matching the useful parts of CodeMirror's basicSetup
  */
 export default function createBaseExtensions(
@@ -77,7 +102,9 @@ export default function createBaseExtensions(
 			indentationFolding,
 		);
 	}
-	if (!canvas) extensions.push(drawSelection(), dropCursor());
+	if (!canvas) {
+		extensions.push(drawSelection(), dropCursor(), releaseNativeSelection);
+	}
 	extensions.push(EditorState.allowMultipleSelections.of(true));
 	if (autoIndent) extensions.push(indentOnInput());
 	extensions.push(
