@@ -173,7 +173,10 @@ export default function ScrollBar(options) {
 	 * @param {TouchEvent|MouseEvent} e
 	 */
 	function touchEnd(e) {
-		e.preventDefault();
+		// A cancelled touchend makes Android WebView show the keyboard when
+		// the editor has focus, even after the user hid it (#3058). The
+		// cancelled touchstart already stops the click and page scrolling.
+		if (e.type !== "touchend") e.preventDefault();
 		touchStarted = false;
 		$scrollbar.classList.remove("active");
 		document.removeEventListener("touchmove", touchMove, config);
