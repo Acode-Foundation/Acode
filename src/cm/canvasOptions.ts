@@ -3,6 +3,7 @@ import {
 	CanvasView,
 	type CanvasViewConfig,
 	type FontSpec,
+	parseColor,
 	type TokenStyleSpec,
 } from "@acode.app/canvas-view";
 import { HighlightStyle } from "@codemirror/language";
@@ -150,7 +151,10 @@ function themeClasses(config: ThemeConfig): CanvasThemeSpec["classes"] {
  * EditorView.theme stays in the state, where it styles the DOM UI (tooltips,
  * panels, autocomplete).
  */
-export function getCanvasTheme(themeId: string): CanvasThemeSpec {
+export function getCanvasTheme(
+	themeId: string,
+	seeThrough = false,
+): CanvasThemeSpec {
 	// Resolve ids like getThemeExtensions does ("one-dark" -> "one_dark").
 	const theme =
 		getThemeById(themeId) || getThemeById(String(themeId).replace(/-/g, "_"));
@@ -160,21 +164,93 @@ export function getCanvasTheme(themeId: string): CanvasThemeSpec {
 	const highlight =
 		findHighlightStyle(getThemeExtensions(themeId, [oneDark])) ||
 		highlightFromConfig(config);
+	const background = config.background || "#282c34";
+	const foreground = config.foreground || "#abb2bf";
 	return {
 		dark: config.dark !== false,
-		background: config.background || "#282c34",
-		foreground: config.foreground || "#abb2bf",
+		// With a picture behind the editor, the canvas is see-through. The
+		// editor element keeps the theme's CSS background under the picture,
+		// and sticky lines take it from there.
+		background: seeThrough ? "transparent" : background,
+		foreground,
 		selection: config.selection,
 		cursor: config.cursor,
-		activeLine: config.activeLine,
+		activeLine: seeThrough
+			? translucentActiveLine(config.activeLine, foreground)
+			: config.activeLine,
 		// Like the DOM themes, which give the active gutter line no background.
-		activeLineGutter: config.background,
+		activeLineGutter: seeThrough ? "transparent" : background,
 		gutterForeground: config.lineNumber,
 		gutterActiveForeground: config.lineNumberActive,
 		// Acode draws its own (draggable) scrollbars over the editor.
 		scrollbar: "transparent",
 		highlight,
 		classes: themeClasses(config),
+	};
+}
+
+/**
+ * An active line that lets a picture behind the editor show: the theme's
+ * own when it already does, otherwise the text color at 8% (what the
+ * Backdrop plugin gives `.cm-activeLine` in the DOM editor).
+ */
+function translucentActiveLine(
+	activeLine: string | undefined,
+	foreground: string,
+): string {
+	if (activeLine && parseColor(activeLine) >>> 24 < 255) return activeLine;
+	const c = parseColor(foreground);
+	return `rgba(${c & 255}, ${(c >>> 8) & 255}, ${(c >>> 16) & 255}, 0.08)`;
+}
+
+/**
+ * Whether something draws a picture behind the editor's text, as the
+ * Backdrop plugin does with `.cm-editor::before` (the DOM editor's text has
+ * no background of its own, so it shows). A canvas view then needs a
+ * see-through background. Reads computed style: call it outside frames.
+ */
+export function hasPictureBehind(view: CanvasView): boolean {
+	if (!view.dom.isConnected) return false;
+	const before = getComputedStyle(view.dom, "::before");
+	return (
+		before.content !== "none" &&
+		before.content !== "normal" &&
+		before.display !== "none" &&
+		before.backgroundImage !== "none" &&
+		Number(before.opacity) > 0
+	);
+}
+
+/**
+ * Call `onChange` (at most once per frame) when style sheets are added,
+ * removed or rewritten, which is how plugins restyle the editor (Backdrop
+ * keeps one `<style>` element up to date). Returns a function that stops.
+ */
+export function watchEditorStyles(onChange: () => void): () => void {
+	let frame = 0;
+	const isStyle = (node: Node | null) =>
+		node instanceof HTMLStyleElement || node instanceof HTMLLinkElement;
+	const observer = new MutationObserver((records) => {
+		const relevant = records.some(
+			(r) =>
+				isStyle(r.target) ||
+				isStyle(r.target.parentNode) ||
+				[...r.addedNodes, ...r.removedNodes].some(isStyle),
+		);
+		if (!relevant || frame) return;
+		frame = requestAnimationFrame(() => {
+			frame = 0;
+			onChange();
+		});
+	});
+	const options = { childList: true, subtree: true, characterData: true };
+	observer.observe(document.head, options);
+	// Style elements put straight into <body> (not its whole subtree: the
+	// editor's own DOM changes all the time).
+	observer.observe(document.body, { childList: true });
+	return () => {
+		observer.disconnect();
+		if (frame) cancelAnimationFrame(frame);
 	};
 }
 
@@ -326,10 +402,12 @@ export function syncCanvasView(
 		}
 	}
 	if (themeId != null) {
-		const key = String(themeId);
+		const id = String(themeId);
+		const seeThrough = hasPictureBehind(view);
+		const key = `${id}\0${seeThrough}`;
 		if (key !== state.theme) {
 			state.theme = key;
-			setViewTheme.call(view, getCanvasTheme(key));
+			setViewTheme.call(view, getCanvasTheme(id, seeThrough));
 		}
 	}
 }
@@ -346,6 +424,6 @@ export function markCanvasViewSynced(
 	synced.set(view, {
 		display: JSON.stringify(display),
 		font: JSON.stringify(font),
-		theme: String(themeId),
+		theme: `${themeId}\0false`,
 	});
 }

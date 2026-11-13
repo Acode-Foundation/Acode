@@ -36,6 +36,7 @@ import {
 	getCanvasTheme,
 	markCanvasViewSynced,
 	syncCanvasView,
+	watchEditorStyles,
 } from "cm/canvasOptions";
 import {
 	setKeyBindings as applyKeyBindings,
@@ -1449,6 +1450,18 @@ async function EditorManager($header, $body) {
 	}
 
 	/**
+	 * A plugin's style sheet may put a picture behind the editor (Backdrop),
+	 * which needs a see-through canvas, or take it away: check the theme of
+	 * every canvas view again.
+	 */
+	function syncCanvasThemes() {
+		const themeId = appSettings.value.editorTheme || "one_dark";
+		for (const pane of panes) {
+			if (isCanvasView(pane.editor)) syncCanvasView(pane.editor, { themeId });
+		}
+	}
+
+	/**
 	 * Taps on a canvas view's line numbers select the line, like the DOM
 	 * editor's line number gutter. Its fold markers sit in a narrow column
 	 * right of the numbers: taps there fall through to the fold toggle.
@@ -1495,6 +1508,8 @@ async function EditorManager($header, $body) {
 				},
 			});
 			markCanvasViewSynced(view, { display, font, themeId });
+			// A picture behind the editor already (it's in the document now).
+			syncCanvasView(view, { themeId });
 			return view;
 		} catch (error) {
 			// Use the DOM editor for the rest of the session, with the
@@ -3820,6 +3835,7 @@ async function EditorManager($header, $body) {
 	appSettings.on("update:stickyScrollMaxLines", syncAllCanvasViews);
 	appSettings.on("update:cursorBlinkRate", syncAllCanvasViews);
 	appSettings.on("update:canvasGutterMarkers", syncAllCanvasViews);
+	if (canvasRenderer) watchEditorStyles(syncCanvasThemes);
 
 	// Keep file.session and cache in sync on every edit
 	function getDocSyncListener() {
