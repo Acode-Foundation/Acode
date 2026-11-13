@@ -79,8 +79,8 @@ jobs:
       - name: Install ThreatCrush
         run: |
           set -euo pipefail
-          spec='@profullstack/threatcrush@0.11.9'
-          want='sha512-ZjIYeGPBNIcD2LjanW8pv8NiPclI8IZCaY/8su2vusYklQUROguSusJe+nhoQDLMSGhNM7d/kNJn6snEZrvL9g=='
+          spec='@profullstack/threatcrush@0.13.78'
+          want='sha512-yNkBzEvBWZeRPB0cGiMzaU3ZX/P1TV6OthNYJFTmOSh9Lyl3OexPSXGzXzb6e1Ext+Qvk92sr38RlDAl1DzRTA=='
 
           # Retried: a transient registry blip is not a security signal.
           name=""
