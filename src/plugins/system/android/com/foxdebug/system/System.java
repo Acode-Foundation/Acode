@@ -167,6 +167,7 @@ public class System extends CordovaPlugin {
       case "has-permission":
       case "open-in-browser":
       case "launch-app":
+      case "launch-app-with-file":
       case "get-global-setting":
       case "get-available-encodings":
       case "decode":
@@ -616,6 +617,9 @@ public class System extends CordovaPlugin {
               break;
             case "launch-app":
               launchApp(arg1, arg2, args.optJSONObject(2), callbackContext);
+              break;
+            case "launch-app-with-file":
+              launchAppWithFile(args.optJSONObject(0), callbackContext);
               break;
             case "get-global-setting":
               getGlobalSetting(arg1, callbackContext);
@@ -1727,33 +1731,651 @@ public class System extends CordovaPlugin {
       intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
       intent.setClassName(appId, className);
 
-      if (extras != null) {
-        Iterator<String> keys = extras.keys();
-
-        while (keys.hasNext()) {
-          String key = keys.next();
-          Object value = extras.get(key);
-
-          if (value instanceof Integer) {
-            intent.putExtra(key, (Integer) value);
-          } else if (value instanceof Boolean) {
-            intent.putExtra(key, (Boolean) value);
-          } else if (value instanceof Double) {
-            intent.putExtra(key, (Double) value);
-          } else if (value instanceof Long) {
-            intent.putExtra(key, (Long) value);
-          } else if (value instanceof String) {
-            intent.putExtra(key, (String) value);
-          } else {
-            intent.putExtra(key, value.toString());
-          }
-        }
-      }
+      applyExtras(intent, extras);
 
       activity.startActivity(intent);
       callback.success("Launched " + appId);
     } catch (Exception e) {
       callback.error(e.toString());
+    }
+  }
+
+  /**
+   * Copies caller supplied JSON key/value pairs onto an intent as extras,
+   * preserving the scalar type of every value.
+   */
+  private void applyExtras(Intent intent, JSONObject extras)
+    throws JSONException {
+    if (extras == null) {
+      return;
+    }
+
+    Iterator<String> keys = extras.keys();
+
+    while (keys.hasNext()) {
+      String key = keys.next();
+      putScalarExtra(intent, key, extras.get(key));
+    }
+  }
+
+  /**
+   * Puts one JSON scalar on the intent through the matching typed overload, so
+   * the receiving app sees a primitive rather than a stringified value.
+   */
+  private void putScalarExtra(Intent intent, String key, Object value) {
+    if (value instanceof Integer) {
+      intent.putExtra(key, (Integer) value);
+    } else if (value instanceof Boolean) {
+      intent.putExtra(key, (Boolean) value);
+    } else if (value instanceof Double) {
+      intent.putExtra(key, (Double) value);
+    } else if (value instanceof Long) {
+      intent.putExtra(key, (Long) value);
+    } else if (value instanceof String) {
+      intent.putExtra(key, (String) value);
+    } else {
+      intent.putExtra(key, value.toString());
+    }
+  }
+
+  /**
+   * Like {@link #applyExtras}, but maps JSON arrays onto typed arrays instead
+   * of stringifying them.
+   *
+   * Only the file launch API uses this, so {@code launchApp} keeps turning
+   * array extras into strings exactly as it always has.
+   */
+  private void applyRichExtras(Intent intent, JSONObject extras)
+    throws JSONException {
+    if (extras == null) {
+      return;
+    }
+
+    Iterator<String> keys = extras.keys();
+
+    while (keys.hasNext()) {
+      String key = keys.next();
+      Object value = extras.get(key);
+
+      if (value instanceof JSONArray) {
+        putArrayExtra(intent, key, (JSONArray) value);
+      } else {
+        putScalarExtra(intent, key, value);
+      }
+    }
+  }
+
+  private void putArrayExtra(Intent intent, String key, JSONArray array) {
+    int length = array.length();
+
+    if (length == 0) {
+      intent.putExtra(key, new String[0]);
+      return;
+    }
+
+    boolean allBooleans = true;
+    boolean allIntegral = true;
+    boolean allNumbers = true;
+
+    for (int i = 0; i < length; i++) {
+      Object item = array.opt(i);
+      if (!(item instanceof Boolean)) {
+        allBooleans = false;
+      }
+      if (!(item instanceof Integer) && !(item instanceof Long)) {
+        allIntegral = false;
+      }
+      if (!(item instanceof Number)) {
+        allNumbers = false;
+      }
+    }
+
+    if (allBooleans) {
+      boolean[] values = new boolean[length];
+      for (int i = 0; i < length; i++) {
+        values[i] = (Boolean) array.opt(i);
+      }
+      intent.putExtra(key, values);
+      return;
+    }
+
+    if (allIntegral) {
+      int[] values = new int[length];
+      for (int i = 0; i < length; i++) {
+        values[i] = ((Number) array.opt(i)).intValue();
+      }
+      intent.putExtra(key, values);
+      return;
+    }
+
+    if (allNumbers) {
+      double[] values = new double[length];
+      for (int i = 0; i < length; i++) {
+        values[i] = ((Number) array.opt(i)).doubleValue();
+      }
+      intent.putExtra(key, values);
+      return;
+    }
+
+    String[] values = new String[length];
+    for (int i = 0; i < length; i++) {
+      values[i] = String.valueOf(array.opt(i));
+    }
+    intent.putExtra(key, values);
+  }
+
+  /**
+   * Launches an activity and hands it content URIs for files owned by this app.
+   *
+   * This is the union of {@link #launchApp} (chosen package + activity) and
+   * {@link #fileAction} (shareable content URIs): the caller picks the target
+   * instead of the system chooser, and the receiving activity is granted read
+   * (and optionally write) access to the content URIs.
+   *
+   * Versatility rules, all optional:
+   * - no {@code className}: the best matching activity in {@code app} is resolved.
+   * - no {@code app}: the intent stays implicit, so the system picks the handler.
+   * - several files: the default action becomes {@code SEND_MULTIPLE}.
+   * - no files: the default action becomes {@code MAIN}, i.e. a plain app launch.
+   */
+  private void launchAppWithFile(JSONObject options, CallbackContext callback) {
+    if (options == null) {
+      callback.error("No options provided.");
+      return;
+    }
+
+    String appId = trimToEmpty(options.optString("app", ""));
+    String className = trimToEmpty(options.optString("className", ""));
+    String filename = trimToEmpty(options.optString("filename", ""));
+
+    if (!className.isEmpty() && appId.isEmpty()) {
+      callback.error("\"className\" requires \"app\" (the package name).");
+      return;
+    }
+
+    List<Uri> uris = collectFileUris(options, filename);
+    if (uris == null) {
+      callback.error("Unable to access one or more files to pass on.");
+      return;
+    }
+
+    if (uris.isEmpty() && appId.isEmpty()) {
+      callback.error("Nothing to launch: provide \"app\" and/or a file.");
+      return;
+    }
+
+    String requestedAction = trimToEmpty(options.optString("action", ""));
+    String intentAction = requestedAction.isEmpty()
+      ? defaultIntentAction(uris.size())
+      : normalizeIntentAction(requestedAction);
+
+    String requestedMime = trimToEmpty(options.optString("mimeType", ""));
+    String clipLabel = trimToEmpty(options.optString("clipLabel", ""));
+    boolean newTask = options.optBoolean("newTask", true);
+    boolean attachAsStream = options.optBoolean("attachAsStream", false);
+    boolean writeAccess =
+      options.optBoolean("writeAccess", false) ||
+      Intent.ACTION_EDIT.equals(intentAction);
+
+    Uri primary = uris.isEmpty() ? null : uris.get(0);
+
+    // A content:// URI owned by another app can be unreadable for us, and
+    // getType() then throws SecurityException. Resolve the type defensively so
+    // a revoked or foreign grant cannot abort the launch with a raw exception.
+    String mimeType;
+    try {
+      mimeType = resolveMimeType(requestedMime, primary, filename);
+    } catch (RuntimeException error) {
+      Log.w(TAG, "Unable to resolve MIME type, falling back to */*", error);
+      mimeType = "*/*";
+    }
+
+    int grantFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION;
+    if (writeAccess) {
+      grantFlags |= Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
+    }
+
+    try {
+      Intent intent = new Intent(intentAction);
+
+      if (newTask) {
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+      }
+
+      if (primary != null) {
+        if (Intent.ACTION_SEND_MULTIPLE.equals(intentAction)) {
+          intent.setType(mimeType);
+          intent.putParcelableArrayListExtra(
+            Intent.EXTRA_STREAM,
+            new ArrayList<>(uris)
+          );
+        } else if (Intent.ACTION_SEND.equals(intentAction)) {
+          intent.setType(mimeType);
+          intent.putExtra(Intent.EXTRA_STREAM, primary);
+        } else {
+          intent.setDataAndType(primary, mimeType);
+          if (attachAsStream) {
+            intent.putExtra(Intent.EXTRA_STREAM, primary);
+          }
+        }
+      } else if (!requestedMime.isEmpty()) {
+        intent.setType(mimeType);
+      }
+
+      applyCategories(intent, options.optJSONArray("categories"));
+
+      if (!appId.isEmpty()) {
+        intent.setPackage(appId);
+
+        if (!className.isEmpty()) {
+          intent.setClassName(appId, className);
+        } else if (!resolveComponentInPackage(intent)) {
+          callback.error(
+            "No activity in " +
+            appId +
+            " handles " +
+            intentAction +
+            " for " +
+            mimeType +
+            ". Pass \"className\" to target one explicitly."
+          );
+          return;
+        }
+      }
+
+      if (primary != null) {
+        // ClipData carries the grant over to the data URI on older releases and
+        // keeps every file visible to the target as a shared item.
+        intent.setClipData(
+          buildClipData(
+            uris,
+            clipLabel.isEmpty() ? getClipLabel(primary, filename) : clipLabel
+          )
+        );
+        intent.addFlags(grantFlags);
+      }
+
+      applyRichExtras(intent, options.optJSONObject("extras"));
+
+      String flagError = applyFlags(intent, options.optJSONArray("flags"));
+      if (flagError != null) {
+        callback.error(flagError);
+        return;
+      }
+
+      if (primary != null) {
+        grantUriPermissions(intent, uris, grantFlags);
+
+        if (!appId.isEmpty()) {
+          grantUriPermissionsToPackage(appId, uris, grantFlags);
+        }
+      }
+
+      activity.startActivity(intent);
+
+      callback.success(buildLaunchResult(intent, intentAction, mimeType, uris));
+    } catch (ActivityNotFoundException notFound) {
+      callback.error(
+        className.isEmpty()
+          ? "No activity found to handle " +
+            intentAction +
+            " for " +
+            mimeType +
+            (appId.isEmpty() ? "." : " in " + appId + ".")
+          : "No activity " + className + " found in package " + appId + "."
+      );
+    } catch (Exception e) {
+      callback.error(e.toString());
+    }
+  }
+
+  private static String defaultIntentAction(int fileCount) {
+    if (fileCount > 1) {
+      return Intent.ACTION_SEND_MULTIPLE;
+    }
+
+    return fileCount == 1 ? Intent.ACTION_VIEW : Intent.ACTION_MAIN;
+  }
+
+  /**
+   * Resolves every requested file to a shareable content URI, in request order.
+   *
+   * @return the URIs, or null when any requested file cannot be exposed.
+   */
+  private List<Uri> collectFileUris(JSONObject options, String filename) {
+    List<Uri> uris = new ArrayList<>();
+    String single = trimToEmpty(options.optString("fileUri", ""));
+
+    if (!single.isEmpty()) {
+      Uri uri = getContentProviderUri(single, filename);
+      if (uri == null) {
+        return null;
+      }
+      uris.add(uri);
+    }
+
+    JSONArray many = options.optJSONArray("fileUris");
+
+    if (many != null) {
+      for (int i = 0; i < many.length(); i++) {
+        String entry = trimToEmpty(many.optString(i));
+        if (entry.isEmpty()) {
+          continue;
+        }
+
+        Uri uri = getContentProviderUri(entry, filename);
+        if (uri == null) {
+          return null;
+        }
+
+        if (!uris.contains(uri)) {
+          uris.add(uri);
+        }
+      }
+    }
+
+    return uris;
+  }
+
+  /**
+   * Chooses the activity inside {@code intent}'s package that handles its
+   * current data and type, falling back to the package's launch activity only
+   * for a plain MAIN launch.
+   *
+   * Returning false rather than guessing keeps a failed file hand-off from
+   * silently opening the app's home screen.
+   */
+  private boolean resolveComponentInPackage(Intent intent) {
+    PackageManager pm = context.getPackageManager();
+    ResolveInfo resolved = pm.resolveActivity(
+      intent,
+      PackageManager.MATCH_DEFAULT_ONLY
+    );
+
+    if (resolved != null && resolved.activityInfo != null) {
+      intent.setClassName(
+        resolved.activityInfo.packageName,
+        resolved.activityInfo.name
+      );
+      return true;
+    }
+
+    if (
+      Intent.ACTION_MAIN.equals(intent.getAction()) &&
+      intent.getData() == null &&
+      intent.getType() == null
+    ) {
+      Intent launch = pm.getLaunchIntentForPackage(intent.getPackage());
+      ComponentName component = launch == null ? null : launch.getComponent();
+
+      if (component != null) {
+        intent.setClassName(
+          component.getPackageName(),
+          component.getClassName()
+        );
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  private void applyCategories(Intent intent, JSONArray categories) {
+    if (categories == null) {
+      return;
+    }
+
+    for (int i = 0; i < categories.length(); i++) {
+      String name = trimToEmpty(categories.optString(i));
+      if (name.isEmpty()) {
+        continue;
+      }
+      intent.addCategory(normalizeCategoryName(name));
+    }
+  }
+
+  private static String normalizeCategoryName(String name) {
+    if (name.indexOf('.') >= 0) {
+      return name;
+    }
+
+    String upper = name.toUpperCase(Locale.US);
+
+    switch (upper) {
+      case "DEFAULT":
+        return Intent.CATEGORY_DEFAULT;
+      case "LAUNCHER":
+        return Intent.CATEGORY_LAUNCHER;
+      case "BROWSABLE":
+        return Intent.CATEGORY_BROWSABLE;
+      case "OPENABLE":
+        return Intent.CATEGORY_OPENABLE;
+      case "HOME":
+        return Intent.CATEGORY_HOME;
+      case "PREFERENCE":
+        return Intent.CATEGORY_PREFERENCE;
+      case "LEANBACK_LAUNCHER":
+        return Intent.CATEGORY_LEANBACK_LAUNCHER;
+      default:
+        return "android.intent.category." + upper;
+    }
+  }
+
+  /**
+   * Adds caller supplied intent flags, accepting readable names, raw constants
+   * and plain integers.
+   *
+   * @return null on success, or a message naming every unknown flag.
+   */
+  private String applyFlags(Intent intent, JSONArray flags) {
+    if (flags == null) {
+      return null;
+    }
+
+    StringBuilder unknown = new StringBuilder();
+
+    for (int i = 0; i < flags.length(); i++) {
+      Object entry = flags.opt(i);
+
+      if (entry == null || entry == JSONObject.NULL) {
+        continue;
+      }
+
+      if (entry instanceof Number) {
+        intent.addFlags(((Number) entry).intValue());
+        continue;
+      }
+
+      String name = trimToEmpty(String.valueOf(entry));
+      if (name.isEmpty()) {
+        continue;
+      }
+
+      Integer flag = intentFlagFor(normalizeFlagName(name));
+
+      if (flag == null) {
+        if (unknown.length() > 0) {
+          unknown.append(", ");
+        }
+        unknown.append(name);
+      } else {
+        intent.addFlags(flag);
+      }
+    }
+
+    return unknown.length() == 0
+      ? null
+      : "Unknown intent flag(s): " + unknown;
+  }
+
+  private static String normalizeFlagName(String name) {
+    String normalized = trimToEmpty(name).toUpperCase(Locale.US);
+
+    if (normalized.startsWith("FLAG_")) {
+      normalized = normalized.substring(5);
+    }
+
+    if (normalized.startsWith("ACTIVITY_")) {
+      normalized = normalized.substring(9);
+    }
+
+    return normalized;
+  }
+
+  /**
+   * Maps a readable flag name onto the matching {@link Intent} constant.
+   */
+  private static Integer intentFlagFor(String name) {
+    switch (name) {
+      case "NEW_TASK":
+        return Intent.FLAG_ACTIVITY_NEW_TASK;
+      case "SINGLE_TOP":
+        return Intent.FLAG_ACTIVITY_SINGLE_TOP;
+      case "CLEAR_TOP":
+        return Intent.FLAG_ACTIVITY_CLEAR_TOP;
+      case "CLEAR_TASK":
+        return Intent.FLAG_ACTIVITY_CLEAR_TASK;
+      case "MULTIPLE_TASK":
+        return Intent.FLAG_ACTIVITY_MULTIPLE_TASK;
+      case "NEW_DOCUMENT":
+        return Intent.FLAG_ACTIVITY_NEW_DOCUMENT;
+      case "NO_HISTORY":
+        return Intent.FLAG_ACTIVITY_NO_HISTORY;
+      case "NO_ANIMATION":
+        return Intent.FLAG_ACTIVITY_NO_ANIMATION;
+      case "EXCLUDE_FROM_RECENTS":
+        return Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS;
+      case "REORDER_TO_FRONT":
+        return Intent.FLAG_ACTIVITY_REORDER_TO_FRONT;
+      case "TASK_ON_HOME":
+        return Intent.FLAG_ACTIVITY_TASK_ON_HOME;
+      case "RESET_TASK_IF_NEEDED":
+        return Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED;
+      case "GRANT_READ_URI_PERMISSION":
+        return Intent.FLAG_GRANT_READ_URI_PERMISSION;
+      case "GRANT_WRITE_URI_PERMISSION":
+        return Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
+      case "GRANT_PERSISTABLE_URI_PERMISSION":
+        return Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION;
+      case "GRANT_PREFIX_URI_PERMISSION":
+        return Intent.FLAG_GRANT_PREFIX_URI_PERMISSION;
+      default:
+        return null;
+    }
+  }
+
+  private ClipData buildClipData(List<Uri> uris, String label) {
+    ClipData clip = ClipData.newUri(
+      context.getContentResolver(),
+      label,
+      uris.get(0)
+    );
+
+    for (int i = 1; i < uris.size(); i++) {
+      clip.addItem(new ClipData.Item(uris.get(i)));
+    }
+
+    return clip;
+  }
+
+  private JSONObject buildLaunchResult(
+    Intent intent,
+    String action,
+    String mimeType,
+    List<Uri> uris
+  ) throws JSONException {
+    JSONArray fileUris = new JSONArray();
+    for (Uri uri : uris) {
+      fileUris.put(uri.toString());
+    }
+
+    ComponentName component = intent.getComponent();
+
+    if (component == null) {
+      ResolveInfo resolved = context
+        .getPackageManager()
+        .resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY);
+
+      if (resolved != null && resolved.activityInfo != null) {
+        component = new ComponentName(
+          resolved.activityInfo.packageName,
+          resolved.activityInfo.name
+        );
+      }
+    }
+
+    JSONObject result = new JSONObject();
+    result.put("action", action);
+    result.put("mimeType", mimeType);
+    result.put("uris", fileUris);
+    result.put("uri", uris.isEmpty() ? "" : uris.get(0).toString());
+    result.put(
+      "component",
+      component == null ? "" : component.flattenToString()
+    );
+    result.put("app", component == null ? "" : component.getPackageName());
+    result.put(
+      "className",
+      component == null ? "" : component.getClassName()
+    );
+
+    return result;
+  }
+
+  private static String trimToEmpty(String value) {
+    return value == null ? "" : value.trim();
+  }
+
+  private static String normalizeIntentAction(String action) {
+    String normalized = trimToEmpty(action);
+
+    if (normalized.isEmpty()) {
+      return Intent.ACTION_VIEW;
+    }
+
+    if (normalized.indexOf('.') < 0) {
+      return "android.intent.action." + normalized.toUpperCase(Locale.US);
+    }
+
+    return normalized;
+  }
+
+  private String getClipLabel(Uri uri, String filename) {
+    String label = null;
+
+    if (filename != null && !filename.isEmpty()) {
+      label = new File(filename).getName();
+    }
+
+    if (label == null || label.isEmpty()) {
+      label = uri.getLastPathSegment();
+    }
+
+    if (label == null || label.isEmpty()) {
+      label = "shared-file";
+    }
+
+    return label;
+  }
+
+  /**
+   * Grants every content URI to the package that will receive the intent.
+   *
+   * An explicit component does not have to match any intent filter, so
+   * resolving the intent can legitimately come back empty; this direct grant is
+   * what makes explicit-component hand-off work.
+   */
+  private void grantUriPermissionsToPackage(
+    String targetPackage,
+    List<Uri> uris,
+    int flags
+  ) {
+    for (Uri uri : uris) {
+      try {
+        context.grantUriPermission(targetPackage, uri, flags);
+      } catch (SecurityException error) {
+        Log.w(TAG, "Unable to grant URI permission to " + targetPackage, error);
+      }
     }
   }
 
@@ -2253,6 +2875,21 @@ public class System extends CordovaPlugin {
     for (ResolveInfo resolveInfo : resInfoList) {
       String packageName = resolveInfo.activityInfo.packageName;
       context.grantUriPermission(packageName, uri, flags);
+    }
+  }
+
+  private void grantUriPermissions(Intent intent, List<Uri> uris, int flags) {
+    if (uris == null || uris.isEmpty()) return;
+    PackageManager pm = context.getPackageManager();
+    List<ResolveInfo> resInfoList = pm.queryIntentActivities(
+      intent,
+      PackageManager.MATCH_DEFAULT_ONLY
+    );
+    for (ResolveInfo resolveInfo : resInfoList) {
+      String packageName = resolveInfo.activityInfo.packageName;
+      for (Uri uri : uris) {
+        context.grantUriPermission(packageName, uri, flags);
+      }
     }
   }
 
