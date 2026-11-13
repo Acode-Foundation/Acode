@@ -314,7 +314,12 @@ export function getCanvasDisplayOptions(
 				: true
 			: false,
 		onLineNumberClick,
-		foldMarkers: settings.fadeFoldWidgets ? "fade" : "always",
+		foldMarkers:
+			settings.codeFolding === false
+				? "none"
+				: settings.fadeFoldWidgets
+					? "fade"
+					: "always",
 		highlightActiveLine: settings.highlightActiveLine !== false,
 		cursorWidth:
 			Number.isFinite(cursorWidth) && cursorWidth > 0
