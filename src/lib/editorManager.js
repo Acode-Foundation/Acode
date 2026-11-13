@@ -1464,12 +1464,15 @@ async function EditorManager($header, $body) {
 	/**
 	 * Taps on a canvas view's line numbers select the line, like the DOM
 	 * editor's line number gutter. Its fold markers sit in a narrow column
-	 * right of the numbers: taps there fall through to the fold toggle.
+	 * right of the numbers: taps there fall through to the fold toggle, unless
+	 * code folding is off.
 	 */
 	function handleCanvasLineNumberClick(line, event, view) {
-		const rect = view.scrollDOM.getBoundingClientRect();
-		const foldColumn = view.gutterWidth - view.cellWidth * 1.5;
-		if (event.clientX - rect.left >= foldColumn) return false;
+		if (appSettings.value.codeFolding !== false) {
+			const rect = view.scrollDOM.getBoundingClientRect();
+			const foldColumn = view.gutterWidth - view.cellWidth * 1.5;
+			if (event.clientX - rect.left >= foldColumn) return false;
+		}
 		const docLine = view.state.doc.line(line);
 		return handleLineNumberClick(view, view.lineBlockAt(docLine.from), event, {
 			shiftClickSelection: appSettings.value.shiftClickSelection !== false,
@@ -3840,6 +3843,7 @@ async function EditorManager($header, $body) {
 	appSettings.on("update:stickyScrollMaxLines", syncAllCanvasViews);
 	appSettings.on("update:cursorBlinkRate", syncAllCanvasViews);
 	appSettings.on("update:canvasGutterMarkers", syncAllCanvasViews);
+	appSettings.on("update:codeFolding", syncAllCanvasViews);
 	if (canvasRenderer) watchEditorStyles(syncCanvasThemes);
 
 	// Keep file.session and cache in sync on every edit
