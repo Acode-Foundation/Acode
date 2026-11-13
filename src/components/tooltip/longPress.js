@@ -13,7 +13,8 @@ export function installIconTooltips(root, show, hide) {
 		if (path.some((node) => node?.id === "quick-tools")) return;
 		return path.find(
 			(node) =>
-				node?.matches?.("button, [role='button'], .icon") && labelOf(node),
+				node?.matches?.("button, [role='button'], .icon, .input-checkbox") &&
+				labelOf(node),
 		);
 	};
 	function dismiss() {
