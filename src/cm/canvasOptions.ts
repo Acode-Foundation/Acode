@@ -34,6 +34,7 @@ interface ThemeConfig {
 	activeLine?: string;
 	lineNumber?: string;
 	lineNumberActive?: string;
+	gutterBorder?: string;
 	matchingBracket?: string;
 	selectionMatch?: string;
 	[color: string]: unknown;
@@ -182,6 +183,8 @@ export function getCanvasTheme(
 		activeLineGutter: seeThrough ? "transparent" : background,
 		gutterForeground: config.lineNumber,
 		gutterActiveForeground: config.lineNumberActive,
+		// A line between the gutter and the code, only when the theme asks.
+		gutterBorder: config.gutterBorder,
 		// Acode draws its own (draggable) scrollbars over the editor.
 		scrollbar: "transparent",
 		highlight,
