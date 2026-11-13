@@ -174,6 +174,11 @@ module.exports = {
    * `content://` URIs, which are passed through unchanged and re-granted, so
    * they stay readable only while this app still holds access to them.
    *
+   * When `app` is given, that package is granted access. When it is omitted the
+   * intent's flag and ClipData carry the grant, so only the app that actually
+   * receives the files gets access, not every app that could handle them. With
+   * several files and no `mimeType`, the type the whole set shares is used.
+   *
    * The default action follows what the call needs:
    * - one file -> `VIEW`
    * - several files -> `SEND_MULTIPLE`

@@ -1816,6 +1816,7 @@ public class System extends CordovaPlugin {
     boolean allBooleans = true;
     boolean allIntegral = true;
     boolean allNumbers = true;
+    boolean needsLong = false;
 
     for (int i = 0; i < length; i++) {
       Object item = array.opt(i);
@@ -1824,6 +1825,12 @@ public class System extends CordovaPlugin {
       }
       if (!(item instanceof Integer) && !(item instanceof Long)) {
         allIntegral = false;
+      }
+      if (item instanceof Long) {
+        long value = (Long) item;
+        if (value < Integer.MIN_VALUE || value > Integer.MAX_VALUE) {
+          needsLong = true;
+        }
       }
       if (!(item instanceof Number)) {
         allNumbers = false;
@@ -1840,6 +1847,17 @@ public class System extends CordovaPlugin {
     }
 
     if (allIntegral) {
+      // Values outside the 32-bit range must survive as long[], otherwise e.g.
+      // 4294967296 would silently arrive as 0.
+      if (needsLong) {
+        long[] values = new long[length];
+        for (int i = 0; i < length; i++) {
+          values[i] = ((Number) array.opt(i)).longValue();
+        }
+        intent.putExtra(key, values);
+        return;
+      }
+
       int[] values = new int[length];
       for (int i = 0; i < length; i++) {
         values[i] = ((Number) array.opt(i)).intValue();
@@ -1919,12 +1937,12 @@ public class System extends CordovaPlugin {
 
     Uri primary = uris.isEmpty() ? null : uris.get(0);
 
-    // A content:// URI owned by another app can be unreadable for us, and
-    // getType() then throws SecurityException. Resolve the type defensively so
-    // a revoked or foreign grant cannot abort the launch with a raw exception.
+    // A multi-file send advertises one type for the whole set, so use the type
+    // every file shares. A content:// URI from another app can also be
+    // unreadable here, which makes getType() throw; that must not abort.
     String mimeType;
     try {
-      mimeType = resolveMimeType(requestedMime, primary, filename);
+      mimeType = resolveCommonMimeType(requestedMime, uris, filename);
     } catch (RuntimeException error) {
       Log.w(TAG, "Unable to resolve MIME type, falling back to */*", error);
       mimeType = "*/*";
@@ -1962,6 +1980,16 @@ public class System extends CordovaPlugin {
         intent.setType(mimeType);
       }
 
+      // A payload-less launch mirrors launchApp: MAIN + LAUNCHER, so the system
+      // can dispatch to the package's launcher activity.
+      if (
+        primary == null &&
+        requestedAction.isEmpty() &&
+        options.optJSONArray("categories") == null
+      ) {
+        intent.addCategory(Intent.CATEGORY_LAUNCHER);
+      }
+
       applyCategories(intent, options.optJSONArray("categories"));
 
       if (!appId.isEmpty()) {
@@ -1969,17 +1997,12 @@ public class System extends CordovaPlugin {
 
         if (!className.isEmpty()) {
           intent.setClassName(appId, className);
-        } else if (!resolveComponentInPackage(intent)) {
-          callback.error(
-            "No activity in " +
-            appId +
-            " handles " +
-            intentAction +
-            " for " +
-            mimeType +
-            ". Pass \"className\" to target one explicitly."
-          );
-          return;
+        } else {
+          // Best effort only. On Android 11+ package visibility can hide an
+          // installed handler from resolveActivity, and this app declares no
+          // <queries>, while the system can still dispatch to it. So a miss
+          // here must never block the launch: setPackage alone is enough.
+          resolveComponentInPackage(intent);
         }
       }
 
@@ -2003,12 +2026,13 @@ public class System extends CordovaPlugin {
         return;
       }
 
-      if (primary != null) {
-        grantUriPermissions(intent, uris, grantFlags);
-
-        if (!appId.isEmpty()) {
-          grantUriPermissionsToPackage(appId, uris, grantFlags);
-        }
+      if (primary != null && !appId.isEmpty()) {
+        // Grant only the package the caller named. For an implicit launch the
+        // read/write flag on the intent plus its ClipData is what carries the
+        // grant, and the system applies it to the receiver the user actually
+        // picks. Granting to every query result instead would hand read (or
+        // write) access to apps the user never chooses.
+        grantUriPermissionsToPackage(appId, uris, grantFlags);
       }
 
       activity.startActivity(intent);
@@ -2021,7 +2045,11 @@ public class System extends CordovaPlugin {
             intentAction +
             " for " +
             mimeType +
-            (appId.isEmpty() ? "." : " in " + appId + ".")
+            (appId.isEmpty()
+              ? "."
+              : " in " +
+                appId +
+                ". Pass \"className\" to target one explicitly.")
           : "No activity " + className + " found in package " + appId + "."
       );
     } catch (Exception e) {
@@ -2078,14 +2106,16 @@ public class System extends CordovaPlugin {
   }
 
   /**
-   * Chooses the activity inside {@code intent}'s package that handles its
-   * current data and type, falling back to the package's launch activity only
-   * for a plain MAIN launch.
+   * Pins the component only when Android lets us see it. This is an
+   * optimisation that makes the resolved receiver visible in the result; the
+   * launch itself never depends on it, because package visibility on Android
+   * 11+ can hide an installed handler from resolveActivity while the system
+   * can still dispatch to it.
    *
-   * Returning false rather than guessing keeps a failed file hand-off from
-   * silently opening the app's home screen.
+   * Nothing is guessed here: a miss leaves the intent package-scoped, so a
+   * failed file hand-off can never silently open the app's home screen.
    */
-  private boolean resolveComponentInPackage(Intent intent) {
+  private void resolveComponentInPackage(Intent intent) {
     PackageManager pm = context.getPackageManager();
     ResolveInfo resolved = pm.resolveActivity(
       intent,
@@ -2097,27 +2127,7 @@ public class System extends CordovaPlugin {
         resolved.activityInfo.packageName,
         resolved.activityInfo.name
       );
-      return true;
     }
-
-    if (
-      Intent.ACTION_MAIN.equals(intent.getAction()) &&
-      intent.getData() == null &&
-      intent.getType() == null
-    ) {
-      Intent launch = pm.getLaunchIntentForPackage(intent.getPackage());
-      ComponentName component = launch == null ? null : launch.getComponent();
-
-      if (component != null) {
-        intent.setClassName(
-          component.getPackageName(),
-          component.getClassName()
-        );
-        return true;
-      }
-    }
-
-    return false;
   }
 
   private void applyCategories(Intent intent, JSONArray categories) {
@@ -2289,20 +2299,10 @@ public class System extends CordovaPlugin {
       fileUris.put(uri.toString());
     }
 
+    // Report only a receiver we actually pinned down. For an implicit intent
+    // with several handlers resolveActivity returns the system's app picker,
+    // which is not the app the user ends up choosing, so report nothing.
     ComponentName component = intent.getComponent();
-
-    if (component == null) {
-      ResolveInfo resolved = context
-        .getPackageManager()
-        .resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY);
-
-      if (resolved != null && resolved.activityInfo != null) {
-        component = new ComponentName(
-          resolved.activityInfo.packageName,
-          resolved.activityInfo.name
-        );
-      }
-    }
 
     JSONObject result = new JSONObject();
     result.put("action", action);
@@ -2878,21 +2878,6 @@ public class System extends CordovaPlugin {
     }
   }
 
-  private void grantUriPermissions(Intent intent, List<Uri> uris, int flags) {
-    if (uris == null || uris.isEmpty()) return;
-    PackageManager pm = context.getPackageManager();
-    List<ResolveInfo> resInfoList = pm.queryIntentActivities(
-      intent,
-      PackageManager.MATCH_DEFAULT_ONLY
-    );
-    for (ResolveInfo resolveInfo : resInfoList) {
-      String packageName = resolveInfo.activityInfo.packageName;
-      for (Uri uri : uris) {
-        context.grantUriPermission(packageName, uri, flags);
-      }
-    }
-  }
-
   private String resolveMimeType(String currentMime, Uri uri, String filename) {
     if (
       currentMime != null &&
@@ -2919,6 +2904,123 @@ public class System extends CordovaPlugin {
     }
 
     return (mime != null && !mime.isEmpty()) ? mime : "*/*";
+  }
+
+  /**
+   * Picks the MIME type to advertise for a whole set of files.
+   *
+   * A multi-file send carries a single type, so reusing the first file's type
+   * would advertise image/png for a PNG+PDF pair and let Android offer
+   * image-only receivers that cannot open the PDF. The set's common type is
+   * used instead, widened to a top-level wildcard such as image/&#42; when the
+   * files share a top-level type, and to the universal wildcard otherwise.
+   */
+  private String resolveCommonMimeType(
+    String requestedMime,
+    List<Uri> uris,
+    String filename
+  ) {
+    if (isConcreteMimeType(requestedMime)) {
+      return requestedMime;
+    }
+
+    if (uris == null || uris.isEmpty()) {
+      return resolveMimeType(requestedMime, null, filename);
+    }
+
+    if (uris.size() == 1) {
+      return resolveMimeType(requestedMime, uris.get(0), filename);
+    }
+
+    String common = null;
+
+    for (int i = 0; i < uris.size(); i++) {
+      // The display name describes the primary file only.
+      String type = mimeTypeOf(uris.get(i), i == 0 ? filename : "");
+
+      if (type == null) {
+        return "*/*";
+      }
+
+      if (common == null) {
+        common = type;
+        continue;
+      }
+
+      if (common.equalsIgnoreCase(type)) {
+        continue;
+      }
+
+      String commonTop = topLevelMimeType(common);
+      String typeTop = topLevelMimeType(type);
+
+      if (commonTop == null || !commonTop.equalsIgnoreCase(typeTop)) {
+        return "*/*";
+      }
+
+      common = commonTop + "/*";
+    }
+
+    return common == null ? "*/*" : common;
+  }
+
+  /**
+   * Resolves one URI's MIME type without throwing.
+   *
+   * @return the type, or null when it cannot be determined.
+   */
+  private String mimeTypeOf(Uri uri, String filenameHint) {
+    if (uri != null) {
+      try {
+        String type = context.getContentResolver().getType(uri);
+        if (isConcreteMimeType(type)) {
+          return type;
+        }
+      } catch (RuntimeException error) {
+        Log.w(TAG, "Unable to read MIME type for " + uri, error);
+      }
+    }
+
+    if (filenameHint != null && !filenameHint.isEmpty()) {
+      String type = getMimeTypeFromExtension(filenameHint);
+      if (isConcreteMimeType(type)) {
+        return type;
+      }
+    }
+
+    if (uri != null) {
+      String path = uri.getPath();
+      if (path != null) {
+        String type = getMimeTypeFromExtension(path);
+        if (isConcreteMimeType(type)) {
+          return type;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Treats catch-all and octet-stream answers as "unknown", otherwise every
+   * unresolved file would appear to share a type.
+   */
+  private static boolean isConcreteMimeType(String type) {
+    return (
+      type != null &&
+      !type.isEmpty() &&
+      !"*/*".equals(type) &&
+      !"application/octet-stream".equals(type)
+    );
+  }
+
+  private static String topLevelMimeType(String mimeType) {
+    if (mimeType == null) {
+      return null;
+    }
+
+    int slash = mimeType.indexOf('/');
+    return slash > 0 ? mimeType.substring(0, slash) : null;
   }
 
   private String getFileProviderAuthority() {

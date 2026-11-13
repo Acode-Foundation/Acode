@@ -101,7 +101,11 @@ interface LaunchAppWithFileOptions {
    * `CLEAR_TOP`, `GRANT_WRITE_URI_PERMISSION`, …) or raw flag integers.
    */
   flags?: Array<string | number>;
-  /** Intent extras; arrays arrive as typed arrays on the receiving side */
+  /**
+   * Intent extras. Arrays arrive as typed arrays on the receiving side;
+   * integers outside the 32-bit range arrive as a `long[]` rather than being
+   * truncated.
+   */
   extras?: Record<
     string,
     string | number | boolean | Array<string | number | boolean>
@@ -119,11 +123,17 @@ interface LaunchAppWithFileResult {
   uri: string;
   /** Every content URI handed over, in order */
   uris: string[];
-  /** Resolved receiving package, or `''` when it could not be determined */
+  /**
+   * Package actually targeted. Empty when the receiver is not pinned down,
+   * e.g. an implicit launch where the system (or the user) chooses.
+   */
   app: string;
-  /** Resolved receiving activity class, or `''` */
+  /** Targeted activity class, or `''` when the receiver is not pinned down */
   className: string;
-  /** `package/class` of the resolved receiver, or `''` */
+  /**
+   * `package/class` of the target, or `''` when the receiver is not pinned
+   * down. Never reports the system's app picker as if it were the receiver.
+   */
   component: string;
   /** Fully qualified action the intent was created with */
   action: string;
