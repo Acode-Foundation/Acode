@@ -913,5 +913,7 @@
 	"error-no-space": "Ezen az eszközön nincs elegendő szabad tárhely.",
 	"error-network": "Nem sikerült kapcsolódni a kiszolgálóhoz. Ellenőrizze az internetkapcsolatát, majd próbálja meg újra.",
 	"files saved count": "{count} fájl mentve",
-	"files not saved count": "{count} fájl nem lett mentve"
+	"files not saved count": "{count} fájl nem lett mentve",
+	"use native index": "Use native index",
+	"use native index hint": "Search local folders faster using the native file index."
 }

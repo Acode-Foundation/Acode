@@ -913,5 +913,7 @@
 	"error-no-space": "There isn't enough storage space left on this device.",
 	"error-network": "Couldn't reach the server. Check your connection and try again.",
 	"files saved count": "Files saved: {count}",
-	"files not saved count": "Files not saved: {count}"
+	"files not saved count": "Files not saved: {count}",
+	"use native index": "Use native index",
+	"use native index hint": "Search local folders faster using the native file index."
 }

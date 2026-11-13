@@ -913,5 +913,7 @@
 	"error-no-space": "此裝置的剩餘儲存空間不足。",
 	"error-network": "無法連線至伺服器。請檢查網路連線後重試。",
 	"files saved count": "Files saved: {count}",
-	"files not saved count": "Files not saved: {count}"
+	"files not saved count": "Files not saved: {count}",
+	"use native index": "Use native index",
+	"use native index hint": "Search local folders faster using the native file index."
 }

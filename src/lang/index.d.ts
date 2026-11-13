@@ -917,6 +917,8 @@ declare type LangStrings = {
 	"error-network": string;
 	"files saved count": string;
 	"files not saved count": string;
+	"use native index": string;
+	"use native index hint": string;
 };
 
 declare var strings: LangStrings;
