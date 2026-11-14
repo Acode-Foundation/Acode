@@ -390,7 +390,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 						const sanitizeZipPath = (p, isDir) => {
 							if (!p) return "";
 							let path = String(p);
-							path = path.replace(/\\/g, "/");
+							path = path.replace(/\\+/g, "/");
 							path = path.replace(/^[a-zA-Z]+:\/\//, "");
 							path = path.replace(/^\/+/, "");
 							path = path.replace(/^[A-Za-z]:\//, "");
