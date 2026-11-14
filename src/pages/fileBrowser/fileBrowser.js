@@ -355,7 +355,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 							let parts;
 							if (typeof dir === "string") {
 								if (dir.endsWith("/")) wantDirEnd = true;
-								dir = dir.replace(/\\+/g, "/");
+								dir = dir.replace(/\\/g, "/");
 								parts = dir.split("/");
 							} else {
 								parts = dir;
@@ -390,7 +390,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 						const sanitizeZipPath = (p, isDir) => {
 							if (!p) return "";
 							let path = String(p);
-							path = path.replace(/\\+/g, "/");
+							path = path.replace(/\\/g, "/");
 							path = path.replace(/^[a-zA-Z]+:\/\//, "");
 							path = path.replace(/^\/+/, "");
 							path = path.replace(/^[A-Za-z]:\//, "");
