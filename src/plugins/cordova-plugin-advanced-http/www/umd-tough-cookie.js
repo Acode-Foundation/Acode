@@ -3442,7 +3442,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    } else {
 	      name = name.replace(/'+/g, "\\'")
 	                 .replace(/\\"/g, '"')
-	                 .replace(/(?:^"|"$)/g, "'");
+	                 .replace(/^"|"$/g, "'");
 	      name = ctx.stylize(name, 'string');
 	    }
 	  }
