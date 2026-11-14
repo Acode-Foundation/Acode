@@ -355,7 +355,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 							let parts;
 							if (typeof dir === "string") {
 								if (dir.endsWith("/")) wantDirEnd = true;
-								dir = dir.replace(/\\/g, "/");
+								dir = dir.replace(/\\+/g, "/");
 								parts = dir.split("/");
 							} else {
 								parts = dir;
