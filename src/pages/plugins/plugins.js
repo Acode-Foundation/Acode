@@ -277,15 +277,23 @@ export default function PluginsInclude(updates) {
 	if (navigator.onLine) {
 		getAllPlugins();
 		getOwned();
+	} else {
+		$list.all.setAttribute("empty-msg", strings["error-network"]);
+		$list.owned.setAttribute("empty-msg", strings["error-network"]);
 	}
 
-	getInstalledPlugins().then(() => {
-		if (plugins.installed.length) {
-			return;
-		}
+	getInstalledPlugins()
+		.then(() => {
+			if (plugins.installed.length) {
+				return;
+			}
 
-		render("all");
-	});
+			render("all");
+		})
+		.catch((error) => {
+			$list.installed.setAttribute("empty-msg", strings["error-network"]);
+			console.error("Failed to load installed plugins:", error);
+		});
 
 	function handleClick(event) {
 		const $target = event.target;
@@ -368,8 +376,11 @@ export default function PluginsInclude(updates) {
 		if (!query) return [];
 		try {
 			const response = await fetch(
-				withSupportedEditor(`${config.API_BASE}/plugins?name=${query}`),
+				withSupportedEditor(
+					`${config.API_BASE}/plugins?name=${encodeURIComponent(query)}`,
+				),
 			);
+			if (!response.ok) throw new Error("Failed to search plugins");
 			const plugins = await response.json();
 			// Map the plugins to Item elements and return
 			return plugins.map((plugin) => <Item {...plugin} />);
@@ -608,7 +619,11 @@ export default function PluginsInclude(updates) {
 					`${config.API_BASE}/plugins?page=${currentPage}&limit=${LIMIT}`,
 				),
 			);
+			if (!response.ok) throw new Error("Failed to load plugins");
 			const newPlugins = await response.json();
+			if (!Array.isArray(newPlugins)) {
+				throw new Error("Invalid plugin list");
+			}
 
 			if (newPlugins.length < LIMIT) {
 				hasMore = false;
@@ -639,6 +654,7 @@ export default function PluginsInclude(updates) {
 			currentPage++;
 			$list.all.setAttribute("empty-msg", strings["no plugins found"]);
 		} catch (error) {
+			$list.all.setAttribute("empty-msg", strings["error-network"]);
 			window.log("error", error);
 		} finally {
 			isLoading = false;
@@ -671,11 +687,17 @@ export default function PluginsInclude(updates) {
 
 	async function getOwned() {
 		$list.owned.setAttribute("empty-msg", strings["loading..."]);
+		const disabledMap = settings.value.pluginsDisabled || {};
+		let ownedLoadFailed = false;
 
 		let iapPurchases = [];
 		if (helpers.isIapAvailable()) {
-			iapPurchases = await helpers.promisify(iap.getPurchases);
-			const disabledMap = settings.value.pluginsDisabled || {};
+			try {
+				iapPurchases = await helpers.promisify(iap.getPurchases);
+			} catch (error) {
+				ownedLoadFailed = true;
+				console.error("Failed to load purchases:", error);
+			}
 
 			iapPurchases.forEach(async ({ productIds }) => {
 				const [sku] = productIds;
@@ -684,10 +706,18 @@ export default function PluginsInclude(updates) {
 
 				plugins.owned.push(plugin);
 			});
-		} else if (!(await auth.getLoggedInUser())) {
-			console.log("Not logged in");
-			$list.owned.setAttribute("empty-msg", strings["login-to-view"]);
-			return;
+		} else {
+			try {
+				if (!(await auth.getLoggedInUser())) {
+					console.log("Not logged in");
+					$list.owned.setAttribute("empty-msg", strings["login-to-view"]);
+					return;
+				}
+			} catch (error) {
+				console.error("Failed to load the logged in user:", error);
+				$list.owned.setAttribute("empty-msg", strings["error-network"]);
+				return;
+			}
 		}
 
 		try {
@@ -704,9 +734,16 @@ export default function PluginsInclude(updates) {
 							plugins.owned.push(plugin);
 						}
 					});
+				} else {
+					ownedLoadFailed = true;
 				}
+			} else {
+				ownedLoadFailed = true;
 			}
-		} catch (error) {}
+		} catch (error) {
+			ownedLoadFailed = true;
+			console.error("Failed to load owned plugins:", error);
+		}
 
 		for (const plugin of plugins.owned) {
 			plugin.installed = Boolean(
@@ -721,7 +758,10 @@ export default function PluginsInclude(updates) {
 			$list.owned.append(<Item {...plugin} updates={updates} />);
 		}
 
-		$list.owned.setAttribute("empty-msg", strings["no plugins found"]);
+		$list.owned.setAttribute(
+			"empty-msg",
+			ownedLoadFailed ? strings["error-network"] : strings["no plugins found"],
+		);
 	}
 
 	function onInstall(plugin) {
@@ -780,10 +820,14 @@ export default function PluginsInclude(updates) {
 
 	async function addSource(sourceType, value = "https://") {
 		let source;
-		if (sourceType === "remote") {
-			source = await prompt("Enter plugin source", value, "url");
-		} else {
-			source = (await FileBrowser("file", "Select plugin source")).url;
+		try {
+			if (sourceType === "remote") {
+				source = await prompt("Enter plugin source", value, "url");
+			} else {
+				source = (await FileBrowser("file", "Select plugin source"))?.url;
+			}
+		} catch {
+			return;
 		}
 
 		if (!source) return;

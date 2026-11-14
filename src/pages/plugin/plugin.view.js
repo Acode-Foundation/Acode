@@ -82,6 +82,11 @@ export default (props) => {
 		unsupportedEditor,
 	} = props;
 
+	const repositoryUrl =
+		typeof repository === "string" && /^https?:\/\//i.test(repository.trim())
+			? repository.trim()
+			: "";
+
 	let reviewStats = {
 		votesUp: Number(votesUp) || 0,
 		votesDown: Number(votesDown) || 0,
@@ -144,8 +149,8 @@ export default (props) => {
 				<div className="plugin-info">
 					<div className="title-wrapper">
 						<h1 className="plugin-name">{name}</h1>
-						{repository ? (
-							<a href={repository} className="source-indicator">
+						{repositoryUrl ? (
+							<a href={repositoryUrl} className="source-indicator">
 								<i className="icon github"></i>
 								<span>{strings.open_source}</span>
 							</a>
@@ -252,7 +257,10 @@ export default (props) => {
 				<div className="tab-content">
 					<div id="overview" className="content-section active md">
 						<section
-							innerHTML={DOMPurify.sanitize(body, { FORBID_TAGS: ["style"] })}
+							innerHTML={DOMPurify.sanitize(body, {
+								FORBID_TAGS: ["style"],
+								FORBID_ATTR: ["style"],
+							})}
 						/>
 					</div>
 					<div id="contributors" className="content-section">
@@ -290,7 +298,10 @@ export default (props) => {
 						id="changelog"
 						className="content-section md"
 						innerHTML={
-							DOMPurify.sanitize(changelogs, { FORBID_TAGS: ["style"] }) ||
+							DOMPurify.sanitize(changelogs, {
+								FORBID_TAGS: ["style"],
+								FORBID_ATTR: ["style"],
+							}) ||
 							`
 							<div class="no-changelog">
 								<i class="icon historyrestore"></i>

@@ -15,6 +15,7 @@ import {
 	renderMarkdown,
 	resolveMarkdownTarget,
 } from "./renderer";
+import sanitizeMarkdownHtml from "./sanitize";
 
 let previewController = null;
 let peleModulePromise = null;
@@ -29,7 +30,12 @@ function escapeHtml(text) {
 }
 
 function getTargetElement(container, targetId) {
-	const decodedId = decodeURIComponent(targetId || "");
+	let decodedId = targetId || "";
+	try {
+		decodedId = decodeURIComponent(decodedId);
+	} catch {
+		// Keep the raw fragment when it contains an invalid percent escape.
+	}
 	if (!decodedId) return null;
 
 	const elements = container.querySelectorAll("[id], [name]");
@@ -344,7 +350,24 @@ function createMarkdownPreview(file) {
 		);
 		if (!mermaidBlocks.length) return;
 
-		const { renderAsync } = await getPele();
+		let renderAsync;
+		try {
+			({ renderAsync } = await getPele());
+		} catch (error) {
+			if (!previewState.disposed && version === previewState.renderVersion) {
+				console.warn("Failed to load Mermaid renderer:", error);
+				mermaidBlocks.forEach((block) => {
+					const source = block.textContent || "";
+					block.classList.add("mermaid-error");
+					block.innerHTML = `
+						<pre><code>${escapeHtml(source)}</code></pre>
+						<div class="mermaid-error-message">${escapeHtml(error?.message || "Failed to load Mermaid diagram renderer.")}</div>
+					`;
+				});
+			}
+			return;
+		}
+
 		if (previewState.disposed || version !== previewState.renderVersion) return;
 		await Promise.all(
 			mermaidBlocks.map(async (block, index) => {
@@ -368,7 +391,13 @@ function createMarkdownPreview(file) {
 						ADD_ATTR: ["data-id", "class"],
 					});
 				} catch (error) {
-					if (!block.isConnected) return;
+					if (
+						previewState.disposed ||
+						version !== previewState.renderVersion ||
+						!block.isConnected
+					) {
+						return;
+					}
 					block.classList.add("mermaid-error");
 					block.innerHTML = `
 						<pre><code>${escapeHtml(source)}</code></pre>
@@ -390,18 +419,22 @@ function createMarkdownPreview(file) {
 			renderMarkdown(markdownText, previewState.file),
 		];
 		if (hasMathContent(markdownText)) {
-			pendingRenderTasks.push(ensureMathStyles());
+			pendingRenderTasks.push(
+				ensureMathStyles().catch((error) => {
+					console.warn("Failed to load math styles:", error);
+				}),
+			);
 		}
-		const [{ html }] = await Promise.all(pendingRenderTasks);
+		const [{ html, katexMarker }] = await Promise.all(pendingRenderTasks);
 
 		if (previewState.disposed || version !== previewState.renderVersion) {
 			return;
 		}
 
-		previewState.content.innerHTML = DOMPurify.sanitize(html, {
-			FORBID_TAGS: ["style"],
-			ADD_TAGS: ["eq", "eqn"],
-		});
+		previewState.content.innerHTML = sanitizeMarkdownHtml(
+			html,
+			katexMarker,
+		);
 
 		const objectUrls = await resolveRenderedImages(
 			previewState.content,
@@ -452,6 +485,9 @@ function createMarkdownPreview(file) {
 		bind,
 		render,
 		page: $page,
+		get disposed() {
+			return previewState.disposed;
+		},
 	};
 
 	return controller;
@@ -460,7 +496,11 @@ function createMarkdownPreview(file) {
 export default async function openMarkdownPreview(file, hash = "") {
 	if (!file) return null;
 
-	if (!previewController || previewController.page?.isConnected === false) {
+	if (
+		!previewController ||
+		previewController.disposed ||
+		previewController.page?.isConnected === false
+	) {
 		previewController = createMarkdownPreview(file);
 	}
 

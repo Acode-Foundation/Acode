@@ -36,6 +36,16 @@ function escapeAttribute(value = "") {
 		.replace(/>/g, "&gt;");
 }
 
+function createKatexMarker() {
+	const values = new Uint32Array(2);
+	if (globalThis.crypto?.getRandomValues) {
+		globalThis.crypto.getRandomValues(values);
+		return `katex-${values[0].toString(36)}${values[1].toString(36)}`;
+	}
+
+	return `katex-${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+}
+
 function splitLinkTarget(target = "") {
 	const hashIndex = target.indexOf("#");
 	if (hashIndex === -1) {
@@ -166,6 +176,20 @@ function createMarkdownIt({ katex = null, markdownItTexmath = null } = {}) {
 				strict: "ignore",
 			},
 		});
+
+		// Tag generated math so raw HTML cannot spoof the sanitizer's KaTeX exception.
+		for (const [ruleName, renderMath] of Object.entries(md.renderer.rules)) {
+			if (!ruleName.startsWith("math_") || typeof renderMath !== "function") {
+				continue;
+			}
+
+			md.renderer.rules[ruleName] = (tokens, idx, options, env, self) => {
+				const rendered = renderMath(tokens, idx, options, env, self);
+				if (!env?.katexMarker) return rendered;
+				const tag = ruleName.includes("block") ? "div" : "span";
+				return `<${tag} data-acode-katex="${env.katexMarker}">${rendered}</${tag}>`;
+			};
+		}
 	}
 
 	md.use(markdownItEmoji);
@@ -231,9 +255,20 @@ async function getMarkdownIt(text = "") {
 
 export async function renderMarkdown(text, file) {
 	const markdownText = text || "";
-	const md = await getMarkdownIt(markdownText);
-	const env = {};
-	env.markdownBaseUri = getMarkdownBaseUri(file);
+	let md;
+	try {
+		md = await getMarkdownIt(markdownText);
+	} catch (error) {
+		console.warn(
+			"Failed to load the math renderer; using plain markdown.",
+			error,
+		);
+		md = baseMarkdownIt;
+	}
+	const env = {
+		markdownBaseUri: getMarkdownBaseUri(file),
+		katexMarker: createKatexMarker(),
+	};
 	const tokens = md.parse(markdownText, env);
 
 	collectTokens(tokens, (token) => {
@@ -250,5 +285,6 @@ export async function renderMarkdown(text, file) {
 
 	return {
 		html: md.renderer.render(tokens, md.options, env),
+		katexMarker: env.katexMarker,
 	};
 }
