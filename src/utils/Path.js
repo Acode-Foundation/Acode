@@ -44,7 +44,7 @@ export default {
 	 */
 	extname(path) {
 		const filename = path.split("/").slice(-1)[0];
-		if (/.+\..*$/.test(filename)) {
+		if (/[^.]+\..*$/.test(filename)) {
 			return /(?:\.([^.]*))?$/.exec(filename)[0] || "";
 		}
 

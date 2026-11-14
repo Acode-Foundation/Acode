@@ -280,7 +280,7 @@ async function loadFont(name) {
 	}
 
 	// Get all URL font references
-	const urls = [...css.matchAll(/url\((.*?)\)/g)].map((match) => match[1]);
+	const urls = [...css.matchAll(/\burl\(([^)]*)\)/g)].map((match) => match[1]);
 
 	// Download and replace URLs
 	for (const url of urls) {
