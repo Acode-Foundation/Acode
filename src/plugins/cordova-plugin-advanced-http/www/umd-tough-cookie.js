@@ -3867,7 +3867,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	(?:${v6seg}:){1}(?:(:${v6seg}){0,4}:${v4}|(:${v6seg}){1,6}|:)| // 1::              1::3:4:5:6:7:8   1::8            1::3:4:5:6:7:1.2.3.4
 	(?::((?::${v6seg}){0,5}:${v4}|(?::${v6seg}){1,7}|:))           // ::2:3:4:5:6:7:8  ::2:3:4:5:6:7:8  ::8             ::1.2.3.4
 	)(%[0-9a-zA-Z]{1,})?                                           // %eth0            %1
-	`.replace(/\s*\/\/.*$/gm, '').replace(/\n/g, '').trim();
+	`.replace(/\s*\/\/.*$/gm, '').replace(/\n+/g, '').trim();
 
 	const ip = opts => opts && opts.exact ?
 		new RegExp(`(?:^${v4}$)|(?:^${v6}$)`) :
