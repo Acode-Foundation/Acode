@@ -1,6 +1,7 @@
 import fs from "node:fs";
+import { Text } from "@codemirror/state";
 import ts from "typescript";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { isBinaryFile } from "../../src/utils/binaryExtensions";
 
 // openFile contains app-specific JSX. Compile the actual module for this
@@ -17,6 +18,8 @@ const { outputText } = ts.transpileModule(source, {
 		jsx: ts.JsxEmit.React,
 	},
 });
+
+const AUTO_SAVE = Symbol("auto-save");
 
 function deferred() {
 	let resolve;
@@ -39,6 +42,7 @@ describe("openFile cancellation", () => {
 	let controller;
 	let titleLoader;
 	let loaderVisible;
+	let settings;
 
 	beforeEach(() => {
 		controller = new AbortController();
@@ -52,6 +56,7 @@ describe("openFile cancellation", () => {
 			}),
 		};
 		manager = { getFile: vi.fn(), activeFile: null };
+		settings = { maxFileSize: 10, defaultFileEncoding: "auto" };
 		stat = vi.fn().mockResolvedValue({ name: "target.txt", length: 10 });
 		readFile = vi.fn().mockResolvedValue("bytes");
 		decode = vi.fn().mockResolvedValue("target text");
@@ -63,7 +68,7 @@ describe("openFile cancellation", () => {
 		});
 		const dependencies = {
 			fileSystem: { default: () => ({ stat, readFile }) },
-			"@codemirror/state": {},
+			"@codemirror/state": { Text },
 			"components/audioPlayer": {},
 			"dialogs/alert": {},
 			"dialogs/confirm": {},
@@ -75,13 +80,11 @@ describe("openFile cancellation", () => {
 			"utils/helpers": {
 				default: { getStatMtime: () => 0, isBinary: isBinaryFile },
 			},
-			"./editorFile": { default: createEditor },
+			"./editorFile": { default: createEditor, AUTO_SAVE },
 			"./fileSessionPersistence": { promoteSessionPersistence: vi.fn() },
 			"./fileTypeHandler": { default: handler },
 			"./recents": { default: recents },
-			"./settings": {
-				default: { value: { maxFileSize: 10, defaultFileEncoding: "auto" } },
-			},
+			"./settings": { default: { value: settings } },
 		};
 		const exports = {};
 		new Function("require", "exports", "editorManager", outputText)(
@@ -357,5 +360,109 @@ describe("openFile cancellation", () => {
 		reading.resolve("bytes");
 		await opening;
 		expect(loaderVisible).toBe(false);
+	});
+
+	function openTab(text) {
+		const file = {
+			loaded: true,
+			makeActive: vi.fn(),
+			session: {
+				doc: Text.of(text.split("\n")),
+				setValue: vi.fn(),
+			},
+		};
+		manager.getFile.mockReturnValue(file);
+		manager.editor = { dispatch: vi.fn(), state: { doc: { length: 0 } } };
+		return file;
+	}
+
+	it("updates an open tab in the background without switching to it", async () => {
+		const file = openTab("foo");
+		await openFile("target", { render: false, text: "bar" });
+		expect(file.makeActive).not.toHaveBeenCalled();
+		expect(file.session.setValue).toHaveBeenCalledWith("bar");
+		expect(manager.editor.dispatch).not.toHaveBeenCalled();
+	});
+
+	it("leaves an open tab alone in the background when the text is the same", async () => {
+		const file = openTab("foo");
+		await openFile("target", { render: false, text: "foo" });
+		expect(file.makeActive).not.toHaveBeenCalled();
+		expect(file.session.setValue).not.toHaveBeenCalled();
+	});
+
+	it("still switches to an open tab when it should render", async () => {
+		const file = openTab("foo");
+		await openFile("target", { text: "bar" });
+		expect(file.makeActive).toHaveBeenCalledOnce();
+		expect(manager.editor.dispatch).toHaveBeenCalledOnce();
+	});
+	it("edits the live view of a split pane that shows the tab", async () => {
+		const file = openTab("foo");
+		file.id = "tab";
+		const paneEditor = {
+			dispatch: vi.fn(),
+			state: { doc: { length: 3 } },
+		};
+		manager.panes = [
+			{ editor: manager.editor, activeFile: { id: "other" } },
+			{ editor: paneEditor, activeFile: file },
+		];
+		await openFile("target", { render: false, text: "bar" });
+		expect(file.makeActive).not.toHaveBeenCalled();
+		expect(paneEditor.dispatch).toHaveBeenCalledWith({
+			changes: { from: 0, to: 3, insert: "bar" },
+		});
+		expect(file.session.setValue).not.toHaveBeenCalled();
+		expect(manager.editor.dispatch).not.toHaveBeenCalled();
+	});
+
+	describe("autosave of background tabs", () => {
+		function hiddenTab() {
+			const file = openTab("foo");
+			file.id = "tab";
+			file.uri = "file:///tab.txt";
+			file.isUnsaved = true;
+			file.save = vi.fn().mockResolvedValue(true);
+			manager.panes = [{ editor: manager.editor, activeFile: { id: "x" } }];
+			return file;
+		}
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+			settings.autosave = 1000;
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it("saves a hidden tab after the autosave delay", async () => {
+			const file = hiddenTab();
+			manager.getFile.mockImplementation((key, type) =>
+				type === "id" ? (key === file.id ? file : undefined) : file,
+			);
+			await openFile("target", { render: false, text: "bar" });
+			expect(file.session.setValue).toHaveBeenCalledWith("bar");
+			expect(file.save).not.toHaveBeenCalled();
+			vi.advanceTimersByTime(1000);
+			expect(file.save).toHaveBeenCalledWith(AUTO_SAVE);
+		});
+
+		it("does not save a hidden tab that was closed meanwhile", async () => {
+			const file = hiddenTab();
+			await openFile("target", { render: false, text: "bar" });
+			manager.getFile.mockReturnValue(undefined);
+			vi.advanceTimersByTime(1000);
+			expect(file.save).not.toHaveBeenCalled();
+		});
+
+		it("does not save when autosave is off", async () => {
+			settings.autosave = 0;
+			const file = hiddenTab();
+			await openFile("target", { render: false, text: "bar" });
+			vi.advanceTimersByTime(10000);
+			expect(file.save).not.toHaveBeenCalled();
+		});
 	});
 });
