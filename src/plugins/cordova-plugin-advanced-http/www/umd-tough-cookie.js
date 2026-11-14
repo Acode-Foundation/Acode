@@ -3440,9 +3440,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	      name = name.substr(1, name.length - 2);
 	      name = ctx.stylize(name, 'name');
 	    } else {
-	      name = name.replace(/'/g, "\\'")
+	      name = name.replace(/'+/g, "\\'")
 	                 .replace(/\\"/g, '"')
-	                 .replace(/(^"|"$)/g, "'");
+	                 .replace(/(?:^"|"$)/g, "'");
 	      name = ctx.stylize(name, 'string');
 	    }
 	  }
