@@ -1,0 +1,7 @@
+{
+	"name": "cordova-plugin-acode-voice",
+	"version": "1.0.0",
+	"description": "Speech recognition and microphone access for Acode.",
+	"main": "www/voice.js",
+	"license": "MIT"
+}
