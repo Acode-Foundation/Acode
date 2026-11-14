@@ -1,5 +1,6 @@
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { Compartment, Prec } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
 import { tags as t } from "@lezer/highlight";
 import {
 	findHighlightStyle,
@@ -7,8 +8,9 @@ import {
 	getCanvasDisplayOptions,
 	getCanvasFont,
 	getCanvasTheme,
+	themeRuleColors,
 } from "cm/canvasOptions";
-import { getThemeConfig, getThemes } from "cm/themes";
+import { addTheme, getThemeConfig, getThemes, removeTheme } from "cm/themes";
 import { describe, expect, it } from "vitest";
 
 describe("canvas renderer theme bridge", () => {
@@ -48,6 +50,102 @@ describe("canvas renderer theme bridge", () => {
 				"cm-selectionMatch": { background: config.selection },
 			},
 		});
+	});
+
+	// A plugin theme with only text colors in its config, and the rest in
+	// its EditorView.theme.
+	const cssOnlyTheme = () =>
+		EditorView.theme(
+			{
+				"&": { color: "#bbbbbb", backgroundColor: "#111113" },
+				".cm-cursor, .cm-dropCursor": { borderLeftColor: "#aeafad" },
+				".cm-selectionBackground": { backgroundColor: "rgba(46, 49, 53, 0.5)" },
+				"&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground":
+					{ backgroundColor: "#2e3135" },
+				".cm-activeLine": {
+					backgroundColor: "transparent",
+					boxShadow: "0 0 0 2px #282828 inset",
+				},
+				".cm-gutters": {
+					backgroundColor: "#111113",
+					color: "#696e77",
+					border: "none",
+				},
+				".cm-activeLineGutter": {
+					backgroundColor: "transparent",
+					color: "#c6c6c6",
+				},
+			},
+			{ dark: true },
+		);
+
+	it("reads surface colors from a theme's own rules", () => {
+		expect(themeRuleColors([cssOnlyTheme()])).toEqual({
+			cursor: "#aeafad",
+			selection: "#2e3135",
+			activeLine: "transparent",
+			activeLineBorder: "#282828",
+			activeLineBorderWidth: 2,
+			gutterBackground: "#111113",
+			gutterForeground: "#696e77",
+			activeLineGutter: "transparent",
+			gutterActiveForeground: "#c6c6c6",
+		});
+		// Shadows that aren't a plain frame, and var() colors, are left alone.
+		const other = EditorView.theme({
+			".cm-activeLine": { boxShadow: "0 2px 4px #000 inset" },
+			".cm-cursor": { borderLeftColor: "var(--cursor)" },
+		});
+		expect(themeRuleColors([other])).toEqual({});
+	});
+
+	it("draws a plugin theme's CSS-only surfaces on the canvas", () => {
+		addTheme(
+			"canvas-test-css-theme",
+			"CSS theme test",
+			true,
+			() => [cssOnlyTheme()],
+			{
+				name: "canvas-test-css-theme",
+				dark: true,
+				background: "#111113",
+				foreground: "#BBBBBB",
+			},
+		);
+		try {
+			expect(getCanvasTheme("canvas-test-css-theme")).toMatchObject({
+				background: "#111113",
+				cursor: "#aeafad",
+				selection: "#2e3135",
+				activeLine: "transparent",
+				activeLineBorder: "#282828",
+				activeLineBorderWidth: 2,
+				gutterBackground: "#111113",
+				gutterForeground: "#696e77",
+				gutterActiveForeground: "#c6c6c6",
+			});
+			// The config's own colors win over the rules.
+			removeTheme("canvas-test-css-theme");
+			addTheme(
+				"canvas-test-css-theme",
+				"CSS theme test",
+				true,
+				() => [cssOnlyTheme()],
+				{
+					name: "canvas-test-css-theme",
+					dark: true,
+					background: "#111113",
+					foreground: "#BBBBBB",
+					activeLine: "#202020",
+					cursor: "#ff0000",
+				},
+			);
+			const spec = getCanvasTheme("canvas-test-css-theme");
+			expect(spec).toMatchObject({ activeLine: "#202020", cursor: "#ff0000" });
+			expect(spec.activeLineBorder).toBeUndefined();
+		} finally {
+			removeTheme("canvas-test-css-theme");
+		}
 	});
 });
 
