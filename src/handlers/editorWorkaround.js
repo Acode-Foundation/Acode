@@ -13,8 +13,15 @@ document.addEventListener("beforeinput", setKeyboardInput, true);
 document.addEventListener("input", setKeyboardInput, true);
 document.addEventListener("compositionstart", setKeyboardInput, true);
 
+let touched = false;
+
 function setTouched() {
+	if (touched) return;
+	touched = true;
 	interactionGuard.markActive();
+	requestAnimationFrame(() => {
+		touched = false;
+	});
 }
 
 document.addEventListener(
