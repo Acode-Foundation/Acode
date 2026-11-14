@@ -1,6 +1,10 @@
 import "core-js/stable";
 import picomatch from "picomatch/posix";
-import { isBinaryFile } from "utils/binaryExtensions";
+import {
+	hasBinaryContent,
+	isBinaryFile,
+	isTextFile,
+} from "utils/binaryExtensions";
 
 const resolvers = {};
 let requestId = 0;
@@ -90,7 +94,10 @@ function processFiles(data, mode = "search") {
 		}
 
 		getFile(file.url, async (res, err) => {
-			if (err) {
+			// Files of unknown type pass the name/MIME check, so skip them here
+			// when the content itself turns out to be binary. Files already known
+			// to be text are searched as-is, as before.
+			if (err || (!isTextFile(file) && hasBinaryContent(res))) {
 				finishOne();
 				return;
 			}
