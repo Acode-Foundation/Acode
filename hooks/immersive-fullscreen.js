@@ -22,9 +22,9 @@ module.exports = function prepareImmersiveFullscreen(context) {
   // Markers delimit our generated blocks so each prepare can replace them safely,
   // including when only the controller changes.
   let source = original
-    .replace(/\r\n/g, "\n")
+    .replaceAll('\r\n', '\n')
     .replace(
-      /^[ \t]*\/\/ ACODE_FULLSCREEN_BEGIN ([a-z]+)\n[\s\S]*?^[ \t]*\/\/ ACODE_FULLSCREEN_END \1\n/gm,
+      /^[ \t]*\/\/ ACODE_FULLSCREEN_BEGIN (?:[a-z]+)\n[^]*?^[ \t]*\/\/ ACODE_FULLSCREEN_END \1\n/gm,
       "",
     );
   if (/ACODE_FULLSCREEN_(BEGIN|END)/.test(source)) {
