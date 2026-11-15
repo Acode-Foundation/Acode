@@ -331,7 +331,7 @@ async function configureProject({
 	if (identityChanged) {
 		fsImpl.writeFileSync(
 			paths.config,
-			config.replace(/(<widget[^>]*?\sid=["'])[^"']+(["'])/, `$1${targetId}$2`),
+			config.replace(/(<widget[^>]*?\sid=["'])[^"']+(?=["'])/, `$1${targetId}`),
 			"utf8",
 		);
 	}
