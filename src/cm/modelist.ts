@@ -388,7 +388,7 @@ export class Mode {
 		this.name = name;
 		this.mode = name; // CodeMirror uses different mode naming
 		this.extensions = extensions;
-		this.caption = caption || this.name.replace(/_/g, " ");
+		this.caption = caption || this.name.replaceAll('_', ' ');
 		// Plugins may pass anything here; ignore what isn't the expected shape
 		const { aliases, filenameMatchers, formatAs } =
 			options && typeof options === "object" ? options : {};
