@@ -1,40 +1,71 @@
 // @vitest-environment happy-dom
 
-import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
-import { Compartment, Prec } from "@codemirror/state";
+import { cssThemeSpec, themeCSSOf } from "@acode.app/canvas-view";
+import { HighlightStyle } from "@codemirror/language";
+import { EditorState } from "@codemirror/state";
+import { oneDark } from "@codemirror/theme-one-dark";
 import { EditorView } from "@codemirror/view";
-import { tags as t } from "@lezer/highlight";
 import {
-	findHighlightStyle,
 	fontSizeToPx,
 	getCanvasDisplayOptions,
 	getCanvasFont,
 	getCanvasTheme,
-	themeRuleColors,
 } from "cm/canvasOptions";
-import { addTheme, getThemeConfig, getThemes, removeTheme } from "cm/themes";
+import {
+	addTheme,
+	getThemeConfig,
+	getThemeExtensions,
+	getThemes,
+	removeTheme,
+} from "cm/themes";
 import { describe, expect, it } from "vitest";
 
+/** Whether an extension tree holds a HighlightStyle. */
+function findHighlighters(
+	extension: unknown,
+	seen = new Set<unknown>(),
+): boolean {
+	if (!extension || typeof extension !== "object" || seen.has(extension)) {
+		return false;
+	}
+	seen.add(extension);
+	if (extension instanceof HighlightStyle) return true;
+	if (Array.isArray(extension)) {
+		return extension.some((item) => findHighlighters(item, seen));
+	}
+	const node = extension as Record<string, unknown>;
+	return (
+		findHighlighters(node.value, seen) ||
+		findHighlighters(node.inner, seen) ||
+		findHighlighters(node.extension, seen)
+	);
+}
+
 describe("canvas renderer theme bridge", () => {
-	it("finds the HighlightStyle inside wrapped theme extensions", () => {
-		const style = HighlightStyle.define([{ tag: t.keyword, color: "#f00" }]);
-		const compartment = new Compartment();
-		const extension = [
-			[],
-			compartment.of(Prec.high([syntaxHighlighting(style)])),
-		];
-		expect(findHighlightStyle(extension)).toBe(style);
-		expect(findHighlightStyle([])).toBeNull();
-	});
+	// What a canvas view draws a theme with: canvas-view resolves the
+	// theme's CSS from the state, and Acode's theme function adjusts it.
+	const specFor = (id: string, seeThrough = false) => {
+		const state = EditorState.create({
+			extensions: getThemeExtensions(id, [oneDark]),
+		});
+		return {
+			spec: getCanvasTheme(id, seeThrough)(cssThemeSpec(state)),
+			css: themeCSSOf(state),
+		};
+	};
 
 	it("gives every built-in theme syntax colors and its config colors", () => {
 		for (const theme of getThemes()) {
-			const spec = getCanvasTheme(theme.id);
+			const { spec } = specFor(theme.id);
 			const config = getThemeConfig(theme.id);
 			expect(spec.background, theme.id).toBe(config.background);
 			expect(spec.foreground, theme.id).toBe(config.foreground);
 			expect(spec.dark, theme.id).toBe(config.dark !== false);
-			expect(spec.highlight, theme.id).toBeInstanceOf(HighlightStyle);
+			// Syntax colors come from the highlight style in the state.
+			expect(
+				findHighlighters(getThemeExtensions(theme.id, [oneDark])),
+				theme.id,
+			).toBe(true);
 			// Acode's own scrollbars are used instead of the canvas thumbs.
 			expect(spec.scrollbar).toBe("transparent");
 		}
@@ -42,16 +73,18 @@ describe("canvas renderer theme bridge", () => {
 
 	it("maps the theme's line number and bracket colors", () => {
 		const config = getThemeConfig("dracula");
-		expect(getCanvasTheme("dracula")).toMatchObject({
+		const { spec, css } = specFor("dracula");
+		expect(spec).toMatchObject({
 			selection: config.selection,
 			cursor: config.cursor,
 			gutterForeground: config.lineNumber,
 			gutterActiveForeground: config.lineNumberActive,
-			classes: {
-				"cm-matchingBracket": { background: config.matchingBracket },
-				"cm-selectionMatch": { background: config.selection },
-			},
 		});
+		// Decoration classes are resolved from the theme's CSS by the view.
+		expect(css.mark("cm-matchingBracket")?.background).toBe(
+			config.matchingBracket,
+		);
+		expect(css.mark("cm-selectionMatch")?.background).toBe(config.selection);
 	});
 
 	// A plugin theme with only text colors in its config, and the rest in
@@ -81,24 +114,35 @@ describe("canvas renderer theme bridge", () => {
 			{ dark: true },
 		);
 
-	it("reads surface colors from a theme's own rules", () => {
-		expect(themeRuleColors([cssOnlyTheme()])).toEqual({
-			cursor: "#aeafad",
-			selection: "#2e3135",
-			activeLine: "transparent",
-			activeLineBorder: "#282828",
-			activeLineBorderWidth: 2,
-			gutterBackground: "#111113",
-			gutterForeground: "#696e77",
-			activeLineGutter: "transparent",
-			gutterActiveForeground: "#c6c6c6",
-		});
-		// Shadows that aren't a plain frame, and var() colors, are left alone.
-		const other = EditorView.theme({
-			".cm-activeLine": { boxShadow: "0 2px 4px #000 inset" },
-			".cm-cursor": { borderLeftColor: "var(--cursor)" },
-		});
-		expect(themeRuleColors([other])).toEqual({});
+	it("every built-in theme's CSS agrees with its config", () => {
+		const norm = (v: unknown) =>
+			typeof v === "string" ? v.toLowerCase().replace(/\s+/g, "") : v;
+		for (const theme of getThemes()) {
+			const config = getThemeConfig(theme.id);
+			const state = EditorState.create({
+				extensions: getThemeExtensions(theme.id, [oneDark]),
+			});
+			const css = cssThemeSpec(state);
+			for (const [key, value] of [
+				["background", config.background],
+				["foreground", config.foreground],
+				["selection", config.selection],
+				["cursor", config.cursor],
+				["activeLine", config.activeLine],
+				["gutterForeground", config.lineNumber],
+				["gutterActiveForeground", config.lineNumberActive],
+			] as const) {
+				if (value == null) continue;
+				expect(norm(css[key]), `${theme.id} ${key}`).toBe(norm(value));
+			}
+		}
+	});
+
+	it("keeps a see-through canvas over a picture", () => {
+		const { spec } = specFor("dracula", true);
+		expect(spec.background).toBe("transparent");
+		expect(spec.activeLineGutter).toBe("transparent");
+		expect(spec.gutterBackground).toBeUndefined();
 	});
 
 	it("draws a plugin theme's CSS-only surfaces on the canvas", () => {
@@ -115,7 +159,7 @@ describe("canvas renderer theme bridge", () => {
 			},
 		);
 		try {
-			expect(getCanvasTheme("canvas-test-css-theme")).toMatchObject({
+			expect(specFor("canvas-test-css-theme").spec).toMatchObject({
 				background: "#111113",
 				cursor: "#aeafad",
 				selection: "#2e3135",
@@ -126,7 +170,8 @@ describe("canvas renderer theme bridge", () => {
 				gutterForeground: "#696e77",
 				gutterActiveForeground: "#c6c6c6",
 			});
-			// The config's own colors win over the rules.
+			// The CSS is what the DOM editor shows: a config that disagrees
+			// with it doesn't change the canvas.
 			removeTheme("canvas-test-css-theme");
 			addTheme(
 				"canvas-test-css-theme",
@@ -142,9 +187,12 @@ describe("canvas renderer theme bridge", () => {
 					cursor: "#ff0000",
 				},
 			);
-			const spec = getCanvasTheme("canvas-test-css-theme");
-			expect(spec).toMatchObject({ activeLine: "#202020", cursor: "#ff0000" });
-			expect(spec.activeLineBorder).toBeUndefined();
+			const { spec } = specFor("canvas-test-css-theme");
+			expect(spec).toMatchObject({
+				activeLine: "transparent",
+				activeLineBorder: "#282828",
+				cursor: "#aeafad",
+			});
 		} finally {
 			removeTheme("canvas-test-css-theme");
 		}
