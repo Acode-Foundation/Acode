@@ -37,7 +37,7 @@ function createWelcomeContent() {
 	const bindings = getResolvedKeyBindings();
 	const kb = (name) => {
 		const binding = bindings[name];
-		return binding?.key ? binding.key.split("|")[0].replace(/-/g, "+") : "";
+		return binding?.key ? binding.key.split("|")[0].replaceAll('-', '+') : "";
 	};
 
 	return (
