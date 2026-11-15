@@ -1,3 +1,5 @@
+// @vitest-environment happy-dom
+
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { Compartment, Prec } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
