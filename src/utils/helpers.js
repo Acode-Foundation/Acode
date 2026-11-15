@@ -344,6 +344,7 @@ export default {
 		if (!name) return name;
 		return name.replace(/(\r\n)+|\r+|\n+|\t+/g, "").trim();
 	},
+	/** Weird regex above, why not just (/[\r\n\t]+/g, '')   ?
 	/**
 	 * Creates a debounced function that delays invoking the input function until after 'wait' milliseconds have elapsed
 	 * since the last time the debounced function was invoked. Useful for implementing behavior that should only happen
