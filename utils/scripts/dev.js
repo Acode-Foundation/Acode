@@ -478,7 +478,7 @@ async function applyPluginUpdates() {
 	// Restart the app after plugin changes (native changes need full restart)
 	try {
 		const configXml = fs.readFileSync(path.join(ROOT, "config.xml"), "utf8");
-		const pkgMatch = /id="([^"]+)"/.exec(configXml);
+		const pkgMatch = /\bid="([^"]+)"/.exec(configXml);
 		const pkg = pkgMatch?.[1];
 		if (pkg) {
 			log("info", "Restarting app after plugin update...");
