@@ -43,6 +43,7 @@ function createContext({ history = ["second", "first"] } = {}) {
 		},
 		searchHistory,
 		select: vi.fn(async () => history[0]),
+		applyingHistoryPattern: false,
 		Event: class Event {
 			constructor(type, options) {
 				this.type = type;
@@ -76,12 +77,42 @@ describe("Search in Files pattern history", () => {
 	});
 
 	it("opens the persisted history and applies the selected pattern", async () => {
-		const { context, searchElement } = createContext();
+		const { context, searchElement } = createContext({
+			history: ["<div>", "second"],
+		});
 
 		await vm.runInContext('openPatternHistory($search, "Search")', context);
 
-		expect(searchElement.value).toBe("second");
+		expect(context.select).toHaveBeenCalledWith(
+			"Search",
+			[
+				{ value: "<div>", text: "&lt;div&gt;" },
+				{ value: "second", text: "second" },
+			],
+			true,
+		);
+		expect(searchElement.value).toBe("<div>");
 		expect(searchElement.dispatchEvent).toHaveBeenCalled();
+	});
+
+	it("keeps arrow keys available for multiline patterns", () => {
+		const { context, searchElement, searchHistory } = createContext();
+		searchElement.value = "first\nsecond";
+		const event = { key: "ArrowUp", preventDefault: vi.fn() };
+		context.event = event;
+
+		vm.runInContext("onSearchHistoryKeydown(event)", context);
+
+		expect(event.preventDefault).not.toHaveBeenCalled();
+		expect(searchHistory.navigateSearchUp).not.toHaveBeenCalled();
+	});
+
+	it("resets recall navigation after a user input such as paste", () => {
+		const { context, searchHistory } = createContext();
+
+		vm.runInContext("onSearchPatternInput()", context);
+
+		expect(searchHistory.resetSearchNavigation).toHaveBeenCalled();
 	});
 
 	it("stores search and replace values when their fields are committed", () => {
@@ -92,10 +123,13 @@ describe("Search in Files pattern history", () => {
 			context,
 		);
 
-		expect(searchHistory.addToHistory).toHaveBeenNthCalledWith(1, "draft");
+		expect(searchHistory.addToHistory).toHaveBeenNthCalledWith(1, "draft", {
+			preserveWhitespace: true,
+		});
 		expect(searchHistory.addToHistory).toHaveBeenNthCalledWith(
 			2,
 			"replacement",
+			{ preserveWhitespace: true },
 		);
 	});
 });

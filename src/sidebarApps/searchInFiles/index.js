@@ -132,6 +132,7 @@ let pendingNativeSearchFinishVersion = null;
 let nativeSearchId = null;
 let activeSearchTasks = 0;
 let activeReplaceTasks = 0;
+let applyingHistoryPattern = false;
 
 addEventListener($regExp, "change", onInput);
 addEventListener($wholeWord, "change", onInput);
@@ -268,6 +269,7 @@ export default [
 							name="search"
 							placeholder={strings["search"]}
 							onchange={rememberSearchPattern}
+							oninput={onSearchPatternInput}
 							onkeydown={onSearchHistoryKeydown}
 						/>
 						<button
@@ -285,6 +287,7 @@ export default [
 							name="replace"
 							placeholder={strings["replace"]}
 							onchange={rememberReplacePattern}
+							oninput={onReplacePatternInput}
 							onkeydown={onReplaceHistoryKeydown}
 						/>
 						<button
@@ -336,20 +339,42 @@ export default [
 ];
 
 function rememberSearchPattern() {
-	searchHistory.addToHistory($search.value);
+	searchHistory.addToHistory($search.value, { preserveWhitespace: true });
 	searchHistory.resetSearchNavigation();
 }
 
 function rememberReplacePattern() {
-	searchHistory.addToHistory($replace.value);
+	searchHistory.addToHistory($replace.value, { preserveWhitespace: true });
 	searchHistory.resetReplaceNavigation();
+}
+
+function onSearchPatternInput() {
+	if (!applyingHistoryPattern) searchHistory.resetSearchNavigation();
+}
+
+function onReplacePatternInput() {
+	if (!applyingHistoryPattern) searchHistory.resetReplaceNavigation();
 }
 
 function setPatternFromHistory(ref, value) {
 	if (value === undefined) return;
 	ref.el.value = value;
-	ref.el.dispatchEvent(new Event("input", { bubbles: true }));
+	applyingHistoryPattern = true;
+	try {
+		ref.el.dispatchEvent(new Event("input", { bubbles: true }));
+	} finally {
+		applyingHistoryPattern = false;
+	}
 	ref.el.focus();
+}
+
+function escapePatternHtml(pattern) {
+	return pattern
+		.replaceAll("&", "&amp;")
+		.replaceAll("<", "&lt;")
+		.replaceAll(">", "&gt;")
+		.replaceAll('"', "&quot;")
+		.replaceAll("'", "&#039;");
 }
 
 async function openPatternHistory(ref, title) {
@@ -357,7 +382,11 @@ async function openPatternHistory(ref, title) {
 	if (!history.length) return;
 
 	try {
-		const value = await select(title, history, true);
+		const items = history.map((pattern) => ({
+			value: pattern,
+			text: escapePatternHtml(pattern),
+		}));
+		const value = await select(title, items, true);
 		setPatternFromHistory(ref, value);
 	} catch (_) {
 		// The history picker was dismissed.
@@ -365,21 +394,18 @@ async function openPatternHistory(ref, title) {
 }
 
 function onSearchHistoryKeydown(event) {
-	if (event.key === "ArrowUp") {
+	if (event.key === "ArrowUp" && !$search.value.includes("\n")) {
 		event.preventDefault();
 		setPatternFromHistory(
 			$search,
 			searchHistory.navigateSearchUp($search.value),
 		);
-	} else if (event.key === "ArrowDown") {
+	} else if (event.key === "ArrowDown" && !$search.value.includes("\n")) {
 		event.preventDefault();
 		setPatternFromHistory(
 			$search,
 			searchHistory.navigateSearchDown($search.value),
 		);
-	} else if (event.key === "Enter") {
-		event.preventDefault();
-		rememberSearchPattern();
 	} else if (event.key === "Escape") {
 		searchHistory.resetSearchNavigation();
 	} else if (
@@ -391,21 +417,18 @@ function onSearchHistoryKeydown(event) {
 }
 
 function onReplaceHistoryKeydown(event) {
-	if (event.key === "ArrowUp") {
+	if (event.key === "ArrowUp" && !$replace.value.includes("\n")) {
 		event.preventDefault();
 		setPatternFromHistory(
 			$replace,
 			searchHistory.navigateReplaceUp($replace.value),
 		);
-	} else if (event.key === "ArrowDown") {
+	} else if (event.key === "ArrowDown" && !$replace.value.includes("\n")) {
 		event.preventDefault();
 		setPatternFromHistory(
 			$replace,
 			searchHistory.navigateReplaceDown($replace.value),
 		);
-	} else if (event.key === "Enter") {
-		event.preventDefault();
-		rememberReplacePattern();
 	} else if (event.key === "Escape") {
 		searchHistory.resetReplaceNavigation();
 	} else if (
@@ -1046,8 +1069,8 @@ async function replaceAll() {
 	if (!search) return;
 	const regex = toRegex(search, options);
 	if (!regex) return;
-	searchHistory.addToHistory(search);
-	searchHistory.addToHistory(replace);
+	searchHistory.addToHistory(search, { preserveWhitespace: true });
+	searchHistory.addToHistory(replace, { preserveWhitespace: true });
 
 	replacing = true;
 	activeReplaceTasks = 0;
@@ -1230,16 +1253,18 @@ function searchResultText(files, matches) {
  * @param {string} param0.placeholder
  * @param {Ref} param0.ref
  * @param {Function} [param0.onchange]
+ * @param {Function} [param0.oninput]
  * @param {Function} [param0.onkeydown]
  * @returns {HTMLTextAreaElement}
  */
-function Textarea({ name, placeholder, ref, onchange, onkeydown }) {
+function Textarea({ name, placeholder, ref, onchange, oninput, onkeydown }) {
 	return autosize(
 		<textarea
 			ref={ref}
 			name={name}
 			placeholder={placeholder}
 			onchange={onchange}
+			oninput={oninput}
 			onkeydown={onkeydown}
 		></textarea>,
 	);
