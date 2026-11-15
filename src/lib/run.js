@@ -451,7 +451,7 @@ async function run(
         scripts.forEach(function(el){document.head.removeChild(el)});
       }, 0);
     </script><!-- Injected code, this is not present in original code -->`;
-		text = text.replace(/><\/script>/g, ' crossorigin="anonymous"></script>');
+		text = text.replaceAll('></script>', ' crossorigin="anonymous"></script>');
 		const part = text.split("<head>");
 		if (part.length === 2) {
 			text = `${part[0]}<head>${js}${part[1]}`;
