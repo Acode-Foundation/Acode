@@ -4,7 +4,7 @@ let hasPro = false;
 const config = {
 	BASE_URL,
 	SUPPORTED_EDITOR: "cm",
-	FILE_NAME_REGEX: /^((?![:<>"\\\|\?\*]).)*$/,
+	FILE_NAME_REGEX: /^([^:<>"\\\|\?\*])*$/,
 	FONT_SIZE: /^[0-9\.]{1,3}(px|rem|em|pt|mm|pc|in)$/,
 	DEFAULT_FILE_SESSION: "default-session",
 	DEFAULT_FILE_NAME: "untitled.txt",
