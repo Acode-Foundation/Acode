@@ -1458,7 +1458,7 @@ function applyTextEdits(
 		if (fromResult == null || toResult == null) continue;
 		const insert =
 			typeof edit.newText === "string"
-				? edit.newText.replace(/\r\n/g, "\n")
+				? edit.newText.replaceAll('\r\n', '\n')
 				: "";
 		changes.push({ from: fromResult, to: toResult, insert });
 	}
@@ -1639,6 +1639,6 @@ function contentUriToFileUri(uri: string): string | null {
 function buildFileUri(pathname: string): string | null {
 	if (!pathname) return null;
 	const normalized = pathname.startsWith("/") ? pathname : `/${pathname}`;
-	const encoded = encodeURI(normalized).replace(/#/g, "%23");
+	const encoded = encodeURI(normalized).replaceAll('#', '%23');
 	return `file://${encoded}`;
 }
