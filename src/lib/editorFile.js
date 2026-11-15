@@ -967,7 +967,7 @@ export default class EditorFile {
 		if (value === "windows") {
 			text = text.replace(/\n(?<!\r\n)/g, "\r\n");
 		} else {
-			text = text.replaceAll(/'\r', '');
+			text = text.replaceAll('\r', '');
 		}
 
 		// Update the document in the session
