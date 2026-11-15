@@ -302,7 +302,7 @@ export default {
 		const uuid = "uuid" + Math.floor(Math.random() + Date.now() * 1000000);
 
 		if (/#/.test(url)) {
-			url = url.replace(/#/g, uuid);
+			url = url.replaceAll('#', uuid);
 		}
 
 		let { username, password, hostname, pathname, port, query } = URLParse(
