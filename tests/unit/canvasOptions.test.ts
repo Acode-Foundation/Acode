@@ -1,10 +1,11 @@
 // @vitest-environment happy-dom
 
-import { cssThemeSpec, themeCSSOf } from "@acode.app/canvas-view";
-import { HighlightStyle } from "@codemirror/language";
+import { cssThemeSpec, parseColor, themeCSSOf } from "@acode.app/canvas-view";
+import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { EditorState } from "@codemirror/state";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { EditorView } from "@codemirror/view";
+import { tags as t } from "@lezer/highlight";
 import {
 	fontSizeToPx,
 	getCanvasDisplayOptions,
@@ -135,6 +136,70 @@ describe("canvas renderer theme bridge", () => {
 				if (value == null) continue;
 				expect(norm(css[key]), `${theme.id} ${key}`).toBe(norm(value));
 			}
+		}
+	});
+
+	it("draws syntax colors from the theme's highlight style over its config", () => {
+		const style = HighlightStyle.define([{ tag: t.keyword, color: "#ff0000" }]);
+		const config = {
+			name: "canvas-test-syntax-theme",
+			dark: true,
+			background: "#111113",
+			foreground: "#bbbbbb",
+			keyword: "#00ff00",
+		};
+		addTheme(
+			"canvas-test-syntax-theme",
+			"Syntax theme test",
+			true,
+			() => [
+				EditorView.theme(
+					{ "&": { backgroundColor: "#111113" } },
+					{ dark: true },
+				),
+				syntaxHighlighting(style),
+			],
+			config,
+		);
+		try {
+			const state = EditorState.create({
+				extensions: getThemeExtensions("canvas-test-syntax-theme", [oneDark]),
+			});
+			// With a highlight style in the state, the canvas colors tokens from
+			// its CSS; the config's colors are only a fallback.
+			const keyword = style.style([t.keyword]) as string;
+			expect(themeCSSOf(state).token(keyword)?.color).toBe(
+				parseColor("#ff0000"),
+			);
+		} finally {
+			removeTheme("canvas-test-syntax-theme");
+		}
+		// Without one, the canvas theme's own highlight has the config's colors.
+		addTheme(
+			"canvas-test-syntax-theme",
+			"Syntax theme test",
+			true,
+			() => [
+				EditorView.theme(
+					{ "&": { backgroundColor: "#111113" } },
+					{ dark: true },
+				),
+			],
+			config,
+		);
+		try {
+			const { spec } = specFor("canvas-test-syntax-theme");
+			const highlight = spec.highlight as readonly {
+				tag: unknown;
+				color?: string;
+			}[];
+			expect(
+				highlight.find((s) =>
+					([] as unknown[]).concat(s.tag).includes(t.keyword),
+				)?.color,
+			).toBe("#00ff00");
+		} finally {
+			removeTheme("canvas-test-syntax-theme");
 		}
 	});
 
