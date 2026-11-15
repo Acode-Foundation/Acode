@@ -1795,7 +1795,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	    // validate a little.
 	    if (!ipv6Hostname) {
-	      var hostparts = this.hostname.split(/\./);
+	      var hostparts = this.hostname.split('.');
 	      for (var i = 0, l = hostparts.length; i < l; i++) {
 	        var part = hostparts[i];
 	        if (!part) continue;
