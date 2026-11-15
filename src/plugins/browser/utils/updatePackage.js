@@ -22,8 +22,8 @@ function replaceImport(filePath, appName) {
   const data = fs.readFileSync(filePath, "utf8");
 
   const updated = data.replace(
-    /(import\s+com\.foxdebug\.)(acode|acodefree)(\.R;)/,
-    `$1${appName}$3`
+    /(import\s+com\.foxdebug\.)(?:acode|acodefree)(?=\.R;)/,
+    `$1${appName}`
   );
 
   fs.writeFileSync(filePath, updated);
