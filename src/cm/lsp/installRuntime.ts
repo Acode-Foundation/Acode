@@ -15,7 +15,7 @@ export function quoteArg(value: unknown): string {
 	const str = String(value ?? "");
 	if (!str.length) return "''";
 	if (/^[A-Za-z0-9_@%+=:,./-]+$/.test(str)) return str;
-	return `'${str.replace(/'/g, "'\\''")}'`;
+	return `'${str.replaceAll("'", "'\\''")}'`;
 }
 
 export function formatCommand(
