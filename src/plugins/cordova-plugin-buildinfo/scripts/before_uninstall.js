@@ -33,9 +33,9 @@ function uninstallWindows(context, windowsPath) {
     let changed = false;
 
     // Replace <PRIResource Include="strings\buildinfo.resjson"> to <Content Include="strings\buildinfo.resjson">
-    if (projitems.match(/<ItemGroup>[\s]*?<PRIResource +.*?Include="strings\/buildinfo.resjson".+/m)) {
+    if (projitems.match(/<ItemGroup>[\s]*<PRIResource +.*?Include="strings\/buildinfo.resjson".+/m)) {
 
-        const search = /<ItemGroup>[\s]*?<PRIResource +.*?Include="strings\/buildinfo.resjson"[^]*?<\/ItemGroup>/m;
+        const search = /<ItemGroup>[\s]*<PRIResource +.*?Include="strings\/buildinfo.resjson"[^]*?<\/ItemGroup>/m;
 
         const replace
             = "<ItemGroup>\r\n"
