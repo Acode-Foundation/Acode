@@ -3353,8 +3353,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	    return ctx.stylize('undefined', 'undefined');
 	  if (isString(value)) {
 	    var simple = '\'' + JSON.stringify(value).replace(/^"|"$/g, '')
-	                                             .replace(/'/g, "\\'")
-	                                             .replace(/\\"/g, '"') + '\'';
+	                                             .replaceAll("'", "\\'")
+	                                             .replaceAll('\\"', '"') + '\'';
 	    return ctx.stylize(simple, 'string');
 	  }
 	  if (isNumber(value))
@@ -3440,8 +3440,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	      name = name.substr(1, name.length - 2);
 	      name = ctx.stylize(name, 'name');
 	    } else {
-	      name = name.replace(/'/g, "\\'")
-	                 .replace(/\\"/g, '"')
+	      name = name.replaceAll("'", "\\'")
+	                 .replaceAll('\\"', '"')
 	                 .replace(/^"|"$/g, "'");
 	      name = ctx.stylize(name, 'string');
 	    }
@@ -3867,7 +3867,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	(?:${v6seg}:){1}(?:(:${v6seg}){0,4}:${v4}|(:${v6seg}){1,6}|:)| // 1::              1::3:4:5:6:7:8   1::8            1::3:4:5:6:7:1.2.3.4
 	(?::((?::${v6seg}){0,5}:${v4}|(?::${v6seg}){1,7}|:))           // ::2:3:4:5:6:7:8  ::2:3:4:5:6:7:8  ::8             ::1.2.3.4
 	)(%[0-9a-zA-Z]{1,})?                                           // %eth0            %1
-	`.replace(/\s*\/\/.*$/gm, '').replace(/\n+/g, '').trim();
+	`.replace(/\s*\/\/.*$/gm, '').replaceAll('\n', '').trim();
 
 	const ip = opts => opts && opts.exact ?
 		new RegExp(`(?:^${v4}$)|(?:^${v6}$)`) :
@@ -3944,7 +3944,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	  return {
 	    rule: rule,
-	    suffix: rule.replace(/^(\*\.|\!)/, ''),
+	    suffix: rule.replace(/^(?:\*\.|\!)/, ''),
 	    punySuffix: -1,
 	    wildcard: rule.charAt(0) === '*',
 	    exception: rule.charAt(0) === '!'
