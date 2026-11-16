@@ -94,7 +94,7 @@ function stripLauncherFilterFromMainActivity() {
 
   let content = fs.readFileSync(manifestPath, 'utf-8');
   const updated = content.replace(
-    /(<activity[^>]*\bname="MainActivity"[^>]*>)\s*<intent-filter[^>]*>\s*<action android:name="android\.intent\.action\.MAIN"[^>]*\/>\s*<category android:name="android\.intent\.category\.LAUNCHER"[^>]*\/>\s*<\/intent-filter>/,
+    /(<activity[^>]*?\bname="MainActivity"[^>]*>)\s*<intent-filter[^>]*>\s*<action android:name="android\.intent\.action\.MAIN"[^>]*\/>\s*<category android:name="android\.intent\.category\.LAUNCHER"[^>]*\/>\s*<\/intent-filter>/,
     '$1'
   );
 
@@ -200,7 +200,7 @@ function enableStaticContext() {
     const mainActivityPath = path.join(
       prefix,
       'platforms/android/app/src/main/java',
-      packageName.replace(/\./g, '/'),
+      packageName.replaceAll(".", "/"),
       'MainActivity.java'
     );
 
@@ -262,7 +262,7 @@ function disableSplashFadeOnRealmeAndroid13() {
     const mainActivityPath = path.join(
       prefix,
       'platforms/android/app/src/main/java',
-      packageName.replace(/\./g, '/'),
+      packageName.replaceAll(".", "/"),
       'MainActivity.java'
     );
 
@@ -335,7 +335,7 @@ function removeLegacyKeyboardWorkaround() {
     const mainActivityPath = path.join(
       prefix,
       'platforms/android/app/src/main/java',
-      packageName.replace(/\./g, '/'),
+      packageName.replaceAll(".", "/"),
       'MainActivity.java'
     );
 
