@@ -180,7 +180,7 @@ export function getThemeConfig(id) {
 export function getThemeExtensions(id, fallback = [oneDark]) {
 	const fallbackExtensions = normalizeExtensions(fallback);
 	const theme =
-		getThemeById(id) || getThemeById(String(id || "").replace(/-/g, "_"));
+		getThemeById(id) || getThemeById(String(id || "").replaceAll("-", "_"));
 	return resolveThemeEntryExtensions(theme, fallbackExtensions);
 }
 
