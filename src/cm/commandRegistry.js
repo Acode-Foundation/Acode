@@ -1,463 +1,1837 @@
-import type { Extension } from "@codemirror/state";
+import fsOperation from "fileSystem";
+import * as cmCommands from "@codemirror/commands";
+import {
+	cursorCharLeft,
+	cursorCharRight,
+	cursorDocEnd,
+	cursorDocStart,
+	cursorGroupLeft,
+	cursorGroupRight,
+	cursorLineDown,
+	cursorLineEnd,
+	cursorLineStart,
+	cursorLineUp,
+	cursorMatchingBracket,
+	cursorPageDown,
+	cursorPageUp,
+	deleteCharBackward,
+	deleteCharForward,
+	deleteGroupBackward,
+	deleteGroupForward,
+	deleteLineBoundaryForward,
+	deleteToLineEnd,
+	deleteToLineStart,
+	indentLess,
+	indentMore,
+	indentSelection,
+	insertBlankLine,
+	insertNewlineAndIndent,
+	lineComment,
+	lineUncomment,
+	redo,
+	selectAll,
+	selectCharLeft,
+	selectCharRight,
+	selectDocEnd,
+	selectDocStart,
+	selectGroupLeft,
+	selectGroupRight,
+	selectLine,
+	selectLineDown,
+	selectLineEnd,
+	selectLineStart,
+	selectLineUp,
+	selectMatchingBracket,
+	selectPageDown,
+	selectPageUp,
+	simplifySelection,
+	toggleBlockComment,
+	toggleLineComment,
+	undo,
+} from "@codemirror/commands";
+import {
+	foldCode,
+	indentUnit as indentUnitFacet,
+	unfoldCode,
+} from "@codemirror/language";
+import {
+	closeLintPanel,
+	forceLinting,
+	nextDiagnostic,
+	openLintPanel,
+	previousDiagnostic,
+} from "@codemirror/lint";
+import {
+	LSPPlugin,
+	formatDocument as lspFormatDocument,
+} from "@codemirror/lsp-client";
+import { Compartment, EditorSelection } from "@codemirror/state";
+import { keymap } from "@codemirror/view";
+import { focusEditorIfEditable } from "cm/editorReadOnly";
+import {
+	copyLineDownFoldAware,
+	copyLineUpFoldAware,
+	deleteLineFoldAware,
+	moveLineDownFoldAware,
+	moveLineUpFoldAware,
+} from "cm/foldAwareLineCommands";
+import { foldAllCodeBlocks, unfoldAllCodeBlocks } from "cm/foldingCommands";
+import {
+	canonicalizeKeyBinding,
+	keyBindingsConflict,
+	toCodeMirrorKey,
+} from "cm/keyBindingUtils";
+import {
+	renameSymbol as acodeRenameSymbol,
+	clearDiagnosticsEffect,
+	clientManager,
+	jumpToDeclaration as lspJumpToDeclaration,
+	jumpToDefinition as lspJumpToDefinition,
+	jumpToImplementation as lspJumpToImplementation,
+	jumpToTypeDefinition as lspJumpToTypeDefinition,
+	nextSignature as lspNextSignature,
+	prevSignature as lspPrevSignature,
+	showSignatureHelp as lspShowSignatureHelp,
+} from "cm/lsp";
+import {
+	closeReferencesPanel as acodeCloseReferencesPanel,
+	findAllReferences as acodeFindAllReferences,
+	findAllReferencesInTab as acodeFindAllReferencesInTab,
+} from "cm/lsp/references";
+import { showDocumentSymbols } from "components/symbolsPanel";
+import toast from "components/toast";
+import prompt from "dialogs/prompt";
+import actions from "handlers/quickTools";
+import keyBindings, {
+	APP_KEY_BINDING_NAMES,
+	CODEMIRROR_COMMAND_NAMES,
+} from "lib/keyBindings";
+import settings from "lib/settings";
+import Url from "utils/Url";
 
-export type LanguageExtensionProvider = () => Extension | Promise<Extension>;
-
-export interface AddModeOptions {
-	aliases?: string[];
-	filenameMatchers?: RegExp[];
-	/** Mode whose formatter (and Prettier parser) this mode reuses. */
-	formatAs?: string;
-}
-
-export interface ModesByName {
-	[name: string]: Mode;
-}
-
-const modesByName: ModesByName = {};
-const modes: Mode[] = [];
-
-const FILE_NAME_CACHE_LIMIT = 2000;
-
-interface NamedCheck {
-	mode: Mode;
-	exactName?: string;
-	matcher?: RegExp;
-}
-
-interface ModeIndex {
-	sorted: Mode[];
-	namedChecks: NamedCheck[];
-	extensions: Map<string, Mode>;
-	rankByMode: Map<Mode, number>;
-}
-
-let modeIndex: ModeIndex | null = null;
-const resolvedByFileName = new Map<string, Mode>();
-
-function normalizeModeKey(value: string): string {
-	return String(value ?? "")
-		.trim()
-		.toLowerCase();
-}
-
-function normalizeAliases(aliases: string[] = [], name: string): string[] {
-	const normalized = new Set<string>();
-	for (const alias of aliases) {
-		const key = normalizeModeKey(alias);
-		if (!key || key === name) continue;
-		normalized.add(key);
-	}
-	return [...normalized];
-}
-
-function escapeRegExp(value: string): string {
-	return String(value ?? "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function fileNameFromPath(path: string): string {
-	const value = String(path ?? "");
-	const slash = value.lastIndexOf("/");
-	const backslash = value.lastIndexOf("\\");
-	const sep = slash > backslash ? slash : backslash;
-	return sep === -1 ? value : value.slice(sep + 1);
-}
-
-function invalidateModeIndex(): void {
-	modeIndex = null;
-	resolvedByFileName.clear();
-}
+const commandKeymapCompartment = new Compartment();
 
 /**
- * Initialize CodeMirror mode list functionality
+ * @typedef {import("@codemirror/view").EditorView} EditorView
  */
-export function initModes(): void {
-	// CodeMirror modes don't need the same ace.define wrapper
-	// but we maintain the same API structure for compatibility
-}
 
 /**
- * Add language mode to CodeMirror editor
+ * @typedef {{
+ *  name: string;
+ *  description?: string;
+ *  readOnly?: boolean;
+ *  run: (view?: EditorView | null) => boolean | void;
+ *  requiresView?: boolean;
+ *  defaultDescription?: string;
+ *  defaultKey?: string | null;
+ *  key?: string | null;
+ * }} CommandEntry
  */
-export function addMode(
-	name: string,
-	extensions: string | string[],
-	caption?: string,
-	languageExtension: LanguageExtensionProvider | null = null,
-	options: AddModeOptions = {},
-): void {
-	const filename = normalizeModeKey(name);
-	const mode = new Mode(
-		filename,
-		caption,
-		extensions,
-		languageExtension,
-		options,
-	);
-	modesByName[filename] = mode;
-	mode.aliases.forEach((alias) => {
-		if (!modesByName[alias]) {
-			modesByName[alias] = mode;
-		}
+
+/** @type {Map<string, CommandEntry>} */
+const commandMap = new Map();
+
+/** @type {Record<string, any>} */
+let resolvedKeyBindings = keyBindings;
+
+/** @type {Record<string, any>} */
+let cachedResolvedKeyBindings = {};
+
+/** @type {Record<string, any>} */
+let cachedEffectiveKeyBindings = {};
+
+/** @type {{key: string, command: string, shadowedBy: string}[]} */
+let cachedKeyBindingConflicts = [];
+
+let resolvedKeyBindingsVersion = 0;
+
+/** @type {import("@codemirror/view").KeyBinding[]} */
+let cachedKeymap = [];
+
+/** @type {Set<EditorView>} */
+const commandViews = new Set();
+
+const CODEMIRROR_COMMAND_ENTRIES = Object.entries(cmCommands).filter(
+	([name, value]) =>
+		typeof value === "function" && CODEMIRROR_COMMAND_NAMES.has(name),
+);
+
+const CODEMIRROR_COMMAND_MAP = new Map(
+	CODEMIRROR_COMMAND_ENTRIES.map(([name, fn]) => [name, fn]),
+);
+
+registerCoreCommands();
+registerLspCommands();
+registerLintCommands();
+registerCommandsFromKeyBindings();
+rebuildKeymap();
+
+function registerCoreCommands() {
+	addCommand({
+		name: "focusEditor",
+		description: "Focus editor",
+		readOnly: true,
+		requiresView: false,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (resolvedView) focusEditorIfEditable(resolvedView);
+			return true;
+		},
 	});
-	modes.push(mode);
-	invalidateModeIndex();
-}
-
-/**
- * Remove language mode from CodeMirror editor
- */
-export function removeMode(name: string): void {
-	const filename = normalizeModeKey(name);
-	const mode = modesByName[filename];
-	if (!mode) return;
-
-	delete modesByName[mode.name];
-	mode.aliases.forEach((alias) => {
-		if (modesByName[alias] === mode) {
-			delete modesByName[alias];
-		}
+	addCommand({
+		name: "findFile",
+		description: "Find file in workspace",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("find-file");
+			return true;
+		},
+	});
+	addCommand({
+		name: "closeCurrentTab",
+		description: "Close current tab",
+		readOnly: false,
+		requiresView: false,
+		run() {
+			acode.exec("close-current-tab");
+			return true;
+		},
+	});
+	addCommand({
+		name: "newPane",
+		description: "Create new editor pane",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("new-pane");
+			return true;
+		},
+	});
+	addCommand({
+		name: "moveTabToNewPane",
+		description: "Move current tab to new pane",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("move-tab-to-new-pane");
+			return true;
+		},
+	});
+	addCommand({
+		name: "closePane",
+		description: "Close active editor pane",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("close-pane");
+			return true;
+		},
+	});
+	addCommand({
+		name: "focusNextPane",
+		description: "Focus next editor pane",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("focus-next-pane");
+			return true;
+		},
+	});
+	addCommand({
+		name: "focusPreviousPane",
+		description: "Focus previous editor pane",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("focus-previous-pane");
+			return true;
+		},
+	});
+	addCommand({
+		name: "closeAllTabs",
+		description: "Close all tabs",
+		readOnly: false,
+		requiresView: false,
+		run() {
+			acode.exec("close-all-tabs");
+			return true;
+		},
+	});
+	addCommand({
+		name: "togglePinnedTab",
+		description: "Pin or unpin current tab",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("toggle-pin-tab");
+			return true;
+		},
+	});
+	addCommand({
+		name: "newFile",
+		description: "Create new file",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("new-file");
+			return true;
+		},
+	});
+	addCommand({
+		name: "openFile",
+		description: "Open a file",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("open-file");
+			return true;
+		},
+	});
+	addCommand({
+		name: "openFolder",
+		description: "Open a folder",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("open-folder");
+			return true;
+		},
+	});
+	addCommand({
+		name: "saveFile",
+		description: "Save current file",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("save");
+			return true;
+		},
+	});
+	addCommand({
+		name: "saveFileAs",
+		description: "Save as current file",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("save-as");
+			return true;
+		},
+	});
+	addCommand({
+		name: "saveAllChanges",
+		description: "Save all changes",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("save-all-changes");
+			return true;
+		},
+	});
+	addCommand({
+		name: "nextFile",
+		description: "Open next file tab",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("next-file");
+			return true;
+		},
+	});
+	addCommand({
+		name: "prevFile",
+		description: "Open previous file tab",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("prev-file");
+			return true;
+		},
+	});
+	addCommand({
+		name: "nextFileHistory",
+		description: "Open next file tab from history",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("next-file-history");
+			return true;
+		},
+	});
+	addCommand({
+		name: "prevFileHistory",
+		description: "Open previous file tab from history",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("prev-file-history");
+			return true;
+		},
+	});
+	addCommand({
+		name: "showSettingsMenu",
+		description: "Show settings menu",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("open", "settings");
+			return true;
+		},
+	});
+	addCommand({
+		name: "renameFile",
+		description: "Rename active file",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("rename");
+			return true;
+		},
+	});
+	addCommand({
+		name: "run",
+		description: "Preview HTML and MarkDown",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("run");
+			return true;
+		},
+	});
+	addCommand({
+		name: "openInAppBrowser",
+		description: "Open In-App Browser",
+		readOnly: true,
+		requiresView: false,
+		run: openInAppBrowserCommand,
+	});
+	addCommand({
+		name: "toggleFullscreen",
+		description: "Toggle full screen mode",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("toggle-fullscreen");
+			return true;
+		},
+	});
+	addCommand({
+		name: "toggleSidebar",
+		description: "Toggle sidebar",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("toggle-sidebar");
+			return true;
+		},
+	});
+	addCommand({
+		name: "toggleMenu",
+		description: "Toggle main menu",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("toggle-menu");
+			return true;
+		},
+	});
+	addCommand({
+		name: "toggleEditMenu",
+		description: "Toggle edit menu",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("toggle-editmenu");
+			return true;
+		},
+	});
+	addCommand({
+		name: "selectall",
+		description: "Select all",
+		readOnly: true,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return selectAll(resolvedView);
+		},
+	});
+	addCommand({
+		name: "gotoline",
+		description: "Go to line...",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("goto");
+			return true;
+		},
+	});
+	addCommand({
+		name: "find",
+		description: "Find",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("find");
+			return true;
+		},
+	});
+	addCommand({
+		name: "copy",
+		description: "Copy",
+		readOnly: true,
+		requiresView: true,
+		run: copyCommand,
+	});
+	addCommand({
+		name: "cut",
+		description: "Cut",
+		readOnly: false,
+		requiresView: true,
+		run: cutCommand,
+	});
+	addCommand({
+		name: "paste",
+		description: "Paste",
+		readOnly: false,
+		requiresView: true,
+		run: pasteCommand,
 	});
 
-	const modeIndexInList = modes.findIndex(
-		(registeredMode) => registeredMode === mode,
-	);
-	if (modeIndexInList >= 0) {
-		modes.splice(modeIndexInList, 1);
-	}
-	invalidateModeIndex();
-}
-
-/**
- * Calculates a specificity score for a mode.
- * Higher score means more specific.
- * - Anchored patterns (e.g., "^Dockerfile") get a base score of 1000.
- * - Non-anchored patterns (extensions) are scored by length.
- */
-function getModeSpecificityScore(modeInstance: Mode): number {
-	if (modeInstance.name.toLowerCase() === "text") {
-		return 0;
-	}
-
-	const extensionsStr = modeInstance.extensions;
-	let maxScore = 0;
-
-	if (extensionsStr) {
-		const patterns = extensionsStr.split("|");
-		for (const pattern of patterns) {
-			let currentScore = 0;
-			if (pattern.startsWith("^")) {
-				// Exact filename match or anchored pattern
-				currentScore = 1000 + (pattern.length - 1); // Subtract 1 for '^'
-			} else {
-				// Extension match
-				currentScore = pattern.length;
-			}
-			if (currentScore > maxScore) {
-				maxScore = currentScore;
-			}
-		}
-	}
-
-	for (const matcher of modeInstance.filenameMatchers) {
-		const score = 1000 + matcher.source.length;
-		if (score > maxScore) {
-			maxScore = score;
-		}
-	}
-
-	return maxScore;
-}
-
-function exactNameFromRegex(matcher: RegExp): string | null {
-	const otherFlags = matcher.flags.replaceAll("i", "");
-	if (otherFlags) return null;
-
-	const source = matcher.source;
-	if (
-		source.length < 2 ||
-		source[0] !== "^" ||
-		source[source.length - 1] !== "$"
-	) {
-		return null;
-	}
-
-	const inner = source.slice(1, -1);
-	let name = "";
-	for (let i = 0; i < inner.length; i++) {
-		const ch = inner[i];
-		if (ch === "\\") {
-			const next = inner[i + 1];
-			if (!next) return null;
-			name += next;
-			i++;
-			continue;
-		}
-		if ("^$|.*+?()[]{}".includes(ch)) return null;
-		name += ch;
-	}
-
-	return name ? name.toLowerCase() : null;
-}
-
-function rememberFirst(map: Map<string, Mode>, key: string, mode: Mode): void {
-	if (key && !map.has(key)) {
-		map.set(key, mode);
-	}
-}
-
-function getModeIndex(): ModeIndex {
-	if (modeIndex) return modeIndex;
-
-	const ranked = modes.map((mode, index) => ({
-		mode,
-		score: getModeSpecificityScore(mode),
-		index,
-	}));
-	ranked.sort((a, b) => {
-		const scoreDiff = b.score - a.score;
-		return scoreDiff !== 0 ? scoreDiff : b.index - a.index;
+	addCommand({
+		name: "share",
+		description: "Share",
+		readOnly: true,
+		requiresView: true,
+		run: shareCommand,
+	});
+	addCommand({
+		name: "problems",
+		description: "Show errors and warnings",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("open", "problems");
+			return true;
+		},
+	});
+	addCommand({
+		name: "replace",
+		description: "Replace",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("replace");
+			return true;
+		},
+	});
+	addCommand({
+		name: "openCommandPalette",
+		description: "Open command palette",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("command-palette");
+			return true;
+		},
+	});
+	addCommand({
+		name: "modeSelect",
+		description: "Change language mode...",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("syntax");
+			return true;
+		},
+	});
+	addCommand({
+		name: "toggleQuickTools",
+		description: "Toggle quick tools",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			actions("toggle");
+			return true;
+		},
+	});
+	addCommand({
+		name: "selectWord",
+		description: "Select current word",
+		readOnly: false,
+		requiresView: true,
+		run: selectWordCommand,
+	});
+	addCommand({
+		name: "openLogFile",
+		description: "Open Log File",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("open-log-file");
+			return true;
+		},
+	});
+	addCommand({
+		name: "increaseUiZoom",
+		description: "Increase UI zoom",
+		readOnly: true,
+		requiresView: false,
+		run: () => adjustUiZoom(10),
+	});
+	addCommand({
+		name: "decreaseUiZoom",
+		description: "Decrease UI zoom",
+		readOnly: true,
+		requiresView: false,
+		run: () => adjustUiZoom(-10),
+	});
+	addCommand({
+		name: "increaseFontSize",
+		description: "Increase editor font size",
+		readOnly: true,
+		requiresView: false,
+		run: () => adjustFontSize(1),
+	});
+	addCommand({
+		name: "decreaseFontSize",
+		description: "Decrease editor font size",
+		readOnly: true,
+		requiresView: false,
+		run: () => adjustFontSize(-1),
+	});
+	addCommand({
+		name: "openPluginsPage",
+		description: "Open Plugins Page",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("open", "plugins");
+			return true;
+		},
+	});
+	addCommand({
+		name: "openFileExplorer",
+		description: "File Explorer",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("open", "file_browser");
+			return true;
+		},
+	});
+	addCommand({
+		name: "copyDeviceInfo",
+		description: "Copy Device info",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("copy-device-info");
+			return true;
+		},
+	});
+	addCommand({
+		name: "changeAppTheme",
+		description: "Change App Theme",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("change-app-theme");
+			return true;
+		},
+	});
+	addCommand({
+		name: "changeEditorTheme",
+		description: "Change Editor Theme",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("change-editor-theme");
+			return true;
+		},
+	});
+	addCommand({
+		name: "openTerminal",
+		description: "Open Terminal",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("new-terminal");
+			return true;
+		},
+	});
+	addCommand({
+		name: "acode:showWelcome",
+		description: "Show Welcome",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("welcome");
+			return true;
+		},
+	});
+	addCommand({
+		name: "run-tests",
+		description: "Run Tests",
+		key: "Ctrl-Shift-T",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			acode.exec("run-tests");
+			return true;
+		},
+	});
+	addCommand({
+		name: "dev:openInspector",
+		description: "Open Inspector",
+		run() {
+			acode.exec("open-inspector");
+			return true;
+		},
+		readOnly: true,
+		requiresView: false,
+	});
+	addCommand({
+		name: "dev:toggleDevTools",
+		description: "Toggle Developer Tools",
+		run() {
+			acode.exec("toggle-inspector");
+			return true;
+		},
+		readOnly: true,
+		requiresView: false,
+		key: "Ctrl-Shift-I",
 	});
 
-	const sorted = ranked.map((entry) => entry.mode);
-	const rankByMode = new Map<Mode, number>();
-	const namedChecks: NamedCheck[] = [];
-	const extensions = new Map<string, Mode>();
-
-	for (let rank = 0; rank < sorted.length; rank++) {
-		rankByMode.set(sorted[rank], rank);
-	}
-
-	for (const { mode } of ranked) {
-		if (mode.extensions) {
-			for (const raw of mode.extensions.split("|")) {
-				const pattern = raw.trim();
-				if (!pattern) continue;
-				if (pattern.startsWith("^")) {
-					namedChecks.push({
-						mode,
-						exactName: pattern.slice(1).toLowerCase(),
-					});
-				} else {
-					rememberFirst(extensions, pattern.toLowerCase(), mode);
-				}
+	// Additional editor-centric helpers mapped to CodeMirror primitives that have existing key bindings in defaults.
+	addCommand({
+		name: "duplicateSelection",
+		description: "Duplicate selection",
+		readOnly: false,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return copyLineDownFoldAware(resolvedView);
+		},
+	});
+	addCommand({
+		name: "copylinesdown",
+		description: "Copy lines down",
+		readOnly: false,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return copyLineDownFoldAware(resolvedView);
+		},
+	});
+	addCommand({
+		name: "copylinesup",
+		description: "Copy lines up",
+		readOnly: false,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return copyLineUpFoldAware(resolvedView);
+		},
+	});
+	addCommand({
+		name: "movelinesdown",
+		description: "Move lines down",
+		readOnly: false,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return moveLineDownFoldAware(resolvedView);
+		},
+	});
+	addCommand({
+		name: "movelinesup",
+		description: "Move lines up",
+		readOnly: false,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return moveLineUpFoldAware(resolvedView);
+		},
+	});
+	addCommand({
+		name: "removeline",
+		description: "Remove line",
+		readOnly: false,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return deleteLineFoldAware(resolvedView);
+		},
+	});
+	addCommand({
+		name: "insertlineafter",
+		description: "Insert line after",
+		readOnly: false,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return insertBlankLine(resolvedView);
+		},
+	});
+	addCommand({
+		name: "selectline",
+		description: "Select line",
+		readOnly: true,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return selectLine(resolvedView);
+		},
+	});
+	addCommand({
+		name: "selectlinesdown",
+		description: "Select line down",
+		readOnly: true,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return selectLineDown(resolvedView);
+		},
+	});
+	addCommand({
+		name: "selectlinesup",
+		description: "Select line up",
+		readOnly: true,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return selectLineUp(resolvedView);
+		},
+	});
+	addCommand({
+		name: "selectlinestart",
+		description: "Select line start",
+		readOnly: true,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return selectLineStart(resolvedView);
+		},
+	});
+	addCommand({
+		name: "selectlineend",
+		description: "Select line end",
+		readOnly: true,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return selectLineEnd(resolvedView);
+		},
+	});
+	addCommand({
+		name: "indent",
+		description: "Indent",
+		readOnly: false,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			const { state } = resolvedView;
+			const hasSelection = state.selection.ranges.some((range) => !range.empty);
+			if (hasSelection) {
+				return indentMore(resolvedView);
 			}
-		}
+			const indentString =
+				state.facet(indentUnitFacet) ||
+				(settings?.value?.softTab
+					? " ".repeat(Math.max(1, Number(settings?.value?.tabSize) || 2))
+					: "\t");
+			const insert = indentString && indentString.length ? indentString : "\t";
+			resolvedView.dispatch(
+				state.changeByRange((range) => ({
+					changes: { from: range.from, to: range.to, insert },
+					range: EditorSelection.cursor(range.from + insert.length),
+				})),
+			);
+			return true;
+		},
+	});
+	addCommand({
+		name: "outdent",
+		description: "Outdent",
+		readOnly: false,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return indentLess(resolvedView);
+		},
+	});
+	addCommand({
+		name: "indentselection",
+		description: "Indent selection",
+		readOnly: false,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return indentSelection(resolvedView);
+		},
+	});
+	addCommand({
+		name: "newline",
+		description: "Insert newline",
+		readOnly: false,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return insertNewlineAndIndent(resolvedView);
+		},
+	});
+	addCommand({
+		name: "joinlines",
+		description: "Join lines",
+		readOnly: false,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return deleteLineBoundaryForward(resolvedView);
+		},
+	});
+	addCommand({
+		name: "deletetolinestart",
+		description: "Delete to line start",
+		readOnly: false,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return deleteToLineStart(resolvedView);
+		},
+	});
+	addCommand({
+		name: "deletetolineend",
+		description: "Delete to line end",
+		readOnly: false,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return deleteToLineEnd(resolvedView);
+		},
+	});
+	addCommand({
+		name: "togglecomment",
+		description: "Toggle comment",
+		readOnly: false,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return toggleLineComment(resolvedView);
+		},
+	});
+	addCommand({
+		name: "comment",
+		description: "Add line comment",
+		readOnly: false,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return lineComment(resolvedView);
+		},
+	});
+	addCommand({
+		name: "uncomment",
+		description: "Remove line comment",
+		readOnly: false,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return lineUncomment(resolvedView);
+		},
+	});
+	addCommand({
+		name: "toggleBlockComment",
+		description: "Toggle block comment",
+		readOnly: false,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return toggleBlockComment(resolvedView);
+		},
+	});
+	addCommand({
+		name: "undo",
+		description: "Undo",
+		readOnly: false,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return undo(resolvedView);
+		},
+	});
+	addCommand({
+		name: "redo",
+		description: "Redo",
+		readOnly: false,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return redo(resolvedView);
+		},
+	});
+	addCommand({
+		name: "simplifySelection",
+		description: "Simplify selection",
+		readOnly: true,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return simplifySelection(resolvedView);
+		},
+	});
+	addCommand({
+		name: "foldCode",
+		description: "Fold the Lines that are selected (if possible)",
+		readOnly: true,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return foldCode(resolvedView);
+		},
+	});
+	addCommand({
+		name: "unfoldCode",
+		description: "Unfold folded ranges on selected lines.",
+		readOnly: true,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return unfoldCode(resolvedView);
+		},
+	});
+	addCommand({
+		name: "foldAll",
+		description:
+			"Fold all - top-level ranges usually depends on the syntax tree. It may not work reliably if the document isn't fully parsed (e.g., just initialized or too large to parse completely)",
+		readOnly: true,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return foldAllCodeBlocks(resolvedView);
+		},
+	});
+	addCommand({
+		name: "unfoldAll",
+		description: "Unfold all folded code.",
+		readOnly: true,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return unfoldAllCodeBlocks(resolvedView);
+		},
+	});
+}
 
-		for (const matcher of mode.filenameMatchers) {
-			const exactName = exactNameFromRegex(matcher);
-			if (exactName) {
-				namedChecks.push({ mode, exactName });
-				continue;
+function registerLspCommands() {
+	addCommand({
+		name: "formatDocument",
+		description: "Format document (Language Server)",
+		readOnly: false,
+		requiresView: true,
+		run: runLspCommand(lspFormatDocument),
+	});
+	addCommand({
+		name: "renameSymbol",
+		description: "Rename symbol (Language Server)",
+		readOnly: false,
+		requiresView: true,
+		run: runLspCommand(acodeRenameSymbol),
+	});
+	addCommand({
+		name: "showSignatureHelp",
+		description: "Show signature help",
+		readOnly: true,
+		requiresView: true,
+		run: runLspCommand(lspShowSignatureHelp),
+	});
+	addCommand({
+		name: "nextSignature",
+		description: "Next signature",
+		readOnly: true,
+		requiresView: true,
+		run: runLspCommand(lspNextSignature, { silentOnMissing: true }),
+	});
+	addCommand({
+		name: "prevSignature",
+		description: "Previous signature",
+		readOnly: true,
+		requiresView: true,
+		run: runLspCommand(lspPrevSignature, { silentOnMissing: true }),
+	});
+	addCommand({
+		name: "jumpToDefinition",
+		description: "Go to definition (Language Server)",
+		readOnly: true,
+		requiresView: true,
+		run: runLspCommand(lspJumpToDefinition),
+	});
+	addCommand({
+		name: "jumpToDeclaration",
+		description: "Go to declaration (Language Server)",
+		readOnly: true,
+		requiresView: true,
+		run: runLspCommand(lspJumpToDeclaration),
+	});
+	addCommand({
+		name: "jumpToTypeDefinition",
+		description: "Go to type definition (Language Server)",
+		readOnly: true,
+		requiresView: true,
+		run: runLspCommand(lspJumpToTypeDefinition),
+	});
+	addCommand({
+		name: "jumpToImplementation",
+		description: "Go to implementation (Language Server)",
+		readOnly: true,
+		requiresView: true,
+		run: runLspCommand(lspJumpToImplementation),
+	});
+	addCommand({
+		name: "findReferences",
+		description: "Find all references (Language Server)",
+		readOnly: true,
+		requiresView: true,
+		async run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			const plugin = LSPPlugin.get(resolvedView);
+			if (!plugin) {
+				notifyLspUnavailable();
+				return false;
 			}
-			namedChecks.push({ mode, matcher });
-		}
-	}
-
-	modeIndex = { sorted, namedChecks, extensions, rankByMode };
-	return modeIndex;
-}
-
-function findModeByExtension(
-	fileNameLower: string,
-	extensions: Map<string, Mode>,
-	rankByMode: Map<Mode, number>,
-): Mode | undefined {
-	let best: Mode | undefined;
-	let bestRank = Number.POSITIVE_INFINITY;
-	let dot = fileNameLower.indexOf(".");
-	while (dot >= 0 && dot < fileNameLower.length - 1) {
-		const mode = extensions.get(fileNameLower.slice(dot + 1));
-		if (mode) {
-			const rank = rankByMode.get(mode) ?? Number.POSITIVE_INFINITY;
-			if (rank < bestRank) {
-				best = mode;
-				bestRank = rank;
+			return acodeFindAllReferences(resolvedView);
+		},
+	});
+	addCommand({
+		name: "closeReferencePanel",
+		description: "Close references panel",
+		readOnly: true,
+		requiresView: false,
+		run() {
+			return acodeCloseReferencesPanel();
+		},
+	});
+	addCommand({
+		name: "findReferencesInTab",
+		description: "Find all references in new tab (Language Server)",
+		readOnly: true,
+		requiresView: true,
+		async run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			const plugin = LSPPlugin.get(resolvedView);
+			if (!plugin) {
+				notifyLspUnavailable();
+				return false;
 			}
-		}
-		dot = fileNameLower.indexOf(".", dot + 1);
-	}
-	return best;
-}
-
-function resolveModeForPath(fileName: string): Mode {
-	const fallback = modesByName.text;
-	const index = getModeIndex();
-	const fileNameLower = fileName.toLowerCase();
-
-	for (const check of index.namedChecks) {
-		if (check.exactName) {
-			if (
-				check.exactName === fileNameLower &&
-				check.mode.supportsFile?.(fileName)
-			) {
-				return check.mode;
+			return acodeFindAllReferencesInTab(resolvedView);
+		},
+	});
+	addCommand({
+		name: "restartAllLspServers",
+		description: "Restart all running LSP servers",
+		readOnly: true,
+		requiresView: false,
+		async run() {
+			const activeClients = clientManager.getActiveClients();
+			if (!activeClients.length) {
+				toast("No LSP servers are currently running");
+				return true;
 			}
-			continue;
-		}
+			const count = activeClients.length;
+			toast(`Restarting ${count} LSP server${count > 1 ? "s" : ""}...`);
 
-		const matcher = check.matcher;
-		if (!matcher) continue;
-		matcher.lastIndex = 0;
-		if (matcher.test(fileName) && check.mode.supportsFile?.(fileName)) {
-			return check.mode;
-		}
-	}
+			// Dispose all clients (also clears diagnostics)
+			await clientManager.dispose();
 
-	const byExtension = findModeByExtension(
-		fileNameLower,
-		index.extensions,
-		index.rankByMode,
-	);
-	if (byExtension?.supportsFile?.(fileName)) return byExtension;
+			// Trigger reconnect for active file
+			editorManager?.restartLsp?.();
+			return true;
+		},
+	});
+	addCommand({
+		name: "stopAllLspServers",
+		description: "Stop all running LSP servers",
+		readOnly: true,
+		requiresView: false,
+		async run() {
+			const activeClients = clientManager.getActiveClients();
+			if (!activeClients.length) {
+				toast("No LSP servers are currently running");
+				return true;
+			}
+			const count = activeClients.length;
 
-	for (const mode of index.sorted) {
-		if (mode.supportsFile?.(fileName)) return mode;
-	}
-
-	return fallback;
+			// Dispose all clients
+			await clientManager.dispose();
+			toast(`Stopped ${count} LSP server${count > 1 ? "s" : ""}`);
+			return true;
+		},
+	});
+	addCommand({
+		name: "documentSymbols",
+		description: "Go to Symbol in Document...",
+		readOnly: true,
+		requiresView: true,
+		async run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return showDocumentSymbols(resolvedView);
+		},
+	});
 }
 
-function cacheResolvedMode(fileNameLower: string, mode: Mode): Mode {
-	if (resolvedByFileName.size >= FILE_NAME_CACHE_LIMIT) {
-		resolvedByFileName.clear();
-	}
-	resolvedByFileName.set(fileNameLower, mode);
-	return mode;
+function registerLintCommands() {
+	addCommand({
+		name: "openLintPanel",
+		description: "Open lint panel",
+		readOnly: true,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return openLintPanel(resolvedView);
+		},
+	});
+	addCommand({
+		name: "closeLintPanel",
+		description: "Close lint panel",
+		readOnly: true,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return closeLintPanel(resolvedView);
+		},
+	});
+	addCommand({
+		name: "nextDiagnostic",
+		description: "Go to next diagnostic",
+		readOnly: true,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return nextDiagnostic(resolvedView);
+		},
+	});
+	addCommand({
+		name: "previousDiagnostic",
+		description: "Go to previous diagnostic",
+		readOnly: true,
+		requiresView: true,
+		run(view) {
+			const resolvedView = resolveView(view);
+			if (!resolvedView) return false;
+			return previousDiagnostic(resolvedView);
+		},
+	});
 }
 
-/**
- * Get mode for file path
- */
-export function getModeForPath(path: string): Mode {
-	const fileName = fileNameFromPath(path);
-	const cached = resolvedByFileName.get(fileName);
-	if (cached) return cached;
+function registerCommandsFromKeyBindings() {
+	Object.entries(keyBindings).forEach(([name, binding]) => {
+		if (commandMap.has(name)) return;
+		const description = binding?.description || humanizeCommandName(name);
+		const readOnly = binding?.readOnly ?? false;
+		const requiresView = !!binding?.editorOnly;
+		const commandFn = CODEMIRROR_COMMAND_MAP.get(name);
 
-	return cacheResolvedMode(fileName, resolveModeForPath(fileName));
-}
-
-/**
- * Get all modes by name
- */
-export function getModesByName(): ModesByName {
-	return modesByName;
-}
-
-/**
- * Get all modes array
- */
-export function getModes(): Mode[] {
-	return modes;
-}
-
-export function getMode(name: string): Mode | null {
-	return modesByName[normalizeModeKey(name)] || null;
-}
-
-/**
- * Name of the mode that `name` formats as, with aliases resolved, or `null`.
- */
-export function getFormatAsMode(name: string): string | null {
-	const formatAs = getMode(name)?.formatAs;
-	if (!formatAs) return null;
-	return getMode(formatAs)?.name ?? formatAs;
-}
-
-export class Mode {
-	extensions: string;
-	caption: string;
-	name: string;
-	mode: string;
-	aliases: string[];
-	extRe: RegExp | null;
-	filenameMatchers: RegExp[];
-	formatAs: string | null;
-	languageExtension: LanguageExtensionProvider | null;
-
-	constructor(
-		name: string,
-		caption: string | undefined,
-		extensions: string | string[],
-		languageExtension: LanguageExtensionProvider | null = null,
-		options: AddModeOptions = {},
-	) {
-		if (Array.isArray(extensions)) {
-			extensions = extensions.join("|");
-		}
-
-		this.name = name;
-		this.mode = name; // CodeMirror uses different mode naming
-		this.extensions = extensions;
-		this.caption = caption || this.name.replaceAll("_", " ");
-		// Plugins may pass anything here; ignore what isn't the expected shape
-		const { aliases, filenameMatchers, formatAs } =
-			options && typeof options === "object" ? options : {};
-		this.aliases = Array.isArray(aliases)
-			? normalizeAliases(aliases, this.name)
-			: [];
-		this.filenameMatchers = Array.isArray(filenameMatchers)
-			? filenameMatchers.filter((matcher) => matcher instanceof RegExp)
-			: [];
-		this.formatAs =
-			typeof formatAs === "string" && normalizeModeKey(formatAs)
-				? normalizeModeKey(formatAs)
-				: null;
-		this.languageExtension = languageExtension;
-		let re = "";
-
-		if (!extensions) {
-			this.extRe = null;
+		if (binding?.action) {
+			addCommand({
+				name,
+				description,
+				readOnly,
+				requiresView,
+				run(view) {
+					try {
+						if (requiresView) {
+							const resolvedView = resolveView(view);
+							if (!resolvedView) return false;
+						}
+						acode.exec(binding.action);
+						return true;
+					} catch (error) {
+						console.error(`Failed to execute action ${binding.action}`, error);
+						return false;
+					}
+				},
+			});
 			return;
 		}
 
-		const patterns = extensions
-			.split("|")
-			.map((pattern) => pattern.trim())
-			.filter(Boolean);
-		const filenamePatterns = patterns
-			.filter((pattern) => pattern.startsWith("^"))
-			.map((pattern) => `^${escapeRegExp(pattern.slice(1))}$`);
-		const extensionPatterns = patterns
-			.filter((pattern) => !pattern.startsWith("^"))
-			.map((pattern) => escapeRegExp(pattern));
-		const regexParts: string[] = [];
-
-		if (extensionPatterns.length) {
-			regexParts.push(`^.*?\\.(${extensionPatterns.join("|")})$`);
+		if (commandFn) {
+			addCommand({
+				name,
+				description,
+				readOnly,
+				requiresView: true,
+				run(view) {
+					const resolvedView = resolveView(view);
+					if (!resolvedView) return false;
+					return commandFn(resolvedView);
+				},
+			});
 		}
+	});
+}
 
-		regexParts.push(...filenamePatterns);
+function addCommand(entry) {
+	const command = {
+		...entry,
+		defaultDescription: entry.description || entry.name,
+		defaultKey: entry.key ?? null,
+		key: entry.key ?? null,
+	};
+	commandMap.set(entry.name, command);
+}
 
-		if (!regexParts.length) {
-			this.extRe = null;
+function resolveView(view) {
+	return view || editorManager?.editor || null;
+}
+
+function notifyLspUnavailable() {
+	toast?.("Language server not available");
+}
+
+function runLspCommand(commandFn, options = {}) {
+	return (view) => {
+		const resolvedView = resolveView(view);
+		if (!resolvedView) return false;
+		const plugin = LSPPlugin.get(resolvedView);
+		if (!plugin) {
+			if (!options?.silentOnMissing) {
+				notifyLspUnavailable();
+			}
+			return false;
+		}
+		const result = commandFn(resolvedView);
+		return result !== false;
+	};
+}
+
+function humanizeCommandName(name) {
+	return name
+		.replace(/[a-z0-9](?=[A-Z])/g, "$& ")
+		.replaceAll("_", " ")
+		.replace(/^./, (char) => char.toUpperCase());
+}
+
+function copyCommand(view) {
+	const resolvedView = resolveView(view);
+	if (!resolvedView) return false;
+	const { state } = resolvedView;
+	const texts = state.selection.ranges.map((range) => {
+		if (range.empty) {
+			const line = state.doc.lineAt(range.head);
+			return state.doc.sliceString(line.from, line.to);
+		}
+		return state.doc.sliceString(range.from, range.to);
+	});
+	const textToCopy = texts.join("\n");
+	cordova.plugins.clipboard.copy(textToCopy);
+	return true;
+}
+
+function cutCommand(view) {
+	const resolvedView = resolveView(view);
+	if (!resolvedView) return false;
+	const { state } = resolvedView;
+	const ranges = state.selection.ranges;
+	const segments = [];
+	let changes = [];
+	ranges.forEach((range) => {
+		if (range.empty) {
+			const line = state.doc.lineAt(range.head);
+			segments.push(state.doc.sliceString(line.from, line.to));
+			changes.push({ from: line.from, to: line.to, insert: "" });
+			return;
+		}
+		segments.push(state.doc.sliceString(range.from, range.to));
+		changes.push({ from: range.from, to: range.to, insert: "" });
+	});
+	cordova.plugins.clipboard.copy(segments.join("\n"));
+	resolvedView.dispatch({
+		changes,
+		selection: EditorSelection.single(
+			changes[0]?.from ?? state.selection.main.from,
+		),
+	});
+	return true;
+}
+
+function pasteCommand(view) {
+	const resolvedView = resolveView(view);
+	if (!resolvedView) return false;
+	cordova.plugins.clipboard.paste((text = "") => {
+		// replaceSelection measures the inserted text after line-ending
+		// normalization, so CRLF clipboard text can't push the cursor past
+		// the end of the document.
+		resolvedView.dispatch(resolvedView.state.replaceSelection(String(text)), {
+			userEvent: "input.paste",
+		});
+	});
+	return true;
+}
+
+function shareCommand(view) {
+	const resolvedView = resolveView(view);
+	if (!resolvedView) return false;
+
+	const { state } = resolvedView;
+	const ranges = state.selection.ranges;
+	const segments = [];
+
+	ranges.forEach((range) => {
+		if (range.empty) {
+			const line = state.doc.lineAt(range.head);
+			segments.push(state.doc.sliceString(line.from, line.to));
 			return;
 		}
 
-		re =
-			regexParts.length === 1 ? regexParts[0] : `(?:${regexParts.join("|")})`;
-		this.extRe = new RegExp(re, "i");
+		segments.push(state.doc.sliceString(range.from, range.to));
+	});
+
+	const textToShare = segments.join("\n");
+
+	system.shareText(textToShare, console.log, console.error);
+
+	return true;
+}
+
+function selectWordCommand(view) {
+	const resolvedView = resolveView(view);
+	if (!resolvedView) return false;
+	const { state } = resolvedView;
+	const ranges = state.selection.ranges.map((range) => {
+		const word = state.wordAt(range.head);
+		if (word) return EditorSelection.range(word.from, word.to);
+		const line = state.doc.lineAt(range.head);
+		return EditorSelection.range(line.from, line.to);
+	});
+	resolvedView.dispatch({
+		selection: EditorSelection.create(ranges, state.selection.mainIndex),
+	});
+	return true;
+}
+
+async function openInAppBrowserCommand() {
+	const url = await prompt("Enter url", "", "url", {
+		placeholder: "http://",
+		match: /^https?:\/\/.+/,
+	});
+	if (url) acode.exec("open-inapp-browser", url);
+	return true;
+}
+
+function adjustFontSize(delta) {
+	const current = settings?.value?.fontSize || "12px";
+	const numeric = Number.parseInt(current, 10) || 12;
+	const next = Math.min(72, Math.max(6, numeric + delta));
+	settings.value.fontSize = `${next}px`;
+	settings.update(false);
+	return true;
+}
+
+function adjustUiZoom(delta) {
+	const current = Number(settings?.value?.uiZoom) || 100;
+	const next = Math.min(160, Math.max(70, current + delta));
+	settings.value.uiZoom = next;
+	settings.update(false);
+	return true;
+}
+
+function parseKeyString(keyString) {
+	if (!keyString) return [];
+	return String(keyString)
+		.split("|")
+		.map((combo) => combo.trim())
+		.filter(Boolean);
+}
+
+function hasOwnBindingOverride(name) {
+	return Object.prototype.hasOwnProperty.call(resolvedKeyBindings ?? {}, name);
+}
+
+function resolveBindingInfo(name) {
+	const baseBinding = keyBindings[name] ?? null;
+	if (!hasOwnBindingOverride(name)) return baseBinding;
+
+	const override = resolvedKeyBindings?.[name];
+	if (override === null) {
+		return baseBinding ? { ...baseBinding, key: null } : { key: null };
 	}
 
-	supportsFile(filename: string): boolean {
-		if (this.extRe?.test(filename)) return true;
+	if (!override || typeof override !== "object") {
+		return baseBinding;
+	}
 
-		return this.filenameMatchers.some((matcher) => {
-			matcher.lastIndex = 0;
-			return matcher.test(filename);
+	return baseBinding ? { ...baseBinding, ...override } : override;
+}
+
+function buildResolvedKeyBindingsSnapshot() {
+	const bindingNames = new Set([
+		...Object.keys(keyBindings),
+		...Object.keys(resolvedKeyBindings ?? {}),
+	]);
+
+	return Object.fromEntries(
+		Array.from(bindingNames, (name) => [name, resolveBindingInfo(name)]).filter(
+			([, binding]) => binding,
+		),
+	);
+}
+
+function rebuildKeymap() {
+	cachedResolvedKeyBindings = buildResolvedKeyBindingsSnapshot();
+	const candidates = [];
+	let order = 0;
+	commandMap.forEach((command, name) => {
+		const bindingInfo = resolveBindingInfo(name);
+		command.description =
+			bindingInfo?.description || command.defaultDescription;
+		const keySource =
+			bindingInfo && Object.prototype.hasOwnProperty.call(bindingInfo, "key")
+				? bindingInfo.key
+				: (command.defaultKey ?? null);
+		command.key = keySource;
+		const combos = parseKeyString(keySource);
+		combos.forEach((combo) => {
+			const cmKey = toCodeMirrorKey(combo);
+			if (!cmKey) return;
+			candidates.push({
+				name,
+				key: cmKey,
+				rawKey: combo,
+				order: order++,
+				priority: getBindingPriority(name),
+			});
+		});
+	});
+
+	candidates.sort(
+		(left, right) => right.priority - left.priority || left.order - right.order,
+	);
+
+	const bindings = [];
+	const claimedKeys = new Map();
+	const effectiveKeys = new Map();
+	const conflicts = [];
+	for (const candidate of candidates) {
+		const canonicalKey = canonicalizeKeyBinding(candidate.key);
+		const claimed = Array.from(claimedKeys.entries()).find(([key]) =>
+			keyBindingsConflict(key, canonicalKey),
+		);
+		if (claimed) {
+			const [claimedKey, owner] = claimed;
+			const appCommandShadowsCodeMirrorDefault =
+				APP_KEY_BINDING_NAMES.has(owner) &&
+				CODEMIRROR_COMMAND_NAMES.has(candidate.name) &&
+				candidate.priority === 10;
+			const repeatedKeyForSameCommand =
+				owner === candidate.name && claimedKey === canonicalKey;
+			if (!repeatedKeyForSameCommand && !appCommandShadowsCodeMirrorDefault) {
+				conflicts.push({
+					key: candidate.key,
+					command: candidate.name,
+					shadowedBy: owner,
+				});
+			}
+			continue;
+		}
+
+		claimedKeys.set(canonicalKey, candidate.name);
+		if (!effectiveKeys.has(candidate.name)) {
+			effectiveKeys.set(candidate.name, []);
+		}
+		effectiveKeys.get(candidate.name).push(candidate.rawKey);
+		bindings.push({
+			key: candidate.key,
+			run: (view) => executeCommand(candidate.name, view),
+			preventDefault: true,
 		});
 	}
 
-	/**
-	 * Get the CodeMirror language extension
-	 */
-	getExtension(): LanguageExtensionProvider | null {
-		return this.languageExtension;
+	cachedEffectiveKeyBindings = Object.fromEntries(
+		Object.entries(cachedResolvedKeyBindings).map(([name, binding]) => [
+			name,
+			{
+				...binding,
+				key: effectiveKeys.get(name)?.join("|") || null,
+			},
+		]),
+	);
+	cachedKeyBindingConflicts = conflicts;
+	cachedKeymap = bindings;
+	resolvedKeyBindingsVersion += 1;
+	return bindings;
+}
+
+function getBindingPriority(name) {
+	if (APP_KEY_BINDING_NAMES.has(name)) return 40;
+	if (!Object.prototype.hasOwnProperty.call(keyBindings, name)) return 30;
+
+	const override = resolvedKeyBindings?.[name];
+	if (
+		override &&
+		typeof override === "object" &&
+		Object.prototype.hasOwnProperty.call(override, "key") &&
+		override.key !== keyBindings[name]?.key
+	) {
+		return 20;
 	}
 
-	/**
-	 * Check if the language extension is available (loaded)
-	 */
-	isAvailable(): boolean {
-		return this.languageExtension !== null;
+	return 10;
+}
+
+function resolveCommand(name) {
+	return commandMap.get(name) || null;
+}
+
+function commandRunsInReadOnly(command, view) {
+	if (!view) return command.readOnly;
+	return view.state?.readOnly ? !!command.readOnly : true;
+}
+
+export function executeCommand(name, view, args) {
+	const command = resolveCommand(name);
+	if (!command) return false;
+	const targetView = command.requiresView
+		? resolveView(view)
+		: resolveView(view) || null;
+	if (command.requiresView && !targetView) return false;
+	if (!commandRunsInReadOnly(command, targetView)) return false;
+	try {
+		const result = command.run(targetView, args);
+		return result !== false;
+	} catch (error) {
+		console.error(`Failed to execute command ${name}`, error);
+		return false;
 	}
+}
+
+export function getRegisteredCommands() {
+	return Array.from(commandMap.values()).map((command) => ({
+		name: command.name,
+		description: command.description || command.defaultDescription,
+		key: command.key || null,
+	}));
+}
+
+export function getResolvedKeyBindings() {
+	return cachedResolvedKeyBindings;
+}
+
+export function getEffectiveKeyBindings() {
+	return cachedEffectiveKeyBindings;
+}
+
+export function getKeyBindingConflicts() {
+	return cachedKeyBindingConflicts.map((conflict) => ({ ...conflict }));
+}
+
+export function getResolvedKeyBindingsVersion() {
+	return resolvedKeyBindingsVersion;
+}
+
+export function getCommandKeymapExtension() {
+	return commandKeymapCompartment.of(keymap.of(cachedKeymap));
+}
+
+export async function setKeyBindings(view) {
+	await loadCustomKeyBindings();
+	const bindings = rebuildKeymap();
+	const resolvedView = resolveView(view);
+	if (resolvedView) commandViews.add(resolvedView);
+	for (const knownView of commandViews) {
+		if (!knownView.dom?.isConnected) {
+			commandViews.delete(knownView);
+			continue;
+		}
+		applyCommandKeymap(knownView, bindings);
+	}
+	return getKeyBindingConflicts();
+}
+
+async function loadCustomKeyBindings() {
+	try {
+		const bindingsFile = fsOperation(KEYBINDING_FILE);
+		if (await bindingsFile.exists()) {
+			const bindings = await bindingsFile.readFile("json");
+			if (
+				!bindings ||
+				typeof bindings !== "object" ||
+				Array.isArray(bindings)
+			) {
+				throw new TypeError("Key bindings must be a JSON object");
+			}
+
+			let updated = false;
+			Object.keys(keyBindings).forEach((key) => {
+				if (!(key in bindings)) {
+					bindings[key] = keyBindings[key];
+					updated = true;
+				}
+			});
+			resolvedKeyBindings = bindings;
+			if (updated) {
+				bindingsFile
+					.writeFile(JSON.stringify(bindings, undefined, 2))
+					.catch((error) => {
+						window.log?.("error", "Failed to back-fill new key bindings!");
+						window.log?.("error", error);
+					});
+			}
+		} else {
+			throw new Error("Key binding file not found");
+		}
+	} catch (error) {
+		await resetKeyBindings();
+		resolvedKeyBindings = keyBindings;
+	}
+}
+
+export async function resetKeyBindings() {
+	try {
+		const fs = fsOperation(KEYBINDING_FILE);
+		const fileName = Url.basename(KEYBINDING_FILE);
+		const content = JSON.stringify(keyBindings, undefined, 2);
+		if (!(await fs.exists())) {
+			await fsOperation(DATA_STORAGE).createFile(fileName, content);
+			return;
+		}
+		await fs.writeFile(content);
+	} catch (error) {
+		window.log?.("error", "Reset Keybinding failed!");
+		window.log?.("error", error);
+	}
+}
+
+export { commandKeymapCompartment };
+
+export function registerExternalCommand(descriptor = {}) {
+	const normalized = normalizeExternalCommand(descriptor);
+	if (!normalized) return null;
+
+	const { name } = normalized;
+	if (commandMap.has(name)) {
+		commandMap.delete(name);
+	}
+
+	addCommand(normalized);
+	const stored = commandMap.get(name);
+	if (stored) {
+		stored.key = normalized.key ?? stored.key;
+	}
+
+	rebuildKeymap();
+	return stored;
+}
+
+export function removeExternalCommand(name) {
+	if (!name) return false;
+	const exists = commandMap.has(name);
+	if (!exists) return false;
+	commandMap.delete(name);
+	rebuildKeymap();
+	return true;
+}
+
+export function refreshCommandKeymap(view) {
+	const resolvedView = resolveView(view);
+	applyCommandKeymap(resolvedView);
+}
+
+function normalizeExternalCommand(descriptor) {
+	const name =
+		typeof descriptor?.name === "string" ? descriptor.name.trim() : "";
+	if (!name) {
+		console.warn("Command registration skipped: missing name", descriptor);
+		return null;
+	}
+	const exec = typeof descriptor?.exec === "function" ? descriptor.exec : null;
+	if (!exec) {
+		console.warn(
+			`Command registration skipped for "${name}": exec must be a function.`,
+		);
+		return null;
+	}
+
+	const requiresView = descriptor?.requiresView ?? true;
+	const key = normalizeExternalKey(descriptor?.bindKey);
+
+	return {
+		name,
+		description: descriptor?.description || humanizeCommandName(name),
+		readOnly: descriptor?.readOnly ?? true,
+		requiresView,
+		key,
+		run(view, args) {
+			try {
+				const resolvedView = resolveView(view);
+				if (requiresView && !resolvedView) return false;
+				const result = exec(resolvedView || null, args);
+				return result !== false;
+			} catch (error) {
+				console.error(`Command \"${name}\" failed`, error);
+				return false;
+			}
+		},
+	};
+}
+
+function normalizeExternalKey(bindKey) {
+	if (!bindKey) return null;
+	if (typeof bindKey === "string") return bindKey;
+	const combos = [];
+	if (typeof bindKey === "object") {
+		const pushCombo = (combo) => {
+			if (typeof combo === "string" && combo.trim()) combos.push(combo.trim());
+		};
+		pushCombo(bindKey.win);
+		pushCombo(bindKey.linux);
+		pushCombo(bindKey.mac);
+	}
+	return combos.length ? combos.join("|") : null;
+}
+
+function applyCommandKeymap(view, bindings = cachedKeymap) {
+	if (!view) return;
+	commandViews.add(view);
+	view.dispatch({
+		effects: commandKeymapCompartment.reconfigure(
+			keymap.of(bindings ?? cachedKeymap),
+		),
+	});
 }
