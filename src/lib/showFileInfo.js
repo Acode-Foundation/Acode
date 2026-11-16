@@ -42,7 +42,7 @@ export default async function showFileInfo(url) {
 
 		if (options.isEditor) {
 			const value = await fs.readFile(settings.value.defaultFileEncoding);
-			options.lineCount = value.split(/\n+/).length;
+			options.lineCount = value.split("\n").length;
 			options.wordCount = value.split(/\S+/).length;
 
 			if (/s?ftp:/.test(protocol)) {
