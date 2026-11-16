@@ -929,7 +929,7 @@ function parseKeyParts(combo) {
 function humanizeCommandName(name) {
 	return name
 		.replace(/[a-z0-9](?=[A-Z])/g, "$& ")
-		.replace('_', ' ')
+		.replaceAll('_', ' ')
 		.replace(/^./, (char) => char.toUpperCase());
 }
 
