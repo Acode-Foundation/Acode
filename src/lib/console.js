@@ -625,7 +625,7 @@ import ConsoleExecutor, {
 			} catch (error) {
 				return data
 					.toString()
-					.replace(/{.*}/, "{...}")
+					.replace(/\{.*\}/, "{...}")
 					.replace(/^function\s+[\w_$\d]+\s*/, "")
 					.replace(/\s+/g, "");
 			}
