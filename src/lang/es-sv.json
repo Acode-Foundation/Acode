@@ -911,5 +911,9 @@
 	"error-permission-revoked": "Acode ya no puede acceder a esta ubicación. Abre la carpeta nuevamente para otorgar permiso de acceso.",
 	"error-not-found": "Este archivo o carpeta ya no existe. Puede que se haya borrado, movido o renombrado.",
 	"error-no-space": "No hay espacio suficiente en este dispositivo.",
-	"error-network": "No se pudo establecer conexión con el servidor. Revisa tu conexión e intentalo de nuevo."
+	"error-network": "No se pudo establecer conexión con el servidor. Revisa tu conexión e intentalo de nuevo.",
+	"files saved count": "Archivos guardados: {count}",
+	"files not saved count": "Archivos sin guardar: {count}",
+	"use native index": "Usar índice nativo",
+	"use native index hint": "Buscar más rapido en carpetas locales usando el índice de archivo nativo."
 }

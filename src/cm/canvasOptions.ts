@@ -3,13 +3,12 @@ import {
 	CanvasView,
 	type CanvasViewConfig,
 	type FontSpec,
+	parseColor,
 	type TokenStyleSpec,
 } from "@acode.app/canvas-view";
-import { HighlightStyle } from "@codemirror/language";
-import { oneDark } from "@codemirror/theme-one-dark";
 import { tags as t } from "@lezer/highlight";
 import { getRainbowBracketColors } from "cm/rainbowBrackets";
-import { getThemeById, getThemeConfig, getThemeExtensions } from "cm/themes";
+import { getThemeById, getThemeConfig } from "cm/themes";
 
 /**
  * Maps Acode's editor settings and themes to @acode.app/canvas-view options.
@@ -33,6 +32,7 @@ interface ThemeConfig {
 	activeLine?: string;
 	lineNumber?: string;
 	lineNumberActive?: string;
+	gutterBorder?: string;
 	matchingBracket?: string;
 	selectionMatch?: string;
 	[color: string]: unknown;
@@ -68,40 +68,6 @@ function clampSetting(
 	return Math.min(Math.max(Math.round(number), min), max);
 }
 
-/**
- * Find the HighlightStyle a theme passes to `syntaxHighlighting()`, by
- * walking its extension tree (arrays, precedence wrappers, compartments,
- * `facet.of(value)` providers). Returns null for themes that compute their
- * highlighter (`themeType`) or don't have one.
- */
-export function findHighlightStyle(
-	extension: unknown,
-	seen = new Set<unknown>(),
-): HighlightStyle | null {
-	if (!extension || typeof extension !== "object" || seen.has(extension)) {
-		return null;
-	}
-	seen.add(extension);
-	if (extension instanceof HighlightStyle) return extension;
-	if (Array.isArray(extension)) {
-		for (const item of extension) {
-			const found = findHighlightStyle(item, seen);
-			if (found) return found;
-		}
-		return null;
-	}
-	const node = extension as {
-		value?: unknown;
-		inner?: unknown;
-		extension?: unknown;
-	};
-	return (
-		findHighlightStyle(node.value, seen) ||
-		findHighlightStyle(node.inner, seen) ||
-		findHighlightStyle(node.extension, seen)
-	);
-}
-
 /** Token colors from a theme config, for themes without a HighlightStyle. */
 function highlightFromConfig(config: ThemeConfig): TokenStyleSpec[] {
 	const color = (key: string) =>
@@ -128,53 +94,121 @@ function highlightFromConfig(config: ThemeConfig): TokenStyleSpec[] {
 	return specs.filter((spec) => spec.color);
 }
 
-/**
- * Decoration colors the canvas draws natively, as the themes' CSS has them:
- * selection matches use the theme's `selectionMatch`, else its selection.
- */
-function themeClasses(config: ThemeConfig): CanvasThemeSpec["classes"] {
-	const classes: NonNullable<CanvasThemeSpec["classes"]> = {};
-	if (config.matchingBracket) {
-		classes["cm-matchingBracket"] = { background: config.matchingBracket };
-	}
-	const selectionMatch = config.selectionMatch || config.selection;
-	if (selectionMatch) {
-		classes["cm-selectionMatch"] = { background: selectionMatch };
-	}
-	return Object.keys(classes).length ? classes : undefined;
-}
+/** What `CanvasView`'s `theme` option and `setTheme` take. */
+export type CanvasThemeSource = NonNullable<CanvasViewConfig["theme"]>;
 
 /**
- * The canvas theme for an Acode editor theme: colors from its config, syntax
- * colors from the HighlightStyle in its extensions. The theme's
- * EditorView.theme stays in the state, where it styles the DOM UI (tooltips,
- * panels, autocomplete).
+ * The canvas theme for an Acode editor theme. canvas-view resolves the
+ * colors itself from the theme's own CSS (the `EditorView.theme` and
+ * highlight style in the state: background, text, cursor, selection, active
+ * line fill or frame, gutter, line numbers, matching brackets, selection
+ * matches), like the DOM editor shows them, and again when the theme
+ * compartment changes. The CSS is the only source for those: a theme's
+ * config doesn't override it, so both renderers draw a theme the same.
+ * This adds what the CSS doesn't say: Acode's own scrollbars, a
+ * see-through canvas over a picture, the gutter border and config-only
+ * syntax colors.
  */
-export function getCanvasTheme(themeId: string): CanvasThemeSpec {
+export function getCanvasTheme(
+	themeId: string,
+	seeThrough = false,
+): CanvasThemeSource {
 	// Resolve ids like getThemeExtensions does ("one-dark" -> "one_dark").
 	const theme =
 		getThemeById(themeId) || getThemeById(String(themeId).replace(/-/g, "_"));
 	const config = (theme?.config ||
 		getThemeConfig(themeId) ||
 		{}) as ThemeConfig;
-	const highlight =
-		findHighlightStyle(getThemeExtensions(themeId, [oneDark])) ||
-		highlightFromConfig(config);
-	return {
-		dark: config.dark !== false,
-		background: config.background || "#282c34",
-		foreground: config.foreground || "#abb2bf",
-		selection: config.selection,
-		cursor: config.cursor,
-		activeLine: config.activeLine,
-		// Like the DOM themes, which give the active gutter line no background.
-		activeLineGutter: config.background,
-		gutterForeground: config.lineNumber,
-		gutterActiveForeground: config.lineNumberActive,
-		// Acode draws its own (draggable) scrollbars over the editor.
-		scrollbar: "transparent",
-		highlight,
-		classes: themeClasses(config),
+	// Only used for a theme without a highlight style in its extensions.
+	const highlight = highlightFromConfig(config);
+	return (css: CanvasThemeSpec): CanvasThemeSpec => {
+		const framed = !!css.activeLineBorder;
+		return {
+			...css,
+			...(highlight.length ? { highlight } : null),
+			// With a picture behind the editor, the canvas is see-through. The
+			// editor element keeps the theme's CSS background under the
+			// picture, and sticky lines take it from there.
+			background: seeThrough ? "transparent" : css.background,
+			activeLine:
+				seeThrough && !framed
+					? translucentActiveLine(css.activeLine, css.foreground)
+					: css.activeLine,
+			// Like the DOM themes, which give the active gutter line no background.
+			activeLineGutter: seeThrough
+				? "transparent"
+				: (css.activeLineGutter ?? css.background),
+			gutterBackground: seeThrough ? undefined : css.gutterBackground,
+			// A line between the gutter and the code, when the theme asks.
+			gutterBorder: config.gutterBorder ?? css.gutterBorder,
+			// Acode draws its own (draggable) scrollbars over the editor.
+			scrollbar: "transparent",
+		};
+	};
+}
+
+/**
+ * An active line that lets a picture behind the editor show: the theme's
+ * own when it already does, otherwise the text color at 8% (what the
+ * Backdrop plugin gives `.cm-activeLine` in the DOM editor).
+ */
+function translucentActiveLine(
+	activeLine: string | undefined,
+	foreground: string,
+): string {
+	if (activeLine && parseColor(activeLine) >>> 24 < 255) return activeLine;
+	const c = parseColor(foreground);
+	return `rgba(${c & 255}, ${(c >>> 8) & 255}, ${(c >>> 16) & 255}, 0.08)`;
+}
+
+/**
+ * Whether something draws a picture behind the editor's text, as the
+ * Backdrop plugin does with `.cm-editor::before` (the DOM editor's text has
+ * no background of its own, so it shows). A canvas view then needs a
+ * see-through background. Reads computed style: call it outside frames.
+ */
+export function hasPictureBehind(view: CanvasView): boolean {
+	if (!view.dom.isConnected) return false;
+	const before = getComputedStyle(view.dom, "::before");
+	return (
+		before.content !== "none" &&
+		before.content !== "normal" &&
+		before.display !== "none" &&
+		before.backgroundImage !== "none" &&
+		Number(before.opacity) > 0
+	);
+}
+
+/**
+ * Call `onChange` (at most once per frame) when style sheets are added,
+ * removed or rewritten, which is how plugins restyle the editor (Backdrop
+ * keeps one `<style>` element up to date). Returns a function that stops.
+ */
+export function watchEditorStyles(onChange: () => void): () => void {
+	let frame = 0;
+	const isStyle = (node: Node | null) =>
+		node instanceof HTMLStyleElement || node instanceof HTMLLinkElement;
+	const observer = new MutationObserver((records) => {
+		const relevant = records.some(
+			(r) =>
+				isStyle(r.target) ||
+				isStyle(r.target.parentNode) ||
+				[...r.addedNodes, ...r.removedNodes].some(isStyle),
+		);
+		if (!relevant || frame) return;
+		frame = requestAnimationFrame(() => {
+			frame = 0;
+			onChange();
+		});
+	});
+	const options = { childList: true, subtree: true, characterData: true };
+	observer.observe(document.head, options);
+	// Style elements put straight into <body> (not its whole subtree: the
+	// editor's own DOM changes all the time).
+	observer.observe(document.body, { childList: true });
+	return () => {
+		observer.disconnect();
+		if (frame) cancelAnimationFrame(frame);
 	};
 }
 
@@ -238,7 +272,12 @@ export function getCanvasDisplayOptions(
 				: true
 			: false,
 		onLineNumberClick,
-		foldMarkers: settings.fadeFoldWidgets ? "fade" : "always",
+		foldMarkers:
+			settings.codeFolding === false
+				? "none"
+				: settings.fadeFoldWidgets
+					? "fade"
+					: "always",
 		highlightActiveLine: settings.highlightActiveLine !== false,
 		cursorWidth:
 			Number.isFinite(cursorWidth) && cursorWidth > 0
@@ -287,6 +326,25 @@ interface CanvasSyncState {
 }
 
 const synced = new WeakMap<CanvasView, CanvasSyncState>();
+
+const themeEntryIds = new WeakMap<object, number>();
+let nextThemeEntryId = 1;
+
+/**
+ * Which registered theme an id resolves to, for the sync key. A plugin
+ * theme is registered after the editor is created: until then its id falls
+ * back to One Dark's colors, and applying the same id again once it's
+ * registered must rebuild the canvas theme (it used to be skipped, leaving
+ * a cold-started canvas editor in One Dark's colors).
+ */
+function themeEntryKey(themeId: string): string {
+	const entry =
+		getThemeById(themeId) || getThemeById(String(themeId).replace(/-/g, "_"));
+	if (!entry) return "0";
+	let n = themeEntryIds.get(entry);
+	if (!n) themeEntryIds.set(entry, (n = nextThemeEntryId++));
+	return String(n);
+}
 // Acode replaces `setTheme` on editor instances with its own (taking a theme
 // id), so the view's method is called through the prototype.
 const setViewTheme = CanvasView.prototype.setTheme;
@@ -326,10 +384,12 @@ export function syncCanvasView(
 		}
 	}
 	if (themeId != null) {
-		const key = String(themeId);
+		const id = String(themeId);
+		const seeThrough = hasPictureBehind(view);
+		const key = `${id}\0${seeThrough}\0${themeEntryKey(id)}`;
 		if (key !== state.theme) {
 			state.theme = key;
-			setViewTheme.call(view, getCanvasTheme(key));
+			setViewTheme.call(view, getCanvasTheme(id, seeThrough));
 		}
 	}
 }
@@ -346,6 +406,6 @@ export function markCanvasViewSynced(
 	synced.set(view, {
 		display: JSON.stringify(display),
 		font: JSON.stringify(font),
-		theme: String(themeId),
+		theme: `${themeId}\0false\0${themeEntryKey(String(themeId))}`,
 	});
 }

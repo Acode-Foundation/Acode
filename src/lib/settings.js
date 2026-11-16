@@ -136,6 +136,7 @@ class Settings {
 			editorRenderer: "dom",
 			canvasBackend: "auto",
 			canvasGutterMarkers: "shared",
+			canvasMagnifier: true,
 			stickyScroll: false,
 			stickyScrollMaxLines: 5,
 			cursorBlinkRate: 1200,
