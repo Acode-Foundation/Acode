@@ -200,7 +200,7 @@ function enableStaticContext() {
     const mainActivityPath = path.join(
       prefix,
       'platforms/android/app/src/main/java',
-      packageName.replaceAll(".", "/"),
+      packageName.replaceAll('.', '/'),
       'MainActivity.java'
     );
 
@@ -262,7 +262,7 @@ function disableSplashFadeOnRealmeAndroid13() {
     const mainActivityPath = path.join(
       prefix,
       'platforms/android/app/src/main/java',
-      packageName.replaceAll(".", "/"),
+      packageName.replaceAll('.', '/'),
       'MainActivity.java'
     );
 
@@ -335,7 +335,7 @@ function removeLegacyKeyboardWorkaround() {
     const mainActivityPath = path.join(
       prefix,
       'platforms/android/app/src/main/java',
-      packageName.replaceAll(".", "/"),
+      packageName.replaceAll('.', '/'),
       'MainActivity.java'
     );
 
