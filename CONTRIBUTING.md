@@ -427,6 +427,16 @@ We use [Biome](https://biomejs.dev/) for linting and formatting:
 - Run `npm run check` before committing
 - Install the Biome VS Code extension for auto-formatting
 
+### Performance Changes
+
+Performance PRs must show a real, measurable improvement in Acode itself:
+
+- Include a profile from the app (for example, Chrome DevTools connected to the Android WebView) showing that the code you change is an actual bottleneck in something the user waits on.
+- Include before/after numbers measured in the app, with the device and steps used.
+- Microbenchmark results from sites like jsbench or measurethat are not accepted on their own. They time a function in a tight loop and say nothing about its effect in the app.
+- Keep the change focused on the bottleneck. Don't mix in rewrites of unrelated code, build scripts, Cordova hooks or vendored files.
+- The change must not alter behavior. Point out any output that differs from before.
+
 ### Commit Messages
 
 Use clear, descriptive messages:
