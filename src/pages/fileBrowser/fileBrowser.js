@@ -355,7 +355,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 							let parts;
 							if (typeof dir === "string") {
 								if (dir.endsWith("/")) wantDirEnd = true;
-								dir = dir.replace(/\\/g, "/");
+								dir = dir.replaceAll("\\", "/");
 								parts = dir.split("/");
 							} else {
 								parts = dir;
@@ -390,7 +390,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 						const sanitizeZipPath = (p, isDir) => {
 							if (!p) return "";
 							let path = String(p);
-							path = path.replace(/\\/g, "/");
+							path = path.replaceAll("\\", "/");
 							path = path.replace(/^[a-zA-Z]+:\/\//, "");
 							path = path.replace(/^\/+/, "");
 							path = path.replace(/^[A-Za-z]:\//, "");
@@ -431,7 +431,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 								`Extracting ${filePath} (${Math.round((current / total) * 100)}%)`,
 							);
 
-							let correctFile = filePath.replace(/\\/g, "/");
+							let correctFile = filePath.replaceAll("\\", "/");
 							const isDirEntry = entry.dir || correctFile.endsWith("/");
 
 							if (isUnsafeAbsolutePath(filePath)) {
@@ -1661,7 +1661,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				const fs = fsOperation(lclUrl);
 
 				if (paths.length === 0) {
-					const data = project[fileUrl].replace(/<%name%>/g, projectName);
+					const data = project[fileUrl].replaceAll("<%name%>", projectName);
 					await fs.createFile(filename, data);
 					return;
 				}
