@@ -203,7 +203,7 @@ function getSurrounding(content, word, start, end) {
 	if (left > 0 && !/[\r\n]/.test(content[left - 1])) line = `...${line}`;
 	if (right < content.length && !/[\r\n]/.test(content[right])) line += "...";
 	return [line, word.slice(0, max)].map((text) =>
-		text.replace(/[\r\n]+/g, " ⏎ "),
+		text.replaceAll("\r\n", " ⏎ ").replaceAll("\n", " ⏎ ").replaceAll("\r",  " ⏎ "),
 	);
 }
 
