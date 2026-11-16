@@ -24,7 +24,7 @@ module.exports = function prepareImmersiveFullscreen(context) {
   let source = original
     .replaceAll('\r\n', '\n')
     .replace(
-      /^[ \t]*\/\/ ACODE_FULLSCREEN_BEGIN (?:[a-z]+)\n[^]*?^[ \t]*\/\/ ACODE_FULLSCREEN_END \1\n/gm,
+      /^[ \t]*\/\/ ACODE_FULLSCREEN_BEGIN ([a-z]+)\n[^]*?^[ \t]*\/\/ ACODE_FULLSCREEN_END \1\n/gm,
       "",
     );
   if (/ACODE_FULLSCREEN_(BEGIN|END)/.test(source)) {
