@@ -15,7 +15,7 @@ export function isExcludedFileOperationPath(url, patterns = []) {
 
 	const parsedUrl = Url.parse(url).url;
 	const pathname = Url.pathname(parsedUrl) || parsedUrl;
-	const normalizedPath = pathname.replace(/\\/g, "/").replace(/\/+$/, "");
+	const normalizedPath = pathname.replaceAll("\\", "/").replace(/\/+$/, "");
 	const relativePath = normalizedPath.replace(/^\/+/, "");
 	const candidates = [
 		normalizedPath,
