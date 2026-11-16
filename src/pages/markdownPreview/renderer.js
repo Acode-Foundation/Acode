@@ -23,7 +23,7 @@ function slugify(text) {
 		.trim()
 		.toLowerCase()
 		.normalize("NFD")
-		.replace(/[\u0300-\u036f]/g, "")
+		.replace(/[\u0300-\u036f]+/g, "")
 		.replace(/[^\p{L}\p{N}]+/gu, "-")
 		.replace(/^-+|-+$/g, "");
 }
