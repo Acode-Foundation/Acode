@@ -55,6 +55,7 @@ class WorkspaceIndex {
   private static final Set<String> BINARY_EXTENSIONS = new HashSet<>();
   private static final Set<String> TEXT_EXTENSIONS = new HashSet<>();
   private static final Set<String> BINARY_MIME_TYPES = new HashSet<>();
+  private static final String GENERIC_MIME_TYPE = "application/octet-stream";
   private static final Set<String> TEXT_MIME_TYPES = new HashSet<>();
 
   static {
@@ -137,16 +138,20 @@ class WorkspaceIndex {
       "hpp",
       "htm",
       "html",
+      "ini",
       "java",
       "js",
       "json",
+      "jsonl",
       "jsx",
       "kt",
       "kts",
       "less",
+      "log",
       "lua",
       "md",
       "mjs",
+      "ndjson",
       "php",
       "properties",
       "py",
@@ -1646,7 +1651,8 @@ class WorkspaceIndex {
         value != 9 &&
         value != 10 &&
         value != 13 &&
-        value != 12
+        value != 12 &&
+        value != 27
       ) {
         control++;
       }
@@ -1672,7 +1678,8 @@ class WorkspaceIndex {
       if (
         (ch >= 0 && ch <= 8) ||
         ch == 11 ||
-        (ch >= 14 && ch <= 31) ||
+        // ESC (27) is allowed: logs commonly contain ANSI color sequences.
+        (ch >= 14 && ch <= 31 && ch != 27) ||
         ch == 127
       ) {
         return true;
@@ -2005,7 +2012,11 @@ class WorkspaceIndex {
         normalizedMime.startsWith("image/") ||
         normalizedMime.startsWith("model/") ||
         normalizedMime.startsWith("video/") ||
-        BINARY_MIME_TYPES.contains(normalizedMime)
+        // "application/octet-stream" only means the provider does not know the
+        // type (e.g. ".jsonl"), so it falls through to the extension check and
+        // readFileText() still rejects files whose content is binary.
+        (BINARY_MIME_TYPES.contains(normalizedMime) &&
+          !GENERIC_MIME_TYPE.equals(normalizedMime))
       ) {
         return true;
       }
