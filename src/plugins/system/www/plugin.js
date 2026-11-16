@@ -163,6 +163,97 @@ module.exports = {
   launchApp: function (app, className, extras, onSuccess, onFail) {
     cordova.exec(onSuccess, onFail, 'System', 'launch-app', [app, className, extras]);
   },
+  /**
+   * Launch an activity and hand it content URIs for one or more files.
+   *
+   * Combines `launchApp` and `fileAction`, and is more flexible than either:
+   * name the exact activity, name only the package and let the best matching
+   * activity be resolved, or omit both and let the system pick a handler.
+   * Files are handed over as `content://` URIs the target may read. Sources are
+   * `file://` paths (exposed through the app's FileProvider) or existing
+   * `content://` URIs, which are passed through unchanged and re-granted, so
+   * they stay readable only while this app still holds access to them.
+   *
+   * When `app` is given, that package is granted access. When it is omitted the
+   * intent's flag and ClipData carry the grant, so only the app that actually
+   * receives the files gets access, not every app that could handle them. With
+   * several files and no `mimeType`, the type the whole set shares is used.
+   *
+   * The default action follows what the call needs:
+   * - one file -> `VIEW`
+   * - several files -> `SEND_MULTIPLE`
+   * - no file -> `MAIN` (a plain app launch)
+   *
+   * @param {LaunchAppWithFileOptions} options - Target, files and intent details.
+   * @param {(result: LaunchAppWithFileResult) => void} [onSuccess] - Receives the content URIs and the resolved component.
+   * @param {(error: any) => void} [onFail] - Callback invoked if nothing could be launched.
+   *
+   * @example <caption>Run a .love file in love-android</caption>
+   * System.launchAppWithFile({
+   *   app: "org.love2d.android",
+   *   className: "org.love2d.android.GameActivity",
+   *   fileUri: "file:///storage/emulated/0/Games/mygame.love",
+   *   mimeType: "application/zip"
+   * }, (result) => {
+   *   console.log("handed", result.uris, "to", result.component);
+   * }, (error) => {
+   *   console.error("could not launch love-android", error);
+   * });
+   *
+   * @example <caption>Let the system choose the app</caption>
+   * System.launchAppWithFile({
+   *   fileUri: "file:///storage/emulated/0/Documents/report.pdf"
+   * });
+   *
+   * @example <caption>Several files, custom flags</caption>
+   * System.launchAppWithFile({
+   *   app: "com.example.app",
+   *   fileUris: ["file:///a.png", "file:///b.png"],
+   *   mimeType: "image/png",
+   *   flags: ["SINGLE_TOP"]
+   * });
+   */
+  launchAppWithFile: function (options, onSuccess, onFail) {
+    if (typeof onSuccess !== 'function') onSuccess = function () { };
+    if (typeof onFail !== 'function') onFail = function () { };
+
+    if (!options || typeof options !== 'object') {
+      onFail('System.launchAppWithFile: an options object is required.');
+      return;
+    }
+
+    var app = trimmedString(options.app);
+    var className = trimmedString(options.className);
+    var fileUri = trimmedString(options.fileUri);
+    var fileUris = toUriList(options.fileUris);
+
+    if (className && !app) {
+      onFail('System.launchAppWithFile: "className" requires "app" (the package name).');
+      return;
+    }
+
+    if (!app && !fileUri && fileUris.length === 0) {
+      onFail('System.launchAppWithFile: nothing to launch, provide "app" and/or a file.');
+      return;
+    }
+
+    cordova.exec(onSuccess, onFail, 'System', 'launch-app-with-file', [{
+      app: app,
+      className: className,
+      fileUri: fileUri,
+      fileUris: fileUris,
+      filename: trimmedString(options.filename),
+      clipLabel: trimmedString(options.clipLabel),
+      mimeType: trimmedString(options.mimeType),
+      action: trimmedString(options.action),
+      categories: toNameList(options.categories),
+      flags: Array.isArray(options.flags) ? options.flags : [],
+      extras: options.extras && typeof options.extras === 'object' ? options.extras : null,
+      writeAccess: !!options.writeAccess,
+      attachAsStream: !!options.attachAsStream,
+      newTask: options.newTask === undefined ? true : !!options.newTask
+    }]);
+  },
   inAppBrowser: function (url, title, showButtons, disableCache) {
     var myInAppBrowser = {
       onOpenExternalBrowser: null,
@@ -508,4 +599,29 @@ function latin1ToBytes(text) {
     bytes[i] = text.charCodeAt(i);
   }
   return bytes;
+}
+
+function trimmedString(value) {
+  if (value === undefined || value === null) return '';
+  return String(value).trim();
+}
+
+function toUriList(value) {
+  if (!Array.isArray(value)) return [];
+  const uris = [];
+  for (const entry of value) {
+    const uri = trimmedString(entry);
+    if (uri && !uris.includes(uri)) uris.push(uri);
+  }
+  return uris;
+}
+
+function toNameList(value) {
+  if (!Array.isArray(value)) return [];
+  const names = [];
+  for (const entry of value) {
+    const name = trimmedString(entry);
+    if (name) names.push(name);
+  }
+  return names;
 }
