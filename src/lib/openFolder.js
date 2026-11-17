@@ -778,7 +778,7 @@ function execOperation(type, action, url, $target, name) {
 				newUrl = await helpers.createFileStructure(url, newName, false);
 			}
 			if (!newUrl.created) return;
-			workspace.pathsChanged(newUrl.uri, newUrl.parentUri);
+			workspace.pathsChanged(newUrl.uri);
 
 			if (isNestedPath) {
 				await refreshOpenFolder(url);
