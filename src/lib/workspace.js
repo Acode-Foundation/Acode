@@ -343,6 +343,39 @@ export function list() {
 }
 
 /**
+ * Tell the workspaces that something was created, deleted, renamed, moved or
+ * pasted at these urls (the old and the new url of a rename or move, both).
+ * Every open root whose `.acode` directory is, is inside, or is under one of
+ * them is checked again, so a deleted or renamed `settings.json` stops
+ * applying and a new one starts to. Other roots are left alone.
+ * @param {...string} urls
+ */
+export function pathsChanged(...urls) {
+	const changed = urls.filter(Boolean);
+	if (!changed.length) return;
+
+	for (const root of roots.keys()) {
+		let configUrl;
+		try {
+			configUrl = Url.join(root, WORKSPACE_DIR);
+		} catch (error) {
+			continue;
+		}
+		if (!configUrl) continue;
+
+		const affected = changed.some(
+			(url) =>
+				Url.isSameOrDescendant(url, configUrl) ||
+				Url.isSameOrDescendant(configUrl, url),
+		);
+		if (!affected) continue;
+		scan(root).catch((error) => {
+			console.error(`Failed to scan workspace "${root}":`, error);
+		});
+	}
+}
+
+/**
  * Check an open root again, e.g. after its `.acode` directory was created or
  * deleted. Does nothing for roots that are not open.
  * @param {string} rootUrl
@@ -378,6 +411,7 @@ export default {
 	resolveSettings,
 	list,
 	refresh,
+	pathsChanged,
 	on,
 	off,
 };

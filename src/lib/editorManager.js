@@ -3207,7 +3207,13 @@ async function EditorManager($header, $body) {
 			markLanguageReady(file, languageSignature, true);
 		}
 		editor.setState(state);
-		applyCurrentEditorOptions(file, { targetEditor: editor });
+		// The state above was built from the global settings, and the options
+		// signature cannot tell: it still matches the one stored from the state
+		// this replaces. Force the file's own (project) options onto the new state.
+		applyCurrentEditorOptions(file, {
+			targetEditor: editor,
+			forceOptions: true,
+		});
 
 		// Restore selection from previous state if available
 		try {

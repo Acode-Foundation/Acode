@@ -969,3 +969,115 @@ describe("plugin recommendations", () => {
 		expect(names()).toEqual(["extensions"]);
 	});
 });
+
+describe("pathsChanged", () => {
+	let manager;
+	let stop;
+	let events;
+	let subscriptions;
+
+	const CONFIG = `${PROJECT}/.acode`;
+	const SETTINGS = `${CONFIG}/settings.json`;
+	const listen = (event, fn) => {
+		workspace.on(event, fn);
+		subscriptions.push([event, fn]);
+	};
+	const names = () => events.map(([name]) => name);
+
+	beforeEach(async () => {
+		fakeFs.reset();
+		manager = createManager();
+		events = [];
+		subscriptions = [];
+		for (const event of ["open", "settings", "close"]) {
+			listen(event, (ws) => events.push([event, ws]));
+		}
+		fakeFs.dirs.add(CONFIG);
+		fakeFs.files.set(SETTINGS, '{"tabSize": 4}');
+		stop = workspace.init(manager);
+		manager.emit("add-folder", { url: PROJECT, name: "app" });
+		await flush();
+		events.length = 0;
+	});
+
+	afterEach(() => {
+		stop();
+		for (const [event, fn] of subscriptions) workspace.off(event, fn);
+	});
+
+	it("drops the settings when settings.json is deleted", async () => {
+		expect(workspace.getSettings(`${PROJECT}/a.js`)).toEqual({ tabSize: 4 });
+
+		fakeFs.files.delete(SETTINGS);
+		workspace.pathsChanged(SETTINGS);
+		await flush();
+
+		expect(workspace.getSettings(`${PROJECT}/a.js`)).toEqual({});
+		expect(names()).toEqual(["settings"]);
+	});
+
+	it("drops the settings when settings.json is renamed away", async () => {
+		const renamed = `${CONFIG}/settings.old.json`;
+		fakeFs.files.set(renamed, fakeFs.files.get(SETTINGS));
+		fakeFs.files.delete(SETTINGS);
+		workspace.pathsChanged(SETTINGS, renamed);
+		await flush();
+
+		expect(workspace.getSettings(`${PROJECT}/a.js`)).toEqual({});
+	});
+
+	it("closes the workspace when the .acode directory is deleted", async () => {
+		fakeFs.files.delete(SETTINGS);
+		fakeFs.dirs.delete(CONFIG);
+		workspace.pathsChanged(CONFIG);
+		await flush();
+
+		expect(workspace.get(PROJECT)).toBeNull();
+		expect(names()).toEqual(["close"]);
+	});
+
+	it("notices a directory renamed to .acode", async () => {
+		fakeFs.reset();
+		fakeFs.dirs.add(PROJECT);
+		manager.emit("remove-folder", { url: PROJECT });
+		manager.emit("add-folder", { url: PROJECT, name: "app" });
+		await flush();
+		events.length = 0;
+
+		fakeFs.dirs.add(CONFIG);
+		fakeFs.files.set(SETTINGS, '{"tabSize": 8}');
+		workspace.pathsChanged(`${PROJECT}/config`, CONFIG);
+		await flush();
+
+		expect(workspace.getSettings(`${PROJECT}/a.js`)).toEqual({ tabSize: 8 });
+	});
+
+	it("rescans when a folder above .acode is removed", async () => {
+		fakeFs.files.delete(SETTINGS);
+		fakeFs.dirs.delete(CONFIG);
+		workspace.pathsChanged(PROJECT);
+		await flush();
+
+		expect(workspace.get(PROJECT)).toBeNull();
+	});
+
+	it("ignores changes elsewhere in the project", async () => {
+		fakeFs.stats.length = 0;
+		workspace.pathsChanged(
+			`${PROJECT}/src/index.js`,
+			`${PROJECT}/.acodeignore`,
+		);
+		await flush();
+
+		expect(fakeFs.stats).toEqual([]);
+		expect(events).toEqual([]);
+	});
+
+	it("ignores changes in roots that are not open", async () => {
+		fakeFs.stats.length = 0;
+		workspace.pathsChanged(`${OTHER}/.acode/settings.json`);
+		await flush();
+
+		expect(fakeFs.stats).toEqual([]);
+	});
+});
