@@ -105,9 +105,7 @@ translation checks. Later focused native checks are recorded below.
 StoreKit coverage uses local simulated transactions; it does not verify production
 products or the purchase backend. Advertising checks verify the free bridge,
 consent gating, load cancellation, banner layout and paid-impression payloads;
-the paid app excludes the SDK classes, resources and metadata. See
-[iOS advertising](ios-advertising.md) for source provenance, configuration and
-remaining live/device checks.
+the paid app excludes the SDK classes, resources and metadata.
 
 The simulator suite currently exercises editor startup, safe-area layout, reading,
 editing and saving files, watching coordinated writes, worker loading, incoming
@@ -407,8 +405,8 @@ and cache clearing are supported; clearing the WebView cache keeps app storage.
 All sixteen existing app icons are packaged for iPhone and iPad, including Acode's
 default artwork. UIKit changes the launcher icon in place. The shared picker
 retains reward/Pro requirements and persistence, and omits Android's app-exit
-warning on iOS. Reward passes retain the one-hour Quick offer, random four-to-six
-hour Focus offer, three-per-day limit and ten-hour cap, with native Keychain state.
+warning on iOS. New ad-free passes are discontinued. Existing earned time remains
+active until its stored expiry, with native Keychain state preserved.
 Native tests verify packaged icon metadata and actual DOM hit targets after
 startup. A paid-edition UI test changes and restores the icon through Settings,
 acknowledging Apple's confirmation. An iOS-only centering rule keeps WebKit's
@@ -584,9 +582,9 @@ reproduced the missing scene for all six native formats, and all six AdMob bridg
 tests pass with the correction. Live portrait and landscape Split View checks
 displayed the full interstitial test image and passed dismissal, though other
 landscape runs had an unexplained black creative. The iPhone rendered the full
-test image, but its dismissal check timed out after desktop UI targeting failures. See
-[iOS advertising](ios-advertising.md) for the distinction between these test-ad
-checks and production delivery, consent variants and physical-device validation.
+test image, but its dismissal check timed out after desktop UI targeting failures.
+These test-ad checks do not establish production delivery, consent variants or
+physical-device behavior.
 
 ## Remaining native work
 

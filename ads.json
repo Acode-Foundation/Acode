@@ -5,8 +5,6 @@
 			"banner": "ca-app-pub-5911839694379275/9157899592",
 			"interstitial": "ca-app-pub-5911839694379275/9570937608",
 			"rewarded": "ca-app-pub-5911839694379275/1633667633",
-			"academyRewarded": "ca-app-pub-5911839694379275/3893763807",
-			"academyInterstitial": "ca-app-pub-5911839694379275/7819275372",
 			"appOpen": "ca-app-pub-5911839694379275/4600740197"
 		},
 		"test": {
@@ -14,8 +12,6 @@
 			"banner": "ca-app-pub-3940256099942544/6300978111",
 			"interstitial": "ca-app-pub-3940256099942544/1033173712",
 			"rewarded": "ca-app-pub-3940256099942544/5224354917",
-			"academyRewarded": "ca-app-pub-3940256099942544/5224354917",
-			"academyInterstitial": "ca-app-pub-3940256099942544/1033173712",
 			"appOpen": "ca-app-pub-3940256099942544/9257395921"
 		}
 	},
@@ -25,8 +21,6 @@
 			"banner": "ca-app-pub-5911839694379275/7672969208",
 			"interstitial": "ca-app-pub-5911839694379275/8054492011",
 			"rewarded": "ca-app-pub-5911839694379275/4550361278",
-			"academyRewarded": "ca-app-pub-5911839694379275/4716873072",
-			"academyInterstitial": "ca-app-pub-5911839694379275/5428328674",
 			"appOpen": "ca-app-pub-5911839694379275/4115247005"
 		},
 		"test": {
@@ -34,8 +28,6 @@
 			"banner": "ca-app-pub-3940256099942544/2435281174",
 			"interstitial": "ca-app-pub-3940256099942544/4411468910",
 			"rewarded": "ca-app-pub-3940256099942544/1712485313",
-			"academyRewarded": "ca-app-pub-3940256099942544/1712485313",
-			"academyInterstitial": "ca-app-pub-3940256099942544/4411468910",
 			"appOpen": "ca-app-pub-3940256099942544/5575463023"
 		}
 	}

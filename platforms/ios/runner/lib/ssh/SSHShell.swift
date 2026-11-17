@@ -20,7 +20,7 @@ final class SSHShell {
     }
 
     func start() {
-        queue.async {
+        queue.async { [self] in
             self.callback.success(["type": "ready", "sessionId": self.id], keep: true)
             let timer = DispatchSource.makeTimerSource(queue: self.queue)
             timer.schedule(deadline: .now(), repeating: .milliseconds(20))

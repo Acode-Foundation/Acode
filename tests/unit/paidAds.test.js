@@ -1,7 +1,6 @@
 import { afterEach, expect, test, vi } from "vitest";
 import showRewardedAd, {
 	isRewardedAdSupported,
-	isWatchingRewardedAd,
 } from "../../src/lib/paid/rewardedAd";
 import startAd, {
 	getPrivacyState,
@@ -15,7 +14,6 @@ test("paid APIs preserve unavailable-ad behavior without a native advertising br
 	vi.stubGlobal("strings", { "rewarded ad unavailable": "Reward unavailable" });
 	await expect(startAd()).resolves.toBeUndefined();
 	expect(isRewardedAdSupported()).toBe(false);
-	expect(isWatchingRewardedAd()).toBe(false);
 	await expect(showRewardedAd()).rejects.toThrow("Reward unavailable");
 	const controller = new AbortController();
 	controller.abort();

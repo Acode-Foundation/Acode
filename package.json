@@ -2,7 +2,7 @@
   "name": "acode-app",
   "displayName": "Acode",
   "version": "1.13.6",
-  "versionCode": 1022,
+  "versionCode": 1023,
   "androidPackageId": "com.foxdebug.acode",
   "appleAppId": "app.acode",
   "description": "Powerful code editor and terminal for IOS and Android",

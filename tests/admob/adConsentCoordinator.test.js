@@ -240,3 +240,54 @@ test("preserves consent state when privacy options reject", async () => {
 	assert.deepEqual(harness.coordinator.state, gatherState);
 	assert.equal(harness.initializeCalls, 1);
 });
+
+test("retries after first-launch offline consent becomes available", async () => {
+	const harness = createHarness({ gatherError: new Error("offline") });
+	await harness.coordinator.start();
+	assert.equal(harness.initializeCalls, 0);
+	harness.privacy.gatherConsent = async () => ({
+		consentStatus: "notRequired",
+		canRequestAds: true,
+	});
+	await harness.coordinator.start();
+	assert.equal(harness.initializeCalls, 1);
+});
+
+test("retries a failed native startup without keeping a rejected promise", async () => {
+	let attempts = 0;
+	const coordinator = new AdConsentCoordinator({
+		privacy: {
+			gatherConsent: async () => ({
+				consentStatus: "notRequired",
+				canRequestAds: true,
+			}),
+		},
+		initializeAds: async () => {
+			if (++attempts === 1) throw new Error("ATT interrupted");
+		},
+	});
+	await assert.rejects(coordinator.start(), /ATT interrupted/);
+	await coordinator.start();
+	assert.equal(attempts, 2);
+});
+
+test("cached startup returns current privacy choices without recollecting consent", async () => {
+	const allowed = {
+		consentStatus: "obtained",
+		canRequestAds: true,
+		privacyOptionsRequired: true,
+	};
+	const revoked = { ...allowed, canRequestAds: false };
+	const harness = createHarness({
+		gatherState: allowed,
+		showOptions: async () => revoked,
+	});
+	await harness.coordinator.start();
+	await harness.coordinator.showPrivacyOptions();
+	const result = await harness.coordinator.start();
+	assert.deepEqual(result, revoked);
+	result.canRequestAds = true;
+	assert.deepEqual(await harness.coordinator.start(), revoked);
+	assert.equal(harness.gatherCalls, 1);
+	assert.equal(harness.initializeCalls, 1);
+});

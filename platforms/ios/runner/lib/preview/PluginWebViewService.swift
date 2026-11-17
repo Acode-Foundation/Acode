@@ -13,7 +13,7 @@ final class PluginWebViewService: BaseService {
     }
 
     override func exec(action: String, args: [Any], callback: Callback) {
-        DispatchQueue.main.async {
+        DispatchQueue.main.async { [self] in
             if action == "setMessageCallback" {
                 self.messageCallback?.release(); self.messageCallback = callback; return
             }

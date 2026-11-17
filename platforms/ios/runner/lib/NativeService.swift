@@ -50,13 +50,13 @@ final class NativeService: BaseService {
     // MARK: - shareFile / shareText
 
     private func shareFile(args: [Any], callback: Callback) {
-        guard let bridge else { callback.error("Native bridge unavailable"); return }
-        ShareService(bridge: bridge).exec(action: "shareFile", args: args, callback: callback)
+        guard let share = bridge?.shareService else { callback.error("Native bridge unavailable"); return }
+        share.exec(action: "shareFile", args: args, callback: callback)
     }
 
     private func shareText(args: [Any], callback: Callback) {
-        guard let bridge else { callback.error("Native bridge unavailable"); return }
-        ShareService(bridge: bridge).exec(action: "shareText", args: args, callback: callback)
+        guard let share = bridge?.shareService else { callback.error("Native bridge unavailable"); return }
+        share.exec(action: "shareText", args: args, callback: callback)
     }
 
     // MARK: - getAppInfo

@@ -9,13 +9,15 @@ final class BuildInfoService: BaseService {
         let name = info["CFBundleDisplayName"] as? String ?? "Acode"
         #if DEBUG
         let debug = true
+        let buildType = "debug"
         #else
         let debug = false
+        let buildType = "release"
         #endif
         let flavor = "free"
         callback.success(["packageName": id, "basePackageName": id, "displayName": name, "name": name,
                           "version": info["CFBundleShortVersionString"] as? String ?? "", "versionCode": Int(info["CFBundleVersion"] as? String ?? "0") ?? 0,
-                          "debug": debug, "buildType": debug ? "debug" : "release", "flavor": flavor])
+                          "debug": debug, "buildType": buildType, "flavor": flavor])
     }
 }
 
@@ -34,9 +36,9 @@ final class ClipboardService: BaseService {
 
 final class AppService: BaseService {
     override func exec(action: String, args: [Any], callback: Callback) {
-        DispatchQueue.main.async { [weak self] in
+        DispatchQueue.main.async { [self] in
             switch action {
-            case "backHistory": self?.webView?.goBack(); callback.success()
+            case "backHistory": self.webView?.goBack(); callback.success()
             case "clearCache", "clear-cache":
                 WKWebsiteDataStore.default().removeData(ofTypes: [WKWebsiteDataTypeDiskCache, WKWebsiteDataTypeMemoryCache], modifiedSince: .distantPast) {
                     callback.success(action == "clear-cache" ? "Cache cleared" : nil)

@@ -16,17 +16,17 @@ extension SFTPService {
         let currentGeneration = generation
         attempts[requestID] = attempt
         let timeout = shell ? 10 : min(30, max(1, (args[safe: 2] as? Double ?? 10000) / 1000))
-        DispatchQueue.global(qos: .userInitiated).async {
+        DispatchQueue.global(qos: .userInitiated).async { [self] in
             do {
                 let connection = try SSHConnection(cancellation: attempt.cancellation)
-                try connection.connect(profile, timeout: timeout) { key, algorithm in
-                    try self.profiles.verify(endpoint: profile.endpoint, key: key, algorithm: algorithm) { fingerprint in
+                try connection.connect(profile, timeout: timeout) { [self] key, algorithm in
+                    try self.profiles.verify(endpoint: profile.endpoint, key: key, algorithm: algorithm) { [self] fingerprint in
                         try SSHPrompts.confirm(title: "Unknown SSH host", message: "This is the first connection to \(profile.endpoint).\n\nKey type: \(algorithm)\nFingerprint: \(fingerprint)\n\nVerify this fingerprint before trusting the host.", button: "Trust and connect", presenter: { [weak self] in self?.viewController }, cancellation: attempt.cancellation)
                     }
                 }
                 if shell {
                     let terminal = try SSHShell(connection: connection, columns: SSHShell.dimension(args[safe: 1], default: 80), rows: SSHShell.dimension(args[safe: 2], default: 24), callback: callback)
-                    self.control.async {
+                    self.control.async { [self, terminal] in
                         self.attempts.removeValue(forKey: requestID)
                         guard (try? attempt.cancellation.check()) != nil else { terminal.close(); return }
                         terminal.onClose = { [weak self, weak terminal] in

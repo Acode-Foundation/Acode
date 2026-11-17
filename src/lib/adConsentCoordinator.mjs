@@ -23,8 +23,8 @@ function normalizePrivacyState(state) {
 
 /**
  * Coordinates UMP and ad initialization for one application launch.
- * Consent is gathered once, ad initialization is idempotent, and a valid
- * previous-session UMP state can be used when the network update fails.
+ * Successful consent collection is cached and ad initialization is idempotent.
+ * Valid previous-session UMP state can be used when the network update fails.
  */
 export class AdConsentCoordinator {
 	#privacy;
@@ -47,7 +47,17 @@ export class AdConsentCoordinator {
 	}
 
 	start() {
-		return (this.#consentPromise ??= this.#gatherAndStart());
+		this.#consentPromise ??= this.#gatherAndStart().then(
+			(state) => {
+				if (!state.canRequestAds) this.#consentPromise = undefined;
+				return state;
+			},
+			(error) => {
+				this.#consentPromise = undefined;
+				throw error;
+			},
+		);
+		return this.#consentPromise.then(() => this.state);
 	}
 
 	showPrivacyOptions() {

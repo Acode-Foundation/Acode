@@ -5,9 +5,12 @@ final class AMBPrivacy {
     private weak var plugin: AMBPlugin?
     private var busy = false
     private var presenting = false
-    private let information = ConsentInformation.shared
+    private let information: ConsentInformation
 
-    init(plugin: AMBPlugin) { self.plugin = plugin }
+    init(plugin: AMBPlugin, information: ConsentInformation = .shared) {
+        self.plugin = plugin
+        self.information = information
+    }
 
     var canRequestAds: Bool { information.canRequestAds }
     var state: [String: Any] {

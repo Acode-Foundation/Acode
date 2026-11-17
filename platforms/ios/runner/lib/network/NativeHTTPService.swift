@@ -14,7 +14,7 @@ final class NativeHTTPService: BaseService {
     }
 
     override func exec(action: String, args: [Any], callback: Callback) {
-        queue.async {
+        queue.async { [self] in
             do {
                 switch action {
                 case "setServerTrustMode":

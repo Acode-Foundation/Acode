@@ -5,6 +5,35 @@ import WebKit
 @MainActor
 final class ShareTests: BridgeTestCase {
     func testFileExportsAreIsolatedAndRemovedAfterCancellationOrReload() async throws {
+        try await verifyFileSharing(service: "System")
+    }
+
+    func testNativeFileExportsSurviveUntilDismissalAndAreRemovedOnReload() async throws {
+        try await verifyFileSharing(service: "Native")
+    }
+
+    func testRepeatedBridgeSetupRetainsShareOwnerAndCleansPresentedExport() async throws {
+        try await verifyFileSharing(service: "Native", repeatSetup: true)
+    }
+
+    func testNativeTextSharingPresentsAndCompletes() async throws {
+        let webView = try await appWebView()
+        var responder: UIResponder? = webView
+        while responder != nil, !(responder is WebViewController) { responder = responder?.next }
+        let host = try XCTUnwrap(responder as? WebViewController)
+        _ = try await webView.evaluateJavaScript("""
+            window.shareResult={state:'pending'};
+            Bridge.exec(()=>window.shareResult={state:'success'},error=>window.shareResult={state:'error',error},
+                'Native','shareText',['Share fixture']);
+            """)
+        let presented = try await sheet(host)
+        presented.completionWithItemsHandler?(nil, false, nil, nil)
+        await dismiss(presented)
+        let response = try await result(webView)
+        XCTAssertEqual(response["state"] as? String, "success")
+    }
+
+    private func verifyFileSharing(service: String, repeatSetup: Bool = false) async throws {
         let webView = try await appWebView()
         var responder: UIResponder? = webView
         while responder != nil, !(responder is WebViewController) { responder = responder?.next }
@@ -15,7 +44,7 @@ final class ShareTests: BridgeTestCase {
         try bytes.write(to: source)
         defer { try? files.manager.removeItem(at: source) }
         let original = try exports()
-        try await begin(webView, path: source.absoluteString)
+        try await begin(webView, service: service, path: source.absoluteString)
         let first = try await sheet(host)
         let exported = try XCTUnwrap(try exports().subtracting(original).first)
         let copy = exported.appendingPathComponent("shared # 日本語.bin")
@@ -23,7 +52,7 @@ final class ShareTests: BridgeTestCase {
         try Data([1, 2, 3]).write(to: source)
         XCTAssertEqual(try Data(contentsOf: copy), bytes)
 
-        try await begin(webView, path: source.absoluteString, key: "busyShare")
+        try await begin(webView, service: service == "Native" ? "System" : "Native", path: source.absoluteString, key: "busyShare")
         let busy = try await result(webView, key: "busyShare")
         XCTAssertEqual(busy["error"] as? String, "A share sheet cannot be presented right now")
         XCTAssertEqual(try exports().subtracting(original), [exported])
@@ -33,8 +62,13 @@ final class ShareTests: BridgeTestCase {
         XCTAssertEqual(cancelled["state"] as? String, "success")
         XCTAssertEqual(try exports(), original)
 
-        try await begin(webView, path: source.absoluteString)
+        try await begin(webView, service: service, path: source.absoluteString)
         let pending = try await sheet(host)
+        if repeatSetup {
+            let owner = host.bridge.shareService
+            host.bridge.setup(webView: webView, viewController: host)
+            XCTAssertTrue(host.bridge.shareService === owner)
+        }
         webView.reload()
         for _ in 0..<100 {
             if host.presentedViewController == nil { break }
@@ -49,12 +83,12 @@ final class ShareTests: BridgeTestCase {
         _ = try await editorWebView()
     }
 
-    private func begin(_ webView: WKWebView, path: String, key: String = "shareResult") async throws {
+    private func begin(_ webView: WKWebView, service: String, path: String, key: String = "shareResult") async throws {
         _ = try await webView.callAsyncJavaScript("""
             window[key]={state:'pending'};
             Bridge.exec(()=>window[key]={state:'success'},error=>window[key]={state:'error',error},
-                'System','file-action',[path,'shared # 日本語.bin','android.intent.action.SEND']);
-            """, arguments: ["path": path, "key": key], in: nil, contentWorld: .page)
+                service,service==='Native'?'shareFile':'file-action',[path,'shared # 日本語.bin','android.intent.action.SEND']);
+            """, arguments: ["service": service, "path": path, "key": key], in: nil, contentWorld: .page)
     }
 
     private func exports() throws -> Set<URL> {

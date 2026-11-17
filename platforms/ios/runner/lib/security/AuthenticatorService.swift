@@ -6,7 +6,7 @@ final class AuthenticatorService: BaseService {
 
     required init(bridge: Bridge) {
         super.init(bridge: bridge)
-        DispatchQueue.main.async {
+        DispatchQueue.main.async { [self] in
             self.coordinator = SignInCoordinator(bridge: bridge)
             IncomingLinks.shared.authenticationHandler = { [weak self] in self?.coordinator.receive($0) }
         }

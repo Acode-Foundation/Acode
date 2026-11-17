@@ -6,8 +6,11 @@ final class Bridge: NSObject, WKScriptMessageHandler {
     private var services: [String: ServiceProtocol] = [:]
     private var serviceQueues: [String: DispatchQueue] = [:]
     private var navigationID = UUID()
+    private(set) lazy var shareService = ShareService(bridge: self)
 
     func setup(webView: WKWebView, viewController: WebViewController) {
+        if !services.isEmpty { reset() }
+        _ = shareService
         self.webView = webView
         self.viewController = viewController
         services = [
@@ -82,6 +85,7 @@ final class Bridge: NSObject, WKScriptMessageHandler {
 
     func reset() {
         navigationID = UUID()
+        shareService.reset()
         for (name, service) in services { serviceQueues[name]?.async { service.reset() } }
     }
 }

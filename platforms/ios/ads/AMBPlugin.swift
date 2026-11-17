@@ -11,6 +11,10 @@ final class AMBPlugin: BaseService {
     private var events: [[String: Any]] = []
     private var starting: [AMBContext] = []
     private var started = false
+    private var childDirected = false
+    private var underAgeOfConsent = false
+    @MainActor private lazy var tracking = AMBTrackingAuthorization()
+    private(set) var adEnvironment = AMBAdEnvironment(verifiedEnvironment: nil)
     private weak var registeredWebView: WKWebView?
     lazy var banners = AMBBannerLayout(plugin: self)
     lazy var privacy = AMBPrivacy(plugin: self)
@@ -31,7 +35,32 @@ final class AMBPlugin: BaseService {
             readyCallback = nil
             events.removeAll()
             generation = UUID()
+            tracking.cancel()
         }
+    }
+
+    @MainActor
+    func configureAgeTreatment(childDirected: Bool?, underAgeOfConsent: Bool?) {
+        guard childDirected != nil || underAgeOfConsent != nil else { return }
+        if let childDirected { self.childDirected = childDirected }
+        if let underAgeOfConsent { self.underAgeOfConsent = underAgeOfConsent }
+        MobileAds.shared.requestConfiguration.ageRestrictedTreatment = self.childDirected || self.underAgeOfConsent ? .child : .unspecified
+    }
+
+    @MainActor
+    var canRecoverPresentation: Bool {
+        guard UIApplication.shared.applicationState == .active,
+              let controller = viewController,
+              controller.view.window?.windowScene?.activationState == .foregroundActive,
+              controller.presentedViewController == nil,
+              controller.transitionCoordinator == nil else { return false }
+        return true
+    }
+
+    @MainActor
+    func recoverPresentation(_ id: String) -> Bool {
+        guard let ad = ads[id] else { return canRecoverPresentation }
+        return (ad as? AMBFullScreen)?.recoverPresentation() ?? false
     }
 
     func clearAds() {
@@ -47,6 +76,7 @@ final class AMBPlugin: BaseService {
         else if events.count < 100 { events.append(payload) }
     }
 
+    @MainActor
     private func execute(_ action: String, _ ctx: AMBContext) {
         switch action {
         case "ready":
@@ -68,8 +98,11 @@ final class AMBPlugin: BaseService {
             MobileAds.shared.applicationVolume = volume
             ctx.resolve()
         case "requestTrackingAuthorization":
-            ATTrackingManager.requestTrackingAuthorization { status in
-                DispatchQueue.main.async { ctx.resolve(status.rawValue) }
+            tracking.authorize { result in
+                switch result {
+                case .success(let status): ctx.resolve(status.rawValue)
+                case .failure(let error): ctx.reject(error)
+                }
             }
         case "privacyGetState": ctx.resolve(privacy.state)
         case "privacyGatherConsent": privacy.gather(ctx)
@@ -84,10 +117,14 @@ final class AMBPlugin: BaseService {
             if let ad = ctx.optAdOrError() { ctx.resolve(ad.isLoaded()) }
         case "adLoad", "adShow":
             guard privacy.canRequestAds else { ctx.reject("Gather ad consent before requesting ads"); return }
+            guard started else { ctx.reject("Initialize ads before requesting ads"); return }
             guard let ad = ctx.optAdOrError() else { return }
             if action == "adLoad" { ad.load(ctx) }
             else if ad is AMBBanner || ad.isLoaded() { ad.show(ctx) }
             else { ctx.resolve(false) }
+        case "adRecoverPresentation":
+            guard let id = ctx.optId() else { ctx.reject("id is required"); return }
+            ctx.resolve(recoverPresentation(id))
         case "adHide": ctx.optAdOrError()?.hide(ctx)
         case "bannerConfig": banners.configure(ctx)
         case "webviewGoto":
@@ -106,24 +143,51 @@ final class AMBPlugin: BaseService {
         }
     }
 
+    @MainActor
     private func start(_ ctx: AMBContext) {
         guard privacy.canRequestAds else { ctx.reject("Gather ad consent before requesting ads"); return }
         if started { ctx.resolve(["version": string(for: MobileAds.shared.versionNumber)]); return }
         starting.append(ctx)
         guard starting.count == 1 else { return }
         let token = generation
-        MobileAds.shared.start { [weak self] _ in
-            DispatchQueue.main.async {
-                guard let self, self.generation == token else { return }
-                self.started = true
-                if let webView = self.webView, self.registeredWebView !== webView {
-                    MobileAds.shared.register(webView)
-                    self.registeredWebView = webView
-                }
+        tracking.authorize { [weak self] result in
+            guard let self, self.generation == token else { return }
+            if case .failure(let error) = result {
                 let pending = self.starting
                 self.starting.removeAll()
-                for request in pending { request.resolve(["version": string(for: MobileAds.shared.versionNumber)]) }
+                pending.forEach { $0.reject(error) }
+                return
             }
+            Task { @MainActor [weak self] in
+                let environment = await AMBAdEnvironment.current()
+                guard let self, self.generation == token else { return }
+                guard self.privacy.canRequestAds else {
+                    let pending = self.starting
+                    self.starting.removeAll()
+                    pending.forEach { $0.reject("Gather ad consent before requesting ads") }
+                    return
+                }
+                self.adEnvironment = environment
+                self.startSDK(token)
+            }
+        }
+    }
+
+    @MainActor
+    private func startSDK(_ token: UUID) {
+        let didStart: @MainActor @Sendable () -> Void = { [weak self] in
+            guard let self, self.generation == token else { return }
+            self.started = true
+            if let webView = self.webView, self.registeredWebView !== webView {
+                MobileAds.shared.register(webView)
+                self.registeredWebView = webView
+            }
+            let pending = self.starting
+            self.starting.removeAll()
+            for request in pending { request.resolve(["version": string(for: MobileAds.shared.versionNumber)]) }
+        }
+        MobileAds.shared.start { _ in
+            DispatchQueue.main.async(execute: didStart)
         }
     }
 

@@ -15,8 +15,6 @@ function getAdConfig(platform, mode) {
 		"banner",
 		"interstitial",
 		"rewarded",
-		"academyRewarded",
-		"academyInterstitial",
 		"appOpen",
 	]) {
 		const id = config[name];

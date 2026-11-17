@@ -6,7 +6,6 @@ import com.foxdebug.acode.auth.EncryptedPreferenceManager;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
-import java.util.Random;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -19,62 +18,25 @@ public class RewardPassManager {
     private static final int MAX_REDEMPTIONS_PER_DAY = 3;
 
     private final EncryptedPreferenceManager adsPrefManager;
-    private final Random random = new Random();
 
     public RewardPassManager(Context context) {
         this.adsPrefManager = new EncryptedPreferenceManager(context, ADS_PREFS_FILENAME);
     }
 
     public String getRewardStatus() throws JSONException {
-        JSONObject state = syncRewardState(loadRewardState());
+        String previous = adsPrefManager.getString(KEY_REWARD_STATE, "");
+        JSONObject state = syncRewardState(loadRewardState(previous));
         JSONObject status = buildRewardStatus(state);
 
         if (status.optBoolean("hasPendingExpiryNotice")) {
             state.put("expiryNoticePendingUntil", 0L);
         }
 
-        saveRewardState(state);
+        if (!RewardPassStorage.isUnchanged(previous, state)) saveRewardState(state);
         return status.toString();
     }
 
-    public String redeemReward(String offerId) throws JSONException {
-        JSONObject state = syncRewardState(loadRewardState());
-        int redemptionsToday = state.optInt("redemptionsToday", 0);
-        long now = java.lang.System.currentTimeMillis();
-        long adFreeUntil = state.optLong("adFreeUntil", 0L);
-        long remainingMs = Math.max(0L, adFreeUntil - now);
-
-        if (redemptionsToday >= MAX_REDEMPTIONS_PER_DAY) {
-            throw new JSONException(
-                "Daily limit reached. You can redeem up to " + MAX_REDEMPTIONS_PER_DAY + " rewards per day."
-            );
-        }
-
-        if (remainingMs >= MAX_ACTIVE_PASS_MS) {
-            throw new JSONException("You already have the maximum 10 hours of ad-free time active.");
-        }
-
-        long grantedDurationMs = resolveRewardDuration(offerId);
-        long baseTime = Math.max(now, adFreeUntil);
-        long newAdFreeUntil = Math.min(baseTime + grantedDurationMs, now + MAX_ACTIVE_PASS_MS);
-        long appliedDurationMs = Math.max(0L, newAdFreeUntil - baseTime);
-
-        state.put("adFreeUntil", newAdFreeUntil);
-        state.put("lastExpiredRewardUntil", 0L);
-        state.put("expiryNoticePendingUntil", 0L);
-        state.put("redemptionDay", getTodayKey());
-        state.put("redemptionsToday", redemptionsToday + 1);
-        saveRewardState(state);
-
-        JSONObject status = buildRewardStatus(state);
-        status.put("grantedDurationMs", grantedDurationMs);
-        status.put("appliedDurationMs", appliedDurationMs);
-        status.put("offerId", offerId);
-        return status.toString();
-    }
-
-    private JSONObject loadRewardState() {
-        String raw = adsPrefManager.getString(KEY_REWARD_STATE, "");
+    private JSONObject loadRewardState(String raw) {
         if (raw == null || raw.isEmpty()) {
             return defaultRewardState();
         }
@@ -156,31 +118,9 @@ public class RewardPassManager {
         status.put("hasPendingExpiryNotice", state.optLong("expiryNoticePendingUntil", 0L) > 0L);
         status.put("expiryNoticePendingUntil", state.optLong("expiryNoticePendingUntil", 0L));
 
-        boolean canRedeem = remainingRedemptions > 0 && remainingMs < MAX_ACTIVE_PASS_MS;
-        status.put("canRedeem", canRedeem);
-        status.put("redeemDisabledReason", getRedeemDisabledReason(remainingRedemptions, remainingMs));
+        status.put("canRedeem", false);
+        status.put("redeemDisabledReason", "Ad-free passes are no longer available.");
         return status;
-    }
-
-    private String getRedeemDisabledReason(int remainingRedemptions, long remainingMs) {
-        if (remainingRedemptions <= 0) {
-            return "Daily limit reached. You can redeem up to " + MAX_REDEMPTIONS_PER_DAY + " rewards per day.";
-        }
-        if (remainingMs >= MAX_ACTIVE_PASS_MS) {
-            return "You already have the maximum 10 hours of ad-free time active.";
-        }
-        return "";
-    }
-
-    private long resolveRewardDuration(String offerId) throws JSONException {
-        if ("quick".equals(offerId)) {
-            return ONE_HOUR_MS;
-        }
-        if ("focus".equals(offerId)) {
-            int selectedHours = 4 + random.nextInt(3);
-            return selectedHours * ONE_HOUR_MS;
-        }
-        throw new JSONException("Unknown reward offer.");
     }
 
     private String getTodayKey() {

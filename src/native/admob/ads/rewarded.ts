@@ -1,3 +1,4 @@
+import { execAsync } from "../common";
 import { MobileAd, type MobileAdOptions } from "./base";
 
 export interface ServerSideVerificationOptions {
@@ -24,7 +25,14 @@ export class RewardedAd extends MobileAd<RewardedAdOptions> {
 		return super.show();
 	}
 
-	/** Release an Android rewarded ad after dismissal or before presentation. */
+	/** Recover a missed dismissal only after native foreground checks. */
+	public recoverPresentation(): Promise<boolean> {
+		return execAsync("adRecoverPresentation", [
+			{ id: this.id },
+		]) as Promise<boolean>;
+	}
+
+	/** Release a rewarded ad after dismissal or before presentation. */
 	public destroy() {
 		return super.destroy();
 	}

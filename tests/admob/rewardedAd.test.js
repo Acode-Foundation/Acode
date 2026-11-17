@@ -40,6 +40,7 @@ class Ad {
 	load = vi.fn().mockResolvedValue();
 	show = vi.fn().mockResolvedValue();
 	destroy = vi.fn().mockResolvedValue();
+	recoverPresentation = vi.fn().mockResolvedValue(false);
 }
 beforeEach(async () => {
 	vi.resetModules();
@@ -51,6 +52,7 @@ beforeEach(async () => {
 	mocks.platform.isIOS = false;
 	mocks.start.mockReset().mockResolvedValue();
 	vi.stubGlobal("window", { ANDROID_SDK_INT: 36 });
+	vi.stubGlobal("document", new EventTarget());
 	vi.stubGlobal("admob", { RewardedAd: Ad });
 	vi.stubGlobal("strings", {
 		"rewarded ad unavailable": "Unavailable",
@@ -140,7 +142,9 @@ describe("shared rewarded ad lifecycle", () => {
 		const assertion =
 			event === "dismiss"
 				? expect(result).resolves.toBe(false)
-				: expect(result).rejects.toThrow("Failed");
+				: expect(result).rejects.toThrow(
+						event.startsWith("load") ? "Unavailable" : "Failed",
+					);
 		await flush();
 		instances[0].emit(event);
 		await assertion;
@@ -238,21 +242,273 @@ describe("shared rewarded ad lifecycle", () => {
 		await next;
 		vi.restoreAllMocks();
 	});
-	it("rejects a presentation timeout and ignores late reward and dismissal", async () => {
-		const result = showRewardedAd();
-		const assertion = expect(result).rejects.toThrow("Failed");
+	it("releases the presentation lock if a cancelled show rejects late", async () => {
+		let rejectShow;
+		vi.spyOn(Ad.prototype, "on").mockImplementationOnce(
+			function (name, callback) {
+				this.show.mockImplementation(
+					() =>
+						new Promise((resolve, reject) => {
+							rejectShow = reject;
+						}),
+				);
+				this.listeners.set(name, callback);
+				return () => this.listeners.delete(name);
+			},
+		);
+		const controller = new AbortController();
+		const result = showRewardedAd({ signal: controller.signal });
 		await flush();
-		await vi.advanceTimersByTimeAsync(90_000);
-		await assertion;
+		controller.abort();
+		await expect(result).resolves.toBe(false);
+		rejectShow(new Error("Presentation was interrupted"));
+		await flush();
+		expect(instances[0].destroy).toHaveBeenCalledOnce();
+		const retry = showRewardedAd();
+		await flush();
+		instances[1].emit("dismiss");
+		await expect(retry).resolves.toBe(false);
+	});
+	it("does not expire while a displayed ad is being watched or on its end card", async () => {
+		const result = showRewardedAd();
+		await flush();
+		await vi.advanceTimersByTimeAsync(180_000);
 		await expect(showRewardedAd()).rejects.toThrow("Unavailable");
-		expect(instances[0].destroy).not.toHaveBeenCalled();
 		instances[0].emit("reward");
 		instances[0].emit("dismiss");
-		expect(instances[0].listeners.size).toBe(0);
+		await expect(result).resolves.toBe(true);
+		expect(vi.getTimerCount()).toBe(0);
+	});
+	it.each([
+		false,
+		true,
+	])("recovers a missed dismissal without granting a reward (iOS: %s)", async (ios) => {
+		mocks.platform.isIOS = ios;
+		const result = showRewardedAd();
+		const rejected = expect(result).rejects.toThrow("Failed");
+		await flush();
+		const ad = instances[0];
+		ad.recoverPresentation.mockResolvedValue(true);
+		await vi.advanceTimersByTimeAsync(599_999);
+		expect(ad.recoverPresentation).not.toHaveBeenCalled();
+		await vi.advanceTimersByTimeAsync(1);
+		await rejected;
+		expect(ad.destroy).toHaveBeenCalledOnce();
+		expect(vi.getTimerCount()).toBe(0);
+		const next = showRewardedAd();
+		await flush();
+		instances[1].emit("dismiss");
+		await expect(next).resolves.toBe(false);
+	});
+	it("honors an earned reward only after native recovery confirms dismissal", async () => {
+		const result = showRewardedAd();
+		await flush();
+		const ad = instances[0];
+		ad.emit("reward");
+		ad.recoverPresentation.mockResolvedValue(false);
+		await vi.advanceTimersByTimeAsync(600_000);
+		expect(ad.destroy).not.toHaveBeenCalled();
+		await expect(showRewardedAd()).rejects.toThrow("Unavailable");
+		ad.recoverPresentation.mockResolvedValue(true);
+		await vi.advanceTimersByTimeAsync(60_000);
+		await expect(result).resolves.toBe(true);
+		expect(ad.destroy).toHaveBeenCalledOnce();
+	});
+	it("pauses visible-ad polling after three checks without unlocking and resumes safely", async () => {
+		const controller = new AbortController();
+		const result = showRewardedAd({ signal: controller.signal });
+		await flush();
+		controller.abort();
+		await result;
+		const ad = instances[0];
+		await vi.advanceTimersByTimeAsync(3_600_000);
+		expect(ad.recoverPresentation).toHaveBeenCalledTimes(3);
+		expect(vi.getTimerCount()).toBe(0);
+		expect(ad.destroy).not.toHaveBeenCalled();
+		expect(instances).toHaveLength(1);
+		ad.recoverPresentation.mockResolvedValue(true);
+		document.dispatchEvent(new Event("resume"));
+		await flush();
+		expect(ad.destroy).toHaveBeenCalledOnce();
+	});
+	it("keeps the presentation lock until native recovery confirms dismissal after cancellation", async () => {
+		mocks.platform.isIOS = true;
+		const controller = new AbortController();
+		const result = showRewardedAd({ signal: controller.signal });
+		await flush();
+		controller.abort();
+		await expect(result).resolves.toBe(false);
+		const ad = instances[0];
+		ad.recoverPresentation
+			.mockResolvedValueOnce(false)
+			.mockRejectedValueOnce(new Error("Bridge unavailable"))
+			.mockResolvedValue(true);
+		await vi.advanceTimersByTimeAsync(600_000);
+		expect(ad.destroy).not.toHaveBeenCalled();
+		expect(instances).toHaveLength(1);
+		await vi.advanceTimersByTimeAsync(60_000);
+		expect(ad.destroy).not.toHaveBeenCalled();
+		await vi.advanceTimersByTimeAsync(60_000);
+		expect(ad.destroy).toHaveBeenCalledOnce();
+		expect(vi.getTimerCount()).toBe(0);
+	});
+	it("pauses recovery after three bridge errors and retries safely on resume", async () => {
+		const controller = new AbortController();
+		const result = showRewardedAd({ signal: controller.signal });
+		await flush();
+		controller.abort();
+		await result;
+		const ad = instances[0];
+		ad.recoverPresentation.mockRejectedValue(new Error("Bridge unavailable"));
+		await vi.advanceTimersByTimeAsync(900_000);
+		expect(ad.recoverPresentation).toHaveBeenCalledTimes(3);
+		expect(vi.getTimerCount()).toBe(0);
+		expect(ad.destroy).not.toHaveBeenCalled();
+		expect(instances).toHaveLength(1);
+		ad.recoverPresentation.mockResolvedValue(true);
+		document.dispatchEvent(new Event("resume"));
+		await flush();
+		expect(ad.destroy).toHaveBeenCalledOnce();
+		document.dispatchEvent(new Event("resume"));
+		expect(ad.recoverPresentation).toHaveBeenCalledTimes(4);
+	});
+	it("does not recover while the first show request is still opening", async () => {
+		let acknowledge;
+		vi.spyOn(Ad.prototype, "on").mockImplementationOnce(
+			function (name, callback) {
+				this.show.mockImplementation(
+					() =>
+						new Promise((resolve) => {
+							acknowledge = resolve;
+						}),
+				);
+				this.listeners.set(name, callback);
+				return () => this.listeners.delete(name);
+			},
+		);
+		const previous = showRewardedAd();
+		await flush();
+		await expect(showRewardedAd()).rejects.toThrow("Unavailable");
+		expect(instances[0].recoverPresentation).not.toHaveBeenCalled();
+		acknowledge();
+		await flush();
+		instances[0].emit("dismiss");
+		await expect(previous).resolves.toBe(false);
+	});
+	it("recovers on the next user request after polling stops without a resume event", async () => {
+		const controller = new AbortController();
+		const previous = showRewardedAd({ signal: controller.signal });
+		await vi.advanceTimersByTimeAsync(0);
+		controller.abort();
+		await previous;
+		await vi.advanceTimersByTimeAsync(3_600_000);
+		expect(instances[0].recoverPresentation).toHaveBeenCalledTimes(3);
+		instances[0].recoverPresentation.mockResolvedValue(true);
+		const next = showRewardedAd();
+		await vi.advanceTimersByTimeAsync(0);
+		expect(instances).toHaveLength(2);
+		instances[1].emit("dismiss");
+		await expect(next).resolves.toBe(false);
+	});
+	it("bounds a hung recovery call and ignores its late success", async () => {
+		const controller = new AbortController();
+		const previous = showRewardedAd({ signal: controller.signal });
+		await vi.advanceTimersByTimeAsync(0);
+		controller.abort();
+		await previous;
+		let complete;
+		const ad = instances[0];
+		ad.recoverPresentation.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					complete = resolve;
+				}),
+		);
+		const next = showRewardedAd();
+		const rejected = expect(next).rejects.toThrow("Unavailable");
+		await vi.advanceTimersByTimeAsync(10_000);
+		await rejected;
+		complete(true);
+		await vi.advanceTimersByTimeAsync(0);
+		expect(ad.destroy).not.toHaveBeenCalled();
+		expect(instances).toHaveLength(1);
+		ad.recoverPresentation.mockResolvedValue(true);
+		const retry = showRewardedAd();
+		await vi.advanceTimersByTimeAsync(0);
+		expect(instances).toHaveLength(2);
+		instances[1].emit("dismiss");
+		await expect(retry).resolves.toBe(false);
+		expect(vi.getTimerCount()).toBe(0);
+	});
+	it("coalesces user recovery attempts and releases them on normal dismissal", async () => {
+		const previous = showRewardedAd();
+		await vi.advanceTimersByTimeAsync(0);
+		const ad = instances[0];
+		ad.recoverPresentation.mockImplementation(() => new Promise(() => {}));
+		const first = showRewardedAd();
+		const second = showRewardedAd();
+		const secondRejected = expect(second).rejects.toThrow("Unavailable");
+		await vi.advanceTimersByTimeAsync(0);
+		expect(ad.recoverPresentation).toHaveBeenCalledOnce();
+		ad.emit("dismiss");
+		await expect(previous).resolves.toBe(false);
+		await vi.advanceTimersByTimeAsync(0);
+		await secondRejected;
+		expect(instances).toHaveLength(2);
+		instances[1].emit("dismiss");
+		await expect(first).resolves.toBe(false);
+		expect(vi.getTimerCount()).toBe(0);
+	});
+	it("reports expected unavailability without a warning", async () => {
+		const warn = vi.spyOn(console, "warn");
+		mocks.allowed = false;
+		await expect(showRewardedAd()).rejects.toThrow("Unavailable");
+		expect(warn).not.toHaveBeenCalled();
+	});
+	it("recovers the presentation lock when the show reply itself is lost", async () => {
+		mocks.platform.isIOS = true;
+		vi.spyOn(Ad.prototype, "on").mockImplementationOnce(
+			function (name, callback) {
+				this.show.mockImplementation(() => new Promise(() => {}));
+				this.recoverPresentation.mockResolvedValue(true);
+				this.listeners.set(name, callback);
+				return () => this.listeners.delete(name);
+			},
+		);
+		const result = showRewardedAd();
+		const rejected = expect(result).rejects.toThrow("Failed");
+		await vi.advanceTimersByTimeAsync(90_000);
+		await rejected;
+		expect(instances[0].destroy).not.toHaveBeenCalled();
+		await vi.advanceTimersByTimeAsync(510_000);
 		expect(instances[0].destroy).toHaveBeenCalledOnce();
 		expect(vi.getTimerCount()).toBe(0);
 	});
-	it("times out initialization and never presents a late ad", async () => {
+	it("ignores a late recovery response after normal dismissal and a new ad", async () => {
+		mocks.platform.isIOS = true;
+		const result = showRewardedAd();
+		await flush();
+		let complete;
+		instances[0].recoverPresentation.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					complete = resolve;
+				}),
+		);
+		await vi.advanceTimersByTimeAsync(600_000);
+		instances[0].emit("dismiss");
+		await expect(result).resolves.toBe(false);
+		const next = showRewardedAd();
+		await flush();
+		complete(true);
+		await flush();
+		await expect(showRewardedAd()).rejects.toThrow("Unavailable");
+		expect(instances[1].destroy).not.toHaveBeenCalled();
+		instances[1].emit("dismiss");
+		await next;
+		expect(vi.getTimerCount()).toBe(0);
+	});
+	it("lets users finish privacy prompts without an ad timeout", async () => {
 		let complete;
 		mocks.start.mockImplementation(
 			() =>
@@ -261,12 +517,38 @@ describe("shared rewarded ad lifecycle", () => {
 				}),
 		);
 		const result = showRewardedAd();
-		const assertion = expect(result).rejects.toThrow("Failed");
+		await vi.advanceTimersByTimeAsync(180_000);
+		expect(instances).toHaveLength(0);
+		expect(vi.getTimerCount()).toBe(0);
+		complete();
+		await flush();
+		instances[0].emit("reward");
+		instances[0].emit("dismiss");
+		await expect(result).resolves.toBe(true);
+	});
+	it("times out a stalled load without showing or granting a late reward", async () => {
+		let complete;
+		vi.spyOn(Ad.prototype, "on").mockImplementationOnce(
+			function (name, callback) {
+				this.load.mockImplementation(
+					() =>
+						new Promise((resolve) => {
+							complete = resolve;
+						}),
+				);
+				this.listeners.set(name, callback);
+				return () => this.listeners.delete(name);
+			},
+		);
+		const result = showRewardedAd();
+		const assertion = expect(result).rejects.toThrow("Unavailable");
+		await flush();
 		await vi.advanceTimersByTimeAsync(90_000);
 		await assertion;
 		complete();
 		await flush();
-		expect(instances).toHaveLength(0);
+		expect(instances[0].show).not.toHaveBeenCalled();
+		expect(instances[0].destroy).toHaveBeenCalledOnce();
 		expect(vi.getTimerCount()).toBe(0);
 	});
 });

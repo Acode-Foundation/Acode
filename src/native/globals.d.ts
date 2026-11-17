@@ -13,8 +13,6 @@ declare global {
 	const ADMOB_BANNER_ID: string;
 	const ADMOB_INTERSTITIAL_ID: string;
 	const ADMOB_REWARDED_ID: string;
-	const ADMOB_ACADEMY_REWARDED_ID: string;
-	const ADMOB_ACADEMY_INTERSTITIAL_ID: string;
 	const ADMOB_APP_OPEN_ID: string;
 	interface Window {
 		toast: typeof import("../components/toast").default;

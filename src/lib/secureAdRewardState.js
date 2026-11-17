@@ -20,14 +20,4 @@ export default {
 			return null;
 		}
 	},
-	async redeem(offerId) {
-		try {
-			const raw = await execSystem("redeemReward", [offerId]);
-			if (!raw) return null;
-			return typeof raw === "string" ? JSON.parse(raw) : raw;
-		} catch (error) {
-			console.warn("Failed to redeem rewarded ad offer.", error);
-			throw error;
-		}
-	},
 };

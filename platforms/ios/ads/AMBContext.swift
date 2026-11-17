@@ -94,6 +94,7 @@ final class AMBContext: AMBCoreContext {
                     let maxHeight = adSizeDict["maxHeight"] as? CGFloat {
                     return inlineAdaptiveBanner(width: width, maxHeight: maxHeight)
                 } else {
+                    // Keep the compact anchored size; the newer large helpers increase editor insets.
                     switch adSizeDict["orientation"] as? String {
                     case "portrait":
                         return portraitAnchoredAdaptiveBanner(width: width)

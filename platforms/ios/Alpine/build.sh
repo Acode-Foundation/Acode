@@ -20,7 +20,7 @@ if [[ "${ARCHS:-arm64}" != arm64 ]]; then
     exit 1
 fi
 
-crossfile="$build_dir/cross.ini"
+crossfile="$build_dir.cross.ini"
 cat > "$crossfile.tmp" <<EOF
 [binaries]
 c = '/usr/bin/clang'
@@ -40,8 +40,13 @@ EOF
 # Preserve timestamps so an unchanged Xcode build remains incremental.
 if ! cmp -s "$crossfile.tmp" "$crossfile"; then mv "$crossfile.tmp" "$crossfile"; else rm "$crossfile.tmp"; fi
 export CC_FOR_BUILD=/usr/bin/clang
-if [[ ! -f "$build_dir/build.ninja" ]]; then
-    meson setup "$build_dir" "$alpine_dir/Vendor/ios-linuxkit" --cross-file "$crossfile" -Dbuildtype=release
+# Meson caches compiler flags separately; rewriting the cross file is not enough
+# after an SDK or deployment-target change. Keep it outside the directory wiped.
+if [[ ! -f "$build_dir/build.ninja" ]] || ! cmp -s "$crossfile" "$build_dir/configured-cross.ini"; then
+    setup_options=(setup)
+    if [[ -d "$build_dir/meson-private" ]]; then setup_options+=(--wipe); fi
+    meson "${setup_options[@]}" "$build_dir" "$alpine_dir/Vendor/ios-linuxkit" --cross-file "$crossfile" -Dbuildtype=release
+    cp "$crossfile" "$build_dir/configured-cross.ini"
 fi
 ninja -C "$build_dir" libish.a libish_emu.a libfakefs.a libacode_alpine.a libacode_archive.a
 test -s "$build_dir/vdso/arm64/libvdso.so.elf" || { echo "error: ARM64 Linux VDSO was not built. Install llvm and lld."; exit 1; }

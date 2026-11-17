@@ -20,6 +20,7 @@ export let bannerAd = null;
 /** @type {import("native/admob").InterstitialAd} */
 export let interstitialAd = null;
 let consentCoordinator = null;
+let nextAutomaticRetry = 0;
 
 export default async function startAd() {
 	if (!canUseAdmob()) {
@@ -79,13 +80,31 @@ function canUseAdmob() {
 }
 
 function getConsentCoordinator() {
-	consentCoordinator ??= new AdConsentCoordinator({
-		privacy: admob.privacy,
-		initializeAds,
-		onError: (error) =>
-			console.warn("Unable to refresh AdMob consent information:", error),
-	});
+	if (!consentCoordinator) {
+		consentCoordinator = new AdConsentCoordinator({
+			privacy: admob.privacy,
+			initializeAds,
+			onError: (error) =>
+				console.warn("Unable to refresh AdMob consent information:", error),
+		});
+		document.addEventListener("resume", retryAdStartup);
+		window.addEventListener("online", retryAdStartup);
+	}
 	return consentCoordinator;
+}
+
+function retryAdStartup() {
+	if (
+		initialized ||
+		!canUseAdmob() ||
+		document.hidden ||
+		navigator.onLine === false ||
+		getPrivacyState().consentStatus === "required" ||
+		Date.now() < nextAutomaticRetry
+	)
+		return;
+	nextAutomaticRetry = Date.now() + 30_000;
+	void startAd();
 }
 
 async function initializeAds() {

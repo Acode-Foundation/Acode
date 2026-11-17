@@ -13,7 +13,6 @@ import { requestProPurchase, restorePurchases } from "lib/removeAds";
 import appSettings from "lib/settings";
 import settings from "lib/settings";
 import { showPrivacyOptions, subscribePrivacyState } from "lib/startAd";
-import openAdRewardsPage from "pages/adRewards";
 import appIconSetting, { preloadAppIconSetting } from "pages/appIconSetting";
 import Changelog from "pages/changelog/changelog";
 import plugins from "pages/plugins";
@@ -203,14 +202,7 @@ export default function mainSettings() {
 					? "iap-pro-purchase-warning-ios"
 					: "iap-pro-purchase-warning"
 			];
-		items.push({
-			key: "adRewards",
-			text: strings["earn ad-free time"],
-			icon: "play_arrow",
-			info: strings["settings-info-main-ad-rewards"],
-			category: categories.supportAcode,
-			chevron: true,
-		});
+
 		items.push({
 			key: "removeads",
 			text: strings["remove ads"],
@@ -304,10 +296,6 @@ export default function mainSettings() {
 
 			case "plugins":
 				plugins();
-				break;
-
-			case "adRewards":
-				openAdRewardsPage();
 				break;
 
 			case "formatter":

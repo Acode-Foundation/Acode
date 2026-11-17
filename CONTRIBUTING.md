@@ -247,12 +247,24 @@ implementation. Version, build number and display name are synced from
 services work without a distribution certificate.
 
 The target includes `platforms/ios/ads`, Google Mobile Ads/UMP and advertising
-metadata. Debug builds use Google's iOS test units. Release builds require
-`ACODE_IOS_ADMOB_APP_ID`, `ACODE_IOS_ADMOB_BANNER_ID`,
-`ACODE_IOS_ADMOB_INTERSTITIAL_ID` and `ACODE_IOS_ADMOB_REWARDED_ID`.
-See [iOS advertising](docs/ios-advertising.md) for consent testing, source provenance
-and validation limits. Run the normal script before building `runner` in Xcode;
-it prepares `.ios-build/App-Info.plist` and the matching web bundle.
+metadata. `ads.json` supplies ad-unit IDs through the web build configuration;
+`dev/scripts/iosAds.js` separately writes the app ID and advertising metadata into
+`.ios-build/App-Info.plist`. Run the normal script before building `runner` in Xcode
+to prepare both the plist and web bundle. The adapted AdMob Plus code retains its
+MIT notice in `platforms/ios/ads/AdMobPlus-LICENSE.txt`.
+
+The app gathers UMP consent, then native startup waits for ATT to settle before
+starting Mobile Ads; consent is checked again before startup and ad requests.
+ATT waits are bounded to 30 seconds. A timeout fails startup without granting
+authorization; retry/foreground checks read the OS status, and cancellation never
+starts a second prompt while the original OS request is outstanding.
+On physical Release builds, a verified StoreKit sandbox/Xcode environment selects
+Google demo units. A failed, unverified or timed-out lookup keeps the configured
+units; the lookup deadline is three seconds. Verified environments are cached for
+the process; failed/unverified lookups retry after a 30-second cooldown, and
+concurrent lookups share one request. Debug/simulator selection comes from
+the build configuration and SDK test-device behavior. Simulator tests do not
+establish TestFlight/App Review environment selection or production ad fill.
 
 The icon picker uses UIKit alternate icons and the existing reward/Pro gates.
 `runner.icon` and the fifteen alternate app-icon sets use Acode's existing
@@ -263,6 +275,10 @@ the icon, including Apple's confirmation and portrait/landscape rotation on
 iPhone and iPad. It uses the local StoreKit Pro fixture to unlock the picker.
 Native tests cover packaged icons
 and the bridge; shared tests cover reward and purchase gates.
+
+Calling `Bridge.setup()` again intentionally invalidates callbacks from the old
+navigation and resets its services before rebuilding them for the supplied WebView.
+Normal page navigation calls `reset()` and reuses the same WebView and services.
 
 The `System` file utilities retain Android's result shapes, newline semantics and
 nonrecursive deletion while restricting paths to the sandbox or granted Files

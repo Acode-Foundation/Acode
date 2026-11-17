@@ -123,6 +123,34 @@ final class AdsBridgeTests: BridgeTestCase {
         XCTAssertTrue(second.preparePresentation(context(plugin, id: second.id)) === controller)
     }
 
+    func testPresentationRecoveryNeverDismissesAVisibleController() async throws {
+        let (controller, plugin) = try await host()
+        let ad = try XCTUnwrap(AMBFullScreen(context(plugin, id: "recovery")))
+        plugin.ads[ad.id] = ad
+        defer { plugin.ads.removeValue(forKey: ad.id)?.destroy() }
+        XCTAssertNotNil(ad.preparePresentation(context(plugin, id: ad.id)))
+        let visible = UIViewController()
+        await withCheckedContinuation { continuation in
+            controller.present(visible, animated: false) { continuation.resume() }
+        }
+        XCTAssertFalse(ad.recoverPresentation())
+        XCTAssertFalse(plugin.recoverPresentation("already-removed"))
+        XCTAssertTrue(ad.isPresenting)
+        XCTAssertTrue(controller.presentedViewController === visible)
+        await withCheckedContinuation { continuation in
+            visible.dismiss(animated: false) { continuation.resume() }
+        }
+        XCTAssertTrue(ad.recoverPresentation())
+        XCTAssertFalse(ad.isPresenting)
+        XCTAssertNil(plugin.presentedAd)
+        // Recovery also handles the case where only the JS event was lost.
+        XCTAssertTrue(ad.recoverPresentation())
+        ad.destroy()
+        XCTAssertFalse(ad.recoverPresentation())
+        plugin.ads.removeValue(forKey: ad.id)
+        XCTAssertTrue(plugin.recoverPresentation(ad.id))
+    }
+
     func testPaidImpressionPayloadPreservesFormatsAndCurrencyMicros() async throws {
         let (controller, plugin) = try await host()
         let webView = controller.webView!

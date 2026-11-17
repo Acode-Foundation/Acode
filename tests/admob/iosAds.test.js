@@ -13,9 +13,19 @@ vi.mock("../../src/lib/bannerVisibilityController.mjs", () => ({
 }));
 vi.mock("../../src/lib/config", () => ({ default: { HAS_PRO: false } }));
 
-beforeEach(() => {
+beforeEach(async () => {
 	vi.resetModules();
-	vi.stubGlobal("window", { ANDROID_SDK_INT: 0 });
+	vi.stubGlobal(
+		"window",
+		Object.assign(new EventTarget(), { ANDROID_SDK_INT: 0 }),
+	);
+	vi.stubGlobal(
+		"document",
+		Object.assign(new EventTarget(), { hidden: false }),
+	);
+	vi.stubGlobal("navigator", { onLine: true });
+	const config = await import("../../src/lib/config");
+	config.default.HAS_PRO = false;
 	vi.stubGlobal("Bridge", { platformId: "ios" });
 	vi.stubGlobal("BuildInfo", { buildType: "debug" });
 	setBuildConstants("ios", "Debug");
@@ -37,6 +47,7 @@ beforeEach(() => {
 	});
 });
 afterEach(() => {
+	vi.restoreAllMocks();
 	vi.unstubAllGlobals();
 	vi.unstubAllEnvs();
 	vi.clearAllMocks();
@@ -121,6 +132,96 @@ test("runtime build metadata cannot replace compiled iOS production IDs", async 
 		adUnitId: ads.ios.production.banner,
 		position: "bottom",
 	});
+});
+
+test.each([
+	"online",
+	"resume",
+])("recovers failed startup on %s and deduplicates repeated events", async (event) => {
+	if (event === "online") {
+		admob.privacy.gatherConsent.mockRejectedValueOnce(new Error("offline"));
+		admob.privacy.getState = vi
+			.fn()
+			.mockResolvedValue({ consentStatus: "unknown", canRequestAds: false });
+	} else {
+		admob.start.mockRejectedValueOnce(new Error("ATT interrupted"));
+	}
+	const ads = await import("../../src/lib/startAd.js");
+	await ads.default();
+	expect(ads.initialized).toBe(false);
+	let finishConsent;
+	admob.privacy.gatherConsent.mockImplementationOnce(
+		() =>
+			new Promise((resolve) => {
+				finishConsent = resolve;
+			}),
+	);
+	const target = event === "online" ? window : document;
+	target.dispatchEvent(new Event(event));
+	target.dispatchEvent(new Event(event));
+	expect(admob.privacy.gatherConsent).toHaveBeenCalledTimes(2);
+	finishConsent({ consentStatus: "notRequired", canRequestAds: true });
+	await vi.waitFor(() => expect(ads.initialized).toBe(true));
+	expect(admob.BannerAd).toHaveBeenCalledOnce();
+	expect(admob.InterstitialAd).toHaveBeenCalledOnce();
+	window.dispatchEvent(new Event("online"));
+	document.dispatchEvent(new Event("resume"));
+	expect(admob.privacy.gatherConsent).toHaveBeenCalledTimes(2);
+});
+
+test("automatic recovery respects foreground, connectivity and Pro state", async () => {
+	admob.privacy.gatherConsent.mockResolvedValueOnce({
+		consentStatus: "unknown",
+		canRequestAds: false,
+	});
+	const ads = await import("../../src/lib/startAd.js");
+	await ads.default();
+	document.hidden = true;
+	window.dispatchEvent(new Event("online"));
+	document.hidden = false;
+	navigator.onLine = false;
+	document.dispatchEvent(new Event("resume"));
+	navigator.onLine = true;
+	const config = await import("../../src/lib/config");
+	config.default.HAS_PRO = true;
+	document.dispatchEvent(new Event("resume"));
+	expect(admob.privacy.gatherConsent).toHaveBeenCalledOnce();
+	expect(admob.BannerAd).not.toHaveBeenCalled();
+});
+
+test("recovery does not reopen required consent forms but permits an explicit retry", async () => {
+	admob.privacy.gatherConsent.mockResolvedValueOnce({
+		consentStatus: "required",
+		canRequestAds: false,
+	});
+	const ads = await import("../../src/lib/startAd.js");
+	await ads.default();
+	window.dispatchEvent(new Event("online"));
+	document.dispatchEvent(new Event("resume"));
+	expect(admob.privacy.gatherConsent).toHaveBeenCalledOnce();
+	await ads.default();
+	expect(ads.initialized).toBe(true);
+	expect(admob.privacy.gatherConsent).toHaveBeenCalledTimes(2);
+});
+
+test("throttles automatic consent retries without delaying explicit user attempts", async () => {
+	const now = vi.spyOn(Date, "now").mockReturnValue(1_000);
+	admob.privacy.gatherConsent.mockResolvedValue({
+		consentStatus: "unknown",
+		canRequestAds: false,
+	});
+	const ads = await import("../../src/lib/startAd.js");
+	await ads.default();
+	window.dispatchEvent(new Event("online"));
+	for (let i = 0; i < 8; i++) await Promise.resolve();
+	document.dispatchEvent(new Event("resume"));
+	expect(admob.privacy.gatherConsent).toHaveBeenCalledTimes(2);
+	now.mockReturnValue(31_000);
+	document.dispatchEvent(new Event("resume"));
+	for (let i = 0; i < 8; i++) await Promise.resolve();
+	expect(admob.privacy.gatherConsent).toHaveBeenCalledTimes(3);
+	await ads.default();
+	expect(admob.privacy.gatherConsent).toHaveBeenCalledTimes(4);
 });
 
 function setBuildConstants(platform, mode) {

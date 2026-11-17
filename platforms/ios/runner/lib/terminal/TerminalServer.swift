@@ -104,7 +104,7 @@ final class TerminalServer {
         runtime.queue.async { [self] in
             do {
                 let session = try runtime.startTerminal(shell, rows: size.rows, cols: size.cols, queue: queue)
-                queue.async { [self] in
+                queue.async { [self, session] in
                     sessions[session.pid] = session
                     session.onFinish = { [weak self, weak session] in
                         if let session { self?.sessions.removeValue(forKey: session.pid) }
@@ -133,7 +133,7 @@ final class TerminalServer {
         let run = { [self] in
             do {
                 let session = try runtime.startTerminal(script, rows: 24, cols: 80, queue: queue, scrollbackLimit: Self.captureLimit)
-                queue.async { [self] in
+                queue.async { [self, session] in
                     session.onExit = { [weak session] _ in
                         answer(200, String(decoding: session?.capturedOutput ?? Data(), as: UTF8.self), nil)
                     }

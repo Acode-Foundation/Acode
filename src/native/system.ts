@@ -81,13 +81,6 @@ const api = {
 	) {
 		exec(success, error, "getRewardStatus", []);
 	},
-	redeemReward(
-		offerId: string,
-		success: (status: string | RewardStatus) => void,
-		error: OnFail,
-	) {
-		exec(success, error, "redeemReward", [offerId]);
-	},
 	extractAsset(
 		assetName: string,
 		destinationPath: string,

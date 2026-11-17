@@ -1,5 +1,9 @@
 # Change Log
 
+## Unreleased
+
+* Ad-free pass redemption is discontinued; previously earned time remains valid until expiry. The `system.redeemReward` wrapper and native action have been removed. Plugins using that action must stop offering redemption. Internal pass-offer helpers and the `isWatchingRewardedAd` export were also removed.
+
 ## v1.13.5
 
 * fix(terminal): stop proot "can't sanitize binding" fd warnings by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/2878

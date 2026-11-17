@@ -4,7 +4,8 @@ import UIKit
 class AMBAdBase: NSObject {
     weak var plugin: AMBPlugin?
     let id: String
-    let adUnitId: String
+    private let configuredAdUnitId: String
+    var adUnitId: String { plugin?.adEnvironment.unitID(for: adFormat, configured: configuredAdUnitId) ?? configuredAdUnitId }
     let adFormat: String
     let adRequest: Request
     private var loadID = UUID()
@@ -14,7 +15,7 @@ class AMBAdBase: NSObject {
     init?(_ ctx: AMBContext) {
         guard let id = ctx.optId(), let adUnitId = ctx.optAdUnitID() else { return nil }
         self.id = id
-        self.adUnitId = adUnitId
+        configuredAdUnitId = adUnitId
         let format = String(ctx.optString("cls", "").dropLast(2))
         adFormat = format.prefix(1).lowercased() + format.dropFirst()
         adRequest = ctx.optGADRequest()

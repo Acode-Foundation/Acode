@@ -27,3 +27,4 @@ platforms/**/bundle/
 **/Config.xcconfig
 platforms/ios/**/*.xcuserstate
 platforms/ios/**/xcuserdata/
+/docs/reviews/
