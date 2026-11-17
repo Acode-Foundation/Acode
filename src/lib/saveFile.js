@@ -13,6 +13,7 @@ import config from "./config";
 import EditorFile from "./editorFile";
 import openFolder from "./openFolder";
 import appSettings from "./settings";
+import workspace from "./workspace";
 
 /** @type {WeakMap<EditorFile, number>} */
 const saveTimeouts = new WeakMap();
@@ -175,7 +176,12 @@ async function saveFile(
 
 		// The format command works on the active editor, so only format when the
 		// file being saved is the one shown (bulk saves cover background tabs).
-		if (appSettings.value.formatOnSave && editorManager.activeFile === file) {
+		// A project may turn this on or off for the files inside it.
+		const { formatOnSave } = workspace.resolveSettings(
+			appSettings.value,
+			file.uri,
+		);
+		if (formatOnSave && editorManager.activeFile === file) {
 			file.markChanged = false;
 			try {
 				acode.exec("format", false);

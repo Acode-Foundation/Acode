@@ -915,5 +915,8 @@
 	"files saved count": "Files saved: {count}",
 	"files not saved count": "Files not saved: {count}",
 	"use native index": "Use native index",
-	"use native index hint": "Search local folders faster using the native file index."
+	"use native index hint": "Search local folders faster using the native file index.",
+	"project extensions title": "Plugins recommended by {project}",
+	"project extensions message": "{project} recommends: {plugins}",
+	"review recommendations": "Review"
 }

@@ -919,6 +919,9 @@ declare type LangStrings = {
 	"files not saved count": string;
 	"use native index": string;
 	"use native index hint": string;
+	"project extensions title": string;
+	"project extensions message": string;
+	"review recommendations": string;
 };
 
 declare var strings: LangStrings;

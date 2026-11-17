@@ -53,6 +53,7 @@ import loadPlugins from "lib/loadPlugins";
 import Logger from "lib/logger";
 import notificationManager from "lib/notificationManager";
 import openFolder, { addedFolder } from "lib/openFolder";
+import projectExtensions from "lib/projectExtensions";
 import { registerPrettierFormatter } from "lib/registerPrettierFormatter";
 import restoreFiles from "lib/restoreFiles";
 import settings from "lib/settings";
@@ -61,6 +62,7 @@ import startAd, {
 	BANNER_SUPPRESSION_REASON,
 	setBannerSuppressed,
 } from "lib/startAd";
+import workspace from "lib/workspace";
 import mustache from "mustache";
 import themes from "theme/list";
 import { initHighlighting } from "utils/codeHighlight";
@@ -769,6 +771,34 @@ async function loadApp() {
 		window.log("error", error);
 		toast("Failed to load theme plugins!");
 	}
+
+	// Before folders are restored, so reopened projects are recognised too.
+	workspace.init(editorManager, addedFolder);
+
+	// A mistake in a file in .acode would otherwise just have no effect, with
+	// nothing to say why. Only the file that changed is reported.
+	const reportProblems =
+		(files) =>
+		({ name, settings, extensions }) => {
+			const problems = {
+				"settings.json": settings.problems,
+				"extensions.json": extensions.problems,
+			};
+			for (const file of files) {
+				if (!problems[file].length) continue;
+				toast(
+					`${name || "Project"}: .acode/${file} - ${problems[file][0]}`,
+					5000,
+				);
+				return;
+			}
+		};
+	workspace.on("open", reportProblems(["settings.json", "extensions.json"]));
+	workspace.on("settings", reportProblems(["settings.json"]));
+	workspace.on("extensions", reportProblems(["extensions.json"]));
+
+	// Suggests the plugins a project recommends. Never installs anything.
+	projectExtensions.init();
 
 	acode.setLoadingMessage("Loading folders...");
 	if (Array.isArray(folders)) {

@@ -117,6 +117,8 @@ import EditorFile, { AUTO_SAVE } from "./editorFile";
 import openFile from "./openFile";
 import { addedFolder } from "./openFolder";
 import appSettings from "./settings";
+import workspace from "./workspace";
+import { PROJECT_SETTING_KEYS } from "./workspaceSettings";
 import {
 	getSystemConfiguration,
 	HARDKEYBOARDHIDDEN_NO,
@@ -1120,8 +1122,17 @@ async function EditorManager($header, $body) {
 		]);
 	}
 
+	// The settings the options are built from. While options are applied to a
+	// file this is the user's settings with that file's project overrides on
+	// top (see applyOptions); otherwise just the user's settings. Options that
+	// a project may override read from here, the rest from appSettings.
+	let optionValues = null;
+	function getOptionValues() {
+		return optionValues || appSettings?.value || {};
+	}
+
 	function makeIndentExtensions() {
-		const { softTab = true, tabSize = 2 } = appSettings?.value || {};
+		const { softTab = true, tabSize = 2 } = getOptionValues();
 		const unit = softTab ? " ".repeat(Math.max(1, Number(tabSize) || 2)) : "\t";
 		return {
 			indentExt: indentUnit.of(unit),
@@ -1401,28 +1412,46 @@ async function EditorManager($header, $body) {
 		];
 	}
 
-	function applyOptions(keys, targetEditor = null) {
+	/**
+	 * @param {string[]|null} keys Settings to apply, or null for all.
+	 * @param {object|null} targetEditor Editor to apply to, or null for every pane.
+	 * @param {object|null} file File the options are for. Defaults to the file
+	 * the target's pane is showing. Its project's overrides are applied.
+	 */
+	function applyOptions(keys, targetEditor = null, file = null) {
 		const filter = keys ? new Set(keys) : null;
 		const targetEditors = targetEditor
 			? [targetEditor]
 			: panes.map((pane) => pane.editor).filter(Boolean);
 
 		for (const target of targetEditors) {
-			for (const spec of cmOptionSpecs) {
-				if (filter && !spec.keys.some((k) => filter.has(k))) continue;
-				const built = spec.build();
-				const effects = [];
-				if (spec.compartments.length === 1) {
-					effects.push(spec.compartments[0].reconfigure(built));
-				} else {
-					const arr = Array.isArray(built) ? built : [built];
-					for (let i = 0; i < spec.compartments.length; i++) {
-						const comp = spec.compartments[i];
-						const ext = arr[i] ?? [];
-						effects.push(comp.reconfigure(ext));
+			const targetFile = file || target.__editorPane?.activeFile;
+			// Restored afterwards rather than cleared, in case applying an option
+			// leads to another applyOptions call.
+			const previousOptionValues = optionValues;
+			optionValues = workspace.resolveSettings(
+				appSettings?.value || {},
+				targetFile?.uri,
+			);
+			try {
+				for (const spec of cmOptionSpecs) {
+					if (filter && !spec.keys.some((k) => filter.has(k))) continue;
+					const built = spec.build();
+					const effects = [];
+					if (spec.compartments.length === 1) {
+						effects.push(spec.compartments[0].reconfigure(built));
+					} else {
+						const arr = Array.isArray(built) ? built : [built];
+						for (let i = 0; i < spec.compartments.length; i++) {
+							const comp = spec.compartments[i];
+							const ext = arr[i] ?? [];
+							effects.push(comp.reconfigure(ext));
+						}
 					}
+					target.dispatch({ effects });
 				}
-				target.dispatch({ effects });
+			} finally {
+				optionValues = previousOptionValues;
 			}
 			if (isCanvasView(target)) syncCanvasOptions(target);
 		}
@@ -2824,8 +2853,11 @@ async function EditorManager($header, $body) {
 		});
 	}
 
-	function getEditorOptionsSignature() {
-		const values = appSettings?.value || {};
+	function getEditorOptionsSignature(file) {
+		const values = workspace.resolveSettings(
+			appSettings?.value || {},
+			file?.uri,
+		);
 		const keys = new Set(["editorTheme"]);
 		for (const spec of cmOptionSpecs) {
 			spec.keys.forEach((key) => keys.add(key));
@@ -2978,11 +3010,11 @@ async function EditorManager($header, $body) {
 		const targetTouchSelectionController =
 			targetPane?.touchSelectionController || touchSelectionController;
 		targetTouchSelectionController?.onSessionChanged();
-		const optionsSignature = getEditorOptionsSignature();
+		const optionsSignature = getEditorOptionsSignature(file);
 		if (forceOptions || file.__cmOptionsSignature !== optionsSignature) {
 			const desiredTheme = appSettings?.value?.editorTheme;
 			if (desiredTheme) targetEditor.setTheme(desiredTheme);
-			applyOptions(null, targetEditor);
+			applyOptions(null, targetEditor, file);
 			file.__cmOptionsSignature = optionsSignature;
 		}
 		try {
@@ -3589,6 +3621,22 @@ async function EditorManager($header, $body) {
 
 	// Ensure initial options reflect settings
 	applyOptions();
+
+	// A project's settings can arrive after its files are already showing (the
+	// project is scanned asynchronously), change when its settings.json is
+	// saved, or go away with the project. Reapply them to what is showing;
+	// files that are not showing pick the change up when they are shown, since
+	// their options signature includes the project's overrides.
+	function reapplyProjectOptions() {
+		for (const pane of panes) {
+			const file = pane.activeFile;
+			if (!pane.editor || file?.type !== "editor") continue;
+			applyOptions(PROJECT_SETTING_KEYS, pane.editor, file);
+		}
+	}
+	for (const event of ["open", "settings", "close"]) {
+		workspace.on(event, reapplyProjectOptions);
+	}
 
 	$hScrollbar.onshow = $vScrollbar.onshow = updateFloatingButton.bind(
 		{},

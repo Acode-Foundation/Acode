@@ -915,5 +915,8 @@
 	"files saved count": "{count} fájl mentve",
 	"files not saved count": "{count} fájl nem lett mentve",
 	"use native index": "Use native index",
-	"use native index hint": "Search local folders faster using the native file index."
+	"use native index hint": "Search local folders faster using the native file index.",
+	"project extensions title": "Plugins recommended by {project}",
+	"project extensions message": "{project} recommends: {plugins}",
+	"review recommendations": "Review"
 }
