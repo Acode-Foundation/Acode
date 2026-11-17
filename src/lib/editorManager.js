@@ -117,12 +117,12 @@ import EditorFile, { AUTO_SAVE } from "./editorFile";
 import openFile from "./openFile";
 import { addedFolder } from "./openFolder";
 import appSettings from "./settings";
-import workspace from "./workspace";
-import { PROJECT_SETTING_KEYS } from "./workspaceSettings";
 import {
 	getSystemConfiguration,
 	HARDKEYBOARDHIDDEN_NO,
 } from "./systemConfiguration";
+import workspace from "./workspace";
+import { PROJECT_SETTING_KEYS } from "./workspaceSettings";
 
 /**
  * Represents an editor manager that handles multiple files and provides various editor configurations and event listeners.

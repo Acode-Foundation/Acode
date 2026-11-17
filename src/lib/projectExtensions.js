@@ -43,8 +43,7 @@ export async function findMissing(ids) {
 }
 
 /**
- * Open the registry page of a recommended plugin. The page shows its details
- * and an install button; nothing is installed unless the user presses it.
+ * Open the Extensions sidebar filtered to a recommended plugin.
  * @param {readonly string[]} ids The recommended plugins that are missing.
  */
 export async function review(ids) {
@@ -56,7 +55,7 @@ export async function review(ids) {
 	if (!isPluginId(id)) return;
 
 	const { openWithSearch } = await import("sidebarApps/extensions");
-	openWithSearch(`id:${id}`);
+	await openWithSearch(`id:${id}`);
 }
 
 /**

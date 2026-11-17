@@ -55,7 +55,7 @@ const fake = vi.hoisted(() => {
 const ui = vi.hoisted(() => ({
 	pushNotification: vi.fn(),
 	select: vi.fn(),
-	openPlugin: vi.fn(),
+	openWithSearch: vi.fn(),
 	settings: { value: { recommendExtensions: true } },
 }));
 
@@ -65,7 +65,9 @@ vi.mock("lib/notificationManager", () => ({
 }));
 vi.mock("lib/settings", () => ({ default: ui.settings }));
 vi.mock("dialogs/select", () => ({ default: ui.select }));
-vi.mock("pages/plugin", () => ({ default: ui.openPlugin }));
+vi.mock("sidebarApps/extensions", () => ({
+	openWithSearch: ui.openWithSearch,
+}));
 
 import projectExtensions, { findMissing, review } from "lib/projectExtensions";
 import workspace from "lib/workspace";
@@ -115,7 +117,7 @@ describe("project plugin recommendations", () => {
 		fake.reset();
 		ui.pushNotification.mockReset();
 		ui.select.mockReset();
-		ui.openPlugin.mockReset();
+		ui.openWithSearch.mockReset();
 		ui.settings.value = { recommendExtensions: true };
 		globalThis.PLUGIN_DIR = PLUGIN_DIR;
 		globalThis.strings = { ...english };
@@ -357,27 +359,26 @@ describe("project plugin recommendations", () => {
 	});
 
 	describe("reviewing a recommendation", () => {
-		it("opens the plugin's page, without installing it", async () => {
+		it("opens the Extensions sidebar with the plugin id search", async () => {
 			recommend("a.one");
 			await openProject();
 
 			notification().action();
 			await settle();
 
-			expect(ui.openPlugin).toHaveBeenCalledTimes(1);
-			// Exactly the id: an `install` flag would install the plugin on arrival.
-			expect(ui.openPlugin.mock.calls[0]).toEqual([{ id: "a.one" }]);
+			expect(ui.openWithSearch).toHaveBeenCalledTimes(1);
+			expect(ui.openWithSearch).toHaveBeenCalledWith("id:a.one");
 			expect(ui.select).not.toHaveBeenCalled();
 		});
 
-		it("does the same from the Review button", async () => {
+		it("opens the same search from the Review button", async () => {
 			recommend("a.one");
 			await openProject();
 
 			notification().actions[0].action();
 			await settle();
 
-			expect(ui.openPlugin.mock.calls[0]).toEqual([{ id: "a.one" }]);
+			expect(ui.openWithSearch).toHaveBeenCalledWith("id:a.one");
 		});
 
 		it("lets the user pick one when there are several", async () => {
@@ -393,7 +394,7 @@ describe("project plugin recommendations", () => {
 				"b.two",
 				"c.three",
 			]);
-			expect(ui.openPlugin.mock.calls).toEqual([[{ id: "b.two" }]]);
+			expect(ui.openWithSearch).toHaveBeenCalledWith("id:b.two");
 		});
 
 		it("opens nothing when the user cancels the choice", async () => {
@@ -404,25 +405,23 @@ describe("project plugin recommendations", () => {
 			notification().action();
 			await settle();
 
-			expect(ui.openPlugin).not.toHaveBeenCalled();
+			expect(ui.openWithSearch).not.toHaveBeenCalled();
 		});
 
 		it("refuses to open an id that is not a plain plugin id", async () => {
 			ui.select.mockResolvedValue("https://evil.example/p.zip");
 			await review(["a.one", "b.two"]);
-			expect(ui.openPlugin).not.toHaveBeenCalled();
+			expect(ui.openWithSearch).not.toHaveBeenCalled();
 
 			await review(["../x"]);
-			expect(ui.openPlugin).not.toHaveBeenCalled();
+			expect(ui.openWithSearch).not.toHaveBeenCalled();
 		});
 
-		it("survives a failure while opening the page", async () => {
+		it("survives a failure while opening the sidebar search", async () => {
 			const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 			recommend("a.one");
 			await openProject();
-			ui.openPlugin.mockImplementation(() => {
-				throw new Error("page failed");
-			});
+			ui.openWithSearch.mockRejectedValue(new Error("sidebar failed"));
 
 			expect(() => notification().action()).not.toThrow();
 			await settle();
@@ -439,11 +438,7 @@ describe("project plugin recommendations", () => {
 		notification().action();
 		await settle();
 
-		// The page was opened, so the check below is not vacuous...
-		expect(ui.openPlugin).toHaveBeenCalledTimes(1);
-		// ...and it was given the id and nothing else: an `install` flag would
-		// install the plugin the moment the page opens.
-		expect(Object.keys(ui.openPlugin.mock.calls[0][0])).toEqual(["id"]);
+		expect(ui.openWithSearch).toHaveBeenCalledWith("id:a.one");
 		// The plugin folders were only ever looked at, never created.
 		expect(fake.installed.size).toBe(0);
 	});
