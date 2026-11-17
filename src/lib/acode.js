@@ -61,12 +61,16 @@ import fullscreen from "lib/fullscreen";
 import {
 	BROKEN_PLUGINS,
 	LOADED_PLUGINS,
+	isInitialPluginLoadComplete,
+	isPluginLoading,
 	onPluginLoadCallback,
+	onPluginLoadFailedCallback,
 	onPluginsLoadCompleteCallback,
 } from "lib/loadPlugins";
 import notificationManager from "lib/notificationManager";
 import openFolder, { addedFolder } from "lib/openFolder";
 import orientation from "lib/orientation";
+import PluginWaiters from "lib/pluginWaiters";
 import projects from "lib/projects";
 import selectionMenu from "lib/selectionMenu";
 import appSettings from "lib/settings";
@@ -97,7 +101,7 @@ class Acode {
 	#pluginUnmount = {};
 	// Registered formatter implementations (populated by plugins)
 	#formatter = [];
-	#pluginWatchers = {};
+	#pluginWatchers = new PluginWaiters();
 
 	/**
 	 * Clear a plugin's broken mark (so it can be retried)
@@ -702,32 +706,29 @@ class Acode {
 	}
 
 	[onPluginLoadCallback](pluginId) {
-		if (this.#pluginWatchers[pluginId]) {
-			this.#pluginWatchers[pluginId].resolve();
-			delete this.#pluginWatchers[pluginId];
-		}
+		this.#pluginWatchers.resolve(pluginId, true);
 	}
 
-	[onPluginsLoadCompleteCallback]() {
-		for (const pluginId in this.#pluginWatchers) {
-			this.#pluginWatchers[pluginId].reject(
-				new Error(`Plugin '${pluginId}' failed to load.`),
-			);
-		}
-		this.#pluginWatchers = {};
+	[onPluginLoadFailedCallback](pluginId, error) {
+		this.#pluginWatchers.reject(
+			pluginId,
+			error || new Error(`Plugin '${pluginId}' failed to load.`),
+		);
+	}
+
+	[onPluginsLoadCompleteCallback](filter) {
+		this.#pluginWatchers.rejectAll(
+			(pluginId) => new Error(`Plugin '${pluginId}' failed to load.`),
+			filter,
+		);
 	}
 
 	waitForPlugin(pluginId) {
-		return new Promise((resolve, reject) => {
-			if (LOADED_PLUGINS.has(pluginId)) {
-				return resolve(true);
-			}
-
-			this.#pluginWatchers[pluginId] = {
-				resolve,
-				reject,
-			};
-		});
+		if (LOADED_PLUGINS.has(pluginId)) return Promise.resolve(true);
+		if (isInitialPluginLoadComplete() && !isPluginLoading(pluginId)) {
+			return Promise.reject(new Error(`Plugin '${pluginId}' failed to load.`));
+		}
+		return this.#pluginWatchers.waitFor(pluginId);
 	}
 
 	get exitAppMessage() {
