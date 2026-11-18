@@ -1,4 +1,5 @@
 import fsOperation from "fileSystem";
+import Uri from "utils/Uri";
 import Url from "utils/Url";
 import {
 	EXTENSIONS_FILE,
@@ -60,6 +61,42 @@ const listeners = {
 };
 
 let stopListening = null;
+
+/**
+ * Write a url in a form that can be compared with other urls of the same
+ * storage. A folder added through Android's storage picker has a bare tree url
+ * (`content://.../tree/primary%3AProjects%2Fapp`), but the files inside it are
+ * `<tree url>::<document id>`, so as plain strings the folder is never a
+ * prefix of its own files. Content urls are therefore always written as
+ * `<tree url>::<document id>`, the form openFolder compares in. Any other url,
+ * including a content url that is not from a documents provider, is returned
+ * as it is.
+ * @param {string} url
+ * @returns {string}
+ */
+function comparable(url) {
+	if (typeof url !== "string" || Url.getProtocol(url) !== "content:") {
+		return url;
+	}
+	try {
+		let { url: bare } = Url.parse(url);
+		if (bare.endsWith("/")) bare = bare.slice(0, -1);
+		const { rootUri, docId } = Uri.parse(bare);
+		return Uri.format(rootUri, docId);
+	} catch (error) {
+		return url;
+	}
+}
+
+/**
+ * Whether `url` is `parent` or is inside it, whichever shape each has.
+ * @param {string} url
+ * @param {string} parent
+ * @returns {boolean}
+ */
+function isInside(url, parent) {
+	return Url.isSameOrDescendant(comparable(url), comparable(parent));
+}
 
 /**
  * Locate the `.acode` directory of a project root.
@@ -243,7 +280,7 @@ function onSaveFile(file) {
 		} catch (error) {
 			continue;
 		}
-		if (!configUrl || !Url.isSameOrDescendant(uri, configUrl)) continue;
+		if (!configUrl || !isInside(uri, configUrl)) continue;
 		scan(root).catch((error) => {
 			console.error(`Failed to scan workspace "${root}":`, error);
 		});
@@ -300,10 +337,18 @@ export function get(rootUrl) {
  */
 export function find(url) {
 	if (!url) return null;
+	const target = comparable(url);
 	let match = null;
+	let matchRoot = "";
 	for (const workspace of workspaces.values()) {
-		if (!Url.isSameOrDescendant(url, workspace.url)) continue;
-		if (!match || workspace.url.length > match.url.length) match = workspace;
+		// Depth is judged on the comparable form: raw urls of the same project
+		// can differ in length by shape alone.
+		const root = comparable(workspace.url);
+		if (!Url.isSameOrDescendant(target, root)) continue;
+		if (!match || root.length > matchRoot.length) {
+			match = workspace;
+			matchRoot = root;
+		}
 	}
 	return match;
 }
@@ -364,9 +409,7 @@ export function pathsChanged(...urls) {
 		if (!configUrl) continue;
 
 		const affected = changed.some(
-			(url) =>
-				Url.isSameOrDescendant(url, configUrl) ||
-				Url.isSameOrDescendant(configUrl, url),
+			(url) => isInside(url, configUrl) || isInside(configUrl, url),
 		);
 		if (!affected) continue;
 		scan(root).catch((error) => {

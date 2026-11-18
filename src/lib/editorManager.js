@@ -3638,6 +3638,13 @@ async function EditorManager($header, $body) {
 			const file = pane.activeFile;
 			if (!pane.editor || file?.type !== "editor") continue;
 			applyOptions(PROJECT_SETTING_KEYS, pane.editor, file);
+			// That changed the state behind the signature's back, and only for
+			// the project's keys, so the signature saved with the file no longer
+			// describes it. Left alone, a project that returns to its old values
+			// while the file is hidden would look unchanged when the file is
+			// shown again, and the state would keep the values applied here.
+			// Forget it: showing the file then applies every option again.
+			file.__cmOptionsSignature = null;
 		}
 	}
 	for (const event of ["open", "settings", "close"]) {

@@ -1081,3 +1081,135 @@ describe("pathsChanged", () => {
 		expect(fakeFs.stats).toEqual([]);
 	});
 });
+
+// A folder added through Android's storage picker has a bare tree url, while
+// the files inside it are `<tree url>::<document id>`. Containment must not
+// depend on which of the two shapes a url has.
+describe("Android storage folders", () => {
+	let manager;
+	let stop;
+	let events;
+	let subscriptions;
+
+	const TREE =
+		"content://com.android.externalstorage.documents/tree/primary%3AProjects%2Fapp";
+	const doc = (path) => `${TREE}::primary:Projects/app/${path}`;
+	const CONFIG = doc(".acode");
+	const SETTINGS = doc(".acode/settings.json");
+	const listen = (event, fn) => {
+		workspace.on(event, fn);
+		subscriptions.push([event, fn]);
+	};
+	const openFolder = (url, name = "app") =>
+		manager.emit("add-folder", { url, name });
+
+	beforeEach(async () => {
+		fakeFs.reset();
+		manager = createManager();
+		events = [];
+		subscriptions = [];
+		for (const event of ["open", "settings", "close"]) {
+			listen(event, (ws) => events.push([event, ws]));
+		}
+		fakeFs.dirs.add(CONFIG);
+		fakeFs.files.set(SETTINGS, '{"tabSize": 4}');
+		stop = workspace.init(manager);
+		openFolder(TREE);
+		await flush();
+		events.length = 0;
+	});
+
+	afterEach(() => {
+		stop();
+		for (const [event, fn] of subscriptions) workspace.off(event, fn);
+	});
+
+	it("detects the project from its bare tree url", () => {
+		expect(workspace.get(TREE)?.configUrl).toBe(CONFIG);
+	});
+
+	it("finds the project of a file inside it", () => {
+		expect(workspace.find(doc("src/index.js"))?.url).toBe(TREE);
+		expect(workspace.getSettings(doc("src/index.js"))).toEqual({ tabSize: 4 });
+	});
+
+	it("overrides settings for a file inside it", () => {
+		const base = { tabSize: 2, softTab: true };
+		expect(workspace.resolveSettings(base, doc("src/index.js"))).toEqual({
+			tabSize: 4,
+			softTab: true,
+		});
+	});
+
+	it("finds the project of its root, with or without a query", () => {
+		expect(workspace.find(TREE)?.url).toBe(TREE);
+		expect(workspace.find(`${TREE}/`)?.url).toBe(TREE);
+		expect(workspace.find(`${doc("a.js")}?x=1`)?.url).toBe(TREE);
+	});
+
+	it("does not mistake a folder that only shares a name prefix for a child", () => {
+		const copy = `${TREE}::primary:Projects/app-copy/index.js`;
+		const otherTree =
+			"content://com.android.externalstorage.documents/tree/primary%3AProjects%2Fapp2";
+		expect(workspace.find(copy)).toBeNull();
+		expect(
+			workspace.find(`${otherTree}::primary:Projects/app2/a.js`),
+		).toBeNull();
+		expect(workspace.find(otherTree)).toBeNull();
+	});
+
+	it("does not throw on content urls from other providers", () => {
+		expect(workspace.find("content://media/external/file/12")).toBeNull();
+	});
+
+	it("picks the innermost project when one is nested in another", async () => {
+		const INNER = doc("packages/web");
+		fakeFs.dirs.add(`${INNER}/.acode`);
+		fakeFs.files.set(`${INNER}/.acode/settings.json`, '{"tabSize": 8}');
+		openFolder(INNER, "web");
+		await flush();
+
+		expect(workspace.getSettings(doc("packages/web/main.js"))).toEqual({
+			tabSize: 8,
+		});
+		expect(workspace.getSettings(doc("packages/api/main.js"))).toEqual({
+			tabSize: 4,
+		});
+		expect(workspace.getSettings(INNER)).toEqual({ tabSize: 8 });
+	});
+
+	it("applies an edited settings.json once it is saved", async () => {
+		fakeFs.files.set(SETTINGS, '{"tabSize": 8}');
+		manager.emit("save-file", { uri: SETTINGS });
+		await flush();
+
+		expect(workspace.getSettings(doc("src/index.js"))).toEqual({ tabSize: 8 });
+		expect(events.map(([name]) => name)).toEqual(["settings"]);
+	});
+
+	it("closes the project when its root is removed or renamed", async () => {
+		fakeFs.files.delete(SETTINGS);
+		fakeFs.dirs.delete(CONFIG);
+		workspace.pathsChanged(TREE);
+		await flush();
+
+		expect(workspace.get(TREE)).toBeNull();
+		expect(events.map(([name]) => name)).toEqual(["close"]);
+	});
+
+	it("works for Termux folders, whose document ids are absolute paths", async () => {
+		const termux =
+			"content://com.termux.documents/tree/%2Fdata%2Fdata%2Fcom.termux%2Ffiles%2Fhome%2Fproj";
+		const file = `${termux}::/data/data/com.termux/files/home/proj/src/a.js`;
+		fakeFs.dirs.add(`${termux}::/data/data/com.termux/files/home/proj/.acode`);
+		fakeFs.files.set(
+			`${termux}::/data/data/com.termux/files/home/proj/.acode/settings.json`,
+			'{"tabSize": 3}',
+		);
+		openFolder(termux, "proj");
+		await flush();
+
+		expect(workspace.find(file)?.url).toBe(termux);
+		expect(workspace.getSettings(file)).toEqual({ tabSize: 3 });
+	});
+});
