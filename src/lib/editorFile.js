@@ -968,7 +968,7 @@ export default class EditorFile {
 			text = text.replace(/\n(?<!\r\n)/g, "\r\n");
 		} else {
 			text = text.includes("\r") ? text.replaceAll("\r", "") : text;
-}
+		}
 
 		// Update the document in the session
 		this.session.setValue(text);
