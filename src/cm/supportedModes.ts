@@ -25,9 +25,9 @@ function isSafeModeId(value: string): boolean {
 
 function slugifyModeId(value: string): string {
 	return normalizeModeKey(value)
-		.replace(/\+\+/g, "pp")
-		.replace(/#/g, "sharp")
-		.replace(/&/g, "and")
+		.replaceAll("++", "pp")
+		.replaceAll("#", "sharp")
+		.replaceAll("&", "and")
 		.replace(/[^a-z0-9._-]+/g, "-")
 		.replace(/^-+|-+$/g, "");
 }

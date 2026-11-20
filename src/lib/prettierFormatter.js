@@ -466,7 +466,7 @@ function evaluateUnaryExpression(node, scope) {
 }
 
 function normalizePath(path) {
-	let result = String(path || "").replace(/\\/g, "/");
+	let result = String(path || "").replaceAll("\\", "/");
 	while (result.length > 1 && result.endsWith("/")) {
 		const prefix = result.slice(0, -1);
 		if (/^[a-z]+:\/{0,2}$/i.test(prefix)) break;

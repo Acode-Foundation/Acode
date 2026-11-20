@@ -92,8 +92,7 @@ export default {
 	 * @param {string} path
 	 */
 	normalize(path) {
-		path = path.replace(/\.\/+/g, "./");
-		path = path.replace(/\/+/g, "/");
+		path = path.replace(/\/\/+/g, "/");
 
 		const resolved = [];
 		const pathAr = path.split("/");
