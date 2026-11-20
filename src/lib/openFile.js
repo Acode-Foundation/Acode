@@ -7,13 +7,15 @@ import loader from "dialogs/loader";
 import { reopenWithNewEncoding } from "palettes/changeEncoding";
 import { decode, detectEncoding } from "utils/encodings";
 import helpers from "utils/helpers";
-import EditorFile from "./editorFile";
+import EditorFile, { AUTO_SAVE } from "./editorFile";
 import { promoteSessionPersistence } from "./fileSessionPersistence";
 import fileTypeHandler from "./fileTypeHandler";
 import recents from "./recents";
 import appSettings from "./settings";
 
 let loadingFileCount = 0;
+/** @type {WeakMap<EditorFile, number>} */
+const backgroundAutosaveTimers = new WeakMap();
 
 /**
  * @typedef {object} FileOptions
@@ -62,6 +64,24 @@ export default async function openFile(file, options = {}) {
 			// If file is already opened and new text is provided
 			const incomingDoc =
 				text != null ? Text.of(String(text).split("\n")) : null;
+
+			// Background update (e.g. replace all in files): change the text of an
+			// open, loaded tab without switching to it.
+			if (
+				render === false &&
+				incomingDoc &&
+				!paneId &&
+				!cursorPos &&
+				!encoding &&
+				existingFile.loaded &&
+				existingFile.session
+			) {
+				if (onsave) existingFile.onsave = onsave;
+				if (!existingFile.session.doc?.eq?.(incomingDoc)) {
+					updateInBackground(existingFile, String(text));
+				}
+				return;
+			}
 
 			// If file is already opened
 			const targetPane = paneId
@@ -511,6 +531,46 @@ export default async function openFile(file, options = {}) {
 	} finally {
 		releaseTitleLoader?.();
 	}
+}
+
+/**
+ * Replace the text of an open tab without switching to it.
+ * @param {EditorFile} file
+ * @param {string} text
+ */
+function updateInBackground(file, text) {
+	// Shown in a pane (maybe not the focused one): edit that pane's live view.
+	// Its update listener syncs file.session and schedules autosave. Writing
+	// only file.session here would be undone when the pane is focused again.
+	const pane = editorManager.panes?.find(
+		(item) => item.editor && item.activeFile?.id === file.id,
+	);
+	if (pane) {
+		pane.editor.dispatch({
+			changes: { from: 0, to: pane.editor.state.doc.length, insert: text },
+		});
+		return;
+	}
+
+	// Hidden tab: no view listener runs, so schedule autosave here.
+	file.session.setValue(text);
+	scheduleBackgroundAutosave(file);
+}
+
+/** @param {EditorFile} file */
+function scheduleBackgroundAutosave(file) {
+	const { autosave } = appSettings.value;
+	if (!autosave || !file.uri) return;
+	clearTimeout(backgroundAutosaveTimers.get(file));
+	const timer = setTimeout(() => {
+		backgroundAutosaveTimers.delete(file);
+		// Skip tabs closed meanwhile, or already saved.
+		if (!file.isUnsaved || !editorManager.getFile(file.id, "id")) return;
+		file.save(AUTO_SAVE)?.catch?.((error) => {
+			console.warn(`Failed to autosave ${file.filename || file.uri}`, error);
+		});
+	}, autosave);
+	backgroundAutosaveTimers.set(file, timer);
 }
 
 /** Keep the shared indicator visible while any file open still needs it. */
