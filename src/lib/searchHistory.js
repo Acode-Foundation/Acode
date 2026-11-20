@@ -44,19 +44,22 @@ class SearchHistory {
 	/**
 	 * Add item to history
 	 * @param {string} item Item to add
+	 * @param {object} [options]
+	 * @param {boolean} [options.preserveWhitespace=false] Keep leading and trailing whitespace
 	 */
-	addToHistory(item) {
-		if (!item || typeof item !== "string" || item.trim().length === 0) {
+	addToHistory(item, { preserveWhitespace = false } = {}) {
+		if (typeof item !== "string") {
 			return;
 		}
 
-		const trimmedItem = item.trim();
+		const historyItem = preserveWhitespace ? item : item.trim();
+		if (!historyItem.length) return;
 
 		// Remove existing item if present
-		this.history = this.history.filter((h) => h !== trimmedItem);
+		this.history = this.history.filter((h) => h !== historyItem);
 
 		// Add to beginning
-		this.history.unshift(trimmedItem);
+		this.history.unshift(historyItem);
 
 		// Limit history size
 		this.history = this.history.slice(0, MAX_HISTORY_ITEMS);

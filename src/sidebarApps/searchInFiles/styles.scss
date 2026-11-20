@@ -111,6 +111,21 @@
         overflow-x: auto !important;
         font-size: 0.85rem;
       }
+
+      .history-button {
+        flex: 0 0 auto;
+        border: 0;
+        background: transparent;
+        color: var(--primary-text-color);
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 4px;
+        font-size: 1.1rem;
+
+        &:hover {
+          background-color: var(--secondary-color);
+        }
+      }
     }
 
     .replace-row {

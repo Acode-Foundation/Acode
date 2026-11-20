@@ -18,6 +18,7 @@ function createReplaceAll({ search, replace, native = false }) {
 		terminateWorker: vi.fn(),
 		getOptions: () => ({ regExp: false }),
 		toRegex: (value) => new RegExp(value, "g"),
+		searchHistory: { addToHistory: vi.fn() },
 		supportsNativeSearch: () => native,
 		sendNativeSearch: vi.fn(),
 		sendMessage: vi.fn(),
