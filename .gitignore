@@ -24,3 +24,5 @@ tsconfig.tsbuildinfo
 /www/cordova.js
 /www/cordova_plugins.js
 .pnpm-store/
+pnpm-workspace.yaml
+pnpm-workspace.yml
