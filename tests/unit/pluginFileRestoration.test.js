@@ -142,6 +142,7 @@ function setup() {
 			"./editorFile": {},
 			"./openFolder": {},
 			"./settings": settings,
+			"./workspace": { resolveSettings: (values) => values },
 		},
 		{ editorManager: manager, strings: {} },
 	);

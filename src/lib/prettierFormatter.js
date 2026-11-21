@@ -4,6 +4,7 @@ import { getDocText } from "cm/editorUtils";
 import { getFormatAsMode } from "cm/modelist";
 import toast from "components/toast";
 import appSettings from "lib/settings";
+import workspace from "lib/workspace";
 import prettierPluginBabel from "prettier/plugins/babel";
 import prettierPluginEstree from "prettier/plugins/estree";
 import prettierPluginGraphql from "prettier/plugins/graphql";
@@ -127,17 +128,18 @@ async function resolvePrettierConfig(file) {
 	const overrides = appSettings?.value?.prettier || {};
 	const projectConfig = await loadProjectConfig(file);
 	const result = { ...overrides, ...(projectConfig || {}) };
+	// Indentation falls back to the editor's, which a project may override in
+	// .acode/settings.json, so formatting agrees with what the editor types.
+	// A prettier config file still beats both.
+	const editor = workspace.resolveSettings(appSettings?.value || {}, file?.uri);
 	if (file?.eol && result.endOfLine == null) {
 		result.endOfLine = file.eol === "windows" ? "crlf" : "lf";
 	}
 	if (result.useTabs == null) {
-		result.useTabs = !appSettings?.value?.softTab;
+		result.useTabs = !editor.softTab;
 	}
-	if (
-		result.tabWidth == null &&
-		typeof appSettings?.value?.tabSize === "number"
-	) {
-		result.tabWidth = appSettings.value.tabSize;
+	if (result.tabWidth == null && typeof editor.tabSize === "number") {
+		result.tabWidth = editor.tabSize;
 	}
 	return result;
 }

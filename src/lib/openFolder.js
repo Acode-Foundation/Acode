@@ -25,6 +25,7 @@ import { loadFileBrowser } from "./lazyImports";
 import openFile from "./openFile";
 import recents from "./recents";
 import appSettings from "./settings";
+import workspace from "./workspace";
 
 const isTermuxSafUri = (value = "") =>
 	value.startsWith("content://com.termux.documents/tree/");
@@ -323,6 +324,8 @@ async function runRootAction($root, action, $button) {
 			$button?.classList.add("spinning");
 			try {
 				await getLoadedFileTree($root.$title)?.refresh();
+				// Also picks up changes made outside the app (e.g. from a terminal).
+				await workspace.refresh(url);
 			} finally {
 				$button?.classList.remove("spinning");
 			}
@@ -746,6 +749,7 @@ function execOperation(type, action, url, $target, name) {
 			helpers.updateUriOfAllActiveFiles(url, newUrl);
 		}
 		FileList.rename(url, newUrl);
+		workspace.pathsChanged(url, newUrl);
 		await refreshRenamedEntryInOpenFolders(url, newUrl);
 		toast(strings.success);
 	}
@@ -774,6 +778,7 @@ function execOperation(type, action, url, $target, name) {
 				newUrl = await helpers.createFileStructure(url, newName, false);
 			}
 			if (!newUrl.created) return;
+			workspace.pathsChanged(newUrl.uri);
 
 			if (isNestedPath) {
 				await refreshOpenFolder(url);
@@ -835,6 +840,7 @@ function execOperation(type, action, url, $target, name) {
 			);
 			appendTile($target, createFileTile(sourceStats.name, insertedFile));
 			FileList.append(url, insertedFile);
+			workspace.pathsChanged(insertedFile);
 		} catch (error) {
 		} finally {
 			stopLoading();
@@ -883,6 +889,7 @@ async function deleteEntry(url, type) {
 	}
 
 	FileList.remove(url);
+	workspace.pathsChanged(url);
 	return true;
 }
 
@@ -1090,6 +1097,9 @@ async function pasteEntry({ url: srcUrl, type: srcType }, targetUrl, action) {
 		toast(strings.skipped);
 		return null;
 	}
+
+	// A moved or pasted entry may be, or sit inside, a project's `.acode`.
+	workspace.pathsChanged(newUrl, action === "cut" ? srcUrl : null);
 
 	if (action === "cut") {
 		if (IS_FILE) {
