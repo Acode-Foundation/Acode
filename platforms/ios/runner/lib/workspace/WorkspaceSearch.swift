@@ -11,6 +11,7 @@ extension WorkspaceIndex {
         if settings["wholeWord"] as? Bool == true { pattern = "\\b" + pattern + "\\b" }
         let flags: NSRegularExpression.Options = settings["caseSensitive"] as? Bool == true ? [.anchorsMatchLines] : [.anchorsMatchLines, .caseInsensitive]
         let regex = try NSRegularExpression(pattern: pattern, options: flags)
+        let replacement = WorkspaceReplacement(options["replace"] as? String ?? "", pattern: pattern, regExp: settings["regExp"] as? Bool == true)
         let files = try searchFiles(options)
         let content = WorkspaceContent(database: db)
         let overlays = options["overlays"] as? [String: String] ?? [:]
@@ -32,8 +33,8 @@ extension WorkspaceIndex {
             } catch { try job.check(); continue }
             let matches = WorkspaceMatches(text: text, regex: regex, job: job)
             if replacing {
-                let replacement = try matches.replace(options["replace"] as? String ?? "")
-                job.emit("replace-result", ["file": file, "text": replacement], false)
+                let text = try matches.replace(replacement)
+                job.emit("replace-result", ["file": file, "text": text], false)
             } else {
                 try matches.search { results, limited in
                     let data: [String: Any] = ["file": file, "matches": results, "limited": limited]
