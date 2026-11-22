@@ -148,7 +148,7 @@ module.exports = {
    * @param {(error: any) => void} [onFail] - Callback invoked if launching the activity fails.
    *
    * @example
-   * System.launchApp(
+   * system.launchApp(
    *   "com.example.app",
    *   "com.example.app.MainActivity",
    *   {
@@ -189,7 +189,7 @@ module.exports = {
    * @param {(error: any) => void} [onFail] - Callback invoked if nothing could be launched.
    *
    * @example <caption>Run a .love file in love-android</caption>
-   * System.launchAppWithFile({
+   * system.launchAppWithFile({
    *   app: "org.love2d.android",
    *   className: "org.love2d.android.GameActivity",
    *   fileUri: "file:///storage/emulated/0/Games/mygame.love",
@@ -201,12 +201,12 @@ module.exports = {
    * });
    *
    * @example <caption>Let the system choose the app</caption>
-   * System.launchAppWithFile({
+   * system.launchAppWithFile({
    *   fileUri: "file:///storage/emulated/0/Documents/report.pdf"
    * });
    *
    * @example <caption>Several files, custom flags</caption>
-   * System.launchAppWithFile({
+   * system.launchAppWithFile({
    *   app: "com.example.app",
    *   fileUris: ["file:///a.png", "file:///b.png"],
    *   mimeType: "image/png",
@@ -218,7 +218,7 @@ module.exports = {
     if (typeof onFail !== 'function') onFail = function () { };
 
     if (!options || typeof options !== 'object') {
-      onFail('System.launchAppWithFile: an options object is required.');
+      onFail('system.launchAppWithFile: an options object is required.');
       return;
     }
 
@@ -228,12 +228,12 @@ module.exports = {
     var fileUris = toUriList(options.fileUris);
 
     if (className && !app) {
-      onFail('System.launchAppWithFile: "className" requires "app" (the package name).');
+      onFail('system.launchAppWithFile: "className" requires "app" (the package name).');
       return;
     }
 
     if (!app && !fileUri && fileUris.length === 0) {
-      onFail('System.launchAppWithFile: nothing to launch, provide "app" and/or a file.');
+      onFail('system.launchAppWithFile: nothing to launch, provide "app" and/or a file.');
       return;
     }
 
