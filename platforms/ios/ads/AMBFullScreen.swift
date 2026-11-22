@@ -18,6 +18,14 @@ class AMBFullScreen: AMBAdBase, FullScreenContentDelegate {
         return controller
     }
 
+    @MainActor
+    func recoverPresentation() -> Bool {
+        guard isActive, plugin?.canRecoverPresentation == true else { return false }
+        // The JS dismissal event may have been lost even when the SDK cleared presenting.
+        didFinishPresentation()
+        return true
+    }
+
     func clear() {}
 
     override func destroy() {

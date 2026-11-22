@@ -29,7 +29,7 @@ final class ServerService: BaseService {
     }
 
     override func exec(action: String, args: [Any], callback: Callback) {
-        queue.async {
+        queue.async { [self] in
             guard let port = args[safe: 0] as? Int, (1...65535).contains(port) else { callback.error("Invalid server port"); return }
             do {
                 switch action {

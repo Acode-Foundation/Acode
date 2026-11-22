@@ -227,8 +227,6 @@ module.exports = (env, options) => {
         ADMOB_BANNER_ID: JSON.stringify(ads.banner),
         ADMOB_INTERSTITIAL_ID: JSON.stringify(ads.interstitial),
         ADMOB_REWARDED_ID: JSON.stringify(ads.rewarded),
-        ADMOB_ACADEMY_REWARDED_ID: JSON.stringify(ads.academyRewarded),
-        ADMOB_ACADEMY_INTERSTITIAL_ID: JSON.stringify(ads.academyInterstitial),
         ADMOB_APP_OPEN_ID: JSON.stringify(ads.appOpen),
         __FDROID__: JSON.stringify(process.env.ACODE_FDROID === 'true'),
         __DEV_MODE__: JSON.stringify(isDev),

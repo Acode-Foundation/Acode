@@ -291,11 +291,6 @@ interface System {
 		onSuccess: (status: RewardStatus | string) => void,
 		onFail: OnFail,
 	): void;
-	redeemReward(
-		offerId: string,
-		onSuccess: (status: RewardStatus | string) => void,
-		onFail: OnFail,
-	): void;
 	/**
 	 * Enable/disable native WebView long-press context behavior.
 	 * Use this when rendering a custom editor context menu.

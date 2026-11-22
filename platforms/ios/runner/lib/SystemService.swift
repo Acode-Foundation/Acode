@@ -9,13 +9,11 @@ final class SystemService: BaseService {
     private let rewards = RewardPassManager()
     private lazy var browser = SafariService(bridge: bridge!)
     private lazy var preview = BrowserService(bridge: bridge!)
-    private lazy var share = ShareService(bridge: bridge!)
 
     override func reset() {
         streams.reset()
         browser.reset()
         preview.reset()
-        share.reset()
         DispatchQueue.main.async { [weak self] in
             IncomingLinks.shared.reset()
             self?.viewController?.fullscreen.setActive(false)
@@ -36,7 +34,6 @@ final class SystemService: BaseService {
                 callback.success(text)
             case "getInstaller": callback.success("appstore")
             case "getRewardStatus": callback.success(try rewards.getRewardStatus())
-            case "redeemReward": callback.success(try rewards.redeemReward(args[safe: 0] as? String ?? ""))
             case "get-android-version": callback.success(0)
             case "get-configuration":
                 DispatchQueue.main.async { [weak self] in callback.success(self?.viewController?.systemConfiguration ?? [:]) }
@@ -50,12 +47,15 @@ final class SystemService: BaseService {
                 #else
                 callback.success("x86_64")
                 #endif
-            case "shareText": share.exec(action: action, args: args, callback: callback)
+            case "shareText":
+                guard let share = bridge?.shareService else { callback.error("Native bridge unavailable"); return }
+                share.exec(action: action, args: args, callback: callback)
             case "file-action":
                 let intent = args[safe: 2] as? String ?? "android.intent.action.VIEW"
                 guard ["android.intent.action.VIEW", "android.intent.action.SEND"].contains(intent) else {
                     callback.error(["code": "UNSUPPORTED_ACTION", "message": "File intent \(intent) is unavailable on iOS"]); return
                 }
+                guard let share = bridge?.shareService else { callback.error("Native bridge unavailable"); return }
                 share.exec(action: "shareFile", args: args, callback: callback)
             case "open-in-browser": browser.exec(action: "external", args: args, callback: callback)
             case "in-app-browser": preview.exec(action: action, args: args, callback: callback)

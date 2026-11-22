@@ -122,6 +122,7 @@ extension AMBCoreContext {
         reject(error.localizedDescription)
     }
 
+    @MainActor
     func configure() {
         if let muted = optAppMuted() {
             MobileAds.shared.isApplicationMuted = muted
@@ -134,12 +135,7 @@ extension AMBCoreContext {
         if let maxAdContentRating = optGADMaxAdContentRating() {
             requestConfiguration.maxAdContentRating = maxAdContentRating
         }
-        if let tag = optChildDirectedTreatmentTag() {
-            requestConfiguration.tagForChildDirectedTreatment = NSNumber(value: tag)
-        }
-        if let tag = optUnderAgeOfConsentTag() {
-            requestConfiguration.tagForUnderAgeOfConsent = NSNumber(value: tag)
-        }
+        plugin?.configureAgeTreatment(childDirected: optChildDirectedTreatmentTag(), underAgeOfConsent: optUnderAgeOfConsentTag())
         if let testDevices = optTestDeviceIds() {
             requestConfiguration.testDeviceIdentifiers = testDevices
         }

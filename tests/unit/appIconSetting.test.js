@@ -304,6 +304,7 @@ it("opens one complete grid and closes only after native success, preserving the
 	expect(h.loader.create).toHaveBeenCalledExactlyOnceWith(
 		"App icon",
 		"Loading...",
+		{ timeout: 1_000, oncancel: expect.any(Function) },
 	);
 	expect(h.dialog.inert).toBe(true);
 	expect(document.querySelector("#__loader button")).toBeNull();
@@ -663,4 +664,34 @@ it("wraps keyboard focus but lets Escape dismiss the top confirmation first", as
 	h.close.click();
 	vi.runAllTimers();
 	await h.closed;
+});
+
+it("lets users cancel a stalled reward through the loading overlay and reopen the picker", async () => {
+	mocks.reward.mockImplementation(
+		({ signal }) =>
+			new Promise((resolve) => {
+				signal.addEventListener("abort", () => resolve(false), { once: true });
+			}),
+	);
+	const h = dialogHarness();
+	const pending = h.click();
+	confirmSelection();
+	await vi.waitFor(() => expect(pendingConfirm()).toBeTruthy());
+	confirmSelection();
+	await vi.waitFor(() => expect(mocks.reward).toHaveBeenCalledOnce());
+	await vi.advanceTimersByTimeAsync(1_000);
+	const cancel = document.querySelector("#__loader button");
+	expect(cancel?.textContent).toBe("Cancel");
+	cancel.click();
+	await pending;
+	await vi.advanceTimersByTimeAsync(300);
+	await h.closed;
+	expect(h.selection.signal.aborted).toBe(true);
+	expect(system.setAppIcon).not.toHaveBeenCalled();
+	expect(document.querySelector("#__loader")).toBeNull();
+	const reopened = h.open();
+	await actionStack.pop();
+	await vi.advanceTimersByTimeAsync(300);
+	await reopened;
+	expect(actionStack.length).toBe(0);
 });

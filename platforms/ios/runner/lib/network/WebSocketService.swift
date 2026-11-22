@@ -12,7 +12,7 @@ final class WebSocketService: BaseService {
     }
 
     override func exec(action: String, args: [Any], callback: Callback) {
-        queue.async {
+        queue.async { [self] in
             do {
                 if action == "connect" {
                     let id = UUID().uuidString

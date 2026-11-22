@@ -24,7 +24,7 @@ final class AppAPIHandler {
                 Self.storeCookies(from: response, credentials: credentials)
                 try Self.applyCookies(to: &next, credentials: credentials, auth: auth)
             }
-            transport.onResponse = { response in
+            transport.onResponse = { [weak self] response in
                 Self.storeCookies(from: response, credentials: credentials)
                 if redirects == "error", (300..<400).contains(response.statusCode) { throw URLError(.redirectToNonExistentLocation) }
                 var headers: [String: String] = [:]
@@ -37,8 +37,8 @@ final class AppAPIHandler {
                 let result = HTTPURLResponse(url: source, statusCode: response.statusCode, httpVersion: "HTTP/1.1", headerFields: headers)!
                 DispatchQueue.main.async { [weak self] in if self?.requests[id] != nil { task.didReceive(result) } }
             }
-            transport.onData = { data in DispatchQueue.main.async { [weak self] in if self?.requests[id] != nil { task.didReceive(data) } } }
-            transport.onComplete = { error in
+            transport.onData = { [weak self] data in DispatchQueue.main.async { [weak self] in if self?.requests[id] != nil { task.didReceive(data) } } }
+            transport.onComplete = { [weak self] error in
                 DispatchQueue.main.async { [weak self] in
                     guard self?.requests.removeValue(forKey: id) != nil else { return }
                     if let error { task.didFailWithError(error) }

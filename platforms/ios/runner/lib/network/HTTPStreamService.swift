@@ -12,7 +12,7 @@ final class HTTPStreamService {
     }
 
     func exec(action: String, args: [Any], callback: Callback) {
-        queue.async {
+        queue.async { [self] in
             let id = args[safe: 0] as? String ?? ""
             do {
                 switch action {

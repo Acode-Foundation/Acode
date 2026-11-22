@@ -1,62 +1,34 @@
 import Foundation
 
-// Port of Android's System/RewardPassManager; the public state and reward rules stay identical.
+// Preserves earned passes from before new redemptions were discontinued.
 final class RewardPassManager {
     private static let hour: Int64 = 60 * 60 * 1000
     private static let maximumDuration = 10 * hour
     private static let maximumRedemptions = 3
     private let store: SecretStore
     private let now: () -> Date
-    private let focusHours: () -> Int
 
-    init(store: SecretStore = SecretStore(namespace: "ads"), now: @escaping () -> Date = Date.init,
-         focusHours: @escaping () -> Int = { Int.random(in: 4...6) }) {
+    init(store: SecretStore = SecretStore(namespace: "ads"), now: @escaping () -> Date = Date.init) {
         self.store = store
         self.now = now
-        self.focusHours = focusHours
     }
 
     func getRewardStatus() throws -> String {
         let date = now()
-        var state = try synchronizedState(date)
+        let raw = try store.get("reward_state")
+        let values = (try? JSONSerialization.jsonObject(with: Data(raw.utf8))) as? [String: Any] ?? [:]
+        var state = synchronizedState(values, date: date)
         let status = status(state, date: date)
         state.expiryNoticePendingUntil = 0
-        try save(state)
+        try save(state, previous: values)
         return try json(status)
     }
 
-    func redeemReward(_ offerID: String) throws -> String {
-        let date = now()
-        let time = milliseconds(date)
-        var state = try synchronizedState(date)
-        let reason = disabledReason(state, time: time)
-        guard reason.isEmpty else { throw SecretFailure(reason) }
-        let duration: Int64
-        switch offerID {
-        case "quick": duration = Self.hour
-        case "focus": duration = Int64(focusHours()) * Self.hour
-        default: throw SecretFailure("Unknown reward offer.")
-        }
-        let baseTime = max(time, state.adFreeUntil)
-        state.adFreeUntil = min(baseTime + duration, time + Self.maximumDuration)
-        state.lastExpiredRewardUntil = 0
-        state.expiryNoticePendingUntil = 0
-        state.redemptionDay = day(date)
-        state.redemptionsToday += 1
-        try save(state)
-        var result = status(state, date: date)
-        result["grantedDurationMs"] = duration
-        result["appliedDurationMs"] = max(0, state.adFreeUntil - baseTime)
-        result["offerId"] = offerID
-        return try json(result)
-    }
-
-    private func synchronizedState(_ date: Date) throws -> RewardPassState {
-        let raw = try store.get("reward_state")
-        let values = (try? JSONSerialization.jsonObject(with: Data(raw.utf8))) as? [String: Any] ?? [:]
-        var state = RewardPassState(values, today: day(date))
-        if state.redemptionDay != day(date) {
-            state.redemptionDay = day(date)
+    private func synchronizedState(_ values: [String: Any], date: Date) -> RewardPassState {
+        let today = day(date)
+        var state = RewardPassState(values, today: today)
+        if state.redemptionDay != today {
+            state.redemptionDay = today
             state.redemptionsToday = 0
         }
         if state.adFreeUntil > 0, state.adFreeUntil <= milliseconds(date) {
@@ -69,7 +41,6 @@ final class RewardPassManager {
 
     private func status(_ state: RewardPassState, date: Date) -> [String: Any] {
         let time = milliseconds(date)
-        let reason = disabledReason(state, time: time)
         return ["adFreeUntil": state.adFreeUntil, "lastExpiredRewardUntil": state.lastExpiredRewardUntil,
                 "isActive": state.adFreeUntil > time, "remainingMs": max(0, state.adFreeUntil - time),
                 "redemptionsToday": state.redemptionsToday,
@@ -77,25 +48,18 @@ final class RewardPassManager {
                 "maxRedemptionsPerDay": Self.maximumRedemptions, "maxActivePassMs": Self.maximumDuration,
                 "hasPendingExpiryNotice": state.expiryNoticePendingUntil > 0,
                 "expiryNoticePendingUntil": state.expiryNoticePendingUntil,
-                "canRedeem": reason.isEmpty, "redeemDisabledReason": reason]
+                "canRedeem": false, "redeemDisabledReason": "Ad-free passes are no longer available."]
     }
 
-    private func disabledReason(_ state: RewardPassState, time: Int64) -> String {
-        if state.redemptionsToday >= Self.maximumRedemptions {
-            return "Daily limit reached. You can redeem up to 3 rewards per day."
-        }
-        if state.adFreeUntil - time >= Self.maximumDuration {
-            return "You already have the maximum 10 hours of ad-free time active."
-        }
-        return ""
-    }
-
-    private func save(_ state: RewardPassState) throws {
-        try store.set("reward_state", value: json([
+    private func save(_ state: RewardPassState, previous: [String: Any]) throws {
+        let values: [String: Any] = [
             "adFreeUntil": state.adFreeUntil, "lastExpiredRewardUntil": state.lastExpiredRewardUntil,
             "expiryNoticePendingUntil": state.expiryNoticePendingUntil,
             "redemptionDay": state.redemptionDay, "redemptionsToday": state.redemptionsToday,
-        ]))
+        ]
+        if !NSDictionary(dictionary: values).isEqual(to: previous) {
+            try store.set("reward_state", value: json(values))
+        }
     }
 
     private func json(_ value: [String: Any]) throws -> String {
@@ -105,12 +69,10 @@ final class RewardPassManager {
     private func milliseconds(_ date: Date) -> Int64 { Int64(date.timeIntervalSince1970 * 1000) }
 
     private func day(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.timeZone = .current
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter.string(from: date)
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .current
+        return String(format: "%04d-%02d-%02d", calendar.component(.year, from: date),
+                      calendar.component(.month, from: date), calendar.component(.day, from: date))
     }
 }
 

@@ -6,6 +6,7 @@ export type NativeAction =
 	| "adHide"
 	| "adIsLoaded"
 	| "adLoad"
+	| "adRecoverPresentation"
 	| "adShow"
 	| "bannerConfig"
 	| "configure"
@@ -63,6 +64,11 @@ type MaxAdContentRating =
 	| /** Content suitable for teen and older audiences. */ "T"
 	| /** Content suitability is unspecified. */ "";
 
+/**
+ * On iOS, either age flag being true selects Google's child age treatment.
+ * Omitted/null flags retain their previous values; both false clear treatment.
+ * See https://developers.google.com/admob/ios/targeting#migrate_to_age_treatment_from_tfcd_and_tfua
+ */
 export interface RequestConfig {
 	maxAdContentRating?: MaxAdContentRating;
 	tagForChildDirectedTreatment?: boolean | null;

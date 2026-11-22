@@ -49,6 +49,7 @@ class AdMob : Service() {
         Actions.AD_IS_LOADED to ::executeAdIsLoaded,
         Actions.AD_LOAD to ::executeAdLoad,
         Actions.AD_SHOW to ::executeAdShow,
+        Actions.AD_RECOVER_PRESENTATION to ::executeAdRecoverPresentation,
         Actions.AD_HIDE to ::executeAdHide,
         Actions.PRIVACY_GATHER_CONSENT to privacy::gatherConsent,
         Actions.PRIVACY_GET_STATE to privacy::getState,
@@ -175,6 +176,11 @@ class AdMob : Service() {
                 }
             }
         }
+    }
+
+    private fun executeAdRecoverPresentation(ctx: ExecuteContext) {
+        val id = ctx.optId() ?: return ctx.reject("id is required")
+        activity.runOnUiThread { ctx.resolve(recoverAdPresentation(activity, id)) }
     }
 
     private fun executeAdHide(ctx: ExecuteContext) {

@@ -19,8 +19,6 @@ fs.writeFileSync(
 	banner: ADMOB_BANNER_ID,
 	interstitial: ADMOB_INTERSTITIAL_ID,
 	rewarded: ADMOB_REWARDED_ID,
-	academyRewarded: ADMOB_ACADEMY_REWARDED_ID,
-	academyInterstitial: ADMOB_ACADEMY_INTERSTITIAL_ID,
 	appOpen: ADMOB_APP_OPEN_ID,
 };`,
 );

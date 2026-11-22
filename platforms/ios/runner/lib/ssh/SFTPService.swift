@@ -80,7 +80,7 @@ final class SFTPService: BaseService {
         let attempt = SSHAttempt(callback: callback, shell: true)
         let requestID = UUID().uuidString
         attempts[requestID] = attempt
-        DispatchQueue.global(qos: .userInitiated).async {
+        DispatchQueue.global(qos: .userInitiated).async { [self] in
             defer { self.control.async { self.attempts.removeValue(forKey: requestID) } }
             do {
                 guard try SSHPrompts.confirm(title: "Delete saved SSH credentials?", message: "Remove the encrypted SFTP/SSH profile for \(profile.username)@\(profile.hostname)?", button: "Delete", destructive: true, presenter: { [weak self] in self?.viewController }, cancellation: attempt.cancellation) else {

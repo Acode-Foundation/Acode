@@ -289,11 +289,6 @@ public class System extends Service {
       case "getRewardStatus":
         callbackContext.success(rewardPassManager.getRewardStatus());
         return true;
-      case "redeemReward":
-        callbackContext.success(
-          rewardPassManager.redeemReward(args.getString(0))
-        );
-        return true;
       case "getParentPath":
         callbackContext.success(getParentPath(args.getString(0)));
         return true;

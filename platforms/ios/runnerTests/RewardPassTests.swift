@@ -3,81 +3,61 @@ import XCTest
 
 final class RewardPassTests: XCTestCase {
     private let store = SecretStore(namespace: "ios-test.rewards." + UUID().uuidString)
-    private let hour: Int64 = 3_600_000
 
     override func tearDownWithError() throws { try store.clear() }
 
-    func testQuickPassPersistsAndDailyLimitResetsAtLocalMidnight() throws {
-        var date = Calendar.current.startOfDay(for: Date()).addingTimeInterval(23 * 3600 + 1800)
-        let rewards = RewardPassManager(store: store, now: { date })
-        let initial = try status(rewards.getRewardStatus())
-        XCTAssertEqual(initial["remainingRedemptions"] as? Int, 3)
-        XCTAssertEqual(initial["isActive"] as? Bool, false)
-        XCTAssertThrowsError(try rewards.redeemReward("invalid")) { XCTAssertEqual($0.localizedDescription, "Unknown reward offer.") }
-        let first = try status(rewards.redeemReward("quick"))
-        XCTAssertEqual(first["grantedDurationMs"] as? Int64, hour)
-        XCTAssertEqual(first["appliedDurationMs"] as? Int64, hour)
-        XCTAssertEqual(first["offerId"] as? String, "quick")
-        XCTAssertEqual(first["isActive"] as? Bool, true)
-        let reopened = RewardPassManager(store: store, now: { date })
-        let persisted = try status(reopened.getRewardStatus())
-        XCTAssertEqual(first["adFreeUntil"] as? Int64, persisted["adFreeUntil"] as? Int64)
-        _ = try rewards.redeemReward("quick")
-        let third = try status(rewards.redeemReward("quick"))
-        XCTAssertEqual(third["remainingMs"] as? Int64, 3 * hour)
-        XCTAssertEqual(third["remainingRedemptions"] as? Int, 0)
-        XCTAssertEqual(third["canRedeem"] as? Bool, false)
-        XCTAssertThrowsError(try rewards.redeemReward("quick")) {
-            XCTAssertEqual($0.localizedDescription, "Daily limit reached. You can redeem up to 3 rewards per day.")
-        }
-        date = date.addingTimeInterval(1800)
-        let nextDay = try status(reopened.getRewardStatus())
-        XCTAssertEqual(nextDay["remainingRedemptions"] as? Int, 3)
-        XCTAssertEqual(nextDay["remainingMs"] as? Int64, 9_000_000)
-        XCTAssertEqual(nextDay["canRedeem"] as? Bool, true)
-    }
-
-    func testFocusOfferRangeAndTenHourCap() throws {
-        let date = Date()
-        for hours in 4...6 {
-            try store.clear()
-            let rewards = RewardPassManager(store: store, now: { date }, focusHours: { hours })
-            let first = try status(rewards.redeemReward("focus"))
-            XCTAssertEqual(first["grantedDurationMs"] as? Int64, Int64(hours) * hour)
-        }
-        let rewards = RewardPassManager(store: store, now: { date }, focusHours: { 6 })
-        let capped = try status(rewards.redeemReward("focus"))
-        XCTAssertEqual(capped["grantedDurationMs"] as? Int64, 6 * hour)
-        XCTAssertEqual(capped["appliedDurationMs"] as? Int64, 4 * hour)
-        XCTAssertEqual(capped["remainingMs"] as? Int64, 10 * hour)
-        XCTAssertEqual(capped["remainingRedemptions"] as? Int, 1)
-        XCTAssertEqual(capped["canRedeem"] as? Bool, false)
-        XCTAssertThrowsError(try rewards.redeemReward("quick")) {
-            XCTAssertEqual($0.localizedDescription, "You already have the maximum 10 hours of ad-free time active.")
-        }
-    }
-
-    func testExpiryNoticeIsConsumedOnceAndMalformedStateRecovers() throws {
+    func testExistingPassPersistsAndExpiryNoticeIsConsumedOnce() throws {
         var date = Date()
+        let expiry = Int64(date.timeIntervalSince1970 * 1000) + 3_600_000
+        try store.set("reward_state", value: "{\"adFreeUntil\":\(expiry),\"redemptionsToday\":2}")
         let rewards = RewardPassManager(store: store, now: { date })
-        try store.set("reward_state", value: "malformed")
-        let grant = try status(rewards.redeemReward("quick"))
+        let active = try status(rewards.getRewardStatus())
+        XCTAssertEqual(active["isActive"] as? Bool, true)
+        XCTAssertEqual(active["remainingMs"] as? Int64, 3_600_000)
+        XCTAssertEqual(active["canRedeem"] as? Bool, false)
+        XCTAssertEqual(active["hasPendingExpiryNotice"] as? Bool, false)
+        let reopened = RewardPassManager(store: store, now: { date })
+        XCTAssertEqual(try status(reopened.getRewardStatus())["adFreeUntil"] as? Int64, expiry)
+
         date = date.addingTimeInterval(3600)
-        let expired = try status(rewards.getRewardStatus())
+        let expired = try status(reopened.getRewardStatus())
         XCTAssertEqual(expired["isActive"] as? Bool, false)
         XCTAssertEqual(expired["adFreeUntil"] as? Int64, 0)
         XCTAssertEqual(expired["remainingMs"] as? Int64, 0)
         XCTAssertEqual(expired["hasPendingExpiryNotice"] as? Bool, true)
-        XCTAssertEqual(expired["expiryNoticePendingUntil"] as? Int64, grant["adFreeUntil"] as? Int64)
-        let reopened = RewardPassManager(store: store, now: { date })
-        let consumed = try status(reopened.getRewardStatus())
+        XCTAssertEqual(expired["expiryNoticePendingUntil"] as? Int64, expiry)
+        let consumed = try status(rewards.getRewardStatus())
         XCTAssertEqual(consumed["hasPendingExpiryNotice"] as? Bool, false)
-        XCTAssertEqual(consumed["lastExpiredRewardUntil"] as? Int64, grant["adFreeUntil"] as? Int64)
-        let renewed = try status(reopened.redeemReward("quick"))
-        XCTAssertEqual(renewed["lastExpiredRewardUntil"] as? Int64, 0)
-        XCTAssertEqual(renewed["expiryNoticePendingUntil"] as? Int64, 0)
-        try store.set("reward_state", value: "{\"redemptionsToday\":2}")
-        XCTAssertEqual(try status(rewards.getRewardStatus())["remainingRedemptions"] as? Int, 1)
+        XCTAssertEqual(consumed["lastExpiredRewardUntil"] as? Int64, expiry)
+    }
+
+    func testMissingOrMalformedStateCannotGrantTime() throws {
+        let rewards = RewardPassManager(store: store)
+        for raw in ["", "malformed", "{\"redemptionsToday\":2}"] {
+            try store.set("reward_state", value: raw)
+            let empty = try status(rewards.getRewardStatus())
+            XCTAssertEqual(empty["isActive"] as? Bool, false)
+            XCTAssertEqual(empty["canRedeem"] as? Bool, false)
+            XCTAssertEqual(empty["hasPendingExpiryNotice"] as? Bool, false)
+        }
+    }
+
+    func testUnchangedStatusDoesNotRewriteStorageAndDayRolloverIsPersisted() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .current
+        var date = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 11, day: 15, hour: 12)))
+        let raw = """
+        { "adFreeUntil": 0, "lastExpiredRewardUntil": 0, "expiryNoticePendingUntil": 0,
+          "redemptionDay": "2026-11-15", "redemptionsToday": 2 }
+        """
+        try store.set("reward_state", value: raw)
+        let rewards = RewardPassManager(store: store, now: { date })
+        _ = try rewards.getRewardStatus()
+        XCTAssertEqual(try store.get("reward_state"), raw, "An unchanged read must not rewrite even the JSON formatting")
+        date = try XCTUnwrap(calendar.date(byAdding: .day, value: 1, to: date))
+        XCTAssertEqual(try status(rewards.getRewardStatus())["redemptionsToday"] as? Int, 0)
+        let saved = try status(store.get("reward_state"))
+        XCTAssertEqual(saved["redemptionDay"] as? String, "2026-11-16")
     }
 
     private func status(_ value: String) throws -> [String: Any] {
@@ -87,16 +67,17 @@ final class RewardPassTests: XCTestCase {
 
 @MainActor
 final class RewardBridgeTests: BridgeTestCase {
-    func testPublicStatusAPIAndUnknownOfferRejection() async throws {
+    func testStatusRemainsAvailableButRedemptionIsUnsupported() async throws {
         let webView = try await appWebView()
         let result = try await webView.callAsyncJavaScript("""
             const raw=await new Promise((resolve,reject)=>system.getRewardStatus(resolve,reject));
             if(typeof raw!=='string')throw Error('Changed reward response type');
             const status=JSON.parse(raw);
-            if(status.maxRedemptionsPerDay!==3||status.maxActivePassMs!==36000000)throw Error('Changed reward limits');
+            if(status.canRedeem!==false)throw Error('New passes must remain disabled');
             if(typeof status.hasPendingExpiryNotice!=='boolean')throw Error('Missing expiry policy');
-            try{await new Promise((resolve,reject)=>system.redeemReward('invalid',resolve,reject));return false;}
-            catch(error){return typeof error==='string'&&!error.includes('unavailable on iOS');}
+            if(typeof system.redeemReward!=='undefined')throw Error('Retired wrapper still exposed');
+            try{await new Promise((resolve,reject)=>Bridge.exec(resolve,reject,'System','redeemReward',['quick']));return false;}
+            catch(error){return error?.code==='UNSUPPORTED_ACTION';}
             """, arguments: [:], in: nil, contentWorld: .page) as? Bool
         XCTAssertEqual(result, true)
     }

@@ -555,7 +555,6 @@ declare type LangStrings = {
 	"save file before home shortcut": string;
 	terminal_required_message_for_lsp: string;
 	"shift click selection": string;
-	"earn ad-free time": string;
 	"indent guides": string;
 	"language servers": string;
 	"lint gutter": string;
@@ -751,7 +750,6 @@ declare type LangStrings = {
 	"settings-info-lsp-uninstall-server": string;
 	"settings-info-lsp-update-server": string;
 	"settings-info-lsp-view-init-options": string;
-	"settings-info-main-ad-rewards": string;
 	"settings-info-main-app-settings": string;
 	"settings-info-main-backup-restore": string;
 	"settings-info-main-changelog": string;
