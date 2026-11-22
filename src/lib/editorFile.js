@@ -966,10 +966,10 @@ export default class EditorFile {
 
 		if (value === "windows") {
 			text = text.includes("\r\n")
-		? text.replace(/\n(?<!\r\n)/g, "\r\n")
-		: text.replaceAll("\n", "\r\n");
-} else {
-	text = text.includes("\r") ? text.replaceAll("\r", "") : text;
+				? text.replace(/\n(?<!\r\n)/g, "\r\n")
+				: text.replaceAll("\n", "\r\n");
+		} else {
+			text = text.includes("\r") ? text.replaceAll("\r", "") : text;
 		}
 
 		// Update the document in the session
