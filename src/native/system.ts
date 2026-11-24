@@ -2,6 +2,7 @@ import whenAppVisible from "../utils/whenAppVisible";
 import type { NativeCallback } from "./bridge";
 import bridge from "./bridge";
 import httpStream from "./httpStream";
+import launchAppWithFileArgs from "./launchAppWithFileArgs";
 import statusbar from "./statusbar";
 
 const { exec } = bridge("System");
@@ -223,6 +224,33 @@ const api = {
 		onFail: OnFail | undefined,
 	) {
 		exec(onSuccess, onFail, "launch-app", [app, className, extras]);
+	},
+	/**
+	 * Launch an activity and hand it content URIs for one or more files.
+	 * Defaults to `VIEW` for one file, `SEND_MULTIPLE` for several and `MAIN`
+	 * for none; see `LaunchAppWithFileOptions` for the details.
+	 *
+	 * @example
+	 * system.launchAppWithFile({
+	 *   app: "org.love2d.android",
+	 *   className: "org.love2d.android.GameActivity",
+	 *   fileUri: "file:///storage/emulated/0/Games/mygame.love",
+	 *   mimeType: "application/zip",
+	 * }, (result) => console.log(result.uris, result.component));
+	 */
+	launchAppWithFile(
+		options: LaunchAppWithFileOptions,
+		onSuccess?: (result: LaunchAppWithFileResult) => void,
+		onFail?: OnFail,
+	) {
+		const fail = typeof onFail === "function" ? onFail : () => {};
+		const succeed = typeof onSuccess === "function" ? onSuccess : () => {};
+		const args = launchAppWithFileArgs(options);
+		if (typeof args === "string") {
+			fail(`system.launchAppWithFile: ${args}`);
+			return;
+		}
+		exec(succeed, fail, "launch-app-with-file", [args]);
 	},
 	inAppBrowser(
 		url: string,
