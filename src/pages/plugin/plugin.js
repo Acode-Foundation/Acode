@@ -11,6 +11,7 @@ import config from "lib/config";
 import customTab from "lib/customTab";
 import installPlugin from "lib/installPlugin";
 import InstallState from "lib/installState";
+import openFile from "lib/openFile";
 import settings from "lib/settings";
 import { interstitialAd } from "lib/startAd";
 import markdownIt from "markdown-it";
@@ -47,6 +48,8 @@ export default async function PluginInclude(
 	const $page = Page(strings["plugin"]);
 	let installed = await fsOperation(PLUGIN_DIR, id).exists();
 	let plugin = {};
+	let pluginBaseUri = "";
+	let changelogBaseUri = "";
 	let currentVersion = "";
 	let purchased = false;
 	let cancelled = false;
@@ -85,6 +88,8 @@ export default async function PluginInclude(
 
 	try {
 		if (installed) {
+			pluginBaseUri = Url.join(PLUGIN_DIR, id);
+			changelogBaseUri = pluginBaseUri;
 			const manifest = Url.join(PLUGIN_DIR, id, "plugin.json");
 			const installedPlugin = await fsOperation(manifest)
 				.readFile("json")
@@ -92,62 +97,85 @@ export default async function PluginInclude(
 					alert(`Failed to load plugin metadata: ${manifest}`);
 					console.error(err);
 				});
-			const { author } = installedPlugin;
-			const readme = Url.join(
-				PLUGIN_DIR,
-				id,
-				installedPlugin.readme || "readme.md",
-			);
-			const description = await fsOperation(readme)
-				.readFile("utf8")
-				.catch((err) => {
-					alert(`Failed to load plugin readme: ${readme}`);
-					console.error(err);
-				});
-			let changelogs = "";
-			if (installedPlugin.changelogs) {
-				const changelogPath = Url.join(
+			if (installedPlugin) {
+				const { author } = installedPlugin;
+				const readme = Url.join(
 					PLUGIN_DIR,
 					id,
-					installedPlugin.changelogs,
+					installedPlugin.readme || "readme.md",
 				);
-				const changelogExists = await fsOperation(changelogPath).exists();
-				if (changelogExists) {
-					changelogs = await fsOperation(changelogPath).readFile("utf8");
+				pluginBaseUri = Url.dirname(readme);
+				const description =
+					(await fsOperation(readme)
+						.readFile("utf8")
+						.catch((err) => {
+							alert(`Failed to load plugin readme: ${readme}`);
+							console.error(err);
+							return "";
+						})) || "";
+				let changelogs = "";
+				if (installedPlugin.changelogs) {
+					const changelogPath = Url.join(
+						PLUGIN_DIR,
+						id,
+						installedPlugin.changelogs,
+					);
+					changelogBaseUri = Url.dirname(changelogPath);
+					const changelogExists = await fsOperation(changelogPath).exists();
+					if (changelogExists) {
+						changelogs =
+							(await fsOperation(changelogPath)
+								.readFile("utf8")
+								.catch((err) => {
+									console.error(err);
+									return "";
+								})) || "";
+					}
 				}
+
+				let icon = "";
+				try {
+					const iconUrl = await helpers.toInternalUri(
+						Url.join(PLUGIN_DIR, id, installedPlugin.icon),
+					);
+					const iconData = await fsOperation(iconUrl).readFile();
+					const iconMimeType =
+						mimeTypes.lookup(installedPlugin.icon) || "image/png";
+					icon = URL.createObjectURL(
+						new Blob([iconData], { type: iconMimeType }),
+					);
+				} catch (error) {
+					console.error(error);
+				}
+
+				plugin = {
+					id,
+					icon,
+					name: installedPlugin.name || id,
+					version: installedPlugin.version,
+					author: typeof author === "object" ? author?.name : author,
+					author_github:
+						typeof author === "object" ? author?.github : undefined,
+					source: installedPlugin.source,
+					license: installedPlugin.license,
+					keywords: installedPlugin.keywords,
+					contributors: installedPlugin.contributors,
+					repository: installedPlugin.repository,
+					supported_editor: installedPlugin.supported_editor,
+					description,
+					changelogs,
+				};
+
+				unsupportedEditor = installedPlugin.supported_editor;
+				isSupported = isPluginEditorSupported(unsupportedEditor);
+				isPaid = installedPlugin.price > 0;
+				$page.settitle(plugin.name);
+				render();
+			} else {
+				plugin = { id, name: id, description: "", icon: "" };
+				$page.settitle(plugin.name);
+				render();
 			}
-
-			const iconUrl = await helpers.toInternalUri(
-				Url.join(PLUGIN_DIR, id, installedPlugin.icon),
-			);
-			const iconData = await fsOperation(iconUrl).readFile();
-			const iconMimeType =
-				mimeTypes.lookup(installedPlugin.icon) || "image/png";
-			const icon = URL.createObjectURL(
-				new Blob([iconData], { type: iconMimeType }),
-			);
-			plugin = {
-				id,
-				icon,
-				name: installedPlugin.name,
-				version: installedPlugin.version,
-				author: author.name,
-				author_github: author.github,
-				source: installedPlugin.source,
-				license: installedPlugin.license,
-				keywords: installedPlugin.keywords,
-				contributors: installedPlugin.contributors,
-				repository: installedPlugin.repository,
-				supported_editor: installedPlugin.supported_editor,
-				description,
-				changelogs,
-			};
-
-			unsupportedEditor = installedPlugin.supported_editor;
-			isSupported = isPluginEditorSupported(unsupportedEditor);
-			isPaid = installedPlugin.price > 0;
-			$page.settitle(plugin.name);
-			render();
 		}
 
 		await (async () => {
@@ -439,7 +467,7 @@ export default async function PluginInclude(
 				})
 				.use(markdownItTaskLists)
 				.use(markdownItFootnote)
-				.render(plugin.description),
+				.render(plugin.description || ""),
 			changelogs: plugin.changelogs
 				? markdownIt({ html: true, xhtmlOut: true })
 						.use(MarkdownItGitHubAlerts)
@@ -452,7 +480,7 @@ export default async function PluginInclude(
 						})
 						.use(markdownItTaskLists)
 						.use(markdownItFootnote)
-						.render(plugin.changelogs)
+						.render(String(plugin.changelogs))
 				: null,
 			purchased,
 			installed,
@@ -524,7 +552,7 @@ export default async function PluginInclude(
 
 			const codeElement = pre.querySelector("code");
 			if (codeElement) {
-				const langMatch = codeElement.className.match(/language-(\w+)/);
+				const langMatch = codeElement.className.match(/language-(\S+)/);
 				if (langMatch) {
 					const lang = langMatch[1];
 					const originalCode = codeElement.textContent || "";
@@ -556,6 +584,20 @@ export default async function PluginInclude(
 
 			pre.appendChild(copyButton);
 		});
+
+		const hidePage = () => $page.hide();
+		await Promise.all([
+			resolveReadmeAssets(
+				$page.body.querySelector("#overview"),
+				pluginBaseUri,
+				hidePage,
+			),
+			resolveReadmeAssets(
+				$page.body.querySelector("#changelog"),
+				changelogBaseUri,
+				hidePage,
+			),
+		]);
 
 		if ($settingsIcon) {
 			$settingsIcon.remove();
@@ -607,4 +649,55 @@ function isPluginEditorSupported(supportedEditor) {
 		!supportedEditor ||
 		["all", config.SUPPORTED_EDITOR].includes(supportedEditor)
 	);
+}
+
+const ABSOLUTE_URI_PATTERN = /^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i;
+
+async function resolveReadmeAssets(container, baseUri, onOpen) {
+	if (!container || !baseUri) return;
+
+	const resolvePath = (target) => Url.join(baseUri, target.split(/[?#]/)[0]);
+	const images = Array.from(container.querySelectorAll("img[src]"));
+	const links = Array.from(container.querySelectorAll("a[href]"));
+
+	await Promise.all([
+		...images.map(async (image) => {
+			const src = image.getAttribute("src");
+			if (!src || ABSOLUTE_URI_PATTERN.test(src)) return;
+
+			try {
+				image.setAttribute(
+					"src",
+					await helpers.toInternalUri(resolvePath(src)),
+				);
+				image.setAttribute("loading", "lazy");
+			} catch (error) {
+				console.warn("Failed to resolve plugin readme image:", src, error);
+			}
+		}),
+		...links.map(async (link) => {
+			const href = link.getAttribute("href");
+			if (!href || ABSOLUTE_URI_PATTERN.test(href)) return;
+
+			let path;
+			try {
+				path = resolvePath(href);
+			} catch (error) {
+				console.warn("Failed to resolve plugin readme link:", href, error);
+				return;
+			}
+
+			link.setAttribute("href", "#");
+			link.addEventListener("click", async (event) => {
+				event.preventDefault();
+				event.stopPropagation();
+				try {
+					await openFile(path);
+					onOpen?.();
+				} catch (error) {
+					helpers.error(error);
+				}
+			});
+		}),
+	]);
 }
