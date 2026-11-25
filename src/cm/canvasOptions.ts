@@ -6,11 +6,9 @@ import {
 	parseColor,
 	type TokenStyleSpec,
 } from "@acode.app/canvas-view";
-import { HighlightStyle } from "@codemirror/language";
-import { oneDark } from "@codemirror/theme-one-dark";
 import { tags as t } from "@lezer/highlight";
 import { getRainbowBracketColors } from "cm/rainbowBrackets";
-import { getThemeById, getThemeConfig, getThemeExtensions } from "cm/themes";
+import { getThemeById, getThemeConfig } from "cm/themes";
 
 /**
  * Maps Acode's editor settings and themes to @acode.app/canvas-view options.
@@ -70,175 +68,6 @@ function clampSetting(
 	return Math.min(Math.max(Math.round(number), min), max);
 }
 
-/**
- * Find the HighlightStyle a theme passes to `syntaxHighlighting()`, by
- * walking its extension tree (arrays, precedence wrappers, compartments,
- * `facet.of(value)` providers). Returns null for themes that compute their
- * highlighter (`themeType`) or don't have one.
- */
-export function findHighlightStyle(
-	extension: unknown,
-	seen = new Set<unknown>(),
-): HighlightStyle | null {
-	if (!extension || typeof extension !== "object" || seen.has(extension)) {
-		return null;
-	}
-	seen.add(extension);
-	if (extension instanceof HighlightStyle) return extension;
-	if (Array.isArray(extension)) {
-		for (const item of extension) {
-			const found = findHighlightStyle(item, seen);
-			if (found) return found;
-		}
-		return null;
-	}
-	const node = extension as {
-		value?: unknown;
-		inner?: unknown;
-		extension?: unknown;
-	};
-	return (
-		findHighlightStyle(node.value, seen) ||
-		findHighlightStyle(node.inner, seen) ||
-		findHighlightStyle(node.extension, seen)
-	);
-}
-
-/**
- * Editor surface colors a theme's own `EditorView.theme` rules set, for
- * the canvas renderer, which doesn't draw from CSS. Plugin themes are often
- * registered with only background, foreground and syntax colors in their
- * config, and style the active line, gutter and cursor in CSS.
- * Parsed from the style modules' rule strings when the canvas theme is
- * built (theme changes): no DOM is read, nothing runs per frame.
- */
-interface RuleColors {
-	activeLine?: string;
-	activeLineBorder?: string;
-	activeLineBorderWidth?: number;
-	activeLineGutter?: string;
-	gutterBackground?: string;
-	gutterForeground?: string;
-	gutterActiveForeground?: string;
-	selection?: string;
-	cursor?: string;
-}
-
-function collectStyleRules(
-	extension: unknown,
-	rules: string[],
-	seen = new Set<unknown>(),
-): string[] {
-	if (!extension || typeof extension !== "object" || seen.has(extension)) {
-		return rules;
-	}
-	seen.add(extension);
-	if (Array.isArray(extension)) {
-		for (const item of extension) collectStyleRules(item, rules, seen);
-		return rules;
-	}
-	const node = extension as {
-		getRules?: () => unknown;
-		value?: unknown;
-		inner?: unknown;
-		extension?: unknown;
-	};
-	// A StyleModule (style-mod): one "selectors {declarations}" rule per line.
-	if (typeof node.getRules === "function") {
-		const text = node.getRules();
-		if (typeof text === "string") rules.push(...text.split("\n"));
-		return rules;
-	}
-	collectStyleRules(node.value, rules, seen);
-	collectStyleRules(node.inner, rules, seen);
-	collectStyleRules(node.extension, rules, seen);
-	return rules;
-}
-
-const COLOR_TOKEN =
-	/(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\([^)]*\)|#[0-9a-f]{3,8}\b|\b(?!inset\b)[a-z]+\b/i;
-
-/** A color in a CSS value ("2px solid #333" -> "#333"); null for var(). */
-function colorIn(value: string): string | null {
-	if (/var\(/.test(value)) return null;
-	const m = COLOR_TOKEN.exec(
-		value.replace(/\b(?:solid|dashed|dotted|double|none)\b/g, ""),
-	);
-	if (
-		!m ||
-		/^(?:transparent|currentcolor|inherit|initial|unset)$/i.test(m[0])
-	) {
-		return m && /^transparent$/i.test(m[0]) ? "transparent" : null;
-	}
-	return m[0];
-}
-
-/** An inset box-shadow without offset or blur as a frame (`0 0 0 2px #333 inset`). */
-function insetFrame(value: string): { color: string; width: number } | null {
-	const first = value.split(/,(?![^(]*\))/)[0];
-	if (!/\binset\b/.test(first)) return null;
-	const color = colorIn(first.replace(/\binset\b/, ""));
-	const lengths = (
-		first.replace(COLOR_TOKEN, " ").match(/-?\d*\.?\d+(?:px)?\b/g) ?? []
-	).map(Number.parseFloat);
-	const [x = 0, y = 0, blur = 0, spread = 0] = lengths;
-	if (!color || color === "transparent" || x || y || blur || !(spread > 0)) {
-		return null;
-	}
-	return { color, width: spread };
-}
-
-export function themeRuleColors(extension: unknown): RuleColors {
-	const found: RuleColors = {};
-	let focusedSelection: string | undefined;
-	for (const rule of collectStyleRules(extension, [])) {
-		const m = /^([^{]+)\{([^}]*)\}\s*$/.exec(rule);
-		if (!m) continue;
-		const decls = new Map<string, string>();
-		for (const decl of m[2].split(/;(?![^(]*\))/)) {
-			const i = decl.indexOf(":");
-			if (i > 0) decls.set(decl.slice(0, i).trim(), decl.slice(i + 1).trim());
-		}
-		const bg = decls.get("background-color") ?? decls.get("background");
-		const bgColor = bg ? colorIn(bg) : null;
-		for (const sel of m[1].split(",").map((s) => s.trim())) {
-			// Only the element itself, not states or descendants of it.
-			if (/:(?:hover|active|focus)|::/.test(sel)) continue;
-			if (/\.cm-activeLine$/.test(sel)) {
-				if (bgColor) found.activeLine = bgColor;
-				const frame = decls.has("box-shadow")
-					? insetFrame(decls.get("box-shadow") as string)
-					: null;
-				if (frame) {
-					found.activeLineBorder = frame.color;
-					found.activeLineBorderWidth = frame.width;
-				}
-			} else if (/\.cm-gutters$/.test(sel)) {
-				if (bgColor) found.gutterBackground = bgColor;
-				const color = decls.get("color");
-				if (color && colorIn(color))
-					found.gutterForeground = colorIn(color) as string;
-			} else if (/\.cm-activeLineGutter$/.test(sel)) {
-				if (bgColor) found.activeLineGutter = bgColor;
-				const color = decls.get("color");
-				if (color && colorIn(color))
-					found.gutterActiveForeground = colorIn(color) as string;
-			} else if (/\.cm-cursor(?:-primary)?$/.test(sel)) {
-				const border =
-					decls.get("border-left-color") ?? decls.get("border-left");
-				const color = border ? colorIn(border) : null;
-				if (color && color !== "transparent") found.cursor = color;
-			} else if (/\.cm-selectionBackground$/.test(sel) && bgColor) {
-				// The focused rule is what a focused editor shows.
-				if (/\.cm-focused\b/.test(sel)) focusedSelection = bgColor;
-				else found.selection ??= bgColor;
-			}
-		}
-	}
-	if (focusedSelection) found.selection = focusedSelection;
-	return found;
-}
-
 /** Token colors from a theme config, for themes without a HighlightStyle. */
 function highlightFromConfig(config: ThemeConfig): TokenStyleSpec[] {
 	const color = (key: string) =>
@@ -265,88 +94,57 @@ function highlightFromConfig(config: ThemeConfig): TokenStyleSpec[] {
 	return specs.filter((spec) => spec.color);
 }
 
-/**
- * Decoration colors the canvas draws natively, as the themes' CSS has them:
- * selection matches use the theme's `selectionMatch`, else its selection.
- */
-function themeClasses(config: ThemeConfig): CanvasThemeSpec["classes"] {
-	const classes: NonNullable<CanvasThemeSpec["classes"]> = {};
-	if (config.matchingBracket) {
-		classes["cm-matchingBracket"] = { background: config.matchingBracket };
-	}
-	const selectionMatch = config.selectionMatch || config.selection;
-	if (selectionMatch) {
-		classes["cm-selectionMatch"] = { background: selectionMatch };
-	}
-	return Object.keys(classes).length ? classes : undefined;
-}
+/** What `CanvasView`'s `theme` option and `setTheme` take. */
+export type CanvasThemeSource = NonNullable<CanvasViewConfig["theme"]>;
 
 /**
- * The canvas theme for an Acode editor theme: colors from its config, syntax
- * colors from the HighlightStyle in its extensions. The theme's
- * EditorView.theme stays in the state, where it styles the DOM UI (tooltips,
- * panels, autocomplete).
+ * The canvas theme for an Acode editor theme. canvas-view resolves the
+ * colors itself from the theme's own CSS (the `EditorView.theme` and
+ * highlight style in the state: background, text, cursor, selection, active
+ * line fill or frame, gutter, line numbers, matching brackets, selection
+ * matches), like the DOM editor shows them, and again when the theme
+ * compartment changes. The CSS is the only source for those: a theme's
+ * config doesn't override it, so both renderers draw a theme the same.
+ * This adds what the CSS doesn't say: Acode's own scrollbars, a
+ * see-through canvas over a picture, the gutter border and config-only
+ * syntax colors.
  */
-/**
- * The canvas theme spec with the active line frame, which canvas-view
- * releases before it ignore (the line is then drawn without one).
- */
-type FramedThemeSpec = CanvasThemeSpec & {
-	activeLineBorder?: string;
-	activeLineBorderWidth?: number;
-};
-
 export function getCanvasTheme(
 	themeId: string,
 	seeThrough = false,
-): CanvasThemeSpec {
+): CanvasThemeSource {
 	// Resolve ids like getThemeExtensions does ("one-dark" -> "one_dark").
 	const theme =
 		getThemeById(themeId) || getThemeById(String(themeId).replace(/-/g, "_"));
 	const config = (theme?.config ||
 		getThemeConfig(themeId) ||
 		{}) as ThemeConfig;
-	const extensions = getThemeExtensions(themeId, [oneDark]);
-	const highlight =
-		findHighlightStyle(extensions) || highlightFromConfig(config);
-	// What the config leaves out, from the theme's own CSS rules.
-	const rules = themeRuleColors(extensions);
-	const background = config.background || "#282c34";
-	const foreground = config.foreground || "#abb2bf";
-	// The config's active line replaces the rules' (fill and frame).
-	const framed = !config.activeLine && rules.activeLineBorder;
-	const activeLine = config.activeLine ?? rules.activeLine;
-	const spec: FramedThemeSpec = {
-		dark: config.dark !== false,
-		// With a picture behind the editor, the canvas is see-through. The
-		// editor element keeps the theme's CSS background under the picture,
-		// and sticky lines take it from there.
-		background: seeThrough ? "transparent" : background,
-		foreground,
-		selection: config.selection ?? rules.selection,
-		cursor: config.cursor ?? rules.cursor,
-		activeLine:
-			seeThrough && !framed
-				? translucentActiveLine(activeLine, foreground)
-				: (activeLine ?? (framed ? "transparent" : undefined)),
-		activeLineBorder: framed ? rules.activeLineBorder : undefined,
-		activeLineBorderWidth: framed ? rules.activeLineBorderWidth : undefined,
-		// Like the DOM themes, which give the active gutter line no background.
-		activeLineGutter: seeThrough
-			? "transparent"
-			: (rules.activeLineGutter ?? background),
-		gutterBackground: seeThrough ? undefined : rules.gutterBackground,
-		gutterForeground: config.lineNumber ?? rules.gutterForeground,
-		gutterActiveForeground:
-			config.lineNumberActive ?? rules.gutterActiveForeground,
-		// A line between the gutter and the code, only when the theme asks.
-		gutterBorder: config.gutterBorder,
-		// Acode draws its own (draggable) scrollbars over the editor.
-		scrollbar: "transparent",
-		highlight,
-		classes: themeClasses(config),
+	// Only used for a theme without a highlight style in its extensions.
+	const highlight = highlightFromConfig(config);
+	return (css: CanvasThemeSpec): CanvasThemeSpec => {
+		const framed = !!css.activeLineBorder;
+		return {
+			...css,
+			...(highlight.length ? { highlight } : null),
+			// With a picture behind the editor, the canvas is see-through. The
+			// editor element keeps the theme's CSS background under the
+			// picture, and sticky lines take it from there.
+			background: seeThrough ? "transparent" : css.background,
+			activeLine:
+				seeThrough && !framed
+					? translucentActiveLine(css.activeLine, css.foreground)
+					: css.activeLine,
+			// Like the DOM themes, which give the active gutter line no background.
+			activeLineGutter: seeThrough
+				? "transparent"
+				: (css.activeLineGutter ?? css.background),
+			gutterBackground: seeThrough ? undefined : css.gutterBackground,
+			// A line between the gutter and the code, when the theme asks.
+			gutterBorder: config.gutterBorder ?? css.gutterBorder,
+			// Acode draws its own (draggable) scrollbars over the editor.
+			scrollbar: "transparent",
+		};
 	};
-	return spec;
 }
 
 /**
