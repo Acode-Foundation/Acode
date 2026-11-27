@@ -131,7 +131,7 @@ The APK will be at: `platforms/android/app/build/outputs/apk/<edition>/debug/app
 > [!NOTE]
 > `@codemirror/lsp-client` comes from the `codemirror-lsp-client` git submodule and is installed as a local `file:` dependency, so initialize the submodule before running `npm ci` — see [Troubleshooting](#-troubleshooting).
 
-## iOS development (port in progress)
+## iOS development
 
 Use macOS with Xcode 26 and an installed iOS simulator runtime, plus Node.js 24.
 Copy `platforms/ios/Config.xcconfig.example` to `platforms/ios/Config.xcconfig`

@@ -358,7 +358,8 @@ downloads remain unverified.
 On iOS, file workspaces now use the public native `fileIndex` API and the existing
 Search in Files UI. The SQLite-backed index preserves streamed scan events,
 paginated queries, incremental subtree updates, cached text, dirty invalidation,
-unsaved editor overlays, search options and literal replacement events. Remote
+unsaved editor overlays, search options and replacement events (regex
+replacements expand `$1`, `$&` and `$<name>` like JavaScript's `String.replace`). Remote
 providers retain their JavaScript discovery/search fallback; Android SAF URLs
 remain Android-only. Replacement produces editor text and does not write files.
 
