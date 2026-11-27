@@ -259,20 +259,13 @@ describe("typed native API behavior", () => {
 		for (const type of ["loadstart", "progress", "load", "loadend", "abort"])
 			reader[`on${type}`] = (event) => events.push([type, event.loaded]);
 		reader.readAsText(file);
-		expect(JSON.parse(pending.at(-1).args)).toEqual([
-			file.localURL,
-			"UTF-8",
-			1,
-			4,
+		expect([pending.at(-1).action, JSON.parse(pending.at(-1).args)]).toEqual([
+			"readAsArrayBuffer",
+			[file.localURL, 1, 4],
 		]);
-		respond(window, pending.at(-1), "abc");
-		expect(JSON.parse(pending.at(-1).args)).toEqual([
-			file.localURL,
-			"UTF-8",
-			4,
-			7,
-		]);
-		respond(window, pending.at(-1), "def");
+		respond(window, pending.at(-1), bytes("abc"));
+		expect(JSON.parse(pending.at(-1).args)).toEqual([file.localURL, 4, 7]);
+		respond(window, pending.at(-1), bytes("def"));
 		expect(reader.result).toBe("abcdef");
 		expect(reader.readyState).toBe(window.FileReader.DONE);
 		expect(events.map(([type]) => type)).toEqual([
@@ -290,6 +283,24 @@ describe("typed native API behavior", () => {
 		expect(events.slice(-2).map(([type]) => type)).toEqual([
 			"abort",
 			"loadend",
+		]);
+	});
+
+	test("decodes text whose characters cross native chunk boundaries", async () => {
+		const { window, pending } = await createBridge();
+		window.FileReader.READ_CHUNK_SIZE = 3;
+		// "a€b" is 61 e2 82 ac 62: the euro sign spans both chunks.
+		const file = new window.File("t.txt", "file:///t.txt", "text/plain", 0, 5);
+		const reader = new window.FileReader();
+		reader.readAsText(file);
+		respond(window, pending.at(-1), bytes([0x61, 0xe2, 0x82]));
+		respond(window, pending.at(-1), bytes([0xac, 0x62]));
+		expect(reader.result).toBe("a€b");
+
+		reader.readAsText(file, "x-unknown-charset");
+		expect([pending.at(-1).action, JSON.parse(pending.at(-1).args)]).toEqual([
+			"readAsText",
+			[file.localURL, "x-unknown-charset", 0, 3],
 		]);
 	});
 
@@ -1025,6 +1036,10 @@ describe("legacy plugin compatibility", () => {
 
 function respond(window, request, data, status = 1) {
 	window.Android.callback({ id: request.id, status, keep: false, data });
+}
+
+function bytes(value) {
+	return { kind: "arrayBuffer", data: Buffer.from(value).toString("base64") };
 }
 
 async function createBridge(

@@ -100,18 +100,28 @@ export default class NativeFileReader {
 					(NativeFileReader.READ_CHUNK_SIZE % 3) +
 					3
 				: NativeFileReader.READ_CHUNK_SIZE;
+		// Decoding each chunk natively would split characters that cross a chunk
+		// boundary, so text is read as bytes and decoded in one stream here.
+		const decoder = method === "readAsText" ? textDecoder(encoding) : null;
+		const nativeMethod = decoder ? "readAsArrayBuffer" : method;
 		let progress = 0;
 		const readChunk = () => {
+			const end = progress + Math.min(size - progress, chunkSize);
 			const args: unknown[] = [
 				file.localURL,
 				file.start + progress,
-				file.start + progress + Math.min(size - progress, chunkSize),
+				file.start + end,
 			];
-			if (encoding) args.splice(1, 0, encoding);
+			if (encoding && !decoder) args.splice(1, 0, encoding);
 			exec(
 				(data: string | ArrayBuffer) => {
 					if (this.state === NativeFileReader.DONE) return;
-					if (method === "readAsArrayBuffer") {
+					if (decoder) {
+						const text = decoder.decode(new Uint8Array(data as ArrayBuffer), {
+							stream: end < size,
+						});
+						this.value = `${this.value ?? ""}${text}`;
+					} else if (method === "readAsArrayBuffer") {
 						const bytes = this.value
 							? new Uint8Array(this.value as ArrayBuffer)
 							: new Uint8Array(size);
@@ -141,10 +151,19 @@ export default class NativeFileReader {
 					this.emit("loadend");
 				},
 				"File",
-				method,
+				nativeMethod,
 				args,
 			);
 		};
 		readChunk();
+	}
+}
+
+function textDecoder(encoding?: string) {
+	try {
+		return new TextDecoder(encoding || "utf-8");
+	} catch {
+		// Labels TextDecoder does not know keep the native per-chunk decoding.
+		return null;
 	}
 }
