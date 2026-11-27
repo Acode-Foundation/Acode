@@ -29,6 +29,7 @@ import {
 	tooltips,
 } from "@codemirror/view";
 import indentationFolding from "./indentationFolding";
+import { canvasSyntaxWorker } from "./syntaxWorkerClient";
 
 export interface BaseExtensionOptions {
 	autoIndent?: boolean;
@@ -92,6 +93,8 @@ export default function createBaseExtensions(
 	} = options;
 	const extensions: Extension[] = [history()];
 	if (!canvas) extensions.push(highlightSpecialChars());
+	// Canvas views parse in a worker, and on the main thread if it fails.
+	if (canvas) extensions.push(canvasSyntaxWorker);
 
 	if (enableHighlightActiveLine && !canvas) {
 		extensions.push(highlightActiveLineGutter());

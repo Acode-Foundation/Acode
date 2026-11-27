@@ -318,6 +318,10 @@ class JSDocParse implements PartialParse {
 }
 
 class JSDocParser extends Parser {
+	// Like LR parsers: the canvas renderer's syntax worker identifies mounted
+	// trees' parsers by their node set.
+	readonly nodeSet = nodeSet;
+
 	createParse(
 		input: Input,
 		_fragments: readonly TreeFragment[],

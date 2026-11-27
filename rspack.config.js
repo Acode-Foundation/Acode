@@ -162,6 +162,9 @@ module.exports = (env, options) => {
       cssLspWorker: './src/cm/lsp/workers/css.worker.ts',
       jsonLspWorker: './src/cm/lsp/workers/json.worker.ts',
       typescriptLspWorker: './src/cm/lsp/workers/typescript.worker.ts',
+      // Loads each language's parser when a document needs it, so its chunks
+      // are fetched with importScripts (a worker has no document for JSONP).
+      syntaxWorker: { import: './src/cm/syntaxWorker.ts', chunkLoading: 'import-scripts' },
     },
     output: {
       path: getWebBundlePath(),
