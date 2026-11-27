@@ -966,9 +966,11 @@ export default class EditorFile {
 		let text = getDocText(this.session.doc);
 
 		if (value === "windows") {
-			text = text.replace(/\n(?<!\r\n)/g, "\r\n");
+			text = text.includes("\r\n")
+				? text.replace(/\n(?<!\r\n)/g, "\r\n")
+				: text.replaceAll("\n", "\r\n");
 		} else {
-			text = text.replace(/\r/g, "");
+			text = text.includes("\r") ? text.replaceAll("\r", "") : text;
 		}
 
 		// Update the document in the session

@@ -126,7 +126,7 @@ export default function fontManager() {
 
 			const fontName = await prompt(
 				"Font Name",
-				name.replace(/\.(ttf|otf|woff|woff2)$/i, ""),
+				name.replace(/\.(?:ttf|otf|woff|woff2)$/i, ""),
 			);
 			if (!fontName) return;
 

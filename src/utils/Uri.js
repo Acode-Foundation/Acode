@@ -194,7 +194,7 @@ export default {
 				const { name } = storage;
 				const [base, paths] = url.split("::");
 				url = base + "/" + paths.split("/").slice(1).join("/");
-				return url.replace(regex, name).replace(/\/+/g, "/");
+				return url.replace(regex, name).replace(/\/\/+/g, "/");
 			}
 
 			return url;

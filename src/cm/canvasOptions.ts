@@ -115,7 +115,7 @@ export function getCanvasTheme(
 ): CanvasThemeSource {
 	// Resolve ids like getThemeExtensions does ("one-dark" -> "one_dark").
 	const theme =
-		getThemeById(themeId) || getThemeById(String(themeId).replace(/-/g, "_"));
+		getThemeById(themeId) || getThemeById(String(themeId).replaceAll("-", "_"));
 	const config = (theme?.config ||
 		getThemeConfig(themeId) ||
 		{}) as ThemeConfig;
@@ -339,7 +339,7 @@ let nextThemeEntryId = 1;
  */
 function themeEntryKey(themeId: string): string {
 	const entry =
-		getThemeById(themeId) || getThemeById(String(themeId).replace(/-/g, "_"));
+		getThemeById(themeId) || getThemeById(String(themeId).replaceAll("-", "_"));
 	if (!entry) return "0";
 	let n = themeEntryIds.get(entry);
 	if (!n) themeEntryIds.set(entry, (n = nextThemeEntryId++));

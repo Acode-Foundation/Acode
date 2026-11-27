@@ -81,8 +81,7 @@ export default function CustomThemeInclude() {
 	}
 
 	function render() {
-		const pascalToNormal = (str) =>
-			str.replace(/([A-Z])/g, " $1").toLowerCase();
+		const pascalToNormal = (str) => str.replace(/[A-Z]/g, " $&").toLowerCase();
 		const customTheme = themes.get("custom");
 
 		$page.body = (
