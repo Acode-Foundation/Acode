@@ -111,8 +111,10 @@ export default function ajax(options = {}) {
 
 		function progress(e) {
 			const { loaded, total } = e;
-			const percent = Math.round((loaded / total) * 100);
-			xhr.percent = percent;
+			const hasTotal = Number.isFinite(total) && total > 0;
+			if (hasTotal) {
+				xhr.percent = Math.min(100, Math.round((loaded / total) * 100));
+			}
 
 			if (typeof onprogress === "function") {
 				onprogress(loaded, total);
@@ -122,11 +124,13 @@ export default function ajax(options = {}) {
 				const progresses = [];
 				xhrs = xhrs.filter((xhr) => {
 					if (xhr.status !== 200 || xhr.percent === 100) return false;
-					progresses.push(xhr.percent);
+					if (typeof xhr.percent === "number") progresses.push(xhr.percent);
 					return true;
 				});
 
-				ajax.onprogress(Math.min(...progresses, 100));
+				if (progresses.length) {
+					ajax.onprogress(Math.min(...progresses, 100));
+				}
 			}
 		}
 

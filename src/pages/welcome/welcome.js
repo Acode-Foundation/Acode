@@ -2,6 +2,7 @@ import { getResolvedKeyBindings } from "cm/commandRegistry";
 import logoSrc from "components/logo/logo.png?inline";
 import config from "lib/config";
 import EditorFile from "lib/editorFile";
+import platform from "lib/platform";
 
 /**
  * Opens the Welcome tab as an EditorFile page
@@ -47,7 +48,9 @@ function createWelcomeContent() {
 				<img className="logo" src={logoSrc} width="48" height="48" alt="" />
 				<div className="welcome-header-text">
 					<h1>Welcome to Acode</h1>
-					<p className="tagline">Powerful code editor for Android</p>
+					<p className="tagline">
+						Powerful code editor for {platform.isIOS ? "iOS" : "Android"}
+					</p>
 				</div>
 			</header>
 
@@ -73,12 +76,14 @@ function createWelcomeContent() {
 						shortcut={kb("openFolder")}
 						onClick={() => acode.exec("open-folder")}
 					/>
-					<ActionRow
-						icon="terminal"
-						label={strings.terminal}
-						shortcut={kb("openTerminal")}
-						onClick={() => acode.exec("new-terminal")}
-					/>
+					{platform.localExecution && (
+						<ActionRow
+							icon="terminal"
+							label={strings.terminal}
+							shortcut={kb("openTerminal")}
+							onClick={() => acode.exec("new-terminal")}
+						/>
+					)}
 					<ActionRow
 						icon="historyrestore"
 						label={strings.recent}

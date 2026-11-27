@@ -5,15 +5,15 @@
 #   docker build --target standalone -t acode-dev .devcontainer/
 #   docker run -it -v $(pwd):/workspaces/acode acode-dev
 
-FROM mcr.microsoft.com/devcontainers/java:1-21-bookworm AS base
+FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04 AS base
 
-ARG ANDROID_PLATFORM=36
+ARG ANDROID_PLATFORM=37
 ARG ANDROID_BUILD_TOOLS=36.0.0
 ARG CMDLINE_TOOLS_VERSION=11076708
-ARG NODE_VERSION=22
-ARG GRADLE_VERSION=8.11
+ARG NODE_VERSION=24
+ARG JAVA_VERSION=26
 
-ENV GRADLE_HOME=/opt/gradle
+ENV JAVA_HOME=/opt/java/openjdk
 
 # removes broken yarn repo present in base image
 RUN rm -f /etc/apt/sources.list.d/yarn.list
@@ -24,13 +24,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Gradle
-RUN wget -q "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" -O /tmp/gradle.zip \
-    && unzip -q /tmp/gradle.zip -d /opt \
-    && rm /tmp/gradle.zip \
-    && ln -s /opt/gradle-${GRADLE_VERSION} ${GRADLE_HOME}
+# The project wrapper supplies Gradle; install only its Java runtime here.
+RUN set -eu; \
+    case "$(dpkg --print-architecture)" in \
+        amd64) architecture=x64 ;; \
+        arm64) architecture=aarch64 ;; \
+        *) exit 1 ;; \
+    esac; \
+    curl -fL "https://api.adoptium.net/v3/binary/latest/${JAVA_VERSION}/ga/linux/${architecture}/jdk/hotspot/normal/eclipse" -o /tmp/jdk.tar.gz; \
+    mkdir -p "${JAVA_HOME}"; \
+    tar -xzf /tmp/jdk.tar.gz --strip-components=1 -C "${JAVA_HOME}"; \
+    rm /tmp/jdk.tar.gz
 
-ENV PATH="${PATH}:${GRADLE_HOME}/bin"
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
 
 WORKDIR /workspaces/acode
 

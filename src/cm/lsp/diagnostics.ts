@@ -1,6 +1,5 @@
-import { Diagnostic, linter, lintGutter } from "@codemirror/lint";
 import type { LSPClient } from "@acode.app/lsp-client";
-import { LSPPlugin } from "@acode.app/lsp-client";
+import { Diagnostic, linter, lintGutter } from "@codemirror/lint";
 import type { Extension } from "@codemirror/state";
 import {
 	EditorState,
@@ -9,6 +8,7 @@ import {
 	StateField,
 } from "@codemirror/state";
 import { type EditorView, ViewPlugin, type ViewUpdate } from "@codemirror/view";
+import { getAllLspPlugins, getLspPlugin } from "./clientLoader";
 import { addLspLogFor } from "./logs";
 import { safeLspPositionToOffset } from "./positionUtils";
 import type {
@@ -65,7 +65,7 @@ function supportsPullDiagnostics(client: LSPClient): boolean {
 function diagnosticsEnabledForFile(client: LSPClient, uri: string): boolean {
 	const file = client.workspace.getFile(uri);
 	const view = file?.getView();
-	const plugin = view && LSPPlugin.get(view, client);
+	const plugin = view && getLspPlugin(view, client);
 	return !!plugin?.featureEnabled("diagnostics");
 }
 
@@ -255,7 +255,7 @@ function applyDiagnostics(
 	}
 	const view = file.getView();
 	if (!view) return false;
-	const plugin = LSPPlugin.get(view, client);
+	const plugin = getLspPlugin(view, client);
 	if (!plugin || !plugin.featureEnabled("diagnostics")) return false;
 
 	const diagnostics = collectLspDiagnostics(
@@ -446,7 +446,7 @@ export function lspDiagnosticsAutoSyncExtension(): Extension {
 
 			flush(): void {
 				this.pending = null;
-				for (const plugin of LSPPlugin.getAll(this.view, "diagnostics")) {
+				for (const plugin of getAllLspPlugins(this.view, "diagnostics")) {
 					plugin.client.sync();
 					schedulePullDiagnostics(plugin.client, plugin.uri, 0);
 				}
@@ -488,7 +488,7 @@ function lspLinterSource(view: EditorView): Diagnostic[] {
 	const stored = view.state.field(lspPublishedDiagnostics);
 	const diagnostics: Diagnostic[] = [];
 	for (const [client, items] of stored) {
-		const plugin = LSPPlugin.get(view, client);
+		const plugin = getLspPlugin(view, client);
 		if (plugin?.featureEnabled("diagnostics")) diagnostics.push(...items);
 	}
 	return diagnostics;

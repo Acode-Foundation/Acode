@@ -5,8 +5,6 @@ node_modules/
 # Build outputs
 platforms/
 plugins/
-www/css/build/
-www/js/build/
 
 # IDE
 .vscode/

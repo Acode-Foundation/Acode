@@ -1,3 +1,4 @@
+import platform from "./platform";
 import settings from "./settings";
 
 const pendingScans = new Map();
@@ -5,7 +6,7 @@ const scanIdsByRoot = new Map();
 const listeners = new Set();
 
 /**
- * Whether a URL can be indexed by the Android native workspace index.
+ * Whether a URL can be indexed by the platform native workspace index.
  * Remote providers such as FTP and SFTP remain on the JavaScript fallback.
  * @param {string} url
  */
@@ -13,12 +14,12 @@ export function supports(url = "") {
 	return (
 		typeof sdcard !== "undefined" &&
 		typeof sdcard.workspaceScan === "function" &&
-		(/^file:/.test(url) || /^content:/.test(url))
+		(/^file:/.test(url) || (!platform.isIOS && /^content:/.test(url)))
 	);
 }
 
 /**
- * Scan a SAF or file:// workspace entirely on the native side.
+ * Scan a file:// workspace, or Android SAF workspace, on the native side.
  * @param {string|object} root
  * @param {object} [options]
  * @returns {Promise<object> & {id: string, cancel: () => Promise<unknown>}}

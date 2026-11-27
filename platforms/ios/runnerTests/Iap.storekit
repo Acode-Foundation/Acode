@@ -1,0 +1,62 @@
+{
+  "identifier": "DA20B521-CFA5-4B8C-8C2E-B0A036D1ABAD",
+  "nonRenewingSubscriptions": [],
+  "products": [
+    {
+      "displayPrice": "4.99",
+      "familyShareable": false,
+      "internalID": "100",
+      "localizations": [
+        {
+          "description": "Local simulator fixture only",
+          "displayName": "Acode Pro test",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "acode_pro_new",
+      "referenceName": "Acode Pro test",
+      "type": "NonConsumable"
+    },
+    {
+      "displayPrice": "2.49",
+      "familyShareable": false,
+      "internalID": "101",
+      "localizations": [
+        {
+          "description": "Local simulator fixture only",
+          "displayName": "Plugin test",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "ios_test_plugin",
+      "referenceName": "Plugin test",
+      "type": "NonConsumable"
+    },
+    {
+      "displayPrice": "0.99",
+      "familyShareable": false,
+      "internalID": "102",
+      "localizations": [
+        {
+          "description": "Local simulator fixture only",
+          "displayName": "Tip test",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "ios_test_tip",
+      "referenceName": "Tip test",
+      "type": "Consumable"
+    }
+  ],
+  "settings": {
+    "_failTransactionsEnabled": false,
+    "_locale": "en_US",
+    "_storefront": "USA",
+    "_storeKitErrors": []
+  },
+  "subscriptionGroups": [],
+  "version": {
+    "major": 3,
+    "minor": 0
+  }
+}

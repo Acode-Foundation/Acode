@@ -8,6 +8,8 @@ export default function customTab(
 	options?: {
 		showTitle?: boolean;
 		toolbarColor?: string;
+		authTabId?: string;
+		reportLifecycle?: boolean;
 	},
 ) {
 	if (!options) {
@@ -17,6 +19,6 @@ export default function customTab(
 	options.showTitle ??= true;
 
 	return new Promise((resolve, reject) => {
-		cordova.exec(resolve, reject, "CustomTabs", "open", [url, options]);
+		Bridge.exec(resolve, reject, "CustomTabs", "open", [url, options]);
 	});
 }

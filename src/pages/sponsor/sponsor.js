@@ -8,6 +8,7 @@ import loader from "dialogs/loader";
 import multiPrompt from "dialogs/multiPrompt";
 import actionStack from "lib/actionStack";
 import config from "lib/config";
+import platform from "lib/platform";
 import helpers from "utils/helpers";
 
 //TODO: fix (-1 means, user is not logged in to any google account)
@@ -17,6 +18,10 @@ import helpers from "utils/helpers";
  * @param {() => void} onclose
  */
 export default function Sponsor(onclose) {
+	if (!platform.sponsorPurchases) {
+		alert(strings.info, strings["product not available"]);
+		return;
+	}
 	const $page = Page(strings.sponsor);
 	let cancel = false;
 
@@ -242,6 +247,7 @@ async function handlePurchase(productId, title) {
 		});
 	}
 
+	// multiPrompt rejects when the dialog is cancelled.
 	result = await multiPrompt(onlyTitle(title), [
 		{
 			placeholder: "Name",
@@ -264,7 +270,7 @@ async function handlePurchase(productId, title) {
 			type: "checkbox",
 			value: true,
 		},
-	]);
+	]).catch(() => null);
 
 	if (!result) {
 		return;

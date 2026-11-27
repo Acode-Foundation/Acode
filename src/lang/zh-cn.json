@@ -401,6 +401,7 @@
 	"change encoding": "确定要重新打开 ‘{file}’ 以使用 ‘{encoding}’ 编码编辑？该操作将丢失该文件所有未保存的修改。继续重新打开？",
 	"reopen file": "确定要重新打开 ‘{file}’？所有未保存的修改将会丢失。",
 	"plugin min version": "{name} 仅在 Acode - {v-code} 及以上版本有效。点击以更新。",
+	"plugin min version required": "{name} requires Acode build {v-code} or later.",
 	"color preview": "颜色预览",
 	"confirm": "确定",
 	"problems": "有问题",
@@ -518,7 +519,6 @@
 	"save file before home shortcut": "请先保存文件，再添加到主屏幕。",
 	"terminal_required_message_for_lsp": "未安装终端。请先安装终端以使用 LSP 服务器。",
 	"shift click selection": "Shift + 点击选择",
-	"earn ad-free time": "获取免广告时间",
 	"indent guides": "缩进指示线",
 	"language servers": "语言服务器",
 	"lint gutter": "显示 Lint 标记栏",
@@ -688,7 +688,6 @@
 	"settings-info-lsp-uninstall-server": "移除此服务器的已安装包或二进制文件。",
 	"settings-info-lsp-update-server": "如果可用，更新此语言服务器。",
 	"settings-info-lsp-view-init-options": "以 JSON 查看有效的初始化选项。",
-	"settings-info-main-ad-rewards": "观看广告以解锁临时免广告。",
 	"settings-info-main-app-settings": "语言、应用行为和快捷工具。",
 	"settings-info-main-backup-restore": "导出或恢复设置备份。",
 	"settings-info-main-changelog": "查看最近更新和发布说明。",
@@ -755,6 +754,7 @@
 	"settings-info-editor-show-share-button": "在选择菜单中显示分享按钮。",
 	"iap-plugin-purchase-warning": "购买的插件不会同步到您的 Acode 账户。请在 Play 商店中使用相同的 Google 账户来恢复您的购买。",
 	"iap-pro-purchase-warning": "此购买不会同步到您的 Acode 账户。请在 Play 商店中使用相同的 Google 账户来恢复您的购买。",
+	"iap-pro-purchase-warning-ios": "This purchase will not be synced to your Acode account. Use Restore purchases with the same Apple Account to restore it.",
 	"confirm-login": "您尚未登录 Acode，立即登录？",
 	"local word completion": "本地字符自动补全",
 	"language package completion": "语言包自动补全",
@@ -915,5 +915,8 @@
 	"files saved count": "Files saved: {count}",
 	"files not saved count": "Files not saved: {count}",
 	"use native index": "Use native index",
-	"use native index hint": "Search local folders faster using the native file index."
+	"use native index hint": "Search local folders faster using the native file index.",
+	"faqs load failed": "Unable to load FAQs. Please try again.",
+	"faqs empty": "No FAQs are available yet.",
+	"retry": "Retry"
 }

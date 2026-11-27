@@ -1,5 +1,5 @@
 import lspApi from "cm/lsp/api";
-import lspClientManager from "cm/lsp/clientManager";
+import { getLoadedLspClient } from "cm/lsp/clientLoader";
 import {
 	checkRuntimeServerInstallation,
 	getRuntimeInstallCommand,
@@ -597,7 +597,7 @@ export default function lspServerDetail(serverId) {
 				case "enabled":
 					await persistEnabled(serverId, value);
 					if (!value) {
-						await lspClientManager.disposeServer(serverId);
+						await getLoadedLspClient()?.clientManager.disposeServer(serverId);
 						stopManagedServer(serverId);
 					}
 					toast(
@@ -620,7 +620,7 @@ export default function lspServerDetail(serverId) {
 						break;
 					}
 					$loader?.show();
-					await lspClientManager.disposeServer(serverId);
+					await getLoadedLspClient()?.clientManager.disposeServer(serverId);
 					stopManagedServer(serverId);
 					await removeCustomServer(serverId);
 					toast(strings["lsp-custom-server-removed"]);

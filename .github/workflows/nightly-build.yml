@@ -109,7 +109,7 @@ jobs:
         uses: actions/setup-java@v6
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: "26"
           cache: ${{ (!(inputs.is_PR && inputs.PR_NUMBER) && github.ref == 'refs/heads/main' && 'gradle') || '' }}
 
       - name: Setup Node
@@ -135,10 +135,10 @@ jobs:
       - name: Extract base version
         id: base
         run: |
-          VERSION=$(grep -oP 'version="\K[0-9.]+' config.xml)
+          VERSION=$(node -p "require('./package.json').version")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Compose and set build version in config.xml
+      - name: Compose and set build version in package.json
         id: version
         run: |
           SHORT="$(echo "${{ steps.meta.outputs.git_commit }}" | cut -c1-7)"
@@ -148,21 +148,25 @@ jobs:
             SUFFIX="$SHORT"
           fi
           UPDATED="${{ steps.base.outputs.version }}-${{ env.VERSION_LABEL }}.$SUFFIX"
-          sed -i "s/version=\"${{ steps.base.outputs.version }}\"/version=\"$UPDATED\"/g" config.xml
+          BUILD_VERSION="$UPDATED" node -e 'const fs = require("node:fs"); const p = require("./package.json"); p.version = process.env.BUILD_VERSION; fs.writeFileSync("package.json", JSON.stringify(p, null, 2) + "\n");' 
           echo "updated_version=$UPDATED" >> "$GITHUB_OUTPUT"
           echo "NORMAL_APK_PATH=/tmp/acode-debug-normal-$UPDATED.apk" >> "$GITHUB_ENV"
           echo "FDROID_APK_PATH=/tmp/acode-debug-fdroid-$UPDATED.apk" >> "$GITHUB_ENV"
 
       - name: Install deps
         run: |
-          npm install
-          npm install -g cordova
-          npm run setup
+          npm ci --no-audit --no-fund
+
+      - name: Install Android SDK packages
+        run: $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager 'platforms;android-37.0' 'build-tools;36.0.0'
+
+      - name: Select paid package
+        run: npm pkg set androidPackageId=com.foxdebug.acode
 
       - name: Build normal APK
         run: |
-          node utils/storage_manager.mjs y
-          npm run build paid dev apk
+          node dev/storage_manager.mjs y
+          npm run build -- dev apk
           mv platforms/android/app/build/outputs/apk/debug/app-debug.apk ${{ env.NORMAL_APK_PATH }}
 
       - name: Upload normal artifact
@@ -174,8 +178,8 @@ jobs:
       - name: Build fdroid APK
         if: ${{ !inputs.is_PR }}
         run: |
-          node utils/storage_manager.mjs y
-          npm run build paid dev apk fdroid
+          node dev/storage_manager.mjs y
+          npm run build -- dev apk fdroid
           mv platforms/android/app/build/outputs/apk/debug/app-debug.apk ${{ env.FDROID_APK_PATH }}
 
       - name: Upload fdroid artifact

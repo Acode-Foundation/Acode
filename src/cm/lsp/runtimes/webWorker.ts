@@ -18,6 +18,14 @@ const WORKER_URLS: Record<string, string> = {
 };
 const STARTUP_TIMEOUT = 10000;
 
+interface ListedEntry {
+	name: string;
+	url: string;
+	isDirectory?: boolean;
+	isFile?: boolean;
+	isLink?: boolean;
+}
+
 const bundledStatus: InstallCheckResult = {
 	status: "present",
 	version: "bundled",
@@ -26,11 +34,40 @@ const bundledStatus: InstallCheckResult = {
 	message: "Built into Acode and runs offline in a Web Worker.",
 };
 
-async function readFileFromHost(uri: string): Promise<string> {
+async function fileSystemFor(uri: string) {
 	const { default: fsOperation } = await import("fileSystem");
 	const fs = fsOperation(uri);
 	if (!fs) throw new Error(`No filesystem provider can handle ${uri}`);
+	return fs;
+}
+
+async function readFileFromHost(
+	uri: string,
+	maxBytes?: number,
+): Promise<string> {
+	const fs = await fileSystemFor(uri);
+	if (maxBytes && typeof fs.stat === "function") {
+		const { size } = await fs.stat();
+		if (size > maxBytes) throw new Error(`${uri} exceeds ${maxBytes} bytes`);
+	}
 	return (await fs.readFile("utf-8")) as string;
+}
+
+async function readDirectoryFromHost(uri: string) {
+	const fs = await fileSystemFor(uri);
+	const entries: ListedEntry[] = await fs.lsDir();
+	return entries.map((entry) => ({
+		name: entry.name,
+		url: entry.url,
+		// Symlinked folders (e.g. pnpm's node_modules) are listed as links.
+		isDirectory: !!entry.isDirectory || (!!entry.isLink && !entry.isFile),
+	}));
+}
+
+function requireUri(params: Record<string, unknown>): string {
+	const uri = String(params.uri ?? "");
+	if (!uri) throw new Error("A filesystem URI is required");
+	return uri;
 }
 
 function createBuiltinWorkerTransport(
@@ -54,11 +91,12 @@ function createBuiltinWorkerTransport(
 			rootUri: context.originalRootUri ?? context.rootUri,
 		},
 		hostHandlers: {
-			readFile: async (params) => {
-				const uri = String(params.uri ?? "");
-				if (!uri) throw new Error("A filesystem URI is required");
-				return readFileFromHost(uri);
-			},
+			readFile: (params) =>
+				readFileFromHost(
+					requireUri(params),
+					Number(params.maxBytes) || undefined,
+				),
+			readDirectory: (params) => readDirectoryFromHost(requireUri(params)),
 		},
 	});
 }

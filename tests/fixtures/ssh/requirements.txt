@@ -1,0 +1,3 @@
+paramiko==4.0.0
+pyftpdlib==2.1.0
+pyOpenSSL==25.3.0

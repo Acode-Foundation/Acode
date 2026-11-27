@@ -4,6 +4,7 @@ import helpers from "utils/helpers";
 import adRewards from "./adRewards";
 import { APP_ICONS } from "./appIcons";
 import config from "./config";
+import platform from "./platform";
 import { requestProPurchase } from "./removeAds";
 import showRewardedAd from "./rewardedAd";
 import appSettings from "./settings";
@@ -22,19 +23,18 @@ export default async function selectAppIcon(
 	selecting = true;
 	onBusy(true);
 	try {
-		// Applying an icon toggles the launcher alias, which restarts the app.
-		// Warn before any purchase or rewarded ad so the user can back out.
-		const proceed = await confirm(
-			strings["app icon"],
-			strings["app icon change warning"] ||
-				"The app will exit after the app icon is changed.",
-			false,
-			{ signal },
-		);
-		if (!proceed || signal.aborted) return;
+		if (!platform.isIOS) {
+			// Android launcher changes may restart the app. Warn before checkout.
+			const proceed = await confirm(
+				strings["app icon"],
+				strings["app icon change warning"] ||
+					"The app will exit after the app icon is changed.",
+				false,
+				{ signal },
+			);
+			if (!proceed || signal.aborted) return;
+		}
 		if (icon.requiresPro && !config.HAS_PRO) {
-			// External checkout manages its own login loader and confirmation.
-			if (!helpers.shouldAllowExternalPurchase()) onLoading(true);
 			await requestProPurchase({ signal });
 			return;
 		}
@@ -60,7 +60,7 @@ export default async function selectAppIcon(
 		}
 		if (signal.aborted || (icon.requiresPro && !config.HAS_PRO)) return;
 		await helpers.promisify(system.setAppIcon, iconId);
-		// Once Android has applied the change, keep persisted state in sync
+		// Once the platform has applied the change, keep persisted state in sync
 		// even if the picker closed while the native callback was in flight.
 		await appSettings.update({ appIcon: iconId }, false);
 		if (!signal.aborted) {

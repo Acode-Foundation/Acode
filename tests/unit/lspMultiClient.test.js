@@ -1,7 +1,5 @@
 // @vitest-environment happy-dom
 
-import { CompletionContext } from "@codemirror/autocomplete";
-import { forEachDiagnostic } from "@codemirror/lint";
 import {
 	LSPClient,
 	LSPPlugin,
@@ -9,6 +7,8 @@ import {
 	serverDiagnostics,
 	Workspace,
 } from "@acode.app/lsp-client";
+import { CompletionContext } from "@codemirror/autocomplete";
+import { forEachDiagnostic } from "@codemirror/lint";
 import { Compartment } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import {
@@ -19,6 +19,17 @@ import {
 	schedulePullDiagnostics,
 } from "cm/lsp/diagnostics";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+// The editor loads the LSP client lazily; here it is always present.
+vi.mock("cm/lsp/clientLoader", async () => {
+	const { LSPPlugin } = await import("@acode.app/lsp-client");
+	return {
+		getLspPlugin: (view, client) => LSPPlugin.get(view, client),
+		getAllLspPlugins: (view, feature) => LSPPlugin.getAll(view, feature),
+		getLspPluginForFeature: (view, feature) =>
+			LSPPlugin.getForFeature(view, feature),
+	};
+});
 
 const views = [];
 

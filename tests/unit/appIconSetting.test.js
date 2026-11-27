@@ -304,6 +304,7 @@ it("opens one complete grid and closes only after native success, preserving the
 	expect(h.loader.create).toHaveBeenCalledExactlyOnceWith(
 		"App icon",
 		"Loading...",
+		{ timeout: 1_000, oncancel: expect.any(Function) },
 	);
 	expect(h.dialog.inert).toBe(true);
 	expect(document.querySelector("#__loader button")).toBeNull();
@@ -550,7 +551,7 @@ it.each([
 	}
 	await pending;
 	vi.runAllTimers();
-	const loaderCount = outcome === "back" || outcome === "cancel" ? 0 : 1;
+	const loaderCount = ["back", "cancel", "purchase"].includes(outcome) ? 0 : 1;
 	expect(h.loader.create).toHaveBeenCalledTimes(loaderCount);
 	expect(h.loader.destroy).toHaveBeenCalledTimes(loaderCount);
 	expect(actionStack.length).toBe(1);
@@ -572,23 +573,24 @@ it.each([
 	expect(mocks.settings.value.appIcon).toBe("pixel_party");
 });
 
-it("leaves the external Pro flow's loader under its own control", async () => {
-	mocks.external = true;
+it.each([
+	false,
+	true,
+])("leaves the Pro flow's loader under its own control with external checkout %s", async (external) => {
+	mocks.external = external;
 	const h = dialogHarness();
+	const title = external ? "Login" : "Remove ads";
 	mocks.purchase.mockImplementation(async () => {
-		h.loader.create("Login", "Loading...");
+		h.loader.create(title, "Loading...");
 	});
 	const pending = h.click("pro");
 	confirmSelection();
 	await pending;
-	expect(h.loader.create).toHaveBeenCalledExactlyOnceWith(
-		"Login",
-		"Loading...",
-	);
+	expect(h.loader.create).toHaveBeenCalledExactlyOnceWith(title, "Loading...");
 	expect(h.loader.destroy).not.toHaveBeenCalled();
 	expect(h.dialog.inert).toBe(false);
 	expect(document.querySelector("#__loader .title").textContent.trim()).toBe(
-		"Login",
+		title,
 	);
 	h.loader.destroy();
 	vi.runAllTimers();
@@ -662,4 +664,34 @@ it("wraps keyboard focus but lets Escape dismiss the top confirmation first", as
 	h.close.click();
 	vi.runAllTimers();
 	await h.closed;
+});
+
+it("lets users cancel a stalled reward through the loading overlay and reopen the picker", async () => {
+	mocks.reward.mockImplementation(
+		({ signal }) =>
+			new Promise((resolve) => {
+				signal.addEventListener("abort", () => resolve(false), { once: true });
+			}),
+	);
+	const h = dialogHarness();
+	const pending = h.click();
+	confirmSelection();
+	await vi.waitFor(() => expect(pendingConfirm()).toBeTruthy());
+	confirmSelection();
+	await vi.waitFor(() => expect(mocks.reward).toHaveBeenCalledOnce());
+	await vi.advanceTimersByTimeAsync(1_000);
+	const cancel = document.querySelector("#__loader button");
+	expect(cancel?.textContent).toBe("Cancel");
+	cancel.click();
+	await pending;
+	await vi.advanceTimersByTimeAsync(300);
+	await h.closed;
+	expect(h.selection.signal.aborted).toBe(true);
+	expect(system.setAppIcon).not.toHaveBeenCalled();
+	expect(document.querySelector("#__loader")).toBeNull();
+	const reopened = h.open();
+	await actionStack.pop();
+	await vi.advanceTimersByTimeAsync(300);
+	await reopened;
+	expect(actionStack.length).toBe(0);
 });

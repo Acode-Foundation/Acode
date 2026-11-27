@@ -1,8 +1,10 @@
 import config from "lib/config";
+import platform from "lib/platform";
 import template from "views/rating.hbs";
 import dialog from "./dialog";
 
 function rateBox() {
+	if (platform.isIOS) return;
 	const $box = dialog(
 		"Did you like the app?",
 		template,

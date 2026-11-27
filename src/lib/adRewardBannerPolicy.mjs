@@ -45,7 +45,7 @@ export function syncRewardBannerSuppression(
  *   getCurrentState:()=>T,
  *   setCurrentState:(state:T)=>void,
  *   setBannerSuppressed:(reason:string,suppressed:boolean)=>void,
- *   emitChange:(state:T)=>void,
+ *   emitChange?:(state:T)=>void,
  *   onRefreshError?:(error:unknown)=>void,
  *   onListenerError?:(error:unknown)=>void,
  *   onExpiryNotice?:(state:T)=>void,
@@ -101,7 +101,7 @@ export function createRewardStateLifecycle({
 		syncRewardBannerSuppression(nextState, setBannerSuppressed, now());
 
 		try {
-			emitChange(nextState);
+			emitChange?.(nextState);
 		} catch (error) {
 			onListenerError(error);
 		}

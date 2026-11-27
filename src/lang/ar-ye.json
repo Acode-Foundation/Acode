@@ -401,6 +401,7 @@
 	"change encoding": "إعادة فتح '{file}' بترميز '{encoding}'؟ ستفقد أي تغييرات غير محفوظة.",
 	"reopen file": "هل أنت متأكد من إعادة فتح '{file}'؟ ستفقد التغييرات غير المحفوظة.",
 	"plugin min version": "{name} متاح فقط في Acode إصدار {v-code} وما فوق. اضغط للتحديث.",
+	"plugin min version required": "{name} requires Acode build {v-code} or later.",
 	"color preview": "معاينة اللون",
 	"confirm": "تأكيد",
 	"problems": "المشكلات",
@@ -518,7 +519,6 @@
 	"save file before home shortcut": "احفظ الملف قبل إضافته إلى الشاشة الرئيسية.",
 	"terminal_required_message_for_lsp": "الطرفية غير مثبتة. يرجى تثبيت الطرفية أولاً لاستخدام خوادم LSP.",
 	"shift click selection": "تحديد عبر Shift + نقر/ضغط",
-	"earn ad-free time": "اكسب وقتاً خالياً من الإعلانات",
 	"indent guides": "خطوط توجيه المسافات البادئة",
 	"language servers": "خوادم اللغة",
 	"lint gutter": "إظهار هامش التدقيق",
@@ -688,7 +688,6 @@
 	"settings-info-lsp-uninstall-server": "إزالة الحزم أو الملفات الثنائية المثبتة لهذا الخادم.",
 	"settings-info-lsp-update-server": "تحديث خادم اللغة هذا إذا كان مسار التحديث متاحاً.",
 	"settings-info-lsp-view-init-options": "عرض خيارات التهيئة الفعلية بصيغة JSON.",
-	"settings-info-main-ad-rewards": "مشاهدة الإعلانات لفتح وصول مؤقت خالٍ من الإعلانات.",
 	"settings-info-main-app-settings": "اللغة، سلوك التطبيق، وأدوات الوصول السريع.",
 	"settings-info-main-backup-restore": "تصدير الإعدادات إلى نسخة احتياطية أو استعادتها لاحقاً.",
 	"settings-info-main-changelog": "عرض آخر التحديثات وملاحظات الإصدار.",
@@ -755,6 +754,7 @@
 	"settings-info-editor-show-share-button": "إظهار زر المشاركة في قائمة التحديد.",
 	"iap-plugin-purchase-warning": "لا تتم مزامنة الإضافات المشتراة مع حساب Acode الخاص بك. استخدم نفس حساب Google في متجر Play لاستعادة عملية الشراء.",
 	"iap-pro-purchase-warning": "لن تتم مزامنة عملية الشراء هذه مع حساب Acode الخاص بك. استخدم نفس حساب Google في متجر Play لاستعادة عملية الشراء.",
+	"iap-pro-purchase-warning-ios": "This purchase will not be synced to your Acode account. Use Restore purchases with the same Apple Account to restore it.",
 	"confirm-login": "لم تقم بتسجيل الدخول إلى Acode، هل تريد تسجيل الدخول الآن؟",
 	"local word completion": "إكمال الكلمات المحلية",
 	"language package completion": "إكمال حزمة اللغة",
@@ -915,5 +915,8 @@
 	"files saved count": "Files saved: {count}",
 	"files not saved count": "Files not saved: {count}",
 	"use native index": "Use native index",
-	"use native index hint": "Search local folders faster using the native file index."
+	"use native index hint": "Search local folders faster using the native file index.",
+	"faqs load failed": "Unable to load FAQs. Please try again.",
+	"faqs empty": "No FAQs are available yet.",
+	"retry": "Retry"
 }

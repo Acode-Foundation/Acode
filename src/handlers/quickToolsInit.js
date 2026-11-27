@@ -8,6 +8,7 @@ import { syncQuickToolsVisibility } from "lib/editorFile";
 import quickToolsAdapters from "lib/quickToolsAdapter";
 import { watchQuickToolsOverlays } from "lib/quickToolsOverlays";
 import appSettings from "lib/settings";
+import haptic from "utils/haptic";
 import actions, { cancelQuickToolsModifierInput, key } from "./quickTools";
 
 const CONTEXT_MENU_TIMEOUT = 500;
@@ -116,7 +117,7 @@ export default function init() {
 		e.preventDefault();
 		e.stopPropagation();
 		if (appSettings.value.vibrateOnTap) {
-			navigator.vibrate(config.VIBRATION_TIME);
+			haptic(config.VIBRATION_TIME);
 		}
 		actions("toggle");
 	});
@@ -413,7 +414,7 @@ function oncontextmenu(e) {
 	const { editor, activeFile } = editorManager;
 
 	if (isClickMode && appSettings.value.vibrateOnTap) {
-		navigator.vibrate(config.VIBRATION_TIME_LONG);
+		haptic(config.VIBRATION_TIME_LONG);
 		$el.classList.add("active");
 	}
 
@@ -448,7 +449,7 @@ function click($el) {
 	}, 300);
 
 	if (appSettings.value.vibrateOnTap) {
-		navigator.vibrate(config.VIBRATION_TIME);
+		haptic(config.VIBRATION_TIME);
 	}
 
 	const { action } = $el.dataset;

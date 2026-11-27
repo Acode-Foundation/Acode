@@ -10,10 +10,12 @@ const mocks = vi.hoisted(() => ({
 	error: vi.fn(),
 	pass: false,
 	external: false,
+	platform: { isIOS: false },
 }));
 vi.mock("components/toast", () => ({ default: mocks.toast }));
 vi.mock("dialogs/confirm", () => ({ default: mocks.confirm }));
 vi.mock("lib/config", () => ({ default: mocks.config }));
+vi.mock("lib/platform", () => ({ default: mocks.platform }));
 vi.mock("lib/settings", () => ({ default: mocks.settings }));
 vi.mock("lib/adRewards", () => ({
 	default: { canShowAds: () => !mocks.config.HAS_PRO && !mocks.pass },
@@ -56,6 +58,7 @@ beforeEach(() => {
 	mocks.config.HAS_PRO = false;
 	mocks.pass = false;
 	mocks.external = false;
+	mocks.platform.isIOS = false;
 	mocks.settings.value.appIcon = "default";
 	mocks.settings.update.mockImplementation(async ({ appIcon }) => {
 		mocks.settings.value.appIcon = appIcon;
@@ -78,21 +81,32 @@ describe("icon selection", () => {
 	it.each([
 		false,
 		true,
+	])("uses the iOS flow with Pro access %s", async (hasPro) => {
+		mocks.platform.isIOS = true;
+		mocks.config.HAS_PRO = hasPro;
+		await harness().select("pixel_party");
+		expect(mocks.confirm).toHaveBeenCalledTimes(hasPro ? 0 : 1);
+		if (!hasPro) expect(mocks.confirm.mock.calls[0][1]).toBe("Watch?");
+		expect(mocks.reward).toHaveBeenCalledTimes(hasPro ? 0 : 1);
+		expect(system.setAppIcon).toHaveBeenCalledOnce();
+		expect(mocks.settings.value.appIcon).toBe("pixel_party");
+	});
+	it.each([
+		false,
+		true,
 	])("opens Pro purchase with external checkout %s", async (external) => {
 		mocks.external = external;
 		mocks.pass = true;
 		const h = harness();
 		mocks.purchase.mockImplementation(async () => {
-			expect(h.onLoading.mock.calls).toEqual(external ? [] : [[true]]);
+			expect(h.onLoading).not.toHaveBeenCalled();
 			mocks.config.HAS_PRO = true;
 		});
 		await h.select("pro");
 		expect(mocks.purchase).toHaveBeenCalledOnce();
 		expect(mocks.reward).not.toHaveBeenCalled();
 		expect(system.setAppIcon).not.toHaveBeenCalled();
-		expect(h.onLoading.mock.calls).toEqual(
-			external ? [[false]] : [[true], [false]],
-		);
+		expect(h.onLoading.mock.calls).toEqual([[false]]);
 		await h.select("pro");
 		expect(system.setAppIcon).toHaveBeenCalledWith(
 			"pro",

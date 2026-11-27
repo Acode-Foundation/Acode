@@ -80,8 +80,8 @@ async function ensureMathStyles() {
 }
 
 async function copyText(text) {
-	if (cordova?.plugins?.clipboard) {
-		cordova.plugins.clipboard.copy(text);
+	if (Bridge?.clipboard) {
+		Bridge.clipboard.copy(text);
 		return;
 	}
 

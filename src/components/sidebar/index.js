@@ -7,6 +7,8 @@ import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
 import auth, { loginEvents } from "lib/auth";
 import config from "lib/config";
+import customTab from "lib/customTab";
+import platform from "lib/platform";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
 
@@ -73,7 +75,10 @@ function create($container, $toggler) {
 					<div className="user-menu-name"></div>
 					<div className="user-menu-email"></div>
 				</div>
-				{/* <div className="user-menu-separator"></div> */}
+				<div className="user-menu-item" onclick={handleAccountSettings}>
+					<span className="icon settings"></span>
+					{strings.settings}
+				</div>
 				<div className="user-menu-item" onclick={handleLogout}>
 					<span className="icon logout"></span>
 					{strings.logout}
@@ -127,7 +132,7 @@ function create($container, $toggler) {
 				await auth.login();
 				user = await auth.getLoggedInUser();
 				if (!user) {
-					return;
+					throw new Error("Sign-in did not complete. Please try again.");
 				}
 			}
 
@@ -162,8 +167,31 @@ function create($container, $toggler) {
 			}
 		} catch (error) {
 			console.error("Error checking login status:", error);
+			helpers.error(error);
 		} finally {
 			loader.destroy();
+		}
+	}
+
+	async function handleAccountSettings() {
+		userContextMenu.el.classList.remove("active");
+		document.removeEventListener("click", handleClickOutside);
+		try {
+			if (platform.isIOS) {
+				const user = await auth.openAccount();
+				if (user === undefined) {
+					toast(
+						"Unable to refresh account status. Please check your connection.",
+					);
+					return;
+				}
+				await updateSidebarAvatar(user);
+				if (!user) toast("You are signed out. Sign in again to continue.");
+			} else {
+				await customTab(`${config.BASE_URL}/profile/edit`);
+			}
+		} catch (error) {
+			helpers.error(error);
 		}
 	}
 
@@ -206,9 +234,9 @@ function create($container, $toggler) {
 		}
 	}
 
-	async function updateSidebarAvatar() {
+	async function updateSidebarAvatar(user) {
 		const defaultAvatar = <span className="icon account_circle" />;
-		const user = await auth.getLoggedInUser();
+		if (user === undefined) user = await auth.getLoggedInUser();
 
 		userAvatar.content = defaultAvatar;
 
@@ -246,13 +274,9 @@ function create($container, $toggler) {
 				return null;
 			}
 
-			const blob = await helpers.promisify(
-				cordova.plugin.http.sendRequest,
-				avatarUrl,
-				{
-					responseType: "blob",
-				},
-			);
+			const blob = await helpers.promisify(Bridge.http.sendRequest, avatarUrl, {
+				responseType: "blob",
+			});
 			await fsOperation(CACHE_STORAGE).createFile(cacheFileName, blob.data);
 		}
 

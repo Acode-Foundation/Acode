@@ -24,12 +24,11 @@ export default defineConfig({
 		// Vitest unit tests live ONLY under `tests/`.
 		// `src/test/` is Acode's in-app runtime test harness: it runs on-device
 		// inside the WebView (launched from the app commands) and depends on
-		// cordova/editorManager globals, so it must never be collected here.
+		// Bridge/editorManager globals, so it must never be collected here.
 		include: ["tests/**/*.test.{js,ts}"],
 		exclude: [
 			...configDefaults.exclude,
 			"src/test/**",
-			"www/**",
 			"platforms/**",
 		],
 	},

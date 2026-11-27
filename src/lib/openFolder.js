@@ -4,6 +4,7 @@ import fileSelection from "sidebarApps/files/selection";
 import collapsableList from "components/collapsableList";
 import FileTree from "components/fileTree";
 import Sidebar from "components/sidebar";
+import { loadTerminalManager } from "components/terminal/loader";
 import tile from "components/tile";
 import toast from "components/toast";
 import alert from "dialogs/alert";
@@ -15,14 +16,17 @@ import tag from "html-tag-js";
 import fileIcons from "lib/fileIcons";
 import copyEntry from "utils/copyEntry";
 import { isExcludedFileOperationPath } from "utils/fileOperationExclusions";
+import haptic from "utils/haptic";
 import helpers from "utils/helpers";
 import Path from "utils/Path";
 import Uri from "utils/Uri";
 import Url from "utils/Url";
 import config from "./config";
 import * as FileList from "./fileList";
+import iosGuestPath from "./iosGuestPath";
 import { loadFileBrowser } from "./lazyImports";
 import openFile from "./openFile";
+import platform from "./platform";
 import recents from "./recents";
 import appSettings from "./settings";
 
@@ -42,6 +46,8 @@ const getTerminalPaths = () => {
 };
 
 const isTerminalAccessiblePath = (url = "") => {
+	// iOS Alpine bind-mounts every app root at its host path.
+	if (platform.isIOS) return /^(file|alpine):\/\//.test(url);
 	if (isAcodeTerminalPublicSafUri(url)) return true;
 	const { alpineRoot, publicDir } = getTerminalPaths();
 	const cleanUrl = url.replace(/^file:\/\//, "");
@@ -52,6 +58,7 @@ const isTerminalAccessiblePath = (url = "") => {
 };
 
 const convertToProotPath = (url = "") => {
+	if (platform.isIOS) return iosGuestPath(url);
 	const { alpineRoot, publicDir } = getTerminalPaths();
 	if (isAcodeTerminalPublicSafUri(url)) {
 		try {
@@ -434,7 +441,7 @@ function handleItems(e) {
  */
 async function handleContextmenu(type, url, name, $target) {
 	if (appSettings.value.vibrateOnTap) {
-		navigator.vibrate(config.VIBRATION_TIME);
+		haptic(config.VIBRATION_TIME);
 	}
 	const { $node } = openFolder.find(url);
 	const hasClipboard = clipBoard.items.length > 0;
@@ -646,9 +653,7 @@ function execOperation(type, action, url, $target, name) {
 
 	async function openInTerminal() {
 		try {
-			const { TerminalManager } = await import(
-				/* webpackChunkName: "terminal" */ "components/terminal"
-			);
+			const TerminalManager = await loadTerminalManager();
 			const prootPath = convertToProotPath(url);
 			const terminal = await TerminalManager.createTerminal({
 				name: `Terminal - ${name}`,
@@ -682,9 +687,7 @@ function execOperation(type, action, url, $target, name) {
 
 	async function openSshTerminal() {
 		try {
-			const { TerminalManager } = await import(
-				/* webpackChunkName: "terminal" */ "components/terminal"
-			);
+			const TerminalManager = await loadTerminalManager();
 			await TerminalManager.createRemoteTerminal({ url, name });
 			Sidebar.hide();
 		} catch (error) {
@@ -1176,8 +1179,8 @@ function getRelativePath(url, rootUrl) {
  * @returns {boolean} Whether the text was copied
  */
 function copyText(text) {
-	if (cordova.plugins.clipboard) {
-		cordova.plugins.clipboard.copy(text);
+	if (Bridge.clipboard) {
+		Bridge.clipboard.copy(text);
 		return true;
 	}
 

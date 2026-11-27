@@ -1,14 +1,13 @@
 import fsOperation from "fileSystem";
 import settingsPage from "components/settingsPage";
-import {
-	DEFAULT_TERMINAL_SETTINGS,
-	TerminalThemeManager,
-} from "components/terminal";
+import { DEFAULT_TERMINAL_SETTINGS } from "components/terminal/terminalDefaults";
+import TerminalThemeManager from "components/terminal/terminalThemeManager";
 import toast from "components/toast";
 import alert from "dialogs/alert";
 import confirm from "dialogs/confirm";
 import loader from "dialogs/loader";
 import fonts from "lib/fonts";
+import platform from "lib/platform";
 import appSettings from "lib/settings";
 import FileBrowser from "pages/fileBrowser";
 import helpers from "utils/helpers";
@@ -35,8 +34,10 @@ export default function terminalSettings() {
 
 	const terminalValues = values.terminalSettings;
 
-	Executor.setProotDebug(terminalValues.prootDebug);
-	Executor.BackgroundExecutor.setProotDebug(terminalValues.prootDebug);
+	if (platform.localExecution) {
+		Executor.setProotDebug(terminalValues.prootDebug);
+		Executor.BackgroundExecutor.setProotDebug(terminalValues.prootDebug);
+	}
 
 	const items = [
 		{
@@ -265,7 +266,19 @@ export default function terminalSettings() {
 		},
 	];
 
-	return settingsPage(title, items, callback, undefined, {
+	const supportedItems = items.filter(
+		(item) =>
+			platform.localExecution ||
+			![
+				"all_file_access",
+				"failsafeMode",
+				"prootDebug",
+				"backup",
+				"restore",
+				"uninstall",
+			].includes(item.key),
+	);
+	return settingsPage(title, supportedItems, callback, undefined, {
 		preserveOrder: true,
 		pageClassName: "detail-settings-page",
 		listClassName: "detail-settings-list",
@@ -380,7 +393,7 @@ export default function terminalSettings() {
 	 */
 	async function terminalRestore() {
 		try {
-			await Executor.execute("rm -rf $PREFIX/aterm_backup.*");
+			await clearBackup();
 
 			sdcard.openDocumentFile(
 				async (data) => {
@@ -388,7 +401,7 @@ export default function terminalSettings() {
 					//this will create a file at $PREFIX/atem_backup.tar.tar
 					await system.copyToUri(
 						data.uri,
-						cordova.file.dataDirectory,
+						Bridge.file.dataDirectory,
 						"aterm_backup.tar",
 						console.log,
 						console.error,
@@ -398,12 +411,15 @@ export default function terminalSettings() {
 					await Terminal.restore();
 
 					//Cleanup restore file
-					await Executor.execute("rm -rf $PREFIX/aterm_backup.*");
+					await clearBackup();
 
 					loader.removeTitleLoader();
 					alert(strings.success, `${strings["restored successfully"]}.`);
 				},
-				toast,
+				(error) => {
+					if (helpers.isCancelled(error)) return;
+					toast(error);
+				},
 				"application/x-tar",
 			);
 		} catch (error) {
@@ -412,6 +428,12 @@ export default function terminalSettings() {
 			toast(error.toString());
 		}
 	}
+}
+
+function clearBackup() {
+	return platform.isIOS
+		? Terminal.clearBackup()
+		: Executor.execute("rm -rf $PREFIX/aterm_backup.*");
 }
 
 /**

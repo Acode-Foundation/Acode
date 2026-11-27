@@ -1,0 +1,2083 @@
+package com.foxdebug.acode.sdcard;
+
+import android.content.ContentResolver;
+import android.content.ContentValues;
+import android.content.Context;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteOpenHelper;
+import android.net.Uri;
+import android.os.CancellationSignal;
+import android.provider.DocumentsContract;
+import android.provider.DocumentsContract.Document;
+import android.util.Log;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
+import com.foxdebug.acode.runtime.Callback;
+import com.foxdebug.acode.runtime.Payload;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+class WorkspaceIndex {
+  private static final String TAG = "WorkspaceIndex";
+  private static final String SEPARATOR = "::";
+  private static final int DB_VERSION = 2;
+  private static final int BATCH_SIZE = 200;
+  private static final int MAX_INDEXED_CHARS = 512 * 1024;
+  private static final int INDEX_READ_LIMIT_BYTES = MAX_INDEXED_CHARS * 4;
+  private static final int DIRECT_SEARCH_READ_LIMIT_BYTES = 16 * 1024 * 1024;
+  private static final int EXPLICIT_INCLUDE_READ_LIMIT_BYTES = 128 * 1024 * 1024;
+  private static final int SAMPLE_BYTES = 8192;
+  private static final int MAX_MATCHES_PER_FILE = 5000;
+  private static final int SEARCH_RESULT_BATCH_MATCHES = 200;
+
+  private static final Set<String> BINARY_EXTENSIONS = new HashSet<>();
+  private static final Set<String> TEXT_EXTENSIONS = new HashSet<>();
+  private static final Set<String> BINARY_MIME_TYPES = new HashSet<>();
+  private static final Set<String> TEXT_MIME_TYPES = new HashSet<>();
+
+  static {
+    Collections.addAll(
+      BINARY_EXTENSIONS,
+      "3gp",
+      "7z",
+      "aab",
+      "aac",
+      "apk",
+      "avi",
+      "bin",
+      "bmp",
+      "class",
+      "db",
+      "dex",
+      "dll",
+      "doc",
+      "docx",
+      "eot",
+      "exe",
+      "flac",
+      "gif",
+      "gz",
+      "heic",
+      "ico",
+      "jar",
+      "jpeg",
+      "jpg",
+      "keystore",
+      "m4a",
+      "m4v",
+      "mkv",
+      "mov",
+      "mp3",
+      "mp4",
+      "o",
+      "odt",
+      "ogg",
+      "otf",
+      "pdf",
+      "png",
+      "ppt",
+      "pptx",
+      "pyc",
+      "rar",
+      "so",
+      "sqlite",
+      "sqlite3",
+      "tar",
+      "tgz",
+      "ttf",
+      "wav",
+      "webm",
+      "webp",
+      "woff",
+      "woff2",
+      "xls",
+      "xlsx",
+      "xz",
+      "zip"
+    );
+    Collections.addAll(
+      TEXT_EXTENSIONS,
+      "astro",
+      "c",
+      "cc",
+      "cfg",
+      "conf",
+      "cpp",
+      "cs",
+      "css",
+      "csv",
+      "cxx",
+      "dart",
+      "env",
+      "go",
+      "graphql",
+      "h",
+      "hpp",
+      "htm",
+      "html",
+      "java",
+      "js",
+      "json",
+      "jsx",
+      "kt",
+      "kts",
+      "less",
+      "lua",
+      "md",
+      "mjs",
+      "php",
+      "properties",
+      "py",
+      "rb",
+      "rs",
+      "sass",
+      "scss",
+      "sh",
+      "sql",
+      "svg",
+      "swift",
+      "toml",
+      "ts",
+      "tsx",
+      "txt",
+      "vue",
+      "xml",
+      "yaml",
+      "yml"
+    );
+    Collections.addAll(
+      BINARY_MIME_TYPES,
+      "application/java-archive",
+      "application/java-vm",
+      "application/octet-stream",
+      "application/pdf",
+      "application/vnd.android.package-archive",
+      "application/zip",
+      "application/x-7z-compressed",
+      "application/x-rar-compressed",
+      "application/x-sqlite3",
+      "application/x-tar",
+      "application/x-xz"
+    );
+    Collections.addAll(
+      TEXT_MIME_TYPES,
+      "application/javascript",
+      "application/json",
+      "application/ld+json",
+      "application/sql",
+      "application/typescript",
+      "application/x-javascript",
+      "application/x-php",
+      "application/x-sh",
+      "application/x-yaml",
+      "application/xhtml+xml",
+      "application/xml",
+      "image/svg+xml"
+    );
+  }
+
+  private final Context context;
+  private final ContentResolver resolver;
+  private final ExecutorService indexExecutor = Executors.newSingleThreadExecutor();
+  private final ExecutorService executor = Executors.newFixedThreadPool(2);
+  private final Map<String, Job> jobs = new ConcurrentHashMap<>();
+  private final DB db;
+
+  WorkspaceIndex(Context context) {
+    this.context = context.getApplicationContext();
+    this.resolver = context.getContentResolver();
+    this.db = new DB(this.context);
+  }
+
+  void scan(JSONObject options, Callback callback) {
+    final String id = options.optString("id", UUID.randomUUID().toString());
+    final Job job = new Job(id);
+    jobs.put(id, job);
+
+    indexExecutor.execute(
+      () -> {
+        try {
+          runScan(job, options, callback);
+        } catch (Exception error) {
+          sendError(callback, id, error);
+        } finally {
+          jobs.remove(id);
+        }
+      }
+    );
+  }
+
+  void update(JSONObject options, Callback callback) {
+    indexExecutor.execute(
+      () -> {
+        try {
+          callback.success(runUpdate(options));
+        } catch (Exception error) {
+          callback.error(error.getMessage() == null ? error.toString() : error.getMessage());
+        }
+      }
+    );
+  }
+
+  void search(JSONObject options, Callback callback) {
+    final String id = options.optString("id", UUID.randomUUID().toString());
+    final Job job = new Job(id);
+    jobs.put(id, job);
+
+    executor.execute(
+      () -> {
+        try {
+          runSearch(job, options, callback);
+        } catch (Exception error) {
+          sendError(callback, id, error);
+        } finally {
+          jobs.remove(id);
+        }
+      }
+    );
+  }
+
+  void query(JSONObject options, Callback callback) {
+    executor.execute(
+      () -> {
+        try {
+          callback.success(runQuery(options));
+        } catch (Exception error) {
+          callback.error(error.getMessage() == null ? error.toString() : error.getMessage());
+        }
+      }
+    );
+  }
+
+  void cancel(String id) {
+    Job job = jobs.get(id);
+    if (job != null) job.cancel();
+  }
+
+  void markDirty(JSONArray urls) {
+    SQLiteDatabase writable = db.getWritableDatabase();
+    for (int i = 0; i < urls.length(); i++) {
+      String url = urls.optString(i, null);
+      if (url == null || url.length() == 0) continue;
+      writable.delete("content", "url = ?", new String[] { url });
+    }
+  }
+
+  void clear(JSONArray roots) {
+    SQLiteDatabase writable = db.getWritableDatabase();
+    if (roots == null || roots.length() == 0) {
+      writable.delete("content", null, null);
+      writable.delete("files", null, null);
+      writable.delete("workspaces", null, null);
+      return;
+    }
+
+    for (int i = 0; i < roots.length(); i++) {
+      String root = roots.optString(i, null);
+      if (root == null || root.length() == 0) continue;
+      writable.delete("content", "url IN (SELECT url FROM files WHERE root_url = ?)", new String[] { root });
+      writable.delete("files", "root_url = ?", new String[] { root });
+      writable.delete("workspaces", "root_url = ?", new String[] { root });
+    }
+  }
+
+  private void runScan(Job job, JSONObject options, Callback callback)
+    throws Exception {
+    if (job.cancelled) {
+      send(callback, baseEvent(job.id, "cancelled"), false);
+      return;
+    }
+
+    String rootUrl = options.getString("rootUrl");
+    String title = options.optString("title", basename(rootUrl));
+    JSONArray exclude = options.optJSONArray("excludeFolders");
+    boolean showHiddenFiles = options.optBoolean("showHiddenFiles", false);
+    String defaultEncoding = options.optString("defaultEncoding", "UTF-8");
+    boolean indexContent = options.optBoolean("indexContent", false);
+    boolean emitEntries = options.optBoolean("emitEntries", true);
+
+    JSONArray batch = new JSONArray();
+    ScanStats stats = new ScanStats();
+
+    sendStatus(callback, job.id, "scanning", "Scanning project files", 0, true);
+
+    SQLiteDatabase writable = db.getWritableDatabase();
+    writable.beginTransaction();
+    try {
+      ContentValues workspace = new ContentValues();
+      workspace.put("root_url", rootUrl);
+      workspace.put("title", title);
+      workspace.put("indexed_at", System.currentTimeMillis());
+      workspace.put("options_hash", String.valueOf(options.toString().hashCode()));
+      writable.replace("workspaces", null, workspace);
+      writable.delete("files", "root_url = ?", new String[] { rootUrl });
+
+      if (isSafUrl(rootUrl)) {
+        SafUrl rootSafUrl = parseSafUrl(rootUrl);
+        scanSafDir(
+          job,
+          callback,
+          rootSafUrl.treeUrl,
+          rootUrl,
+          rootSafUrl.docId,
+          rootUrl,
+          title,
+          title,
+          exclude,
+          showHiddenFiles,
+          defaultEncoding,
+          indexContent,
+          emitEntries,
+          batch,
+          stats
+        );
+      } else {
+        File rootFile = fileFromUrl(rootUrl);
+        scanFileDir(
+          job,
+          callback,
+          rootUrl,
+          rootFile,
+          rootUrl,
+          title,
+          title,
+          exclude,
+          showHiddenFiles,
+          defaultEncoding,
+          indexContent,
+          emitEntries,
+          batch,
+          stats
+        );
+      }
+
+      if (job.cancelled) {
+        send(callback, baseEvent(job.id, "cancelled"), false);
+        return;
+      }
+      if (emitEntries) flushBatch(callback, job.id, batch);
+      writable.setTransactionSuccessful();
+    } finally {
+      writable.endTransaction();
+    }
+
+    JSONObject done = baseEvent(job.id, "done");
+    done.put("files", stats.files);
+    done.put("dirs", stats.dirs);
+    done.put("indexed", stats.indexed);
+    send(callback, done, false);
+  }
+
+  private JSONObject runUpdate(JSONObject options) throws Exception {
+    String rootUrl = options.getString("rootUrl");
+    String title = options.optString("title", getWorkspaceTitle(rootUrl));
+    JSONArray removed = options.optJSONArray("removed");
+    JSONArray added = options.optJSONArray("added");
+    JSONArray exclude = options.optJSONArray("excludeFolders");
+    boolean showHiddenFiles = options.optBoolean("showHiddenFiles", false);
+    String defaultEncoding = options.optString("defaultEncoding", "UTF-8");
+    SQLiteDatabase writable = db.getWritableDatabase();
+    int removedCount = 0;
+    int addedCount = 0;
+
+    writable.beginTransaction();
+    try {
+      if (removed != null) {
+        for (int i = 0; i < removed.length(); i++) {
+          String url = removed.optString(i, "");
+          if (url.length() == 0 || rootUrl.equals(url)) continue;
+          removedCount += deleteIndexedSubtree(writable, rootUrl, url);
+        }
+      }
+
+      if (added != null) {
+        for (int i = 0; i < added.length(); i++) {
+          JSONObject change = added.optJSONObject(i);
+          if (change == null) continue;
+          String url = change.optString("url", "");
+          String parentUrl = change.optString("parentUrl", "");
+          if (url.length() == 0 || parentUrl.length() == 0) continue;
+
+          removedCount += deleteIndexedSubtree(writable, rootUrl, url);
+          FileEntry entry = readEntry(rootUrl, parentUrl, url, title);
+          if (entry == null) continue;
+          if (!showHiddenFiles && entry.name.startsWith(".")) continue;
+
+          saveFile(entry);
+          addedCount += 1;
+          if (
+            entry.isDirectory &&
+            !shouldSkipDirectory(rootUrl, entry.url, entry.path, exclude)
+          ) {
+            Job job = new Job("update-" + UUID.randomUUID());
+            ScanStats stats = new ScanStats();
+            if (isSafUrl(url)) {
+              SafUrl rootSafUrl = parseSafUrl(rootUrl);
+              scanSafDir(
+                job,
+                null,
+                rootSafUrl.treeUrl,
+                rootUrl,
+                parseSafUrl(url).docId,
+                url,
+                entry.path,
+                title,
+                exclude,
+                showHiddenFiles,
+                defaultEncoding,
+                false,
+                false,
+                new JSONArray(),
+                stats
+              );
+            } else {
+              scanFileDir(
+                job,
+                null,
+                rootUrl,
+                fileFromUrl(url),
+                url,
+                entry.path,
+                title,
+                exclude,
+                showHiddenFiles,
+                defaultEncoding,
+                false,
+                false,
+                new JSONArray(),
+                stats
+              );
+            }
+            addedCount += stats.files + stats.dirs;
+          }
+        }
+      }
+
+      ContentValues workspace = new ContentValues();
+      workspace.put("root_url", rootUrl);
+      workspace.put("title", title);
+      workspace.put("indexed_at", System.currentTimeMillis());
+      int updated = writable.update(
+        "workspaces",
+        workspace,
+        "root_url = ?",
+        new String[] { rootUrl }
+      );
+      if (updated == 0) writable.insert("workspaces", null, workspace);
+      writable.setTransactionSuccessful();
+    } finally {
+      writable.endTransaction();
+    }
+
+    JSONObject result = new JSONObject();
+    result.put("added", addedCount);
+    result.put("removed", removedCount);
+    return result;
+  }
+
+  private FileEntry readEntry(
+    String rootUrl,
+    String parentUrl,
+    String url,
+    String title
+  ) {
+    String parentPath = getIndexedPath(rootUrl, parentUrl, title);
+    if (isSafUrl(url)) {
+      Cursor cursor = null;
+      try {
+        cursor =
+          resolver.query(
+            formatSafUri(url),
+            new String[] {
+              Document.COLUMN_DISPLAY_NAME,
+              Document.COLUMN_MIME_TYPE,
+              Document.COLUMN_SIZE,
+              Document.COLUMN_LAST_MODIFIED,
+            },
+            null,
+            null,
+            null
+          );
+        if (cursor == null || !cursor.moveToFirst()) return null;
+        String name = cursor.getString(0);
+        String mime = normalizeMime(name, cursor.getString(1));
+        boolean isDirectory = Document.MIME_TYPE_DIR.equals(mime);
+        return new FileEntry(
+          rootUrl,
+          parentUrl,
+          url,
+          name,
+          joinPath(parentPath, name),
+          mime,
+          isDirectory,
+          safeLong(cursor, 2),
+          safeLong(cursor, 3)
+        );
+      } catch (Exception error) {
+        Log.d(TAG, "Unable to refresh SAF index entry " + url, error);
+        return null;
+      } finally {
+        if (cursor != null) cursor.close();
+      }
+    }
+
+    File file = fileFromUrl(url);
+    if (!file.exists()) return null;
+    String name = file.getName();
+    boolean isDirectory = file.isDirectory();
+    return new FileEntry(
+      rootUrl,
+      parentUrl,
+      url,
+      name,
+      joinPath(parentPath, name),
+      isDirectory
+        ? Document.MIME_TYPE_DIR
+        : normalizeMime(name, guessMime(name)),
+      isDirectory,
+      file.length(),
+      file.lastModified()
+    );
+  }
+
+  private String getIndexedPath(
+    String rootUrl,
+    String url,
+    String fallbackTitle
+  ) {
+    if (rootUrl.equals(url)) return fallbackTitle;
+    Cursor cursor = null;
+    try {
+      cursor =
+        db
+          .getReadableDatabase()
+          .query(
+            "files",
+            new String[] { "path" },
+            "root_url = ? AND url = ?",
+            new String[] { rootUrl, url },
+            null,
+            null,
+            null,
+            "1"
+          );
+      if (cursor.moveToFirst()) return cursor.getString(0);
+    } finally {
+      if (cursor != null) cursor.close();
+    }
+    return fallbackTitle;
+  }
+
+  private String getWorkspaceTitle(String rootUrl) {
+    Cursor cursor = null;
+    try {
+      cursor =
+        db
+          .getReadableDatabase()
+          .query(
+            "workspaces",
+            new String[] { "title" },
+            "root_url = ?",
+            new String[] { rootUrl },
+            null,
+            null,
+            null,
+            "1"
+          );
+      if (cursor.moveToFirst()) return cursor.getString(0);
+    } finally {
+      if (cursor != null) cursor.close();
+    }
+    return basename(rootUrl);
+  }
+
+  private int deleteIndexedSubtree(
+    SQLiteDatabase writable,
+    String rootUrl,
+    String url
+  ) {
+    ArrayDeque<String> directories = new ArrayDeque<>();
+    Set<String> visitedDirectories = new HashSet<>();
+    Set<String> urls = new HashSet<>();
+    directories.add(url);
+    urls.add(url);
+
+    while (!directories.isEmpty()) {
+      String parentUrl = directories.removeFirst();
+      if (!visitedDirectories.add(parentUrl)) continue;
+      Cursor cursor = null;
+      try {
+        cursor =
+          writable.query(
+            "files",
+            new String[] { "url", "is_directory" },
+            "root_url = ? AND parent_url = ?",
+            new String[] { rootUrl, parentUrl },
+            null,
+            null,
+            null
+          );
+        while (cursor.moveToNext()) {
+          String childUrl = cursor.getString(0);
+          urls.add(childUrl);
+          if (cursor.getInt(1) != 0) directories.add(childUrl);
+        }
+      } finally {
+        if (cursor != null) cursor.close();
+      }
+    }
+
+    int deleted = 0;
+    for (String entryUrl : urls) {
+      writable.delete("content", "url = ?", new String[] { entryUrl });
+      deleted +=
+        writable.delete(
+          "files",
+          "root_url = ? AND url = ?",
+          new String[] { rootUrl, entryUrl }
+        );
+    }
+    return deleted;
+  }
+
+  private void scanFileDir(
+    Job job,
+    Callback callback,
+    String rootUrl,
+    File dir,
+    String parentUrl,
+    String parentPath,
+    String title,
+    JSONArray exclude,
+    boolean showHiddenFiles,
+    String defaultEncoding,
+    boolean indexContent,
+    boolean emitEntries,
+    JSONArray batch,
+    ScanStats stats
+  ) throws Exception {
+    if (job.cancelled || dir == null) return;
+    File[] children;
+    try {
+      children = dir.listFiles();
+    } catch (Exception error) {
+      Log.d(TAG, "Skipping unreadable directory " + dir, error);
+      return;
+    }
+    if (children == null) return;
+
+    for (File child : children) {
+      if (job.cancelled) return;
+      String name = child.getName();
+      if (!showHiddenFiles && name.startsWith(".")) continue;
+
+      boolean isDir = child.isDirectory();
+      String url = Uri.fromFile(child).toString();
+      String path = joinPath(parentPath, name);
+      String mime = isDir ? Document.MIME_TYPE_DIR : normalizeMime(name, guessMime(name));
+      FileEntry entry = new FileEntry(
+        rootUrl,
+        parentUrl,
+        url,
+        name,
+        path,
+        mime,
+        isDir,
+        child.length(),
+        child.lastModified()
+      );
+
+      addEntry(callback, job.id, batch, entry, stats, emitEntries);
+      if (isDir) {
+        if (shouldSkipDirectory(rootUrl, url, path, exclude)) continue;
+        try {
+          scanFileDir(
+            job,
+            callback,
+            rootUrl,
+            child,
+            url,
+            path,
+            title,
+            exclude,
+            showHiddenFiles,
+            defaultEncoding,
+            indexContent,
+            emitEntries,
+            batch,
+            stats
+          );
+        } catch (Exception error) {
+          Log.d(TAG, "Skipping unreadable directory " + url, error);
+        }
+      } else {
+        if (indexContent) {
+          indexFile(entry, defaultEncoding);
+          stats.indexed += 1;
+        }
+      }
+    }
+  }
+
+  private void scanSafDir(
+    Job job,
+    Callback callback,
+    String treeUrl,
+    String rootUrl,
+    String parentDocId,
+    String parentUrl,
+    String parentPath,
+    String title,
+    JSONArray exclude,
+    boolean showHiddenFiles,
+    String defaultEncoding,
+    boolean indexContent,
+    boolean emitEntries,
+    JSONArray batch,
+    ScanStats stats
+  ) throws Exception {
+    if (job.cancelled) return;
+    Uri childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(
+      Uri.parse(treeUrl),
+      parentDocId
+    );
+    Cursor cursor = null;
+    CancellationSignal signal = new CancellationSignal();
+    CancellationSignal previousSignal = job.setSignal(signal);
+    try {
+      try {
+        cursor =
+          resolver.query(
+            childrenUri,
+            new String[] {
+              Document.COLUMN_DOCUMENT_ID,
+              Document.COLUMN_DISPLAY_NAME,
+              Document.COLUMN_MIME_TYPE,
+              Document.COLUMN_SIZE,
+              Document.COLUMN_LAST_MODIFIED,
+            },
+            null,
+            null,
+            null,
+            signal
+          );
+      } catch (Exception error) {
+        Log.d(TAG, "Skipping unreadable SAF directory " + parentUrl, error);
+        return;
+      }
+      if (cursor == null) return;
+
+      while (cursor.moveToNext()) {
+        if (job.cancelled) return;
+        String docId = cursor.getString(0);
+        String name = cursor.getString(1);
+        String mime = normalizeMime(name, cursor.getString(2));
+        long size = safeLong(cursor, 3);
+        long modified = safeLong(cursor, 4);
+
+        if (!showHiddenFiles && name != null && name.startsWith(".")) continue;
+
+        boolean isDir = Document.MIME_TYPE_DIR.equals(mime);
+        String url = treeUrl + SEPARATOR + docId;
+        String path = joinPath(parentPath, name);
+        FileEntry entry = new FileEntry(
+          rootUrl,
+          parentUrl,
+          url,
+          name,
+          path,
+          mime,
+          isDir,
+          size,
+          modified
+        );
+
+        addEntry(callback, job.id, batch, entry, stats, emitEntries);
+        if (isDir) {
+          if (shouldSkipDirectory(rootUrl, url, path, exclude)) continue;
+          try {
+            scanSafDir(
+              job,
+              callback,
+              treeUrl,
+              rootUrl,
+              docId,
+              url,
+              path,
+              title,
+              exclude,
+              showHiddenFiles,
+              defaultEncoding,
+              indexContent,
+              emitEntries,
+              batch,
+              stats
+            );
+          } catch (Exception error) {
+            Log.d(TAG, "Skipping unreadable SAF directory " + url, error);
+          }
+        } else {
+          if (indexContent) {
+            indexFile(entry, defaultEncoding);
+            stats.indexed += 1;
+          }
+        }
+      }
+    } catch (Exception error) {
+      Log.d(TAG, "Stopping unreadable SAF directory " + parentUrl, error);
+    } finally {
+      if (cursor != null) cursor.close();
+      job.restoreSignal(signal, previousSignal);
+    }
+  }
+
+  private void addEntry(
+    Callback callback,
+    String id,
+    JSONArray batch,
+    FileEntry entry,
+    ScanStats stats,
+    boolean emitEntries
+  ) throws Exception {
+    saveFile(entry);
+    if (entry.isDirectory) stats.dirs += 1; else stats.files += 1;
+    if (!emitEntries) return;
+    batch.put(entry.toJSON());
+    if (batch.length() >= BATCH_SIZE) {
+      flushBatch(callback, id, batch);
+    }
+  }
+
+  private JSONObject runQuery(JSONObject options) throws Exception {
+    JSONArray roots = options.optJSONArray("roots");
+    String text = options.optString("text", "").trim();
+    String url = options.optString("url", "");
+    boolean includeDirectories = options.optBoolean("includeDirectories", false);
+    int limit = Math.max(1, Math.min(options.optInt("limit", 200), 1000));
+    int offset = Math.max(0, options.optInt("cursor", options.optInt("offset", 0)));
+
+    StringBuilder where = new StringBuilder("1 = 1");
+    List<String> args = new ArrayList<>();
+    appendRootsClause(where, args, roots);
+    if (url.length() > 0) {
+      where.append(" AND url = ?");
+      args.add(url);
+    }
+    if (!includeDirectories) {
+      where.append(" AND is_directory = 0");
+    }
+    if (text.length() > 0) {
+      where.append(" AND (name LIKE ? ESCAPE '\\' OR path LIKE ? ESCAPE '\\')");
+      String pattern = "%" + escapeLike(text) + "%";
+      args.add(pattern);
+      args.add(pattern);
+    }
+
+    String order;
+    if (text.length() > 0) {
+      order =
+        "CASE WHEN name LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END, " +
+        "name COLLATE NOCASE, path COLLATE NOCASE";
+      args.add(escapeLike(text) + "%");
+    } else {
+      order = "name COLLATE NOCASE, path COLLATE NOCASE";
+    }
+
+    String sql =
+      "SELECT root_url, parent_url, url, name, path, mime, is_directory, size, modified_date " +
+      "FROM files WHERE " +
+      where +
+      " ORDER BY " +
+      order +
+      " LIMIT ? OFFSET ?";
+    args.add(String.valueOf(limit + 1));
+    args.add(String.valueOf(offset));
+
+    JSONArray entries = new JSONArray();
+    Cursor cursor = null;
+    boolean hasMore = false;
+    try {
+      cursor = db.getReadableDatabase().rawQuery(sql, args.toArray(new String[0]));
+      while (cursor.moveToNext()) {
+        if (entries.length() >= limit) {
+          hasMore = true;
+          break;
+        }
+        entries.put(fileEntryFromCursor(cursor).toJSON());
+      }
+    } finally {
+      if (cursor != null) cursor.close();
+    }
+
+    JSONObject result = new JSONObject();
+    result.put("entries", entries);
+    result.put("cursor", hasMore ? offset + entries.length() : JSONObject.NULL);
+    result.put("hasMore", hasMore);
+    return result;
+  }
+
+  private void flushBatch(Callback callback, String id, JSONArray batch)
+    throws JSONException {
+    if (batch.length() == 0) return;
+    JSONObject event = baseEvent(id, "batch");
+    event.put("entries", new JSONArray(batch.toString()));
+    send(callback, event, true);
+    while (batch.length() > 0) batch.remove(0);
+  }
+
+  private void runSearch(Job job, JSONObject options, Callback callback)
+    throws Exception {
+    JSONArray files = options.optJSONArray("files");
+    if (files == null) files = new JSONArray();
+    files = mergeIndexedFiles(files, options.optJSONArray("roots"));
+    String search = options.optString("search", "");
+    String replace = options.optString("replace", null);
+    String mode = options.optString("mode", "search");
+    JSONObject searchOptions = options.optJSONObject("options");
+    if (searchOptions == null) searchOptions = new JSONObject();
+    JSONObject overlays = options.optJSONObject("overlays");
+    if (overlays == null) overlays = new JSONObject();
+    String defaultEncoding = options.optString("defaultEncoding", "UTF-8");
+    boolean useIndex = options.optBoolean("useIndex", false);
+    boolean batchResults = options.optBoolean("batchResults", false);
+
+    Pattern pattern = compileSearchPattern(search, searchOptions);
+    int total = files.length();
+    int processed = 0;
+    int lastProgress = -1;
+
+    sendStatus(callback, job.id, "searching", "Searching files", 0, true);
+
+    for (int i = 0; i < total; i++) {
+      if (job.cancelled) return;
+      JSONObject file = files.getJSONObject(i);
+      int progress = total == 0 ? 100 : (processed * 100) / total;
+      if (progress != lastProgress) {
+        sendProgress(callback, job.id, progress);
+        lastProgress = progress;
+      }
+      if (!isSupportedUrl(file.optString("url"))) {
+        processed += 1;
+        continue;
+      }
+      if (shouldSkipSearchFile(file, searchOptions)) {
+        processed += 1;
+        continue;
+      }
+
+      boolean allowLargeFile = isExplicitlyIncluded(file, searchOptions);
+      String content;
+      try {
+        content =
+          getFileContent(
+            file,
+            overlays,
+            defaultEncoding,
+            useIndex,
+            allowLargeFile
+          );
+      } catch (Exception error) {
+        Log.d(TAG, "Skipping unreadable search file " + file.optString("url"), error);
+        processed += 1;
+        continue;
+      }
+      if (content == null) {
+        processed += 1;
+        continue;
+      }
+
+      if ("replace".equals(mode)) {
+        String replacement = replace == null ? "" : replace;
+        Matcher matcher = pattern.matcher(new SearchInput(content, job));
+        String text = searchOptions.optBoolean("regExp", false)
+          ? replaceAllJs(matcher, content, replacement)
+          : matcher.replaceAll(Matcher.quoteReplacement(replacement));
+        JSONObject result = baseEvent(job.id, "replace-result");
+        result.put("file", file);
+        result.put("text", text);
+        send(callback, result, true);
+      } else {
+        searchInContent(file, content, pattern, job, callback, batchResults);
+      }
+
+      processed += 1;
+    }
+
+    sendProgress(callback, job.id, 100);
+    send(callback, baseEvent(job.id, "replace".equals(mode) ? "done-replacing" : "done-searching"), false);
+  }
+
+  /**
+   * Replaces every match using JavaScript String.prototype.replace substitution
+   * rules ($$, $&, $`, $', $1..$99, $<name>), so regex replacements behave the
+   * same as the JS worker path.
+   */
+  static String replaceAllJs(Matcher matcher, String content, String replace) {
+    StringBuilder out = new StringBuilder(content.length());
+    boolean namedGroups = hasNamedGroups(matcher.pattern().pattern());
+    int last = 0;
+    while (matcher.find()) {
+      out.append(content, last, matcher.start());
+      appendJsSubstitution(out, matcher, content, replace, namedGroups);
+      last = matcher.end();
+    }
+    out.append(content, last, content.length());
+    return out.toString();
+  }
+
+  /**
+   * Whether the pattern declares a named capture group, ignoring escaped text,
+   * \Q...\E quotes and character classes.
+   */
+  static boolean hasNamedGroups(String pattern) {
+    int len = pattern.length();
+    int classDepth = 0;
+    for (int i = 0; i < len; i++) {
+      char c = pattern.charAt(i);
+      if (c == '\\') {
+        if (i + 1 < len && pattern.charAt(i + 1) == 'Q') {
+          int end = pattern.indexOf("\\E", i + 2);
+          if (end == -1) return false;
+          i = end + 1;
+        } else {
+          i++;
+        }
+      } else if (classDepth > 0) {
+        if (c == '[') classDepth++;
+        else if (c == ']') classDepth--;
+      } else if (c == '[') {
+        classDepth = 1;
+        if (i + 1 < len && pattern.charAt(i + 1) == '^') i++;
+        if (i + 1 < len && pattern.charAt(i + 1) == ']') i++;
+      } else if (
+        c == '(' &&
+        i + 3 < len &&
+        pattern.charAt(i + 1) == '?' &&
+        pattern.charAt(i + 2) == '<' &&
+        Character.isLetter(pattern.charAt(i + 3))
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static void appendJsSubstitution(
+    StringBuilder out,
+    Matcher matcher,
+    String content,
+    String replace,
+    boolean namedGroups
+  ) {
+    int groups = matcher.groupCount();
+    int len = replace.length();
+    for (int i = 0; i < len; i++) {
+      char c = replace.charAt(i);
+      if (c != '$' || i + 1 >= len) {
+        out.append(c);
+        continue;
+      }
+
+      char next = replace.charAt(i + 1);
+      if (next == '$') {
+        out.append('$');
+        i++;
+      } else if (next == '&') {
+        out.append(content, matcher.start(), matcher.end());
+        i++;
+      } else if (next == '`') {
+        out.append(content, 0, matcher.start());
+        i++;
+      } else if (next == '\'') {
+        out.append(content, matcher.end(), content.length());
+        i++;
+      } else if (next >= '0' && next <= '9') {
+        int index = next - '0';
+        int consumed = 1;
+        if (i + 2 < len) {
+          char digit = replace.charAt(i + 2);
+          if (digit >= '0' && digit <= '9') {
+            int twoDigit = index * 10 + (digit - '0');
+            if (twoDigit >= 1 && twoDigit <= groups) {
+              index = twoDigit;
+              consumed = 2;
+            }
+          }
+        }
+        if (index >= 1 && index <= groups) {
+          String group = matcher.group(index);
+          if (group != null) out.append(group);
+          i += consumed;
+        } else {
+          out.append(c);
+        }
+      } else if (next == '<') {
+        int close = replace.indexOf('>', i + 2);
+        boolean found = false;
+        String group = null;
+        if (close != -1) {
+          try {
+            group = matcher.group(replace.substring(i + 2, close));
+            found = true;
+          } catch (IllegalArgumentException ignored) {
+            // JS: an unknown name is empty when the pattern has named groups.
+            found = namedGroups;
+          }
+        }
+        if (found) {
+          if (group != null) out.append(group);
+          i = close;
+        } else {
+          out.append(c);
+        }
+      } else {
+        out.append(c);
+      }
+    }
+  }
+
+  private Pattern compileSearchPattern(String search, JSONObject options)
+    throws PatternSyntaxException {
+    boolean regExp = options.optBoolean("regExp", false);
+    boolean wholeWord = options.optBoolean("wholeWord", false);
+    boolean caseSensitive = options.optBoolean("caseSensitive", false);
+
+    String pattern = regExp ? search : Pattern.quote(search);
+    if (wholeWord) pattern = "\\b" + pattern + "\\b";
+
+    int flags = Pattern.MULTILINE;
+    if (!caseSensitive) flags |= Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE;
+    return Pattern.compile(pattern, flags);
+  }
+
+  private void searchInContent(
+    JSONObject file,
+    String content,
+    Pattern pattern,
+    Job job,
+    Callback callback,
+    boolean batchResults
+  ) throws JSONException {
+    SearchInput input = new SearchInput(content, job);
+    Matcher matcher = pattern.matcher(input);
+    JSONArray matches = new JSONArray();
+    int matchCount = 0;
+    int cursor = 0;
+    int row = 0;
+    int column = 0;
+    while (true) {
+      input.check();
+      if (!matcher.find()) break;
+      String word = content.substring(matcher.start(), Math.min(matcher.end(), matcher.start() + 160));
+      int start = matcher.start();
+      int end = matcher.end();
+      String[] surrounding = getSurrounding(content, word, start, end);
+      while (cursor < start) {
+        if ((cursor & 1023) == 0) input.check();
+        if (content.charAt(cursor) == '\n') {
+          row += 1;
+          column = 0;
+        } else {
+          column += 1;
+        }
+        cursor += 1;
+      }
+      JSONObject startPosition = lineColumn(row, column);
+      while (cursor < end) {
+        if ((cursor & 1023) == 0) input.check();
+        if (content.charAt(cursor) == '\n') {
+          row += 1;
+          column = 0;
+        } else {
+          column += 1;
+        }
+        cursor += 1;
+      }
+      JSONObject endPosition = lineColumn(row, column);
+      JSONObject match = new JSONObject();
+      match.put("match", word);
+      match.put("renderText", surrounding[1]);
+      match.put("line", surrounding[0].trim());
+      match.put("position", position(startPosition, endPosition));
+      matches.put(match);
+      matchCount++;
+      if (matchCount == MAX_MATCHES_PER_FILE) {
+        sendSearchMatches(callback, job.id, file, matches, batchResults, matcher.find());
+        return;
+      }
+      if (matches.length() >= SEARCH_RESULT_BATCH_MATCHES) {
+        sendSearchMatches(callback, job.id, file, matches, batchResults, false);
+        matches = new JSONArray();
+        input.renewDeadline();
+      }
+    }
+
+    sendSearchMatches(callback, job.id, file, matches, batchResults, false);
+  }
+
+  private void sendSearchMatches(Callback callback, String id, JSONObject file,
+    JSONArray matches, boolean batchResults, boolean limited) throws JSONException {
+    if (matches.length() == 0) return;
+    JSONObject data = new JSONObject();
+    data.put("file", file);
+    data.put("matches", matches);
+    data.put("limited", limited);
+    JSONObject event = baseEvent(id, batchResults ? "search-results" : "search-result");
+    event.put("data", batchResults ? new JSONArray().put(data) : data);
+    send(callback, event, true);
+  }
+
+  private String getFileContent(
+    JSONObject file,
+    JSONObject overlays,
+    String defaultEncoding,
+    boolean useIndex,
+    boolean allowLargeFile
+  ) throws Exception {
+    String url = file.optString("url");
+    if (overlays.has(url)) return overlays.optString(url, "");
+
+    long size = file.optLong("size", 0);
+    long modified = normalizeModified(file);
+
+    if (useIndex) {
+      SQLiteDatabase readable = db.getReadableDatabase();
+      Cursor cursor = null;
+      try {
+        cursor =
+          readable.query(
+            "content",
+            new String[] { "text", "size", "modified_date" },
+            "url = ?",
+            new String[] { url },
+            null,
+            null,
+            null
+          );
+        if (cursor != null && cursor.moveToFirst()) {
+          long cachedSize = cursor.getLong(1);
+          long cachedModified = cursor.getLong(2);
+          if ((size == 0 || cachedSize == size) && (modified == 0 || cachedModified == modified)) {
+            return cursor.getString(0);
+          }
+        }
+      } finally {
+        if (cursor != null) cursor.close();
+      }
+    }
+
+    FileEntry entry = FileEntry.fromJSON(file);
+    if (useIndex && !allowLargeFile) {
+      String indexed = indexFile(entry, defaultEncoding);
+      if (indexed != null) return indexed;
+    }
+    return readFileText(
+      entry,
+      defaultEncoding,
+      allowLargeFile ? EXPLICIT_INCLUDE_READ_LIMIT_BYTES : DIRECT_SEARCH_READ_LIMIT_BYTES,
+      allowLargeFile ? EXPLICIT_INCLUDE_READ_LIMIT_BYTES : DIRECT_SEARCH_READ_LIMIT_BYTES
+    );
+  }
+
+  private String indexFile(FileEntry entry, String defaultEncoding) {
+    if (entry.isDirectory || isBinary(entry) || entry.size > INDEX_READ_LIMIT_BYTES) {
+      return null;
+    }
+
+    try {
+      String text = readFileText(
+        entry,
+        defaultEncoding,
+        INDEX_READ_LIMIT_BYTES,
+        MAX_INDEXED_CHARS
+      );
+      if (text == null) return null;
+      String encoding = normalizeEncoding(defaultEncoding);
+
+      ContentValues values = new ContentValues();
+      values.put("url", entry.url);
+      values.put("size", entry.size);
+      values.put("modified_date", entry.modifiedDate);
+      values.put("encoding", encoding);
+      values.put("text", text);
+      values.put("lower_text", text.toLowerCase(Locale.ROOT));
+      values.put("indexed_at", System.currentTimeMillis());
+      db.getWritableDatabase().replace("content", null, values);
+      return text;
+    } catch (Exception error) {
+      Log.d(TAG, "Unable to index " + entry.url, error);
+      return null;
+    }
+  }
+
+  private String readFileText(
+    FileEntry entry,
+    String defaultEncoding,
+    int readLimitBytes,
+    int maxChars
+  )
+    throws Exception {
+    if (entry.isDirectory || isBinary(entry) || entry.size > readLimitBytes) {
+      return null;
+    }
+
+    byte[] bytes = readBytes(entry.url, readLimitBytes + 1);
+    if (bytes.length > readLimitBytes) return null;
+    String encoding = detectEncoding(bytes, defaultEncoding);
+    if (isSingleByteEncoding(encoding) && looksBinary(bytes)) return null;
+    String text = new String(bytes, Charset.forName(encoding));
+    if (text.length() > maxChars || hasBinaryChars(text)) return null;
+    return text;
+  }
+
+  private byte[] readBytes(String url, int limit) throws Exception {
+    InputStream input = null;
+    try {
+      if (isSafUrl(url)) {
+        input = resolver.openInputStream(formatSafUri(url));
+      } else {
+        input = new FileInputStream(fileFromUrl(url));
+      }
+      if (input == null) return new byte[0];
+
+      ByteArrayOutputStream output = new ByteArrayOutputStream();
+      byte[] buffer = new byte[8192];
+      int read;
+      int total = 0;
+      while ((read = input.read(buffer)) != -1) {
+        total += read;
+        if (total > limit) {
+          output.write(buffer, 0, read - (total - limit));
+          break;
+        }
+        output.write(buffer, 0, read);
+      }
+      return output.toByteArray();
+    } finally {
+      if (input != null) input.close();
+    }
+  }
+
+  private void saveFile(FileEntry entry) {
+    ContentValues values = new ContentValues();
+    values.put("url", entry.url);
+    values.put("root_url", entry.rootUrl);
+    values.put("parent_url", entry.parentUrl);
+    values.put("path", entry.path);
+    values.put("name", entry.name);
+    values.put("mime", entry.mime);
+    values.put("is_directory", entry.isDirectory ? 1 : 0);
+    values.put("size", entry.size);
+    values.put("modified_date", entry.modifiedDate);
+    values.put("indexed_at", System.currentTimeMillis());
+    values.put("skipped_reason", isBinary(entry) ? "binary" : null);
+    db.getWritableDatabase().replace("files", null, values);
+  }
+
+  private JSONArray mergeIndexedFiles(JSONArray explicitFiles, JSONArray roots)
+    throws JSONException {
+    JSONArray result = new JSONArray();
+    Set<String> seen = new HashSet<>();
+    for (int i = 0; i < explicitFiles.length(); i++) {
+      JSONObject file = explicitFiles.optJSONObject(i);
+      if (file == null) continue;
+      String url = file.optString("url", "");
+      if (url.length() == 0 || !seen.add(url)) continue;
+      result.put(file);
+    }
+
+    if (roots == null || roots.length() == 0) return result;
+
+    StringBuilder where = new StringBuilder("is_directory = 0");
+    List<String> args = new ArrayList<>();
+    appendRootsClause(where, args, roots);
+    Cursor cursor = null;
+    try {
+      cursor =
+        db
+          .getReadableDatabase()
+          .query(
+            "files",
+            new String[] {
+              "root_url",
+              "parent_url",
+              "url",
+              "name",
+              "path",
+              "mime",
+              "is_directory",
+              "size",
+              "modified_date",
+            },
+            where.toString(),
+            args.toArray(new String[0]),
+            null,
+            null,
+            null
+          );
+      while (cursor.moveToNext()) {
+        FileEntry entry = fileEntryFromCursor(cursor);
+        if (seen.add(entry.url)) result.put(entry.toJSON());
+      }
+    } finally {
+      if (cursor != null) cursor.close();
+    }
+    return result;
+  }
+
+  private FileEntry fileEntryFromCursor(Cursor cursor) {
+    return new FileEntry(
+      cursor.getString(0),
+      cursor.getString(1),
+      cursor.getString(2),
+      cursor.getString(3),
+      cursor.getString(4),
+      cursor.isNull(5) ? null : cursor.getString(5),
+      cursor.getInt(6) != 0,
+      safeLong(cursor, 7),
+      safeLong(cursor, 8)
+    );
+  }
+
+  private void appendRootsClause(
+    StringBuilder where,
+    List<String> args,
+    JSONArray roots
+  ) {
+    if (roots == null || roots.length() == 0) return;
+    where.append(" AND root_url IN (");
+    boolean added = false;
+    for (int i = 0; i < roots.length(); i++) {
+      String root = roots.optString(i, "");
+      if (root.length() == 0) continue;
+      if (added) where.append(',');
+      where.append('?');
+      args.add(root);
+      added = true;
+    }
+    if (!added) {
+      where.append("NULL");
+    }
+    where.append(')');
+  }
+
+  private String escapeLike(String value) {
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
+  }
+
+  private boolean shouldSkipDirectory(
+    String rootUrl,
+    String url,
+    String path,
+    JSONArray excludes
+  ) {
+    if (isExcluded(path, excludes) || isExcluded(path + "/", excludes)) {
+      return true;
+    }
+
+    return (
+      rootUrl != null &&
+      rootUrl.startsWith("content://com.termux.documents/tree/") &&
+      url != null &&
+      url.matches(".*::/data/data/com\\.termux/files/home/storage(?:/)?$")
+    );
+  }
+
+  private boolean shouldSkipSearchFile(JSONObject file, JSONObject options) {
+    if (FileEntry.fromJSON(file).isBinary()) return true;
+    String path = file.optString("path", "");
+    if (path.length() == 0) return false;
+
+    JSONArray excludes = splitPatterns(options.optString("exclude", ""));
+    JSONArray includes = splitPatterns(options.optString("include", ""));
+    if (includes.length() == 0) includes.put("**");
+
+    return matchesAny(path, excludes) || !matchesAny(path, includes);
+  }
+
+  private boolean isExplicitlyIncluded(JSONObject file, JSONObject options) {
+    String path = file.optString("path", "");
+    if (path.length() == 0) return false;
+    JSONArray includes = splitPatterns(options.optString("include", ""));
+    return includes.length() > 0 && matchesAny(path, includes);
+  }
+
+  private JSONArray splitPatterns(String value) {
+    JSONArray result = new JSONArray();
+    if (value == null || value.trim().length() == 0) return result;
+    String[] patterns = value.split(",");
+    for (String pattern : patterns) {
+      String item = pattern.trim();
+      if (item.length() > 0) result.put(item);
+    }
+    return result;
+  }
+
+  private boolean isExcluded(String path, JSONArray excludes) {
+    return matchesAny(path, excludes);
+  }
+
+  private boolean matchesAny(String path, JSONArray patterns) {
+    if (patterns == null) return false;
+    for (int i = 0; i < patterns.length(); i++) {
+      String pattern = patterns.optString(i, "");
+      if (globMatches(path, pattern)) return true;
+    }
+    return false;
+  }
+
+  private boolean globMatches(String path, String pattern) {
+    if (pattern == null || pattern.length() == 0) return false;
+    String normalizedPath = path.replace('\\', '/');
+    String normalizedPattern = pattern.replace('\\', '/');
+    if ("**".equals(normalizedPattern)) return true;
+
+    String regex = globToRegex(normalizedPattern);
+    Pattern compiled = Pattern.compile(regex);
+    if (compiled.matcher(normalizedPath).matches()) return true;
+
+    int slash = normalizedPath.lastIndexOf('/');
+    String basename = slash >= 0 ? normalizedPath.substring(slash + 1) : normalizedPath;
+    return compiled.matcher(basename).matches();
+  }
+
+  private String globToRegex(String glob) {
+    StringBuilder regex = new StringBuilder("^");
+    for (int i = 0; i < glob.length(); i++) {
+      char ch = glob.charAt(i);
+      if (ch == '*') {
+        boolean doublestar = i + 1 < glob.length() && glob.charAt(i + 1) == '*';
+        if (doublestar) {
+          i++;
+          if (i + 1 < glob.length() && glob.charAt(i + 1) == '/') {
+            regex.append("(?:.*/)?");
+            i++;
+          } else {
+            regex.append(".*");
+          }
+        } else {
+          regex.append("[^/]*");
+        }
+      } else if (ch == '?') {
+        regex.append('.');
+      } else if ("\\.[]{}()+-^$|".indexOf(ch) >= 0) {
+        regex.append('\\').append(ch);
+      } else {
+        regex.append(ch);
+      }
+    }
+    regex.append('$');
+    return regex.toString();
+  }
+
+  private boolean isBinary(FileEntry entry) {
+    return entry.isBinary();
+  }
+
+  private String detectEncoding(byte[] bytes, String defaultEncoding) {
+    if (bytes.length >= 3 && (bytes[0] & 0xff) == 0xef && (bytes[1] & 0xff) == 0xbb && (bytes[2] & 0xff) == 0xbf) {
+      return "UTF-8";
+    }
+    if (bytes.length >= 2 && (bytes[0] & 0xff) == 0xff && (bytes[1] & 0xff) == 0xfe) {
+      return "UTF-16LE";
+    }
+    if (bytes.length >= 2 && (bytes[0] & 0xff) == 0xfe && (bytes[1] & 0xff) == 0xff) {
+      return "UTF-16BE";
+    }
+    String utf16 = detectUtf16ByNullPattern(bytes);
+    if (utf16 != null) return utf16;
+    return normalizeEncoding(defaultEncoding);
+  }
+
+  private String detectUtf16ByNullPattern(byte[] bytes) {
+    int sample = Math.min(bytes.length, SAMPLE_BYTES);
+    if (sample < 8) return null;
+
+    int evenNulls = 0;
+    int oddNulls = 0;
+    int pairs = sample / 2;
+    for (int i = 0; i + 1 < sample; i += 2) {
+      if (bytes[i] == 0) evenNulls++;
+      if (bytes[i + 1] == 0) oddNulls++;
+    }
+    if (oddNulls > pairs * 0.35 && evenNulls < pairs * 0.05) return "UTF-16LE";
+    if (evenNulls > pairs * 0.35 && oddNulls < pairs * 0.05) return "UTF-16BE";
+    return null;
+  }
+
+  private boolean isSingleByteEncoding(String encoding) {
+    String normalized = encoding == null ? "" : encoding.toUpperCase(Locale.ROOT);
+    return !normalized.startsWith("UTF-16") && !normalized.startsWith("UTF-32");
+  }
+
+  private boolean looksBinary(byte[] bytes) {
+    int sample = Math.min(bytes.length, SAMPLE_BYTES);
+    if (sample == 0) return false;
+
+    int control = 0;
+    int high = 0;
+    for (int i = 0; i < sample; i++) {
+      int value = bytes[i] & 0xff;
+      if (value == 0) return true;
+      if (
+        value < 32 &&
+        value != 9 &&
+        value != 10 &&
+        value != 13 &&
+        value != 12
+      ) {
+        control++;
+      }
+      if (value >= 0x80) high++;
+    }
+    return control > Math.max(8, sample * 0.02) && high < sample * 0.5;
+  }
+
+  private String normalizeEncoding(String defaultEncoding) {
+    if (defaultEncoding == null || defaultEncoding.equals("auto") || defaultEncoding.length() == 0) {
+      return "UTF-8";
+    }
+    try {
+      if (Charset.isSupported(defaultEncoding)) return defaultEncoding;
+    } catch (Exception ignored) {}
+    return "UTF-8";
+  }
+
+  private boolean hasBinaryChars(String text) {
+    int len = Math.min(text.length(), 2048);
+    for (int i = 0; i < len; i++) {
+      char ch = text.charAt(i);
+      if (
+        (ch >= 0 && ch <= 8) ||
+        ch == 11 ||
+        (ch >= 14 && ch <= 31) ||
+        ch == 127
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private JSONObject position(JSONObject start, JSONObject end) throws JSONException {
+    JSONObject position = new JSONObject();
+    position.put("start", start);
+    position.put("end", end);
+    return position;
+  }
+
+  private JSONObject lineColumn(int row, int column) throws JSONException {
+    JSONObject result = new JSONObject();
+    result.put("row", row);
+    result.put("column", column);
+    return result;
+  }
+
+  // Java's Matcher does not honor thread interruption. Check its input access
+  // so backtracking is subject to the same cancellation and deadline as results.
+  private static final class SearchInput implements CharSequence {
+    final String content;
+    final Job job;
+    long deadline = System.nanoTime() + 2_000_000_000L;
+    int accesses;
+
+    SearchInput(String content, Job job) {
+      this.content = content;
+      this.job = job;
+    }
+
+    void renewDeadline() { deadline = System.nanoTime() + 2_000_000_000L; }
+
+    void check() {
+      if (job.cancelled) throw new IllegalStateException("Search cancelled");
+      if (System.nanoTime() > deadline) throw new IllegalStateException("Search timed out; simplify the expression");
+    }
+
+    public int length() { return content.length(); }
+    public char charAt(int index) {
+      if ((accesses++ & 1023) == 0) check();
+      return content.charAt(index);
+    }
+    public CharSequence subSequence(int start, int end) { return content.subSequence(start, end); }
+    public String toString() { return content; }
+  }
+
+  private String[] getSurrounding(String content, String word, int start, int end) {
+    int max = 160;
+    int remaining = Math.max(0, max - (end - start));
+    int snippetStart = start;
+    int leftLimit = Math.max(0, start - remaining / 2);
+    while (snippetStart > leftLimit) {
+      char c = content.charAt(snippetStart - 1);
+      if (c == '\n' || c == '\r') break;
+      snippetStart--;
+    }
+    int snippetEnd = Math.min(end, start + max);
+    int rightLimit = Math.min(content.length(), snippetStart + max);
+    while (snippetEnd < rightLimit) {
+      char c = content.charAt(snippetEnd);
+      if (c == '\n' || c == '\r') break;
+      snippetEnd++;
+    }
+    StringBuilder line = new StringBuilder();
+    if (snippetStart > 0 && content.charAt(snippetStart - 1) != '\n' && content.charAt(snippetStart - 1) != '\r') line.append("...");
+    line.append(content.substring(snippetStart, snippetEnd).trim());
+    if (snippetEnd < content.length() && content.charAt(snippetEnd) != '\n' && content.charAt(snippetEnd) != '\r') line.append("...");
+    String renderText = word;
+
+    return new String[] {
+      line.toString().replaceAll("[\\r\\n]+", " ⏎ "),
+      renderText.replaceAll("[\\r\\n]+", " ⏎ "),
+    };
+  }
+
+  private void sendStatus(
+    Callback callback,
+    String id,
+    String state,
+    String message,
+    int progress,
+    boolean keep
+  ) throws JSONException {
+    JSONObject event = baseEvent(id, "status");
+    event.put("state", state);
+    event.put("message", message);
+    event.put("progress", progress);
+    send(callback, event, keep);
+  }
+
+  private void sendProgress(Callback callback, String id, int progress)
+    throws JSONException {
+    JSONObject event = baseEvent(id, "progress");
+    event.put("data", progress);
+    send(callback, event, true);
+  }
+
+  private JSONObject baseEvent(String id, String type) throws JSONException {
+    JSONObject event = new JSONObject();
+    event.put("id", id);
+    event.put("type", type);
+    event.put("action", type);
+    return event;
+  }
+
+  private void send(Callback callback, JSONObject event, boolean keep) {
+    Payload result = new Payload(Payload.Status.OK, event);
+    result.setKeepCallback(keep);
+    callback.sendPayload(result);
+  }
+
+  private void sendError(Callback callback, String id, Exception error) {
+    try {
+      JSONObject event = baseEvent(id, "error");
+      event.put("error", error.getMessage() == null ? error.toString() : error.getMessage());
+      send(callback, event, false);
+    } catch (JSONException jsonError) {
+      callback.error(error.getMessage());
+    }
+  }
+
+  private boolean isSupportedUrl(String url) {
+    return url != null && (url.startsWith("file:") || url.startsWith("content:"));
+  }
+
+  private boolean isSafUrl(String url) {
+    return url != null && url.startsWith("content:");
+  }
+
+  private Uri formatSafUri(String url) {
+    SafUrl safUrl = parseSafUrl(url);
+    return DocumentsContract.buildDocumentUriUsingTree(
+      Uri.parse(safUrl.treeUrl),
+      safUrl.docId
+    );
+  }
+
+  private SafUrl parseSafUrl(String url) {
+    if (url.contains(SEPARATOR)) {
+      String[] parts = url.split(SEPARATOR, 2);
+      return new SafUrl(parts[0], parts[1]);
+    }
+    Uri treeUri = Uri.parse(url);
+    return new SafUrl(url, DocumentsContract.getTreeDocumentId(treeUri));
+  }
+
+  private File fileFromUrl(String url) {
+    Uri uri = Uri.parse(url);
+    return new File(uri.getPath());
+  }
+
+  private long safeLong(Cursor cursor, int index) {
+    try {
+      if (cursor.isNull(index)) return 0;
+      return cursor.getLong(index);
+    } catch (Exception ignored) {
+      return 0;
+    }
+  }
+
+  private long normalizeModified(JSONObject file) {
+    long modified = file.optLong("modifiedDate", 0);
+    if (modified == 0) modified = file.optLong("lastModified", 0);
+    return modified;
+  }
+
+  private String joinPath(String parent, String name) {
+    if (parent == null || parent.length() == 0) return name;
+    if (name == null || name.length() == 0) return parent;
+    if (parent.endsWith("/")) return parent + name;
+    return parent + "/" + name;
+  }
+
+  private String basename(String url) {
+    if (url == null || url.length() == 0) return "";
+    int slash = url.lastIndexOf('/');
+    return slash >= 0 ? url.substring(slash + 1) : url;
+  }
+
+  private String guessMime(String name) {
+    if (name == null) return null;
+    String lower = name.toLowerCase(Locale.ROOT);
+    if (lower.endsWith(".js")) return "application/javascript";
+    if (lower.endsWith(".ts") || lower.endsWith(".tsx")) return "application/typescript";
+    if (lower.endsWith(".jsx")) return "application/javascript";
+    if (lower.endsWith(".json")) return "application/json";
+    if (lower.endsWith(".svg")) return "image/svg+xml";
+    if (lower.endsWith(".html") || lower.endsWith(".htm")) return "text/html";
+    if (lower.endsWith(".css")) return "text/css";
+    if (lower.endsWith(".md")) return "text/markdown";
+    if (lower.endsWith(".txt")) return "text/plain";
+    if (lower.endsWith(".xml")) return "application/xml";
+    return null;
+  }
+
+  private String normalizeMime(String name, String mime) {
+    String guessed = guessMime(name);
+    if (guessed != null && (mime == null || mime.length() == 0 || "application/octet-stream".equals(mime))) {
+      return guessed;
+    }
+    return mime;
+  }
+
+  private static class Job {
+    final String id;
+    volatile boolean cancelled = false;
+    volatile CancellationSignal signal;
+
+    Job(String id) {
+      this.id = id;
+    }
+
+    void cancel() {
+      cancelled = true;
+      CancellationSignal activeSignal = signal;
+      if (activeSignal != null) activeSignal.cancel();
+    }
+
+    CancellationSignal setSignal(CancellationSignal nextSignal) {
+      CancellationSignal previousSignal = signal;
+      signal = nextSignal;
+      if (cancelled) nextSignal.cancel();
+      return previousSignal;
+    }
+
+    void restoreSignal(
+      CancellationSignal currentSignal,
+      CancellationSignal previousSignal
+    ) {
+      if (signal != currentSignal) return;
+      signal = previousSignal;
+      if (cancelled && previousSignal != null) previousSignal.cancel();
+    }
+  }
+
+  private static class ScanStats {
+    int files = 0;
+    int dirs = 0;
+    int indexed = 0;
+  }
+
+  private static class SafUrl {
+    final String treeUrl;
+    final String docId;
+
+    SafUrl(String treeUrl, String docId) {
+      this.treeUrl = treeUrl;
+      this.docId = docId;
+    }
+  }
+
+  private static class FileEntry {
+    final String rootUrl;
+    final String parentUrl;
+    final String url;
+    final String name;
+    final String path;
+    final String mime;
+    final boolean isDirectory;
+    final long size;
+    final long modifiedDate;
+
+    FileEntry(
+      String rootUrl,
+      String parentUrl,
+      String url,
+      String name,
+      String path,
+      String mime,
+      boolean isDirectory,
+      long size,
+      long modifiedDate
+    ) {
+      this.rootUrl = rootUrl;
+      this.parentUrl = parentUrl;
+      this.url = url;
+      this.name = name == null ? "" : name;
+      this.path = path == null ? this.name : path;
+      this.mime = mime;
+      this.isDirectory = isDirectory;
+      this.size = Math.max(0, size);
+      this.modifiedDate = Math.max(0, modifiedDate);
+    }
+
+    JSONObject toJSON() throws JSONException {
+      JSONObject json = new JSONObject();
+      json.put("rootUrl", rootUrl);
+      json.put("parent", parentUrl);
+      json.put("parentUrl", parentUrl);
+      json.put("url", url);
+      json.put("uri", url);
+      json.put("name", name);
+      json.put("path", path);
+      json.put("mime", mime);
+      json.put("type", mime);
+      json.put("isDirectory", isDirectory);
+      json.put("isFile", !isDirectory);
+      json.put("size", size);
+      json.put("modifiedDate", modifiedDate);
+      return json;
+    }
+
+    static FileEntry fromJSON(JSONObject json) {
+      return new FileEntry(
+        json.optString("rootUrl", ""),
+        json.optString("parentUrl", json.optString("parent", "")),
+        json.optString("url", ""),
+        json.optString("name", ""),
+        json.optString("path", ""),
+        json.optString("mime", json.optString("type", null)),
+        json.optBoolean("isDirectory", false),
+        json.optLong("size", 0),
+        json.optLong("modifiedDate", json.optLong("lastModified", 0))
+      );
+    }
+
+    boolean isBinary() {
+      if (isDirectory) return false;
+      String normalizedMime = mime == null ? "" : mime.toLowerCase(Locale.ROOT).split(";")[0].trim();
+      if (normalizedMime.startsWith("text/") || TEXT_MIME_TYPES.contains(normalizedMime)) return false;
+      if (isTextExtension(name)) return false;
+      if (
+        normalizedMime.startsWith("audio/") ||
+        normalizedMime.startsWith("font/") ||
+        normalizedMime.startsWith("image/") ||
+        normalizedMime.startsWith("model/") ||
+        normalizedMime.startsWith("video/") ||
+        BINARY_MIME_TYPES.contains(normalizedMime)
+      ) {
+        return true;
+      }
+
+      String lowerName = name.toLowerCase(Locale.ROOT);
+      int dot = lowerName.lastIndexOf('.');
+      if (dot < 0) return false;
+      String ext = lowerName.substring(dot + 1);
+      if (BINARY_EXTENSIONS.contains(ext)) return true;
+      int previousDot = lowerName.lastIndexOf('.', dot - 1);
+      return previousDot >= 0 && BINARY_EXTENSIONS.contains(lowerName.substring(previousDot + 1));
+    }
+
+    private boolean isTextExtension(String filename) {
+      String lowerName = filename == null ? "" : filename.toLowerCase(Locale.ROOT);
+      int dot = lowerName.lastIndexOf('.');
+      return dot >= 0 && TEXT_EXTENSIONS.contains(lowerName.substring(dot + 1));
+    }
+  }
+
+  private static class DB extends SQLiteOpenHelper {
+    DB(Context context) {
+      super(context, "acode_workspace_index.db", null, DB_VERSION);
+    }
+
+    @Override
+    public void onCreate(SQLiteDatabase db) {
+      db.execSQL(
+        "CREATE TABLE IF NOT EXISTS workspaces (" +
+        "root_url TEXT PRIMARY KEY, " +
+        "title TEXT, " +
+        "indexed_at INTEGER, " +
+        "options_hash TEXT" +
+        ")"
+      );
+      db.execSQL(
+        "CREATE TABLE IF NOT EXISTS files (" +
+        "url TEXT, " +
+        "root_url TEXT, " +
+        "parent_url TEXT, " +
+        "path TEXT, " +
+        "name TEXT, " +
+        "mime TEXT, " +
+        "is_directory INTEGER, " +
+        "size INTEGER, " +
+        "modified_date INTEGER, " +
+        "indexed_at INTEGER, " +
+        "skipped_reason TEXT, " +
+        "PRIMARY KEY (root_url, url)" +
+        ")"
+      );
+      db.execSQL(
+        "CREATE TABLE IF NOT EXISTS content (" +
+        "url TEXT PRIMARY KEY, " +
+        "size INTEGER, " +
+        "modified_date INTEGER, " +
+        "encoding TEXT, " +
+        "text TEXT, " +
+        "lower_text TEXT, " +
+        "indexed_at INTEGER" +
+        ")"
+      );
+      db.execSQL("CREATE INDEX IF NOT EXISTS idx_files_root ON files(root_url)");
+      db.execSQL("CREATE INDEX IF NOT EXISTS idx_files_parent ON files(parent_url)");
+    }
+
+    @Override
+    public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+      db.execSQL("DROP TABLE IF EXISTS content");
+      db.execSQL("DROP TABLE IF EXISTS files");
+      db.execSQL("DROP TABLE IF EXISTS workspaces");
+      onCreate(db);
+    }
+  }
+}

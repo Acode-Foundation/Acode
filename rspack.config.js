@@ -1,40 +1,50 @@
 const path = require('path');
 const { rspack } = require('@rspack/core');
+const { getAppConfig, getWebBundlePath, getAdConfig } = require('./dev/config');
+const StripSourceMapCommentsPlugin = require('./dev/stripSourceMapComments');
 
 module.exports = (env, options) => {
   const { mode = 'development' } = options;
   const prod = mode === 'production';
+  const platform = process.env.ACODE_PLATFORM || 'android';
+  const { variant } = getAppConfig(platform);
+  const ads = getAdConfig(platform, prod ? 'Release' : 'Debug');
   const isDev = process.env.DEV_MODE === 'true';
   const devHost = process.env.DEV_HOST || '';
   const devPort = process.env.DEV_PORT || '';
   const devProto = isDev ? (process.env.DEV_PROTO || '') : '';
-  const devOrigin = isDev && devHost && devPort && devProto
-    ? ''.concat(devProto, '://', devHost, ':', devPort)
-    : '';
 
+  // Match the oldest engine each platform supports (MIN_WEBVIEW_MAJOR in
+  // src/index.html, IPHONEOS_DEPLOYMENT_TARGET in Xcode) instead of plain
+  // ES2015, so native async/await, classes and spread are kept. `entry` mode
+  // rewrites `import "core-js/stable"` to only the polyfills that engine still
+  // needs, so plugins keep every global they could rely on.
+  const swcEnv = {
+    targets: platform === 'ios' ? 'ios_saf >= 18' : 'chrome >= 67',
+    mode: 'entry',
+    coreJs: require('core-js/package.json').version,
+    // core-js replaces the native Array.prototype.push below Chrome 122, for
+    // edge cases (lengths past 2^32 - 1, push() with no arguments on an array
+    // with a read-only length) nothing relies on. Its JS version is ~8x
+    // slower, and the parser, CodeMirror and the renderer push constantly.
+    exclude: ['es.array.push'],
+  };
+  const typescriptLoader = {
+    loader: 'builtin:swc-loader',
+    options: { jsc: { parser: { syntax: 'typescript', tsx: false } }, env: swcEnv },
+  };
   const rules = [
     {
       test: /typescript[\\/]lib[\\/]lib\..*\.d\.ts$/,
       type: 'asset/source',
     },
-    // TypeScript/TSX files - Custom JSX loader + SWC
+    // Native APIs are plain TypeScript; only editor sources use the JSX loader.
     {
       test: /\.tsx?$/,
       exclude: /node_modules/,
-      use: [
-        {
-          loader: 'builtin:swc-loader',
-          options: {
-            jsc: {
-              parser: {
-                syntax: 'typescript',
-                tsx: false,
-              },
-              target: 'es2015',
-            },
-          },
-        },
-        path.resolve(__dirname, 'utils/custom-loaders/html-tag-jsx-loader.js'),
+      oneOf: [
+        { include: /[\\/]src[\\/](?:native|platforms)[\\/]/, use: [typescriptLoader] },
+        { use: [typescriptLoader, path.resolve(__dirname, 'dev/custom-loaders/html-tag-jsx-loader.js')] },
       ],
     },
     // JavaScript files
@@ -52,8 +62,8 @@ module.exports = (env, options) => {
                   parser: {
                     syntax: 'ecmascript',
                   },
-                  target: 'es2015',
                 },
+                env: swcEnv,
               },
             },
           ],
@@ -69,11 +79,11 @@ module.exports = (env, options) => {
                     syntax: 'ecmascript',
                     jsx: false,
                   },
-                  target: 'es2015',
                 },
+                env: swcEnv,
               },
             },
-            path.resolve(__dirname, 'utils/custom-loaders/html-tag-jsx-loader.js'),
+            path.resolve(__dirname, 'dev/custom-loaders/html-tag-jsx-loader.js'),
           ],
         },
       ],
@@ -111,7 +121,7 @@ module.exports = (env, options) => {
     },
     // Regular CSS files do not need Sass processing. Passing icon CSS through
     // Sass converts escaped private-use code points into literal characters in
-    // production, which Cordova's asset WebView renders as missing glyphs.
+    // production, which Android's asset WebView renders as missing glyphs.
     {
       test: /(?<!\.m)\.css$/,
       type: 'javascript/auto',
@@ -142,6 +152,7 @@ module.exports = (env, options) => {
     },
     entry: {
       boot: './src/boot.js',
+      native: './src/native/index.ts',
       main: './src/main.js',
       console: './src/lib/console.js',
       consoleWorker: './src/lib/consoleWorker.js',
@@ -153,11 +164,11 @@ module.exports = (env, options) => {
       typescriptLspWorker: './src/cm/lsp/workers/typescript.worker.ts',
     },
     output: {
-      path: path.resolve(__dirname, 'www/build/'),
-      filename: '[name].js',
-      chunkFilename: '[name].chunk.js',
-      assetModuleFilename: '[name][ext]',
-      publicPath: devOrigin ? ''.concat(devOrigin, '/build/') : '/build/',
+      path: getWebBundlePath(),
+      filename: 'build/[name].js',
+      chunkFilename: 'build/[name].chunk.js',
+      assetModuleFilename: 'build/[name][ext]',
+      publicPath: 'auto',
       clean: !isDev,
     },
     // TypeScript's Node-only plugin loader uses a dynamic require. It is never
@@ -188,25 +199,41 @@ module.exports = (env, options) => {
       roots: [],
     },
     plugins: [
+      new StripSourceMapCommentsPlugin(),
+      new rspack.CopyRspackPlugin({
+        patterns: [
+          { from: 'src/index.html', to: 'index.html' },
+          { from: 'src/res/logo.svg', to: 'logo.svg' },
+          { from: 'src/res/favicon.ico', to: 'favicon.ico' },
+          { from: 'src/res/icons/*.svg', to: 'icons/[name][ext]' },
+        ],
+      }),
+      ...(variant === 'paid' ? [new rspack.NormalModuleReplacementPlugin(
+        /^(?:\.\/|lib\/)(startAd|rewardedAd)(?:\.js)?$/,
+        (resource) => {
+          const name = path.basename(resource.request).replace(/\.js$/, '');
+          resource.request = path.resolve(__dirname, 'src/lib/paid', `${name}.js`);
+        },
+      )] : []),
       new rspack.DefinePlugin({
+        __FREE__: JSON.stringify(variant === 'free'),
+        IS_IOS: JSON.stringify(platform === 'ios'),
+        IS_ANDROID: JSON.stringify(platform === 'android'),
+        PLATFORM: JSON.stringify(platform),
+        ADMOB_APP_ID: JSON.stringify(ads.appId),
+        ADMOB_BANNER_ID: JSON.stringify(ads.banner),
+        ADMOB_INTERSTITIAL_ID: JSON.stringify(ads.interstitial),
+        ADMOB_REWARDED_ID: JSON.stringify(ads.rewarded),
+        ADMOB_APP_OPEN_ID: JSON.stringify(ads.appOpen),
+        __FDROID__: JSON.stringify(process.env.ACODE_FDROID === 'true'),
         __DEV_MODE__: JSON.stringify(isDev),
         __DEV_HOST__: JSON.stringify(devHost),
         __DEV_PORT__: JSON.stringify(devPort),
         __DEV_PROTO__: JSON.stringify(devProto),
       }),
       new rspack.CssExtractRspackPlugin({
-        filename: '[name].css',
+        filename: 'build/[name].css',
       }),
-      // core-js replaces the native Array.prototype.push below Chrome 122,
-      // for edge cases (lengths past 2^32 - 1, push() with no arguments on an
-      // array with a read-only length) nothing relies on. Its JS version is
-      // ~8x slower, and the parser and CodeMirror push constantly, so keep the
-      // native one. Only core-js's global polyfill is dropped: core-js-pure,
-      // which Babel's runtime helpers import, is untouched.
-      new rspack.NormalModuleReplacementPlugin(
-        /[\\/]node_modules[\\/]core-js[\\/]modules[\\/]es\.array\.push\.js$/,
-        path.resolve(__dirname, 'utils/empty-module.js'),
-      ),
     ],
   };
 

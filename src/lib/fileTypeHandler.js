@@ -14,6 +14,8 @@
  * @property {Object} options - Additional options passed during file open
  */
 
+const HANDLED_EXTENSIONS_KEY = "pluginHandledExtensions";
+
 class FileTypeHandlerRegistry {
 	#handlers = new Map();
 
@@ -47,6 +49,32 @@ class FileTypeHandlerRegistry {
 			extensions: normalizedExts,
 			handleFile,
 		});
+		rememberHandledExtensions(normalizedExts);
+	}
+
+	/**
+	 * Whether a plugin has registered a handler for this file name in any
+	 * session, so opening it should wait until plugins have loaded. Extensions
+	 * are never forgotten, which only means waiting as before. Until a full
+	 * plugin load has recorded them, every file may have a handler.
+	 * @param {string} filename
+	 */
+	mayHavePluginHandler(filename) {
+		const extensions = readHandledExtensions();
+		if (!extensions) return true;
+		const ext = filename.split(".").pop().toLowerCase();
+		return extensions.includes("*") || extensions.includes(ext);
+	}
+
+	/**
+	 * Marks the handled extensions as known. Call it after a full plugin load,
+	 * once every installed plugin has had the chance to register handlers.
+	 */
+	markHandledExtensionsKnown() {
+		const registered = [...this.#handlers.values()].flatMap(
+			(handler) => handler.extensions,
+		);
+		writeHandledExtensions([...(readHandledExtensions() ?? []), ...registered]);
 	}
 
 	/**
@@ -91,3 +119,36 @@ class FileTypeHandlerRegistry {
 
 export const fileTypeHandler = new FileTypeHandlerRegistry();
 export default fileTypeHandler;
+
+/**
+ * @returns {string[] | null} null until a full plugin load has recorded them
+ */
+function readHandledExtensions() {
+	try {
+		const extensions = JSON.parse(localStorage.getItem(HANDLED_EXTENSIONS_KEY));
+		return Array.isArray(extensions) ? extensions : null;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Adds extensions to the history. Before the first full plugin load the
+ * history is left unset; markHandledExtensionsKnown records everything then.
+ */
+function rememberHandledExtensions(extensions) {
+	const known = readHandledExtensions();
+	if (!known || extensions.every((ext) => known.includes(ext))) return;
+	writeHandledExtensions([...known, ...extensions]);
+}
+
+function writeHandledExtensions(extensions) {
+	try {
+		localStorage.setItem(
+			HANDLED_EXTENSIONS_KEY,
+			JSON.stringify([...new Set(extensions)]),
+		);
+	} catch (error) {
+		console.warn("Unable to remember plugin file handlers", error);
+	}
+}

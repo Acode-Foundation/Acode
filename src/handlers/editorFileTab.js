@@ -3,6 +3,7 @@ import openTabContextMenu from "handlers/tabContextMenu";
 import config from "lib/config";
 import settings from "lib/settings";
 import { animate } from "motion";
+import haptic from "utils/haptic";
 
 const opts = { passive: false };
 
@@ -129,7 +130,7 @@ export default function startDrag(e) {
 	}
 
 	if (settings.value.vibrateOnTap) {
-		navigator.vibrate(config.VIBRATION_TIME);
+		haptic(config.VIBRATION_TIME);
 	}
 
 	$tab = e.currentTarget || e.target.closest?.(".tile") || e.target;

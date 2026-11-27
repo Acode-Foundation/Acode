@@ -401,6 +401,7 @@
 	"change encoding": "Buka kembali '{file}' dengan enkoding '{encoding}'? Tindakan ini akan mengakibatkan hilangnya perubahan yang belum disimpan pada berkas ini. Apakah Anda ingin melanjutkan?",
 	"reopen file": "Apakah Anda yakin ingin membuka kembali '{file}'? Semua perubahan yang belum disimpan akan hilang.",
 	"plugin min version": "{name} hanya tersedia di Acode - {v-code} ke atas. Klik di sini untuk memperbarui.",
+	"plugin min version required": "{name} requires Acode build {v-code} or later.",
 	"color preview": "Pratinjau warna",
 	"confirm": "Konfirmasi",
 	"problems": "Masalah",
@@ -518,7 +519,6 @@
 	"save file before home shortcut": "Simpan berkas sebelum menambahkannya ke layar beranda.",
 	"terminal_required_message_for_lsp": "Terminal belum terpasang. Mohon pasang Terminal terlebih dahulu untuk menggunakan server LSP.",
 	"shift click selection": "Pemilihan Shift + tekan/klik",
-	"earn ad-free time": "Ambil waktu bebas iklan",
 	"indent guides": "Panduan indentasi",
 	"language servers": "Server bahasa",
 	"lint gutter": "Tampilkan gutter lint",
@@ -688,7 +688,6 @@
 	"settings-info-lsp-uninstall-server": "Hapus paket terpasang atau biner dari server ini.",
 	"settings-info-lsp-update-server": "Perbarui server bahasa ini jika jalur pembaruan tersedia.",
 	"settings-info-lsp-view-init-options": "Lihat opsi inisialisasi efektif sebagai JSON.",
-	"settings-info-main-ad-rewards": "Tonton iklan untuk membuka akses bebas iklan sementara.",
 	"settings-info-main-app-settings": "Bahasa, perilaku aplikasi, dan alat akses cepat.",
 	"settings-info-main-backup-restore": "Ekspor pengaturan ke cadangan atau pulihkan nanti.",
 	"settings-info-main-changelog": "Lihat pembaruan saat ini dan catatan rilis.",
@@ -755,6 +754,7 @@
 	"login-to-view": "Mohon masuk untuk melihat ini...",
 	"iap-plugin-purchase-warning": "Plugin yang dibeli tidak disinkronkan ke akun Acode Anda. Gunakan akun Google yang sama di Play Store untuk memulihkan pembelian Anda.",
 	"iap-pro-purchase-warning": "Pembelian ini tidak akan disinkronkan ke akun Acode Anda. Gunakan akun Google yang sama di Play Store untuk memulihkan pembelian Anda.",
+	"iap-pro-purchase-warning-ios": "This purchase will not be synced to your Acode account. Use Restore purchases with the same Apple Account to restore it.",
 	"confirm-login": "Anda belum masuk ke Acode, masuk sekarang?",
 	"local word completion": "Penyelesaian kata lokal",
 	"language package completion": "Penyelesaian paket bahasa",
@@ -915,5 +915,8 @@
 	"files saved count": "Files saved: {count}",
 	"files not saved count": "Files not saved: {count}",
 	"use native index": "Use native index",
-	"use native index hint": "Search local folders faster using the native file index."
+	"use native index hint": "Search local folders faster using the native file index.",
+	"faqs load failed": "Unable to load FAQs. Please try again.",
+	"faqs empty": "No FAQs are available yet.",
+	"retry": "Retry"
 }

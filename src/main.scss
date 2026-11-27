@@ -180,7 +180,10 @@ a.icon {
   }
 }
 
-.no-scroll {
+.no-scroll,
+.open-file-list {
+  scrollbar-width: none;
+
   &::-webkit-scrollbar {
     width: 0px;
     height: 0px;

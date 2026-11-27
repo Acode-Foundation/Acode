@@ -1225,6 +1225,12 @@ class TerminalManager {
 	 */
 	convertProotPath(prootPath) {
 		if (!prootPath) return prootPath;
+		if (platform.isIOS) {
+			if (/^\/(public|home|root)(\/|$)/.test(prootPath)) {
+				return `${Bridge.file.dataDirectory}public${prootPath.replace(/^\/(public|home|root)/, "")}`;
+			}
+			return `alpine://localhost${prootPath.split("/").map(encodeURIComponent).join("/")}`;
+		}
 
 		const packageName = window.BuildInfo?.packageName || "com.foxdebug.acode";
 		const dataDir = `/data/user/0/${packageName}`;

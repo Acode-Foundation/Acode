@@ -401,6 +401,7 @@
 	"change encoding": "Reopen '{file}' with '{encoding}' encoding? This action will result in the loss of any unsaved changes made to the file. Do you want to proceed with reopening?",
 	"reopen file": "Are you sure you want to reopen '{file}'? Any unsaved changes will be lost.",
 	"plugin min version": "{name} only available in Acode - {v-code} and above. Click here to update.",
+	"plugin min version required": "{name} requires Acode build {v-code} or later.",
 	"color preview": "Color preview",
 	"confirm": "Confirm",
 	"problems": "Problems",
@@ -518,7 +519,6 @@
 	"save file before home shortcut": "Save the file before adding it to the home screen.",
 	"terminal_required_message_for_lsp": "Terminal not installed. Please install Terminal first to use LSP servers.",
 	"shift click selection": "Shift + tap/click selection",
-	"earn ad-free time": "Earn ad-free time",
 	"indent guides": "Indent guides",
 	"language servers": "Language servers",
 	"lint gutter": "Show lint gutter",
@@ -688,7 +688,6 @@
 	"settings-info-lsp-uninstall-server": "Remove installed packages or binaries for this server.",
 	"settings-info-lsp-update-server": "Update this language server if an update flow is available.",
 	"settings-info-lsp-view-init-options": "View the effective initialization options as JSON.",
-	"settings-info-main-ad-rewards": "Watch ads to unlock temporary ad-free access.",
 	"settings-info-main-app-settings": "Language, app behavior, and quick access tools.",
 	"settings-info-main-backup-restore": "Export settings to a backup or restore them later.",
 	"settings-info-main-changelog": "See recent updates and release notes.",
@@ -755,6 +754,7 @@
 	"settings-info-editor-show-share-button": "Show share button in selection menu.",
 	"iap-plugin-purchase-warning": "افزونه‌های خریداری شده با حساب Acode شما همگام‌سازی نمی‌شوند. برای بازیابی خرید خود از همان حساب Google در فروشگاه Play استفاده کنید.",
 	"iap-pro-purchase-warning": "این خرید با حساب Acode شما همگام‌سازی نخواهد شد. برای بازیابی خرید خود از همان حساب Google در فروشگاه Play استفاده کنید.",
+	"iap-pro-purchase-warning-ios": "This purchase will not be synced to your Acode account. Use Restore purchases with the same Apple Account to restore it.",
 	"confirm-login": "شما وارد Acode نشده‌اید، اکنون وارد شوید؟",
 	"local word completion": "Local word completion",
 	"language package completion": "Language package completion",
@@ -915,5 +915,8 @@
 	"files saved count": "Files saved: {count}",
 	"files not saved count": "Files not saved: {count}",
 	"use native index": "Use native index",
-	"use native index hint": "Search local folders faster using the native file index."
+	"use native index hint": "Search local folders faster using the native file index.",
+	"faqs load failed": "Unable to load FAQs. Please try again.",
+	"faqs empty": "No FAQs are available yet.",
+	"retry": "Retry"
 }

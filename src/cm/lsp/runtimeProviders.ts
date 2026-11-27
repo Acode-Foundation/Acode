@@ -174,6 +174,7 @@ export function inferWorkspaceKind(
 
 	if (!scheme) return uri.startsWith("/") ? "app-private" : "unknown";
 	if (scheme === "file") return "app-private";
+	if (scheme === "alpine") return "builtin-alpine";
 	if (scheme === "untitled") return "virtual";
 	if (
 		scheme === "ftp" ||
@@ -203,6 +204,7 @@ export function isBuiltinAlpineAccessible(
 
 	if (!scheme) return uri.startsWith("/");
 	if (scheme === "file") return true;
+	if (scheme === "alpine") return true;
 	if (scheme !== "content") return false;
 
 	return /^content:\/\/com\.foxdebug\.acode(?:free)?\.documents\//i.test(uri);

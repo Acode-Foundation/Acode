@@ -18,7 +18,7 @@ beforeEach(async () => {
 	doc.exitFullscreen = vi.fn(async () => change(null));
 	exec = vi.fn((resolve) => resolve());
 	vi.stubGlobal("document", doc);
-	vi.stubGlobal("cordova", { exec });
+	vi.stubGlobal("Bridge", { exec });
 	api = (await import("../../src/lib/fullscreen.js")).default;
 });
 afterEach(() => vi.unstubAllGlobals());

@@ -1,4 +1,6 @@
 import settingsPage from "components/settingsPage";
+import toast from "components/toast";
+import defaultStrings from "lang/en-us.json";
 import config from "lib/config";
 
 export default function help() {
@@ -19,7 +21,6 @@ export default function help() {
 		{
 			key: "faqs",
 			text: strings.faqs,
-			link: `${config.BASE_URL}/faqs`,
 			chevron: true,
 		},
 		{
@@ -30,11 +31,32 @@ export default function help() {
 		},
 	];
 
-	const page = settingsPage(title, items, () => {}, "separate", {
+	const page = settingsPage(title, items, onSelect, "separate", {
 		preserveOrder: true,
 		pageClassName: "detail-settings-page",
 		listClassName: "detail-settings-list",
 		groupByDefault: true,
 	});
+	let openingFaqs = false;
+	let closed = false;
+	page.onClose(() => {
+		closed = true;
+	});
 	page.show();
+
+	async function onSelect(key) {
+		if (key !== "faqs" || openingFaqs || closed) return;
+		openingFaqs = true;
+		try {
+			const { default: FAQs } = await import("pages/faqs/faqs");
+			if (closed || !page.getListElement().isConnected) return;
+			FAQs();
+		} catch (error) {
+			if (closed || !page.getListElement().isConnected) return;
+			console.error("Unable to open FAQs", error);
+			toast(strings["faqs load failed"] || defaultStrings["faqs load failed"]);
+		} finally {
+			openingFaqs = false;
+		}
+	}
 }

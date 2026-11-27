@@ -67,8 +67,12 @@ export default function appIconSetting() {
 			if (loading === value) return;
 			loading = value;
 			$dialog.inert = value;
-			if (value) loader.create(strings["app icon"], strings["loading..."]);
-			else loader.destroy();
+			if (value) {
+				loader.create(strings["app icon"], strings["loading..."], {
+					timeout: 1_000,
+					oncancel: close,
+				});
+			} else loader.destroy();
 		},
 		onChange: close,
 	};

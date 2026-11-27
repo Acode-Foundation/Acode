@@ -5,8 +5,8 @@ afterEach(() => {
 	vi.unstubAllGlobals();
 });
 
-describe("plugin context Cordova bridge", () => {
-	it("loads before cordova.exec is mapped", async () => {
+describe("plugin context native bridge", () => {
+	it("uses and hardens the initialized native bridge", async () => {
 		const nativeExec = vi.fn((resolve, _reject, _service, action) => {
 			if (action === "establishConnection") {
 				resolve("trusted-session");
@@ -14,14 +14,17 @@ describe("plugin context Cordova bridge", () => {
 				resolve("plugin-token");
 			}
 		});
-		const requireModule = vi.fn(() => nativeExec);
-		vi.stubGlobal("cordova", { require: requireModule });
+		vi.stubGlobal("Bridge", { exec: nativeExec });
 
 		const pluginContext = await import("lib/pluginContext");
 
-		expect(requireModule).toHaveBeenCalledWith("cordova/exec");
-		expect(cordova.exec).toBeUndefined();
 		await expect(pluginContext.connect()).resolves.toBe(true);
+		expect(Object.getOwnPropertyDescriptor(Bridge, "exec").writable).toBe(
+			false,
+		);
+		expect(Object.getOwnPropertyDescriptor(Bridge, "exec").configurable).toBe(
+			false,
+		);
 		await expect(
 			pluginContext.default("example.plugin", "{}"),
 		).resolves.toBeTruthy();

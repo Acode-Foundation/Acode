@@ -1,12 +1,23 @@
 // automatically include credentials for acode.app API requests
 (function () {
-	const _fetch = window.fetch;
-	window.fetch = function (url, options) {
+	const transport = window.fetch.bind(window);
+	const appFetch = function (url, options) {
 		if (typeof url === "string" && url.includes("acode.app/api")) {
 			options = { ...options, credentials: "include" };
 		}
-		return _fetch.call(this, url, options);
+		return transport(url, options);
 	};
+	Object.defineProperty(window, "fetch", {
+		configurable: false,
+		enumerable: true,
+		get: () => appFetch,
+		// Warn instead of throwing so legacy wrappers do not break startup.
+		set() {
+			console.warn(
+				"Acode blocked an attempt to replace window.fetch. Use a local fetch wrapper instead.",
+			);
+		},
+	});
 })();
 
 // polyfill for prepend

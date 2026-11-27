@@ -30,6 +30,7 @@
   <span class="text">{{console}}</span>
   <span class="icon code"></span>
 </li>
+{{#local_execution}}
 <li action="new-terminal">
   <span class="text">{{terminal}}</span>
   <span class="icon terminal"></span>
@@ -38,6 +39,7 @@
   <span class="text">{{running processes}}</span>
   <span class="icon apps"></span>
 </li>
+{{/local_execution}}
 <hr>
 <li action="open" value="settings">
   <span class="text">{{settings}}</span>
@@ -47,8 +49,9 @@
   <span class="text">{{help}}</span>
   <span class="icon help"></span>
 </li>
-<hr>
+{{#app_exit}}
 <li action="exit">
   <span class="text">{{exit}}</span>
   <span class="icon logout"></span>
 </li>
+{{/app_exit}}

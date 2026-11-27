@@ -29,7 +29,7 @@ const { nativeBridge } = vi.hoisted(() => ({
 	},
 }));
 
-vi.mock("../../src/plugins/webview/www/webview", () => ({
+vi.mock("../../src/native/webview", () => ({
 	default: nativeBridge,
 }));
 

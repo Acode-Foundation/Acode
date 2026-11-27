@@ -105,6 +105,18 @@
     overflow-y: auto;
 
     .tile {
+      > .input-checkbox.disabled {
+        opacity: 0.35;
+        pointer-events: none;
+      }
+
+      &.select-disabled {
+        .text,
+        .icon {
+          opacity: 0.4;
+        }
+      }
+
       &[disabled] {
         .text {
           opacity: 0.5;
@@ -124,23 +136,22 @@
       }
     }
   }
-  .selection-header {
-    display: flex;
-    align-items: center;
-    padding: 5px;
-    background: var(--primary-color);
-    color: var(--primary-text-color);
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    gap: 10px;
+}
 
-    @supports not (gap: 1px) {
-      > * + * { margin-left: 10px; }
-    }
+.selection-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: auto;
+  color: var(--primary-text-color);
 
-    .selection-count {
-      font-size: 0.9em;
-    }
+  .input-checkbox .box {
+    border-color: currentColor;
+  }
+
+  .selection-count {
+    font-size: 0.95em;
+    font-weight: 500;
+    white-space: nowrap;
   }
 }

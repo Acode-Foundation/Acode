@@ -1,5 +1,6 @@
 import fsOperation from "../fileSystem";
 import Url from "../utils/Url";
+import fileTypeHandler from "./fileTypeHandler";
 import loadPlugin from "./loadPlugin";
 import settings from "./settings";
 
@@ -37,6 +38,9 @@ const PLUGIN_LOAD_TIMEOUT = 15000;
 const PLUGIN_DISABLE_TIMEOUT = 60000;
 let pluginDisabledUpdateQueue = Promise.resolve();
 let initialPluginLoadComplete = false;
+/** Plugins still loading in the background after PLUGIN_LOAD_TIMEOUT. */
+const SLOW_PLUGIN_LOADS = new Set();
+let handlerHistoryPending = false;
 
 class PluginLoadTimeoutError extends Error {
 	constructor() {
@@ -112,6 +116,10 @@ export default async function loadPlugins(loadOnlyTheme = false) {
 		});
 
 		await Promise.allSettled(loadPromises);
+		if (!loadOnlyTheme) {
+			handlerHistoryPending = true;
+			recordHandlerHistory();
+		}
 
 		acode[onPluginsLoadCompleteCallback]();
 		return results.filter(Boolean).length;
@@ -155,6 +163,12 @@ export async function loadPluginWithTimeout(pluginId, justInstalled = false) {
 	} catch (error) {
 		if (error instanceof PluginLoadTimeoutError) {
 			markPluginTimedOut(pluginId, pluginState);
+			SLOW_PLUGIN_LOADS.add(pluginId);
+			const finished = () => {
+				SLOW_PLUGIN_LOADS.delete(pluginId);
+				recordHandlerHistory();
+			};
+			pluginLoadPromise.then(finished, finished);
 			return false;
 		}
 
@@ -186,6 +200,18 @@ async function markPluginBroken(pluginId, error) {
 
 	AUTO_DISABLED_PLUGINS.add(pluginId);
 	await updatePluginDisabled(pluginId, true);
+}
+
+/**
+ * Records which extensions plugins handle once the initial load is done and
+ * no timed-out plugin is still loading, since it may register a handler late.
+ * A plugin that never finishes leaves the history unset, so shared files keep
+ * waiting for plugins as before.
+ */
+function recordHandlerHistory() {
+	if (!handlerHistoryPending || SLOW_PLUGIN_LOADS.size) return;
+	handlerHistoryPending = false;
+	fileTypeHandler.markHandledExtensionsKnown();
 }
 
 function markPluginTimedOut(pluginId, pluginState) {

@@ -1,7 +1,8 @@
 import { expect, it, vi } from "vitest";
+import platform from "../../src/lib/platform";
 import { loadSourceModule } from "../helpers/loadSourceModule";
 
-function setup(files) {
+function setup(files, capabilities = platform) {
 	const manager = {
 		files,
 		activeFile: files[0],
@@ -16,6 +17,7 @@ function setup(files) {
 			"@codemirror/commands",
 			"cm/editorReadOnly",
 			"components/sidebar",
+			"components/terminal/loader",
 			"dialogs/prompt",
 			"handlers/quickTools",
 			"lib/recents",
@@ -27,7 +29,7 @@ function setup(files) {
 			"./lazyImports",
 			"./openFile",
 			"./openFolder",
-			"./run",
+			"./runLazily",
 			"./settings",
 			"./showFileInfo",
 		].map((id) => [id, {}]),
@@ -35,6 +37,7 @@ function setup(files) {
 	const module = loadSourceModule(
 		"src/lib/commands.js",
 		{
+			"./platform": capabilities,
 			...dependencies,
 			"dialogs/confirm": async () => true,
 			"dialogs/select": async () => "save",
@@ -287,4 +290,18 @@ it("saves remote files one at a time after local files and reports the result", 
 	local[0].isUnsaved = true;
 	expect(await f.default["save-all-changes"]()).toBe(false);
 	expect(f.toast).toHaveBeenLastCalledWith("Files not saved: 1");
+});
+
+it.each([
+	false,
+	true,
+])("exposes Android file commands only when supported: %s", (androidIntents) => {
+	const commands = setup([], { ...platform, androidIntents }).default;
+	for (const action of ["edit-with", "pin-file-shortcut"]) {
+		expect(typeof commands[action]).toBe(
+			androidIntents ? "function" : "undefined",
+		);
+	}
+	expect(commands.share).toBeTypeOf("function");
+	expect(commands["open-with"]).toBeTypeOf("function");
 });

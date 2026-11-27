@@ -10,22 +10,24 @@ import config from "./config";
 
 export { BANNER_SUPPRESSION_REASON };
 
-export let adUnitIdBanner = "ca-app-pub-5911839694379275/9157899592"; // Production
-export let adUnitIdInterstitial = "ca-app-pub-5911839694379275/9570937608"; // Production
-export let adUnitIdRewarded = "ca-app-pub-5911839694379275/1633667633"; // Production
+export const adUnitIdBanner = ADMOB_BANNER_ID;
+export const adUnitIdInterstitial = ADMOB_INTERSTITIAL_ID;
+export const adUnitIdRewarded = ADMOB_REWARDED_ID;
 export let initialized = false;
 
-/** @type {import("plugins/admob/src/www").BannerAd} */
+/** @type {import("native/admob").BannerAd} */
 export let bannerAd = null;
-/** @type {import("plugins/admob/src/www").InterstitialAd} */
+/** @type {import("native/admob").InterstitialAd} */
 export let interstitialAd = null;
 let consentCoordinator = null;
+let nextAutomaticRetry = 0;
 
 export default async function startAd() {
 	if (!canUseAdmob()) {
 		if (
 			!config.HAS_PRO &&
 			typeof admob !== "undefined" &&
+			IS_ANDROID &&
 			window.ANDROID_SDK_INT < 29
 		) {
 			console.warn("AdMob not supported on this Android version, skipping ads");
@@ -73,30 +75,40 @@ function canUseAdmob() {
 	return (
 		!config.HAS_PRO &&
 		typeof admob !== "undefined" &&
-		window.ANDROID_SDK_INT >= 29
+		(IS_IOS || window.ANDROID_SDK_INT >= 29)
 	);
 }
 
 function getConsentCoordinator() {
-	consentCoordinator ??= new AdConsentCoordinator({
-		privacy: admob.privacy,
-		initializeAds,
-		onError: (error) =>
-			console.warn("Unable to refresh AdMob consent information:", error),
-	});
+	if (!consentCoordinator) {
+		consentCoordinator = new AdConsentCoordinator({
+			privacy: admob.privacy,
+			initializeAds,
+			onError: (error) =>
+				console.warn("Unable to refresh AdMob consent information:", error),
+		});
+		document.addEventListener("resume", retryAdStartup);
+		window.addEventListener("online", retryAdStartup);
+	}
 	return consentCoordinator;
+}
+
+function retryAdStartup() {
+	if (
+		initialized ||
+		!canUseAdmob() ||
+		document.hidden ||
+		navigator.onLine === false ||
+		getPrivacyState().consentStatus === "required" ||
+		Date.now() < nextAutomaticRetry
+	)
+		return;
+	nextAutomaticRetry = Date.now() + 30_000;
+	void startAd();
 }
 
 async function initializeAds() {
 	if (initialized) return;
-
-	if (BuildInfo.buildType === "debug") {
-		console.info("!!! Using test ads");
-		adUnitIdBanner = "ca-app-pub-3940256099942544/6300978111";
-		adUnitIdInterstitial = "ca-app-pub-3940256099942544/1033173712";
-		adUnitIdRewarded = "ca-app-pub-3940256099942544/5224354917";
-	}
-
 	await admob.start();
 
 	const currentHour = new Date().getHours();

@@ -29,6 +29,11 @@ import TerminalThemeManager from "./terminalThemeManager";
 import TerminalTouchScrolling from "./terminalTouchScrolling";
 import TerminalTouchSelection from "./terminalTouchSelection";
 
+// Backoff for re-attaching to a live PTY after the socket drops (e.g. app suspension).
+const RECONNECT_DELAYS = [0, 500, 1500, 3000];
+const DISCONNECTED_NOTICE =
+	"\r\n\x1b[2m[Disconnected from terminal session. Press any key to reconnect.]\x1b[0m\r\n";
+
 export default class TerminalComponent {
 	constructor(options = {}) {
 		// Get terminal settings from shared defaults
@@ -81,6 +86,9 @@ export default class TerminalComponent {
 		// Lifecycle flags so exit/disconnect/error don't race into zombie tabs
 		this.intentionalClose = false;
 		this.processExited = false;
+		this.reconnectAttempts = 0;
+		this.disconnected = false;
+		this.boundResumeConnection = null;
 
 		this.init();
 	}
@@ -148,6 +156,11 @@ export default class TerminalComponent {
 
 		// Handle custom OSC 7777 for acode CLI commands
 		this.setupOscHandler();
+
+		// Retry a dropped session on the next keypress or when the app returns
+		this.terminal.onData(() => this.resumeConnection());
+		this.boundResumeConnection = () => this.resumeConnection();
+		document.addEventListener("resume", this.boundResumeConnection);
 	}
 
 	/**
@@ -336,7 +349,7 @@ export default class TerminalComponent {
 	 */
 	setupTouchSelection() {
 		// Only initialize touch selection on mobile devices
-		if (window.cordova && this.container) {
+		if (window.Bridge && this.container) {
 			const terminalSettings = getTerminalSettings();
 			this.touchSelection = new TerminalTouchSelection(
 				this.terminal,
@@ -526,8 +539,8 @@ export default class TerminalComponent {
 	copySelection() {
 		if (!this.terminal?.hasSelection()) return;
 		const selectedStr = this.terminal?.getSelection();
-		if (selectedStr && cordova?.plugins?.clipboard) {
-			cordova.plugins.clipboard.copy(selectedStr);
+		if (selectedStr && Bridge?.clipboard) {
+			Bridge.clipboard.copy(selectedStr);
 		}
 	}
 
@@ -535,8 +548,8 @@ export default class TerminalComponent {
 	 * Paste text from clipboard
 	 */
 	pasteFromClipboard() {
-		if (cordova?.plugins?.clipboard) {
-			cordova.plugins.clipboard.paste((text) => {
+		if (Bridge?.clipboard) {
+			Bridge.clipboard.paste((text) => {
 				this.terminal?.paste(text);
 			});
 		}
@@ -740,7 +753,7 @@ export default class TerminalComponent {
 			};
 
 			const response = await new Promise((resolve, reject) => {
-				cordova.plugin.http.sendRequest(
+				Bridge.http.sendRequest(
 					`http://127.0.0.1:${this.options.port}/terminals`,
 					{
 						method: "POST",
@@ -776,7 +789,7 @@ export default class TerminalComponent {
 		for (let attempt = 0; attempt < maxAttempts; attempt++) {
 			try {
 				const response = await new Promise((resolve, reject) => {
-					cordova.plugin.http.sendRequest(
+					Bridge.http.sendRequest(
 						statusUrl,
 						{ method: "GET", responseType: "text" },
 						resolve,
@@ -808,8 +821,9 @@ export default class TerminalComponent {
 	/**
 	 * Connect to terminal session via WebSocket
 	 * @param {string} pid - Terminal PID
+	 * @param {boolean} reattach - Clear the screen before the server replays recent output
 	 */
-	async connectToSession(pid) {
+	async connectToSession(pid, reattach = false) {
 		if (!this.serverMode) {
 			throw new Error(
 				"Terminal is in local mode, cannot connect to server session",
@@ -856,6 +870,7 @@ export default class TerminalComponent {
 				hasOpened = true;
 				this.isConnected = true;
 				this.onConnect?.();
+				if (reattach) this.terminal.reset();
 
 				// Load attach addon after connection
 				this.attachAddon = new AttachAddon(websocket);
@@ -873,12 +888,14 @@ export default class TerminalComponent {
 			};
 
 			websocket.onmessage = (event) => {
+				// Any frame (the server replays scrollback first) proves the session is alive.
+				this.reconnectAttempts = 0;
 				// Lifecycle control (AXS exit JSON) is always a text frame.
 				// Never decode binary frames as exit — ordinary PTY output can
 				// contain the same bytes and must not close the session.
 				// AttachAddon still receives frames via addEventListener for I/O.
 				if (typeof event.data !== "string") return;
-				// Cordova websocket may flag binary payloads even when decoded as string
+				// Native websocket may flag binary payloads even when decoded as string
 				if (event.binary === true) return;
 
 				try {
@@ -905,12 +922,16 @@ export default class TerminalComponent {
 					return;
 				}
 
-				this.onDisconnect?.({
-					intentional: this.intentionalClose,
-					processExited: this.processExited,
-					code: event?.code,
-					reason: event?.reason,
-				});
+				if (this.intentionalClose || this.processExited) {
+					this.onDisconnect?.({
+						intentional: this.intentionalClose,
+						processExited: this.processExited,
+						code: event?.code,
+						reason: event?.reason,
+					});
+					return;
+				}
+				void this.reconnectToSession();
 			};
 
 			websocket.onerror = (error) => {
@@ -923,13 +944,49 @@ export default class TerminalComponent {
 					return;
 				}
 
-				// Ignore teardown noise from intentional close / already-handled exit
+				// A close event always follows; onclose decides whether to reconnect.
 				if (this.intentionalClose || this.processExited) return;
-
 				console.error("WebSocket error:", error);
-				this.onError?.(error);
 			};
 		});
+	}
+
+	/**
+	 * Re-attach to the same PTY after an unexpected disconnect. When the backend
+	 * stays unreachable the tab is kept and marked disconnected: the shell may
+	 * still be alive, so only its exit or an explicit close ends the session.
+	 */
+	async reconnectToSession() {
+		if (this.reconnectAttempts >= RECONNECT_DELAYS.length) {
+			this.reconnectAttempts = 0;
+			this.disconnected = true;
+			this.terminal.write(DISCONNECTED_NOTICE);
+			return;
+		}
+		const delay = RECONNECT_DELAYS[this.reconnectAttempts++];
+		await new Promise((resolve) => setTimeout(resolve, delay));
+		if (this.intentionalClose || this.processExited) return;
+
+		try {
+			this.attachAddon?.dispose();
+			this.attachAddon = null;
+			await this.connectToSession(this.pid, true);
+			if (this.intentionalClose) this.websocket?.close();
+		} catch (error) {
+			console.error(`Failed to reconnect terminal ${this.pid}:`, error);
+			await this.reconnectToSession();
+		}
+	}
+
+	/**
+	 * Retry a disconnected session, e.g. on input or when the app returns to the foreground.
+	 */
+	resumeConnection() {
+		if (!this.disconnected || this.intentionalClose || this.processExited) {
+			return;
+		}
+		this.disconnected = false;
+		void this.reconnectToSession();
 	}
 
 	/**
@@ -1056,7 +1113,7 @@ export default class TerminalComponent {
 
 		try {
 			await new Promise((resolve, reject) => {
-				cordova.plugin.http.sendRequest(
+				Bridge.http.sendRequest(
 					`http://127.0.0.1:${this.options.port}/terminals/${this.pid}/resize`,
 					{
 						method: "POST",
@@ -1446,7 +1503,7 @@ export default class TerminalComponent {
 		if (this.pid && this.serverMode) {
 			try {
 				await new Promise((resolve, reject) => {
-					cordova.plugin.http.sendRequest(
+					Bridge.http.sendRequest(
 						`http://127.0.0.1:${this.options.port}/terminals/${this.pid}/terminate`,
 						{
 							method: "POST",
@@ -1468,6 +1525,11 @@ export default class TerminalComponent {
 	dispose() {
 		this.intentionalClose = true;
 		this.terminate();
+
+		if (this.boundResumeConnection) {
+			document.removeEventListener("resume", this.boundResumeConnection);
+			this.boundResumeConnection = null;
+		}
 
 		// Dispose touch selection
 		if (this.touchSelection) {

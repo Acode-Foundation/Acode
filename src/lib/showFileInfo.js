@@ -61,7 +61,7 @@ export default async function showFileInfo(url) {
 				const action = $target.getAttribute("action");
 
 				if (action === "copy") {
-					cordova.plugins.clipboard.copy($target.textContent);
+					Bridge.clipboard.copy($target.textContent);
 				}
 			}
 		});

@@ -13,6 +13,7 @@ import actionStack from "lib/actionStack";
 import auth, { loginEvents } from "lib/auth";
 import config from "lib/config";
 import { getIntlLocale, getLocaleDirection } from "lib/lang";
+import platform from "lib/platform";
 import settings from "lib/settings";
 import helpers from "utils/helpers";
 import Url from "utils/Url";
@@ -101,7 +102,8 @@ export default (props) => {
 			? JSON.parse(contributorsRaw)
 			: contributorsRaw;
 
-	const showPurchaseWarning = !helpers.shouldAllowExternalPurchase();
+	const showPurchaseWarning =
+		platform.pluginPurchases && !helpers.shouldAllowExternalPurchase();
 	const applyReviewStats = (nextStats) => {
 		reviewStats = nextStats;
 		rating = getRatingLabel(reviewStats.votesUp, reviewStats.votesDown);
@@ -355,14 +357,21 @@ async function Buttons(props) {
 		typeof minVersionCode === "number" &&
 		minVersionCode > BuildInfo.versionCode
 	) {
+		const message = strings[
+			platform.isIOS ? "plugin min version required" : "plugin min version"
+		]
+			.replace("{name}", name)
+			.replace("{v-code}", minVersionCode);
 		return (
 			<div className="error">
 				<span className="icon info"></span>
-				<a href={config.PLAY_STORE_URL} className="text">
-					{strings["plugin min version"]
-						.replace("{name}", name)
-						.replace("{v-code}", minVersionCode)}
-				</a>
+				{platform.isIOS ? (
+					<span className="text">{message}</span>
+				) : (
+					<a href={config.PLAY_STORE_URL} className="text">
+						{message}
+					</a>
+				)}
 			</div>
 		);
 	}
@@ -397,6 +406,10 @@ async function Buttons(props) {
 				{strings.uninstall}
 			</button>
 		);
+	}
+
+	if (isPaid && !purchased && !platform.pluginPurchases) {
+		return <span className="info">{strings["product not available"]}</span>;
 	}
 
 	const user = await auth.getLoggedInUser();
@@ -1250,10 +1263,15 @@ function MoreInfo({ purchased, price, refund }) {
 
 	return (
 		<small className="more-info-small">
-			<span>{strings.owned}</span> • <span>{price}</span> •{" "}
-			<span className="link" onclick={refund}>
-				{strings.refund}
-			</span>
+			<span>{strings.owned}</span> • <span>{price}</span>
+			{platform.pluginPurchases ? (
+				<>
+					{" • "}
+					<span className="link" onclick={refund}>
+						{strings.refund}
+					</span>
+				</>
+			) : null}
 		</small>
 	);
 }

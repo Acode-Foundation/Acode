@@ -1,11 +1,4 @@
-import {
-	defaultKeymap,
-	history,
-	historyKeymap,
-	isolateHistory,
-	redo,
-	undo,
-} from "@codemirror/commands";
+import { history, isolateHistory, redo, undo } from "@codemirror/commands";
 import { javascript } from "@codemirror/lang-javascript";
 import {
 	bracketMatching,
@@ -21,6 +14,7 @@ import { highlightSelectionMatches, searchKeymap } from "@codemirror/search";
 import { Compartment, EditorSelection, EditorState } from "@codemirror/state";
 import { EditorView, keymap, runScopeHandlers } from "@codemirror/view";
 import createBaseExtensions from "cm/baseExtensions";
+import { getCommandKeymapExtension } from "cm/commandRegistry";
 import {
 	createEditorReadOnlyExtension,
 	reconfigureEditorReadOnly,
@@ -80,7 +74,7 @@ export async function runCodeMirrorTests(writeOutput) {
 			doc,
 			extensions: [
 				...createBaseExtensions(baseExtensionOptions),
-				keymap.of([...defaultKeymap, ...historyKeymap]),
+				getCommandKeymapExtension(),
 				...extensions,
 			],
 		});
@@ -735,10 +729,10 @@ export async function runCodeMirrorTests(writeOutput) {
 			await withEditor(
 				test,
 				async (view) => {
-					const clipboard = cordova?.plugins?.clipboard;
+					const clipboard = Bridge?.clipboard;
 					test.assert(
 						typeof clipboard?.copy === "function",
-						"Cordova clipboard should be available",
+						"Native clipboard should be available",
 					);
 					const originalCopy = clipboard.copy;
 					let copied = "";
@@ -821,10 +815,10 @@ export async function runCodeMirrorTests(writeOutput) {
 			await withEditor(
 				test,
 				async (view) => {
-					const clipboard = cordova?.plugins?.clipboard;
+					const clipboard = Bridge?.clipboard;
 					test.assert(
 						typeof clipboard?.copy === "function",
-						"Cordova clipboard should be available",
+						"Native clipboard should be available",
 					);
 					const originalCopy = clipboard.copy;
 					let copied = "";
@@ -882,10 +876,10 @@ export async function runCodeMirrorTests(writeOutput) {
 			await withEditor(
 				test,
 				async (view) => {
-					const clipboard = cordova?.plugins?.clipboard;
+					const clipboard = Bridge?.clipboard;
 					test.assert(
 						typeof clipboard?.copy === "function",
-						"Cordova clipboard should be available",
+						"Native clipboard should be available",
 					);
 					const originalCopy = clipboard.copy;
 					const from = doc.indexOf("codemirror");
@@ -949,7 +943,7 @@ export async function runCodeMirrorTests(writeOutput) {
 			await withEditor(
 				test,
 				async (view) => {
-					const clipboard = cordova?.plugins?.clipboard;
+					const clipboard = Bridge?.clipboard;
 					const originalCopy = clipboard.copy;
 					let copied = "";
 

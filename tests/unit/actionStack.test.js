@@ -3,6 +3,7 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
 	confirm: vi.fn(),
 	exitApp: vi.fn(),
+	platform: { appExit: true },
 	settings: {
 		value: {
 			confirmOnExit: false,
@@ -18,6 +19,8 @@ vi.mock("dialogs/confirm", () => ({
 vi.mock("lib/settings", () => ({
 	default: mocks.settings,
 }));
+
+vi.mock("lib/platform", () => ({ default: mocks.platform }));
 
 // Keep this mock as a policy regression guard. If the exit flow starts importing
 // the ad helper again, the assertions below will catch the prohibited placement.
@@ -51,6 +54,7 @@ describe("actionStack app exit", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mocks.settings.value.confirmOnExit = false;
+		mocks.platform.appExit = true;
 		actionStack.onCloseApp = undefined;
 		actionStack.unfreeze();
 		globalThis.acode = { exitAppMessage: "Close Acode?" };
@@ -122,5 +126,35 @@ describe("actionStack app exit", () => {
 
 		expect(mocks.showInterstitialIfReady).not.toHaveBeenCalled();
 		expect(mocks.exitApp).toHaveBeenCalledOnce();
+	});
+
+	it.each([
+		false,
+		true,
+	])("does not start an exit flow on iOS (confirmation: %s)", async (confirmOnExit) => {
+		mocks.platform.appExit = false;
+		mocks.settings.value.confirmOnExit = confirmOnExit;
+		mocks.confirm.mockResolvedValue(true);
+		const onClose = vi.fn();
+		actionStack.onCloseApp = onClose;
+
+		await actionStack.pop();
+
+		expect(mocks.confirm).not.toHaveBeenCalled();
+		expect(onClose).not.toHaveBeenCalled();
+		expect(mocks.exitApp).not.toHaveBeenCalled();
+	});
+
+	it("still dismisses stacked pages on iOS", async () => {
+		mocks.platform.appExit = false;
+		const dismiss = vi.fn();
+		actionStack.push({ id: "ios-page", action: dismiss });
+
+		await actionStack.pop();
+		await actionStack.pop();
+
+		expect(dismiss).toHaveBeenCalledOnce();
+		expect(actionStack.length).toBe(0);
+		expect(mocks.exitApp).not.toHaveBeenCalled();
 	});
 });

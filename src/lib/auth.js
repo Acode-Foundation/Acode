@@ -55,11 +55,16 @@ class AuthService {
 			}
 			this.#loginCallbacks.clear();
 		});
+		document.addEventListener("pause", () => {
+			clearTimeout(this.#loginTimeout);
+		});
 		document.addEventListener("resume", () => {
 			clearTimeout(this.#loginTimeout);
+			if (!this.#loginCallbacks.size) return;
+			// Browser sign-in can take minutes; only bound the handoff back to Acode.
 			this.#loginTimeout = setTimeout(() => {
 				for (const callback of this.#loginCallbacks) {
-					callback.reject("Login timed out");
+					callback.reject(new Error("Sign-in timed out. Please try again."));
 				}
 
 				this.#loginCallbacks.clear();
@@ -68,11 +73,11 @@ class AuthService {
 	}
 
 	/**
-	 * Helper to wrap cordova.exec in a Promise
+	 * Helper to wrap Bridge.exec in a Promise
 	 */
 	#exec(action, args = []) {
 		return new Promise((resolve, reject) => {
-			cordova.exec(resolve, reject, "Authenticator", action, args);
+			Bridge.exec(resolve, reject, "Authenticator", action, args);
 		});
 	}
 
@@ -100,6 +105,11 @@ class AuthService {
 		}
 	}
 
+	async openAccount() {
+		await this.#exec("openAccount", [{ baseUrl: config.BASE_URL }]);
+		return this.getLoggedInUser(true).catch(() => undefined);
+	}
+
 	/**
 	 * @param {boolean} forceFetch
 	 * @returns {Promise<User>}
@@ -108,7 +118,9 @@ class AuthService {
 		if (loggedInUser && !forceFetch) return loggedInUser;
 
 		try {
-			const res = await fetch(`${config.API_BASE}/login`);
+			const res = await fetch(`${config.API_BASE}/login`, {
+				cache: "no-store",
+			});
 
 			if (res.ok) {
 				loggedInUser = await res.json();
@@ -119,13 +131,15 @@ class AuthService {
 			}
 
 			if (res.status === 401) {
+				loggedInUser = null;
+				clearTimeout(cacheTimeout);
 				localStorage.removeItem(CACHE_USER_KEY);
 				return null;
 			}
 
 			throw new Error("Unable to fetch user Info");
 		} catch (error) {
-			if (CACHE_USER_KEY in localStorage) {
+			if (!forceFetch && CACHE_USER_KEY in localStorage) {
 				try {
 					return JSON.parse(localStorage.getItem(CACHE_USER_KEY));
 				} catch {}
@@ -139,6 +153,7 @@ class AuthService {
 		return new Promise((resolve, reject) => {
 			const callback = { resolve, reject };
 			this.#loginCallbacks.add(callback);
+			if (this.#loginCallbacks.size > 1) return;
 			this.#exec("login", [
 				{
 					baseUrl: config.BASE_URL,
@@ -146,12 +161,22 @@ class AuthService {
 				},
 			])
 				.then(() => {
+					if (!this.#loginCallbacks.has(callback)) return;
+					loggedInUser = null;
+					clearTimeout(cacheTimeout);
+					localStorage.removeItem(CACHE_USER_KEY);
 					loginEvents.emit();
 				})
 				.catch((err) => {
+					if (!this.#loginCallbacks.has(callback)) return;
 					console.error("Native login error", err);
-					this.#loginCallbacks.delete(callback);
-					reject("Failed to login");
+					clearTimeout(this.#loginTimeout);
+					const error =
+						err instanceof Error
+							? err
+							: new Error(String(err || "Sign-in failed. Please try again."));
+					for (const pending of this.#loginCallbacks) pending.reject(error);
+					this.#loginCallbacks.clear();
 				});
 		});
 	}

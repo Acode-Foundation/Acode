@@ -10,7 +10,7 @@ it.skipIf(!hasJava)(
 	() => {
 		const source = readFileSync(
 			new URL(
-				"../../src/plugins/sdcard/src/android/WorkspaceIndex.java",
+				"../../platforms/android/app/src/main/java/com/foxdebug/acode/sdcard/WorkspaceIndex.java",
 				import.meta.url,
 			),
 			"utf8",
@@ -46,15 +46,15 @@ class SearchCheck {
   int length() { return size(); }
   JSONArray put(Object value) { add(value); return this; }
  }
- static class CallbackContext { java.util.List<JSONObject> events = new java.util.ArrayList<>(); }
+ static class Callback { java.util.List<JSONObject> events = new java.util.ArrayList<>(); }
  JSONObject baseEvent(String id, String type) { return new JSONObject().put("type", type); }
- void send(CallbackContext callback, JSONObject event, boolean keep) { callback.events.add(event); }
+ void send(Callback callback, JSONObject event, boolean keep) { callback.events.add(event); }
  ${matching}
  ${positions}
  ${helpers}
  public static void main(String[] args) throws Exception {
   SearchCheck test = new SearchCheck();
-  CallbackContext callback = new CallbackContext();
+  Callback callback = new Callback();
   test.searchInContent(new JSONObject(), "x ".repeat(6000), Pattern.compile("x"), new Job(), callback, false);
   int count = 0;
   for (JSONObject event : callback.events) {

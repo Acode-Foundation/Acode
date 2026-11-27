@@ -1,4 +1,4 @@
-import nativeBridge from "../plugins/webview/www/webview";
+import nativeBridge from "../native/webview";
 
 /**
  * Event names emitted by a WebView instance.

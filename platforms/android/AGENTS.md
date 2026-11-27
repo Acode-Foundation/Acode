@@ -1,0 +1,4 @@
+- Always use kotlin for writing new code
+- Avoid java
+- Always add keep rules in proguard file for add @Keep annotation if a file must be preserved
+- always write idiomatic android/kotlin code never take shortcuts

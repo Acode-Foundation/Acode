@@ -1,4 +1,3 @@
-import type { Language } from "@codemirror/language";
 import type {
 	LSPClient,
 	LSPClientConfig,
@@ -7,6 +6,7 @@ import type {
 	Workspace,
 	WorkspaceFile,
 } from "@acode.app/lsp-client";
+import type { Language } from "@codemirror/language";
 import type { ChangeSet, Extension, MapMode, Text } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 

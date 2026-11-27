@@ -1,3 +1,0 @@
-- GoldRaccoon is under [original author's license](https://github.com/albertodebortoli/GoldRaccoon/blob/master/LICENSE.markdown)
-- ftp4j is under [LGPL](http://opensource.org/licenses/LGPL-2.1)
-- All other codes (writen by me) are under [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0)

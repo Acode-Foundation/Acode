@@ -18,16 +18,17 @@ import actions from "handlers/quickTools";
 import { openTabContextMenuOnRelease } from "handlers/tabContextMenu";
 import tag from "html-tag-js";
 import quickToolsAdapters from "lib/quickToolsAdapter";
-import mimeTypes from "mime-types";
 import { applyHighlightStyles } from "utils/codeHighlight";
+import haptic from "utils/haptic";
 import helpers from "utils/helpers";
+import loadMimeTypes from "utils/mimeTypes";
 import Path from "utils/Path";
 import { readRemoteFilePreview } from "utils/remoteFilePreview";
 import Url from "utils/Url";
 import config from "./config";
 import { isInitialPluginLoadComplete } from "./loadPlugins";
 import openFolder from "./openFolder";
-import run from "./run";
+import runLazily from "./runLazily";
 import saveFile from "./saveFile";
 import appSettings from "./settings";
 
@@ -750,7 +751,7 @@ export default class EditorFile {
 				// the long press / right click ends.
 				this.#tab.oncontextmenu = (event) => {
 					if (appSettings.value.vibrateOnTap) {
-						navigator.vibrate(config.VIBRATION_TIME);
+						haptic(config.VIBRATION_TIME);
 					}
 					openTabContextMenuOnRelease(this, event);
 				};
@@ -1788,7 +1789,10 @@ export default class EditorFile {
 	async #fileAction(action, mimeType) {
 		try {
 			const uri = await this.#getShareableUri();
-			if (!mimeType) mimeType = mimeTypes.lookup(this.name) || "text/plain";
+			if (!mimeType) {
+				const mimeTypes = await loadMimeTypes();
+				mimeType = mimeTypes.lookup(this.name) || "text/plain";
+			}
 			system.fileAction(
 				uri,
 				this.filename,
@@ -2028,7 +2032,7 @@ export default class EditorFile {
 		const event = createFileEvent(this);
 		this.#emit("run", event);
 		if (event.defaultPrevented) return;
-		run(false, appSettings.value.previewMode, file);
+		void runLazily(false, appSettings.value.previewMode, file);
 	}
 
 	#updateTab() {

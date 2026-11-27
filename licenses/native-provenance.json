@@ -1,0 +1,107 @@
+[
+  {
+    "module": "admob",
+    "id": "admob-plus-cordova",
+    "version": "2.0.0-alpha.19"
+  },
+  {
+    "module": "auth",
+    "id": "com.foxdebug.acode.rk.auth",
+    "version": "1.0.0"
+  },
+  {
+    "module": "browser",
+    "id": "cordova-plugin-browser",
+    "version": "1.0.0"
+  },
+  {
+    "module": "clipboard",
+    "id": "cordova-clipboard",
+    "version": "1.3.0"
+  },
+  {
+    "module": "cordova-plugin-advanced-http",
+    "id": "cordova-plugin-advanced-http",
+    "version": "3.3.1"
+  },
+  {
+    "module": "cordova-plugin-buildinfo",
+    "id": "cordova-plugin-buildinfo",
+    "version": "4.0.0"
+  },
+  {
+    "module": "cordova-plugin-crashhandler",
+    "id": "cordova-plugin-crashhandler",
+    "version": "1.0.0"
+  },
+  {
+    "module": "custom-tabs",
+    "id": "com.foxdebug.acode.rk.customtabs",
+    "version": "1.0.0"
+  },
+  {
+    "module": "device",
+    "id": "cordova-plugin-device",
+    "version": "2.1.0"
+  },
+  {
+    "module": "file",
+    "id": "cordova-plugin-file",
+    "version": "8.1.3"
+  },
+  {
+    "module": "ftp",
+    "id": "cordova-plugin-ftp",
+    "version": "1.1.1"
+  },
+  {
+    "module": "iap",
+    "id": "cordova-plugin-iap",
+    "version": "0.0.1"
+  },
+  {
+    "module": "pluginContext",
+    "id": "com.foxdebug.acode.rk.plugin.plugincontext",
+    "version": "1.0.0"
+  },
+  {
+    "module": "proot",
+    "id": "com.foxdebug.acode.rk.exec.proot",
+    "version": "1.0.0"
+  },
+  {
+    "module": "sdcard",
+    "id": "cordova-plugin-sdcard",
+    "version": "0.0.1"
+  },
+  {
+    "module": "server",
+    "id": "cordova-plugin-server",
+    "version": "1.1.1"
+  },
+  {
+    "module": "sftp",
+    "id": "cordova-plugin-sftp",
+    "version": "1.1.1"
+  },
+  {
+    "module": "system",
+    "id": "cordova-plugin-system",
+    "version": "0.0.1"
+  },
+  {
+    "module": "terminal",
+    "id": "com.foxdebug.acode.rk.exec.terminal",
+    "version": "1.0.0"
+  },
+  {
+    "module": "websocket",
+    "id": "cordova-plugin-websocket",
+    "version": "0.0.1"
+  },
+  {
+    "module": "webview",
+    "id": "cordova-plugin-acode-webview",
+    "version": "1.0.0"
+  }
+]

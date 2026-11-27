@@ -11,6 +11,7 @@ import config from "lib/config";
 import customTab from "lib/customTab";
 import installPlugin from "lib/installPlugin";
 import InstallState from "lib/installState";
+import platform from "lib/platform";
 import settings from "lib/settings";
 import { interstitialAd } from "lib/startAd";
 import markdownIt from "markdown-it";
@@ -18,9 +19,9 @@ import anchor from "markdown-it-anchor";
 import markdownItFootnote from "markdown-it-footnote";
 import MarkdownItGitHubAlerts from "markdown-it-github-alerts";
 import markdownItTaskLists from "markdown-it-task-lists";
-import mimeTypes from "mime-types";
 import { highlightCodeBlock, initHighlighting } from "utils/codeHighlight";
 import helpers from "utils/helpers";
+import loadMimeTypes from "utils/mimeTypes";
 import Url from "utils/Url";
 import { isVersionGreater } from "utils/version";
 import view, { cleanups } from "./plugin.view.js";
@@ -117,15 +118,17 @@ export default async function PluginInclude(
 				}
 			}
 
-			const iconUrl = await helpers.toInternalUri(
-				Url.join(PLUGIN_DIR, id, installedPlugin.icon),
-			);
-			const iconData = await fsOperation(iconUrl).readFile();
-			const iconMimeType =
-				mimeTypes.lookup(installedPlugin.icon) || "image/png";
-			const icon = URL.createObjectURL(
-				new Blob([iconData], { type: iconMimeType }),
-			);
+			let icon;
+			if (installedPlugin.icon) {
+				const iconPath = Url.join(PLUGIN_DIR, id, installedPlugin.icon);
+				const iconData = await fsOperation(iconPath).readFile();
+				const mimeTypes = await loadMimeTypes();
+				const iconMimeType =
+					mimeTypes.lookup(installedPlugin.icon) || "image/png";
+				icon = URL.createObjectURL(
+					new Blob([iconData], { type: iconMimeType }),
+				);
+			}
 			plugin = {
 				id,
 				icon,
@@ -186,6 +189,7 @@ export default async function PluginInclude(
 					price = `${remotePlugin.currencySymbol ?? ""}${remotePlugin.price}`;
 
 					if (
+						platform.pluginPurchases &&
 						helpers.isIapAvailable() &&
 						!purchased &&
 						(await helpers.checkAPIStatus())
@@ -263,12 +267,14 @@ export default async function PluginInclude(
 			}
 			render();
 		} catch (err) {
+			console.log("Uninstall error", err);
 			window.log("error", err);
 			helpers.error(err);
 		}
 	}
 
 	async function buy(e) {
+		if (!platform.pluginPurchases) return;
 		const $button = e.target;
 		const oldText = $button.textContent;
 
@@ -315,7 +321,9 @@ export default async function PluginInclude(
 				return;
 			}
 
-			iap.setPurchaseUpdatedListener(...purchaseListener(onpurchase, onerror));
+			iap.setPurchaseUpdatedListener(
+				...purchaseListener(onpurchase, onerror, product.productId),
+			);
 			$button.textContent = strings["loading..."];
 			await helpers.promisify(iap.purchase, product.productId);
 
@@ -351,6 +359,7 @@ export default async function PluginInclude(
 	}
 
 	async function refund(e) {
+		if (!platform.pluginPurchases) return;
 		const $button = e.target;
 		const oldText = $button.textContent;
 
@@ -541,7 +550,7 @@ export default async function PluginInclude(
 			copyButton.addEventListener("click", async () => {
 				const code = pre.querySelector("code")?.textContent || pre.textContent;
 				try {
-					cordova.plugins.clipboard.copy(code);
+					Bridge.clipboard.copy(code);
 					copyButton.textContent = "Copied!";
 					setTimeout(() => {
 						copyButton.textContent = "Copy";

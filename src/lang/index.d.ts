@@ -253,6 +253,9 @@ declare type LangStrings = {
 	"download acode pro": string;
 	"loading plugins": string;
 	faqs: string;
+	"faqs load failed": string;
+	"faqs empty": string;
+	retry: string;
 	feedback: string;
 	header: string;
 	sidebar: string;
@@ -428,6 +431,7 @@ declare type LangStrings = {
 	"change encoding": string;
 	"reopen file": string;
 	"plugin min version": string;
+	"plugin min version required": string;
 	"color preview": string;
 	confirm: string;
 	problems: string;
@@ -551,7 +555,6 @@ declare type LangStrings = {
 	"save file before home shortcut": string;
 	terminal_required_message_for_lsp: string;
 	"shift click selection": string;
-	"earn ad-free time": string;
 	"indent guides": string;
 	"language servers": string;
 	"lint gutter": string;
@@ -747,7 +750,6 @@ declare type LangStrings = {
 	"settings-info-lsp-uninstall-server": string;
 	"settings-info-lsp-update-server": string;
 	"settings-info-lsp-view-init-options": string;
-	"settings-info-main-ad-rewards": string;
 	"settings-info-main-app-settings": string;
 	"settings-info-main-backup-restore": string;
 	"settings-info-main-changelog": string;
@@ -799,6 +801,7 @@ declare type LangStrings = {
 	"login-to-view": string;
 	"iap-plugin-purchase-warning": string;
 	"iap-pro-purchase-warning": string;
+	"iap-pro-purchase-warning-ios": string;
 	"confirm-login": string;
 	"terminal:failsafe": string;
 	"terminal:failsafe-info": string;

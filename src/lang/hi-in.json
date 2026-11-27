@@ -401,6 +401,7 @@
 	"change encoding": "'{file}' को '{encoding}' एन्कोडिंग के साथ फिर से खोलें? इससे फाइल में किए गए बिना सेव किए बदलाव खो जाएंगे। क्या आप फिर से खोलना चाहते हैं?",
 	"reopen file": "क्या आप वाकई '{file}' को फिर से खोलना चाहते हैं? बिना सेव किए गए बदलाव खो जाएंगे।",
 	"plugin min version": "{name} केवल Acode - {v-code} और उससे ऊपर के वर्जन में उपलब्ध है। अपडेट करने के लिए यहां क्लिक करें।",
+	"plugin min version required": "{name} requires Acode build {v-code} or later.",
 	"color preview": "रंग पूर्वावलोकन",
 	"confirm": "पुष्टि करें",
 	"problems": "समस्याएं",
@@ -518,7 +519,6 @@
 	"save file before home shortcut": "फ़ाइल को होम स्क्रीन पर जोड़ने से पहले उसे सेव करें।",
 	"terminal_required_message_for_lsp": "टर्मिनल इंस्टॉल नहीं है। LSP सर्वर उपयोग करने के लिए पहले टर्मिनल इंस्टॉल करें।",
 	"shift click selection": "शिफ्ट + टैप/क्लिक सिलेक्शन",
-	"earn ad-free time": "ऐड-फ्री समय प्राप्त करें",
 	"indent guides": "इंडेंट गाइड्स",
 	"language servers": "लैंग्वेज सर्वर्स",
 	"lint gutter": "लिंट गटर दिखाएँ",
@@ -688,7 +688,6 @@
 	"settings-info-lsp-uninstall-server": "Remove installed packages or binaries for this server.",
 	"settings-info-lsp-update-server": "Update this language server if an update flow is available.",
 	"settings-info-lsp-view-init-options": "View the effective initialization options as JSON.",
-	"settings-info-main-ad-rewards": "Watch ads to unlock temporary ad-free access.",
 	"settings-info-main-app-settings": "Language, app behavior, and quick access tools.",
 	"settings-info-main-backup-restore": "Export settings to a backup or restore them later.",
 	"settings-info-main-changelog": "See recent updates and release notes.",
@@ -755,6 +754,7 @@
 	"settings-info-editor-show-share-button": "सेलेक्शन मेनू में शेयर बटन दिखाएं।",
 	"iap-plugin-purchase-warning": "खरीदे गए प्लगइन आपके Acode खाते से सिंक नहीं होते हैं। अपनी खरीदारी पुनर्स्थापित करने के लिए Play Store में उसी Google खाते का उपयोग करें।",
 	"iap-pro-purchase-warning": "यह खरीदारी आपके Acode खाते से सिंक नहीं होगी। अपनी खरीदारी पुनर्स्थापित करने के लिए Play Store में उसी Google खाते का उपयोग करें।",
+	"iap-pro-purchase-warning-ios": "This purchase will not be synced to your Acode account. Use Restore purchases with the same Apple Account to restore it.",
 	"confirm-login": "आप Acode में साइन इन नहीं हैं, अभी साइन इन करें?",
 	"local word completion": "Local word completion",
 	"language package completion": "Language package completion",
@@ -915,5 +915,8 @@
 	"files saved count": "Files saved: {count}",
 	"files not saved count": "Files not saved: {count}",
 	"use native index": "Use native index",
-	"use native index hint": "Search local folders faster using the native file index."
+	"use native index hint": "Search local folders faster using the native file index.",
+	"faqs load failed": "Unable to load FAQs. Please try again.",
+	"faqs empty": "No FAQs are available yet.",
+	"retry": "Retry"
 }

@@ -16,7 +16,7 @@ concurrency:
 jobs:
   build:
     if: ${{ github.repository_owner == 'Acode-Foundation' }}
-    uses: Acode-Foundation/acode/.github/workflows/nightly-build.yml@main
+    uses: ./.github/workflows/nightly-build.yml
     permissions:
       contents: read
       pull-requests: read
@@ -152,7 +152,7 @@ jobs:
         id: notes
         continue-on-error: true
         run: |
-          RELEASE_NOTES="$(node utils/scripts/generate-release-notes.js \
+          RELEASE_NOTES="$(node dev/scripts/generate-release-notes.js \
             ${{ github.repository_owner }} Acode ${{ github.sha }} \
             --format md --from-tag ${{ steps.prev.outputs.tag_commit }} --important-only --quiet --changelog-only || true)"
           {

@@ -401,6 +401,7 @@
 	"change encoding": "Biztosan újranyitja a(z) „{file}” fájlt „{encoding}” kódolással? Ez a művelet a fájlban végrehajtott, el nem mentett módosítások elvesztését eredményezi. Biztosan folytatja az újranyitást?",
 	"reopen file": "Biztosan újranyitja a(z) „{file}” fájlt? Minden el nem mentett módosítás elvész.",
 	"plugin min version": "A(z) „{name}” nevű bővítmény csak az Acode {v-code} verziójától érhető el. Koppintson ide a frissítéshez.",
+	"plugin min version required": "{name} requires Acode build {v-code} or later.",
 	"color preview": "Szín előnézete",
 	"confirm": "Megerősítés",
 	"problems": "Problémák",
@@ -518,7 +519,6 @@
 	"save file before home shortcut": "A kezdőképernyőhöz való hozzáadás előtt mentse el a fájlt.",
 	"terminal_required_message_for_lsp": "A Terminál nincs telepítve. Először telepítse a Terminált, hogy használni tudja az LSP-kiszolgálókat.",
 	"shift click selection": "Shift + koppintás/kattintás a kiválasztáshoz",
-	"earn ad-free time": "Reklámmentesség szerzése egy kis időre",
 	"indent guides": "Behúzási segédvonalak",
 	"language servers": "Nyelvi kiszolgálók",
 	"lint gutter": "Szintaxisellenőrzési margó megjelenítése",
@@ -688,7 +688,6 @@
 	"settings-info-lsp-uninstall-server": "A kiszolgálóhoz tartozó telepített csomagok vagy binárisok eltávolítása.",
 	"settings-info-lsp-update-server": "Ezen nyelvi kiszolgáló frissítése, ha elérhető frissítési folyamat.",
 	"settings-info-lsp-view-init-options": "Érvényes előkészítési beállítások megtekintése JSON-formátumban.",
-	"settings-info-main-ad-rewards": "Reklámok megtekintése az ideiglenes reklámmentes hozzáférés feloldásához.",
 	"settings-info-main-app-settings": "Nyelv, alkalmazás viselkedése és gyorselérési eszközök.",
 	"settings-info-main-backup-restore": "Beállítások exportálása biztonsági mentésbe vagy azok későbbi visszaállítása.",
 	"settings-info-main-changelog": "Legutóbbi frissítések és kiadási megjegyzések megtekintése.",
@@ -755,6 +754,7 @@
 	"settings-info-editor-show-share-button": "Megjeleníti a megosztásgombot a kiválasztásmenüben.",
 	"iap-plugin-purchase-warning": "A megvásárolt bővítmények nem szinkronizálódnak az Acode-fiókjával. Használja ugyanazt a Google-fiókot a Play Áruházban a vásárlás visszaállításához.",
 	"iap-pro-purchase-warning": "Ez a vásárlás nem lesz szinkronizálva az Acode-fiókjával. Használja ugyanazt a Google-fiókot a Play Áruházban a vásárlás visszaállításához.",
+	"iap-pro-purchase-warning-ios": "This purchase will not be synced to your Acode account. Use Restore purchases with the same Apple Account to restore it.",
 	"confirm-login": "Nincs bejelentkezve az Acode-ba, bejelentkezik most?",
 	"local word completion": "Szókiegészítés a helyi fájlból",
 	"language package completion": "Nyelvi csomag automatikus kiegészítése",
@@ -915,5 +915,8 @@
 	"files saved count": "{count} fájl mentve",
 	"files not saved count": "{count} fájl nem lett mentve",
 	"use native index": "Use native index",
-	"use native index hint": "Search local folders faster using the native file index."
+	"use native index hint": "Search local folders faster using the native file index.",
+	"faqs load failed": "Unable to load FAQs. Please try again.",
+	"faqs empty": "No FAQs are available yet.",
+	"retry": "Retry"
 }

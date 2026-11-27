@@ -1,6 +1,0 @@
-/esm/
-/lib/
-/www/*
-!/www/admob.js
-/scripts/*.js
-/.idea/

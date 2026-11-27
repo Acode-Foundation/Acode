@@ -26,6 +26,10 @@
 
     .welcome-header-text {
       h1 {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
         font-size: 20px;
         font-weight: 600;
         color: var(--primary-text-color);
@@ -187,6 +191,7 @@
 
       .welcome-header-text h1 {
         font-size: 18px;
+        justify-content: center;
       }
     }
 

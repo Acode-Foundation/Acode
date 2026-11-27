@@ -8,8 +8,10 @@ import helpers from "utils/helpers";
 import Url from "utils/Url";
 import { isVersionGreater } from "utils/version";
 import config from "./config";
+import formatDownloadProgress from "./downloadProgress";
 import InstallState from "./installState";
 import { loadPluginWithTimeout } from "./loadPlugins";
+import platform from "./platform";
 
 /** @type {import("dialogs/loader").Loader} */
 let loaderDialog;
@@ -76,15 +78,13 @@ export default async function installPlugin(
 			plugin = await fsOperation(pluginUrl).readFile(
 				undefined,
 				(loaded, total) => {
-					loaderDialog.setMessage(
-						`${strings.loading} ${((loaded / total) * 100).toFixed(2)}%`,
-					);
+					loaderDialog.setMessage(formatDownloadProgress(loaded, total));
 				},
 			);
 		} else {
-			// cordova http plugin for others
+			// Bridge http plugin for others
 			plugin = await new Promise((resolve, reject) => {
-				cordova.plugin.http.sendRequest(
+				Bridge.http.sendRequest(
 					pluginUrl,
 					{
 						method: "GET",
@@ -264,6 +264,7 @@ export default async function installPlugin(
 			deleteRedundantFiles(pluginDir, state);
 		}
 	} catch (err) {
+		console.error("plugin install error", err);
 		try {
 			// Clear the install state if installation fails
 			if (state) await state.clear();
@@ -447,13 +448,18 @@ async function resolveDep(manifest) {
 	let isPaid = false;
 
 	isPaid = manifest.price > 0;
-	[product] = await helpers.promisify(iap.getProducts, [manifest.sku]);
-	if (product) {
-		const purchase = await getPurchase(product.productId);
-		purchaseToken = purchase?.purchaseToken;
+	if (platform.pluginPurchases) {
+		[product] = await helpers.promisify(iap.getProducts, [manifest.sku]);
+		if (product) {
+			const purchase = await getPurchase(product.productId);
+			purchaseToken = purchase?.purchaseToken;
+		}
 	}
 
-	if (isPaid && !purchaseToken) {
+	const accountOwned = !platform.pluginPurchases && manifest.owned;
+	if (isPaid && !purchaseToken && !accountOwned) {
+		if (!platform.pluginPurchases)
+			throw new Error(strings["product not available"]);
 		if (!product) throw new Error("Product not found");
 		const apiStatus = await helpers.checkAPIStatus();
 
@@ -462,7 +468,9 @@ async function resolveDep(manifest) {
 			return true;
 		}
 
-		iap.setPurchaseUpdatedListener(...purchaseListener(onpurchase, onerror));
+		iap.setPurchaseUpdatedListener(
+			...purchaseListener(onpurchase, onerror, product.productId),
+		);
 		loaderDialog.setMessage(strings["loading..."]);
 		await helpers.promisify(iap.purchase, product.productId);
 

@@ -1,9 +1,12 @@
 import helpers from "utils/helpers";
 
-export default function purchaseListener(onpurchase, onerror) {
+export default function purchaseListener(onpurchase, onerror, productId) {
 	return [
 		(purchases) => {
-			const purchase = purchases?.[0];
+			const purchase = productId
+				? purchases?.find((item) => item.productIds?.includes(productId))
+				: purchases?.[0];
+			if (productId && purchases?.length && !purchase) return;
 			if (!purchase) {
 				onerror?.(strings.failed);
 				return;

@@ -82,7 +82,7 @@ jobs:
       secrets:
         KEYSTORE_CONTENT: ${{ secrets.KEYSTORE_CONTENT }}
         BUILD_JSON_CONTENT: ${{ secrets.BUILD_JSON_CONTENT }}
-      uses: Acode-Foundation/acode/.github/workflows/nightly-build.yml@main
+      uses: ./.github/workflows/nightly-build.yml
       with:
         is_PR: true
         PR_NUMBER: ${{ github.event.pull_request.number }}
