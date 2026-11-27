@@ -4,7 +4,7 @@
  * Provides document symbol information (functions, classes, variables, etc.) from language servers.
  */
 
-import { LSPPlugin } from "@codemirror/lsp-client";
+import { LSPPlugin } from "@acode.app/lsp-client";
 import type { EditorView } from "@codemirror/view";
 import { focusEditorIfEditable } from "cm/editorReadOnly";
 import type {

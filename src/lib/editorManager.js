@@ -85,7 +85,7 @@ import createTouchSelectionMenu, {
 import "cm/supportedModes";
 import { onProviderRegistered } from "fileSystem";
 import { autocompletion } from "@codemirror/autocomplete";
-import { serverCompletionSource } from "@codemirror/lsp-client";
+import { serverCompletionSource } from "@acode.app/lsp-client";
 import colorView from "cm/colorView";
 import {
 	getAllFolds,

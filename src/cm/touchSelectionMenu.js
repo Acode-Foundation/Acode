@@ -1,4 +1,4 @@
-import { LSPPlugin } from "@codemirror/lsp-client";
+import { LSPPlugin } from "@acode.app/lsp-client";
 import { EditorSelection } from "@codemirror/state";
 import {
 	focusEditorIfEditable,

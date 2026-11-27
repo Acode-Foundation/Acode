@@ -128,7 +128,7 @@ function hostCommands(manager, exec) {
 			"@codemirror/commands",
 			"@codemirror/language",
 			"@codemirror/lint",
-			"@codemirror/lsp-client",
+			"@acode.app/lsp-client",
 			"@codemirror/view",
 			"cm/editorReadOnly",
 			"cm/foldAwareLineCommands",

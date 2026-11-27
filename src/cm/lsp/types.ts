@@ -6,7 +6,7 @@ import type {
 	Transport,
 	Workspace,
 	WorkspaceFile,
-} from "@codemirror/lsp-client";
+} from "@acode.app/lsp-client";
 import type { ChangeSet, Extension, MapMode, Text } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 
@@ -666,7 +666,7 @@ export interface LSPClientWithWorkspace {
 }
 
 // Extend the LSPClient with Acode-specific properties
-declare module "@codemirror/lsp-client" {
+declare module "@acode.app/lsp-client" {
 	interface LSPClient {
 		__acodeLoggedInfo?: boolean;
 	}

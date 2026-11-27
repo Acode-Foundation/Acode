@@ -1,5 +1,5 @@
 import fsOperation from "fileSystem";
-import { LSPPlugin } from "@codemirror/lsp-client";
+import { LSPPlugin } from "@acode.app/lsp-client";
 import type { EditorView } from "@codemirror/view";
 import { getDocText } from "cm/editorUtils";
 import {

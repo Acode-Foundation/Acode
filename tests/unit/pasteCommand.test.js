@@ -15,7 +15,7 @@ function loadRegistry(text) {
 			"@codemirror/commands",
 			"@codemirror/language",
 			"@codemirror/lint",
-			"@codemirror/lsp-client",
+			"@acode.app/lsp-client",
 			"@codemirror/view",
 			"cm/editorReadOnly",
 			"cm/foldAwareLineCommands",

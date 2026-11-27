@@ -8,7 +8,7 @@ import {
 	serverCompletionSource,
 	serverDiagnostics,
 	Workspace,
-} from "@codemirror/lsp-client";
+} from "@acode.app/lsp-client";
 import { Compartment } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import {

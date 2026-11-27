@@ -64,7 +64,7 @@ import {
 import {
 	LSPPlugin,
 	formatDocument as lspFormatDocument,
-} from "@codemirror/lsp-client";
+} from "@acode.app/lsp-client";
 import { Compartment, EditorSelection } from "@codemirror/state";
 import { keymap } from "@codemirror/view";
 import { focusEditorIfEditable } from "cm/editorReadOnly";

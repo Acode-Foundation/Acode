@@ -5,8 +5,8 @@ import {
 	language as languageFacet,
 } from "@codemirror/language";
 import { languages } from "@codemirror/language-data";
-import type { LSPClient } from "@codemirror/lsp-client";
-import { LSPPlugin } from "@codemirror/lsp-client";
+import type { LSPClient } from "@acode.app/lsp-client";
+import { LSPPlugin } from "@acode.app/lsp-client";
 import {
 	type Extension,
 	Prec,

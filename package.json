@@ -126,6 +126,7 @@
   },
   "dependencies": {
     "@acode.app/canvas-view": "^0.0.11",
+    "@acode.app/lsp-client": "^6.2.5",
     "@codemirror/autocomplete": "^6.20.3",
     "@codemirror/commands": "^6.11.0",
     "@codemirror/lang-angular": "^0.1.4",
@@ -153,7 +154,6 @@
     "@codemirror/language-data": "^6.5.2",
     "@codemirror/legacy-modes": "^6.5.3",
     "@codemirror/lint": "^6.9.7",
-    "@codemirror/lsp-client": "file:codemirror-lsp-client",
     "@codemirror/search": "^6.7.1",
     "@codemirror/state": "^6.7.6",
     "@codemirror/theme-one-dark": "^6.1.3",
