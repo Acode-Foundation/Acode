@@ -109,11 +109,6 @@ jobs:
         run: $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager 'platforms;android-37.0' 'build-tools;36.0.0'
       - name: Select package
         run: npm pkg set androidPackageId=${{ matrix.package }}
-      - name: Cache Robolectric runtime jars
-        uses: actions/cache@v6
-        with:
-          path: ~/.m2/repository/org/robolectric
-          key: robolectric-${{ hashFiles('platforms/android/gradle/libs.versions.toml') }}
       - name: Native unit tests
         run: npm run test:android -- ${{ matrix.distribution }}
 
