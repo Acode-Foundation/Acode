@@ -1,5 +1,6 @@
 import "./style.scss";
 import fsOperation from "fileSystem";
+import sidebarApps from "sidebarApps";
 import collapsableList from "components/collapsableList";
 import Sidebar from "components/sidebar";
 import alert from "dialogs/alert";
@@ -284,10 +285,7 @@ function waitForSearchInput() {
 }
 
 export async function openWithSearch(query) {
-	Sidebar.show();
-	document
-		.querySelector('[data-action="sidebar-app"][data-id="extensions"]')
-		?.click();
+	sidebarApps.open("extensions");
 
 	const searchInput = await waitForSearchInput();
 	if (!searchInput) return;

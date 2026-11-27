@@ -711,7 +711,7 @@ function Sidebar({ container, toggler }) {
 	return $sidebar;
 }
 
-Sidebar.hide = () => $sidebar?.hide();
+Sidebar.hide = (hideIfTab = false) => $sidebar?.hide(hideIfTab);
 Sidebar.show = () => $sidebar?.show();
 Sidebar.toggle = () => $sidebar?.toggle();
 
