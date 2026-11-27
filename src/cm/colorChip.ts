@@ -1,5 +1,5 @@
 import type { CanvasWidgetSpec } from "@acode.app/canvas-view";
-import type { LSPClient } from "@codemirror/lsp-client";
+import type { LSPClient } from "@acode.app/lsp-client";
 import type { Range } from "@codemirror/state";
 import { Decoration, EditorView, WidgetType } from "@codemirror/view";
 import pickColor from "dialogs/color";

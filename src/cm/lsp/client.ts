@@ -7,7 +7,7 @@ export {
 	formatDocument,
 	LSPPlugin,
 	serverCompletionSource,
-} from "@codemirror/lsp-client";
+} from "@acode.app/lsp-client";
 export {
 	default as clientManager,
 	lspCompletionEnabled,

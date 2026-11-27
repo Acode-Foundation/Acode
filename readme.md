@@ -43,8 +43,6 @@ Acode/
 |- tests/                 - Unit tests (Vitest)
 |- docs/                  - Platform notes (iOS port, iOS advertising)
 |- dev/                   - CLI tools for building, string manipulation, and more
-|
-|- codemirror-lsp-client/ - Git submodule providing @codemirror/lsp-client (clone with --recurse-submodules)
 </pre>
 
 Rspack builds `src/` into `platforms/android/app/src/main/assets/bundle/` or
@@ -64,7 +62,7 @@ npm run lang update
 
 ## • Contributing & Building the Application
 
-Clone with `--recurse-submodules`, then install dependencies with `npm ci`. Build scripts live in `dev/`.
+Clone the repository, then install dependencies with `npm ci`. Build scripts live in `dev/`.
 
 - **Android:** set `package.json.androidPackageId` to `com.foxdebug.acode` (paid) or `com.foxdebug.acodefree` (free), then run `npm run build -- dev apk`. Paid builds exclude AdMob and its SDKs. Android builds use Java 26, the Gradle 9.8 RC3 wrapper and Android Gradle Plugin 9.4.1.
 - **iOS:** copy `platforms/ios/Config.xcconfig.example` to `platforms/ios/Config.xcconfig` on a new checkout and keep only local signing settings in it. Then run `npm run build -- ios dev` for a simulator build, or `npm run dev:ios -- --target=<simulator-UUID>` for live reload. iOS has one free app whose bundle ID comes from `package.json.appleAppId`, built with the `runner` scheme. Version, build number, display name and bundle ID are synced into the Xcode project from `package.json` by `dev/sync.js` on every build.

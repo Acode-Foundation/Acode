@@ -4,7 +4,6 @@ check-filename = true
 [files]
 extend-exclude = [
     "node_modules",
-    "codemirror-lsp-client",
     "*.yaml",
     ".vscode",
     "fastlane",

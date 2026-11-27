@@ -1,4 +1,4 @@
-import type { LSPClient, LSPClientExtension } from "@codemirror/lsp-client";
+import type { LSPClient, LSPClientExtension } from "@acode.app/lsp-client";
 import type { Extension, Range } from "@codemirror/state";
 import { MapMode, StateEffect, StateField } from "@codemirror/state";
 import {

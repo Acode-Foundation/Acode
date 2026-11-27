@@ -10,7 +10,7 @@ Thank you for your interest in contributing to Acode! This guide will help you g
 
 2. Clone and open the repository:
    ```bash
-   git clone --recurse-submodules https://github.com/Acode-Foundation/Acode.git
+   git clone https://github.com/Acode-Foundation/Acode.git
    code Acode
    ```
 
@@ -35,7 +35,7 @@ If your editor doesn't support DevContainers, you can use Docker directly:
 
 ```bash
 # Clone the repository
-git clone --recurse-submodules https://github.com/Acode-Foundation/Acode.git
+git clone https://github.com/Acode-Foundation/Acode.git
 cd Acode
 
 # Build the Docker image from our Dockerfile
@@ -116,7 +116,7 @@ selected platform's bundle; edit source files in `src/`, not generated files.
 
 ```bash
 # Clone the repository
-git clone --recurse-submodules https://github.com/Acode-Foundation/Acode.git
+git clone https://github.com/Acode-Foundation/Acode.git
 cd Acode
 
 # Install dependencies
@@ -127,9 +127,6 @@ npm run build -- dev apk
 ```
 
 The APK will be at: `platforms/android/app/build/outputs/apk/<edition>/debug/app-<edition>-debug.apk`
-
-> [!NOTE]
-> `@codemirror/lsp-client` comes from the `codemirror-lsp-client` git submodule and is installed as a local `file:` dependency, so initialize the submodule before running `npm ci` — see [Troubleshooting](#-troubleshooting).
 
 ## iOS development
 
@@ -405,18 +402,6 @@ Release signing still reads the ignored `build.json` and keystore. Rspack compil
 The familiar APK/AAB paths remain available under `platforms/android/app/build/outputs/apk/{debug,release}` and `outputs/bundle/release`.
 
 `node dev/storage_manager.mjs y` or `n` toggles all-files access in the tracked Android manifest for the next build. Build scripts read package identity without rewriting it or reinstalling plugins.
-
-## 🔧 Troubleshooting
-
-### Missing local dependency
-
-`@codemirror/lsp-client` comes from the `codemirror-lsp-client` git submodule.
-If dependency installation fails because it is missing, initialize it first:
-
-```bash
-git submodule update --init --recursive
-npm ci
-```
 
 ## 📝 Contribution Guidelines
 

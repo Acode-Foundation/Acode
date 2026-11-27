@@ -28,7 +28,7 @@
     }
   },
   "overrideCommand": true,
-  "postCreateCommand": "git submodule update --init --recursive && npm ci",
+  "postCreateCommand": "npm ci",
   "remoteUser": "root",
   "customizations": {
     "vscode": {

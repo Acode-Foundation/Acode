@@ -1,4 +1,4 @@
-import { LSPPlugin } from "@codemirror/lsp-client";
+import { LSPPlugin } from "@acode.app/lsp-client";
 import { EditorView } from "@codemirror/view";
 import { focusEditorIfEditable } from "cm/editorReadOnly";
 import toast from "components/toast";

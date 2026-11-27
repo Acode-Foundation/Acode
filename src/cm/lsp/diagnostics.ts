@@ -1,5 +1,5 @@
+import type { LSPClient } from "@acode.app/lsp-client";
 import { Diagnostic, linter, lintGutter } from "@codemirror/lint";
-import type { LSPClient } from "@codemirror/lsp-client";
 import type { Extension } from "@codemirror/state";
 import {
 	EditorState,

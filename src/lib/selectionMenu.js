@@ -33,7 +33,7 @@ const showLspActions = async () => {
 
 	try {
 		const lsp = await import("cm/lsp");
-		const { LSPPlugin } = await import("@codemirror/lsp-client");
+		const { LSPPlugin } = await import("@acode.app/lsp-client");
 		const hasCapability = (feature, capability) =>
 			LSPPlugin.getAll(editor, feature).some(
 				(plugin) => !!plugin.client.serverCapabilities?.[capability],

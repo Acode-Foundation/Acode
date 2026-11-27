@@ -1,14 +1,14 @@
-import { getIndentUnit, indentUnit } from "@codemirror/language";
 import type {
 	LSPClientExtension,
 	LSPPluginOptions,
-} from "@codemirror/lsp-client";
+} from "@acode.app/lsp-client";
 import {
 	LSPClient,
 	LSPPlugin,
 	serverCompletion,
 	serverDiagnostics,
-} from "@codemirror/lsp-client";
+} from "@acode.app/lsp-client";
+import { getIndentUnit, indentUnit } from "@codemirror/language";
 import { EditorState, Extension, Facet, MapMode } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import lspStatusBar from "components/lspStatusBar";

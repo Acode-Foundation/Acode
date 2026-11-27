@@ -1,5 +1,5 @@
-import type { WorkspaceFile } from "@codemirror/lsp-client";
-import { LSPPlugin, Workspace } from "@codemirror/lsp-client";
+import type { WorkspaceFile } from "@acode.app/lsp-client";
+import { LSPPlugin, Workspace } from "@acode.app/lsp-client";
 import type { Text, TransactionSpec } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import { getModeForPath } from "cm/modelist";

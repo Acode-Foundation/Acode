@@ -3,7 +3,7 @@
 	WebSocket bridge so the CodeMirror client can continue to speak WebSocket.
 */
 
-import type { Transport } from "@codemirror/lsp-client";
+import type { Transport } from "@acode.app/lsp-client";
 import { addLspLog } from "./logs";
 import type {
 	LspServerDefinition,
