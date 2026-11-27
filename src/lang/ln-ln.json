@@ -396,6 +396,7 @@
 	"change encoding": "Fungola lisusu '{file}' na encodage '{encoding}'? Likambo oyo ekobungisa mbongwana nyonso oyo ebombami nanu te. Olingi kokoba?",
 	"reopen file": "Oza na ntembe te ete olingi kofungola lisusu '{file}'? Mbongwana nyonso oyo ebombami nanu te ekobunga.",
 	"plugin min version": "{name} ezali kaka na Acode - {v-code} mpe ba versions ya likolo. Finá awa mpo na kosala mbongwana.",
+	"plugin min version required": "{name} requires Acode build {v-code} or later.",
 	"color preview": "Botali liboso ya langi",
 	"confirm": "Kondimisa",
 	"problems": "Mikakatano",
@@ -513,7 +514,6 @@
 	"save file before home shortcut": "Bomba fichier liboso ya kobakisa yango na écran d'accueil.",
 	"terminal_required_message_for_lsp": "Terminal ezali installed te. Install terminal liboso mpo na kosalela ba serveurs LSP.",
 	"shift click selection": "Poná na Shift + click",
-	"earn ad-free time": "Zwa ntango kozanga bapub",
 	"indent guides": "Ba guide ya kokɔtisa molɔngɔ",
 	"language servers": "Ba serveurs ya monoko",
 	"lint gutter": "Lakisa ba erreurs ya lint",
@@ -683,7 +683,6 @@
 	"settings-info-lsp-uninstall-server": "Longola ba paquets to ba fichiers exécutables oyo ebombami mpo na serveur oyo.",
 	"settings-info-lsp-update-server": "Kobongisa serveur oyo ya monoko soki lolenge ya kobongisa ezali.",
 	"settings-info-lsp-view-init-options": "Tala ba options ya kobanda oyo ezali kosala lokola JSON.",
-	"settings-info-main-ad-rewards": "Tala ba publicité mpo na kozwa accès sans publicité mpo na mwa tango.",
 	"settings-info-main-app-settings": "Monoko, ndenge application esalaka mpe ba outils ya accès rapide.",
 	"settings-info-main-backup-restore": "Bimisa ba paramɛtrɛ na backup to zongisa yango sima.",
 	"settings-info-main-changelog": "Tala ba mbongwana ya sika mpe ba notes ya version.",
@@ -746,6 +745,7 @@
 	"settings-info-editor-show-share-button": "Lakisa bouton ya partage na menu ya sélection.",
 	"iap-plugin-purchase-warning": "Ba plugins oyo osombi ebongisami te na compte na yo ya Acode. Salela compte Google moko na Play Store mpo na kozongisa bosombi na yo.",
 	"iap-pro-purchase-warning": "Bosombi oyo ekobongisama te na compte na yo ya Acode. Salela compte Google moko na Play Store mpo na kozongisa bosombi na yo.",
+	"iap-pro-purchase-warning-ios": "This purchase will not be synced to your Acode account. Use Restore purchases with the same Apple Account to restore it.",
 	"confirm-login": "Okoti nanu te na Acode, olingi kokota sikoyo?",
 	"local word completion": "Bobongisi ya maloba ya fichier",
 	"language package completion": "Bobongisi ya package ya lokota",
@@ -915,5 +915,8 @@
 	"files saved count": "Files saved: {count}",
 	"files not saved count": "Files not saved: {count}",
 	"use native index": "Use native index",
-	"use native index hint": "Search local folders faster using the native file index."
+	"use native index hint": "Search local folders faster using the native file index.",
+	"faqs load failed": "Unable to load FAQs. Please try again.",
+	"faqs empty": "No FAQs are available yet.",
+	"retry": "Retry"
 }

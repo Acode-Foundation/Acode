@@ -401,6 +401,7 @@
 	"change encoding": "確定要重新打開 ‘{file}’ 以使用 ‘{encoding}’ 編碼編輯？該操作將丟失該文件所有未保存的修改。繼續重新打開？",
 	"reopen file": "確定要重新打開 ‘{file}’？所有未保存的修改將會丟失。",
 	"plugin min version": "{name} 僅在 Acode - {v-code} 及以上版本有效。點擊以更新。",
+	"plugin min version required": "{name} requires Acode build {v-code} or later.",
 	"color preview": "顏色預覽",
 	"confirm": "確定",
 	"problems": "有問題",
@@ -518,7 +519,6 @@
 	"save file before home shortcut": "請先保存文件，再添加到主屏幕。",
 	"terminal_required_message_for_lsp": "未安裝終端。請先安裝終端以使用 LSP 服務器。",
 	"shift click selection": "Shift + 點擊選擇",
-	"earn ad-free time": "獲取免廣告時間",
 	"indent guides": "縮進指示線",
 	"language servers": "語言服務器",
 	"lint gutter": "顯示 Lint 標記欄",
@@ -688,7 +688,6 @@
 	"settings-info-lsp-uninstall-server": "移除此服務器的已安裝包或二進制文件。",
 	"settings-info-lsp-update-server": "如果可用，更新此語言服務器。",
 	"settings-info-lsp-view-init-options": "以 JSON 查看有效的初始化選項。",
-	"settings-info-main-ad-rewards": "觀看廣告以解鎖臨時免廣告。",
 	"settings-info-main-app-settings": "語言、應用行為和快捷工具。",
 	"settings-info-main-backup-restore": "導出或恢復設置備份。",
 	"settings-info-main-changelog": "查看最近更新和發布說明。",
@@ -755,6 +754,7 @@
 	"settings-info-editor-show-share-button": "在選取選單中顯示分享按鈕。",
 	"iap-plugin-purchase-warning": "購買的插件不會同步至您的 Acode 帳戶。請在 Play 商店使用相同的 Google 帳戶以恢復購買。",
 	"iap-pro-purchase-warning": "此購買不會同步至您的 Acode 帳戶。請在 Play 商店使用相同的 Google 帳戶以恢復購買。",
+	"iap-pro-purchase-warning-ios": "This purchase will not be synced to your Acode account. Use Restore purchases with the same Apple Account to restore it.",
 	"confirm-login": "您尚未登入 Acode，是否立即登入？",
 	"local word completion": "本地字詞自動補全",
 	"language package completion": "語言包自動補全",
@@ -915,5 +915,8 @@
 	"files saved count": "Files saved: {count}",
 	"files not saved count": "Files not saved: {count}",
 	"use native index": "Use native index",
-	"use native index hint": "Search local folders faster using the native file index."
+	"use native index hint": "Search local folders faster using the native file index.",
+	"faqs load failed": "Unable to load FAQs. Please try again.",
+	"faqs empty": "No FAQs are available yet.",
+	"retry": "Retry"
 }

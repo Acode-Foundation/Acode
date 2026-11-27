@@ -123,7 +123,11 @@ export function createQuickToolKeyEvent(
 	keyCode: number,
 	modifiers: QuickToolKeyModifiers = {},
 ): KeyboardEvent {
-	const key = keyNames[keyCode] || String.fromCharCode(keyCode);
+	const key =
+		keyNames[keyCode] ||
+		(keyCode >= 112 && keyCode <= 135
+			? `F${keyCode - 111}`
+			: String.fromCharCode(keyCode));
 	return createKeyboardEvent("keydown", {
 		type: "keydown",
 		key,

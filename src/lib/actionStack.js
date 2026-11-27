@@ -1,4 +1,5 @@
 import confirm from "dialogs/confirm";
+import platform from "lib/platform";
 import appSettings from "lib/settings";
 
 const stack = [];
@@ -75,6 +76,7 @@ export default {
 			fun.action();
 			return;
 		}
+		if (!platform.appExit) return;
 
 		if (appSettings.value.confirmOnExit) {
 			let closeMessage =

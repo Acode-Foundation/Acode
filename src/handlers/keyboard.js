@@ -1,3 +1,4 @@
+import platform from "lib/platform";
 import { setBannerKeyboardVisible } from "lib/startAd";
 import {
 	getSystemConfiguration,
@@ -109,7 +110,8 @@ document.addEventListener("deviceready", () => {
 	windowResize.on("resizeStart", async () => {
 		const { keyboardHeight, hardKeyboardHidden } =
 			await getSystemConfiguration();
-		const externalKeyboard = hardKeyboardHidden === HARDKEYBOARDHIDDEN_NO;
+		const externalKeyboard =
+			!platform.isIOS && hardKeyboardHidden === HARDKEYBOARDHIDDEN_NO;
 
 		if (currentWindowHeight > window.innerHeight) {
 			// height decreasing
@@ -137,15 +139,23 @@ document.addEventListener("deviceready", () => {
 			windowHeight = currentWindowHeight;
 		}
 
-		const { hardKeyboardHidden } = await getSystemConfiguration();
-		const externalKeyboard = hardKeyboardHidden === HARDKEYBOARDHIDDEN_NO;
+		const { hardKeyboardHidden, keyboardHeight } =
+			await getSystemConfiguration();
+		const externalKeyboard =
+			!platform.isIOS && hardKeyboardHidden === HARDKEYBOARDHIDDEN_NO;
+		if (platform.isIOS && keyboardHeight > MIN_KEYBOARD_HEIGHT) {
+			softKeyboardHeight = keyboardHeight;
+		}
 
 		if (externalKeyboard || !softKeyboardHeight) return;
 
-		const keyboardHiddenYes = windowHeight <= window.innerHeight;
+		const keyboardHiddenYes = platform.isIOS
+			? keyboardHeight <= MIN_KEYBOARD_HEIGHT
+			: windowHeight <= window.innerHeight;
 
 		if (keyboardHiddenYes) {
 			emit("keyboardHide");
+			if (platform.isIOS) softKeyboardHeight = 0;
 		} else {
 			emit("keyboardShow");
 		}

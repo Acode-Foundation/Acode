@@ -1,4 +1,4 @@
-import toast from "components/toast";
+import alert from "dialogs/alert";
 import confirm from "dialogs/confirm";
 import loader from "dialogs/loader";
 import purchaseListener from "handlers/purchase";
@@ -16,10 +16,11 @@ function enablePro() {
 	setBannerSuppressed(BANNER_SUPPRESSION_REASON.PRO, true);
 }
 
-/** Purchase Pro through Play billing. Resolves only after purchase confirmation. */
+/** Purchase Pro through native billing. Resolves only after purchase confirmation. */
 export default function removeAds({ signal } = {}) {
 	if (signal?.aborted) return Promise.reject(strings.canceled);
 	if (activePurchase) return activePurchase;
+	loader.create(strings["remove ads"], strings["loading..."]);
 	activePurchase = new Promise((resolve, reject) => {
 		let settled = false;
 		let launched = false;
@@ -46,7 +47,7 @@ export default function removeAds({ signal } = {}) {
 			} catch (error) {
 				console.warn("Unable to cache Pro purchase", error);
 			}
-			toast(strings["thank you :)"]);
+			alert(strings.success, strings["thank you :)"]);
 			resolve();
 		}
 		signal?.addEventListener("abort", cancel, { once: true });
@@ -61,7 +62,7 @@ export default function removeAds({ signal } = {}) {
 						);
 						if (!product) return fail(strings["no-product-info"]);
 						iap.setPurchaseUpdatedListener(
-							...purchaseListener(onpurchase, fail),
+							...purchaseListener(onpurchase, fail, product.productId),
 						);
 						launched = true;
 						iap.purchase(product.productId, () => {}, fail);
@@ -75,6 +76,7 @@ export default function removeAds({ signal } = {}) {
 			fail(error);
 		}
 	}).finally(() => {
+		loader.destroy();
 		activePurchase = null;
 	});
 	return activePurchase;
@@ -135,4 +137,29 @@ export function requestProPurchase({ signal } = {}) {
 		activeRequest = null;
 	});
 	return activeRequest;
+}
+
+export async function restorePurchases() {
+	const purchases = await new Promise((resolve, reject) =>
+		iap.restorePurchases(resolve, reject),
+	);
+	const pro = purchases.find(
+		(purchase) =>
+			purchase.purchaseState === iap.PURCHASE_STATE_PURCHASED &&
+			purchase.productIds.includes("acode_pro_new"),
+	);
+	if (pro) {
+		if (!pro.isAcknowledged) {
+			await new Promise((resolve, reject) =>
+				iap.acknowledgePurchase(pro.purchaseToken, resolve, reject),
+			);
+		}
+		enablePro();
+		try {
+			localStorage.setItem("acode_pro", "true");
+		} catch (error) {
+			console.warn("Unable to cache Pro purchase", error);
+		}
+	}
+	return purchases;
 }

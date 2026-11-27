@@ -1,5 +1,4 @@
 import type { LSPClient, LSPClientExtension } from "@codemirror/lsp-client";
-import { LSPPlugin } from "@codemirror/lsp-client";
 import type { Extension, Range } from "@codemirror/state";
 import { MapMode, StateEffect, StateField } from "@codemirror/state";
 import {
@@ -32,6 +31,11 @@ import {
 	lspColorToHex,
 	openColorPicker,
 } from "../colorChip";
+import {
+	getAllLspPlugins,
+	getLspPlugin,
+	getLspPluginForFeature,
+} from "./clientLoader";
 import { safeLspPositionToOffset } from "./positionUtils";
 import type { LSPPluginAPI } from "./types";
 
@@ -292,7 +296,7 @@ function createPlugin(config: DocumentColorsConfig) {
 					return;
 				}
 
-				const bindings = LSPPlugin.getAll(
+				const bindings = getAllLspPlugins(
 					this.view,
 					"documentColor",
 				) as readonly LSPPluginAPI[];
@@ -436,8 +440,8 @@ async function handleColorPick(
 ): Promise<void> {
 	const lsp = (
 		payload.lspClient
-			? LSPPlugin.get(view, payload.lspClient)
-			: LSPPlugin.getForFeature(view, "documentColor")
+			? getLspPlugin(view, payload.lspClient)
+			: getLspPluginForFeature(view, "documentColor")
 	) as LSPPluginAPI | null;
 	if (!lsp?.client.connected) return;
 
@@ -454,8 +458,8 @@ async function handleColorPick(
 
 	const lsp2 = (
 		payload.lspClient
-			? LSPPlugin.get(view, payload.lspClient)
-			: LSPPlugin.getForFeature(view, "documentColor")
+			? getLspPlugin(view, payload.lspClient)
+			: getLspPluginForFeature(view, "documentColor")
 	) as LSPPluginAPI | null;
 	if (!lsp2?.client.connected) return;
 

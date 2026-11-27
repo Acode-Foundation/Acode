@@ -20,6 +20,7 @@ function searchBar(
 ) {
 	let hideOnBlur = true;
 	let timeout = null;
+	let closed = false;
 	const $searchInput = Ref();
 	/**@type {HTMLDivElement} */
 	const $container = (
@@ -30,7 +31,12 @@ function searchBar(
 				placeholder={strings.search}
 				enterKeyHint="go"
 			/>
-			<span className="icon clearclose" onclick={hide}></span>
+			<button
+				type="button"
+				className="icon clearclose"
+				aria-label={strings.close}
+				onclick={hide}
+			/>
 		</div>
 	);
 
@@ -56,8 +62,15 @@ function searchBar(
 	});
 
 	function hide() {
+		if (closed) return;
+		closed = true;
+		clearTimeout(timeout);
 		actionStack.remove("searchbar");
-		if (typeof onhideCb === "function") onhideCb();
+		try {
+			if (typeof onhideCb === "function") onhideCb();
+		} catch (error) {
+			console.error("Search close callback failed:", error);
+		}
 
 		$list.content = children;
 		$container.classList.add("hide");
@@ -75,6 +88,7 @@ function searchBar(
 	 * @this {HTMLInputElement}
 	 */
 	async function searchNow() {
+		if (closed) return;
 		const val = $searchInput.value.toLowerCase();
 
 		if (!val) {
@@ -100,6 +114,7 @@ function searchBar(
 			result = filterList(val);
 		}
 
+		if (closed) return;
 		$list.textContent = "";
 		$list.append(...(cloneResults ? buildSearchContent(result, val) : result));
 	}

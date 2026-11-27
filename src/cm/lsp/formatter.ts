@@ -1,7 +1,7 @@
 import type { EditorView } from "@codemirror/view";
 import { getModes } from "cm/modelist";
 import toast from "components/toast";
-import lspClientManager from "./clientManager";
+import { loadLspClient } from "./clientLoader";
 import { supportsBuiltinFormatting } from "./formattingSupport";
 import serverRegistry from "./serverRegistry";
 import type { AcodeApi, FileMetadata } from "./types";
@@ -69,7 +69,8 @@ export function registerLspFormatter(acode: AcodeApi): void {
 				...metadata,
 				languageName: metadata.languageName || languageId,
 			};
-			const success = await lspClientManager.formatDocument(fullMetadata);
+			const { clientManager } = await loadLspClient();
+			const success = await clientManager.formatDocument(fullMetadata);
 			if (!success) {
 				toast("LSP formatter failed");
 			}

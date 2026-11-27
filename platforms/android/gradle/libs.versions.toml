@@ -1,0 +1,54 @@
+[versions]
+agp = "9.4.1"
+
+
+#needs more attention
+billing = "8.0.0"
+playServicesAds = "25.4.0"
+
+appcompat = "1.8.0"
+bouncycastle = "1.86"
+browser = "1.10.0"
+commonsCodec = "1.22.1"
+commonsIo = "2.22.0"
+commonsNet = "3.13.0"
+core = "1.19.1"
+coreGoogleShortcuts = "1.1.0"
+coreSplashscreen = "1.2.0"
+documentfile = "1.1.0"
+javaWebsocket = "1.6.0"
+junit = "4.13.2"
+maverick = "3.1.4"
+nanohttpd = "2.3.1"
+okhttp = "5.5.0"
+robolectric = "4.17"
+securityCrypto = "1.1.0"
+userMessagingPlatform = "4.0.0"
+webkit = "1.17.1"
+
+[libraries]
+androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
+androidx-browser = { module = "androidx.browser:browser", version.ref = "browser" }
+androidx-core = { module = "androidx.core:core", version.ref = "core" }
+androidx-core-google-shortcuts = { module = "androidx.core:core-google-shortcuts", version.ref = "coreGoogleShortcuts" }
+androidx-core-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "coreSplashscreen" }
+androidx-documentfile = { module = "androidx.documentfile:documentfile", version.ref = "documentfile" }
+androidx-security-crypto = { module = "androidx.security:security-crypto", version.ref = "securityCrypto" }
+androidx-webkit = { module = "androidx.webkit:webkit", version.ref = "webkit" }
+billing-client = { module = "com.android.billingclient:billing", version.ref = "billing" }
+bouncycastle-bcpkix = { module = "org.bouncycastle:bcpkix-jdk15to18", version.ref = "bouncycastle" }
+bouncycastle-bcprov = { module = "org.bouncycastle:bcprov-jdk15to18", version.ref = "bouncycastle" }
+commons-codec = { module = "commons-codec:commons-codec", version.ref = "commonsCodec" }
+commons-io = { module = "commons-io:commons-io", version.ref = "commonsIo" }
+commons-net = { module = "commons-net:commons-net", version.ref = "commonsNet" }
+java-websocket = { module = "org.java-websocket:Java-WebSocket", version.ref = "javaWebsocket" }
+junit = { module = "junit:junit", version.ref = "junit" }
+maverick-synergy-client = { module = "com.sshtools:maverick-synergy-client", version.ref = "maverick" }
+nanohttpd = { module = "org.nanohttpd:nanohttpd", version.ref = "nanohttpd" }
+okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
+play-services-ads = { module = "com.google.android.gms:play-services-ads", version.ref = "playServicesAds" }
+robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
+user-messaging-platform = { module = "com.google.android.ump:user-messaging-platform", version.ref = "userMessagingPlatform" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }

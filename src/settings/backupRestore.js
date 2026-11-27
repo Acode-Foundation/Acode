@@ -5,6 +5,7 @@ import alert from "dialogs/alert";
 import confirm from "dialogs/confirm";
 import loader from "dialogs/loader";
 import config from "lib/config";
+import platform from "lib/platform";
 import appSettings from "lib/settings";
 import FileBrowser from "pages/fileBrowser";
 import helpers from "utils/helpers";
@@ -335,6 +336,7 @@ function backupRestore() {
 				backupRestore.restore(data.uri);
 			},
 			(error) => {
+				if (helpers.isCancelled(error)) return;
 				console.error("File picker error:", error);
 				toast(strings.error || "Error selecting file");
 			},
@@ -536,17 +538,23 @@ backupRestore.restore = async function (url) {
 							let purchaseToken = null;
 							const isPaid = Number.parseFloat(remotePlugin.price) > 0;
 
-							if (isPaid) {
+							const accountOwned =
+								!platform.pluginPurchases && remotePlugin.owned;
+							if (isPaid && !accountOwned) {
 								try {
-									const [product] = await helpers.promisify(iap.getProducts, [
-										remotePlugin.sku,
-									]);
-									if (product) {
-										const purchases = await helpers.promisify(iap.getPurchases);
-										const purchase = purchases.find((p) =>
-											p.productIds.includes(product.productId),
-										);
-										purchaseToken = purchase?.purchaseToken;
+									if (platform.pluginPurchases) {
+										const [product] = await helpers.promisify(iap.getProducts, [
+											remotePlugin.sku,
+										]);
+										if (product) {
+											const purchases = await helpers.promisify(
+												iap.getPurchases,
+											);
+											const purchase = purchases.find((p) =>
+												p.productIds.includes(product.productId),
+											);
+											purchaseToken = purchase?.purchaseToken;
+										}
 									}
 
 									if (!purchaseToken) {

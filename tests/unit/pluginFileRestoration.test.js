@@ -67,6 +67,7 @@ function setup() {
 		"lib/ajax": { get: remote.readFile },
 		"utils/encodings": { decode: (value) => value },
 		"utils/Url": url,
+		"./alpine": { test: () => false, createFs: localFs },
 		"./internalFs": {
 			test: (uri) => uri.startsWith("file:"),
 			createFs: localFs,
@@ -153,11 +154,11 @@ function setup() {
 			"handlers/quickTools",
 			"handlers/tabContextMenu",
 			"dompurify",
-			"mime-types",
+			"utils/mimeTypes",
 			"utils/codeHighlight",
 			"utils/Path",
 			"./openFolder",
-			"./run",
+			"./runLazily",
 			"cm/editorReadOnly",
 			"lib/quickToolsAdapter",
 		].map((id) => [id, {}]),
@@ -166,6 +167,7 @@ function setup() {
 		"src/lib/editorFile.js",
 		{
 			...unused,
+			"utils/haptic": vi.fn(),
 			fileSystem: filesystem,
 			"@codemirror/state": { EditorState, EditorSelection },
 			"cm/editorUtils": { getDocText: (doc) => doc.toString() },
@@ -643,6 +645,7 @@ it.each([
 		shouldApplyLanguage: () => false,
 		restoreFileScrollPosition: vi.fn(),
 		scheduleLspForFile: vi.fn(),
+		syncEmmetForFile: vi.fn(),
 	});
 	// Run the actual render functions with a real EditorView; omit the unrelated app shell.
 	vm.runInContext(

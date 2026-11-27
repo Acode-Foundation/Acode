@@ -11,6 +11,7 @@ import fileIcons from "lib/fileIcons";
 import fonts from "lib/fonts";
 import lang from "lib/lang";
 import openFile from "lib/openFile";
+import platform from "lib/platform";
 import appSettings from "lib/settings";
 import FontManager from "pages/fontManager";
 import QuickToolsSettings from "pages/quickTools";
@@ -22,7 +23,7 @@ import Url from "utils/Url";
 export default function otherSettings() {
 	const values = appSettings.value;
 	const title = strings["app settings"].capitalize();
-	const installedFromPlayStore = isPlayStoreInstall();
+	const canCheckForUpdates = platform.apkUpdates && !isPlayStoreInstall();
 	const appFontText = strings["app font"] || "App font";
 	const appFontInfo =
 		strings["settings-info-app-font-family"] ||
@@ -334,7 +335,7 @@ export default function otherSettings() {
 			info: strings["settings-info-app-check-files"],
 			category: categories.advanced,
 		},
-		...(!installedFromPlayStore
+		...(canCheckForUpdates
 			? [
 					{
 						key: "checkForAppUpdates",
@@ -379,13 +380,19 @@ export default function otherSettings() {
 		},
 	];
 
-	return settingsPage(title, items, callback, undefined, {
-		preserveOrder: true,
-		pageClassName: "detail-settings-page",
-		listClassName: "detail-settings-list",
-		infoAsDescription: true,
-		valueInTail: true,
-	});
+	return settingsPage(
+		title,
+		items.filter((item) => platform.appExit || item.key !== "confirmOnExit"),
+		callback,
+		undefined,
+		{
+			preserveOrder: true,
+			pageClassName: "detail-settings-page",
+			listClassName: "detail-settings-list",
+			infoAsDescription: true,
+			valueInTail: true,
+		},
+	);
 
 	async function callback(key, value) {
 		switch (key) {

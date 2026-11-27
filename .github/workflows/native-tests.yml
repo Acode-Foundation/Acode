@@ -1,0 +1,181 @@
+name: Native Tests
+
+# Native suites are slow (macOS runners, Gradle), so PRs only run the platform
+# whose code they touch; the daily run catches breakage coming from src/.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'platforms/**'
+      - 'dev/**'
+      - 'tests/fixtures/ssh/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/native-tests.yml'
+  pull_request:
+    paths:
+      - 'platforms/**'
+      - 'dev/**'
+      - 'tests/fixtures/ssh/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/native-tests.yml'
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: Detect changed platforms
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      android: ${{ steps.filter.outputs.android }}
+      ios: ${{ steps.filter.outputs.ios }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: github.event_name == 'push' || github.event_name == 'pull_request'
+      - name: Detect changed files
+        id: filter
+        if: github.event_name == 'push' || github.event_name == 'pull_request'
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            shared: &shared
+              - 'dev/config.js'
+              - 'dev/sync.js'
+              - 'dev/scripts/native.js'
+              - 'dev/scripts/build.sh'
+              - 'package.json'
+              - 'package-lock.json'
+              - '.github/workflows/native-tests.yml'
+            android:
+              - *shared
+              - 'platforms/android/**'
+              - 'dev/storage_manager.mjs'
+              - 'dev/scripts/android.js'
+            ios:
+              - *shared
+              - 'platforms/ios/**'
+              - 'dev/ios/**'
+              - 'dev/scripts/ios.js'
+              - 'dev/scripts/iosAds.js'
+              - 'tests/fixtures/ssh/**'
+
+  android:
+    name: Android (${{ matrix.variant }}, ${{ matrix.distribution }})
+    needs: changes
+    if: needs.changes.outputs.android == 'true' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variant: paid
+            package: com.foxdebug.acode
+            distribution: store
+          - variant: free
+            package: com.foxdebug.acodefree
+            distribution: store
+          - variant: paid
+            package: com.foxdebug.acode
+            distribution: fdroid
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '26'
+          cache: gradle
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Install Android SDK packages
+        run: $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager 'platforms;android-37.0' 'build-tools;36.0.0'
+      - name: Select package
+        run: npm pkg set androidPackageId=${{ matrix.package }}
+      - name: Native unit tests
+        run: npm run test:android -- ${{ matrix.distribution }}
+
+  ios:
+    name: iOS
+    needs: changes
+    if: needs.changes.outputs.ios == 'true' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Install Alpine runtime build tools
+        run: brew install meson ninja llvm lld
+      - name: Prepare local iOS configuration
+        run: cp platforms/ios/Config.xcconfig.example platforms/ios/Config.xcconfig
+      - name: Select iPhone and iPad simulators with working StoreKit and icon testing
+        id: simulator
+        run: |
+          node <<'JS'
+          const { execFileSync } = require('node:child_process');
+          const { appendFileSync } = require('node:fs');
+          const { devices } = JSON.parse(execFileSync('xcrun', ['simctl', 'list', 'devices', 'available', '--json']));
+          // 26.2 simulators fail alternate icon changes; 26.3–26.5 fails SKTestSession:
+          // https://developer.apple.com/forums/thread/826971
+          const runtime = 'com.apple.CoreSimulator.SimRuntime.iOS-18-6';
+          const supported = devices[runtime] || [];
+          for (const [type, output] of [['iPhone-16-Pro', 'id'], ['iPad-Air-11-inch-M3', 'ipad']]) {
+            const identifier = `com.apple.CoreSimulator.SimDeviceType.${type}`;
+            const device = supported.find(device => device.isAvailable && device.deviceTypeIdentifier === identifier);
+            if (!device) throw new Error(`Missing iOS 18.6 ${type} simulator for integration tests`);
+            console.log(`Using ${type} on iOS 18.6: ${device.udid}`);
+            appendFileSync(process.env.GITHUB_OUTPUT, `${output}=${device.udid}\n`);
+          }
+          JS
+      - name: Build and run simulator tests with SSH and FTP fixtures
+        run: |
+          python3 -m venv .ios-build/ssh-fixture-venv
+          .ios-build/ssh-fixture-venv/bin/pip install -r tests/fixtures/ssh/requirements.txt
+          # Temporarily exclude Alpine process exits on hosted runners (run 41789669396).
+          # Local runs retain these tests; InAppRunnerTests also starts Alpine.
+          skips=()
+          for test in AlpineInteractionTests AlpineLspTests AlpinePackageTests AlpineSignalTests AlpineSimdTests AlpineTerminalServerTests AlpineTerminalTests InAppRunnerTests; do
+            skips+=("-skip-testing:runnerTests/$test")
+          done
+          .ios-build/ssh-fixture-venv/bin/python tests/fixtures/ssh/server.py -- npm run test:ios -- --target=${{ steps.simulator.outputs.id }} "${skips[@]}"
+      - name: Run iPad startup and native UI checks
+        run: |
+          checks=()
+          for test in AppBridgeTests SystemUITests KeyboardLayoutTests PlatformUITests HapticControlsTests DocumentsPickerTests ShareTests PreviewBrowserTests FilesBrowserTests BrowserBridgeTests; do
+            checks+=("-only-testing:runnerTests/$test")
+          done
+          checks+=("-only-testing:runnerUITests/AppIconUITests")
+          xcodebuild -project platforms/ios/runner.xcodeproj -scheme runner \
+            -configuration Debug -sdk iphonesimulator \
+            -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.ipad }}' \
+            -derivedDataPath .ios-build -clonedSourcePackagesDirPath .ios-build/SourcePackages \
+            -parallel-testing-enabled NO -collect-test-diagnostics never \
+            "${checks[@]}" CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- test-without-building

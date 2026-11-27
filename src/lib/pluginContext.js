@@ -1,10 +1,8 @@
-// `cordova.exec` is mapped asynchronously while Cordova starts. Importing this
-// module can happen before that mapping completes, so use Cordova's internal
-// module loader, which is available as soon as cordova.js has been evaluated.
-const cordovaExec = cordova.require("cordova/exec");
+// The native bundle is initialized before the editor loads.
+const nativeExec = Bridge.exec;
 
 const exec = (resolve, reject, action, args) =>
-	cordovaExec(resolve, reject, "Tee", action, args);
+	nativeExec(resolve, reject, "Tee", action, args);
 
 let bridgeHardened = false;
 
@@ -19,10 +17,10 @@ function hardenBridge() {
 		"callbackError",
 		"callbacks",
 	]) {
-		const value = cordova[prop];
+		const value = Bridge[prop];
 		if (value === undefined) continue;
 		try {
-			Object.defineProperty(cordova, prop, {
+			Object.defineProperty(Bridge, prop, {
 				writable: false,
 				configurable: false,
 			});
@@ -110,7 +108,7 @@ class TrustedSession {
 
 		if (!this.#sessionPromise) {
 			this.#sessionPromise = new Promise((resolve) => {
-				cordovaExec(
+				nativeExec(
 					(session) => {
 						this.#session = session;
 						resolve(true);
@@ -137,7 +135,7 @@ class TrustedSession {
 
 			//requesting a token with our session since we are in a privileged context
 			const uuid = await new Promise((resolve, reject) => {
-				cordovaExec(resolve, reject, "Tee", "requestToken", [
+				nativeExec(resolve, reject, "Tee", "requestToken", [
 					this.#session,
 					pluginId,
 					pluginJson,

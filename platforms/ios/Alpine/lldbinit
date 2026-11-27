@@ -1,0 +1,2 @@
+# Alpine uses SIGUSR1 to wake guest threads; pausing here freezes the entire app.
+process handle -p true -s false -n false SIGUSR1

@@ -13,6 +13,10 @@ import fileTypeHandler from "./fileTypeHandler";
 import recents from "./recents";
 import appSettings from "./settings";
 
+/** Documents opened from other apps that only a plugin handler can show. */
+export const EXTERNAL_DOCUMENT_PATTERN =
+	/\.(pdf|docx|dotx|xlsx|xls|ods|pptx|ppsx|potx)$/i;
+
 let loadingFileCount = 0;
 
 /**
@@ -148,8 +152,7 @@ export default async function openFile(file, options = {}) {
 		// Check for registered file handlers
 		const customHandler = fileTypeHandler.getFileHandler(name);
 		const needsDocumentHandler =
-			options.external &&
-			/\.(pdf|docx|dotx|xlsx|xls|ods|pptx|ppsx|potx)$/i.test(name);
+			options.external && EXTERNAL_DOCUMENT_PATTERN.test(name);
 		if (needsDocumentHandler && !customHandler) {
 			throw Object.assign(new Error("Document handler unavailable"), {
 				code: "DOCUMENT_HANDLER_UNAVAILABLE",

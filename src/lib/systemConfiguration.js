@@ -49,7 +49,7 @@ export const TOUCHSCREEN_UNDEFINED = 0;
  */
 export function getSystemConfiguration() {
 	return new Promise((resolve, reject) => {
-		cordova.exec(resolve, reject, "System", "get-configuration", []);
+		Bridge.exec(resolve, reject, "System", "get-configuration", []);
 	});
 }
 

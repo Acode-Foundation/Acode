@@ -20,6 +20,17 @@ import {
 } from "cm/lsp/diagnostics";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+// The editor loads the LSP client lazily; here it is always present.
+vi.mock("cm/lsp/clientLoader", async () => {
+	const { LSPPlugin } = await import("@codemirror/lsp-client");
+	return {
+		getLspPlugin: (view, client) => LSPPlugin.get(view, client),
+		getAllLspPlugins: (view, feature) => LSPPlugin.getAll(view, feature),
+		getLspPluginForFeature: (view, feature) =>
+			LSPPlugin.getForFeature(view, feature),
+	};
+});
+
 const views = [];
 
 afterEach(() => {

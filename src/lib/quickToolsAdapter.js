@@ -192,7 +192,7 @@ export default createQuickToolsAdapterRegistry(
 				action.key.toLowerCase() === "v");
 		if (!paste) return action;
 		const text = await new Promise((resolve, reject) => {
-			const clipboard = globalThis.cordova?.plugins?.clipboard;
+			const clipboard = globalThis.Bridge?.clipboard;
 			if (!clipboard) {
 				reject(new Error("Clipboard is unavailable."));
 				return;

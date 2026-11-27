@@ -1,5 +1,9 @@
 # Change Log
 
+## Unreleased
+
+* Ad-free pass redemption is discontinued; previously earned time remains valid until expiry. The `system.redeemReward` wrapper and native action have been removed. Plugins using that action must stop offering redemption. Internal pass-offer helpers and the `isWatchingRewardedAd` export were also removed.
+
 ## v1.13.5
 
 * fix(terminal): stop proot "can't sanitize binding" fd warnings by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/2878
@@ -14,7 +18,7 @@
 
 ## v1.13.4
 
-* fix: prevent Cordova exec startup race by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2851
+* fix: prevent native execution startup race by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2851
 * fix(editor): improve selection contrast on active lines by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2852
 * fix(editor): treat missing write capability as editable by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2853
 * fix: race condition when moving to exact line/col by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/2856
@@ -271,7 +275,7 @@
 * fix(sidebar): keep sidebar app activation exclusive after plugin install by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1932
 * fix(file-browser): resolve nested path creation from parent listings by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1935
 * fix(terminal): prevent restoring stale terminal sessions by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1943
-* fix(android): adapt Cordova hooks and resources for cordova-android 15 by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1944
+* fix(android): adapt Android build hooks and resources for runtime version 15 by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1944
 * fix(plugin): fix plugin install by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1946
 * fix(webview): fix WebView resize handling by @RohitKushvaha01 in https://github.com/Acode-Foundation/Acode/pull/1947
 * fix(lsp): honor per-server formatting toggle by @bajrangCoder in https://github.com/Acode-Foundation/Acode/pull/1958
@@ -394,8 +398,8 @@
 * chore: update nightly build workflow to use a fine-grained GITHUB_TOKEN for generating nightly release notes by @UnschooledGamer in https://github.com/Acode-Foundation/Acode/pull/1751
 * chore: message type detection in release notes script by @UnschooledGamer in https://github.com/Acode-Foundation/Acode/pull/1786
 * update(sftp): dependencies for SFTP plugin by @UnschooledGamer in https://github.com/Acode-Foundation/Acode/pull/1792
-* chore(deps): bump tmp and cordova by @dependabot[bot] in https://github.com/Acode-Foundation/Acode/pull/1720
-* chore(deps): bump tough-cookie and cordova by @dependabot[bot] in https://github.com/Acode-Foundation/Acode/pull/1721
+* chore(deps): bump tmp and the Android runtime by @dependabot[bot] in https://github.com/Acode-Foundation/Acode/pull/1720
+* chore(deps): bump tough-cookie and the Android runtime by @dependabot[bot] in https://github.com/Acode-Foundation/Acode/pull/1721
 * chore(deps): bump systeminformation from 5.27.11 to 5.27.14 by @dependabot[bot] in https://github.com/Acode-Foundation/Acode/pull/1750
 * chore(deps): bump tar from 7.5.2 to 7.5.3 by @dependabot[bot] in https://github.com/Acode-Foundation/Acode/pull/1829
 
@@ -556,7 +560,7 @@
 * feat: Improve handling of intents before files are restored on startup by @bajrangCoder
 * fix: don't save state of SAFMode="single" files by @bajrangCoder
 * fix: plugin passing undefined to plugin item on plugin page by @bajrangCoder
-* Integrated cordova-plugin-buildinfo as a local plugin by @RohitKushvaha01
+* Integrated native build information as a local plugin by @RohitKushvaha01
 * fix: crash when running unsaved file by @RohitKushvaha01
 * feat: show open source plugin url on plugin page by @bajrangCoder
 * fix: Make "None" option clickable in select dialog on formatter settings by @bajrangCoder
@@ -676,7 +680,7 @@
   * Exposed API for plugin developers to add content in editor tabs via `EditorFile`
 * Redesigned the About page by @bajrangCoder in #1153
 * Added a plugin rebuild option for local plugins by @bajrangCoder in #1150
-  * Plugins can use `cordova.plugin.http` instead of `fetch` to avoid CORS issues when making network requests
+  * Plugins can use the native HTTP API instead of `fetch` to avoid CORS issues when making network requests
 * Redesigned the Plugin page by @bajrangCoder in #1152
   * Added new metadata fields in `plugin.json`: `license`, `changelog`, `keywords`, and `contributors`
 * Added a new option to open files in an external app from the file browser in #1163

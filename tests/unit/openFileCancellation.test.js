@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { isBinaryFile } from "../../src/utils/binaryExtensions";
 
 // openFile contains app-specific JSX. Compile the actual module for this
-// isolated test, supplying its Cordova/UI dependencies without booting the app.
+// isolated test, supplying its Native/UI dependencies without booting the app.
 const source = fs.readFileSync(
 	new URL("../../src/lib/openFile.js", import.meta.url),
 	"utf8",

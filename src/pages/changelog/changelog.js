@@ -6,6 +6,7 @@ import toast from "components/toast";
 import DOMPurify from "dompurify";
 import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
+import platform from "lib/platform";
 import markdownIt from "markdown-it";
 import markdownItFootnote from "markdown-it-footnote";
 import markdownItTaskLists from "markdown-it-task-lists";
@@ -52,9 +53,7 @@ export default async function Changelog() {
         <li action="latest">
           <span class="text">Latest Release</span>
         </li>
-        <li action="beta">
-          <span class="text">Beta Version</span>
-        </li>
+        ${platform.isIOS ? "" : `<li action="beta"><span class="text">Beta Version</span></li>`}
         <li action="full">
           <span class="text">Full Changelog</span>
         </li>
@@ -151,21 +150,57 @@ export default async function Changelog() {
 	function renderChangelog(text) {
 		const md = markdownIt({ html: true, linkify: true });
 		const REPO_URL = "https://github.com/Acode-Foundation/Acode";
-		let processedText = text
-			// Convert full PR URLs to #number format with links preserved in markdown
-			.replace(
-				/https:\/\/github\.com\/Acode-Foundation\/Acode\/pull\/(\d+)/g,
-				`[#$1](${REPO_URL}/pull/$1)`,
-			)
-			// Convert existing #number references to links if they aren't already
-			.replace(/#(?<!\[#)(\d+)(?!\])/g, `[#$1](${REPO_URL}/pull/$1)`)
-			// Convert @username mentions to GitHub profile links
-			.replace(/@(\w+)/g, "[@$1](https://github.com/$1)");
 
 		md.use(markdownItTaskLists);
 		md.use(markdownItFootnote);
-		const renderedHtml = md.render(processedText);
-		body.innerHTML = DOMPurify.sanitize(renderedHtml);
+		const renderedHtml = md.render(text);
+		const content = DOMPurify.sanitize(renderedHtml, {
+			RETURN_DOM_FRAGMENT: true,
+		});
+		for (const link of content.querySelectorAll("a[href]")) {
+			if (link.closest("code, pre") || link.childElementCount) continue;
+			const href = link.getAttribute("href");
+			const pull = href.match(
+				/^https:\/\/github\.com\/Acode-Foundation\/Acode\/pull\/(\d+)$/,
+			);
+			if (pull && link.textContent === href) link.textContent = `#${pull[1]}`;
+		}
+		const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
+		const textNodes = [];
+		while (walker.nextNode()) textNodes.push(walker.currentNode);
+		for (const node of textNodes) {
+			if (node.parentElement?.closest("a, code, pre")) continue;
+			node.textContent = node.textContent.replace(
+				/\bandroid(?=\s+(?:devices?|phones?|tablets?)\b)/gi,
+				"mobile",
+			);
+			const parts = [];
+			let start = 0;
+			for (const match of node.textContent.matchAll(
+				/(?<![\w.+/@#-])(?:@[\w-]+|#\d+)(?![\w/@-]|\.\w)/g,
+			)) {
+				const reference = match[0];
+				const mention = reference.startsWith("@");
+				if (
+					mention &&
+					(reference.length > 40 ||
+						!/^@[a-z\d]+(?:-[a-z\d]+)*$/i.test(reference))
+				)
+					continue;
+				const link = document.createElement("a");
+				link.href = mention
+					? `https://github.com/${reference.slice(1)}`
+					: `${REPO_URL}/pull/${reference.slice(1)}`;
+				link.textContent = match[0];
+				parts.push(node.textContent.slice(start, match.index), link);
+				start = match.index + match[0].length;
+			}
+			if (parts.length) {
+				parts.push(node.textContent.slice(start));
+				node.replaceWith(...parts);
+			}
+		}
+		body.el.replaceChildren(content);
 	}
 
 	function updateVersionSelector() {
@@ -186,6 +221,7 @@ export default async function Changelog() {
 				await loadLatestRelease();
 				break;
 			case "beta":
+				if (platform.isIOS) return;
 				await loadBetaRelease();
 				break;
 			case "full":

@@ -1,4 +1,4 @@
-/** Opt-in Android Back delivery for the current browser fullscreen owner. */
+/** Opt-in Back delivery for the current fullscreen owner on Android and iOS. */
 let owner = fullscreenElement();
 let generation = 0;
 let registration = null;
@@ -21,7 +21,7 @@ function enqueue(operation) {
 
 function setNativeHandler(enabled) {
 	return new Promise((resolve, reject) => {
-		cordova.exec(
+		Bridge.exec(
 			resolve,
 			(message) => reject(new Error(message)),
 			"System",

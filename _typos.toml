@@ -5,11 +5,9 @@ check-filename = true
 extend-exclude = [
     "node_modules",
     "codemirror-lsp-client",
-    "www",
     "*.yaml",
     ".vscode",
     "fastlane",
-    "hooks",
     "*.gradle",
     "plugins",
     "platforms",
@@ -60,3 +58,5 @@ sav = "sav"
 ist = "ist"
 Hel = "Hel"
 edn = "edn"
+# Apple simulator device identifier
+udid = "udid"

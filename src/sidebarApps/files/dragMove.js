@@ -2,6 +2,7 @@ import "./dragMove.scss";
 import tag from "html-tag-js";
 import config from "lib/config";
 import appSettings from "lib/settings";
+import haptic from "utils/haptic";
 import selection from "./selection";
 
 // Movement allowed before a touch counts as a scroll instead of a press.
@@ -607,7 +608,7 @@ function consume(e) {
 
 function vibrate() {
 	if (appSettings.value.vibrateOnTap) {
-		navigator.vibrate(config.VIBRATION_TIME);
+		haptic(config.VIBRATION_TIME);
 	}
 }
 

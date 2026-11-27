@@ -3,6 +3,7 @@ import Page from "components/page";
 import items, { description } from "components/quickTools/items";
 import actionStack from "lib/actionStack";
 import settings from "lib/settings";
+import haptic from "utils/haptic";
 import helpers from "utils/helpers";
 
 let availableToolsScrollTop = 0;
@@ -294,7 +295,7 @@ class QuickToolsManager {
 			return;
 		}
 
-		if (navigator.vibrate) navigator.vibrate(30);
+		haptic(30);
 
 		const rect = el.getBoundingClientRect();
 		const ghost = el.cloneNode(true);

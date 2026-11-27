@@ -14,7 +14,8 @@ export default async function loadPlugin(pluginId, justInstalled = false) {
 	// single choke point through which all plugin loads flow.
 	await connect();
 
-	const baseUrl = await helpers.toInternalUri(Url.join(PLUGIN_DIR, pluginId));
+	const pluginDir = Url.join(PLUGIN_DIR, pluginId);
+	const baseUrl = await toInternalUri(pluginDir, true);
 	const cacheFile = Url.join(CACHE_STORAGE, pluginId);
 
 	// Unmount the old version before loading the new one.
@@ -32,72 +33,100 @@ export default async function loadPlugin(pluginId, justInstalled = false) {
 	if (oldScript) oldScript.remove();
 
 	const pluginJson = await fsOperation(
-		Url.join(PLUGIN_DIR, pluginId, "plugin.json"),
+		Url.join(pluginDir, "plugin.json"),
 	).readFile("json");
 
-	let mainUrl;
-	if (
-		await fsOperation(Url.join(PLUGIN_DIR, pluginId, pluginJson.main)).exists()
-	) {
-		mainUrl = Url.join(baseUrl, pluginJson.main);
-	} else {
-		mainUrl = Url.join(baseUrl, "main.js");
-	}
+	// Neither is needed until init, so prepare them while the script loads.
+	const initInputs = Promise.all([
+		prepareCacheFile(cacheFile, pluginId),
+		generatePluginContext(pluginId, JSON.stringify(pluginJson)),
+	]);
+	initInputs.catch(() => {});
 
-	return new Promise((resolve, reject) => {
-		const $script = (
-			<script id={`${pluginId}-mainScript`} src={mainUrl}></script>
-		);
+	// A missing `main` falls back to main.js, as the old exists() check did.
+	const mainFiles = [...new Set([pluginJson.main, "main.js"].filter(Boolean))];
 
-		const iconApi = fileIcons.bindPlugin($script, pluginId);
-
-		$script.onerror = (error) => {
-			fileIcons.unregisterByPlugin(pluginId);
-			reject(
-				new Error(
-					`Failed to load script for plugin ${pluginId}: ${error.message || error}`,
-				),
+	await new Promise((resolve, reject) => {
+		const load = (index) => {
+			const $script = (
+				<script
+					id={`${pluginId}-mainScript`}
+					src={Url.join(baseUrl, mainFiles[index])}
+				></script>
 			);
-		};
 
-		$script.onload = async () => {
-			const $page = Page("Plugin");
-			$page.show = () => {
-				actionStack.push({
-					id: pluginId,
-					action: $page.hide,
-				});
+			const iconApi = fileIcons.bindPlugin($script, pluginId);
 
-				app.append($page);
-			};
-
-			$page.onhide = function () {
-				actionStack.remove(pluginId);
-			};
-
-			try {
-				if (!(await fsOperation(cacheFile).exists())) {
-					await fsOperation(CACHE_STORAGE).createFile(pluginId);
-				}
-
-				await acode.initPlugin(pluginId, baseUrl, $page, {
-					fileIcons: iconApi,
-					cacheFileUrl: await helpers.toInternalUri(cacheFile),
-					cacheFile: fsOperation(cacheFile),
-					firstInit: justInstalled,
-					ctx: await generatePluginContext(
-						pluginId,
-						JSON.stringify(pluginJson),
-					),
-				});
-
-				resolve();
-			} catch (error) {
+			$script.onerror = (error) => {
 				fileIcons.unregisterByPlugin(pluginId);
-				reject(error);
-			}
-		};
+				if (index + 1 < mainFiles.length) {
+					$script.remove();
+					load(index + 1);
+					return;
+				}
+				reject(
+					new Error(
+						`Failed to load script for plugin ${pluginId}: ${error.message || error}`,
+					),
+				);
+			};
 
-		document.head.append($script);
+			$script.onload = async () => {
+				const $page = Page("Plugin");
+				$page.show = () => {
+					actionStack.push({
+						id: pluginId,
+						action: $page.hide,
+					});
+
+					app.append($page);
+				};
+
+				$page.onhide = function () {
+					actionStack.remove(pluginId);
+				};
+
+				try {
+					const [cacheFileUrl, ctx] = await initInputs;
+					await acode.initPlugin(pluginId, baseUrl, $page, {
+						fileIcons: iconApi,
+						cacheFileUrl,
+						cacheFile: fsOperation(cacheFile),
+						firstInit: justInstalled,
+						ctx,
+					});
+
+					resolve();
+				} catch (error) {
+					fileIcons.unregisterByPlugin(pluginId);
+					reject(error);
+				}
+			};
+
+			document.head.append($script);
+		};
+		load(0);
 	});
+}
+
+/**
+ * Creates the plugin's cache file if needed.
+ * @returns {Promise<string>} its WebView URL
+ */
+async function prepareCacheFile(cacheFile, pluginId) {
+	if (!(await fsOperation(cacheFile).exists())) {
+		await fsOperation(CACHE_STORAGE).createFile(pluginId);
+	}
+	return toInternalUri(cacheFile);
+}
+
+/**
+ * The WebView URL of an existing local path, without a native round trip when
+ * the native file layer can format it directly.
+ */
+async function toInternalUri(url, isDirectory = false) {
+	return (
+		Bridge.file?.toInternalURL?.(url, isDirectory) ??
+		(await helpers.toInternalUri(url))
+	);
 }

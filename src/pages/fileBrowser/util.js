@@ -51,6 +51,7 @@ export default {
 								this.value = res;
 							},
 							(err) => {
+								if (helpers.isCancelled(err)) return;
 								helpers.error(err);
 							},
 						);

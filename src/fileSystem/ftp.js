@@ -1,7 +1,7 @@
 import settings from "lib/settings";
-import mimeType from "mime-types";
 import { decode, encode } from "utils/encodings";
 import helpers from "utils/helpers";
+import loadMimeTypes from "utils/mimeTypes";
 import Path from "utils/Path";
 import Url from "utils/Url";
 import internalFs from "./internalFs";
@@ -91,6 +91,7 @@ class FtpClient {
 
 	async listDir() {
 		await this.#connectIfNotConnected();
+		const mimeType = await loadMimeTypes();
 		return new Promise((resolve, reject) => {
 			ftp.listDirectory(
 				this.#conId,
@@ -282,6 +283,7 @@ class FtpClient {
 	}
 
 	async #getStat(url = this.#path) {
+		const mimeType = await loadMimeTypes();
 		return new Promise((resolve, reject) => {
 			ftp.getStat(
 				this.#conId,

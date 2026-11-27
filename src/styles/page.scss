@@ -167,6 +167,11 @@ body {
   }
 }
 
+html,
+body {
+  overscroll-behavior: none;
+}
+
 wc-page {
   position: fixed !important;
   top: 0;
@@ -174,6 +179,7 @@ wc-page {
   transform: rotate(0) translate3d(0, 0, 0);
   overflow-x: hidden;
   overflow-y: auto;
+  overscroll-behavior: none;
   background-color: rgb(255, 255, 255);
   background-color: var(--secondary-color);
   z-index: 108;

@@ -425,6 +425,7 @@
 	"change encoding": "'{file}' faylı '{encoding}' kodlaşdırması ilə yenidən açılsın? Bu əməliyyat faylda yadda saxlanılmamış bütün dəyişikliklərin itirilməsinə səbəb olacaq. Faylı yenidən açmaq istəyirsən?",
 	"reopen file": "'{file}' faylını yenidən açmaq istədiyinə əminsən? Yadda saxlanılmamış bütün dəyişikliklər itiriləcək.",
 	"plugin min version": "{name} yalnız Acode - {v-code} və daha yeni versiyalarda əlçatandır. Yeniləmək üçün buraya bas.",
+	"plugin min version required": "{name} requires Acode build {v-code} or later.",
 	"color preview": "Rəng önbaxışı",
 	"confirm": "Təsdiqlə",
 	"problems": "Problemlər",
@@ -548,7 +549,6 @@
 	"save file before home shortcut": "Faylı əsas ekrana əlavə etməzdən əvvəl yadda saxla.",
 	"terminal_required_message_for_lsp": "Terminal quraşdırılmayıb. LSP serverlərindən istifadə etmək üçün əvvəlcə terminalı quraşdır.",
 	"shift click selection": "Yuxarı registr düyməsi + toxunuş/klik ilə seçim",
-	"earn ad-free time": "Reklamsız istifadə vaxtı qazan",
 	"indent guides": "Girinti bələdçiləri",
 	"language servers": "Dil serverləri",
 	"lint gutter": "Kod yoxlamasının kənar zolağını göstər",
@@ -744,7 +744,6 @@
 	"settings-info-lsp-uninstall-server": "Bu server üçün quraşdırılmış paketləri və ya icra fayllarını çıxar.",
 	"settings-info-lsp-update-server": "Yeniləmə imkanı varsa, bu dil serverini yenilə.",
 	"settings-info-lsp-view-init-options": "Qüvvədə olan ilkin sazlama seçimlərinə JSON kimi bax.",
-	"settings-info-main-ad-rewards": "Müvəqqəti reklamsız istifadə imkanı əldə etmək üçün reklamlara bax.",
 	"settings-info-main-app-settings": "Dil, tətbiqin davranışı və sürətli giriş alətləri.",
 	"settings-info-main-backup-restore": "Parametrləri ehtiyat nüsxəyə ixrac et və ya sonradan bərpa et.",
 	"settings-info-main-changelog": "Son yeniləmələrə və buraxılış qeydlərinə bax.",
@@ -796,6 +795,7 @@
 	"login-to-view": "Buna baxmaq üçün daxil ol...",
 	"iap-plugin-purchase-warning": "Satın alınmış qoşmalar Acode hesabınla sinxronlaşdırılmır. Satınalmanı bərpa etmək üçün Play Store-da eyni Google hesabından istifadə et.",
 	"iap-pro-purchase-warning": "Bu satınalma Acode hesabınla sinxronlaşdırılmayacaq. Satınalmanı bərpa etmək üçün Play Store-da eyni Google hesabından istifadə et.",
+	"iap-pro-purchase-warning-ios": "This purchase will not be synced to your Acode account. Use Restore purchases with the same Apple Account to restore it.",
 	"confirm-login": "Acode-a daxil olmamısan, indi daxil olmaq istəyirsən?",
 	"terminal:failsafe": "Nasazlıqdan qorunma rejimi",
 	"terminal:failsafe-info": "Terminalı sistemin əmr qabığı ilə işə sal",
@@ -915,5 +915,8 @@
 	"files saved count": "Files saved: {count}",
 	"files not saved count": "Files not saved: {count}",
 	"use native index": "Use native index",
-	"use native index hint": "Search local folders faster using the native file index."
+	"use native index hint": "Search local folders faster using the native file index.",
+	"faqs load failed": "Unable to load FAQs. Please try again.",
+	"faqs empty": "No FAQs are available yet.",
+	"retry": "Retry"
 }

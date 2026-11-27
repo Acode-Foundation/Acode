@@ -99,3 +99,28 @@
 		}
 	}
 }
+
+@supports (-webkit-touch-callout: none) {
+	@keyframes app-icon-enter {
+		from {
+			transform: scale(0.9);
+			opacity: 0;
+		}
+		to {
+			transform: scale(1);
+			opacity: 1;
+		}
+	}
+
+	.prompt.app-icon-dialog {
+		// WebKit reports shifted accessibility bounds for the translated grid.
+		inset: 0;
+		margin: auto;
+		transform: none;
+		animation-name: app-icon-enter;
+
+		&.hide {
+			transform: scale(0.95) !important;
+		}
+	}
+}

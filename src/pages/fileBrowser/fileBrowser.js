@@ -6,7 +6,7 @@ import Checkbox from "components/checkbox";
 import Contextmenu from "components/contextmenu";
 import Page from "components/page";
 import searchBar from "components/searchbar";
-import terminalManager from "components/terminal/terminalManager";
+import { loadTerminalManager } from "components/terminal/loader";
 import alert from "dialogs/alert";
 import confirm from "dialogs/confirm";
 import loader from "dialogs/loader";
@@ -17,17 +17,19 @@ import actionStack from "lib/actionStack";
 import checkFiles from "lib/checkFiles";
 import config from "lib/config";
 import openFolder from "lib/openFolder";
+import platform from "lib/platform";
 import projects from "lib/projects";
 import recents from "lib/recents";
 import remoteStorage from "lib/remoteStorage";
 import appSettings from "lib/settings";
 import { deleteSftpProfile, getSftpProfileId } from "lib/sftpProfiles";
-import mimeTypes from "mime-types";
 import mustache from "mustache";
 import filesSettings from "settings/filesSettings";
 import URLParse from "url-parse";
 import copyEntry from "utils/copyEntry";
+import haptic from "utils/haptic";
 import helpers from "utils/helpers";
+import loadMimeTypes from "utils/mimeTypes";
 import Url from "utils/Url";
 import _addMenu from "./add-menu.hbs";
 import _addMenuHome from "./add-menu-home.hbs";
@@ -73,6 +75,11 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 	let isPasting = false;
 	let selectedItems = new Set();
 	let copiedItems = [];
+	let longPress = null;
+	let suppressClick = null;
+	let suppressContextMenuUntil = 0;
+	let bypassSelectionForContextMenu = false;
+	let $selectAllCheckbox = null;
 
 	// In "both" mode the page title already says "File browser", so the
 	// info row is only shown when the caller passes its own note.
@@ -85,36 +92,10 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		const $menuToggler = (
 			<span className="icon more_vert" data-action="toggle-menu"></span>
 		);
-		const $selectionMenuToggler = (
-			<span
-				className="icon more_vert"
-				data-action="toggle-selection-menu"
-			></span>
-		);
 		const $addMenuToggler = (
 			<span className="icon add" data-action="toggle-add-menu"></span>
 		);
-		const $selectionModeToggler = (
-			<span
-				className="icon text_format"
-				data-action="toggle-selection-mode"
-			></span>
-		);
-		const $pasteToggler = (
-			<span className="icon paste" data-action="paste-selection"></span>
-		);
-
 		const $search = <span className="icon search" data-action="search"></span>;
-		const $selectDocument = (
-			<span
-				className="icon folder_open"
-				data-action="select-document"
-				title={SELECT_DOCUMENT_LABEL}
-				aria-label={SELECT_DOCUMENT_LABEL}
-				role="button"
-				tabindex="0"
-			></span>
-		);
 		const $lead = <span className="icon clearclose" data-action="close"></span>;
 		const $page = Page(strings["file browser"].capitalize(), {
 			lead: $lead,
@@ -135,23 +116,30 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		};
 		const $fbMenu = Contextmenu({
 			innerHTML: () => {
+				if (isSelectionMode) {
+					const actions =
+						currentDir.url === "/"
+							? menuRow("delete", "remove", strings.remove)
+							: `${menuRow("copy", "copy", strings.copy)}
+        ${menuRow("zip", "compress", strings.compress)}
+        ${menuRow("delete", "delete", strings.delete)}`;
+					return `
+        ${actions}
+        ${selectedItems.size === 1 ? menuRow("more_vert", "options", strings.options || "Options") : ""}`;
+				}
 				return `
-        <li action="settings">${strings.settings.capitalize(0)}</li>
-        ${currentDir.url === "/" ? `<li action="refresh">${strings["reset connections"].capitalize(0)}</li>` : ""}
-        <li action="reload">${strings.reload.capitalize(0)}</li>
-        `;
+        ${IS_FILE_MODE ? menuRow("folder_open", "select-document", SELECT_DOCUMENT_LABEL) : ""}
+        ${menuRow("text_format", "select-items", strings["select items"] || "Select items")}
+        ${
+					copiedItems.length && currentDir.url !== "/" && !isPasting
+						? menuRow("paste", "paste", strings.paste)
+						: ""
+				}
+        ${menuRow("settings", "settings", strings.settings)}
+        ${currentDir.url === "/" ? menuRow("refresh", "refresh", strings["reset connections"]) : ""}
+        ${menuRow("autorenew", "reload", strings.reload)}`;
 			},
 			...menuOption,
-		});
-		const $selectionMenu = Contextmenu({
-			innerHTML: () => {
-				return `
-        <li action="copy">${strings.copy.capitalize(0)}</li>
-        <li action="compress">${strings.compress.capitalize(0)}</li>
-        <li action="delete">${strings.delete.capitalize(0)}</li>
-        `;
-			},
-			...((menuOption.toggler = $selectionMenuToggler) && menuOption),
 		});
 		const $addMenu = Contextmenu({
 			innerHTML: () => {
@@ -166,8 +154,6 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			...((menuOption.toggler = $addMenuToggler) && menuOption),
 		});
 
-		$selectionMenuToggler.style.display = "none";
-		$pasteToggler.style.display = "none";
 		const progress = {};
 		let cachedDir = new Map();
 		let currentDir = {
@@ -183,19 +169,42 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		//#endregion
 
 		actionStack.setMark();
-		$lead.onclick = close;
+		$lead.onclick = () => {
+			if (isSelectionMode) {
+				isSelectionMode = false;
+				toggleSelectionMode(false);
+				return;
+			}
+			close();
+		};
 		$content.addEventListener("click", handleClick);
 		$content.addEventListener("contextmenu", handleContextMenu, true);
+		const disposeTileLongPress = installTileLongPress();
 		$page.body = $content;
-		$page.header.append($search);
-		if (IS_FILE_MODE) $page.header.append($selectDocument);
-		$page.header.append(
-			$pasteToggler,
-			$selectionModeToggler,
-			$addMenuToggler,
-			$menuToggler,
-			$selectionMenuToggler,
+		$page.header.append($search, $addMenuToggler, $menuToggler);
+
+		const $headerTitle = $page.header.get(".text");
+		$selectAllCheckbox = Checkbox("", false);
+		const $selectionCount = tag("span", {
+			className: "text selection-count",
+		});
+		const $selectionStatus = (
+			<div className="selection-status">
+				{$selectAllCheckbox}
+				{$selectionCount}
+			</div>
 		);
+		$selectionStatus.style.display = "none";
+		$page.header.insertBefore($selectionStatus, $headerTitle);
+		$selectAllCheckbox.setAttribute("data-action", "select-all");
+		$selectAllCheckbox.addEventListener("click", (event) => {
+			event.preventDefault();
+			event.stopPropagation();
+			const checked = !$selectAllCheckbox.checked;
+			$selectAllCheckbox.checked = checked;
+			setAllSelected(checked);
+		});
+		updateSelectionCount();
 
 		if (IS_FOLDER_MODE) {
 			$openFolder = tag("button", {
@@ -228,50 +237,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			action: close,
 		});
 
-		$selectionModeToggler.onclick = function () {
-			isSelectionMode = !isSelectionMode;
-			toggleSelectionMode(isSelectionMode);
-		};
-
-		$pasteToggler.onclick = pasteCopiedItems;
-		$selectDocument.onclick = selectDocument;
-		$selectDocument.onkeydown = (event) => {
-			if (event.key !== "Enter" && event.key !== " ") return;
-			event.preventDefault();
-			selectDocument();
-		};
-
-		$fbMenu.onclick = function (e) {
-			$fbMenu.hide();
-			const action = e.target.getAttribute("action");
-			if (action === "settings") {
-				filesSettings().show();
-				const onshow = () => {
-					$page.off("show", onshow);
-					reload();
-				};
-				$page.on("show", onshow);
-				return;
-			}
-
-			if (action === "reload") {
-				reload();
-				return;
-			}
-
-			if (action === "refresh") {
-				ftp.disconnect(
-					() => {},
-					() => {},
-				);
-				sftp.close(
-					() => {},
-					() => {},
-				);
-				toast(strings.success);
-				return;
-			}
-		};
+		$fbMenu.onclick = handleMenuClick;
 
 		$addMenu.onclick = async (e) => {
 			$addMenu.hide();
@@ -303,7 +269,8 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 								resolve(res.uri);
 							},
 							(err) => {
-								reject(err);
+								if (helpers.isCancelled(err)) resolve(null);
+								else reject(err);
 							},
 							"application/zip",
 						);
@@ -505,13 +472,98 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			}
 		};
 
-		$selectionMenu.onclick = async (e) => {
-			$selectionMenu.hide();
+		async function handleMenuClick(e) {
 			const $target = e.target;
-			const action = $target.getAttribute("action");
+			$fbMenu.hide();
+			const $item = $target.closest?.("li[action]");
+			const action = $item?.getAttribute("action");
 			if (!action) return;
 
 			switch (action) {
+				case "settings": {
+					filesSettings().show();
+					const onshow = () => {
+						$page.off("show", onshow);
+						reload();
+					};
+					$page.on("show", onshow);
+					break;
+				}
+
+				case "reload":
+					reload();
+					break;
+
+				case "refresh":
+					ftp.disconnect(
+						() => {},
+						() => {},
+					);
+					sftp.close(
+						() => {},
+						() => {},
+					);
+					toast(strings.success);
+					break;
+
+				case "select-items":
+					isSelectionMode = true;
+					toggleSelectionMode(true);
+					break;
+
+				case "paste":
+					pasteCopiedItems();
+					break;
+
+				case "select-document":
+					selectDocument();
+					break;
+
+				case "options":
+					showOptionsForSelection();
+					break;
+
+				case "remove": {
+					const removable = [...selectedItems]
+						.map((url) => {
+							const $tile = [...$content.querySelectorAll("#list .tile")].find(
+								($item) => $item.querySelector("data-url")?.textContent === url,
+							);
+							const uuid = $tile?.dataset.uuid;
+							return (
+								storageList.find((storage) => storage.uuid === uuid) ||
+								storageList.find(
+									(storage) => (storage.url || storage.uri) === url,
+								)
+							);
+						})
+						.filter(Boolean);
+					if (!removable.length) break;
+
+					const message =
+						removable.length === 1
+							? strings["remove entry"].replace("{name}", removable[0].name)
+							: (
+									strings["remove entries"] ||
+									"Are you sure you want to remove {count} saved paths?"
+								).replace("{count}", removable.length);
+
+					const confirmation = await confirm(strings.warning, message);
+					if (!confirmation) break;
+
+					isSelectionMode = false;
+					toggleSelectionMode(false);
+					for (const storage of removable) {
+						await removeStorage(
+							storage.uuid,
+							storage.url || storage.uri,
+							false,
+						);
+					}
+					reload();
+					break;
+				}
+
 				case "copy":
 					if (currentDir.url === "/" || !selectedItems.size) {
 						break;
@@ -521,7 +573,6 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					toast(strings.success);
 					isSelectionMode = false;
 					toggleSelectionMode(false);
-					updatePasteToggler();
 					break;
 
 				case "compress":
@@ -638,7 +689,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				default:
 					break;
 			}
-		};
+		}
 
 		$search.onclick = function () {
 			const $list = $content.get("#list");
@@ -651,6 +702,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			actionStack.remove("filebrowser");
 			$content.removeEventListener("click", handleClick);
 			$content.removeEventListener("contextmenu", handleContextMenu);
+			disposeTileLongPress();
 			document.removeEventListener("resume", reload);
 		};
 
@@ -683,6 +735,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					$page.hide();
 				},
 				(err) => {
+					if (helpers.isCancelled(err)) return;
 					helpers.error(err);
 				},
 			);
@@ -732,27 +785,229 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			cachedDir.delete(url);
 		}
 
-		function updateSelectionCount($count) {
-			if ($count) {
-				$count.textContent = `${selectedItems.size} items selected`;
-			}
+		function updateSelectionCount() {
+			if (!$selectionCount) return;
+			const count = selectedItems.size;
+			$selectionCount.textContent = `${count} ${count === 1 ? "item" : "items"} selected`;
 		}
 
-		function updatePasteToggler() {
-			$pasteToggler.style.display =
-				copiedItems.length &&
-				currentDir.url !== "/" &&
-				!isSelectionMode &&
-				!isPasting
-					? ""
-					: "none";
+		function hapticFeedback() {
+			if (appSettings.value.vibrateOnTap) haptic(config.VIBRATION_TIME);
+		}
+
+		async function removeStorage(uuid, url, reloadPage = true) {
+			const removedStorage = storageList.find(
+				(storage) => storage.uuid === uuid,
+			);
+			const storageUrl = removedStorage?.url || url;
+
+			if (storageUrl) {
+				recents.removeFolder(storageUrl);
+				recents.removeFile(storageUrl);
+				openFolder.removeFolders(storageUrl);
+				helpers.updateUriOfAllActiveFiles(storageUrl, null);
+			}
+			if (
+				storageUrl &&
+				removedStorage &&
+				(removedStorage.storageType === "sftp" ||
+					removedStorage.type === "sftp")
+			) {
+				const profileId = getSftpProfileId(storageUrl);
+				const { username, hostname, port = 22 } = Url.decodeUrl(storageUrl);
+				const connectionID = profileId || `${username}@${hostname}:${port}`;
+				await new Promise((resolve) => {
+					sftp.isConnected((activeConnectionID) => {
+						if (activeConnectionID !== connectionID) {
+							resolve();
+							return;
+						}
+						sftp.close(resolve, resolve);
+					}, resolve);
+				});
+				const profileStillUsed = storageList.some(
+					(storage) =>
+						storage.uuid !== uuid &&
+						getSftpProfileId(storage.url) === profileId,
+				);
+				if (profileId && !profileStillUsed) {
+					await deleteSftpProfile(profileId);
+				}
+			}
+			storageList = storageList.filter((storage) => {
+				if (storage.uuid !== uuid) {
+					return true;
+				}
+
+				if (storage.url && !getSftpProfileId(storage.url)) {
+					const parsedUrl = URLParse(storage.url, true);
+					const keyFile = decodeURIComponent(parsedUrl.query["keyFile"] || "");
+					if (keyFile) fsOperation(keyFile).delete().catch(console.warn);
+				}
+				return false;
+			});
+			localStorage.storageList = JSON.stringify(storageList);
+			acode.exec("save-state");
+			if (reloadPage) reload();
+		}
+
+		function menuRow(icon, action, label) {
+			const text = `${label || ""}`.trim().capitalize(0);
+			return `<li action="${action}"><span class="text">${text}</span><span class="icon ${icon}"></span></li>`;
+		}
+
+		function setAllSelected(checked) {
+			const $list = $content.get("#list");
+			if (!$list) return;
+			$list.querySelectorAll(".tile").forEach(($item) => {
+				if (
+					$item.dataset.notSelectable != null ||
+					$item.dataset.notRemovable != null
+				)
+					return;
+				const $checkbox = $item.querySelector(".input-checkbox");
+				if (!$checkbox) return;
+				$checkbox.checked = checked;
+				const url = $item.querySelector("data-url")?.textContent;
+				if (!url) return;
+				if (checked) selectedItems.add(url);
+				else selectedItems.delete(url);
+			});
+			hapticFeedback();
+			updateSelectionCount();
+			syncSelectAllCheckbox();
+		}
+
+		function syncSelectAllCheckbox() {
+			if (!isSelectionMode) return;
+			if (selectedItems.size === 0) {
+				isSelectionMode = false;
+				toggleSelectionMode(false);
+				return;
+			}
+			if ($selectAllCheckbox) $selectAllCheckbox.checked = isAllSelected();
+		}
+
+		function isAllSelected() {
+			const $list = $content.get("#list");
+			if (!$list) return false;
+			const selectable = [...$list.querySelectorAll(".tile")].filter(
+				($item) =>
+					$item.dataset.notSelectable == null &&
+					$item.dataset.notRemovable == null &&
+					$item.querySelector(".input-checkbox"),
+			);
+			if (!selectable.length) return false;
+			return selectable.every(($item) => {
+				const url = $item.querySelector("data-url")?.textContent;
+				return url && selectedItems.has(url);
+			});
+		}
+
+		function beginSelectionFromTile($tile) {
+			if (
+				$tile.dataset.notSelectable != null ||
+				$tile.dataset.notRemovable != null
+			)
+				return false;
+			const url = $tile.querySelector("data-url")?.textContent;
+			if (!url) return false;
+			if (!isSelectionMode) {
+				isSelectionMode = true;
+				toggleSelectionMode(true);
+			}
+			const $checkbox = $tile.querySelector(".input-checkbox");
+			if ($checkbox) $checkbox.checked = true;
+			selectedItems.add(url);
+			hapticFeedback();
+			updateSelectionCount();
+			syncSelectAllCheckbox();
+			return true;
+		}
+
+		function showOptionsForSelection() {
+			if (selectedItems.size !== 1) return;
+			const [url] = selectedItems;
+			const $tile = [...$content.querySelectorAll("#list .tile")].find(
+				($item) => $item.querySelector("data-url")?.textContent === url,
+			);
+			if (!$tile) return;
+			suppressClick = null;
+			suppressContextMenuUntil = 0;
+			bypassSelectionForContextMenu = true;
+			$tile.dispatchEvent(
+				new MouseEvent("contextmenu", { bubbles: true, cancelable: true }),
+			);
+			bypassSelectionForContextMenu = false;
+		}
+
+		function installTileLongPress() {
+			const slop = 10;
+
+			const onPointerDown = (e) => {
+				if (e.pointerType === "mouse") return;
+				const $tile = e.target.closest?.("#list .tile");
+				if (!$tile) return;
+				if (
+					$tile.hasAttribute("disabled") ||
+					$tile.dataset.notSelectable != null ||
+					$tile.dataset.notRemovable != null
+				) {
+					return;
+				}
+				cancelLongPress();
+				longPress = {
+					x: e.clientX,
+					y: e.clientY,
+					pointerId: e.pointerId,
+					$tile,
+					timer: setTimeout(() => {
+						const $pressed = longPress?.$tile;
+						longPress = null;
+						if (!$pressed || !$pressed.isConnected) return;
+						if (!beginSelectionFromTile($pressed)) return;
+						suppressClick = { tile: $pressed, until: Date.now() + 700 };
+						suppressContextMenuUntil = Date.now() + 700;
+					}, 450),
+				};
+			};
+
+			const onPointerMove = (e) => {
+				if (!longPress || e.pointerId !== longPress.pointerId) return;
+				if (Math.hypot(e.clientX - longPress.x, e.clientY - longPress.y) > slop)
+					cancelLongPress();
+			};
+
+			const onPointerEnd = (e) => {
+				if (longPress && e.pointerId !== longPress.pointerId) return;
+				cancelLongPress();
+			};
+
+			$content.addEventListener("pointerdown", onPointerDown, true);
+			$content.addEventListener("pointermove", onPointerMove, true);
+			$content.addEventListener("pointerup", onPointerEnd, true);
+			$content.addEventListener("pointercancel", onPointerEnd, true);
+			$content.addEventListener("scroll", cancelLongPress, true);
+
+			return () => {
+				cancelLongPress();
+				$content.removeEventListener("pointerdown", onPointerDown, true);
+				$content.removeEventListener("pointermove", onPointerMove, true);
+				$content.removeEventListener("pointerup", onPointerEnd, true);
+				$content.removeEventListener("pointercancel", onPointerEnd, true);
+				$content.removeEventListener("scroll", cancelLongPress, true);
+			};
+		}
+
+		function cancelLongPress() {
+			if (longPress?.timer) clearTimeout(longPress.timer);
+			longPress = null;
 		}
 
 		async function pasteCopiedItems() {
 			if (isPasting || !copiedItems.length || currentDir.url === "/") return;
 
 			isPasting = true;
-			updatePasteToggler();
 
 			const targetDirUrl = currentDir.url;
 			const loadingDialog = loader.create(
@@ -833,7 +1088,6 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				if (copiedCount || skippedCount) copiedItems = [];
 				loadingDialog.destroy();
 				isPasting = false;
-				updatePasteToggler();
 			}
 		}
 
@@ -855,44 +1109,23 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			const $list = $content.get("#list");
 			if (active) {
 				$list.classList.add("selection-mode");
-				const $header = tag("div", {
-					className: "selection-header",
-				});
-
-				const selectAllCheckbox = Checkbox("", false);
-				const $count = tag("span", {
-					className: "text selection-count",
-					textContent: "0 items selected",
-				});
-
-				// Handle select all functionality
-				selectAllCheckbox.onclick = () => {
-					const checked = selectAllCheckbox.checked;
-					const items = $list.querySelectorAll(".tile:not(.selection-header)");
-					items.forEach((item) => {
-						const checkbox = item.querySelector(".input-checkbox");
-						if (checkbox) {
-							checkbox.checked = checked;
-							const url = item.querySelector("data-url").textContent;
-							if (checked) {
-								selectedItems.add(url);
-							} else {
-								selectedItems.delete(url);
-							}
-						}
-					});
-					updateSelectionCount($count);
-				};
-
-				$header.append(selectAllCheckbox, $count);
-				$list.insertBefore($header, $list.firstChild);
+				$headerTitle.style.display = "none";
+				$search.style.display = "none";
+				$addMenuToggler.style.display = "none";
+				$selectionStatus.style.display = "";
 
 				// Add checkboxes to list items
-				$list
-					.querySelectorAll(".tile:not(.selection-header)")
-					.forEach((item) => {
-						if (item.dataset.notSelectable != null) return;
-						const checkbox = Checkbox("", false);
+				$list.querySelectorAll(".tile").forEach((item) => {
+					const checkbox = Checkbox("", false);
+					if (
+						item.dataset.notSelectable != null ||
+						item.dataset.notRemovable != null
+					) {
+						checkbox.classList.add("disabled");
+						const $input = checkbox.querySelector("input");
+						if ($input) $input.disabled = true;
+						item.classList.add("select-disabled");
+					} else {
 						checkbox.onclick = () => {
 							const url = item.querySelector("data-url").textContent;
 							if (checkbox.checked) {
@@ -900,16 +1133,15 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 							} else {
 								selectedItems.delete(url);
 							}
-							updateSelectionCount($count);
+							updateSelectionCount();
+							syncSelectAllCheckbox();
 						};
-						item.prepend(checkbox);
-					});
+					}
+					item.prepend(checkbox);
+				});
 
-				$addMenuToggler.style.display = "none";
-				$menuToggler.style.display = "none";
-				$selectDocument.style.display = "none";
-				$selectionMenuToggler.style.display = "";
-				updatePasteToggler();
+				$selectAllCheckbox.checked = isAllSelected();
+				updateSelectionCount();
 
 				// Disable floating button in selection mode
 				if ($openFolder) {
@@ -929,15 +1161,18 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				actionStack.remove("fbSelection");
 
 				$list.classList.remove("selection-mode");
-				$list.querySelector(".selection-header")?.remove();
 				$list.querySelectorAll(".input-checkbox").forEach((cb) => cb.remove());
+				$list
+					.querySelectorAll(".tile.select-disabled")
+					.forEach((tile) => tile.classList.remove("select-disabled"));
 				selectedItems.clear();
 
+				$headerTitle.style.display = "";
+				$search.style.display = "";
 				$addMenuToggler.style.display = "";
-				$menuToggler.style.display = "";
-				$selectDocument.style.display = "";
-				$selectionMenuToggler.style.display = "none";
-				updatePasteToggler();
+				$selectionStatus.style.display = "none";
+				$selectAllCheckbox.checked = false;
+				updateSelectionCount();
 
 				// Re-enable floating button when exiting selection mode
 				if ($openFolder) {
@@ -957,11 +1192,21 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 			 */
 			const $el = e.target;
 
-			if (isSelectionMode) {
+			if (suppressClick) {
+				const { tile, until } = suppressClick;
+				suppressClick = null;
+				if (Date.now() < until && $el.closest?.(".tile") === tile) return;
+			}
+
+			if (isSelectionMode && !bypassSelectionForContextMenu) {
 				const $el2 = $el.closest(".tile");
-				if ($el2?.dataset.notSelectable != null) return;
+				if (
+					$el2?.dataset.notSelectable != null ||
+					$el2?.dataset.notRemovable != null
+				)
+					return;
 				const checkbox = $el2?.querySelector(".input-checkbox");
-				if (checkbox && !$el.closest(".selection-header")) {
+				if (checkbox) {
 					checkbox.checked = !checkbox.checked;
 					const url = $el2.querySelector("data-url").textContent;
 					if (checkbox.checked) {
@@ -969,8 +1214,9 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					} else {
 						selectedItems.delete(url);
 					}
-					const $count = $content.querySelector(".selection-count");
-					updateSelectionCount($count);
+					hapticFeedback();
+					updateSelectionCount();
+					syncSelectAllCheckbox();
 				}
 				return;
 			}
@@ -1090,7 +1336,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 			async function contextMenuHandler() {
 				if (appSettings.value.vibrateOnTap) {
-					navigator.vibrate(config.VIBRATION_TIME);
+					haptic(config.VIBRATION_TIME);
 				}
 				if (isOpenDoc) return;
 
@@ -1125,10 +1371,10 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				const option = await select(strings["select"], options);
 				switch (option) {
 					case "delete": {
-						let deleteFunction = removeFile;
+						let deleteFunction = () => removeFile();
 						let message = strings["delete entry"].replace("{name}", name);
 						if (uuid) {
-							deleteFunction = removeStorage;
+							deleteFunction = () => removeStorage(uuid, url);
 							message = strings["remove entry"].replace("{name}", name);
 						}
 
@@ -1167,9 +1413,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 					}
 
 					case "ssh_terminal": {
-						const { TerminalManager } = await import(
-							/* webpackChunkName: "terminal" */ "components/terminal"
-						);
+						const TerminalManager = await loadTerminalManager();
 						await TerminalManager.createRemoteTerminal({ url, name });
 						$page.hide();
 						break;
@@ -1180,8 +1424,8 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 						break;
 
 					case "copyuri":
-						if (typeof cordova !== "undefined" && cordova?.plugins?.clipboard) {
-							cordova.plugins.clipboard.copy(url);
+						if (typeof Bridge !== "undefined" && Bridge?.clipboard) {
+							Bridge.clipboard.copy(url);
 						} else if (navigator.clipboard?.writeText) {
 							await navigator.clipboard.writeText(url);
 						} else {
@@ -1202,6 +1446,7 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 								break;
 							}
 
+							const mimeTypes = await loadMimeTypes();
 							const mimeType =
 								mimeTypes.lookup(name) ||
 								mimeTypes.lookup(shareableUri) ||
@@ -1265,64 +1510,6 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				}
 			}
 
-			async function removeStorage() {
-				const removedStorage = storageList.find(
-					(storage) => storage.uuid === uuid,
-				);
-				const storageUrl = removedStorage?.url || url;
-
-				if (storageUrl) {
-					recents.removeFolder(storageUrl);
-					recents.removeFile(storageUrl);
-					openFolder.removeFolders(storageUrl);
-					helpers.updateUriOfAllActiveFiles(storageUrl, null);
-				}
-				if (
-					storageUrl &&
-					removedStorage &&
-					(removedStorage.storageType === "sftp" ||
-						removedStorage.type === "sftp")
-				) {
-					const profileId = getSftpProfileId(storageUrl);
-					const { username, hostname, port = 22 } = Url.decodeUrl(storageUrl);
-					const connectionID = profileId || `${username}@${hostname}:${port}`;
-					await new Promise((resolve) => {
-						sftp.isConnected((activeConnectionID) => {
-							if (activeConnectionID !== connectionID) {
-								resolve();
-								return;
-							}
-							sftp.close(resolve, resolve);
-						}, resolve);
-					});
-					const profileStillUsed = storageList.some(
-						(storage) =>
-							storage.uuid !== uuid &&
-							getSftpProfileId(storage.url) === profileId,
-					);
-					if (profileId && !profileStillUsed) {
-						await deleteSftpProfile(profileId);
-					}
-				}
-				storageList = storageList.filter((storage) => {
-					if (storage.uuid !== uuid) {
-						return true;
-					}
-
-					if (storage.url && !getSftpProfileId(storage.url)) {
-						const parsedUrl = URLParse(storage.url, true);
-						const keyFile = decodeURIComponent(
-							parsedUrl.query["keyFile"] || "",
-						);
-						if (keyFile) fsOperation(keyFile).delete().catch(console.warn);
-					}
-					return false;
-				});
-				localStorage.storageList = JSON.stringify(storageList);
-				acode.exec("save-state");
-				reload();
-			}
-
 			function renameStorage(newname) {
 				storageList = storageList.map((storage) => {
 					if (storage.uuid === uuid) storage.name = newname;
@@ -1334,15 +1521,24 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 		}
 
 		function handleContextMenu(e) {
+			if (
+				longPress ||
+				(suppressContextMenuUntil && Date.now() < suppressContextMenuUntil)
+			) {
+				suppressContextMenuUntil = 0;
+				e.preventDefault();
+				e.stopPropagation();
+				return;
+			}
 			handleClick(e, true);
 		}
 
 		async function listAllStorages() {
-			let hasInternalStorage = true;
+			let hasInternalStorage = !!Bridge.file.externalRootDirectory;
 			allStorages.length = 0;
 
 			if (ANDROID_SDK_INT === 29) {
-				const rootDirName = cordova.file.externalRootDirectory;
+				const rootDirName = Bridge.file.externalRootDirectory;
 				const testDirName = "Acode_Test_file" + helpers.uuid();
 				const testDirFs = fsOperation(Url.join(rootDirName, testDirName));
 
@@ -1364,43 +1560,47 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				util.pushFolder(
 					allStorages,
 					"Internal storage",
-					cordova.file.externalRootDirectory,
+					Bridge.file.externalRootDirectory,
 					{
 						uuid: "internal-storage",
+						notRemovable: true,
 					},
 				);
 			}
 
-			try {
-				const terminalPublicUrl = cordova.file.dataDirectory + "public";
-				const exists = await fsOperation(terminalPublicUrl).exists();
-				if (!exists) {
-					await fsOperation(cordova.file.dataDirectory).createDirectory(
-						"public",
+			if (platform.localExecution) {
+				try {
+					const terminalPublicUrl = Bridge.file.dataDirectory + "public";
+					const exists = await fsOperation(terminalPublicUrl).exists();
+					if (!exists) {
+						await fsOperation(Bridge.file.dataDirectory).createDirectory(
+							"public",
+						);
+					}
+
+					// Check if this storage is not already in the list
+					const terminalPublicStorageExists = allStorages.find(
+						(storage) =>
+							storage.uuid === "terminal-public" ||
+							storage.url === terminalPublicUrl,
 					);
-				}
 
-				// Check if this storage is not already in the list
-				const terminalPublicStorageExists = allStorages.find(
-					(storage) =>
-						storage.uuid === "terminal-public" ||
-						storage.url === terminalPublicUrl,
-				);
+					if (!terminalPublicStorageExists) {
+						util.pushFolder(allStorages, "Terminal Public", terminalPublicUrl, {
+							uuid: "terminal-public",
+							notRemovable: true,
+						});
+					}
 
-				if (!terminalPublicStorageExists) {
-					util.pushFolder(allStorages, "Terminal Public", terminalPublicUrl, {
-						uuid: "terminal-public",
-					});
+					// Migrate any files left in the legacy alpine/home and
+					// alpine/root directories into public/MIGRATE so they are
+					// not hidden after the home/root/public merge.
+					if (typeof Terminal !== "undefined" && Terminal.migrateLegacyHome) {
+						Terminal.migrateLegacyHome();
+					}
+				} catch (err) {
+					console.error("Error while adding public directory", err);
 				}
-
-				// Migrate any files left in the legacy alpine/home and
-				// alpine/root directories into public/MIGRATE so they are
-				// not hidden after the home/root/public merge.
-				if (typeof Terminal !== "undefined" && Terminal.migrateLegacyHome) {
-					Terminal.migrateLegacyHome();
-				}
-			} catch (err) {
-				console.error("Error while adding public directory", err);
 			}
 
 			try {
@@ -1408,12 +1608,13 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 				res.forEach((storage) => {
 					if (storageList.find((s) => s.uuid === storage.uuid)) return;
 					let path;
-					if (storage.path && isStorageManager) {
+					if (storage.path && (platform.isIOS || globalThis.isStorageManager)) {
 						path = "file://" + storage.path;
 					}
 					util.pushFolder(allStorages, storage.name, path || "", {
 						...storage,
 						storageType: "sd",
+						notRemovable: true,
 					});
 				});
 			} catch (err) {
@@ -1806,7 +2007,6 @@ function FileBrowserInclude(mode, info, doesOpenLast = true) {
 
 			currentDir = dir;
 			cachedDir.set(dir.url, dir);
-			updatePasteToggler();
 		}
 
 		function reload() {

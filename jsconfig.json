@@ -1,5 +1,5 @@
 {
-  "exclude": ["**/node_modules", "**/platforms", "**/www", "www/js/ace/**/*"],
+  "exclude": ["**/node_modules", "**/platforms"],
   "compilerOptions": {
     "paths": {
       "*": ["./src/*"]

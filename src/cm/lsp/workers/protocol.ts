@@ -3,6 +3,7 @@ import {
 	type TextDocumentContentChangeEvent,
 } from "vscode-languageserver-textdocument";
 import type { Diagnostic } from "vscode-languageserver-types";
+import createProgress, { type WorkDoneProgress } from "./progress";
 
 export const METHOD_NOT_HANDLED = Symbol("method-not-handled");
 
@@ -13,6 +14,8 @@ interface JsonRpcMessage {
 	id?: JsonRpcId;
 	method?: string;
 	params?: unknown;
+	result?: unknown;
+	error?: { message?: string };
 }
 
 interface ConfigureMessage {
@@ -32,8 +35,29 @@ interface HostResponseMessage {
 interface HostRequestMessage {
 	kind: "host-request";
 	id: number;
-	method: "readFile";
+	method: "readFile" | "readDirectory";
 	uri: string;
+	maxBytes?: number;
+}
+
+export interface DirectoryEntry {
+	name: string;
+	url: string;
+	isDirectory: boolean;
+}
+
+interface WorkspaceFolder {
+	uri: string;
+}
+
+interface WorkspaceFoldersParams {
+	event?: { added?: WorkspaceFolder[]; removed?: WorkspaceFolder[] };
+}
+
+interface InitializeParams {
+	rootUri?: string | null;
+	workspaceFolders?: WorkspaceFolder[] | null;
+	capabilities?: { window?: { workDoneProgress?: boolean } };
 }
 
 interface WorkerScope {
@@ -73,7 +97,13 @@ export interface WorkerServerContext {
 	initializationOptions?: Record<string, unknown>;
 	rootUri?: string | null;
 	getProjectVersion(): string;
-	requestFile(uri: string): Promise<string>;
+	requestFile(uri: string, maxBytes?: number): Promise<string>;
+	requestDirectory(uri: string): Promise<DirectoryEntry[]>;
+	/** Re-run diagnostics for every open document. */
+	revalidate(): void;
+	log(level: "error" | "warn" | "info", message: string): void;
+	/** Show standard LSP work-done progress in the client. */
+	progress(title: string, message?: string): WorkDoneProgress;
 }
 
 export interface WorkerLanguageAdapter {
@@ -84,7 +114,10 @@ export interface WorkerLanguageAdapter {
 		params: unknown,
 	): unknown | PromiseLike<unknown> | typeof METHOD_NOT_HANDLED;
 	configure?(settings: unknown): void;
+	openDocument?(uri: string): void;
 	closeDocument?(uri: string): void;
+	addWorkspaceFolder?(uri: string): void;
+	removeWorkspaceFolder?(uri: string): void;
 	dispose?(): void;
 }
 
@@ -101,10 +134,23 @@ const hostRequests = new Map<
 	{ resolve: (value: unknown) => void; reject: (error: Error) => void }
 >();
 
+const clientRequests = new Map<
+	JsonRpcId,
+	{ resolve: (value: unknown) => void; reject: (error: Error) => void }
+>();
+
 let adapter: WorkerLanguageAdapter | null = null;
 let serverId = "worker";
 let nextHostRequestId = 0;
+let nextClientRequestId = 0;
 let projectVersion = 0;
+let supportsProgress = false;
+let markClientReady: (supportsProgress: boolean) => void = () => {};
+// Progress must wait for `initialized`: the client is not ready for
+// server-initiated requests before then.
+const clientReady = new Promise<boolean>((resolve) => {
+	markClientReady = resolve;
+});
 
 function sendJson(message: unknown): void {
 	workerScope.postMessage(JSON.stringify(message));
@@ -130,6 +176,30 @@ function sendNotification(method: string, params: unknown): void {
 	sendJson({ jsonrpc: "2.0", method, params });
 }
 
+function requestClient(method: string, params: unknown): Promise<unknown> {
+	const id = `worker-${++nextClientRequestId}`;
+	return new Promise((resolve, reject) => {
+		clientRequests.set(id, { resolve, reject });
+		sendJson({ jsonrpc: "2.0", id, method, params });
+	});
+}
+
+function handleClientResponse(message: JsonRpcMessage): void {
+	const pending = message.id != null && clientRequests.get(message.id);
+	if (!pending) return;
+	clientRequests.delete(message.id!);
+	if (message.error) pending.reject(new Error(message.error.message));
+	else pending.resolve(message.result);
+}
+
+function progress(title: string, message?: string): WorkDoneProgress {
+	return createProgress(
+		{ ready: clientReady, request: requestClient, notify: sendNotification },
+		title,
+		message,
+	);
+}
+
 function sendLog(level: "error" | "warn" | "info", message: string): void {
 	workerScope.postMessage({ kind: "log", level, message });
 }
@@ -150,13 +220,18 @@ function isHostResponse(value: unknown): value is HostResponseMessage {
 	);
 }
 
-function requestHost(method: HostRequestMessage["method"], uri: string) {
+function requestHost(
+	method: HostRequestMessage["method"],
+	uri: string,
+	maxBytes?: number,
+) {
 	const id = ++nextHostRequestId;
 	const message: HostRequestMessage = {
 		kind: "host-request",
 		id,
 		method,
 		uri,
+		maxBytes,
 	};
 	return new Promise((resolve, reject) => {
 		hostRequests.set(id, { resolve, reject });
@@ -164,8 +239,17 @@ function requestHost(method: HostRequestMessage["method"], uri: string) {
 	});
 }
 
-async function requestFile(uri: string): Promise<string> {
-	return String(await requestHost("readFile", uri));
+async function requestFile(uri: string, maxBytes?: number): Promise<string> {
+	return String(await requestHost("readFile", uri, maxBytes));
+}
+
+async function requestDirectory(uri: string): Promise<DirectoryEntry[]> {
+	const entries = await requestHost("readDirectory", uri);
+	return Array.isArray(entries) ? (entries as DirectoryEntry[]) : [];
+}
+
+function revalidate(): void {
+	for (const uri of documents.keys()) scheduleValidation(uri);
 }
 
 function handleHostResponse(message: HostResponseMessage): void {
@@ -227,6 +311,7 @@ function didOpen(params: DidOpenParams): void {
 	);
 	documents.set(item.uri, document);
 	projectVersion++;
+	adapter?.openDocument?.(item.uri);
 	scheduleValidation(item.uri);
 }
 
@@ -249,6 +334,23 @@ function didClose(params: DidCloseParams): void {
 	publishDiagnostics(uri, 0, []);
 }
 
+function initialize(params: InitializeParams | null): void {
+	supportsProgress = params?.capabilities?.window?.workDoneProgress === true;
+	for (const folder of params?.workspaceFolders ?? []) {
+		adapter?.addWorkspaceFolder?.(folder.uri);
+	}
+	if (params?.rootUri) adapter?.addWorkspaceFolder?.(params.rootUri);
+}
+
+function changeWorkspaceFolders(params: WorkspaceFoldersParams | null): void {
+	for (const folder of params?.event?.removed ?? []) {
+		adapter?.removeWorkspaceFolder?.(folder.uri);
+	}
+	for (const folder of params?.event?.added ?? []) {
+		adapter?.addWorkspaceFolder?.(folder.uri);
+	}
+}
+
 function cancelRequest(params: unknown): void {
 	const id = (params as { id?: JsonRpcId } | null)?.id;
 	if (id !== undefined) cancelledRequests.add(id);
@@ -261,6 +363,7 @@ async function handleRequest(message: JsonRpcMessage): Promise<void> {
 	try {
 		switch (method) {
 			case "initialize":
+				initialize(message.params as InitializeParams | null);
 				sendResponse(id, {
 					capabilities: {
 						textDocumentSync: {
@@ -322,10 +425,17 @@ function handleNotification(message: JsonRpcMessage): void {
 			);
 			for (const uri of documents.keys()) scheduleValidation(uri);
 			break;
+		case "initialized":
+			markClientReady(supportsProgress);
+			break;
+		case "workspace/didChangeWorkspaceFolders":
+			changeWorkspaceFolders(message.params as WorkspaceFoldersParams | null);
+			break;
 		case "$/cancelRequest":
 			cancelRequest(message.params);
 			break;
 		case "exit":
+			markClientReady(false);
 			adapter?.dispose?.();
 			workerScope.close();
 			break;
@@ -341,7 +451,10 @@ async function handleJsonRpc(data: string): Promise<void> {
 		return;
 	}
 
-	if (!message.method) return;
+	if (!message.method) {
+		handleClientResponse(message);
+		return;
+	}
 	if (message.id !== undefined) {
 		await handleRequest(message);
 	} else {
@@ -366,6 +479,10 @@ export function startWorkerServer(factory: AdapterFactory): void {
 					rootUri: data.rootUri,
 					getProjectVersion: () => String(projectVersion),
 					requestFile,
+					requestDirectory,
+					revalidate,
+					log: sendLog,
+					progress,
 				}),
 			).then(
 				(value) => {

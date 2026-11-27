@@ -204,6 +204,14 @@ c-input-actions {
   opacity: 0.75;
 }
 
+// WebKit zooms focused form controls whose text is smaller than 16px.
+@supports (-webkit-touch-callout: none) {
+  #__c-input,
+  .__c-context {
+    font-size: 16px;
+  }
+}
+
 #__c-input:disabled {
   opacity: 0.55;
 }
@@ -313,6 +321,12 @@ c-object {
 
 c-line {
   display: block;
+}
+
+c-line > c-text {
+  display: inline;
+  width: auto;
+  padding: 0;
 }
 
 c-key {

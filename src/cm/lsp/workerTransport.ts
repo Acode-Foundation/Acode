@@ -8,6 +8,7 @@ import { addLspLog } from "./logs";
 import type { Transport, TransportHandle } from "./types";
 
 const DEFAULT_STARTUP_TIMEOUT = 10_000;
+const PROGRESS_CREATE = "window/workDoneProgress/create";
 
 export type LspWorkerHostHandler = (
 	params: Record<string, unknown>,
@@ -194,6 +195,24 @@ export function createWorkerTransport(
 		}
 	}
 
+	// The client advertises work-done progress but answers unknown server
+	// requests with MethodNotFound, which would forbid using the token.
+	function acknowledgeProgressToken(data: string): boolean {
+		if (!data.includes(PROGRESS_CREATE)) return false;
+		try {
+			const message = JSON.parse(data);
+			if (message?.method !== PROGRESS_CREATE || message.id === undefined) {
+				return false;
+			}
+			worker.postMessage(
+				JSON.stringify({ jsonrpc: "2.0", id: message.id, result: null }),
+			);
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
 	async function handleHostRequest(
 		message: WorkerControlMessage,
 	): Promise<void> {
@@ -262,7 +281,7 @@ export function createWorkerTransport(
 		if (disposed) return;
 		const data = event.data;
 		if (typeof data === "string") {
-			dispatchToListeners(data);
+			if (!acknowledgeProgressToken(data)) dispatchToListeners(data);
 			return;
 		}
 		if (!isControlMessage(data)) return;

@@ -33,15 +33,39 @@
   }
 
   .icon {
+    flex-shrink: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
     height: 45px;
     width: 45px;
     font-size: 1.2em;
-    color: rgb(255, 255, 255);
+    color: var(--primary-text-color);
   }
 
   &.hide {
     transition: all 300ms ease;
     opacity: 0;
     transform: translate(0, -100%, 0);
+  }
+}
+
+html[data-platform="ios"] #search-bar {
+  input {
+    // Hide WebKit's native caret while the focused search field is moving.
+    animation-name: hide-search-caret;
+    animation-duration: inherit;
+  }
+
+  &.hide input {
+    caret-color: transparent;
+  }
+}
+
+@keyframes hide-search-caret {
+  from,
+  to {
+    caret-color: transparent;
   }
 }

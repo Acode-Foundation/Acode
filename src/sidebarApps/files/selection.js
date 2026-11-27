@@ -3,6 +3,7 @@ import select from "dialogs/select";
 import tag from "html-tag-js";
 import config from "lib/config";
 import appSettings from "lib/settings";
+import haptic from "utils/haptic";
 import helpers from "utils/helpers";
 
 /**
@@ -508,7 +509,7 @@ function consume(e) {
 
 function vibrate() {
 	if (appSettings.value.vibrateOnTap) {
-		navigator.vibrate(config.VIBRATION_TIME);
+		haptic(config.VIBRATION_TIME);
 	}
 }
 

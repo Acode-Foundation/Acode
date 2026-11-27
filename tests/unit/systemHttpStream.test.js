@@ -1,7 +1,7 @@
 import http from "node:http";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import system from "../../src/plugins/system/www/plugin.js";
+import system from "../../src/native/system";
 
 const CREDIT_WINDOW = 128 * 1024;
 const BRIDGE_CHUNK = 8192;
@@ -124,12 +124,12 @@ class TestServer {
 }
 
 /**
- * An asynchronous fake native bridge that mirrors the real Cordova/Java
+ * An asynchronous fake native bridge that mirrors the real Native/Java
  * contract:
  *
- * - The Java reader thread only hands bytes to the Cordova bridge while fewer
+ * - The Java reader thread only hands bytes to the Native bridge while fewer
  *   than CREDIT_WINDOW bytes are awaiting a JavaScript ACK (`http-stream-ack`).
- * - Delivery to JavaScript is asynchronous (like the Cordova message queue), so
+ * - Delivery to JavaScript is asynchronous (like the Native message queue), so
  *   messages can sit in the bridge while JS catches up. A synchronous fake
  *   bridge hides real backpressure races, so this one does not deliver inline.
  *
@@ -294,7 +294,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 let server;
 let bridge;
-let origCordova;
+let originalBridge;
 
 async function collect(response) {
 	if (!response.body) return [];
@@ -327,14 +327,14 @@ beforeAll(async () => {
 	server = new TestServer();
 	await server.listen();
 
-	origCordova = globalThis.cordova;
+	originalBridge = globalThis.Bridge;
 });
 
 afterAll(() => {
-	if (origCordova !== undefined) {
-		globalThis.cordova = origCordova;
+	if (originalBridge !== undefined) {
+		globalThis.Bridge = originalBridge;
 	} else {
-		delete globalThis.cordova;
+		delete globalThis.Bridge;
 	}
 	return server.close();
 });
@@ -342,7 +342,7 @@ afterAll(() => {
 describe("system.httpStream", () => {
 	it("1. delivers a small streamed response", async () => {
 		bridge = createNativeBridge();
-		globalThis.cordova = { exec: (...args) => bridge.exec(...args) };
+		globalThis.Bridge = { exec: (...args) => bridge.exec(...args) };
 		const response = await system.httpStream(server.url("/simple"));
 		expect(response.status).toBe(200);
 		expect(decode(await collect(response))).toBe("hello world");
@@ -350,7 +350,7 @@ describe("system.httpStream", () => {
 
 	it("2. streams genuinely: chunk 1 arrives before the later chunks exist", async () => {
 		bridge = createNativeBridge();
-		globalThis.cordova = { exec: (...args) => bridge.exec(...args) };
+		globalThis.Bridge = { exec: (...args) => bridge.exec(...args) };
 
 		const start = Date.now();
 		const response = await system.httpStream(server.url("/genuine-stream"));
@@ -374,7 +374,7 @@ describe("system.httpStream", () => {
 
 	it("3. handles chunks that split a UTF-8 character", async () => {
 		bridge = createNativeBridge();
-		globalThis.cordova = { exec: (...args) => bridge.exec(...args) };
+		globalThis.Bridge = { exec: (...args) => bridge.exec(...args) };
 		const response = await system.httpStream(server.url("/utf8-split"));
 		const decoder = new TextDecoder();
 		let text = "";
@@ -387,7 +387,7 @@ describe("system.httpStream", () => {
 
 	it("4. ACKs bytes only as the consumer reads them (bounded in flight)", async () => {
 		bridge = createNativeBridge();
-		globalThis.cordova = { exec: (...args) => bridge.exec(...args) };
+		globalThis.Bridge = { exec: (...args) => bridge.exec(...args) };
 
 		const response = await system.httpStream(server.url("/large"));
 		const reader = response.body.getReader();
@@ -419,7 +419,7 @@ describe("system.httpStream", () => {
 
 	it("5. keeps a 4xx/5xx with no error body a normal, empty response", async () => {
 		bridge = createNativeBridge();
-		globalThis.cordova = { exec: (...args) => bridge.exec(...args) };
+		globalThis.Bridge = { exec: (...args) => bridge.exec(...args) };
 		const response = await system.httpStream(server.url("/status500-empty"));
 		expect(response.status).toBe(500);
 		const chunks = await collect(response);
@@ -428,7 +428,7 @@ describe("system.httpStream", () => {
 
 	it("6. rejects with a transport error on connection failure before headers", async () => {
 		bridge = createNativeBridge();
-		globalThis.cordova = { exec: (...args) => bridge.exec(...args) };
+		globalThis.Bridge = { exec: (...args) => bridge.exec(...args) };
 		const url = server.url("/network-error");
 		const err = await system.httpStream(url).then(
 			() => null,
@@ -439,7 +439,7 @@ describe("system.httpStream", () => {
 
 	it("7. cancelling the reader cancels the underlying request and drops late events", async () => {
 		bridge = createNativeBridge();
-		globalThis.cordova = { exec: (...args) => bridge.exec(...args) };
+		globalThis.Bridge = { exec: (...args) => bridge.exec(...args) };
 
 		const response = await system.httpStream(server.url("/keep-open"));
 		const reader = response.body.getReader();
@@ -462,7 +462,7 @@ describe("system.httpStream", () => {
 
 	it("8. preserves repeated headers such as Set-Cookie", async () => {
 		bridge = createNativeBridge();
-		globalThis.cordova = { exec: (...args) => bridge.exec(...args) };
+		globalThis.Bridge = { exec: (...args) => bridge.exec(...args) };
 
 		const response = await system.httpStream(server.url("/cookies"));
 		expect(response.status).toBe(200);
@@ -482,7 +482,7 @@ describe("system.httpStream", () => {
 
 	it("9. rejects without starting when the signal is already aborted", async () => {
 		bridge = createNativeBridge();
-		globalThis.cordova = { exec: (...args) => bridge.exec(...args) };
+		globalThis.Bridge = { exec: (...args) => bridge.exec(...args) };
 
 		const controller = new AbortController();
 		controller.abort();
@@ -502,7 +502,7 @@ describe("system.httpStream", () => {
 
 	it("10. aborting the signal cancels an in-flight stream and errors the body", async () => {
 		bridge = createNativeBridge();
-		globalThis.cordova = { exec: (...args) => bridge.exec(...args) };
+		globalThis.Bridge = { exec: (...args) => bridge.exec(...args) };
 
 		const controller = new AbortController();
 		const response = await system.httpStream(server.url("/keep-open"), {
@@ -533,7 +533,7 @@ describe("system.httpStream", () => {
 
 	it("11. ships text chunks raw (latin1 fast path, no base64) and decodes them", async () => {
 		bridge = createNativeBridge();
-		globalThis.cordova = { exec: (...args) => bridge.exec(...args) };
+		globalThis.Bridge = { exec: (...args) => bridge.exec(...args) };
 
 		const response = await system.httpStream(server.url("/latin1-text"));
 		const text = decode(await collect(response));
@@ -547,7 +547,7 @@ describe("system.httpStream", () => {
 
 	it("12. falls back to base64 for chunks with control bytes and still decodes", async () => {
 		bridge = createNativeBridge();
-		globalThis.cordova = { exec: (...args) => bridge.exec(...args) };
+		globalThis.Bridge = { exec: (...args) => bridge.exec(...args) };
 
 		const expected = Buffer.from([0x00, 0x08, 0x1f, 0x7f, 0xff, 0x22, 0x00]);
 		const response = await system.httpStream(server.url("/binary-ctrl"));

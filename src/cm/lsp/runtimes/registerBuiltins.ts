@@ -3,6 +3,9 @@ import builtinAlpineRuntimeProvider from "./builtinAlpine";
 import externalWebSocketRuntimeProvider from "./externalWebSocket";
 import webWorkerRuntimeProvider from "./webWorker";
 
-registerRuntimeProvider(builtinAlpineRuntimeProvider, { replace: true });
+if (platform.localExecution)
+	registerRuntimeProvider(builtinAlpineRuntimeProvider, { replace: true });
 registerRuntimeProvider(externalWebSocketRuntimeProvider, { replace: true });
 registerRuntimeProvider(webWorkerRuntimeProvider, { replace: true });
+
+import platform from "lib/platform";

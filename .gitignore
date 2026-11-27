@@ -1,8 +1,5 @@
 node_modules
 /build.json
-/www/build
-/plugins
-/platforms
 /keystore.jks
 /platforms/android/debug-signing.properties
 /platforms/android/release-signing.properties
@@ -21,8 +18,15 @@ local.properties
 tsconfig.tsbuildinfo
 .dev-cert.pem
 .dev-key.pem
-/www/cordova.js
-/www/cordova_plugins.js
 .pnpm-store/
 pnpm-workspace.yaml
 pnpm-workspace.yml
+platforms/android/**/build/
+platforms/android/.gradle/
+platforms/**/bundle/
+
+.ios-build/
+**/Config.xcconfig
+platforms/ios/**/*.xcuserstate
+platforms/ios/**/xcuserdata/
+/docs/reviews/

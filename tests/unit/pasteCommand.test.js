@@ -15,17 +15,15 @@ function loadRegistry(text) {
 			"@codemirror/commands",
 			"@codemirror/language",
 			"@codemirror/lint",
-			"@codemirror/lsp-client",
 			"@codemirror/view",
 			"cm/editorReadOnly",
 			"cm/foldAwareLineCommands",
 			"cm/foldingCommands",
-			"cm/lsp",
-			"cm/lsp/references",
-			"components/symbolsPanel",
+			"cm/lsp/clientLoader",
 			"components/toast",
 			"dialogs/prompt",
 			"handlers/quickTools",
+			"lib/platform",
 			"lib/settings",
 			"utils/Url",
 		].map((id) => [id, {}]),
@@ -45,7 +43,7 @@ function loadRegistry(text) {
 		},
 		{
 			editorManager: null,
-			cordova: { plugins: { clipboard: { paste: (done) => done(text) } } },
+			Bridge: { clipboard: { paste: (done) => done(text) } },
 		},
 	);
 }

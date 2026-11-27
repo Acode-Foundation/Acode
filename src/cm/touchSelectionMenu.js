@@ -1,4 +1,3 @@
-import { LSPPlugin } from "@codemirror/lsp-client";
 import { EditorSelection } from "@codemirror/state";
 import {
 	focusEditorIfEditable,
@@ -6,6 +5,7 @@ import {
 	resolveReadOnlyContextSelection,
 	shouldCommitReadOnlyTap,
 } from "cm/editorReadOnly";
+import { getAllLspPlugins } from "cm/lsp/clientLoader";
 import {
 	bindSelectionMenuButton,
 	filterSelectionMenuItems,
@@ -135,7 +135,7 @@ function clamp(value, min, max) {
 }
 
 function hasCodeActionProvider(view) {
-	return LSPPlugin.getAll(view, "codeAction").some(
+	return getAllLspPlugins(view, "codeAction").some(
 		(plugin) => !!plugin.client.serverCapabilities?.codeActionProvider,
 	);
 }
@@ -150,7 +150,7 @@ function hasLspActions(view) {
 	];
 	if (
 		capabilities.some(([feature, capability]) =>
-			LSPPlugin.getAll(view, feature).some(
+			getAllLspPlugins(view, feature).some(
 				(plugin) => !!plugin.client.serverCapabilities?.[capability],
 			),
 		)
@@ -159,7 +159,7 @@ function hasLspActions(view) {
 	}
 	return (
 		!view.state.readOnly &&
-		LSPPlugin.getAll(view, "rename").some(
+		getAllLspPlugins(view, "rename").some(
 			(plugin) => !!plugin.client.serverCapabilities?.renameProvider,
 		)
 	);

@@ -1,16 +1,18 @@
 import settingsPage from "components/settingsPage";
+import toast from "components/toast";
 import confirm from "dialogs/confirm";
+import loader from "dialogs/loader";
 import rateBox from "dialogs/rateBox";
 import actionStack from "lib/actionStack";
 import { APP_ICONS } from "lib/appIcons";
 import config from "lib/config";
 import openFile from "lib/openFile";
+import platform from "lib/platform";
 import { bindPrivacyChoices } from "lib/privacyChoicesController.mjs";
-import { requestProPurchase } from "lib/removeAds";
+import { requestProPurchase, restorePurchases } from "lib/removeAds";
 import appSettings from "lib/settings";
 import settings from "lib/settings";
 import { showPrivacyOptions, subscribePrivacyState } from "lib/startAd";
-import openAdRewardsPage from "pages/adRewards";
 import appIconSetting, { preloadAppIconSetting } from "pages/appIconSetting";
 import Changelog from "pages/changelog/changelog";
 import plugins from "pages/plugins";
@@ -169,6 +171,7 @@ export default function mainSettings() {
 		},
 		{
 			key: "rateapp",
+			hidden: platform.isIOS,
 			text: strings["rate acode"],
 			icon: "star_outline",
 			info: strings["settings-info-main-rateapp"],
@@ -193,19 +196,28 @@ export default function mainSettings() {
 	}
 
 	if (!config.HAS_PRO) {
-		items.push({
-			key: "adRewards",
-			text: strings["earn ad-free time"],
-			icon: "play_arrow",
-			info: strings["settings-info-main-ad-rewards"],
-			category: categories.supportAcode,
-			chevron: true,
-		});
+		const purchaseWarning =
+			strings[
+				platform.isIOS
+					? "iap-pro-purchase-warning-ios"
+					: "iap-pro-purchase-warning"
+			];
+
 		items.push({
 			key: "removeads",
 			text: strings["remove ads"],
 			icon: "block",
-			info: `${strings["settings-info-main-remove-ads"]}${!helpers.shouldAllowExternalPurchase() ? ` ${strings["iap-pro-purchase-warning"]}` : ""}`,
+			info: `${strings["settings-info-main-remove-ads"]}${!helpers.shouldAllowExternalPurchase() ? ` ${purchaseWarning}` : ""}`,
+			category: categories.supportAcode,
+			chevron: true,
+		});
+	}
+
+	if (platform.isIOS) {
+		items.push({
+			key: "restorePurchases",
+			text: strings["restore purchases"] || "Restore purchases",
+			icon: "cached",
 			category: categories.supportAcode,
 			chevron: true,
 		});
@@ -286,10 +298,6 @@ export default function mainSettings() {
 				plugins();
 				break;
 
-			case "adRewards":
-				openAdRewardsPage();
-				break;
-
 			case "formatter":
 				formatterSettings();
 				break;
@@ -316,6 +324,26 @@ export default function mainSettings() {
 					if (await requestProPurchase()) this.remove();
 				} catch (error) {
 					helpers.error(error);
+				}
+				break;
+
+			case "restorePurchases":
+				loader.create(
+					strings["restore purchases"] || "Restore purchases",
+					strings["loading..."],
+				);
+				try {
+					const purchases = await restorePurchases();
+					if (config.HAS_PRO) page.setItemVisibility("removeads", false);
+					toast(
+						purchases.length
+							? strings["purchases restored"] || "Purchases restored"
+							: strings["no purchases to restore"] || "No purchases to restore",
+					);
+				} catch (error) {
+					helpers.error(error);
+				} finally {
+					loader.destroy();
 				}
 				break;
 

@@ -5,10 +5,9 @@
  * state, and named suppression reasons then determine whether the native banner
  * should be visible.
  */
-export const BANNER_SUPPRESSION_REASON = Object.freeze({
-	PRO: "pro",
-	REWARDED_PASS: "rewarded-pass",
-});
+import { BANNER_SUPPRESSION_REASON } from "./adDefaults.mjs";
+
+export { BANNER_SUPPRESSION_REASON };
 
 const DEFAULT_RETRY_DELAY_MS = 500;
 const TRANSIENT_LOAD_ERROR_CODES = new Set([0, 2, 3, 9]);

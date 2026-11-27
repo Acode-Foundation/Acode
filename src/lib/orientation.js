@@ -19,7 +19,7 @@ export default {
 
 function setOrientation(mode) {
 	return new Promise((resolve, reject) => {
-		cordova.exec(
+		Bridge.exec(
 			resolve,
 			(message) => reject(new Error(message)),
 			"System",

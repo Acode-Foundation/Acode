@@ -7,7 +7,7 @@ import { test } from "vitest";
 
 function loadBannerModule() {
 	const sourcePath = fileURLToPath(
-		new URL("../../src/plugins/admob/src/www/ads/banner.ts", import.meta.url),
+		new URL("../../src/native/admob/ads/banner.ts", import.meta.url),
 	);
 	const source = readFileSync(sourcePath, "utf8");
 	const { code } = transformSync(source, {
@@ -44,7 +44,7 @@ function loadBannerModule() {
 	const module = { exports: {} };
 	const context = {
 		console,
-		cordova: { platformId: "android" },
+		Bridge: { platformId: "android" },
 		document: {
 			createElement() {
 				return {

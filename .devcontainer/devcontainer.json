@@ -6,17 +6,17 @@
   },
 
   "containerEnv": {
-    "JAVA_HOME": "/usr/local/openjdk-21"
+    "JAVA_HOME": "/opt/java/openjdk"
   },
   "remoteEnv": {
-    "JAVA_HOME": "/usr/local/openjdk-21",
+    "JAVA_HOME": "/opt/java/openjdk",
     "ANDROID_SDK_ROOT": "${containerEnv:ANDROID_HOME}",
     "PATH": "${containerEnv:PATH}:${containerEnv:ANDROID_HOME}/build-tools/36.0.0"
   },
 
   "features": {
     "ghcr.io/nordcominc/devcontainer-features/android-sdk:2": {
-      "platform": "36",
+      "platform": "37",
       "build_tools": "36.0.0"
     },
     "ghcr.io/devcontainers/features/node:2.1": {
@@ -28,7 +28,7 @@
     }
   },
   "overrideCommand": true,
-  "postCreateCommand": "pnpm run setup",
+  "postCreateCommand": "git submodule update --init --recursive && npm ci",
   "remoteUser": "root",
   "customizations": {
     "vscode": {

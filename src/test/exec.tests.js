@@ -1,3 +1,4 @@
+import platform from "lib/platform";
 import { TestRunner } from "./tester";
 
 export async function runExecutorTests(writeOutput) {
@@ -150,6 +151,7 @@ export async function runExecutorTests(writeOutput) {
 	});
 
 	runner.test("FDROID env variable", async (test) => {
+		if (platform.isIOS) return test.skip("FDROID is only used on Android");
 		const result = await Executor.execute("echo $FDROID");
 
 		const isSet = result.trim().length > 0;

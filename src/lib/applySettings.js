@@ -1,3 +1,4 @@
+import haptic from "utils/haptic";
 import quickTools from "../components/quickTools";
 import actions from "../handlers/quickTools";
 import appSettings from "../lib/settings";
@@ -19,7 +20,7 @@ export default {
 		app.addEventListener("click", function (e) {
 			const $target = e.target;
 			if ($target.hasAttribute("vibrate") && appSettings.value.vibrateOnTap) {
-				navigator.vibrate(config.VIBRATION_TIME);
+				haptic(config.VIBRATION_TIME);
 			}
 		});
 

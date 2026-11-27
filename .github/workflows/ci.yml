@@ -61,8 +61,17 @@ jobs:
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
 
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '26'
+
       - name: Run unit tests
         run: npm run test
+
+      - name: Check TypeScript
+        run: npm run typecheck
 
   translation-check:
     name: Translation Check (On PR Only)
@@ -97,3 +106,4 @@ jobs:
         run: |
             npm ci --no-audit --no-fund
             npm run lang check
+

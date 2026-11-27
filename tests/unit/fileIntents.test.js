@@ -5,7 +5,7 @@ import { loadSourceModule } from "../helpers/loadSourceModule";
 
 afterEach(() => vi.restoreAllMocks());
 
-function setup() {
+function setup({ pluginHandled = [] } = {}) {
 	let restored = false,
 		pluginsReady = false;
 	const open = vi.fn(async () => {});
@@ -15,11 +15,27 @@ function setup() {
 	const handler = loadSourceModule(
 		"src/handlers/intent.js",
 		{
-			fileSystem: {},
+			fileSystem: {
+				__esModule: true,
+				default: (uri) => ({
+					stat: async () => ({ name: uri.split("/").pop() }),
+				}),
+			},
 			"lib/auth": {},
 			"lib/config": {},
 			"lib/startAd": {},
-			"lib/openFile": open,
+			"lib/fileTypeHandler": {
+				__esModule: true,
+				default: {
+					mayHavePluginHandler: (name) =>
+						pluginHandled.includes(name.split(".").pop()),
+				},
+			},
+			"lib/openFile": {
+				__esModule: true,
+				default: open,
+				EXTERNAL_DOCUMENT_PATTERN: /\.(pdf|docx)$/i,
+			},
 			"lib/loadPlugins": { isInitialPluginLoadComplete: () => pluginsReady },
 			"dialogs/select": select,
 			"utils/helpers": { error: reportError },
@@ -29,6 +45,7 @@ function setup() {
 			strings,
 			acode: { exec },
 			sessionStorage: { getItem: () => String(restored) },
+			setTimeout,
 		},
 	);
 	return {
@@ -190,4 +207,56 @@ it.each([
 	]);
 	expect(f.reportError).toHaveBeenCalledTimes(outcome === "reject" ? 1 : 0);
 	expect(f.exec).not.toHaveBeenCalled();
+});
+
+it("opens files no plugin handles after the grace period, holding back the rest until plugins load", async () => {
+	vi.useFakeTimers();
+	try {
+		const f = setup({ pluginHandled: ["epub"] });
+		await f.send(["content://docs/notes.txt"]);
+		await f.send(["content://docs/book.epub"]);
+		await f.send(["content://docs/report.pdf"]);
+		await f.send(["content://docs/later.md"]);
+		f.ready(true, false);
+		f.startPluginGracePeriod();
+		await f.processPendingIntents();
+		expect(f.open).not.toHaveBeenCalled();
+
+		await vi.advanceTimersByTimeAsync(1000);
+		// The handled extension holds back everything after it, keeping order.
+		expect(f.open.mock.calls.map(([uri]) => uri)).toEqual([
+			"content://docs/notes.txt",
+		]);
+
+		f.ready();
+		await f.processPendingIntents();
+		expect(f.open.mock.calls.map(([uri]) => uri)).toEqual([
+			"content://docs/notes.txt",
+			"content://docs/book.epub",
+			"content://docs/report.pdf",
+			"content://docs/later.md",
+		]);
+	} finally {
+		vi.useRealTimers();
+	}
+});
+
+it("keeps waiting for plugins when a document needs a plugin handler", async () => {
+	vi.useFakeTimers();
+	try {
+		const f = setup();
+		f.ready(true, false);
+		f.startPluginGracePeriod();
+		await f.send(["content://docs/report.pdf"]);
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(f.open).not.toHaveBeenCalled();
+
+		f.ready();
+		await f.processPendingIntents();
+		expect(f.open.mock.calls.map(([uri]) => uri)).toEqual([
+			"content://docs/report.pdf",
+		]);
+	} finally {
+		vi.useRealTimers();
+	}
 });

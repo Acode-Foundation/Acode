@@ -70,16 +70,25 @@ export const builtinAlpineRuntimeProvider: LspRuntimeProvider = {
 		server: LspServerDefinition,
 		context: LspRuntimeUriResolutionContext,
 	) {
+		const documentUri = context.originalDocumentUri || context.uri;
+		if (documentUri?.startsWith("alpine://localhost/")) {
+			const root = context.originalRootUri || context.rootUri;
+			return {
+				documentUri: documentUri.replace("alpine://localhost/", "file:///"),
+				rootUri: root?.replace("alpine://localhost/", "file:///") || null,
+				scope: root ? "workspace" : "document",
+			};
+		}
 		if (canUseRealPath(context) && !isUntitled(context)) return null;
 
-		const documentUri = cacheDocumentUri(context);
-		if (!documentUri) {
+		const cachedUri = cacheDocumentUri(context);
+		if (!cachedUri) {
 			throw new Error(
 				`Built-in Alpine cannot resolve a cache URI for ${context.originalDocumentUri}`,
 			);
 		}
 		return {
-			documentUri,
+			documentUri: cachedUri,
 			rootUri: null,
 			scope: "document",
 		};

@@ -1,0 +1,129 @@
+.faqs-page > header button.icon {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	color: inherit;
+
+	&:disabled {
+		opacity: 0.35;
+	}
+}
+
+#faqs-page {
+	box-sizing: border-box;
+	max-width: 760px;
+	margin: 0 auto;
+	padding: 12px 16px 32px;
+
+	.faq-count {
+		padding: 4px 2px 14px;
+		font-size: 0.85rem;
+		color: var(--secondary-text-color);
+		opacity: 0.7;
+	}
+
+	details {
+		margin-bottom: 10px;
+		border: 1px solid var(--border-color);
+		border-radius: 12px;
+		background: var(--primary-color);
+		color: var(--primary-text-color);
+	}
+
+	summary {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 16px;
+		min-height: 52px;
+		box-sizing: border-box;
+		padding: 14px 16px;
+		font-size: 0.95rem;
+		font-weight: 600;
+		line-height: 1.5;
+		cursor: pointer;
+		list-style: none;
+		overflow-wrap: anywhere;
+
+		&::-webkit-details-marker {
+			display: none;
+		}
+		&:focus-visible {
+			outline: 2px solid var(--active-color);
+			outline-offset: -2px;
+			border-radius: 12px;
+		}
+		.icon {
+			flex: 0 0 20px;
+			opacity: 0.65;
+		}
+	}
+
+	details[open] > summary .icon {
+		transform: rotate(180deg);
+	}
+
+	.faq-answer {
+		padding: 0 16px 16px;
+		font-size: 0.95rem;
+		line-height: 1.65;
+		overflow-wrap: anywhere;
+		user-select: text;
+
+		> :first-child {
+			margin-top: 0;
+		}
+		> :last-child {
+			margin-bottom: 0;
+		}
+
+		a {
+			color: var(--link-text-color);
+		}
+
+		pre,
+		code,
+		samp {
+			color: inherit;
+		}
+		code {
+			border-radius: 4px;
+			background: var(--secondary-color);
+		}
+
+		img {
+			max-width: 100%;
+			height: auto;
+		}
+	}
+
+	.faq-state {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 16px;
+		padding: 56px 24px;
+		text-align: center;
+		line-height: 1.6;
+
+		.icon {
+			font-size: 32px;
+			opacity: 0.55;
+		}
+		p {
+			margin: 0;
+			max-width: 320px;
+		}
+		button {
+			margin: 0;
+			min-height: 44px;
+			padding: 0 24px;
+		}
+	}
+
+	[hidden] {
+		display: none;
+	}
+}

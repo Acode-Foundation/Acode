@@ -2,6 +2,7 @@ import fsOperation from "fileSystem";
 import { selectAll } from "@codemirror/commands";
 import { focusEditorIfEditable } from "cm/editorReadOnly";
 import Sidebar from "components/sidebar";
+import { loadTerminalManager } from "components/terminal/loader";
 import confirm from "dialogs/confirm";
 import loader from "dialogs/loader";
 import prompt from "dialogs/prompt";
@@ -17,7 +18,8 @@ import EditorFile, { AUTO_SAVE } from "./editorFile";
 import { loadFileBrowser } from "./lazyImports";
 import openFile from "./openFile";
 import openFolder from "./openFolder";
-import run from "./run";
+import platform from "./platform";
+import runLazily from "./runLazily";
 import saveState, { deferSaveState } from "./saveState";
 import appSettings from "./settings";
 import showFileInfo from "./showFileInfo";
@@ -261,7 +263,7 @@ async function removeFiles(files) {
 	);
 }
 
-export default {
+const commands = {
 	async "run-tests"() {
 		const { runAllTests } = await import(
 			/* webpackChunkName: "tester" */ "test/tester"
@@ -381,7 +383,7 @@ export default {
 		resolveReferenceFile(referenceFile)?.togglePinned?.();
 	},
 	console() {
-		run(true, "inapp");
+		void runLazily(true, "inapp");
 	},
 	"check-files"() {
 		if (!appSettings.value.checkFiles) return;
@@ -584,7 +586,7 @@ export default {
 	},
 	async "open-inapp-browser"(url) {
 		const { default: browser } = await import(
-			/* webpackChunkName: "browserPlugin" */ "plugins/browser"
+			/* webpackChunkName: "browserPlugin" */ "native/browser"
 		);
 		browser.open(url);
 	},
@@ -872,11 +874,11 @@ App Info:
 		Version Code: ${appInfo?.versionCode || "N/A"}
 
 Device Info:
-		Android Version: ${device?.version || "N/A"}
+		${platform.isIOS ? "iOS" : "Android"} Version: ${device?.version || "N/A"}
 		Manufacturer: ${device?.manufacturer || "N/A"}
 		Model: ${device?.model || "N/A"}
 		Platform: ${device?.platform || "N/A"}
-		Cordova Version: ${device?.cordova || "N/A"}
+		Bridge Version: ${device?.runtimeVersion || "N/A"}
 
 Screen Info:
 		Width: ${screen?.width || "N/A"}
@@ -889,8 +891,8 @@ Additional Info:
 `;
 
 				// Copy the info to clipboard
-				if (cordova.plugins.clipboard) {
-					cordova.plugins.clipboard.copy(info);
+				if (Bridge.clipboard) {
+					Bridge.clipboard.copy(info);
 				}
 			})
 			.catch((error) => {
@@ -900,9 +902,7 @@ Additional Info:
 	},
 	async "new-terminal"() {
 		try {
-			const { TerminalManager } = await import(
-				/* webpackChunkName: "terminal" */ "components/terminal"
-			);
+			const TerminalManager = await loadTerminalManager();
 			await TerminalManager.createServerTerminal();
 		} catch (error) {
 			console.error("Failed to create terminal:", error);
@@ -934,3 +934,14 @@ Additional Info:
 		showLspInfoDialog();
 	},
 };
+
+if (!platform.localExecution) {
+	delete commands["new-terminal"];
+	delete commands["running-processes"];
+}
+if (!platform.appExit && !platform.isIOS) delete commands.exit;
+if (!platform.androidIntents) {
+	delete commands["edit-with"];
+	delete commands["pin-file-shortcut"];
+}
+export default commands;

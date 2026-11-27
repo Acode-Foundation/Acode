@@ -2,10 +2,18 @@ import fsOperation from "fileSystem";
 import select from "dialogs/select";
 import auth from "lib/auth";
 import config from "lib/config";
+import fileTypeHandler from "lib/fileTypeHandler";
 import { isInitialPluginLoadComplete } from "lib/loadPlugins";
-import openFile from "lib/openFile";
+import openFile, { EXTERNAL_DOCUMENT_PATTERN } from "lib/openFile";
 import { BANNER_SUPPRESSION_REASON, setBannerSuppressed } from "lib/startAd";
 import helpers from "utils/helpers";
+
+/**
+ * How long files opened from other apps wait for plugins at startup. After
+ * this, only files a plugin may handle keep waiting for every plugin, so one
+ * slow plugin no longer delays everything else.
+ */
+const PLUGIN_GRACE_MS = 1000;
 
 const handlers = [];
 /**
@@ -14,6 +22,7 @@ const handlers = [];
  */
 const pendingIntents = [];
 let opening;
+let pluginGraceElapsed = false;
 
 /**
  *
@@ -112,16 +121,33 @@ export function removeIntentHandler(handler) {
 	if (index > -1) handlers.splice(index, 1);
 }
 
-/** Drain only after both startup phases, including a partially failed plugin load. */
+/**
+ * Starts the plugin grace period. Call it when the initial plugin load starts.
+ */
+export function startPluginGracePeriod() {
+	setTimeout(() => {
+		pluginGraceElapsed = true;
+		void processPendingIntents().catch(HandleIntent.onError);
+	}, PLUGIN_GRACE_MS);
+}
+
+/**
+ * Drain once files are restored and either every plugin has loaded (even
+ * partially failed) or the grace period is over and no pending file may need
+ * a plugin handler.
+ */
 export async function processPendingIntents() {
-	if (
-		sessionStorage.getItem("isfilesRestored") !== "true" ||
-		!isInitialPluginLoadComplete()
-	)
-		return;
+	if (sessionStorage.getItem("isfilesRestored") !== "true") return;
+	if (!isInitialPluginLoadComplete() && !pluginGraceElapsed) return;
 	if (opening) return opening;
 	opening = (async () => {
 		while (pendingIntents.length) {
+			// Keep the order: a file that may need a plugin holds back the rest.
+			if (
+				!isInitialPluginLoadComplete() &&
+				(await mayNeedPluginHandler(pendingIntents[0]))
+			)
+				break;
 			const { uris, invalid } = pendingIntents.shift();
 			const failures = invalid
 				? [{ filename: strings["invalid shared file"] }]
@@ -147,6 +173,9 @@ export async function processPendingIntents() {
 		}
 	})().finally(() => {
 		opening = undefined;
+		// Plugins may have finished while a held-back file was being checked.
+		if (pendingIntents.length && isInitialPluginLoadComplete())
+			void processPendingIntents().catch(HandleIntent.onError);
 	});
 	return opening;
 }
@@ -216,4 +245,26 @@ class IntentEvent {
 	get propagationStopped() {
 		return this.#propagationStopped;
 	}
+}
+
+/**
+ * @param {{uris: string[]}} intent
+ */
+async function mayNeedPluginHandler({ uris }) {
+	for (const uri of uris) {
+		let name;
+		try {
+			// Content URIs rarely carry the file name; the provider knows it.
+			({ name } = await fsOperation(uri).stat());
+		} catch {
+			return true;
+		}
+		if (
+			!name ||
+			EXTERNAL_DOCUMENT_PATTERN.test(name) ||
+			fileTypeHandler.mayHavePluginHandler(name)
+		)
+			return true;
+	}
+	return false;
 }

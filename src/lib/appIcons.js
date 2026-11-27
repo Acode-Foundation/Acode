@@ -1,7 +1,7 @@
 /**
  * Available app icons that can be selected from the settings.
  * The `id` matches the icon names accepted by `system.setAppIcon`.
- * The `image` is a relative path (relative to the www root) to an SVG
+ * The `image` is a relative path (relative to the web bundle root) to an SVG
  * preview that is rendered inside the UI.
  */
 

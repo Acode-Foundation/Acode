@@ -1,5 +1,6 @@
 import autosize from "autosize";
 import actionStack from "lib/actionStack";
+import platform from "lib/platform";
 import restoreTheme from "lib/restoreTheme";
 import appSettings from "lib/settings";
 
@@ -30,7 +31,8 @@ export default function prompt(
 	// CodeMirror doesn't use commands.exec like ACE, so we store a reference to the editor
 	// to potentially disable keymaps if needed in the future
 	const editor = editorManager.editor;
-	const { capitalize = true } = options;
+	const isIOSFilename = platform.isIOS && type === "filename";
+	const { capitalize = !isIOSFilename } = options;
 
 	return new Promise((resolve) => {
 		const inputType = type === "textarea" ? "textarea" : "input";
@@ -47,6 +49,11 @@ export default function prompt(
 			placeholder: options.placeholder,
 			autocapitalize: capitalize ? "on" : "off",
 		});
+		if (isIOSFilename) {
+			input.setAttribute("autocorrect", "off");
+			input.setAttribute("spellcheck", "false");
+			input.setAttribute("writingsuggestions", "false");
+		}
 		const okBtn = tag("button", {
 			type: "submit",
 			textContent: strings.ok,

@@ -20,14 +20,6 @@ import {
 	lineNumbers,
 	placeholder,
 } from "@codemirror/view";
-import {
-	abbreviationTracker,
-	EmmetKnownSyntax,
-	emmetCompletionSource,
-	emmetConfig,
-	expandAbbreviation,
-	wrapWithAbbreviation,
-} from "@emmetio/codemirror6-plugin";
 import createBaseExtensions from "cm/baseExtensions";
 import {
 	getCanvasBackend,
@@ -57,12 +49,22 @@ import {
 	focusEditorIfEditable,
 	reconfigureEditorReadOnly,
 } from "cm/editorReadOnly";
+import {
+	EmmetSyntax,
+	emmetCompartment,
+	getLoadedEmmet,
+	loadEmmet,
+} from "cm/emmet";
 import { handleLineNumberClick } from "cm/lineNumberSelection";
 import localWordCompletions, {
 	localWordCompletionSource,
 } from "cm/localWordCompletions";
 import lspApi from "cm/lsp/api";
-import lspClientManager, { lspCompletionEnabled } from "cm/lsp/clientManager";
+import {
+	getLoadedLspClient,
+	loadLspClient,
+	setLspOptions,
+} from "cm/lsp/clientLoader";
 import {
 	getLspDiagnostics,
 	LSP_DIAGNOSTICS_EVENT,
@@ -70,6 +72,7 @@ import {
 	lspDiagnosticsUiExtension,
 } from "cm/lsp/diagnostics";
 import { stopManagedServer } from "cm/lsp/serverLauncher";
+import serverRegistry from "cm/lsp/serverRegistry";
 import createMainEditorExtensions from "cm/mainEditorExtensions";
 // CodeMirror mode management
 import {
@@ -85,7 +88,6 @@ import createTouchSelectionMenu, {
 import "cm/supportedModes";
 import { onProviderRegistered } from "fileSystem";
 import { autocompletion } from "@codemirror/autocomplete";
-import { serverCompletionSource } from "@codemirror/lsp-client";
 import colorView from "cm/colorView";
 import {
 	getAllFolds,
@@ -941,6 +943,7 @@ async function EditorManager($header, $body) {
 
 	// Compartment to swap editor theme dynamically
 	const themeCompartment = new Compartment();
+	let emmetRequested = false;
 	// Compartments to control indentation, tab width, and font styling dynamically
 	const indentUnitCompartment = new Compartment();
 	const tabSizeCompartment = new Compartment();
@@ -999,13 +1002,14 @@ async function EditorManager($header, $body) {
 	}
 
 	function getLspCompletionSource(context) {
-		if (!context.state.facet(lspCompletionEnabled)) return null;
-		return serverCompletionSource(context);
+		const lsp = getLoadedLspClient();
+		if (!lsp || !context.state.facet(lsp.lspCompletionEnabled)) return null;
+		return lsp.serverCompletionSource(context);
 	}
 
 	function getEmmetCompletionSource(context) {
 		try {
-			return emmetCompletionSource(context);
+			return getLoadedEmmet()?.emmetCompletionSource(context) ?? null;
 		} catch {
 			return null;
 		}
@@ -1373,32 +1377,63 @@ async function EditorManager($header, $body) {
 		return exts;
 	}
 
-	function createEmmetExtensionSet({
-		syntax,
-		tracker = {},
-		config: emmetOverrides = {},
-	} = {}) {
+	/**
+	 * Emmet sits in a compartment so its package loads only when a file needs
+	 * it, after the editor is visible; the compartment keeps its precedence.
+	 */
+	function createEmmetExtensionSet({ syntax, request = true } = {}) {
 		if (appSettings.value.useEmmet === false) return [];
-		const resolvedSyntax =
-			syntax === undefined ? EmmetKnownSyntax.html : syntax;
+		const resolvedSyntax = syntax === undefined ? EmmetSyntax.html : syntax;
 		if (!resolvedSyntax) return [];
-		const trackerExtension = abbreviationTracker({
-			syntax: resolvedSyntax,
-			...tracker,
-		});
-		const { autocompleteTab = ["markup", "stylesheet"], ...restOverrides } =
-			emmetOverrides || {};
-		const emmetConfigExtension = emmetConfig.of({
-			syntax: resolvedSyntax,
-			autocompleteTab,
-			...restOverrides,
-		});
+		const emmet = getLoadedEmmet();
+		if (!emmet && request) requestEmmet();
 		return [
-			Prec.high(trackerExtension),
-			wrapWithAbbreviation(),
-			keymap.of([{ key: "Mod-e", run: expandAbbreviation }]),
-			emmetConfigExtension,
+			emmetCompartment.of(
+				emmet ? emmet.createEmmetExtensions(resolvedSyntax) : [],
+			),
 		];
+	}
+
+	function requestEmmet() {
+		if (emmetRequested) return;
+		emmetRequested = true;
+		loadEmmet().then(
+			() => {
+				for (const pane of panes) {
+					if (pane.editor) fillEmmetSlot(pane.editor, pane.activeFile);
+				}
+			},
+			() => {
+				emmetRequested = false;
+			},
+		);
+	}
+
+	/**
+	 * Gives a reused file state Emmet, loading it first if needed.
+	 */
+	function syncEmmetForFile(file, view) {
+		if (!getEmmetSyntaxForFile(file)) return;
+		if (getLoadedEmmet()) fillEmmetSlot(view, file);
+		else if (appSettings.value.useEmmet !== false) requestEmmet();
+	}
+
+	/**
+	 * Adds Emmet to a view whose state was created before Emmet loaded.
+	 * @param {EditorView} view
+	 * @param {object} [file] the file shown, or none for the empty editor
+	 */
+	function fillEmmetSlot(view, file) {
+		const emmet = getLoadedEmmet();
+		const slot = emmetCompartment.get(view.state);
+		if (!emmet || !Array.isArray(slot) || slot.length) return;
+		const syntax = file ? getEmmetSyntaxForFile(file) : EmmetSyntax.html;
+		if (!syntax) return;
+		view.dispatch({
+			effects: emmetCompartment.reconfigure(
+				emmet.createEmmetExtensions(syntax),
+			),
+		});
 	}
 
 	function applyOptions(keys, targetEditor = null) {
@@ -1591,8 +1626,15 @@ async function EditorManager($header, $body) {
 			detachActiveLsp(pane, { invalidate: false });
 		}
 		try {
-			const extensions =
-				(await lspClientManager.getExtensionsForFile(metadata)) || [];
+			// The client only loads when a server could handle this file.
+			const extensions = hasLspServerFor(
+				metadata.languageId,
+				metadata.languageName,
+			)
+				? (await (
+						await loadLspClient()
+					).clientManager.getExtensionsForFile(metadata)) || []
+				: [];
 			if (token !== pane.lspRequestToken) return;
 			if (!isFileActiveInEditor(file, targetEditor)) return;
 			if (!extensions.length) {
@@ -1626,6 +1668,18 @@ async function EditorManager($header, $body) {
 		);
 	}
 
+	/**
+	 * Whether an enabled server handles this language, matching the client
+	 * manager's own check, so the client only loads when it could attach.
+	 */
+	function hasLspServerFor(languageId, languageName) {
+		const language = String(languageId ?? languageName ?? "").toLowerCase();
+		return (
+			Boolean(language) &&
+			serverRegistry.getServersForLanguage(language).length > 0
+		);
+	}
+
 	function detachLspForFile(file) {
 		if (!file || file.type !== "editor") return;
 		const uri = getFileLspUri(file);
@@ -1634,7 +1688,7 @@ async function EditorManager($header, $body) {
 		if (!pane) return;
 		const targetEditor = pane?.editor || editor;
 		try {
-			lspClientManager.detach(uri, targetEditor);
+			getLoadedLspClient()?.clientManager.detach(uri, targetEditor);
 		} catch (error) {
 			console.warn(`Failed to detach LSP client for ${uri}`, error);
 		}
@@ -1648,12 +1702,12 @@ async function EditorManager($header, $body) {
 
 	// Plugin already wires CSS completions; attach extras for related syntaxes.
 	const emmetCompletionSyntaxes = new Set([
-		EmmetKnownSyntax.scss,
-		EmmetKnownSyntax.less,
-		EmmetKnownSyntax.sass,
-		EmmetKnownSyntax.sss,
-		EmmetKnownSyntax.stylus,
-		EmmetKnownSyntax.postcss,
+		EmmetSyntax.scss,
+		EmmetSyntax.less,
+		EmmetSyntax.sass,
+		EmmetSyntax.sss,
+		EmmetSyntax.stylus,
+		EmmetSyntax.postcss,
 	]);
 
 	function maybeAttachEmmetCompletions(targetExtensions, syntax) {
@@ -1661,7 +1715,7 @@ async function EditorManager($header, $body) {
 		if (emmetCompletionSyntaxes.has(syntax)) {
 			targetExtensions.push(
 				EditorState.languageData.of(() => [
-					{ autocomplete: emmetCompletionSource },
+					{ autocomplete: getEmmetCompletionSource },
 				]),
 			);
 		}
@@ -1711,7 +1765,7 @@ async function EditorManager($header, $body) {
 		if (!pane.lastLspUri) return;
 		const targetEditor = pane.editor || editor;
 		try {
-			lspClientManager.detach(pane.lastLspUri, targetEditor);
+			getLoadedLspClient()?.clientManager.detach(pane.lastLspUri, targetEditor);
 		} catch (error) {
 			console.warn(
 				`Failed to detach LSP session for ${pane.lastLspUri}`,
@@ -1724,7 +1778,7 @@ async function EditorManager($header, $body) {
 	function applyLspSettings() {
 		const { lsp } = appSettings.value || {};
 		if (!lsp) return;
-		lspClientManager.setOptions({
+		setLspOptions({
 			allowNonTerminalWorkspace: lsp.allowNonTerminalWorkspace === true,
 		});
 		const overrides = lsp.servers || {};
@@ -1831,7 +1885,8 @@ async function EditorManager($header, $body) {
 			extensions: createMainEditorExtensions({
 				// Emmet needs highest precedence so place before default keymaps
 				emmetExtensions: createEmmetExtensionSet({
-					syntax: EmmetKnownSyntax.html,
+					syntax: EmmetSyntax.html,
+					request: false,
 				}),
 				baseExtensions: createConfiguredBaseExtensions(),
 				commandKeymapExtension: getCommandKeymapExtension(),
@@ -3088,6 +3143,7 @@ async function EditorManager($header, $body) {
 			const reusedState = getRawEditorState(file.session);
 			editor.setState(reusedState);
 			applyCurrentEditorOptions(file, { targetEditor: editor });
+			syncEmmetForFile(file, editor);
 
 			if (shouldApplyLanguage(file, reusedState, languageSignature)) {
 				const ext = resolveLanguageExtension(
@@ -3285,40 +3341,40 @@ async function EditorManager($header, $body) {
 		const mode = (file?.currentMode || "").toLowerCase();
 		const name = (file?.filename || "").toLowerCase();
 		const ext = name.includes(".") ? name.split(".").pop() : "";
-		if (ext === "tsx" || mode.includes("tsx")) return EmmetKnownSyntax.tsx;
-		if (ext === "jsx" || mode.includes("jsx")) return EmmetKnownSyntax.jsx;
+		if (ext === "tsx" || mode.includes("tsx")) return EmmetSyntax.tsx;
+		if (ext === "jsx" || mode.includes("jsx")) return EmmetSyntax.jsx;
 		if (mode.includes("javascript") && (ext === "jsx" || ext === "tsx")) {
-			return ext === "tsx" ? EmmetKnownSyntax.tsx : EmmetKnownSyntax.jsx;
+			return ext === "tsx" ? EmmetSyntax.tsx : EmmetSyntax.jsx;
 		}
-		if (ext === "css" || mode.includes("css")) return EmmetKnownSyntax.css;
-		if (ext === "scss" || mode.includes("scss")) return EmmetKnownSyntax.scss;
-		if (ext === "sass" || mode.includes("sass")) return EmmetKnownSyntax.sass;
-		if (ext === "less" || mode.includes("less")) return EmmetKnownSyntax.less;
-		if (ext === "sss" || mode.includes("sss")) return EmmetKnownSyntax.sss;
+		if (ext === "css" || mode.includes("css")) return EmmetSyntax.css;
+		if (ext === "scss" || mode.includes("scss")) return EmmetSyntax.scss;
+		if (ext === "sass" || mode.includes("sass")) return EmmetSyntax.sass;
+		if (ext === "less" || mode.includes("less")) return EmmetSyntax.less;
+		if (ext === "sss" || mode.includes("sss")) return EmmetSyntax.sss;
 		if (ext === "styl" || ext === "stylus" || mode.includes("styl"))
-			return EmmetKnownSyntax.stylus;
+			return EmmetSyntax.stylus;
 		if (ext === "postcss" || mode.includes("postcss"))
-			return EmmetKnownSyntax.postcss;
-		if (ext === "xml" || mode.includes("xml")) return EmmetKnownSyntax.xml;
-		if (ext === "xsl" || mode.includes("xsl")) return EmmetKnownSyntax.xsl;
-		if (ext === "haml" || mode.includes("haml")) return EmmetKnownSyntax.haml;
+			return EmmetSyntax.postcss;
+		if (ext === "xml" || mode.includes("xml")) return EmmetSyntax.xml;
+		if (ext === "xsl" || mode.includes("xsl")) return EmmetSyntax.xsl;
+		if (ext === "haml" || mode.includes("haml")) return EmmetSyntax.haml;
 		if (
 			ext === "pug" ||
 			ext === "jade" ||
 			mode.includes("pug") ||
 			mode.includes("jade")
 		)
-			return EmmetKnownSyntax.pug;
-		if (ext === "slim" || mode.includes("slim")) return EmmetKnownSyntax.slim;
-		if (ext === "vue" || mode.includes("vue")) return EmmetKnownSyntax.vue;
-		if (ext === "php" || mode.includes("php")) return EmmetKnownSyntax.html;
+			return EmmetSyntax.pug;
+		if (ext === "slim" || mode.includes("slim")) return EmmetSyntax.slim;
+		if (ext === "vue" || mode.includes("vue")) return EmmetSyntax.vue;
+		if (ext === "php" || mode.includes("php")) return EmmetSyntax.html;
 		if (
 			ext === "htm" ||
 			ext === "html" ||
 			ext === "xhtml" ||
 			mode.includes("html")
 		)
-			return EmmetKnownSyntax.html;
+			return EmmetSyntax.html;
 		return null;
 	}
 
@@ -3489,7 +3545,7 @@ async function EditorManager($header, $body) {
 		}
 	}
 
-	lspClientManager.setOptions({
+	setLspOptions({
 		resolveRoot: resolveRootUriForContext,
 		onClientIdle: ({ server, dispose }) => {
 			if (!server?.id || typeof dispose !== "function") return;
@@ -3497,8 +3553,8 @@ async function EditorManager($header, $body) {
 			// down every workspace sharing the server id (e.g. web-worker LSPs).
 			void (async () => {
 				await dispose();
-				const stillActive = lspClientManager
-					.getActiveClients()
+				const stillActive = getLoadedLspClient()
+					.clientManager.getActiveClients()
 					.some(
 						(state) =>
 							state.server?.id?.toLowerCase() === server.id.toLowerCase(),
@@ -3707,7 +3763,7 @@ async function EditorManager($header, $body) {
 		} else {
 			detachActiveLsp();
 			editor.dispatch({ effects: lspCompartment.reconfigure([]) });
-			await lspClientManager.dispose();
+			await getLoadedLspClient()?.clientManager.dispose();
 		}
 	});
 
@@ -3784,7 +3840,7 @@ async function EditorManager($header, $body) {
 	});
 
 	appSettings.on("update:lintGutter", function (value) {
-		lspClientManager.setOptions({
+		setLspOptions({
 			diagnosticsUiExtension: lspDiagnosticsUiExtension(value !== false, {
 				canvas: canvasRenderer,
 			}),

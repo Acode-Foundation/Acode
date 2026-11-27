@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { parse } from "elementtree";
+import { Window } from "happy-dom";
 import { APP_ICONS } from "lib/appIcons";
 import { describe, expect, it } from "vitest";
 
@@ -17,7 +17,7 @@ describe("appIcons", () => {
 	it("keeps picker IDs, native mappings, and launcher aliases in sync", () => {
 		const native = fs.readFileSync(
 			new URL(
-				"../../src/plugins/system/android/com/foxdebug/system/System.java",
+				"../../platforms/android/app/src/main/java/com/foxdebug/acode/system/System.java",
 				import.meta.url,
 			),
 			"utf8",
@@ -29,13 +29,26 @@ describe("appIcons", () => {
 		expect(new Set(mappings.map(([, name]) => name)).size).toBe(
 			APP_ICONS.length,
 		);
-		const config = parse(
-			fs.readFileSync(new URL("../../config.xml", import.meta.url), "utf8"),
+		const window = new Window();
+		const config = new window.DOMParser().parseFromString(
+			fs.readFileSync(
+				new URL(
+					"../../platforms/android/app/src/main/AndroidManifest.xml",
+					import.meta.url,
+				),
+				"utf8",
+			),
+			"application/xml",
 		);
 		expect(
-			config
-				.findall(".//activity-alias")
-				.map((alias) => alias.get("android:name")),
-		).toEqual(mappings.map(([, name]) => `.${name}`));
+			[...config.querySelectorAll("activity-alias")].map((alias) =>
+				resolveAlias(alias.getAttribute("android:name")),
+			),
+		).toEqual(mappings.map(([, name]) => `\${applicationId}.${name}`));
+		window.happyDOM.abort();
 	});
 });
+
+function resolveAlias(name) {
+	return name.startsWith(".") ? `\${applicationId}${name}` : name;
+}

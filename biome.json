@@ -41,14 +41,9 @@
 		"includes": [
 			"src/**/*.js",
 			"src/**/*.ts",
-			"utils/**/*.js",
+			"dev/**/*.js",
 			"src/lang/**/*.json",
 			"tests/**",
-			"!src/plugins/**/*.js",
-			"!src/plugins/**/*.ts",
-			"!www/**/*",
-			"!plugins/**/*",
-			"!hooks/**/*",
 			"!fastlane/**/*",
 			"!platforms/**/*"
 		]

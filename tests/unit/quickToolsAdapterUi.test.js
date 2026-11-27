@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, expect, it, vi } from "vitest";
+import platform from "../../src/lib/platform";
 import { loadSourceModule } from "../helpers/loadSourceModule";
 
 function mockQuickTools() {
@@ -128,14 +129,11 @@ function hostCommands(manager, exec) {
 			"@codemirror/commands",
 			"@codemirror/language",
 			"@codemirror/lint",
-			"@codemirror/lsp-client",
 			"@codemirror/view",
 			"cm/editorReadOnly",
 			"cm/foldAwareLineCommands",
 			"cm/foldingCommands",
-			"cm/lsp",
-			"cm/lsp/references",
-			"components/symbolsPanel",
+			"cm/lsp/clientLoader",
 			"components/toast",
 			"dialogs/prompt",
 			"handlers/quickTools",
@@ -147,6 +145,7 @@ function hostCommands(manager, exec) {
 		"src/cm/commandRegistry.js",
 		{
 			...dependencies,
+			"lib/platform": platform,
 			"@codemirror/state": { Compartment: class {} },
 			"cm/keyBindingUtils": { toCodeMirrorKey: () => null },
 			"lib/keyBindings": {

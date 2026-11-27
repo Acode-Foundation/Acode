@@ -61,6 +61,7 @@
   <span class="text">{{open with}}</span>
   <span class="icon open_in_browser"></span>
 </li>
+{{#android_intents}}
 <li action="edit-with">
   <span class="text">{{edit with}}</span>
   <span class="icon edit"></span>
@@ -69,6 +70,7 @@
   <span class="text">{{add to home screen}}</span>
   <span class="icon home"></span>
 </li>
+{{/android_intents}}
 {{/file_on_disk}}
 
 <li action="toggle-pin-tab" value="{{file_id}}">

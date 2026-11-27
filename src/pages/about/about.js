@@ -4,6 +4,7 @@ import Page from "components/page";
 import Reactive from "html-tag-js/reactive";
 import actionStack from "lib/actionStack";
 import config from "lib/config";
+import platform from "lib/platform";
 import helpers from "utils/helpers";
 export default function AboutInclude() {
 	const $page = Page(strings.about.capitalize());
@@ -23,24 +24,32 @@ export default function AboutInclude() {
 			</div>
 
 			<div className="info-section">
-				<a
-					href="#"
-					className="info-item"
-					onclick={(e) => {
-						e.preventDefault();
-						system.openInBrowser(
-							`https://play.google.com/store/apps/details?id=${webviewPackageName.value}`,
-						);
-					}}
-				>
-					<div className="info-item-icon">
-						<span className="icon googlechrome"></span>
-					</div>
-					<div className="info-item-text">
-						Webview {webviewVersionName}
-						<div className="info-item-subtext">{webviewPackageName}</div>
-					</div>
-				</a>
+				{tag(
+					platform.isIOS ? "div" : "a",
+					"info-item",
+					[
+						<div className="info-item-icon">
+							<span
+								className={`icon ${platform.isIOS ? "code" : "googlechrome"}`}
+							></span>
+						</div>,
+						<div className="info-item-text">
+							{platform.isIOS ? "WebKit" : "Webview"} {webviewVersionName}
+							<div className="info-item-subtext">{webviewPackageName}</div>
+						</div>,
+					],
+					platform.isIOS
+						? {}
+						: {
+								href: "#",
+								onclick(e) {
+									e.preventDefault();
+									system.openInBrowser(
+										`https://play.google.com/store/apps/details?id=${webviewPackageName.value}`,
+									);
+								},
+							},
+				)}
 				<a href={config.BASE_URL} className="info-item">
 					<div className="info-item-icon">
 						<span className="icon acode"></span>

@@ -1,5 +1,6 @@
 import "./terminalTouchSelection.css";
 import select from "dialogs/select";
+import haptic from "utils/haptic";
 
 const DEFAULT_MORE_OPTION_ID = "__acode_terminal_select_all__";
 const terminalMoreOptions = new Map();
@@ -346,6 +347,15 @@ export default class TerminalTouchSelection {
 		// Terminal resize listener (for keyboard events)
 		this.boundHandlers.terminalResize = this.onTerminalResize.bind(this);
 		this.terminal.onResize(this.boundHandlers.terminalResize);
+
+		// Chromium's native long-press (~500 ms) lands after our tap-hold timer and
+		// blurs the terminal, closing the keyboard and resizing the grid under the
+		// menu. Refocusing in the same task keeps the IME from ever hiding.
+		this.boundHandlers.textareaBlur = this.onTextareaBlur.bind(this);
+		this.terminal.textarea?.addEventListener(
+			"blur",
+			this.boundHandlers.textareaBlur,
+		);
 	}
 
 	onTerminalTouchStart(event) {
@@ -682,6 +692,11 @@ export default class TerminalTouchSelection {
 		}, this.resizeSettleDelay);
 	}
 
+	onTextareaBlur(event) {
+		if (!this.isSelectionTouchActive || event.relatedTarget) return;
+		this.terminal.textarea?.focus({ preventScroll: true });
+	}
+
 	onTerminalScroll() {
 		if (!this.isSelecting || this.isHandleDragging) return;
 
@@ -805,8 +820,8 @@ export default class TerminalTouchSelection {
 		}
 
 		// Haptic feedback
-		if (this.options.hapticFeedback && navigator.vibrate) {
-			navigator.vibrate(50);
+		if (this.options.hapticFeedback) {
+			haptic(50);
 		}
 
 		// Don't change focus state during selection
@@ -1160,16 +1175,16 @@ export default class TerminalTouchSelection {
 		// Store selection before clearing
 		const selectionText = this.currentSelection || this.terminal.getSelection();
 
-		if (selectionText && cordova?.plugins?.clipboard) {
-			cordova.plugins.clipboard.copy(selectionText);
+		if (selectionText && Bridge?.clipboard) {
+			Bridge.clipboard.copy(selectionText);
 		}
 
 		this.forceClearSelection();
 	}
 
 	pasteFromClipboard() {
-		if (cordova?.plugins?.clipboard) {
-			cordova.plugins.clipboard.paste((text) => {
+		if (Bridge?.clipboard) {
+			Bridge.clipboard.paste((text) => {
 				this.terminal.paste(text);
 				this.forceClearSelection();
 			});
@@ -1599,6 +1614,10 @@ export default class TerminalTouchSelection {
 
 		this.terminalScrollDisposable?.dispose();
 		this.terminalScrollDisposable = null;
+		this.terminal.textarea?.removeEventListener(
+			"blur",
+			this.boundHandlers.textareaBlur,
+		);
 		window.removeEventListener(
 			"orientationchange",
 			this.boundHandlers.orientationChange,
