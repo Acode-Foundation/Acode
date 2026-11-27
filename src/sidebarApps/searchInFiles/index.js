@@ -4,6 +4,7 @@ import autosize from "autosize";
 import { getDocText } from "cm/editorUtils";
 import Checkbox from "components/checkbox";
 import Sidebar, { preventSlide } from "components/sidebar";
+import select from "dialogs/select";
 import escapeStringRegexp from "escape-string-regexp";
 import Reactive from "html-tag-js/reactive";
 import Ref from "html-tag-js/ref";
@@ -11,6 +12,7 @@ import fileIndex from "lib/fileIndex";
 import files, { Tree, whenReady as waitForFileList } from "lib/fileList";
 import openFile from "lib/openFile";
 import { addedFolder } from "lib/openFolder";
+import searchHistory from "lib/searchHistory";
 import settings from "lib/settings";
 import helpers from "utils/helpers";
 import { createSearchResultView } from "./cmResultView";
@@ -35,6 +37,8 @@ const $include = Ref();
 const $wholeWord = Ref();
 const $caseSensitive = Ref();
 const $useIndex = Ref();
+const $btnSearchHistory = Ref();
+const $btnReplaceHistory = Ref();
 const $btnReplaceAll = Ref();
 const $resultOverview = Ref();
 const $resultHeader = Ref();
@@ -128,6 +132,7 @@ let pendingNativeSearchFinishVersion = null;
 let nativeSearchId = null;
 let activeSearchTasks = 0;
 let activeReplaceTasks = 0;
+let applyingHistoryPattern = false;
 
 addEventListener($regExp, "change", onInput);
 addEventListener($wholeWord, "change", onInput);
@@ -136,6 +141,12 @@ addEventListener($useIndex, "change", onInput);
 addEventListener($search, "input", onInput);
 addEventListener($include, "input", onInput);
 addEventListener($exclude, "input", onInput);
+addEventListener($btnSearchHistory, "click", () =>
+	openPatternHistory($search, strings["search"]),
+);
+addEventListener($btnReplaceHistory, "click", () =>
+	openPatternHistory($replace, strings["replace"]),
+);
 addEventListener($btnReplaceAll, "click", replaceAll);
 
 files.on("push-file", () => {
@@ -257,7 +268,16 @@ export default [
 							type="search"
 							name="search"
 							placeholder={strings["search"]}
+							onchange={rememberSearchPattern}
+							oninput={onSearchPatternInput}
+							onkeydown={onSearchHistoryKeydown}
 						/>
+						<button
+							ref={$btnSearchHistory}
+							type="button"
+							className="icon historyrestore history-button"
+							title={strings["search"]}
+						></button>
 					</div>
 
 					<div className="replace-row">
@@ -266,7 +286,16 @@ export default [
 							type="search"
 							name="replace"
 							placeholder={strings["replace"]}
+							onchange={rememberReplacePattern}
+							oninput={onReplacePatternInput}
+							onkeydown={onReplaceHistoryKeydown}
 						/>
+						<button
+							ref={$btnReplaceHistory}
+							type="button"
+							className="icon historyrestore history-button"
+							title={strings["replace"]}
+						></button>
 						<button
 							ref={$btnReplaceAll}
 							className="icon replace_all"
@@ -308,6 +337,107 @@ export default [
 	false, // show as first item
 	() => {},
 ];
+
+function rememberSearchPattern() {
+	searchHistory.addToHistory($search.value, { preserveWhitespace: true });
+	searchHistory.resetSearchNavigation();
+}
+
+function rememberReplacePattern() {
+	searchHistory.addToHistory($replace.value, { preserveWhitespace: true });
+	searchHistory.resetReplaceNavigation();
+}
+
+function onSearchPatternInput() {
+	if (!applyingHistoryPattern) searchHistory.resetSearchNavigation();
+}
+
+function onReplacePatternInput() {
+	if (!applyingHistoryPattern) searchHistory.resetReplaceNavigation();
+}
+
+function setPatternFromHistory(ref, value) {
+	if (value === undefined) return;
+	ref.el.value = value;
+	applyingHistoryPattern = true;
+	try {
+		ref.el.dispatchEvent(new Event("input", { bubbles: true }));
+	} finally {
+		applyingHistoryPattern = false;
+	}
+	ref.el.focus();
+}
+
+function escapePatternHtml(pattern) {
+	return pattern
+		.replaceAll("&", "&amp;")
+		.replaceAll("<", "&lt;")
+		.replaceAll(">", "&gt;")
+		.replaceAll('"', "&quot;")
+		.replaceAll("'", "&#039;");
+}
+
+async function openPatternHistory(ref, title) {
+	const history = searchHistory.getHistory();
+	if (!history.length) return;
+
+	try {
+		const items = history.map((pattern) => ({
+			value: pattern,
+			text: escapePatternHtml(pattern),
+		}));
+		const value = await select(title, items, true);
+		setPatternFromHistory(ref, value);
+	} catch (_) {
+		// The history picker was dismissed.
+	}
+}
+
+function onSearchHistoryKeydown(event) {
+	if (event.key === "ArrowUp" && !$search.value.includes("\n")) {
+		event.preventDefault();
+		setPatternFromHistory(
+			$search,
+			searchHistory.navigateSearchUp($search.value),
+		);
+	} else if (event.key === "ArrowDown" && !$search.value.includes("\n")) {
+		event.preventDefault();
+		setPatternFromHistory(
+			$search,
+			searchHistory.navigateSearchDown($search.value),
+		);
+	} else if (event.key === "Escape") {
+		searchHistory.resetSearchNavigation();
+	} else if (
+		event.key.length === 1 ||
+		["Backspace", "Delete"].includes(event.key)
+	) {
+		searchHistory.resetSearchNavigation();
+	}
+}
+
+function onReplaceHistoryKeydown(event) {
+	if (event.key === "ArrowUp" && !$replace.value.includes("\n")) {
+		event.preventDefault();
+		setPatternFromHistory(
+			$replace,
+			searchHistory.navigateReplaceUp($replace.value),
+		);
+	} else if (event.key === "ArrowDown" && !$replace.value.includes("\n")) {
+		event.preventDefault();
+		setPatternFromHistory(
+			$replace,
+			searchHistory.navigateReplaceDown($replace.value),
+		);
+	} else if (event.key === "Escape") {
+		searchHistory.resetReplaceNavigation();
+	} else if (
+		event.key.length === 1 ||
+		["Backspace", "Delete"].includes(event.key)
+	) {
+		searchHistory.resetReplaceNavigation();
+	}
+}
 
 /**
  * Worker message handler
@@ -939,6 +1069,8 @@ async function replaceAll() {
 	if (!search) return;
 	const regex = toRegex(search, options);
 	if (!regex) return;
+	searchHistory.addToHistory(search, { preserveWhitespace: true });
+	searchHistory.addToHistory(replace, { preserveWhitespace: true });
 
 	replacing = true;
 	activeReplaceTasks = 0;
@@ -1120,11 +1252,21 @@ function searchResultText(files, matches) {
  * @param {string} param0.name
  * @param {string} param0.placeholder
  * @param {Ref} param0.ref
+ * @param {Function} [param0.onchange]
+ * @param {Function} [param0.oninput]
+ * @param {Function} [param0.onkeydown]
  * @returns {HTMLTextAreaElement}
  */
-function Textarea({ name, placeholder, ref }) {
+function Textarea({ name, placeholder, ref, onchange, oninput, onkeydown }) {
 	return autosize(
-		<textarea ref={ref} name={name} placeholder={placeholder}></textarea>,
+		<textarea
+			ref={ref}
+			name={name}
+			placeholder={placeholder}
+			onchange={onchange}
+			oninput={oninput}
+			onkeydown={onkeydown}
+		></textarea>,
 	);
 }
 
