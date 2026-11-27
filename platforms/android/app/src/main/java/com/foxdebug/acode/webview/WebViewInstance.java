@@ -46,7 +46,6 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import com.foxdebug.acode.runtime.Callback;
-import com.foxdebug.acode.runtime.Payload;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
@@ -841,7 +840,9 @@ public class WebViewInstance {
    * explicit payload.
    */
   private static void sendBooleanResult(Callback callbackContext, boolean value) {
-    callbackContext.sendPayload(new Payload(Payload.Status.OK, value));
+    callbackContext.sendPayload(
+      new com.foxdebug.acode.runtime.Payload(com.foxdebug.acode.runtime.Payload.Status.OK, value)
+    );
   }
 
   private boolean rejectIfDestroyed(Callback callbackContext) {

@@ -1887,7 +1887,7 @@ public class System extends Service {
    * - several files: the default action becomes {@code SEND_MULTIPLE}.
    * - no files: the default action becomes {@code MAIN}, i.e. a plain app launch.
    */
-  private void launchAppWithFile(JSONObject options, CallbackContext callback) {
+  private void launchAppWithFile(JSONObject options, Callback callback) {
     if (options == null) {
       callback.error("No options provided.");
       return;
