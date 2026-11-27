@@ -28,6 +28,7 @@ import {
 	getCanvasTheme,
 	markCanvasViewSynced,
 	syncCanvasView,
+	watchEditorStyles,
 } from "cm/canvasOptions";
 import {
 	setKeyBindings as applyKeyBindings,
@@ -141,6 +142,8 @@ async function EditorManager($header, $body) {
 	let timeoutQuicktoolsToggler;
 	let timeoutHeaderToggler;
 	let isScrolling = false;
+	let fileRemovalBatchDepth = 0;
+	let fileListSyncPending = false;
 	let lastScrollTop = 0;
 	let lastScrollLeft = 0;
 	let suppressCursorRevealUntil = 0;
@@ -1482,14 +1485,29 @@ async function EditorManager($header, $body) {
 	}
 
 	/**
+	 * A plugin's style sheet may put a picture behind the editor (Backdrop),
+	 * which needs a see-through canvas, or take it away: check the theme of
+	 * every canvas view again.
+	 */
+	function syncCanvasThemes() {
+		const themeId = appSettings.value.editorTheme || "one_dark";
+		for (const pane of panes) {
+			if (isCanvasView(pane.editor)) syncCanvasView(pane.editor, { themeId });
+		}
+	}
+
+	/**
 	 * Taps on a canvas view's line numbers select the line, like the DOM
 	 * editor's line number gutter. Its fold markers sit in a narrow column
-	 * right of the numbers: taps there fall through to the fold toggle.
+	 * right of the numbers: taps there fall through to the fold toggle, unless
+	 * code folding is off.
 	 */
 	function handleCanvasLineNumberClick(line, event, view) {
-		const rect = view.scrollDOM.getBoundingClientRect();
-		const foldColumn = view.gutterWidth - view.cellWidth * 1.5;
-		if (event.clientX - rect.left >= foldColumn) return false;
+		if (appSettings.value.codeFolding !== false) {
+			const rect = view.scrollDOM.getBoundingClientRect();
+			const foldColumn = view.gutterWidth - view.cellWidth * 1.5;
+			if (event.clientX - rect.left >= foldColumn) return false;
+		}
 		const docLine = view.state.doc.line(line);
 		return handleLineNumberClick(view, view.lineBlockAt(docLine.from), event, {
 			shiftClickSelection: appSettings.value.shiftClickSelection !== false,
@@ -1517,6 +1535,11 @@ async function EditorManager($header, $body) {
 					backend: getCanvasBackend(appSettings.value),
 					input: appSettings.value.useTextareaForIME ? "textarea" : "auto",
 					touchSelection: {
+						// Read on every selection drag, so editing settings.json
+						// applies without recreating the view.
+						get magnifier() {
+							return appSettings.value.canvasMagnifier !== false;
+						},
 						onMenu: (event) =>
 							pane.touchSelectionController?.handleCanvasMenu?.(event),
 						onHaptic() {
@@ -1528,6 +1551,8 @@ async function EditorManager($header, $body) {
 				},
 			});
 			markCanvasViewSynced(view, { display, font, themeId });
+			// A picture behind the editor already (it's in the document now).
+			syncCanvasView(view, { themeId });
 			return view;
 		} catch (error) {
 			// Use the DOM editor for the rest of the session, with the
@@ -3394,6 +3419,7 @@ async function EditorManager($header, $body) {
 		moveActiveFileToNewPane,
 		moveFileToPane,
 		removeFileFromPane,
+		batchFileRemoval,
 		moveFileByPinnedState,
 		normalizePinnedTabOrder,
 		updatePaneFileOrderFromTabs,
@@ -3873,6 +3899,8 @@ async function EditorManager($header, $body) {
 	appSettings.on("update:stickyScrollMaxLines", syncAllCanvasViews);
 	appSettings.on("update:cursorBlinkRate", syncAllCanvasViews);
 	appSettings.on("update:canvasGutterMarkers", syncAllCanvasViews);
+	appSettings.on("update:codeFolding", syncAllCanvasViews);
+	if (canvasRenderer) watchEditorStyles(syncCanvasThemes);
 
 	// Keep file.session and cache in sync on every edit
 	function getDocSyncListener() {
@@ -4441,8 +4469,29 @@ async function EditorManager($header, $body) {
 			}
 		}
 		rebuildFileListFromPanes();
-		syncOpenFileList();
+		if (fileRemovalBatchDepth) fileListSyncPending = true;
+		else syncOpenFileList();
 		return { pane, wasPaneActive, nextFile };
+	}
+
+	/**
+	 * Runs `task` (which removes files) while deferring the open file list
+	 * sync to a single pass at the end, instead of one full sync per file.
+	 * @template T
+	 * @param {() => Promise<T>|T} task
+	 * @returns {Promise<T>}
+	 */
+	async function batchFileRemoval(task) {
+		fileRemovalBatchDepth++;
+		try {
+			return await task();
+		} finally {
+			fileRemovalBatchDepth--;
+			if (!fileRemovalBatchDepth && fileListSyncPending) {
+				fileListSyncPending = false;
+				syncOpenFileList();
+			}
+		}
 	}
 
 	function updatePaneFileOrderFromTabs($tabList, options = {}) {

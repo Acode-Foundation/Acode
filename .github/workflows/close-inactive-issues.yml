@@ -18,14 +18,19 @@ jobs:
           stale-issue-message: >
             Hi there! 👋
 
-            We're working to clean up our issue tracker by closing older issues that might not be relevant anymore. If you are able to reproduce this issue in the latest version of Acode, please let us know by commenting on this issue(i.e Bump!), and we will keep it open. If you can't reproduce it, feel free to close the issue yourself. Otherwise, we'll close it in 14 days.
-
+            We're working to clean up our issue tracker by closing older issues that might not be relevant anymore. 
+            If you are able to reproduce this issue in the latest version of Acode, please let us know by commenting on this issue(i.e Bump!) with the Acode Version, and we will keep it open. 
+            If you can't reproduce it, feel free to close the issue yourself. Otherwise, the bot will close it in 14 days.
+            But even after the bot closes the issue, you can still leave a comment with **the version where the bug is reproducible**, and we will reopen the issue.
+            (This bot will only ask about this issue once)
             Thanks for your help!
-          close-issue-message: "This issue was closed because it has been inactive for 14 days since being marked as stale."
+          close-issue-message: "This issue was closed because it has been inactive for 14 days since being marked as stale. If you're still experiencing this problem, please leave a comment with your Acode version so that we can reopen the issue"
           exempt-all-milestones: true
           days-before-pr-stale: -1
           days-before-pr-close: -1
-          exempt-issue-labels: "new plugin idea, todo, enhancement, bug, Low priority, documentation"
+          exempt-issue-labels: "new plugin idea, todo, enhancement, bug, Low priority, documentation,never stale,attention needed"
           operations-per-run: 100
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+          enable-statistics: true
+          labels-to-add-when-unstale: "never stale"
           

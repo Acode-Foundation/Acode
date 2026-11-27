@@ -19,6 +19,8 @@ tsconfig.tsbuildinfo
 .dev-cert.pem
 .dev-key.pem
 .pnpm-store/
+pnpm-workspace.yaml
+pnpm-workspace.yml
 platforms/android/**/build/
 platforms/android/.gradle/
 platforms/**/bundle/

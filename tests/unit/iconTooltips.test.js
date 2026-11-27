@@ -211,3 +211,65 @@ it("uses existing global labels in precedence order and lets an existing context
 	await vi.advanceTimersByTimeAsync(600);
 	expect(f.show).not.toHaveBeenCalled();
 });
+it("shows a long-press tooltip on labeled search option checkboxes and consumes the release click", async () => {
+	const f = fixture();
+	const checkbox = document.createElement("label");
+	checkbox.className = "input-checkbox";
+	checkbox.title = "Use native index";
+	checkbox.dataset.description =
+		"Search local folders faster using the native file index.";
+	checkbox.innerHTML =
+		'<input type="checkbox"><span class="box"><span class="handle"></span></span><span>IDX</span>';
+	document.body.append(checkbox);
+	const input = checkbox.querySelector("input");
+	const text = checkbox.querySelector("span:last-child");
+
+	const send = (name, options = {}) =>
+		text.dispatchEvent(
+			new PointerEvent(name, {
+				bubbles: true,
+				composed: true,
+				cancelable: true,
+				pointerId: 1,
+				pointerType: "touch",
+				button: 0,
+				clientX: 20,
+				clientY: 20,
+				...options,
+			}),
+		);
+
+	send("pointerdown");
+	await vi.advanceTimersByTimeAsync(500);
+	expect(f.show).toHaveBeenCalledWith(
+		checkbox,
+		"Use native index",
+		"Search local folders faster using the native file index.",
+	);
+	send("pointerup");
+	expect(click(text).defaultPrevented).toBe(true);
+	expect(input.checked).toBe(false);
+
+	send("pointerdown");
+	send("pointerup");
+	expect(click(text).defaultPrevented).toBe(false);
+	expect(input.checked).toBe(true);
+
+	const unlabeled = document.createElement("label");
+	unlabeled.className = "input-checkbox";
+	unlabeled.innerHTML = '<input type="checkbox"><span>aA</span>';
+	document.body.append(unlabeled);
+	f.show.mockClear();
+	unlabeled.dispatchEvent(
+		new PointerEvent("pointerdown", {
+			bubbles: true,
+			composed: true,
+			pointerId: 1,
+			button: 0,
+			clientX: 20,
+			clientY: 20,
+		}),
+	);
+	await vi.advanceTimersByTimeAsync(600);
+	expect(f.show).not.toHaveBeenCalled();
+});

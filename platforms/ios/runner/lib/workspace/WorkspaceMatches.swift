@@ -14,7 +14,8 @@ final class WorkspaceMatches {
     func search(_ emit: ([[String: Any]], Bool) -> Void) throws {
         var batch: [[String: Any]] = []
         var count = 0, cursor = 0, row = 0, column = 0
-        try enumerate { range in
+        try enumerate { match in
+            let range = match.range
             if count == 5000 { emit(batch, true); batch.removeAll(); return false }
             let word = self.source.substring(with: NSRange(location: range.location, length: min(160, range.length)))
             try self.advance(to: range.location, cursor: &cursor, row: &row, column: &column)
@@ -28,25 +29,25 @@ final class WorkspaceMatches {
         if !batch.isEmpty { emit(batch, false) }
     }
 
-    func replace(_ replacement: String) throws -> String {
+    func replace(_ replacement: WorkspaceReplacement) throws -> String {
         let result = NSMutableString(capacity: source.length)
         var cursor = 0
-        try enumerate { range in
-            result.append(self.source.substring(with: NSRange(location: cursor, length: range.location - cursor)))
-            result.append(replacement)
-            cursor = NSMaxRange(range)
+        try enumerate { match in
+            result.append(self.source.substring(with: NSRange(location: cursor, length: match.range.location - cursor)))
+            result.append(replacement.expand(match, in: self.source))
+            cursor = NSMaxRange(match.range)
             return true
         }
         result.append(source.substring(from: cursor))
         return result as String
     }
 
-    private func enumerate(_ match: (NSRange) throws -> Bool) throws {
+    private func enumerate(_ match: (NSTextCheckingResult) throws -> Bool) throws {
         var failure: Error?
         regex.enumerateMatches(in: text, options: [.reportProgress], range: NSRange(location: 0, length: source.length)) { result, flags, stop in
             do {
                 try self.check()
-                if let result, try !match(result.range) { stop.pointee = true }
+                if let result, try !match(result) { stop.pointee = true }
                 if flags.contains(.internalError) { throw WorkspaceFailure("Regular expression failed") }
             } catch { failure = error; stop.pointee = true }
         }

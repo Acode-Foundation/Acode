@@ -1009,8 +1009,11 @@ class WorkspaceIndex {
       }
 
       if ("replace".equals(mode)) {
-        String replacement = Matcher.quoteReplacement(replace == null ? "" : replace);
-        String text = pattern.matcher(new SearchInput(content, job)).replaceAll(replacement);
+        String replacement = replace == null ? "" : replace;
+        Matcher matcher = pattern.matcher(new SearchInput(content, job));
+        String text = searchOptions.optBoolean("regExp", false)
+          ? replaceAllJs(matcher, content, replacement)
+          : matcher.replaceAll(Matcher.quoteReplacement(replacement));
         JSONObject result = baseEvent(job.id, "replace-result");
         result.put("file", file);
         result.put("text", text);
@@ -1024,6 +1027,135 @@ class WorkspaceIndex {
 
     sendProgress(callback, job.id, 100);
     send(callback, baseEvent(job.id, "replace".equals(mode) ? "done-replacing" : "done-searching"), false);
+  }
+
+  /**
+   * Replaces every match using JavaScript String.prototype.replace substitution
+   * rules ($$, $&, $`, $', $1..$99, $<name>), so regex replacements behave the
+   * same as the JS worker path.
+   */
+  static String replaceAllJs(Matcher matcher, String content, String replace) {
+    StringBuilder out = new StringBuilder(content.length());
+    boolean namedGroups = hasNamedGroups(matcher.pattern().pattern());
+    int last = 0;
+    while (matcher.find()) {
+      out.append(content, last, matcher.start());
+      appendJsSubstitution(out, matcher, content, replace, namedGroups);
+      last = matcher.end();
+    }
+    out.append(content, last, content.length());
+    return out.toString();
+  }
+
+  /**
+   * Whether the pattern declares a named capture group, ignoring escaped text,
+   * \Q...\E quotes and character classes.
+   */
+  static boolean hasNamedGroups(String pattern) {
+    int len = pattern.length();
+    int classDepth = 0;
+    for (int i = 0; i < len; i++) {
+      char c = pattern.charAt(i);
+      if (c == '\\') {
+        if (i + 1 < len && pattern.charAt(i + 1) == 'Q') {
+          int end = pattern.indexOf("\\E", i + 2);
+          if (end == -1) return false;
+          i = end + 1;
+        } else {
+          i++;
+        }
+      } else if (classDepth > 0) {
+        if (c == '[') classDepth++;
+        else if (c == ']') classDepth--;
+      } else if (c == '[') {
+        classDepth = 1;
+        if (i + 1 < len && pattern.charAt(i + 1) == '^') i++;
+        if (i + 1 < len && pattern.charAt(i + 1) == ']') i++;
+      } else if (
+        c == '(' &&
+        i + 3 < len &&
+        pattern.charAt(i + 1) == '?' &&
+        pattern.charAt(i + 2) == '<' &&
+        Character.isLetter(pattern.charAt(i + 3))
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static void appendJsSubstitution(
+    StringBuilder out,
+    Matcher matcher,
+    String content,
+    String replace,
+    boolean namedGroups
+  ) {
+    int groups = matcher.groupCount();
+    int len = replace.length();
+    for (int i = 0; i < len; i++) {
+      char c = replace.charAt(i);
+      if (c != '$' || i + 1 >= len) {
+        out.append(c);
+        continue;
+      }
+
+      char next = replace.charAt(i + 1);
+      if (next == '$') {
+        out.append('$');
+        i++;
+      } else if (next == '&') {
+        out.append(content, matcher.start(), matcher.end());
+        i++;
+      } else if (next == '`') {
+        out.append(content, 0, matcher.start());
+        i++;
+      } else if (next == '\'') {
+        out.append(content, matcher.end(), content.length());
+        i++;
+      } else if (next >= '0' && next <= '9') {
+        int index = next - '0';
+        int consumed = 1;
+        if (i + 2 < len) {
+          char digit = replace.charAt(i + 2);
+          if (digit >= '0' && digit <= '9') {
+            int twoDigit = index * 10 + (digit - '0');
+            if (twoDigit >= 1 && twoDigit <= groups) {
+              index = twoDigit;
+              consumed = 2;
+            }
+          }
+        }
+        if (index >= 1 && index <= groups) {
+          String group = matcher.group(index);
+          if (group != null) out.append(group);
+          i += consumed;
+        } else {
+          out.append(c);
+        }
+      } else if (next == '<') {
+        int close = replace.indexOf('>', i + 2);
+        boolean found = false;
+        String group = null;
+        if (close != -1) {
+          try {
+            group = matcher.group(replace.substring(i + 2, close));
+            found = true;
+          } catch (IllegalArgumentException ignored) {
+            // JS: an unknown name is empty when the pattern has named groups.
+            found = namedGroups;
+          }
+        }
+        if (found) {
+          if (group != null) out.append(group);
+          i = close;
+        } else {
+          out.append(c);
+        }
+      } else {
+        out.append(c);
+      }
+    }
   }
 
   private Pattern compileSearchPattern(String search, JSONObject options)

@@ -60,6 +60,85 @@ type FileAction = "VIEW" | "EDIT" | "SEND" | "RUN";
 type OnFail = (err: string) => void;
 type OnSuccessBool = (res: boolean) => void;
 
+interface LaunchAppWithFileOptions {
+	/** Package name of the target app, e.g. `org.love2d.android`. Omit to let the system choose. */
+	app?: string;
+	/**
+	 * Fully qualified activity class name, e.g. `org.love2d.android.GameActivity`.
+	 * Omit to resolve the best matching activity inside `app`. Requires `app`.
+	 */
+	className?: string;
+	/**
+	 * `file://` URL of a file to hand over, or an existing `content://` URI.
+	 *
+	 * A `file://` path is exposed through the app's FileProvider (copied to the
+	 * cache first when it lives outside the shareable roots). A `content://` URI
+	 * is passed through unchanged and re-granted to the target, so it stays
+	 * readable only while this app still holds access to it.
+	 */
+	fileUri?: string;
+	/**
+	 * Several files to hand over together; `fileUri`, if given, comes first.
+	 * Same source rules as `fileUri`.
+	 */
+	fileUris?: string[];
+	/** Display name used when a shareable copy has to be created */
+	filename?: string;
+	/** Label for the shared item; defaults to the file name */
+	clipLabel?: string;
+	/**
+	 * MIME type to advertise. When given it is always honoured, including
+	 * `application/octet-stream`. When omitted it is taken from the files,
+	 * narrowed to the type they all share. Pass the universal wildcard to force
+	 * detection.
+	 */
+	mimeType?: string;
+	/**
+	 * Intent action, short (`VIEW`, `EDIT`, `SEND`, `SEND_MULTIPLE`, `RUN`) or
+	 * fully qualified. Defaults to `VIEW` for one file, `SEND_MULTIPLE` for
+	 * several files, and `MAIN` when no file is given.
+	 */
+	action?: FileAction | string;
+	/** Intent categories, e.g. `["LAUNCHER"]`, or fully qualified names */
+	categories?: string[];
+	/**
+	 * Extra intent flags, as readable names (`NEW_TASK`, `SINGLE_TOP`,
+	 * `CLEAR_TOP`, `GRANT_WRITE_URI_PERMISSION`, …) or raw flag integers.
+	 */
+	flags?: Array<string | number>;
+	/**
+	 * Intent extras. Arrays arrive as typed arrays on the receiving side;
+	 * integers outside the 32-bit range arrive as a `long[]`.
+	 */
+	extras?: Record<
+		string,
+		string | number | boolean | Array<string | number | boolean>
+	>;
+	/** Grant the target write access; implied by the `EDIT` action */
+	writeAccess?: boolean;
+	/** Also place the first URI in `Intent.EXTRA_STREAM` */
+	attachAsStream?: boolean;
+	/** Launch the activity in a new task. Defaults to `true` */
+	newTask?: boolean;
+}
+
+interface LaunchAppWithFileResult {
+	/** First content URI handed over, or `''` when no file was passed */
+	uri: string;
+	/** Every content URI handed over, in order */
+	uris: string[];
+	/** Package actually targeted; empty when the system (or user) chooses */
+	app: string;
+	/** Targeted activity class, or `''` when the receiver is not pinned down */
+	className: string;
+	/** `package/class` of the target, or `''` when not pinned down */
+	component: string;
+	/** Fully qualified action the intent was created with */
+	action: string;
+	/** MIME type the intent was resolved to */
+	mimeType: string;
+}
+
 interface HttpStreamOptions {
 	method?: string;
 	headers?: Record<string, string>;
@@ -252,6 +331,28 @@ interface System {
 		className: string,
 		extras?: Record<string, string | number | boolean>,
 		onSuccess?: OnSuccessBool,
+		onFail?: OnFail,
+	): void;
+
+	/**
+	 * Launch an Android activity and hand it content URIs for one or more files.
+	 *
+	 * Pass `app` + `className` to target one exact activity, only `app` to
+	 * resolve the best matching activity in that package, or neither to let the
+	 * system pick a handler. Files are passed as the intent data and as
+	 * `ClipData`, so the target can read them through a `ContentResolver`.
+	 *
+	 * @example
+	 * system.launchAppWithFile({
+	 *   app: "org.love2d.android",
+	 *   className: "org.love2d.android.GameActivity",
+	 *   fileUri: "file:///storage/emulated/0/Games/mygame.love",
+	 *   mimeType: "application/zip",
+	 * }, (result) => console.log(result.uris, result.component));
+	 */
+	launchAppWithFile(
+		options: LaunchAppWithFileOptions,
+		onSuccess?: (result: LaunchAppWithFileResult) => void,
 		onFail?: OnFail,
 	): void;
 

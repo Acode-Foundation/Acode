@@ -103,6 +103,14 @@ describe("openFile cancellation", () => {
 		expect(recents.addFile).toHaveBeenCalledWith("target");
 	});
 
+	it("opens supplied empty text as unsaved instead of reading the file", async () => {
+		await openFile("target", { render: true, text: "" });
+		expect(createEditor).toHaveBeenCalledOnce();
+		expect(manager.activeFile.text).toBe("");
+		expect(manager.activeFile.isUnsaved).toBe(true);
+		expect(readFile).not.toHaveBeenCalled();
+	});
+
 	it.each([
 		"pdf",
 		"docx",
