@@ -98,10 +98,6 @@ android {
     }
 }
 
-val robolectricRuntime by configurations.creating {
-    isTransitive = false
-}
-
 configurations.configureEach {
     exclude(module = "commons-logging")
     exclude(group = "org.bouncycastle", module = "bcprov-jdk15on")
@@ -135,12 +131,17 @@ dependencies {
     "storeImplementation"(libs.billing.client)
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
-    robolectricRuntime("org.robolectric:android-all-instrumented:9-robolectric-4913185-2-i7")
-    robolectricRuntime("org.robolectric:android-all-instrumented:10-robolectric-5803371-i7")
 }
 
 // Robolectric's own Maven fetcher fails on hosted CI runners; let Gradle resolve the
 // android-all jars (one per @Config sdk) and run Robolectric offline against them.
+// Each version gets its own configuration so Gradle doesn't collapse them to the newest.
+val robolectricRuntime = listOf("9-robolectric-4913185-2-i7", "10-robolectric-5803371-i7").map { version ->
+    configurations.detachedConfiguration(
+        dependencies.create("org.robolectric:android-all-instrumented:$version"),
+    ).apply { isTransitive = false }
+}
+
 val syncRobolectricRuntime by tasks.registering(Sync::class) {
     from(robolectricRuntime)
     into(layout.buildDirectory.dir("robolectric"))
