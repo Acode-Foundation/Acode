@@ -73,6 +73,9 @@ final class TerminalServer {
         let parts = path.split(separator: "/").map(String.init)
         let origin = request.headers["origin"].flatMap { Self.origins.contains($0) ? $0 : nil }
         let respond = { (status: Int, body: Any) in Self.respond(client, status: status, body: body, origin: origin) }
+        // Browsers send cross-origin simple POSTs and WebSocket upgrades without a
+        // preflight, so preview or in-app browser pages could otherwise run commands.
+        guard Self.allows(origin: request.headers["origin"]) else { respond(403, ["error": "Origin not allowed"]); return }
         let session = parts.count >= 2 && parts[0] == "terminals" ? Int32(parts[1]).flatMap { sessions[$0] } : nil
         switch (request.method, parts.count) {
         case ("OPTIONS", _): respond(204, "")
@@ -173,6 +176,12 @@ final class TerminalServer {
         }
         guard let rows = value("rows"), let cols = value("cols") else { return nil }
         return (rows, cols)
+    }
+
+    /// Native callers and guest programs send no Origin; browser pages always do.
+    static func allows(origin: String?) -> Bool {
+        guard let origin else { return true }
+        return origins.contains(origin)
     }
 
     private static func respond(_ client: LocalHTTPConnection, status: Int, body: Any, origin: String?) {
