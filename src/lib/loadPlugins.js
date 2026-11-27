@@ -27,6 +27,7 @@ const THEME_IDENTIFIERS = new Set([
 ]);
 
 export const onPluginLoadCallback = Symbol("onPluginLoadCallback");
+export const onPluginLoadFailedCallback = Symbol("onPluginLoadFailedCallback");
 export const onPluginsLoadCompleteCallback = Symbol(
 	"onPluginsLoadCompleteCallback",
 );
@@ -34,6 +35,7 @@ export const onPluginsLoadCompleteCallback = Symbol(
 export const LOADED_PLUGINS = new Set();
 export const BROKEN_PLUGINS = new Map();
 const AUTO_DISABLED_PLUGINS = new Set();
+const IN_FLIGHT_PLUGINS = new Set();
 const PLUGIN_LOAD_TIMEOUT = 15000;
 const PLUGIN_DISABLE_TIMEOUT = 60000;
 let pluginDisabledUpdateQueue = Promise.resolve();
@@ -41,6 +43,10 @@ let initialPluginLoadComplete = false;
 /** Plugins still loading in the background after PLUGIN_LOAD_TIMEOUT. */
 const SLOW_PLUGIN_LOADS = new Set();
 let handlerHistoryPending = false;
+
+export function isPluginLoading(pluginId) {
+	return IN_FLIGHT_PLUGINS.has(pluginId);
+}
 
 class PluginLoadTimeoutError extends Error {
 	constructor() {
@@ -121,7 +127,11 @@ export default async function loadPlugins(loadOnlyTheme = false) {
 			recordHandlerHistory();
 		}
 
-		acode[onPluginsLoadCompleteCallback]();
+		if (!loadOnlyTheme) {
+			acode[onPluginsLoadCompleteCallback]?.(
+				(pluginId) => !IN_FLIGHT_PLUGINS.has(pluginId),
+			);
+		}
 		return results.filter(Boolean).length;
 	} finally {
 		if (!loadOnlyTheme) {
@@ -135,15 +145,18 @@ export function isInitialPluginLoadComplete() {
 }
 
 export async function loadPluginWithTimeout(pluginId, justInstalled = false) {
+	IN_FLIGHT_PLUGINS.add(pluginId);
 	const pluginState = { settled: false };
 	const pluginLoadPromise = loadPlugin(pluginId, justInstalled)
 		.catch(async (error) => {
 			pluginState.settled = true;
+			IN_FLIGHT_PLUGINS.delete(pluginId);
 			await markPluginBroken(pluginId, error);
 			throw error;
 		})
 		.then(async () => {
 			pluginState.settled = true;
+			IN_FLIGHT_PLUGINS.delete(pluginId);
 			await markPluginLoaded(pluginId, justInstalled);
 		});
 
@@ -192,6 +205,7 @@ async function markPluginLoaded(pluginId, justInstalled = false) {
 }
 
 async function markPluginBroken(pluginId, error) {
+	acode[onPluginLoadFailedCallback]?.(pluginId, error);
 	// mark plugin as broken to avoid repeated attempts until user intervenes
 	BROKEN_PLUGINS.set(pluginId, {
 		error: String(error.message || error),
@@ -223,6 +237,7 @@ function markPluginTimedOut(pluginId, pluginState) {
 	setTimeout(async () => {
 		try {
 			if (pluginState.settled || LOADED_PLUGINS.has(pluginId)) return;
+			IN_FLIGHT_PLUGINS.delete(pluginId);
 			await markPluginBroken(pluginId, new Error("Plugin load timeout"));
 		} catch (error) {
 			console.error(`Failed to disable timed out plugin ${pluginId}:`, error);
