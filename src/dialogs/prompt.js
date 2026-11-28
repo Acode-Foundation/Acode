@@ -2,7 +2,9 @@ import autosize from "autosize";
 import actionStack from "lib/actionStack";
 import platform from "lib/platform";
 import restoreTheme from "lib/restoreTheme";
-import appSettings from "lib/settings";
+import restorePromptInput from "./restorePromptInput";
+
+let nextPromptId = 0;
 
 /**
  * @typedef {Object} PromptOptions
@@ -28,6 +30,7 @@ export default function prompt(
 	type = "text",
 	options = {},
 ) {
+	const actionId = `single-prompt-${++nextPromptId}`;
 	// CodeMirror doesn't use commands.exec like ACE, so we store a reference to the editor
 	// to potentially disable keymaps if needed in the future
 	const editor = editorManager.editor;
@@ -58,24 +61,13 @@ export default function prompt(
 			type: "submit",
 			textContent: strings.ok,
 			disabled: !defaultValue,
-			onclick: function () {
-				if (options.required && !input.value) {
-					errorMessage.textContent = strings.required;
-					return;
-				}
-				hide();
-				let { value } = input;
-				if (type === "number") value = +value;
-
-				resolve(value);
-			},
 		});
 		const cancelBtn = tag("button", {
 			textContent: strings.cancel,
 			type: "button",
 			onclick: function () {
-				hide();
-				resolve(null);
+				actionStack.remove(actionId);
+				cancel();
 			},
 		});
 		const errorMessage = tag("span", {
@@ -84,12 +76,7 @@ export default function prompt(
 		const promptDiv = tag("form", {
 			action: "#",
 			className: "prompt",
-			onsubmit: (e) => {
-				e.preventDefault();
-				if (!okBtn.disabled) {
-					resolve(input.value);
-				}
-			},
+			onsubmit: submit,
 			children: [
 				messageSpan,
 				input,
@@ -140,8 +127,9 @@ export default function prompt(
 		};
 
 		actionStack.push({
-			id: "prompt",
-			action: hidePrompt,
+			id: actionId,
+			action: cancel,
+			onClear: cancel,
 		});
 
 		system.setInputType("NORMAL");
@@ -162,8 +150,27 @@ export default function prompt(
 		}
 		if (inputType === "textarea") autosize(input);
 
+		function submit(event) {
+			event.preventDefault();
+			if (okBtn.disabled || promptDiv.classList.contains("hide")) return;
+			if (options.required && !input.value) {
+				errorMessage.textContent = strings.required;
+				return;
+			}
+			const value = type === "number" ? +input.value : input.value;
+			hide();
+			resolve(value);
+		}
+
+		function cancel() {
+			resolve(null);
+			hidePrompt();
+		}
+
 		function hidePrompt() {
+			if (promptDiv.classList.contains("hide")) return;
 			promptDiv.classList.add("hide");
+			restorePromptInput();
 			restoreTheme();
 			setTimeout(() => {
 				if (promptDiv.isConnected) promptDiv.remove();
@@ -173,8 +180,7 @@ export default function prompt(
 
 		function hide() {
 			// CodeMirror keymaps are handled differently - no need to restore commands.exec
-			actionStack.remove("prompt");
-			system.setInputType(appSettings.value.keyboardMode);
+			actionStack.remove(actionId);
 			hidePrompt();
 		}
 	});
