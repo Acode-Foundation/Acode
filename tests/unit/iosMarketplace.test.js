@@ -13,7 +13,6 @@ it("hides unfulfillable iOS plugin purchases without offering Google Play billin
 	expect(view.textContent).toContain("product not available");
 	expect(view.textContent).not.toContain("iap-plugin-purchase-warning");
 	expect(fixture.platform.pluginPurchases).toBe(false);
-	expect(fixture.platform.sponsorPurchases).toBe(false);
 });
 
 it.each([
@@ -60,7 +59,6 @@ it("retains Android purchase and refund actions", async () => {
 	});
 	ownedView.querySelector(".more-info-small .link").click();
 	expect(refund).toHaveBeenCalledOnce();
-	expect(fixture.platform.sponsorPurchases).toBe(true);
 });
 
 it.each([
@@ -79,40 +77,6 @@ it.each([
 	} else {
 		expect(notice.querySelector("a").href).toContain("play.google.com");
 	}
-});
-
-it("blocks direct iOS sponsorship entry before querying products or registering a purchase listener", () => {
-	const fixture = setup("ios");
-	const page = vi.fn();
-	const iap = {
-		getProducts: vi.fn(),
-		setPurchaseUpdatedListener: vi.fn(),
-		purchase: vi.fn(),
-	};
-	const Sponsor = loadSourceModule(
-		"src/pages/sponsor/sponsor.js",
-		{
-			"./style.scss": {},
-			fileSystem: {},
-			"components/logo": {},
-			"components/page": page,
-			"dialogs/alert": fixture.alert,
-			"dialogs/dialog": {},
-			"dialogs/loader": {},
-			"dialogs/multiPrompt": {},
-			"lib/actionStack": {},
-			"lib/config": {},
-			"lib/platform": fixture.platform,
-			"utils/helpers": {},
-		},
-		{ ...fixture.globals, iap },
-	).default;
-	Sponsor();
-	expect(page).not.toHaveBeenCalled();
-	expect(iap.getProducts).not.toHaveBeenCalled();
-	expect(iap.setPurchaseUpdatedListener).not.toHaveBeenCalled();
-	expect(iap.purchase).not.toHaveBeenCalled();
-	expect(fixture.alert).toHaveBeenCalledWith("info", "product not available");
 });
 
 function setup(platformId) {

@@ -55,6 +55,8 @@ struct fd {
             int domain;
             int type;
             int protocol;
+            int netlink_peer;
+            uint32_t netlink_port;
 
             // These are only used as strong references, to keep the inode
             // alive while there is a listener.

@@ -6,10 +6,21 @@ export type PrivacyConsentStatus =
 	| "notRequired"
 	| "obtained";
 
+export type PrivacyIabSignals = {
+	IABTCF_gdprApplies?: string | number;
+	IABTCF_TCString?: string;
+	IABTCF_AddtlConsent?: string;
+	IABGPP_HDR_GppString?: string;
+	IABGPP_GppSID?: string;
+	IABTCF_PurposeConsents?: string;
+	IABTCF_PurposeLegitimateInterests?: string;
+};
+
 export type PrivacyConsentState = {
 	consentStatus: PrivacyConsentStatus;
 	canRequestAds: boolean;
 	privacyOptionsRequired: boolean;
+	iabSignals?: PrivacyIabSignals;
 };
 
 export type ConsentDebugGeography = "disabled" | "eea" | "notEea";

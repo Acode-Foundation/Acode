@@ -77,7 +77,7 @@ final class AlpinePackageTests: BridgeTestCase {
                 const child = require('node:child_process');
                 const startup = child.spawnSync(process.execPath, ['-e', 'process.stdout.write(typeof WebAssembly)'], {encoding:'utf8'});
                 assert.equal(startup.status, 0);
-                assert.equal(startup.stdout, 'undefined');
+                assert.equal(startup.stdout, 'object');
                 assert.equal(startup.stderr, '');
                 assert.equal(1 + 2, 3);
                 fs.writeFileSync('/tmp/acode-node-utf8', 'hello π');

@@ -42,6 +42,25 @@ fi
 required_packages="bash command-not-found tzdata wget curl libstdc++"
 if [ "$ALPINE_ROOT" = "/" ]; then
     required_packages="$required_packages procps-ng tar gzip"
+    # Optional defaults must not prevent terminal setup, including under set -e.
+    (
+        npm_config_file="$PREFIX/npmrc"
+        if [ ! -e "$npm_config_file" ]; then
+            for legacy_config in "/etc/npmrc" "/usr/etc/npmrc"; do
+                if [ -f "$legacy_config" ]; then
+                    cp "$legacy_config" "$npm_config_file" || exit 1
+                    break
+                fi
+            done
+        fi
+        # Project/user npmrc files and CLI flags can override these defaults.
+        for setting in loglevel=info foreground-scripts=true; do
+            key=${setting%%=*}
+            if ! grep -Eq "^[[:space:]]*$key[[:space:]]*=" "$npm_config_file" 2>/dev/null; then
+                printf '\n%s\n' "$setting" >> "$npm_config_file" || exit 1
+            fi
+        done
+    ) || echo "Unable to configure optional npm defaults; continuing terminal setup." >&2
 fi
 missing_packages=""
 

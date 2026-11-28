@@ -80,12 +80,18 @@ test("only routes Acode HTTPS API requests through the iOS transport", async () 
 		"https://dev.acode.app.evil.test/api/login",
 		"http://dev.acode.app/api/login",
 		"https://dev.acode.app:8443/api/login",
+		"https://academy.acode.app.evil.test/api/login",
+		"https://academy.acode.app/cc/1",
 		"acode://localhost/__cdvfile_cache__/file.txt",
 	]) {
 		await window.fetch(url);
 		expect(transport.mock.calls.at(-1)?.[0]).toBe(url);
 	}
-	for (const origin of ["https://acode.app", "https://dev.acode.app"]) {
+	for (const origin of [
+		"https://acode.app",
+		"https://dev.acode.app",
+		"https://academy.acode.app",
+	]) {
 		await window.fetch(`${origin}/api/login?test=one%20two`, {
 			credentials: "include",
 			headers: { "X-Acode-API-Origin": "https://example.com" },

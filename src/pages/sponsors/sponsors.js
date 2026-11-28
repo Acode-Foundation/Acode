@@ -4,7 +4,6 @@ import toast from "components/toast";
 import Ref from "html-tag-js/ref";
 import actionStack from "lib/actionStack";
 import config from "lib/config";
-import platform from "lib/platform";
 import Sponsor from "pages/sponsor";
 import helpers from "utils/helpers";
 
@@ -30,7 +29,7 @@ export default function Sponsors() {
 
 	page.body = (
 		<div id="sponsors-page">
-			{platform.sponsorPurchases ? (
+			{helpers.isIapAvailable() && (
 				<div className="cta-section">
 					<p class="cta-text">
 						Join our community of supporters and help shape the future of mobile
@@ -40,7 +39,7 @@ export default function Sponsors() {
 						Become a Sponsor <span className="icon favorite"></span>
 					</button>
 				</div>
-			) : null}
+			)}
 			<div className="sponsors-container">
 				<h2>Acode's Sponsors</h2>
 				<div className="sponsors-list" onclick={handleLinkClick}>

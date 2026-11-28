@@ -24,6 +24,7 @@ final class AlpineRuntime {
     var environment: String {
         ["PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin", "HOME=/public",
          "PREFIX=/acode", "ALPINE_ROOT=/", "TERM=xterm-256color", "SHELL=/bin/bash",
+         "NPM_CONFIG_GLOBALCONFIG=/acode/npmrc",
          "ANDROID_TZ=\(TimeZone.current.identifier)", "GODEBUG=asyncpreemptoff=1", "GOMAXPROCS=2",
          "PYTHONMALLOC=malloc", "PYTHONDONTWRITEBYTECODE=1",
          "BUN_JSC_useDFGJIT=0", "BUN_JSC_useFTLJIT=0", "BUN_JSC_useConcurrentJIT=0",

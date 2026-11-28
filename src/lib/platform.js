@@ -7,7 +7,6 @@ export default Object.freeze({
 	androidIntents: !isIOS,
 	appExit: !isIOS,
 	apkUpdates: !isIOS,
-	// The account backend does not yet verify App Store plugin or sponsor orders.
+	// The account backend does not yet verify App Store plugin orders.
 	pluginPurchases: !isIOS,
-	sponsorPurchases: !isIOS,
 });

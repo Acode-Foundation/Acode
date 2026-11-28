@@ -16,11 +16,11 @@ import {
 	getEffectiveKeyBindings,
 	getResolvedKeyBindingsVersion,
 } from "cm/commandRegistry";
-import confirm from "dialogs/confirm";
 import fonts from "lib/fonts";
 import appSettings from "lib/settings";
 import { quotePosixShellArg } from "utils/shell";
 import LigaturesAddon from "./ligatures";
+import openTerminalLink from "./openTerminalLink";
 import {
 	DEFAULT_TERMINAL_SETTINGS,
 	getTerminalSettings,
@@ -100,15 +100,9 @@ export default class TerminalComponent {
 		this.fitAddon = new FitAddon();
 		this.unicode11Addon = new Unicode11Addon();
 		this.searchAddon = new SearchAddon();
-		this.webLinksAddon = new WebLinksAddon(async (event, uri) => {
-			const linkOpenConfirm = await confirm(
-				"Terminal",
-				`Do you want to open ${uri} in browser?`,
-			);
-			if (linkOpenConfirm) {
-				system.openInBrowser(uri);
-			}
-		});
+		this.webLinksAddon = new WebLinksAddon((event, uri) =>
+			openTerminalLink(uri, Boolean(this.remoteSsh)),
+		);
 		this.webglAddon = null;
 
 		// Load addons

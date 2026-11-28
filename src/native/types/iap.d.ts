@@ -1,4 +1,7 @@
 interface Iap {
+	addPurchaseUpdatedListener(
+		onSuccess: (purchases: Array<Object>) => void,
+	): () => boolean;
 	getProducts(
 		skuList: Array<string>,
 		onSuccess: (skuList: Array<Object>) => void,
@@ -21,6 +24,7 @@ interface Iap {
 		skuId: string,
 		onSuccess: (responseCode: number) => void,
 		onError: (err: string) => void,
+		onUpdateError?: (error: unknown) => void,
 	): void;
 	getPurchases(
 		onSuccess: (purchaseList: Array<Object>) => void,

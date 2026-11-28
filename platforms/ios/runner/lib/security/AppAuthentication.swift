@@ -5,12 +5,23 @@ import WebKit
 struct AppAuthentication {
     static let origin = "https://acode.app"
     static let hosts = ["acode.app", "dev.acode.app"]
+    // Services that share the acode.app sign-in without being sign-in hosts, mapped to their account host.
+    // Academy is a trusted production-only consumer of the production account token.
+    // Do not substitute a development account when the editor uses a dev API.
+    static let accountServices = ["academy.acode.app": "acode.app"]
+    static let apiHosts = hosts + accountServices.keys
     let secrets: SecretStore
 
     init(namespace: String = "acode_auth_secure") { secrets = SecretStore(namespace: namespace) }
 
-    static func accepts(_ url: URL) -> Bool {
-        url.scheme == "https" && hosts.contains(url.host ?? "") && (url.port == nil || url.port == 443) && url.user == nil && url.password == nil
+    static func accepts(_ url: URL) -> Bool { accepts(url, hosts: hosts) }
+
+    static func acceptsAPI(_ url: URL) -> Bool { accepts(url, hosts: apiHosts) }
+
+    // Account services may only set cookies for themselves, never for the shared parent domain.
+    static func acceptsCookie(for domain: String, from host: String) -> Bool {
+        guard apiHosts.contains(domain) else { return false }
+        return host == domain || (hosts.contains(host) && host.hasSuffix("." + domain))
     }
 
     func begin(baseURL: String, version: Int) throws -> URL {
@@ -45,7 +56,11 @@ struct AppAuthentication {
         return request
     }
 
-    func token(for url: URL) throws -> String { try secrets.get(Self.tokenKey(for: url)) }
+    func token(for url: URL) throws -> String {
+        guard Self.acceptsAPI(url) else { throw SecretFailure("Unsupported sign-in URL") }
+        let account = Self.accountServices[url.host!].flatMap { URL(string: "https://" + $0) } ?? url
+        return try secrets.get(Self.tokenKey(for: account))
+    }
 
     static func accountURL(baseURL: String) throws -> URL {
         let base = try Self.baseURL(baseURL)
@@ -81,12 +96,9 @@ struct AppAuthentication {
         }
     }
 
-    static func baseURL(_ value: String) throws -> URL {
-        guard let url = URL(string: value), accepts(url), ["", "/"].contains(url.path), url.query == nil, url.fragment == nil else {
-            throw SecretFailure("Unsupported sign-in URL")
-        }
-        return URL(string: "https://" + url.host!)!
-    }
+    static func baseURL(_ value: String) throws -> URL { try origin(value, hosts: hosts) }
+
+    static func apiOrigin(_ value: String) throws -> URL { try origin(value, hosts: apiHosts) }
 
     static func exchangeFailure(_ response: HTTPURLResponse) -> SecretFailure {
         if response.statusCode == 429 {
@@ -98,6 +110,17 @@ struct AppAuthentication {
         }
         if [400, 401].contains(response.statusCode) { return SecretFailure("Sign-in expired. Please try again.") }
         return SecretFailure("The sign-in service is unavailable. Please try again later.")
+    }
+
+    private static func accepts(_ url: URL, hosts: [String]) -> Bool {
+        url.scheme == "https" && hosts.contains(url.host ?? "") && (url.port == nil || url.port == 443) && url.user == nil && url.password == nil
+    }
+
+    private static func origin(_ value: String, hosts: [String]) throws -> URL {
+        guard let url = URL(string: value), accepts(url, hosts: hosts), ["", "/"].contains(url.path), url.query == nil, url.fragment == nil else {
+            throw SecretFailure("Unsupported sign-in URL")
+        }
+        return URL(string: "https://" + url.host!)!
     }
 
     private static func tokenKey(for url: URL) throws -> String {

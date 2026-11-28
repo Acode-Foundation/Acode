@@ -13,16 +13,20 @@ final class AMBTrackingAuthorization {
     private var requestID: UUID?
     private var deadline: Task<Void, Never>?
     private let timeout: Duration
+    private let showProgress: @MainActor () -> (() -> Void)
+    private var hideProgress: (() -> Void)?
 
     init(status: @escaping @MainActor () -> ATTrackingManager.AuthorizationStatus = { ATTrackingManager.trackingAuthorizationStatus },
          isActive: @escaping @MainActor () -> Bool = { UIApplication.shared.applicationState == .active },
          notifications: NotificationCenter = .default,
          timeout: Duration = .seconds(30),
+         showProgress: @escaping @MainActor () -> (() -> Void) = { {} },
          request: @escaping (@escaping @Sendable (ATTrackingManager.AuthorizationStatus) -> Void) -> Void = ATTrackingManager.requestTrackingAuthorization) {
         self.status = status
         self.isActive = isActive
         self.notifications = notifications
         self.timeout = timeout
+        self.showProgress = showProgress
         self.request = request
         observer = notifications.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
             DispatchQueue.main.async { self?.requestWhenActive() }
@@ -35,6 +39,9 @@ final class AMBTrackingAuthorization {
     }
 
     func authorize(_ completion: @escaping Completion) {
+        if pending.isEmpty, status() == .notDetermined {
+            hideProgress = showProgress()
+        }
         pending.append(completion)
         if deadline == nil {
             deadline = Task { [weak self, timeout] in
@@ -85,6 +92,8 @@ final class AMBTrackingAuthorization {
     private func finish(_ result: Result<ATTrackingManager.AuthorizationStatus, Error>) {
         deadline?.cancel()
         deadline = nil
+        hideProgress?()
+        hideProgress = nil
         // Cancellation/timeout settles callers, not the OS request. Its ID remains
         // until a callback or a determined OS status proves it is safe to retire.
         let callbacks = pending

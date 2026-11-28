@@ -24,6 +24,15 @@ on:
   schedule:
     - cron: "0 5 * * *"
   workflow_dispatch:
+    inputs:
+      alpine_node_tests:
+        description: 'Run Alpine Node/Vite integration tests (npm access; may hit hosted-runner process exits)'
+        type: boolean
+        default: false
+      sponsor_privacy_tests:
+        description: 'Run StoreKit sponsorship and privacy bridge UI integration tests'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -152,13 +161,17 @@ jobs:
           }
           JS
       - name: Build and run simulator tests with SSH and FTP fixtures
+        env:
+          RUN_ALPINE_NODE_TESTS: ${{ inputs.alpine_node_tests || false }}
+          RUN_SPONSOR_PRIVACY_TESTS: ${{ inputs.sponsor_privacy_tests || false }}
         run: |
           python3 -m venv .ios-build/ssh-fixture-venv
           .ios-build/ssh-fixture-venv/bin/pip install -r tests/fixtures/ssh/requirements.txt
           # Temporarily exclude Alpine process exits on hosted runners (run 41789669396).
           # Local runs retain these tests; InAppRunnerTests also starts Alpine.
           skips=()
-          for test in AlpineInteractionTests AlpineLspTests AlpinePackageTests AlpineSignalTests AlpineSimdTests AlpineTerminalServerTests AlpineTerminalTests InAppRunnerTests; do
+          for test in AlpineInteractionTests AlpineLspTests AlpineNodeTests AlpinePackageTests AlpineSignalTests AlpineSimdTests AlpineTerminalServerTests AlpineTerminalTests InAppRunnerTests; do
+            if [[ "$test" == AlpineNodeTests && "$RUN_ALPINE_NODE_TESTS" == true ]]; then continue; fi
             skips+=("-skip-testing:runnerTests/$test")
           done
           # StoreKit test sessions and these web UI interactions fail on every hosted run
@@ -174,6 +187,11 @@ jobs:
             runnerUITests/WebContextMenuUITests; do
             skips+=("-skip-testing:$test")
           done
+          if [[ "$RUN_SPONSOR_PRIVACY_TESTS" != true ]]; then
+            skips+=("-skip-testing:runnerTests/SponsorPurchaseTests")
+            skips+=("-skip-testing:runnerTests/AdsBridgeTests/testPrivacyBridgeReturnsOnlyCurrentIabSignals")
+            skips+=("-skip-testing:runnerTests/AdsBridgeTests/testPrivacySnapshotReflectsWithdrawalAndRemovedSignals")
+          fi
           .ios-build/ssh-fixture-venv/bin/python tests/fixtures/ssh/server.py -- npm run test:ios -- --target=${{ steps.simulator.outputs.id }} "${skips[@]}"
       - name: Run iPad startup and native UI checks
         run: |
