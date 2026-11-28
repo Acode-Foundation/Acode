@@ -231,6 +231,7 @@ light.preferredEditorTheme = getSystemEditorTheme(false);
 light.preferredTerminalTheme = "light";
 
 const system = createBuiltInTheme("System", "dark", "free");
+system.autoDarkened = true;
 
 export function getSystemEditorTheme(darkTheme) {
 	if (darkTheme) {
@@ -250,7 +251,6 @@ export function updateSystemTheme(darkTheme, applyTheme = true) {
 		system.type = "dark";
 		system.primaryColor = "rgb(35, 39, 42)";
 		system.primaryTextColor = "rgb(245, 245, 245)";
-		system.darkenedPrimaryColor = "rgb(24, 27, 30)";
 		system.secondaryColor = "rgb(45, 49, 52)";
 		system.secondaryTextColor = "rgb(228, 228, 228)";
 		system.activeColor = "rgb(66, 133, 244)";

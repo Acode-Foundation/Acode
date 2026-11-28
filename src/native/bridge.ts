@@ -7,6 +7,7 @@ export type NativeExec = (
 	service: string,
 	action: string,
 	args?: unknown[],
+	onRelease?: () => void,
 ) => void;
 export interface NativeReply {
 	id: number;
@@ -28,7 +29,11 @@ export default function bridge(service: string) {
 		error: NativeCallback,
 		action: string,
 		args: unknown[] = [],
-	) => Bridge.exec(success, error, service, action, args);
+		onRelease?: () => void,
+	) =>
+		onRelease
+			? Bridge.exec(success, error, service, action, args, onRelease)
+			: Bridge.exec(success, error, service, action, args);
 	const call = <T = void>(action: string, args: unknown[] = []): Promise<T> =>
 		new Promise((resolve, reject) => exec(resolve, reject, action, args));
 	return Object.assign(call, { exec });
@@ -37,12 +42,19 @@ export default function bridge(service: string) {
 export function createTransport(send: NativeSender) {
 	const callbacks = new Map<
 		number,
-		{ success: NativeCallback; error: NativeCallback }
+		{ success: NativeCallback; error: NativeCallback; onRelease?: () => void }
 	>();
 	let callbackId = 0;
-	const exec: NativeExec = (success, error, service, action, args = []) => {
+	const exec: NativeExec = (
+		success,
+		error,
+		service,
+		action,
+		args = [],
+		onRelease,
+	) => {
 		const id = ++callbackId;
-		callbacks.set(id, { success, error });
+		callbacks.set(id, { success, error, onRelease });
 		try {
 			const encoded = args.map((value) =>
 				Object.prototype.toString.call(value) === "[object ArrayBuffer]"
@@ -53,6 +65,7 @@ export function createTransport(send: NativeSender) {
 				throw new Error(`Native service rejected ${service}.${action}`);
 		} catch (exception) {
 			callbacks.delete(id);
+			onRelease?.();
 			if (error)
 				error(
 					exception instanceof Error ? exception.message : String(exception),
@@ -63,7 +76,10 @@ export function createTransport(send: NativeSender) {
 	const receive = ({ id, keep, status, data }: NativeReply) => {
 		const callback = callbacks.get(id);
 		if (!callback) return;
-		if (!keep) callbacks.delete(id);
+		if (!keep) {
+			callbacks.delete(id);
+			callback.onRelease?.();
+		}
 		if (status === 0) return;
 		const listener = status === 1 ? callback.success : callback.error;
 		const payload = data as { kind?: string; data?: unknown[] } | undefined;

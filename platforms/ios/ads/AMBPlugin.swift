@@ -13,7 +13,9 @@ final class AMBPlugin: BaseService {
     private var started = false
     private var childDirected = false
     private var underAgeOfConsent = false
-    @MainActor private lazy var tracking = AMBTrackingAuthorization()
+    @MainActor private lazy var tracking = AMBTrackingAuthorization(showProgress: { [weak self] in
+        AMBPrivacyProgress.show(in: self?.viewController?.view)
+    })
     private(set) var adEnvironment = AMBAdEnvironment(verifiedEnvironment: nil)
     private weak var registeredWebView: WKWebView?
     lazy var banners = AMBBannerLayout(plugin: self)

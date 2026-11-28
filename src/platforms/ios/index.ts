@@ -41,10 +41,17 @@ export default function setup() {
 			});
 		},
 	};
-	const exec: NativeExec = (success, error, service, action, args = []) => {
+	const exec: NativeExec = (
+		success,
+		error,
+		service,
+		action,
+		args = [],
+		onRelease,
+	) => {
 		const handler = proxy[service]?.[action];
 		if (handler) handler(success, error, args);
-		else transport.exec(success, error, service, action, args);
+		else transport.exec(success, error, service, action, args, onRelease);
 	};
 	installFullscreen(
 		(active) =>

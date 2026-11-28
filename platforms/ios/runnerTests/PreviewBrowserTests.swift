@@ -4,6 +4,16 @@ import WebKit
 
 @MainActor
 final class PreviewBrowserTests: BridgeTestCase {
+    func testTerminalPreviewsUseSeparateEphemeralStorage() throws {
+        let url = try XCTUnwrap(URL(string: "http://localhost:3000"))
+        let first = PreviewViewController(url: url, theme: [:], console: false, ephemeral: true)
+        let second = PreviewViewController(url: url, theme: [:], console: false, ephemeral: true)
+        let regular = PreviewViewController(url: url, theme: [:], console: false)
+        XCTAssertFalse(first.webView.configuration.websiteDataStore.isPersistent)
+        XCTAssertFalse(first.webView.configuration.websiteDataStore === second.webView.configuration.websiteDataStore)
+        XCTAssertTrue(regular.webView.configuration.websiteDataStore.isPersistent)
+    }
+
     func testConsoleFocusKeepsScaleAndFitsAboveKeyboard() async throws {
         let app = try await editorWebView()
         var responder: UIResponder? = app

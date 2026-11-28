@@ -5,11 +5,14 @@ final class AMBPrivacy {
     private weak var plugin: AMBPlugin?
     private var busy = false
     private var presenting = false
+    private var hideProgress: (() -> Void)?
     private let information: ConsentInformation
+    private let defaults: UserDefaults
 
-    init(plugin: AMBPlugin, information: ConsentInformation = .shared) {
+    init(plugin: AMBPlugin, information: ConsentInformation = .shared, defaults: UserDefaults = .standard) {
         self.plugin = plugin
         self.information = information
+        self.defaults = defaults
     }
 
     var canRequestAds: Bool { information.canRequestAds }
@@ -22,7 +25,21 @@ final class AMBPrivacy {
         default: status = "unknown"
         }
         return ["consentStatus": status, "canRequestAds": canRequestAds,
-                "privacyOptionsRequired": information.privacyOptionsRequirementStatus == .required]
+                "privacyOptionsRequired": information.privacyOptionsRequirementStatus == .required,
+                "iabSignals": iabSignals]
+    }
+
+    private var iabSignals: [String: Any] {
+        // An absent purpose decision must not look like a host-validated snapshot.
+        var signals: [String: Any] = ["IABTCF_PurposeConsents": ""]
+        for key in ["IABTCF_gdprApplies", "IABTCF_TCString", "IABTCF_AddtlConsent",
+                    "IABGPP_HDR_GppString", "IABGPP_GppSID", "IABTCF_PurposeConsents",
+                    "IABTCF_PurposeLegitimateInterests"] {
+            let value = defaults.object(forKey: key)
+            if let value = value as? String { signals[key] = value }
+            else if key == "IABTCF_gdprApplies", let value = value as? NSNumber { signals[key] = value }
+        }
+        return signals
     }
 
     func gather(_ ctx: AMBContext) {
@@ -58,6 +75,8 @@ final class AMBPrivacy {
                 }
                 guard let controller = self.presenter(ctx) else { self.busy = false; return }
                 self.presenting = true
+                // UMP can request ATT itself; keep feedback beneath its form for the handoff.
+                self.hideProgress = AMBPrivacyProgress.show(in: controller.view)
                 form.present(from: controller) { [weak self] error in self?.finish(ctx, error) }
             }
         }
@@ -86,6 +105,8 @@ final class AMBPrivacy {
     }
 
     func resetPresentation() {
+        hideProgress?()
+        hideProgress = nil
         if presenting { plugin?.viewController?.dismiss(animated: false) }
         presenting = false
         busy = false
@@ -102,6 +123,8 @@ final class AMBPrivacy {
 
     private func finish(_ ctx: AMBContext, _ error: Error?) {
         guard ctx.isCurrent else { return }
+        hideProgress?()
+        hideProgress = nil
         busy = false
         presenting = false
         if !canRequestAds { plugin?.clearAds() }

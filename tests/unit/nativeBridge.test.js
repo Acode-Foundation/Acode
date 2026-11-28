@@ -72,6 +72,34 @@ afterEach(() => {
 });
 
 describe("Acode bridge", () => {
+	test.each([
+		"android",
+		"ios",
+	])("%s reports native callback release independently of a kept billing error", async (platform) => {
+		const { window, pending } = await createBridge("paid", false, platform);
+		const events = [];
+		window.Bridge.exec(
+			null,
+			(error) => events.push(error),
+			"Iap",
+			"setPurchaseUpdatedListener",
+			[],
+			() => events.push("released"),
+		);
+		const { id } = pending.at(-1);
+		const reply = (keep, status, data) => {
+			if (platform === "android")
+				window.Android.callback({ id, keep, status, data });
+			else window.iOS.callback({ id, keep, status, error: data });
+		};
+		reply(true, 9, -1);
+		expect(events).toEqual([-1]);
+		reply(false, 9, -1);
+		expect(events).toEqual([-1, "released", -1]);
+		reply(false, 9, -1);
+		expect(events).toEqual([-1, "released", -1]);
+	});
+
 	test("defers cold and listening intents until startup is visible, then delivers warm intents synchronously", async () => {
 		const { window, pending } = await createBridge();
 		window.document.body.classList.add("loading");

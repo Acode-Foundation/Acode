@@ -11,6 +11,7 @@
 #include "fs/path.h"
 #include "fs/real.h"
 #include "fs/sock.h"
+#include "fs/netlink.h"
 #include "debug.h"
 
 #define SOCKET_TYPE_MASK 0xf
@@ -28,6 +29,11 @@ static fd_t sock_fd_create(int sock_fd, int domain, int type, int protocol) {
     fd->socket.domain = domain;
     fd->socket.type = type & SOCKET_TYPE_MASK;
     fd->socket.protocol = protocol;
+    if (domain == AF_NETLINK_) {
+        fd->socket.netlink_peer = -1;
+        int error = netlink_open(fd);
+        if (error < 0) { fd_close(fd); return error; }
+    }
     if (domain == AF_LOCAL_) {
         cond_init(&fd->socket.unix_got_peer);
         list_init(&fd->socket.unix_scm);
@@ -37,6 +43,12 @@ static fd_t sock_fd_create(int sock_fd, int domain, int type, int protocol) {
 
 int_t sys_socket(dword_t domain, dword_t type, dword_t protocol) {
     STRACE("socket(%d, %d, %d)", domain, type, protocol);
+    if (domain == AF_NETLINK_) {
+        if (protocol != NETLINK_ROUTE_) return _EPROTONOSUPPORT;
+        if ((type & SOCKET_TYPE_MASK) != SOCK_RAW_ && (type & SOCKET_TYPE_MASK) != SOCK_DGRAM_)
+            return _ESOCKTNOSUPPORT;
+        return sock_fd_create(-1, domain, type, protocol);
+    }
     int real_domain = sock_family_to_real(domain);
     if (real_domain < 0)
         return _EAFNOSUPPORT;
@@ -339,6 +351,8 @@ int_t sys_bind(fd_t sock_fd, addr_t sockaddr_addr, uint_t sockaddr_len) {
     struct fd *sock = sock_getfd(sock_fd);
     if (sock == NULL)
         return _EBADF;
+    if (sock->socket.domain == AF_NETLINK_)
+        return netlink_bind(sock, sockaddr_addr, sockaddr_len);
     struct sockaddr_max_ sockaddr;
     int err = sockaddr_read_bind(sockaddr_addr, &sockaddr, &sockaddr_len, sock);
     if (err < 0)
@@ -530,6 +544,11 @@ int_t sys_getsockname(fd_t sock_fd, addr_t sockaddr_addr, addr_t sockaddr_len_ad
     if (user_get(sockaddr_len_addr, sockaddr_len))
         return _EFAULT;
     dword_t sockaddr_buffer_len = sockaddr_len;
+    if (sock->socket.domain == AF_NETLINK_) {
+        int error = netlink_address(sockaddr_addr, sockaddr_buffer_len, &sockaddr_len, sock->socket.netlink_port);
+        if (error < 0) return error;
+        return user_put(sockaddr_len_addr, sockaddr_len) ? _EFAULT : 0;
+    }
     if (sockaddr_len > sizeof(struct sockaddr_max_))
         sockaddr_len = sizeof(struct sockaddr_max_);
     struct sockaddr_max_ sockaddr;
@@ -648,6 +667,11 @@ int_t sys_sendto(fd_t sock_fd, addr_t buffer_addr, dword_t len, dword_t flags, a
         return _EFAULT;
     }
     buffer[len] = '\0';
+    if (sock->socket.domain == AF_NETLINK_) {
+        ssize_t result = netlink_send(sock, buffer, len);
+        free(buffer);
+        return result;
+    }
     STRACE("sendto(%d, \"%.100s\", %d, %d, 0x%x, %d)", sock_fd, buffer, len, flags, sockaddr_addr, sockaddr_len);
     int real_flags = sock_flags_to_real(flags);
     int err = _EINVAL;
@@ -837,7 +861,9 @@ int_t sys_recvfrom(fd_t sock_fd, addr_t buffer_addr, dword_t len, dword_t flags,
     }
     free(buffer);
     if (sockaddr_addr != 0) {
-        int err = sockaddr_write(sockaddr_addr, &sockaddr, sockaddr_buffer_len, &sockaddr_len);
+        int err = sock->socket.domain == AF_NETLINK_
+            ? netlink_address(sockaddr_addr, sockaddr_buffer_len, &sockaddr_len, 0)
+            : sockaddr_write(sockaddr_addr, &sockaddr, sockaddr_buffer_len, &sockaddr_len);
         if (err < 0)
             return err;
     }
@@ -1101,6 +1127,8 @@ int_t sys_sendmsg(fd_t sock_fd, addr_t msghdr_addr, int_t flags) {
     struct fd *sock = sock_getfd(sock_fd);
     if (sock == NULL)
         return _EBADF;
+    if (sock->socket.domain == AF_NETLINK_)
+        return _EOPNOTSUPP;
 
     // Read the guest msghdr struct into our internal 32-bit representation
     struct msghdr msg;
@@ -1536,7 +1564,9 @@ int_t sys_recvmsg(fd_t sock_fd, addr_t msghdr_addr, int_t flags) {
 
     // msg_name (changed)
     if (msg.msg_name != 0) {
-        int err = sockaddr_write(msg_fake.msg_name, msg.msg_name, msg_name_buffer_len, &msg.msg_namelen);
+        int err = sock->socket.domain == AF_NETLINK_
+            ? netlink_address(msg_fake.msg_name, msg_name_buffer_len, &msg.msg_namelen, 0)
+            : sockaddr_write(msg_fake.msg_name, msg.msg_name, msg_name_buffer_len, &msg.msg_namelen);
         if (err < 0)
             return err;
     }
@@ -1695,6 +1725,8 @@ static ssize_t sock_read(struct fd *fd, void *buf, size_t size) {
 }
 
 static ssize_t sock_write(struct fd *fd, const void *buf, size_t size) {
+    if (fd->socket.domain == AF_NETLINK_)
+        return netlink_send(fd, buf, size);
     int err;
     int eintr_count = 0;
     for (;;) {
@@ -1718,6 +1750,8 @@ static ssize_t sock_write(struct fd *fd, const void *buf, size_t size) {
 }
 
 static int sock_close(struct fd *fd) {
+    if (fd->socket.domain == AF_NETLINK_ && fd->socket.netlink_peer >= 0)
+        close(fd->socket.netlink_peer);
     sockrestart_end_listen(fd);
     // FIXME next 3 lines should go in a function like release_unix_names
     inode_release_if_exist(fd->socket.unix_name_inode);

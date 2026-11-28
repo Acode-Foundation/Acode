@@ -54,7 +54,7 @@ final class AppAPIHandler {
 
     func request(for incomingRequest: URLRequest) throws -> URLRequest {
         guard let source = incomingRequest.url, source.scheme == "acode", source.host == "localhost", source.path.hasPrefix("/__api__/") else { throw URLError(.badURL) }
-        let origin = try incomingRequest.value(forHTTPHeaderField: "X-Acode-API-Origin").map(AppAuthentication.baseURL) ?? self.origin
+        let origin = try incomingRequest.value(forHTTPHeaderField: "X-Acode-API-Origin").map(AppAuthentication.apiOrigin) ?? self.origin
         var destination = URLComponents(url: origin, resolvingAgainstBaseURL: false)!
         let incoming = URLComponents(url: source, resolvingAgainstBaseURL: false)!
         destination.percentEncodedPath = "/api/" + incoming.percentEncodedPath.dropFirst("/__api__/".count)
@@ -74,13 +74,13 @@ final class AppAPIHandler {
     }
 
     static func storeCookies(from response: HTTPURLResponse, credentials: Bool) {
-        guard credentials, let url = response.url, AppAuthentication.accepts(url),
+        guard credentials, let url = response.url, AppAuthentication.acceptsAPI(url),
               let header = response.value(forHTTPHeaderField: "Set-Cookie") else { return }
         let storage = HTTPCookieStorage.shared
         guard storage.cookieAcceptPolicy != .never else { return }
         for cookie in HTTPCookie.cookies(withResponseHeaderFields: ["Set-Cookie": header], for: url) where cookie.name != "token" {
             let domain = cookie.domain.trimmingCharacters(in: CharacterSet(charactersIn: "."))
-            guard AppAuthentication.hosts.contains(domain), url.host == domain || url.host!.hasSuffix("." + domain) else { continue }
+            guard AppAuthentication.acceptsCookie(for: domain, from: url.host!) else { continue }
             // Foundation requires the stored HttpOnly object when replacing or deleting it.
             for existing in storage.cookies ?? [] where existing.name == cookie.name && existing.domain == cookie.domain && existing.path == cookie.path {
                 storage.deleteCookie(existing)
@@ -92,7 +92,7 @@ final class AppAPIHandler {
 
     private static func applyCookies(to request: inout URLRequest, credentials: Bool, auth: AppAuthentication) throws {
         guard let url = request.url else { throw URLError(.badURL) }
-        let trusted = AppAuthentication.accepts(url)
+        let trusted = AppAuthentication.acceptsAPI(url)
         request.httpShouldHandleCookies = credentials && !trusted
         request.setValue(nil, forHTTPHeaderField: "Cookie")
         if credentials, trusted {

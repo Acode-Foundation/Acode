@@ -46,6 +46,96 @@
       "productID": "ios_test_tip",
       "referenceName": "Tip test",
       "type": "Consumable"
+    },
+    {
+      "displayPrice": "0.99",
+      "familyShareable": false,
+      "internalID": "200",
+      "localizations": [
+        {
+          "description": "30 days of sponsorship (local test only)",
+          "displayName": "Crystal",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "crystal",
+      "referenceName": "Crystal sponsor test",
+      "type": "Consumable"
+    },
+    {
+      "displayPrice": "1.99",
+      "familyShareable": false,
+      "internalID": "201",
+      "localizations": [
+        {
+          "description": "30 days of sponsorship (local test only)",
+          "displayName": "Bronze",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "bronze",
+      "referenceName": "Bronze sponsor test",
+      "type": "Consumable"
+    },
+    {
+      "displayPrice": "4.99",
+      "familyShareable": false,
+      "internalID": "202",
+      "localizations": [
+        {
+          "description": "30 days of sponsorship (local test only)",
+          "displayName": "Silver",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "silver",
+      "referenceName": "Silver sponsor test",
+      "type": "Consumable"
+    },
+    {
+      "displayPrice": "9.99",
+      "familyShareable": false,
+      "internalID": "203",
+      "localizations": [
+        {
+          "description": "30 days of sponsorship (local test only)",
+          "displayName": "Gold",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "gold",
+      "referenceName": "Gold sponsor test",
+      "type": "Consumable"
+    },
+    {
+      "displayPrice": "19.99",
+      "familyShareable": false,
+      "internalID": "204",
+      "localizations": [
+        {
+          "description": "30 days of sponsorship (local test only)",
+          "displayName": "Platinum",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "platinum",
+      "referenceName": "Platinum sponsor test",
+      "type": "Consumable"
+    },
+    {
+      "displayPrice": "49.99",
+      "familyShareable": false,
+      "internalID": "205",
+      "localizations": [
+        {
+          "description": "30 days of sponsorship (local test only)",
+          "displayName": "Titanium",
+          "locale": "en_US"
+        }
+      ],
+      "productID": "titanium",
+      "referenceName": "Titanium sponsor test",
+      "type": "Consumable"
     }
   ],
   "settings": {

@@ -16,7 +16,7 @@ final class BrowserService: BaseService {
             guard let presenter = self.viewController, presenter.presentedViewController == nil else {
                 callback.error("A browser cannot be presented right now"); return
             }
-            let browser = PreviewViewController(url: url, theme: args[safe: 1] as? [String: Any] ?? [:], console: action == "open" && args[safe: 2] as? Bool == true)
+            let browser = PreviewViewController(url: url, theme: args[safe: 1] as? [String: Any] ?? [:], console: action == "open" && args[safe: 2] as? Bool == true, ephemeral: action == "open" && args[safe: 3] as? Bool == true)
             if action == "in-app-browser" {
                 browser.title = args[safe: 1] as? String
                 browser.showTools = args[safe: 2] as? Bool ?? true

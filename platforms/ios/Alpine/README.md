@@ -69,6 +69,9 @@ SIGUSR1` in Xcode's debug console, then `continue`.
   allowing Bun to remove directory locks.
 - `/proc/stat` includes all ten CPU counters and `/proc/<pid>/stat` reports
   immutable process start ticks for process inspection and daemon identity checks.
+- Read-only `NETLINK_ROUTE` link/address dumps translate host interfaces for
+  musl `getifaddrs`, Node's `os.networkInterfaces()` and Vite's `--host` startup.
+  Routing changes, multicast subscriptions and `sendmsg` requests are unsupported.
 - `kernel/group.c` handles the last terminal session member exiting after its
   session leader has been reaped.
 - Synchronous memory and illegal-instruction faults restore default handling if
@@ -102,10 +105,38 @@ guest file operations through the existing Executor API.
 
 This is Linux userspace emulation, not Android proot. APK packages run as ARM64
 Linux programs, but support still depends on the emulator's instructions and
-syscalls. Upstream forces Node to run without JIT and with a 512 MiB old-space
-limit; V8 WebAssembly and packages requiring unsupported syscalls may not work.
-The injected `--no-expose-wasm` flag suppresses V8's conflicting-flag warning;
-it does not enable WebAssembly.
+syscalls. Node keeps JavaScript interpreted, V8 background work disabled and a
+512 MiB old-space limit. The settings in `kernel/node_flags.c` disable the
+JavaScript compilers individually instead of using `--jitless`, which also
+disables WebAssembly and breaks Vite's Node/Undici dependency chain. WebAssembly
+uses V8's Liftoff baseline compiler without tier-up; its generated ARM64 code is
+interpreted inside the guest, not executed natively by iOS. Packages requiring
+unsupported instructions or syscalls may still fail.
+Node rejects V8 flags its engine does not know, so the runtime reads the V8
+version embedded in each `node` binary (from its ELF `.rodata` section) once per
+app launch and passes only the flags that version accepts. Node 16 to 24,
+including versions installed outside `apk`, were verified to start without extra
+configuration. When the version cannot be read, only flags accepted by Node 14
+and later are passed, which leaves the Sparkplug and Maglev compilers at their
+defaults. Interpreted JavaScript makes
+`npm install` and Node startup noticeably slower than on Android.
+On iOS, shell preparation supplies npm global defaults in `/acode/npmrc`:
+`loglevel=info` and `foreground-scripts=true`. Ordinary installs display
+fetch/build activity while retaining npm's default automatic security audit.
+Foreground scripts improve visibility, not installation speed. Existing global
+settings are migrated once, when `/acode/npmrc` is absent, from `/etc/npmrc`
+(or `/usr/etc/npmrc` if the former is absent). Later package installs do not
+re-import global settings. User/project npmrc files and command-line options
+override these defaults. Preparation also applies them to existing installations
+without replacing user choices; configuration failures warn and leave terminal
+setup running. This block in the shared setup script is iOS-only.
+
+Local terminal HTTP(S) links open inside Acode so switching to an external browser
+does not suspend the guest server. Each terminal preview uses a separate ephemeral
+website data store: cookies and logins last for that window only. SSH sessions and
+non-local links retain the external-browser confirmation. Preview presentation
+failures are reported without automatically switching apps.
+
 Bun (including compiled CLIs such as OpenCode) keeps baseline JIT for FFI, while
 optimizing/concurrent JIT and concurrent garbage collection are disabled through
 `BUN_JSC_` guest settings. iOS shell setup installs
@@ -118,11 +149,23 @@ Physical-device performance, memory pressure and background behavior need their
 own validation. iOS backups preserve Linux metadata and exclude host mounts;
 Android proot backup archives have a different layout.
 
+`AlpineNodeTests` exercises WebAssembly, `MessageChannel`, worker threads,
+loopback fetch and network interfaces, plus Vite 8.3.8 with React 19.2.4 and React
+plugin 6.0.0 through `npm run dev` on a fixed free port and `npm run build`. It
+needs the npm registry. Hosted CI skips it with the other Alpine suites because
+guest-process exits have been observed on hosted runners. To opt in, manually
+run the **Native Tests** workflow with `alpine_node_tests` enabled. Before release,
+run `runnerTests/AlpineNodeTests` on a simulator and check a physical device. The
+native `alpineNative.test.js` checks, run by the unit tests on macOS and Linux,
+validate Linux interface-message encoding, V8 flag selection, and the Node
+scanner's file guards, cache invalidation and I/O failure recovery with memory
+sanitizers when the sanitizer runtime is available.
+
 ### Pi coding agent
 
 The npm package `pi` is a numeric calculator. The coding agent is
-`@earendil-works/pi-coding-agent`. Its Node entry point requires WebAssembly,
-so launch it explicitly with Bun on iOS:
+`@earendil-works/pi-coding-agent`. The previously validated iOS launch used Bun;
+its Node entry point has not been revalidated with the WebAssembly changes:
 
 ```sh
 npm uninstall -g pi # Only if the unrelated calculator was installed.

@@ -50,6 +50,7 @@ export default {
 	 * @param {object} fun
 	 * @param {string} fun.id
 	 * @param {Function} fun.action
+	 * @param {() => void} [fun.onClear] Synchronous cleanup on bulk removal; must not return a Promise.
 	 */
 	push(fun) {
 		stack.push(fun);
@@ -133,12 +134,22 @@ export default {
 		mark = stack.length;
 	},
 	/**
-	 * Remove all actions that are pushed after marked positions (using `setMark()`)
+	 * Remove the marked entries, reset the mark, then run onClear callbacks top-first.
+	 * Cleanup must be synchronous: returned Promises are neither awaited nor caught.
+	 * Callbacks should avoid stack mutations unless deliberate; newly pushed entries
+	 * and new marks survive this clear.
 	 */
 	clearFromMark() {
 		if (mark === null) return;
-		stack.splice(mark);
+		const removed = stack.splice(mark);
 		mark = null;
+		for (const entry of removed.reverse()) {
+			try {
+				entry.onClear?.();
+			} catch (error) {
+				console.error(error);
+			}
+		}
 	},
 	freeze() {
 		freeze = true;

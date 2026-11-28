@@ -3,8 +3,10 @@ import Checkbox from "components/checkbox";
 import inputhints from "components/inputhints";
 import actionStack from "lib/actionStack";
 import restoreTheme from "lib/restoreTheme";
-import appSettings from "lib/settings";
 import alert from "./alert";
+import restorePromptInput from "./restorePromptInput";
+
+let nextPromptId = 0;
 
 /**
  * @typedef {object} Input
@@ -33,6 +35,7 @@ import alert from "./alert";
  * @returns {Promise<Strings>}
  */
 export default function multiPrompt(message, inputs, help) {
+	const actionId = `multi-prompt-${++nextPromptId}`;
 	return new Promise((resolve, reject) => {
 		const $title = tag("div", {
 			className: "title",
@@ -76,8 +79,8 @@ export default function multiPrompt(message, inputs, help) {
 			textContent: strings.cancel,
 			type: "button",
 			onclick: function () {
-				reject();
-				hide();
+				actionStack.remove(actionId);
+				cancel();
 			},
 		});
 		const $errorMessage = (
@@ -129,8 +132,9 @@ export default function multiPrompt(message, inputs, help) {
 		});
 
 		actionStack.push({
-			id: "prompt",
-			action: hidePrompt,
+			id: actionId,
+			action: cancel,
+			onClear: cancel,
 		});
 
 		restoreTheme(true);
@@ -139,9 +143,16 @@ export default function multiPrompt(message, inputs, help) {
 		const $focusEl = [...$body.getAll("input[autofocus]")].pop();
 		if ($focusEl) $focusEl.focus();
 
+		function cancel() {
+			reject();
+			hidePrompt();
+		}
+
 		function hidePrompt() {
+			if ($promptDiv.classList.contains("hide")) return;
 			clearSensitiveInputs();
 			$promptDiv.classList.add("hide");
+			restorePromptInput();
 			restoreTheme();
 			setTimeout(() => {
 				if ($promptDiv.isConnected) $promptDiv.remove();
@@ -150,8 +161,7 @@ export default function multiPrompt(message, inputs, help) {
 		}
 
 		function hide() {
-			actionStack.remove("prompt");
-			system.setInputType(appSettings.value.keyboardMode);
+			actionStack.remove(actionId);
 			hidePrompt();
 		}
 

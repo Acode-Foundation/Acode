@@ -113,6 +113,24 @@ final class AuthenticationTests: XCTestCase {
         XCTAssertEqual(try auth.token(for: development), "")
     }
 
+    func testAccountServicesUseTheProductionAccountWithoutBecomingSignInHosts() throws {
+        let academy = URL(string: "https://academy.acode.app")!
+        try auth.save("production-token")
+        try auth.save("development-token", for: URL(string: "https://dev.acode.app")!)
+        XCTAssertEqual(try auth.token(for: academy), "production-token")
+        XCTAssertThrowsError(try auth.save("academy-token", for: academy))
+        XCTAssertThrowsError(try auth.begin(baseURL: academy.absoluteString, version: 0))
+        XCTAssertThrowsError(try AppAuthentication.apiOrigin("https://academy.acode.app.evil.test"))
+        var source = URLRequest(url: URL(string: "acode://localhost/__api__/v1/user/login")!)
+        source.setValue(academy.absoluteString, forHTTPHeaderField: "X-Acode-API-Origin")
+        source.setValue("include", forHTTPHeaderField: "X-Acode-Credentials")
+        let request = try AppAPIHandler(auth: auth).request(for: source)
+        XCTAssertEqual(request.url?.absoluteString, "https://academy.acode.app/api/v1/user/login")
+        let tokens = (request.value(forHTTPHeaderField: "Cookie") ?? "").components(separatedBy: ";").map { $0.trimmingCharacters(in: .whitespaces) }.filter { $0.hasPrefix("token=") }
+        XCTAssertEqual(tokens, ["token=production-token"])
+        try auth.logout()
+    }
+
     func testExchangeErrorsExplainRetryTimingAndExpiredSignIn() {
         let url = URL(string: "https://dev.acode.app/api/user/app-token/exchange")!
         let limited = HTTPURLResponse(url: url, statusCode: 429, httpVersion: nil, headerFields: ["Retry-After": "61"])!
@@ -165,5 +183,24 @@ final class AuthenticationTests: XCTestCase {
         let response = HTTPURLResponse(url: foreign, statusCode: 200, httpVersion: nil, headerFields: ["Set-Cookie": "\(name)=foreign; Path=/"])!
         AppAPIHandler.storeCookies(from: response, credentials: true)
         XCTAssertFalse((HTTPCookieStorage.shared.cookies ?? []).contains { $0.name == name })
+    }
+
+    func testAccountServicesOnlyStoreTheirOwnCookies() {
+        let name = "academy-fixture-" + UUID().uuidString
+        defer {
+            for cookie in HTTPCookieStorage.shared.cookies ?? [] where cookie.name == name {
+                HTTPCookieStorage.shared.deleteCookie(cookie)
+            }
+        }
+        let academy = URL(string: "https://academy.acode.app/api/cookie")!
+        let parent = HTTPURLResponse(url: academy, statusCode: 200, httpVersion: nil, headerFields: ["Set-Cookie": "\(name)=parent; Domain=.acode.app; Path=/; Secure"])!
+        AppAPIHandler.storeCookies(from: parent, credentials: true)
+        XCTAssertFalse((HTTPCookieStorage.shared.cookies ?? []).contains { $0.name == name })
+        let own = HTTPURLResponse(url: academy, statusCode: 200, httpVersion: nil, headerFields: ["Set-Cookie": "\(name)=own; Path=/; Secure"])!
+        AppAPIHandler.storeCookies(from: own, credentials: true)
+        XCTAssertEqual((HTTPCookieStorage.shared.cookies(for: academy) ?? []).first { $0.name == name }?.value, "own")
+        XCTAssertFalse((HTTPCookieStorage.shared.cookies(for: URL(string: "https://acode.app/api/cookie")!) ?? []).contains { $0.name == name })
+        XCTAssertTrue(AppAuthentication.acceptsCookie(for: "acode.app", from: "dev.acode.app"))
+        XCTAssertFalse(AppAuthentication.acceptsCookie(for: "acode.app", from: "academy.acode.app"))
     }
 }

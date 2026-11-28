@@ -35,12 +35,12 @@ final class PreviewViewController: UIViewController {
     private var contentBottom: NSLayoutConstraint?
     private var contentFollowsKeyboard = true
 
-    init(url: URL, theme: [String: Any], console: Bool) {
+    init(url: URL, theme: [String: Any], console: Bool, ephemeral: Bool = false) {
         initialURL = url
         self.theme = theme
         consoleOnly = console
         let configuration = WKWebViewConfiguration()
-        configuration.websiteDataStore = WKWebsiteDataStore(forIdentifier: UUID(uuidString: "A0C0DE00-0000-4000-8000-000000000001")!)
+        configuration.websiteDataStore = ephemeral ? .nonPersistent() : WKWebsiteDataStore(forIdentifier: UUID(uuidString: "A0C0DE00-0000-4000-8000-000000000001")!)
         configuration.allowsInlineMediaPlayback = true
         configuration.preferences.isElementFullscreenEnabled = true
         webView = WKWebView(frame: .zero, configuration: configuration)

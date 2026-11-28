@@ -53,7 +53,11 @@ function localURL(value: string) {
 	try {
 		const url = new URL(value, location.href);
 		if (
-			!["https://acode.app", "https://dev.acode.app"].includes(url.origin) ||
+			![
+				"https://acode.app",
+				"https://dev.acode.app",
+				"https://academy.acode.app",
+			].includes(url.origin) ||
 			url.username ||
 			url.password ||
 			!(url.pathname === "/api" || url.pathname.startsWith("/api/"))

@@ -1,29 +1,34 @@
 import "./style.scss";
-import fsOperation from "fileSystem";
 import Logo from "components/logo";
 import Page from "components/page";
-import alert from "dialogs/alert";
-import dialog from "dialogs/dialog";
 import loader from "dialogs/loader";
-import multiPrompt from "dialogs/multiPrompt";
 import actionStack from "lib/actionStack";
 import config from "lib/config";
-import platform from "lib/platform";
 import helpers from "utils/helpers";
-
-//TODO: fix (-1 means, user is not logged in to any google account)
+import sponsorDetails from "./details";
+import startSponsorRecovery, {
+	recoverSponsorPurchases,
+	subscribeSponsorPurchases,
+} from "./recovery";
 
 /**
  * Sponsor page
  * @param {() => void} onclose
  */
 export default function Sponsor(onclose) {
-	if (!platform.sponsorPurchases) {
-		alert(strings.info, strings["product not available"]);
+	if (!helpers.isIapAvailable()) {
+		helpers.error(strings["product not available"]);
 		return;
 	}
 	const $page = Page(strings.sponsor);
 	let cancel = false;
+	let selecting = false;
+	let ownsLoader = false;
+	const unsubscribe = subscribeSponsorPurchases((event) => {
+		if (cancel) return;
+		hideLoader();
+		if (event === "success") $page.hide();
+	});
 
 	actionStack.push({
 		id: "sponsor_page",
@@ -31,107 +36,25 @@ export default function Sponsor(onclose) {
 	});
 
 	$page.onhide = function () {
-		onclose?.();
+		unsubscribe();
+		hideLoader();
 		cancel = true;
+		onclose?.();
 		actionStack.remove("sponsor_page");
 	};
 
 	app.append($page);
 
-	iap.setPurchaseUpdatedListener(
-		(purchases) => {
-			if (Array.isArray(purchases)) {
-				(async function () {
-					const promises = [];
-					for (let purchase of purchases) {
-						promises.push(
-							new Promise((resolve, reject) => {
-								iap.consume(
-									purchase.purchaseToken,
-									(resCode) => {
-										purchase.consumed = resCode === iap.OK ? true : false;
-										purchase.consumeCode = resCode;
-										resolve(purchase);
-									},
-									(err) => {
-										reject(err);
-									},
-								);
-							}),
-						);
-					}
+	showLoader();
+	void startSponsorRecovery(true).catch(onPurchaseError);
 
-					const settledPromises = await Promise.allSettled(promises);
-					const rejectedPromise = settledPromises.find(
-						(promise) => promise.status === "rejected",
-					);
-					let msg = "";
-					if (rejectedPromise) {
-						msg = "Something went wrong.\n";
-						msg += `Error: ${rejectedPromise.reason}\n`;
-						msg += `Code: ${rejectedPromise.value.resCode}`;
-					} else {
-						const res = await fetch(`${config.BASE_URL}/res/6.jpeg`);
-
-						if (res.ok) {
-							const url = URL.createObjectURL(await res.blob());
-							msg = `<img src="${url}" class="donate-image" />`;
-						}
-
-						msg += "<br><p>Thank you for supporting Acode!</p>";
-					}
-
-					const order = settledPromises[0].value;
-					const [productId] = order.productIds;
-					const sponsorDetails = JSON.parse(
-						localStorage.getItem(`sponsor_${productId}`),
-					);
-
-					try {
-						const res = await fetch(`${config.API_BASE}/sponsor`, {
-							method: "POST",
-							headers: {
-								"Content-Type": "application/json",
-							},
-							body: JSON.stringify({
-								...sponsorDetails,
-								tier: productId,
-								packageName: BuildInfo.packageName,
-								purchaseToken: order.purchaseToken,
-							}),
-						});
-						if (res.error) {
-							helpers.error(res.error);
-						} else {
-							dialog(strings.info, msg);
-							localStorage.removeItem(`sponsor_${productId}`);
-							$page.hide();
-						}
-					} catch (error) {
-						helpers.error(error);
-					} finally {
-						loader.removeTitleLoader();
-					}
-				})();
-			}
-		},
-		(err) => {
-			if (err !== iap.USER_CANCELED) {
-				alert(strings.error, err);
-			}
-			loader.removeTitleLoader();
-		},
-	);
-
-	loader.showTitleLoader();
 	render()
 		.catch((error) => {
+			if (cancel) return;
 			actionStack.pop();
 			helpers.error(error);
 		})
-		.finally(() => {
-			loader.removeTitleLoader();
-		});
+		.finally(hideLoader);
 
 	async function render() {
 		let products = await new Promise((resolve, reject) => {
@@ -147,11 +70,12 @@ export default function Sponsor(onclose) {
 		});
 
 		if (cancel) return;
+		if (!products.length) throw new Error(strings["product not available"]);
 
 		products = products.sort((a, b) => {
 			const aPrice = Number.parseFloat(a.price.replace(/[^0-9.]/g, ""));
 			const bPrice = Number.parseFloat(b.price.replace(/[^0-9.]/g, ""));
-			return bPrice - aPrice;
+			return (b.priceAmountMicros ?? bPrice) - (a.priceAmountMicros ?? aPrice);
 		});
 
 		$page.body = (
@@ -169,7 +93,7 @@ export default function Sponsor(onclose) {
 									<span className={`tier-icon ${product.productId}`}></span>
 									{onlyTitle(product.title)}
 								</div>
-								<div className="tier-price">{product.price}/Month</div>
+								<div className="tier-price">{product.price} / 30 days</div>
 							</div>
 							<div
 								className="tier-description"
@@ -187,102 +111,51 @@ export default function Sponsor(onclose) {
 			</div>
 		);
 	}
-}
 
-async function handlePurchase(productId, title) {
-	let image;
-	let result;
-	const extraFields = [];
-
-	if (["silver", "gold", "platinum", "titanium"].includes(productId)) {
-		extraFields.push({
-			placeholder: "Website",
-			required: false,
-			id: "website",
-			type: "url",
-		});
+	async function handlePurchase(productId, title) {
+		if (cancel || selecting) return;
+		selecting = true;
+		try {
+			showLoader();
+			const recovered = await recoverSponsorPurchases(true);
+			if (cancel) return;
+			hideLoader();
+			if (!recovered)
+				throw new Error(
+					"Unable to check existing purchases. Please try again.",
+				);
+			if (recovered.has(productId))
+				throw new Error(
+					"An earlier purchase for this tier was found. No new charge was started.",
+				);
+			const details = await sponsorDetails(productId, onlyTitle(title));
+			if (cancel || !details) return;
+			showLoader();
+			iap.purchase(productId, undefined, onPurchaseError, onPurchaseError);
+		} catch (error) {
+			onPurchaseError(error);
+		} finally {
+			selecting = false;
+		}
 	}
 
-	if (productId === "titanium") {
-		extraFields.push({
-			placeholder: "Tagline",
-			required: false,
-			id: "tagline",
-			type: "text",
-		});
+	function onPurchaseError(error) {
+		if (cancel) return;
+		if (error !== iap.USER_CANCELED) helpers.error(error);
+		hideLoader();
 	}
 
-	if (["gold", "platinum", "titanium"].includes(productId)) {
-		extraFields.push({
-			placeholder: "Logo/Image (500KB max)",
-			required: false,
-			type: "text",
-			id: "image",
-			onclick() {
-				sdcard.openDocumentFile(async (res) => {
-					if (res.length > 500000) {
-						this.setError("File size exceeds 500KB");
-						return;
-					}
-
-					this.setError("");
-					this.value = res.filename;
-					const arraybuffer = await fsOperation(res.uri).readFile();
-					const blob = new Blob([arraybuffer], { type: res.type });
-					const reader = new FileReader();
-					reader.onload = () => {
-						image = reader.result;
-
-						if (result && typeof result === "object") {
-							result.image = image;
-							localStorage.setItem(
-								`sponsor_${productId}`,
-								JSON.stringify(result),
-							);
-						}
-					};
-					reader.readAsDataURL(blob);
-				}, "image/*");
-			},
-		});
+	function showLoader() {
+		if (cancel) return;
+		ownsLoader = true;
+		loader.showTitleLoader();
 	}
 
-	// multiPrompt rejects when the dialog is cancelled.
-	result = await multiPrompt(onlyTitle(title), [
-		{
-			placeholder: "Name",
-			required: true,
-			id: "name",
-		},
-		{
-			placeholder: "Email",
-			required: false,
-			id: "email",
-			type: "email",
-			match:
-				/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|.(".+?"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/,
-		},
-		...extraFields,
-		{
-			placeholder: "Show in sponsors list",
-			required: false,
-			id: "public",
-			type: "checkbox",
-			value: true,
-		},
-	]).catch(() => null);
-
-	if (!result) {
-		return;
+	function hideLoader() {
+		if (cancel || !ownsLoader) return;
+		ownsLoader = false;
+		loader.removeTitleLoader();
 	}
-
-	if (image) {
-		result.image = image;
-	}
-
-	localStorage.setItem(`sponsor_${productId}`, JSON.stringify(result));
-	loader.showTitleLoader();
-	iap.purchase(productId);
 }
 
 function onlyTitle(title) {

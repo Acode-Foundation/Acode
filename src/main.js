@@ -477,6 +477,12 @@ async function getAndroidSdkInt() {
 async function onAppRendered(proPurchaseCheck) {
 	document.body.removeAttribute("data-small-msg");
 	app.classList.remove("loading", "splash");
+	if (typeof iap !== "undefined") {
+		void proPurchaseCheck
+			.then(() => import("pages/sponsor/recovery"))
+			.then(({ default: startSponsorRecovery }) => startSponsorRecovery())
+			.catch(console.error);
+	}
 	if (settings.value.developerMode) setTimeout(startDevTools);
 
 	// load plugins

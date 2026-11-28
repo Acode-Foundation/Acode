@@ -11,6 +11,7 @@
 #include "fs/path.h"
 #include "fs/real.h"
 #include "kernel/native_offload.h"
+#include "kernel/node.h"
 #ifdef __APPLE__
 #include <sys/resource.h>
 #define IOPOL_TYPE_VFS_HFS_CASE_SENSITIVITY 1
@@ -139,11 +140,6 @@ static inline int xX_main_Xx(int argc, char *const argv[], const char *envp) {
     if (argv[optind] == NULL)
 	    return _ENOENT;
 #ifdef GUEST_ARM64
-    // Inject V8 flags for node to work around scope corruption in emulation.
-    // --jitless: disable JIT (avoids V8 code gen incompatible with our JIT)
-    // --predictable: disable concurrent GC/compilation (avoids race conditions)
-    // --no-lazy: eager compilation (avoids Zone reuse patterns that corrupt scopes)
-    // --single-generation: skip young gen (reduces GC-triggered Zone resets)
     // This is needed here because the initial do_execve bypasses sys_execve.
     {
         const char *base = strrchr(argv[optind], '/');
@@ -153,15 +149,10 @@ static inline int xX_main_Xx(int argc, char *const argv[], const char *envp) {
             if ((err = append_exec_arg(argv_copy, sizeof(argv_copy) - 1, &p, argv[optind])) < 0)
                 return err;
             exec_argc++;
-            // Inject V8 flags to work around scope corruption
-            static const char *v8_flags[] = {
-                "--jitless",
-                "--no-lazy",
-                "--no-expose-wasm",
-                "--max-old-space-size=512",
-            };
-            for (int fi = 0; fi < (int)(sizeof(v8_flags)/sizeof(v8_flags[0])); fi++) {
-                if ((err = append_exec_arg(argv_copy, sizeof(argv_copy) - 1, &p, v8_flags[fi])) < 0)
+            const char *runtime_args[NODE_RUNTIME_ARGS_MAX];
+            size_t runtime_count = node_runtime_args(argv[optind], runtime_args);
+            for (size_t fi = 0; fi < runtime_count; fi++) {
+                if ((err = append_exec_arg(argv_copy, sizeof(argv_copy) - 1, &p, runtime_args[fi])) < 0)
                     return err;
                 exec_argc++;
             }

@@ -119,6 +119,9 @@ if get_option('kernel') == 'ish'
         'kernel/ipc.c',
         'kernel/ptrace.c',
         'kernel/native_offload.c',
+        'kernel/node.c',
+        'kernel/node_binary.c',
+        'kernel/node_flags.c',
 
         'kernel/fs.c',
         'kernel/fs_info.c',
@@ -143,6 +146,8 @@ if get_option('kernel') == 'ish'
 
         'fs/adhoc.c',
         'fs/sock.c',
+        'fs/netlink.c',
+        'fs/netlink_route.c',
         'fs/pipe.c',
         'fs/sockrestart.c',
         'fs/lock.c',

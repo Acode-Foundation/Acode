@@ -1,5 +1,12 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
@@ -10,7 +17,9 @@ const source = readFileSync(
 		import.meta.url,
 	),
 	"utf8",
-);
+)
+	.replaceAll('"/etc/npmrc"', '"$LEGACY_NPM_CONFIG"')
+	.replaceAll('"/usr/etc/npmrc"', '"$PREFIX_NPM_CONFIG"');
 // Preparation tests stop before unrelated writes to guest-only filesystem paths.
 const setup = source.slice(
 	0,
@@ -82,6 +91,67 @@ test("command execution bypasses Alpine package setup", () => {
 	expect(result.configured).toBe(false);
 });
 
+test("iOS npm defaults also reach existing installations during preparation", () => {
+	const result = runSetup({ flag: "--prepare", installed: iosPackages });
+	expect(result.status).toBe(0);
+	expect(result.npmConfig).toBe("\nloglevel=info\n\nforeground-scripts=true\n");
+	expect(runSetup({ ios: false }).npmConfig).toBe(null);
+});
+
+test("iOS preserves existing npm choices without duplicating defaults", () => {
+	const npmConfig = "audit=true\nloglevel=warn\nforeground-scripts=false\n";
+	const result = runSetup({ npmConfig });
+	expect(result.npmConfig).toBe(npmConfig);
+});
+
+test("iOS migrates Alpine's global npm settings before adding missing defaults", () => {
+	const result = runSetup({
+		legacyNpmConfig: "  audit = true\n# loglevel=warn",
+	});
+	expect(result.npmConfig).toBe(
+		"  audit = true\n# loglevel=warn\nloglevel=info\n\nforeground-scripts=true\n",
+	);
+});
+
+test.each([
+	"--prepare",
+	"--installing",
+])("%s continues when optional npm defaults cannot be written", (flag) => {
+	const result = runSetup({ flag, blockConfig: true, errexit: true });
+	expect(result.status).toBe(0);
+	expect(result.stderr).toContain("Unable to configure optional npm defaults");
+	expect(result.calls).toContain("add curl libstdc++ procps-ng tar gzip");
+});
+
+test.each([
+	"--prepare",
+	"--installing",
+])("%s continues when legacy npm migration fails", (flag) => {
+	const result = runSetup({
+		flag,
+		copyFails: true,
+		legacyNpmConfig: "audit=true\n",
+		errexit: true,
+	});
+	expect(result.status).toBe(0);
+	expect(result.stderr).toContain("Unable to configure optional npm defaults");
+	expect(result.npmConfig).toBeNull();
+});
+
+test("migrates prefix-global npm settings once, preferring Alpine's system config", () => {
+	const prefixNpmConfig = "registry=https://example.test\n";
+	expect(runSetup({ prefixNpmConfig }).npmConfig).toContain(prefixNpmConfig);
+	expect(
+		runSetup({ prefixNpmConfig, legacyNpmConfig: "audit=true\n" }).npmConfig,
+	).not.toContain("registry=");
+	expect(
+		runSetup({
+			prefixNpmConfig,
+			npmConfig: "loglevel=warn\nforeground-scripts=false\n",
+		}).npmConfig,
+	).not.toContain("registry=");
+});
+
 function runSetup({
 	ios = true,
 	installed = "bash command-not-found tzdata wget",
@@ -89,15 +159,35 @@ function runSetup({
 	addMode = "success",
 	updateFails = false,
 	args = flag ? [flag] : [],
+	npmConfig,
+	legacyNpmConfig,
+	prefixNpmConfig,
+	blockConfig = false,
+	copyFails = false,
+	errexit = false,
 } = {}) {
 	const directory = mkdtempSync(join(tmpdir(), "acode-alpine-setup-"));
 	const log = join(directory, "apk.log");
+	const config = join(directory, "npmrc");
+	const legacyConfig = join(directory, "legacy-npmrc");
+	const prefixConfig = join(directory, "prefix-npmrc");
 	try {
+		if (blockConfig) mkdirSync(config);
+		if (npmConfig !== undefined) writeFileSync(config, npmConfig);
+		if (prefixNpmConfig !== undefined)
+			writeFileSync(prefixConfig, prefixNpmConfig);
+		if (legacyNpmConfig !== undefined)
+			writeFileSync(legacyConfig, legacyNpmConfig);
 		const result = spawnSync(
 			"/bin/sh",
 			[
 				"-c",
 				`
+${errexit ? "set -e" : ""}
+cp() {
+    [ "$COPY_FAILS" != true ] || return 1
+    command cp "$@"
+}
 apk() {
     printf '%s\\n' "$*" >> "$APK_LOG"
     case "$1" in
@@ -142,6 +232,9 @@ ${flag === "--installing" ? source : setup}
 					PREFIX: directory,
 					ALPINE_ROOT: ios ? "/" : join(directory, "alpine"),
 					APK_LOG: log,
+					LEGACY_NPM_CONFIG: legacyConfig,
+					PREFIX_NPM_CONFIG: prefixConfig,
+					COPY_FAILS: String(copyFails),
 					INSTALLED_PACKAGES: installed,
 					ADD_MODE: addMode,
 					UPDATE_FAILS: String(updateFails),
@@ -154,6 +247,10 @@ ${flag === "--installing" ? source : setup}
 			...result,
 			configured: existsSync(join(directory, ".configured")),
 			calls: existsSync(log) ? readFileSync(log, "utf8") : "",
+			npmConfig:
+				!blockConfig && existsSync(config)
+					? readFileSync(config, "utf8")
+					: null,
 		};
 	} finally {
 		rmSync(directory, { recursive: true, force: true });

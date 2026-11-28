@@ -18,6 +18,7 @@
 #include "kernel/vdso.h"
 #include "kernel/mm.h"
 #include "kernel/native_offload.h"
+#include "kernel/node.h"
 
 #define ARGV_MAX 32 * PAGE_SIZE
 
@@ -821,17 +822,7 @@ dword_t sys_execve(addr_t filename_addr, addr_t argv_addr, addr_t envp_addr) {
         }
     }
 
-    // Inject V8 flags for Node.js to work around scope corruption in emulation.
-    // --jitless: disable JIT (avoids V8 code generation incompatible with our JIT)
-    // --predictable: disable concurrent GC/compilation (avoids race conditions)
-    // --no-lazy: eager compilation (avoids Zone reuse patterns that corrupt scopes)
-    // --single-generation: skip young generation (reduces GC-triggered Zone resets)
-    // --lite-mode: reduces Zone churn by disabling feedback vectors & optimizer
-    // --no-compilation-cache: prevent stale cached compilations from reusing Zones
-    // --no-flush-bytecode: keep compiled bytecode alive, avoid recompilation churn
-    // --no-lazy-compile-dispatcher: single-thread parsing to reduce concurrent Zones
-    // --no-parallel-compile-tasks: single-thread compilation to reduce concurrent Zones
-    // --no-concurrent-recompilation: disable background recompilation
+    // Apply the same V8 settings to direct launches and subprocesses.
     {
         const char *base = strrchr(filename, '/');
         base = base ? base + 1 : filename;
@@ -846,21 +837,14 @@ dword_t sys_execve(addr_t filename_addr, addr_t argv_addr, addr_t envp_addr) {
             if (skip_node_arg_injection)
                 goto node_arg_injection_done;
 
-            static const char *inject_args_base[] = {
-                "--jitless",
-                "--no-expose-wasm",
-                "--no-lazy",
-                "--max-old-space-size=512",
-            };
             // Conditionally inject --require for polyfill files that exist in guest fs
             static const char *optional_requires[] = {
                 "--require=/lib/wasm-polyfill.js",    // WebAssembly shim (must load first)
                 "--require=/lib/fetch-polyfill.js",   // fetch() via native http/https
             };
-            const char *inject_args[8]; // base args + optional requires
-            size_t inject_count = 0;
-            for (size_t i = 0; i < sizeof(inject_args_base)/sizeof(inject_args_base[0]); i++)
-                inject_args[inject_count++] = inject_args_base[i];
+            const char *inject_args[NODE_RUNTIME_ARGS_MAX +
+                                    sizeof(optional_requires)/sizeof(optional_requires[0])];
+            size_t inject_count = node_runtime_args(filename, inject_args);
             for (size_t i = 0; i < sizeof(optional_requires)/sizeof(optional_requires[0]); i++) {
                 // Extract path after "--require="
                 const char *path = optional_requires[i] + 10; // strlen("--require=")
